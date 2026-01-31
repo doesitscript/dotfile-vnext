@@ -1,0 +1,108 @@
+---
+# Endpoint Verification Role
+# Verifies endpoints are reachable from mac-dev
+# Checks langfuse, minio, litellm as applicable
+
+- name: Set endpoint URLs from contract (defaults per contract)
+  set_fact:
+    langfuse_url: "http://network-server:3000"
+    minio_api_url: "http://network-server:9000"
+    minio_console_url: "http://network-server:9001"
+    litellm_url: "http://Server-225:4000"
+    ollama_url: "http://Server-225:11434"
+    dev_ollama_url: "http://dev-3090:11434"
+    dev_litellm_url: "http://dev-3090:4000"
+
+- name: Check if Langfuse endpoint is reachable
+  uri:
+    url: "{{ langfuse_url }}/api/public/health"
+    method: GET
+    status_code: [200, 401, 403]
+    timeout: 5
+  register: langfuse_check
+  changed_when: false
+  failed_when: false
+
+- name: Check if MinIO API endpoint is reachable
+  uri:
+    url: "{{ minio_api_url }}/minio/health/live"
+    method: GET
+    status_code: [200, 403]
+    timeout: 5
+  register: minio_api_check
+  changed_when: false
+  failed_when: false
+
+- name: Check if MinIO Console endpoint is reachable
+  uri:
+    url: "{{ minio_console_url }}"
+    method: GET
+    status_code: [200, 302, 401, 403]
+    timeout: 5
+  register: minio_console_check
+  changed_when: false
+  failed_when: false
+
+- name: Check if LiteLLM endpoint is reachable
+  uri:
+    url: "{{ litellm_url }}/health"
+    method: GET
+    status_code: [200, 401, 403]
+    timeout: 5
+  register: litellm_check
+  changed_when: false
+  failed_when: false
+
+- name: Check if Ollama endpoint is reachable (optional)
+  uri:
+    url: "{{ ollama_url }}/api/tags"
+    method: GET
+    status_code: [200, 401, 403]
+    timeout: 5
+  register: ollama_check
+  changed_when: false
+  failed_when: false
+
+- name: Check if dev Ollama endpoint is reachable (optional)
+  uri:
+    url: "{{ dev_ollama_url }}/api/tags"
+    method: GET
+    status_code: [200, 401, 403]
+    timeout: 5
+  register: dev_ollama_check
+  changed_when: false
+  failed_when: false
+  ignore_errors: true
+
+- name: Check if dev LiteLLM endpoint is reachable (optional)
+  uri:
+    url: "{{ dev_litellm_url }}/health"
+    method: GET
+    status_code: [200, 401, 403]
+    timeout: 5
+  register: dev_litellm_check
+  changed_when: false
+  failed_when: false
+  ignore_errors: true
+
+- name: Report endpoint verification results
+  debug:
+    msg:
+      - "=== Endpoint Verification ==="
+      - "Langfuse ({{ langfuse_url }}): {{ 'REACHABLE' if langfuse_check.status in [200, 401, 403] else 'UNREACHABLE' }}"
+      - "MinIO API ({{ minio_api_url }}): {{ 'REACHABLE' if minio_api_check.status in [200, 403] else 'UNREACHABLE' }}"
+      - "MinIO Console ({{ minio_console_url }}): {{ 'REACHABLE' if minio_console_check.status in [200, 302, 401, 403] else 'UNREACHABLE' }}"
+      - "LiteLLM ({{ litellm_url }}): {{ 'REACHABLE' if litellm_check.status in [200, 401, 403] else 'UNREACHABLE' }}"
+      - "Ollama ({{ ollama_url }}): {{ 'REACHABLE' if ollama_check.status in [200, 401, 403] else 'UNREACHABLE (optional)' }}"
+      - "Dev Ollama ({{ dev_ollama_url }}): {{ 'REACHABLE' if (dev_ollama_check is defined and dev_ollama_check.status in [200, 401, 403]) else 'UNREACHABLE (optional)' }}"
+      - "Dev LiteLLM ({{ dev_litellm_url }}): {{ 'REACHABLE' if (dev_litellm_check is defined and dev_litellm_check.status in [200, 401, 403]) else 'UNREACHABLE (optional)' }}"
+
+- name: Fail if required endpoints are unreachable
+  fail:
+    msg: "Required endpoints are unreachable. Check network connectivity and service status."
+  when: 
+    - langfuse_check.status not in [200, 401, 403]
+    - or minio_api_check.status not in [200, 403]
+    - or minio_console_check.status not in [200, 302, 401, 403]
+    - or litellm_check.status not in [200, 401, 403]
+

@@ -209,6 +209,31 @@ This document tracks progress through the checkpoint plan defined in `assemble_c
 
 ---
 
+## ✅ Checkpoint 10 — Verify Fabric End-to-End + Reboot Survivability (COMPLETE)
+
+**Goal**: Comprehensive end-to-end verification and reboot survivability checks.
+
+**Output**:
+- ✅ `roles/common/endpoint_verify/tasks/main.yml` - Endpoint reachability from mac-dev
+- ✅ `roles/common/docker_runtime_verify/tasks/main.yml` - Docker runtime location verification
+- ✅ `roles/common/scheduled_task_verify/tasks/main.yml` - Scheduled task verification for reboot survivability
+- ✅ `roles/common/volume_location_verify/tasks/main.yml` - Volume location checks (not on OS disk)
+- ✅ `roles/common/gpu_verify/tasks/main.yml` - GPU validation checks
+- ✅ Updated `playbooks/verify_fabric.yaml` - Complete end-to-end verification
+- ✅ Cleaned up empty content files
+
+**Features:**
+- Endpoint reachability: Langfuse, MinIO, LiteLLM verified from mac-dev
+- Docker runtime location: WSL vs Windows verified per contract
+- Scheduled task verification: Task exists and configured for reboot survivability on server-225
+- Volume location checks: Best-effort verification volumes are not on OS disk
+- GPU validation: GPU checks pass on GPU nodes (server-225, dev-3090)
+- Complete verification flow in single playbook
+
+**Status**: Complete. Full fabric verification available via verify_fabric.yaml.
+
+---
+
 ## Review Points
 
 You can review the project at any checkpoint:

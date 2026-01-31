@@ -1,0 +1,96 @@
+---
+# GPU Verification Role
+# Verifies GPU validation checks pass on GPU nodes
+
+- name: Check if nvidia-smi is available (Windows)
+  win_shell: nvidia-smi --version
+  register: nvidia_smi_check
+  changed_when: false
+  failed_when: false
+  when: 
+    - ansible_system == "Windows"
+    - gpu is defined
+
+- name: Check if nvidia-smi is available (Linux/WSL)
+  shell: nvidia-smi --version
+  register: nvidia_smi_check
+  changed_when: false
+  failed_when: false
+  when: 
+    - ansible_system == "Linux"
+    - gpu is defined
+
+- name: Get GPU information (Windows)
+  win_shell: |
+    nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
+  register: gpu_info
+  changed_when: false
+  failed_when: false
+  when: 
+    - ansible_system == "Windows"
+    - gpu is defined
+    - nvidia_smi_check.rc == 0
+
+- name: Get GPU information (Linux/WSL)
+  shell: |
+    nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
+  register: gpu_info
+  changed_when: false
+  failed_when: false
+  when: 
+    - ansible_system == "Linux"
+    - gpu is defined
+    - nvidia_smi_check.rc == 0
+
+- name: Get GPU temperature and utilization (Windows)
+  win_shell: |
+    nvidia-smi --query-gpu=temperature.gpu,utilization.gpu --format=csv,noheader
+  register: gpu_status
+  changed_when: false
+  failed_when: false
+  when: 
+    - ansible_system == "Windows"
+    - gpu is defined
+    - nvidia_smi_check.rc == 0
+
+- name: Get GPU temperature and utilization (Linux/WSL)
+  shell: |
+    nvidia-smi --query-gpu=temperature.gpu,utilization.gpu --format=csv,noheader
+  register: gpu_status
+  changed_when: false
+  failed_when: false
+  when: 
+    - ansible_system == "Linux"
+    - gpu is defined
+    - nvidia_smi_check.rc == 0
+
+- name: Verify GPU driver is installed
+  assert:
+    that:
+      - nvidia_smi_check.rc == 0
+    fail_msg: "NVIDIA GPU driver not found. nvidia-smi command failed. Expected GPU: {{ gpu }}"
+    success_msg: "NVIDIA GPU driver is installed"
+  when: gpu is defined
+
+- name: Verify GPU information can be retrieved
+  assert:
+    that:
+      - gpu_info.stdout is defined
+      - gpu_info.stdout != ""
+    fail_msg: "GPU information could not be retrieved"
+    success_msg: "GPU information retrieved successfully"
+  when: 
+    - gpu is defined
+    - nvidia_smi_check.rc == 0
+
+- name: Report GPU verification
+  debug:
+    msg:
+      - "=== GPU Verification ==="
+      - "Expected GPU: {{ gpu }}"
+      - "GPU driver installed: {{ 'YES' if nvidia_smi_check.rc == 0 else 'NO' }}"
+      - "GPU information: {{ gpu_info.stdout | default('Unknown') }}"
+      - "GPU status: {{ gpu_status.stdout | default('Unknown') }}"
+      - "Status: {{ 'PASS' if (nvidia_smi_check.rc == 0 and gpu_info.stdout is defined) else 'FAIL' }}"
+  when: gpu is defined
+

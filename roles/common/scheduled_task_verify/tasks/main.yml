@@ -1,0 +1,117 @@
+---
+# Scheduled Task Verification Role
+# Verifies scheduled task exists on server-225 and is configured correctly
+
+- name: Check if scheduled task exists
+  win_shell: |
+    $task = Get-ScheduledTask -TaskName "{{ task_scheduler_task_name | default('autostart-ai-stack') }}" -ErrorAction SilentlyContinue
+    if ($task) {
+      $task | ConvertTo-Json -Depth 3
+    } else {
+      "{}"
+    }
+  register: task_info
+  changed_when: false
+  failed_when: false
+  when: 
+    - ansible_system == "Windows"
+    - inventory_hostname in groups['main_server'] or 'server-225' in inventory_hostname
+    - task_scheduler_enabled | default(true)
+
+- name: Parse scheduled task information
+  set_fact:
+    task_exists: "{{ task_info.stdout != '{}' }}"
+    task_state: "{{ task_info.json.State | default('Unknown') if task_info.json is defined else 'Unknown' }}"
+    task_enabled: "{{ task_info.json.Settings.Enabled | default(false) if task_info.json is defined else false }}"
+  when: 
+    - ansible_system == "Windows"
+    - inventory_hostname in groups['main_server'] or 'server-225' in inventory_hostname
+    - task_scheduler_enabled | default(true)
+
+- name: Get scheduled task action details
+  win_shell: |
+    $task = Get-ScheduledTask -TaskName "{{ task_scheduler_task_name | default('autostart-ai-stack') }}" -ErrorAction SilentlyContinue
+    if ($task) {
+      $task.Actions | ConvertTo-Json -Depth 2
+    } else {
+      "[]"
+    }
+  register: task_actions
+  changed_when: false
+  failed_when: false
+  when: 
+    - ansible_system == "Windows"
+    - inventory_hostname in groups['main_server'] or 'server-225' in inventory_hostname
+    - task_scheduler_enabled | default(true)
+    - task_exists | default(false)
+
+- name: Get scheduled task trigger details
+  win_shell: |
+    $task = Get-ScheduledTask -TaskName "{{ task_scheduler_task_name | default('autostart-ai-stack') }}" -ErrorAction SilentlyContinue
+    if ($task) {
+      $task.Triggers | ConvertTo-Json -Depth 2
+    } else {
+      "[]"
+    }
+  register: task_triggers
+  changed_when: false
+  failed_when: false
+  when: 
+    - ansible_system == "Windows"
+    - inventory_hostname in groups['main_server'] or 'server-225' in inventory_hostname
+    - task_scheduler_enabled | default(true)
+    - task_exists | default(false)
+
+- name: Verify scheduled task exists
+  assert:
+    that:
+      - task_exists | default(false)
+    fail_msg: "Scheduled task '{{ task_scheduler_task_name | default('autostart-ai-stack') }}' does not exist"
+    success_msg: "Scheduled task exists"
+  when: 
+    - ansible_system == "Windows"
+    - inventory_hostname in groups['main_server'] or 'server-225' in inventory_hostname
+    - task_scheduler_enabled | default(true)
+
+- name: Verify scheduled task is enabled
+  assert:
+    that:
+      - task_enabled | default(false)
+    fail_msg: "Scheduled task exists but is disabled"
+    success_msg: "Scheduled task is enabled"
+  when: 
+    - ansible_system == "Windows"
+    - inventory_hostname in groups['main_server'] or 'server-225' in inventory_hostname
+    - task_scheduler_enabled | default(true)
+    - task_exists | default(false)
+
+- name: Verify scheduled task has boot trigger
+  assert:
+    that:
+      - task_triggers.json is defined
+      - task_triggers.json | length > 0
+      - "'BootTrigger' in task_triggers.json[0].CimClass.CimClassName"
+    fail_msg: "Scheduled task does not have a boot trigger"
+    success_msg: "Scheduled task has boot trigger configured"
+  when: 
+    - ansible_system == "Windows"
+    - inventory_hostname in groups['main_server'] or 'server-225' in inventory_hostname
+    - task_scheduler_enabled | default(true)
+    - task_exists | default(false)
+    - task_triggers.json is defined
+
+- name: Report scheduled task verification
+  debug:
+    msg:
+      - "=== Scheduled Task Verification ==="
+      - "Task name: {{ task_scheduler_task_name | default('autostart-ai-stack') }}"
+      - "Task exists: {{ 'YES' if task_exists | default(false) else 'NO' }}"
+      - "Task enabled: {{ 'YES' if task_enabled | default(false) else 'NO' }}"
+      - "Task state: {{ task_state }}"
+      - "Has boot trigger: {{ 'YES' if (task_triggers.json is defined and task_triggers.json | length > 0) else 'NO' }}"
+      - "Status: {{ 'PASS' if (task_exists | default(false) and task_enabled | default(false)) else 'FAIL' }}"
+  when: 
+    - ansible_system == "Windows"
+    - inventory_hostname in groups['main_server'] or 'server-225' in inventory_hostname
+    - task_scheduler_enabled | default(true)
+

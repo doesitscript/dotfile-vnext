@@ -1,0 +1,90 @@
+---
+# Docker Runtime Verification Role
+# Verifies Docker runtime location matches contract (WSL vs Windows)
+
+- name: Determine expected Docker runtime from contract
+  set_fact:
+    expected_docker_runtime: "{{ docker_runtime | default('wsl2-ubuntu-docker-engine') }}"
+    should_be_wsl2: "{{ expected_docker_runtime == 'wsl2-ubuntu-docker-engine' }}"
+    should_be_windows: "{{ expected_docker_runtime == 'windows-docker-engine' }}"
+
+- name: Check if Docker is running in WSL (WSL2 path)
+  shell: |
+    docker version 2>&1
+  register: docker_wsl_check
+  changed_when: false
+  failed_when: false
+  when: 
+    - ansible_system == "Linux"
+    - should_be_wsl2
+
+- name: Check if Docker is running on Windows (Windows path)
+  win_shell: |
+    docker version 2>&1
+  register: docker_windows_check
+  changed_when: false
+  failed_when: false
+  when: 
+    - ansible_system == "Windows"
+    - should_be_windows
+
+- name: Check if Windows Docker is disabled (WSL2 path)
+  win_shell: |
+    $service = Get-Service docker -ErrorAction SilentlyContinue
+    if ($service) {
+      if ($service.StartType -eq 'Disabled') { "disabled" } else { "enabled" }
+    } else {
+      "not_installed"
+    }
+  register: windows_docker_status
+  changed_when: false
+  failed_when: false
+  when: 
+    - ansible_system == "Windows"
+    - should_be_wsl2
+    - docker_engine_on_windows | default('disabled') == 'disabled'
+
+- name: Verify Docker runtime location (WSL2 path)
+  assert:
+    that:
+      - docker_wsl_check.rc == 0
+      - "'Docker version' in docker_wsl_check.stdout"
+    fail_msg: "Docker is not running in WSL2 as expected by contract"
+    success_msg: "Docker is running in WSL2 as expected"
+  when: 
+    - ansible_system == "Linux"
+    - should_be_wsl2
+
+- name: Verify Docker runtime location (Windows path)
+  assert:
+    that:
+      - docker_windows_check.rc == 0
+      - "'Docker version' in docker_windows_check.stdout"
+    fail_msg: "Docker is not running on Windows as expected by contract"
+    success_msg: "Docker is running on Windows as expected"
+  when: 
+    - ansible_system == "Windows"
+    - should_be_windows
+
+- name: Verify Windows Docker is disabled (WSL2 path)
+  assert:
+    that:
+      - windows_docker_status.stdout == "disabled" or windows_docker_status.stdout == "not_installed"
+    fail_msg: "Windows Docker Engine should be disabled but is enabled"
+    success_msg: "Windows Docker Engine is disabled as expected"
+  when: 
+    - ansible_system == "Windows"
+    - should_be_wsl2
+    - docker_engine_on_windows | default('disabled') == 'disabled'
+    - windows_docker_status.stdout is defined
+
+- name: Report Docker runtime verification
+  debug:
+    msg:
+      - "=== Docker Runtime Verification ==="
+      - "Expected runtime: {{ expected_docker_runtime }}"
+      - "Docker in WSL2: {{ 'YES' if (ansible_system == 'Linux' and docker_wsl_check.rc == 0) else 'NO' }}"
+      - "Docker on Windows: {{ 'YES' if (ansible_system == 'Windows' and docker_windows_check.rc == 0) else 'NO' }}"
+      - "Windows Docker disabled: {{ windows_docker_status.stdout if windows_docker_status.stdout is defined else 'N/A' }}"
+      - "Status: {{ 'PASS' if ((should_be_wsl2 and docker_wsl_check.rc == 0) or (should_be_windows and docker_windows_check.rc == 0)) else 'FAIL' }}"
+
