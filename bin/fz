@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# FuzLang Infrastructure CLI
+# Main entrypoint for running Ansible playbooks and utilities
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SCRIPTS_DIR="${REPO_ROOT}/scripts"
+
+# Source shared library
+source "${SCRIPTS_DIR}/lib.sh"
+
+# Ensure we're in the repo root (ansible-playbook runs from here)
+cd "${REPO_ROOT}"
+
+# Setup Ansible environment (sets ANSIBLE_CONFIG if ansible.cfg exists)
+setup_ansible_env
+
+# Ensure virtual environment exists (auto-creates and installs deps if missing)
+ensure_venv
+
+# Parse command
+COMMAND="${1:-}"
+shift || true
+
+case "${COMMAND}" in
+  bootstrap)
+    run_ansible_playbook "playbooks/bootstrap_server_225.yaml" "$@"
+    ;;
+  bootstrap-winrm)
+    run_ansible_playbook "playbooks/bootstrap_network_server.yaml" "$@"
+    run_ansible_playbook "playbooks/bootstrap_dev_3090.yaml" "$@"
+    ;;
+  bootstrap-ssh)
+    # WSL bootstrap happens via SSH after Windows bootstrap
+    log_info "WSL bootstrap is handled automatically via SSH after Windows bootstrap"
+    ;;
+  deploy)
+    DEPLOY_TARGET="${1:-}"
+    shift || true
+    case "${DEPLOY_TARGET}" in
+      main)
+        run_ansible_playbook "playbooks/deploy_main_stacks.yaml" "$@"
+        ;;
+      network)
+        run_ansible_playbook "playbooks/deploy_network_stacks.yaml" "$@"
+        ;;
+      dev)
+        run_ansible_playbook "playbooks/deploy_dev_stacks.yaml" "$@"
+        ;;
+      *)
+        log_error "Unknown deploy target: ${DEPLOY_TARGET}"
+        log_info "Valid targets: main, network, dev"
+        exit 1
+        ;;
+    esac
+    ;;
+  verify)
+    run_ansible_playbook "playbooks/verify_fabric.yaml" "$@"
+    ;;
+  contract)
+    CONTRACT_CMD="${1:-}"
+    shift || true
+    case "${CONTRACT_CMD}" in
+      lint)
+        log_info "Linting contract: contracts/fuzlang.contract.yaml"
+        if command -v yamllint &> /dev/null; then
+          yamllint "contracts/fuzlang.contract.yaml" || true
+        else
+          log_warn "yamllint not found, skipping lint check"
+          log_info "Install with: pip install yamllint"
+        fi
+        # Basic YAML syntax check
+        python3 -c "import yaml; yaml.safe_load(open('contracts/fuzlang.contract.yaml'))" || {
+          log_error "Contract YAML syntax error"
+          exit 1
+        }
+        log_success "Contract syntax is valid"
+        ;;
+      *)
+        log_error "Unknown contract command: ${CONTRACT_CMD}"
+        log_info "Valid commands: lint"
+        exit 1
+        ;;
+    esac
+    ;;
+  vault)
+    VAULT_CMD="${1:-}"
+    shift || true
+    case "${VAULT_CMD}" in
+      edit)
+        VAULT_SCOPE="${1:-}"
+        shift || true
+        case "${VAULT_SCOPE}" in
+          shared)
+            run_ansible_vault_edit "vault/shared.vault.yml" "$@"
+            ;;
+          network)
+            run_ansible_vault_edit "vault/network.vault.yml" "$@"
+            ;;
+          main)
+            run_ansible_vault_edit "vault/main.vault.yml" "$@"
+            ;;
+          dev)
+            run_ansible_vault_edit "vault/dev.vault.yml" "$@"
+            ;;
+          *)
+            log_error "Unknown vault scope: ${VAULT_SCOPE}"
+            log_info "Valid scopes: shared, network, main, dev"
+            exit 1
+            ;;
+        esac
+        ;;
+      *)
+        log_error "Unknown vault command: ${VAULT_CMD}"
+        log_info "Valid commands: edit <scope>"
+        exit 1
+        ;;
+    esac
+    ;;
+  "")
+    usage
+    exit 1
+    ;;
+  *)
+    log_error "Unknown command: ${COMMAND}"
+    usage
+    exit 1
+    ;;
+esac
+
