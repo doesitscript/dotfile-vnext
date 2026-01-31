@@ -1,13 +1,21 @@
 ---
 # Deploy dev stacks on dev-3090
-# Targets: dev-3090-wsl (SSH)
+# Targets: dev-3090-wsl (SSH) for WSL2 Docker, dev-3090-win (WinRM) for Windows Docker
 # Purpose: Bring up optional dev ollama, litellm stacks
 
-- name: Deploy dev stacks on dev-3090
+- name: Deploy dev stacks on dev-3090 (WSL2 Docker path)
   hosts: dev-3090-wsl
   become: false
   roles:
     - role: dev_3090/stacks_dev
+  when: docker_runtime | default('wsl2-ubuntu-docker-engine') == 'wsl2-ubuntu-docker-engine'
+
+- name: Deploy dev stacks on dev-3090 (Windows Docker path)
+  hosts: dev-3090-win
+  become: false
+  roles:
+    - role: dev_3090/stacks_dev
+  when: docker_runtime | default('wsl2-ubuntu-docker-engine') == 'windows-docker-engine'
 
 
 

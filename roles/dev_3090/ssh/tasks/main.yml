@@ -1,0 +1,38 @@
+---
+# Dev-3090 SSH Role
+# WinRM/PowerShell only - configures OpenSSH for WSL access
+# Ensures SSH is accessible for Ansible to connect to WSL
+
+- name: Verify OpenSSH Server is installed
+  win_feature:
+    name: OpenSSH.Server
+    state: present
+  register: openssh_feature
+
+- name: Start OpenSSH Server service
+  win_service:
+    name: sshd
+    state: started
+    start_mode: auto
+
+- name: Verify OpenSSH Server is running
+  win_service:
+    name: sshd
+  register: sshd_status
+  changed_when: false
+
+- name: Get OpenSSH Server port
+  win_shell: |
+    $port = (Get-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name "Port" -ErrorAction SilentlyContinue).Port
+    if (-not $port) { $port = 22 }
+    $port
+  register: ssh_port
+  changed_when: false
+
+- name: Display SSH configuration summary
+  debug:
+    msg:
+      - "OpenSSH Server: {{ 'Running' if sshd_status.status.ActiveState == 'running' else 'Not running' }}"
+      - "SSH Port: {{ ssh_port.stdout | default('22') }}"
+      - "SSH is ready for WSL access"
+

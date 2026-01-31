@@ -151,17 +151,32 @@ This document tracks progress through the checkpoint plan defined in `assemble_c
 
 ---
 
-## ⏳ Checkpoint 8 — Stack Deployment Per Role (PENDING)
+## ✅ Checkpoint 8 — Dev-3090 Bootstrap + Dev Stacks (COMPLETE)
 
-**Goal**: Bring up only the declared services.
+**Goal**: Bootstrap dev-3090 as peer execution node and deploy optional dev stacks.
 
-**Planned Output**:
-- Stacks running on:
-  - server-225 (main)
-  - network-server (authoritative)
-  - dev-3090 (dev execution)
+**Output**:
+- ✅ `roles/dev_3090/windows_base/tasks/main.yml` - Windows features, OpenSSH, directories, power settings
+- ✅ `roles/dev_3090/ssh/tasks/main.yml` - SSH configuration for WSL access
+- ✅ `roles/dev_3090/wsl2_or_windows_docker_runtime/tasks/main.yml` - Dual runtime path support (WSL2 or Windows Docker)
+- ✅ `roles/dev_3090/gpu_driver_validation/tasks/main.yml` - GPU driver validation (RTX 3090)
+- ✅ `roles/dev_3090/stacks_dev/tasks/main.yml` - Optional dev_ollama and dev_litellm deployment
+- ✅ `playbooks/bootstrap_dev_3090.yaml` - Uses roles in correct order
+- ✅ `playbooks/deploy_dev_stacks.yaml` - Dual play support for WSL2 and Windows Docker paths
+- ✅ `inventory/group_vars/dev_gpu.yaml` - Dev stack deployment flags and port exposure config
 
-**Status**: Not started. Waiting for implementation.
+**Features:**
+- Windows Features: Hyper-V, Containers, Virtual Machine Platform, WSL
+- OpenSSH Server installed and started
+- Power settings: High Performance, sleep/hibernate disabled
+- Directories created on data drive (D:\ai structure)
+- Dual runtime path: WSL2 Docker Engine (default) or Windows Docker Engine (alternative)
+- GPU driver validation (nvidia-smi check for RTX 3090)
+- Optional dev services: dev_ollama and dev_litellm (disabled by default)
+- Port exposure per contract (restricted by default, configurable to LAN)
+- Automatic reboot handling for Windows features
+
+**Status**: Complete. Dev-3090 bootstrap and dev stacks deployment ready.
 
 ---
 

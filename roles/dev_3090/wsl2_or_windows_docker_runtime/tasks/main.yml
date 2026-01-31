@@ -1,0 +1,212 @@
+---
+# Dev-3090 Docker Runtime Role
+# Supports both WSL2 and Windows Docker Engine paths
+# Guarded by docker_runtime variable (wsl2-ubuntu-docker-engine or windows-docker-engine)
+
+- name: Determine Docker runtime choice
+  set_fact:
+    docker_runtime_choice: "{{ docker_runtime | default('wsl2-ubuntu-docker-engine') }}"
+    use_wsl2_docker: "{{ docker_runtime | default('wsl2-ubuntu-docker-engine') == 'wsl2-ubuntu-docker-engine' }}"
+    use_windows_docker: "{{ docker_runtime | default('wsl2-ubuntu-docker-engine') == 'windows-docker-engine' }}"
+
+- name: Display Docker runtime choice
+  debug:
+    msg:
+      - "Docker runtime choice: {{ docker_runtime_choice }}"
+      - "Using WSL2 Docker: {{ use_wsl2_docker }}"
+      - "Using Windows Docker: {{ use_windows_docker }}"
+
+# ============================================================================
+# WSL2 Docker Engine Path
+# ============================================================================
+- name: Set WSL default version to 2 (WSL2 path)
+  win_shell: wsl --set-default-version 2
+  register: wsl_version_result
+  changed_when: "'is already set' not in wsl_version_result.stdout"
+  failed_when: false
+  when: use_wsl2_docker
+
+- name: Check if WSL distro is installed (WSL2 path)
+  win_shell: wsl -l -v
+  register: wsl_list
+  changed_when: false
+  failed_when: false
+  when: use_wsl2_docker
+
+- name: Install WSL distro if not present (WSL2 path)
+  win_shell: |
+    wsl --install -d {{ wsl_distro }} --no-launch
+  register: wsl_install_result
+  when: 
+    - use_wsl2_docker
+    - wsl_distro not in wsl_list.stdout
+  failed_when: false
+
+- name: Wait for WSL distro installation (WSL2 path)
+  pause:
+    seconds: 30
+  when: 
+    - use_wsl2_docker
+    - wsl_install_result.changed | default(false)
+
+- name: Verify WSL distro is installed and using version 2 (WSL2 path)
+  win_shell: wsl -l -v
+  register: wsl_verify
+  changed_when: false
+  when: use_wsl2_docker
+
+- name: Configure WSL to use systemd (WSL2 path)
+  win_shell: |
+    wsl -d {{ wsl_distro }} -- bash -c "echo '[boot]' | sudo tee /etc/wsl.conf"
+    wsl -d {{ wsl_distro }} -- bash -c "echo 'systemd=true' | sudo tee -a /etc/wsl.conf"
+  register: systemd_result
+  when: 
+    - use_wsl2_docker
+    - systemd_in_wsl | default(true)
+  changed_when: systemd_result.rc == 0
+  failed_when: false
+
+- name: Shutdown WSL to apply systemd configuration (WSL2 path)
+  win_shell: wsl --shutdown
+  when: 
+    - use_wsl2_docker
+    - systemd_in_wsl | default(true)
+    - systemd_result.changed | default(false)
+  register: wsl_shutdown_result
+  changed_when: wsl_shutdown_result.rc == 0
+  failed_when: false
+
+- name: Wait for WSL to restart (WSL2 path)
+  pause:
+    seconds: 10
+  when: 
+    - use_wsl2_docker
+    - systemd_in_wsl | default(true)
+    - systemd_result.changed | default(false)
+
+- name: Verify WSL distro is accessible (WSL2 path)
+  win_shell: wsl -d {{ wsl_distro }} -- echo "WSL is working"
+  register: wsl_test
+  changed_when: false
+  failed_when: wsl_test.rc != 0
+  when: use_wsl2_docker
+
+- name: Install Docker in WSL (WSL2 path)
+  win_shell: |
+    wsl -d {{ wsl_distro }} -- bash -c "curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh get-docker.sh"
+  register: docker_install_wsl
+  when: 
+    - use_wsl2_docker
+    - docker_engine_in_wsl | default(true)
+  failed_when: docker_install_wsl.rc != 0
+
+- name: Start Docker service in WSL (WSL2 path)
+  win_shell: |
+    wsl -d {{ wsl_distro }} -- bash -c "sudo systemctl start docker"
+  register: docker_start_wsl
+  when: 
+    - use_wsl2_docker
+    - docker_engine_in_wsl | default(true)
+  failed_when: docker_start_wsl.rc != 0
+
+- name: Enable Docker service in WSL (WSL2 path)
+  win_shell: |
+    wsl -d {{ wsl_distro }} -- bash -c "sudo systemctl enable docker"
+  register: docker_enable_wsl
+  when: 
+    - use_wsl2_docker
+    - docker_engine_in_wsl | default(true)
+  failed_when: docker_enable_wsl.rc != 0
+
+- name: Verify Docker in WSL (WSL2 path)
+  win_shell: |
+    wsl -d {{ wsl_distro }} -- docker version
+  register: docker_version_wsl
+  changed_when: false
+  failed_when: docker_version_wsl.rc != 0
+  when: use_wsl2_docker
+
+- name: Disable Windows Docker Engine if WSL2 is chosen (WSL2 path)
+  win_shell: |
+    Stop-Service docker -ErrorAction SilentlyContinue
+    Set-Service docker -StartupType Disabled -ErrorAction SilentlyContinue
+  register: disable_windows_docker
+  when: 
+    - use_wsl2_docker
+    - docker_engine_on_windows | default('disabled') == 'disabled'
+  changed_when: disable_windows_docker.rc == 0
+  failed_when: false
+
+# ============================================================================
+# Windows Docker Engine Path
+# ============================================================================
+- name: Check if Docker is installed (Windows path)
+  win_shell: |
+    $docker = Get-Command docker -ErrorAction SilentlyContinue
+    if ($docker) { "installed" } else { "not_installed" }
+  register: docker_check
+  changed_when: false
+  failed_when: false
+  when: use_windows_docker
+
+- name: Install Docker Engine via PowerShell (Windows path)
+  win_shell: |
+    Install-Module -Name DockerMsftProvider -Repository PSGallery -Force
+    Install-Package -Name docker -ProviderName DockerMsftProvider -Force
+  register: docker_install_result
+  when: 
+    - use_windows_docker
+    - docker_check.stdout == "not_installed"
+  failed_when: false
+
+- name: Reboot after Docker installation if needed (Windows path)
+  win_reboot:
+    msg: "Rebooting to complete Docker installation"
+    reboot_timeout: 600
+  when: 
+    - use_windows_docker
+    - docker_install_result.changed | default(false)
+
+- name: Wait for system to come back online after Docker reboot (Windows path)
+  wait_for_connection:
+    timeout: 600
+  when: 
+    - use_windows_docker
+    - docker_install_result.changed | default(false)
+
+- name: Verify Docker service is running (Windows path)
+  win_service:
+    name: docker
+  register: docker_service
+  changed_when: false
+  when: use_windows_docker
+
+- name: Start Docker service if not running (Windows path)
+  win_service:
+    name: docker
+    state: started
+    start_mode: auto
+  when: 
+    - use_windows_docker
+    - docker_service.status.State != "running"
+
+- name: Verify Docker is working (Windows path)
+  win_shell: docker version
+  register: docker_version
+  changed_when: false
+  failed_when: docker_version.rc != 0
+  when: use_windows_docker
+
+# ============================================================================
+# Summary
+# ============================================================================
+- name: Display Docker runtime configuration summary
+  debug:
+    msg:
+      - "=== Docker Runtime Configuration ==="
+      - "Runtime choice: {{ docker_runtime_choice }}"
+      - "WSL2 Docker: {{ 'Installed and running' if (use_wsl2_docker and docker_version_wsl.rc == 0) else 'Not used' }}"
+      - "Windows Docker: {{ 'Installed and running' if (use_windows_docker and docker_version.rc == 0) else 'Not used' }}"
+      - "WSL distro: {{ wsl_distro if use_wsl2_docker else 'N/A' }}"
+      - "Systemd in WSL: {{ 'Enabled' if (use_wsl2_docker and systemd_in_wsl | default(true)) else 'N/A' }}"
+
