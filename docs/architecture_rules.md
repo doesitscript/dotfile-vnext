@@ -91,3 +91,5 @@ If any of these occur, stop and report:
 - A reader can understand lifecycle: bootstrap → deploy → verify
 - Nothing can accidentally run on the wrong surface
 
+
+
