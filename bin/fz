@@ -20,34 +20,296 @@ setup_ansible_env
 # Ensure virtual environment exists (auto-creates and installs deps if missing)
 ensure_venv
 
+# Helper to check if --limit or --all is present in arguments
+has_limit_or_all() {
+  local has_limit=false
+  local has_all=false
+  
+  while [[ $# -gt 0 ]]; do
+    if [ "$1" = "--limit" ]; then
+      has_limit=true
+      shift 2  # Skip --limit and its value
+    elif [ "$1" = "--all" ]; then
+      has_all=true
+      shift
+    else
+      shift
+    fi
+  done
+  
+  [ "${has_limit}" = true ] || [ "${has_all}" = true ]
+}
+
+# Helper to require --limit or --all
+require_limit_or_all() {
+  local command_name="$1"
+  shift || true
+  
+  if ! has_limit_or_all "$@"; then
+    log_error "${command_name} requires --limit <hosts> or --all"
+    log_info "Example: fz ${command_name} --limit server-225-win"
+    log_info "Example: fz ${command_name} --all"
+    exit 1
+  fi
+}
+
 # Parse command
 COMMAND="${1:-}"
 shift || true
 
 case "${COMMAND}" in
   bootstrap)
-    run_ansible_playbook "playbooks/bootstrap_server_225.yaml" "$@"
+    # Guardrail: require --limit or --all
+    if ! has_limit_or_all "$@"; then
+      log_error "bootstrap requires --limit <hosts> or --all"
+      log_info "This prevents accidentally running bootstrap on all hosts"
+      log_info "Example: fz bootstrap --limit server-225-win"
+      log_info "Example: fz bootstrap --all"
+      exit 1
+    fi
+    
+    # Check for --check mode
+    if echo "$@" | grep -q -- "--check"; then
+      log_info "CHECK MODE: No changes will be applied"
+    fi
+    
+    # Full bootstrap: winrm -> verify -> deploy -> verify
+    
+    # Save all args for later use
+    all_args=("$@")
+    
+    log_info "=== Phase 1: Bootstrap WinRM ==="
+    # Determine which bootstrap playbooks to run based on limit
+    limit_value=""
+    has_limit=false
+    has_all=false
+    
+    # Check for --limit or --all
+    i=0
+    while [ $i -lt ${#all_args[@]} ]; do
+      if [ "${all_args[$i]}" = "--limit" ] && [ $((i+1)) -lt ${#all_args[@]} ]; then
+        has_limit=true
+        limit_value="${all_args[$((i+1))]}"
+        break
+      elif [ "${all_args[$i]}" = "--all" ]; then
+        has_all=true
+        break
+      fi
+      i=$((i+1))
+    done
+    
+    # Run appropriate bootstrap playbooks
+    if [ "${has_limit}" = true ]; then
+      # Check which playbook matches the limit
+      if [[ "${limit_value}" == *"server-225"* ]] || [[ "${limit_value}" == *"main"* ]]; then
+        fz_ansible "playbooks/bootstrap_server_225.yaml" "${all_args[@]}"
+      fi
+      if [[ "${limit_value}" == *"network"* ]]; then
+        fz_ansible "playbooks/bootstrap_network_server.yaml" "${all_args[@]}"
+      fi
+      if [[ "${limit_value}" == *"dev-3090"* ]] || [[ "${limit_value}" == *"dev"* ]]; then
+        fz_ansible "playbooks/bootstrap_dev_3090.yaml" "${all_args[@]}"
+      fi
+    elif [ "${has_all}" = true ]; then
+      # --all: run all bootstrap playbooks
+      fz_ansible "playbooks/bootstrap_server_225.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/bootstrap_network_server.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/bootstrap_dev_3090.yaml" "${all_args[@]}"
+    fi
+    
+    log_info "=== Phase 2: Verify ==="
+    fz_ansible "playbooks/verify_fabric.yaml" "${all_args[@]}"
+    
+    log_info "=== Phase 3: Deploy Stacks ==="
+    # Deploy main/dev stacks based on limit
+    if [ "${has_limit}" = true ]; then
+      if [[ "${limit_value}" == *"server-225"* ]] || [[ "${limit_value}" == *"main"* ]]; then
+        fz_ansible "playbooks/deploy_main_stacks.yaml" "${all_args[@]}"
+      fi
+      if [[ "${limit_value}" == *"dev-3090"* ]] || [[ "${limit_value}" == *"dev"* ]]; then
+        fz_ansible "playbooks/deploy_dev_stacks.yaml" "${all_args[@]}"
+      fi
+    elif [ "${has_all}" = true ]; then
+      fz_ansible "playbooks/deploy_main_stacks.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/deploy_dev_stacks.yaml" "${all_args[@]}"
+    fi
+    
+    log_info "=== Phase 4: Final Verify ==="
+    if fz_ansible "playbooks/verify_fabric.yaml" "${all_args[@]}"; then
+      notify "FuzLang Bootstrap" "Bootstrap completed successfully"
+    fi
     ;;
   bootstrap-winrm)
-    run_ansible_playbook "playbooks/bootstrap_network_server.yaml" "$@"
-    run_ansible_playbook "playbooks/bootstrap_dev_3090.yaml" "$@"
+    # Guardrail: require --limit or --all
+    if ! has_limit_or_all "$@"; then
+      log_error "bootstrap-winrm requires --limit <hosts> or --all"
+      log_info "This prevents accidentally running bootstrap on all hosts"
+      log_info "Example: fz bootstrap-winrm --limit server-225-win"
+      log_info "Example: fz bootstrap-winrm --all"
+      exit 1
+    fi
+    
+    # Check for --check mode
+    if echo "$@" | grep -q -- "--check"; then
+      log_info "CHECK MODE: No changes will be applied"
+    fi
+    
+    # Save all args
+    all_args=("$@")
+    
+    # Determine which bootstrap playbooks to run based on limit
+    limit_value=""
+    has_limit=false
+    has_all=false
+    
+    # Check for --limit or --all
+    i=0
+    while [ $i -lt ${#all_args[@]} ]; do
+      if [ "${all_args[$i]}" = "--limit" ] && [ $((i+1)) -lt ${#all_args[@]} ]; then
+        has_limit=true
+        limit_value="${all_args[$((i+1))]}"
+        break
+      elif [ "${all_args[$i]}" = "--all" ]; then
+        has_all=true
+        break
+      fi
+      i=$((i+1))
+    done
+    
+    # Run appropriate bootstrap playbooks
+    if [ "${has_limit}" = true ]; then
+      # Check which playbook matches the limit
+      if [[ "${limit_value}" == *"server-225"* ]] || [[ "${limit_value}" == *"main"* ]]; then
+        fz_ansible "playbooks/bootstrap_server_225.yaml" "${all_args[@]}"
+      fi
+      if [[ "${limit_value}" == *"network"* ]]; then
+        fz_ansible "playbooks/bootstrap_network_server.yaml" "${all_args[@]}"
+      fi
+      if [[ "${limit_value}" == *"dev-3090"* ]] || [[ "${limit_value}" == *"dev"* ]]; then
+        fz_ansible "playbooks/bootstrap_dev_3090.yaml" "${all_args[@]}"
+      fi
+    elif [ "${has_all}" = true ]; then
+      # --all: run all bootstrap playbooks
+      fz_ansible "playbooks/bootstrap_server_225.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/bootstrap_network_server.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/bootstrap_dev_3090.yaml" "${all_args[@]}"
+    fi
+    
+    # Send notification on success
+    if [ $? -eq 0 ]; then
+      notify "FuzLang Bootstrap" "Bootstrap WinRM completed successfully"
+    fi
     ;;
   bootstrap-ssh)
-    # WSL bootstrap happens via SSH after Windows bootstrap
-    log_info "WSL bootstrap is handled automatically via SSH after Windows bootstrap"
+    require_limit_or_all "bootstrap-ssh" "$@"
+    
+    # Save all args
+    all_args=("$@")
+    
+    # Deploy main/dev stacks (SSH-based)
+    limit_value=""
+    has_limit=false
+    has_all=false
+    
+    # Check for --limit or --all
+    i=0
+    while [ $i -lt ${#all_args[@]} ]; do
+      if [ "${all_args[$i]}" = "--limit" ] && [ $((i+1)) -lt ${#all_args[@]} ]; then
+        has_limit=true
+        limit_value="${all_args[$((i+1))]}"
+        break
+      elif [ "${all_args[$i]}" = "--all" ]; then
+        has_all=true
+        break
+      fi
+      i=$((i+1))
+    done
+    
+    # Run appropriate deploy playbooks
+    if [ "${has_limit}" = true ]; then
+      # Check which playbook matches the limit
+      if [[ "${limit_value}" == *"server-225"* ]] || [[ "${limit_value}" == *"main"* ]]; then
+        fz_ansible "playbooks/deploy_main_stacks.yaml" "${all_args[@]}"
+      fi
+      if [[ "${limit_value}" == *"dev-3090"* ]] || [[ "${limit_value}" == *"dev"* ]]; then
+        fz_ansible "playbooks/deploy_dev_stacks.yaml" "${all_args[@]}"
+      fi
+    elif [ "${has_all}" = true ]; then
+      # --all: run all deploy playbooks
+      fz_ansible "playbooks/deploy_main_stacks.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/deploy_dev_stacks.yaml" "${all_args[@]}"
+    fi
     ;;
   deploy)
     DEPLOY_TARGET="${1:-}"
     shift || true
+    
+    if [ -z "${DEPLOY_TARGET}" ]; then
+      log_error "Deploy target required"
+      log_info "Valid targets: main, network, dev"
+      exit 1
+    fi
+    
+    # Guardrail: require confirmation for network deployment unless --yes
+    if [ "${DEPLOY_TARGET}" = "network" ]; then
+      has_yes=false
+      remaining_args=()
+      
+      # Check for --yes flag and filter it out
+      for arg in "$@"; do
+        if [ "${arg}" = "--yes" ]; then
+          has_yes=true
+        else
+          remaining_args+=("${arg}")
+        fi
+      done
+      
+      if [ "${has_yes}" = false ]; then
+        log_warn "Network deployment affects authoritative storage and observability services"
+        log_info "This will deploy Langfuse, Postgres, ClickHouse, Redis, and MinIO"
+        echo -n "Continue with network deployment? [y/N]: "
+        read -r confirm
+        if [ "${confirm}" != "y" ] && [ "${confirm}" != "Y" ]; then
+          log_info "Network deployment cancelled"
+          exit 0
+        fi
+      fi
+      
+      # Reconstruct args without --yes
+      set -- "${remaining_args[@]}"
+    fi
+    
+    # Check for --check mode
+    if echo "$@" | grep -q -- "--check"; then
+      log_info "CHECK MODE: No changes will be applied"
+    fi
+    
+    # Require --limit or --all
+    if ! has_limit_or_all "$@"; then
+      log_error "deploy ${DEPLOY_TARGET} requires --limit <hosts> or --all"
+      log_info "Example: fz deploy ${DEPLOY_TARGET} --limit <hostname>"
+      log_info "Example: fz deploy ${DEPLOY_TARGET} --all"
+      exit 1
+    fi
+    
     case "${DEPLOY_TARGET}" in
       main)
-        run_ansible_playbook "playbooks/deploy_main_stacks.yaml" "$@"
+        fz_ansible "playbooks/deploy_main_stacks.yaml" "$@"
+        ;;
+      main)
+        if fz_ansible "playbooks/deploy_main_stacks.yaml" "$@"; then
+          notify "FuzLang Deploy" "Main stacks deployed successfully"
+        fi
         ;;
       network)
-        run_ansible_playbook "playbooks/deploy_network_stacks.yaml" "$@"
+        if fz_ansible "playbooks/deploy_network_stacks.yaml" "$@"; then
+          notify "FuzLang Deploy" "Network stacks deployed successfully"
+        fi
         ;;
       dev)
-        run_ansible_playbook "playbooks/deploy_dev_stacks.yaml" "$@"
+        if fz_ansible "playbooks/deploy_dev_stacks.yaml" "$@"; then
+          notify "FuzLang Deploy" "Dev stacks deployed successfully"
+        fi
         ;;
       *)
         log_error "Unknown deploy target: ${DEPLOY_TARGET}"
@@ -57,26 +319,138 @@ case "${COMMAND}" in
     esac
     ;;
   verify)
-    run_ansible_playbook "playbooks/verify_fabric.yaml" "$@"
+    # Check for --check mode
+    if echo "$@" | grep -q -- "--check"; then
+      log_info "CHECK MODE: No changes will be applied"
+    fi
+    
+    if fz_ansible "playbooks/verify_fabric.yaml" "$@"; then
+      notify "FuzLang Verify" "Fabric verification completed successfully"
+    fi
     ;;
   contract)
     CONTRACT_CMD="${1:-}"
     shift || true
     case "${CONTRACT_CMD}" in
       lint)
-        log_info "Linting contract: contracts/fuzlang.contract.yaml"
-        if command -v yamllint &> /dev/null; then
-          yamllint "contracts/fuzlang.contract.yaml" || true
-        else
-          log_warn "yamllint not found, skipping lint check"
-          log_info "Install with: pip install yamllint"
-        fi
-        # Basic YAML syntax check
-        python3 -c "import yaml; yaml.safe_load(open('contracts/fuzlang.contract.yaml'))" || {
-          log_error "Contract YAML syntax error"
+        # Ensure venv is active (for pyyaml)
+        ensure_venv
+        
+        contract_file="${REPO_ROOT}/contracts/fuzlang.contract.yaml"
+        
+        if [ ! -f "${contract_file}" ]; then
+          log_error "Contract file not found: ${contract_file}"
           exit 1
-        }
-        log_success "Contract syntax is valid"
+        fi
+        
+        log_info "Linting contract: ${contract_file}"
+        
+        # Check if pyyaml is available in venv
+        if ! python3 -c "import yaml" 2>/dev/null; then
+          log_warn "pyyaml not found, installing..."
+          pip install --quiet pyyaml>=6.0.0
+        fi
+        
+        # Load and validate contract
+        CONTRACT_FILE="${contract_file}" python3 << 'PYTHON_SCRIPT'
+import yaml
+import sys
+import os
+
+contract_file = os.environ.get('CONTRACT_FILE', 'contracts/fuzlang.contract.yaml')
+
+try:
+    with open(contract_file, 'r') as f:
+        contract = yaml.safe_load(f)
+    
+    if not contract:
+        print("ERROR: Contract file is empty", file=sys.stderr)
+        sys.exit(1)
+    
+    # Extract summary information
+    nodes = contract.get('nodes', {})
+    endpoint_map = contract.get('endpoint_map', {})
+    ports = contract.get('ports', {})
+    
+    # Node names and surfaces
+    node_names = []
+    surfaces = set()
+    for node_key, node_data in nodes.items():
+        if isinstance(node_data, dict):
+            node_name = node_data.get('name', node_key)
+            node_names.append(node_name)
+            docker_runtime = node_data.get('docker_runtime', '').lower()
+            os_type = node_data.get('os', '').lower()
+            
+            # Determine surface type
+            if 'wsl' in docker_runtime or 'wsl2' in docker_runtime:
+                surfaces.add('WSL2')
+            elif 'windows' in docker_runtime or 'windows' in os_type:
+                surfaces.add('Windows')
+            elif 'macos' in os_type or 'mac' in os_type:
+                surfaces.add('macOS')
+            else:
+                surfaces.add('Other')
+    
+    # Key endpoints (filter out secrets, only show HTTP endpoints)
+    key_endpoints = []
+    for key, value in endpoint_map.items():
+        if isinstance(value, str) and value.startswith('http'):
+            # Don't print secret values
+            if 'secret' not in key.lower() and 'password' not in key.lower():
+                key_endpoints.append(f"{key}: {value}")
+    
+    # Port count (handle both single port and ports array)
+    port_count = 0
+    if isinstance(ports, dict):
+        for port_name, port_data in ports.items():
+            if isinstance(port_data, dict):
+                if 'port' in port_data:
+                    port_count += 1
+                elif 'ports' in port_data:
+                    # Count ports in array
+                    ports_list = port_data.get('ports', [])
+                    if isinstance(ports_list, list):
+                        port_count += len(ports_list)
+                    else:
+                        port_count += 1
+            else:
+                port_count += 1
+    
+    # Print summary
+    print("\n=== Contract Summary ===")
+    print(f"Nodes: {', '.join(sorted(node_names))}")
+    print(f"Surfaces: {', '.join(sorted(surfaces))}")
+    print(f"Key Endpoints: {len(key_endpoints)}")
+    for endpoint in key_endpoints[:5]:  # Show first 5
+        print(f"  - {endpoint}")
+    if len(key_endpoints) > 5:
+        print(f"  ... and {len(key_endpoints) - 5} more")
+    print(f"Declared Ports: {port_count}")
+    print(f"Contract Version: {contract.get('contract_version', 'unknown')}")
+    print(f"Contract Name: {contract.get('contract_name', 'unknown')}")
+    print("=======================\n")
+    
+    print("✓ Contract YAML syntax is valid")
+    print("✓ Contract structure is valid")
+    
+except yaml.YAMLError as e:
+    print(f"ERROR: YAML syntax error: {e}", file=sys.stderr)
+    sys.exit(1)
+except FileNotFoundError:
+    print(f"ERROR: Contract file not found: {contract_file}", file=sys.stderr)
+    sys.exit(1)
+except Exception as e:
+    print(f"ERROR: Failed to parse contract: {e}", file=sys.stderr)
+    sys.exit(1)
+PYTHON_SCRIPT
+        
+        if [ $? -eq 0 ]; then
+          log_success "Contract linting passed"
+        else
+          log_error "Contract linting failed"
+          exit 1
+        fi
         ;;
       *)
         log_error "Unknown contract command: ${CONTRACT_CMD}"

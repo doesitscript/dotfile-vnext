@@ -25,6 +25,16 @@ log_error() {
   echo -e "${RED}[ERROR]${NC} $*" >&2
 }
 
+# Send macOS notification (optional, doesn't error if not available)
+notify() {
+  local title="$1"
+  local message="$2"
+  
+  if command -v terminal-notifier &> /dev/null; then
+    terminal-notifier -title "${title}" -message "${message}" -sound default 2>/dev/null || true
+  fi
+}
+
 # Detect repository root
 repo_root() {
   local script_dir
@@ -145,6 +155,11 @@ fz_ansible() {
         ansible_cmd+=("--limit" "$2")
         shift 2
         ;;
+      --all)
+        # --all means don't use --limit (run on all applicable hosts)
+        # Just skip this flag, don't forward to ansible-playbook
+        shift
+        ;;
       --tags)
         ansible_cmd+=("--tags" "$2")
         shift 2
@@ -262,6 +277,11 @@ run_ansible_playbook() {
       --limit)
         ansible_cmd+=("--limit" "$2")
         shift 2
+        ;;
+      --all)
+        # --all means don't use --limit (run on all applicable hosts)
+        # Just skip this flag, don't forward to ansible-playbook
+        shift
         ;;
       --tags)
         ansible_cmd+=("--tags" "$2")
@@ -410,14 +430,20 @@ FuzLang Infrastructure CLI
 Usage: fz <command> [options]
 
 Commands:
-  bootstrap              Bootstrap server-225 (main node)
-  bootstrap-winrm        Bootstrap network-server and dev-3090 (Windows nodes)
-  bootstrap-ssh          Info about WSL bootstrap (handled automatically)
+  bootstrap              Full bootstrap (winrm -> verify -> deploy -> verify)
+                        Requires --limit or --all
+  bootstrap-winrm        Bootstrap Windows hosts via WinRM
+                        Requires --limit or --all
+                        Example: fz bootstrap-winrm --limit server-225-win
+  bootstrap-ssh          Deploy stacks via SSH (WSL2 operations)
+                        Requires --limit or --all
+                        Example: fz bootstrap-ssh --limit server-225-wsl
   deploy <target>        Deploy stacks to target node
+                        Requires --limit or --all
     main                 Deploy main stacks (server-225)
     network              Deploy network stacks (network-server)
     dev                  Deploy dev stacks (dev-3090)
-  verify                 Verify entire fabric
+  verify                 Verify entire fabric (no --limit required)
   contract lint          Lint the contract YAML file
   vault edit <scope>     Edit vault file
     shared               Edit shared vault
@@ -426,7 +452,8 @@ Commands:
     dev                  Edit dev vault
 
 Common Options (forwarded to ansible-playbook):
-  --limit <pattern>      Limit execution to specific hosts
+  --limit <pattern>      Limit execution to specific hosts (required for most commands)
+  --all                  Run on all applicable hosts
   --tags <tags>          Run only tasks with these tags
   --skip-tags <tags>     Skip tasks with these tags
   --check                Run in check mode (dry-run)
@@ -440,8 +467,12 @@ Common Options (forwarded to ansible-playbook):
   --forks <n>            Number of parallel processes
 
 Examples:
-  fz bootstrap --limit server-225-win
-  fz deploy network --tags stacks_network
+  fz bootstrap-winrm --limit server-225-win
+  fz bootstrap-ssh --limit server-225-wsl
+  fz bootstrap --limit server-225-win --all
+  fz deploy network --limit network-server-win
+  fz deploy main --limit server-225-wsl
+  fz verify
   fz verify --check
   fz vault edit shared --ask-vault-pass
   fz contract lint
