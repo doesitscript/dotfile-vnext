@@ -1,0 +1,15 @@
+---
+# Bootstrap network-server node
+# Targets: network-server-win (WinRM)
+# Purpose: Make Windows host structurally ready
+
+- name: Bootstrap network-server Windows host
+  hosts: network-server-win
+  become: false
+  roles:
+    - role: common/baseline
+    - role: network_server/windows_base
+    - role: network_server/docker_runtime
+    - role: network_server/storage_layout
+    - role: common/firewall
+

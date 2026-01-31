@@ -1,0 +1,23 @@
+---
+# Verify entire fabric
+# Targets: Mixed (Windows checks on -win, Linux checks on -wsl, endpoints from mac-dev)
+# Purpose: Verify all nodes are correctly configured and services are running
+
+- name: Verify Windows hosts
+  hosts: windows_hosts
+  become: false
+  roles:
+    - role: common/health_checks
+
+- name: Verify WSL hosts
+  hosts: wsl_hosts
+  become: false
+  roles:
+    - role: common/health_checks
+
+- name: Verify endpoints from mac-dev
+  hosts: mac-dev
+  become: false
+  roles:
+    - role: common/health_checks
+

@@ -1,0 +1,514 @@
+---
+# FUZLANG Cross-Node Contract (Canonical Spec)
+# Version: 1.0
+# Contract Name: fuzlang-lan-contract
+# Timezone: America/Chicago
+
+contract_version: 1
+contract_name: fuzlang-lan-contract
+timezone: America/Chicago
+
+# ============================================================================
+# 1. NODE IDENTITY AND ADDRESSING
+# ============================================================================
+nodes:
+  mac_dev_node:
+    name: mac-dev
+    role: development-control-plane
+    os: macOS
+    authority_level: non-authoritative
+    persistent_data_allowed: false
+    secrets_storage: local_keychain_plus_ansible_vault_readonly
+    docker_runtime: optional_local_testing_only
+    rebuild_expectation: disposable_reprovisionable
+    outbound_only: true
+    preferred_address: dynamic
+    lan_ip: null  # No inbound assumptions
+
+  main_node:
+    name: Server-225
+    role: primary-gpu-node
+    os: windows-server-2025
+    authority_level: execution
+    docker_runtime: wsl2-ubuntu-docker-engine
+    gpu: rtx-5090
+    persistent_data_allowed: limited_non_authoritative
+    outbound_and_inbound: true
+    preferred_address: hostname  # or ip
+    hostname_fqdn: null  # optional if local DNS added later
+    lan_ip: "<to_be_filled>"
+
+  network_node:
+    name: network-server
+    role: storage-observability-node
+    os: windows-server-2025
+    authority_level: authoritative
+    docker_runtime: windows-docker-engine  # or wsl2 if chosen later
+    persistent_data_allowed: true
+    outbound_and_inbound: true
+    preferred_address: hostname  # or ip
+    lan_ip: "<to_be_filled>"
+
+  dev_node:
+    name: dev-3090
+    role: dev-gpu-node
+    os: windows-11
+    authority_level: execution
+    docker_runtime: wsl2-ubuntu-docker-engine  # recommended
+    gpu: rtx-3090
+    persistent_data_allowed: limited
+    inbound_allowed: true
+    preferred_address: hostname  # or ip
+    lan_ip: "<to_be_filled>"
+
+addressing_rule:
+  preferred_addressing: hostname  # fallback: ip
+  recommendation: "hostname if local DNS will be set up; otherwise ip until DNS is configured"
+
+# ============================================================================
+# 2. ROLE MAP (SERVICE PLACEMENT)
+# ============================================================================
+service_placement:
+  ollama: main_node
+  litellm_gateway: main_node  # migration_candidate: true
+  openwebui: main_node
+  langfuse_web: network_node
+  langfuse_worker: network_node  # if separated
+  postgres: network_node
+  clickhouse: network_node
+  redis: network_node
+  minio: network_node
+  # Optional dev services
+  dev_ollama: dev_node  # optional
+  dev_litellm: dev_node  # optional
+  dev_worker: dev_node  # optional batch/inference jobs
+
+service_properties:
+  ollama:
+    needs_gpu: true
+    data_persistent: false
+    rebuild_ok_without_data_loss: true
+    classification: production
+  litellm_gateway:
+    needs_gpu: false
+    data_persistent: false
+    rebuild_ok_without_data_loss: true
+    classification: production
+  langfuse_web:
+    needs_gpu: false
+    data_persistent: true
+    rebuild_ok_without_data_loss: false
+    classification: production
+  postgres:
+    needs_gpu: false
+    data_persistent: true
+    rebuild_ok_without_data_loss: false
+    classification: production
+  clickhouse:
+    needs_gpu: false
+    data_persistent: true
+    rebuild_ok_without_data_loss: false
+    classification: production
+  redis:
+    needs_gpu: false
+    data_persistent: true
+    rebuild_ok_without_data_loss: false
+    classification: production
+  minio:
+    needs_gpu: false
+    data_persistent: true
+    rebuild_ok_without_data_loss: false
+    classification: production
+
+migration_candidates:
+  litellm_gateway:
+    may_move_to_network_node_later: true
+
+# ============================================================================
+# 3. CROSS-NODE ENDPOINTS (CANONICAL BASE URLS)
+# ============================================================================
+endpoint_map:
+  langfuse_base_url: "http://network-server:3000"  # or http://<network_ip>:3000
+  minio_api_url: "http://network-server:9000"
+  minio_console_url: "http://network-server:9001"
+  ollama_base_url: "http://Server-225:11434"  # only if other nodes need it
+  litellm_base_url: "http://Server-225:4000"
+  dev_ollama_base_url: "http://dev-3090:11434"  # optional
+  dev_litellm_base_url: "http://dev-3090:4000"  # optional
+
+tls_plan:
+  lan_http_only: true  # recommended for now
+  tls_later: true
+  domain_later: true
+
+# ============================================================================
+# 4. PORT CONTRACT (AUTHORITATIVE)
+# ============================================================================
+ports:
+  langfuse_web:
+    port: 3000
+    exposure: lan
+    firewall_open: true
+    allowed_sources: lan
+
+  minio_api:
+    port: 9000
+    exposure: lan
+    firewall_open: true
+    allowed_sources: lan  # or main_only (your choice)
+
+  minio_console:
+    port: 9001
+    exposure: lan
+    firewall_open: true
+    allowed_sources: lan  # or main_only
+
+  postgres:
+    port: 5432
+    exposure: restricted
+    firewall_open: true  # only if main must connect directly
+    allowed_sources: network_only  # recommended, or allow_main_only
+
+  clickhouse:
+    ports: [8123, 9000]  # http, native
+    exposure: restricted
+    allowed_sources: network_only  # or allow_main_only
+
+  redis:
+    port: 6379
+    exposure: restricted
+    allowed_sources: network_only  # or allow_main_only
+
+  litellm_gateway:
+    port: 4000
+    exposure: lan  # or localhost_only (depends on clients)
+    allowed_sources: lan
+
+  ollama:
+    port: 11434
+    exposure: localhost_only  # recommended unless network node needs it
+    allowed_sources: main_only  # or allow_network_only
+
+  dev_ollama:
+    port: 11434
+    exposure: restricted  # or lan
+    allowed_sources: [mac-dev, Server-225, network-server]  # your choice
+
+  dev_litellm:
+    port: 4000
+    exposure: restricted  # or lan
+    allowed_sources: [mac-dev, Server-225, network-server]
+
+port_recommendations:
+  expose_to_lan: [langfuse_web, minio_api, minio_console, litellm_gateway]
+  keep_restricted: [postgres, redis, clickhouse]
+  keep_localhost_only: [ollama]  # unless network-server must call it
+
+# ============================================================================
+# 5. SHARED SECRET CONTRACT
+# ============================================================================
+secrets:
+  shared_secrets:
+    description: "Needed on both nodes (readable by mac + main + network + dev)"
+    keys:
+      - FUZLANG_LANGFUSE_PUBLIC_KEY
+      - FUZLANG_LANGFUSE_SECRET_KEY
+      - FUZLANG_MINIO_ACCESS_KEY
+      - FUZLANG_MINIO_SECRET_KEY
+
+  network_only_secrets:
+    description: "Only on network_node"
+    keys:
+      - FUZLANG_POSTGRES_PASSWORD
+      - FUZLANG_CLICKHOUSE_PASSWORD
+      - FUZLANG_REDIS_PASSWORD
+      - FUZLANG_LANGFUSE_NEXTAUTH_SECRET
+      - FUZLANG_LANGFUSE_SALT
+      - FUZLANG_LANGFUSE_ENCRYPTION_KEY  # if used
+
+  main_only_secrets:
+    description: "Only on main_node"
+    keys:
+      - FUZLANG_OPENWEBUI_ADMIN_TOKEN  # if used
+      - local_inference_tokens  # any local API tokens that never leave main
+
+  dev_only_secrets:
+    description: "Only on dev_node"
+    keys:
+      - local_ui_tokens  # any local auth
+      - dev_inference_tokens
+
+secret_key_naming_convention:
+  prefix: FUZLANG_
+  examples:
+    - FUZLANG_LANGFUSE_PUBLIC_KEY
+    - FUZLANG_LANGFUSE_SECRET_KEY
+    - FUZLANG_MINIO_ACCESS_KEY
+    - FUZLANG_MINIO_SECRET_KEY
+
+secret_rules:
+  mac_dev_node:
+    may_read_shared_secrets: true
+    may_store_secrets: false
+    may_persist_secrets: false
+  secrets_rendered_only_to: [main_node, network_node, dev_node]
+
+# ============================================================================
+# 6. STORAGE CONTRACT (PATHS + OWNERSHIP)
+# ============================================================================
+storage_roots:
+  mac_dev_node:
+    description: "Stateless - no persistent storage"
+    windows_data_root: null
+    wsl_mount_root: null
+    stacks_root: null
+    data_root: null
+
+  main_node:
+    windows_data_root: "D:\\ai"
+    wsl_mount_root: "/mnt/d/ai"
+    stacks_root: "D:\\ai\\stacks"
+    data_root: "D:\\ai\\data"
+    docker_data_root_location: "inside wsl2 but bind mounts must point into /mnt/d/ai/data"
+    authoritative_data: false
+
+  network_node:
+    windows_data_root: "<disk>:\\ai"  # example: E:\\ai or D:\\ai
+    stacks_root: "<disk>:\\ai\\stacks"
+    data_root: "<disk>:\\ai\\data"
+    minio_disk: "8TB WD Red Plus (authoritative archive)"
+    authoritative_data: true
+
+  dev_node:
+    windows_data_root: "<disk>:\\ai"  # to be determined
+    wsl_mount_root: "/mnt/<drive>/ai"
+    stacks_root: "<disk>:\\ai\\stacks"
+    data_root: "<disk>:\\ai\\data"
+    authoritative_data: false
+
+backup_contract:
+  authoritative_node: network_node
+  backup_targets:
+    - postgres volume path(s)
+    - clickhouse volume path(s)
+    - redis volume path(s)
+    - minio data path(s)
+  backup_frequency: "<placeholder>"
+  backup_destination: "<placeholder>"
+
+# ============================================================================
+# 7. NAMING CONVENTIONS (COLLISION PREVENTION)
+# ============================================================================
+naming:
+  compose_project_names:
+    main: fuzlang-main
+    network: fuzlang-net
+    dev: fuzlang-dev
+
+  docker_network_names:
+    internal_network_main: fuzlang_main_net
+    internal_network_network: fuzlang_net_net
+    internal_network_dev: fuzlang_dev_net
+
+  bucket_names:
+    artifacts_bucket: fuzlang-artifacts
+    optional_trace_bucket: fuzlang-traces  # only if traces stored as objects
+
+# ============================================================================
+# 8. TRUST BOUNDARIES + FIREWALL RULES
+# ============================================================================
+trust_policy:
+  mac_dev_node:
+    outbound_only: true
+    no_inbound_trust: true
+    never_in_firewall_allowlists: true
+
+  main_node:
+    accepts_lan_client_traffic: true
+    talks_to_network_node_services: true
+
+  network_node:
+    accepts_traffic_from_main_for_databases: true
+    lan_access_only_for: [langfuse_web, minio_api, minio_console]
+
+  dev_node:
+    execution_peer: true
+    not_authoritative_for_storage: true
+    does_not_receive_db_credentials: true  # unless explicitly decided
+
+ansible_firewall_rules_required:
+  allow_inbound_to_lan_exposed_services_ports_on_network_node: true
+  allow_inbound_to_litellm_port_on_main_node_if_lan_exposed: true
+  if_db_access_needed_from_main_node:
+    allow_inbound_on_network_node_db_ports_from_main_node_ip_only: true
+  otherwise:
+    bind_db_ports_to_localhost_only_inside_compose: true
+    no_firewall_open: true
+
+# ============================================================================
+# 9. MAIN NODE RUNTIME SPECIFICS (WSL2 DOCKER + AUTOSTART)
+# ============================================================================
+main_node_runtime:
+  docker_runs_in_wsl2: true
+  distro: Ubuntu
+  systemd_in_wsl: true  # recommended
+  docker_engine_in_wsl: true
+  docker_engine_on_windows: disabled  # recommended to prevent confusion
+  compose_execution_location: "inside wsl2, from /mnt/d/ai/stacks/<stack>"
+
+task_scheduler_autostart:
+  enabled: true
+  task_name: autostart-ai-stack
+  trigger: at_startup
+  delay_seconds: 45  # 30-60 ok
+  run_as: SYSTEM
+  highest_privileges: true
+  action:
+    executable: "C:\\Windows\\System32\\wsl.exe"
+    args: '-d Ubuntu -- bash -lc "cd /mnt/d/ai/stacks/<primary_stack> && docker compose up -d"'
+  retry_policy:
+    restart_interval_seconds: 60
+    restart_count: 5
+  success_criteria:
+    - docker ps returns success in wsl
+    - expected containers are running
+
+# ============================================================================
+# 10. NETWORK NODE RUNTIME SPECIFICS
+# ============================================================================
+network_node_runtime:
+  docker_runtime: windows-docker-engine  # or wsl2 if chosen later
+  docker_data_root: "<disk>:\\docker-data"  # non-OS disk
+  compose_execution_location: "<disk>:\\ai\\stacks"
+
+# ============================================================================
+# 11. DEV NODE RUNTIME SPECIFICS
+# ============================================================================
+dev_node_runtime:
+  docker_runs_in_wsl2: true  # recommended
+  distro: Ubuntu
+  systemd_in_wsl: true
+  docker_engine_in_wsl: true
+  docker_engine_on_windows: disabled
+  compose_execution_location: "inside wsl2, from /mnt/<drive>/ai/stacks/<stack>"
+
+# ============================================================================
+# 12. MANAGEMENT SURFACES (WINRM vs SSH)
+# ============================================================================
+management_surfaces:
+  windows_host_surface:
+    connection: winrm
+    used_for:
+      - Windows Features
+      - Hyper-V
+      - WSL installation
+      - Windows Roles
+      - Registry changes
+      - Services (Task Scheduler, Windows services)
+      - Firewall rules
+      - Disk initialization
+      - GPU driver install/validation
+      - OS-level hardening
+
+  wsl_surface:
+    connection: ssh
+    used_for:
+      - Docker commands
+      - Docker Compose
+      - Managing containers
+      - Deploying stacks
+      - Inspecting logs
+      - Linux tooling
+      - Anything under /mnt/d/...
+
+  dual_surface_model:
+    description: "Each physical Windows machine has two management surfaces"
+    pattern:
+      - "<hostname>-win"  # WinRM surface
+      - "<hostname>-wsl"  # SSH surface
+    examples:
+      - server-225-win
+      - server-225-wsl
+      - network-server-win
+      - network-server-wsl  # if WSL runtime chosen
+      - dev-3090-win
+      - dev-3090-wsl
+
+# ============================================================================
+# 13. CONTRACT OUTPUTS (WHAT THE CONTRACT MUST GENERATE)
+# ============================================================================
+generated_artifacts:
+  shared_contract_file:
+    path: contracts/fuzlang.contract.yaml
+    consumed_by: [both_playbooks]
+
+  vaults:
+    shared_vault: vault/shared.vault.yml
+    main_vault: vault/main.vault.yml
+    network_vault: vault/network.vault.yml
+    dev_vault: vault/dev.vault.yml
+
+  rendered_env_files:
+    main_env: rendered/main/.env
+    network_env: rendered/network/.env
+    dev_env: rendered/dev/.env
+
+  node_facts:
+    main: /etc/fuzlang/node_facts.json  # or windows equivalent path
+    network: /etc/fuzlang/node_facts.json
+    dev: /etc/fuzlang/node_facts.json
+
+  mac_dev_node_receives:
+    - read_only_contract: true
+    - no_env_files: true
+    - no_vault_files: true  # except shared, decrypted at runtime only
+
+verification_outputs:
+  endpoint_health_checks:
+    - main can reach langfuse_base_url
+    - main can reach minio_api_url
+    - network can reach ollama_base_url only if allowed
+
+  gpu_checks:
+    - nvidia-smi works on main windows
+    - nvidia-smi works inside wsl2 (main)
+    - docker gpu test container works (if gpu used in containers)
+    - nvidia-smi works on dev windows
+    - nvidia-smi works inside wsl2 (dev)
+
+  drift_checks:
+    - docker engine running in wsl2 (main)
+    - docker engine not running on windows (main) if rule chosen
+    - docker engine running in wsl2 (dev)
+    - docker engine not running on windows (dev) if rule chosen
+
+# ============================================================================
+# 14. EXPLICIT NON-GOALS (LOCK THIS IN)
+# ============================================================================
+non_goals:
+  - mac_dev_node is not a server
+  - mac_dev_node never holds data authority
+  - mac_dev_node is disposable
+  - only network_node is authoritative for state
+  - only ansible modifies server configuration
+  - no overclocking
+  - no gaming workloads
+  - no desktop UX tuning
+  - no VM sprawl
+  - no Windows consumer features
+  - no Docker-in-WSL for production (WSL is workbench, Docker is factory)
+
+# ============================================================================
+# 15. MISSING USER INPUTS (MUST BE FILLED)
+# ============================================================================
+missing_inputs:
+  - main_node lan_ip
+  - network_node lan_ip
+  - dev_node lan_ip
+  - whether hostname or ip is authoritative right now
+  - whether postgres/redis/clickhouse will ever be accessed directly from main (yes/no)
+  - exact disk letters for network_node (stacks/data)
+  - exact disk letters for dev_node (stacks/data)
+  - final exposure choice for litellm and ollama (localhost vs lan vs allowlist)
+  - network_node docker runtime choice (windows-docker-engine vs wsl2)
+

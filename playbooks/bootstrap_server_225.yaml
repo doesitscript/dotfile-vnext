@@ -1,0 +1,16 @@
+---
+# Bootstrap Server-225 (main node)
+# Targets: server-225-win (WinRM)
+# Purpose: Make Windows host structurally ready
+
+- name: Bootstrap Server-225 Windows host
+  hosts: server-225-win
+  become: false
+  roles:
+    - role: common/baseline
+    - role: server_225/windows_base
+    - role: server_225/wsl2
+    - role: server_225/task_scheduler_autostart
+    - role: server_225/gpu_driver_validation
+    - role: common/firewall
+
