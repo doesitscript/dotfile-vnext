@@ -135,38 +135,22 @@
     dest: "{{ stacks_root | regex_replace('\\\\', '\\') }}\\network\\docker-compose.yml"
   register: compose_file_result
 
-- name: Create .env file template (placeholder - will be rendered in Checkpoint 9)
-  win_copy:
-    content: |
-      # Network stack environment variables
-      # This file will be rendered from vault in Checkpoint 9
-      # Placeholder values below
-      
-      COMPOSE_PROJECT_NAME=fuzlang-net
-      
-      # Postgres
-      POSTGRES_USER=langfuse
-      POSTGRES_PASSWORD=<placeholder>
-      POSTGRES_DB=langfuse
-      
-      # Redis (no auth by default)
-      
-      # ClickHouse (no auth by default)
-      
-      # MinIO
-      MINIO_ROOT_USER=minioadmin
-      MINIO_ROOT_PASSWORD=<placeholder>
-      
-      # Langfuse
-      NEXTAUTH_SECRET=<placeholder>
-      SALT=<placeholder>
-      LANGFUSE_PUBLIC_KEY=<placeholder>
-      LANGFUSE_SECRET_KEY=<placeholder>
-      MINIO_ACCESS_KEY=<placeholder>
-      MINIO_SECRET_KEY=<placeholder>
+- name: Load shared vault for network stack
+  include_vars:
+    file: "{{ playbook_dir }}/../vault/shared.vault.yml"
+    name: vault_shared
+
+- name: Load network vault for network stack
+  include_vars:
+    file: "{{ playbook_dir }}/../vault/network.vault.yml"
+    name: vault_network
+
+- name: Render .env file from template
+  win_template:
+    src: env.j2
     dest: "{{ stacks_root | regex_replace('\\\\', '\\') }}\\network\\.env"
   register: env_file_result
-  when: not env_file_result.changed | default(true)
+  no_log: true
 
 - name: Pull Docker images
   win_shell: |

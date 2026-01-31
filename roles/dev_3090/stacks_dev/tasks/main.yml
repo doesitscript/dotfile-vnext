@@ -92,28 +92,29 @@
     - use_wsl2_docker
     - deploy_dev_ollama | default(false) or deploy_dev_litellm | default(false)
 
-- name: Create .env file template for dev stack (WSL2 path)
-  copy:
-    content: |
-      # Dev stack environment variables
-      # This file will be rendered from vault in Checkpoint 9
-      # Placeholder values below
-      
-      COMPOSE_PROJECT_NAME=fuzlang-dev
-      
-      # Langfuse connection (shared secrets)
-      LANGFUSE_PUBLIC_KEY=<placeholder>
-      LANGFUSE_SECRET_KEY=<placeholder>
-      LANGFUSE_HOST=http://network-server:3000
-      
-      # Database connection (if needed)
-      DATABASE_URL=<placeholder>
-      REDIS_URL=<placeholder>
-      
-      # Ollama connection
-      OLLAMA_API_BASE=http://dev_ollama:11434
+- name: Load shared vault for dev stack (WSL2 path)
+  include_vars:
+    file: "{{ playbook_dir }}/../vault/shared.vault.yml"
+    name: vault_shared
+  when: 
+    - use_wsl2_docker
+    - deploy_dev_ollama | default(false) or deploy_dev_litellm | default(false)
+
+- name: Load network vault for dev stack (WSL2 path - for database connection)
+  include_vars:
+    file: "{{ playbook_dir }}/../vault/network.vault.yml"
+    name: vault_network
+  when: 
+    - use_wsl2_docker
+    - deploy_dev_ollama | default(false) or deploy_dev_litellm | default(false)
+
+- name: Render .env file from template (WSL2 path)
+  template:
+    src: env.j2
     dest: "{{ wsl_mount_root }}/stacks/dev/.env"
     mode: '0644'
+  register: env_file_result
+  no_log: true
   when: 
     - use_wsl2_docker
     - deploy_dev_ollama | default(false) or deploy_dev_litellm | default(false)
@@ -213,27 +214,28 @@
     - use_windows_docker
     - deploy_dev_ollama | default(false) or deploy_dev_litellm | default(false)
 
-- name: Create .env file template for dev stack (Windows path)
-  win_copy:
-    content: |
-      # Dev stack environment variables
-      # This file will be rendered from vault in Checkpoint 9
-      # Placeholder values below
-      
-      COMPOSE_PROJECT_NAME=fuzlang-dev
-      
-      # Langfuse connection (shared secrets)
-      LANGFUSE_PUBLIC_KEY=<placeholder>
-      LANGFUSE_SECRET_KEY=<placeholder>
-      LANGFUSE_HOST=http://network-server:3000
-      
-      # Database connection (if needed)
-      DATABASE_URL=<placeholder>
-      REDIS_URL=<placeholder>
-      
-      # Ollama connection
-      OLLAMA_API_BASE=http://dev_ollama:11434
+- name: Load shared vault for dev stack (Windows path)
+  include_vars:
+    file: "{{ playbook_dir }}/../vault/shared.vault.yml"
+    name: vault_shared
+  when: 
+    - use_windows_docker
+    - deploy_dev_ollama | default(false) or deploy_dev_litellm | default(false)
+
+- name: Load network vault for dev stack (Windows path - for database connection)
+  include_vars:
+    file: "{{ playbook_dir }}/../vault/network.vault.yml"
+    name: vault_network
+  when: 
+    - use_windows_docker
+    - deploy_dev_ollama | default(false) or deploy_dev_litellm | default(false)
+
+- name: Render .env file from template (Windows path)
+  win_template:
+    src: env.j2
     dest: "{{ stacks_root | regex_replace('\\\\', '\\') }}\\dev\\.env"
+  register: env_file_result
+  no_log: true
   when: 
     - use_windows_docker
     - deploy_dev_ollama | default(false) or deploy_dev_litellm | default(false)

@@ -1,0 +1,157 @@
+---
+# Common Secrets Verification Role
+# Verifies that required .env keys exist on each node
+# Does not print secret values
+
+- name: Determine node type and required env keys
+  set_fact:
+    required_env_keys: []
+  when: false
+
+- name: Set required env keys for network node
+  set_fact:
+    required_env_keys:
+      - COMPOSE_PROJECT_NAME
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+      - MINIO_ROOT_USER
+      - MINIO_ROOT_PASSWORD
+      - NEXTAUTH_SECRET
+      - SALT
+      - LANGFUSE_PUBLIC_KEY
+      - LANGFUSE_SECRET_KEY
+      - MINIO_ACCESS_KEY
+      - MINIO_SECRET_KEY
+  when: 
+    - inventory_hostname in groups['network_node'] or 'network' in inventory_hostname
+    - ansible_system == "Windows"
+
+- name: Set required env keys for dev node (WSL2 path)
+  set_fact:
+    required_env_keys:
+      - COMPOSE_PROJECT_NAME
+      - LANGFUSE_PUBLIC_KEY
+      - LANGFUSE_SECRET_KEY
+      - LANGFUSE_HOST
+      - OLLAMA_API_BASE
+  when: 
+    - inventory_hostname in groups['dev_gpu'] or 'dev-3090' in inventory_hostname
+    - ansible_system == "Linux"
+
+- name: Set required env keys for dev node (Windows path)
+  set_fact:
+    required_env_keys:
+      - COMPOSE_PROJECT_NAME
+      - LANGFUSE_PUBLIC_KEY
+      - LANGFUSE_SECRET_KEY
+      - LANGFUSE_HOST
+      - OLLAMA_API_BASE
+  when: 
+    - inventory_hostname in groups['dev_gpu'] or 'dev-3090' in inventory_hostname
+    - ansible_system == "Windows"
+
+- name: Set required env keys for main node (WSL2 path)
+  set_fact:
+    required_env_keys:
+      - COMPOSE_PROJECT_NAME
+      - LANGFUSE_PUBLIC_KEY
+      - LANGFUSE_SECRET_KEY
+      - LANGFUSE_HOST
+  when: 
+    - inventory_hostname in groups['main_server'] or 'server-225' in inventory_hostname
+    - ansible_system == "Linux"
+
+- name: Set env file path for network node (Windows)
+  set_fact:
+    env_file_path: "{{ stacks_root | regex_replace('\\\\', '\\') }}\\network\\.env"
+  when: 
+    - ansible_system == "Windows"
+    - inventory_hostname in groups['network_node'] or 'network' in inventory_hostname
+
+- name: Read .env file (Windows path - network node)
+  win_shell: |
+    if (Test-Path "{{ env_file_path }}") {
+      Get-Content "{{ env_file_path }}" | Where-Object { $_ -match '^[A-Z_]+=' } | ForEach-Object { $_.Split('=')[0] }
+    } else {
+      @()
+    }
+  register: env_keys_found
+  changed_when: false
+  failed_when: false
+  when: 
+    - ansible_system == "Windows"
+    - inventory_hostname in groups['network_node'] or 'network' in inventory_hostname
+    - env_file_path is defined
+
+- name: Set env file path for dev node (WSL2/Linux)
+  set_fact:
+    env_file_path: "{{ wsl_mount_root }}/stacks/dev/.env"
+  when: 
+    - ansible_system == "Linux"
+    - inventory_hostname in groups['dev_gpu'] or 'dev-3090' in inventory_hostname
+
+- name: Read .env file (WSL2/Linux path - dev node)
+  shell: |
+    if [ -f "{{ env_file_path }}" ]; then
+      grep -E '^[A-Z_]+=' "{{ env_file_path }}" | cut -d'=' -f1
+    else
+      echo ""
+    fi
+  register: env_keys_found
+  changed_when: false
+  failed_when: false
+  when: 
+    - ansible_system == "Linux"
+    - inventory_hostname in groups['dev_gpu'] or 'dev-3090' in inventory_hostname
+    - env_file_path is defined
+
+- name: Set env file path for main node (WSL2 path)
+  set_fact:
+    env_file_path: "{{ wsl_mount_root }}/stacks/main/.env"
+  when: 
+    - ansible_system == "Linux"
+    - inventory_hostname in groups['main_server'] or 'server-225' in inventory_hostname
+
+- name: Read .env file for main node (WSL2 path)
+  shell: |
+    if [ -f "{{ env_file_path }}" ]; then
+      grep -E '^[A-Z_]+=' "{{ env_file_path }}" | cut -d'=' -f1
+    else
+      echo ""
+    fi
+  register: env_keys_found
+  changed_when: false
+  failed_when: false
+  when: 
+    - ansible_system == "Linux"
+    - inventory_hostname in groups['main_server'] or 'server-225' in inventory_hostname
+    - env_file_path is defined
+
+- name: Parse env keys from output
+  set_fact:
+    env_keys_list: "{{ env_keys_found.stdout_lines | default([]) | select('match', '^[A-Z_]+$') | list }}"
+  when: env_keys_found.stdout_lines is defined
+
+- name: Check for missing required env keys
+  set_fact:
+    missing_keys: "{{ required_env_keys | difference(env_keys_list | default([])) }}"
+  when: required_env_keys is defined
+
+- name: Fail if required env keys are missing
+  fail:
+    msg: "Missing required .env keys: {{ missing_keys | join(', ') }}"
+  when: 
+    - missing_keys is defined
+    - missing_keys | length > 0
+
+- name: Report env keys verification success
+  debug:
+    msg:
+      - "=== Secrets Verification ==="
+      - "Node: {{ inventory_hostname }}"
+      - "Required keys: {{ required_env_keys | length | default(0) }}"
+      - "Found keys: {{ env_keys_list | length | default(0) }}"
+      - "Status: {{ 'PASS' if (missing_keys | default([]) | length == 0) else 'FAIL' }}"
+  when: required_env_keys is defined
+

@@ -180,16 +180,32 @@ This document tracks progress through the checkpoint plan defined in `assemble_c
 
 ---
 
-## ⏳ Checkpoint 9 — Secrets & Rendering Pipeline (PENDING)
+## ✅ Checkpoint 9 — Secrets & Rendering Pipeline (COMPLETE)
 
 **Goal**: Eliminate manual configuration permanently.
 
-**Planned Output**:
-- Rendered .env files
-- Vault separation enforced
-- `verify_fabric.yaml` updated to check presence (not values)
+**Output**:
+- ✅ `vault/shared.vault.yml` - Shared secrets (Langfuse, MinIO keys)
+- ✅ `vault/network.vault.yml` - Network node only secrets (Postgres, Langfuse node secrets)
+- ✅ `vault/main.vault.yml` - Main node only secrets (OpenWebUI token)
+- ✅ `vault/dev.vault.yml` - Dev node only secrets (local tokens)
+- ✅ `roles/network_server/stacks_network/templates/env.j2` - Network stack .env template
+- ✅ `roles/dev_3090/stacks_dev/templates/env.j2` - Dev stack .env template
+- ✅ `roles/common/secrets_render/tasks/main.yml` - Vault loading role
+- ✅ `roles/common/secrets_verify/tasks/main.yml` - Secrets verification role
+- ✅ Updated `roles/network_server/stacks_network/tasks/main.yml` - Renders .env from vault
+- ✅ Updated `roles/dev_3090/stacks_dev/tasks/main.yml` - Renders .env from vault
+- ✅ Updated `playbooks/verify_fabric.yaml` - Includes secrets verification
 
-**Status**: Not started. Waiting for implementation.
+**Features:**
+- Vault-based secret management (separate files for shared and node-specific)
+- Template-based .env file generation (Jinja2 templates)
+- No decrypted secrets in repo (only encrypted vault files and templates)
+- Node-specific secrets (each node gets only the env keys it needs)
+- Verification without printing values (checks keys exist without exposing secrets)
+- Idempotent rendering (can be run multiple times safely)
+
+**Status**: Complete. Secrets pipeline ready. Vault files should be encrypted before committing.
 
 ---
 
