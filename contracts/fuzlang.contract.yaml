@@ -265,11 +265,11 @@ storage_roots:
     data_root: null
 
   main_node:
-    windows_data_root: "D:\\ai"
-    wsl_mount_root: "/mnt/d/ai"
-    stacks_root: "D:\\ai\\stacks"
-    data_root: "D:\\ai\\data"
-    docker_data_root_location: "inside wsl2 but bind mounts must point into /mnt/d/ai/data"
+    windows_data_root: "<drive>:\\ai"  # example: D:\\ai
+    wsl_mount_root: "/mnt/<drive>/ai"  # example: /mnt/d/ai
+    stacks_root: "<drive>:\\ai\\stacks"  # example: D:\\ai\\stacks
+    data_root: "<drive>:\\ai\\data"  # example: D:\\ai\\data
+    docker_data_root_location: "inside wsl2 but bind mounts must point into /mnt/<drive>/ai/data"
     authoritative_data: false
 
   network_node:
@@ -350,11 +350,11 @@ ansible_firewall_rules_required:
 # ============================================================================
 main_node_runtime:
   docker_runs_in_wsl2: true
-  distro: Ubuntu
+  distro: "<to_be_filled>"  # WSL distro name (e.g., Ubuntu)
   systemd_in_wsl: true  # recommended
   docker_engine_in_wsl: true
   docker_engine_on_windows: disabled  # recommended to prevent confusion
-  compose_execution_location: "inside wsl2, from /mnt/d/ai/stacks/<stack>"
+  compose_execution_location: "inside wsl2, from /mnt/<drive>/ai/stacks/<stack>"
 
 task_scheduler_autostart:
   enabled: true
@@ -365,7 +365,7 @@ task_scheduler_autostart:
   highest_privileges: true
   action:
     executable: "C:\\Windows\\System32\\wsl.exe"
-    args: '-d Ubuntu -- bash -lc "cd /mnt/d/ai/stacks/<primary_stack> && docker compose up -d"'
+    args: '-d <wsl_distro> -- bash -lc "cd /mnt/<drive>/ai/stacks/<primary_stack> && docker compose up -d"'
   retry_policy:
     restart_interval_seconds: 60
     restart_count: 5
@@ -386,7 +386,7 @@ network_node_runtime:
 # ============================================================================
 dev_node_runtime:
   docker_runs_in_wsl2: true  # recommended
-  distro: Ubuntu
+  distro: "<to_be_filled>"  # WSL distro name (e.g., Ubuntu)
   systemd_in_wsl: true
   docker_engine_in_wsl: true
   docker_engine_on_windows: disabled
