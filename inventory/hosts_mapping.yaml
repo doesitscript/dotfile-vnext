@@ -1,0 +1,118 @@
+---
+# Hostname/IP Mapping Reference
+# This file documents the mapping between physical nodes, their hostnames, and IP addresses
+# You can use either hostnames (if DNS is configured) or IP addresses in ansible_host
+
+# Router Hostname Mapping Strategy:
+# - Setting hostnames in your router (like "Joshs-MBP") is a practical solution
+# - Most routers provide basic DNS resolution for these hostnames on your local network
+# - You can use these hostnames directly in ansible_host if your router resolves them
+# - The "DNS Server (Optional)" field in router is for custom DNS servers for that client,
+#   NOT for setting up DNS resolution - leave it as "Default" unless you need custom DNS
+# - Full DNS names (like server-225.example.com) require a proper DNS server setup,
+#   but router hostnames work perfectly fine for Ansible
+
+# Physical Node Mappings
+# Each physical node can be accessed via hostname or IP
+physical_nodes:
+  server-225:
+    hostname: "DESKTOP-VLLM"  # Set this in your router's hostname mapping, or use IP
+    ip_address: "192.168.50.158"  # Replace with actual IP from router static assignment
+    # Router hostname: Set in router's "Manually Assigned IP" section
+    # Use hostname if router provides DNS resolution, otherwise use IP
+
+  network-server:
+    hostname: "AI-NET-SERVER"  # Example: matches router hostname from your config
+    ip_address: "192.168.50.38"  # Replace with actual IP from router static assignment
+    # Router hostname: Set in router's "Manually Assigned IP" section
+
+  dev-3090:
+    hostname: "Gaming-Desktop"  # Set this in your router's hostname mapping, or use IP
+    ip_address: "192.168.50.191"  # Replace with actual IP from router static assignment
+    # Router hostname: Set in router's "Manually Assigned IP" section
+
+  mac-dev:
+    hostname: "Joshs-MBP"  # Already set in router - matches router configuration
+    ip_address: "192.168.50.33"  # Update with actual IP from router (currently shows 192.168.50.33)
+    # Router hostname: Already configured in router
+
+# Ansible Surface Mappings
+# These map to the ansible_host values in inventory.yaml
+ansible_surfaces:
+  # Windows surfaces (WinRM)
+  server-225-win:
+    physical_node: server-225
+    connection_type: winrm
+    # Use either hostname or IP from physical_nodes.server-225 above
+
+  network-server-win:
+    physical_node: network-server
+    connection_type: winrm
+    # Use either hostname or IP from physical_nodes.network-server above
+
+  dev-3090-win:
+    physical_node: dev-3090
+    connection_type: winrm
+    # Use either hostname or IP from physical_nodes.dev-3090 above
+
+  # WSL surfaces (SSH)
+  server-225-wsl:
+    physical_node: server-225
+    connection_type: ssh
+    # Use either hostname or IP from physical_nodes.server-225 above
+    # Note: SSH may use different port forwarding or WSL-specific access
+
+  dev-3090-wsl:
+    physical_node: dev-3090
+    connection_type: ssh
+    # Use either hostname or IP from physical_nodes.dev-3090 above
+
+  # macOS surface
+  mac-dev:
+    physical_node: mac-dev
+    connection_type: ssh
+    # Use either hostname or IP from physical_nodes.mac-dev above
+
+# DNS Configuration Status
+# Set this to true if your router provides hostname resolution (most routers do)
+# Set to false if you'll use IP addresses directly
+use_dns: true  # Most routers provide basic DNS for hostnames you set
+
+# Usage in inventory.yaml:
+# - If use_dns is true: Use hostname values (e.g., "Joshs-MBP", "fiberBottleneck")
+# - If use_dns is false: Use ip_address values (e.g., "192.168.50.33")
+# 
+# To test if router DNS works: ping Joshs-MBP (should resolve to 192.168.50.33)
+# If ping works with hostname, you can use hostnames in ansible_host
+
+# ============================================================================
+# AFTER SETTING HOSTNAMES IN ROUTER - What You Need to Do:
+# ============================================================================
+#
+# 1. DNS RESOLUTION (for other devices to find the hostname):
+#    - Router DNS updates are usually immediate - no restart needed
+#    - The device that's DOING the resolving (your Mac running Ansible) might
+#      need to flush DNS cache if it tried to resolve before:
+#      * macOS: sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder
+#      * Windows: ipconfig /flushdns
+#    - The TARGET device (server-225, etc.) doesn't need to know its hostname
+#      is in the router - that's for other devices to resolve it
+#
+# 2. IP ASSIGNMENT (if you changed the IP in router's static assignment):
+#    - If the device was already using that IP: No action needed
+#    - If you changed the IP assignment: The device needs to renew DHCP lease
+#      * Windows: ipconfig /release && ipconfig /renew
+#      * macOS: 
+#        - Find interface: networksetup -listallnetworkservices
+#        - Renew DHCP: sudo ipconfig set <interface> DHCP
+#        - Or: System Preferences > Network > Advanced > Renew DHCP Lease
+#        - Or just restart the device (easiest)
+#      * Linux: sudo dhclient -r && sudo dhclient
+#
+# 3. QUICK TEST:
+#    - From your Mac: ping Joshs-MBP (should work immediately if router DNS is working)
+#    - If ping fails, flush DNS cache on your Mac (see #1 above)
+#    - If still fails, check router DNS settings or use IP addresses instead
+#
+# SUMMARY: Usually NO restart needed for DNS. Only renew DHCP if IP changed.
+
