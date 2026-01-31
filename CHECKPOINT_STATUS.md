@@ -74,16 +74,26 @@ This document tracks progress through the checkpoint plan defined in `assemble_c
 
 ---
 
-## ⏳ Checkpoint 5 — Common Baseline + Verification (PENDING)
+## ✅ Checkpoint 5 — Common Baseline + Verification (COMPLETE)
 
 **Goal**: Create the lowest-risk shared automation first.
 
-**Planned Output**:
-- `roles/common/baseline` - timezone, host identity, node facts
-- `roles/common/health_checks` - read-only verification
-- Updates to `verify_fabric.yaml`
+**Output**:
+- ✅ `roles/common/baseline/tasks/main.yml` - timezone enforcement, node facts file creation
+- ✅ `roles/common/health_checks/tasks/main.yml` - read-only verification (hostname, IP, disk space)
+- ✅ Updated `verify_fabric.yaml` to run baseline + health_checks
 
-**Status**: Not started. Waiting for implementation.
+**Features**:
+- Timezone enforcement from contract (macOS, Windows, Linux/WSL)
+- Node facts file written to standard locations:
+  - macOS/Linux: `/etc/fuzlang/node_facts.json`
+  - Windows: `C:\ProgramData\fuzlang\node_facts.json`
+- Health checks report: hostname, IP addresses, disk free space
+- Fully idempotent
+- No firewall changes
+- No package installs
+
+**Status**: Complete. Can run verify_fabric across all nodes. Second run is idempotent.
 
 ---
 
