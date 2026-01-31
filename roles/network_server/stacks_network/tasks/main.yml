@@ -1,0 +1,206 @@
+---
+# Network-Server Stacks Deployment Role
+# Deploys langfuse, postgres, clickhouse, redis, minio
+# Uses Windows Docker Engine (not WSL)
+
+- name: Create network stacks directory
+  win_file:
+    path: "{{ stacks_root | regex_replace('\\\\', '\\') }}\\network"
+    state: directory
+  register: stacks_dir_result
+
+- name: Create docker-compose.yml template directory
+  win_file:
+    path: "{{ stacks_root | regex_replace('\\\\', '\\') }}\\network"
+    state: directory
+  register: compose_dir_result
+
+- name: Create docker-compose.yml for network stack
+  win_copy:
+    content: |
+      version: '3.8'
+      
+      services:
+        postgres:
+          image: postgres:16
+          restart: unless-stopped
+          environment:
+            POSTGRES_USER: ${POSTGRES_USER}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+            POSTGRES_DB: ${POSTGRES_DB}
+          volumes:
+            - {{ data_root }}\\postgres:/var/lib/postgresql/data
+          ports:
+            - "{{ postgres_exposure | default('127.0.0.1:5432:5432') }}"
+          networks:
+            - fuzlang_net_net
+          healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+      
+        redis:
+          image: redis:7-alpine
+          restart: unless-stopped
+          volumes:
+            - {{ data_root }}\\redis:/data
+          ports:
+            - "{{ redis_exposure | default('127.0.0.1:6379:6379') }}"
+          networks:
+            - fuzlang_net_net
+          healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+      
+        clickhouse:
+          image: clickhouse/clickhouse-server:24
+          restart: unless-stopped
+          volumes:
+            - {{ data_root }}\\clickhouse:/var/lib/clickhouse
+          ports:
+            - "{{ clickhouse_http_exposure | default('127.0.0.1:8123:8123') }}"
+            - "{{ clickhouse_native_exposure | default('127.0.0.1:9000:9000') }}"
+          networks:
+            - fuzlang_net_net
+          ulimits:
+            nofile:
+              soft: 262144
+              hard: 262144
+          healthcheck:
+            test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+      
+        minio:
+          image: minio/minio:latest
+          restart: unless-stopped
+          command: server /data --console-address ":9001"
+          environment:
+            MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+            MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+          volumes:
+            - {{ data_root }}\\minio:/data
+          ports:
+            - "{{ minio_api_exposure | default('0.0.0.0:9000:9000') }}"
+            - "{{ minio_console_exposure | default('0.0.0.0:9001:9001') }}"
+          networks:
+            - fuzlang_net_net
+          healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+      
+        langfuse:
+          image: langfuse/langfuse:latest
+          restart: unless-stopped
+          depends_on:
+            postgres:
+              condition: service_healthy
+            redis:
+              condition: service_healthy
+            clickhouse:
+              condition: service_healthy
+          environment:
+            DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+            REDIS_URL: redis://redis:6379
+            CLICKHOUSE_URL: http://clickhouse:8123
+            NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+            SALT: ${SALT}
+            LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+            LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+            MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+            MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+            MINIO_ENDPOINT: http://minio:9000
+          volumes:
+            - {{ data_root }}\\langfuse:/app/packages/database/data
+          ports:
+            - "{{ langfuse_exposure | default('0.0.0.0:3000:3000') }}"
+          networks:
+            - fuzlang_net_net
+          healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3000/api/public/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+      
+      networks:
+        fuzlang_net_net:
+          name: fuzlang_net_net
+          driver: bridge
+    dest: "{{ stacks_root | regex_replace('\\\\', '\\') }}\\network\\docker-compose.yml"
+  register: compose_file_result
+
+- name: Create .env file template (placeholder - will be rendered in Checkpoint 9)
+  win_copy:
+    content: |
+      # Network stack environment variables
+      # This file will be rendered from vault in Checkpoint 9
+      # Placeholder values below
+      
+      COMPOSE_PROJECT_NAME=fuzlang-net
+      
+      # Postgres
+      POSTGRES_USER=langfuse
+      POSTGRES_PASSWORD=<placeholder>
+      POSTGRES_DB=langfuse
+      
+      # Redis (no auth by default)
+      
+      # ClickHouse (no auth by default)
+      
+      # MinIO
+      MINIO_ROOT_USER=minioadmin
+      MINIO_ROOT_PASSWORD=<placeholder>
+      
+      # Langfuse
+      NEXTAUTH_SECRET=<placeholder>
+      SALT=<placeholder>
+      LANGFUSE_PUBLIC_KEY=<placeholder>
+      LANGFUSE_SECRET_KEY=<placeholder>
+      MINIO_ACCESS_KEY=<placeholder>
+      MINIO_SECRET_KEY=<placeholder>
+    dest: "{{ stacks_root | regex_replace('\\\\', '\\') }}\\network\\.env"
+  register: env_file_result
+  when: not env_file_result.changed | default(true)
+
+- name: Pull Docker images
+  win_shell: |
+    cd {{ stacks_root }}\network
+    docker compose pull
+  register: docker_pull_result
+  failed_when: docker_pull_result.rc != 0
+
+- name: Start network stack services
+  win_shell: |
+    cd {{ stacks_root }}\network
+    docker compose up -d
+  register: docker_up_result
+  failed_when: docker_up_result.rc != 0
+
+- name: Wait for services to be healthy
+  pause:
+    seconds: 30
+
+- name: Verify services are running
+  win_shell: |
+    cd {{ stacks_root }}\network
+    docker compose ps
+  register: docker_ps_result
+  changed_when: false
+
+- name: Display network stack deployment summary
+  debug:
+    msg:
+      - "=== Network Stack Deployment ==="
+      - "Services deployed: postgres, redis, clickhouse, minio, langfuse"
+      - "Langfuse endpoint: http://network-server:3000"
+      - "MinIO API: http://network-server:9000"
+      - "MinIO Console: http://network-server:9001"
+      - "Service status:"
+      - "{{ docker_ps_result.stdout }}"
+

@@ -1,0 +1,71 @@
+---
+# Network-Server Storage Layout Role
+# WinRM/PowerShell only - creates storage directories for persistent volumes
+# Creates directories for postgres, clickhouse, redis, minio, langfuse
+
+- name: Create postgres volume directory
+  win_file:
+    path: "{{ data_root | regex_replace('\\\\', '\\') }}\\postgres"
+    state: directory
+  register: postgres_dir_result
+
+- name: Create clickhouse volume directory
+  win_file:
+    path: "{{ data_root | regex_replace('\\\\', '\\') }}\\clickhouse"
+    state: directory
+  register: clickhouse_dir_result
+
+- name: Create redis volume directory
+  win_file:
+    path: "{{ data_root | regex_replace('\\\\', '\\') }}\\redis"
+    state: directory
+  register: redis_dir_result
+
+- name: Create minio volume directory
+  win_file:
+    path: "{{ data_root | regex_replace('\\\\', '\\') }}\\minio"
+    state: directory
+  register: minio_dir_result
+
+- name: Create langfuse volume directory
+  win_file:
+    path: "{{ data_root | regex_replace('\\\\', '\\') }}\\langfuse"
+    state: directory
+  register: langfuse_dir_result
+
+- name: Create network stacks directory structure
+  win_file:
+    path: "{{ stacks_root | regex_replace('\\\\', '\\') }}\\network"
+    state: directory
+  register: network_stacks_result
+
+- name: Set permissions on volume directories (read/write for Docker)
+  win_shell: |
+    $dirs = @(
+      "{{ data_root }}\\postgres",
+      "{{ data_root }}\\clickhouse",
+      "{{ data_root }}\\redis",
+      "{{ data_root }}\\minio",
+      "{{ data_root }}\\langfuse"
+    )
+    foreach ($dir in $dirs) {
+      if (Test-Path $dir) {
+        icacls $dir /grant "NT AUTHORITY\SYSTEM:(OI)(CI)F" /T
+        icacls $dir /grant "BUILTIN\Users:(OI)(CI)M" /T
+      }
+    }
+  register: permissions_result
+  changed_when: permissions_result.rc == 0
+  failed_when: false
+
+- name: Display storage layout summary
+  debug:
+    msg:
+      - "Storage directories created:"
+      - "  - Postgres: {{ data_root }}\\postgres"
+      - "  - ClickHouse: {{ data_root }}\\clickhouse"
+      - "  - Redis: {{ data_root }}\\redis"
+      - "  - MinIO: {{ data_root }}\\minio"
+      - "  - Langfuse: {{ data_root }}\\langfuse"
+      - "Stacks directory: {{ stacks_root }}\\network"
+

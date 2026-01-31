@@ -1,0 +1,110 @@
+---
+# Network-Server Docker Runtime Role
+# WinRM/PowerShell only - installs and configures Windows Docker Engine
+# No WSL - uses native Windows Docker
+
+- name: Check if Docker is installed
+  win_shell: |
+    $docker = Get-Command docker -ErrorAction SilentlyContinue
+    if ($docker) { "installed" } else { "not_installed" }
+  register: docker_check
+  changed_when: false
+  failed_when: false
+
+- name: Install Docker Engine via PowerShell
+  win_shell: |
+    Install-Module -Name DockerMsftProvider -Repository PSGallery -Force
+    Install-Package -Name docker -ProviderName DockerMsftProvider -Force
+  register: docker_install_result
+  when: docker_check.stdout == "not_installed"
+  failed_when: false
+
+- name: Reboot after Docker installation if needed
+  win_reboot:
+    msg: "Rebooting to complete Docker installation"
+    reboot_timeout: 600
+  when: docker_install_result.changed | default(false)
+
+- name: Wait for system to come back online after Docker reboot
+  wait_for_connection:
+    timeout: 600
+  when: docker_install_result.changed | default(false)
+
+- name: Verify Docker service is running
+  win_service:
+    name: docker
+  register: docker_service
+  changed_when: false
+
+- name: Start Docker service if not running
+  win_service:
+    name: docker
+    state: started
+    start_mode: auto
+  when: docker_service.status.State != "running"
+
+- name: Verify Docker data root directory exists
+  win_stat:
+    path: "{{ docker_data_root | regex_replace('\\\\', '\\') }}"
+  register: docker_data_root_check
+  failed_when: not docker_data_root_check.stat.exists
+
+- name: Create Docker data root directory
+  win_file:
+    path: "{{ docker_data_root | regex_replace('\\\\', '\\') }}"
+    state: directory
+  register: docker_data_root_result
+  when: not docker_data_root_check.stat.exists
+
+- name: Create Docker config directory
+  win_file:
+    path: C:\ProgramData\Docker\config
+    state: directory
+  register: docker_config_result
+
+- name: Configure Docker daemon.json
+  win_copy:
+    content: |
+      {
+        "data-root": "{{ docker_data_root | replace('\\', '\\\\') }}",
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "100m",
+          "max-file": "3"
+        }
+      }
+    dest: C:\ProgramData\Docker\config\daemon.json
+  register: daemon_json_result
+
+- name: Restart Docker service if daemon.json changed
+  win_service:
+    name: docker
+    state: restarted
+  when: daemon_json_result.changed
+
+- name: Wait for Docker service to be ready
+  pause:
+    seconds: 10
+  when: daemon_json_result.changed
+
+- name: Verify Docker is working
+  win_shell: docker version
+  register: docker_version
+  changed_when: false
+  failed_when: docker_version.rc != 0
+
+- name: Verify Docker is using correct data root
+  win_shell: |
+    docker info --format "{{ '{{.DockerRootDir}}' }}"
+  register: docker_root_check
+  changed_when: false
+  failed_when: false
+
+- name: Display Docker runtime configuration summary
+  debug:
+    msg:
+      - "Docker Engine: {{ 'Installed and running' if docker_service.status.State == 'running' else 'Not running' }}"
+      - "Docker data root: {{ docker_data_root }}"
+      - "Docker version: {{ docker_version.stdout_lines[0] if docker_version.rc == 0 else 'Unknown' }}"
+      - "Actual Docker root: {{ docker_root_check.stdout if docker_root_check.rc == 0 else 'Unknown' }}"
+

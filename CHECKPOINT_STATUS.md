@@ -97,34 +97,57 @@ This document tracks progress through the checkpoint plan defined in `assemble_c
 
 ---
 
-## ⏳ Checkpoint 6 — Windows Host Bootstrap (PENDING)
+## ✅ Checkpoint 6 — Windows Host Bootstrap (Server-225 COMPLETE)
 
 **Goal**: Make Windows hosts structurally ready.
 
-**Planned Output**:
-- `roles/server_225/windows_base`
-- `roles/network_server/windows_base`
-- `roles/dev_3090/windows_base`
-- WSL enablement
-- SSH enablement
-- Firewall skeletons
-- Scheduled task scaffolding
+**Output (Server-225)**:
+- ✅ `roles/server_225/windows_base/tasks/main.yml` - Windows features, OpenSSH, directories, power settings
+- ✅ `roles/server_225/wsl2/tasks/main.yml` - WSL2 installation and configuration
+- ✅ `roles/server_225/task_scheduler_autostart/tasks/main.yml` - Autostart task creation
+- ✅ `roles/server_225/gpu_driver_validation/tasks/main.yml` - GPU driver validation
+- ✅ `playbooks/bootstrap_server_225.yaml` - Uses roles in correct order
 
-**Status**: Not started. Waiting for implementation.
+**Features:**
+- Windows Features: Hyper-V, Containers, Virtual Machine Platform, WSL
+- OpenSSH Server installed and started
+- Power settings: High Performance, sleep/hibernate disabled
+- Directories created on data drive (D:\ai structure)
+- WSL2 distro installed and configured with systemd
+- Task Scheduler autostart for docker compose stack
+- GPU driver validation (nvidia-smi check)
+- Automatic reboot handling for Windows features
+
+**Status**: Server-225 complete. Network-server and dev-3090 pending.
 
 ---
 
-## ⏳ Checkpoint 7 — Linux / WSL Runtime Layer (PENDING)
+## ✅ Checkpoint 7 — Network-Server Bootstrap + Network Stacks (COMPLETE)
 
-**Goal**: Establish the steady-state runtime environment.
+**Goal**: Bootstrap network-server and deploy network stacks.
 
-**Planned Output**:
-- Docker engine in WSL
-- Compose support
-- Directory mounts
-- Runtime health checks
+**Output**:
+- ✅ `roles/network_server/windows_base/tasks/main.yml` - Windows features, OpenSSH, directories, power settings
+- ✅ `roles/network_server/docker_runtime/tasks/main.yml` - Windows Docker Engine installation and configuration
+- ✅ `roles/network_server/storage_layout/tasks/main.yml` - Volume directories for persistent data
+- ✅ `roles/network_server/stacks_network/tasks/main.yml` - Deploys langfuse, postgres, clickhouse, redis, minio
+- ✅ `roles/network_server/backup_baseline/tasks/main.yml` - Backup directory structure and placeholder scripts
+- ✅ `playbooks/bootstrap_network_server.yaml` - Uses roles in correct order
+- ✅ `playbooks/deploy_network_stacks.yaml` - Deploys network stacks
 
-**Status**: Not started. Waiting for implementation.
+**Features:**
+- Windows Features: Hyper-V, Containers, Virtual Machine Platform
+- Windows Docker Engine (native, not WSL)
+- OpenSSH Server installed and started
+- Power settings: High Performance, sleep/hibernate disabled
+- Directories created on data drive (D:\ai structure)
+- Persistent volumes on non-OS disk
+- All network services deployed: langfuse, postgres, clickhouse, redis, minio
+- Port exposure per contract (restricted services on localhost, LAN services on all interfaces)
+- Backup baseline structure ready
+- Automatic reboot handling for Windows features
+
+**Status**: Complete. Network-server bootstrap and stacks deployment ready.
 
 ---
 

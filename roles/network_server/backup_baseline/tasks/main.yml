@@ -1,0 +1,118 @@
+---
+# Network-Server Backup Baseline Role
+# WinRM/PowerShell only - creates backup directory structure and placeholder scripts
+# Minimal implementation - explicit structure for future backup automation
+
+- name: Create backup root directory
+  win_file:
+    path: "{{ backup_root | default(windows_data_root + '\\backups') | regex_replace('\\\\', '\\') }}"
+    state: directory
+  register: backup_root_result
+
+- name: Create backup scripts directory
+  win_file:
+    path: "{{ backup_root | default(windows_data_root + '\\backups') | regex_replace('\\\\', '\\') }}\\scripts"
+    state: directory
+  register: backup_scripts_result
+
+- name: Create backup data directory
+  win_file:
+    path: "{{ backup_root | default(windows_data_root + '\\backups') | regex_replace('\\\\', '\\') }}\\data"
+    state: directory
+  register: backup_data_result
+
+- name: Create backup targets directory structure
+  win_file:
+    path: "{{ backup_root | default(windows_data_root + '\\backups') | regex_replace('\\\\', '\\') }}\\targets"
+    state: directory
+  register: backup_targets_result
+
+- name: Create postgres backup target directory
+  win_file:
+    path: "{{ backup_root | default(windows_data_root + '\\backups') | regex_replace('\\\\', '\\') }}\\targets\\postgres"
+    state: directory
+  register: postgres_backup_result
+
+- name: Create clickhouse backup target directory
+  win_file:
+    path: "{{ backup_root | default(windows_data_root + '\\backups') | regex_replace('\\\\', '\\') }}\\targets\\clickhouse"
+    state: directory
+  register: clickhouse_backup_result
+
+- name: Create redis backup target directory
+  win_file:
+    path: "{{ backup_root | default(windows_data_root + '\\backups') | regex_replace('\\\\', '\\') }}\\targets\\redis"
+    state: directory
+  register: redis_backup_result
+
+- name: Create minio backup target directory
+  win_file:
+    path: "{{ backup_root | default(windows_data_root + '\\backups') | regex_replace('\\\\', '\\') }}\\targets\\minio"
+    state: directory
+  register: minio_backup_result
+
+- name: Create placeholder backup script
+  win_copy:
+    content: |
+      # Network-Server Backup Script (Placeholder)
+      # This script will be implemented in a future checkpoint
+      # 
+      # Backup targets per contract:
+      # - Postgres volume: {{ data_root }}\postgres
+      # - ClickHouse volume: {{ data_root }}\clickhouse
+      # - Redis volume: {{ data_root }}\redis
+      # - MinIO data: {{ data_root }}\minio
+      #
+      # Backup destination: {{ backup_destination | default('TBD') }}
+      # Backup frequency: {{ backup_frequency | default('TBD') }}
+      
+      Write-Host "Backup script placeholder - to be implemented"
+      Write-Host "Backup root: {{ backup_root | default(windows_data_root + '\\backups') }}"
+      Write-Host "Backup targets directory: {{ backup_root | default(windows_data_root + '\\backups') }}\targets"
+    dest: "{{ backup_root | default(windows_data_root + '\\backups') | regex_replace('\\\\', '\\') }}\\scripts\\backup.ps1"
+  register: backup_script_result
+
+- name: Create backup README
+  win_copy:
+    content: |
+      # Network-Server Backup Baseline
+      
+      ## Directory Structure
+      
+      - `scripts/` - Backup scripts (placeholder)
+      - `data/` - Temporary backup data storage
+      - `targets/` - Backup target directories
+        - `postgres/` - Postgres volume backups
+        - `clickhouse/` - ClickHouse volume backups
+        - `redis/` - Redis volume backups
+        - `minio/` - MinIO data backups
+      
+      ## Backup Targets (per contract)
+      
+      - Postgres volume: {{ data_root }}\postgres
+      - ClickHouse volume: {{ data_root }}\clickhouse
+      - Redis volume: {{ data_root }}\redis
+      - MinIO data: {{ data_root }}\minio
+      
+      ## Status
+      
+      Backup automation to be implemented in a future checkpoint.
+      Directory structure is ready for backup scripts.
+    dest: "{{ backup_root | default(windows_data_root + '\\backups') | regex_replace('\\\\', '\\') }}\\README.md"
+  register: backup_readme_result
+
+- name: Display backup baseline summary
+  debug:
+    msg:
+      - "=== Backup Baseline Structure ==="
+      - "Backup root: {{ backup_root | default(windows_data_root + '\\backups') }}"
+      - "Directories created:"
+      - "  - scripts/"
+      - "  - data/"
+      - "  - targets/postgres/"
+      - "  - targets/clickhouse/"
+      - "  - targets/redis/"
+      - "  - targets/minio/"
+      - "Placeholder script: backup.ps1"
+      - "Status: Structure ready, automation pending"
+
