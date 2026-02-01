@@ -42,11 +42,11 @@ else
 fi
 
 # Ensure pubkey authentication is enabled in sshd_config
-if ! grep -q "^PubkeyAuthentication yes" /etc/ssh/sshd_config 2>/dev/null; then
+if ! sudo grep -q "^PubkeyAuthentication yes" /etc/ssh/sshd_config 2>/dev/null; then
   # Comment out any existing PubkeyAuthentication line and add our setting
   sudo sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
   # If no line exists, add it
-  if ! grep -q "^PubkeyAuthentication" /etc/ssh/sshd_config 2>/dev/null; then
+  if ! sudo grep -q "^PubkeyAuthentication" /etc/ssh/sshd_config 2>/dev/null; then
     echo "PubkeyAuthentication yes" | sudo tee -a /etc/ssh/sshd_config >/dev/null
   fi
   
