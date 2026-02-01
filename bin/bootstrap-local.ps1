@@ -4,6 +4,21 @@
 
 $ErrorActionPreference = "Stop"
 
+# Check prerequisites
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+    Write-Host "ERROR: This script must be run as Administrator." -ForegroundColor Red
+    exit 1
+}
+
+# Warn about prerequisites on new systems
+Write-Host ""
+Write-Host "WARNING: On a new Windows server, ensure:" -ForegroundColor Yellow
+Write-Host "  - PowerShell execution policy allows scripts (see README.md)" -ForegroundColor Yellow
+Write-Host "  - Repository is cloned to this machine" -ForegroundColor Yellow
+Write-Host "  - Running from elevated PowerShell (as Administrator)" -ForegroundColor Yellow
+Write-Host ""
+
 function Write-Facts($path, $obj) {
   $dir = Split-Path -Parent $path
   if (!(Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
