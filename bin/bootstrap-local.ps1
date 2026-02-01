@@ -23,7 +23,7 @@ $repoRoot = Split-Path -Parent $scriptDir
 # YAML Loading Functions
 # ============================================================================
 
-function Import-Yaml {
+function Load-MappingYaml {
     param([string]$Path)
     
     if (-not (Test-Path $Path)) {
@@ -34,110 +34,151 @@ function Import-Yaml {
     if (Get-Module -ListAvailable -Name powershell-yaml) {
         Import-Module powershell-yaml -ErrorAction SilentlyContinue
         if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
-            $result = ConvertFrom-Yaml (Get-Content $Path -Raw)
-            # Convert to hashtable for easier access
-            if ($result -is [hashtable]) {
-                return $result
-            } else {
-                return $result | ConvertTo-Json -Depth 10 | ConvertFrom-Json
+            $raw = Get-Content -Raw -Path $Path
+            $mapping = $raw | ConvertFrom-Yaml
+            if (-not $mapping -or -not $mapping.physical_nodes) {
+                throw "Mapping YAML loaded but missing physical_nodes. Check formatting in $Path"
             }
+            return $mapping
         }
     }
     
-    # Fallback: Use Python if available (common on Windows with WSL)
+    # Module not available, try to install it
+    Write-Host "PowerShell-YAML module not found. Installing..." -ForegroundColor Yellow
+    try {
+        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue
+        Install-Module powershell-yaml -Scope CurrentUser -Force -AllowClobber -SkipPublisherCheck -ErrorAction Stop
+        Import-Module powershell-yaml -Force -ErrorAction Stop
+        if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
+            $raw = Get-Content -Raw -Path $Path
+            $mapping = $raw | ConvertFrom-Yaml
+            if (-not $mapping -or -not $mapping.physical_nodes) {
+                throw "Mapping YAML loaded but missing physical_nodes. Check formatting in $Path"
+            }
+            return $mapping
+        }
+    } catch {
+        Write-Host "Failed to install/import PowerShell-YAML module: $_" -ForegroundColor Yellow
+        Write-Host "Falling back to Python YAML parsing..." -ForegroundColor Yellow
+    }
+    
+    # Fallback: Use Python if available
     $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
     if (-not $pythonCmd) {
         $pythonCmd = Get-Command python3 -ErrorAction SilentlyContinue
     }
     
     if ($pythonCmd) {
-        $yamlContent = Get-Content $Path -Raw
-        $tempFile = [System.IO.Path]::GetTempFileName()
-        $yamlContent | Out-File -FilePath $tempFile -Encoding UTF8
-        
         try {
-            $jsonContent = & $pythonCmd.Command -c @"
-import yaml, json, sys
-try:
-    with open(r'$tempFile', 'r', encoding='utf-8') as f:
-        data = yaml.safe_load(f)
-    print(json.dumps(data))
-except ImportError:
-    print('{}')
-except Exception as e:
-    print('{}')
-"@ 2>$null
-            
-            if ($jsonContent -and $jsonContent.Trim() -ne '{}' -and $jsonContent.Trim().Length -gt 0) {
-                $result = $jsonContent | ConvertFrom-Json
-                Remove-Item $tempFile -Force
-                return $result
+            $pythonScript = "import yaml,json,sys; print(json.dumps(yaml.safe_load(open(sys.argv[1],'r',encoding='utf-8')), indent=2))"
+            $jsonContent = & $pythonCmd -c $pythonScript $Path 2>$null
+            if ($jsonContent -and $jsonContent.Trim().Length -gt 0) {
+                $mapping = $jsonContent | ConvertFrom-Json
+                if (-not $mapping -or -not $mapping.physical_nodes) {
+                    throw "Mapping YAML loaded but missing physical_nodes. Check formatting in $Path"
+                }
+                return $mapping
             }
         } catch {
-            # Continue to simple parser
-        } finally {
-            if (Test-Path $tempFile) {
-                Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
-            }
+            Write-Host "Python YAML parsing failed: $_" -ForegroundColor Yellow
         }
     }
     
-    # Last resort: Simple YAML parser for basic key-value structures
-    # This is a minimal parser that handles the hosts_mapping.yaml structure
-    $content = Get-Content $Path -Raw
-    $result = @{}
-    
-    # Parse use_dns
-    if ($content -match 'use_dns:\s*(true|false)') {
-        $result.use_dns = $Matches[1] -eq 'true'
-    } else {
-        $result.use_dns = $false
-    }
-    
-    # Parse physical_nodes - improved regex to handle various formats
-    $result.physical_nodes = @{}
-    if ($content -match 'physical_nodes:') {
-        # Match node entries with more flexible whitespace
-        $nodePattern = '(?m)^\s+(\w+):\s*\r?\n(?:\s+#.*\r?\n)?\s+hostname:\s*"([^"]+)"\s*\r?\n(?:\s+#.*\r?\n)?\s+ip_address:\s*"([^"]+)"'
-        $nodeMatches = [regex]::Matches($content, $nodePattern)
-        foreach ($match in $nodeMatches) {
-            $nodeKey = $match.Groups[1].Value
-            $hostname = $match.Groups[2].Value
-            $ip = $match.Groups[3].Value
-            $result.physical_nodes[$nodeKey] = @{
-                hostname = $hostname
-                ip_address = $ip
-            }
-        }
-    }
-    
-    if ($result.physical_nodes.Count -eq 0) {
-        Write-Warning "Simple YAML parser found no physical_nodes. Consider installing PowerShell-YAML module or Python with PyYAML."
-    }
-    
-    return $result
+    # Neither method worked
+    throw "Could not load YAML file. Install PowerShell-YAML module with: Install-Module powershell-yaml -Scope CurrentUser"
 }
 
 # ============================================================================
 # Helper Functions
 # ============================================================================
 
-function Get-LocalIPv4 {
-    $ips = Get-NetIPAddress -AddressFamily IPv4 |
-        Where-Object { 
-            $_.IPAddress -notlike "169.254.*" -and 
-            $_.IPAddress -ne "127.0.0.1" -and 
-            $_.InterfaceAlias -notlike "*Loopback*" 
-        } |
-        Select-Object -ExpandProperty IPAddress -Unique
+function Get-PreferredIPv4 {
+    param(
+        [object]$Mapping
+    )
     
-    return $ips
+    # Collect all IPv4 addresses
+    $allIPs = Get-NetIPAddress -AddressFamily IPv4
+    
+    # Filter out unwanted IPs
+    $filteredIPs = $allIPs | Where-Object {
+        $ip = $_.IPAddress
+        $alias = $_.InterfaceAlias
+        $prefixOrigin = $_.PrefixOrigin
+        
+        # Exclude link-local, loopback, and invalid origins
+        if ($ip -like "169.254.*" -or $ip -eq "127.0.0.1") { return $false }
+        if ($prefixOrigin -eq "WellKnown") { return $false }
+        
+        # Exclude virtual adapter interfaces
+        $virtualKeywords = @("vEthernet", "WSL", "Hyper-V", "Docker", "Virtual", "Loopback")
+        foreach ($keyword in $virtualKeywords) {
+            if ($alias -like "*$keyword*") { return $false }
+        }
+        
+        return $true
+    } | Select-Object -ExpandProperty IPAddress -Unique
+    
+    # Extract mapping IPs and compute /24 prefixes
+    $mappingSubnets = @()
+    if ($Mapping -and $Mapping.physical_nodes) {
+        $nodeKeys = if ($Mapping.physical_nodes -is [hashtable]) { 
+            $Mapping.physical_nodes.Keys 
+        } else { 
+            $Mapping.physical_nodes.PSObject.Properties.Name 
+        }
+        
+        foreach ($key in $nodeKeys) {
+            $entry = $Mapping.physical_nodes.$key
+            $mappingIP = if ($entry.ip_address) { $entry.ip_address } 
+                        elseif ($entry.IP_address) { $entry.IP_address } 
+                        elseif ($entry.ipAddress) { $entry.ipAddress } 
+                        else { $null }
+            
+            if ($mappingIP) {
+                # Compute /24 subnet prefix
+                $ipParts = $mappingIP -split '\.'
+                if ($ipParts.Count -eq 4) {
+                    $subnet = "$($ipParts[0]).$($ipParts[1]).$($ipParts[2])."
+                    $mappingSubnets += $subnet
+                }
+            }
+        }
+    }
+    
+    # Prefer IPs matching mapping subnets
+    $preferredIP = $null
+    $reason = "fallback"
+    
+    if ($mappingSubnets.Count -gt 0) {
+        foreach ($subnet in $mappingSubnets) {
+            $matchingIP = $filteredIPs | Where-Object { $_ -like "$subnet*" } | Select-Object -First 1
+            if ($matchingIP) {
+                $preferredIP = $matchingIP
+                $subnetBase = $subnet.TrimEnd('.')
+                $reason = "matched mapping subnet ${subnetBase}.0/24"
+                break
+            }
+        }
+    }
+    
+    # Fallback to first filtered IP
+    if (-not $preferredIP -and $filteredIPs.Count -gt 0) {
+        $preferredIP = $filteredIPs[0]
+    }
+    
+    return @{
+        PreferredIP = $preferredIP
+        AllIPs = $filteredIPs
+        Reason = $reason
+    }
 }
 
 function Get-PhysicalNodeFromMapping {
     param(
         [string]$Hostname,
-        [array]$IPs,
+        [string]$PreferredIP,
+        [array]$AllIPs,
         [object]$Mapping
     )
     
@@ -151,7 +192,7 @@ function Get-PhysicalNodeFromMapping {
         $nodeKeys = $Mapping.physical_nodes.PSObject.Properties.Name
     }
     
-    # Method A: Match by hostname (preferred)
+    # Method A: Match by hostname first (preferred, case-insensitive)
     foreach ($key in $nodeKeys) {
         $entry = $Mapping.physical_nodes.$key
         $entryHostname = if ($entry.hostname) { $entry.hostname } elseif ($entry.Hostname) { $entry.Hostname } else { $null }
@@ -162,14 +203,20 @@ function Get-PhysicalNodeFromMapping {
         }
     }
     
-    # Method B: Match by IP (fallback)
-    foreach ($key in $nodeKeys) {
-        $entry = $Mapping.physical_nodes.$key
-        $entryIP = if ($entry.ip_address) { $entry.ip_address } elseif ($entry.IP_address) { $entry.IP_address } elseif ($entry.ipAddress) { $entry.ipAddress } else { $null }
-        if ($entryIP -and ($IPs -contains $entryIP)) {
-            $physicalNode = $key
-            Write-Host "Matched physical_node '$physicalNode' by IP: $entryIP" -ForegroundColor Green
-            return $physicalNode
+    # Method B: Match by preferred IP first, then any IP
+    $ipsToCheck = @()
+    if ($PreferredIP) { $ipsToCheck += $PreferredIP }
+    $ipsToCheck += $AllIPs | Where-Object { $_ -ne $PreferredIP }
+    
+    foreach ($ipToCheck in $ipsToCheck) {
+        foreach ($key in $nodeKeys) {
+            $entry = $Mapping.physical_nodes.$key
+            $entryIP = if ($entry.ip_address) { $entry.ip_address } elseif ($entry.IP_address) { $entry.IP_address } elseif ($entry.ipAddress) { $entry.ipAddress } else { $null }
+            if ($entryIP -and ($entryIP -eq $ipToCheck)) {
+                $physicalNode = $key
+                Write-Host "Matched physical_node '$physicalNode' by IP: $entryIP" -ForegroundColor Green
+                return $physicalNode
+            }
         }
     }
     
@@ -186,10 +233,11 @@ function Get-PhysicalNodeFromMapping {
     
     Write-Host "ERROR: Could not map this machine to a physical_node" -ForegroundColor Red
     Write-Host "  Detected hostname: $Hostname" -ForegroundColor Yellow
-    Write-Host "  Detected IPs: $($IPs -join ', ')" -ForegroundColor Yellow
+    Write-Host "  Detected IPs: $($AllIPs -join ', ')" -ForegroundColor Yellow
+    Write-Host "  Preferred IP: $PreferredIP" -ForegroundColor Yellow
     Write-Host "  Mapping hostnames: $($mappingHostnames -join ', ')" -ForegroundColor Yellow
     Write-Host "  Mapping IPs: $($mappingIPs -join ', ')" -ForegroundColor Yellow
-    throw "Could not map this machine to a physical_node. hostname=$Hostname ips=$($IPs -join ',')"
+    throw "Could not map this machine to a physical_node. hostname=$Hostname preferred_ip=$PreferredIP all_ips=$($AllIPs -join ',')"
 }
 
 function Get-DesiredAnsibleHost {
@@ -216,7 +264,16 @@ function Get-WSLDistros {
     try {
         $wslOutput = wsl.exe --list --quiet 2>&1
         if ($LASTEXITCODE -eq 0 -and $wslOutput) {
-            $distros = $wslOutput | Where-Object { $_ -and $_.Trim().Length -gt 0 } | ForEach-Object { $_.Trim() }
+            # Process output - handle both array and string formats
+            $lines = if ($wslOutput -is [array]) { $wslOutput } else { $wslOutput -split "`r?`n" }
+            $distros = $lines | ForEach-Object { 
+                # Remove null bytes and trim
+                $cleaned = $_ -replace "`0", "" | ForEach-Object { $_.Trim() }
+                # Only include if it has printable characters (not just control chars or whitespace)
+                if ($cleaned -and $cleaned.Length -gt 0 -and $cleaned -match '[a-zA-Z0-9]') { 
+                    $cleaned 
+                }
+            } | Where-Object { $_ }
         }
     } catch {
         # WSL not available, return empty array
@@ -292,15 +349,20 @@ Write-Host ""
 # Load mapping
 $mappingPath = Join-Path $repoRoot "inventory\hosts_mapping.yaml"
 Write-Host "Loading mapping from: $mappingPath" -ForegroundColor Cyan
-$mapping = Import-Yaml $mappingPath
+$mapping = Load-MappingYaml -Path $mappingPath
 
 # Detect physical node
 $hostname = $env:COMPUTERNAME
-$ips = Get-LocalIPv4
-Write-Host "Detected hostname: $hostname" -ForegroundColor Cyan
-Write-Host "Detected IPs: $($ips -join ', ')" -ForegroundColor Cyan
+$ipInfo = Get-PreferredIPv4 -Mapping $mapping
+$preferredIP = $ipInfo.PreferredIP
+$allIPs = $ipInfo.AllIPs
 
-$physicalNode = Get-PhysicalNodeFromMapping -Hostname $hostname -IPs $ips -Mapping $mapping
+Write-Host "Detected hostname: $hostname" -ForegroundColor Cyan
+Write-Host "Detected IPs: $($allIPs -join ', ')" -ForegroundColor Cyan
+Write-Host "Chosen IP: $preferredIP" -ForegroundColor Cyan
+Write-Host "Reason: $($ipInfo.Reason)" -ForegroundColor Cyan
+
+$physicalNode = Get-PhysicalNodeFromMapping -Hostname $hostname -PreferredIP $preferredIP -AllIPs $allIPs -Mapping $mapping
 $ansibleHost = Get-DesiredAnsibleHost -PhysicalNode $physicalNode -Mapping $mapping
 
 Write-Host "Physical node: $physicalNode" -ForegroundColor Green
@@ -310,13 +372,8 @@ Write-Host ""
 # Collect facts
 Write-Host "Collecting facts..." -ForegroundColor Cyan
 
-# Get best IP (use mapped IP or first detected)
-$nodeEntry = $mapping.physical_nodes.$physicalNode
-$mappedIP = if ($nodeEntry.ip_address) { $nodeEntry.ip_address } elseif ($nodeEntry.IP_address) { $nodeEntry.IP_address } elseif ($nodeEntry.ipAddress) { $nodeEntry.ipAddress } else { $null }
-$bestIP = $mappedIP
-if (-not $bestIP -or -not ($ips -contains $bestIP)) {
-    $bestIP = if ($ips.Count -gt 0) { $ips[0] } else { "0.0.0.0" }
-}
+# Use preferred IP
+$bestIP = if ($preferredIP) { $preferredIP } else { "0.0.0.0" }
 
 # Configure WinRM HTTP
 Write-Host "Configuring WinRM HTTP..." -ForegroundColor Cyan
@@ -330,7 +387,7 @@ winrm quickconfig -force | Out-Null
 # Get WSL distros
 $wslDistros = Get-WSLDistros
 if ($wslDistros.Count -gt 0) {
-    Write-Host "Found WSL distros: $($wslDistros -join ', ')" -ForegroundColor Green
+    Write-Host "WSL distribution found: $($wslDistros -join ', ')" -ForegroundColor Green
 } else {
     Write-Host "No WSL distros found" -ForegroundColor Yellow
 }
@@ -351,7 +408,7 @@ $facts = [ordered]@{
 }
 
 # Write facts JSON
-$factsPath = Join-Path $repoRoot "facts\$physicalNode.facts.json"
+$factsPath = Join-Path $repoRoot "facts\$physicalNode.json"
 Write-Host "Writing facts to: $factsPath" -ForegroundColor Cyan
 Write-Facts -Path $factsPath -Obj $facts
 
