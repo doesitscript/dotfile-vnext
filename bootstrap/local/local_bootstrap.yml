@@ -59,6 +59,22 @@
       ansible.builtin.set_fact:
         host_ip: "{{ winfacts.windows.host_ip }}"
 
+    - name: read existing windows host_vars (to preserve win_password)
+      ansible.builtin.slurp:
+        src: "{{ host_vars_dir }}/server-225-win.yaml"
+      register: existing_win_hostvars_raw
+      ignore_errors: true
+
+    - name: parse existing windows host_vars
+      ansible.builtin.set_fact:
+        existing_win_hostvars: "{{ (existing_win_hostvars_raw.content | default('') | b64decode | default('')) | from_yaml }}"
+      when: existing_win_hostvars_raw is defined and existing_win_hostvars_raw.content is defined
+
+    - name: set win_password for templating (prefer existing file)
+      ansible.builtin.set_fact:
+        win_password: "{{ existing_win_hostvars.win_password }}"
+      when: existing_win_hostvars is defined and (existing_win_hostvars.win_password | default('')) | length > 0
+
     - name: choose wsl user
       ansible.builtin.set_fact:
         wsl_user: "{{ ansible_user_id }}"

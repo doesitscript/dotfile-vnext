@@ -12,10 +12,7 @@ function Write-Facts($path, $obj) {
 
 # Basic identity
 $hostname = $env:COMPUTERNAME
-$ip = (Get-NetIPAddress -AddressFamily IPv4 `
-  | Where-Object { $_.IPAddress -notlike "169.254.*" -and $_.InterfaceAlias -notlike "*Loopback*" }
-  | Select-Object -First 1 -ExpandProperty IPAddress)
-  | Select-Object -First 1 -ExpandProperty IPAddress)
+$ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike "169.254.*" -and $_.InterfaceAlias -notlike "*Loopback*" } | Select-Object -First 1 -ExpandProperty IPAddress)
 
 # Enable PSRemoting / WinRM
 Enable-PSRemoting -Force
