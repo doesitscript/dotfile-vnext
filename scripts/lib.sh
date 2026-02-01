@@ -103,6 +103,39 @@ setup_ansible_env() {
   cd "${repo_root}"
 }
 
+# Configure Git globally for push/pull
+setup_git_config() {
+  local git_email="1589359+doesitscript@users.noreply.github.com"
+  
+  # Check if Git is available
+  if ! command -v git &> /dev/null; then
+    log_warn "Git not found, skipping Git configuration"
+    return 0
+  fi
+  
+  # Get current email
+  local current_email
+  current_email="$(git config --global user.email 2>/dev/null || echo "")"
+  
+  # Set email if not already set to the correct value
+  if [ "${current_email}" != "${git_email}" ]; then
+    log_info "Configuring Git email: ${git_email}"
+    git config --global user.email "${git_email}"
+    log_success "Git email configured: ${git_email}"
+  else
+    log_info "Git email already configured: ${git_email}"
+  fi
+  
+  # Get current name (set if not present)
+  local current_name
+  current_name="$(git config --global user.name 2>/dev/null || echo "")"
+  
+  if [ -z "${current_name}" ]; then
+    log_info "Setting Git user name: Joshua Castillo"
+    git config --global user.name "Joshua Castillo"
+  fi
+}
+
 # Helper to run ansible-playbook from venv
 fz_ansible() {
   local repo_root
