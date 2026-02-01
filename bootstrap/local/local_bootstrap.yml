@@ -1,0 +1,82 @@
+---
+# bootstrap/local/local_bootstrap.yml
+# Ansible playbook, local-only, runs in WSL
+# This does WSL SSH setup and writes host_vars based on discovered facts.
+# It also reads the windows facts json created by the ps1 script.
+
+- name: local bootstrap (wsl side)
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    physical_node: "server-225"
+    facts_path_windows: "{{ playbook_dir }}/../../facts/server-225.json"
+    host_vars_dir: "{{ playbook_dir }}/../../inventory/host_vars"
+    wsl_ssh_port: 22
+
+  tasks:
+    - name: ensure host_vars dir exists
+      ansible.builtin.file:
+        path: "{{ host_vars_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: install and enable openssh-server in wsl
+      ansible.builtin.shell: |
+        set -e
+        sudo apt-get update
+        sudo apt-get install -y openssh-server
+        sudo mkdir -p /var/run/sshd
+        sudo systemctl enable ssh || true
+        sudo service ssh start || sudo systemctl start ssh
+      args:
+        executable: /bin/bash
+
+    - name: ensure sshd allows pubkey auth
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PubkeyAuthentication'
+        line: 'PubkeyAuthentication yes'
+      become: true
+
+    - name: restart ssh
+      ansible.builtin.shell: |
+        sudo service ssh restart || sudo systemctl restart ssh
+      args:
+        executable: /bin/bash
+
+    - name: read windows facts json
+      ansible.builtin.slurp:
+        src: "{{ facts_path_windows }}"
+      register: winfacts_raw
+
+    - name: parse windows facts
+      ansible.builtin.set_fact:
+        winfacts: "{{ (winfacts_raw.content | b64decode) | from_json }}"
+
+    - name: choose host ip (from windows facts)
+      ansible.builtin.set_fact:
+        host_ip: "{{ winfacts.windows.host_ip }}"
+
+    - name: choose wsl user
+      ansible.builtin.set_fact:
+        wsl_user: "{{ ansible_user_id }}"
+
+    - name: choose wsl distro name (best-effort)
+      ansible.builtin.shell: |
+        (wsl.exe -l -q 2>/dev/null || true) | head -n 1 | tr -d '\r'
+      register: distro_name
+      changed_when: false
+
+    - name: write host_vars for windows surface (do not write real password)
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/host_vars_windows.yml.j2"
+        dest: "{{ host_vars_dir }}/server-225-win.yaml"
+        mode: "0644"
+
+    - name: write host_vars for wsl surface
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/host_vars_wsl.yml.j2"
+        dest: "{{ host_vars_dir }}/server-225-wsl.yaml"
+        mode: "0644"
