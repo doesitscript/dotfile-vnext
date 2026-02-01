@@ -1,0 +1,36 @@
+# inventory/inventory.yaml - UPDATE INSTRUCTIONS
+# 
+# Update the windows_hosts and wsl_hosts sections to use variables from host_vars
+# instead of hardcoded values. The bootstrap will populate host_vars with discovered values.
+#
+# REPLACE the existing server-225-win and server-225-wsl entries with:
+
+    windows_hosts:
+      hosts:
+        server-225-win:
+          ansible_connection: winrm
+          ansible_host: "{{ host_ip }}"
+          ansible_port: "{{ winrm_port }}"
+          ansible_user: "{{ win_user }}"
+          ansible_password: "{{ win_password }}"   # vault var reference from host_vars
+          ansible_winrm_transport: ntlm
+          ansible_winrm_server_cert_validation: ignore
+          physical_node: server-225
+          surface_type: windows_host
+
+    wsl_hosts:
+      hosts:
+        server-225-wsl:
+          ansible_connection: ssh
+          ansible_host: "{{ host_ip }}"
+          ansible_port: "{{ wsl_ssh_port }}"
+          ansible_user: "{{ wsl_user }}"
+          physical_node: server-225
+          surface_type: wsl
+
+# Note: The bootstrap process will create/update:
+# - inventory/host_vars/server-225-win.yaml
+# - inventory/host_vars/server-225-wsl.yaml
+# 
+# These host_vars files contain the actual discovered values (host_ip, ports, usernames)
+# while keeping passwords as vault variable references.
