@@ -457,3 +457,10 @@ cursor adds docker desktop, adds k8s, adds random services, opens ports broadly
 cursor mixes winrm modules into linux tasks or vice versa
 
 if you tell me which approach you want for reaching wsl (true ssh into ubuntu vs “wsl.exe bash -lc” wrapper), i’ll tighten checkpoint 1 into a single, deterministic inventory decision that won’t cause regret later.
+
+
+################notes
+
+ the command:
+
+sudo update-ca-certificates

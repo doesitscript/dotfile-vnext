@@ -1,6 +1,7 @@
 # bin/bootstrap-local.ps1
 # Run as admin on the target Windows machine
-# This script configures WinRM HTTPS and WSL features, then writes facts to facts/server-225.json
+# This script configures WinRM HTTPS and writes facts to facts/server-225.json
+# Note: WSL installation should be done separately using wsl --install -d Ubuntu
 
 $ErrorActionPreference = "Stop"
 
@@ -52,22 +53,17 @@ if (-not (Get-NetFirewallRule -DisplayName "WinRM HTTPS 5986" -ErrorAction Silen
   netsh advfirewall firewall add rule name="WinRM HTTPS 5986" dir=in action=allow protocol=TCP localport=5986 | Out-Null
 }
 
-# Enable WSL features (may require reboot)
-$wslFeature = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
-$vmFeature  = Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
-
-$needsReboot = $false
-if ($wslFeature.State -ne "Enabled") { Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -NoRestart | Out-Null; $needsReboot = $true }
-if ($vmFeature.State  -ne "Enabled") { Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -NoRestart | Out-Null; $needsReboot = $true }
-
-# Check if WSL exists
+# Check if WSL exists and get distro list
 $wslExists = $false
-try { wsl -l -q | Out-Null; $wslExists = $true } catch { $wslExists = $false }
-
-# If WSL exists, get distro list
 $distroList = @()
-if ($wslExists) {
-  $distroList = (wsl -l -q) | Where-Object { $_ -and $_.Trim().Length -gt 0 }
+try { 
+  $wslOutput = wsl -l -q 2>&1
+  if ($LASTEXITCODE -eq 0 -and $wslOutput) {
+    $wslExists = $true
+    $distroList = $wslOutput | Where-Object { $_ -and $_.Trim().Length -gt 0 }
+  }
+} catch { 
+  $wslExists = $false 
 }
 
 $facts = [ordered]@{
@@ -80,17 +76,10 @@ $facts = [ordered]@{
     winrm_https_thumbprint = $thumb
   }
   wsl = @{
-    features_enabled = ($wslFeature.State -eq "Enabled" -and $vmFeature.State -eq "Enabled")
     distros = $distroList
   }
-  needs_reboot = $needsReboot
 }
 
 Write-Facts ".\facts\server-225.json" $facts
-
-if ($needsReboot) {
-  Write-Host "WSL features enabled. Reboot is required before continuing."
-  exit 3010
-}
 
 Write-Host "Windows bootstrap complete. Now run bin/bootstrap-local.sh inside WSL."
