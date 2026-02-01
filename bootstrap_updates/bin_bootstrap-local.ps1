@@ -47,15 +47,6 @@ $needsReboot = $false
 if ($wslFeature.State -ne "Enabled") { Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -NoRestart | Out-Null; $needsReboot = $true }
 if ($vmFeature.State  -ne "Enabled") { Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -NoRestart | Out-Null; $needsReboot = $true }
 
-# Check if WSL exists
-$wslExists = $false
-try { wsl -l -q | Out-Null; $wslExists = $true } catch { $wslExists = $false }
-
-# If WSL exists, get distro list
-$distroList = @()
-if ($wslExists) {
-  $distroList = (wsl -l -q) | Where-Object { $_ -and $_.Trim().Length -gt 0 }
-}
 
 $facts = [ordered]@{
   physical_node = "server-225"
