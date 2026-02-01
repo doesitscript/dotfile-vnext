@@ -11,3 +11,12 @@ win_user: "josh"
 # Keep the password as a vault variable reference only
 # Define vault_server_225_win_password in vault/shared.vault.yml (encrypted)
 win_password: "{{ win_password }}"
+
+# Ansible connection settings
+ansible_connection: winrm
+ansible_host: "{{ host_ip }}"
+ansible_user: "{{ win_user }}"
+ansible_port: {{ winfacts.windows.winrm_port }}
+ansible_winrm_transport: ntlm
+ansible_winrm_scheme: {{ winfacts.windows.winrm_scheme }}
+ansible_winrm_server_cert_validation: ignore
