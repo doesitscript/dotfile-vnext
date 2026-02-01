@@ -2,7 +2,7 @@
 # Run as admin on the target Windows machine
 # This script:
 # 1. Auto-detects which physical node it's running on (by hostname or IP)
-# 2. Collects runtime facts (hostname, IP, WinRM thumbprint, WSL distros)
+# 2. Collects runtime facts (hostname, IP, WSL distros)
 # 3. Generates host_vars files for Windows and WSL surfaces
 # 4. Writes facts JSON for auditing/reuse
 
@@ -99,8 +99,8 @@ except Exception as e:
     if ($content -match 'physical_nodes:') {
         # Match node entries with more flexible whitespace
         $nodePattern = '(?m)^\s+(\w+):\s*\r?\n(?:\s+#.*\r?\n)?\s+hostname:\s*"([^"]+)"\s*\r?\n(?:\s+#.*\r?\n)?\s+ip_address:\s*"([^"]+)"'
-        $matches = [regex]::Matches($content, $nodePattern)
-        foreach ($match in $matches) {
+        $nodeMatches = [regex]::Matches($content, $nodePattern)
+        foreach ($match in $nodeMatches) {
             $nodeKey = $match.Groups[1].Value
             $hostname = $match.Groups[2].Value
             $ip = $match.Groups[3].Value
@@ -211,37 +211,6 @@ function Get-DesiredAnsibleHost {
     }
 }
 
-function Get-WinRMHttpsThumbprint {
-    # Try to get thumbprint from WinRM HTTPS listener
-    try {
-        $listenerOutput = winrm enumerate winrm/config/Listener 2>&1
-        if ($listenerOutput -match 'CertificateThumbprint\s*=\s*([A-F0-9]+)') {
-            return $Matches[1]
-        }
-    } catch {
-        # Continue to cert store method
-    }
-    
-    # Fallback: Get cert from cert store bound to 5986 or matching hostname
-    $hostname = $env:COMPUTERNAME
-    try {
-        $certs = Get-ChildItem Cert:\LocalMachine\My | 
-            Where-Object { 
-                ($_.Subject -like "*CN=$hostname*" -or $_.Subject -like "*CN=$hostname.*") -and
-                $_.HasPrivateKey
-            } |
-            Sort-Object NotAfter -Descending
-        
-        if ($certs) {
-            return $certs[0].Thumbprint
-        }
-    } catch {
-        # Return empty if we can't find it
-    }
-    
-    return ""
-}
-
 function Get-WSLDistros {
     $distros = @()
     try {
@@ -349,26 +318,14 @@ if (-not $bestIP -or -not ($ips -contains $bestIP)) {
     $bestIP = if ($ips.Count -gt 0) { $ips[0] } else { "0.0.0.0" }
 }
 
-# Configure WinRM HTTPS
-Write-Host "Configuring WinRM HTTPS..." -ForegroundColor Cyan
-Enable-PSRemoting -Force | Out-Null
-Set-Service WinRM -StartupType Automatic | Out-Null
-Start-Service WinRM | Out-Null
-
-# Create/ensure HTTPS listener on 5986
-$existingHttps = (winrm enumerate winrm/config/listener) -match "Transport = HTTPS"
-if (-not $existingHttps) {
-    $cert = New-SelfSignedCertificate -DnsName $hostname -CertStoreLocation Cert:\LocalMachine\My
-    $thumb = $cert.Thumbprint
-    winrm create winrm/config/Listener?Address=*+Transport=HTTPS "@{Hostname=`"$hostname`"; CertificateThumbprint=`"$thumb`"}" | Out-Null
-} else {
-    $thumb = Get-WinRMHttpsThumbprint
-}
-
-# Firewall for 5986
-if (-not (Get-NetFirewallRule -DisplayName "WinRM HTTPS 5986" -ErrorAction SilentlyContinue)) {
-    netsh advfirewall firewall add rule name="WinRM HTTPS 5986" dir=in action=allow protocol=TCP localport=5986 | Out-Null
-}
+# Configure WinRM HTTP
+Write-Host "Configuring WinRM HTTP..." -ForegroundColor Cyan
+winrm quickconfig -force | Out-Null
+# This sets up:
+# - WinRM HTTP listener on 5985
+# - Firewall rules
+# - Service startup
+# No certs involved.
 
 # Get WSL distros
 $wslDistros = Get-WSLDistros
@@ -384,9 +341,9 @@ $facts = [ordered]@{
     windows = [ordered]@{
         hostname = $hostname
         host_ip = $bestIP
-        winrm_port = 5986
+        winrm_port = 5985
         winrm_transport = "ntlm"
-        winrm_https_thumbprint = $thumb
+        winrm_scheme = "http"
     }
     wsl = [ordered]@{
         distros = $wslDistros
@@ -430,8 +387,9 @@ $winVars = [ordered]@{
     physical_node = $physicalNode
     ansible_host = $ansibleHost
     ansible_connection = "winrm"
-    ansible_port = 5986
+    ansible_port = 5985
     ansible_winrm_transport = "ntlm"
+    ansible_winrm_scheme = "http"
     ansible_winrm_server_cert_validation = "ignore"
 }
 
@@ -439,11 +397,6 @@ $winVars = [ordered]@{
 $winVars.ansible_user = if ($existingWinVars.win_user) { $existingWinVars.win_user } else { "josh" }
 if ($existingWinVars.win_password) {
     $winVars.ansible_password = $existingWinVars.win_password
-}
-
-# Optionally add thumbprint if we want to validate
-if ($thumb) {
-    $winVars.ansible_winrm_cert_thumbprint = $thumb
 }
 
 Write-Host "Writing Windows host_vars to: $winVarsPath" -ForegroundColor Cyan
