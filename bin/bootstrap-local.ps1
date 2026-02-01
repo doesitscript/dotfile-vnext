@@ -266,14 +266,14 @@ function Get-WSLDistros {
         if ($LASTEXITCODE -eq 0 -and $wslOutput) {
             # Process output - handle both array and string formats
             $lines = if ($wslOutput -is [array]) { $wslOutput } else { $wslOutput -split "`r?`n" }
-            $distros = $lines | ForEach-Object { 
+            $distros = @($lines | ForEach-Object { 
                 # Remove null bytes and trim
                 $cleaned = $_ -replace "`0", "" | ForEach-Object { $_.Trim() }
                 # Only include if it has printable characters (not just control chars or whitespace)
                 if ($cleaned -and $cleaned.Length -gt 0 -and $cleaned -match '[a-zA-Z0-9]') { 
                     $cleaned 
                 }
-            } | Where-Object { $_ }
+            } | Where-Object { $_ })
         }
     } catch {
         # WSL not available, return empty array
@@ -425,58 +425,99 @@ $existingWslVars = @{}
 if (Test-Path $winVarsPath) {
     try {
         $existingWinContent = Get-Content $winVarsPath -Raw
-        if ($existingWinContent -match 'win_user:\s*(.+)') { $existingWinVars.win_user = $Matches[1].Trim() }
-        if ($existingWinContent -match 'win_password:\s*(.+)') { $existingWinVars.win_password = $Matches[1].Trim() }
+        # Parse win_user (handle quoted and unquoted values)
+        if ($existingWinContent -match 'win_user:\s*"?([^"\r\n]+)"?') { 
+            $existingWinVars.win_user = $Matches[1].Trim().Trim('"')
+        }
+        # Parse win_password (handle quoted and unquoted values)
+        # Match: win_password: "value" or win_password: value
+        if ($existingWinContent -match 'win_password:\s*(.+?)(?:\r?\n|$)') { 
+            $passwordValue = $Matches[1].Trim()
+            # Remove surrounding quotes if present
+            if ($passwordValue -match '^"(.*)"$') {
+                $existingWinVars.win_password = $Matches[1]
+            } else {
+                $existingWinVars.win_password = $passwordValue
+            }
+        }
     } catch { }
 }
 
 if (Test-Path $wslVarsPath) {
     try {
         $existingWslContent = Get-Content $wslVarsPath -Raw
-        if ($existingWslContent -match 'wsl_user:\s*(.+)') { $existingWslVars.wsl_user = $Matches[1].Trim() }
-        if ($existingWslContent -match 'wsl_ssh_port:\s*(\d+)') { $existingWslVars.wsl_ssh_port = [int]$Matches[1] }
-        if ($existingWslContent -match 'wsl_distro:\s*(.+)') { $existingWslVars.wsl_distro = $Matches[1].Trim() }
+        # Parse wsl_user (handle quoted and unquoted values)
+        if ($existingWslContent -match 'wsl_user:\s*"?([^"\r\n]+)"?') { 
+            $existingWslVars.wsl_user = $Matches[1].Trim().Trim('"')
+        }
+        # Parse wsl_ssh_port
+        if ($existingWslContent -match 'wsl_ssh_port:\s*(\d+)') { 
+            $existingWslVars.wsl_ssh_port = [int]$Matches[1]
+        }
+        # Parse wsl_distro (handle quoted and unquoted, including empty string)
+        # Only preserve if it's a valid non-empty value
+        if ($existingWslContent -match 'wsl_distro:\s*"?([^"\r\n]+)"?') { 
+            $parsedDistro = $Matches[1].Trim().Trim('"')
+            # Only keep if it looks like a valid distro name (has alphanumeric chars)
+            if ($parsedDistro -match '[a-zA-Z0-9]') {
+                $existingWslVars.wsl_distro = $parsedDistro
+            }
+        }
     } catch { }
 }
 
-# Generate Windows host_vars
+# Generate Windows host_vars (matching template format)
 $winVars = [ordered]@{
     physical_node = $physicalNode
-    ansible_host = $ansibleHost
-    ansible_connection = "winrm"
-    ansible_port = 5985
-    ansible_winrm_transport = "ntlm"
-    ansible_winrm_scheme = "http"
-    ansible_winrm_server_cert_validation = "ignore"
+    surface_type = "windows_host"
+    host_ip = $bestIP
+    winrm_port = 5985
+    win_user = if ($existingWinVars.win_user) { $existingWinVars.win_user } else { "josh" }
 }
 
-# Preserve existing values or set defaults
-$winVars.ansible_user = if ($existingWinVars.win_user) { $existingWinVars.win_user } else { "josh" }
+# Preserve win_password if it exists
 if ($existingWinVars.win_password) {
-    $winVars.ansible_password = $existingWinVars.win_password
+    $winVars.win_password = $existingWinVars.win_password
 }
+
+# Add Ansible connection settings
+$winVars.ansible_connection = "winrm"
+$winVars.ansible_host = $ansibleHost
+$winVars.ansible_user = $winVars.win_user
+$winVars.ansible_port = 5985
+$winVars.ansible_winrm_transport = "ntlm"
+$winVars.ansible_winrm_scheme = "http"
+$winVars.ansible_winrm_server_cert_validation = "ignore"
 
 Write-Host "Writing Windows host_vars to: $winVarsPath" -ForegroundColor Cyan
 Write-Yaml -Path $winVarsPath -Data $winVars
 
-# Generate WSL host_vars
+# Generate WSL host_vars (matching template format)
 $wslVars = [ordered]@{
     physical_node = $physicalNode
-    ansible_host = $ansibleHost
-    ansible_connection = "ssh"
-    ansible_port = 22
+    surface_type = "wsl"
+    host_ip = $bestIP
+    wsl_user = if ($existingWslVars.wsl_user) { $existingWslVars.wsl_user } else { "josh" }
+    wsl_ssh_port = if ($existingWslVars.wsl_ssh_port) { $existingWslVars.wsl_ssh_port } else { 22 }
 }
 
-# Preserve existing values or set defaults
-$wslVars.ansible_user = if ($existingWslVars.wsl_user) { $existingWslVars.wsl_user } else { "josh" }
-if ($existingWslVars.wsl_ssh_port) {
-    $wslVars.ansible_port = $existingWslVars.wsl_ssh_port
-}
-if ($wslDistros.Count -gt 0 -and -not $existingWslVars.wsl_distro) {
-    $wslVars.wsl_distro = $wslDistros[0]
-} elseif ($existingWslVars.wsl_distro) {
+# Set wsl_distro - prefer detected distro over existing (which may be malformed)
+if ($wslDistros.Count -gt 0) {
+    # Ensure we get the first element as a string, not a character
+    $firstDistro = if ($wslDistros -is [array]) { $wslDistros[0] } else { $wslDistros }
+    $wslVars.wsl_distro = $firstDistro.ToString()
+} elseif ($existingWslVars.wsl_distro -and $existingWslVars.wsl_distro -match '[a-zA-Z0-9]{2,}') {
+    # Only use existing if it looks valid (at least 2 alphanumeric chars)
     $wslVars.wsl_distro = $existingWslVars.wsl_distro
+} else {
+    $wslVars.wsl_distro = ""
 }
+
+# Add Ansible connection settings
+$wslVars.ansible_connection = "ssh"
+$wslVars.ansible_host = $ansibleHost
+$wslVars.ansible_user = $wslVars.wsl_user
+$wslVars.ansible_port = $wslVars.wsl_ssh_port
 
 Write-Host "Writing WSL host_vars to: $wslVarsPath" -ForegroundColor Cyan
 Write-Yaml -Path $wslVarsPath -Data $wslVars
