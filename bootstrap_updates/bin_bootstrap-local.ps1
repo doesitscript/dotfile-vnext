@@ -34,7 +34,16 @@ $thumb = (Get-ChildItem Cert:\LocalMachine\My | Sort-Object NotAfter -Descending
 # Fast WSL install path for Windows Server 2025
 Write-Host "Checking for WSL distribution..." -ForegroundColor Cyan
 $wslList = wsl.exe -l -q 2>$null
-$hasDistro = $LASTEXITCODE -eq 0 -and ($wslList | Where-Object { $_.Trim() }).Count -gt 0
+$distroList = @()
+$hasDistro = $false
+
+if ($LASTEXITCODE -eq 0 -and $wslList) {
+    $distroList = $wslList | Where-Object { $_.Trim() }
+    $hasDistro = $distroList.Count -gt 0
+    if ($hasDistro) {
+        Write-Host "WSL distribution found: $($distroList -join ', ')" -ForegroundColor Green
+    }
+}
 
 if (-not $hasDistro) {
     Write-Host "No WSL distro found. Installing Ubuntu..." -ForegroundColor Yellow
