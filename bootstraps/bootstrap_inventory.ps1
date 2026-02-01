@@ -35,6 +35,70 @@ if ($null -eq $currentHelper -or $currentHelper -notlike "*manager*") {
     Write-Host "Git credential manager already configured."
 }
 
+# Configure Git user email and name globally
+# This makes Git config available immediately in the current terminal session
+$gitEmail = "1589359+doesitscript@users.noreply.github.com"
+$gitName = "Joshua Castillo"
+
+Write-Host ""
+Write-Host "=== Configuring Git User Identity ===" -ForegroundColor Cyan
+
+# Get current config (use full path to git.exe to ensure it works)
+$gitExe = Get-Command git -ErrorAction SilentlyContinue
+if (-not $gitExe) {
+    Write-Host "ERROR: Git command not found after installation" -ForegroundColor Red
+    exit 1
+}
+
+$currentEmail = & $gitExe.Source config --global user.email 2>$null
+$currentName = & $gitExe.Source config --global user.name 2>$null
+
+# Set email (always set to ensure it's correct)
+Write-Host "Setting Git email: $gitEmail"
+& $gitExe.Source config --global user.email $gitEmail
+$verifyEmail = & $gitExe.Source config --global user.email 2>$null
+if ($verifyEmail -eq $gitEmail) {
+    Write-Host "  [OK] Git email configured: $verifyEmail" -ForegroundColor Green
+} else {
+    Write-Host "  [ERROR] Failed to set Git email" -ForegroundColor Red
+}
+
+# Set name (only if not set, or if different)
+if ([string]::IsNullOrEmpty($currentName) -or $currentName -ne $gitName) {
+    Write-Host "Setting Git user name: $gitName"
+    & $gitExe.Source config --global user.name $gitName
+} else {
+    Write-Host "Git user name already set: $currentName"
+}
+$verifyName = & $gitExe.Source config --global user.name 2>$null
+if ($verifyName) {
+    Write-Host "  [OK] Git user name configured: $verifyName" -ForegroundColor Green
+} else {
+    Write-Host "  [ERROR] Failed to set Git user name" -ForegroundColor Red
+}
+
+# Verify configuration is available in current session
+Write-Host ""
+Write-Host "=== Verifying Git Configuration ===" -ForegroundColor Cyan
+$finalEmail = git config --global user.email 2>$null
+$finalName = git config --global user.name 2>$null
+
+if ($finalEmail -eq $gitEmail -and $finalName) {
+    Write-Host "[OK] Git is configured and ready to use in this terminal session" -ForegroundColor Green
+    Write-Host "  Email: $finalEmail" -ForegroundColor Cyan
+    Write-Host "  Name:  $finalName" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "You can now use Git commands like:" -ForegroundColor Yellow
+    Write-Host '  git commit -m "Your message"' -ForegroundColor White
+    Write-Host "  git push" -ForegroundColor White
+    Write-Host "  git pull" -ForegroundColor White
+} else {
+    Write-Host "[WARNING] Git configuration verification failed" -ForegroundColor Red
+    Write-Host "  Email: $finalEmail" -ForegroundColor Yellow
+    Write-Host "  Name:  $finalName" -ForegroundColor Yellow
+}
+Write-Host ""
+
 # Check if API token/credentials are set up
 $repoUrl = "https://github.com/doesitscript/dotfile-vnext.git"
 Write-Host "Checking if GitHub credentials are configured..."
