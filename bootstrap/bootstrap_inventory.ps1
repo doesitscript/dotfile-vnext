@@ -7,6 +7,7 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
     # Add Chocolatey to PATH for current session
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 }
+choco install git.install -y
 
 # Install git using Chocolatey (idempotent - won't reinstall if already installed)
 choco install -y git
@@ -25,6 +26,68 @@ refreshenv
 
 # Verify that git can be called.
 git --version
+
+# Install and configure Git Bash
+Write-Host ""
+Write-Host "=== Installing and Configuring Git Bash ===" -ForegroundColor Cyan
+
+# Git Bash comes with the git package, but we need to ensure it's accessible
+# Find Git installation directory
+$gitExe = Get-Command git -ErrorAction SilentlyContinue
+if ($gitExe) {
+    $gitInstallDir = Split-Path (Split-Path $gitExe.Source)
+    $gitBashPath = Join-Path $gitInstallDir "bin\bash.exe"
+    $gitBashDir = Join-Path $gitInstallDir "usr\bin"
+    
+    if (Test-Path $gitBashPath) {
+        Write-Host "Git Bash found at: $gitBashPath" -ForegroundColor Green
+        
+        # Add Git Bash directory to PATH for current session
+        if ($env:Path -notlike "*$gitBashDir*") {
+            $env:Path = "$gitBashDir;$env:Path"
+            Write-Host "Added Git Bash to PATH for current session" -ForegroundColor Green
+        }
+        
+        # Set Git Bash environment variables
+        $env:GIT_BASH = $gitBashPath
+        $env:GIT_BASH_DIR = $gitBashDir
+        
+        # Add to system PATH if not already present (requires admin, but we'll try)
+        $systemPath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+        if ($systemPath -notlike "*$gitBashDir*") {
+            Write-Host "Attempting to add Git Bash to system PATH..." -ForegroundColor Yellow
+            try {
+                $newSystemPath = "$gitBashDir;$systemPath"
+                [System.Environment]::SetEnvironmentVariable("Path", $newSystemPath, "Machine")
+                Write-Host "  [OK] Git Bash added to system PATH" -ForegroundColor Green
+            } catch {
+                Write-Host "  [WARNING] Could not add to system PATH (may require admin): $_" -ForegroundColor Yellow
+                Write-Host "  Git Bash is available in current session. Restart terminal or run refreshenv to make it permanent." -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "Git Bash directory already in system PATH" -ForegroundColor Green
+        }
+        
+        # Verify Git Bash is accessible
+        Write-Host ""
+        Write-Host "Verifying Git Bash installation..." -ForegroundColor Cyan
+        $bashVersion = & $gitBashPath --version 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "  [OK] Git Bash is working: $bashVersion" -ForegroundColor Green
+            Write-Host "  Git Bash executable: $gitBashPath" -ForegroundColor Cyan
+            Write-Host "  Git Bash directory: $gitBashDir" -ForegroundColor Cyan
+        } else {
+            Write-Host "  [WARNING] Could not verify Git Bash version" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "  [WARNING] Git Bash not found at expected location: $gitBashPath" -ForegroundColor Yellow
+        Write-Host "  Git may have been installed without Git Bash component." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  [ERROR] Git executable not found" -ForegroundColor Red
+}
+
+Write-Host ""
 
 # Configure Git credential manager if not already configured
 $currentHelper = git config --global credential.helper 2>$null

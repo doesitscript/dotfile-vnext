@@ -301,11 +301,22 @@ chmod 600 .vault_pass
 
 ```bash
 # Store in home directory
-echo "your-vault-password" > ~/.vault_pass
+echo "Pass@w0rd1" > ~/.vault_pass
 chmod 600 ~/.vault_pass
 
 # Use environment variable
 export ANSIBLE_VAULT_PASSWORD_FILE=~/.vault_pass
+```
+
+**PowerShell (Windows):**
+
+```powershell
+# Store in home directory
+"Pass@w0rd1" | Out-File -FilePath "$env:USERPROFILE\.vault_pass" -Encoding utf8 -NoNewline
+icacls "$env:USERPROFILE\.vault_pass" /inheritance:r /grant "${env:USERNAME}:(R,W)"
+
+# Use environment variable
+$env:ANSIBLE_VAULT_PASSWORD_FILE = "$env:USERPROFILE\.vault_pass"
 ```
 
 **Important:** Never commit password files to version control. Add `.vault_pass` to `.gitignore` if storing in repo root.
