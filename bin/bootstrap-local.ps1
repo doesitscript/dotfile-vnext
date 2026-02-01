@@ -46,8 +46,10 @@ function Load-MappingYaml {
     # Module not available, try to install it
     Write-Host "PowerShell-YAML module not found. Installing..." -ForegroundColor Yellow
     try {
-        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue
-        Install-Module powershell-yaml -Scope CurrentUser -Force -AllowClobber -SkipPublisherCheck -ErrorAction Stop
+        # Trust PSGallery repository (non-interactive)
+        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue | Out-Null
+        # Install module without prompts (non-interactive flags)
+        Install-Module powershell-yaml -Scope CurrentUser -Force -AllowClobber -SkipPublisherCheck -Confirm:$false -ErrorAction Stop
         Import-Module powershell-yaml -Force -ErrorAction Stop
         if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
             $raw = Get-Content -Raw -Path $Path
@@ -259,6 +261,53 @@ function Get-DesiredAnsibleHost {
     }
 }
 
+function Test-WSLInstalled {
+    # Check if WSL feature is enabled
+    $wslFeature = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -ErrorAction SilentlyContinue
+    return ($wslFeature -and $wslFeature.State -eq "Enabled")
+}
+
+function Install-WSLFeature {
+    Write-Host "WSL feature not installed. Installing..." -ForegroundColor Yellow
+    try {
+        Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -NoRestart -ErrorAction Stop | Out-Null
+        Write-Host "WSL feature installed. Reboot may be required." -ForegroundColor Green
+        return $true
+    } catch {
+        Write-Host "Failed to install WSL feature: $_" -ForegroundColor Red
+        return $false
+    }
+}
+
+function Install-WSLDistro {
+    param([string]$DistroName = "Ubuntu")
+    
+    Write-Host "Installing WSL distro: $DistroName" -ForegroundColor Yellow
+    try {
+        # Install the distro using wsl --install
+        wsl.exe --install -d $DistroName 2>&1 | Out-Null
+        
+        # Wait a moment for installation to start/complete
+        Start-Sleep -Seconds 3
+        
+        # Check if installation was successful
+        $distros = Get-WSLDistros
+        if ($distros -contains $DistroName) {
+            Write-Host "WSL distro '$DistroName' installed successfully" -ForegroundColor Green
+            return $true
+        } else {
+            # Installation may be in progress or require reboot
+            Write-Host "WSL distro installation initiated for '$DistroName'" -ForegroundColor Yellow
+            Write-Host "Note: Installation may take several minutes and a reboot may be required." -ForegroundColor Yellow
+            Write-Host "After reboot, run 'wsl' to complete the setup." -ForegroundColor Yellow
+            return $false
+        }
+    } catch {
+        Write-Host "Failed to install WSL distro: $_" -ForegroundColor Red
+        return $false
+    }
+}
+
 function Get-WSLDistros {
     $distros = @()
     try {
@@ -384,12 +433,36 @@ winrm quickconfig -force | Out-Null
 # - Service startup
 # No certs involved.
 
+# Check and install WSL if needed
+Write-Host "Checking WSL installation..." -ForegroundColor Cyan
+$wslInstalled = Test-WSLInstalled
+
+if (-not $wslInstalled) {
+    $wslInstalled = Install-WSLFeature
+    if (-not $wslInstalled) {
+        Write-Host "WARNING: Could not install WSL feature. WSL functionality will be unavailable." -ForegroundColor Red
+    }
+}
+
 # Get WSL distros
 $wslDistros = Get-WSLDistros
+
+if ($wslDistros.Count -eq 0) {
+    if ($wslInstalled) {
+        Write-Host "No WSL distros found. Installing Ubuntu..." -ForegroundColor Yellow
+        Install-WSLDistro -DistroName "Ubuntu"
+        # Refresh distro list after installation attempt
+        Start-Sleep -Seconds 2
+        $wslDistros = Get-WSLDistros
+    } else {
+        Write-Host "WSL feature not available. Skipping distro installation." -ForegroundColor Yellow
+    }
+}
+
 if ($wslDistros.Count -gt 0) {
     Write-Host "WSL distribution found: $($wslDistros -join ', ')" -ForegroundColor Green
 } else {
-    Write-Host "No WSL distros found" -ForegroundColor Yellow
+    Write-Host "No WSL distros available" -ForegroundColor Yellow
 }
 
 # Build facts object

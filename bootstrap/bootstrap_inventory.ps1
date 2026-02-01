@@ -1,3 +1,24 @@
+# Check if running as Administrator - WSL setup issues
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if ($isAdmin) {
+    Write-Host ""
+    Write-Host "╔══════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Red
+    Write-Host "║                                                                              ║" -ForegroundColor Red
+    Write-Host "║                    ⚠️  CRITICAL WARNING ⚠️                                  ║" -ForegroundColor Red
+    Write-Host "║                                                                              ║" -ForegroundColor Red
+    Write-Host "║  You are running as Administrator!                                           ║" -ForegroundColor Yellow
+    Write-Host "║                                                                              ║" -ForegroundColor Red
+    Write-Host "║  Running this script as Administrator causes issues with WSL setup.         ║" -ForegroundColor Yellow
+    Write-Host "║                                                                              ║" -ForegroundColor Red
+    Write-Host "║  Please run this script with a regular (non-Administrator) user account.    ║" -ForegroundColor Yellow
+    Write-Host "║                                                                              ║" -ForegroundColor Red
+    Write-Host "╚══════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Press any key to continue anyway (NOT RECOMMENDED) or Ctrl+C to exit..." -ForegroundColor Yellow
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    Write-Host ""
+}
+
 # Install Chocolatey if not already installed
 if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
     Write-Host "Installing Chocolatey..."
