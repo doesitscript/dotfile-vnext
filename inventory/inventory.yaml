@@ -8,10 +8,11 @@ all:
     windows_hosts:
       hosts:
         server-225-win:
-          ansible_host: "DESKTOP-VLLM"  # Server-225 IP or hostname
           ansible_connection: winrm
-          ansible_user: "josh"  # Windows admin username
-          ansible_port: 5986
+          ansible_host: "{{ host_ip }}"
+          ansible_port: "{{ winrm_port }}"
+          ansible_user: "{{ win_user }}"
+          ansible_password: "{{ win_password }}"   # vault var reference from host_vars
           ansible_winrm_transport: ntlm
           ansible_winrm_server_cert_validation: ignore
           physical_node: server-225
@@ -41,13 +42,12 @@ all:
     wsl_hosts:
       hosts:
         server-225-wsl:
-          ansible_host: "DESKTOP-VLLM"  # Server-225 IP or hostname (SSH to Windows, then WSL)
           ansible_connection: ssh
-          ansible_user: "josh"  # WSL username
-          ansible_port: 22
+          ansible_host: "{{ host_ip }}"
+          ansible_port: "{{ wsl_ssh_port }}"
+          ansible_user: "{{ wsl_user }}"
           physical_node: server-225
           surface_type: wsl
-          wsl_distro: "ubuntu-wsl-vllm"  # WSL distro name: ubuntu-wsl-{purpose}
 
         dev-3090-wsl:
           ansible_host: "Gaming-Desktop"  # dev-3090 IP or hostname (SSH to Windows, then WSL)
