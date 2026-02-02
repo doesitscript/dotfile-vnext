@@ -12,8 +12,13 @@ $ErrorActionPreference = "Stop"
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
     Write-Host "ERROR: This script must be run as Administrator." -ForegroundColor Red
+    Write-Host "Current user: $env:USERNAME" -ForegroundColor Yellow
+    Write-Host "Please run PowerShell as Administrator and try again." -ForegroundColor Yellow
     exit 1
 }
+
+Write-Host "Running as Administrator: $isAdmin" -ForegroundColor Green
+Write-Host "Current user: $env:USERNAME" -ForegroundColor Cyan
 
 # Get script directory and repo root
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -46,21 +51,107 @@ function Load-MappingYaml {
     # Module not available, try to install it
     Write-Host "PowerShell-YAML module not found. Installing..." -ForegroundColor Yellow
     try {
-        # Trust PSGallery repository (non-interactive)
-        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue | Out-Null
-        # Install module without prompts (non-interactive flags)
-        Install-Module powershell-yaml -Scope CurrentUser -Force -AllowClobber -SkipPublisherCheck -Confirm:$false -ErrorAction Stop
+        # Determine installation scope based on admin status
+        $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+        $installScope = if ($isAdmin) { 'AllUsers' } else { 'CurrentUser' }
+        
+        # Bypass all PowerShell Gallery cmdlets that cause prompt issues
+        # Directly download and extract the module from PowerShell Gallery API
+        $tempModulePath = Join-Path $env:TEMP "powershell-yaml-install"
+        if (Test-Path $tempModulePath) {
+            Remove-Item -Path $tempModulePath -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        New-Item -ItemType Directory -Path $tempModulePath -Force | Out-Null
+        
+        Write-Host "Downloading PowerShell-YAML module directly from PowerShell Gallery..." -ForegroundColor Yellow
+        $galleryUrl = "https://www.powershellgallery.com/api/v2/package/powershell-yaml"
+        $packageFile = Join-Path $tempModulePath "powershell-yaml.nupkg"
+        
+        try {
+            Invoke-WebRequest -Uri $galleryUrl -OutFile $packageFile -UseBasicParsing -ErrorAction Stop
+        } catch {
+            Write-Host "Failed to download module: $_" -ForegroundColor Red
+            throw
+        }
+        
+        # Extract nupkg (it's a zip file)
+        Write-Host "Extracting module package..." -ForegroundColor Yellow
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $extractPath = Join-Path $tempModulePath "extracted"
+        New-Item -ItemType Directory -Path $extractPath -Force | Out-Null
+        
+        try {
+            [System.IO.Compression.ZipFile]::ExtractToDirectory($packageFile, $extractPath)
+        } catch {
+            Write-Host "Failed to extract module: $_" -ForegroundColor Red
+            throw
+        }
+        
+        # Find the module files - PowerShell modules are typically in lib/netstandard2.0 or lib/net472
+        $moduleSource = $null
+        $libDirs = Get-ChildItem -Path $extractPath -Directory -Filter "lib" -ErrorAction SilentlyContinue
+        if ($libDirs) {
+            $netDirs = Get-ChildItem -Path $libDirs[0].FullName -Directory -ErrorAction SilentlyContinue
+            foreach ($netDir in $netDirs) {
+                $psd1File = Get-ChildItem -Path $netDir.FullName -Filter "*.psd1" -ErrorAction SilentlyContinue | Select-Object -First 1
+                if ($psd1File) {
+                    $moduleSource = $netDir.FullName
+                    break
+                }
+            }
+        }
+        
+        # Fallback: look for any .psd1 file in the extracted directory
+        if (-not $moduleSource) {
+            $psd1File = Get-ChildItem -Path $extractPath -Recurse -Filter "*.psd1" | Select-Object -First 1
+            if ($psd1File) {
+                $moduleSource = $psd1File.DirectoryName
+            }
+        }
+        
+        if (-not $moduleSource -or -not (Test-Path $moduleSource)) {
+            throw "Could not find module files in downloaded package"
+        }
+        
+        # Determine target module path
+        if ($installScope -eq 'AllUsers') {
+            $targetModulePath = Join-Path $env:ProgramFiles "WindowsPowerShell\Modules"
+        } else {
+            $targetModulePath = Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\Modules"
+        }
+        
+        # Ensure target directory exists
+        if (-not (Test-Path $targetModulePath)) {
+            New-Item -ItemType Directory -Path $targetModulePath -Force | Out-Null
+        }
+        
+        $moduleTarget = Join-Path $targetModulePath "powershell-yaml"
+        
+        if (Test-Path $moduleTarget) {
+            Remove-Item -Path $moduleTarget -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        
+        Write-Host "Installing PowerShell-YAML module to $moduleTarget..." -ForegroundColor Yellow
+        Copy-Item -Path $moduleSource -Destination $moduleTarget -Recurse -Force -ErrorAction Stop
+        
+        # Clean up temp directory
+        Remove-Item -Path $tempModulePath -Recurse -Force -ErrorAction SilentlyContinue
+        
+        # Import the module
         Import-Module powershell-yaml -Force -ErrorAction Stop
+        
         if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
             $raw = Get-Content -Raw -Path $Path
             $mapping = $raw | ConvertFrom-Yaml
             if (-not $mapping -or -not $mapping.physical_nodes) {
                 throw "Mapping YAML loaded but missing physical_nodes. Check formatting in $Path"
             }
+            Write-Host "Successfully loaded YAML using PowerShell-YAML module" -ForegroundColor Green
             return $mapping
         }
     } catch {
         Write-Host "Failed to install/import PowerShell-YAML module: $_" -ForegroundColor Yellow
+        Write-Host "Error details: $($_.Exception.Message)" -ForegroundColor Yellow
         Write-Host "Falling back to Python YAML parsing..." -ForegroundColor Yellow
     }
     
