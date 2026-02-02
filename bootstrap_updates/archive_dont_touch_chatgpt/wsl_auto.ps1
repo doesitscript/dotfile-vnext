@@ -170,7 +170,10 @@ if ($installedDistros -contains $wslDistro) {
 } else {
     # Install the distribution without launching (allows cloud-init to run)
     Write-Host "  Installing $wslDistro with --no-launch flag..." -ForegroundColor Cyan
-    wsl --install -d $wslDistro --no-launch
+    wsl --install $wslDistro
+    . This instance will then be configured automatically by cloud-init. The process can take several minutes
+    #https://documentation.ubuntu.com/wsl/stable/howto/cloud-init/
+    # wsl --install -d $wslDistro --no-launch
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  [ERROR] Failed to install WSL distribution" -ForegroundColor Red
