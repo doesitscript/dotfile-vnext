@@ -14,47 +14,100 @@ if [[ -z "${WSL_USER}" || "${WSL_USER}" == "root" ]]; then
   exit 1
 fi
 
-echo "Configuring passwordless sudo for user: ${WSL_USER}"
-sudo bash -lc "echo '${WSL_USER} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/${WSL_USER} && chmod 440 /etc/sudoers.d/${WSL_USER}"
+# Function to run sudo with password if needed
+# Tries passwordless sudo first, then falls back to password if provided
+run_sudo() {
+  local cmd="$1"
+  local password="${WSL_PASSWORD:-}"
+  
+  # Try passwordless sudo first
+  if sudo -n true 2>/dev/null; then
+    sudo -E bash -c "$cmd"
+    return $?
+  fi
+  
+  # If passwordless sudo doesn't work and we have a password, use it
+  if [[ -n "$password" ]]; then
+    echo "$password" | sudo -SE bash -c "$cmd" 2>/dev/null
+    return $?
+  fi
+  
+  # Last resort: prompt for password (not automated, but won't hang)
+  echo "Sudo requires password. Please enter your password:" >&2
+  sudo -E bash -c "$cmd"
+  return $?
+}
 
-# Run inside WSL on the target machine
+# Try to read WSL password from host_vars or environment
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
 cd "$REPO_ROOT"
+
+# Check for WSL password in host_vars (if ansible-vault decrypted or plain text)
+if [[ -f "inventory/host_vars/server-225-wsl.yaml" ]]; then
+  # Try to extract wsl_password if it exists (may be plain or vault reference)
+  if grep -q "wsl_password:" inventory/host_vars/server-225-wsl.yaml 2>/dev/null; then
+    WSL_PASSWORD=$(grep "wsl_password:" inventory/host_vars/server-225-wsl.yaml | sed -n 's/.*wsl_password:[[:space:]]*"\(.*\)".*/\1/p' | head -1)
+  fi
+fi
+
+# Also check environment variable (can be set before running script)
+WSL_PASSWORD="${WSL_PASSWORD:-}"
+
+# Check if passwordless sudo is already configured (e.g., by cloud-init)
+# Skip configuration if it's already working
+if sudo -n true 2>/dev/null; then
+  echo "Passwordless sudo is already configured for user: ${WSL_USER}"
+  # Verify the sudoers file exists and is correct (optional check)
+  if run_sudo "test -f /etc/sudoers.d/${WSL_USER} && grep -q '${WSL_USER}.*NOPASSWD' /etc/sudoers.d/${WSL_USER}" 2>/dev/null; then
+    echo "  [OK] Sudoers file is properly configured"
+  fi
+else
+  echo "Configuring passwordless sudo for user: ${WSL_USER}"
+  run_sudo "echo '${WSL_USER} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/${WSL_USER} && chmod 440 /etc/sudoers.d/${WSL_USER}"
+  # Verify it worked
+  if sudo -n true 2>/dev/null; then
+    echo "  [OK] Passwordless sudo configured successfully"
+  else
+    echo "  [WARNING] Passwordless sudo may not be fully configured"
+  fi
+fi
 
 echo "Setting up SSH server in WSL..."
 
 # Install openssh-server if not present
+# Use DEBIAN_FRONTEND=noninteractive to prevent any package configuration prompts
 if ! command -v sshd >/dev/null 2>&1; then
-  sudo apt-get update
-  sudo apt-get install -y openssh-server
+  export DEBIAN_FRONTEND=noninteractive
+  run_sudo "apt-get update -qq"
+  run_sudo "apt-get install -y openssh-server"
+  unset DEBIAN_FRONTEND
 fi
 
 # Ensure sshd runtime directory exists
-sudo mkdir -p /var/run/sshd
+run_sudo "mkdir -p /var/run/sshd"
 
 # Enable SSH service (WSL may use systemd or init.d)
 if systemctl is-system-running >/dev/null 2>&1; then
-  sudo systemctl enable ssh 2>/dev/null || true
-  sudo systemctl start ssh 2>/dev/null || sudo service ssh start 2>/dev/null || true
+  run_sudo "systemctl enable ssh 2>/dev/null || true"
+  run_sudo "systemctl start ssh 2>/dev/null || service ssh start 2>/dev/null || true"
 else
-  sudo service ssh start 2>/dev/null || true
+  run_sudo "service ssh start 2>/dev/null || true"
 fi
 
 # Ensure pubkey authentication is enabled in sshd_config
-if ! sudo grep -q "^PubkeyAuthentication yes" /etc/ssh/sshd_config 2>/dev/null; then
+if ! run_sudo "grep -q '^PubkeyAuthentication yes' /etc/ssh/sshd_config 2>/dev/null"; then
   # Comment out any existing PubkeyAuthentication line and add our setting
-  sudo sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+  run_sudo "sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config"
   # If no line exists, add it
-  if ! sudo grep -q "^PubkeyAuthentication" /etc/ssh/sshd_config 2>/dev/null; then
-    echo "PubkeyAuthentication yes" | sudo tee -a /etc/ssh/sshd_config >/dev/null
+  if ! run_sudo "grep -q '^PubkeyAuthentication' /etc/ssh/sshd_config 2>/dev/null"; then
+    run_sudo "echo 'PubkeyAuthentication yes' >> /etc/ssh/sshd_config"
   fi
   
   # Restart SSH to apply changes
   if systemctl is-system-running >/dev/null 2>&1; then
-    sudo systemctl restart ssh 2>/dev/null || sudo service ssh restart 2>/dev/null || true
+    run_sudo "systemctl restart ssh 2>/dev/null || service ssh restart 2>/dev/null || true"
   else
-    sudo service ssh restart 2>/dev/null || true
+    run_sudo "service ssh restart 2>/dev/null || true"
   fi
 fi
 
