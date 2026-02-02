@@ -123,7 +123,6 @@ users:
     shell: /bin/bash
     lock_passwd: false
     passwd: $wslPassword
-
     
 write_files:
 - path: /etc/wsl.conf
@@ -145,7 +144,9 @@ $userDataFile = Join-Path $cloudInitDir "$wslDistro.user-data"
 if (Test-Path $userDataFile) {
     Write-Host "  [INFO] Overwriting existing cloud-init user-data file: $userDataFile" -ForegroundColor Yellow
 }
-$userData | Out-File -FilePath $userDataFile -Encoding UTF8 -NoNewline
+# This specific encoding flag is the key to removing the 'invisible' header errors
+$userDataLines = $userData -split "`r?`n"
+[System.IO.File]::WriteAllLines($userDataFile, $userDataLines)
 Write-Host "  Created/updated cloud-init user-data file: $userDataFile" -ForegroundColor Green
 
 Write-Host ""
