@@ -171,8 +171,8 @@ if ($installedDistros -contains $wslDistro) {
 } else {
     # Install the distribution without launching (allows cloud-init to run)
     Write-Host "  Installing $wslDistro with --no-launch flag..." -ForegroundColor Cyan
-    wsl --install $wslDistro
-    . This instance will then be configured automatically by cloud-init. The process can take several minutes
+    wsl --install $wslDistro  --no-launch
+    # . This instance will then be configured automatically by cloud-init. The process can take several minutes
     #https://documentation.ubuntu.com/wsl/stable/howto/cloud-init/
     # wsl --install -d $wslDistro --no-launch
 
@@ -189,7 +189,7 @@ Write-Host "=== Launching WSL (cloud-init will configure user automatically) ===
 Write-Host "  User: $wslUser" -ForegroundColor Cyan
 Write-Host "  Passwordless sudo: Configured" -ForegroundColor Cyan
 Write-Host "  Distribution: $wslDistro" -ForegroundColor Cyan
-Write-Host ""
+Write-Host  "Boot :  wsl -d $wslDistro"
 
 # Launch WSL - cloud-init will detect the .user-data file and configure the user
 # wsl -d $wslDistro
