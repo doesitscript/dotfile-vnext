@@ -85,6 +85,22 @@
       register: distro_name
       changed_when: false
 
+    - name: read existing wsl host_vars (to preserve wsl_password)
+      ansible.builtin.slurp:
+        src: "{{ host_vars_dir }}/server-225-wsl.yaml"
+      register: existing_wsl_hostvars_raw
+      ignore_errors: true
+
+    - name: parse existing wsl host_vars
+      ansible.builtin.set_fact:
+        existing_wsl_hostvars: "{{ (existing_wsl_hostvars_raw.content | default('') | b64decode | default('')) | from_yaml }}"
+      when: existing_wsl_hostvars_raw is defined and existing_wsl_hostvars_raw.content is defined
+
+    - name: set wsl_password for templating (prefer existing file)
+      ansible.builtin.set_fact:
+        wsl_password: "{{ existing_wsl_hostvars.wsl_password }}"
+      when: existing_wsl_hostvars is defined and (existing_wsl_hostvars.wsl_password | default('')) | length > 0
+
     - name: write host_vars for windows surface (do not write real password)
       ansible.builtin.template:
         src: "{{ playbook_dir }}/templates/host_vars_windows.yml.j2"

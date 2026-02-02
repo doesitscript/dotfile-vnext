@@ -117,6 +117,11 @@ if (Test-Path $wslHostVarsPath) {
             $wslDistroFromHostVars = "Ubuntu"
         }
         Write-Host "  Found WSL distro in host_vars: $wslDistroFromHostVars" -ForegroundColor Green
+        
+        # Warning: Only Ubuntu-24.04 is advertised as fully automated
+        if ($wslDistroFromHostVars -ne "Ubuntu-24.04") {
+            Write-Host "  [WARNING] ONLY Ubuntu-24.04 advertised as fully automated user/pass provisioning and auto app trigger" -ForegroundColor Red
+        }
     } else {
         Write-Host "  [WARNING] 'wsl_distro:' not found in file: server-225-wsl.yaml" -ForegroundColor Yellow
         Write-Host "  File location: $wslHostVarsPath" -ForegroundColor Yellow
@@ -126,9 +131,6 @@ if (Test-Path $wslHostVarsPath) {
 # Override value for testing (set this variable to override host_vars value)
 # Set $wslDistroOverride to a value (e.g., "Ubuntu-24.04") to use it instead of host_vars value
 $wslDistroOverride = "Ubuntu-24.04"  # Override value for testing - set to $null to use host_vars instead
-
-Write-Host "  [WARNING] Passwordless cloud-init container setup only works with Ubuntu-24.04" -ForegroundColor Yellow
-Write-Host "    (and maybe previous versions), but officially with this version (Ubuntu-24.04)" -ForegroundColor Yellow
 
 # Use override if set, otherwise use value from host_vars
 if ($wslDistroOverride -and $wslDistroOverride -ne $null) {
@@ -144,6 +146,11 @@ if ($wslDistroOverride -and $wslDistroOverride -ne $null) {
     Write-Host "  File: server-225-wsl.yaml at $wslHostVarsPath" -ForegroundColor Red
     Write-Host "  Either add 'wsl_distro: Ubuntu-24.04' to the file, or set `$wslDistroOverride variable" -ForegroundColor Yellow
     exit 1
+}
+
+# Critical warning: Only Ubuntu-24.04 is fully supported
+if ($wslDistro -ne "Ubuntu-24.04") {
+    Write-Host "  [WARNING] ONLY Ubuntu-24.04 advertised as fully automated user/pass provisioning and auto app trigger" -ForegroundColor Red
 }
 
 # Create cloud-init directory
@@ -242,8 +249,49 @@ Write-Host "  Distribution: $wslDistro" -ForegroundColor Cyan
 Write-Host  "Boot :  wsl -d $wslDistro"
 
 # Launch WSL - cloud-init will detect the .user-data file and configure the user
-# wsl -d $wslDistro
+# Wait a moment for cloud-init to complete if this is a fresh install
+Start-Sleep -Seconds 5
+
+Write-Host ""
+Write-Host "=== Running Ansible Local Bootstrap (destructive idempotent process) ===" -ForegroundColor Cyan
+Write-Host "  [WARNING] This is a destructive idempotent process for provisioning Ansible in WSL" -ForegroundColor Red
+Write-Host "  It will configure SSH server, passwordless sudo, and other Ansible requirements" -ForegroundColor Yellow
+Write-Host "  Running: ./bin/bootstrap-local.sh inside WSL distribution: $wslDistro" -ForegroundColor Cyan
+
+# Get the repo path in WSL format (convert Windows path to WSL path)
+# Convert D:\develop\dotfile-vnext to /mnt/d/develop/dotfile-vnext
+if ($repoRoot -match '^([A-Za-z]):') {
+    $driveLetter = $Matches[1].ToLower()
+    $wslRepoPath = $repoRoot -replace '^[A-Za-z]:', "/mnt/$driveLetter" -replace '\\', '/'
+} else {
+    # If no drive letter, assume it's already a WSL path or use as-is
+    $wslRepoPath = $repoRoot -replace '\\', '/'
+}
+
+# Run bootstrap-local.sh inside WSL
+# Use bash -c to ensure we're in the right directory and can execute the script
+$bootstrapScriptPath = "$wslRepoPath/bin/bootstrap-local.sh"
+# Escape the command properly for WSL
+$wslCommand = "cd '$wslRepoPath' && bash '$bootstrapScriptPath'"
+
+try {
+    $result = wsl -d $wslDistro bash -c $wslCommand 2>&1
+    $exitCode = $LASTEXITCODE
+    
+    if ($exitCode -eq 0) {
+        Write-Host "  [OK] Ansible local bootstrap completed successfully" -ForegroundColor Green
+    } else {
+        Write-Host "  [ERROR] Ansible local bootstrap failed with exit code: $exitCode" -ForegroundColor Red
+        Write-Host "  Output: $result" -ForegroundColor Yellow
+        Write-Host "  You may need to run './bin/bootstrap-local.sh' manually inside WSL" -ForegroundColor Yellow
+    }
+} catch {
+    Write-Host "  [ERROR] Failed to run bootstrap-local.sh: $_" -ForegroundColor Red
+    Write-Host "  You may need to run './bin/bootstrap-local.sh' manually inside WSL" -ForegroundColor Yellow
+}
 
 Write-Host ""
 Write-Host "=== WSL setup complete ===" -ForegroundColor Green
-Write-Host "  You can now run: ./bin/bootstrap-local.sh inside WSL" -ForegroundColor Cyan
+Write-Host "  WSL distribution: $wslDistro" -ForegroundColor Cyan
+Write-Host "  WSL user: $wslUser" -ForegroundColor Cyan
+Write-Host "  To access WSL manually: wsl -d $wslDistro" -ForegroundColor Cyan

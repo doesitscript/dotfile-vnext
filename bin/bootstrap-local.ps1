@@ -385,7 +385,10 @@ function Write-Facts {
     if (-not (Test-Path $dir)) {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
     }
-    $Obj | ConvertTo-Json -Depth 10 | Set-Content -Path $Path -Encoding UTF8
+    # This specific encoding method is the key to removing the 'invisible' header errors
+    $jsonContent = $Obj | ConvertTo-Json -Depth 10
+    $jsonLines = $jsonContent -split "`r?`n"
+    [System.IO.File]::WriteAllLines($Path, $jsonLines)
 }
 
 # ============================================================================
