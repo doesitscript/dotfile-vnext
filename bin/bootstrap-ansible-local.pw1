@@ -1,21 +1,52 @@
-# wsl_auto.ps1
+# bin/bootstrap-ansible-local.ps1
 # Automated WSL installation with cloud-init for server-225
-# Reads username and password from server-225-wsl host_vars and vault
+# This script automates deploying the ansible container and uses the WSL username and password
+# as the assumed ansible user and password.
+# Reads username and password from server-225-wsl and server-225-win host_vars files
+
+# ============================================================================
+# Configuration Variables (commented out - values are read from host_vars files)
+# ============================================================================
+# These variables can cause script failure if null/empty or are used to insert
+# values into file contents. Uncomment and set these if you want to override
+# the values read from host_vars files.
+#
+# $wslUser = "josh"                    # WSL username (inserted into cloud-init user-data)
+# $wslPassword = "Pass@w0rd1"          # WSL password (inserted into cloud-init user-data)
+# $wslDistroOverride = "Ubuntu-24.04" # WSL distribution name (used in file paths and commands)
+#                                      # Set to $null to use value from host_vars instead
+#
+# File paths (determined dynamically from script location):
+# $repoRoot = "D:\develop\dotfile-vnext"  # Repository root (auto-detected from script location)
+# $wslHostVarsPath = "$repoRoot\inventory\host_vars\server-225-wsl.yaml"
+# $winHostVarsPath = "$repoRoot\inventory\host_vars\server-225-win.yaml"
+# $cloudInitDir = "$env:USERPROFILE\.cloud-init"  # Cloud-init directory (auto-created)
+# $userDataFile = "$cloudInitDir\$wslDistro.user-data"  # Cloud-init user-data file
+# ============================================================================
 
 $ErrorActionPreference = "Stop"
 
-# Get repository root (assuming script is run from repo root or adjust path)
-# $repoRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
-$repoRoot = "D:\develop\dotfile-vnext"
+# Get script directory and repo root (same pattern as bootstrap-local.ps1)
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent $scriptDir
+
+# File paths used by this script:
+# - inventory\host_vars\server-225-wsl.yaml (required) - WSL host vars containing wsl_user and wsl_distro
+# - inventory\host_vars\server-225-win.yaml (required) - Windows host vars containing win_password
+# - $env:USERPROFILE\.cloud-init\$wslDistro.user-data (created) - Cloud-init user data file
+
 $wslHostVarsPath = Join-Path $repoRoot "inventory\host_vars\server-225-wsl.yaml"
-$vaultPath = Join-Path $repoRoot "vault\shared.vault.yml" # not use, but keep for reference
+$winHostVarsPath = Join-Path $repoRoot "inventory\host_vars\server-225-win.yaml"
 
 Write-Host "=== Reading server-225 WSL configuration ===" -ForegroundColor Cyan
+Write-Host "Repository root: $repoRoot" -ForegroundColor Cyan
 
 # Read WSL username from host_vars (required, no fallback)
 $wslUser = $null
 if (-not (Test-Path $wslHostVarsPath)) {
-    Write-Host "  [ERROR] WSL host_vars file not found at: $wslHostVarsPath" -ForegroundColor Red
+    Write-Host "  [ERROR] Required file not found: server-225-wsl.yaml" -ForegroundColor Red
+    Write-Host "  Expected location: $wslHostVarsPath" -ForegroundColor Red
+    Write-Host "  This file must contain 'wsl_user:' and 'wsl_distro:' entries" -ForegroundColor Yellow
     exit 1
 }
 
@@ -23,22 +54,28 @@ $hostVarsContent = Get-Content $wslHostVarsPath -Raw
 if ($hostVarsContent -match 'wsl_user:\s*"?([^"\r\n]+)"?') {
     $wslUser = $Matches[1].Trim().Trim('"')
     Write-Host "  Found WSL user: $wslUser" -ForegroundColor Green
+    Write-Host "  Username source: $wslHostVarsPath" -ForegroundColor Yellow
 } else {
-    Write-Host "  [ERROR] Could not find wsl_user in host_vars file: $wslHostVarsPath" -ForegroundColor Red
+    Write-Host "  [ERROR] Required field 'wsl_user:' not found in file: server-225-wsl.yaml" -ForegroundColor Red
+    Write-Host "  File location: $wslHostVarsPath" -ForegroundColor Red
+    Write-Host "  Please ensure the file contains 'wsl_user: <username>'" -ForegroundColor Yellow
     exit 1
 }
 
 # Ensure wsl_user was successfully retrieved - exit if still null
 if (-not $wslUser -or $wslUser -eq $null) {
     Write-Host "  [ERROR] WSL user is null or empty after reading host_vars file" -ForegroundColor Red
+    Write-Host "  File: server-225-wsl.yaml at $wslHostVarsPath" -ForegroundColor Red
     exit 1
 }
 
 # Read win_password from Windows host_vars (required, no fallback)
+# Note: This script uses win_password from Windows host_vars as the WSL password
 $wslPassword = $null
-$winHostVarsPath = Join-Path $repoRoot "inventory\host_vars\server-225-win.yaml"
 if (-not (Test-Path $winHostVarsPath)) {
-    Write-Host "  [ERROR] Windows host_vars file not found at: $winHostVarsPath" -ForegroundColor Red
+    Write-Host "  [ERROR] Required file not found: server-225-win.yaml" -ForegroundColor Red
+    Write-Host "  Expected location: $winHostVarsPath" -ForegroundColor Red
+    Write-Host "  This file must contain 'win_password:' entry (used as WSL password)" -ForegroundColor Yellow
     exit 1
 }
 
@@ -46,19 +83,27 @@ $winHostVarsContent = Get-Content $winHostVarsPath -Raw
 if ($winHostVarsContent -match 'win_password:\s*"?([^"\r\n]+)"?') {
     $wslPassword = $Matches[1].Trim().Trim('"')
     Write-Host "  Found win_password: ***" -ForegroundColor Green
+    Write-Host "  Password source: $winHostVarsPath" -ForegroundColor Yellow
 } else {
-    Write-Host "  [ERROR] Could not find win_password in host_vars file: $winHostVarsPath" -ForegroundColor Red
+    Write-Host "  [ERROR] Required field 'win_password:' not found in file: server-225-win.yaml" -ForegroundColor Red
+    Write-Host "  File location: $winHostVarsPath" -ForegroundColor Red
+    Write-Host "  Please ensure the file contains 'win_password: <password>'" -ForegroundColor Yellow
+    Write-Host "  Note: This password will be used as the WSL user password" -ForegroundColor Yellow
     exit 1
 }
 
 # Ensure win_password was successfully retrieved - exit if still null
 if (-not $wslPassword -or $wslPassword -eq $null) {
     Write-Host "  [ERROR] win_password is null or empty after reading host_vars file" -ForegroundColor Red
+    Write-Host "  File: server-225-win.yaml at $winHostVarsPath" -ForegroundColor Red
     exit 1
 }
 
+Write-Host "  [INFO] This script is not currently compatible with Ansible Vault" -ForegroundColor Green
+
 # Determine WSL distro name from host_vars (with override support for testing)
 $wslDistroFromHostVars = $null
+# Re-read host_vars content (already loaded above, but keeping for clarity)
 if (Test-Path $wslHostVarsPath) {
     $hostVarsContent = Get-Content $wslHostVarsPath -Raw
     if ($hostVarsContent -match 'wsl_distro:\s*"?([^"\r\n]+)"?') {
@@ -72,6 +117,9 @@ if (Test-Path $wslHostVarsPath) {
             $wslDistroFromHostVars = "Ubuntu"
         }
         Write-Host "  Found WSL distro in host_vars: $wslDistroFromHostVars" -ForegroundColor Green
+    } else {
+        Write-Host "  [WARNING] 'wsl_distro:' not found in file: server-225-wsl.yaml" -ForegroundColor Yellow
+        Write-Host "  File location: $wslHostVarsPath" -ForegroundColor Yellow
     }
 }
 
@@ -93,6 +141,8 @@ if ($wslDistroOverride -and $wslDistroOverride -ne $null) {
     $wslDistro = $wslDistroFromHostVars
 } else {
     Write-Host "  [ERROR] No WSL distro found in host_vars and no override set" -ForegroundColor Red
+    Write-Host "  File: server-225-wsl.yaml at $wslHostVarsPath" -ForegroundColor Red
+    Write-Host "  Either add 'wsl_distro: Ubuntu-24.04' to the file, or set `$wslDistroOverride variable" -ForegroundColor Yellow
     exit 1
 }
 
