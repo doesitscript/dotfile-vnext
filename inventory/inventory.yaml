@@ -1,6 +1,11 @@
 ---
 # FUZLANG Infrastructure Inventory
 # Dual-surface model: each Windows host has -win (WinRM) and -wsl (SSH) surfaces
+#
+# Group names (server_225, network_server, dev_3090, mac_dev) match:
+#   - group_vars/<group>.yaml  (so Ansible loads the right vars)
+#   - physical node / host_vars "base" naming (server-225 -> server_225, etc.)
+# host_vars files are only for inventory host names: server-225-win, server-225-wsl, mac-dev, etc.
 
 all:
   children:
@@ -32,32 +37,30 @@ all:
         # network-server-wsl:  # Only if network-server uses WSL runtime (not set up yet)
         #   # All connection details in host_vars/network-server-wsl.yaml
 
-    # macOS development node
-    mac_hosts:
+    # Physical-node groups (names match group_vars/<group>.yaml and host_vars base names)
+    server_225:
+      hosts:
+        server-225-win:
+        server-225-wsl:
+
+    network_server:
+      hosts:
+        network-server-win:
+        network-server-wsl:  # Uncomment when network-server is set up and WSL runtime chosen
+
+    dev_3090:
+      hosts:
+        dev-3090-win:
+        dev-3090-wsl:
+
+    mac_dev:
       hosts:
         mac-dev:
           ansible_host: "Joshs-MBP"  # mac-dev IP or hostname
           ansible_connection: ssh
           ansible_user: "joshc"
           ansible_port: 22
-          physical_node: mac-dev
           surface_type: macos
-
-    # Logical groups for playbook targeting
-    main_node:
-      hosts:
-        server-225-win:
-        server-225-wsl:
-
-    network_node:
-      hosts:
-        network-server-win:
-        network-server-wsl:  # Uncomment when network-server is set up and WSL runtime chosen
-
-    dev_node:
-      hosts:
-        dev-3090-win:
-        dev-3090-wsl:
 
   vars:
     ansible_python_interpreter: auto

@@ -24,7 +24,7 @@
       - MINIO_ACCESS_KEY
       - MINIO_SECRET_KEY
   when: 
-    - inventory_hostname in groups['network_node'] or 'network' in inventory_hostname
+    - inventory_hostname in groups['network_server'] or 'network' in inventory_hostname
     - ansible_system == "Windows"
 
 - name: Set required env keys for dev node (WSL2 path)
@@ -36,7 +36,7 @@
       - LANGFUSE_HOST
       - OLLAMA_API_BASE
   when: 
-    - inventory_hostname in groups['dev_gpu'] or 'dev-3090' in inventory_hostname
+    - inventory_hostname in groups['dev_3090'] or 'dev-3090' in inventory_hostname
     - ansible_system == "Linux"
 
 - name: Set required env keys for dev node (Windows path)
@@ -48,7 +48,7 @@
       - LANGFUSE_HOST
       - OLLAMA_API_BASE
   when: 
-    - inventory_hostname in groups['dev_gpu'] or 'dev-3090' in inventory_hostname
+    - inventory_hostname in groups['dev_3090'] or 'dev-3090' in inventory_hostname
     - ansible_system == "Windows"
 
 - name: Set required env keys for main node (WSL2 path)
@@ -59,7 +59,7 @@
       - LANGFUSE_SECRET_KEY
       - LANGFUSE_HOST
   when: 
-    - inventory_hostname in groups['main_server'] or 'server-225' in inventory_hostname
+    - inventory_hostname in groups['server_225'] or 'server-225' in inventory_hostname
     - ansible_system == "Linux"
 
 - name: Set env file path for network node (Windows)
@@ -67,7 +67,7 @@
     env_file_path: "{{ stacks_root | regex_replace('\\\\', '\\') }}\\network\\.env"
   when: 
     - ansible_system == "Windows"
-    - inventory_hostname in groups['network_node'] or 'network' in inventory_hostname
+    - inventory_hostname in groups['network_server'] or 'network' in inventory_hostname
 
 - name: Read .env file (Windows path - network node)
   win_shell: |
@@ -81,7 +81,7 @@
   failed_when: false
   when: 
     - ansible_system == "Windows"
-    - inventory_hostname in groups['network_node'] or 'network' in inventory_hostname
+    - inventory_hostname in groups['network_server'] or 'network' in inventory_hostname
     - env_file_path is defined
 
 - name: Set env file path for dev node (WSL2/Linux)
@@ -89,7 +89,7 @@
     env_file_path: "{{ wsl_mount_root }}/stacks/dev/.env"
   when: 
     - ansible_system == "Linux"
-    - inventory_hostname in groups['dev_gpu'] or 'dev-3090' in inventory_hostname
+    - inventory_hostname in groups['dev_3090'] or 'dev-3090' in inventory_hostname
 
 - name: Read .env file (WSL2/Linux path - dev node)
   shell: |
@@ -103,7 +103,7 @@
   failed_when: false
   when: 
     - ansible_system == "Linux"
-    - inventory_hostname in groups['dev_gpu'] or 'dev-3090' in inventory_hostname
+    - inventory_hostname in groups['dev_3090'] or 'dev-3090' in inventory_hostname
     - env_file_path is defined
 
 - name: Set env file path for main node (WSL2 path)
@@ -111,7 +111,7 @@
     env_file_path: "{{ wsl_mount_root }}/stacks/main/.env"
   when: 
     - ansible_system == "Linux"
-    - inventory_hostname in groups['main_server'] or 'server-225' in inventory_hostname
+    - inventory_hostname in groups['server_225'] or 'server-225' in inventory_hostname
 
 - name: Read .env file for main node (WSL2 path)
   shell: |
@@ -125,7 +125,7 @@
   failed_when: false
   when: 
     - ansible_system == "Linux"
-    - inventory_hostname in groups['main_server'] or 'server-225' in inventory_hostname
+    - inventory_hostname in groups['server_225'] or 'server-225' in inventory_hostname
     - env_file_path is defined
 
 - name: Parse env keys from output
