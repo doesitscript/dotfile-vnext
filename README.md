@@ -36,6 +36,15 @@ Before running `bin/bootstrap-local.ps1` on a new Windows server, ensure:
 
 The bootstrap script will automatically configure WinRM HTTPS, enable WSL features, and set up firewall rules. A reboot may be required after WSL features are enabled.
 
+## Developer setup (Cursor)
+
+**New devs:** Follow **`instructions.md`** to add the listed Ansible doc URLs to Cursor Docs. That indexing reduces hallucination and lets the AI see playbook/inventory structure instead of guessing from snippets.
+
+- **llms.txt:** Some sites expose `llms.txt` at their root—a markdown summary for AI. Ansible’s official docs don’t yet; watch for it in third-party collections.
+- **Why these URLs:** They’re chosen to minimize “hallucination noise” and maximize the AI’s view of the system’s structure, not just individual YAML lines.
+- **Optional:** Consider a custom `.cursorrules` (or rules in `.cursor/rules/`) to enforce “Architect”-level Ansible standards.
+- **MCP + Ansible:** For agentic Ansible workflows in Cursor, set up the MCP server for Ansible; see the [step-by-step video](https://www.youtube.com/watch?v=...) for integration (replace with your actual video URL when you have it).
+
 ## Quick Start
 
 See `docs/architecture_rules.md` for governance and checkpoint rules.
