@@ -129,6 +129,7 @@ ensure_venv() {
   fi
 
   # Install requirements only when changed, on explicit refresh, or full bootstrap.
+  local did_install_pip=false
   if [ -f "${requirements_file}" ]; then
     local current_hash
     local previous_hash
@@ -139,11 +140,27 @@ ensure_venv() {
       log_info "Installing Python dependencies from ${requirements_file}"
       pip install --quiet --upgrade -r "${requirements_file}"
       printf '%s\n' "${current_hash}" > "${requirements_hash_file}"
+      did_install_pip=true
     else
       log_info "Requirements unchanged; skipping dependency install"
     fi
   else
     log_warn "Requirements file not found: ${requirements_file}"
+  fi
+
+  # Install Ansible Galaxy collections (for bootstrap_mac, Homebrew roles, etc.) when pip deps were installed or collections file changed.
+  local requirements_yml="${repo_root}/requirements.yml"
+  local collections_hash_file="${mgmt_dir}/requirements_yml.sha256"
+  if [ -f "${requirements_yml}" ]; then
+    local col_hash
+    col_hash="$(file_sha256 "${requirements_yml}")"
+    local col_prev
+    col_prev="$(tr -d '\r\n' < "${collections_hash_file}" 2>/dev/null || true)"
+    if [ "${refresh_deps}" = true ] || [ "${full_bootstrap}" = true ] || [ "${did_install_pip}" = true ] || [ "${col_hash}" != "${col_prev}" ]; then
+      log_info "Installing Ansible Galaxy collections from ${requirements_yml}"
+      (cd "${repo_root}" && ansible-galaxy collection install -r requirements.yml --quiet)
+      printf '%s\n' "${col_hash}" > "${collections_hash_file}"
+    fi
   fi
 
   if [ "${full_bootstrap}" = true ]; then
@@ -680,6 +697,7 @@ Commands:
   bootstrap              Full bootstrap (winrm -> verify -> deploy -> verify)
                         Requires --limit or --all
                         Special case: --limit server-225-win runs local bootstrap only
+                        Mac control node: --limit mac-dev runs playbooks/bootstrap_mac.yaml only
   bootstrap-winrm        Bootstrap Windows hosts via WinRM
                         Requires --limit or --all
                         Example: fz bootstrap-winrm --limit server-225-win
@@ -693,6 +711,9 @@ Commands:
                         Prompts for confirmation unless --yes is provided
     dev                  Deploy dev stacks (dev-3090)
   verify                 Verify entire fabric (no --limit required)
+  collect-facts          Write facts for a node to facts/<node>.json
+                        Requires --limit (e.g. --limit mac-dev)
+                        Windows hosts: run on that machine: .\bin\bootstrap-local.ps1 -FactsOnly
   role-local <role>      Run one role locally on localhost
                         Example: fz role-local git
                         Supports ansible-playbook flags (e.g. --check, --diff)

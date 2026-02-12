@@ -95,6 +95,7 @@ case "${COMMAND}" in
       log_error "bootstrap requires --limit <hosts> or --all"
       log_info "This prevents accidentally running bootstrap on all hosts"
       log_info "Example: fz bootstrap --limit server-225-win"
+      log_info "Example: fz bootstrap --limit mac-dev"
       log_info "Example: fz bootstrap --all"
       exit 1
     fi
@@ -150,6 +151,11 @@ case "${COMMAND}" in
       if [[ "${limit_value}" == *"dev-3090"* ]] || [[ "${limit_value}" == *"dev"* ]]; then
         fz_ansible "playbooks/bootstrap_dev_3090.yaml" "${all_args[@]}"
       fi
+      if [[ "${limit_value}" == "mac-dev" ]]; then
+        log_step "Running Mac bootstrap (playbooks/bootstrap_mac.yaml)"
+        fz_ansible "playbooks/bootstrap_mac.yaml" "${all_args[@]}"
+        mac_only_bootstrap=true
+      fi
     elif [ "${has_all}" = true ]; then
       log_check "bootstrap mode: --all"
       # --all: run all bootstrap playbooks
@@ -164,7 +170,14 @@ case "${COMMAND}" in
       notify "FuzLang Bootstrap" "Local bootstrap completed successfully"
       exit 0
     fi
-    
+
+    # Mac control-node bootstrap: run only the mac playbook, then exit (no verify/deploy for other hosts).
+    if [ "${mac_only_bootstrap:-false}" = true ]; then
+      log_ok "Mac bootstrap completed for mac-dev"
+      notify "FuzLang Bootstrap" "Mac bootstrap completed successfully"
+      exit 0
+    fi
+
     log_step "Phase 2: Verify"
     fz_ansible "playbooks/verify_fabric.yaml" "${all_args[@]}"
     
@@ -375,6 +388,37 @@ case "${COMMAND}" in
     if fz_ansible "playbooks/verify_fabric.yaml" "$@"; then
       notify "FuzLang Verify" "Fabric verification completed successfully"
     fi
+    ;;
+  collect-facts)
+    if ! has_limit_or_all "$@"; then
+      log_error "collect-facts requires --limit <host>"
+      log_info "Example: fz collect-facts --limit mac-dev"
+      log_info "Windows host facts: run on that machine: .\\bin\\bootstrap-local.ps1 -FactsOnly"
+      exit 1
+    fi
+    cf_limit=""
+    i=0
+    cf_args=("$@")
+    while [ $i -lt ${#cf_args[@]} ]; do
+      if [ "${cf_args[$i]}" = "--limit" ] && [ $((i+1)) -lt ${#cf_args[@]} ]; then
+        cf_limit="${cf_args[$((i+1))]}"
+        break
+      fi
+      i=$((i+1))
+    done
+    if [[ "${cf_limit}" == "server-225-win" ]] || [[ "${cf_limit}" == *"-win" ]]; then
+      log_info "Facts for Windows host '${cf_limit}' are collected on that machine."
+      log_info "On that Windows host (Admin): .\\bin\\bootstrap-local.ps1 -FactsOnly"
+      exit 0
+    fi
+    if [[ "${cf_limit}" == "mac-dev" ]]; then
+      log_step "Collecting facts for mac-dev -> facts/mac-dev.json"
+      fz_ansible "playbooks/collect_facts.yaml" --limit mac-dev -e "node=mac-dev"
+      log_ok "Facts written to facts/mac-dev.json"
+      exit 0
+    fi
+    log_warn "collect-facts for '${cf_limit}' not implemented; use --limit mac-dev or run bootstrap on the target host."
+    exit 1
     ;;
   role-local)
     ROLE_NAME="${1:-}"

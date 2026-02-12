@@ -85,6 +85,22 @@ If you have the repo in **WSL on Server-225**, run the same `./bin/fz` commands 
 
 Vault password is needed for deploy if you use encrypted vault files: add `--ask-vault-pass` to the deploy command.
 
+## Bootstrap Mac (control node)
+
+Run **on the Mac** so it can act as the Ansible control node. Inventory already has `mac-dev` (e.g. `Joshs-MBP`, user `joshc`); no extra setup for hostname/username.
+
+**Single command (after clone and vault password)**
+
+```bash
+git clone https://github.com/doesitscript/dotfile-vnext.git
+cd dotfile-vnext
+echo -n 'YOUR_VAULT_PASSWORD' > .vault_pass   # or use --ask-vault-pass when running fz
+
+./bin/fz bootstrap --limit mac-dev
+```
+
+`fz bootstrap --limit mac-dev` does everything: creates `.venv`, installs Python deps and Ansible Galaxy collections (`requirements.yml`), then runs the Mac bootstrap playbook (ensures `~/.ssh/id_ed25519`, publishes it to `bootstrap/local/files/mac_dev_id_ed25519.pub`, runs baseline, package_manager, python, git, hub, dotenv_bin, homebrew, dev_tools, dotfiles, ansible_runner, ssh_keys). After that, from this repo run `./bin/fz deploy main --limit server-225-wsl` and similar.
+
 ## Quick Start
 
 See `docs/architecture_rules.md` for governance and checkpoint rules.
