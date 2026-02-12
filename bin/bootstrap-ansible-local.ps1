@@ -30,7 +30,11 @@ param(
     [bool]$UnregisterIfExists = $true,
     # Only this switch runs wsl --install when the distro is already present (unregister then re-download).
     # Without it we never run wsl --install when distro is in wsl --list; after unregister we redeploy from cache.
-    [switch]$ForceDownload = $false
+    [switch]$ForceDownload = $false,
+    # If $true (default), run bin\bootstrap-local.sh inside WSL. Set to $false to skip (e.g. re-run this script without WSL steps).
+    [bool]$RunWslBootstrap = $true,
+    # If $true (default), run ./bin/fz bootstrap --limit server-225-win inside WSL to finish setup. Set to $false to stop after bootstrap-local.sh.
+    [bool]$RunFzBootstrap = $true
 )
 
 $ErrorActionPreference = "Stop"

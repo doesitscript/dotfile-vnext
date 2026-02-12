@@ -1,10 +1,50 @@
 # bin/bootstrap-local.ps1
 # Run as admin on the target Windows machine
-# This script:
-# 1. Auto-detects which physical node it's running on (by hostname or IP)
-# 2. Collects runtime facts (hostname, IP, WSL distros)
-# 3. Generates host_vars files for Windows and WSL surfaces
-# 4. Writes facts JSON for auditing/reuse
+<#
+.SYNOPSIS
+  Bootstrap the current Windows node: detect identity, collect facts, optionally generate host_vars and chain Ansible bootstrap.
+
+.QUICK COMMANDS
+  .\bin\bootstrap-local.ps1
+    Full bootstrap: facts, host_vars, then chain to bootstrap-ansible-local.ps1 (WSL setup, Ansible). Run in elevated PowerShell.
+  .\bin\bootstrap-local.ps1 -FactsOnly
+    Refresh facts only: write facts\<node>.json and exit. Use when you need to update facts without re-running Ansible.
+  From WSL, to refresh facts: ./bin/fz collect-facts (invokes this script; full WinRM+WSL collect still needs elevated PowerShell).
+
+.DESCRIPTION
+  Run as Administrator on the target Windows machine. The script:
+  1. Auto-detects which physical node it is (by hostname or IP from inventory/hosts_mapping.yaml)
+  2. Collects runtime facts (hostname, IP, WSL distros), configures WinRM, and checks/installs WSL if needed
+  3. Writes facts to facts\<physical_node>.json (e.g. facts\server-225.json)
+  4. If not -FactsOnly: generates host_vars for Windows and WSL, then optionally runs bootstrap-ansible-local.ps1
+
+  Use -FactsOnly to only refresh the facts file and exit (no host_vars, no chained script). Full fact collection
+  (WinRM quickconfig and WSL discovery) still requires an elevated PowerShell session.
+
+.PARAMETER RunAll
+  If true (default), after generating host_vars the script chains into bootstrap-ansible-local.ps1. If false, stops after host_vars.
+
+.PARAMETER FactsOnly
+  Collect facts only: run WinRM and WSL steps, write facts\<node>.json, then exit. Do not generate host_vars or run the next script.
+  Use this to refresh facts when you need to update facts\<node>.json without re-running full bootstrap.
+
+.EXAMPLE
+  .\bin\bootstrap-local.ps1
+  Full bootstrap (run as Administrator): detect node, collect facts, write host_vars, then run Ansible local bootstrap.
+
+.EXAMPLE
+  .\bin\bootstrap-local.ps1 -FactsOnly
+  Refresh facts only: run as Administrator, write facts\server-225.json (or current node), then exit. Use when you need to update facts.
+
+.EXAMPLE
+  .\bin\bootstrap-local.ps1 -RunAll:$false
+  Generate facts and host_vars only; do not chain to bootstrap-ansible-local.ps1.
+
+.NOTES
+  From WSL you can trigger fact collection via: ./bin/fz collect-facts
+  That invokes this script with -FactsOnly. For full fact collection (WinRM + WSL), run this script from an elevated PowerShell:
+  .\bin\bootstrap-local.ps1 -FactsOnly
+#>
 
 param(
     [bool]$RunAll = $true,
@@ -693,8 +733,12 @@ Write-Host "  3. Run Ansible playbooks from your Mac using the generated host_va
 if ($RunAll) {
     $nextScriptPath = Join-Path $repoRoot "bin\bootstrap-ansible-local.ps1"
     Write-Host ""
-    Write-Host "Doing chained bootstrap: RunAll[$RunAll] NextScript[$nextScriptPath]" -ForegroundColor Cyan
-    Write-Host "RunAll is true, so bootstrap-ansible-local.ps1 is now running..." -ForegroundColor Green
+    Write-Host "================================================================================" -ForegroundColor White
+    Write-Host "  >>> CALLING NEXT SCRIPT: bin\bootstrap-ansible-local.ps1" -ForegroundColor White
+    Write-Host "  >>> TO RUN THIS SCRIPT (bootstrap-local.ps1) WITHOUT CHAINING TO THE NEXT:" -ForegroundColor Yellow
+    Write-Host "      .\bin\bootstrap-local.ps1 -RunAll:`$false" -ForegroundColor Cyan
+    Write-Host "================================================================================" -ForegroundColor White
+    Write-Host ""
     try {
         & $nextScriptPath
         Write-Host "Using chained bootstrap result: NextScript[$nextScriptPath] Status[Success]" -ForegroundColor Green

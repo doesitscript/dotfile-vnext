@@ -8,7 +8,7 @@
     $osDrive
   register: os_drive
   changed_when: false
-  when: ansible_system == "Windows"
+  when: ansible_facts['system'] == "Windows"
 
 - name: Get data root drive letter (Windows)
   win_shell: |
@@ -17,21 +17,21 @@
     $drive
   register: data_drive
   changed_when: false
-  when: ansible_system == "Windows"
+  when: ansible_facts['system'] == "Windows"
 
 - name: Get OS disk mount point (Linux/WSL)
   shell: |
     df / | tail -1 | awk '{print $1}'
   register: os_disk
   changed_when: false
-  when: ansible_system == "Linux"
+  when: ansible_facts['system'] == "Linux"
 
 - name: Get data root mount point (Linux/WSL)
   shell: |
     df "{{ wsl_mount_root }}" 2>/dev/null | tail -1 | awk '{print $1}' || echo "unknown"
   register: data_disk
   changed_when: false
-  when: ansible_system == "Linux"
+  when: ansible_facts['system'] == "Linux"
 
 - name: Verify volumes are not on OS disk (Windows)
   assert:
@@ -40,7 +40,7 @@
     fail_msg: "Data volumes are on OS disk ({{ os_drive.stdout }}). Volumes should be on non-OS disk ({{ data_drive.stdout }})."
     success_msg: "Data volumes are on non-OS disk ({{ data_drive.stdout }})"
   when: 
-    - ansible_system == "Windows"
+    - ansible_facts['system'] == "Windows"
     - os_drive.stdout is defined
     - data_drive.stdout is defined
 
@@ -51,7 +51,7 @@
     fail_msg: "Data volumes may be on OS disk. Check mount points."
     success_msg: "Data volumes appear to be on non-OS disk"
   when: 
-    - ansible_system == "Linux"
+    - ansible_facts['system'] == "Linux"
     - os_disk.stdout is defined
     - data_disk.stdout is defined
     - data_disk.stdout != "unknown"
@@ -64,7 +64,7 @@
       - "Data disk: {{ data_drive.stdout }}"
       - "Status: {{ 'PASS' if (os_drive.stdout | upper != data_drive.stdout | upper) else 'FAIL' }}"
   when: 
-    - ansible_system == "Windows"
+    - ansible_facts['system'] == "Windows"
     - os_drive.stdout is defined
     - data_drive.stdout is defined
 
@@ -76,7 +76,7 @@
       - "Data disk: {{ data_disk.stdout }}"
       - "Status: {{ 'PASS' if (os_disk.stdout != data_disk.stdout and data_disk.stdout != 'unknown') else 'WARNING (best-effort check)' }}"
   when: 
-    - ansible_system == "Linux"
+    - ansible_facts['system'] == "Linux"
     - os_disk.stdout is defined
     - data_disk.stdout is defined
 

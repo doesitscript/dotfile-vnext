@@ -25,7 +25,7 @@
       - MINIO_SECRET_KEY
   when: 
     - inventory_hostname in groups['network_server'] or 'network' in inventory_hostname
-    - ansible_system == "Windows"
+    - ansible_facts['system'] == "Windows"
 
 - name: Set required env keys for dev node (WSL2 path)
   set_fact:
@@ -37,7 +37,7 @@
       - OLLAMA_API_BASE
   when: 
     - inventory_hostname in groups['dev_3090'] or 'dev-3090' in inventory_hostname
-    - ansible_system == "Linux"
+    - ansible_facts['system'] == "Linux"
 
 - name: Set required env keys for dev node (Windows path)
   set_fact:
@@ -49,7 +49,7 @@
       - OLLAMA_API_BASE
   when: 
     - inventory_hostname in groups['dev_3090'] or 'dev-3090' in inventory_hostname
-    - ansible_system == "Windows"
+    - ansible_facts['system'] == "Windows"
 
 - name: Set required env keys for main node (WSL2 path)
   set_fact:
@@ -60,13 +60,13 @@
       - LANGFUSE_HOST
   when: 
     - inventory_hostname in groups['server_225'] or 'server-225' in inventory_hostname
-    - ansible_system == "Linux"
+    - ansible_facts['system'] == "Linux"
 
 - name: Set env file path for network node (Windows)
   set_fact:
     env_file_path: "{{ stacks_root | regex_replace('\\\\', '\\') }}\\network\\.env"
   when: 
-    - ansible_system == "Windows"
+    - ansible_facts['system'] == "Windows"
     - inventory_hostname in groups['network_server'] or 'network' in inventory_hostname
 
 - name: Read .env file (Windows path - network node)
@@ -80,7 +80,7 @@
   changed_when: false
   failed_when: false
   when: 
-    - ansible_system == "Windows"
+    - ansible_facts['system'] == "Windows"
     - inventory_hostname in groups['network_server'] or 'network' in inventory_hostname
     - env_file_path is defined
 
@@ -88,7 +88,7 @@
   set_fact:
     env_file_path: "{{ wsl_mount_root }}/stacks/dev/.env"
   when: 
-    - ansible_system == "Linux"
+    - ansible_facts['system'] == "Linux"
     - inventory_hostname in groups['dev_3090'] or 'dev-3090' in inventory_hostname
 
 - name: Read .env file (WSL2/Linux path - dev node)
@@ -102,7 +102,7 @@
   changed_when: false
   failed_when: false
   when: 
-    - ansible_system == "Linux"
+    - ansible_facts['system'] == "Linux"
     - inventory_hostname in groups['dev_3090'] or 'dev-3090' in inventory_hostname
     - env_file_path is defined
 
@@ -110,7 +110,7 @@
   set_fact:
     env_file_path: "{{ wsl_mount_root }}/stacks/main/.env"
   when: 
-    - ansible_system == "Linux"
+    - ansible_facts['system'] == "Linux"
     - inventory_hostname in groups['server_225'] or 'server-225' in inventory_hostname
 
 - name: Read .env file for main node (WSL2 path)
@@ -124,7 +124,7 @@
   changed_when: false
   failed_when: false
   when: 
-    - ansible_system == "Linux"
+    - ansible_facts['system'] == "Linux"
     - inventory_hostname in groups['server_225'] or 'server-225' in inventory_hostname
     - env_file_path is defined
 

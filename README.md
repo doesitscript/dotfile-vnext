@@ -85,6 +85,19 @@ If you have the repo in **WSL on Server-225**, run the same `./bin/fz` commands 
 
 Vault password is needed for deploy if you use encrypted vault files: add `--ask-vault-pass` to the deploy command.
 
+## Command reference (copy-paste)
+
+| Command | What it does |
+|---------|----------------|
+| `./bin/fz bootstrap --limit server-225-win` | **Local bootstrap from WSL:** run the local bootstrap playbook (host_vars, SSH, controller key, vault). Use when you are already in WSL on the target machine. |
+| `.\bin\bootstrap-local.ps1` | **Full bootstrap from Windows (Admin):** detect node, collect facts, write host_vars, then chain into Ansible local bootstrap. Run in elevated PowerShell on the Windows host. |
+| `.\bin\bootstrap-local.ps1 -FactsOnly` | **Facts only:** refresh `facts\<node>.json` (hostname, IP, WSL distros) and exit. No host_vars or Ansible run. |
+| `./bin/fz collect-facts` | **Refresh facts from WSL:** invokes the Windows fact collector; for full WinRM+WSL collection you need elevated PowerShell and `.\bin\bootstrap-local.ps1 -FactsOnly`. |
+| `./bin/fz deploy main --limit server-225-wsl` | Deploy main stacks (Ollama, LiteLLM, etc.) to the WSL host. |
+| `./bin/fz verify` | Run the verify playbook across the fabric (no `--limit` required). |
+
+**Vault:** Create `.vault_pass` in repo root with one line (your vault password). Ansible uses `vault_pass.sh`, which reads that file. See `config/README_vault_pass.md`. If `vault_pass.sh` is not executable: `chmod +x vault_pass.sh` (from WSL).
+
 ## Quick Start
 
 See `docs/architecture_rules.md` for governance and checkpoint rules.

@@ -7,12 +7,12 @@ contract_file: contracts/fuzlang.contract.yaml
 # Dotfiles role path defaults (override per host/group if needed).
 dotfiles_home: >-
   {{ 'D:\\develop\\dotfile-vnext'
-     if ansible_system == 'Windows'
-     else ('/Users/' ~ ansible_user ~ '/develop/dotfile-vnext'
-           if ansible_system == 'Darwin'
+     if ansible_facts['system'] == 'Windows'
+     else ('/Users/' ~ ansible_facts['user_id'] ~ '/develop/dotfile-vnext'
+           if ansible_facts['system'] == 'Darwin'
            else '/mnt/d/develop/dotfile-vnext') }}
 
 dotfiles_user_home: >-
-  {{ (ansible_env.USERPROFILE | default('C:\\Users\\' ~ ansible_user))
-     if ansible_system == 'Windows'
-     else (ansible_env.HOME | default('/home/' ~ ansible_user)) }}
+  {{ (ansible_facts['env']['USERPROFILE'] | default('C:\\Users\\' ~ ansible_facts['user_id']))
+     if ansible_facts['system'] == 'Windows'
+     else (ansible_facts['env']['HOME'] | default('/home/' ~ ansible_facts['user_id'])) }}

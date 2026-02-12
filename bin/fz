@@ -2,8 +2,14 @@
 set -euo pipefail
 
 # FuzLang Infrastructure CLI
-# Main entrypoint for running Ansible playbooks and utilities
+# Main entrypoint for running Ansible playbooks and utilities.
 # Script follows LOGGING_AND_OUTPUT.md contract.
+#
+# Quick commands (run from repo root):
+#   ./bin/fz bootstrap --limit server-225-win   Local bootstrap from WSL (this machine).
+#   ./bin/fz collect-facts                      Refresh Windows facts (needs elevated PowerShell for full collect).
+#   ./bin/fz deploy main --limit server-225-wsl  Deploy main stacks to WSL host.
+#   ./bin/fz verify                              Run verify playbook. See ./bin/fz --help for more.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -136,7 +142,7 @@ case "${COMMAND}" in
       log_check "bootstrap mode: --limit ${limit_value}"
       # WSL-local bootstrap path for this machine: run local bootstrap playbook instead of WinRM.
       if [[ "${limit_value}" == "server-225-win" ]]; then
-        run_local_bootstrap_playbook
+        run_local_bootstrap_playbook "${all_args[@]}"
         local_only_bootstrap=true
       fi
       # Check which playbook matches the limit

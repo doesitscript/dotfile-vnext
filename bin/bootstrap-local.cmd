@@ -9,6 +9,16 @@ if not exist "%PS_SCRIPT%" (
   exit /b 1
 )
 
+echo.
+echo ================================================================================
+echo   NEXT SCRIPT: bin\bootstrap-local.ps1 (this .cmd always runs it)
+echo   TO RUN ONLY FACT COLLECTION (no host_vars, no Ansible chain):
+echo     Run instead: .\bin\bootstrap-local.ps1 -FactsOnly
+echo   TO RUN FACTS + HOST_VARS BUT NOT THE REST OF THE CHAIN:
+echo     Run instead: .\bin\bootstrap-local.ps1 -RunAll:false
+echo ================================================================================
+echo.
+
 echo [INFO] Running: powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%"
 set "EXIT_CODE=%ERRORLEVEL%"

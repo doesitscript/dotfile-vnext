@@ -4,35 +4,35 @@
 # Reports hostname, IP info, and disk free space
 
 - name: Get hostname on macOS
-  when: ansible_system == "Darwin"
+  when: ansible_facts['system'] == "Darwin"
   become: false
   command: hostname
   register: hostname_result
   changed_when: false
 
 - name: Get hostname on Windows
-  when: ansible_system == "Windows"
+  when: ansible_facts['system'] == "Windows"
   become: false
   win_shell: hostname
   register: hostname_result
   changed_when: false
 
 - name: Get hostname on Linux/WSL
-  when: ansible_system == "Linux"
+  when: ansible_facts['system'] == "Linux"
   become: false
   command: hostname
   register: hostname_result
   changed_when: false
 
 - name: Get IP addresses on macOS
-  when: ansible_system == "Darwin"
+  when: ansible_facts['system'] == "Darwin"
   become: false
   set_fact:
     ip_info: "{{ ansible_all_ipv4_addresses }}"
   changed_when: false
 
 - name: Get IP addresses on Windows
-  when: ansible_system == "Windows"
+  when: ansible_facts['system'] == "Windows"
   become: false
   win_shell: |
     Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.IPAddress -notlike "127.*"} | Select-Object -ExpandProperty IPAddress
@@ -41,21 +41,21 @@
   failed_when: false
 
 - name: Set IP info for Windows
-  when: ansible_system == "Windows"
+  when: ansible_facts['system'] == "Windows"
   become: false
   set_fact:
     ip_info: "{{ windows_ips.stdout_lines | default([]) }}"
   changed_when: false
 
 - name: Get IP addresses on Linux/WSL
-  when: ansible_system == "Linux"
+  when: ansible_facts['system'] == "Linux"
   become: false
   set_fact:
     ip_info: "{{ ansible_all_ipv4_addresses }}"
   changed_when: false
 
 - name: Get disk free space on macOS
-  when: ansible_system == "Darwin"
+  when: ansible_facts['system'] == "Darwin"
   become: false
   command: df -h /
   register: disk_info
@@ -63,7 +63,7 @@
   failed_when: false
 
 - name: Get disk free space on Windows
-  when: ansible_system == "Windows"
+  when: ansible_facts['system'] == "Windows"
   become: false
   win_shell: |
     Get-PSDrive -PSProvider FileSystem | Select-Object Name, @{Name="Used(GB)";Expression={[math]::Round($_.Used/1GB,2)}}, @{Name="Free(GB)";Expression={[math]::Round($_.Free/1GB,2)}}, @{Name="Total(GB)";Expression={[math]::Round(($_.Used+$_.Free)/1GB,2)}}
@@ -72,7 +72,7 @@
   failed_when: false
 
 - name: Get disk free space on Linux/WSL
-  when: ansible_system == "Linux"
+  when: ansible_facts['system'] == "Linux"
   become: false
   command: df -h /
   register: disk_info
@@ -83,7 +83,7 @@
   debug:
     msg:
       - "=== Health Check Summary ==="
-      - "Hostname: {{ hostname_result.stdout | default(ansible_hostname) }}"
+      - "Hostname: {{ hostname_result.stdout | default(ansible_facts['hostname']) }}"
       - "IP Addresses: {{ ip_info | default(['unknown']) | join(', ') }}"
       - "Disk Info:"
       - "{{ disk_info.stdout_lines | default(['Unable to retrieve disk info']) | join('\n') }}"
@@ -91,21 +91,21 @@
       - "Surface Type: {{ surface_type | default('unknown') }}"
 
 - name: Verify node facts file exists on macOS
-  when: ansible_system == "Darwin"
+  when: ansible_facts['system'] == "Darwin"
   become: false
   stat:
     path: /etc/fuzlang/node_facts.json
   register: facts_file
 
 - name: Verify node facts file exists on Windows
-  when: ansible_system == "Windows"
+  when: ansible_facts['system'] == "Windows"
   become: false
   win_stat:
     path: C:\ProgramData\fuzlang\node_facts.json
   register: facts_file
 
 - name: Verify node facts file exists on Linux/WSL
-  when: ansible_system == "Linux"
+  when: ansible_facts['system'] == "Linux"
   become: false
   stat:
     path: /etc/fuzlang/node_facts.json

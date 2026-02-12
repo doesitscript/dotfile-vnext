@@ -4,7 +4,7 @@
 # Safe, minimal, idempotent
 
 - name: Set timezone on macOS
-  when: ansible_system == "Darwin"
+  when: ansible_facts['system'] == "Darwin"
   become: false
   command: systemsetup -settimezone "{{ timezone }}"
   register: timezone_result
@@ -12,42 +12,42 @@
   failed_when: false
 
 - name: Verify timezone on macOS
-  when: ansible_system == "Darwin"
+  when: ansible_facts['system'] == "Darwin"
   become: false
   command: systemsetup -gettimezone
   register: current_timezone
   changed_when: false
 
 - name: Set timezone on Windows
-  when: ansible_system == "Windows"
+  when: ansible_facts['system'] == "Windows"
   become: false
   win_timezone:
     timezone: "{{ timezone_windows }}"
   register: timezone_result
 
 - name: Verify timezone on Windows
-  when: ansible_system == "Windows"
+  when: ansible_facts['system'] == "Windows"
   become: false
   win_shell: tzutil /g
   register: current_timezone
   changed_when: false
 
 - name: Set timezone on Linux/WSL
-  when: ansible_system == "Linux"
+  when: ansible_facts['system'] == "Linux"
   become: true
   timezone:
     name: "{{ timezone }}"
   register: timezone_result
 
 - name: Verify timezone on Linux/WSL
-  when: ansible_system == "Linux"
+  when: ansible_facts['system'] == "Linux"
   become: false
   command: timedatectl show --property=Timezone --value
   register: current_timezone
   changed_when: false
 
 - name: Create node facts directory on macOS
-  when: ansible_system == "Darwin"
+  when: ansible_facts['system'] == "Darwin"
   become: false
   file:
     path: /etc/fuzlang
@@ -55,14 +55,14 @@
     mode: '0755'
 
 - name: Create node facts directory on Windows
-  when: ansible_system == "Windows"
+  when: ansible_facts['system'] == "Windows"
   become: false
   win_file:
     path: C:\ProgramData\fuzlang
     state: directory
 
 - name: Create node facts directory on Linux/WSL
-  when: ansible_system == "Linux"
+  when: ansible_facts['system'] == "Linux"
   become: true
   file:
     path: /etc/fuzlang
@@ -70,74 +70,74 @@
     mode: '0755'
 
 - name: Gather node facts for macOS
-  when: ansible_system == "Darwin"
+  when: ansible_facts['system'] == "Darwin"
   become: false
   set_fact:
     node_facts:
-      hostname: "{{ ansible_hostname }}"
-      fqdn: "{{ ansible_fqdn }}"
-      os: "{{ ansible_system }}"
-      os_version: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+      hostname: "{{ ansible_facts['hostname'] }}"
+      fqdn: "{{ ansible_facts['fqdn'] }}"
+      os: "{{ ansible_facts['system'] }}"
+      os_version: "{{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"
       timezone: "{{ current_timezone.stdout | default(timezone_windows) }}"
-      ip_addresses: "{{ ansible_all_ipv4_addresses }}"
+      ip_addresses: "{{ ansible_facts['all_ipv4_addresses'] }}"
       physical_node: "{{ physical_node | default('unknown') }}"
       surface_type: "{{ surface_type | default('unknown') }}"
       contract_version: "{{ contract_version | default(1) }}"
       facts_path: "/etc/fuzlang/node_facts.json"
 
 - name: Gather node facts for Windows
-  when: ansible_system == "Windows"
+  when: ansible_facts['system'] == "Windows"
   become: false
   set_fact:
     node_facts:
-      hostname: "{{ ansible_hostname }}"
-      fqdn: "{{ ansible_fqdn }}"
-      os: "{{ ansible_system }}"
-      os_version: "{{ ansible_os_name }} {{ ansible_os_version }}"
+      hostname: "{{ ansible_facts['hostname'] }}"
+      fqdn: "{{ ansible_facts['fqdn'] }}"
+      os: "{{ ansible_facts['system'] }}"
+      os_version: "{{ ansible_facts['os_name'] }} {{ ansible_facts['os_version'] }}"
       timezone: "{{ current_timezone.stdout | default(timezone_windows) }}"
-      ip_addresses: "{{ ansible_all_ipv4_addresses }}"
+      ip_addresses: "{{ ansible_facts['all_ipv4_addresses'] }}"
       physical_node: "{{ physical_node | default('unknown') }}"
       surface_type: "{{ surface_type | default('unknown') }}"
       contract_version: "{{ contract_version | default(1) }}"
       facts_path: "C:\\ProgramData\\fuzlang\\node_facts.json"
 
 - name: Gather node facts for Linux/WSL
-  when: ansible_system == "Linux"
+  when: ansible_facts['system'] == "Linux"
   become: false
   set_fact:
     node_facts:
-      hostname: "{{ ansible_hostname }}"
-      fqdn: "{{ ansible_fqdn }}"
-      os: "{{ ansible_system }}"
-      os_version: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+      hostname: "{{ ansible_facts['hostname'] }}"
+      fqdn: "{{ ansible_facts['fqdn'] }}"
+      os: "{{ ansible_facts['system'] }}"
+      os_version: "{{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"
       timezone: "{{ current_timezone.stdout | default(timezone_windows) }}"
-      ip_addresses: "{{ ansible_all_ipv4_addresses }}"
+      ip_addresses: "{{ ansible_facts['all_ipv4_addresses'] }}"
       physical_node: "{{ physical_node | default('unknown') }}"
       surface_type: "{{ surface_type | default('unknown') }}"
       contract_version: "{{ contract_version | default(1) }}"
       facts_path: "/etc/fuzlang/node_facts.json"
 
 - name: Write node facts file on macOS
-  when: ansible_system == "Darwin"
+  when: ansible_facts['system'] == "Darwin"
   become: false
   copy:
-    content: "{{ node_facts | to_nice_json }}"
+    content: "{{ node_facts | to_json(indent=2) }}"
     dest: "{{ node_facts.facts_path }}"
     mode: '0644'
   register: facts_written
 
 - name: Write node facts file on Windows
-  when: ansible_system == "Windows"
+  when: ansible_facts['system'] == "Windows"
   become: false
   win_copy:
-    content: "{{ node_facts | to_nice_json }}"
+    content: "{{ node_facts | to_json(indent=2) }}"
     dest: "{{ node_facts.facts_path }}"
 
 - name: Write node facts file on Linux/WSL
-  when: ansible_system == "Linux"
+  when: ansible_facts['system'] == "Linux"
   become: true
   copy:
-    content: "{{ node_facts | to_nice_json }}"
+    content: "{{ node_facts | to_json(indent=2) }}"
     dest: "{{ node_facts.facts_path }}"
     mode: '0644'
   register: facts_written

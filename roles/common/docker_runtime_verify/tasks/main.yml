@@ -18,7 +18,7 @@
   changed_when: false
   failed_when: false
   when: 
-    - ansible_system == "Linux"
+    - ansible_facts['system'] == "Linux"
     - should_be_wsl2
 
 - name: Check if Docker is running on Windows (Windows path)
@@ -28,7 +28,7 @@
   changed_when: false
   failed_when: false
   when: 
-    - ansible_system == "Windows"
+    - ansible_facts['system'] == "Windows"
     - should_be_windows
 
 - name: Check if Windows Docker is disabled (WSL2 path)
@@ -43,7 +43,7 @@
   changed_when: false
   failed_when: false
   when: 
-    - ansible_system == "Windows"
+    - ansible_facts['system'] == "Windows"
     - should_be_wsl2
     - docker_engine_on_windows | default('disabled') == 'disabled'
 
@@ -55,7 +55,7 @@
     fail_msg: "Docker is not running in WSL2 as expected by contract"
     success_msg: "Docker is running in WSL2 as expected"
   when: 
-    - ansible_system == "Linux"
+    - ansible_facts['system'] == "Linux"
     - should_be_wsl2
 
 - name: Verify Docker runtime location (Windows path)
@@ -66,7 +66,7 @@
     fail_msg: "Docker is not running on Windows as expected by contract"
     success_msg: "Docker is running on Windows as expected"
   when: 
-    - ansible_system == "Windows"
+    - ansible_facts['system'] == "Windows"
     - should_be_windows
 
 - name: Verify Windows Docker is disabled (WSL2 path)
@@ -76,7 +76,7 @@
     fail_msg: "Windows Docker Engine should be disabled but is enabled"
     success_msg: "Windows Docker Engine is disabled as expected"
   when: 
-    - ansible_system == "Windows"
+    - ansible_facts['system'] == "Windows"
     - should_be_wsl2
     - docker_engine_on_windows | default('disabled') == 'disabled'
     - windows_docker_status.stdout is defined
@@ -86,8 +86,8 @@
     msg:
       - "=== Docker Runtime Verification ==="
       - "Expected runtime: {{ expected_docker_runtime }}"
-      - "Docker in WSL2: {{ 'YES' if (ansible_system == 'Linux' and docker_wsl_check.rc == 0) else 'NO' }}"
-      - "Docker on Windows: {{ 'YES' if (ansible_system == 'Windows' and docker_windows_check.rc == 0) else 'NO' }}"
+      - "Docker in WSL2: {{ 'YES' if (ansible_facts['system'] == 'Linux' and docker_wsl_check.rc == 0) else 'NO' }}"
+      - "Docker on Windows: {{ 'YES' if (ansible_facts['system'] == 'Windows' and docker_windows_check.rc == 0) else 'NO' }}"
       - "Windows Docker disabled: {{ windows_docker_status.stdout if windows_docker_status.stdout is defined else 'N/A' }}"
       - "Status: {{ 'PASS' if ((should_be_wsl2 and docker_wsl_check.rc == 0) or (should_be_windows and docker_windows_check.rc == 0)) else 'FAIL' }}"
 

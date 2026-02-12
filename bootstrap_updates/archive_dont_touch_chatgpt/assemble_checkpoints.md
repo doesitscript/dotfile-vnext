@@ -1,4 +1,10 @@
-Guiding rule for all checkpoints (important)
+When you need to refresh facts (e.g. before or after something that might change hostname/IP/WSL distros):
+
+./bin/fz collect-facts
+When you need to refresh facts (e.g. before or after something that might change hostname/IP/WSL distros):
+
+./bin/fz bootstrap --limit server-225-win
+uiding rule for all checkpoints (important)
 
 Each checkpoint must satisfy:
 
