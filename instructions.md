@@ -58,29 +58,42 @@ Use these additional official Ansible sources when you want deeper structure and
 
 ### Optional Sources
 
-**Title:** `Ansible Inventory Guide`  
-**URL:** https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html  
 
-**Title:** `Organizing Host and Group Variables`  
-**URL:** https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html#splitting-out-vars  
+- name: ansible-inventory-guide
+  url: https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html
 
-**Title:** `How Variables Are Merged`  
-**URL:** https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html#how-we-merge  
+- name: ansible-host-group-vars
+  url: https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html#splitting-out-vars
 
-**Title:** `Ansible Variable Usage and Precedence`  
-**URL:** https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html  
+- name: ansible-var-merge
+  url: https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html#how-we-merge
 
-**Title:** `General Precedence Rules`  
-**URL:** https://docs.ansible.com/ansible/latest/reference_appendices/general_precedence.html  
+- name: ansible-variable-precedence
+  url: https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html
 
-**Title:** `Ansible Roles`  
-**URL:** https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html  
+- name: ansible-general-precedence
+  url: https://docs.ansible.com/ansible/latest/reference_appendices/general_precedence.html
 
-**Title:** `Ansible YAML Syntax`  
-**URL:** https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html  
+- name: ansible-roles
+  url: https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html
 
-**Title:** `Ansible Builtin Collection Index`  
-**URL:** https://docs.ansible.com/ansible/latest/collections/ansible/builtin/index.html  
+- name: ansible-yaml-syntax
+  url: https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html
+
+- name: ansible-builtin-collection
+  url: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/index.html
+
+Behavioral requirements:
+
+1. When assisting with anything related to Ansible, inventory structure, host_vars, group_vars, variable merging, precedence, roles, YAML syntax, or module usage, automatically consult the relevant @doc sources without requiring me to tag them manually.
+
+2. When I explicitly reference one of these documents using @doc <name>, you must load and incorporate the content from that remote source into your reasoning.
+
+3. When analyzing or generating Ansible code, inventories, roles, or variable structures, you must align your recommendations with the authoritative behavior described in these registered documentation sources.
+
+4. When conflicts arise between my repository and the official documentation, you must surface the discrepancy and explain the authoritative behavior based on the registered docs.
+
+5. These documentation sources must remain available throughout the session and be treated as canonical references for all Ansible-related reasoning.
 
 ### Explicit Reminder for Future Runs
 
@@ -89,7 +102,43 @@ When processing this instruction file:
 1. Always add docs **1 through 4** by default.
 2. After adding 1 through 4, always ask: **"Do you want me to add the optional sources to Cursor Docs too?"**
 3. If you confirm, add the optional sources to Cursor Docs and then process them as indexed docs.
+You must add the following remote documentation sources into the project's .cursor/config.json file under the top-level "docs" array. 
 
+Use the same structure and behavior demonstrated in the standard remote-doc example:
+
+{
+  "docs": [
+    {
+      "name": "my-wiki",
+      "url": "https://raw.githubusercontent.com/myorg/myrepo/main/docs/overview.md"
+    }
+  ]
+}
+
+For each entry below, create a corresponding object inside the "docs" array of .cursor/config.json. 
+Each object must contain a "name" field and a "url" field, and Cursor must ingest, fetch, index, and register these documents as project-level @doc references.
+
+Insert the following entries into .cursor/config.json:
+
+- { "name": "ansible-inventory-guide", "url": "https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html" }
+- { "name": "ansible-host-group-vars", "url": "https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html#splitting-out-vars" }
+- { "name": "ansible-var-merge", "url": "https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html#how-we-merge" }
+- { "name": "ansible-variable-precedence", "url": "https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html" }
+- { "name": "ansible-general-precedence", "url": "https://docs.ansible.com/ansible/latest/reference_appendices/general_precedence.html" }
+- { "name": "ansible-roles", "url": "https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html" }
+- { "name": "ansible-yaml-syntax", "url": "https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html" }
+- { "name": "ansible-builtin-collection", "url": "https://docs.ansible.com/ansible/latest/collections/ansible/builtin/index.html" }
+
+Processing requirements:
+
+1. Cursor must fetch and index each remote URL so the content becomes available for retrieval.
+2. Cursor must expose each document via its assigned @doc handle (e.g., @doc ansible-inventory-guide).
+3. Cursor must automatically reference these docs when assisting with Ansible-related tasks in this repository.
+4. Cursor must treat these documents as authoritative sources for inventory structure, variable precedence, variable merging, roles, YAML syntax, and module behavior.
+5. Cursor must use these docs to validate, correct, or critique any Ansible code, inventory, or role structure in this project.
+6. Cursor must maintain these references for the duration of the project and treat them as canonical documentation.
+
+End of instructions.
 ---
 
 ## Pro-Tip: llms.txt
