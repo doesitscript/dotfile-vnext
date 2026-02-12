@@ -549,6 +549,7 @@ run_local_role_playbook() {
   tmp_playbook="$(mktemp "${TMPDIR:-/tmp}/fz-role-local.XXXXXX.yml")"
   local dotfiles_home_default="${repo_root}"
   local dotfiles_user_home_default="${HOME}"
+  local local_python_interpreter="${repo_root}/.venv/bin/python3"
 
   ensure_venv
   setup_ansible_env
@@ -571,11 +572,13 @@ EOF
     "${venv_ansible}" -i "localhost," -c local "${tmp_playbook}" \
       -e "dotfiles_home=${dotfiles_home_default}" \
       -e "dotfiles_user_home=${dotfiles_user_home_default}" \
+      -e "ansible_python_interpreter=${local_python_interpreter}" \
       "$@"
   else
     "${venv_ansible}" -i "localhost," -c local "${tmp_playbook}" \
       -e "dotfiles_home=${dotfiles_home_default}" \
-      -e "dotfiles_user_home=${dotfiles_user_home_default}"
+      -e "dotfiles_user_home=${dotfiles_user_home_default}" \
+      -e "ansible_python_interpreter=${local_python_interpreter}"
   fi
   local rc=$?
 
@@ -593,6 +596,7 @@ Usage: fz <command> [options]
 Commands:
   bootstrap              Full bootstrap (winrm -> verify -> deploy -> verify)
                         Requires --limit or --all
+                        Special case: --limit server-225-win runs local bootstrap only
   bootstrap-winrm        Bootstrap Windows hosts via WinRM
                         Requires --limit or --all
                         Example: fz bootstrap-winrm --limit server-225-win
@@ -603,11 +607,13 @@ Commands:
                         Requires --limit or --all
     main                 Deploy main stacks (server-225)
     network              Deploy network stacks (network-server)
+                        Prompts for confirmation unless --yes is provided
     dev                  Deploy dev stacks (dev-3090)
   verify                 Verify entire fabric (no --limit required)
   role-local <role>      Run one role locally on localhost
                         Example: fz role-local git
                         Supports ansible-playbook flags (e.g. --check, --diff)
+                        Uses repo venv Python for deterministic local execution
   contract lint          Lint the contract YAML file
   vault edit <scope>     Edit vault file
     shared               Edit shared vault
@@ -618,6 +624,7 @@ Commands:
 Common Options (forwarded to ansible-playbook):
   --limit <pattern>      Limit execution to specific hosts (required for most commands)
   --all                  Run on all applicable hosts
+  --yes                  Skip confirmation prompt for deploy network
   --tags <tags>          Run only tasks with these tags
   --skip-tags <tags>     Skip tasks with these tags
   --check                Run in check mode (dry-run)
@@ -631,12 +638,17 @@ Common Options (forwarded to ansible-playbook):
   --forks <n>            Number of parallel processes
 
 Examples:
+  fz bootstrap --limit server-225-win
   fz bootstrap-winrm --limit server-225-win
   fz bootstrap-ssh --limit server-225-wsl
-  fz bootstrap --limit server-225-win --all
+  fz bootstrap --limit server-225-wsl
+  fz bootstrap --all
   fz deploy network --limit network-server-win
+  fz deploy network --limit network-server-win --yes
   fz deploy main --limit server-225-wsl
   fz verify
+  fz role-local git
+  fz role-local git --check --diff
   fz verify --check
   fz vault edit shared --ask-vault-pass
   fz contract lint
