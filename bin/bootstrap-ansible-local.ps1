@@ -326,12 +326,24 @@ try {
     $result = wsl --distribution $wslDistroForBootstrap bash -c $wslCommand 2>&1
     $exitCode = $LASTEXITCODE
     $resultText = if ($result -is [array]) { $result -join "`n" } else { $result.ToString() }
+    $hasOutput = -not [string]::IsNullOrWhiteSpace($resultText)
 
     if ($exitCode -eq 0) {
+        if ($hasOutput) {
+            Write-Host "  bootstrap-local.sh output:" -ForegroundColor Cyan
+            Write-Host $resultText -ForegroundColor Gray
+        } else {
+            Write-Host "  bootstrap-local.sh output: [none]" -ForegroundColor Yellow
+        }
         Write-Host "  [OK] Ansible local bootstrap completed successfully" -ForegroundColor Green
     } else {
         Write-Error "[ERROR] Ansible local bootstrap failed with exit code: $exitCode" -ErrorAction Continue
-        Write-Host "  Output: $resultText" -ForegroundColor Yellow
+        if ($hasOutput) {
+            Write-Host "  bootstrap-local.sh output:" -ForegroundColor Yellow
+            Write-Host $resultText -ForegroundColor Yellow
+        } else {
+            Write-Host "  bootstrap-local.sh output: [none]" -ForegroundColor Yellow
+        }
 
         # If the error message contains 'cannot determine non-root WSL user', print a warning
         # that the script must be run as administrator
