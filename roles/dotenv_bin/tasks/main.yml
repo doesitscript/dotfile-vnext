@@ -1,0 +1,14 @@
+# - import_tasks: mac.yml
+#   when: ansible_os_family == "Darwin"
+    
+- name: ensure a location to place bin symlink exists
+  file:
+    path: "{{ dotfiles_user_home }}/.dotfiles"
+    state: directory
+    
+- name: Link dotenv bin folder
+  file:
+    src: "{{ dotfiles_home }}/bin"
+    dest: "{{ dotfiles_user_home }}/.dotfiles/bin"
+    state: link
+    force: yes

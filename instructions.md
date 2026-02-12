@@ -52,6 +52,46 @@ Add each of these as a **doc source** in Cursor (e.g. **Settings → Cursor Sett
 
 ---
 
+## Optiontional
+
+Use these additional official Ansible sources when you want deeper structure and precedence coverage.
+
+### Optional Sources
+
+**Title:** `Ansible Inventory Guide`  
+**URL:** https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html  
+
+**Title:** `Organizing Host and Group Variables`  
+**URL:** https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html#splitting-out-vars  
+
+**Title:** `How Variables Are Merged`  
+**URL:** https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html#how-we-merge  
+
+**Title:** `Ansible Variable Usage and Precedence`  
+**URL:** https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html  
+
+**Title:** `General Precedence Rules`  
+**URL:** https://docs.ansible.com/ansible/latest/reference_appendices/general_precedence.html  
+
+**Title:** `Ansible Roles`  
+**URL:** https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html  
+
+**Title:** `Ansible YAML Syntax`  
+**URL:** https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html  
+
+**Title:** `Ansible Builtin Collection Index`  
+**URL:** https://docs.ansible.com/ansible/latest/collections/ansible/builtin/index.html  
+
+### Explicit Reminder for Future Runs
+
+When processing this instruction file:
+
+1. Always add docs **1 through 4** by default.
+2. After adding 1 through 4, always ask: **"Do you want me to add the optional sources to Cursor Docs too?"**
+3. If you confirm, add the optional sources to Cursor Docs and then process them as indexed docs.
+
+---
+
 ## Pro-Tip: llms.txt
 
 Many documentation sites expose an **llms.txt** file at their root (e.g. `https://example.com/llms.txt`). That file is a condensed, markdown-style summary of the docs aimed at AI consumption. The official Ansible docs may not have this yet; when they or third-party collections add it, consider adding that URL to Cursor Docs as well for faster, more accurate answers.
