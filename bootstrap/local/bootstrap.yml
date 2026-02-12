@@ -1,0 +1,182 @@
+---
+# bootstrap/local/bootstrap.yml
+# Canonical local bootstrap, runs inside WSL on each node.
+
+- name: Local bootstrap (WSL side, generic per node)
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    # Override with -e bootstrap_node=<node-slug> when needed.
+    physical_node: "{{ bootstrap_node | default(ansible_hostname | lower) }}"
+    facts_path_windows: "{{ playbook_dir }}/../../facts/{{ physical_node }}.json"
+    host_vars_dir: "{{ playbook_dir }}/../../inventory/host_vars"
+    windows_hostvars_path: "{{ host_vars_dir }}/{{ physical_node }}-win.yaml"
+    wsl_hostvars_path: "{{ host_vars_dir }}/{{ physical_node }}-wsl.yaml"
+    wsl_ssh_port: 22
+    mac_public_key_path: "{{ playbook_dir }}/files/mac_dev_id_ed25519.pub"
+
+  tasks:
+    - name: Ensure host_vars directory exists
+      ansible.builtin.file:
+        path: "{{ host_vars_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Ensure Windows facts file exists for this node
+      ansible.builtin.stat:
+        path: "{{ facts_path_windows }}"
+      register: windows_facts_file
+
+    - name: Stop when Windows facts file is missing
+      ansible.builtin.fail:
+        msg: >-
+          Missing facts file {{ facts_path_windows }}.
+          Run the Windows fact collector first or pass -e bootstrap_node=<node-slug>.
+      when: not windows_facts_file.stat.exists
+
+    - name: Install OpenSSH server
+      ansible.builtin.apt:
+        name: openssh-server
+        state: present
+        update_cache: true
+      become: true
+
+    - name: Enable and start SSH
+      ansible.builtin.service:
+        name: ssh
+        state: started
+        enabled: true
+      become: true
+
+    - name: Allow passwordless sudo
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ ansible_user }}"
+        content: "{{ ansible_user }} ALL=(ALL) NOPASSWD:ALL\n"
+        mode: "0440"
+      become: true
+
+    - name: Ensure sshd allows pubkey authentication
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PubkeyAuthentication"
+        line: "PubkeyAuthentication yes"
+      become: true
+
+    - name: Restart ssh service
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+      become: true
+
+    - name: Check whether mac-dev public key file exists
+      ansible.builtin.stat:
+        path: "{{ mac_public_key_path }}"
+      register: mac_public_key_file
+
+    - name: Ensure ~/.ssh directory exists for bootstrap user
+      ansible.builtin.file:
+        path: "/home/{{ ansible_user_id }}/.ssh"
+        state: directory
+        mode: "0700"
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_id }}"
+      become: true
+
+    - name: Install mac-dev public key for bootstrap user
+      ansible.posix.authorized_key:
+        user: "{{ ansible_user_id }}"
+        key: "{{ lookup('file', mac_public_key_path) }}"
+        state: present
+      become: true
+      when: mac_public_key_file.stat.exists
+
+    - name: Report missing mac-dev public key file
+      ansible.builtin.debug:
+        msg: >-
+          mac-dev public key file not found at {{ mac_public_key_path }}.
+          Add your mac key there to enable local authorized_keys injection.
+      when: not mac_public_key_file.stat.exists
+
+    - name: Read Windows facts JSON
+      ansible.builtin.slurp:
+        src: "{{ facts_path_windows }}"
+      register: winfacts_raw
+
+    - name: Parse Windows facts
+      ansible.builtin.set_fact:
+        winfacts: "{{ (winfacts_raw.content | b64decode) | from_json }}"
+
+    - name: Choose host IP from Windows facts
+      ansible.builtin.set_fact:
+        host_ip: "{{ winfacts.windows.host_ip }}"
+
+    - name: Read existing Windows host_vars to preserve credentials
+      ansible.builtin.slurp:
+        src: "{{ windows_hostvars_path }}"
+      register: existing_win_hostvars_raw
+      ignore_errors: true
+
+    - name: Parse existing Windows host_vars
+      ansible.builtin.set_fact:
+        existing_win_hostvars: "{{ (existing_win_hostvars_raw.content | default('') | b64decode | default('') | regex_replace('\\x00', '')) | from_yaml }}"
+      when: existing_win_hostvars_raw is defined and existing_win_hostvars_raw.content is defined
+
+    - name: Set win_user for templating
+      ansible.builtin.set_fact:
+        win_user: "{{ existing_win_hostvars.win_user | default('josh') }}"
+      when: existing_win_hostvars is defined
+
+    - name: Set default win_user when existing file missing
+      ansible.builtin.set_fact:
+        win_user: "josh"
+      when: win_user is not defined
+
+    - name: Set win_password for templating
+      ansible.builtin.set_fact:
+        win_password: "{{ existing_win_hostvars.win_password | default('') }}"
+      when: existing_win_hostvars is defined
+
+    - name: Set default win_password when existing file missing
+      ansible.builtin.set_fact:
+        win_password: ""
+      when: win_password is not defined
+
+    - name: Choose WSL user
+      ansible.builtin.set_fact:
+        wsl_user: "{{ ansible_user_id }}"
+
+    - name: Choose WSL distro name
+      ansible.builtin.shell: |
+        (wsl.exe -l -q 2>/dev/null || true) | head -n 1 | tr -d '\r'
+      register: distro_name
+      changed_when: false
+
+    - name: Read existing WSL host_vars to preserve credentials
+      ansible.builtin.slurp:
+        src: "{{ wsl_hostvars_path }}"
+      register: existing_wsl_hostvars_raw
+      ignore_errors: true
+
+    - name: Parse existing WSL host_vars
+      ansible.builtin.set_fact:
+        existing_wsl_hostvars: "{{ (existing_wsl_hostvars_raw.content | default('') | b64decode | default('') | regex_replace('\\x00', '')) | from_yaml }}"
+      when: existing_wsl_hostvars_raw is defined and existing_wsl_hostvars_raw.content is defined
+
+    - name: Set wsl_password for templating
+      ansible.builtin.set_fact:
+        wsl_password: "{{ existing_wsl_hostvars.wsl_password }}"
+      when: existing_wsl_hostvars is defined and (existing_wsl_hostvars.wsl_password | default('')) | length > 0
+
+    - name: Write host_vars for Windows surface
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/host_vars_windows.yml.j2"
+        dest: "{{ windows_hostvars_path }}"
+        mode: "0644"
+
+    - name: Write host_vars for WSL surface
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/host_vars_wsl.yml.j2"
+        dest: "{{ wsl_hostvars_path }}"
+        mode: "0644"

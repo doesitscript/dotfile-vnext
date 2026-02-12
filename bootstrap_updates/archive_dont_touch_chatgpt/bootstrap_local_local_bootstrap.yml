@@ -22,16 +22,26 @@
         state: directory
         mode: "0755"
 
-    - name: install and enable openssh-server in wsl
-      ansible.builtin.shell: |
-        set -e
-        sudo apt-get update
-        sudo apt-get install -y openssh-server
-        sudo mkdir -p /var/run/sshd
-        sudo systemctl enable ssh || true
-        sudo service ssh start || sudo systemctl start ssh
-      args:
-        executable: /bin/bash
+    - name: Install OpenSSH server
+      ansible.builtin.apt:
+        name: openssh-server
+        state: present
+        update_cache: true
+      become: true
+
+    - name: Enable and start SSH
+      ansible.builtin.service:
+        name: ssh
+        state: started
+        enabled: true
+      become: true
+
+    - name: Allow passwordless sudo
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ ansible_user }}"
+        content: "{{ ansible_user }} ALL=(ALL) NOPASSWD:ALL\n"
+        mode: "0440"
+      become: true
 
     - name: ensure sshd allows pubkey auth
       ansible.builtin.lineinfile:

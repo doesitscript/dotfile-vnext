@@ -3,6 +3,31 @@
 # Targets: mac-dev (SSH)
 # Purpose: Set up development control plane
 
+- name: Ensure SSH key exists for mac-dev
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Ensure ~/.ssh exists
+      ansible.builtin.file:
+        path: "{{ lookup('env', 'HOME') }}/.ssh"
+        state: directory
+        mode: "0700"
+
+    - name: Generate SSH key if missing
+      community.crypto.openssh_keypair:
+        path: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519"
+        type: ed25519
+        state: present
+        force: false
+
+    - name: Publish mac public key into local bootstrap key path
+      ansible.builtin.copy:
+        src: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519.pub"
+        dest: "{{ playbook_dir }}/../bootstrap/local/files/mac_dev_id_ed25519.pub"
+        remote_src: true
+        mode: "0644"
+
 - name: Bootstrap mac-dev node
   hosts: mac-dev
   become: false
@@ -18,6 +43,17 @@
     - role: mac_dev/dotfiles
     - role: mac_dev/ansible_runner
     - role: common/ssh_keys
+
+- name: Inject mac-dev public key into WSL hosts
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Explain local-bootstrap ownership for remote key setup
+      ansible.builtin.debug:
+        msg: >-
+          Remote authorized_keys setup is handled by bootstrap/local/bootstrap.yml
+          on each target machine, using bootstrap/local/files/mac_dev_id_ed25519.pub.
 
 
 

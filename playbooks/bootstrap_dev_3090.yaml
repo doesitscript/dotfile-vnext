@@ -6,6 +6,31 @@
 - name: Bootstrap dev-3090 Windows host
   hosts: dev-3090-win
   become: false
+  pre_tasks:
+    - name: Enable PowerShell remoting
+      ansible.windows.win_shell: Enable-PSRemoting -Force
+
+    - name: Ensure WinRM HTTPS listener is configured
+      ansible.windows.win_shell: |
+        $existing = winrm enumerate winrm/config/Listener | Select-String -Pattern "Transport = HTTPS" -SimpleMatch
+        if (-not $existing) {
+          $cert = New-SelfSignedCertificate -DnsName $env:COMPUTERNAME -CertStoreLocation Cert:\LocalMachine\My
+          winrm create winrm/config/Listener?Address=*+Transport=HTTPS "@{Hostname='$env:COMPUTERNAME'; CertificateThumbprint='$($cert.Thumbprint)'}"
+        }
+
+    - name: Open WinRM HTTPS firewall rule
+      ansible.windows.win_firewall_rule:
+        name: WinRM-HTTPS
+        localport: 5986
+        protocol: TCP
+        action: allow
+        direction: in
+        state: present
+
+    - name: Set TrustedHosts when explicitly provided
+      ansible.windows.win_shell: Set-Item -Path WSMan:\localhost\Client\TrustedHosts -Value "{{ winrm_trustedhosts }}" -Force
+      when: winrm_trustedhosts is defined
+
   roles:
     - role: common/baseline
     - role: package_manager
