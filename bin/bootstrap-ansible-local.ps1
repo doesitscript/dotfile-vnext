@@ -34,10 +34,19 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$VerbosePreference = "Continue"
+Write-Verbose "Verbose output enabled (VerbosePreference=Continue)"
+function Write-Step([string]$Message) { Write-Host "[STEP] $Message" -ForegroundColor Cyan; Write-Verbose "[STEP] $Message" }
+function Write-Check([string]$Message) { Write-Host "[CHECK] $Message" -ForegroundColor Yellow; Write-Verbose "[CHECK] $Message" }
+function Write-Set([string]$Message) { Write-Host "[SET] $Message" -ForegroundColor Cyan; Write-Verbose "[SET] $Message" }
+function Write-Skip([string]$Message) { Write-Host "[SKIP] $Message" -ForegroundColor Yellow; Write-Verbose "[SKIP] $Message" }
+function Write-Ok([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green; Write-Verbose "[OK] $Message" }
 
 # Get script directory and repo root (same pattern as bootstrap-local.ps1)
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptDir
+Write-Verbose "scriptDir=$scriptDir"
+Write-Verbose "repoRoot=$repoRoot"
 
 # File paths used by this script:
 # - inventory\host_vars\server-225-wsl.yaml (required) - WSL host vars containing wsl_user and wsl_distro
@@ -46,14 +55,16 @@ $repoRoot = Split-Path -Parent $scriptDir
 
 $wslHostVarsPath = Join-Path $repoRoot "inventory\host_vars\server-225-wsl.yaml"
 $winHostVarsPath = Join-Path $repoRoot "inventory\host_vars\server-225-win.yaml"
+Write-Verbose "wslHostVarsPath=$wslHostVarsPath"
+Write-Verbose "winHostVarsPath=$winHostVarsPath"
 
-Write-Host "=== Reading server-225 WSL configuration ===" -ForegroundColor Cyan
+Write-Step "Reading server-225 WSL configuration"
 Write-Host "Repository root: $repoRoot" -ForegroundColor Cyan
 
 # Read WSL username from host_vars (required, no fallback)
 $wslUser = $null
 if (-not (Test-Path $wslHostVarsPath)) {
-    Write-Host "  [ERROR] Required file not found: server-225-wsl.yaml" -ForegroundColor Red
+    Write-Error "[ERROR] Required file not found: server-225-wsl.yaml" -ErrorAction Continue
     Write-Host "  Expected location: $wslHostVarsPath" -ForegroundColor Red
     Write-Host "  This file must contain 'wsl_user:' and 'wsl_distro:' entries" -ForegroundColor Yellow
     exit 1
@@ -65,7 +76,7 @@ if ($hostVarsContent -match 'wsl_user:\s*"?([^"\r\n]+)"?') {
     Write-Host "  Found WSL user: $wslUser" -ForegroundColor Green
     Write-Host "  Username source: $wslHostVarsPath" -ForegroundColor Yellow
 } else {
-    Write-Host "  [ERROR] Required field 'wsl_user:' not found in file: server-225-wsl.yaml" -ForegroundColor Red
+    Write-Error "[ERROR] Required field 'wsl_user:' not found in file: server-225-wsl.yaml" -ErrorAction Continue
     Write-Host "  File location: $wslHostVarsPath" -ForegroundColor Red
     Write-Host "  Please ensure the file contains 'wsl_user: <username>'" -ForegroundColor Yellow
     exit 1
@@ -73,7 +84,7 @@ if ($hostVarsContent -match 'wsl_user:\s*"?([^"\r\n]+)"?') {
 
 # Ensure wsl_user was successfully retrieved - exit if still null
 if (-not $wslUser -or $wslUser -eq $null) {
-    Write-Host "  [ERROR] WSL user is null or empty after reading host_vars file" -ForegroundColor Red
+    Write-Error "[ERROR] WSL user is null or empty after reading host_vars file" -ErrorAction Continue
     Write-Host "  File: server-225-wsl.yaml at $wslHostVarsPath" -ForegroundColor Red
     exit 1
 }
@@ -82,7 +93,7 @@ if (-not $wslUser -or $wslUser -eq $null) {
 # Note: This script uses win_password from Windows host_vars as the WSL password
 $wslPassword = $null
 if (-not (Test-Path $winHostVarsPath)) {
-    Write-Host "  [ERROR] Required file not found: server-225-win.yaml" -ForegroundColor Red
+    Write-Error "[ERROR] Required file not found: server-225-win.yaml" -ErrorAction Continue
     Write-Host "  Expected location: $winHostVarsPath" -ForegroundColor Red
     Write-Host "  This file must contain 'win_password:' entry (used as WSL password)" -ForegroundColor Yellow
     exit 1
@@ -94,7 +105,7 @@ if ($winHostVarsContent -match 'win_password:\s*"?([^"\r\n]+)"?') {
     Write-Host "  Found win_password: ***" -ForegroundColor Green
     Write-Host "  Password source: $winHostVarsPath" -ForegroundColor Yellow
 } else {
-    Write-Host "  [ERROR] Required field 'win_password:' not found in file: server-225-win.yaml" -ForegroundColor Red
+    Write-Error "[ERROR] Required field 'win_password:' not found in file: server-225-win.yaml" -ErrorAction Continue
     Write-Host "  File location: $winHostVarsPath" -ForegroundColor Red
     Write-Host "  Please ensure the file contains 'win_password: <password>'" -ForegroundColor Yellow
     Write-Host "  Note: This password will be used as the WSL user password" -ForegroundColor Yellow
@@ -103,7 +114,7 @@ if ($winHostVarsContent -match 'win_password:\s*"?([^"\r\n]+)"?') {
 
 # Ensure win_password was successfully retrieved - exit if still null
 if (-not $wslPassword -or $wslPassword -eq $null) {
-    Write-Host "  [ERROR] win_password is null or empty after reading host_vars file" -ForegroundColor Red
+    Write-Error "[ERROR] win_password is null or empty after reading host_vars file" -ErrorAction Continue
     Write-Host "  File: server-225-win.yaml at $winHostVarsPath" -ForegroundColor Red
     exit 1
 }
@@ -150,8 +161,9 @@ if ($wslDistroOverride -and $wslDistroOverride -ne $null) {
     }
 } elseif ($wslDistroFromHostVars) {
     $wslDistro = $wslDistroFromHostVars
+    Write-Verbose "Using wsl_distro from host_vars: $wslDistro"
 } else {
-    Write-Host "  [ERROR] No WSL distro found in host_vars and no override set" -ForegroundColor Red
+    Write-Error "[ERROR] No WSL distro found in host_vars and no override set" -ErrorAction Continue
     Write-Host "  File: server-225-wsl.yaml at $wslHostVarsPath" -ForegroundColor Red
     Write-Host "  Either add 'wsl_distro: Ubuntu-24.04' to the file, or set `$wslDistroOverride variable" -ForegroundColor Yellow
     exit 1
@@ -166,7 +178,7 @@ if ($wslDistro -ne "Ubuntu-24.04") {
 # This file lives on the bootstrapping host and will automate creating the username and password
 # on our test Ubuntu WSL distribution
 Write-Host ""
-Write-Host "=== Automating username and password creation ===" -ForegroundColor Cyan
+Write-Step "Automating username and password creation"
 Write-Host "  This cloud-init user-data file lives on the bootstrapping host" -ForegroundColor Cyan
 Write-Host "  It will automate creating the username '$wslUser' and password on test Ubuntu WSL" -ForegroundColor Cyan
 
@@ -174,6 +186,9 @@ $cloudInitDir = "$env:USERPROFILE\.cloud-init"
 if (-not (Test-Path $cloudInitDir)) {
     New-Item -ItemType Directory -Path $cloudInitDir -Force | Out-Null
     Write-Host "  Created cloud-init directory: $cloudInitDir" -ForegroundColor Green
+    Write-Verbose "Created cloud-init directory at $cloudInitDir"
+} else {
+    Write-Verbose "cloud-init directory already exists: $cloudInitDir"
 }
 
 # Generate cloud-init user-data
@@ -209,6 +224,7 @@ $userDataFile = Join-Path $cloudInitDir "$wslDistro.user-data"
 # Idempotent: overwrite existing file if it exists
 if (Test-Path $userDataFile) {
     Write-Host "  [INFO] Overwriting existing cloud-init user-data file: $userDataFile" -ForegroundColor Yellow
+    Write-Verbose "user-data file exists and will be overwritten: $userDataFile"
 }
 # This specific encoding flag is the key to removing the 'invisible' header errors
 $userDataLines = $userData -split "`r?`n"
@@ -216,7 +232,7 @@ $userDataLines = $userData -split "`r?`n"
 Write-Host "  Created/updated cloud-init user-data file: $userDataFile" -ForegroundColor Green
 
 Write-Host ""
-Write-Host "=== WSL distribution: $wslDistro ===" -ForegroundColor Cyan
+Write-Step "WSL distribution: $wslDistro"
 
 # Ensure this run ends with a deployed distro:
 # - present + UnregisterIfExists $false => keep existing (no wsl --install)
@@ -225,6 +241,7 @@ Write-Host "=== WSL distribution: $wslDistro ===" -ForegroundColor Cyan
 # - ForceDownload                       => force unregister + redeploy (fresh download path)
 $installedDistros = wsl --list --quiet 2>$null
 $distroInList = ($installedDistros -contains $wslDistro)
+Write-Verbose "Initial distro list contains '$wslDistro': $distroInList"
 
 if ($distroInList) {
     Write-Host "  Distribution $wslDistro is already present (wsl --list)" -ForegroundColor Green
@@ -233,15 +250,17 @@ if ($distroInList) {
         wsl --terminate $wslDistro 2>$null
         wsl --unregister $wslDistro
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "  [ERROR] Failed to unregister WSL distribution: $wslDistro" -ForegroundColor Red
+            Write-Error "[ERROR] Failed to unregister WSL distribution: $wslDistro" -ErrorAction Continue
             exit 1
         }
         Write-Host "  [OK] Unregistered." -ForegroundColor Green
         $installedDistros = wsl --list --quiet 2>$null
         $distroInList = $false
+        Write-Verbose "ForceDownload path: distro unregistered; will run wsl --install"
     } elseif ($UnregisterIfExists) {
         Write-Host "  UnregisterIfExists is true (without ForceDownload): distro already downloaded, skipping wsl --install and download." -ForegroundColor Cyan
         Write-Host "  [SKIP DOWNLOAD] Keeping existing distro and continuing bootstrap via wsl -d." -ForegroundColor Green
+        Write-Verbose "UnregisterIfExists=true and ForceDownload=false: keeping existing distro and skipping wsl --install"
         wsl --terminate $wslDistro 2>$null
     } else {
         Write-Host "  UnregisterIfExists is false: using existing distro (wsl -d for bootstrap; no wsl --install, no download)" -ForegroundColor Cyan
@@ -251,23 +270,26 @@ if ($distroInList) {
 
 # Run wsl --install when distro is not present (first deploy or post-unregister), or when ForceDownload is set.
 $runWslInstall = (-not $distroInList) -or $ForceDownload
+Write-Verbose "runWslInstall=$runWslInstall (distroInList=$distroInList, ForceDownload=$ForceDownload)"
 if ($runWslInstall) {
-    Write-Host "  Running wsl --install $wslDistro --no-launch..." -ForegroundColor Cyan
+    Write-Set "Running wsl --install $wslDistro --no-launch"
+    Write-Verbose "Executing: wsl --install $wslDistro --no-launch"
     wsl --install $wslDistro  --no-launch
     # This instance will then be configured automatically by cloud-init. The process can take several minutes
     # https://documentation.ubuntu.com/wsl/stable/howto/cloud-init/
 
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "  [ERROR] wsl --install failed for distribution: $wslDistro" -ForegroundColor Red
+        Write-Error "[ERROR] wsl --install failed for distribution: $wslDistro" -ErrorAction Continue
         exit 1
     }
-    Write-Host "  [OK] wsl --install completed successfully" -ForegroundColor Green
+    Write-Ok "wsl --install completed successfully"
 } else {
-    Write-Host "  [OK] Distribution already present; using wsl -d $wslDistro for bootstrap (no wsl --install)" -ForegroundColor Green
+    Write-Skip "Distribution already present; using wsl -d $wslDistro for bootstrap (no wsl --install)"
+    Write-Verbose "wsl --install skipped because distro already present and no force flag"
 }
 
 Write-Host ""
-Write-Host "=== Launching WSL (cloud-init will configure user automatically) ===" -ForegroundColor Cyan
+Write-Step "Launching WSL (cloud-init will configure user automatically)"
 Write-Host "  User: $wslUser" -ForegroundColor Cyan
 Write-Host "  Passwordless sudo: Configured" -ForegroundColor Cyan
 Write-Host "  Distribution: $wslDistro" -ForegroundColor Cyan
@@ -278,7 +300,7 @@ Write-Host  "Boot :  wsl -d $wslDistro"
 Start-Sleep -Seconds 5
 
 Write-Host ""
-Write-Host "=== Running Ansible Local Bootstrap (destructive idempotent process) ===" -ForegroundColor Cyan
+Write-Step "Running Ansible Local Bootstrap (destructive idempotent process)"
 Write-Host "  [WARNING] This is a destructive idempotent process for provisioning Ansible in WSL" -ForegroundColor Red
 Write-Host "  It will configure SSH server, passwordless sudo, and other Ansible requirements" -ForegroundColor Yellow
 Write-Host "  Running: ./bin/bootstrap-local.sh inside WSL distribution: $wslDistro" -ForegroundColor Cyan
@@ -299,6 +321,7 @@ if ($repoRoot -match '^([A-Za-z]):') {
 # See: wsl --help -> "Run a specific distribution: wsl -d <DistroName>"
 $wslDistroForBootstrap = $wslDistro
 Write-Host "  Targeting WSL distribution by name: $wslDistroForBootstrap (not the default)" -ForegroundColor Cyan
+Write-Verbose "WSL bootstrap command target distro: $wslDistroForBootstrap"
 
 $bootstrapScriptPath = "$wslRepoPath/bin/bootstrap-local.sh"
 # Escape the command properly for WSL
@@ -312,7 +335,7 @@ try {
     if ($exitCode -eq 0) {
         Write-Host "  [OK] Ansible local bootstrap completed successfully" -ForegroundColor Green
     } else {
-        Write-Host "  [ERROR] Ansible local bootstrap failed with exit code: $exitCode" -ForegroundColor Red
+        Write-Error "[ERROR] Ansible local bootstrap failed with exit code: $exitCode" -ErrorAction Continue
         Write-Host "  Output: $resultText" -ForegroundColor Yellow
 
         # If the error message contains 'cannot determine non-root WSL user', print a warning
@@ -328,7 +351,7 @@ try {
     }
 } catch {
     $errMsg = $_.ToString()
-    Write-Host "  [ERROR] Failed to run bootstrap-local.sh: $errMsg" -ForegroundColor Red
+    Write-Error "[ERROR] Failed to run bootstrap-local.sh: $errMsg" -ErrorAction Continue
     if ($errMsg -match 'cannot determine non-root WSL user|sudoers') {
         Write-Host "" -ForegroundColor Red
         Write-Host "  *** THIS SCRIPT MUST BE RUN AS ADMINISTRATOR ***" -ForegroundColor Red
@@ -339,7 +362,7 @@ try {
 }
 
 Write-Host ""
-Write-Host "=== WSL setup complete ===" -ForegroundColor Green
+Write-Ok "WSL setup complete"
 Write-Host "  WSL distribution: $wslDistro" -ForegroundColor Cyan
 Write-Host "  WSL user: $wslUser" -ForegroundColor Cyan
 Write-Host "  To access WSL manually: wsl -d $wslDistro" -ForegroundColor Cyan

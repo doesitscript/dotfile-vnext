@@ -12,6 +12,11 @@ NC='\033[0m' # No Color
 log_info() {
   echo -e "${BLUE}[INFO]${NC} $*" >&2
 }
+log_step() { echo -e "${BLUE}[STEP]${NC} $*" >&2; }
+log_check() { echo -e "${YELLOW}[CHECK]${NC} $*" >&2; }
+log_set() { echo -e "${BLUE}[SET]${NC} $*" >&2; }
+log_skip() { echo -e "${YELLOW}[SKIP]${NC} $*" >&2; }
+log_ok() { echo -e "${GREEN}[OK]${NC} $*" >&2; }
 
 log_success() {
   echo -e "${GREEN}[SUCCESS]${NC} $*" >&2
@@ -88,6 +93,7 @@ ensure_venv() {
   }
 
   if [ ! -d "${venv_dir}" ]; then
+    log_info ".venv not found; creating new virtual environment"
     create_venv
   elif [ ! -f "${activate_path}" ]; then
     # Common failure mode in WSL: .venv exists but is incomplete or created from a different platform layout.
@@ -95,6 +101,8 @@ ensure_venv() {
     log_info "Rebuilding virtual environment at ${venv_dir}"
     rm -rf "${venv_dir}"
     create_venv
+  else
+    log_info "Existing virtual environment detected at ${venv_dir}"
   fi
 
   # Activate virtual environment
@@ -113,6 +121,8 @@ ensure_venv() {
   if [ -f "${requirements_file}" ]; then
     log_info "Installing Python dependencies from ${requirements_file}"
     pip install --quiet --upgrade -r "${requirements_file}"
+  else
+    log_warn "Requirements file not found: ${requirements_file}"
   fi
 
   log_success "Virtual environment ready"
@@ -128,6 +138,8 @@ setup_ansible_env() {
   if [ -f "${ansible_cfg}" ]; then
     export ANSIBLE_CONFIG="${ansible_cfg}"
     log_info "Using Ansible config: ${ansible_cfg}"
+  else
+    log_warn "ansible.cfg not found at ${ansible_cfg}; Ansible defaults will be used"
   fi
 
   # Ensure we're in repo root (ansible-playbook runs from here)
@@ -137,6 +149,8 @@ setup_ansible_env() {
   # Export core paths explicitly so role/collection resolution still works when config is skipped.
   export ANSIBLE_ROLES_PATH="${repo_root}/roles:${repo_root}/playbooks/roles:${HOME}/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles"
   export ANSIBLE_COLLECTIONS_PATH="${repo_root}/collections:${HOME}/.ansible/collections:/usr/share/ansible/collections"
+  log_info "ANSIBLE_ROLES_PATH=${ANSIBLE_ROLES_PATH}"
+  log_info "ANSIBLE_COLLECTIONS_PATH=${ANSIBLE_COLLECTIONS_PATH}"
 }
 
 # Configure Git globally for push/pull

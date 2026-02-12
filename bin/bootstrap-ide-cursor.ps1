@@ -1,5 +1,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$VerbosePreference = "Continue"
+Write-Verbose "Verbose output enabled (VerbosePreference=Continue)"
 
 function Write-Step {
     param(
@@ -8,6 +10,7 @@ function Write-Step {
     )
 
     Write-Host "[STEP] $Message"
+    Write-Verbose "[STEP-DETAIL] $Message"
 }
 
 function Write-Info {
@@ -17,7 +20,12 @@ function Write-Info {
     )
 
     Write-Host "[INFO] $Message"
+    Write-Verbose "[INFO-DETAIL] $Message"
 }
+function Write-Check { param([string]$Message) Write-Host "[CHECK] $Message"; Write-Verbose "[CHECK-DETAIL] $Message" }
+function Write-Set { param([string]$Message) Write-Host "[SET] $Message"; Write-Verbose "[SET-DETAIL] $Message" }
+function Write-Skip { param([string]$Message) Write-Host "[SKIP] $Message"; Write-Verbose "[SKIP-DETAIL] $Message" }
+function Write-Ok { param([string]$Message) Write-Host "[OK] $Message"; Write-Verbose "[OK-DETAIL] $Message" }
 
 function Set-JsonSetting {
     param(
@@ -58,11 +66,11 @@ Write-Info "settingsDir  = $settingsDir"
 
 Write-Step "Ensuring settings directory exists"
 if (-not (Test-Path -LiteralPath $settingsDir)) {
-    Write-Info "Directory missing, creating: $settingsDir"
+    Write-Set "Directory missing, creating: $settingsDir"
     New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
 }
 else {
-    Write-Info "Directory already exists."
+    Write-Skip "Directory already exists."
 }
 
 Write-Step "Loading existing settings JSON"
@@ -99,10 +107,10 @@ if (Set-JsonSetting -Object $settings -Name "terminal.integrated.inheritEnv" -Va
 Write-Step "Writing settings back to disk"
 $settings | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $settingsPath -Encoding utf8
 if ($changed) {
-    Write-Info "settings.json updated."
+    Write-Ok "settings.json updated."
 }
 else {
-    Write-Info "No effective setting changes were required."
+    Write-Skip "No effective setting changes were required."
 }
 
 Write-Step "Verifying elevation state"
@@ -110,8 +118,8 @@ $elevationCommand = "([Security.Principal.WindowsPrincipal] [Security.Principal.
 Write-Info "Elevation command: $elevationCommand"
 $isElevated = Invoke-Expression $elevationCommand
 
-Write-Host "[RESULT] Updated Cursor settings at: $settingsPath"
-Write-Host "[RESULT] Elevation check: $isElevated"
+Write-Ok "Updated Cursor settings at: $settingsPath"
+Write-Check "Elevation check: $isElevated"
 
 if (-not $isElevated) {
     Write-Warning "Current shell is not elevated. Run Cursor as Administrator to ensure elevated integrated terminals."

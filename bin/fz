@@ -59,6 +59,9 @@ require_limit_or_all() {
 # Parse command
 COMMAND="${1:-}"
 shift || true
+log_info "fz invoked from ${REPO_ROOT}"
+log_info "Command=${COMMAND:-<none>} Args=$*"
+log_check "Dispatching command handler"
 
 case "${COMMAND}" in
   bootstrap)
@@ -81,8 +84,9 @@ case "${COMMAND}" in
     # Save all args for later use
     all_args=("$@")
     local_only_bootstrap=false
+    log_info "bootstrap args captured: ${all_args[*]}"
     
-    log_info "=== Phase 1: Bootstrap WinRM ==="
+    log_step "Phase 1: Bootstrap WinRM"
     # Determine which bootstrap playbooks to run based on limit
     limit_value=""
     has_limit=false
@@ -104,6 +108,7 @@ case "${COMMAND}" in
     
     # Run appropriate bootstrap playbooks
     if [ "${has_limit}" = true ]; then
+      log_check "bootstrap mode: --limit ${limit_value}"
       # WSL-local bootstrap path for this machine: run local bootstrap playbook instead of WinRM.
       if [[ "${limit_value}" == "server-225-win" ]]; then
         run_local_bootstrap_playbook
@@ -120,6 +125,7 @@ case "${COMMAND}" in
         fz_ansible "playbooks/bootstrap_dev_3090.yaml" "${all_args[@]}"
       fi
     elif [ "${has_all}" = true ]; then
+      log_check "bootstrap mode: --all"
       # --all: run all bootstrap playbooks
       fz_ansible "playbooks/bootstrap_server_225.yaml" "${all_args[@]}"
       fz_ansible "playbooks/bootstrap_network_server.yaml" "${all_args[@]}"
@@ -128,15 +134,15 @@ case "${COMMAND}" in
 
     # Local WSL bootstrap for server-225-win is a phase-1-only path.
     if [ "${local_only_bootstrap}" = true ]; then
-      log_success "Local bootstrap completed for server-225-win"
+      log_ok "Local bootstrap completed for server-225-win"
       notify "FuzLang Bootstrap" "Local bootstrap completed successfully"
       exit 0
     fi
     
-    log_info "=== Phase 2: Verify ==="
+    log_step "Phase 2: Verify"
     fz_ansible "playbooks/verify_fabric.yaml" "${all_args[@]}"
     
-    log_info "=== Phase 3: Deploy Stacks ==="
+    log_step "Phase 3: Deploy Stacks"
     # Deploy main/dev stacks based on limit
     if [ "${has_limit}" = true ]; then
       if [[ "${limit_value}" == *"server-225"* ]] || [[ "${limit_value}" == *"main"* ]]; then
@@ -150,7 +156,7 @@ case "${COMMAND}" in
       fz_ansible "playbooks/deploy_dev_stacks.yaml" "${all_args[@]}"
     fi
     
-    log_info "=== Phase 4: Final Verify ==="
+    log_step "Phase 4: Final Verify"
     if fz_ansible "playbooks/verify_fabric.yaml" "${all_args[@]}"; then
       notify "FuzLang Bootstrap" "Bootstrap completed successfully"
     fi

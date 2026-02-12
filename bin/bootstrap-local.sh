@@ -6,9 +6,18 @@
 
 set -euo pipefail
 
+log_info() { echo "[INFO] $*"; }
+log_warn() { echo "[WARN] $*"; }
+log_step() { echo "[STEP] $*"; }
+log_check() { echo "[CHECK] $*"; }
+log_set() { echo "[SET] $*"; }
+log_skip() { echo "[SKIP] $*"; }
+log_ok() { echo "[OK] $*"; }
+
 # Ensure passwordless sudo for the current user (needed for Ansible become)
 # When invoked from Windows bootstrap, WSL can start as root with no SUDO_USER.
 WSL_USER="${SUDO_USER:-${USER}}"
+log_check "Initial user detection: USER='${USER:-}' SUDO_USER='${SUDO_USER:-}' -> WSL_USER='${WSL_USER:-}'"
 
 # Function to run sudo with password if needed
 # Tries passwordless sudo first, then falls back to password if provided
@@ -18,18 +27,21 @@ run_sudo() {
   
   # Try passwordless sudo first
   if sudo -n true 2>/dev/null; then
+    log_info "run_sudo: using passwordless sudo"
     sudo -E bash -c "$cmd"
     return $?
   fi
   
   # If passwordless sudo doesn't work and we have a password, use it
   if [[ -n "$password" ]]; then
+    log_warn "run_sudo: passwordless sudo unavailable; using provided WSL_PASSWORD"
     echo "$password" | sudo -SE bash -c "$cmd" 2>/dev/null
     return $?
   fi
   
   # Last resort: prompt for password (not automated, but won't hang)
   echo "Sudo requires password. Please enter your password:" >&2
+  log_warn "run_sudo: prompting for sudo password interactively"
   sudo -E bash -c "$cmd"
   return $?
 }
@@ -37,6 +49,7 @@ run_sudo() {
 # Try to read WSL password from host_vars or environment
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
+log_info "REPO_ROOT=${REPO_ROOT}"
 
 if [[ -z "${WSL_USER}" || "${WSL_USER}" == "root" ]]; then
   # Prefer repo host_vars declaration for deterministic behavior.
@@ -44,6 +57,7 @@ if [[ -z "${WSL_USER}" || "${WSL_USER}" == "root" ]]; then
     WSL_USER_FROM_VARS="$(sed -n 's/^[[:space:]]*wsl_user:[[:space:]]*"\{0,1\}\([^"#[:space:]]\+\).*/\1/p' inventory/host_vars/server-225-wsl.yaml | head -1)"
     if [[ -n "${WSL_USER_FROM_VARS:-}" && "${WSL_USER_FROM_VARS}" != "root" ]]; then
       WSL_USER="${WSL_USER_FROM_VARS}"
+      log_info "WSL user resolved from host_vars: ${WSL_USER}"
     fi
   fi
 fi
@@ -51,6 +65,7 @@ fi
 if [[ -z "${WSL_USER}" || "${WSL_USER}" == "root" ]]; then
   # Fallback: first regular local user (UID >= 1000, excluding nobody).
   WSL_USER="$(awk -F: '$3 >= 1000 && $1 != "nobody" { print $1; exit }' /etc/passwd)"
+  log_info "WSL user resolved from /etc/passwd fallback: ${WSL_USER:-<none>}"
 fi
 
 if [[ -z "${WSL_USER}" || "${WSL_USER}" == "root" ]]; then
@@ -63,6 +78,9 @@ if [[ -f "inventory/host_vars/server-225-wsl.yaml" ]]; then
   # Try to extract wsl_password if it exists (may be plain or vault reference)
   if grep -q "wsl_password:" inventory/host_vars/server-225-wsl.yaml 2>/dev/null; then
     WSL_PASSWORD=$(grep "wsl_password:" inventory/host_vars/server-225-wsl.yaml | sed -n 's/.*wsl_password:[[:space:]]*"\(.*\)".*/\1/p' | head -1)
+    log_info "Detected wsl_password in host_vars (value hidden)"
+  else
+  log_skip "No wsl_password key in host_vars; relying on sudo NOPASSWD or prompt"
   fi
 fi
 
@@ -72,46 +90,53 @@ WSL_PASSWORD="${WSL_PASSWORD:-}"
 # Check if passwordless sudo is already configured (e.g., by cloud-init)
 # Skip configuration if it's already working
 if sudo -n true 2>/dev/null; then
-  echo "Passwordless sudo is already configured for user: ${WSL_USER}"
+  log_ok "Passwordless sudo already configured for user: ${WSL_USER}"
   # Verify the sudoers file exists and is correct (optional check)
   if run_sudo "test -f /etc/sudoers.d/${WSL_USER} && grep -q '${WSL_USER}.*NOPASSWD' /etc/sudoers.d/${WSL_USER}" 2>/dev/null; then
-    echo "  [OK] Sudoers file is properly configured"
+    log_ok "Sudoers file already configured: /etc/sudoers.d/${WSL_USER}"
   fi
 else
-  echo "Configuring passwordless sudo for user: ${WSL_USER}"
+  log_set "Configuring passwordless sudo for user: ${WSL_USER}"
   run_sudo "echo '${WSL_USER} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/${WSL_USER} && chmod 440 /etc/sudoers.d/${WSL_USER}"
   # Verify it worked
   if sudo -n true 2>/dev/null; then
-    echo "  [OK] Passwordless sudo configured successfully"
+    log_ok "Passwordless sudo configured successfully"
   else
-    echo "  [WARNING] Passwordless sudo may not be fully configured"
+    log_warn "Passwordless sudo may not be fully configured"
   fi
 fi
 
-echo "Setting up SSH server in WSL..."
+log_step "Setting up SSH server in WSL"
 
 # Install openssh-server if not present
 # Use DEBIAN_FRONTEND=noninteractive to prevent any package configuration prompts
 if ! command -v sshd >/dev/null 2>&1; then
+  log_info "sshd not found; installing openssh-server"
   export DEBIAN_FRONTEND=noninteractive
   run_sudo "apt-get update -qq"
   run_sudo "apt-get install -y openssh-server"
   unset DEBIAN_FRONTEND
+else
+  log_skip "sshd already installed; skipping package install"
 fi
 
 # Ensure sshd runtime directory exists
 run_sudo "mkdir -p /var/run/sshd"
+log_info "Ensured /var/run/sshd exists"
 
 # Enable SSH service (WSL may use systemd or init.d)
 if systemctl is-system-running >/dev/null 2>&1; then
+  log_info "systemd available; enabling/starting ssh service"
   run_sudo "systemctl enable ssh 2>/dev/null || true"
   run_sudo "systemctl start ssh 2>/dev/null || service ssh start 2>/dev/null || true"
 else
+  log_info "systemd unavailable; using service ssh start"
   run_sudo "service ssh start 2>/dev/null || true"
 fi
 
 # Ensure pubkey authentication is enabled in sshd_config
 if ! run_sudo "grep -q '^PubkeyAuthentication yes' /etc/ssh/sshd_config 2>/dev/null"; then
+  log_info "PubkeyAuthentication not set to yes; updating sshd_config"
   # Comment out any existing PubkeyAuthentication line and add our setting
   run_sudo "sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config"
   # If no line exists, add it
@@ -125,7 +150,10 @@ if ! run_sudo "grep -q '^PubkeyAuthentication yes' /etc/ssh/sshd_config 2>/dev/n
   else
     run_sudo "service ssh restart 2>/dev/null || true"
   fi
+else
+  log_info "PubkeyAuthentication already enabled in sshd_config"
 fi
 
-echo "WSL SSH setup complete. SSH server is running and configured for pubkey authentication."
-echo "Note: host_vars files should already be generated by bootstrap-local.ps1 on Windows side."
+log_ok "WSL SSH setup complete"
+log_info "SSH server is running and configured for pubkey authentication"
+log_info "host_vars files should already be generated by bootstrap-local.ps1 on Windows side"

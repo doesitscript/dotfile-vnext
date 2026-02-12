@@ -7,11 +7,22 @@
 # 4. Writes facts JSON for auditing/reuse
 
 $ErrorActionPreference = "Stop"
+$VerbosePreference = "Continue"
+Write-Verbose "Verbose output enabled (VerbosePreference=Continue)"
+
+function Write-Step([string]$Message) { Write-Host "[STEP] $Message" -ForegroundColor Cyan; Write-Verbose "[STEP] $Message" }
+function Write-Check([string]$Message) { Write-Host "[CHECK] $Message" -ForegroundColor Yellow; Write-Verbose "[CHECK] $Message" }
+function Write-Set([string]$Message) { Write-Host "[SET] $Message" -ForegroundColor Cyan; Write-Verbose "[SET] $Message" }
+function Write-Skip([string]$Message) { Write-Host "[SKIP] $Message" -ForegroundColor Yellow; Write-Verbose "[SKIP] $Message" }
+function Write-Ok([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green; Write-Verbose "[OK] $Message" }
+function Write-Info([string]$Message) { Write-Host "[INFO] $Message" -ForegroundColor White; Write-Verbose "[INFO] $Message" }
 
 # Ensure the current user can run scripts without interactive prompts.
 try {
     $currentUserPolicy = Get-ExecutionPolicy -Scope CurrentUser
+    Write-Verbose "CurrentUser execution policy detected: $currentUserPolicy"
     if ($currentUserPolicy -ne "Bypass") {
+        Write-Verbose "Setting CurrentUser execution policy to Bypass"
         Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Bypass -Force
         Write-Host "Set CurrentUser execution policy to Bypass." -ForegroundColor Green
     } else {
@@ -23,15 +34,21 @@ try {
 
 # Check prerequisites
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+Write-Verbose "Elevation check result: isAdmin=$isAdmin"
 if (-not $isAdmin) {
-    Write-Host "WARNING: Running without Administrator privileges." -ForegroundColor Yellow
-    Write-Host "  Privileged steps (WinRM quickconfig / WSL feature install) will be skipped." -ForegroundColor Yellow
-    Write-Host "  Re-run as Administrator for full host bootstrap." -ForegroundColor Yellow
+    Write-Error "[ERROR] This script must be run as Administrator." -ErrorAction Continue
+    Write-Host "  Re-run this script from an elevated PowerShell terminal." -ForegroundColor Yellow
+    Write-Host "  If Cursor terminal elevation is broken, run this first:" -ForegroundColor Yellow
+    Write-Host "    .\bin\bootstrap-ide-cursor.ps1" -ForegroundColor Cyan
+    Write-Host "  Then restart Cursor as Administrator and run this script again." -ForegroundColor Yellow
+    exit 1
 }
 
 # Get script directory and repo root
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptDir
+Write-Verbose "scriptDir=$scriptDir"
+Write-Verbose "repoRoot=$repoRoot"
 
 # ============================================================================
 # YAML Loading Functions
@@ -39,6 +56,7 @@ $repoRoot = Split-Path -Parent $scriptDir
 
 function Load-MappingYaml {
     param([string]$Path)
+    Write-Verbose "Load-MappingYaml: path=$Path"
     
     if (-not (Test-Path $Path)) {
         throw "YAML file not found: $Path"
@@ -46,6 +64,7 @@ function Load-MappingYaml {
     
     # Try PowerShell-YAML module first
     if (Get-Module -ListAvailable -Name powershell-yaml) {
+        Write-Verbose "PowerShell-YAML module found. Attempting ConvertFrom-Yaml path."
         Import-Module powershell-yaml -ErrorAction SilentlyContinue
         if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
             $raw = Get-Content -Raw -Path $Path
@@ -59,6 +78,7 @@ function Load-MappingYaml {
     
     # Module not available, try to install it
     Write-Host "PowerShell-YAML module not found. Installing..." -ForegroundColor Yellow
+    Write-Verbose "Attempting to install PowerShell-YAML module from PSGallery."
     try {
         # Trust PSGallery repository (non-interactive)
         Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue | Out-Null
@@ -85,6 +105,7 @@ function Load-MappingYaml {
     }
     
     if ($pythonCmd) {
+        Write-Verbose "Using Python fallback for YAML parsing: $($pythonCmd.Source)"
         try {
             $pythonScript = "import yaml,json,sys; print(json.dumps(yaml.safe_load(open(sys.argv[1],'r',encoding='utf-8')), indent=2))"
             $jsonContent = & $pythonCmd -c $pythonScript $Path 2>$null
@@ -113,6 +134,7 @@ function Get-PreferredIPv4 {
         [object]$Mapping
     )
     
+    Write-Verbose "Get-PreferredIPv4: collecting IPv4 addresses."
     # Collect all IPv4 addresses
     $allIPs = Get-NetIPAddress -AddressFamily IPv4
     
@@ -134,6 +156,7 @@ function Get-PreferredIPv4 {
         
         return $true
     } | Select-Object -ExpandProperty IPAddress -Unique
+    Write-Verbose "Filtered IPv4 candidates: $($filteredIPs -join ', ')"
     
     # Extract mapping IPs and compute /24 prefixes
     $mappingSubnets = @()
@@ -161,6 +184,7 @@ function Get-PreferredIPv4 {
             }
         }
     }
+    Write-Verbose "Mapping subnets considered: $($mappingSubnets -join ', ')"
     
     # Prefer IPs matching mapping subnets
     $preferredIP = $null
@@ -208,6 +232,7 @@ function Get-PhysicalNodeFromMapping {
         $nodeKeys = $Mapping.physical_nodes.PSObject.Properties.Name
     }
     
+    Write-Verbose "Get-PhysicalNodeFromMapping: hostname=$Hostname preferredIP=$PreferredIP allIPs=$($AllIPs -join ', ')"
     # Method A: Match by hostname first (preferred, case-insensitive)
     foreach ($key in $nodeKeys) {
         $entry = $Mapping.physical_nodes.$key
@@ -247,7 +272,7 @@ function Get-PhysicalNodeFromMapping {
         if ($entryIP) { $mappingIPs += "$key=$entryIP" }
     }
     
-    Write-Host "ERROR: Could not map this machine to a physical_node" -ForegroundColor Red
+    Write-Error "[ERROR] Could not map this machine to a physical_node" -ErrorAction Continue
     Write-Host "  Detected hostname: $Hostname" -ForegroundColor Yellow
     Write-Host "  Detected IPs: $($AllIPs -join ', ')" -ForegroundColor Yellow
     Write-Host "  Preferred IP: $PreferredIP" -ForegroundColor Yellow
@@ -263,6 +288,7 @@ function Get-DesiredAnsibleHost {
     )
     
     $useDns = if ($Mapping.use_dns) { [bool]$Mapping.use_dns } else { $false }
+    Write-Verbose "Get-DesiredAnsibleHost: physical_node=$PhysicalNode use_dns=$useDns"
     $nodeEntry = $Mapping.physical_nodes.$PhysicalNode
     
     $hostname = if ($nodeEntry.hostname) { $nodeEntry.hostname } elseif ($nodeEntry.Hostname) { $nodeEntry.Hostname } else { $null }
@@ -279,15 +305,18 @@ function Test-WSLInstalled {
     # Check if WSL feature is enabled
     try {
         $wslFeature = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -ErrorAction Stop
+        Write-Verbose "WSL feature state: $($wslFeature.State)"
         return ($wslFeature -and $wslFeature.State -eq "Enabled")
     } catch {
         # Non-admin or DISM unavailable in current session.
+        Write-Verbose "Test-WSLInstalled failed to query feature state: $_"
         return $false
     }
 }
 
 function Install-WSLFeature {
     Write-Host "WSL feature not installed. Installing..." -ForegroundColor Yellow
+    Write-Verbose "Running Enable-WindowsOptionalFeature for Microsoft-Windows-Subsystem-Linux"
     try {
         Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -NoRestart -ErrorAction Stop | Out-Null
         Write-Host "WSL feature installed. Reboot may be required." -ForegroundColor Green
@@ -302,6 +331,7 @@ function Install-WSLDistro {
     param([string]$DistroName = "Ubuntu")
     
     Write-Host "Installing WSL distro: $DistroName" -ForegroundColor Yellow
+    Write-Verbose "Running wsl.exe --install -d $DistroName"
     try {
         # Install the distro using wsl --install
         wsl.exe --install -d $DistroName 2>&1 | Out-Null
@@ -329,6 +359,7 @@ function Install-WSLDistro {
 
 function Get-WSLDistros {
     $distros = @()
+    Write-Verbose "Querying installed WSL distros via 'wsl.exe --list --quiet'"
     try {
         $wslOutput = wsl.exe --list --quiet 2>&1
         if ($LASTEXITCODE -eq 0 -and $wslOutput) {
@@ -342,9 +373,11 @@ function Get-WSLDistros {
                     $cleaned 
                 }
             } | Where-Object { $_ })
+            Write-Verbose "Parsed WSL distro list: $($distros -join ', ')"
         }
     } catch {
         # WSL not available, return empty array
+        Write-Verbose "Get-WSLDistros failed: $_"
     }
     return $distros
 }
@@ -355,6 +388,7 @@ function Write-Yaml {
         [hashtable]$Data
     )
     
+    Write-Verbose "Write-Yaml: path=$Path keys=$($Data.Keys -join ', ')"
     $dir = Split-Path -Parent $Path
     if (-not (Test-Path $dir)) {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
@@ -400,6 +434,7 @@ function Write-Facts {
         [object]$Obj
     )
     
+    Write-Verbose "Write-Facts: path=$Path"
     $dir = Split-Path -Parent $Path
     if (-not (Test-Path $dir)) {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
@@ -414,13 +449,15 @@ function Write-Facts {
 # Main Execution
 # ============================================================================
 
-Write-Host "=== Dynamic Bootstrap Local ===" -ForegroundColor Cyan
+Write-Step "Dynamic Bootstrap Local"
 Write-Host ""
+Write-Verbose "Starting main bootstrap execution."
 
 # Load mapping
 $mappingPath = Join-Path $repoRoot "inventory\hosts_mapping.yaml"
-Write-Host "Loading mapping from: $mappingPath" -ForegroundColor Cyan
+Write-Check "Loading mapping from: $mappingPath"
 $mapping = Load-MappingYaml -Path $mappingPath
+Write-Verbose "Mapping loaded successfully."
 
 # Detect physical node
 $hostname = $env:COMPUTERNAME
@@ -428,49 +465,44 @@ $ipInfo = Get-PreferredIPv4 -Mapping $mapping
 $preferredIP = $ipInfo.PreferredIP
 $allIPs = $ipInfo.AllIPs
 
-Write-Host "Detected hostname: $hostname" -ForegroundColor Cyan
-Write-Host "Detected IPs: $($allIPs -join ', ')" -ForegroundColor Cyan
-Write-Host "Chosen IP: $preferredIP" -ForegroundColor Cyan
-Write-Host "Reason: $($ipInfo.Reason)" -ForegroundColor Cyan
+Write-Info "Detected hostname: $hostname"
+Write-Info "Detected IPs: $($allIPs -join ', ')"
+Write-Info "Chosen IP: $preferredIP"
+Write-Info "Reason: $($ipInfo.Reason)"
+Write-Verbose "Preferred IP decision reason: $($ipInfo.Reason)"
 
 $physicalNode = Get-PhysicalNodeFromMapping -Hostname $hostname -PreferredIP $preferredIP -AllIPs $allIPs -Mapping $mapping
 $ansibleHost = Get-DesiredAnsibleHost -PhysicalNode $physicalNode -Mapping $mapping
 
-Write-Host "Physical node: $physicalNode" -ForegroundColor Green
-Write-Host "Ansible host: $ansibleHost" -ForegroundColor Green
+Write-Ok "Physical node: $physicalNode"
+Write-Ok "Ansible host: $ansibleHost"
 Write-Host ""
 
 # Collect facts
-Write-Host "Collecting facts..." -ForegroundColor Cyan
+Write-Step "Collecting runtime facts"
+Write-Verbose "Beginning privileged setup and fact collection."
 
 # Use preferred IP
 $bestIP = if ($preferredIP) { $preferredIP } else { "0.0.0.0" }
 
-# Configure WinRM HTTP (admin-only)
-if ($isAdmin) {
-    Write-Host "Configuring WinRM HTTP..." -ForegroundColor Cyan
-    winrm quickconfig -force | Out-Null
-    # This sets up:
-    # - WinRM HTTP listener on 5985
-    # - Firewall rules
-    # - Service startup
-    # No certs involved.
-} else {
-    Write-Host "Skipping WinRM quickconfig (requires Administrator)." -ForegroundColor Yellow
-}
+Write-Set "Configuring WinRM HTTP listener/service/firewall"
+Write-Verbose "Running winrm quickconfig -force"
+winrm quickconfig -force | Out-Null
+# This sets up:
+# - WinRM HTTP listener on 5985
+# - Firewall rules
+# - Service startup
+# No certs involved.
 
-# Check and install WSL if needed (feature install is admin-only)
-Write-Host "Checking WSL installation..." -ForegroundColor Cyan
+# Check and install WSL if needed
+Write-Check "Checking WSL feature state"
 $wslInstalled = Test-WSLInstalled
+Write-Verbose "Initial WSL installed check: $wslInstalled"
 
 if (-not $wslInstalled) {
-    if ($isAdmin) {
-        $wslInstalled = Install-WSLFeature
-        if (-not $wslInstalled) {
-            Write-Host "WARNING: Could not install WSL feature. WSL functionality will be unavailable." -ForegroundColor Red
-        }
-    } else {
-        Write-Host "Skipping WSL feature install (requires Administrator)." -ForegroundColor Yellow
+    $wslInstalled = Install-WSLFeature
+    if (-not $wslInstalled) {
+        Write-Host "WARNING: Could not install WSL feature. WSL functionality will be unavailable." -ForegroundColor Red
     }
 }
 
@@ -479,20 +511,21 @@ $wslDistros = Get-WSLDistros
 
 if ($wslDistros.Count -eq 0) {
     if ($wslInstalled) {
-        Write-Host "No WSL distros found. Installing Ubuntu..." -ForegroundColor Yellow
+        Write-Set "No WSL distros found. Installing Ubuntu..."
         Install-WSLDistro -DistroName "Ubuntu"
         # Refresh distro list after installation attempt
         Start-Sleep -Seconds 2
         $wslDistros = Get-WSLDistros
+        Write-Verbose "WSL distros after install attempt: $($wslDistros -join ', ')"
     } else {
         Write-Host "WSL feature not available. Skipping distro installation." -ForegroundColor Yellow
     }
 }
 
 if ($wslDistros.Count -gt 0) {
-    Write-Host "WSL distribution found: $($wslDistros -join ', ')" -ForegroundColor Green
+    Write-Ok "WSL distribution found: $($wslDistros -join ', ')"
 } else {
-    Write-Host "No WSL distros available" -ForegroundColor Yellow
+    Write-Skip "No WSL distros available"
 }
 
 # Build facts object
@@ -512,8 +545,9 @@ $facts = [ordered]@{
 
 # Write facts JSON
 $factsPath = Join-Path $repoRoot "facts\$physicalNode.json"
-Write-Host "Writing facts to: $factsPath" -ForegroundColor Cyan
+Write-Set "Writing facts to: $factsPath"
 Write-Facts -Path $factsPath -Obj $facts
+Write-Verbose "Facts written successfully."
 
 # Generate host_vars
 $hostVarsDir = Join-Path $repoRoot "inventory\host_vars"
@@ -529,6 +563,7 @@ $existingWinVars = @{}
 $existingWslVars = @{}
 
 if (Test-Path $winVarsPath) {
+    Write-Verbose "Existing Windows host_vars found at: $winVarsPath"
     try {
         $existingWinContent = Get-Content $winVarsPath -Raw
         # Parse win_user (handle quoted and unquoted values)
@@ -553,6 +588,7 @@ if (Test-Path $winVarsPath) {
 }
 
 if (Test-Path $wslVarsPath) {
+    Write-Verbose "Existing WSL host_vars found at: $wslVarsPath"
     try {
         $existingWslContent = Get-Content $wslVarsPath -Raw
         # Parse wsl_user (handle quoted and unquoted values)
@@ -604,8 +640,9 @@ $winVars.ansible_winrm_transport = "ntlm"
 $winVars.ansible_winrm_scheme = "http"
 $winVars.ansible_winrm_server_cert_validation = "ignore"
 
-Write-Host "Writing Windows host_vars to: $winVarsPath" -ForegroundColor Cyan
+Write-Set "Writing Windows host_vars to: $winVarsPath"
 Write-Yaml -Path $winVarsPath -Data $winVars
+Write-Verbose "Windows host_vars write complete."
 
 # Generate WSL host_vars (matching template format)
 $wslVars = [ordered]@{
@@ -634,17 +671,18 @@ $wslVars.ansible_host = $ansibleHost
 $wslVars.ansible_user = $wslVars.wsl_user
 $wslVars.ansible_port = $wslVars.wsl_ssh_port
 
-Write-Host "Writing WSL host_vars to: $wslVarsPath" -ForegroundColor Cyan
+Write-Set "Writing WSL host_vars to: $wslVarsPath"
 Write-Yaml -Path $wslVarsPath -Data $wslVars
+Write-Verbose "WSL host_vars write complete."
 
 Write-Host ""
-Write-Host "=== Bootstrap Complete ===" -ForegroundColor Green
-Write-Host "Generated files:" -ForegroundColor Cyan
+Write-Ok "Bootstrap Complete"
+Write-Step "Generated files"
 Write-Host "  - $factsPath" -ForegroundColor White
 Write-Host "  - $winVarsPath" -ForegroundColor White
 Write-Host "  - $wslVarsPath" -ForegroundColor White
 Write-Host ""
-Write-Host "Next steps:" -ForegroundColor Cyan
+Write-Step "Next steps"
 Write-Host "  1. Review generated host_vars files" -ForegroundColor White
 Write-Host "  2. Run bin/bootstrap-local.sh inside WSL (if WSL is available)" -ForegroundColor White
 Write-Host "  3. Run Ansible playbooks from your Mac using the generated host_vars" -ForegroundColor White
