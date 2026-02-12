@@ -31,10 +31,10 @@ try {
     Write-Host "WARNING: Could not set CurrentUser execution policy: $_" -ForegroundColor Yellow
 }
 
-# Check prerequisites (skip when only collecting facts so it can be run from WSL without elevation)
+# Check prerequisites (required for fact collection too: WinRM and WSL discovery need admin)
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 Write-Verbose "Elevation check result: isAdmin=$isAdmin"
-if (-not $FactsOnly -and -not $isAdmin) {
+if (-not $isAdmin) {
     Write-Error "[ERROR] This script must be run as Administrator." -ErrorAction Continue
     Write-Host "  Re-run this script from an elevated PowerShell terminal." -ForegroundColor Yellow
     Write-Host "  If Cursor terminal elevation is broken, run this first:" -ForegroundColor Yellow
@@ -483,46 +483,41 @@ Write-Verbose "Beginning privileged setup and fact collection."
 # Use preferred IP
 $bestIP = if ($preferredIP) { $preferredIP } else { "0.0.0.0" }
 
-if (-not $FactsOnly) {
-    Write-Host "Doing WinRM configuration: Protocol[HTTP] Port[5985]" -ForegroundColor Cyan
-    Write-Verbose "Running winrm quickconfig -force"
-    winrm quickconfig -force | Out-Null
-    # This sets up:
-    # - WinRM HTTP listener on 5985
-    # - Firewall rules
-    # - Service startup
-    # No certs involved.
+Write-Host "Doing WinRM configuration: Protocol[HTTP] Port[5985]" -ForegroundColor Cyan
+Write-Verbose "Running winrm quickconfig -force"
+winrm quickconfig -force | Out-Null
+# This sets up:
+# - WinRM HTTP listener on 5985
+# - Firewall rules
+# - Service startup
+# No certs involved.
 
-    # Check and install WSL if needed
-    Write-Host "Checking WSL feature state: Feature[Microsoft-Windows-Subsystem-Linux]" -ForegroundColor Cyan
-    $wslInstalled = Test-WSLInstalled
-    Write-Verbose "Initial WSL installed check: $wslInstalled"
+# Check and install WSL if needed
+Write-Host "Checking WSL feature state: Feature[Microsoft-Windows-Subsystem-Linux]" -ForegroundColor Cyan
+$wslInstalled = Test-WSLInstalled
+Write-Verbose "Initial WSL installed check: $wslInstalled"
 
+if (-not $wslInstalled) {
+    $wslInstalled = Install-WSLFeature
     if (-not $wslInstalled) {
-        $wslInstalled = Install-WSLFeature
-        if (-not $wslInstalled) {
-            Write-Host "WARNING: Could not install WSL feature. WSL functionality will be unavailable." -ForegroundColor Red
-        }
+        Write-Host "WARNING: Could not install WSL feature. WSL functionality will be unavailable." -ForegroundColor Red
     }
+}
 
-    # Get WSL distros
-    $wslDistros = Get-WSLDistros
+# Get WSL distros
+$wslDistros = Get-WSLDistros
 
-    if ($wslDistros.Count -eq 0) {
-        if ($wslInstalled) {
-            Write-Host "Doing distro install: Distro[Ubuntu] Reason[NoInstalledDistros]" -ForegroundColor Cyan
-            Install-WSLDistro -DistroName "Ubuntu"
-            # Refresh distro list after installation attempt
-            Start-Sleep -Seconds 2
-            $wslDistros = Get-WSLDistros
-            Write-Verbose "WSL distros after install attempt: $($wslDistros -join ', ')"
-        } else {
-            Write-Host "WSL feature not available. Skipping distro installation." -ForegroundColor Yellow
-        }
+if ($wslDistros.Count -eq 0) {
+    if ($wslInstalled) {
+        Write-Host "Doing distro install: Distro[Ubuntu] Reason[NoInstalledDistros]" -ForegroundColor Cyan
+        Install-WSLDistro -DistroName "Ubuntu"
+        # Refresh distro list after installation attempt
+        Start-Sleep -Seconds 2
+        $wslDistros = Get-WSLDistros
+        Write-Verbose "WSL distros after install attempt: $($wslDistros -join ', ')"
+    } else {
+        Write-Host "WSL feature not available. Skipping distro installation." -ForegroundColor Yellow
     }
-} else {
-    # FactsOnly: just enumerate WSL distros (no WinRM, no WSL install)
-    $wslDistros = Get-WSLDistros
 }
 
 if ($wslDistros.Count -gt 0) {
