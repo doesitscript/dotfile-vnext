@@ -1,50 +1,15 @@
 # bin/bootstrap-local.ps1
 # Run as admin on the target Windows machine
-<#
-.SYNOPSIS
-  Bootstrap the current Windows node: detect identity, collect facts, optionally generate host_vars and chain Ansible bootstrap.
-
-.QUICK COMMANDS
-  .\bin\bootstrap-local.ps1
-    Full bootstrap: facts, host_vars, then chain to bootstrap-ansible-local.ps1 (WSL setup, Ansible). Run in elevated PowerShell.
-  .\bin\bootstrap-local.ps1 -FactsOnly
-    Refresh facts only: write facts\<node>.json and exit. Use when you need to update facts without re-running Ansible.
-  From WSL, to refresh facts: ./bin/fz collect-facts (invokes this script; full WinRM+WSL collect still needs elevated PowerShell).
-
-.DESCRIPTION
-  Run as Administrator on the target Windows machine. The script:
-  1. Auto-detects which physical node it is (by hostname or IP from inventory/hosts_mapping.yaml)
-  2. Collects runtime facts (hostname, IP, WSL distros), configures WinRM, and checks/installs WSL if needed
-  3. Writes facts to facts\<physical_node>.json (e.g. facts\server-225.json)
-  4. If not -FactsOnly: generates host_vars for Windows and WSL, then optionally runs bootstrap-ansible-local.ps1
-
-  Use -FactsOnly to only refresh the facts file and exit (no host_vars, no chained script). Full fact collection
-  (WinRM quickconfig and WSL discovery) still requires an elevated PowerShell session.
-
-.PARAMETER RunAll
-  If true (default), after generating host_vars the script chains into bootstrap-ansible-local.ps1. If false, stops after host_vars.
-
-.PARAMETER FactsOnly
-  Collect facts only: run WinRM and WSL steps, write facts\<node>.json, then exit. Do not generate host_vars or run the next script.
-  Use this to refresh facts when you need to update facts\<node>.json without re-running full bootstrap.
-
-.EXAMPLE
-  .\bin\bootstrap-local.ps1
-  Full bootstrap (run as Administrator): detect node, collect facts, write host_vars, then run Ansible local bootstrap.
-
-.EXAMPLE
-  .\bin\bootstrap-local.ps1 -FactsOnly
-  Refresh facts only: run as Administrator, write facts\server-225.json (or current node), then exit. Use when you need to update facts.
-
-.EXAMPLE
-  .\bin\bootstrap-local.ps1 -RunAll:$false
-  Generate facts and host_vars only; do not chain to bootstrap-ansible-local.ps1.
-
-.NOTES
-  From WSL you can trigger fact collection via: ./bin/fz collect-facts
-  That invokes this script with -FactsOnly. For full fact collection (WinRM + WSL), run this script from an elevated PowerShell:
-  .\bin\bootstrap-local.ps1 -FactsOnly
-#>
+# This script:
+# 1. Auto-detects which physical node it's running on (by hostname or IP)
+# 2. Collects runtime facts (hostname, IP, WSL distros)
+# 3. Generates host_vars files for Windows and WSL surfaces
+# 4. Writes facts JSON for auditing/reuse
+#
+# .QUICK COMMANDS
+#   .\bin\bootstrap-local.ps1 -FactsOnly       Only collect facts (no host_vars, no chain)
+#   .\bin\bootstrap-local.ps1 -RunAll:$false   Facts + host_vars only (no WSL/fz chain)
+#   .\bin\bootstrap-local.ps1                  Full chain -> bootstrap-ansible-local.ps1 -> WSL -> fz
 
 param(
     [bool]$RunAll = $true,
@@ -54,7 +19,13 @@ param(
 $ErrorActionPreference = "Stop"
 $VerbosePreference = "Continue"
 Write-Verbose "Verbose output enabled (VerbosePreference=Continue)"
-Write-Verbose "Parameter values: RunAll=$RunAll FactsOnly=$FactsOnly"
+
+function Write-Step([string]$Message) { Write-Host "[STEP] $Message" -ForegroundColor Cyan; Write-Verbose "[STEP] $Message" }
+function Write-Check([string]$Message) { Write-Host "[CHECK] $Message" -ForegroundColor Yellow; Write-Verbose "[CHECK] $Message" }
+function Write-Set([string]$Message) { Write-Host "[SET] $Message" -ForegroundColor Cyan; Write-Verbose "[SET] $Message" }
+function Write-Skip([string]$Message) { Write-Host "[SKIP] $Message" -ForegroundColor Yellow; Write-Verbose "[SKIP] $Message" }
+function Write-Ok([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green; Write-Verbose "[OK] $Message" }
+function Write-Info([string]$Message) { Write-Host "[INFO] $Message" -ForegroundColor White; Write-Verbose "[INFO] $Message" }
 
 # Ensure the current user can run scripts without interactive prompts.
 try {
@@ -71,7 +42,7 @@ try {
     Write-Host "WARNING: Could not set CurrentUser execution policy: $_" -ForegroundColor Yellow
 }
 
-# Check prerequisites (required for fact collection too: WinRM and WSL discovery need admin)
+# Check prerequisites
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 Write-Verbose "Elevation check result: isAdmin=$isAdmin"
 if (-not $isAdmin) {
@@ -488,13 +459,13 @@ function Write-Facts {
 # Main Execution
 # ============================================================================
 
-Write-Host "Checking bootstrap start: Script[bootstrap-local.ps1] Mode[Dynamic]" -ForegroundColor Cyan
+Write-Step "Dynamic Bootstrap Local"
 Write-Host ""
 Write-Verbose "Starting main bootstrap execution."
 
 # Load mapping
 $mappingPath = Join-Path $repoRoot "inventory\hosts_mapping.yaml"
-Write-Host "Checking mapping file: Path[$mappingPath]" -ForegroundColor Cyan
+Write-Check "Loading mapping from: $mappingPath"
 $mapping = Load-MappingYaml -Path $mappingPath
 Write-Verbose "Mapping loaded successfully."
 
@@ -504,26 +475,27 @@ $ipInfo = Get-PreferredIPv4 -Mapping $mapping
 $preferredIP = $ipInfo.PreferredIP
 $allIPs = $ipInfo.AllIPs
 
-Write-Host "Using host identity: Hostname[$hostname]" -ForegroundColor Cyan
-Write-Host "Using network facts: IPs[$($allIPs -join ', ')] Preferred[$preferredIP]" -ForegroundColor Cyan
-Write-Host "Using IP selection reason: Reason[$($ipInfo.Reason)]" -ForegroundColor Cyan
+Write-Info "Detected hostname: $hostname"
+Write-Info "Detected IPs: $($allIPs -join ', ')"
+Write-Info "Chosen IP: $preferredIP"
+Write-Info "Reason: $($ipInfo.Reason)"
 Write-Verbose "Preferred IP decision reason: $($ipInfo.Reason)"
 
 $physicalNode = Get-PhysicalNodeFromMapping -Hostname $hostname -PreferredIP $preferredIP -AllIPs $allIPs -Mapping $mapping
 $ansibleHost = Get-DesiredAnsibleHost -PhysicalNode $physicalNode -Mapping $mapping
 
-Write-Host "Using mapping result: PhysicalNode[$physicalNode]" -ForegroundColor Green
-Write-Host "Using mapping result: AnsibleHost[$ansibleHost]" -ForegroundColor Green
+Write-Ok "Physical node: $physicalNode"
+Write-Ok "Ansible host: $ansibleHost"
 Write-Host ""
 
 # Collect facts
-Write-Host "Doing runtime collection: Facts[Windows+WSL]" -ForegroundColor Cyan
+Write-Step "Collecting runtime facts"
 Write-Verbose "Beginning privileged setup and fact collection."
 
 # Use preferred IP
 $bestIP = if ($preferredIP) { $preferredIP } else { "0.0.0.0" }
 
-Write-Host "Doing WinRM configuration: Protocol[HTTP] Port[5985]" -ForegroundColor Cyan
+Write-Set "Configuring WinRM HTTP listener/service/firewall"
 Write-Verbose "Running winrm quickconfig -force"
 winrm quickconfig -force | Out-Null
 # This sets up:
@@ -533,7 +505,7 @@ winrm quickconfig -force | Out-Null
 # No certs involved.
 
 # Check and install WSL if needed
-Write-Host "Checking WSL feature state: Feature[Microsoft-Windows-Subsystem-Linux]" -ForegroundColor Cyan
+Write-Check "Checking WSL feature state"
 $wslInstalled = Test-WSLInstalled
 Write-Verbose "Initial WSL installed check: $wslInstalled"
 
@@ -549,7 +521,7 @@ $wslDistros = Get-WSLDistros
 
 if ($wslDistros.Count -eq 0) {
     if ($wslInstalled) {
-        Write-Host "Doing distro install: Distro[Ubuntu] Reason[NoInstalledDistros]" -ForegroundColor Cyan
+        Write-Set "No WSL distros found. Installing Ubuntu..."
         Install-WSLDistro -DistroName "Ubuntu"
         # Refresh distro list after installation attempt
         Start-Sleep -Seconds 2
@@ -561,9 +533,9 @@ if ($wslDistros.Count -eq 0) {
 }
 
 if ($wslDistros.Count -gt 0) {
-    Write-Host "Using WSL distros: Installed[$($wslDistros -join ', ')]" -ForegroundColor Green
+    Write-Ok "WSL distribution found: $($wslDistros -join ', ')"
 } else {
-    Write-Host "Warning distro detection: Installed[None] Continuing[True]" -ForegroundColor Yellow
+    Write-Skip "No WSL distros available"
 }
 
 # Build facts object
@@ -583,12 +555,12 @@ $facts = [ordered]@{
 
 # Write facts JSON
 $factsPath = Join-Path $repoRoot "facts\$physicalNode.json"
-Write-Host "Doing facts write: Path[$factsPath]" -ForegroundColor Cyan
+Write-Set "Writing facts to: $factsPath"
 Write-Facts -Path $factsPath -Obj $facts
 Write-Verbose "Facts written successfully."
 
 if ($FactsOnly) {
-    Write-Host "Facts-only complete. Wrote $factsPath" -ForegroundColor Green
+    Write-Ok "FactsOnly: stopping after fact collection (no host_vars, no chain)."
     exit 0
 }
 
@@ -683,7 +655,7 @@ $winVars.ansible_winrm_transport = "ntlm"
 $winVars.ansible_winrm_scheme = "http"
 $winVars.ansible_winrm_server_cert_validation = "ignore"
 
-Write-Host "Doing host_vars write: Surface[Windows] Path[$winVarsPath]" -ForegroundColor Cyan
+Write-Set "Writing Windows host_vars to: $winVarsPath"
 Write-Yaml -Path $winVarsPath -Data $winVars
 Write-Verbose "Windows host_vars write complete."
 
@@ -714,38 +686,34 @@ $wslVars.ansible_host = $ansibleHost
 $wslVars.ansible_user = $wslVars.wsl_user
 $wslVars.ansible_port = $wslVars.wsl_ssh_port
 
-Write-Host "Doing host_vars write: Surface[WSL] Path[$wslVarsPath]" -ForegroundColor Cyan
+Write-Set "Writing WSL host_vars to: $wslVarsPath"
 Write-Yaml -Path $wslVarsPath -Data $wslVars
 Write-Verbose "WSL host_vars write complete."
 
 Write-Host ""
-Write-Host "Bootstrap complete: Result[Success]" -ForegroundColor Green
-Write-Host "Using generated files list:" -ForegroundColor Cyan
+Write-Ok "Bootstrap Complete"
+Write-Step "Generated files"
 Write-Host "  - $factsPath" -ForegroundColor White
 Write-Host "  - $winVarsPath" -ForegroundColor White
 Write-Host "  - $wslVarsPath" -ForegroundColor White
 Write-Host ""
-Write-Host "Using next steps guidance:" -ForegroundColor Cyan
-Write-Host "  1. Review generated host_vars files" -ForegroundColor White
-Write-Host "  2. Run bin/bootstrap-local.sh inside WSL (if WSL is available)" -ForegroundColor White
-Write-Host "  3. Run Ansible playbooks from your Mac using the generated host_vars" -ForegroundColor White
 
+$nextScriptPath = Join-Path $scriptDir "bootstrap-ansible-local.ps1"
 if ($RunAll) {
-    $nextScriptPath = Join-Path $repoRoot "bin\bootstrap-ansible-local.ps1"
     Write-Host ""
-    Write-Host "================================================================================" -ForegroundColor White
-    Write-Host "  >>> CALLING NEXT SCRIPT: bin\bootstrap-ansible-local.ps1" -ForegroundColor White
-    Write-Host "  >>> TO RUN THIS SCRIPT (bootstrap-local.ps1) WITHOUT CHAINING TO THE NEXT:" -ForegroundColor Yellow
-    Write-Host "      .\bin\bootstrap-local.ps1 -RunAll:`$false" -ForegroundColor Cyan
-    Write-Host "================================================================================" -ForegroundColor White
+    Write-Host "================================================================================" -ForegroundColor Cyan
+    Write-Host "  >>> CALLING NEXT: bin\bootstrap-ansible-local.ps1 (WSL bootstrap then fz)" -ForegroundColor Cyan
+    Write-Host "  TO RUN WITHOUT CHAINING: .\bin\bootstrap-local.ps1 -RunAll:`$false" -ForegroundColor Yellow
+    Write-Host "================================================================================" -ForegroundColor Cyan
     Write-Host ""
     & $nextScriptPath
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "[ERROR] Chained bootstrap failed: NextScript[$nextScriptPath] ExitCode[$LASTEXITCODE]" -ForegroundColor Red
+        Write-Host "bootstrap-ansible-local.ps1 exited with code $LASTEXITCODE" -ForegroundColor Red
         exit $LASTEXITCODE
     }
-    Write-Host "Using chained bootstrap result: NextScript[$nextScriptPath] Status[Success]" -ForegroundColor Green
 } else {
-    Write-Host ""
-    Write-Host "Using chained bootstrap decision: RunAll[$RunAll] NextScript[Skipped]" -ForegroundColor Yellow
+    Write-Step "Next steps"
+    Write-Host "  1. Review generated host_vars files" -ForegroundColor White
+    Write-Host "  2. Run bin\bootstrap-ansible-local.ps1 to continue the chain (WSL + fz)" -ForegroundColor White
+    Write-Host "  3. Or run bin\bootstrap-local.sh inside WSL with --skip-fz-bootstrap" -ForegroundColor White
 }

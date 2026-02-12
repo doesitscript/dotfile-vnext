@@ -27,41 +27,6 @@ repo_root() {
   echo "$(cd "${script_dir}/.." && pwd)"
 }
 
-# If vault will be used and .vault_pass is missing, ask user to create it and exit 1.
-# Call with: require_vault_pass_setup "$(repo_root)" "$@"
-# Uses repo root path only (no absolute Windows path from WSL); ansible.cfg uses vault_pass.sh which reads .vault_pass in repo.
-require_vault_pass_setup() {
-  local repo_root="$1"
-  shift || true
-  local args="$*"
-  local vault_file="${repo_root}/.vault_pass"
-  if [[ "${args}" =~ --ask-vault-pass ]] || [[ "${args}" =~ --vault-password-file ]]; then
-    return 0
-  fi
-  if [ -f "${vault_file}" ]; then
-    return 0
-  fi
-  log_error "Vault password file not found."
-  log_info "Create a vault password file so playbooks can decrypt vaults."
-  log_info "  Recommended (repo root, already in .gitignore): ${vault_file}"
-  log_info "  To fix (one line = your vault password): echo -n 'YOUR_PASSWORD' > ${vault_file}"
-  log_info "  If vault_pass.sh is not executable: chmod +x ${repo_root}/vault_pass.sh"
-  local suggested="${repo_root}/config/vault_pass_suggested_path.txt"
-  if [ -f "${suggested}" ]; then
-    local suggested_path
-    suggested_path="$(grep -v '^[[:space:]]*#' "${suggested}" | grep -v '^[[:space:]]*$' | head -n 1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-    if [ -n "${suggested_path}" ]; then
-      log_info "  Or default location (e.g. Windows home): ${suggested_path}"
-    else
-      log_info "  Or add a path (one line) to config/vault_pass_suggested_path.txt for a suggested default location."
-    fi
-  else
-    log_info "  Or create config/vault_pass_suggested_path.txt with one line: path to your preferred default (e.g. Windows home)."
-  fi
-  log_info "See config/README_vault_pass.md for details."
-  exit 1
-}
-
 # Get Python interpreter (allow override via FZ_PYTHON)
 get_python() {
   echo "${FZ_PYTHON:-python3}"
@@ -286,8 +251,6 @@ fz_ansible() {
     exit 1
   fi
 
-  require_vault_pass_setup "${repo_root}" "$@"
-
   # Build ansible-playbook command
   local ansible_cmd=(
     "${venv_ansible}"
@@ -389,8 +352,14 @@ fz_ansible() {
     fi
   fi
 
-  # ansible.cfg sets vault_password_file = vault_pass.sh (repo root); no need to pass it.
-  # require_vault_pass_setup already ensured .vault_pass exists or user passed --ask-vault-pass/--vault-password-file.
+  # If no vault method specified, check for vault password file in common locations
+  if [ "${has_vault_pass}" = false ] && [ "${has_vault_file}" = false ]; then
+    local vault_file="${repo_root}/.vault_pass"
+    if [ -f "${vault_file}" ]; then
+      log_info "Using vault password file: ${vault_file}"
+      ansible_cmd+=("--vault-password-file" "${vault_file}")
+    fi
+  fi
 
   log_info "Running: ${ansible_cmd[*]}"
   "${ansible_cmd[@]}"
@@ -422,8 +391,6 @@ run_ansible_playbook() {
     log_error "Inventory file not found: ${inventory_file}"
     exit 1
   fi
-
-  require_vault_pass_setup "${repo_root}" "$@"
 
   # Build ansible-playbook command
   local venv_ansible="${repo_root}/.venv/bin/ansible-playbook"
@@ -508,28 +475,52 @@ run_ansible_playbook() {
     ansible_cmd+=("${extra_args[@]}")
   fi
 
-  # ansible.cfg sets vault_password_file = .vault_pass (repo root); no need to pass it.
+  # If no vault method specified, check for vault password file in common locations
+  if [ "${has_vault_pass}" = false ] && [ "${has_vault_file}" = false ]; then
+    local vault_file="${repo_root}/.vault_pass"
+    if [ -f "${vault_file}" ]; then
+      log_info "Using vault password file: ${vault_file}"
+      ansible_cmd+=("--vault-password-file" "${vault_file}")
+    fi
+  fi
 
   log_info "Running: ${ansible_cmd[*]}"
   "${ansible_cmd[@]}"
 }
 
+# Require vault password setup so local bootstrap can decrypt vaulted vars.
+# Prints fix commands and exits if .vault_pass or executable vault_pass.sh is missing.
+require_vault_pass_setup() {
+  local repo_root
+  repo_root="$(repo_root)"
+  local vault_file="${repo_root}/.vault_pass"
+  local vault_script="${repo_root}/vault_pass.sh"
+  if [ -f "${vault_file}" ]; then
+    if [ -x "${vault_script}" ]; then
+      return 0
+    fi
+    log_error "vault_pass.sh is not executable; Ansible may fail on WSL (execute bit on .vault_pass cannot be cleared on Windows mount)."
+    log_error "To fix: chmod +x ${vault_script}"
+    log_error "See: ${repo_root}/config/README_vault_pass.md"
+    exit 1
+  fi
+  log_error "Vault password file not found: ${vault_file}"
+  log_error "To fix: echo -n 'YOUR_PASSWORD' > ${vault_file}"
+  log_error "If vault_pass.sh is not executable: chmod +x ${repo_root}/vault_pass.sh"
+  log_error "See: ${repo_root}/config/README_vault_pass.md"
+  exit 1
+}
+
 # Run local bootstrap playbook from venv using localhost connection.
-# Forwards all arguments (e.g. --ask-vault-pass, --vault-password-file) to ansible-playbook.
+# Strips --limit and its value from args so only localhost is used (avoids "no hosts to target").
 run_local_bootstrap_playbook() {
   local repo_root
   repo_root="$(repo_root)"
   local venv_ansible="${repo_root}/.venv/bin/ansible-playbook"
   local playbook="${repo_root}/bootstrap/local/local_bootstrap.yml"
-  local ansible_cmd=(
-    "${venv_ansible}"
-    -i "localhost,"
-    -c local
-    -e bootstrap_node=server-225
-    "${playbook}"
-  )
 
   ensure_venv
+  require_vault_pass_setup
   setup_ansible_env
 
   if [ ! -f "${venv_ansible}" ]; then
@@ -541,49 +532,15 @@ run_local_bootstrap_playbook() {
     exit 1
   fi
 
-  require_vault_pass_setup "${repo_root}" "$@"
-
-  # ansible.cfg sets vault_password_file = vault_pass.sh (repo root); no need to pass it.
-
-  # Forward caller args but drop --limit and its value (inventory is localhost only; --limit server-225-win would match nothing).
   local filtered_args=()
-  while [ $# -gt 0 ]; do
-    if [ "$1" = "--limit" ]; then
-      shift
-      [ $# -gt 0 ] && shift
-    else
-      filtered_args+=("$1")
-      shift
-    fi
+  while [[ $# -gt 0 ]]; do
+    if [[ "$1" == "--limit" ]]; then shift 2; continue; fi
+    filtered_args+=("$1")
+    shift
   done
-  ansible_cmd+=("${filtered_args[@]}")
 
   log_info "Running local bootstrap playbook via localhost connection"
-  "${ansible_cmd[@]}"
-}
-
-# Run Windows fact collector (bootstrap-local.ps1 -FactsOnly). Use from WSL to refresh facts/*.json.
-run_collect_facts() {
-  local repo_root
-  repo_root="$(repo_root)"
-  local ps_script
-  if command -v wslpath &>/dev/null && [ -n "${WSL_DISTRO_NAME:-}" ]; then
-    local win_repo
-    win_repo="$(wslpath -w "$repo_root" 2>/dev/null)"
-    if [ -z "$win_repo" ]; then
-      log_error "Could not resolve Windows path for repo (wslpath failed)"
-      exit 1
-    fi
-    ps_script="${win_repo}/bin/bootstrap-local.ps1"
-  else
-    ps_script="${repo_root}/bin/bootstrap-local.ps1"
-  fi
-  if ! command -v powershell.exe &>/dev/null; then
-    log_error "powershell.exe not found. collect-facts must be run from WSL or Windows."
-    exit 1
-  fi
-  log_info "Running Windows fact collector (FactsOnly): ${ps_script}"
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$ps_script" -FactsOnly
+  "${venv_ansible}" -i "localhost," -c local "${playbook}" "${filtered_args[@]}"
 }
 
 # Run ansible-vault edit
@@ -637,11 +594,17 @@ run_ansible_vault_edit() {
     esac
   done
 
-  # Require vault pass setup when no vault method in args (same message as playbooks)
+  # If no vault method specified, check for vault password file in common locations
   if [ "${has_vault_pass}" = false ] && [ "${has_vault_file}" = false ]; then
-    require_vault_pass_setup "${repo_root}"
+    local vault_file_pass="${repo_root}/.vault_pass"
+    if [ -f "${vault_file_pass}" ]; then
+      log_info "Using vault password file: ${vault_file_pass}"
+      ansible_cmd+=("--vault-password-file" "${vault_file_pass}")
+    else
+      log_info "No vault password file found, will prompt for password"
+      ansible_cmd+=("--ask-vault-pass")
+    fi
   fi
-  # ansible.cfg sets vault_password_file = vault_pass.sh (repo root) for ansible-vault too.
 
   log_info "Editing vault file: ${vault_file}"
   "${ansible_cmd[@]}"
@@ -717,10 +680,6 @@ Commands:
   bootstrap              Full bootstrap (winrm -> verify -> deploy -> verify)
                         Requires --limit or --all
                         Special case: --limit server-225-win runs local bootstrap only
-  collect-facts          Refresh Windows facts into facts/<node>.json (hostname, IP, WSL distros).
-                        From WSL: ./bin/fz collect-facts (invokes Windows PowerShell; script requires Administrator).
-                        For full fact collection (WinRM + WSL): run from elevated PowerShell:
-                        .\bin\bootstrap-local.ps1 -FactsOnly
   bootstrap-winrm        Bootstrap Windows hosts via WinRM
                         Requires --limit or --all
                         Example: fz bootstrap-winrm --limit server-225-win
@@ -763,7 +722,6 @@ Common Options (forwarded to ansible-playbook):
 
 Examples:
   fz --help                                 Show command help and exit
-  fz collect-facts                           Refresh Windows facts (from WSL; needs elevated PowerShell for full collect)
   fz bootstrap --limit server-225-win      Run local bootstrap path for server-225-win
   fz bootstrap-winrm --limit server-225-win  Run WinRM bootstrap playbook for server-225
   fz bootstrap-ssh --limit server-225-wsl  Run SSH deploy phase for server-225-wsl
@@ -778,12 +736,6 @@ Examples:
   fz role-local git --check --diff          Dry-run local git role and show diffs
   fz vault edit shared --ask-vault-pass     Edit shared vault with interactive password prompt
   fz contract lint                          Validate contract YAML syntax and structure
-
-Vault password: create .vault_pass in repo root (one line = password). ansible.cfg uses vault_pass.sh to read it.
-  If vault_pass.sh is not executable (e.g. after clone): chmod +x vault_pass.sh   See config/README_vault_pass.md.
-
-Fact collection (Windows; run from elevated PowerShell for full WinRM + WSL steps):
-  .\bin\bootstrap-local.ps1 -FactsOnly      Refresh facts only; writes facts\<node>.json and exits
 
 EOF
 }

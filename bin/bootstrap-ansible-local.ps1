@@ -3,14 +3,6 @@
 # This script automates deploying the ansible container and uses the WSL username and password
 # as the assumed ansible user and password.
 # Reads username and password from server-225-wsl and server-225-win host_vars files
-#
-# QUICK COMMANDS (run from repo root in elevated PowerShell):
-#   .\bin\bootstrap-ansible-local.ps1
-#     Full chain: WSL setup, then bootstrap-local.sh in WSL, then ./bin/fz bootstrap --limit server-225-win.
-#   .\bin\bootstrap-ansible-local.ps1 -RunWslBootstrap:$false
-#     Skip bootstrap-local.sh; only run the final fz bootstrap step in WSL.
-#   .\bin\bootstrap-ansible-local.ps1 -RunFzBootstrap:$false
-#     Run bootstrap-local.sh in WSL but do not run fz; stop after SSH/sudoers (run fz manually later).
 
 # ============================================================================
 # Configuration Variables (commented out - values are read from host_vars files)
@@ -31,6 +23,10 @@
 # $cloudInitDir = "$env:USERPROFILE\.cloud-init"  # Cloud-init directory (auto-created)
 # $userDataFile = "$cloudInitDir\$wslDistro.user-data"  # Cloud-init user-data file
 # ============================================================================
+#
+# .QUICK COMMANDS
+#   Run from repo root (after bootstrap-local.ps1): .\bin\bootstrap-ansible-local.ps1
+#   Skip fz at the end:  .\bin\bootstrap-ansible-local.ps1 -RunFzBootstrap:$false
 
 param(
     # If $true (default), unregister the WSL distribution if it already exists (wsl --unregister)
@@ -39,24 +35,26 @@ param(
     # Only this switch runs wsl --install when the distro is already present (unregister then re-download).
     # Without it we never run wsl --install when distro is in wsl --list; after unregister we redeploy from cache.
     [switch]$ForceDownload = $false,
-    # If $true (default), run bin\bootstrap-local.sh inside WSL. Set to $false to skip (e.g. re-run this script without WSL steps).
+    # If $true (default), run WSL bootstrap (bootstrap-local.sh). Set $false to skip and only run fz.
     [bool]$RunWslBootstrap = $true,
-    # If $true (default), run ./bin/fz bootstrap --limit server-225-win inside WSL to finish setup. Set to $false to stop after bootstrap-local.sh.
+    # If $true (default), after WSL bootstrap run: ./bin/fz bootstrap --limit server-225-win
     [bool]$RunFzBootstrap = $true
 )
 
 $ErrorActionPreference = "Stop"
 $VerbosePreference = "Continue"
 Write-Verbose "Verbose output enabled (VerbosePreference=Continue)"
+function Write-Step([string]$Message) { Write-Host "[STEP] $Message" -ForegroundColor Cyan; Write-Verbose "[STEP] $Message" }
+function Write-Check([string]$Message) { Write-Host "[CHECK] $Message" -ForegroundColor Yellow; Write-Verbose "[CHECK] $Message" }
+function Write-Set([string]$Message) { Write-Host "[SET] $Message" -ForegroundColor Cyan; Write-Verbose "[SET] $Message" }
+function Write-Skip([string]$Message) { Write-Host "[SKIP] $Message" -ForegroundColor Yellow; Write-Verbose "[SKIP] $Message" }
+function Write-Ok([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green; Write-Verbose "[OK] $Message" }
 
 # Get script directory and repo root (same pattern as bootstrap-local.ps1)
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptDir
 Write-Verbose "scriptDir=$scriptDir"
 Write-Verbose "repoRoot=$repoRoot"
-
-# When we skip running bootstrap-local.sh, treat as success so we still run fz if requested.
-$wslBootstrapSucceeded = $true
 
 # File paths used by this script:
 # - inventory\host_vars\server-225-wsl.yaml (required) - WSL host vars containing wsl_user and wsl_distro
@@ -68,7 +66,7 @@ $winHostVarsPath = Join-Path $repoRoot "inventory\host_vars\server-225-win.yaml"
 Write-Verbose "wslHostVarsPath=$wslHostVarsPath"
 Write-Verbose "winHostVarsPath=$winHostVarsPath"
 
-Write-Host "Checking WSL bootstrap config: Target[server-225] Source[host_vars]" -ForegroundColor Cyan
+Write-Step "Reading server-225 WSL configuration"
 Write-Host "Repository root: $repoRoot" -ForegroundColor Cyan
 
 # Read WSL username from host_vars (required, no fallback)
@@ -188,7 +186,7 @@ if ($wslDistro -ne "Ubuntu-24.04") {
 # This file lives on the bootstrapping host and will automate creating the username and password
 # on our test Ubuntu WSL distribution
 Write-Host ""
-Write-Host "Doing cloud-init generation: Purpose[WSL user/password bootstrap]" -ForegroundColor Cyan
+Write-Step "Automating username and password creation"
 Write-Host "  This cloud-init user-data file lives on the bootstrapping host" -ForegroundColor Cyan
 Write-Host "  It will automate creating the username '$wslUser' and password on test Ubuntu WSL" -ForegroundColor Cyan
 
@@ -242,7 +240,7 @@ $userDataLines = $userData -split "`r?`n"
 Write-Host "  Created/updated cloud-init user-data file: $userDataFile" -ForegroundColor Green
 
 Write-Host ""
-Write-Host "Checking WSL distribution state: Distro[$wslDistro]" -ForegroundColor Cyan
+Write-Step "WSL distribution: $wslDistro"
 
 # Ensure this run ends with a deployed distro:
 # - present + UnregisterIfExists $false => keep existing (no wsl --install)
@@ -282,7 +280,7 @@ if ($distroInList) {
 $runWslInstall = (-not $distroInList) -or $ForceDownload
 Write-Verbose "runWslInstall=$runWslInstall (distroInList=$distroInList, ForceDownload=$ForceDownload)"
 if ($runWslInstall) {
-    Write-Host "Doing distro deploy: Command[wsl --install $wslDistro --no-launch]" -ForegroundColor Cyan
+    Write-Set "Running wsl --install $wslDistro --no-launch"
     Write-Verbose "Executing: wsl --install $wslDistro --no-launch"
     wsl --install $wslDistro  --no-launch
     # This instance will then be configured automatically by cloud-init. The process can take several minutes
@@ -292,14 +290,14 @@ if ($runWslInstall) {
         Write-Error "[ERROR] wsl --install failed for distribution: $wslDistro" -ErrorAction Continue
         exit 1
     }
-    Write-Host "Using distro deploy result: Status[Success] Distro[$wslDistro]" -ForegroundColor Green
+    Write-Ok "wsl --install completed successfully"
 } else {
-    Write-Host "Using existing distro: Distro[$wslDistro] InstallSkipped[True]" -ForegroundColor Yellow
+    Write-Skip "Distribution already present; using wsl -d $wslDistro for bootstrap (no wsl --install)"
     Write-Verbose "wsl --install skipped because distro already present and no force flag"
 }
 
 Write-Host ""
-Write-Host "Doing WSL launch prep: CloudInit[Enabled] Distro[$wslDistro]" -ForegroundColor Cyan
+Write-Step "Launching WSL (cloud-init will configure user automatically)"
 Write-Host "  User: $wslUser" -ForegroundColor Cyan
 Write-Host "  Passwordless sudo: Configured" -ForegroundColor Cyan
 Write-Host "  Distribution: $wslDistro" -ForegroundColor Cyan
@@ -308,6 +306,12 @@ Write-Host  "Boot :  wsl -d $wslDistro"
 # Launch WSL - cloud-init will detect the .user-data file and configure the user
 # Wait a moment for cloud-init to complete if this is a fresh deploy
 Start-Sleep -Seconds 5
+
+Write-Host ""
+Write-Step "Running Ansible Local Bootstrap (destructive idempotent process)"
+Write-Host "  [WARNING] This is a destructive idempotent process for provisioning Ansible in WSL" -ForegroundColor Red
+Write-Host "  It will configure SSH server, passwordless sudo, and other Ansible requirements" -ForegroundColor Yellow
+Write-Host "  Running: ./bin/bootstrap-local.sh inside WSL distribution: $wslDistro" -ForegroundColor Cyan
 
 # Get the repo path in WSL format (convert Windows path to WSL path)
 # Convert D:\develop\dotfile-vnext to /mnt/d/develop/dotfile-vnext
@@ -319,70 +323,38 @@ if ($repoRoot -match '^([A-Za-z]):') {
     $wslRepoPath = $repoRoot -replace '\\', '/'
 }
 
-if ($RunWslBootstrap) {
-    Write-Host ""
-    Write-Host "================================================================================" -ForegroundColor White
-    Write-Host "  >>> CALLING NEXT SCRIPT: bin\bootstrap-local.sh (inside WSL)" -ForegroundColor White
-    Write-Host "  >>> TO RUN THIS SCRIPT WITHOUT RUNNING bootstrap-local.sh:" -ForegroundColor Yellow
-    Write-Host "      .\bin\bootstrap-ansible-local.ps1 -RunWslBootstrap:`$false" -ForegroundColor Cyan
-    Write-Host "================================================================================" -ForegroundColor White
-    Write-Host ""
-    Write-Host "Doing Ansible local bootstrap: Mode[Destructive-Idempotent] Script[bootstrap-local.sh]" -ForegroundColor Cyan
-    Write-Host "  [WARNING] This is a destructive idempotent process for provisioning Ansible in WSL" -ForegroundColor Red
-    Write-Host "  It will configure SSH server, passwordless sudo, and other Ansible requirements" -ForegroundColor Yellow
-    Write-Host "  Running: ./bin/bootstrap-local.sh inside WSL distribution: $wslDistro" -ForegroundColor Cyan
+# Run bootstrap-local.sh inside WSL
+# IMPORTANT: We must specify the distribution by name (--distribution / -d) so we target
+# the target distro (e.g. Ubuntu-24.04), NOT the default (e.g. Ubuntu).
+# See: wsl --help -> "Run a specific distribution: wsl -d <DistroName>"
+$wslDistroForBootstrap = $wslDistro
+Write-Host "  Targeting WSL distribution by name: $wslDistroForBootstrap (not the default)" -ForegroundColor Cyan
+Write-Verbose "WSL bootstrap command target distro: $wslDistroForBootstrap"
 
-    # Run bootstrap-local.sh inside WSL
-    # IMPORTANT: We must specify the distribution by name (--distribution / -d) so we target
-    # the target distro (e.g. Ubuntu-24.04), NOT the default (e.g. Ubuntu).
-    # See: wsl --help -> "Run a specific distribution: wsl -d <DistroName>"
-    $wslDistroForBootstrap = $wslDistro
-    Write-Host "  Targeting WSL distribution by name: $wslDistroForBootstrap (not the default)" -ForegroundColor Cyan
-    Write-Verbose "WSL bootstrap command target distro: $wslDistroForBootstrap"
+$bootstrapScriptPath = "$wslRepoPath/bin/bootstrap-local.sh"
+# Pass --skip-fz-bootstrap so the script does not run fz; we run fz from here after success.
+$wslCommand = "cd '$wslRepoPath' && bash '$bootstrapScriptPath' --skip-fz-bootstrap"
 
-    $bootstrapScriptPath = "$wslRepoPath/bin/bootstrap-local.sh"
-    # Run bootstrap-local.sh with --skip-fz-bootstrap so this script runs the final fz step once (with bold message).
-    $wslCommand = "cd '$wslRepoPath' && bash '$bootstrapScriptPath' --skip-fz-bootstrap"
-
-    $wslBootstrapSucceeded = $false
-    # Prevent child's stderr (e.g. log_check from bootstrap-local.sh) from triggering Stop and throwing.
-    $prevErrorAction = $ErrorActionPreference
+$wslBootstrapSucceeded = $false
+if (-not $RunWslBootstrap) {
+    Write-Skip "Skipping WSL bootstrap (RunWslBootstrap=false)."
+    $wslBootstrapSucceeded = $true
+} else {
+$prevErrorAction = $ErrorActionPreference
+try {
     $ErrorActionPreference = 'Continue'
-    try {
-        $result = wsl --distribution $wslDistroForBootstrap bash -c $wslCommand 2>&1
-        $exitCode = $LASTEXITCODE
-        $resultText = if ($result -is [array]) { $result -join "`n" } else { $result.ToString() }
-        $hasOutput = -not [string]::IsNullOrWhiteSpace($resultText)
+    $result = wsl --distribution $wslDistroForBootstrap bash -c $wslCommand 2>&1
+    $exitCode = $LASTEXITCODE
+    $resultText = if ($result -is [array]) { $result -join "`n" } else { $result.ToString() }
 
-        if ($exitCode -eq 0) {
-            $wslBootstrapSucceeded = $true
-            if ($hasOutput) {
-                Write-Host "  bootstrap-local.sh output:" -ForegroundColor Cyan
-                Write-Host $resultText -ForegroundColor Gray
-            } else {
-                Write-Host "  bootstrap-local.sh output: [none]" -ForegroundColor Yellow
-            }
-            Write-Host "  [OK] Ansible local bootstrap completed successfully" -ForegroundColor Green
-        } else {
-            Write-Host "  [ERROR] bootstrap-local.sh failed with exit code: $exitCode" -ForegroundColor Red
-            if ($hasOutput) {
-                Write-Host "  bootstrap-local.sh output:" -ForegroundColor Yellow
-                Write-Host $resultText -ForegroundColor Yellow
-            } else {
-                Write-Host "  bootstrap-local.sh output: [none]" -ForegroundColor Yellow
-            }
-            if ($resultText -match 'cannot determine non-root WSL user') {
-                Write-Host "" -ForegroundColor Red
-                Write-Host "  *** THIS SCRIPT MUST BE RUN AS ADMINISTRATOR ***" -ForegroundColor Red
-                Write-Host "  Right-click PowerShell and choose 'Run as administrator', then run this script again." -ForegroundColor Yellow
-                Write-Host "" -ForegroundColor Red
-            }
-            Write-Host "  You may need to run './bin/bootstrap-local.sh' manually inside WSL" -ForegroundColor Yellow
-        }
-    } catch {
-        $errMsg = $_.ToString()
-        Write-Host "  [ERROR] Failed to run bootstrap-local.sh: $errMsg" -ForegroundColor Red
-        if ($errMsg -match 'cannot determine non-root WSL user|sudoers') {
+    if ($exitCode -eq 0) {
+        Write-Host "  [OK] Ansible local bootstrap completed successfully" -ForegroundColor Green
+        $wslBootstrapSucceeded = $true
+    } else {
+        Write-Host "[ERROR] Ansible local bootstrap failed with exit code: $exitCode" -ForegroundColor Red
+        Write-Host "  Output: $resultText" -ForegroundColor Yellow
+
+        if ($resultText -match 'cannot determine non-root WSL user') {
             Write-Host "" -ForegroundColor Red
             Write-Host "  *** THIS SCRIPT MUST BE RUN AS ADMINISTRATOR ***" -ForegroundColor Red
             Write-Host "  Right-click PowerShell and choose 'Run as administrator', then run this script again." -ForegroundColor Yellow
@@ -390,51 +362,40 @@ if ($RunWslBootstrap) {
         }
         Write-Host "  You may need to run './bin/bootstrap-local.sh' manually inside WSL" -ForegroundColor Yellow
     }
-    finally {
-        $ErrorActionPreference = $prevErrorAction
+} catch {
+    $errMsg = $_.ToString()
+    Write-Host "[ERROR] Failed to run bootstrap-local.sh: $errMsg" -ForegroundColor Red
+    if ($errMsg -match 'cannot determine non-root WSL user|sudoers') {
+        Write-Host "" -ForegroundColor Red
+        Write-Host "  *** THIS SCRIPT MUST BE RUN AS ADMINISTRATOR ***" -ForegroundColor Red
+        Write-Host "  Right-click PowerShell and choose 'Run as administrator', then run this script again." -ForegroundColor Yellow
+        Write-Host "" -ForegroundColor Red
     }
+    Write-Host "  You may need to run './bin/bootstrap-local.sh' manually inside WSL" -ForegroundColor Yellow
+} finally {
+    $ErrorActionPreference = $prevErrorAction
+}
 }
 
 Write-Host ""
-if ($RunWslBootstrap -and -not $wslBootstrapSucceeded) {
-    Write-Host "WSL setup: bootstrap-local.sh failed; skipping fz bootstrap step." -ForegroundColor Yellow
-    Write-Host "  Fix the issue above, then run in WSL: ./bin/fz bootstrap --limit server-225-win" -ForegroundColor Cyan
-    exit 1
-}
-Write-Host "WSL setup complete: Status[Success] Distro[$wslDistro]" -ForegroundColor Green
+Write-Ok "WSL setup complete"
 Write-Host "  WSL distribution: $wslDistro" -ForegroundColor Cyan
 Write-Host "  WSL user: $wslUser" -ForegroundColor Cyan
 Write-Host "  To access WSL manually: wsl -d $wslDistro" -ForegroundColor Cyan
 
-# Final step: run fz bootstrap in WSL to complete hands-free setup (controller key, host_vars, etc.)
 if ($RunFzBootstrap -and $wslBootstrapSucceeded) {
     Write-Host ""
-    Write-Host "================================================================================" -ForegroundColor White
-    Write-Host "  >>> CALLING NEXT (finish setup): ./bin/fz bootstrap --limit server-225-win" -ForegroundColor White
-    Write-Host "  >>> TO RUN THIS SCRIPT WITHOUT RUNNING THE FZ BOOTSTRAP STEP:" -ForegroundColor Yellow
-    Write-Host "      .\bin\bootstrap-ansible-local.ps1 -RunFzBootstrap:`$false" -ForegroundColor Cyan
-    Write-Host "================================================================================" -ForegroundColor White
+    Write-Host "================================================================================" -ForegroundColor Cyan
+    Write-Host "  >>> CALLING: ./bin/fz bootstrap --limit server-225-win (inside WSL)" -ForegroundColor Cyan
+    Write-Host "================================================================================" -ForegroundColor Cyan
     Write-Host ""
     $fzCommand = "cd '$wslRepoPath' && ./bin/fz bootstrap --limit server-225-win"
-    $fzSucceeded = $false
-    $prevErrorActionFz = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    try {
-        $fzResult = wsl --distribution $wslDistro bash -c $fzCommand 2>&1
-        $fzExitCode = $LASTEXITCODE
-        $fzResultText = if ($fzResult -is [array]) { $fzResult -join "`n" } else { $fzResult.ToString() }
-        if ($fzExitCode -eq 0) {
-            $fzSucceeded = $true
-            Write-Host "  [OK] fz bootstrap completed successfully" -ForegroundColor Green
-            if (-not [string]::IsNullOrWhiteSpace($fzResultText)) { Write-Host $fzResultText -ForegroundColor Gray }
-        } else {
-            Write-Host "  [ERROR] fz bootstrap failed with exit code: $fzExitCode" -ForegroundColor Red
-            if (-not [string]::IsNullOrWhiteSpace($fzResultText)) { Write-Host $fzResultText -ForegroundColor Yellow }
-        }
-    } catch {
-        Write-Host "  [ERROR] Failed to run fz bootstrap: $($_.ToString())" -ForegroundColor Red
-    } finally {
-        $ErrorActionPreference = $prevErrorActionFz
+    wsl --distribution $wslDistroForBootstrap bash -c $fzCommand
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "fz bootstrap exited with code $LASTEXITCODE" -ForegroundColor Red
+        exit $LASTEXITCODE
     }
-    if (-not $fzSucceeded) { exit 1 }
+} elseif (-not $wslBootstrapSucceeded) {
+    Write-Host "Skipping fz bootstrap because WSL bootstrap failed." -ForegroundColor Yellow
+    exit 1
 }

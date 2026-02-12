@@ -2,14 +2,8 @@
 set -euo pipefail
 
 # FuzLang Infrastructure CLI
-# Main entrypoint for running Ansible playbooks and utilities.
+# Main entrypoint for running Ansible playbooks and utilities
 # Script follows LOGGING_AND_OUTPUT.md contract.
-#
-# Quick commands (run from repo root):
-#   ./bin/fz bootstrap --limit server-225-win   Local bootstrap from WSL (this machine).
-#   ./bin/fz collect-facts                      Refresh Windows facts (needs elevated PowerShell for full collect).
-#   ./bin/fz deploy main --limit server-225-wsl  Deploy main stacks to WSL host.
-#   ./bin/fz verify                              Run verify playbook. See ./bin/fz --help for more.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -141,8 +135,9 @@ case "${COMMAND}" in
     if [ "${has_limit}" = true ]; then
       log_check "bootstrap mode: --limit ${limit_value}"
       # WSL-local bootstrap path for this machine: run local bootstrap playbook instead of WinRM.
+      # Pass bootstrap_node=server-225 so the playbook uses facts/server-225.json (WSL hostname would otherwise be used and miss the file).
       if [[ "${limit_value}" == "server-225-win" ]]; then
-        run_local_bootstrap_playbook "${all_args[@]}"
+        run_local_bootstrap_playbook -e bootstrap_node=server-225
         local_only_bootstrap=true
       fi
       # Check which playbook matches the limit
@@ -191,11 +186,6 @@ case "${COMMAND}" in
     if fz_ansible "playbooks/verify_fabric.yaml" "${all_args[@]}"; then
       notify "FuzLang Bootstrap" "Bootstrap completed successfully"
     fi
-    ;;
-  collect-facts)
-    # Refresh Windows facts (hostname, IP, WSL distros) into facts/<physical_node>.json.
-    # Same fact collection as bootstrap-local.ps1 on first run; use when you need to update facts.
-    run_collect_facts
     ;;
   bootstrap-winrm)
     # Guardrail: require --limit or --all
