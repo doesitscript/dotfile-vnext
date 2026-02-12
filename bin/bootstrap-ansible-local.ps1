@@ -1,5 +1,5 @@
 # bin/bootstrap-ansible-local.ps1
-# Automated WSL installation with cloud-init for server-225
+# Automated WSL deploy with cloud-init for server-225
 # This script automates deploying the ansible container and uses the WSL username and password
 # as the assumed ansible user and password.
 # Reads username and password from server-225-wsl and server-225-win host_vars files
@@ -23,6 +23,15 @@
 # $cloudInitDir = "$env:USERPROFILE\.cloud-init"  # Cloud-init directory (auto-created)
 # $userDataFile = "$cloudInitDir\$wslDistro.user-data"  # Cloud-init user-data file
 # ============================================================================
+
+param(
+    # If $true (default), unregister the WSL distribution if it already exists (wsl --unregister)
+    # then redeploy from cache (wsl --install). Set to $false to keep existing instance and use wsl -d.
+    [bool]$UnregisterIfExists = $true,
+    # Only this switch runs wsl --install when the distro is already present (unregister then re-download).
+    # Without it we never run wsl --install when distro is in wsl --list; after unregister we redeploy from cache.
+    [switch]$ForceDownload = $false
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -207,39 +216,63 @@ $userDataLines = $userData -split "`r?`n"
 Write-Host "  Created/updated cloud-init user-data file: $userDataFile" -ForegroundColor Green
 
 Write-Host ""
-Write-Host "=== Installing WSL distribution: $wslDistro ===" -ForegroundColor Cyan
+Write-Host "=== WSL distribution: $wslDistro ===" -ForegroundColor Cyan
 
-# Check if distro is already installed
+# Only run wsl --install when: (distro not in list AND we did NOT just unregister) OR -ForceDownload.
+# UnregisterIfExists $true = unregister only; no wsl --install, no download. Run again with -UnregisterIfExists $false to recreate from cache.
 $installedDistros = wsl --list --quiet 2>$null
-if ($installedDistros -contains $wslDistro) {
-    Write-Host "  [WARNING] Distribution $wslDistro is already installed" -ForegroundColor Yellow
-    Write-Host "  [TEST SCRIPT] This is a test script - terminating existing Ubuntu to test user/password automation" -ForegroundColor Yellow
-    # BUG: Testing automated container deploy without prompt - interactive prompt is commented out
-    # This automatically terminates existing distributions without user confirmation, which could
-    # cause data loss in production. Should restore interactive prompt for production use.
-    # Commented out interactive prompt - using automated termination for testing
-    # $continue = Read-Host "  Continue anyway? (y/N)"
-    # if ($continue -ne "y" -and $continue -ne "Y") {
-    #     Write-Host "  Installation cancelled." -ForegroundColor Yellow
-    #     exit 0
-    # }
-    Write-Host "  Terminating existing distribution (for retesting cloud-init): $wslDistro" -ForegroundColor Yellow
-    wsl --terminate $wslDistro
-} else {
-    # Install the distribution without launching (allows cloud-init to run)
-    Write-Host "  Installing $wslDistro with --no-launch flag..." -ForegroundColor Cyan
-    wsl --install $wslDistro  --no-launch
-    # . This instance will then be configured automatically by cloud-init. The process can take several minutes
-    #https://documentation.ubuntu.com/wsl/stable/howto/cloud-init/
-    # wsl --install -d $wslDistro --no-launch
+$distroInList = ($installedDistros -contains $wslDistro)
+$weJustUnregistered = $false
 
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "  [ERROR] Failed to install WSL distribution" -ForegroundColor Red
-        exit 1
+if ($distroInList) {
+    Write-Host "  Distribution $wslDistro is already present (wsl --list)" -ForegroundColor Green
+    if ($ForceDownload) {
+        Write-Host "  ForceDownload is true: unregistering $wslDistro then running wsl --install (re-download)..." -ForegroundColor Cyan
+        wsl --terminate $wslDistro 2>$null
+        wsl --unregister $wslDistro
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  [ERROR] Failed to unregister WSL distribution: $wslDistro" -ForegroundColor Red
+            exit 1
+        }
+        Write-Host "  [OK] Unregistered." -ForegroundColor Green
+        $installedDistros = wsl --list --quiet 2>$null
+        $distroInList = $false
+    } elseif ($UnregisterIfExists) {
+        Write-Host "  UnregisterIfExists is true: unregistering $wslDistro (wsl --unregister) only. No wsl --install, no download." -ForegroundColor Cyan
+        wsl --terminate $wslDistro 2>$null
+        wsl --unregister $wslDistro
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  [ERROR] Failed to unregister WSL distribution: $wslDistro" -ForegroundColor Red
+            exit 1
+        }
+        Write-Host "  [OK] Unregistered." -ForegroundColor Green
+        $weJustUnregistered = $true
+    } else {
+        Write-Host "  UnregisterIfExists is false: using existing distro (wsl -d for bootstrap; no wsl --install, no download)" -ForegroundColor Cyan
+        wsl --terminate $wslDistro 2>$null
     }
 }
 
-Write-Host "  [OK] Distribution installed successfully" -ForegroundColor Green
+$runWslInstall = ($ForceDownload) -or ((-not $distroInList) -and (-not $weJustUnregistered))
+if ($runWslInstall) {
+    Write-Host "  Running wsl --install $wslDistro --no-launch..." -ForegroundColor Cyan
+    wsl --install $wslDistro  --no-launch
+    # This instance will then be configured automatically by cloud-init. The process can take several minutes
+    # https://documentation.ubuntu.com/wsl/stable/howto/cloud-init/
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  [ERROR] wsl --install failed for distribution: $wslDistro" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "  [OK] wsl --install completed successfully" -ForegroundColor Green
+} else {
+    if ($weJustUnregistered) {
+        Write-Host "  [OK] Deployed instance removed. No wsl --install, no download. Cached distro unchanged." -ForegroundColor Green
+        Write-Host "  Run again with -UnregisterIfExists `$false to recreate the instance from cache and run bootstrap." -ForegroundColor Cyan
+        exit 0
+    }
+    Write-Host "  [OK] Distribution already present; redeploy via wsl -d $wslDistro for bootstrap (no wsl --install)" -ForegroundColor Green
+}
 
 Write-Host ""
 Write-Host "=== Launching WSL (cloud-init will configure user automatically) ===" -ForegroundColor Cyan
@@ -249,7 +282,7 @@ Write-Host "  Distribution: $wslDistro" -ForegroundColor Cyan
 Write-Host  "Boot :  wsl -d $wslDistro"
 
 # Launch WSL - cloud-init will detect the .user-data file and configure the user
-# Wait a moment for cloud-init to complete if this is a fresh install
+# Wait a moment for cloud-init to complete if this is a fresh deploy
 Start-Sleep -Seconds 5
 
 Write-Host ""
@@ -269,24 +302,47 @@ if ($repoRoot -match '^([A-Za-z]):') {
 }
 
 # Run bootstrap-local.sh inside WSL
-# Use bash -c to ensure we're in the right directory and can execute the script
+# IMPORTANT: We must specify the distribution by name (--distribution / -d) so we target
+# the target distro (e.g. Ubuntu-24.04), NOT the default (e.g. Ubuntu).
+# See: wsl --help -> "Run a specific distribution: wsl -d <DistroName>"
+$wslDistroForBootstrap = $wslDistro
+Write-Host "  Targeting WSL distribution by name: $wslDistroForBootstrap (not the default)" -ForegroundColor Cyan
+
 $bootstrapScriptPath = "$wslRepoPath/bin/bootstrap-local.sh"
 # Escape the command properly for WSL
 $wslCommand = "cd '$wslRepoPath' && bash '$bootstrapScriptPath'"
 
 try {
-    $result = wsl -d $wslDistro bash -c $wslCommand 2>&1
+    $result = wsl --distribution $wslDistroForBootstrap bash -c $wslCommand 2>&1
     $exitCode = $LASTEXITCODE
-    
+    $resultText = if ($result -is [array]) { $result -join "`n" } else { $result.ToString() }
+
     if ($exitCode -eq 0) {
         Write-Host "  [OK] Ansible local bootstrap completed successfully" -ForegroundColor Green
     } else {
         Write-Host "  [ERROR] Ansible local bootstrap failed with exit code: $exitCode" -ForegroundColor Red
-        Write-Host "  Output: $result" -ForegroundColor Yellow
+        Write-Host "  Output: $resultText" -ForegroundColor Yellow
+
+        # If the error message contains 'cannot determine non-root WSL user', print a warning
+        # that the script must be run as administrator
+        #  You may need to run './bin/bootstrap-local.sh' manually inside WSL
+        if ($resultText -match 'cannot determine non-root WSL user') {
+            Write-Host "" -ForegroundColor Red
+            Write-Host "  *** THIS SCRIPT MUST BE RUN AS ADMINISTRATOR ***" -ForegroundColor Red
+            Write-Host "  Right-click PowerShell and choose 'Run as administrator', then run this script again." -ForegroundColor Yellow
+            Write-Host "" -ForegroundColor Red
+        }
         Write-Host "  You may need to run './bin/bootstrap-local.sh' manually inside WSL" -ForegroundColor Yellow
     }
 } catch {
-    Write-Host "  [ERROR] Failed to run bootstrap-local.sh: $_" -ForegroundColor Red
+    $errMsg = $_.ToString()
+    Write-Host "  [ERROR] Failed to run bootstrap-local.sh: $errMsg" -ForegroundColor Red
+    if ($errMsg -match 'cannot determine non-root WSL user|sudoers') {
+        Write-Host "" -ForegroundColor Red
+        Write-Host "  *** THIS SCRIPT MUST BE RUN AS ADMINISTRATOR ***" -ForegroundColor Red
+        Write-Host "  Right-click PowerShell and choose 'Run as administrator', then run this script again." -ForegroundColor Yellow
+        Write-Host "" -ForegroundColor Red
+    }
     Write-Host "  You may need to run './bin/bootstrap-local.sh' manually inside WSL" -ForegroundColor Yellow
 }
 
