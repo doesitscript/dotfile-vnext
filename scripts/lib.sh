@@ -151,6 +151,7 @@ ensure_venv() {
   # Install Ansible Galaxy collections (for bootstrap_mac, Homebrew roles, etc.) when pip deps were installed or collections file changed.
   local requirements_yml="${repo_root}/requirements.yml"
   local collections_hash_file="${mgmt_dir}/requirements_yml.sha256"
+  mkdir -p "${mgmt_dir}"
   if [ -f "${requirements_yml}" ]; then
     local col_hash
     col_hash="$(file_sha256 "${requirements_yml}")"
@@ -158,7 +159,7 @@ ensure_venv() {
     col_prev="$(tr -d '\r\n' < "${collections_hash_file}" 2>/dev/null || true)"
     if [ "${refresh_deps}" = true ] || [ "${full_bootstrap}" = true ] || [ "${did_install_pip}" = true ] || [ "${col_hash}" != "${col_prev}" ]; then
       log_info "Installing Ansible Galaxy collections from ${requirements_yml}"
-      (cd "${repo_root}" && ansible-galaxy collection install -r requirements.yml --quiet)
+      (cd "${repo_root}" && ansible-galaxy collection install -r requirements.yml)
       printf '%s\n' "${col_hash}" > "${collections_hash_file}"
     fi
   fi
