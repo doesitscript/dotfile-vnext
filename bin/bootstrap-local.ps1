@@ -739,13 +739,12 @@ if ($RunAll) {
     Write-Host "      .\bin\bootstrap-local.ps1 -RunAll:`$false" -ForegroundColor Cyan
     Write-Host "================================================================================" -ForegroundColor White
     Write-Host ""
-    try {
-        & $nextScriptPath
-        Write-Host "Using chained bootstrap result: NextScript[$nextScriptPath] Status[Success]" -ForegroundColor Green
-    } catch {
-        Write-Error "[ERROR] Chained bootstrap failed: NextScript[$nextScriptPath] Error[$($_.Exception.Message)]" -ErrorAction Continue
-        throw
+    & $nextScriptPath
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[ERROR] Chained bootstrap failed: NextScript[$nextScriptPath] ExitCode[$LASTEXITCODE]" -ForegroundColor Red
+        exit $LASTEXITCODE
     }
+    Write-Host "Using chained bootstrap result: NextScript[$nextScriptPath] Status[Success]" -ForegroundColor Green
 } else {
     Write-Host ""
     Write-Host "Using chained bootstrap decision: RunAll[$RunAll] NextScript[Skipped]" -ForegroundColor Yellow

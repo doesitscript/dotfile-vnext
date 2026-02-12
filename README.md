@@ -89,10 +89,15 @@ Vault password is needed for deploy if you use encrypted vault files: add `--ask
 
 | Command | What it does |
 |---------|----------------|
-| `./bin/fz bootstrap --limit server-225-win` | **Local bootstrap from WSL:** run the local bootstrap playbook (host_vars, SSH, controller key, vault). Use when you are already in WSL on the target machine. |
-| `.\bin\bootstrap-local.ps1` | **Full bootstrap from Windows (Admin):** detect node, collect facts, write host_vars, then chain into Ansible local bootstrap. Run in elevated PowerShell on the Windows host. |
-| `.\bin\bootstrap-local.ps1 -FactsOnly` | **Facts only:** refresh `facts\<node>.json` (hostname, IP, WSL distros) and exit. No host_vars or Ansible run. |
-| `./bin/fz collect-facts` | **Refresh facts from WSL:** invokes the Windows fact collector; for full WinRM+WSL collection you need elevated PowerShell and `.\bin\bootstrap-local.ps1 -FactsOnly`. |
+| `.\bin\bootstrap-local.cmd` or `.\bin\bootstrap-local.ps1` | **Full hands-free bootstrap from Windows (Admin):** runs the full chain (facts → host_vars → bootstrap-ansible-local.ps1 → WSL setup → fz bootstrap). One entry point. |
+| `.\bin\bootstrap-local.ps1 -FactsOnly` | **Facts only:** refresh `facts\<node>.json` and exit. No host_vars, no next scripts. Use to re-run fact collection without chaining. |
+| `.\bin\bootstrap-local.ps1 -RunAll:$false` | **Facts + host_vars only:** stop after writing host_vars; do not call bootstrap-ansible-local.ps1. Use when you need to re-run this step without the rest of the chain. |
+| `.\bin\bootstrap-ansible-local.ps1 -RunWslBootstrap:$false` | **Skip WSL script:** run this script but do not run bootstrap-local.sh in WSL. Use to re-run only the final fz step. |
+| `.\bin\bootstrap-ansible-local.ps1 -RunFzBootstrap:$false` | **Stop after WSL setup:** run bootstrap-local.sh in WSL but do not run fz bootstrap. Use when you want to run fz manually later. |
+| `./bin/bootstrap-local.sh` | **WSL:** SSH + sudoers, then by default runs `./bin/fz bootstrap --limit server-225-win`. Full local bootstrap from WSL. |
+| `./bin/bootstrap-local.sh --skip-fz-bootstrap` | **WSL, SSH/sudoers only:** do not run fz at the end. Use to re-run just SSH/sudoers without re-running the playbook. |
+| `./bin/fz bootstrap --limit server-225-win` | **Local bootstrap from WSL:** run the local playbook (controller key, vault, host_vars). Use when already in WSL on the target. |
+| `./bin/fz collect-facts` | **Refresh facts from WSL:** invokes the Windows fact collector; full WinRM+WSL collect needs elevated PowerShell and `.\bin\bootstrap-local.ps1 -FactsOnly`. |
 | `./bin/fz deploy main --limit server-225-wsl` | Deploy main stacks (Ollama, LiteLLM, etc.) to the WSL host. |
 | `./bin/fz verify` | Run the verify playbook across the fabric (no `--limit` required). |
 

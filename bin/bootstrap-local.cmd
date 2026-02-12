@@ -15,7 +15,7 @@ echo   NEXT SCRIPT: bin\bootstrap-local.ps1 (this .cmd always runs it)
 echo   TO RUN ONLY FACT COLLECTION (no host_vars, no Ansible chain):
 echo     Run instead: .\bin\bootstrap-local.ps1 -FactsOnly
 echo   TO RUN FACTS + HOST_VARS BUT NOT THE REST OF THE CHAIN:
-echo     Run instead: .\bin\bootstrap-local.ps1 -RunAll:false
+echo     Run instead (in PowerShell): .\bin\bootstrap-local.ps1 -RunAll:$false
 echo ================================================================================
 echo.
 
