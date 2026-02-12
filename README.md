@@ -2,8 +2,13 @@
 
 Multi-node AI infrastructure automation using Ansible.
 
+## Hands-free flow
+
+The only manual steps are: **(1)** put your vault secret in `.vault_pass` at repo root (see `config/README_vault_pass.md`), and **(2)** run the first kick-off command for the node (e.g. `.\bin\bootstrap-local.cmd` on Windows, or `./bin/fz bootstrap --limit mac-dev` on the Mac). Everything else (venv, collections, SSH key generation, host_vars, WSL bootstrap) is automated.
+
 ## Structure
 
+- `archives/bootstrap/` - Local bootstrap playbook and templates (used by the WSL/fz chain)
 - `contracts/` - Canonical contract definitions
 - `inventory/` - Ansible inventory and variables
 - `playbooks/` - Ansible playbooks
@@ -99,7 +104,7 @@ echo -n 'YOUR_VAULT_PASSWORD' > .vault_pass   # or use --ask-vault-pass when run
 ./bin/fz bootstrap --limit mac-dev
 ```
 
-`fz bootstrap --limit mac-dev` does everything: creates `.venv`, installs Python deps and Ansible Galaxy collections (`requirements.yml`), then runs the Mac bootstrap playbook (ensures `~/.ssh/id_ed25519`, publishes it to `bootstrap/local/files/mac_dev_id_ed25519.pub`, runs baseline, package_manager, python, git, hub, dotenv_bin, homebrew, dev_tools, dotfiles, ansible_runner, ssh_keys). After that, from this repo run `./bin/fz deploy main --limit server-225-wsl` and similar.
+`fz bootstrap --limit mac-dev` does everything: creates `.venv`, installs Python deps and Ansible Galaxy collections (`requirements.yml`), then runs the Mac bootstrap playbook (ensures `~/.ssh/id_ed25519`, publishes it to `archives/bootstrap/local/files/mac_dev_id_ed25519.pub`, runs baseline, package_manager, python, git, hub, dotenv_bin, homebrew, dev_tools, dotfiles, ansible_runner, ssh_keys). After that, from this repo run `./bin/fz deploy main --limit server-225-wsl` and similar.
 
 ## Quick Start
 

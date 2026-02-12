@@ -516,6 +516,10 @@ require_vault_pass_setup() {
     if [ -x "${vault_script}" ]; then
       return 0
     fi
+    # Make hands-free: fix execute bit so Ansible can call vault_pass.sh (needed on WSL when repo is on Windows mount).
+    if [ -f "${vault_script}" ]; then
+      chmod +x "${vault_script}" 2>/dev/null && log_info "Set vault_pass.sh executable for Ansible" && return 0
+    fi
     log_error "vault_pass.sh is not executable; Ansible may fail on WSL (execute bit on .vault_pass cannot be cleared on Windows mount)."
     log_error "To fix: chmod +x ${vault_script}"
     log_error "See: ${repo_root}/config/README_vault_pass.md"
@@ -534,7 +538,7 @@ run_local_bootstrap_playbook() {
   local repo_root
   repo_root="$(repo_root)"
   local venv_ansible="${repo_root}/.venv/bin/ansible-playbook"
-  local playbook="${repo_root}/bootstrap/local/local_bootstrap.yml"
+  local playbook="${repo_root}/archives/bootstrap/local/local_bootstrap.yml"
 
   ensure_venv
   require_vault_pass_setup

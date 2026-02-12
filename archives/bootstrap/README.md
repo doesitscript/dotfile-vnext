@@ -7,7 +7,7 @@ Bootstrap prepares each node so Ansible can manage it (and, for the Mac, so it c
 | Node | Where to run | Command |
 |------|----------------|--------|
 | **Server-225** (Windows + WSL) | On the Windows host (Administrator) | `.\bin\bootstrap-local.cmd` |
-| **Mac (control node)** | On the Mac | `./bin/fz bootstrap --limit mac-dev` (see main [README](../README.md#bootstrap-mac-control-node) for full steps) |
+| **Mac (control node)** | On the Mac | `./bin/fz bootstrap --limit mac-dev` (see main [README](../../README.md#bootstrap-mac-control-node) for full steps) |
 | **Network server** | On the network server Windows host | `.\bin\bootstrap-local.cmd` (same as server-225) |
 | **Dev-3090** | On the dev-3090 Windows host | `.\bin\bootstrap-local.cmd` |
 

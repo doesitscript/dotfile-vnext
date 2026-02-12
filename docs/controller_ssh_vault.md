@@ -1,6 +1,6 @@
 # Controller SSH key (automated)
 
-The **local bootstrap** playbook (`bootstrap/local/bootstrap.yml`) creates and stores the controller SSH key in the project so you never paste keys by hand.
+The **local bootstrap** playbook (`archives/bootstrap/local/bootstrap.yml`) creates and stores the controller SSH key in the project so you never paste keys by hand.
 
 ## What happens on first run
 
@@ -38,7 +38,7 @@ So: **retrieve** the private key from the project via Ansible; the playbook inst
 
 You can still provide the controller public key by hand:
 
-- **File:** `bootstrap/local/files/mac_dev_id_ed25519.pub`
+- **File:** `archives/bootstrap/local/files/mac_dev_id_ed25519.pub`
 - **Shared vault:** `vault_controller_ssh_public_key` in `vault/shared.vault.yml`
 
 Bootstrap uses the **project** vault `vault/controller_ssh.vault.yml` first; if that file is missing and generation runs, it creates and stores the key there. The file and shared vault are only used when the project controller vault is not used.

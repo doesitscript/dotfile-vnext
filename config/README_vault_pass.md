@@ -9,7 +9,7 @@ Ansible uses a vault password file so encrypted vars can be decrypted without a 
    echo -n 'YOUR_PASSWORD' > .vault_pass
    ```
 
-2. **Make the wrapper script executable** (required for Ansible to call it):
+2. **Make the wrapper script executable** (required for Ansible to call it). On first run, `fz` may do this for you; otherwise:
    ```bash
    chmod +x vault_pass.sh
    ```
