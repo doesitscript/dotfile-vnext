@@ -64,15 +64,46 @@ ensure_venv() {
   local requirements_file="${repo_root}/scripts/requirements.txt"
   local python_cmd
   python_cmd="$(get_python)"
+  local activate_path="${venv_dir}/bin/activate"
 
-  if [ ! -d "${venv_dir}" ]; then
+  create_venv() {
     log_info "Creating virtual environment at ${venv_dir}"
     require_cmd "${python_cmd}"
-    "${python_cmd}" -m venv "${venv_dir}"
+    if ! "${python_cmd}" -m venv "${venv_dir}"; then
+      # On Ubuntu/WSL this typically means python3-venv is missing.
+      if command -v apt-get >/dev/null 2>&1; then
+        log_warn "python venv support appears missing; attempting to install required packages"
+        if sudo apt-get update && sudo apt-get install -y python3-venv python3-pip; then
+          log_info "Retrying virtual environment creation after installing venv support"
+          "${python_cmd}" -m venv "${venv_dir}"
+        else
+          log_error "Failed to install python3-venv/python3-pip automatically"
+          exit 1
+        fi
+      else
+        log_error "Failed to create virtual environment with ${python_cmd} -m venv ${venv_dir}"
+        exit 1
+      fi
+    fi
+  }
+
+  if [ ! -d "${venv_dir}" ]; then
+    create_venv
+  elif [ ! -f "${activate_path}" ]; then
+    # Common failure mode in WSL: .venv exists but is incomplete or created from a different platform layout.
+    log_warn "Existing virtual environment is invalid for this shell: ${activate_path} missing"
+    log_info "Rebuilding virtual environment at ${venv_dir}"
+    rm -rf "${venv_dir}"
+    create_venv
   fi
 
   # Activate virtual environment
-  source "${venv_dir}/bin/activate"
+  if [ ! -f "${activate_path}" ]; then
+    log_error "Virtual environment activation script not found: ${activate_path}"
+    exit 1
+  fi
+  # shellcheck disable=SC1090
+  source "${activate_path}"
 
   # Install/upgrade pip
   log_info "Ensuring pip is up to date"
@@ -101,6 +132,11 @@ setup_ansible_env() {
 
   # Ensure we're in repo root (ansible-playbook runs from here)
   cd "${repo_root}"
+
+  # WSL + /mnt/<drive> paths are often world-writable, and Ansible may ignore ansible.cfg there.
+  # Export core paths explicitly so role/collection resolution still works when config is skipped.
+  export ANSIBLE_ROLES_PATH="${repo_root}/roles:${repo_root}/playbooks/roles:${HOME}/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles"
+  export ANSIBLE_COLLECTIONS_PATH="${repo_root}/collections:${HOME}/.ansible/collections:/usr/share/ansible/collections"
 }
 
 # Configure Git globally for push/pull
@@ -181,11 +217,13 @@ fz_ansible() {
   local extra_args=()
   local has_vault_pass=false
   local has_vault_file=false
+  local limit_value=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --limit)
         ansible_cmd+=("--limit" "$2")
+        limit_value="$2"
         shift 2
         ;;
       --all)
@@ -250,6 +288,23 @@ fz_ansible() {
   # Add extra args if any
   if [ ${#extra_args[@]} -gt 0 ]; then
     ansible_cmd+=("${extra_args[@]}")
+  fi
+
+  # WinRM fallback: if limit targets a single Windows host_vars file with win_password
+  # but missing ansible_password, inject runtime extra-vars so ntlm auth can proceed.
+  if [[ -n "${limit_value}" && "${limit_value}" == *"-win"* ]]; then
+    local host_vars_file="${repo_root}/inventory/host_vars/${limit_value}.yaml"
+    if [ -f "${host_vars_file}" ]; then
+      local ansible_password_value=""
+      local win_password_value=""
+      ansible_password_value="$(sed -n 's/^[[:space:]]*ansible_password:[[:space:]]*"\{0,1\}\([^"#]*\).*/\1/p' "${host_vars_file}" | head -1)"
+      win_password_value="$(sed -n 's/^[[:space:]]*win_password:[[:space:]]*"\{0,1\}\([^"#]*\).*/\1/p' "${host_vars_file}" | head -1)"
+      if [[ -z "${ansible_password_value}" && -n "${win_password_value}" ]]; then
+        log_info "Using win_password fallback for ansible_password on ${limit_value}"
+        ansible_cmd+=("-e" "ansible_password=${win_password_value}")
+        ansible_cmd+=("-e" "ansible_winrm_password=${win_password_value}")
+      fi
+    fi
   fi
 
   # If no vault method specified, check for vault password file in common locations
@@ -386,6 +441,29 @@ run_ansible_playbook() {
 
   log_info "Running: ${ansible_cmd[*]}"
   "${ansible_cmd[@]}"
+}
+
+# Run local bootstrap playbook from venv using localhost connection.
+run_local_bootstrap_playbook() {
+  local repo_root
+  repo_root="$(repo_root)"
+  local venv_ansible="${repo_root}/.venv/bin/ansible-playbook"
+  local playbook="${repo_root}/bootstrap/local/local_bootstrap.yml"
+
+  ensure_venv
+  setup_ansible_env
+
+  if [ ! -f "${venv_ansible}" ]; then
+    log_error "ansible-playbook not found in virtual environment"
+    exit 1
+  fi
+  if [ ! -f "${playbook}" ]; then
+    log_error "Local bootstrap playbook not found: ${playbook}"
+    exit 1
+  fi
+
+  log_info "Running local bootstrap playbook via localhost connection"
+  "${venv_ansible}" -i "localhost," -c local "${playbook}"
 }
 
 # Run ansible-vault edit

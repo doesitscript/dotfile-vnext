@@ -21,20 +21,19 @@ Multi-node AI infrastructure automation using Ansible.
 
 ## Prerequisites for Windows Servers
 
-Before running `bin/bootstrap-local.ps1` on a new Windows server, ensure:
+Before running bootstrap on a new Windows server, ensure:
 
-1. **PowerShell Execution Policy**: Allow script execution (run as Administrator):
-   ```powershell
-   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-   ```
+1. **Repository Cloned**: The dotfile-vnext repository is present on the target server (for example `D:\develop\dotfile-vnext`)
+2. **Administrator Privileges**: Run the terminal as Administrator (required for full Windows feature/bootstrap steps)
+3. **Network Access**: The server can reach required package/endpoints (for example WSL distro install)
 
-2. **Repository Cloned**: The dotfile-vnext repository must be cloned to the target server (e.g., `D:\develop\dotfile-vnext`)
+`bin/bootstrap-local.cmd` is the Windows entrypoint. It launches `bin/bootstrap-local.ps1` with:
 
-3. **Administrator Privileges**: The script must be run from an elevated PowerShell session (Run as Administrator)
+```text
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "...\bin\bootstrap-local.ps1"
+```
 
-4. **Network Access**: The server should have network connectivity for downloading WSL distributions if needed
-
-The bootstrap script will automatically configure WinRM HTTPS, enable WSL features, and set up firewall rules. A reboot may be required after WSL features are enabled.
+That means you do not have to pre-configure a process-level execution policy before starting bootstrap.
 
 ## Developer setup (Cursor)
 
@@ -53,14 +52,16 @@ Server-225 is the primary GPU node. Two parts:
 
 On the Windows machine (as Administrator):
 
-1. Clone the repo (e.g. `D:\develop\dotfile-vnext`).
-2. In PowerShell (Run as Administrator):
+1. Clone the repo (for example `D:\develop\dotfile-vnext`).
+2. In an elevated terminal:
    ```powershell
-   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
    cd D:\develop\dotfile-vnext
-   .\bin\bootstrap-local.ps1
+   .\bin\bootstrap-local.cmd
    ```
-   This configures WinRM, WSL, firewall, and writes `inventory/host_vars/server-225-win.yaml` and `server-225-wsl.yaml` so Ansible can connect. Reboot if prompted.
+3. `bootstrap-local.cmd` starts `bootstrap-local.ps1` as the first-stage bootstrap. The PowerShell script detects node identity, configures WinRM/WSL prerequisites, and writes generated facts and host vars.
+4. After that local bootstrap completes, use `bin/fz` from your control environment to run Ansible bootstrap/deploy/verify phases.
+
+`bootstrap-local.ps1` will also set `CurrentUser` execution policy to `Bypass` non-interactively so future local PowerShell bootstrap runs are not blocked by prompts.
 
 ### 2. Run Ansible **against** Server-225
 

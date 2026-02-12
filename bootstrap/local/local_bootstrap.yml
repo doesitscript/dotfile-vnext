@@ -67,13 +67,28 @@
 
     - name: parse existing windows host_vars
       ansible.builtin.set_fact:
-        existing_win_hostvars: "{{ (existing_win_hostvars_raw.content | default('') | b64decode | default('')) | from_yaml }}"
+        existing_win_hostvars: "{{ (existing_win_hostvars_raw.content | default('') | b64decode | default('') | regex_replace('\\x00', '')) | from_yaml }}"
       when: existing_win_hostvars_raw is defined and existing_win_hostvars_raw.content is defined
+
+    - name: set win_user for templating (prefer existing file)
+      ansible.builtin.set_fact:
+        win_user: "{{ existing_win_hostvars.win_user | default('josh') }}"
+      when: existing_win_hostvars is defined
+
+    - name: set default win_user when existing file missing
+      ansible.builtin.set_fact:
+        win_user: "josh"
+      when: win_user is not defined
 
     - name: set win_password for templating (prefer existing file)
       ansible.builtin.set_fact:
-        win_password: "{{ existing_win_hostvars.win_password }}"
-      when: existing_win_hostvars is defined and (existing_win_hostvars.win_password | default('')) | length > 0
+        win_password: "{{ existing_win_hostvars.win_password | default('') }}"
+      when: existing_win_hostvars is defined
+
+    - name: set default win_password when existing file missing
+      ansible.builtin.set_fact:
+        win_password: ""
+      when: win_password is not defined
 
     - name: choose wsl user
       ansible.builtin.set_fact:
@@ -93,7 +108,7 @@
 
     - name: parse existing wsl host_vars
       ansible.builtin.set_fact:
-        existing_wsl_hostvars: "{{ (existing_wsl_hostvars_raw.content | default('') | b64decode | default('')) | from_yaml }}"
+        existing_wsl_hostvars: "{{ (existing_wsl_hostvars_raw.content | default('') | b64decode | default('') | regex_replace('\\x00', '')) | from_yaml }}"
       when: existing_wsl_hostvars_raw is defined and existing_wsl_hostvars_raw.content is defined
 
     - name: set wsl_password for templating (prefer existing file)

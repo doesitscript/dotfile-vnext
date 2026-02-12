@@ -10,6 +10,21 @@ The infrastructure uses a **remote-first workflow** with a dual-surface model:
 
 ## Workflow Phases
 
+### Pre-Phase: Local Windows Bootstrap Entrypoint
+
+**Goal**: Prepare a Windows node locally before remote-first orchestration.
+
+Run on the Windows node in an elevated terminal:
+
+```cmd
+.\bin\bootstrap-local.cmd
+```
+
+**Why this script is first**:
+- `bootstrap-local.cmd` is the entrypoint for Windows bootstrap.
+- It invokes `bootstrap-local.ps1` with `-ExecutionPolicy Bypass` so bootstrap can run without manual policy setup each time.
+- `bootstrap-local.ps1` then discovers node identity and writes/update local facts and `inventory/host_vars` files used by the later Ansible phases.
+
 ### Phase 1: Initial Bootstrap (WinRM-Only)
 
 **Goal**: Enable SSH and WSL prerequisites on Windows hosts.

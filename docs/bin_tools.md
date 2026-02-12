@@ -23,6 +23,24 @@ No manual setup required!
 ./bin/fz <command> [options]
 ```
 
+## Windows Bootstrap Entry Script
+
+For first-run Windows host setup, start with `bin/bootstrap-local.cmd` from the repo root:
+
+```cmd
+.\bin\bootstrap-local.cmd
+```
+
+Purpose:
+- Acts as the Windows-friendly entrypoint (works from `cmd.exe` and PowerShell)
+- Launches `bin/bootstrap-local.ps1` with a non-interactive bypass policy
+- Avoids requiring manual `Set-ExecutionPolicy ...` setup before bootstrap
+
+What it kicks off:
+1. `bootstrap-local.cmd` runs `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<repo>\bin\bootstrap-local.ps1"`
+2. `bootstrap-local.ps1` performs local machine bootstrap (WinRM/WSL checks, node detection, facts + host_vars generation)
+3. Generated host vars are then used by the `bin/fz` Ansible commands for bootstrap/deploy/verify flows
+
 ## Commands
 
 ### Bootstrap

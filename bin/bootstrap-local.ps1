@@ -8,11 +8,25 @@
 
 $ErrorActionPreference = "Stop"
 
+# Ensure the current user can run scripts without interactive prompts.
+try {
+    $currentUserPolicy = Get-ExecutionPolicy -Scope CurrentUser
+    if ($currentUserPolicy -ne "Bypass") {
+        Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Bypass -Force
+        Write-Host "Set CurrentUser execution policy to Bypass." -ForegroundColor Green
+    } else {
+        Write-Host "CurrentUser execution policy already Bypass." -ForegroundColor Green
+    }
+} catch {
+    Write-Host "WARNING: Could not set CurrentUser execution policy: $_" -ForegroundColor Yellow
+}
+
 # Check prerequisites
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-    Write-Host "ERROR: This script must be run as Administrator." -ForegroundColor Red
-    exit 1
+    Write-Host "WARNING: Running without Administrator privileges." -ForegroundColor Yellow
+    Write-Host "  Privileged steps (WinRM quickconfig / WSL feature install) will be skipped." -ForegroundColor Yellow
+    Write-Host "  Re-run as Administrator for full host bootstrap." -ForegroundColor Yellow
 }
 
 # Get script directory and repo root
@@ -263,8 +277,13 @@ function Get-DesiredAnsibleHost {
 
 function Test-WSLInstalled {
     # Check if WSL feature is enabled
-    $wslFeature = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -ErrorAction SilentlyContinue
-    return ($wslFeature -and $wslFeature.State -eq "Enabled")
+    try {
+        $wslFeature = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -ErrorAction Stop
+        return ($wslFeature -and $wslFeature.State -eq "Enabled")
+    } catch {
+        # Non-admin or DISM unavailable in current session.
+        return $false
+    }
 }
 
 function Install-WSLFeature {
@@ -427,23 +446,31 @@ Write-Host "Collecting facts..." -ForegroundColor Cyan
 # Use preferred IP
 $bestIP = if ($preferredIP) { $preferredIP } else { "0.0.0.0" }
 
-# Configure WinRM HTTP
-Write-Host "Configuring WinRM HTTP..." -ForegroundColor Cyan
-winrm quickconfig -force | Out-Null
-# This sets up:
-# - WinRM HTTP listener on 5985
-# - Firewall rules
-# - Service startup
-# No certs involved.
+# Configure WinRM HTTP (admin-only)
+if ($isAdmin) {
+    Write-Host "Configuring WinRM HTTP..." -ForegroundColor Cyan
+    winrm quickconfig -force | Out-Null
+    # This sets up:
+    # - WinRM HTTP listener on 5985
+    # - Firewall rules
+    # - Service startup
+    # No certs involved.
+} else {
+    Write-Host "Skipping WinRM quickconfig (requires Administrator)." -ForegroundColor Yellow
+}
 
-# Check and install WSL if needed
+# Check and install WSL if needed (feature install is admin-only)
 Write-Host "Checking WSL installation..." -ForegroundColor Cyan
 $wslInstalled = Test-WSLInstalled
 
 if (-not $wslInstalled) {
-    $wslInstalled = Install-WSLFeature
-    if (-not $wslInstalled) {
-        Write-Host "WARNING: Could not install WSL feature. WSL functionality will be unavailable." -ForegroundColor Red
+    if ($isAdmin) {
+        $wslInstalled = Install-WSLFeature
+        if (-not $wslInstalled) {
+            Write-Host "WARNING: Could not install WSL feature. WSL functionality will be unavailable." -ForegroundColor Red
+        }
+    } else {
+        Write-Host "Skipping WSL feature install (requires Administrator)." -ForegroundColor Yellow
     }
 }
 
@@ -570,6 +597,8 @@ if ($existingWinVars.win_password) {
 $winVars.ansible_connection = "winrm"
 $winVars.ansible_host = $ansibleHost
 $winVars.ansible_user = $winVars.win_user
+$winVars.ansible_password = if ($winVars.win_password) { $winVars.win_password } else { "" }
+$winVars.ansible_winrm_password = if ($winVars.win_password) { $winVars.win_password } else { "" }
 $winVars.ansible_port = 5985
 $winVars.ansible_winrm_transport = "ntlm"
 $winVars.ansible_winrm_scheme = "http"

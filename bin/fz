@@ -80,6 +80,7 @@ case "${COMMAND}" in
     
     # Save all args for later use
     all_args=("$@")
+    local_only_bootstrap=false
     
     log_info "=== Phase 1: Bootstrap WinRM ==="
     # Determine which bootstrap playbooks to run based on limit
@@ -103,8 +104,13 @@ case "${COMMAND}" in
     
     # Run appropriate bootstrap playbooks
     if [ "${has_limit}" = true ]; then
+      # WSL-local bootstrap path for this machine: run local bootstrap playbook instead of WinRM.
+      if [[ "${limit_value}" == "server-225-win" ]]; then
+        run_local_bootstrap_playbook
+        local_only_bootstrap=true
+      fi
       # Check which playbook matches the limit
-      if [[ "${limit_value}" == *"server-225"* ]] || [[ "${limit_value}" == *"main"* ]]; then
+      if ([[ "${limit_value}" == *"server-225"* ]] || [[ "${limit_value}" == *"main"* ]]) && [[ "${limit_value}" != "server-225-win" ]]; then
         fz_ansible "playbooks/bootstrap_server_225.yaml" "${all_args[@]}"
       fi
       if [[ "${limit_value}" == *"network"* ]]; then
@@ -118,6 +124,13 @@ case "${COMMAND}" in
       fz_ansible "playbooks/bootstrap_server_225.yaml" "${all_args[@]}"
       fz_ansible "playbooks/bootstrap_network_server.yaml" "${all_args[@]}"
       fz_ansible "playbooks/bootstrap_dev_3090.yaml" "${all_args[@]}"
+    fi
+
+    # Local WSL bootstrap for server-225-win is a phase-1-only path.
+    if [ "${local_only_bootstrap}" = true ]; then
+      log_success "Local bootstrap completed for server-225-win"
+      notify "FuzLang Bootstrap" "Local bootstrap completed successfully"
+      exit 0
     fi
     
     log_info "=== Phase 2: Verify ==="

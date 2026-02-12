@@ -7,12 +7,8 @@
 set -euo pipefail
 
 # Ensure passwordless sudo for the current user (needed for Ansible become)
+# When invoked from Windows bootstrap, WSL can start as root with no SUDO_USER.
 WSL_USER="${SUDO_USER:-${USER}}"
-
-if [[ -z "${WSL_USER}" || "${WSL_USER}" == "root" ]]; then
-  echo "ERROR: cannot determine non-root WSL user for sudoers" >&2
-  exit 1
-fi
 
 # Function to run sudo with password if needed
 # Tries passwordless sudo first, then falls back to password if provided
@@ -41,6 +37,26 @@ run_sudo() {
 # Try to read WSL password from host_vars or environment
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
+
+if [[ -z "${WSL_USER}" || "${WSL_USER}" == "root" ]]; then
+  # Prefer repo host_vars declaration for deterministic behavior.
+  if [[ -f "inventory/host_vars/server-225-wsl.yaml" ]]; then
+    WSL_USER_FROM_VARS="$(sed -n 's/^[[:space:]]*wsl_user:[[:space:]]*"\{0,1\}\([^"#[:space:]]\+\).*/\1/p' inventory/host_vars/server-225-wsl.yaml | head -1)"
+    if [[ -n "${WSL_USER_FROM_VARS:-}" && "${WSL_USER_FROM_VARS}" != "root" ]]; then
+      WSL_USER="${WSL_USER_FROM_VARS}"
+    fi
+  fi
+fi
+
+if [[ -z "${WSL_USER}" || "${WSL_USER}" == "root" ]]; then
+  # Fallback: first regular local user (UID >= 1000, excluding nobody).
+  WSL_USER="$(awk -F: '$3 >= 1000 && $1 != "nobody" { print $1; exit }' /etc/passwd)"
+fi
+
+if [[ -z "${WSL_USER}" || "${WSL_USER}" == "root" ]]; then
+  echo "ERROR: cannot determine non-root WSL user for sudoers" >&2
+  exit 1
+fi
 
 # Check for WSL password in host_vars (if ansible-vault decrypted or plain text)
 if [[ -f "inventory/host_vars/server-225-wsl.yaml" ]]; then
