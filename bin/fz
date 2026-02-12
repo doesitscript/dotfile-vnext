@@ -3,6 +3,7 @@ set -euo pipefail
 
 # FuzLang Infrastructure CLI
 # Main entrypoint for running Ansible playbooks and utilities
+# Script follows LOGGING_AND_OUTPUT.md contract.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -348,6 +349,21 @@ case "${COMMAND}" in
     
     if fz_ansible "playbooks/verify_fabric.yaml" "$@"; then
       notify "FuzLang Verify" "Fabric verification completed successfully"
+    fi
+    ;;
+  role-local)
+    ROLE_NAME="${1:-}"
+    shift || true
+
+    if [ -z "${ROLE_NAME}" ]; then
+      log_error "role-local requires a role name"
+      log_info "Example: fz role-local git"
+      log_info "Example: fz role-local git --check --diff"
+      exit 1
+    fi
+
+    if run_local_role_playbook "${ROLE_NAME}" "$@"; then
+      notify "FuzLang Role Local" "Local role '${ROLE_NAME}' completed successfully"
     fi
     ;;
   contract)

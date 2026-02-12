@@ -1,34 +1,14 @@
 #!/usr/bin/env bash
 # Shared bash functions for FuzLang Infrastructure scripts
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Script follows LOGGING_AND_OUTPUT.md contract.
+LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib"
+# shellcheck source=../lib/log.sh
+source "${LIB_DIR}/log.sh"
+# shellcheck source=../lib/redact.sh
+source "${LIB_DIR}/redact.sh"
 
-# Logging functions
-log_info() {
-  echo -e "${BLUE}[INFO]${NC} $*" >&2
-}
-log_step() { echo -e "${BLUE}[STEP]${NC} $*" >&2; }
-log_check() { echo -e "${YELLOW}[CHECK]${NC} $*" >&2; }
-log_set() { echo -e "${BLUE}[SET]${NC} $*" >&2; }
-log_skip() { echo -e "${YELLOW}[SKIP]${NC} $*" >&2; }
-log_ok() { echo -e "${GREEN}[OK]${NC} $*" >&2; }
-
-log_success() {
-  echo -e "${GREEN}[SUCCESS]${NC} $*" >&2
-}
-
-log_warn() {
-  echo -e "${YELLOW}[WARN]${NC} $*" >&2
-}
-
-log_error() {
-  echo -e "${RED}[ERROR]${NC} $*" >&2
-}
+log_success() { log_ok "$*"; }
 
 # Send macOS notification (optional, doesn't error if not available)
 notify() {
@@ -151,6 +131,11 @@ setup_ansible_env() {
   export ANSIBLE_COLLECTIONS_PATH="${repo_root}/collections:${HOME}/.ansible/collections:/usr/share/ansible/collections"
   log_info "ANSIBLE_ROLES_PATH=${ANSIBLE_ROLES_PATH}"
   log_info "ANSIBLE_COLLECTIONS_PATH=${ANSIBLE_COLLECTIONS_PATH}"
+
+  # Ensure standard per-user log directory exists.
+  local ansible_log_dir="${HOME}/logs"
+  mkdir -p "${ansible_log_dir}"
+  log_info "Ansible log directory ready: ${ansible_log_dir}"
 }
 
 # Configure Git globally for push/pull
@@ -547,6 +532,50 @@ run_ansible_vault_edit() {
   "${ansible_cmd[@]}"
 }
 
+# Run a single role locally on localhost via a temporary playbook.
+run_local_role_playbook() {
+  local role_name="$1"
+  shift || true
+
+  if [ -z "${role_name}" ]; then
+    log_error "Role name is required"
+    exit 1
+  fi
+
+  local repo_root
+  repo_root="$(repo_root)"
+  local venv_ansible="${repo_root}/.venv/bin/ansible-playbook"
+  local tmp_playbook
+  tmp_playbook="$(mktemp "${TMPDIR:-/tmp}/fz-role-local.XXXXXX.yml")"
+
+  ensure_venv
+  setup_ansible_env
+
+  if [ ! -f "${venv_ansible}" ]; then
+    log_error "ansible-playbook not found in virtual environment"
+    exit 1
+  fi
+
+  cat > "${tmp_playbook}" <<EOF
+- hosts: localhost
+  connection: local
+  gather_facts: true
+  roles:
+    - role: ${role_name}
+EOF
+
+  log_info "Running local role '${role_name}' using temporary playbook"
+  if [ $# -gt 0 ]; then
+    "${venv_ansible}" -i "localhost," -c local "${tmp_playbook}" "$@"
+  else
+    "${venv_ansible}" -i "localhost," -c local "${tmp_playbook}"
+  fi
+  local rc=$?
+
+  rm -f "${tmp_playbook}"
+  return "${rc}"
+}
+
 # Print usage information
 usage() {
   cat << EOF
@@ -569,6 +598,9 @@ Commands:
     network              Deploy network stacks (network-server)
     dev                  Deploy dev stacks (dev-3090)
   verify                 Verify entire fabric (no --limit required)
+  role-local <role>      Run one role locally on localhost
+                        Example: fz role-local git
+                        Supports ansible-playbook flags (e.g. --check, --diff)
   contract lint          Lint the contract YAML file
   vault edit <scope>     Edit vault file
     shared               Edit shared vault

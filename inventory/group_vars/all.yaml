@@ -3,3 +3,16 @@
 timezone: America/Chicago  # POSIX timezone (for macOS/Linux)
 timezone_windows: Central Standard Time  # Windows timezone name
 contract_file: contracts/fuzlang.contract.yaml
+
+# Dotfiles role path defaults (override per host/group if needed).
+dotfiles_home: >-
+  {{ 'D:\\develop\\dotfile-vnext'
+     if ansible_system == 'Windows'
+     else ('/Users/' ~ ansible_user ~ '/develop/dotfile-vnext'
+           if ansible_system == 'Darwin'
+           else '/mnt/d/develop/dotfile-vnext') }}
+
+dotfiles_user_home: >-
+  {{ (ansible_env.USERPROFILE | default('C:\\Users\\' ~ ansible_user))
+     if ansible_system == 'Windows'
+     else (ansible_env.HOME | default('/home/' ~ ansible_user)) }}

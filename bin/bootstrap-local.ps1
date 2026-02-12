@@ -6,9 +6,14 @@
 # 3. Generates host_vars files for Windows and WSL surfaces
 # 4. Writes facts JSON for auditing/reuse
 
+param(
+    [bool]$RunAll = $true
+)
+
 $ErrorActionPreference = "Stop"
 $VerbosePreference = "Continue"
 Write-Verbose "Verbose output enabled (VerbosePreference=Continue)"
+Write-Verbose "Parameter values: RunAll=$RunAll"
 
 # Ensure the current user can run scripts without interactive prompts.
 try {
@@ -678,3 +683,20 @@ Write-Host "Using next steps guidance:" -ForegroundColor Cyan
 Write-Host "  1. Review generated host_vars files" -ForegroundColor White
 Write-Host "  2. Run bin/bootstrap-local.sh inside WSL (if WSL is available)" -ForegroundColor White
 Write-Host "  3. Run Ansible playbooks from your Mac using the generated host_vars" -ForegroundColor White
+
+if ($RunAll) {
+    $nextScriptPath = Join-Path $repoRoot "bin\bootstrap-ansible-local.ps1"
+    Write-Host ""
+    Write-Host "Doing chained bootstrap: RunAll[$RunAll] NextScript[$nextScriptPath]" -ForegroundColor Cyan
+    Write-Host "RunAll is true, so bootstrap-ansible-local.ps1 is now running..." -ForegroundColor Green
+    try {
+        & $nextScriptPath
+        Write-Host "Using chained bootstrap result: NextScript[$nextScriptPath] Status[Success]" -ForegroundColor Green
+    } catch {
+        Write-Error "[ERROR] Chained bootstrap failed: NextScript[$nextScriptPath] Error[$($_.Exception.Message)]" -ErrorAction Continue
+        throw
+    }
+} else {
+    Write-Host ""
+    Write-Host "Using chained bootstrap decision: RunAll[$RunAll] NextScript[Skipped]" -ForegroundColor Yellow
+}
