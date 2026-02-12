@@ -2,7 +2,7 @@
   ansible.builtin.file:
     path: "{{ dotfiles_user_home }}/.dotfiles"
     state: directory
-  when: ansible_system != "Windows"
+  when: ansible_facts['system'] != "Windows"
 
 - name: Ensure dotenv bin symlink exists on Unix-like hosts
   ansible.builtin.file:
@@ -10,9 +10,9 @@
     dest: "{{ dotfiles_user_home }}/.dotfiles/bin"
     state: link
     force: true
-  when: ansible_system != "Windows"
+  when: ansible_facts['system'] != "Windows"
 
 - name: Report deferred dotenv_bin handling on Windows
   ansible.builtin.debug:
     msg: "dotenv_bin symlink setup is currently implemented for Unix-like hosts only; PowerShell path management will be added later."
-  when: ansible_system == "Windows"
+  when: ansible_facts['system'] == "Windows"

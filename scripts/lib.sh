@@ -547,6 +547,8 @@ run_local_role_playbook() {
   local venv_ansible="${repo_root}/.venv/bin/ansible-playbook"
   local tmp_playbook
   tmp_playbook="$(mktemp "${TMPDIR:-/tmp}/fz-role-local.XXXXXX.yml")"
+  local dotfiles_home_default="${repo_root}"
+  local dotfiles_user_home_default="${HOME}"
 
   ensure_venv
   setup_ansible_env
@@ -566,9 +568,14 @@ EOF
 
   log_info "Running local role '${role_name}' using temporary playbook"
   if [ $# -gt 0 ]; then
-    "${venv_ansible}" -i "localhost," -c local "${tmp_playbook}" "$@"
+    "${venv_ansible}" -i "localhost," -c local "${tmp_playbook}" \
+      -e "dotfiles_home=${dotfiles_home_default}" \
+      -e "dotfiles_user_home=${dotfiles_user_home_default}" \
+      "$@"
   else
-    "${venv_ansible}" -i "localhost," -c local "${tmp_playbook}"
+    "${venv_ansible}" -i "localhost," -c local "${tmp_playbook}" \
+      -e "dotfiles_home=${dotfiles_home_default}" \
+      -e "dotfiles_user_home=${dotfiles_user_home_default}"
   fi
   local rc=$?
 
