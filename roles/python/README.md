@@ -7,8 +7,7 @@ Use the `mkvenv` script for bootstrapping new virtualenvs.
 
 ## Notes
 
-* prezto's `python` module takes care of initializing pyenv and
-    pyenv-virtualenv.
+* Bash shell init should set up `pyenv` and `pyenv-virtualenv` in your profile.
 
 # installs to $(brew --prefix)/opt/python
 
