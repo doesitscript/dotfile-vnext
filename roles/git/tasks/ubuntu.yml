@@ -1,0 +1,9 @@
+- name: Capture git version on Ubuntu when available
+  ansible.builtin.command: git --version
+  changed_when: false
+  failed_when: false
+  register: git_version_ubuntu
+
+- name: Report git install ownership on Ubuntu
+  ansible.builtin.debug:
+    msg: "Git installation is managed manually. Detected: {{ git_version_ubuntu.stdout | default('not found') }}"

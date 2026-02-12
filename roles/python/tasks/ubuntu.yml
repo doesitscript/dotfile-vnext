@@ -1,0 +1,26 @@
+- name: Ensure Python tooling packages are installed on Ubuntu
+  ansible.builtin.apt:
+    name:
+      - python3
+      - python3-pip
+      - python3-venv
+      - pipx
+    state: present
+    update_cache: true
+  become: true
+
+- name: Ensure pipx binary path is initialized on Ubuntu
+  ansible.builtin.command: pipx ensurepath
+  changed_when: false
+  failed_when: false
+
+- name: Ensure poetry is installed with pipx on Ubuntu
+  ansible.builtin.command: pipx install poetry
+  changed_when: false
+  failed_when: false
+
+- name: Ensure pytest.ini symlink exists on Ubuntu
+  ansible.builtin.file:
+    src: "{{ dotfiles_home }}/roles/python/files/pytest.ini"
+    dest: "{{ dotfiles_user_home }}/pytest.ini"
+    state: link

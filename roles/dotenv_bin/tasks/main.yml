@@ -1,14 +1,18 @@
-# - import_tasks: mac.yml
-#   when: ansible_os_family == "Darwin"
-    
-- name: ensure a location to place bin symlink exists
-  file:
+- name: Ensure .dotfiles directory exists on Unix-like hosts
+  ansible.builtin.file:
     path: "{{ dotfiles_user_home }}/.dotfiles"
     state: directory
-    
-- name: Link dotenv bin folder
-  file:
+  when: ansible_system != "Windows"
+
+- name: Ensure dotenv bin symlink exists on Unix-like hosts
+  ansible.builtin.file:
     src: "{{ dotfiles_home }}/bin"
     dest: "{{ dotfiles_user_home }}/.dotfiles/bin"
     state: link
-    force: yes
+    force: true
+  when: ansible_system != "Windows"
+
+- name: Report deferred dotenv_bin handling on Windows
+  ansible.builtin.debug:
+    msg: "dotenv_bin symlink setup is currently implemented for Unix-like hosts only; PowerShell path management will be added later."
+  when: ansible_system == "Windows"

@@ -1,34 +1,49 @@
+- name: Process git role for macOS
+  ansible.builtin.import_tasks: mac.yml
+  when: ansible_system == "Darwin"
 
-- import_tasks: mac.yml
-  when: ansible_os_family == "Darwin"
-- import_tasks: debian.yml
-  when: ansible_os_family == "Debian"
-- import_tasks: redhat.yml
-  when: ansible_os_family == "RedHat"
+- name: Process git role for Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when: ansible_distribution == "Ubuntu"
 
-- name: Link global gitignore file
-  file:
+- name: Process git role for Windows
+  ansible.builtin.import_tasks: windows.yml
+  when: ansible_system == "Windows"
+
+- name: Ensure global gitignore is linked on Unix-like systems
+  ansible.builtin.file:
     src: "{{ dotfiles_home }}/roles/git/files/gitignore_global.link"
     dest: "{{ dotfiles_user_home }}/.gitignore_global"
     state: link
-    force: yes
+    force: true
+  when: ansible_system != "Windows"
 
-- name: Check if gitconfig exists
-  stat: path="{{dotfiles_user_home}}/.gitconfig"
+- name: Ensure global gitignore exists on Windows
+  ansible.builtin.copy:
+    src: "{{ dotfiles_home }}/roles/git/files/gitignore_global.link"
+    dest: "{{ dotfiles_user_home }}/.gitignore_global"
+    force: true
+  when: ansible_system == "Windows"
+
+- name: Check whether gitconfig already exists
+  ansible.builtin.stat:
+    path: "{{ dotfiles_user_home }}/.gitconfig"
   register: gitconfig_stat
 
-- name: Back up gitconfig
-  command: mv ~/.gitconfig ~/.gitconfig.bak
-  args:
-    creates: "{{dotfiles_user_home}}/.gitconfig.bak"
+- name: Back up existing gitconfig once
+  ansible.builtin.copy:
+    src: "{{ dotfiles_user_home }}/.gitconfig"
+    dest: "{{ dotfiles_user_home }}/.gitconfig.bak"
+    remote_src: true
+    force: false
   when: gitconfig_stat.stat.exists
 
-- name: Make sure gitconfig is up to date
-  template:
-    src: "gitconfig.j2"
-    dest: "{{dotfiles_user_home}}/.gitconfig"
+- name: Ensure gitconfig matches template
+  ansible.builtin.template:
+    src: gitconfig.j2
+    dest: "{{ dotfiles_user_home }}/.gitconfig"
 
-- name: Make sure gitattributes is up to date
-  template:
-    src: "gitattributes.j2"
-    dest: "{{dotfiles_user_home}}/.gitattributes"
+- name: Ensure gitattributes matches template
+  ansible.builtin.template:
+    src: gitattributes.j2
+    dest: "{{ dotfiles_user_home }}/.gitattributes"

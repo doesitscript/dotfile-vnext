@@ -1,2 +1,9 @@
-- name: Install git with Homebrew
-  homebrew: name=git state=present
+- name: Capture git version on macOS when available
+  ansible.builtin.command: git --version
+  changed_when: false
+  failed_when: false
+  register: git_version_mac
+
+- name: Report git install ownership on macOS
+  ansible.builtin.debug:
+    msg: "Git installation is managed manually. Detected: {{ git_version_mac.stdout | default('not found') }}"

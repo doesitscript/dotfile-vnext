@@ -1,5 +1,11 @@
-- import_tasks: mac.yml
-  when: ansible_os_family == "Darwin"
+- name: Process hub role for macOS
+  ansible.builtin.import_tasks: mac.yml
+  when: ansible_system == "Darwin"
 
-- import_tasks: redhat.yml
-  when: ansible_os_family == "RedHat"
+- name: Process hub role for Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when: ansible_distribution == "Ubuntu"
+
+- name: Process hub role for Windows
+  ansible.builtin.import_tasks: windows.yml
+  when: ansible_system == "Windows"

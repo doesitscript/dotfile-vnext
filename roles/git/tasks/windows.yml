@@ -1,0 +1,9 @@
+- name: Capture git version on Windows when available
+  ansible.windows.win_command: git --version
+  changed_when: false
+  failed_when: false
+  register: git_version_windows
+
+- name: Report git install ownership on Windows
+  ansible.builtin.debug:
+    msg: "Git installation is managed manually. Detected: {{ git_version_windows.stdout | default('not found') }}"

@@ -1,8 +1,11 @@
-- import_tasks: redhat.yml
-  when: ansible_os_family == "RedHat"
+- name: Process package manager role for Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when: ansible_distribution == "Ubuntu"
 
-- import_tasks: debian.yml
-  when: ansible_os_family == "Debian"
+- name: Process package manager role for macOS
+  ansible.builtin.import_tasks: mac.yml
+  when: ansible_system == "Darwin"
 
-- import_tasks: mac.yml
-  when: ansible_os_family == "Darwin"
+- name: Process package manager role for Windows
+  ansible.builtin.import_tasks: windows.yml
+  when: ansible_system == "Windows"

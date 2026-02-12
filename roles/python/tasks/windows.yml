@@ -1,0 +1,20 @@
+- name: Ensure Python is installed on Windows via Chocolatey
+  chocolatey.chocolatey.win_chocolatey:
+    name: python
+    state: present
+
+- name: Ensure pipx is installed on Windows
+  ansible.windows.win_command: py -m pip install --user pipx
+  changed_when: false
+  failed_when: false
+
+- name: Ensure poetry is installed via pipx on Windows
+  ansible.windows.win_command: py -m pipx install poetry
+  changed_when: false
+  failed_when: false
+
+- name: Ensure pytest.ini is copied on Windows
+  ansible.windows.win_copy:
+    src: "{{ dotfiles_home }}\\roles\\python\\files\\pytest.ini"
+    dest: "{{ dotfiles_user_home }}\\pytest.ini"
+    force: true
