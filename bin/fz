@@ -15,14 +15,38 @@ source "${SCRIPTS_DIR}/lib.sh"
 # Ensure we're in the repo root (ansible-playbook runs from here)
 cd "${REPO_ROOT}"
 
-# Setup Ansible environment (sets ANSIBLE_CONFIG if ansible.cfg exists)
-setup_ansible_env
+# Parse global flags before command dispatch.
+FZ_FORCE_BOOTSTRAP=false
+FZ_REFRESH_DEPS=false
+FZ_UPGRADE_PIP_NOW=false
 
-# Configure Git globally for push/pull
-setup_git_config
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --force-bootstrap)
+      FZ_FORCE_BOOTSTRAP=true
+      shift
+      ;;
+    --refresh-deps)
+      FZ_REFRESH_DEPS=true
+      shift
+      ;;
+    --upgrade-pip-now)
+      FZ_UPGRADE_PIP_NOW=true
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
 
-# Ensure virtual environment exists (auto-creates and installs deps if missing)
-ensure_venv
+export FZ_FORCE_BOOTSTRAP
+export FZ_REFRESH_DEPS
+export FZ_UPGRADE_PIP_NOW
 
 # Helper to check if --limit or --all is present in arguments
 has_limit_or_all() {
@@ -161,6 +185,11 @@ case "${COMMAND}" in
     if fz_ansible "playbooks/verify_fabric.yaml" "${all_args[@]}"; then
       notify "FuzLang Bootstrap" "Bootstrap completed successfully"
     fi
+    ;;
+  collect-facts)
+    # Refresh Windows facts (hostname, IP, WSL distros) into facts/<physical_node>.json.
+    # Same fact collection as bootstrap-local.ps1 on first run; use when you need to update facts.
+    run_collect_facts
     ;;
   bootstrap-winrm)
     # Guardrail: require --limit or --all

@@ -7,13 +7,14 @@
 # 4. Writes facts JSON for auditing/reuse
 
 param(
-    [bool]$RunAll = $true
+    [bool]$RunAll = $true,
+    [switch]$FactsOnly = $false
 )
 
 $ErrorActionPreference = "Stop"
 $VerbosePreference = "Continue"
 Write-Verbose "Verbose output enabled (VerbosePreference=Continue)"
-Write-Verbose "Parameter values: RunAll=$RunAll"
+Write-Verbose "Parameter values: RunAll=$RunAll FactsOnly=$FactsOnly"
 
 # Ensure the current user can run scripts without interactive prompts.
 try {
@@ -30,10 +31,10 @@ try {
     Write-Host "WARNING: Could not set CurrentUser execution policy: $_" -ForegroundColor Yellow
 }
 
-# Check prerequisites
+# Check prerequisites (skip when only collecting facts so it can be run from WSL without elevation)
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 Write-Verbose "Elevation check result: isAdmin=$isAdmin"
-if (-not $isAdmin) {
+if (-not $FactsOnly -and -not $isAdmin) {
     Write-Error "[ERROR] This script must be run as Administrator." -ErrorAction Continue
     Write-Host "  Re-run this script from an elevated PowerShell terminal." -ForegroundColor Yellow
     Write-Host "  If Cursor terminal elevation is broken, run this first:" -ForegroundColor Yellow
@@ -482,41 +483,46 @@ Write-Verbose "Beginning privileged setup and fact collection."
 # Use preferred IP
 $bestIP = if ($preferredIP) { $preferredIP } else { "0.0.0.0" }
 
-Write-Host "Doing WinRM configuration: Protocol[HTTP] Port[5985]" -ForegroundColor Cyan
-Write-Verbose "Running winrm quickconfig -force"
-winrm quickconfig -force | Out-Null
-# This sets up:
-# - WinRM HTTP listener on 5985
-# - Firewall rules
-# - Service startup
-# No certs involved.
+if (-not $FactsOnly) {
+    Write-Host "Doing WinRM configuration: Protocol[HTTP] Port[5985]" -ForegroundColor Cyan
+    Write-Verbose "Running winrm quickconfig -force"
+    winrm quickconfig -force | Out-Null
+    # This sets up:
+    # - WinRM HTTP listener on 5985
+    # - Firewall rules
+    # - Service startup
+    # No certs involved.
 
-# Check and install WSL if needed
-Write-Host "Checking WSL feature state: Feature[Microsoft-Windows-Subsystem-Linux]" -ForegroundColor Cyan
-$wslInstalled = Test-WSLInstalled
-Write-Verbose "Initial WSL installed check: $wslInstalled"
+    # Check and install WSL if needed
+    Write-Host "Checking WSL feature state: Feature[Microsoft-Windows-Subsystem-Linux]" -ForegroundColor Cyan
+    $wslInstalled = Test-WSLInstalled
+    Write-Verbose "Initial WSL installed check: $wslInstalled"
 
-if (-not $wslInstalled) {
-    $wslInstalled = Install-WSLFeature
     if (-not $wslInstalled) {
-        Write-Host "WARNING: Could not install WSL feature. WSL functionality will be unavailable." -ForegroundColor Red
+        $wslInstalled = Install-WSLFeature
+        if (-not $wslInstalled) {
+            Write-Host "WARNING: Could not install WSL feature. WSL functionality will be unavailable." -ForegroundColor Red
+        }
     }
-}
 
-# Get WSL distros
-$wslDistros = Get-WSLDistros
+    # Get WSL distros
+    $wslDistros = Get-WSLDistros
 
-if ($wslDistros.Count -eq 0) {
-    if ($wslInstalled) {
-        Write-Host "Doing distro install: Distro[Ubuntu] Reason[NoInstalledDistros]" -ForegroundColor Cyan
-        Install-WSLDistro -DistroName "Ubuntu"
-        # Refresh distro list after installation attempt
-        Start-Sleep -Seconds 2
-        $wslDistros = Get-WSLDistros
-        Write-Verbose "WSL distros after install attempt: $($wslDistros -join ', ')"
-    } else {
-        Write-Host "WSL feature not available. Skipping distro installation." -ForegroundColor Yellow
+    if ($wslDistros.Count -eq 0) {
+        if ($wslInstalled) {
+            Write-Host "Doing distro install: Distro[Ubuntu] Reason[NoInstalledDistros]" -ForegroundColor Cyan
+            Install-WSLDistro -DistroName "Ubuntu"
+            # Refresh distro list after installation attempt
+            Start-Sleep -Seconds 2
+            $wslDistros = Get-WSLDistros
+            Write-Verbose "WSL distros after install attempt: $($wslDistros -join ', ')"
+        } else {
+            Write-Host "WSL feature not available. Skipping distro installation." -ForegroundColor Yellow
+        }
     }
+} else {
+    # FactsOnly: just enumerate WSL distros (no WinRM, no WSL install)
+    $wslDistros = Get-WSLDistros
 }
 
 if ($wslDistros.Count -gt 0) {
@@ -545,6 +551,11 @@ $factsPath = Join-Path $repoRoot "facts\$physicalNode.json"
 Write-Host "Doing facts write: Path[$factsPath]" -ForegroundColor Cyan
 Write-Facts -Path $factsPath -Obj $facts
 Write-Verbose "Facts written successfully."
+
+if ($FactsOnly) {
+    Write-Host "Facts-only complete. Wrote $factsPath" -ForegroundColor Green
+    exit 0
+}
 
 # Generate host_vars
 $hostVarsDir = Join-Path $repoRoot "inventory\host_vars"

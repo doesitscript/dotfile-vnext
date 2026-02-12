@@ -32,6 +32,18 @@ get_python() {
   echo "${FZ_PYTHON:-python3}"
 }
 
+file_sha256() {
+  local target_file="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "${target_file}" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "${target_file}" | awk '{print $1}'
+  else
+    log_error "No SHA-256 tool found (sha256sum/shasum)"
+    exit 1
+  fi
+}
+
 # Require a command to be available
 require_cmd() {
   local cmd="$1"
@@ -47,9 +59,19 @@ ensure_venv() {
   repo_root="$(repo_root)"
   local venv_dir="${repo_root}/.venv"
   local requirements_file="${repo_root}/scripts/requirements.txt"
+  local mgmt_dir="${repo_root}/.mgmt"
+  local bootstrap_stamp="${mgmt_dir}/.fz_bootstrap_complete"
+  local requirements_hash_file="${mgmt_dir}/requirements.sha256"
   local python_cmd
   python_cmd="$(get_python)"
   local activate_path="${venv_dir}/bin/activate"
+  local force_bootstrap="${FZ_FORCE_BOOTSTRAP:-false}"
+  local refresh_deps="${FZ_REFRESH_DEPS:-false}"
+  local upgrade_pip_now="${FZ_UPGRADE_PIP_NOW:-false}"
+  local venv_created=false
+  local full_bootstrap=false
+
+  mkdir -p "${mgmt_dir}"
 
   create_venv() {
     log_info "Creating virtual environment at ${venv_dir}"
@@ -70,6 +92,7 @@ ensure_venv() {
         exit 1
       fi
     fi
+    venv_created=true
   }
 
   if [ ! -d "${venv_dir}" ]; then
@@ -93,16 +116,39 @@ ensure_venv() {
   # shellcheck disable=SC1090
   source "${activate_path}"
 
-  # Install/upgrade pip
-  log_info "Ensuring pip is up to date"
-  pip install --quiet --upgrade pip
+  if [ "${force_bootstrap}" = true ] || [ ! -f "${bootstrap_stamp}" ]; then
+    full_bootstrap=true
+    log_info "Bootstrap cache miss; running full dependency setup"
+    setup_git_config
+  fi
 
-  # Install requirements if they exist
+  # Upgrade pip only during full/bootstrap creation or explicit request.
+  if [ "${upgrade_pip_now}" = true ] || [ "${venv_created}" = true ] || [ "${full_bootstrap}" = true ]; then
+    log_info "Upgrading pip in virtual environment"
+    pip install --quiet --upgrade pip
+  fi
+
+  # Install requirements only when changed, on explicit refresh, or full bootstrap.
   if [ -f "${requirements_file}" ]; then
-    log_info "Installing Python dependencies from ${requirements_file}"
-    pip install --quiet --upgrade -r "${requirements_file}"
+    local current_hash
+    local previous_hash
+    current_hash="$(file_sha256 "${requirements_file}")"
+    previous_hash="$(tr -d '\r\n' < "${requirements_hash_file}" 2>/dev/null || true)"
+
+    if [ "${refresh_deps}" = true ] || [ "${full_bootstrap}" = true ] || [ "${current_hash}" != "${previous_hash}" ]; then
+      log_info "Installing Python dependencies from ${requirements_file}"
+      pip install --quiet --upgrade -r "${requirements_file}"
+      printf '%s\n' "${current_hash}" > "${requirements_hash_file}"
+    else
+      log_info "Requirements unchanged; skipping dependency install"
+    fi
   else
     log_warn "Requirements file not found: ${requirements_file}"
+  fi
+
+  if [ "${full_bootstrap}" = true ]; then
+    : > "${bootstrap_stamp}"
+    log_info "Bootstrap cache stamp updated: ${bootstrap_stamp}"
   fi
 
   log_success "Virtual environment ready"
@@ -462,7 +508,32 @@ run_local_bootstrap_playbook() {
   fi
 
   log_info "Running local bootstrap playbook via localhost connection"
-  "${venv_ansible}" -i "localhost," -c local "${playbook}"
+  # Pass physical node so playbook looks for facts/<node>.json (e.g. server-225) not facts/<wsl-hostname>.json.
+  "${venv_ansible}" -i "localhost," -c local -e bootstrap_node=server-225 "${playbook}"
+}
+
+# Run Windows fact collector (bootstrap-local.ps1 -FactsOnly). Use from WSL to refresh facts/*.json.
+run_collect_facts() {
+  local repo_root
+  repo_root="$(repo_root)"
+  local ps_script
+  if command -v wslpath &>/dev/null && [ -n "${WSL_DISTRO_NAME:-}" ]; then
+    local win_repo
+    win_repo="$(wslpath -w "$repo_root" 2>/dev/null)"
+    if [ -z "$win_repo" ]; then
+      log_error "Could not resolve Windows path for repo (wslpath failed)"
+      exit 1
+    fi
+    ps_script="${win_repo}/bin/bootstrap-local.ps1"
+  else
+    ps_script="${repo_root}/bin/bootstrap-local.ps1"
+  fi
+  if ! command -v powershell.exe &>/dev/null; then
+    log_error "powershell.exe not found. collect-facts must be run from WSL or Windows."
+    exit 1
+  fi
+  log_info "Running Windows fact collector (FactsOnly): ${ps_script}"
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$ps_script" -FactsOnly
 }
 
 # Run ansible-vault edit
@@ -593,10 +664,16 @@ FuzLang Infrastructure CLI
 
 Usage: fz <command> [options]
 
+Global Options:
+  --force-bootstrap      Force full bootstrap setup and refresh cache stamp
+  --refresh-deps         Reinstall Python dependencies regardless of hash
+  --upgrade-pip-now      Force pip upgrade in the venv on this run
+
 Commands:
   bootstrap              Full bootstrap (winrm -> verify -> deploy -> verify)
                         Requires --limit or --all
                         Special case: --limit server-225-win runs local bootstrap only
+  collect-facts          Refresh Windows facts into facts/<node>.json (run from WSL when you need to update facts)
   bootstrap-winrm        Bootstrap Windows hosts via WinRM
                         Requires --limit or --all
                         Example: fz bootstrap-winrm --limit server-225-win
@@ -638,20 +715,21 @@ Common Options (forwarded to ansible-playbook):
   --forks <n>            Number of parallel processes
 
 Examples:
-  fz bootstrap --limit server-225-win
-  fz bootstrap-winrm --limit server-225-win
-  fz bootstrap-ssh --limit server-225-wsl
-  fz bootstrap --limit server-225-wsl
-  fz bootstrap --all
-  fz deploy network --limit network-server-win
-  fz deploy network --limit network-server-win --yes
-  fz deploy main --limit server-225-wsl
-  fz verify
-  fz role-local git
-  fz role-local git --check --diff
-  fz verify --check
-  fz vault edit shared --ask-vault-pass
-  fz contract lint
+  fz --help                                 Show command help and exit
+  fz bootstrap --limit server-225-win      Run local bootstrap path for server-225-win
+  fz bootstrap-winrm --limit server-225-win  Run WinRM bootstrap playbook for server-225
+  fz bootstrap-ssh --limit server-225-wsl  Run SSH deploy phase for server-225-wsl
+  fz bootstrap --limit server-225-wsl      Run full bootstrap flow for one WSL target
+  fz bootstrap --all                        Run full bootstrap flow across all target groups
+  fz deploy network --limit network-server-win  Deploy network stacks with confirmation prompt
+  fz deploy network --limit network-server-win --yes  Deploy network stacks without prompt
+  fz deploy main --limit server-225-wsl    Deploy main stacks to a specific host
+  fz verify                                 Verify fabric health and connectivity
+  fz verify --check                         Dry-run verify playbook without applying changes
+  fz role-local git                         Run the git role locally on localhost
+  fz role-local git --check --diff          Dry-run local git role and show diffs
+  fz vault edit shared --ask-vault-pass     Edit shared vault with interactive password prompt
+  fz contract lint                          Validate contract YAML syntax and structure
 
 EOF
 }
