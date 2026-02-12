@@ -218,11 +218,13 @@ Write-Host "  Created/updated cloud-init user-data file: $userDataFile" -Foregro
 Write-Host ""
 Write-Host "=== WSL distribution: $wslDistro ===" -ForegroundColor Cyan
 
-# Only run wsl --install when: (distro not in list AND we did NOT just unregister) OR -ForceDownload.
-# UnregisterIfExists $true = unregister only; no wsl --install, no download. Run again with -UnregisterIfExists $false to recreate from cache.
+# Ensure this run ends with a deployed distro:
+# - present + UnregisterIfExists $false => keep existing (no wsl --install)
+# - present + UnregisterIfExists $true  => unregister then redeploy in same run
+# - not present                         => deploy now (wsl --install)
+# - ForceDownload                       => force unregister + redeploy (fresh download path)
 $installedDistros = wsl --list --quiet 2>$null
 $distroInList = ($installedDistros -contains $wslDistro)
-$weJustUnregistered = $false
 
 if ($distroInList) {
     Write-Host "  Distribution $wslDistro is already present (wsl --list)" -ForegroundColor Green
@@ -238,22 +240,17 @@ if ($distroInList) {
         $installedDistros = wsl --list --quiet 2>$null
         $distroInList = $false
     } elseif ($UnregisterIfExists) {
-        Write-Host "  UnregisterIfExists is true: unregistering $wslDistro (wsl --unregister) only. No wsl --install, no download." -ForegroundColor Cyan
+        Write-Host "  UnregisterIfExists is true (without ForceDownload): distro already downloaded, skipping wsl --install and download." -ForegroundColor Cyan
+        Write-Host "  [SKIP DOWNLOAD] Keeping existing distro and continuing bootstrap via wsl -d." -ForegroundColor Green
         wsl --terminate $wslDistro 2>$null
-        wsl --unregister $wslDistro
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "  [ERROR] Failed to unregister WSL distribution: $wslDistro" -ForegroundColor Red
-            exit 1
-        }
-        Write-Host "  [OK] Unregistered." -ForegroundColor Green
-        $weJustUnregistered = $true
     } else {
         Write-Host "  UnregisterIfExists is false: using existing distro (wsl -d for bootstrap; no wsl --install, no download)" -ForegroundColor Cyan
         wsl --terminate $wslDistro 2>$null
     }
 }
 
-$runWslInstall = ($ForceDownload) -or ((-not $distroInList) -and (-not $weJustUnregistered))
+# Run wsl --install when distro is not present (first deploy or post-unregister), or when ForceDownload is set.
+$runWslInstall = (-not $distroInList) -or $ForceDownload
 if ($runWslInstall) {
     Write-Host "  Running wsl --install $wslDistro --no-launch..." -ForegroundColor Cyan
     wsl --install $wslDistro  --no-launch
@@ -266,12 +263,7 @@ if ($runWslInstall) {
     }
     Write-Host "  [OK] wsl --install completed successfully" -ForegroundColor Green
 } else {
-    if ($weJustUnregistered) {
-        Write-Host "  [OK] Deployed instance removed. No wsl --install, no download. Cached distro unchanged." -ForegroundColor Green
-        Write-Host "  Run again with -UnregisterIfExists `$false to recreate the instance from cache and run bootstrap." -ForegroundColor Cyan
-        exit 0
-    }
-    Write-Host "  [OK] Distribution already present; redeploy via wsl -d $wslDistro for bootstrap (no wsl --install)" -ForegroundColor Green
+    Write-Host "  [OK] Distribution already present; using wsl -d $wslDistro for bootstrap (no wsl --install)" -ForegroundColor Green
 }
 
 Write-Host ""
