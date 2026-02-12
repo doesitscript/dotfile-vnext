@@ -36,11 +36,6 @@ param(
 $ErrorActionPreference = "Stop"
 $VerbosePreference = "Continue"
 Write-Verbose "Verbose output enabled (VerbosePreference=Continue)"
-function Write-Step([string]$Message) { Write-Host "[STEP] $Message" -ForegroundColor Cyan; Write-Verbose "[STEP] $Message" }
-function Write-Check([string]$Message) { Write-Host "[CHECK] $Message" -ForegroundColor Yellow; Write-Verbose "[CHECK] $Message" }
-function Write-Set([string]$Message) { Write-Host "[SET] $Message" -ForegroundColor Cyan; Write-Verbose "[SET] $Message" }
-function Write-Skip([string]$Message) { Write-Host "[SKIP] $Message" -ForegroundColor Yellow; Write-Verbose "[SKIP] $Message" }
-function Write-Ok([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green; Write-Verbose "[OK] $Message" }
 
 # Get script directory and repo root (same pattern as bootstrap-local.ps1)
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -58,7 +53,7 @@ $winHostVarsPath = Join-Path $repoRoot "inventory\host_vars\server-225-win.yaml"
 Write-Verbose "wslHostVarsPath=$wslHostVarsPath"
 Write-Verbose "winHostVarsPath=$winHostVarsPath"
 
-Write-Step "Reading server-225 WSL configuration"
+Write-Host "Checking WSL bootstrap config: Target[server-225] Source[host_vars]" -ForegroundColor Cyan
 Write-Host "Repository root: $repoRoot" -ForegroundColor Cyan
 
 # Read WSL username from host_vars (required, no fallback)
@@ -178,7 +173,7 @@ if ($wslDistro -ne "Ubuntu-24.04") {
 # This file lives on the bootstrapping host and will automate creating the username and password
 # on our test Ubuntu WSL distribution
 Write-Host ""
-Write-Step "Automating username and password creation"
+Write-Host "Doing cloud-init generation: Purpose[WSL user/password bootstrap]" -ForegroundColor Cyan
 Write-Host "  This cloud-init user-data file lives on the bootstrapping host" -ForegroundColor Cyan
 Write-Host "  It will automate creating the username '$wslUser' and password on test Ubuntu WSL" -ForegroundColor Cyan
 
@@ -232,7 +227,7 @@ $userDataLines = $userData -split "`r?`n"
 Write-Host "  Created/updated cloud-init user-data file: $userDataFile" -ForegroundColor Green
 
 Write-Host ""
-Write-Step "WSL distribution: $wslDistro"
+Write-Host "Checking WSL distribution state: Distro[$wslDistro]" -ForegroundColor Cyan
 
 # Ensure this run ends with a deployed distro:
 # - present + UnregisterIfExists $false => keep existing (no wsl --install)
@@ -272,7 +267,7 @@ if ($distroInList) {
 $runWslInstall = (-not $distroInList) -or $ForceDownload
 Write-Verbose "runWslInstall=$runWslInstall (distroInList=$distroInList, ForceDownload=$ForceDownload)"
 if ($runWslInstall) {
-    Write-Set "Running wsl --install $wslDistro --no-launch"
+    Write-Host "Doing distro deploy: Command[wsl --install $wslDistro --no-launch]" -ForegroundColor Cyan
     Write-Verbose "Executing: wsl --install $wslDistro --no-launch"
     wsl --install $wslDistro  --no-launch
     # This instance will then be configured automatically by cloud-init. The process can take several minutes
@@ -282,14 +277,14 @@ if ($runWslInstall) {
         Write-Error "[ERROR] wsl --install failed for distribution: $wslDistro" -ErrorAction Continue
         exit 1
     }
-    Write-Ok "wsl --install completed successfully"
+    Write-Host "Using distro deploy result: Status[Success] Distro[$wslDistro]" -ForegroundColor Green
 } else {
-    Write-Skip "Distribution already present; using wsl -d $wslDistro for bootstrap (no wsl --install)"
+    Write-Host "Using existing distro: Distro[$wslDistro] InstallSkipped[True]" -ForegroundColor Yellow
     Write-Verbose "wsl --install skipped because distro already present and no force flag"
 }
 
 Write-Host ""
-Write-Step "Launching WSL (cloud-init will configure user automatically)"
+Write-Host "Doing WSL launch prep: CloudInit[Enabled] Distro[$wslDistro]" -ForegroundColor Cyan
 Write-Host "  User: $wslUser" -ForegroundColor Cyan
 Write-Host "  Passwordless sudo: Configured" -ForegroundColor Cyan
 Write-Host "  Distribution: $wslDistro" -ForegroundColor Cyan
@@ -300,7 +295,7 @@ Write-Host  "Boot :  wsl -d $wslDistro"
 Start-Sleep -Seconds 5
 
 Write-Host ""
-Write-Step "Running Ansible Local Bootstrap (destructive idempotent process)"
+Write-Host "Doing Ansible local bootstrap: Mode[Destructive-Idempotent] Script[bootstrap-local.sh]" -ForegroundColor Cyan
 Write-Host "  [WARNING] This is a destructive idempotent process for provisioning Ansible in WSL" -ForegroundColor Red
 Write-Host "  It will configure SSH server, passwordless sudo, and other Ansible requirements" -ForegroundColor Yellow
 Write-Host "  Running: ./bin/bootstrap-local.sh inside WSL distribution: $wslDistro" -ForegroundColor Cyan
@@ -362,7 +357,7 @@ try {
 }
 
 Write-Host ""
-Write-Ok "WSL setup complete"
+Write-Host "WSL setup complete: Status[Success] Distro[$wslDistro]" -ForegroundColor Green
 Write-Host "  WSL distribution: $wslDistro" -ForegroundColor Cyan
 Write-Host "  WSL user: $wslUser" -ForegroundColor Cyan
 Write-Host "  To access WSL manually: wsl -d $wslDistro" -ForegroundColor Cyan

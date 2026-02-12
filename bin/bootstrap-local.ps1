@@ -10,13 +10,6 @@ $ErrorActionPreference = "Stop"
 $VerbosePreference = "Continue"
 Write-Verbose "Verbose output enabled (VerbosePreference=Continue)"
 
-function Write-Step([string]$Message) { Write-Host "[STEP] $Message" -ForegroundColor Cyan; Write-Verbose "[STEP] $Message" }
-function Write-Check([string]$Message) { Write-Host "[CHECK] $Message" -ForegroundColor Yellow; Write-Verbose "[CHECK] $Message" }
-function Write-Set([string]$Message) { Write-Host "[SET] $Message" -ForegroundColor Cyan; Write-Verbose "[SET] $Message" }
-function Write-Skip([string]$Message) { Write-Host "[SKIP] $Message" -ForegroundColor Yellow; Write-Verbose "[SKIP] $Message" }
-function Write-Ok([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green; Write-Verbose "[OK] $Message" }
-function Write-Info([string]$Message) { Write-Host "[INFO] $Message" -ForegroundColor White; Write-Verbose "[INFO] $Message" }
-
 # Ensure the current user can run scripts without interactive prompts.
 try {
     $currentUserPolicy = Get-ExecutionPolicy -Scope CurrentUser
@@ -449,13 +442,13 @@ function Write-Facts {
 # Main Execution
 # ============================================================================
 
-Write-Step "Dynamic Bootstrap Local"
+Write-Host "Checking bootstrap start: Script[bootstrap-local.ps1] Mode[Dynamic]" -ForegroundColor Cyan
 Write-Host ""
 Write-Verbose "Starting main bootstrap execution."
 
 # Load mapping
 $mappingPath = Join-Path $repoRoot "inventory\hosts_mapping.yaml"
-Write-Check "Loading mapping from: $mappingPath"
+Write-Host "Checking mapping file: Path[$mappingPath]" -ForegroundColor Cyan
 $mapping = Load-MappingYaml -Path $mappingPath
 Write-Verbose "Mapping loaded successfully."
 
@@ -465,27 +458,26 @@ $ipInfo = Get-PreferredIPv4 -Mapping $mapping
 $preferredIP = $ipInfo.PreferredIP
 $allIPs = $ipInfo.AllIPs
 
-Write-Info "Detected hostname: $hostname"
-Write-Info "Detected IPs: $($allIPs -join ', ')"
-Write-Info "Chosen IP: $preferredIP"
-Write-Info "Reason: $($ipInfo.Reason)"
+Write-Host "Using host identity: Hostname[$hostname]" -ForegroundColor Cyan
+Write-Host "Using network facts: IPs[$($allIPs -join ', ')] Preferred[$preferredIP]" -ForegroundColor Cyan
+Write-Host "Using IP selection reason: Reason[$($ipInfo.Reason)]" -ForegroundColor Cyan
 Write-Verbose "Preferred IP decision reason: $($ipInfo.Reason)"
 
 $physicalNode = Get-PhysicalNodeFromMapping -Hostname $hostname -PreferredIP $preferredIP -AllIPs $allIPs -Mapping $mapping
 $ansibleHost = Get-DesiredAnsibleHost -PhysicalNode $physicalNode -Mapping $mapping
 
-Write-Ok "Physical node: $physicalNode"
-Write-Ok "Ansible host: $ansibleHost"
+Write-Host "Using mapping result: PhysicalNode[$physicalNode]" -ForegroundColor Green
+Write-Host "Using mapping result: AnsibleHost[$ansibleHost]" -ForegroundColor Green
 Write-Host ""
 
 # Collect facts
-Write-Step "Collecting runtime facts"
+Write-Host "Doing runtime collection: Facts[Windows+WSL]" -ForegroundColor Cyan
 Write-Verbose "Beginning privileged setup and fact collection."
 
 # Use preferred IP
 $bestIP = if ($preferredIP) { $preferredIP } else { "0.0.0.0" }
 
-Write-Set "Configuring WinRM HTTP listener/service/firewall"
+Write-Host "Doing WinRM configuration: Protocol[HTTP] Port[5985]" -ForegroundColor Cyan
 Write-Verbose "Running winrm quickconfig -force"
 winrm quickconfig -force | Out-Null
 # This sets up:
@@ -495,7 +487,7 @@ winrm quickconfig -force | Out-Null
 # No certs involved.
 
 # Check and install WSL if needed
-Write-Check "Checking WSL feature state"
+Write-Host "Checking WSL feature state: Feature[Microsoft-Windows-Subsystem-Linux]" -ForegroundColor Cyan
 $wslInstalled = Test-WSLInstalled
 Write-Verbose "Initial WSL installed check: $wslInstalled"
 
@@ -511,7 +503,7 @@ $wslDistros = Get-WSLDistros
 
 if ($wslDistros.Count -eq 0) {
     if ($wslInstalled) {
-        Write-Set "No WSL distros found. Installing Ubuntu..."
+        Write-Host "Doing distro install: Distro[Ubuntu] Reason[NoInstalledDistros]" -ForegroundColor Cyan
         Install-WSLDistro -DistroName "Ubuntu"
         # Refresh distro list after installation attempt
         Start-Sleep -Seconds 2
@@ -523,9 +515,9 @@ if ($wslDistros.Count -eq 0) {
 }
 
 if ($wslDistros.Count -gt 0) {
-    Write-Ok "WSL distribution found: $($wslDistros -join ', ')"
+    Write-Host "Using WSL distros: Installed[$($wslDistros -join ', ')]" -ForegroundColor Green
 } else {
-    Write-Skip "No WSL distros available"
+    Write-Host "Warning distro detection: Installed[None] Continuing[True]" -ForegroundColor Yellow
 }
 
 # Build facts object
@@ -545,7 +537,7 @@ $facts = [ordered]@{
 
 # Write facts JSON
 $factsPath = Join-Path $repoRoot "facts\$physicalNode.json"
-Write-Set "Writing facts to: $factsPath"
+Write-Host "Doing facts write: Path[$factsPath]" -ForegroundColor Cyan
 Write-Facts -Path $factsPath -Obj $facts
 Write-Verbose "Facts written successfully."
 
@@ -640,7 +632,7 @@ $winVars.ansible_winrm_transport = "ntlm"
 $winVars.ansible_winrm_scheme = "http"
 $winVars.ansible_winrm_server_cert_validation = "ignore"
 
-Write-Set "Writing Windows host_vars to: $winVarsPath"
+Write-Host "Doing host_vars write: Surface[Windows] Path[$winVarsPath]" -ForegroundColor Cyan
 Write-Yaml -Path $winVarsPath -Data $winVars
 Write-Verbose "Windows host_vars write complete."
 
@@ -671,18 +663,18 @@ $wslVars.ansible_host = $ansibleHost
 $wslVars.ansible_user = $wslVars.wsl_user
 $wslVars.ansible_port = $wslVars.wsl_ssh_port
 
-Write-Set "Writing WSL host_vars to: $wslVarsPath"
+Write-Host "Doing host_vars write: Surface[WSL] Path[$wslVarsPath]" -ForegroundColor Cyan
 Write-Yaml -Path $wslVarsPath -Data $wslVars
 Write-Verbose "WSL host_vars write complete."
 
 Write-Host ""
-Write-Ok "Bootstrap Complete"
-Write-Step "Generated files"
+Write-Host "Bootstrap complete: Result[Success]" -ForegroundColor Green
+Write-Host "Using generated files list:" -ForegroundColor Cyan
 Write-Host "  - $factsPath" -ForegroundColor White
 Write-Host "  - $winVarsPath" -ForegroundColor White
 Write-Host "  - $wslVarsPath" -ForegroundColor White
 Write-Host ""
-Write-Step "Next steps"
+Write-Host "Using next steps guidance:" -ForegroundColor Cyan
 Write-Host "  1. Review generated host_vars files" -ForegroundColor White
 Write-Host "  2. Run bin/bootstrap-local.sh inside WSL (if WSL is available)" -ForegroundColor White
 Write-Host "  3. Run Ansible playbooks from your Mac using the generated host_vars" -ForegroundColor White
