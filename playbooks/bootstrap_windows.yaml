@@ -1,13 +1,10 @@
 ---
-# Bootstrap Windows host (SSH / OpenSSH Server, keys)
-# Applies to ALL Windows hosts in inventory (windows_hosts). Target with --limit.
-# Run from controller: ./bin/fz bootstrap --limit server-225-win
-#                      ./bin/fz bootstrap --limit network-server-win
-#                      ./bin/fz bootstrap --limit dev-3090-win
-# Requires: WinRM reachable; host_vars for the target (e.g. from one-time bootstrap-local.cmd on the box).
-# This playbook does NOT configure WSL; it only sets up Windows OpenSSH Server and keys.
+# Bootstrap Windows host (WinRM HTTP 5985 + OpenSSH Server port 22, keys for Mac)
+# Run from Mac: ./bin/fz bootstrap --limit server-225-win (and similarly for other -win hosts).
+# Requires: WinRM HTTP (5985) reachable; host_vars from one-time .\bin\bootstrap-local.ps1 on the Windows box.
+# Reinforces WinRM HTTP and OpenSSH so the Mac can manage this node and SSH in.
 
-- name: Bootstrap Windows host (WinRM + OpenSSH Server, port 22, keys)
+- name: Bootstrap Windows host (WinRM HTTP + OpenSSH Server port 22, keys)
   hosts: windows_hosts
   become: false
   vars:
@@ -17,18 +14,11 @@
     - name: Enable PowerShell remoting (so we can connect)
       ansible.windows.win_shell: Enable-PSRemoting -Force -SkipNetworkProfileCheck
 
-    - name: Ensure WinRM HTTPS listener is configured
-      ansible.windows.win_shell: |
-        $existing = winrm enumerate winrm/config/Listener 2>$null | Select-String -Pattern "Transport = HTTPS" -SimpleMatch
-        if (-not $existing) {
-          $cert = New-SelfSignedCertificate -DnsName $env:COMPUTERNAME -CertStoreLocation Cert:\LocalMachine\My
-          winrm create winrm/config/Listener?Address=*+Transport=HTTPS "@{Hostname='$env:COMPUTERNAME'; CertificateThumbprint='$($cert.Thumbprint)'}"
-        }
-
-    - name: Open WinRM HTTPS firewall rule
+    - name: Ensure WinRM HTTP firewall rule (port 5985)
       community.windows.win_firewall_rule:
-        name: WinRM-HTTPS
-        localport: 5986
+        name: WinRM-HTTP-In-TCP
+        display_name: WinRM HTTP (5985)
+        localport: 5985
         protocol: tcp
         action: allow
         direction: in

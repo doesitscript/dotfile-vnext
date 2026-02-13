@@ -517,14 +517,10 @@ Write-Verbose "Beginning privileged setup and fact collection."
 # Use preferred IP
 $bestIP = if ($preferredIP) { $preferredIP } else { "0.0.0.0" }
 
-Write-Set "Configuring WinRM HTTP listener/service/firewall"
+Write-Set "Configuring WinRM HTTP listener/service/firewall (port 5985)"
 Write-Verbose "Running winrm quickconfig -force"
 winrm quickconfig -force | Out-Null
-# This sets up:
-# - WinRM HTTP listener on 5985
-# - Firewall rules
-# - Service startup
-# No certs involved.
+# This sets up: WinRM HTTP listener on 5985, firewall rules, service startup. Mac connects via HTTP (5985).
 
 # Check and install WSL if needed
 Write-Check "Checking WSL feature state"
@@ -560,7 +556,7 @@ if ($wslDistros.Count -gt 0) {
     Write-Skip "No WSL distros available"
 }
 
-# Build facts object
+# Build facts object (WinRM HTTP 5985 for Mac/Ansible)
 $facts = [ordered]@{
     physical_node = $physicalNode
     windows = [ordered]@{
@@ -652,7 +648,7 @@ if (Test-Path $wslVarsPath) {
     } catch { }
 }
 
-# Generate Windows host_vars (matching template format)
+# Generate Windows host_vars (WinRM HTTP 5985 for Mac management)
 $winVars = [ordered]@{
     physical_node = $physicalNode
     surface_type = "windows_host"
@@ -670,7 +666,7 @@ if ($existingWinVars.win_password) {
     Write-Host "Please manually re-add win_password after this script completes." -ForegroundColor Yellow
 }
 
-# Add Ansible connection settings
+# Add Ansible connection settings (WinRM HTTP 5985; Mac runs playbooks from Mac)
 $winVars.ansible_connection = "winrm"
 $winVars.ansible_host = $ansibleHost
 $winVars.ansible_user = $winVars.win_user
@@ -679,7 +675,6 @@ $winVars.ansible_winrm_password = if ($winVars.win_password) { $winVars.win_pass
 $winVars.ansible_port = 5985
 $winVars.ansible_winrm_transport = "ntlm"
 $winVars.ansible_winrm_scheme = "http"
-$winVars.ansible_winrm_server_cert_validation = "ignore"
 
 Write-Set "Writing Windows host_vars to: $winVarsPath"
 Write-Yaml -Path $winVarsPath -Data $winVars

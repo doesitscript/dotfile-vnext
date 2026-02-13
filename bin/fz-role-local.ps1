@@ -83,8 +83,16 @@ $PlaybookContent = @"
 "@
 Set-Content -Path $TempPlaybook -Value $PlaybookContent -Encoding UTF8
 
+# On Windows, ansible-playbook.exe can raise OSError in check_blocking_io (os.get_blocking).
+# Use the Python wrapper so the check is patched before Ansible loads.
+$VenvPython = Join-Path (Split-Path $VenvPlaybook -Parent) "python.exe"
+$WinWrapper = Join-Path $PSScriptRoot "run-ansible-playbook-win.py"
+$UseWrapper = ($env:OS -eq "Windows_NT") -and (Test-Path $WinWrapper) -and (Test-Path $VenvPython)
+
 try {
     Push-Location $RepoRoot
+    # Ansible requires UTF-8 locale on Windows (CP1252 fails); Python 3.7+ respects PYTHONUTF8=1
+    if ($env:OS -eq "Windows_NT") { $env:PYTHONUTF8 = "1" }
     $AllArgs = @(
         "-i", "localhost,"
         "-c", "local"
@@ -93,7 +101,11 @@ try {
         "-e", "dotfiles_user_home=$DotfilesUserHome"
     )
     if ($ExtraArgs) { $AllArgs += $ExtraArgs }
-    & $VenvPlaybook @AllArgs
+    if ($UseWrapper) {
+        & $VenvPython $WinWrapper @AllArgs
+    } else {
+        & $VenvPlaybook @AllArgs
+    }
     exit $LASTEXITCODE
 } finally {
     Pop-Location

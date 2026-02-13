@@ -1,25 +1,22 @@
-# bootstrap/local/templates/host_vars_windows.yml.j2
-# Template for Windows host_vars - secrets remain vault references
+# Windows host_vars for server-225 (WinRM HTTP 5985). Mac runs playbooks from Mac.
+# Generate/refresh: on the Windows box run .\bin\bootstrap-local.ps1 (preserves win_password).
 
 physical_node: "server-225"
 surface_type: windows_host
 
 host_ip: "192.168.50.158"
-winrm_port: 5986
+winrm_port: 5985
 win_user: "josh"
 
-# Keep the password as a vault variable reference only
-# Define vault_server_225_win_password in vault/shared.vault.yml (encrypted)
+# Vault or set win_password; NTLM needs one of ansible_password / ansible_winrm_password
 win_password: "Pass@w0rd1"
-# WinRM NTLM requires one of these; mirror win_password so ad-hoc and playbook runs work
 ansible_password: "Pass@w0rd1"
 ansible_winrm_password: "Pass@w0rd1"
 
-# Ansible connection settings
+# Ansible connection (WinRM HTTP; run from Mac)
 ansible_connection: winrm
 ansible_host: "192.168.50.158"
 ansible_user: "josh"
-ansible_port: 5986
+ansible_port: 5985
 ansible_winrm_transport: ntlm
-ansible_winrm_scheme: https
-ansible_winrm_server_cert_validation: ignore
+ansible_winrm_scheme: http
