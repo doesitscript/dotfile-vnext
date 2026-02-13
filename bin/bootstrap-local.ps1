@@ -782,7 +782,7 @@ if ($openSshCapability -and $openSshCapability.State -ne 'Installed') {
     Write-Skip "OpenSSH Server already installed"
 }
 
-# Firewall and sshd config before starting: ensure port from Ansible (win_ssh_port) and config are ready
+# Firewall for OpenSSH (port from win_ssh_port). Do not set Port in sshd_config global config.
 $fwRule = Get-NetFirewallRule -Name 'sshd' -ErrorAction SilentlyContinue
 if (-not $fwRule) {
     New-NetFirewallRule -Name sshd `
@@ -795,29 +795,6 @@ if (-not $fwRule) {
     Write-Ok "Firewall rule 'sshd' (port $winSshPort) created"
 } else {
     Write-Skip "Firewall rule 'sshd' already exists"
-}
-
-$sshdConfigPath = 'C:\ProgramData\ssh\sshd_config'
-if (Test-Path $sshdConfigPath) {
-    $sshdContent = Get-Content $sshdConfigPath -Raw
-    # Port must be in global section only (not inside a Match block). Comment out any existing Port lines everywhere.
-    $sshdContent = $sshdContent -replace '(?m)^(\s*)(Port\s+\d+)', '$1# $2'
-    $portDirective = "Port $winSshPort"
-    if ($sshdContent -notmatch [regex]::Escape($portDirective)) {
-        # Insert Port in global section: before the first "Match" line (or at end if no Match).
-        if ($sshdContent -match '(?ms)^(.*?)(^\s*Match\s.*)') {
-            $globalSection = $Matches[1].TrimEnd()
-            $fromMatchToEnd = $Matches[2]
-            $sshdContent = $globalSection + "`r`n$portDirective`r`n`r`n" + $fromMatchToEnd
-        } else {
-            $sshdContent = $sshdContent.TrimEnd() + "`r`n$portDirective`r`n"
-        }
-        $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-        [System.IO.File]::WriteAllText($sshdConfigPath, $sshdContent, $utf8NoBom)
-        Write-Ok "sshd_config set to $portDirective (global section): $sshdConfigPath"
-    } else {
-        Write-Verbose "sshd_config already has $portDirective in global section: $sshdConfigPath"
-    }
 }
 
 # Default shell = WSL bash so SSH to Windows drops into our Ubuntu distro
@@ -842,17 +819,28 @@ $hostKeyCandidates = @(
 $ourHostKeysDir = $null
 $ourPrivateKeys = @()
 foreach ($dir in $hostKeyCandidates) {
-    if (-not (Test-Path -LiteralPath $dir)) { continue }
-    $files = @(Get-ChildItem -LiteralPath $dir -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^ssh_host_.*_key$' -and $_.Name -notmatch '\.pub$' })
-    if ($files.Count -gt 0) {
+    $dirExists = Test-Path -LiteralPath $dir
+    $allFiles = if ($dirExists) { @(Get-ChildItem -LiteralPath $dir -File -ErrorAction SilentlyContinue | ForEach-Object { $_.Name }) } else { @() }
+    $keyFiles = if ($dirExists) { @(Get-ChildItem -LiteralPath $dir -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^ssh_host_.*_key$' -and $_.Name -notmatch '\.pub$' }) } else { @() }
+    Write-Verbose ('OpenSSH host keys check: ' + $dir + ' | exists=' + $dirExists + ' | all files: ' + ($allFiles -join ', ') + ' | matching keys: ' + $keyFiles.Count)
+    if ($keyFiles.Count -gt 0) {
         $ourHostKeysDir = $dir
-        $ourPrivateKeys = $files
+        $ourPrivateKeys = $keyFiles
         break
     }
 }
 $weHaveOurKeys = ($null -ne $ourHostKeysDir) -and ($ourPrivateKeys.Count -gt 0)
 $dirSummary = if ($ourHostKeysDir) { $ourHostKeysDir } else { '(none; checked: ' + ($hostKeyCandidates -join ', ') + ')' }
 Write-Verbose ('OpenSSH host keys: project dir=' + $dirSummary + ', found=' + $ourPrivateKeys.Count + ' (repo: ' + $repoRoot + ')')
+if (-not $weHaveOurKeys) {
+    $whatWeSaw = foreach ($d in $hostKeyCandidates) {
+        $ex = Test-Path -LiteralPath $d
+        $files = if ($ex) { (Get-ChildItem -LiteralPath $d -File -ErrorAction SilentlyContinue | ForEach-Object { $_.Name }) -join ', ' } else { '(dir not found)' }
+        $d + ': ' + $files
+    }
+    Write-Host ('  [INFO] OpenSSH host keys: no ssh_host_*_key files in project. Checked: ' + ($whatWeSaw -join '; ')) -ForegroundColor Yellow
+    Write-Host '  Copy ssh_host_ed25519_key, ssh_host_rsa_key (+ .pub) from Mac (bootstrap/openssh_host_keys) into this repo at bootstrap\openssh_host_keys and re-run.' -ForegroundColor Cyan
+}
 if (-not (Test-Path $sshDataDir)) {
     New-Item -ItemType Directory -Path $sshDataDir -Force | Out-Null
     Write-Verbose ('Created ' + $sshDataDir + ' (OpenSSH may not have created it yet)')
@@ -954,6 +942,7 @@ if (-not (Test-Path $winSshDir)) {
 }
 
 $keyAdded = $false
+$keySourceUsed = $false
 $ansibleKeyPath = Join-Path $repoRoot '.mgmt\ansible_ssh.pub'
 $macKeyPath = Join-Path $repoRoot 'bootstrap\mac_ssh_key.pub'
 Write-Verbose ('Checking key sources for authorized_keys: ' + $ansibleKeyPath + ', ' + $macKeyPath + ' -> ' + $winAuthorizedKeys)
@@ -1035,6 +1024,7 @@ foreach ($keyPath in @($ansibleKeyPath, $macKeyPath)) {
             Write-Verbose ('  [OK] Successfully wrote key to authorized_keys')
             Write-Ok ('Added ' + $keyName + ' public key to Windows authorized_keys')
             $keyAdded = $true
+            $keySourceUsed = $true
         } catch {
             Write-Verbose ('  [ERROR] Failed to write to authorized_keys: ' + $_.Exception.Message)
             Write-Host ('  [ERROR] Could not add key to authorized_keys: ' + $_.Exception.Message) -ForegroundColor Red
@@ -1042,9 +1032,10 @@ foreach ($keyPath in @($ansibleKeyPath, $macKeyPath)) {
     } else {
         Write-Verbose ('  [SKIP] Key already present in authorized_keys (no change needed)')
         Write-Verbose ('  [INFO] Key was found in existing authorized_keys file')
+        $keySourceUsed = $true
     }
 }
-if (-not $keyAdded) {
+if (-not $keySourceUsed) {
     Write-Host '  [INFO] No SSH public key found for Windows authorized_keys.' -ForegroundColor Yellow
     Write-Verbose ('  [DEBUG] Key check summary:')
     Write-Verbose ('    - Checked: ' + $ansibleKeyPath + ' (exists: ' + (Test-Path $ansibleKeyPath) + ')')

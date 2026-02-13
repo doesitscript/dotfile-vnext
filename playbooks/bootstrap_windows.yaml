@@ -1,8 +1,9 @@
 ---
-# Bootstrap Windows host (WinRM HTTP 5985 + OpenSSH Server port 22, keys for Mac)
+# Bootstrap Windows host (WinRM HTTP 5985 + OpenSSH Server, keys from Mac)
 # Run from Mac: ./bin/fz bootstrap --limit server-225-win (and similarly for other -win hosts).
 # Requires: WinRM HTTP (5985) reachable; host_vars from one-time .\bin\bootstrap-local.ps1 on the Windows box.
-# Reinforces WinRM HTTP and OpenSSH so the Mac can manage this node and SSH in.
+# Host keys: from vault (generated on Mac via bootstrap-openssh-host-keys). User keys in authorized_keys: from Mac (.mgmt/ansible_ssh.pub).
+# Do not set Port in sshd_config global config; see tmp/openssh_guide.md.
 
 - name: Bootstrap Windows host (WinRM HTTP + OpenSSH Server port 22, keys)
   hosts: windows_hosts
@@ -10,6 +11,7 @@
   vars:
     repo_root: "{{ playbook_dir }}/.."
     ansible_ssh_pub_path: "{{ repo_root }}/.mgmt/ansible_ssh.pub"
+    openssh_host_keys_vault_path: "{{ repo_root }}/vault/openssh_host_keys.vault.yml"
   pre_tasks:
     - name: Enable PowerShell remoting (so we can connect)
       ansible.windows.win_shell: Enable-PSRemoting -Force -SkipNetworkProfileCheck
@@ -48,19 +50,28 @@
         direction: in
         state: present
 
-    - name: Ensure sshd_config has Port 22
-      ansible.windows.win_shell: |
-        $path = 'C:\ProgramData\ssh\sshd_config'
-        if (Test-Path $path) {
-          $content = Get-Content $path -Raw
-          if ($content -notmatch '(?m)^Port\s+22\s*') {
-            $content = $content -replace '(?m)^(\s*)(Port\s+\d+)', '$1# $2'
-            $content = $content.TrimEnd() + "`r`nPort 22`r`n"
-            [System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($false))
-          }
-        }
+    - name: Check if OpenSSH host keys vault exists on controller
+      ansible.builtin.stat:
+        path: "{{ openssh_host_keys_vault_path }}"
+      register: openssh_host_keys_vault_stat
+      delegate_to: localhost
+      run_once: true
 
-    - name: Ensure OpenSSH host keys exist
+    - name: Load OpenSSH host keys from vault when present
+      ansible.builtin.include_vars:
+        file: "{{ openssh_host_keys_vault_path }}"
+      delegate_to: localhost
+      run_once: true
+      when: openssh_host_keys_vault_stat.stat.exists
+
+    - name: Deploy OpenSSH host keys from vault to Windows
+      ansible.windows.win_copy:
+        content: "{{ item.value }}"
+        dest: "C:\\ProgramData\\ssh\\{{ item.key }}"
+      loop: "{{ vault_openssh_host_keys | dict2items }}"
+      when: vault_openssh_host_keys is defined
+
+    - name: Ensure OpenSSH host keys exist (fallback when vault not used)
       ansible.windows.win_shell: |
         $sshDir = 'C:\ProgramData\ssh'
         if ((Test-Path $sshDir) -and -not (Get-ChildItem (Join-Path $sshDir 'ssh_host_*_key') -ErrorAction SilentlyContinue)) {
@@ -69,6 +80,7 @@
           Pop-Location
         }
       failed_when: false
+      when: vault_openssh_host_keys is not defined
 
     - name: Set sshd service to Automatic and start
       ansible.windows.win_service:
@@ -100,7 +112,7 @@
       run_once: true
       when: ansible_pub_key_file.stat.exists
 
-    - name: Add ansible public key to Windows authorized_keys
+    - name: Add Mac (controller) public key to Windows authorized_keys
       community.windows.win_lineinfile:
         path: "{{ ansible_env.USERPROFILE }}\\.ssh\\authorized_keys"
         line: "{{ ansible_pub_key_content }}"

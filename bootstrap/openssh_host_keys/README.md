@@ -1,32 +1,30 @@
 # OpenSSH host keys for Windows (server-225)
 
-Place **OpenSSH server host keys** here so `bin\bootstrap-local.ps1` can install them idempotently on the Windows OpenSSH server (`C:\ProgramData\ssh`).
+OpenSSH server host keys are **generated on the Mac** (control node), stored in **Ansible vault**, and **deployed to Windows** by the bootstrap playbook. Login keys in `authorized_keys` on Windows also come from the Mac (e.g. `.mgmt/ansible_ssh.pub` or `bootstrap/mac_ssh_key.pub`). No manual copy.
 
-**Required files (names must match):**
+## Flow (fully automated)
+
+1. **Generate keys (Mac):** Run from repo root on the control node:
+   ```bash
+   ./bin/fz bootstrap-openssh-host-keys
+   ```
+   Or: `ansible-playbook playbooks/bootstrap_openssh_host_keys.yaml`  
+   Add `--force` or `-e force=true` to regenerate.  
+   This creates keys under `bootstrap/openssh_host_keys/`, then **slurps them into `vault/openssh_host_keys.vault.yml`** (encrypted). The vault file is committed; the raw key files in this directory remain gitignored.
+
+2. **Deploy to Windows:** From the Mac:
+   ```bash
+   ./bin/fz bootstrap --limit server-225-win
+   ```
+   The bootstrap Windows playbook loads the host keys from vault and writes them to `C:\ProgramData\ssh` on the Windows host. Use `--ask-vault-pass` or `ANSIBLE_VAULT_PASSWORD_FILE` (e.g. `.vault_pass`) when the vault exists.
+
+## Optional: local keys on Windows
+
+If you have key files in this directory (or in `.mgmt`) on the Windows machine, `bin\bootstrap-local.ps1` will still install them into `C:\ProgramData\ssh`. The canonical, automated path is vault → playbook; the script is a fallback for local-only use.
+
+## Required key files (names must match)
 
 - `ssh_host_ed25519_key` and `ssh_host_ed25519_key.pub`
 - `ssh_host_rsa_key` and `ssh_host_rsa_key.pub`
-- (optional) `ssh_host_ecdsa_key` and `ssh_host_ecdsa_key.pub`
 
-## Generating keys (no manual steps)
-
-Run **on the Mac** (control node) from the repo root. Do not run `ssh-keygen` by hand.
-
-**Option 1 – Bootstrap command (recommended):**
-
-```bash
-./bin/fz bootstrap-openssh-host-keys
-```
-
-Add `--force` to regenerate existing keys.
-
-**Option 2 – Ansible playbook:**
-
-```bash
-ansible-playbook playbooks/bootstrap_openssh_host_keys.yaml
-# Regenerate: ansible-playbook playbooks/bootstrap_openssh_host_keys.yaml -e force=true
-```
-
-Both create keys in this directory (idempotent unless `--force` / `force=true`). The directory is gitignored so private keys are not committed.
-
-Then sync this folder (or repo) to the Windows machine and run `.\bin\bootstrap-local.ps1` there; it will install these keys into `C:\ProgramData\ssh` every run.
+Optional: `ssh_host_ecdsa_key` and `ssh_host_ecdsa_key.pub` (not in vault by default).

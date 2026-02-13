@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Generate OpenSSH host keys into bootstrap/openssh_host_keys/ for use by Windows
-# (bootstrap-local.ps1 copies them to C:\ProgramData\ssh). Run on the Mac from repo root.
+# Generate OpenSSH host keys into bootstrap/openssh_host_keys/; the playbook stores them in vault
+# and bootstrap_windows deploys from vault to C:\ProgramData\ssh. Run on the Mac from repo root.
 # Idempotent: creates keys only if missing. Use --force to regenerate.
 
 set -euo pipefail
@@ -44,4 +44,4 @@ gen_if_missing() {
 gen_if_missing ed25519
 gen_if_missing rsa
 
-echo "Done. Keys are in ${KEYS_DIR} (gitignored). Sync this folder to Windows and run .\\bin\\bootstrap-local.ps1 there."
+echo "Done. Keys are in ${KEYS_DIR}. Re-run the playbook to store them in vault and deploy to Windows via ./bin/fz bootstrap --limit server-225-win"
