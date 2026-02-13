@@ -724,6 +724,120 @@ Write-Host "  - $winVarsPath" -ForegroundColor White
 Write-Host "  - $wslVarsPath" -ForegroundColor White
 Write-Host ""
 
+# ============================================================================
+# OpenSSH Server (Windows): install, port 22, firewall, default shell = WSL bash
+# Uses distro from our ansible (wsl_distro). Keys: same pattern as WSL so Mac/Win/WSL can talk.
+# ============================================================================
+Write-Step "Configuring OpenSSH Server on Windows (port 22, default shell WSL bash)"
+
+$openSshCapability = Get-WindowsCapability -Online -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'OpenSSH.Server*' }
+if ($openSshCapability -and $openSshCapability.State -ne 'Installed') {
+    Write-Set "Installing OpenSSH Server"
+    try {
+        $capResult = Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+        if ($capResult.RestartNeeded) {
+            Write-Host "  [INFO] Reboot may be required for OpenSSH Server." -ForegroundColor Yellow
+        }
+        Write-Ok "OpenSSH Server installed"
+    } catch {
+        Write-Host "  [WARNING] OpenSSH Server install failed: $_" -ForegroundColor Yellow
+    }
+} else {
+    Write-Skip "OpenSSH Server already installed"
+}
+
+$sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
+if ($sshdService) {
+    if ($sshdService.StartType -ne 'Automatic') {
+        Set-Service -Name sshd -StartupType Automatic
+        Write-Verbose "sshd set to Automatic"
+    }
+    if ($sshdService.Status -ne 'Running') {
+        Start-Service sshd
+        Write-Ok "sshd started"
+    } else {
+        Write-Skip "sshd already running"
+    }
+} else {
+    Write-Host "  [WARNING] sshd service not found. OpenSSH Server may not be installed." -ForegroundColor Yellow
+}
+
+# Firewall: allow inbound TCP 22 for sshd (idempotent)
+$fwRule = Get-NetFirewallRule -Name 'sshd' -ErrorAction SilentlyContinue
+if (-not $fwRule) {
+    New-NetFirewallRule -Name sshd `
+        -DisplayName 'OpenSSH Server (Port 22)' `
+        -Enabled True `
+        -Direction Inbound `
+        -Protocol TCP `
+        -Action Allow `
+        -LocalPort 22 | Out-Null
+    Write-Ok "Firewall rule 'sshd' (port 22) created"
+} else {
+    Write-Skip "Firewall rule 'sshd' already exists"
+}
+
+# Ensure sshd_config has Port 22 (admin config is under ProgramData)
+$sshdConfigPath = 'C:\ProgramData\ssh\sshd_config'
+if (Test-Path $sshdConfigPath) {
+    $sshdContent = Get-Content $sshdConfigPath -Raw
+    # Match uncommented Port 22
+    if ($sshdContent -notmatch '(?m)^Port\s+22\s*') {
+        # Comment any existing Port line and append Port 22
+        $sshdContent = $sshdContent -replace '(?m)^(\s*)(Port\s+\d+)', '$1# $2'
+        $sshdContent = $sshdContent.TrimEnd() + "`r`nPort 22`r`n"
+        $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+        [System.IO.File]::WriteAllText($sshdConfigPath, $sshdContent, $utf8NoBom)
+        Write-Ok "sshd_config set to Port 22"
+    } else {
+        Write-Verbose "sshd_config already has Port 22"
+    }
+}
+
+# Default shell = WSL bash so SSH to Windows drops into our Ubuntu distro
+$defaultWslDistro = if ($wslVars.wsl_distro) { $wslVars.wsl_distro } else { 'Ubuntu' }
+$defaultWslDistro = Strip-YamlControlChars $defaultWslDistro
+if (-not $defaultWslDistro) { $defaultWslDistro = 'Ubuntu' }
+
+if (-not (Test-Path 'HKLM:\SOFTWARE\OpenSSH')) {
+    New-Item -Path 'HKLM:\SOFTWARE\OpenSSH' -Force | Out-Null
+}
+New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell -Value 'C:\Windows\System32\wsl.exe' -PropertyType String -Force | Out-Null
+New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShellCommandOption -Value "-d $defaultWslDistro" -PropertyType String -Force | Out-Null
+Write-Ok "Default shell set to WSL ($defaultWslDistro)"
+
+# Restart sshd so config and shell take effect
+if (Get-Service -Name sshd -ErrorAction SilentlyContinue) {
+    Restart-Service sshd -Force -ErrorAction SilentlyContinue
+    Write-Verbose "sshd restarted"
+}
+
+# Windows authorized_keys: same pattern as WSL so Mac / Windows / WSL can talk
+$winSshDir = Join-Path $env:USERPROFILE '.ssh'
+$winAuthorizedKeys = Join-Path $winSshDir 'authorized_keys'
+if (-not (Test-Path $winSshDir)) {
+    New-Item -ItemType Directory -Path $winSshDir -Force | Out-Null
+    Write-Verbose "Created $winSshDir"
+}
+$macKeyPath = Join-Path $repoRoot 'bootstrap\mac_ssh_key.pub'
+if (Test-Path $macKeyPath) {
+    $macKeyLine = Get-Content $macKeyPath -Raw | Strip-YamlControlChars
+    $macKeyLine = $macKeyLine.Trim()
+    if ($macKeyLine -and $macKeyLine -match '^\S+\s+\S+') {
+        $existing = if (Test-Path $winAuthorizedKeys) { Get-Content $winAuthorizedKeys -Raw } else { '' }
+        if ($existing -notmatch [regex]::Escape($macKeyLine)) {
+            Add-Content -Path $winAuthorizedKeys -Value $macKeyLine -Encoding UTF8
+            Write-Ok "Added Mac public key to Windows authorized_keys"
+        } else {
+            Write-Skip "Mac public key already in Windows authorized_keys"
+        }
+    }
+} else {
+    Write-Verbose "No bootstrap/mac_ssh_key.pub; add ansible/Mac keys to $winAuthorizedKeys for key-based SSH to Windows"
+}
+
+Write-Host ""
+
 $nextScriptPath = Join-Path $scriptDir "bootstrap-ansible-local.ps1"
 if ($RunAll) {
     Write-Host ""
