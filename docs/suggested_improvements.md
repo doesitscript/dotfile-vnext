@@ -50,3 +50,61 @@ That choice is used only when installing the distro.
 wsl_distro_name: ubuntu-wsl-dev
 
 wsl_distro_image: ubuntu-22.04
+
+
+X
+X
+WINRM_HTTP_PORT
+WINRM_HTTPS_PORT
+WINRM_TRANSPORT
+SSH_PORT
+
+ansible_user: Username
+ansible_password: Password
+
+Enable-WSManCredSSP -Role Server -Force
+
+
+# winrm
+ansible_connection: winrm
+ansible_winrm_transport: credssp
+
+Enable-WSManCredSSP -Role Server -Force
+pipx inject "pypsrp[credssp]<=1.0.0"  # for psrp
+pipx inject "pywinrm[credssp]>=0.4.0"  # for winrm
+
+
+####
+
+# Enables the WinRM service and sets up the HTTP listener
+Enable-PSRemoting -Force
+
+# Opens port 5985 for all profiles
+$firewallParams = @{
+    Action      = 'Allow'
+    Description = 'Inbound rule for Windows Remote Management via WS-Management. [TCP 5985]'
+    Direction   = 'Inbound'
+    DisplayName = 'Windows Remote Management (HTTP-In)'
+    LocalPort   = 5985
+    Profile     = 'Any'
+    Protocol    = 'TCP'
+}
+New-NetFirewallRule @firewallParams
+
+# Allows local user accounts to be used with WinRM
+# This can be ignored if using domain accounts
+$tokenFilterParams = @{
+    Path         = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+    Name         = 'LocalAccountTokenFilterPolicy'
+    Value        = 1
+    PropertyType = 'DWORD'
+    Force        = $true
+}
+New-ItemProperty @tokenFilterParams
+
+
+
+#########
+Using the winrm or psrp connection plugins in Ansible on MacOS in the latest releases typically fails. This is a known problem that occurs deep within the Python stack and cannot be changed by Ansible. The only workaround today is to set the environment variable OBJC_DISABLE_INITIALIZE_FORK_SAFETY=yes, no_proxy=* and avoid using Kerberos auth.
+
+pipx inject ansible "pywinrm>=0.4.0"  # for winrm

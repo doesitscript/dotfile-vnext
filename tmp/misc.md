@@ -776,7 +776,7 @@ Write-Host ''
 # OpenSSH Server (Windows): install, port from Ansible (win_ssh_port), firewall, default shell = WSL bash
 # Uses distro from our ansible (wsl_distro). Keys: same pattern as WSL so Mac/Win/WSL can talk.
 # ============================================================================
-$winSshPort = if ($winVars.win_ssh_port) { $winVars.win_ssh_port } else { $SSH_PORT }
+$winSshPort = if ($winVars.win_ssh_port) { $winVars.win_ssh_port } else { 22 }
 Write-Step "Configuring OpenSSH Server on Windows (port $winSshPort, default shell WSL bash)"
 
 $openSshCapability = Get-WindowsCapability -Online -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'OpenSSH.Server*' }
