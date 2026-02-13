@@ -1,0 +1,33 @@
+---
+# Unix-like systems (macOS, Linux, WSL)
+
+- name: Ensure ~/.bashrc.d directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.bashrc.d"
+    state: directory
+    mode: "0755"
+
+- name: Ensure .bashrc sources .bashrc.d directory
+  ansible.builtin.blockinfile:
+    path: "{{ ansible_env.HOME }}/.bashrc"
+    marker: "# {mark} ANSIBLE MANAGED - DO NOT EDIT BETWEEN MARKERS"
+    block: |
+      # Source modular shell configs from .bashrc.d
+      if [ -d ~/.bashrc.d ]; then
+        for file in ~/.bashrc.d/*.bash; do
+          [ -f "$file" ] && source "$file"
+        done
+      fi
+    create: true
+
+- name: Deploy PATH configuration (WSL/Linux priority)
+  ansible.builtin.template:
+    src: path.bash.j2
+    dest: "{{ ansible_env.HOME }}/.bashrc.d/path.bash"
+    mode: "0644"
+
+- name: Deploy common aliases
+  ansible.builtin.template:
+    src: aliases.bash.j2
+    dest: "{{ ansible_env.HOME }}/.bashrc.d/aliases.bash"
+    mode: "0644"

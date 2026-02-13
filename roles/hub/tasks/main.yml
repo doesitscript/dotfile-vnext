@@ -9,3 +9,10 @@
 - name: Process hub role for Windows
   ansible.builtin.import_tasks: windows.yml
   when: ansible_facts['system'] == "Windows"
+
+- name: Deploy hub shell aliases to .bashrc.d (Unix-like systems)
+  ansible.builtin.template:
+    src: hub_aliases.bash.j2
+    dest: "{{ ansible_env.HOME }}/.bashrc.d/hub.bash"
+    mode: "0644"
+  when: ansible_facts['system'] != "Windows"
