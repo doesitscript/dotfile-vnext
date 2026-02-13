@@ -1,0 +1,20 @@
+---
+# Generate OpenSSH host keys into bootstrap/openssh_host_keys/ (for Windows).
+# Run on the Mac (control node); keys are created in the repo. Sync folder to Windows and run bootstrap-local.ps1 there.
+# Usage: ansible-playbook playbooks/bootstrap_openssh_host_keys.yaml
+#        ansible-playbook playbooks/bootstrap_openssh_host_keys.yaml -e force=true  # regenerate
+- name: Generate OpenSSH host keys for Windows
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    repo_root: "{{ playbook_dir }}/.."
+    force_flag: "{{ force | default(false) | bool }}"
+  tasks:
+    - name: Run bootstrap-openssh-host-keys script
+      ansible.builtin.shell: "{{ repo_root }}/bin/bootstrap-openssh-host-keys.sh {{ '--force' if force_flag else '' }}"
+      args:
+        executable: /bin/bash
+      register: script_run
+      changed_when: script_run.rc == 0
+      failed_when: script_run.rc != 0

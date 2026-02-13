@@ -107,17 +107,26 @@ case "${COMMAND}" in
     
     # Full bootstrap: winrm -> verify -> deploy -> verify
     
-    # Save all args for later use
-    all_args=("$@")
+    # Save all args for later use; strip --SSHGenForce (bootstrap-only) so ansible does not see it
+    FZ_SSH_GEN_FORCE=false
+    all_args=()
+    for a in "$@"; do
+      if [ "$a" = "--SSHGenForce" ]; then
+        FZ_SSH_GEN_FORCE=true
+      else
+        all_args+=("$a")
+      fi
+    done
     local_only_bootstrap=false
     log_info "bootstrap args captured: ${all_args[*]}"
-    
+    [ "${FZ_SSH_GEN_FORCE}" = true ] && log_info "SSHGenForce: will (re)generate OpenSSH host keys into bootstrap/openssh_host_keys/ when bootstrapping mac-dev"
+
     log_step "Phase 1: Bootstrap WinRM"
     # Determine which bootstrap playbooks to run based on limit
     limit_value=""
     has_limit=false
     has_all=false
-    
+
     # Check for --limit or --all
     i=0
     while [ $i -lt ${#all_args[@]} ]; do
@@ -131,12 +140,16 @@ case "${COMMAND}" in
       fi
       i=$((i+1))
     done
-    
+
     # Run appropriate bootstrap playbooks
     if [ "${has_limit}" = true ]; then
       log_check "bootstrap mode: --limit ${limit_value}"
       # Mac control node: run only bootstrap_mac (check first so "mac-dev" never matches *"dev"* below).
       if [[ "${limit_value}" == "mac-dev" ]]; then
+        if [ "${FZ_SSH_GEN_FORCE}" = true ]; then
+          log_step "Generating/redeploying OpenSSH host keys (bootstrap/openssh_host_keys/)"
+          fz_ansible "playbooks/bootstrap_openssh_host_keys.yaml" -e force=true
+        fi
         log_step "Running Mac bootstrap (playbooks/bootstrap_mac.yaml)"
         fz_ansible "playbooks/bootstrap_mac.yaml" "${all_args[@]}"
         mac_only_bootstrap=true
@@ -401,6 +414,14 @@ case "${COMMAND}" in
       exit 1
     fi
     fz_ansible_adhoc "$@"
+    ;;
+  bootstrap-openssh-host-keys)
+    # Generate OpenSSH host keys into bootstrap/openssh_host_keys/ (for Windows). Run on the Mac.
+    if [ ! -f "${REPO_ROOT}/bin/bootstrap-openssh-host-keys.sh" ]; then
+      log_error "bin/bootstrap-openssh-host-keys.sh not found"
+      exit 1
+    fi
+    bash "${REPO_ROOT}/bin/bootstrap-openssh-host-keys.sh" "$@"
     ;;
   controller-ssh-install)
     # Install controller SSH private key on this machine from vault (part of server-225 bootstrap).

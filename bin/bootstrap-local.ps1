@@ -605,6 +605,10 @@ if (Test-Path $winVarsPath) {
         if ($existingWinContent -match 'win_user:\s*"?([^"\r\n]+)"?') { 
             $existingWinVars.win_user = $Matches[1].Trim().Trim('"')
         }
+        # Parse win_ssh_port (Windows OpenSSH server port; must be in global section of sshd_config)
+        if ($existingWinContent -match '(?m)^win_ssh_port:\s*(\d+)') {
+            $existingWinVars.win_ssh_port = [int]$Matches[1]
+        }
         # Parse win_password (handle quoted and unquoted values, including special characters)
         # Match: win_password: "value" or win_password: value (handles multiline and special chars)
         if ($existingWinContent -match '(?m)^win_password:\s*(.+?)(?=\r?\n\w+:|$)') { 
@@ -675,6 +679,7 @@ $winVars.ansible_winrm_password = if ($winVars.win_password) { $winVars.win_pass
 $winVars.ansible_port = 5985
 $winVars.ansible_winrm_transport = "ntlm"
 $winVars.ansible_winrm_scheme = "http"
+$winVars.win_ssh_port = if ($existingWinVars.win_ssh_port) { $existingWinVars.win_ssh_port } else { 22 }
 
 Write-Set "Writing Windows host_vars to: $winVarsPath"
 Write-Yaml -Path $winVarsPath -Data $winVars
@@ -722,10 +727,11 @@ Write-Host "  - $wslVarsPath" -ForegroundColor White
 Write-Host ""
 
 # ============================================================================
-# OpenSSH Server (Windows): install, port 22, firewall, default shell = WSL bash
+# OpenSSH Server (Windows): install, port from Ansible (win_ssh_port), firewall, default shell = WSL bash
 # Uses distro from our ansible (wsl_distro). Keys: same pattern as WSL so Mac/Win/WSL can talk.
 # ============================================================================
-Write-Step "Configuring OpenSSH Server on Windows (port 22, default shell WSL bash)"
+$winSshPort = if ($winVars.win_ssh_port) { $winVars.win_ssh_port } else { 22 }
+Write-Step "Configuring OpenSSH Server on Windows (port $winSshPort, default shell WSL bash)"
 
 $openSshCapability = Get-WindowsCapability -Online -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'OpenSSH.Server*' }
 if ($openSshCapability -and $openSshCapability.State -ne 'Installed') {
@@ -743,17 +749,17 @@ if ($openSshCapability -and $openSshCapability.State -ne 'Installed') {
     Write-Skip "OpenSSH Server already installed"
 }
 
-# Firewall and sshd config before starting: ensure port 22 and config are ready
+# Firewall and sshd config before starting: ensure port from Ansible (win_ssh_port) and config are ready
 $fwRule = Get-NetFirewallRule -Name 'sshd' -ErrorAction SilentlyContinue
 if (-not $fwRule) {
     New-NetFirewallRule -Name sshd `
-        -DisplayName 'OpenSSH Server (Port 22)' `
+        -DisplayName "OpenSSH Server (Port $winSshPort)" `
         -Enabled True `
         -Direction Inbound `
         -Protocol TCP `
         -Action Allow `
-        -LocalPort 22 | Out-Null
-    Write-Ok "Firewall rule 'sshd' (port 22) created"
+        -LocalPort $winSshPort | Out-Null
+    Write-Ok "Firewall rule 'sshd' (port $winSshPort) created"
 } else {
     Write-Skip "Firewall rule 'sshd' already exists"
 }
@@ -761,14 +767,23 @@ if (-not $fwRule) {
 $sshdConfigPath = 'C:\ProgramData\ssh\sshd_config'
 if (Test-Path $sshdConfigPath) {
     $sshdContent = Get-Content $sshdConfigPath -Raw
-    if ($sshdContent -notmatch '(?m)^Port\s+22\s*') {
-        $sshdContent = $sshdContent -replace '(?m)^(\s*)(Port\s+\d+)', '$1# $2'
-        $sshdContent = $sshdContent.TrimEnd() + "`r`nPort 22`r`n"
+    # Port must be in global section only (not inside a Match block). Comment out any existing Port lines everywhere.
+    $sshdContent = $sshdContent -replace '(?m)^(\s*)(Port\s+\d+)', '$1# $2'
+    $portDirective = "Port $winSshPort"
+    if ($sshdContent -notmatch [regex]::Escape($portDirective)) {
+        # Insert Port in global section: before the first "Match" line (or at end if no Match).
+        if ($sshdContent -match '(?ms)^(.*?)(^\s*Match\s.*)') {
+            $globalSection = $Matches[1].TrimEnd()
+            $fromMatchToEnd = $Matches[2]
+            $sshdContent = $globalSection + "`r`n$portDirective`r`n`r`n" + $fromMatchToEnd
+        } else {
+            $sshdContent = $sshdContent.TrimEnd() + "`r`n$portDirective`r`n"
+        }
         $utf8NoBom = New-Object System.Text.UTF8Encoding $false
         [System.IO.File]::WriteAllText($sshdConfigPath, $sshdContent, $utf8NoBom)
-        Write-Ok "sshd_config set to Port 22"
+        Write-Ok "sshd_config set to $portDirective (global section)"
     } else {
-        Write-Verbose "sshd_config already has Port 22"
+        Write-Verbose "sshd_config already has $portDirective in global section"
     }
 }
 
@@ -784,24 +799,56 @@ New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell -Value 'C:\Wi
 New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShellCommandOption -Value "-d $defaultWslDistro" -PropertyType String -Force | Out-Null
 Write-Ok "Default shell set to WSL ($defaultWslDistro)"
 
-# Ensure host keys exist (some installs don't create them; sshd won't start without them)
+# Ensure host keys exist: idempotent. If we have project keys, replace server keys every time (no prompt).
+# Source: bootstrap/openssh_host_keys/ (drop keys from Mac or generate once; names: ssh_host_ed25519_key, ssh_host_rsa_key, etc. + .pub)
 $sshDataDir = 'C:\ProgramData\ssh'
-$existingHostKeys = Get-ChildItem -Path (Join-Path $sshDataDir 'ssh_host_*_key') -ErrorAction SilentlyContinue
-if ((Test-Path $sshDataDir) -and (-not $existingHostKeys -or $existingHostKeys.Count -eq 0)) {
-    Write-Set "Generating OpenSSH host keys (required for sshd to start)"
+$ourHostKeysDir = Join-Path $repoRoot 'bootstrap\openssh_host_keys'
+if (-not (Test-Path $sshDataDir)) {
+    New-Item -ItemType Directory -Path $sshDataDir -Force | Out-Null
+    Write-Verbose "Created $sshDataDir (OpenSSH may not have created it yet)"
+}
+$ourPrivateKeys = @(Get-ChildItem -Path (Join-Path $ourHostKeysDir 'ssh_host_*_key') -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '\.pub$' })
+$weHaveOurKeys = (Test-Path $ourHostKeysDir) -and ($ourPrivateKeys.Count -gt 0)
+if ($weHaveOurKeys) {
+    Write-Set "Replacing OpenSSH host keys with project keys from bootstrap/openssh_host_keys (idempotent)"
+    $allHostKeyFiles = @(Get-ChildItem -Path (Join-Path $ourHostKeysDir 'ssh_host_*') -File -ErrorAction SilentlyContinue)
+    foreach ($f in $allHostKeyFiles) {
+        Copy-Item -Path $f.FullName -Destination (Join-Path $sshDataDir $f.Name) -Force
+        Write-Verbose "Copied $($f.Name) to $sshDataDir"
+    }
+    Write-Ok "OpenSSH host keys set from project (bootstrap/openssh_host_keys)"
+} else {
+    $existingHostKeys = @(Get-ChildItem -Path (Join-Path $sshDataDir 'ssh_host_*_key') -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '\.pub$' })
+    $needKeys = ($existingHostKeys.Count -eq 0)
+    if ($needKeys) {
+        Write-Set "Generating temporary OpenSSH host keys (required for sshd to start)"
+    } else {
+        Write-Set "Ensuring all OpenSSH host key types exist (ssh-keygen -A adds only missing keys)"
+    }
     $sshKeygen = Get-Command ssh-keygen -ErrorAction SilentlyContinue
     if ($sshKeygen) {
         try {
             Push-Location $sshDataDir
             & $sshKeygen.Source -A 2>&1 | Out-Null
             Pop-Location
-            Write-Ok "Host keys generated"
+            Write-Host ""
+            Write-Host "  ****************************************" -ForegroundColor Red
+            Write-Host "  ***  TEMPORARY / DEFAULT HOST KEYS  ***" -ForegroundColor Red
+            Write-Host "  ****************************************" -ForegroundColor Red
+            Write-Host "  These keys are only so sshd can start." -ForegroundColor Yellow
+            Write-Host "  To use your own keys: place them in" -ForegroundColor Yellow
+            Write-Host "  $ourHostKeysDir" -ForegroundColor Cyan
+            Write-Host "  (e.g. ssh_host_ed25519_key, ssh_host_rsa_key + .pub)." -ForegroundColor Yellow
+            Write-Host "  Re-run this script; it will replace with yours (idempotent)." -ForegroundColor Yellow
+            Write-Host "  ****************************************" -ForegroundColor Red
+            Write-Host ""
+            if ($needKeys) { Write-Ok "Temporary host keys generated (add keys to bootstrap/openssh_host_keys and re-run)" } else { Write-Ok "Host key set verified/updated" }
         } catch {
             Write-Host "  [WARNING] ssh-keygen -A failed: $_" -ForegroundColor Yellow
             Pop-Location -ErrorAction SilentlyContinue
         }
     } else {
-        Write-Host "  [WARNING] ssh-keygen not found; run manually from C:\ProgramData\ssh: ssh-keygen -A" -ForegroundColor Yellow
+        Write-Host "  [WARNING] ssh-keygen not found; run manually from $sshDataDir : ssh-keygen -A" -ForegroundColor Yellow
     }
 }
 
@@ -865,7 +912,10 @@ foreach ($keyPath in @($ansibleKeyPath, $macKeyPath)) {
     }
 }
 if (-not $keyAdded) {
-    Write-Verbose "No .mgmt/ansible_ssh.pub or bootstrap/mac_ssh_key.pub; run WSL bootstrap first so .mgmt/ansible_ssh.pub is created, or add bootstrap/mac_ssh_key.pub"
+    Write-Host "  [INFO] No SSH public key found for Windows authorized_keys." -ForegroundColor Yellow
+    Write-Host "  To fix (pick one):" -ForegroundColor Cyan
+    Write-Host "    1) From Mac: run  ./bin/fz bootstrap --limit server-225-win   (deploys .mgmt/ansible_ssh.pub to this host, then re-run this script)" -ForegroundColor White
+    Write-Host "    2) Or: copy your Mac public key into repo as  bootstrap/mac_ssh_key.pub  (e.g.  cat ~/.ssh/id_ed25519.pub > bootstrap/mac_ssh_key.pub  on Mac), sync repo, then re-run this script" -ForegroundColor White
 }
 
 Write-Host ""

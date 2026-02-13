@@ -791,12 +791,15 @@ Commands:
                         Requires --limit or --all
                         Special case: --limit server-225-win runs local bootstrap only
                         Mac control node: --limit mac-dev runs playbooks/bootstrap_mac.yaml only
+                        Use --SSHGenForce with --limit mac-dev to (re)generate OpenSSH host keys into bootstrap/openssh_host_keys/
   bootstrap-winrm        Bootstrap Windows hosts via WinRM
                         Requires --limit or --all
                         Example: fz bootstrap-winrm --limit server-225-win
   bootstrap-ssh          Deploy stacks via SSH (WSL2 operations)
                         Requires --limit or --all
                         Example: fz bootstrap-ssh --limit server-225-wsl
+  bootstrap-openssh-host-keys  Generate OpenSSH host keys into bootstrap/openssh_host_keys/ (for Windows).
+                        Run on the Mac; then sync folder to Windows and run bootstrap-local.ps1 there.
   deploy <target>        Deploy stacks to target node
                         Requires --limit or --all
     main                 Deploy main stacks (server-225)
@@ -839,8 +842,10 @@ Common Options (forwarded to ansible-playbook):
 Examples:
   fz --help                                 Show command help and exit
   fz bootstrap --limit server-225-win      Run local bootstrap path for server-225-win
+  fz bootstrap --limit mac-dev --SSHGenForce  Mac bootstrap and (re)generate OpenSSH host keys
   fz bootstrap-winrm --limit server-225-win  Run WinRM bootstrap playbook for server-225
   fz bootstrap-ssh --limit server-225-wsl  Run SSH deploy phase for server-225-wsl
+  fz bootstrap-openssh-host-keys            Generate host keys on Mac (for Windows OpenSSH)
   fz bootstrap --limit server-225-wsl      Run full bootstrap flow for one WSL target
   fz bootstrap --all                        Run full bootstrap flow across all target groups
   fz deploy network --limit network-server-win  Deploy network stacks with confirmation prompt

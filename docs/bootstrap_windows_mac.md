@@ -76,7 +76,7 @@ Sync the repo to the Mac (or pull) so the Mac has the updated host_vars (and key
   - `ansible_user` and `ansible_password` (or `ansible_winrm_password`) for NTLM.
 
 - **OpenSSH**  
-  The Mac’s public key must be in the Windows user’s `~/.ssh/authorized_keys`. The playbook deploys `repo_root/.mgmt/ansible_ssh.pub`; the local script can also use `bootstrap/mac_ssh_key.pub`.
+  The Mac’s public key must be in the Windows user’s `~/.ssh/authorized_keys`. The playbook deploys `repo_root/.mgmt/ansible_ssh.pub`; the local script can also use `bootstrap/mac_ssh_key.pub`. For fixed OpenSSH **host keys** (so the Windows server's SSH host key does not change on reinstall), on the Mac run `./bin/fz bootstrap-openssh-host-keys` (or `ansible-playbook playbooks/bootstrap_openssh_host_keys.yaml`), sync the repo, then run `.\bin\bootstrap-local.ps1` on Windows—see `bootstrap/openssh_host_keys/README.md`.
 
 ## Summary
 

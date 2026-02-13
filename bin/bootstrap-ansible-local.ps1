@@ -1,8 +1,7 @@
 # bin/bootstrap-ansible-local.ps1
-# Automated WSL deploy with cloud-init for server-225
-# This script automates deploying the ansible container and uses the WSL username and password
-# as the assumed ansible user and password.
-# Reads username and password from server-225-wsl and server-225-win host_vars files
+# Configures the Ubuntu (WSL) distro and runs Ansible bootstrap only for that Ubuntu.
+# Does NOT run playbooks against Windows (server-225-win); run those from the Mac.
+# Reads username and password from server-225-wsl and server-225-win host_vars (for WSL user/pass only).
 
 # ============================================================================
 # Configuration Variables (commented out - values are read from host_vars files)
@@ -35,10 +34,8 @@ param(
     # Only this switch runs wsl --install when the distro is already present (unregister then re-download).
     # Without it we never run wsl --install when distro is in wsl --list; after unregister we redeploy from cache.
     [switch]$ForceDownload = $false,
-    # If $true (default), run WSL bootstrap (bootstrap-local.sh). Set $false to skip and only run fz.
-    [bool]$RunWslBootstrap = $true,
-    # If $true (default), after WSL bootstrap run: ./bin/fz bootstrap --limit server-225-win
-    [bool]$RunFzBootstrap = $true
+    # If $true (default), run WSL bootstrap (bootstrap-local.sh) inside the distro.
+    [bool]$RunWslBootstrap = $true
 )
 
 $ErrorActionPreference = "Stop"
@@ -390,37 +387,10 @@ Write-Ok "WSL setup complete"
 Write-Host "  WSL distribution: $wslDistro" -ForegroundColor Cyan
 Write-Host "  WSL user: $wslUser" -ForegroundColor Cyan
 Write-Host "  To access WSL manually: wsl -d $wslDistro" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "  To run Windows bootstrap (WinRM) from the Mac: ./bin/fz bootstrap --limit server-225-win" -ForegroundColor Yellow
+Write-Host "  This script only configures the Ubuntu distro; it does not target Windows." -ForegroundColor Yellow
 
-# Add ansible public key to Windows authorized_keys (created by WSL playbook at repo\.mgmt\ansible_ssh.pub)
-$ansiblePubKeyPath = Join-Path $repoRoot ".mgmt\ansible_ssh.pub"
-$winSshDir = Join-Path $env:USERPROFILE ".ssh"
-$winAuthorizedKeys = Join-Path $winSshDir "authorized_keys"
-if ($wslBootstrapSucceeded -and (Test-Path $ansiblePubKeyPath)) {
-    if (-not (Test-Path $winSshDir)) { New-Item -ItemType Directory -Path $winSshDir -Force | Out-Null }
-    $keyLine = (Get-Content $ansiblePubKeyPath -Raw -ErrorAction SilentlyContinue) -replace "[\x00-\x08\x0b\x0c\x0e-\x1f]", ""
-    $keyLine = $keyLine.Trim()
-    if ($keyLine -and $keyLine -match '^\S+\s+\S+') {
-        $existing = if (Test-Path $winAuthorizedKeys) { Get-Content $winAuthorizedKeys -Raw } else { '' }
-        if ($existing -notmatch [regex]::Escape($keyLine)) {
-            Add-Content -Path $winAuthorizedKeys -Value $keyLine -Encoding UTF8
-            Write-Ok "Added ansible public key to Windows authorized_keys (Mac can SSH to this host with id_ed25519_ansible)"
-        }
-    }
-}
-
-if ($RunFzBootstrap -and $wslBootstrapSucceeded) {
-    Write-Host ""
-    Write-Host "================================================================================" -ForegroundColor Cyan
-    Write-Host "  >>> CALLING: ./bin/fz bootstrap --limit server-225-win (inside WSL)" -ForegroundColor Cyan
-    Write-Host "================================================================================" -ForegroundColor Cyan
-    Write-Host ""
-    $fzCommand = "cd '$wslRepoPath' && ./bin/fz bootstrap --limit server-225-win"
-    wsl --distribution $wslDistroForBootstrap bash -c $fzCommand
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "fz bootstrap exited with code $LASTEXITCODE" -ForegroundColor Red
-        exit $LASTEXITCODE
-    }
-} elseif (-not $wslBootstrapSucceeded) {
-    Write-Host "Skipping fz bootstrap because WSL bootstrap failed." -ForegroundColor Yellow
+if (-not $wslBootstrapSucceeded) {
     exit 1
 }
