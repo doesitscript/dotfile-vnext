@@ -957,25 +957,119 @@ $keyAdded = $false
 $ansibleKeyPath = Join-Path $repoRoot '.mgmt\ansible_ssh.pub'
 $macKeyPath = Join-Path $repoRoot 'bootstrap\mac_ssh_key.pub'
 Write-Verbose ('Checking key sources for authorized_keys: ' + $ansibleKeyPath + ', ' + $macKeyPath + ' -> ' + $winAuthorizedKeys)
+Write-Verbose ('Target authorized_keys file: ' + $winAuthorizedKeys)
 
 foreach ($keyPath in @($ansibleKeyPath, $macKeyPath)) {
-    if (-not (Test-Path $keyPath)) { Write-Verbose ('  Skip (not found): ' + $keyPath); continue }
-    $keyLine = Get-Content $keyPath -Raw -ErrorAction SilentlyContinue | Strip-YamlControlChars
-    $keyLine = $keyLine.Trim()
-    if (-not $keyLine -or $keyLine -notmatch '^\S+\s+\S+') { Write-Verbose ('  Skip (empty/invalid): ' + $keyPath); continue }
-    $existing = if (Test-Path $winAuthorizedKeys) { Get-Content $winAuthorizedKeys -Raw } else { '' }
-    if ($existing -notmatch [regex]::Escape($keyLine)) {
-        Add-Content -Path $winAuthorizedKeys -Value $keyLine -Encoding UTF8
-        $keyName = if ($keyPath -eq $ansibleKeyPath) { 'ansible (from vault)' } else { 'Mac (bootstrap/mac_ssh_key.pub)' }
-        Write-Verbose ('  Updated ' + $winAuthorizedKeys + ' using: ' + $keyPath)
-        Write-Ok ('Added ' + $keyName + ' public key to Windows authorized_keys')
-        $keyAdded = $true
+    $keyName = if ($keyPath -eq $ansibleKeyPath) { 'ansible (from vault)' } else { 'Mac (bootstrap/mac_ssh_key.pub)' }
+    Write-Verbose ('[CHECK] Examining key file: ' + $keyPath + ' (' + $keyName + ')')
+    
+    if (-not (Test-Path $keyPath)) { 
+        Write-Verbose ('  [SKIP] File not found: ' + $keyPath)
+        Write-Verbose ('  [INFO] File existence check failed for: ' + $keyPath)
+        continue 
+    }
+    Write-Verbose ('  [OK] File exists: ' + $keyPath)
+    
+    # Read key file, strip control chars, trim, and get first non-empty line
+    Write-Verbose ('  [READ] Reading file content from: ' + $keyPath)
+    try {
+        $keyContent = Get-Content $keyPath -Raw -ErrorAction Stop
+        Write-Verbose ('  [OK] File read successful, length: ' + $keyContent.Length + ' characters')
+    } catch {
+        Write-Verbose ('  [ERROR] Failed to read file: ' + $keyPath + ' - Error: ' + $_.Exception.Message)
+        Write-Host ('  [WARNING] Could not read key file: ' + $keyPath) -ForegroundColor Yellow
+        continue
+    }
+    
+    if (-not $keyContent) { 
+        Write-Verbose ('  [SKIP] File is empty: ' + $keyPath)
+        Write-Verbose ('  [INFO] File content check: empty or null')
+        continue 
+    }
+    Write-Verbose ('  [OK] File has content: ' + $keyContent.Length + ' characters')
+    
+    Write-Verbose ('  [PROCESS] Stripping YAML control characters')
+    $keyContent = Strip-YamlControlChars $keyContent
+    Write-Verbose ('  [OK] After strip, length: ' + $keyContent.Length + ' characters')
+    
+    Write-Verbose ('  [PROCESS] Extracting first non-empty line')
+    $keyLine = ($keyContent -split "`r?`n" | Where-Object { $_.Trim() -ne '' } | Select-Object -First 1).Trim()
+    if ($keyLine) {
+        Write-Verbose ('  [OK] Extracted key line, length: ' + $keyLine.Length + ' characters')
+        Write-Verbose ('  [INFO] Key line preview: ' + ($keyLine.Substring(0, [Math]::Min(50, $keyLine.Length))) + '...')
     } else {
-        Write-Verbose ('  Already present (no change): ' + $keyPath)
+        Write-Verbose ('  [ERROR] No valid key line found after processing')
+        Write-Verbose ('  [INFO] Split result count: ' + (($keyContent -split "`r?`n").Count))
+    }
+    
+    # Validate SSH public key format: key-type key-data [comment]
+    if (-not $keyLine) {
+        Write-Verbose ('  [SKIP] No key line extracted from: ' + $keyPath)
+        Write-Verbose ('  [INFO] Validation failed: key line is empty or null')
+        continue
+    }
+    
+    Write-Verbose ('  [VALIDATE] Checking SSH public key format')
+    if ($keyLine -notmatch '^(ssh-|ecdsa-|sk-)[a-z0-9-]+\s+[A-Za-z0-9+/=]+') {
+        Write-Verbose ('  [SKIP] Invalid SSH key format: ' + $keyPath)
+        Write-Verbose ('  [INFO] Key line does not match expected SSH public key pattern')
+        Write-Verbose ('  [INFO] Key line content (first 100 chars): ' + ($keyLine.Substring(0, [Math]::Min(100, $keyLine.Length))))
+        Write-Verbose ('  [INFO] Regex pattern: ^(ssh-|ecdsa-|sk-)[a-z0-9-]+\s+[A-Za-z0-9+/=]+')
+        continue 
+    }
+    Write-Verbose ('  [OK] Key format validation passed')
+    
+    Write-Verbose ('  [CHECK] Checking if key already exists in authorized_keys')
+    $existing = if (Test-Path $winAuthorizedKeys) { 
+        Write-Verbose ('  [READ] Reading existing authorized_keys file')
+        Get-Content $winAuthorizedKeys -Raw 
+    } else { 
+        Write-Verbose ('  [INFO] authorized_keys file does not exist yet, will create')
+        '' 
+    }
+    
+    if ($existing -notmatch [regex]::Escape($keyLine)) {
+        Write-Verbose ('  [WRITE] Adding key to authorized_keys: ' + $winAuthorizedKeys)
+        try {
+            Add-Content -Path $winAuthorizedKeys -Value $keyLine -Encoding UTF8 -ErrorAction Stop
+            Write-Verbose ('  [OK] Successfully wrote key to authorized_keys')
+            Write-Ok ('Added ' + $keyName + ' public key to Windows authorized_keys')
+            $keyAdded = $true
+        } catch {
+            Write-Verbose ('  [ERROR] Failed to write to authorized_keys: ' + $_.Exception.Message)
+            Write-Host ('  [ERROR] Could not add key to authorized_keys: ' + $_.Exception.Message) -ForegroundColor Red
+        }
+    } else {
+        Write-Verbose ('  [SKIP] Key already present in authorized_keys (no change needed)')
+        Write-Verbose ('  [INFO] Key was found in existing authorized_keys file')
     }
 }
 if (-not $keyAdded) {
     Write-Host '  [INFO] No SSH public key found for Windows authorized_keys.' -ForegroundColor Yellow
+    Write-Verbose ('  [DEBUG] Key check summary:')
+    Write-Verbose ('    - Checked: ' + $ansibleKeyPath + ' (exists: ' + (Test-Path $ansibleKeyPath) + ')')
+    Write-Verbose ('    - Checked: ' + $macKeyPath + ' (exists: ' + (Test-Path $macKeyPath) + ')')
+    Write-Verbose ('    - Target: ' + $winAuthorizedKeys + ' (exists: ' + (Test-Path $winAuthorizedKeys) + ')')
+    if (Test-Path $ansibleKeyPath) {
+        $ansibleKeyInfo = Get-Item $ansibleKeyPath -ErrorAction SilentlyContinue
+        if ($ansibleKeyInfo) {
+            Write-Verbose ('    - ansible_ssh.pub file size: ' + $ansibleKeyInfo.Length + ' bytes')
+            Write-Verbose ('    - ansible_ssh.pub last modified: ' + $ansibleKeyInfo.LastWriteTime)
+        }
+        $testContent = Get-Content $ansibleKeyPath -Raw -ErrorAction SilentlyContinue
+        if ($testContent) {
+            Write-Verbose ('    - ansible_ssh.pub content preview: ' + ($testContent.Substring(0, [Math]::Min(80, $testContent.Length)).Trim()))
+            Write-Verbose ('    - ansible_ssh.pub content length: ' + $testContent.Length + ' characters')
+        } else {
+            Write-Verbose ('    - ansible_ssh.pub appears to be empty or unreadable')
+        }
+    }
+    if (Test-Path $macKeyPath) {
+        $macKeyInfo = Get-Item $macKeyPath -ErrorAction SilentlyContinue
+        if ($macKeyInfo) {
+            Write-Verbose ('    - mac_ssh_key.pub file size: ' + $macKeyInfo.Length + ' bytes')
+        }
+    }
     Write-Host '  To fix (pick one):' -ForegroundColor Cyan
     Write-Host '    1) From Mac: run  ./bin/fz bootstrap --limit server-225-win   (deploys .mgmt/ansible_ssh.pub to this host, then re-run this script)' -ForegroundColor White
     Write-Host '    2) Or: copy your Mac public key into repo as  bootstrap/mac_ssh_key.pub  (e.g.  cat ~/.ssh/id_ed25519.pub on Mac), sync repo, then re-run this script' -ForegroundColor White
