@@ -8,11 +8,11 @@ contract_file: contracts/fuzlang.contract.yaml
 dotfiles_home: >-
   {{ 'D:\\develop\\dotfile-vnext'
      if ansible_facts['system'] == 'Windows'
-     else ('/Users/' ~ ansible_facts['user'] ~ '/develop/dotfile-vnext'
+     else ('/Users/' ~ ansible_facts['user_id'] ~ '/develop/dotfile-vnext'
            if ansible_facts['system'] == 'Darwin'
            else '/mnt/d/develop/dotfile-vnext') }}
 
 dotfiles_user_home: >-
-  {{ (ansible_facts['env'].USERPROFILE | default('C:\\Users\\' ~ ansible_facts['user']))
+  {{ (ansible_facts['env'].USERPROFILE | default('C:\\Users\\' ~ ansible_facts['user_id']))
      if ansible_facts['system'] == 'Windows'
-     else (ansible_facts['env'].HOME | default('/home/' ~ ansible_facts['user'])) }}
+     else (ansible_facts['env'].HOME | default(ansible_facts['user_dir'])) }}
