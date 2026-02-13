@@ -386,10 +386,20 @@ case "${COMMAND}" in
     if echo "$@" | grep -q -- "--check"; then
       log_info "CHECK MODE: No changes will be applied"
     fi
-    
+
     if fz_ansible "playbooks/verify_fabric.yaml" "$@"; then
       notify "FuzLang Verify" "Fabric verification completed successfully"
     fi
+    ;;
+  ping)
+    # Ad-hoc ping: uses .venv and inventory. Example: fz ping server-225-wsl
+    if [ $# -eq 0 ]; then
+      log_error "ping requires a host pattern (e.g. server-225-wsl or all)"
+      log_info "Example: fz ping server-225-wsl"
+      log_info "Example: fz ping all"
+      exit 1
+    fi
+    fz_ansible_adhoc "$@"
     ;;
   collect-facts)
     if ! has_limit_or_all "$@"; then

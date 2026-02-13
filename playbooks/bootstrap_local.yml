@@ -19,7 +19,7 @@
     mac_public_key_path: "{{ playbook_dir }}/../bootstrap/mac_ssh_key.pub"
     ansible_ssh_vault_path: "{{ repo_root }}/vault/ansible_ssh.vault.yml"
     # Temp key must live on a native FS so chattr works (e.g. WSL /mnt/d does not support it)
-    ansible_ssh_tmp_base: "{{ ansible_facts['env']['HOME'] | default(ansible_env.HOME, true) }}/.tmp_ansible_ssh"
+    ansible_ssh_tmp_base: "{{ (ansible_facts['env']['HOME'] | default(lookup('env', 'HOME'))) ~ '/.tmp_ansible_ssh' }}"
 
   tasks:
     - name: Ensure host_vars directory exists

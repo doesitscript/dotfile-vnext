@@ -381,6 +381,29 @@ fz_ansible() {
   "${ansible_cmd[@]}"
 }
 
+# Run ad-hoc ansible (e.g. ping) with venv and inventory. Usage: fz_ansible_adhoc server-225-wsl [extra args]
+fz_ansible_adhoc() {
+  local repo_root
+  repo_root="$(repo_root)"
+  local venv_ansible="${repo_root}/.venv/bin/ansible"
+  local inventory_file="${repo_root}/inventory/inventory.yaml"
+
+  ensure_venv
+  setup_ansible_env
+
+  if [ ! -f "${venv_ansible}" ]; then
+    log_error "ansible not found in virtual environment (expected ${venv_ansible})"
+    exit 1
+  fi
+  if [ ! -f "${inventory_file}" ]; then
+    log_error "Inventory not found: ${inventory_file}"
+    exit 1
+  fi
+
+  log_info "Running: ${venv_ansible} $* -m ping -i ${inventory_file}"
+  "${venv_ansible}" "$@" -m ping -i "${inventory_file}"
+}
+
 # Run ansible-playbook with proper arguments (uses fz_ansible internally)
 run_ansible_playbook() {
   local playbook="$1"
