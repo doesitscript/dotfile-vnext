@@ -50,7 +50,7 @@
   when: ansible_facts['system'] == "Darwin"
   become: false
   file:
-    path: /etc/fuzlang
+    path: "{{ ansible_user_dir }}/.fuzlang"
     state: directory
     mode: '0755'
 
@@ -83,7 +83,7 @@
       physical_node: "{{ physical_node | default('unknown') }}"
       surface_type: "{{ surface_type | default('unknown') }}"
       contract_version: "{{ contract_version | default(1) }}"
-      facts_path: "/etc/fuzlang/node_facts.json"
+      facts_path: "{{ ansible_user_dir }}/.fuzlang/node_facts.json"
 
 - name: Gather node facts for Windows
   when: ansible_facts['system'] == "Windows"

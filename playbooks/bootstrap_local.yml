@@ -1,8 +1,8 @@
 ---
-# bootstrap/local/bootstrap.yml
-# Canonical local bootstrap, runs inside WSL on each node.
+# Bootstrap local node (runs inside WSL on each Windows node)
+# Sets up SSH, generates ansible SSH key pair, writes host_vars
 
-- name: Local bootstrap (WSL side, generic per node)
+- name: Bootstrap local node (WSL side)
   hosts: localhost
   connection: local
   gather_facts: true
@@ -10,15 +10,15 @@
   vars:
     # Override with -e bootstrap_node=<node-slug> when needed.
     physical_node: "{{ bootstrap_node | default(ansible_facts['hostname'] | lower) }}"
-    repo_root: "{{ playbook_dir }}/../.."
+    repo_root: "{{ playbook_dir }}/.."
     facts_path_windows: "{{ repo_root }}/facts/{{ physical_node }}.json"
     host_vars_dir: "{{ repo_root }}/inventory/host_vars"
     windows_hostvars_path: "{{ host_vars_dir }}/{{ physical_node }}-win.yaml"
     wsl_hostvars_path: "{{ host_vars_dir }}/{{ physical_node }}-wsl.yaml"
     wsl_ssh_port: 22
-    mac_public_key_path: "{{ playbook_dir }}/files/mac_dev_id_ed25519.pub"
-    controller_ssh_vault_path: "{{ repo_root }}/vault/controller_ssh.vault.yml"
-    controller_ssh_tmp_base: "{{ repo_root }}/.tmp_controller_ssh"
+    mac_public_key_path: "{{ playbook_dir }}/../bootstrap/mac_ssh_key.pub"
+    ansible_ssh_vault_path: "{{ repo_root }}/vault/ansible_ssh.vault.yml"
+    ansible_ssh_tmp_base: "{{ repo_root }}/.tmp_ansible_ssh"
 
   tasks:
     - name: Ensure host_vars directory exists
@@ -31,88 +31,6 @@
       ansible.builtin.stat:
         path: "{{ facts_path_windows }}"
       register: windows_facts_file
-
-    # #region agent log H2 (optional: set -e debug_log_path=/path/to/log to enable)
-    - name: Log requested Windows facts file existence
-      ansible.builtin.lineinfile:
-        path: "{{ debug_log_path }}"
-        create: true
-        insertafter: EOF
-        line: >-
-          {{
-            {
-              "id": "boot_local_h2_facts_stat",
-              "runId": "pre-fix",
-              "hypothesisId": "H2",
-              "location": "bootstrap/local/bootstrap.yml:windows_facts_file",
-              "message": "Facts file stat result",
-              "data": {
-                "requested_path": facts_path_windows,
-                "exists": windows_facts_file.stat.exists | default(false)
-              },
-              "timestamp": ansible_date_time.epoch
-            } | to_json
-          }}
-      when: debug_log_path is defined
-    # #endregion
-
-    # #region agent log H3 (optional: set -e debug_log_path=/path/to/log to enable)
-    - name: Find available facts json files
-      ansible.builtin.find:
-        paths: "{{ playbook_dir }}/../../facts"
-        patterns: "*.json"
-        file_type: file
-      register: facts_dir_scan
-      when: debug_log_path is defined
-
-    - name: Log available facts json candidates
-      ansible.builtin.lineinfile:
-        path: "{{ debug_log_path }}"
-        create: true
-        insertafter: EOF
-        line: >-
-          {{
-            {
-              "id": "boot_local_h3_facts_candidates",
-              "runId": "pre-fix",
-              "hypothesisId": "H3",
-              "location": "bootstrap/local/bootstrap.yml:facts_scan",
-              "message": "Facts candidates in facts directory",
-              "data": {
-                "facts_dir": playbook_dir ~ "/../../facts",
-                "matched": facts_dir_scan.matched | default(0),
-                "files": (facts_dir_scan.files | default([]) | map(attribute='path') | list)
-              },
-              "timestamp": ansible_date_time.epoch
-            } | to_json
-          }}
-      when: debug_log_path is defined
-    # #endregion
-
-    # #region agent log H4 (optional: set -e debug_log_path=/path/to/log to enable)
-    - name: Log missing facts failure branch context
-      ansible.builtin.lineinfile:
-        path: "{{ debug_log_path }}"
-        create: true
-        insertafter: EOF
-        line: >-
-          {{
-            {
-              "id": "boot_local_h4_fail_branch",
-              "runId": "pre-fix",
-              "hypothesisId": "H4",
-              "location": "bootstrap/local/bootstrap.yml:missing_facts_fail_branch",
-              "message": "Missing facts branch entered",
-              "data": {
-                "physical_node": physical_node,
-                "requested_path": facts_path_windows,
-                "available_files": (facts_dir_scan.files | default([]) | map(attribute='path') | list)
-              },
-              "timestamp": ansible_date_time.epoch
-            } | to_json
-          }}
-      when: debug_log_path is defined and not windows_facts_file.stat.exists
-    # #endregion
 
     - name: Stop when Windows facts file is missing
       ansible.builtin.fail:
@@ -159,7 +77,7 @@
         state: restarted
       become: true
 
-    - name: Check whether mac-dev public key file exists
+    - name: Check whether mac public key file exists
       ansible.builtin.stat:
         path: "{{ mac_public_key_path }}"
       register: mac_public_key_file
@@ -173,7 +91,7 @@
         group: "{{ ansible_facts['user_id'] }}"
       become: true
 
-    - name: Install mac-dev public key for bootstrap user
+    - name: Install mac public key for bootstrap user
       ansible.posix.authorized_key:
         user: "{{ ansible_facts['user_id'] }}"
         key: "{{ lookup('file', mac_public_key_path) }}"
@@ -181,88 +99,89 @@
       become: true
       when: mac_public_key_file.stat.exists
 
-    - name: Report missing mac-dev public key file
-      ansible.builtin.debug:
-        msg: >-
-          mac-dev public key file not found at {{ mac_public_key_path }}.
-          Add your mac key there to enable local authorized_keys injection.
-      when: not mac_public_key_file.stat.exists
-
-    # Controller SSH key: generate once, store in vault, install public key here so Mac/controller can SSH in.
-    - name: Check if controller SSH vault already exists
+    # Ansible SSH key: generate once, store in vault, install public key here so Mac can SSH in
+    - name: Check if ansible SSH vault already exists
       ansible.builtin.stat:
-        path: "{{ controller_ssh_vault_path }}"
-      register: controller_ssh_vault_file
+        path: "{{ ansible_ssh_vault_path }}"
+      register: ansible_ssh_vault_file
 
-    - name: Generate controller SSH key pair (ed25519)
+    - name: Generate ansible SSH key pair (ed25519)
       community.crypto.openssh_keypair:
-        path: "{{ controller_ssh_tmp_base }}"
+        path: "{{ ansible_ssh_tmp_base }}"
         type: ed25519
         state: present
         force: false
-      register: controller_ssh_keypair_result
-      when: not controller_ssh_vault_file.stat.exists
+      register: ansible_ssh_keypair_result
+      when: not ansible_ssh_vault_file.stat.exists
 
-    - name: Slurp generated controller private key for vault
+    - name: Slurp generated ansible private key for vault
       ansible.builtin.slurp:
-        src: "{{ controller_ssh_tmp_base }}"
-      register: controller_ssh_private_slurp
-      when: not controller_ssh_vault_file.stat.exists
+        src: "{{ ansible_ssh_tmp_base }}"
+      register: ansible_ssh_private_slurp
+      when: not ansible_ssh_vault_file.stat.exists
 
-    - name: Set controller SSH key content for vault template
+    - name: Set ansible SSH key content for vault template
       ansible.builtin.set_fact:
-        controller_ssh_private_key_content: "{{ controller_ssh_private_slurp.content | b64decode }}"
-        controller_ssh_public_key_content: "{{ controller_ssh_keypair_result.public_key | trim }}"
-      when: not controller_ssh_vault_file.stat.exists
+        ansible_ssh_private_key_content: "{{ ansible_ssh_private_slurp.content | b64decode }}"
+        ansible_ssh_public_key_content: "{{ ansible_ssh_keypair_result.public_key | trim }}"
+      when: not ansible_ssh_vault_file.stat.exists
 
     - name: Ensure vault directory exists
       ansible.builtin.file:
         path: "{{ repo_root }}/vault"
         state: directory
         mode: "0755"
-      when: not controller_ssh_vault_file.stat.exists
+      when: not ansible_ssh_vault_file.stat.exists
 
-    - name: Write controller SSH vault file (plain, before encrypt)
+    - name: Write ansible SSH vault file (plain, before encrypt)
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/templates/controller_ssh_vault.yml.j2"
-        dest: "{{ controller_ssh_vault_path }}"
+        src: "{{ playbook_dir }}/templates/ansible_ssh_vault.yml.j2"
+        dest: "{{ ansible_ssh_vault_path }}"
         mode: "0644"
-      when: not controller_ssh_vault_file.stat.exists
+      when: not ansible_ssh_vault_file.stat.exists
 
-    - name: Encrypt controller SSH vault file
+    - name: Encrypt ansible SSH vault file
       ansible.builtin.shell: |
-        cd "{{ repo_root }}" && .venv/bin/ansible-vault encrypt vault/controller_ssh.vault.yml
-      when: not controller_ssh_vault_file.stat.exists
+        cd "{{ repo_root }}" && .venv/bin/ansible-vault encrypt vault/ansible_ssh.vault.yml
+      when: not ansible_ssh_vault_file.stat.exists
 
-    - name: Remove temporary controller SSH key files
+    - name: Remove temporary ansible SSH key files
       ansible.builtin.file:
         path: "{{ item }}"
         state: absent
       loop:
-        - "{{ controller_ssh_tmp_base }}"
-        - "{{ controller_ssh_tmp_base }}.pub"
-      when: not controller_ssh_vault_file.stat.exists
+        - "{{ ansible_ssh_tmp_base }}"
+        - "{{ ansible_ssh_tmp_base }}.pub"
+      when: not ansible_ssh_vault_file.stat.exists
 
-    - name: Install controller public key into authorized_keys (from generated content)
+    - name: Install ansible public key into authorized_keys (from generated content)
       ansible.posix.authorized_key:
         user: "{{ ansible_facts['user_id'] }}"
-        key: "{{ controller_ssh_public_key_content | trim }}"
+        key: "{{ ansible_ssh_public_key_content | trim }}"
         state: present
       become: true
-      when: not controller_ssh_vault_file.stat.exists and controller_ssh_public_key_content is defined
+      when: not ansible_ssh_vault_file.stat.exists and ansible_ssh_public_key_content is defined
 
-    - name: Load controller SSH vault when file exists
+    - name: Load ansible SSH vault when file exists
       ansible.builtin.include_vars:
-        file: "{{ controller_ssh_vault_path }}"
-      when: controller_ssh_vault_file.stat.exists
+        file: "{{ ansible_ssh_vault_path }}"
+      when: ansible_ssh_vault_file.stat.exists
 
-    - name: Install controller public key into authorized_keys (from vault)
+    - name: Install ansible public key into authorized_keys (from vault)
       ansible.posix.authorized_key:
         user: "{{ ansible_facts['user_id'] }}"
-        key: "{{ vault_controller_ssh_public_key }}"
+        key: "{{ vault_ansible_ssh_public_key }}"
         state: present
       become: true
-      when: controller_ssh_vault_file.stat.exists
+      when: ansible_ssh_vault_file.stat.exists
+
+    - name: Display SSH setup summary
+      ansible.builtin.debug:
+        msg:
+          - "SSH server configured and running"
+          - "Ansible SSH public key installed in authorized_keys for user: {{ ansible_facts['user_id'] }}"
+          - "Host vars will be written with SSH connection info"
+          - "Mac can now SSH into this node using the private key from vault"
 
     - name: Read Windows facts JSON
       ansible.builtin.slurp:
@@ -345,3 +264,14 @@
         src: "{{ playbook_dir }}/templates/host_vars_wsl.yml.j2"
         dest: "{{ wsl_hostvars_path }}"
         mode: "0644"
+
+    - name: Display bootstrap completion summary
+      ansible.builtin.debug:
+        msg:
+          - "Bootstrap complete for node: {{ physical_node }}"
+          - "SSH connection info collected and stored in: {{ wsl_hostvars_path }}"
+          - "SSH host: {{ host_ip }}"
+          - "SSH user: {{ wsl_user }}"
+          - "SSH port: {{ wsl_ssh_port }}"
+          - "Ansible SSH key stored in vault: {{ ansible_ssh_vault_path }}"
+          - "Mac can now connect using: ansible {{ physical_node }}-wsl -m ping -i inventory/inventory.yaml"

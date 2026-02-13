@@ -537,7 +537,7 @@ run_local_bootstrap_playbook() {
   local repo_root
   repo_root="$(repo_root)"
   local venv_ansible="${repo_root}/.venv/bin/ansible-playbook"
-  local playbook="${repo_root}/archives/bootstrap/local/local_bootstrap.yml"
+  local playbook="${repo_root}/playbooks/bootstrap_local.yml"
 
   ensure_venv
   require_vault_pass_setup

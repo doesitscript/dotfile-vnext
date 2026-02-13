@@ -4,46 +4,71 @@
 # Purpose: Set up development control plane
 # Output: follows repo logging (ansible.cfg stdout_callback; task names and run from fz use log_step/log_ok)
 
-- name: Ensure SSH key exists for mac-dev
-  hosts: localhost
+# Ansible SSH key setup: Load from vault (created by WSL bootstrap)
+# All SSH key generation and storage is handled by playbooks/bootstrap_local.yml
+# This play only installs the private key on the Mac so it can SSH into WSL nodes
+- name: Install ansible SSH private key from vault
+  hosts: mac-dev
   connection: local
   gather_facts: false
+  vars:
+    ansible_ssh_vault_path: "{{ playbook_dir }}/../vault/ansible_ssh.vault.yml"
+    ansible_ssh_private_key_path: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519_ansible"
   tasks:
+    - name: Check if ansible SSH vault exists
+      ansible.builtin.stat:
+        path: "{{ ansible_ssh_vault_path }}"
+      register: ansible_ssh_vault_file
+
+    - name: Load ansible SSH vault
+      ansible.builtin.include_vars:
+        file: "{{ ansible_ssh_vault_path }}"
+      when: ansible_ssh_vault_file.stat.exists
+
     - name: Ensure ~/.ssh exists
       ansible.builtin.file:
         path: "{{ lookup('env', 'HOME') }}/.ssh"
         state: directory
         mode: "0700"
 
-    - name: Generate SSH key if missing
-      community.crypto.openssh_keypair:
-        path: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519"
-        type: ed25519
-        state: present
-        force: false
-
-    - name: Publish mac public key into local bootstrap key path
+    - name: Install ansible private key from vault
       ansible.builtin.copy:
-        src: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519.pub"
-        dest: "{{ playbook_dir }}/../archives/bootstrap/local/files/mac_dev_id_ed25519.pub"
-        remote_src: true
-        mode: "0644"
+        content: "{{ vault_ansible_ssh_private_key }}"
+        dest: "{{ ansible_ssh_private_key_path }}"
+        mode: "0600"
+      when: ansible_ssh_vault_file.stat.exists and vault_ansible_ssh_private_key is defined
+
+    - name: Display SSH key installation summary
+      ansible.builtin.debug:
+        msg:
+          - "Ansible SSH private key installed at: {{ ansible_ssh_private_key_path }}"
+          - "This key will be used to SSH into WSL nodes"
+          - "WSL nodes have the corresponding public key in their authorized_keys"
+
+    - name: Fail if ansible SSH vault does not exist
+      ansible.builtin.fail:
+        msg: >-
+          Ansible SSH vault not found at {{ ansible_ssh_vault_path }}.
+          All SSH key generation and storage is handled by playbooks/bootstrap_local.yml.
+          Run bootstrap on a WSL node first (e.g., ./bin/fz bootstrap --limit server-225-win)
+          to generate and store the ansible SSH key in the vault.
+      when: not ansible_ssh_vault_file.stat.exists
 
 - name: Bootstrap mac-dev node
   hosts: mac-dev
   become: false
   roles:
     - role: common/baseline
-    - role: package_manager
+    # - role: package_manager
     - role: python
     - role: git
     - role: hub
-    - role: dotenv_bin
+    # - role: dotenv_bin
     - role: mac_dev/homebrew
-    - role: mac_dev/dev_tools
-    - role: mac_dev/dotfiles
+    # - role: mac_dev/dev_tools
+    # - role: mac_dev/dotfiles
     - role: mac_dev/ansible_runner
-    - role: common/ssh_keys
+    # SSH key setup is handled by the play above (loads from vault created by WSL bootstrap)
 
 - name: Write Mac facts to repo (facts/mac-dev.json)
   hosts: mac-dev
@@ -79,14 +104,4 @@
       delegate_to: localhost
       run_once: true
 
-- name: Inject mac-dev public key into WSL hosts
-  hosts: localhost
-  connection: local
-  gather_facts: false
-  tasks:
-    - name: Explain local-bootstrap ownership for remote key setup
-      ansible.builtin.debug:
-        msg: >-
-          Remote authorized_keys setup is handled by archives/bootstrap/local/bootstrap.yml
-          on each target machine, using archives/bootstrap/local/files/mac_dev_id_ed25519.pub.
 

@@ -8,7 +8,7 @@ The only manual steps are: **(1)** put your vault secret in `.vault_pass` at rep
 
 ## Structure
 
-- `archives/bootstrap/` - Local bootstrap playbook and templates (used by the WSL/fz chain)
+- `playbooks/bootstrap_local.yml` - Local bootstrap playbook (runs in WSL on each Windows node)
 - `contracts/` - Canonical contract definitions
 - `inventory/` - Ansible inventory and variables
 - `playbooks/` - Ansible playbooks
@@ -104,7 +104,7 @@ echo -n 'YOUR_VAULT_PASSWORD' > .vault_pass   # or use --ask-vault-pass when run
 ./bin/fz bootstrap --limit mac-dev
 ```
 
-`fz bootstrap --limit mac-dev` does everything: creates `.venv`, installs Python deps and Ansible Galaxy collections (`requirements.yml`), then runs the Mac bootstrap playbook (ensures `~/.ssh/id_ed25519`, publishes it to `archives/bootstrap/local/files/mac_dev_id_ed25519.pub`, runs baseline, package_manager, python, git, hub, dotenv_bin, homebrew, dev_tools, dotfiles, ansible_runner, ssh_keys). After that, from this repo run `./bin/fz deploy main --limit server-225-wsl` and similar.
+`fz bootstrap --limit mac-dev` does everything: creates `.venv`, installs Python deps and Ansible Galaxy collections (`requirements.yml`), then runs the Mac bootstrap playbook (loads ansible SSH key from vault, runs baseline, package_manager, python, git, hub, dotenv_bin, homebrew, dev_tools, dotfiles, ansible_runner). After that, from this repo run `./bin/fz deploy main --limit server-225-wsl` and similar.
 
 ## Quick Start
 
