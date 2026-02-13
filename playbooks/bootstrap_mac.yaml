@@ -4,8 +4,8 @@
 # Purpose: Set up development control plane
 # Output: follows repo logging (ansible.cfg stdout_callback; task names and run from fz use log_step/log_ok)
 
-# Ansible SSH key: use vault if present; otherwise generate on Mac and create vault (no server-first run required).
-# Private key is installed to ~/.ssh/id_ed25519_ansible; public key is in vault and .mgmt/ansible_ssh.pub.
+# Ansible SSH key: ONE key pair for the project. Use vault if present; only generate when vault does not exist (never overwrite vault).
+# Private key is installed to ~/.ssh/id_ed25519_ansible; public key is in vault and .mgmt/ansible_ssh.pub. See docs/ansible_ssh_vault.md.
 - name: Install or create ansible SSH key (vault or generate on Mac)
   hosts: mac-dev
   connection: local

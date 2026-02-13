@@ -1,0 +1,129 @@
+---
+# Bootstrap Windows host (SSH / OpenSSH Server, keys)
+# Applies to ALL Windows hosts in inventory (windows_hosts). Target with --limit.
+# Run from controller: ./bin/fz bootstrap --limit server-225-win
+#                      ./bin/fz bootstrap --limit network-server-win
+#                      ./bin/fz bootstrap --limit dev-3090-win
+# Requires: WinRM reachable; host_vars for the target (e.g. from one-time bootstrap-local.cmd on the box).
+# This playbook does NOT configure WSL; it only sets up Windows OpenSSH Server and keys.
+
+- name: Bootstrap Windows host (WinRM + OpenSSH Server, port 22, keys)
+  hosts: windows_hosts
+  become: false
+  vars:
+    repo_root: "{{ playbook_dir }}/.."
+    ansible_ssh_pub_path: "{{ repo_root }}/.mgmt/ansible_ssh.pub"
+  pre_tasks:
+    - name: Enable PowerShell remoting (so we can connect)
+      ansible.windows.win_shell: Enable-PSRemoting -Force -SkipNetworkProfileCheck
+
+    - name: Ensure WinRM HTTPS listener is configured
+      ansible.windows.win_shell: |
+        $existing = winrm enumerate winrm/config/Listener 2>$null | Select-String -Pattern "Transport = HTTPS" -SimpleMatch
+        if (-not $existing) {
+          $cert = New-SelfSignedCertificate -DnsName $env:COMPUTERNAME -CertStoreLocation Cert:\LocalMachine\My
+          winrm create winrm/config/Listener?Address=*+Transport=HTTPS "@{Hostname='$env:COMPUTERNAME'; CertificateThumbprint='$($cert.Thumbprint)'}"
+        }
+
+    - name: Open WinRM HTTPS firewall rule
+      community.windows.win_firewall_rule:
+        name: WinRM-HTTPS
+        localport: 5986
+        protocol: tcp
+        action: allow
+        direction: in
+        state: present
+
+    - name: Set TrustedHosts when explicitly provided
+      ansible.windows.win_shell: Set-Item -Path WSMan:\localhost\Client\TrustedHosts -Value "{{ winrm_trustedhosts }}" -Force
+      when: winrm_trustedhosts is defined
+
+  tasks:
+    - name: Install OpenSSH Server (Windows capability)
+      ansible.windows.win_shell: |
+        $cap = Get-WindowsCapability -Online -Name 'OpenSSH.Server*' -ErrorAction SilentlyContinue | Where-Object State -ne Installed
+        if ($cap) {
+          Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+        }
+      register: openssh_install
+      changed_when: openssh_install.rc == 0 and ('Installed' in (openssh_install.stdout or ''))
+
+    - name: Open firewall for OpenSSH Server (port 22)
+      community.windows.win_firewall_rule:
+        name: sshd
+        display_name: OpenSSH Server (Port 22)
+        localport: 22
+        protocol: tcp
+        action: allow
+        direction: in
+        state: present
+
+    - name: Ensure sshd_config has Port 22
+      ansible.windows.win_shell: |
+        $path = 'C:\ProgramData\ssh\sshd_config'
+        if (Test-Path $path) {
+          $content = Get-Content $path -Raw
+          if ($content -notmatch '(?m)^Port\s+22\s*') {
+            $content = $content -replace '(?m)^(\s*)(Port\s+\d+)', '$1# $2'
+            $content = $content.TrimEnd() + "`r`nPort 22`r`n"
+            [System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($false))
+          }
+        }
+
+    - name: Ensure OpenSSH host keys exist
+      ansible.windows.win_shell: |
+        $sshDir = 'C:\ProgramData\ssh'
+        if ((Test-Path $sshDir) -and -not (Get-ChildItem (Join-Path $sshDir 'ssh_host_*_key') -ErrorAction SilentlyContinue)) {
+          Push-Location $sshDir
+          if (Get-Command ssh-keygen -ErrorAction SilentlyContinue) { ssh-keygen -A 2>&1 | Out-Null }
+          Pop-Location
+        }
+      failed_when: false
+
+    - name: Set sshd service to Automatic and start
+      ansible.windows.win_service:
+        name: sshd
+        state: started
+        start_mode: auto
+      register: sshd_service_result
+      failed_when: false
+      # If sshd fails to start (e.g. first install), playbook continues; operator can start manually or retry.
+
+    - name: Ensure user .ssh directory exists
+      ansible.windows.win_file:
+        path: "{{ ansible_env.USERPROFILE }}\\.ssh"
+        state: directory
+        mode: "0700"
+
+    - name: Check if ansible public key file exists on controller
+      ansible.builtin.stat:
+        path: "{{ ansible_ssh_pub_path }}"
+      register: ansible_pub_key_file
+      delegate_to: localhost
+      run_once: true
+
+    - name: Read ansible public key from controller and set for host
+      ansible.builtin.set_fact:
+        ansible_pub_key_content: "{{ lookup('file', ansible_ssh_pub_path) | trim }}"
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true
+      when: ansible_pub_key_file.stat.exists
+
+    - name: Add ansible public key to Windows authorized_keys
+      community.windows.win_lineinfile:
+        path: "{{ ansible_env.USERPROFILE }}\\.ssh\\authorized_keys"
+        line: "{{ ansible_pub_key_content }}"
+        create: true
+        state: present
+      when:
+        - ansible_pub_key_file.stat.exists
+        - ansible_pub_key_content is defined
+        - ansible_pub_key_content | length > 0
+
+  post_tasks:
+    - name: Bootstrap Windows (SSH) summary
+      ansible.builtin.debug:
+        msg:
+          - "Windows host bootstrapped for SSH (OpenSSH Server, port 22, keys)"
+          - "Connect with: ssh {{ ansible_user }}@{{ ansible_host }} (or use ansible_ssh_private_key_file)"

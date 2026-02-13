@@ -7,3 +7,15 @@
 - name: Report git install ownership on Windows
   ansible.builtin.debug:
     msg: "Git installation is managed manually. Detected: {{ git_version_windows.stdout | default('not found') }}"
+
+- name: Ensure global gitignore is linked on Windows
+  ansible.builtin.file:
+    src: "{{ dotfiles_home }}/roles/git/files/gitignore_global.link"
+    dest: "{{ dotfiles_user_home }}/.gitignore_global"
+    state: link
+    force: true
+  register: gitignore_link_result
+
+- name: Show global gitignore link location (Windows)
+  ansible.builtin.debug:
+    msg: "Global gitignore linked: {{ dotfiles_user_home }}\\.gitignore_global -> {{ dotfiles_home }}\\roles\\git\\files\\gitignore_global.link ({{ 'created' if gitignore_link_result is changed else 'already present' }})"

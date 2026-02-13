@@ -141,20 +141,21 @@ case "${COMMAND}" in
         fz_ansible "playbooks/bootstrap_mac.yaml" "${all_args[@]}"
         mac_only_bootstrap=true
       fi
-      # WSL-local bootstrap path for this machine: run local bootstrap playbook instead of WinRM.
-      if [[ "${limit_value}" == "server-225-win" ]]; then
-        run_local_bootstrap_playbook -e bootstrap_node=server-225
+      # Windows bootstrap: run Ansible playbook against any Windows host (server-225-win, network-server-win, dev-3090-win, etc.).
+      if [[ "${limit_value}" == *"-win" ]]; then
+        log_step "Running Windows bootstrap (playbooks/bootstrap_windows.yaml) for ${limit_value}"
+        fz_ansible "playbooks/bootstrap_windows.yaml" "${all_args[@]}"
         local_only_bootstrap=true
       fi
       # Check which playbook matches the limit (skip if already handled above).
       if [[ "${mac_only_bootstrap:-false}" != true ]] && [[ "${local_only_bootstrap:-false}" != true ]]; then
-        if ([[ "${limit_value}" == *"server-225"* ]] || [[ "${limit_value}" == *"main"* ]]) && [[ "${limit_value}" != "server-225-win" ]]; then
+        if ([[ "${limit_value}" == *"server-225"* ]] || [[ "${limit_value}" == *"main"* ]]) && [[ "${limit_value}" != *"-win" ]]; then
           fz_ansible "playbooks/bootstrap_server_225.yaml" "${all_args[@]}"
         fi
-        if [[ "${limit_value}" == *"network"* ]]; then
+        if [[ "${limit_value}" == *"network"* ]] && [[ "${limit_value}" != *"-win" ]]; then
           fz_ansible "playbooks/bootstrap_network_server.yaml" "${all_args[@]}"
         fi
-        if ([[ "${limit_value}" == *"dev-3090"* ]] || [[ "${limit_value}" == *"dev"* ]]) && [[ "${limit_value}" != "mac-dev" ]]; then
+        if ([[ "${limit_value}" == *"dev-3090"* ]] || [[ "${limit_value}" == *"dev"* ]]) && [[ "${limit_value}" != "mac-dev" ]] && [[ "${limit_value}" != *"-win" ]]; then
           fz_ansible "playbooks/bootstrap_dev_3090.yaml" "${all_args[@]}"
         fi
       fi
@@ -166,9 +167,9 @@ case "${COMMAND}" in
       fz_ansible "playbooks/bootstrap_dev_3090.yaml" "${all_args[@]}"
     fi
 
-    # Local WSL bootstrap for server-225-win is a phase-1-only path.
+    # Windows bootstrap (-win limit) is a phase-1-only path.
     if [ "${local_only_bootstrap}" = true ]; then
-      log_ok "Local bootstrap completed for server-225-win"
+      log_ok "Windows bootstrap completed for ${limit_value}"
       notify "FuzLang Bootstrap" "Local bootstrap completed successfully"
       exit 0
     fi

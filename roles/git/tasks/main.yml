@@ -16,14 +16,13 @@
     dest: "{{ dotfiles_user_home }}/.gitignore_global"
     state: link
     force: true
+  register: gitignore_link_result
   when: ansible_facts['system'] != "Windows"
 
-- name: Ensure global gitignore exists on Windows
-  ansible.builtin.copy:
-    src: "{{ dotfiles_home }}/roles/git/files/gitignore_global.link"
-    dest: "{{ dotfiles_user_home }}/.gitignore_global"
-    force: true
-  when: ansible_facts['system'] == "Windows"
+- name: Show global gitignore link location (Unix)
+  ansible.builtin.debug:
+    msg: "Global gitignore linked: {{ dotfiles_user_home }}/.gitignore_global -> {{ dotfiles_home }}/roles/git/files/gitignore_global.link ({{ 'created' if gitignore_link_result is changed else 'already present' }})"
+  when: ansible_facts['system'] != "Windows"
 
 - name: Check whether gitconfig already exists
   ansible.builtin.stat:

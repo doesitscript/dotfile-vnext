@@ -2,6 +2,8 @@
 # Bootstrap local node (runs inside WSL on each Windows node)
 # Sets up SSH, generates ansible SSH key pair, writes host_vars
 
+# This playbook must run inside WSL on the server (e.g. invoked by bootstrap-ansible-local.ps1 after bootstrap-local.sh).
+# Do not run from the Mac: use "fz bootstrap --limit mac-dev" on the Mac instead.
 - name: Bootstrap local node (WSL side)
   hosts: localhost
   connection: local
@@ -22,6 +24,13 @@
     ansible_ssh_tmp_base: "{{ (ansible_facts['env']['HOME'] | default(lookup('env', 'HOME'))) ~ '/.tmp_ansible_ssh' }}"
 
   tasks:
+    - name: Fail if not running in WSL (this playbook is for server WSL only, not Mac)
+      ansible.builtin.fail:
+        msg: >-
+          This playbook must run inside WSL on the server (e.g. via bootstrap-ansible-local.ps1).
+          On the Mac use: ./bin/fz bootstrap --limit mac-dev
+      when: ansible_facts['system'] != 'Linux'
+
     - name: Ensure host_vars directory exists
       ansible.builtin.file:
         path: "{{ host_vars_dir }}"
@@ -114,7 +123,8 @@
       become: true
       when: mac_public_key_file.stat.exists
 
-    # Ansible SSH key: generate once, store in vault, install public key here so Mac can SSH in
+    # Ansible SSH key: ONE key pair for the whole project. Create ONLY when vault does not exist; never overwrite vault.
+    # When vault exists we only load it and install the existing public key. See docs/ansible_ssh_vault.md.
     - name: Check if ansible SSH vault already exists
       ansible.builtin.stat:
         path: "{{ ansible_ssh_vault_path }}"

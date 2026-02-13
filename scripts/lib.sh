@@ -143,6 +143,7 @@ ensure_venv() {
       did_install_pip=true
     else
       log_info "Requirements unchanged; skipping dependency install"
+      log_info "To install new collections (e.g. ansible.windows): .venv/bin/ansible-galaxy collection install -r requirements.yml ; then re-run (e.g. ./bin/fz bootstrap --limit server-225-win)"
     fi
   else
     log_warn "Requirements file not found: ${requirements_file}"
@@ -159,7 +160,8 @@ ensure_venv() {
     [ -f "${collections_hash_file}" ] && col_prev="$(tr -d '\r\n' < "${collections_hash_file}" 2>/dev/null || true)"
     if [ "${refresh_deps}" = true ] || [ "${full_bootstrap}" = true ] || [ "${did_install_pip}" = true ] || [ "${col_hash}" != "${col_prev}" ]; then
       log_info "Installing Ansible Galaxy collections from ${requirements_yml}"
-      (cd "${repo_root}" && ansible-galaxy collection install -r requirements.yml)
+      mkdir -p "${repo_root}/collections"
+      (cd "${repo_root}" && ansible-galaxy collection install -r requirements.yml -p collections)
       printf '%s\n' "${col_hash}" > "${collections_hash_file}"
     fi
   fi
@@ -192,6 +194,7 @@ setup_ansible_env() {
   # WSL + /mnt/<drive> paths are often world-writable, and Ansible may ignore ansible.cfg there.
   # Export core paths explicitly so role/collection resolution still works when config is skipped.
   export ANSIBLE_ROLES_PATH="${repo_root}/roles:${repo_root}/playbooks/roles:${HOME}/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles"
+  # Project collections first (when installed with -p collections), then user and system.
   export ANSIBLE_COLLECTIONS_PATH="${repo_root}/collections:${HOME}/.ansible/collections:/usr/share/ansible/collections"
   log_info "ANSIBLE_ROLES_PATH=${ANSIBLE_ROLES_PATH}"
   log_info "ANSIBLE_COLLECTIONS_PATH=${ANSIBLE_COLLECTIONS_PATH}"
@@ -292,6 +295,10 @@ fz_ansible() {
         # Just skip this flag, don't forward to ansible-playbook
         shift
         ;;
+      --refresh-deps|--force-bootstrap|--upgrade-pip-now)
+        # fz global flags; consumed by fz, do not forward to ansible-playbook
+        shift
+        ;;
       --tags)
         ansible_cmd+=("--tags" "$2")
         shift 2
@@ -368,10 +375,15 @@ fz_ansible() {
     fi
   fi
 
-  # If no vault method specified, check for vault password file in common locations
+  # If no vault method specified, use vault_pass.sh (reads .vault_pass) to avoid WSL Exec format error when .vault_pass has exec bit on Windows mount.
   if [ "${has_vault_pass}" = false ] && [ "${has_vault_file}" = false ]; then
+    local vault_script="${repo_root}/vault_pass.sh"
     local vault_file="${repo_root}/.vault_pass"
-    if [ -f "${vault_file}" ]; then
+    if [ -f "${vault_script}" ] && [ -f "${vault_file}" ]; then
+      [ -x "${vault_script}" ] || chmod +x "${vault_script}" 2>/dev/null || true
+      log_info "Using vault password file: ${vault_script}"
+      ansible_cmd+=("--vault-password-file" "${vault_script}")
+    elif [ -f "${vault_file}" ]; then
       log_info "Using vault password file: ${vault_file}"
       ansible_cmd+=("--vault-password-file" "${vault_file}")
     fi
@@ -476,6 +488,10 @@ run_ansible_playbook() {
         # Just skip this flag, don't forward to ansible-playbook
         shift
         ;;
+      --refresh-deps|--force-bootstrap|--upgrade-pip-now)
+        # fz global flags; consumed by fz, do not forward to ansible-playbook
+        shift
+        ;;
       --tags)
         ansible_cmd+=("--tags" "$2")
         shift 2
@@ -535,10 +551,15 @@ run_ansible_playbook() {
     ansible_cmd+=("${extra_args[@]}")
   fi
 
-  # If no vault method specified, check for vault password file in common locations
+  # If no vault method specified, use vault_pass.sh (reads .vault_pass) to avoid WSL Exec format error when .vault_pass has exec bit on Windows mount.
   if [ "${has_vault_pass}" = false ] && [ "${has_vault_file}" = false ]; then
+    local vault_script="${repo_root}/vault_pass.sh"
     local vault_file="${repo_root}/.vault_pass"
-    if [ -f "${vault_file}" ]; then
+    if [ -f "${vault_script}" ] && [ -f "${vault_file}" ]; then
+      [ -x "${vault_script}" ] || chmod +x "${vault_script}" 2>/dev/null || true
+      log_info "Using vault password file: ${vault_script}"
+      ansible_cmd+=("--vault-password-file" "${vault_script}")
+    elif [ -f "${vault_file}" ]; then
       log_info "Using vault password file: ${vault_file}"
       ansible_cmd+=("--vault-password-file" "${vault_file}")
     fi

@@ -2,6 +2,12 @@
 
 The ansible SSH key is created and stored in the project so you never paste keys by hand. **No `bootstrap` folder is required**; the key lives in the vault and in `.mgmt/ansible_ssh.pub`.
 
+## Single key pair (never overwrite)
+
+- **One** key pair is used for the whole project: the **ansible** key. The Mac (controller) holds the **private** key; every server (Windows and WSL) has the **same** public key in its `authorized_keys`. Servers do **not** each get their own key pair.
+- The key is **created only when** `vault/ansible_ssh.vault.yml` **does not exist**. If the vault already exists, bootstrap **never** generates a new key and **never** overwrites the vault. It only loads the vault and installs the existing public key on the server (or the existing private key on the Mac).
+- Writing `.mgmt/ansible_ssh.pub` is idempotent: we write the **same** public key from the vault (or from the just-generated key once). Re-running bootstrap does not create a new key; it only ensures the file and `authorized_keys` are in sync.
+
 ## First run: Mac or server
 
 You can run **Mac first** or **server first**; the key is created wherever you run bootstrap when the vault does not exist.

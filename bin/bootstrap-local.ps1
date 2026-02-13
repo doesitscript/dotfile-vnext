@@ -706,11 +706,13 @@ if ($wslDistros.Count -gt 0) {
     $wslVars.wsl_distro = ""
 }
 
-# Add Ansible connection settings
+# Add Ansible connection settings (Mac uses id_ed25519_ansible to SSH to this host)
 $wslVars.ansible_connection = "ssh"
 $wslVars.ansible_host = $ansibleHost
 $wslVars.ansible_user = $wslVars.wsl_user
 $wslVars.ansible_port = $wslVars.wsl_ssh_port
+$wslVars.ansible_python_interpreter = "/usr/bin/python3"
+$wslVars.ansible_ssh_private_key_file = "~/.ssh/id_ed25519_ansible"
 
 Write-Set "Writing WSL host_vars to: $wslVarsPath"
 Write-Yaml -Path $wslVarsPath -Data $wslVars
@@ -746,23 +748,7 @@ if ($openSshCapability -and $openSshCapability.State -ne 'Installed') {
     Write-Skip "OpenSSH Server already installed"
 }
 
-$sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
-if ($sshdService) {
-    if ($sshdService.StartType -ne 'Automatic') {
-        Set-Service -Name sshd -StartupType Automatic
-        Write-Verbose "sshd set to Automatic"
-    }
-    if ($sshdService.Status -ne 'Running') {
-        Start-Service sshd
-        Write-Ok "sshd started"
-    } else {
-        Write-Skip "sshd already running"
-    }
-} else {
-    Write-Host "  [WARNING] sshd service not found. OpenSSH Server may not be installed." -ForegroundColor Yellow
-}
-
-# Firewall: allow inbound TCP 22 for sshd (idempotent)
+# Firewall and sshd config before starting: ensure port 22 and config are ready
 $fwRule = Get-NetFirewallRule -Name 'sshd' -ErrorAction SilentlyContinue
 if (-not $fwRule) {
     New-NetFirewallRule -Name sshd `
@@ -777,13 +763,10 @@ if (-not $fwRule) {
     Write-Skip "Firewall rule 'sshd' already exists"
 }
 
-# Ensure sshd_config has Port 22 (admin config is under ProgramData)
 $sshdConfigPath = 'C:\ProgramData\ssh\sshd_config'
 if (Test-Path $sshdConfigPath) {
     $sshdContent = Get-Content $sshdConfigPath -Raw
-    # Match uncommented Port 22
     if ($sshdContent -notmatch '(?m)^Port\s+22\s*') {
-        # Comment any existing Port line and append Port 22
         $sshdContent = $sshdContent -replace '(?m)^(\s*)(Port\s+\d+)', '$1# $2'
         $sshdContent = $sshdContent.TrimEnd() + "`r`nPort 22`r`n"
         $utf8NoBom = New-Object System.Text.UTF8Encoding $false
@@ -806,10 +789,57 @@ New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell -Value 'C:\Wi
 New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShellCommandOption -Value "-d $defaultWslDistro" -PropertyType String -Force | Out-Null
 Write-Ok "Default shell set to WSL ($defaultWslDistro)"
 
-# Restart sshd so config and shell take effect
+# Ensure host keys exist (some installs don't create them; sshd won't start without them)
+$sshDataDir = 'C:\ProgramData\ssh'
+$existingHostKeys = Get-ChildItem -Path (Join-Path $sshDataDir 'ssh_host_*_key') -ErrorAction SilentlyContinue
+if ((Test-Path $sshDataDir) -and (-not $existingHostKeys -or $existingHostKeys.Count -eq 0)) {
+    Write-Set "Generating OpenSSH host keys (required for sshd to start)"
+    $sshKeygen = Get-Command ssh-keygen -ErrorAction SilentlyContinue
+    if ($sshKeygen) {
+        try {
+            Push-Location $sshDataDir
+            & $sshKeygen.Source -A 2>&1 | Out-Null
+            Pop-Location
+            Write-Ok "Host keys generated"
+        } catch {
+            Write-Host "  [WARNING] ssh-keygen -A failed: $_" -ForegroundColor Yellow
+            Pop-Location -ErrorAction SilentlyContinue
+        }
+    } else {
+        Write-Host "  [WARNING] ssh-keygen not found; run manually from C:\ProgramData\ssh: ssh-keygen -A" -ForegroundColor Yellow
+    }
+}
+
+$sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
+if ($sshdService) {
+    if ($sshdService.StartType -ne 'Automatic') {
+        Set-Service -Name sshd -StartupType Automatic
+        Write-Verbose "sshd set to Automatic"
+    }
+    if ($sshdService.Status -ne 'Running') {
+        try {
+            Start-Service sshd
+            Write-Ok "sshd started"
+        } catch {
+            Write-Host "  [WARNING] sshd failed to start: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host "  Check: port 22 not in use, C:\ProgramData\ssh permissions, Event Viewer (Windows Logs / Application)." -ForegroundColor Yellow
+            Write-Host "  Bootstrap will continue (firewall, config, default shell, authorized_keys are still applied)." -ForegroundColor Yellow
+        }
+    } else {
+        Write-Skip "sshd already running"
+    }
+} else {
+    Write-Host "  [WARNING] sshd service not found. OpenSSH Server may not be installed." -ForegroundColor Yellow
+}
+
+# Restart sshd so config and default shell take effect (best-effort)
 if (Get-Service -Name sshd -ErrorAction SilentlyContinue) {
-    Restart-Service sshd -Force -ErrorAction SilentlyContinue
-    Write-Verbose "sshd restarted"
+    try {
+        Restart-Service sshd -Force -ErrorAction Stop
+        Write-Verbose "sshd restarted"
+    } catch {
+        Write-Verbose "sshd restart skipped or failed (non-fatal): $($_.Exception.Message)"
+    }
 }
 
 # Windows authorized_keys: same pattern as WSL so Mac / Windows / WSL can talk
