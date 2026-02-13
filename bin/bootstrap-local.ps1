@@ -814,9 +814,9 @@ if (Test-Path $sshdConfigPath) {
         }
         $utf8NoBom = New-Object System.Text.UTF8Encoding $false
         [System.IO.File]::WriteAllText($sshdConfigPath, $sshdContent, $utf8NoBom)
-        Write-Ok "sshd_config set to $portDirective (global section)"
+        Write-Ok "sshd_config set to $portDirective (global section): $sshdConfigPath"
     } else {
-        Write-Verbose "sshd_config already has $portDirective in global section"
+        Write-Verbose "sshd_config already has $portDirective in global section: $sshdConfigPath"
     }
 }
 
@@ -851,7 +851,8 @@ foreach ($dir in $hostKeyCandidates) {
     }
 }
 $weHaveOurKeys = ($null -ne $ourHostKeysDir) -and ($ourPrivateKeys.Count -gt 0)
-Write-Verbose ('OpenSSH host keys: project dir=' + $ourHostKeysDir + ', found=' + $ourPrivateKeys.Count + ' (repo: ' + $repoRoot + ')')
+$dirSummary = if ($ourHostKeysDir) { $ourHostKeysDir } else { '(none; checked: ' + ($hostKeyCandidates -join ', ') + ')' }
+Write-Verbose ('OpenSSH host keys: project dir=' + $dirSummary + ', found=' + $ourPrivateKeys.Count + ' (repo: ' + $repoRoot + ')')
 if (-not (Test-Path $sshDataDir)) {
     New-Item -ItemType Directory -Path $sshDataDir -Force | Out-Null
     Write-Verbose ('Created ' + $sshDataDir + ' (OpenSSH may not have created it yet)')
