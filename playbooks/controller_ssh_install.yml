@@ -1,0 +1,49 @@
+---
+# Install controller SSH identity from project vault (run on the controller, e.g. Mac).
+# Part of server-225 / controller bootstrap: run this on the machine that will SSH to server-225-wsl.
+# Requires vault/controller_ssh.vault.yml (created by bootstrap/local on the WSL node) and .vault_pass.
+
+- name: Install controller SSH private key on this machine
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    controller_ssh_identity_path: "{{ ansible_env.HOME | default(lookup('env', 'HOME')) }}/.ssh/id_ed25519_dotfile_controller"
+    controller_ssh_vault_path: "{{ playbook_dir }}/../vault/controller_ssh.vault.yml"
+
+  tasks:
+    - name: Ensure controller SSH vault exists
+      ansible.builtin.stat:
+        path: "{{ controller_ssh_vault_path }}"
+      register: controller_ssh_vault_stat
+
+    - name: Fail when controller SSH vault is missing
+      ansible.builtin.fail:
+        msg: >-
+          vault/controller_ssh.vault.yml not found. Run bootstrap on the WSL node first:
+          ./bin/fz bootstrap --limit server-225-win
+          That creates the key and stores it in the vault.
+      when: not controller_ssh_vault_stat.stat.exists
+
+    - name: Load controller SSH vault
+      ansible.builtin.include_vars:
+        file: "{{ controller_ssh_vault_path }}"
+
+    - name: Ensure ~/.ssh directory exists
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME | default(lookup('env', 'HOME')) }}/.ssh"
+        state: directory
+        mode: "0700"
+
+    - name: Install controller SSH private key
+      ansible.builtin.copy:
+        dest: "{{ controller_ssh_identity_path }}"
+        content: "{{ vault_controller_ssh_private_key }}"
+        mode: "0600"
+
+    - name: Report controller SSH identity path
+      ansible.builtin.debug:
+        msg: >-
+          Controller SSH identity installed at {{ controller_ssh_identity_path }}.
+          Use it in ~/.ssh/config or set ansible_ssh_private_key_file for server-225-wsl.

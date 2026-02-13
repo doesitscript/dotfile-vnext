@@ -72,6 +72,13 @@
         line: "PubkeyAuthentication yes"
       become: true
 
+    - name: Ensure sshd allows password authentication (for josh with win_password)
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PasswordAuthentication"
+        line: "PasswordAuthentication yes"
+      become: true
+
     - name: Restart ssh service
       ansible.builtin.service:
         name: ssh
@@ -91,6 +98,13 @@
         owner: "{{ ansible_facts['user_id'] }}"
         group: "{{ ansible_facts['user_id'] }}"
       become: true
+
+    - name: Add localhost to known_hosts so SSH does not prompt for fingerprint
+      ansible.builtin.shell: |
+        ssh-keyscan -H 127.0.0.1 localhost 2>/dev/null >> "{{ ansible_facts['env']['HOME'] }}/.ssh/known_hosts" || true
+      args:
+        executable: /bin/bash
+      changed_when: false
 
     - name: Install mac public key for bootstrap user
       ansible.posix.authorized_key:
@@ -181,6 +195,8 @@
         msg:
           - "SSH server configured and running"
           - "Ansible SSH public key installed in authorized_keys for user: {{ ansible_facts['user_id'] }}"
+          - "localhost is in known_hosts (no fingerprint prompt)"
+          - "From this WSL use: ssh {{ ansible_facts['user_id'] }}@localhost (user is {{ ansible_facts['user_id'] }}, not joshc; password or key)"
           - "Host vars will be written with SSH connection info"
           - "Mac can now SSH into this node using the private key from vault"
 

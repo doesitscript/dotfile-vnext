@@ -77,7 +77,9 @@ function Load-MappingYaml {
         Write-Verbose "PowerShell-YAML module found. Attempting ConvertFrom-Yaml path."
         Import-Module powershell-yaml -ErrorAction SilentlyContinue
         if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
-            $raw = Get-Content -Raw -Path $Path
+            $raw = Get-Content -Raw -Path $Path -Encoding UTF8 -ErrorAction SilentlyContinue
+            if (-not $raw) { $raw = Get-Content -Raw -Path $Path }
+            $raw = Strip-YamlControlChars $raw
             $mapping = $raw | ConvertFrom-Yaml
             if (-not $mapping -or -not $mapping.physical_nodes) {
                 throw "Mapping YAML loaded but missing physical_nodes. Check formatting in $Path"
@@ -96,7 +98,9 @@ function Load-MappingYaml {
         Install-Module powershell-yaml -Scope CurrentUser -Force -AllowClobber -SkipPublisherCheck -Confirm:$false -ErrorAction Stop
         Import-Module powershell-yaml -Force -ErrorAction Stop
         if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
-            $raw = Get-Content -Raw -Path $Path
+            $raw = Get-Content -Raw -Path $Path -Encoding UTF8 -ErrorAction SilentlyContinue
+            if (-not $raw) { $raw = Get-Content -Raw -Path $Path }
+            $raw = Strip-YamlControlChars $raw
             $mapping = $raw | ConvertFrom-Yaml
             if (-not $mapping -or -not $mapping.physical_nodes) {
                 throw "Mapping YAML loaded but missing physical_nodes. Check formatting in $Path"
@@ -392,6 +396,20 @@ function Get-WSLDistros {
     return $distros
 }
 
+# Remove control characters (0x00-0x1F) except tab, newline, carriage return. Prevents YAML "unacceptable character #x0000" errors.
+function Strip-YamlControlChars {
+    param([string]$Text)
+    if ([string]::IsNullOrEmpty($Text)) { return $Text }
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($c in $Text.ToCharArray()) {
+        $code = [int][char]$c
+        if ($code -ge 32 -or $code -eq 9 -or $code -eq 10 -or $code -eq 13) {
+            [void]$sb.Append($c)
+        }
+    }
+    return $sb.ToString()
+}
+
 function Write-Yaml {
     param(
         [string]$Path,
@@ -409,7 +427,7 @@ function Write-Yaml {
     foreach ($key in $Data.Keys) {
         $value = $Data[$key]
         
-        # Handle different value types
+        # Handle different value types (sanitize strings so no control chars reach YAML)
         if ($null -eq $value) {
             $yamlLines += "$key`: null"
         } elseif ($value -is [bool]) {
@@ -417,21 +435,22 @@ function Write-Yaml {
         } elseif ($value -is [int] -or $value -is [long]) {
             $yamlLines += "$key`: $value"
         } elseif ($value -is [string]) {
-            # Escape quotes and wrap in quotes if needed
-            $escaped = $value -replace '"', '\"'
+            $clean = Strip-YamlControlChars $value
+            $escaped = $clean -replace '"', '\"'
             $yamlLines += "$key`: `"$escaped`""
         } elseif ($value -is [array]) {
             $yamlLines += "$key`:"
             foreach ($item in $value) {
                 if ($item -is [string]) {
-                    $yamlLines += "  - `"$item`""
+                    $cleanItem = Strip-YamlControlChars $item
+                    $yamlLines += "  - `"$cleanItem`""
                 } else {
                     $yamlLines += "  - $item"
                 }
             }
         } else {
-            # Fallback: convert to string
-            $yamlLines += "$key`: `"$($value.ToString())`""
+            $clean = Strip-YamlControlChars $value.ToString()
+            $yamlLines += "$key`: `"$clean`""
         }
     }
     
@@ -583,7 +602,9 @@ $existingWslVars = @{}
 if (Test-Path $winVarsPath) {
     Write-Verbose "Existing Windows host_vars found at: $winVarsPath"
     try {
-        $existingWinContent = Get-Content $winVarsPath -Raw
+        $rawWin = Get-Content $winVarsPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+        if (-not $rawWin) { $rawWin = Get-Content $winVarsPath -Raw }
+        $existingWinContent = Strip-YamlControlChars $rawWin
         # Parse win_user (handle quoted and unquoted values)
         if ($existingWinContent -match 'win_user:\s*"?([^"\r\n]+)"?') { 
             $existingWinVars.win_user = $Matches[1].Trim().Trim('"')
@@ -608,7 +629,9 @@ if (Test-Path $winVarsPath) {
 if (Test-Path $wslVarsPath) {
     Write-Verbose "Existing WSL host_vars found at: $wslVarsPath"
     try {
-        $existingWslContent = Get-Content $wslVarsPath -Raw
+        $rawWsl = Get-Content $wslVarsPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+        if (-not $rawWsl) { $rawWsl = Get-Content $wslVarsPath -Raw }
+        $existingWslContent = Strip-YamlControlChars $rawWsl
         # Parse wsl_user (handle quoted and unquoted values)
         if ($existingWslContent -match 'wsl_user:\s*"?([^"\r\n]+)"?') { 
             $existingWslVars.wsl_user = $Matches[1].Trim().Trim('"')

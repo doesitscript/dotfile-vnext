@@ -382,11 +382,13 @@ fz_ansible() {
 }
 
 # Run ad-hoc ansible (e.g. ping) with venv and inventory. Usage: fz_ansible_adhoc server-225-wsl [extra args]
+# When target is server-225-wsl and we're on that host (WSL), use local connection so we don't SSH to ourselves.
 fz_ansible_adhoc() {
   local repo_root
   repo_root="$(repo_root)"
   local venv_ansible="${repo_root}/.venv/bin/ansible"
   local inventory_file="${repo_root}/inventory/inventory.yaml"
+  local host_pattern="${1:-}"
 
   ensure_venv
   setup_ansible_env
@@ -398,6 +400,25 @@ fz_ansible_adhoc() {
   if [ ! -f "${inventory_file}" ]; then
     log_error "Inventory not found: ${inventory_file}"
     exit 1
+  fi
+
+  # When pinging server-225-wsl from that same host (WSL), use local so we don't SSH to ourselves
+  if [ "${host_pattern}" = "server-225-wsl" ]; then
+    local host_vars_file="${repo_root}/inventory/host_vars/server-225-wsl.yaml"
+    local current_host
+    current_host="$(hostname 2>/dev/null || true)"
+    if [ -f "${host_vars_file}" ]; then
+      local ansible_host_value
+      ansible_host_value="$(sed -n 's/^[[:space:]]*ansible_host:[[:space:]]*"\{0,1\}\([^"#]*\).*/\1/p' "${host_vars_file}" | head -1 | tr -d '\r\n')"
+      if [ -n "${ansible_host_value}" ] && [ -n "${current_host}" ]; then
+        if [ "$(printf '%s' "${current_host}" | tr '[:upper:]' '[:lower:]')" = "$(printf '%s' "${ansible_host_value}" | tr '[:upper:]' '[:lower:]')" ]; then
+          log_info "Running on server-225 (hostname ${current_host}); using local connection instead of SSH"
+          log_info "Running: ${venv_ansible} localhost -m ping -c local"
+          "${venv_ansible}" localhost -m ping -c local
+          return
+        fi
+      fi
+    fi
   fi
 
   log_info "Running: ${venv_ansible} $* -m ping -i ${inventory_file}"
@@ -586,6 +607,31 @@ run_local_bootstrap_playbook() {
   "${venv_ansible}" -i "localhost," -c local "${playbook}" "${filtered_args[@]}"
 }
 
+# Install controller SSH private key on this machine from vault/controller_ssh.vault.yml.
+# Part of server-225 / controller bootstrap: run on the machine that will SSH to server-225-wsl (e.g. Mac).
+run_controller_ssh_install() {
+  local repo_root
+  repo_root="$(repo_root)"
+  local venv_ansible="${repo_root}/.venv/bin/ansible-playbook"
+  local playbook="${repo_root}/playbooks/controller_ssh_install.yml"
+
+  ensure_venv
+  require_vault_pass_setup
+  setup_ansible_env
+
+  if [ ! -f "${venv_ansible}" ]; then
+    log_error "ansible-playbook not found in virtual environment"
+    exit 1
+  fi
+  if [ ! -f "${playbook}" ]; then
+    log_error "Controller SSH install playbook not found: ${playbook}"
+    exit 1
+  fi
+
+  log_info "Installing controller SSH identity from vault (run on controller, e.g. Mac)"
+  "${venv_ansible}" -i "localhost," -c local "${playbook}" "$@"
+}
+
 # Run ansible-vault edit
 run_ansible_vault_edit() {
   local vault_file="$1"
@@ -737,6 +783,8 @@ Commands:
                         Prompts for confirmation unless --yes is provided
     dev                  Deploy dev stacks (dev-3090)
   verify                 Verify entire fabric (no --limit required)
+  controller-ssh-install Install controller SSH private key on this machine from vault (server-225 bootstrap).
+                        Run on the controller (e.g. Mac) after WSL node has run bootstrap.
   collect-facts          Write facts for a node to facts/<node>.json
                         Requires --limit (e.g. --limit mac-dev)
                         Windows hosts: run on that machine: .\bin\bootstrap-local.ps1 -FactsOnly

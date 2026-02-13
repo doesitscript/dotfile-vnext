@@ -217,6 +217,8 @@ write_files:
 - path: /etc/wsl.conf
   append: true
   content: |
+    [boot]
+    ystemd=true
     [user]
     default=$wslUser
 "@
@@ -301,11 +303,17 @@ Write-Step "Launching WSL (cloud-init will configure user automatically)"
 Write-Host "  User: $wslUser" -ForegroundColor Cyan
 Write-Host "  Passwordless sudo: Configured" -ForegroundColor Cyan
 Write-Host "  Distribution: $wslDistro" -ForegroundColor Cyan
-Write-Host  "Boot :  wsl -d $wslDistro"
+Write-Host "  Boot: wsl -d $wslDistro" -ForegroundColor Cyan
 
-# Launch WSL - cloud-init will detect the .user-data file and configure the user
-# Wait a moment for cloud-init to complete if this is a fresh deploy
-Start-Sleep -Seconds 5
+# First launch so cloud-init runs and writes /etc/wsl.conf; then shutdown so wsl.conf takes effect
+Write-Set "First launch to apply wsl.conf (cloud-init)"
+wsl -d $wslDistro -e true 2>$null
+Start-Sleep -Seconds 8
+Write-Host "  Close the WSL distribution terminal if you have one open." -ForegroundColor Yellow
+Write-Host "  Shutting down all WSL distributions so wsl.conf takes effect..." -ForegroundColor Cyan
+wsl --shutdown
+Start-Sleep -Seconds 2
+Write-Ok "WSL shutdown complete; proceeding with bootstrap"
 
 Write-Host ""
 Write-Step "Running Ansible Local Bootstrap (destructive idempotent process)"
