@@ -104,7 +104,7 @@ echo -n 'YOUR_VAULT_PASSWORD' > .vault_pass   # or use --ask-vault-pass when run
 ./bin/fz bootstrap --limit mac-dev
 ```
 
-`fz bootstrap --limit mac-dev` does everything: creates `.venv`, installs Python deps and Ansible Galaxy collections (`requirements.yml`), then runs the Mac bootstrap playbook (loads ansible SSH key from vault, runs baseline, package_manager, python, git, hub, dotenv_bin, homebrew, dev_tools, dotfiles, ansible_runner). After that, from this repo run `./bin/fz deploy main --limit server-225-wsl` and similar.
+`fz bootstrap --limit mac-dev` does everything: creates `.venv`, installs Python deps and Ansible Galaxy collections (`requirements.yml`), then runs the Mac bootstrap playbook. If `vault/ansible_ssh.vault.yml` does not exist, the key pair is **generated on the Mac** and stored in the vault and `.mgmt/ansible_ssh.pub` (no server run required first). The playbook installs the private key to `~/.ssh/id_ed25519_ansible` and runs baseline, python, git, hub, homebrew, ansible_runner. After that, from this repo run `./bin/fz deploy main --limit server-225-wsl` and similar. See `docs/ansible_ssh_vault.md` for details.
 
 ## Quick Start
 

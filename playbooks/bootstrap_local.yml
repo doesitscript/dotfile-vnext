@@ -190,6 +190,27 @@
       become: true
       when: ansible_ssh_vault_file.stat.exists
 
+    # Export ansible public key to repo so Windows bootstrap can add it to Windows authorized_keys (no vault decrypt on Windows)
+    - name: Ensure .mgmt directory exists
+      ansible.builtin.file:
+        path: "{{ repo_root }}/.mgmt"
+        state: directory
+        mode: "0755"
+
+    - name: Write ansible public key to .mgmt/ansible_ssh.pub (from vault)
+      ansible.builtin.copy:
+        content: "{{ vault_ansible_ssh_public_key | trim }}\n"
+        dest: "{{ repo_root }}/.mgmt/ansible_ssh.pub"
+        mode: "0644"
+      when: ansible_ssh_vault_file.stat.exists and vault_ansible_ssh_public_key is defined
+
+    - name: Write ansible public key to .mgmt/ansible_ssh.pub (from just-generated key)
+      ansible.builtin.copy:
+        content: "{{ ansible_ssh_public_key_content | trim }}\n"
+        dest: "{{ repo_root }}/.mgmt/ansible_ssh.pub"
+        mode: "0644"
+      when: not ansible_ssh_vault_file.stat.exists and ansible_ssh_public_key_content is defined
+
     - name: Display SSH setup summary
       ansible.builtin.debug:
         msg:

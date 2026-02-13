@@ -391,6 +391,23 @@ Write-Host "  WSL distribution: $wslDistro" -ForegroundColor Cyan
 Write-Host "  WSL user: $wslUser" -ForegroundColor Cyan
 Write-Host "  To access WSL manually: wsl -d $wslDistro" -ForegroundColor Cyan
 
+# Add ansible public key to Windows authorized_keys (created by WSL playbook at repo\.mgmt\ansible_ssh.pub)
+$ansiblePubKeyPath = Join-Path $repoRoot ".mgmt\ansible_ssh.pub"
+$winSshDir = Join-Path $env:USERPROFILE ".ssh"
+$winAuthorizedKeys = Join-Path $winSshDir "authorized_keys"
+if ($wslBootstrapSucceeded -and (Test-Path $ansiblePubKeyPath)) {
+    if (-not (Test-Path $winSshDir)) { New-Item -ItemType Directory -Path $winSshDir -Force | Out-Null }
+    $keyLine = (Get-Content $ansiblePubKeyPath -Raw -ErrorAction SilentlyContinue) -replace "[\x00-\x08\x0b\x0c\x0e-\x1f]", ""
+    $keyLine = $keyLine.Trim()
+    if ($keyLine -and $keyLine -match '^\S+\s+\S+') {
+        $existing = if (Test-Path $winAuthorizedKeys) { Get-Content $winAuthorizedKeys -Raw } else { '' }
+        if ($existing -notmatch [regex]::Escape($keyLine)) {
+            Add-Content -Path $winAuthorizedKeys -Value $keyLine -Encoding UTF8
+            Write-Ok "Added ansible public key to Windows authorized_keys (Mac can SSH to this host with id_ed25519_ansible)"
+        }
+    }
+}
+
 if ($RunFzBootstrap -and $wslBootstrapSucceeded) {
     Write-Host ""
     Write-Host "================================================================================" -ForegroundColor Cyan

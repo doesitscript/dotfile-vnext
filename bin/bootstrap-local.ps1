@@ -813,27 +813,34 @@ if (Get-Service -Name sshd -ErrorAction SilentlyContinue) {
 }
 
 # Windows authorized_keys: same pattern as WSL so Mac / Windows / WSL can talk
+# 1) Use ansible key from .mgmt/ansible_ssh.pub (written by WSL bootstrap from vault)
+# 2) Or optional bootstrap/mac_ssh_key.pub (user-placed Mac key)
 $winSshDir = Join-Path $env:USERPROFILE '.ssh'
 $winAuthorizedKeys = Join-Path $winSshDir 'authorized_keys'
 if (-not (Test-Path $winSshDir)) {
     New-Item -ItemType Directory -Path $winSshDir -Force | Out-Null
     Write-Verbose "Created $winSshDir"
 }
+
+$keyAdded = $false
+$ansibleKeyPath = Join-Path $repoRoot '.mgmt\ansible_ssh.pub'
 $macKeyPath = Join-Path $repoRoot 'bootstrap\mac_ssh_key.pub'
-if (Test-Path $macKeyPath) {
-    $macKeyLine = Get-Content $macKeyPath -Raw | Strip-YamlControlChars
-    $macKeyLine = $macKeyLine.Trim()
-    if ($macKeyLine -and $macKeyLine -match '^\S+\s+\S+') {
-        $existing = if (Test-Path $winAuthorizedKeys) { Get-Content $winAuthorizedKeys -Raw } else { '' }
-        if ($existing -notmatch [regex]::Escape($macKeyLine)) {
-            Add-Content -Path $winAuthorizedKeys -Value $macKeyLine -Encoding UTF8
-            Write-Ok "Added Mac public key to Windows authorized_keys"
-        } else {
-            Write-Skip "Mac public key already in Windows authorized_keys"
-        }
+
+foreach ($keyPath in @($ansibleKeyPath, $macKeyPath)) {
+    if (-not (Test-Path $keyPath)) { continue }
+    $keyLine = Get-Content $keyPath -Raw -ErrorAction SilentlyContinue | Strip-YamlControlChars
+    $keyLine = $keyLine.Trim()
+    if (-not $keyLine -or $keyLine -notmatch '^\S+\s+\S+') { continue }
+    $existing = if (Test-Path $winAuthorizedKeys) { Get-Content $winAuthorizedKeys -Raw } else { '' }
+    if ($existing -notmatch [regex]::Escape($keyLine)) {
+        Add-Content -Path $winAuthorizedKeys -Value $keyLine -Encoding UTF8
+        $keyName = if ($keyPath -eq $ansibleKeyPath) { 'ansible (from vault)' } else { 'Mac (bootstrap/mac_ssh_key.pub)' }
+        Write-Ok "Added $keyName public key to Windows authorized_keys"
+        $keyAdded = $true
     }
-} else {
-    Write-Verbose "No bootstrap/mac_ssh_key.pub; add ansible/Mac keys to $winAuthorizedKeys for key-based SSH to Windows"
+}
+if (-not $keyAdded) {
+    Write-Verbose "No .mgmt/ansible_ssh.pub or bootstrap/mac_ssh_key.pub; run WSL bootstrap first so .mgmt/ansible_ssh.pub is created, or add bootstrap/mac_ssh_key.pub"
 }
 
 Write-Host ""
