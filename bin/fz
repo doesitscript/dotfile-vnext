@@ -148,10 +148,19 @@ case "${COMMAND}" in
       if [[ "${limit_value}" == *"network"* ]]; then
         fz_ansible "playbooks/bootstrap_network_server.yaml" "${all_args[@]}"
       fi
-      if [[ "${limit_value}" == *"dev-3090"* ]] || [[ "${limit_value}" == *"dev"* ]]; then
+      # #region agent log
+      echo "{\"id\":\"log_$(date +%s)_001\",\"timestamp\":$(date +%s)000,\"location\":\"bin/fz:151\",\"message\":\"Pattern matching check for dev-3090\",\"data\":{\"limit_value\":\"${limit_value}\",\"matches_dev_pattern\":$([[ "${limit_value}" == *"dev-3090"* ]] || [[ "${limit_value}" == *"dev"* ]]; echo $?),\"is_mac_dev\":$([[ "${limit_value}" == "mac-dev" ]]; echo $?)},\"runId\":\"run1\",\"hypothesisId\":\"A\"}" >> /Users/joshc/develop/dotfiles/.cursor/debug.log 2>/dev/null || true
+      # #endregion
+      if ([[ "${limit_value}" == *"dev-3090"* ]] || [[ "${limit_value}" == *"dev"* ]]) && [[ "${limit_value}" != "mac-dev" ]]; then
+        # #region agent log
+        echo "{\"id\":\"log_$(date +%s)_002\",\"timestamp\":$(date +%s)000,\"location\":\"bin/fz:152\",\"message\":\"Executing Windows bootstrap playbook\",\"data\":{\"limit_value\":\"${limit_value}\",\"playbook\":\"bootstrap_dev_3090.yaml\"},\"runId\":\"run1\",\"hypothesisId\":\"A\"}" >> /Users/joshc/develop/dotfiles/.cursor/debug.log 2>/dev/null || true
+        # #endregion
         fz_ansible "playbooks/bootstrap_dev_3090.yaml" "${all_args[@]}"
       fi
       if [[ "${limit_value}" == "mac-dev" ]]; then
+        # #region agent log
+        echo "{\"id\":\"log_$(date +%s)_003\",\"timestamp\":$(date +%s)000,\"location\":\"bin/fz:155\",\"message\":\"Executing Mac bootstrap playbook\",\"data\":{\"limit_value\":\"${limit_value}\",\"playbook\":\"bootstrap_mac.yaml\"},\"runId\":\"run1\",\"hypothesisId\":\"A\"}" >> /Users/joshc/develop/dotfiles/.cursor/debug.log 2>/dev/null || true
+        # #endregion
         log_step "Running Mac bootstrap (playbooks/bootstrap_mac.yaml)"
         fz_ansible "playbooks/bootstrap_mac.yaml" "${all_args[@]}"
         mac_only_bootstrap=true
