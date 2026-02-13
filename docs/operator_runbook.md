@@ -197,7 +197,7 @@ Run on the Windows node in an elevated terminal:
 - Windows-specific configuration
 
 **Connection details**:
-- Port: 5986 (HTTPS)
+- Port: 5985 (HTTPS)
 - Transport: NTLM
 - Certificate validation: Ignored (LAN-only)
 

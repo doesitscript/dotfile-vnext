@@ -20,18 +20,6 @@ $ErrorActionPreference = "Stop"
 $VerbosePreference = "Continue"
 Write-Verbose "Verbose output enabled (VerbosePreference=Continue)"
 
-# ============================================================================
-# WinRM Configuration Constants
-# ============================================================================
-# These values are used throughout the script for WinRM configuration
-# Change these if you need to use different ports or schemes
-$WINRM_HTTP_PORT = 5985
-$WINRM_HTTPS_PORT = 5986
-$WINRM_TRANSPORT = "ntlm"
-$WINRM_HTTP_SCHEME = "http"
-$WINRM_HTTPS_SCHEME = "https"
-$SSH_PORT = 22
-
 function Write-Step([string]$Message) { Write-Host "[STEP] $Message" -ForegroundColor Cyan; Write-Verbose "[STEP] $Message" }
 function Write-Check([string]$Message) { Write-Host "[CHECK] $Message" -ForegroundColor Yellow; Write-Verbose "[CHECK] $Message" }
 function Write-Set([string]$Message) { Write-Host "[SET] $Message" -ForegroundColor Cyan; Write-Verbose "[SET] $Message" }
@@ -529,16 +517,16 @@ Write-Verbose "Beginning privileged setup and fact collection."
 # Use preferred IP
 $bestIP = if ($preferredIP) { $preferredIP } else { "0.0.0.0" }
 
-Write-Set "Configuring WinRM HTTP listener/service/firewall (port $WINRM_HTTP_PORT)"
+Write-Set "Configuring WinRM HTTP listener/service/firewall (port 5985)"
 Write-Verbose "Running winrm quickconfig -force"
 winrm quickconfig -force | Out-Null
-# This sets up: WinRM HTTP listener on $WINRM_HTTP_PORT, firewall rules, service startup. Mac connects via HTTP ($WINRM_HTTP_PORT).
+# This sets up: WinRM HTTP listener on 5985, firewall rules, service startup. Mac connects via HTTP (5985).
 
-# Configure WinRM HTTPS listener (port $WINRM_HTTPS_PORT)
+# Configure WinRM HTTPS listener (port 5986)
 Write-Check "Checking for WinRM HTTPS listener"
 $httpsListener = winrm enumerate winrm/config/Listener | Select-String -Pattern "Transport = HTTPS" -SimpleMatch
 if (-not $httpsListener) {
-    Write-Set "Configuring WinRM HTTPS listener (port $WINRM_HTTPS_PORT)"
+    Write-Set "Configuring WinRM HTTPS listener (port 5986)"
     try {
         # Create self-signed certificate
         $cert = New-SelfSignedCertificate -DnsName $env:COMPUTERNAME -CertStoreLocation Cert:\LocalMachine\My
@@ -548,7 +536,7 @@ if (-not $httpsListener) {
         $listenerCmd = "winrm create winrm/config/Listener?Address=*+Transport=HTTPS `"@{Hostname='$env:COMPUTERNAME'; CertificateThumbprint='$($cert.Thumbprint)'}`""
         Write-Verbose "Running: $listenerCmd"
         Invoke-Expression $listenerCmd | Out-Null
-        Write-Ok "WinRM HTTPS listener configured on port $WINRM_HTTPS_PORT"
+        Write-Ok "WinRM HTTPS listener configured on port 5986"
     } catch {
         Write-Host "WARNING: Failed to configure WinRM HTTPS: $_" -ForegroundColor Yellow
     }
@@ -556,12 +544,12 @@ if (-not $httpsListener) {
     Write-Skip "WinRM HTTPS listener already exists"
 }
 
-# Ensure WinRM HTTPS firewall rule (port $WINRM_HTTPS_PORT)
-Write-Check "Checking WinRM HTTPS firewall rule (port $WINRM_HTTPS_PORT)"
+# Ensure WinRM HTTPS firewall rule (port 5986)
+Write-Check "Checking WinRM HTTPS firewall rule (port 5986)"
 $httpsFirewall = Get-NetFirewallRule -DisplayName "WinRM HTTPS*" -ErrorAction SilentlyContinue
 if (-not $httpsFirewall) {
-    Write-Set "Creating WinRM HTTPS firewall rule (port $WINRM_HTTPS_PORT)"
-    New-NetFirewallRule -DisplayName "WinRM HTTPS ($WINRM_HTTPS_PORT)" -Name "WinRM-HTTPS-In-TCP" -LocalPort $WINRM_HTTPS_PORT -Protocol TCP -Direction Inbound -Action Allow -ErrorAction SilentlyContinue | Out-Null
+    Write-Set "Creating WinRM HTTPS firewall rule (port 5986)"
+    New-NetFirewallRule -DisplayName "WinRM HTTPS (5986)" -Name "WinRM-HTTPS-In-TCP" -LocalPort 5986 -Protocol TCP -Direction Inbound -Action Allow -ErrorAction SilentlyContinue | Out-Null
     Write-Ok "WinRM HTTPS firewall rule created"
 } else {
     Write-Skip "WinRM HTTPS firewall rule already exists"
@@ -601,15 +589,15 @@ if ($wslDistros.Count -gt 0) {
     Write-Skip "No WSL distros available"
 }
 
-# Build facts object (WinRM HTTP $WINRM_HTTP_PORT for Mac/Ansible)
+# Build facts object (WinRM HTTP 5985 for Mac/Ansible)
 $facts = [ordered]@{
     physical_node = $physicalNode
     windows = [ordered]@{
         hostname = $hostname
         host_ip = $bestIP
-        winrm_port = $WINRM_HTTP_PORT
-        winrm_transport = $WINRM_TRANSPORT
-        winrm_scheme = $WINRM_HTTP_SCHEME
+        winrm_port = 5985
+        winrm_transport = "ntlm"
+        winrm_scheme = "http"
     }
     
     wsl = [ordered]@{
@@ -698,12 +686,12 @@ if (Test-Path $wslVarsPath) {
     } catch { }
 }
 
-# Generate Windows host_vars (WinRM HTTP $WINRM_HTTP_PORT for Mac management)
+# Generate Windows host_vars (WinRM HTTP 5985 for Mac management)
 $winVars = [ordered]@{
     physical_node = $physicalNode
     surface_type = "windows_host"
     host_ip = $bestIP
-    winrm_port = $WINRM_HTTP_PORT
+    winrm_port = 5985
     win_user = if ($existingWinVars.win_user) { $existingWinVars.win_user } else { "josh" }
 }
 
@@ -716,16 +704,16 @@ if ($existingWinVars.win_password) {
     Write-Host "Please manually re-add win_password after this script completes." -ForegroundColor Yellow
 }
 
-# Add Ansible connection settings (WinRM HTTP $WINRM_HTTP_PORT; Mac runs playbooks from Mac)
+# Add Ansible connection settings (WinRM HTTP 5985; Mac runs playbooks from Mac)
 $winVars.ansible_connection = "winrm"
 $winVars.ansible_host = $ansibleHost
 $winVars.ansible_user = $winVars.win_user
 $winVars.ansible_password = if ($winVars.win_password) { $winVars.win_password } else { "" }
 $winVars.ansible_winrm_password = if ($winVars.win_password) { $winVars.win_password } else { "" }
-$winVars.ansible_port = $WINRM_HTTP_PORT
-$winVars.ansible_winrm_transport = $WINRM_TRANSPORT
-$winVars.ansible_winrm_scheme = $WINRM_HTTP_SCHEME
-$winVars.win_ssh_port = if ($existingWinVars.win_ssh_port) { $existingWinVars.win_ssh_port } else { $SSH_PORT }
+$winVars.ansible_port = 5985
+$winVars.ansible_winrm_transport = "ntlm"
+$winVars.ansible_winrm_scheme = "http"
+$winVars.win_ssh_port = if ($existingWinVars.win_ssh_port) { $existingWinVars.win_ssh_port } else { 22 }
 
 Write-Set "Writing Windows host_vars to: $winVarsPath"
 Write-Yaml -Path $winVarsPath -Data $winVars
@@ -737,7 +725,7 @@ $wslVars = [ordered]@{
     surface_type = "wsl"
     host_ip = $bestIP
     wsl_user = if ($existingWslVars.wsl_user) { $existingWslVars.wsl_user } else { "josh" }
-    wsl_ssh_port = if ($existingWslVars.wsl_ssh_port) { $existingWslVars.wsl_ssh_port } else { $SSH_PORT }
+    wsl_ssh_port = if ($existingWslVars.wsl_ssh_port) { $existingWslVars.wsl_ssh_port } else { 22 }
 }
 
 # Set wsl_distro - prefer detected distro over existing (which may be malformed)
@@ -776,7 +764,7 @@ Write-Host ''
 # OpenSSH Server (Windows): install, port from Ansible (win_ssh_port), firewall, default shell = WSL bash
 # Uses distro from our ansible (wsl_distro). Keys: same pattern as WSL so Mac/Win/WSL can talk.
 # ============================================================================
-$winSshPort = if ($winVars.win_ssh_port) { $winVars.win_ssh_port } else { $SSH_PORT }
+$winSshPort = if ($winVars.win_ssh_port) { $winVars.win_ssh_port } else { 22 }
 Write-Step "Configuring OpenSSH Server on Windows (port $winSshPort, default shell WSL bash)"
 
 $openSshCapability = Get-WindowsCapability -Online -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'OpenSSH.Server*' }

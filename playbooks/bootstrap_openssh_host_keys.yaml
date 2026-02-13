@@ -77,22 +77,9 @@
         dest: "{{ openssh_host_keys_vault_path }}"
         mode: "0644"
 
-    - name: Check if vault file already exists
-      ansible.builtin.stat:
-        path: "{{ openssh_host_keys_vault_path }}"
-      register: vault_file_stat
-
-    - name: Decrypt existing vault file if forcing regeneration
-      ansible.builtin.shell: |
-        cd "{{ repo_root }}" && .venv/bin/ansible-vault decrypt vault/openssh_host_keys.vault.yml
-      args:
-        executable: /bin/bash
-      when: force_flag | bool and vault_file_stat.stat.exists
-      ignore_errors: true
-
     - name: Encrypt OpenSSH host keys vault file
       ansible.builtin.shell: |
-        cd "{{ repo_root }}" && .venv/bin/ansible-vault encrypt vault/openssh_host_keys.vault.yml
+        cd "{{ repo_root }}" && .venv/bin/ansible-vault encrypt --force vault/openssh_host_keys.vault.yml
       args:
         executable: /bin/bash
 

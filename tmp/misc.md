@@ -26,7 +26,7 @@ Write-Verbose "Verbose output enabled (VerbosePreference=Continue)"
 # These values are used throughout the script for WinRM configuration
 # Change these if you need to use different ports or schemes
 $WINRM_HTTP_PORT = 5985
-$WINRM_HTTPS_PORT = 5986
+$WINRM_HTTPS_PORT = 5985
 $WINRM_TRANSPORT = "ntlm"
 $WINRM_HTTP_SCHEME = "http"
 $WINRM_HTTPS_SCHEME = "https"

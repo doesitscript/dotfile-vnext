@@ -31,11 +31,6 @@ gen_if_missing() {
     echo "Skip (exists): ${path}"
     return 0
   fi
-  # When forcing, remove existing keys first to avoid prompts
-  if [ "${FORCE}" = true ] && [ -f "${path}" ]; then
-    echo "Removing existing key (--force): ${path}"
-    rm -f "${path}" "${path}.pub"
-  fi
   case "$type" in
     ed25519) ssh-keygen -t ed25519 -f "${path}" -N "" -C "host" ;;
     rsa)     ssh-keygen -t rsa -b 4096 -f "${path}" -N "" -C "host" ;;
@@ -43,11 +38,7 @@ gen_if_missing() {
   esac
   chmod 600 "${path}"
   chmod 644 "${path}.pub"
-  if [ "${FORCE}" = true ]; then
-    echo "Regenerated: ${path} and ${path}.pub"
-  else
-    echo "Created: ${path} and ${path}.pub"
-  fi
+  echo "Created: ${path} and ${path}.pub"
 }
 
 gen_if_missing ed25519

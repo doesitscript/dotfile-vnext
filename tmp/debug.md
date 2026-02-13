@@ -48,8 +48,8 @@ VERBOSE: Running winrm quickconfig -force
 VERBOSE: [CHECK] Checking for WinRM HTTPS listener
 [SKIP] WinRM HTTPS listener already exists
 VERBOSE: [SKIP] WinRM HTTPS listener already exists
-[CHECK] Checking WinRM HTTPS firewall rule (port 5986)
-VERBOSE: [CHECK] Checking WinRM HTTPS firewall rule (port 5986)
+[CHECK] Checking WinRM HTTPS firewall rule (port 5985)
+VERBOSE: [CHECK] Checking WinRM HTTPS firewall rule (port 5985)
 [SKIP] WinRM HTTPS firewall rule already exists
 VERBOSE: [SKIP] WinRM HTTPS firewall rule already exists
 [CHECK] Checking WSL feature state
