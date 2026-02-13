@@ -522,6 +522,39 @@ Write-Verbose "Running winrm quickconfig -force"
 winrm quickconfig -force | Out-Null
 # This sets up: WinRM HTTP listener on 5985, firewall rules, service startup. Mac connects via HTTP (5985).
 
+# Configure WinRM HTTPS listener (port 5986)
+Write-Check "Checking for WinRM HTTPS listener"
+$httpsListener = winrm enumerate winrm/config/Listener | Select-String -Pattern "Transport = HTTPS" -SimpleMatch
+if (-not $httpsListener) {
+    Write-Set "Configuring WinRM HTTPS listener (port 5986)"
+    try {
+        # Create self-signed certificate
+        $cert = New-SelfSignedCertificate -DnsName $env:COMPUTERNAME -CertStoreLocation Cert:\LocalMachine\My
+        Write-Verbose "Created certificate with thumbprint: $($cert.Thumbprint)"
+        
+        # Create WinRM HTTPS listener
+        $listenerCmd = "winrm create winrm/config/Listener?Address=*+Transport=HTTPS `"@{Hostname='$env:COMPUTERNAME'; CertificateThumbprint='$($cert.Thumbprint)'}`""
+        Write-Verbose "Running: $listenerCmd"
+        Invoke-Expression $listenerCmd | Out-Null
+        Write-Ok "WinRM HTTPS listener configured on port 5986"
+    } catch {
+        Write-Host "WARNING: Failed to configure WinRM HTTPS: $_" -ForegroundColor Yellow
+    }
+} else {
+    Write-Skip "WinRM HTTPS listener already exists"
+}
+
+# Ensure WinRM HTTPS firewall rule (port 5986)
+Write-Check "Checking WinRM HTTPS firewall rule (port 5986)"
+$httpsFirewall = Get-NetFirewallRule -DisplayName "WinRM HTTPS*" -ErrorAction SilentlyContinue
+if (-not $httpsFirewall) {
+    Write-Set "Creating WinRM HTTPS firewall rule (port 5986)"
+    New-NetFirewallRule -DisplayName "WinRM HTTPS (5986)" -Name "WinRM-HTTPS-In-TCP" -LocalPort 5986 -Protocol TCP -Direction Inbound -Action Allow -ErrorAction SilentlyContinue | Out-Null
+    Write-Ok "WinRM HTTPS firewall rule created"
+} else {
+    Write-Skip "WinRM HTTPS firewall rule already exists"
+}
+
 # Check and install WSL if needed
 Write-Check "Checking WSL feature state"
 $wslInstalled = Test-WSLInstalled
