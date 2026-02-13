@@ -435,7 +435,10 @@ function Write-Yaml {
         }
     }
     
-    $yamlLines | Set-Content -Path $Path -Encoding UTF8
+    # Use System.IO.File to write UTF-8 without BOM (ensures compatibility with YAML parsers)
+    # This prevents the UTF-16 encoding issue that was causing YAML parsing errors
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllLines($Path, $yamlLines, $utf8NoBom)
 }
 
 function Write-Facts {
