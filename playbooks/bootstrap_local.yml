@@ -244,6 +244,14 @@
         win_password: ""
       when: win_password is not defined
 
+    - name: Set WSL user password from win_password (so ssh josh@localhost works with password)
+      ansible.builtin.user:
+        name: "{{ ansible_facts['user_id'] }}"
+        password: "{{ win_password | password_hash('sha512') }}"
+        update_password: always
+      become: true
+      when: win_password is defined and win_password | length > 0
+
     - name: Choose WSL user
       ansible.builtin.set_fact:
         wsl_user: "{{ ansible_facts['user_id'] }}"
@@ -254,15 +262,32 @@
       register: distro_name
       changed_when: false
 
+    # Strip control characters so generated YAML is valid (no binary/encoding issues on Windows mount)
+    - name: Set clean WSL distro name for template
+      ansible.builtin.set_fact:
+        distro_name_clean: "{{ (distro_name.stdout | default('')) | regex_replace('[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f]', '') | trim }}"
+
+    - name: Set clean host_ip for template
+      ansible.builtin.set_fact:
+        host_ip_clean: "{{ (host_ip | default('')) | regex_replace('[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f]', '') | trim }}"
+
+    - name: Set clean wsl_user for template
+      ansible.builtin.set_fact:
+        wsl_user_clean: "{{ (wsl_user | default('')) | regex_replace('[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f]', '') | trim }}"
+
+    - name: Set clean physical_node for template
+      ansible.builtin.set_fact:
+        physical_node_clean: "{{ (physical_node | default('')) | regex_replace('[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f]', '') | trim }}"
+
     - name: Read existing WSL host_vars to preserve credentials
       ansible.builtin.slurp:
         src: "{{ wsl_hostvars_path }}"
       register: existing_wsl_hostvars_raw
       ignore_errors: true
 
-    - name: Parse existing WSL host_vars
+    - name: Parse existing WSL host_vars (strip control chars so broken/encoding issues can be read)
       ansible.builtin.set_fact:
-        existing_wsl_hostvars: "{{ (existing_wsl_hostvars_raw.content | default('') | b64decode | default('') | regex_replace('\\x00', '')) | from_yaml }}"
+        existing_wsl_hostvars: "{{ (existing_wsl_hostvars_raw.content | default('') | b64decode | default('') | regex_replace('[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f]', '')) | from_yaml }}"
       when: existing_wsl_hostvars_raw is defined and existing_wsl_hostvars_raw.content is defined
 
     - name: Set wsl_password for templating
@@ -276,11 +301,15 @@
         dest: "{{ windows_hostvars_path }}"
         mode: "0644"
 
-    - name: Write host_vars for WSL surface
+    - name: Write host_vars for WSL surface (clean vars to avoid control chars / encoding issues)
       ansible.builtin.template:
         src: "{{ playbook_dir }}/templates/host_vars_wsl.yml.j2"
         dest: "{{ wsl_hostvars_path }}"
         mode: "0644"
+      vars:
+        host_ip: "{{ host_ip_clean }}"
+        wsl_user: "{{ wsl_user_clean }}"
+        physical_node: "{{ physical_node_clean }}"
 
     - name: Display bootstrap completion summary
       ansible.builtin.debug:
