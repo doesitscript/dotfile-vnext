@@ -54,9 +54,9 @@ if (-not $isAdmin) {
     exit 1
 }
 
-# Get script directory and repo root
+# Get script directory and repo root (resolve to absolute so host-key detection always uses the real repo)
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Split-Path -Parent $scriptDir
+$repoRoot = [System.IO.Path]::GetFullPath((Join-Path $scriptDir '..'))
 Write-Verbose "scriptDir=$scriptDir"
 Write-Verbose "repoRoot=$repoRoot"
 
@@ -482,7 +482,7 @@ function Write-Facts {
 # ============================================================================
 
 Write-Step "Dynamic Bootstrap Local"
-Write-Host ""
+Write-Host ''
 Write-Verbose "Starting main bootstrap execution."
 
 # Load mapping
@@ -508,7 +508,7 @@ $ansibleHost = Get-DesiredAnsibleHost -PhysicalNode $physicalNode -Mapping $mapp
 
 Write-Ok "Physical node: $physicalNode"
 Write-Ok "Ansible host: $ansibleHost"
-Write-Host ""
+Write-Host ''
 
 # Collect facts
 Write-Step "Collecting runtime facts"
@@ -718,13 +718,13 @@ Write-Set "Writing WSL host_vars to: $wslVarsPath"
 Write-Yaml -Path $wslVarsPath -Data $wslVars
 Write-Verbose "WSL host_vars write complete."
 
-Write-Host ""
+Write-Host ''
 Write-Ok "Bootstrap Complete"
 Write-Step "Generated files"
 Write-Host "  - $factsPath" -ForegroundColor White
 Write-Host "  - $winVarsPath" -ForegroundColor White
 Write-Host "  - $wslVarsPath" -ForegroundColor White
-Write-Host ""
+Write-Host ''
 
 # ============================================================================
 # OpenSSH Server (Windows): install, port from Ansible (win_ssh_port), firewall, default shell = WSL bash
@@ -799,31 +799,49 @@ New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell -Value 'C:\Wi
 New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShellCommandOption -Value "-d $defaultWslDistro" -PropertyType String -Force | Out-Null
 Write-Ok "Default shell set to WSL ($defaultWslDistro)"
 
-# Ensure host keys exist: idempotent. If we have project keys, replace server keys every time (no prompt).
-# Source: bootstrap/openssh_host_keys/ (drop keys from Mac or generate once; names: ssh_host_ed25519_key, ssh_host_rsa_key, etc. + .pub)
+# Ensure host keys exist: idempotent. Use keys from the project when present (Mac bootstrap --SSHGenForce or fz bootstrap-openssh-host-keys).
+# Check repo at bootstrap/openssh_host_keys/ first, then .mgmt/ (ssh_host_ed25519_key, ssh_host_rsa_key + .pub).
 $sshDataDir = 'C:\ProgramData\ssh'
-$ourHostKeysDir = Join-Path $repoRoot 'bootstrap\openssh_host_keys'
+$hostKeyCandidates = @(
+    (Join-Path $repoRoot 'bootstrap\openssh_host_keys'),
+    (Join-Path $repoRoot '.mgmt')
+)
+$ourHostKeysDir = $null
+$ourPrivateKeys = @()
+foreach ($dir in $hostKeyCandidates) {
+    if (-not (Test-Path -LiteralPath $dir)) { continue }
+    $files = @(Get-ChildItem -LiteralPath $dir -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^ssh_host_.*_key$' -and $_.Name -notmatch '\.pub$' })
+    if ($files.Count -gt 0) {
+        $ourHostKeysDir = $dir
+        $ourPrivateKeys = $files
+        break
+    }
+}
+$weHaveOurKeys = ($null -ne $ourHostKeysDir) -and ($ourPrivateKeys.Count -gt 0)
+Write-Verbose ('OpenSSH host keys: project dir=' + $ourHostKeysDir + ', found=' + $ourPrivateKeys.Count + ' (repo: ' + $repoRoot + ')')
 if (-not (Test-Path $sshDataDir)) {
     New-Item -ItemType Directory -Path $sshDataDir -Force | Out-Null
-    Write-Verbose "Created $sshDataDir (OpenSSH may not have created it yet)"
+    Write-Verbose ('Created ' + $sshDataDir + ' (OpenSSH may not have created it yet)')
 }
-$ourPrivateKeys = @(Get-ChildItem -Path (Join-Path $ourHostKeysDir 'ssh_host_*_key') -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '\.pub$' })
-$weHaveOurKeys = (Test-Path $ourHostKeysDir) -and ($ourPrivateKeys.Count -gt 0)
 if ($weHaveOurKeys) {
-    Write-Set "Replacing OpenSSH host keys with project keys from bootstrap/openssh_host_keys (idempotent)"
-    $allHostKeyFiles = @(Get-ChildItem -Path (Join-Path $ourHostKeysDir 'ssh_host_*') -File -ErrorAction SilentlyContinue)
+    Write-Set ('Replacing OpenSSH host keys with project keys from ' + $ourHostKeysDir + ' (idempotent)')
+    $allHostKeyFiles = @(Get-ChildItem -LiteralPath $ourHostKeysDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^ssh_host_' })
+    $fileList = $allHostKeyFiles.Name -join ', '
+    Write-Verbose ('Using project host key files: ' + $fileList)
     foreach ($f in $allHostKeyFiles) {
-        Copy-Item -Path $f.FullName -Destination (Join-Path $sshDataDir $f.Name) -Force
-        Write-Verbose "Copied $($f.Name) to $sshDataDir"
+        $destPath = Join-Path $sshDataDir $f.Name
+        Copy-Item -LiteralPath $f.FullName -Destination $destPath -Force
+        Write-Verbose ('  Updated: ' + $f.Name + ' <- ' + $f.FullName + ' -> ' + $destPath)
     }
-    Write-Ok "OpenSSH host keys set from project (bootstrap/openssh_host_keys)"
+    Write-Verbose ('OpenSSH host keys in use (updated in ' + $sshDataDir + '): ' + $fileList)
+    Write-Ok ('OpenSSH host keys set from project (' + $ourHostKeysDir + ') - ' + $ourPrivateKeys.Count + ' key(s) from Mac/sync')
 } else {
     $existingHostKeys = @(Get-ChildItem -Path (Join-Path $sshDataDir 'ssh_host_*_key') -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '\.pub$' })
     $needKeys = ($existingHostKeys.Count -eq 0)
     if ($needKeys) {
-        Write-Set "Generating temporary OpenSSH host keys (required for sshd to start)"
+        Write-Set 'Generating temporary OpenSSH host keys (required for sshd to start)'
     } else {
-        Write-Set "Ensuring all OpenSSH host key types exist (ssh-keygen -A adds only missing keys)"
+        Write-Set 'Ensuring all OpenSSH host key types exist (ssh-keygen -A adds only missing keys)'
     }
     $sshKeygen = Get-Command ssh-keygen -ErrorAction SilentlyContinue
     if ($sshKeygen) {
@@ -831,24 +849,31 @@ if ($weHaveOurKeys) {
             Push-Location $sshDataDir
             & $sshKeygen.Source -A 2>&1 | Out-Null
             Pop-Location
-            Write-Host ""
-            Write-Host "  ****************************************" -ForegroundColor Red
-            Write-Host "  ***  TEMPORARY / DEFAULT HOST KEYS  ***" -ForegroundColor Red
-            Write-Host "  ****************************************" -ForegroundColor Red
-            Write-Host "  These keys are only so sshd can start." -ForegroundColor Yellow
-            Write-Host "  To use your own keys: place them in" -ForegroundColor Yellow
-            Write-Host "  $ourHostKeysDir" -ForegroundColor Cyan
-            Write-Host "  (e.g. ssh_host_ed25519_key, ssh_host_rsa_key + .pub)." -ForegroundColor Yellow
-            Write-Host "  Re-run this script; it will replace with yours (idempotent)." -ForegroundColor Yellow
-            Write-Host "  ****************************************" -ForegroundColor Red
-            Write-Host ""
-            if ($needKeys) { Write-Ok "Temporary host keys generated (add keys to bootstrap/openssh_host_keys and re-run)" } else { Write-Ok "Host key set verified/updated" }
+            $generatedKeys = @(Get-ChildItem -LiteralPath $sshDataDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^ssh_host_' } | ForEach-Object { $_.Name })
+            if ($generatedKeys.Count -gt 0) {
+                Write-Verbose ('Generated/updated host key files in ' + $sshDataDir + ' : ' + ($generatedKeys -join ', '))
+            }
+            # Only show the temporary-keys warning when we had no project keys AND we just generated new keys.
+            if ($needKeys) {
+                Write-Host ''
+                Write-Host '  ****************************************' -ForegroundColor Red
+                Write-Host '  ***  TEMPORARY / DEFAULT HOST KEYS  ***' -ForegroundColor Red
+                Write-Host '  ****************************************' -ForegroundColor Red
+                Write-Host '  No project keys found in bootstrap/openssh_host_keys or .mgmt' -ForegroundColor Yellow
+                Write-Host '  (e.g. from Mac: fz bootstrap --limit mac-dev --SSHGenForce, then sync repo).' -ForegroundColor Yellow
+                Write-Host '  These keys are only so sshd can start. Add keys and re-run.' -ForegroundColor Yellow
+                Write-Host '  ****************************************' -ForegroundColor Red
+                Write-Host ''
+                Write-Ok 'Temporary host keys generated (add keys to bootstrap/openssh_host_keys or .mgmt and re-run)'
+            } else {
+                Write-Ok 'Host key set verified/updated (no project keys in bootstrap/openssh_host_keys or .mgmt)'
+            }
         } catch {
-            Write-Host "  [WARNING] ssh-keygen -A failed: $_" -ForegroundColor Yellow
+            Write-Host ('  [WARNING] ssh-keygen -A failed: ' + $_) -ForegroundColor Yellow
             Pop-Location -ErrorAction SilentlyContinue
         }
     } else {
-        Write-Host "  [WARNING] ssh-keygen not found; run manually from $sshDataDir : ssh-keygen -A" -ForegroundColor Yellow
+        Write-Host ('  [WARNING] ssh-keygen not found; run manually from ' + $sshDataDir + ' : ssh-keygen -A') -ForegroundColor Yellow
     }
 }
 
@@ -856,31 +881,31 @@ $sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
 if ($sshdService) {
     if ($sshdService.StartType -ne 'Automatic') {
         Set-Service -Name sshd -StartupType Automatic
-        Write-Verbose "sshd set to Automatic"
+        Write-Verbose 'sshd set to Automatic'
     }
     if ($sshdService.Status -ne 'Running') {
         try {
             Start-Service sshd
-            Write-Ok "sshd started"
+            Write-Ok 'sshd started'
         } catch {
-            Write-Host "  [WARNING] sshd failed to start: $($_.Exception.Message)" -ForegroundColor Yellow
-            Write-Host "  Check: port 22 not in use, C:\ProgramData\ssh permissions, Event Viewer (Windows Logs / Application)." -ForegroundColor Yellow
-            Write-Host "  Bootstrap will continue (firewall, config, default shell, authorized_keys are still applied)." -ForegroundColor Yellow
+            Write-Host ('  [WARNING] sshd failed to start: ' + $_.Exception.Message) -ForegroundColor Yellow
+            Write-Host '  Check: port 22 not in use, C:\ProgramData\ssh permissions, Event Viewer (Windows Logs / Application).' -ForegroundColor Yellow
+            Write-Host '  Bootstrap will continue (firewall, config, default shell, authorized_keys are still applied).' -ForegroundColor Yellow
         }
     } else {
-        Write-Skip "sshd already running"
+        Write-Skip 'sshd already running'
     }
 } else {
-    Write-Host "  [WARNING] sshd service not found. OpenSSH Server may not be installed." -ForegroundColor Yellow
+    Write-Host '  [WARNING] sshd service not found. OpenSSH Server may not be installed.' -ForegroundColor Yellow
 }
 
 # Restart sshd so config and default shell take effect (best-effort)
 if (Get-Service -Name sshd -ErrorAction SilentlyContinue) {
     try {
         Restart-Service sshd -Force -ErrorAction Stop
-        Write-Verbose "sshd restarted"
+        Write-Verbose 'sshd restarted'
     } catch {
-        Write-Verbose "sshd restart skipped or failed (non-fatal): $($_.Exception.Message)"
+        Write-Verbose ('sshd restart skipped or failed (non-fatal): ' + $_.Exception.Message)
     }
 }
 
@@ -891,51 +916,55 @@ $winSshDir = Join-Path $env:USERPROFILE '.ssh'
 $winAuthorizedKeys = Join-Path $winSshDir 'authorized_keys'
 if (-not (Test-Path $winSshDir)) {
     New-Item -ItemType Directory -Path $winSshDir -Force | Out-Null
-    Write-Verbose "Created $winSshDir"
+    Write-Verbose ('Created ' + $winSshDir)
 }
 
 $keyAdded = $false
 $ansibleKeyPath = Join-Path $repoRoot '.mgmt\ansible_ssh.pub'
 $macKeyPath = Join-Path $repoRoot 'bootstrap\mac_ssh_key.pub'
+Write-Verbose ('Checking key sources for authorized_keys: ' + $ansibleKeyPath + ', ' + $macKeyPath + ' -> ' + $winAuthorizedKeys)
 
 foreach ($keyPath in @($ansibleKeyPath, $macKeyPath)) {
-    if (-not (Test-Path $keyPath)) { continue }
+    if (-not (Test-Path $keyPath)) { Write-Verbose ('  Skip (not found): ' + $keyPath); continue }
     $keyLine = Get-Content $keyPath -Raw -ErrorAction SilentlyContinue | Strip-YamlControlChars
     $keyLine = $keyLine.Trim()
-    if (-not $keyLine -or $keyLine -notmatch '^\S+\s+\S+') { continue }
+    if (-not $keyLine -or $keyLine -notmatch '^\S+\s+\S+') { Write-Verbose ('  Skip (empty/invalid): ' + $keyPath); continue }
     $existing = if (Test-Path $winAuthorizedKeys) { Get-Content $winAuthorizedKeys -Raw } else { '' }
     if ($existing -notmatch [regex]::Escape($keyLine)) {
         Add-Content -Path $winAuthorizedKeys -Value $keyLine -Encoding UTF8
         $keyName = if ($keyPath -eq $ansibleKeyPath) { 'ansible (from vault)' } else { 'Mac (bootstrap/mac_ssh_key.pub)' }
-        Write-Ok "Added $keyName public key to Windows authorized_keys"
+        Write-Verbose ('  Updated ' + $winAuthorizedKeys + ' using: ' + $keyPath)
+        Write-Ok ('Added ' + $keyName + ' public key to Windows authorized_keys')
         $keyAdded = $true
+    } else {
+        Write-Verbose ('  Already present (no change): ' + $keyPath)
     }
 }
 if (-not $keyAdded) {
-    Write-Host "  [INFO] No SSH public key found for Windows authorized_keys." -ForegroundColor Yellow
-    Write-Host "  To fix (pick one):" -ForegroundColor Cyan
-    Write-Host "    1) From Mac: run  ./bin/fz bootstrap --limit server-225-win   (deploys .mgmt/ansible_ssh.pub to this host, then re-run this script)" -ForegroundColor White
-    Write-Host "    2) Or: copy your Mac public key into repo as  bootstrap/mac_ssh_key.pub  (e.g.  cat ~/.ssh/id_ed25519.pub > bootstrap/mac_ssh_key.pub  on Mac), sync repo, then re-run this script" -ForegroundColor White
+    Write-Host '  [INFO] No SSH public key found for Windows authorized_keys.' -ForegroundColor Yellow
+    Write-Host '  To fix (pick one):' -ForegroundColor Cyan
+    Write-Host '    1) From Mac: run  ./bin/fz bootstrap --limit server-225-win   (deploys .mgmt/ansible_ssh.pub to this host, then re-run this script)' -ForegroundColor White
+    Write-Host '    2) Or: copy your Mac public key into repo as  bootstrap/mac_ssh_key.pub  (e.g.  cat ~/.ssh/id_ed25519.pub on Mac), sync repo, then re-run this script' -ForegroundColor White
 }
 
-Write-Host ""
+Write-Host ''
 
-$nextScriptPath = Join-Path $scriptDir "bootstrap-ansible-local.ps1"
+$nextScriptPath = Join-Path $scriptDir 'bootstrap-ansible-local.ps1'
 if ($RunAll) {
-    Write-Host ""
-    Write-Host "================================================================================" -ForegroundColor Cyan
-    Write-Host "  >>> CALLING NEXT: bin\bootstrap-ansible-local.ps1 (WSL bootstrap then fz)" -ForegroundColor Cyan
-    Write-Host "  TO RUN WITHOUT CHAINING: .\bin\bootstrap-local.ps1 -RunAll:`$false" -ForegroundColor Yellow
-    Write-Host "================================================================================" -ForegroundColor Cyan
-    Write-Host ""
+    Write-Host ''
+    Write-Host '================================================================================' -ForegroundColor Cyan
+    Write-Host '  [NEXT] CALLING: bin\bootstrap-ansible-local.ps1 (WSL bootstrap then fz)' -ForegroundColor Cyan
+    Write-Host '  TO RUN WITHOUT CHAINING: .\bin\bootstrap-local.ps1 -RunAll:$false' -ForegroundColor Yellow
+    Write-Host '================================================================================' -ForegroundColor Cyan
+    Write-Host ''
     & $nextScriptPath
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "bootstrap-ansible-local.ps1 exited with code $LASTEXITCODE" -ForegroundColor Red
+        Write-Host ('bootstrap-ansible-local.ps1 exited with code ' + $LASTEXITCODE) -ForegroundColor Red
         exit $LASTEXITCODE
     }
 } else {
-    Write-Step "Next steps"
-    Write-Host "  1. Review generated host_vars files" -ForegroundColor White
-    Write-Host "  2. Run bin\bootstrap-ansible-local.ps1 to continue the chain (WSL + fz)" -ForegroundColor White
-    Write-Host "  3. Or run bin\bootstrap-local.sh inside WSL with --skip-fz-bootstrap" -ForegroundColor White
+    Write-Step 'Next steps'
+    Write-Host '  1. Review generated host_vars files' -ForegroundColor White
+    Write-Host '  2. Run bin\bootstrap-ansible-local.ps1 to continue the chain (WSL + fz)' -ForegroundColor White
+    Write-Host '  3. Or run bin\bootstrap-local.sh inside WSL with --skip-fz-bootstrap' -ForegroundColor White
 }
