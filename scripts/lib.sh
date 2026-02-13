@@ -155,8 +155,8 @@ ensure_venv() {
   if [ -f "${requirements_yml}" ]; then
     local col_hash
     col_hash="$(file_sha256 "${requirements_yml}")"
-    local col_prev
-    col_prev="$(tr -d '\r\n' < "${collections_hash_file}" 2>/dev/null || true)"
+    local col_prev=""
+    [ -f "${collections_hash_file}" ] && col_prev="$(tr -d '\r\n' < "${collections_hash_file}" 2>/dev/null || true)"
     if [ "${refresh_deps}" = true ] || [ "${full_bootstrap}" = true ] || [ "${did_install_pip}" = true ] || [ "${col_hash}" != "${col_prev}" ]; then
       log_info "Installing Ansible Galaxy collections from ${requirements_yml}"
       (cd "${repo_root}" && ansible-galaxy collection install -r requirements.yml)
@@ -196,10 +196,8 @@ setup_ansible_env() {
   log_info "ANSIBLE_ROLES_PATH=${ANSIBLE_ROLES_PATH}"
   log_info "ANSIBLE_COLLECTIONS_PATH=${ANSIBLE_COLLECTIONS_PATH}"
 
-  # Ensure standard per-user log directory exists.
-  local ansible_log_dir="${HOME}/logs"
-  mkdir -p "${ansible_log_dir}"
-  log_info "Ansible log directory ready: ${ansible_log_dir}"
+  # Ansible log_path in ansible.cfg points to .mgmt/ansible.log; ensure .mgmt exists.
+  mkdir -p "${repo_root}/.mgmt"
 }
 
 # Configure Git globally for push/pull
