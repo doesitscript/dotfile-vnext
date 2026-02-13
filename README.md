@@ -68,6 +68,8 @@ On the Windows machine (as Administrator):
 
 `bootstrap-local.ps1` will also set `CurrentUser` execution policy to `Bypass` non-interactively so future local PowerShell bootstrap runs are not blocked by prompts.
 
+**Chosen values (any Windows/WSL target):** Ports and connection details are stored in the repo under `inventory/host_vars/<physical_node>-win.yaml` and `<physical_node>-wsl.yaml`. These files are created or updated when you run `.\bin\bootstrap-local.ps1` on that Windows machine. Key variables: `win_ssh_port` (OpenSSH Server, default 22), `wsl_ssh_port` (WSL SSH, default 22), `ansible_host`, `win_user`/`wsl_user`. The bootstrap playbooks and firewall logic use these values so the same code works for every Windows/WSL host in the inventory.
+
 ### 2. Run Ansible **against** Server-225
 
 From your **Mac** (mac-dev), with the repo cloned and inventory/host_vars in place (or synced from Server-225):

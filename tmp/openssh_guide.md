@@ -25,7 +25,7 @@ Open `C:\ProgramData\ssh\sshd_config` as Administrator and ensure these lines at
 
 If they stay active, the server will ignore your user folder and you won’t be able to use `C:\Users\josh\.ssh\authorized_keys`.
 
-Do **not** add or change `Port` in the global config; leave the default or let other tooling manage it.
+Do **not** add or change `Port` in the global config; leave the default or let other tooling manage it. The firewall rule for OpenSSH uses the port from **host_vars**: `win_ssh_port` in `inventory/host_vars/<node>-win.yaml` (default 22). That value is set when you run `.\bin\bootstrap-local.ps1` on the Windows box and is used by both the local script and the Mac-run bootstrap playbook.
 
 ---
 

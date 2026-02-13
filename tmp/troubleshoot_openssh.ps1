@@ -3,7 +3,8 @@
 Write-Host "--- Starting OpenSSH Server Troubleshooter ---" -ForegroundColor Cyan
 
 # 1. Check for Administrator privileges
-if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.PrincipalPolicy]::WindowsBuiltInRole::Administrator)) {
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
     Write-Host "This script must be run as an Administrator. Exiting." -ForegroundColor Red
     exit 1
 }
@@ -40,16 +41,20 @@ if ($sshdService) {
     Write-Host "SSHD service not found. This indicates an issue with the installation." -ForegroundColor Red
 }
 
-# 4. Verify Firewall Rule
-Write-Host "`n--- 4. Verifying OpenSSH firewall rule ---" -ForegroundColor Yellow
-$fwRule = Get-NetFirewallRule -Name "*OpenSSHServer*" -ErrorAction SilentlyContinue | Where-Object {$_.Enabled -eq $True}
+# 4. Verify Firewall Rule (project uses rule name "sshd"; default install may use *OpenSSHServer*)
+Write-Host "`n--- 4. Verifying OpenSSH firewall rule and port ---" -ForegroundColor Yellow
+$ruleByName = Get-NetFirewallRule -Name 'sshd' -ErrorAction SilentlyContinue
+$ruleByPattern = Get-NetFirewallRule -DisplayName '*OpenSSH*' -ErrorAction SilentlyContinue | Where-Object { $_.Enabled -eq $True }
+$fwRule = if ($ruleByName) { $ruleByName } else { $ruleByPattern | Select-Object -First 1 }
 if ($fwRule) {
-    Write-Host "OpenSSH firewall rule is enabled." -ForegroundColor Green
+    $portFilter = $fwRule | Get-NetFirewallPortFilter -ErrorAction SilentlyContinue
+    $localPorts = if ($portFilter -and $portFilter.LocalPort) { @($portFilter.LocalPort) } else { @() }
+    $portStr = if ($localPorts.Count -gt 0) { $localPorts -join ',' } else { '(none)' }
+    Write-Host "OpenSSH firewall rule found: Name=$($fwRule.Name), Enabled=$($fwRule.Enabled), LocalPort=$portStr" -ForegroundColor Green
+    Write-Host "  Expected port is win_ssh_port in inventory/host_vars/<node>-win.yaml (default 22)." -ForegroundColor Gray
 } else {
-    Write-Host "OpenSSH firewall rule not found or disabled. It should be automatically created during installation." -ForegroundColor Red
-    # The following command creates the rule if needed
-    # New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -LocalPort 22 -Action Allow
-    Write-Host "Manual creation may be needed if you confirm it's missing (see documentation)." -ForegroundColor Yellow
+    Write-Host "OpenSSH firewall rule not found (checked name 'sshd' and display name *OpenSSH*)." -ForegroundColor Red
+    Write-Host "  Run bootstrap: .\bin\bootstrap-local.ps1 or from Mac: ./bin/fz bootstrap --limit <node>-win" -ForegroundColor Yellow
 }
 
 # 5. Check SSH configuration directory and permissions
@@ -66,11 +71,15 @@ if (-not (Test-Path $sshDir)) {
     Write-Host "If key-based auth fails, consider running the FixHostFilePermissions.ps1 utility script manually." -ForegroundColor Yellow
 }
 
-# 6. Test local connection
+# 6. Test local connection (use port 22 unless win_ssh_port is set elsewhere)
 Write-Host "`n--- 6. Testing local SSH connection (ssh localhost) ---" -ForegroundColor Yellow
+$testPort = 22
+if ($fwRule) {
+    $portFilter = $fwRule | Get-NetFirewallPortFilter -ErrorAction SilentlyContinue
+    if ($portFilter -and $portFilter.LocalPort) { $testPort = @($portFilter.LocalPort)[0] }
+}
 try {
-    # Use ssh client to connect to local server
-    ssh.exe localhost -o BatchMode=yes -o ConnectionAttempts=1 | Out-Null 2>&1
+    ssh.exe -p $testPort localhost -o BatchMode=yes -o ConnectionAttempts=1 -o StrictHostKeyChecking=no | Out-Null 2>&1
     if ($LASTEXITCODE -eq 0) {
         Write-Host "Local SSH connection test successful." -ForegroundColor Green
     } else {

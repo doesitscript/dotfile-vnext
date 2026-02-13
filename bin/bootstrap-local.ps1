@@ -782,19 +782,40 @@ if ($openSshCapability -and $openSshCapability.State -ne 'Installed') {
     Write-Skip "OpenSSH Server already installed"
 }
 
-# Firewall for OpenSSH (port from win_ssh_port). Do not set Port in sshd_config global config.
+# Firewall for OpenSSH (port from win_ssh_port in host_vars). Do not set Port in sshd_config global config.
 $fwRule = Get-NetFirewallRule -Name 'sshd' -ErrorAction SilentlyContinue
-if (-not $fwRule) {
-    New-NetFirewallRule -Name sshd `
-        -DisplayName "OpenSSH Server (Port $winSshPort)" `
-        -Enabled True `
-        -Direction Inbound `
-        -Protocol TCP `
-        -Action Allow `
-        -LocalPort $winSshPort | Out-Null
-    Write-Ok "Firewall rule 'sshd' (port $winSshPort) created"
+$ruleNeedsUpdate = $false
+if ($fwRule) {
+    $portFilter = $fwRule | Get-NetFirewallPortFilter -ErrorAction SilentlyContinue
+    $currentPorts = if ($portFilter -and $portFilter.LocalPort) { @($portFilter.LocalPort) } else { @() }
+    if ($currentPorts -notcontains $winSshPort) {
+        $ruleNeedsUpdate = $true
+        Write-Verbose "Firewall rule 'sshd' has LocalPort $($currentPorts -join ','); expected $winSshPort (win_ssh_port). Will update."
+    }
+}
+if (-not $fwRule -or $ruleNeedsUpdate) {
+    if ($fwRule -and $ruleNeedsUpdate) {
+        Remove-NetFirewallRule -Name 'sshd' -ErrorAction SilentlyContinue
+        Write-Verbose "Removed existing 'sshd' rule to recreate with port $winSshPort"
+    }
+    if (-not $fwRule -or $ruleNeedsUpdate) {
+        New-NetFirewallRule -Name sshd `
+            -DisplayName "OpenSSH Server (Port $winSshPort)" `
+            -Enabled True `
+            -Direction Inbound `
+            -Protocol TCP `
+            -Action Allow `
+            -LocalPort $winSshPort | Out-Null
+        Write-Ok "Firewall rule 'sshd' (port $winSshPort) created"
+    }
+}
+# Verify: do not trust without checking
+$verifyRule = Get-NetFirewallRule -Name 'sshd' -ErrorAction SilentlyContinue
+$verifyPorts = if ($verifyRule) { @(($verifyRule | Get-NetFirewallPortFilter -ErrorAction SilentlyContinue).LocalPort) } else { @() }
+if ($verifyPorts -notcontains $winSshPort) {
+    Write-Host "  [ERROR] Firewall verification failed: rule 'sshd' LocalPort is $($verifyPorts -join ','); expected $winSshPort (win_ssh_port from host_vars)." -ForegroundColor Red
 } else {
-    Write-Skip "Firewall rule 'sshd' already exists"
+    Write-Verbose "Firewall verified: sshd rule LocalPort=$($verifyPorts -join ',')"
 }
 
 # Default shell = WSL bash so SSH to Windows drops into our Ubuntu distro

@@ -40,15 +40,28 @@
       register: openssh_install
       changed_when: openssh_install.rc == 0 and ('Installed' in (openssh_install.stdout or ''))
 
-    - name: Open firewall for OpenSSH Server (port 22)
+    - name: Open firewall for OpenSSH Server (port from host win_ssh_port)
       community.windows.win_firewall_rule:
         name: sshd
-        display_name: OpenSSH Server (Port 22)
-        localport: 22
+        display_name: "OpenSSH Server (Port {{ win_ssh_port | default(22) }})"
+        localport: "{{ win_ssh_port | default(22) }}"
         protocol: tcp
         action: allow
         direction: in
         state: present
+
+    - name: Verify OpenSSH firewall rule port matches win_ssh_port
+      ansible.windows.win_shell: |
+        $expectedPort = {{ win_ssh_port | default(22) }}
+        $rule = Get-NetFirewallRule -Name 'sshd' -ErrorAction Stop
+        $portFilter = $rule | Get-NetFirewallPortFilter
+        $actualPorts = @($portFilter.LocalPort)
+        if ($actualPorts -notcontains $expectedPort) {
+          Write-Error "Firewall rule 'sshd' LocalPort is $($actualPorts -join ','); expected $expectedPort (win_ssh_port)."
+        }
+        Write-Output "OK: sshd rule LocalPort=$($actualPorts -join ',')"
+      register: fw_verify
+      changed_when: false
 
     - name: Check if OpenSSH host keys vault exists on controller
       ansible.builtin.stat:
@@ -127,5 +140,5 @@
     - name: Bootstrap Windows (SSH) summary
       ansible.builtin.debug:
         msg:
-          - "Windows host bootstrapped for SSH (OpenSSH Server, port 22, keys)"
-          - "Connect with: ssh {{ ansible_user }}@{{ ansible_host }} (or use ansible_ssh_private_key_file)"
+          - "Windows host bootstrapped for SSH (OpenSSH Server, port {{ win_ssh_port | default(22) }}, keys from Mac)"
+          - "Connect with: ssh -p {{ win_ssh_port | default(22) }} {{ ansible_user }}@{{ ansible_host }} (or use ansible_ssh_private_key_file)"
