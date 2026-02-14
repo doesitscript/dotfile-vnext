@@ -1,0 +1,17 @@
+# Docker Runtime Verification Role
+
+Verifies Docker runtime location matches contract (WSL vs Windows).
+
+## Purpose
+
+- Checks if Docker is running in WSL2 when contract specifies WSL2
+- Checks if Docker is running on Windows when contract specifies Windows Docker Engine
+- Verifies Windows Docker Engine is disabled when WSL2 is chosen
+- Ensures runtime matches contract expectations
+
+## Usage
+
+This role is automatically included in `verify_fabric.yaml` playbook for all hosts.
+
+
+

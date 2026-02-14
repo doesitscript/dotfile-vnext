@@ -1,0 +1,60 @@
+---
+# Bootstrap Windows OpenSSH configuration.
+# Assumes WinRM transport already works.
+# Does NOT enable PSRemoting.
+# Does NOT modify transport layer.
+# ansible-playbook playbooks/boostrap_windows_ssh_via_winrm.yaml -i inventory/inventory.yaml --limit server-225-win
+
+
+- name: Bootstrap Windows OpenSSH
+  # hosts: windows_hosts
+  gather_facts: false
+
+  vars:
+    win_ssh_port: "{{ win_ssh_port | default(22) }}"
+    sshd_config_path: "C:\\ProgramData\\ssh\\sshd_config"
+
+  tasks:
+
+    - name: Ensure OpenSSH capability installed
+      ansible.windows.win_shell: |
+        $cap = Get-WindowsCapability -Name OpenSSH.Server* -Online
+        if ($cap.State -ne 'Installed') {
+          Add-WindowsCapability -Online -Name $cap.Name
+        }
+      changed_when: false
+
+    - name: Ensure sshd service is running
+      ansible.windows.win_service:
+        name: sshd
+        state: started
+        start_mode: auto
+
+    - name: Ensure OpenSSH firewall rule
+      community.windows.win_firewall_rule:
+        name: sshd-Server-In-TCP
+        localport: "{{ win_ssh_port }}"
+        protocol: tcp
+        action: allow
+        direction: in
+        state: present
+        enabled: true
+
+    - name: Ensure user .ssh directory exists
+      ansible.windows.win_file:
+        path: "{{ ansible_env.USERPROFILE }}\\.ssh"
+        state: directory
+
+    - name: Read execution node public key
+      ansible.builtin.set_fact:
+        ansible_pub_key_content: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_ed25519_ansible.pub') | trim }}"
+      delegate_to: "{{ groups['execution_nodes'][0] }}"
+      delegate_facts: true
+      run_once: true
+
+    - name: Install public key in authorized_keys
+      community.windows.win_lineinfile:
+        path: "{{ ansible_env.USERPROFILE }}\\.ssh\\authorized_keys"
+        line: "{{ ansible_pub_key_content }}"
+        create: true
+        state: present

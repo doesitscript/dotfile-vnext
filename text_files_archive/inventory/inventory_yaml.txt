@@ -1,0 +1,170 @@
+---
+# FUZLANG Infrastructure Inventory
+# Dual-surface model: each Windows host has -win (WinRM) and -wsl (SSH) surfaces
+# Physical nodes and surfaces are explicitly separated
+
+all:
+  children:
+    # Physical nodes group (logical grouping of physical hardware)
+    # Each physical node group contains all surfaces for that node
+    physical_nodes:
+      children:
+        server-225:
+          hosts:
+            server-225-win:
+            server-225-wsl:
+        network-server:
+          hosts:
+            network-server-win:
+        dev-3090:
+          hosts:
+            dev-3090-win:
+            dev-3090-wsl:
+        mac-dev:
+          hosts:
+            mac-dev:
+
+    # Windows surfaces (WinRM) - alias: windows
+    windows:
+      hosts:
+        server-225-win:
+          ansible_host: "DESKTOP-VLLM"  # Server-225 IP or hostname
+          ansible_connection: winrm
+          ansible_user: "josh"  # Windows admin username
+          ansible_port: 5986
+          ansible_winrm_transport: ntlm
+          ansible_winrm_server_cert_validation: ignore
+          physical_node: server-225
+          surface_type: windows_host
+
+        network-server-win:
+          ansible_host: "AI-NET-SERVER"  # network-server IP or hostname
+          ansible_connection: winrm
+          ansible_user: "josh"  # Windows admin username
+          ansible_port: 5986
+          ansible_winrm_transport: ntlm
+          ansible_winrm_server_cert_validation: ignore
+          physical_node: network-server
+          surface_type: windows_host
+
+        dev-3090-win:
+          ansible_host: "Gaming-Desktop"  # dev-3090 IP or hostname
+          ansible_connection: winrm
+          ansible_user: "josh"  # Windows admin username
+          ansible_port: 5986
+          ansible_winrm_transport: ntlm
+          ansible_winrm_server_cert_validation: ignore
+          physical_node: dev-3090
+          surface_type: windows_host
+
+    # Linux surfaces (WSL/SSH) - alias: linux_surfaces
+    linux_surfaces:
+      hosts:
+        server-225-wsl:
+          ansible_host: "DESKTOP-VLLM"  # Server-225 IP or hostname (SSH to Windows, then WSL)
+          ansible_connection: ssh
+          ansible_user: "josh"  # WSL username
+          ansible_port: 22
+          physical_node: server-225
+          surface_type: wsl
+          wsl_distro: "ubuntu-wsl-vllm"  # WSL distro name: ubuntu-wsl-{purpose}
+
+        dev-3090-wsl:
+          ansible_host: "Gaming-Desktop"  # dev-3090 IP or hostname (SSH to Windows, then WSL)
+          ansible_connection: ssh
+          ansible_user: "josh"  # WSL username
+          ansible_port: 22
+          physical_node: dev-3090
+          surface_type: wsl
+          wsl_distro: "ubuntu-wsl-gaming"  # WSL distro name (e.g., Ubuntu)
+
+        # network-server-wsl:  # Only if network-server uses WSL runtime (not set up yet)
+        #   ansible_host: "AI-NET-SERVER"
+        #   ansible_connection: ssh
+        #   ansible_user: "josh"
+        #   ansible_port: 22
+        #   physical_node: network-server
+        #   surface_type: wsl
+        #   wsl_distro: "ubuntu-wsl-net"  # WSL distro name: ubuntu-wsl-{purpose}
+
+    # macOS surfaces - alias: mac
+    mac:
+      hosts:
+        mac-dev:
+          ansible_host: "Joshs-MBP"  # mac-dev IP or hostname
+          ansible_connection: ssh
+          ansible_user: "joshc"
+          ansible_port: 22
+          physical_node: mac-dev
+          surface_type: macos
+
+    # Local execution targets (for running playbooks locally on each server)
+    # These allow playbooks to run on the server itself to setup WinRM/SSH
+    local:
+      hosts:
+        localhost-server-225:
+          ansible_connection: local
+          ansible_host: localhost
+          physical_node: server-225
+          surface_type: local_windows
+          # When running locally, we can setup WinRM and SSH for remote access
+
+        localhost-network-server:
+          ansible_connection: local
+          ansible_host: localhost
+          physical_node: network-server
+          surface_type: local_windows
+          # When running locally, we can setup WinRM and SSH for remote access
+
+        localhost-dev-3090:
+          ansible_connection: local
+          ansible_host: localhost
+          physical_node: dev-3090
+          surface_type: local_windows
+          # When running locally, we can setup WinRM and SSH for remote access
+
+        localhost-mac-dev:
+          ansible_connection: local
+          ansible_host: localhost
+          physical_node: mac-dev
+          surface_type: local_macos
+          # macOS local execution (already supported via connection: local)
+
+    # Legacy groups (preserved for backward compatibility)
+    # Windows host surfaces (WinRM)
+    windows_hosts:
+      hosts:
+        server-225-win:
+        network-server-win:
+        dev-3090-win:
+
+    # WSL surfaces (SSH)
+    wsl_hosts:
+      hosts:
+        server-225-wsl:
+        dev-3090-wsl:
+
+    # macOS development node
+    mac_hosts:
+      hosts:
+        mac-dev:
+
+    # Logical groups for playbook targeting
+    main_node:
+      hosts:
+        server-225-win:
+        server-225-wsl:
+
+    network_node:
+      hosts:
+        network-server-win:
+        network-server-wsl:  # Uncomment when network-server is set up and WSL runtime chosen
+
+    dev_node:
+      hosts:
+        dev-3090-win:
+        dev-3090-wsl:
+
+  vars:
+    ansible_python_interpreter: auto
+

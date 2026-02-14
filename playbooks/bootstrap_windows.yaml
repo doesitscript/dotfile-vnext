@@ -1,7 +1,7 @@
 ---
-# Bootstrap Windows host (WinRM HTTP 5985 + OpenSSH Server, keys from Mac)
+# Bootstrap Windows host (WinRM HTTP 5985 + OpenSSH Server, keys from execution node)
 # Aligned with https://docs.ansible.com/projects/ansible/latest/os_guide/windows_ssh.html
-# Run from Mac: ./bin/fz bootstrap --limit server-225-win (and similarly for other -win hosts).
+# Run from execution node: ./bin/fz bootstrap --limit server-225-win (and similarly for other -win hosts).
 # Requires: WinRM HTTP (5985) reachable; host_vars from one-time .\bin\bootstrap-local.ps1 on the Windows box.
 # Host keys: from vault (generated on Mac via playbooks/bootstrap_openssh_host_keys.yaml). User key: execution node ~/.ssh/id_ed25519_ansible.pub (read at run time).
 # DefaultShell = WSL bash (wsl_distro from group_vars). authorized_keys in user profile (sshd_config Match administrators commented).
@@ -14,39 +14,9 @@
     repo_root: "{{ playbook_dir }}/.."
     openssh_host_keys_vault_path: "{{ repo_root }}/vault/openssh_host_keys.vault.yml"
     sshd_config_path: "C:\\ProgramData\\ssh\\sshd_config"
-  pre_tasks:
-    - name: Enable PowerShell remoting (so we can connect)
-      ansible.windows.win_shell: Enable-PSRemoting -Force -SkipNetworkProfileCheck
-
-    - name: Ensure WinRM HTTP firewall rule (port 5985)
-      community.windows.win_firewall_rule:
-        name: WinRM-HTTP-In-TCP
-        display_name: WinRM HTTP (5985)
-        localport: 5985
-        protocol: tcp
-        action: allow
-        direction: in
-        state: present
-
-    - name: Set TrustedHosts when explicitly provided
-      ansible.windows.win_shell: Set-Item -Path WSMan:\localhost\Client\TrustedHosts -Value "{{ winrm_trustedhosts }}" -Force
-      when: winrm_trustedhosts is defined
-
+  
   tasks:
-    # OpenSSH.Server is a Windows Capability: use Add-WindowsCapability (win_shell). win_optional_feature is for DISM optional features only.
-    - name: Ensure OpenSSH capability is installed
-      ansible.windows.win_shell: |
-        $cap = Get-WindowsCapability -Name OpenSSH.Server* -Online
-        if ($cap.State -ne 'Installed') {
-          Add-WindowsCapability -Online -Name $cap.Name
-          Write-Output "Installed"
-        } else {
-          Write-Output "AlreadyInstalled"
-        }
-      register: openssh_cap
-      changed_when: "'Installed' in (openssh_cap.stdout | default(''))"
-
-    - name: Open firewall for OpenSSH Server (sshd on win_ssh_port)
+    - name: Ensure OpenSSH firewall rule is correct
       community.windows.win_firewall_rule:
         name: sshd-Server-In-TCP
         display_name: "Inbound rule for OpenSSH Server (sshd) on TCP port {{ win_ssh_port | default(22) }}"
@@ -55,51 +25,7 @@
         action: allow
         direction: in
         state: present
-
-    - name: Verify OpenSSH firewall rule port matches win_ssh_port
-      ansible.windows.win_shell: |
-        $expectedPort = {{ win_ssh_port | default(22) }}
-        $rule = Get-NetFirewallRule -Name 'sshd-Server-In-TCP' -ErrorAction Stop
-        $portFilter = $rule | Get-NetFirewallPortFilter
-        $actualPorts = @($portFilter.LocalPort)
-        if ($actualPorts -notcontains $expectedPort) {
-          Write-Error "Firewall rule 'sshd-Server-In-TCP' LocalPort is $($actualPorts -join ','); expected $expectedPort (win_ssh_port)."
-        }
-        Write-Output "OK: sshd-Server-In-TCP rule LocalPort=$($actualPorts -join ',')"
-      register: fw_verify
-      changed_when: false
-
-    - name: Check if OpenSSH host keys vault exists on controller
-      ansible.builtin.stat:
-        path: "{{ openssh_host_keys_vault_path }}"
-      register: openssh_host_keys_vault_stat
-      delegate_to: localhost
-      run_once: true
-
-    - name: Load OpenSSH host keys from vault when present
-      ansible.builtin.include_vars:
-        file: "{{ openssh_host_keys_vault_path }}"
-      delegate_to: localhost
-      run_once: true
-      when: openssh_host_keys_vault_stat.stat.exists
-
-    - name: Deploy OpenSSH host keys from vault to Windows
-      ansible.windows.win_copy:
-        content: "{{ item.value }}"
-        dest: "C:\\ProgramData\\ssh\\{{ item.key }}"
-      loop: "{{ vault_openssh_host_keys | dict2items }}"
-      when: vault_openssh_host_keys is defined
-
-    - name: Ensure OpenSSH host keys exist (fallback when vault not used)
-      ansible.windows.win_shell: |
-        $sshDir = 'C:\ProgramData\ssh'
-        if ((Test-Path $sshDir) -and -not (Get-ChildItem (Join-Path $sshDir 'ssh_host_*_key') -ErrorAction SilentlyContinue)) {
-          Push-Location $sshDir
-          if (Get-Command ssh-keygen -ErrorAction SilentlyContinue) { ssh-keygen -A 2>&1 | Out-Null }
-          Pop-Location
-        }
-      failed_when: false
-      when: vault_openssh_host_keys is not defined
+        enabled: true
 
     - name: Set sshd service to Automatic and start
       ansible.windows.win_service:
@@ -124,24 +50,6 @@
         data: "-d {{ wsl_distro | default('Ubuntu-24.04') }} -e /bin/bash -l"
         type: string
         state: present
-
-    - name: Comment out Match Group administrators in sshd_config
-      community.windows.win_lineinfile:
-        path: "{{ sshd_config_path }}"
-        regexp: '^(\s*)(Match\s+Group\s+administrators)\s*$'
-        line: '\1# \2'
-        backrefs: true
-        state: present
-      register: sshd_config_match
-
-    - name: Comment out AuthorizedKeysFile administrators_authorized_keys in sshd_config
-      community.windows.win_lineinfile:
-        path: "{{ sshd_config_path }}"
-        regexp: '^(\s*)(AuthorizedKeysFile\s+__PROGRAMDATA__/ssh/administrators_authorized_keys)\s*$'
-        line: '\1# \2'
-        backrefs: true
-        state: present
-      register: sshd_config_ak
 
     - name: Restart sshd after sshd_config change
       ansible.windows.win_service:
@@ -176,5 +84,5 @@
     - name: Bootstrap Windows (SSH) summary
       ansible.builtin.debug:
         msg:
-          - "Windows host bootstrapped for SSH (OpenSSH Server, port {{ win_ssh_port | default(22) }}, keys from Mac)"
+          - "Windows host bootstrapped for SSH (OpenSSH Server, port {{ win_ssh_port | default(22) }}, keys from execution node)"
           - "Connect with: ssh -p {{ win_ssh_port | default(22) }} {{ ansible_user }}@{{ ansible_host }} (or use ansible_ssh_private_key_file)"
