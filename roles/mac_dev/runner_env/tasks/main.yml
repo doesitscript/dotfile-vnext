@@ -1,0 +1,12 @@
+---
+# Create .env at repo root from group_vars mac_dev environment (Mac bootstrap only)
+
+- name: Create .env at repo root from mac_dev environment
+  ansible.builtin.template:
+    src: runner_env.env.j2
+    dest: "{{ repo_root }}/.env"
+    mode: "0644"
+  when:
+    - ansible_facts['system'] == "Darwin"
+    - environment is defined
+    - environment | length > 0

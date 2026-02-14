@@ -116,6 +116,8 @@
 - name: Bootstrap mac-dev node
   hosts: mac-dev
   become: false
+  vars:
+    repo_root: "{{ playbook_dir }}/.."
   roles:
     - role: common/baseline
     # - role: package_manager
@@ -123,7 +125,10 @@
     - role: git
     - role: hub
     # - role: dotenv_bin
+    - role: common/shell_config   # .bashrc.d and .bashrc/.bash_profile for direnv hook
     - role: mac_dev/homebrew
+    - role: mac_dev/runner_env    # .env at repo root from group_vars environment
+    - role: direnv                # install, hook, then Mac: .env→.envrc, direnv allow
     # - role: mac_dev/dev_tools
     # - role: mac_dev/dotfiles
     - role: mac_dev/ansible_runner

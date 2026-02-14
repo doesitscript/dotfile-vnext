@@ -95,7 +95,7 @@ Vault password is needed for deploy if you use encrypted vault files: add `--ask
 
 ## Bootstrap Mac (control node)
 
-Run **on the Mac** so it can act as the Ansible control node. Inventory already has `mac-dev` (e.g. `Joshs-MBP`, user `joshc`); no extra setup for hostname/username.
+Run **on the Mac** so it can act as the Ansible control node. The Mac control plane uses **bash** (not zsh); shell configuration and any profile-sourced env use `~/.bash_profile` and `~/.bashrc`. Inventory already has `mac-dev` (e.g. `Joshs-MBP`, user `joshc`); no extra setup for hostname/username.
 
 **Single command (after clone and vault password)**
 

@@ -1,7 +1,48 @@
 ---
-# Install direnv on macOS
+# Install direnv on macOS; on Mac bootstrap, transform .env→.envrc and allow
 
 - name: Ensure direnv is installed on macOS
   community.general.homebrew:
     name: direnv
     state: present
+
+# Repo root (set by bootstrap_mac play vars; fallback for other playbooks)
+- name: Set repo root for direnv .envrc (Mac)
+  ansible.builtin.set_fact:
+    _direnv_repo_root: "{{ repo_root | default(playbook_dir + '/..') }}"
+
+- name: Stat repo root .env (Mac)
+  ansible.builtin.stat:
+    path: "{{ _direnv_repo_root }}/.env"
+  register: _repo_env_file
+  when: ansible_facts['system'] == "Darwin"
+
+- name: Transform .env to .envrc at repo root (Mac bootstrap)
+  ansible.builtin.copy:
+    src: "{{ _direnv_repo_root }}/.env"
+    dest: "{{ _direnv_repo_root }}/.envrc"
+    mode: "0644"
+  when:
+    - ansible_facts['system'] == "Darwin"
+    - _repo_env_file.stat.exists | default(false)
+
+- name: Stat repo root .envrc (Mac)
+  ansible.builtin.stat:
+    path: "{{ _direnv_repo_root }}/.envrc"
+  register: _repo_envrc_file
+  when: ansible_facts['system'] == "Darwin"
+
+- name: Allow direnv .envrc at repo root (Mac)
+  ansible.builtin.command:
+    cmd: direnv allow "{{ _direnv_repo_root }}"
+  environment:
+    HOME: "{{ ansible_env.HOME }}"
+  when:
+    - ansible_facts['system'] == "Darwin"
+    - _repo_envrc_file.stat.exists | default(false)
+  changed_when: true
+
+- name: Note about direnv and shell (Mac)
+  ansible.builtin.debug:
+    msg: "direnv hook is in ~/.bashrc.d/direnv.bash. Run 'source ~/.bashrc' or open a new terminal to activate."
+  when: ansible_facts['system'] == "Darwin"

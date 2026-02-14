@@ -10,6 +10,6 @@ export no_proxy=*
 **Where to set them**
 
 - **direnv**: project `.envrc` already contains these; run `direnv allow` in the repo.
-- **Manual**: copy `.env.example` to `.env` and `source .env` (or add the exports to your shell profile when working in this repo).
+- **Manual**: copy `.env.example` to `.env` and `source .env` (or add the exports to your bash profile: `~/.bash_profile` or `~/.bashrc` when working in this repo).
 
 **Connection settings** for WinRM (transport, timeouts, NTLM) are in **`ansible.cfg`** in the repo root; the Mac uses that when connecting to Windows hosts.
