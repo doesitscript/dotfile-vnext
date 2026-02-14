@@ -16,18 +16,20 @@
 
   tasks:
 
-    # - name: Ensure OpenSSH capability installed
-    #   ansible.windows.win_shell: |
-    #     $cap = Get-WindowsCapability -Name OpenSSH.Server* -Online
-    #     if ($cap.State -ne 'Installed') {
-    #       Add-WindowsCapability -Online -Name $cap.Name
-    #     }
-    #   changed_when: false
+    - name: Ensure OpenSSH capability installed
+      ansible.windows.win_shell: |
+        $cap = Get-WindowsCapability -Name OpenSSH.Server* -Online
+        if ($cap.State -ne 'Installed') {
+          Add-WindowsCapability -Online -Name $cap.Name
+          Write-Output "INSTALLED"
+        }
+      register: ssh_install
+      changed_when: "'INSTALLED' in ssh_install.stdout"
 
-    - name: Ensure OpenSSH Server capability installed
-      ansible.windows.win_capability:
-        name: OpenSSH.Server~~~~0.0.1.0
-        state: present
+    # - name: Ensure OpenSSH Server capability installed
+    #   ansible.windows.win_capability:
+    #     name: OpenSSH.Server~~~~0.0.1.0
+    #     state: present
 
     - name: Ensure sshd service is running
       ansible.windows.win_service:
