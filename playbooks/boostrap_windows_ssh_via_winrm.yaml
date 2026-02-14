@@ -10,9 +10,11 @@
   gather_facts: true
 
   vars:
-    # win_ssh_port | 
-    win_ssh_port: "{{ default(22) }}"
     sshd_config_path: "C:\\ProgramData\\ssh\\sshd_config"
+    administrators_authorized_keys_path: "C:\\ProgramData\\ssh\\administrators_authorized_keys"
+    # Must match bootstrap_execution_node: public key is ssh_dir + /id_ed25519_ansible.pub
+    execution_node_ssh_dir: "{{ lookup('env', 'HOME') }}/.ssh"
+    execution_node_pub_key_path: "{{ execution_node_ssh_dir }}/id_ed25519_ansible.pub"
 
   tasks:
 
@@ -42,22 +44,52 @@
         state: present
         enabled: true
 
+     # Don't delete these again cursor or chatgpt
+    # administrators_authorized_keys: create file and set ACL (no inheritance; Administrators + SYSTEM FullControl only)
+    - name: Ensure administrators_authorized_keys file exists
+      ansible.windows.win_file:
+        path: "{{ administrators_authorized_keys_path }}"
+        state: touch
+
+    - name: Grant Administrators FullControl on administrators_authorized_keys
+      ansible.windows.win_acl:
+        path: "{{ administrators_authorized_keys_path }}"
+        user: Administrators
+        type: allow
+        rights: FullControl
+        state: present
+
+    - name: Grant SYSTEM FullControl on administrators_authorized_keys
+      ansible.windows.win_acl:
+        path: "{{ administrators_authorized_keys_path }}"
+        user: SYSTEM
+        type: allow
+        rights: FullControl
+        state: present
+
+    - name: Disable ACL inheritance on administrators_authorized_keys
+      ansible.windows.win_acl_inheritance:
+        path: "{{ administrators_authorized_keys_path }}"
+        state: absent
+        reorganize: false
+    # Don't delete these again cursor or chatgpt
+
     # - name: Ensure user .ssh directory exists
     #   ansible.windows.win_file:
     #   path: "{{lookup('ansible.builtin.env', 'HOME')}}"
     #   state: touch
         # path: "{{ ansible_env.USERPROFILE }}\\.ssh"
 
-    - name: Read execution node public key
-      ansible.builtin.set_fact:
-        ansible_pub_key_content: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_ed25519_ansible.pub') | trim }}"
+    - name: Read execution node public key (contents of .pub created by bootstrap_execution_node)
+      ansible.builtin.slurp:
+        src: "{{ execution_node_pub_key_path }}"
+      register: pubkey_slurp
       delegate_to: "{{ groups['execution_nodes'][0] }}"
-      delegate_facts: true
       run_once: true
 
-    - name: Install public key in authorized_keys
+    - name: Install public key in administrators_authorized_keys
       community.windows.win_lineinfile:
-        path: "{{ ansible_env.USERPROFILE }}\\ssh\\authorized_keys"
-        line: "{{ ansible_pub_key_content }}"
+        path: "{{ administrators_authorized_keys_path }}"
+        line: "{{ (hostvars[groups['execution_nodes'][0]].pubkey_slurp.content | b64decode) | trim }}"
         create: true
         state: present
