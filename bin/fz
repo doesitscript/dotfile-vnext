@@ -416,12 +416,10 @@ case "${COMMAND}" in
     fz_ansible_adhoc "$@"
     ;;
   bootstrap-openssh-host-keys)
-    # Generate OpenSSH host keys into bootstrap/openssh_host_keys/ (for Windows). Run on the Mac.
-    if [ ! -f "${REPO_ROOT}/bin/bootstrap-openssh-host-keys.sh" ]; then
-      log_error "bin/bootstrap-openssh-host-keys.sh not found"
-      exit 1
-    fi
-    bash "${REPO_ROOT}/bin/bootstrap-openssh-host-keys.sh" "$@"
+    # Generate OpenSSH host keys into bootstrap/openssh_host_keys/ (Ansible only). Run on the Mac.
+    force_arg=""
+    for a in "$@"; do if [ "$a" = "--force" ]; then force_arg="-e force=true"; break; fi; done
+    fz_ansible "playbooks/bootstrap_openssh_host_keys.yaml" $force_arg
     ;;
   controller-ssh-install)
     # Install controller SSH private key on this machine from vault (part of server-225 bootstrap).

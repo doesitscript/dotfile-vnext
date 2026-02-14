@@ -1,0 +1,143 @@
+---
+# Extended fact gather: current state of OpenSSH/WinRM setup (controller + Windows).
+# Run from Mac: source .envrc && .venv/bin/ansible-playbook playbooks/current_state_openssh_winrm.yaml -i inventory/inventory.yaml --limit localhost,server-225-win
+# Writes: facts/current_state_openssh_winrm.json
+# Used to ground docs/setup_openssh_via_winrm_summary.md in reality.
+
+- name: Gather controller (Mac) state for OpenSSH/ansible keys
+  hosts: localhost
+  gather_facts: false
+  vars:
+    repo_root: "{{ playbook_dir }}/.."
+    controller_report: {}
+  tasks:
+    - name: Stat controller files
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: controller_stats
+      loop:
+        - "{{ repo_root }}/.mgmt/ansible_ssh.pub"
+        - "{{ repo_root }}/vault/ansible_ssh.vault.yml"
+        - "{{ repo_root }}/vault/openssh_host_keys.vault.yml"
+      loop_control:
+        label: "{{ item | basename }}"
+
+    - name: List bootstrap openssh host keys directory
+      ansible.builtin.find:
+        paths: "{{ repo_root }}/bootstrap/openssh_host_keys"
+        patterns: "ssh_host_*"
+      register: bootstrap_keys
+      failed_when: false
+
+    - name: Set controller state fact
+      ansible.builtin.set_fact:
+        controller_state:
+          ansible_ssh_pub_exists: "{{ (controller_stats.results | selectattr('item', 'equalto', repo_root + '/.mgmt/ansible_ssh.pub') | map(attribute='stat.exists') | first) | default(false) }}"
+          ansible_ssh_vault_exists: "{{ (controller_stats.results | selectattr('item', 'equalto', repo_root + '/vault/ansible_ssh.vault.yml') | map(attribute='stat.exists') | first) | default(false) }}"
+          openssh_host_keys_vault_exists: "{{ (controller_stats.results | selectattr('item', 'equalto', repo_root + '/vault/openssh_host_keys.vault.yml') | map(attribute='stat.exists') | first) | default(false) }}"
+          bootstrap_openssh_key_files: "{{ bootstrap_keys.files | map(attribute='path') | map('basename') | list | default([]) }}"
+
+- name: Gather Windows (server-225-win) OpenSSH/WinRM state via WinRM
+  hosts: windows_hosts
+  gather_facts: true
+  become: false
+  vars:
+    report_file: "{{ playbook_dir }}/../facts/current_state_openssh_winrm.json"
+  tasks:
+    - name: Get OpenSSH Server capability state
+      ansible.windows.win_shell: |
+        $cap = Get-WindowsCapability -Online -Name 'OpenSSH.Server*' -ErrorAction SilentlyContinue
+        if ($cap) { $cap.State } else { 'NotPresent' }
+      register: openssh_cap
+      changed_when: false
+
+    - name: Get sshd service status
+      ansible.windows.win_service:
+        name: sshd
+      register: sshd_svc
+      failed_when: false
+      changed_when: false
+
+    - name: Get firewall rule sshd
+      ansible.windows.win_shell: |
+        $r = Get-NetFirewallRule -Name 'sshd' -ErrorAction SilentlyContinue
+        if ($r) {
+          $p = $r | Get-NetFirewallPortFilter
+          "Enabled=$($r.Enabled) LocalPort=$($p.LocalPort)"
+        } else { 'Absent' }
+      register: fw_sshd
+      changed_when: false
+
+    - name: List C:\ProgramData\ssh host keys
+      ansible.windows.win_shell: |
+        $dir = 'C:\ProgramData\ssh'
+        if (Test-Path $dir) {
+          (Get-ChildItem (Join-Path $dir 'ssh_host_*_key') -ErrorAction SilentlyContinue).Name -join ','
+        } else { 'DirectoryMissing' }
+      register: win_host_keys
+      changed_when: false
+
+    - name: Check authorized_keys existence and line count
+      ansible.windows.win_shell: |
+        $path = Join-Path $env:USERPROFILE '.ssh\authorized_keys'
+        if (Test-Path $path) {
+          $lines = (Get-Content $path -ErrorAction SilentlyContinue | Where-Object { $_.Trim() -ne '' }).Count
+          "Exists=True Lines=$lines"
+        } else { 'Exists=False' }
+      register: authorized_keys_state
+      changed_when: false
+
+    - name: Set Windows state fact for this host
+      ansible.builtin.set_fact:
+        windows_state:
+          openssh_server_capability_state: "{{ openssh_cap.stdout | trim | default('Unknown') }}"
+          sshd_service_state: "{{ sshd_svc.status.state | default('Unknown') if (sshd_svc is not failed) else 'Error' }}"
+          sshd_service_start_mode: "{{ sshd_svc.status.start_mode | default('') if (sshd_svc is not failed) else '' }}"
+          firewall_sshd: "{{ fw_sshd.stdout | trim | default('Unknown') }}"
+          programdata_ssh_host_keys: "{{ win_host_keys.stdout | trim | default('') }}"
+          authorized_keys: "{{ authorized_keys_state.stdout | trim | default('') }}"
+          ansible_host: "{{ ansible_host }}"
+          ansible_user: "{{ ansible_user }}"
+          win_ssh_port: "{{ win_ssh_port | default(22) }}"
+
+- name: Write combined current state report
+  hosts: localhost
+  gather_facts: true
+  vars:
+    facts_dir: "{{ playbook_dir }}/../facts"
+    report_path: "{{ facts_dir }}/current_state_openssh_winrm.json"
+  tasks:
+    - name: Build combined state report (controller + Windows hosts)
+      ansible.builtin.set_fact:
+        current_state_report:
+          gathered_at: "{{ ansible_date_time.iso8601 }}"
+          controller:
+            ansible_ssh_pub_exists: "{{ hostvars['localhost'].controller_state.ansible_ssh_pub_exists | default(false) }}"
+            ansible_ssh_vault_exists: "{{ hostvars['localhost'].controller_state.ansible_ssh_vault_exists | default(false) }}"
+            openssh_host_keys_vault_exists: "{{ hostvars['localhost'].controller_state.openssh_host_keys_vault_exists | default(false) }}"
+            bootstrap_openssh_key_files: "{{ hostvars['localhost'].controller_state.bootstrap_openssh_key_files | default([]) }}"
+          windows_hosts: {}
+      run_once: true
+
+    - name: Add each Windows host state to report
+      ansible.builtin.set_fact:
+        current_state_report: "{{ current_state_report | combine({'windows_hosts': (current_state_report.windows_hosts | default({})) | combine({item: hostvars[item].windows_state}) }) }}"
+      loop: "{{ groups['windows_hosts'] | default([]) }}"
+      when: hostvars[item].windows_state is defined
+      run_once: true
+
+    - name: Ensure facts directory exists
+      ansible.builtin.file:
+        path: "{{ facts_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Write current state to {{ report_path }}
+      ansible.builtin.copy:
+        content: "{{ current_state_report | to_json(indent=2) }}"
+        dest: "{{ report_path }}"
+        mode: "0644"
+
+    - name: Show current state summary
+      ansible.builtin.debug:
+        msg: "{{ current_state_report }}"

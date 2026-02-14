@@ -4,7 +4,7 @@ OpenSSH server host keys are **generated on the Mac** (control node), stored in 
 
 ## Flow (fully automated)
 
-1. **Generate keys (Mac):** Run from repo root on the control node:
+1. **Generate keys (Mac):** Run from repo root on the control node. Key generation is done entirely by Ansible (`community.crypto.openssh_keypair`); no shell script.
    ```bash
    ./bin/fz bootstrap-openssh-host-keys
    ```
