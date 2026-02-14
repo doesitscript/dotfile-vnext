@@ -3,11 +3,12 @@
 # Assumes WinRM transport already works.
 # Does NOT enable PSRemoting.
 # Does NOT modify transport layer.
+# ansible-playbook playbooks/boostrap_windows_ssh_via_winrm.yaml -i inventory/inventory.yaml --limit windows_hosts
 # ansible-playbook playbooks/boostrap_windows_ssh_via_winrm.yaml -i inventory/inventory.yaml --limit server-225-win
 
 
 - name: Bootstrap Windows OpenSSH
-  hosts: windows_hosts
+  hosts: ansible-playbook playbooks/boostrap_windows_ssh_via_winrm.yaml -i inventory/inventory.yaml --limit server-225-win
   gather_facts: false
 
   vars:
@@ -15,7 +16,6 @@
     sshd_config_path: "C:\\ProgramData\\ssh\\sshd_config"
 
   tasks:
-
     - name: Ensure OpenSSH capability installed
       ansible.windows.win_shell: |
         $cap = Get-WindowsCapability -Name OpenSSH.Server* -Online
@@ -33,7 +33,7 @@
     - name: Ensure OpenSSH firewall rule
       community.windows.win_firewall_rule:
         name: sshd-Server-In-TCP
-        localport: "{{ win_ssh_port }}"
+        localport: "{{ win_ssh_port | default(22) }}"
         protocol: tcp
         action: allow
         direction: in
@@ -43,6 +43,8 @@
     - name: Ensure user .ssh directory exists
       ansible.windows.win_file:
         path: "{{ ansible_env.USERPROFILE }}\\.ssh"
+        mode: "0700"
+        force: true
         state: directory
 
     - name: Read execution node public key
