@@ -5,13 +5,13 @@
 # Does NOT modify transport layer.
 # ansible-playbook playbooks/boostrap_windows_ssh_via_winrm.yaml -i inventory/inventory.yaml --limit server-225-win
 
-
 - name: Bootstrap Windows OpenSSH
   hosts: windows_hosts
-  gather_facts: false
+  gather_facts: true
 
   vars:
-    win_ssh_port: "{{ win_ssh_port | default(22) }}"
+    # win_ssh_port | 
+    win_ssh_port: "{{ default(22) }}"
     sshd_config_path: "C:\\ProgramData\\ssh\\sshd_config"
 
   tasks:
@@ -25,11 +25,6 @@
         }
       register: ssh_install
       changed_when: "'INSTALLED' in ssh_install.stdout"
-
-    # - name: Ensure OpenSSH Server capability installed
-    #   ansible.windows.win_capability:
-    #     name: OpenSSH.Server~~~~0.0.1.0
-    #     state: present
 
     - name: Ensure sshd service is running
       ansible.windows.win_service:
@@ -47,10 +42,11 @@
         state: present
         enabled: true
 
-    - name: Ensure user .ssh directory exists
-      ansible.windows.win_file:
-        path: "{{ ansible_env.USERPROFILE }}\\.ssh"
-        state: directory
+    # - name: Ensure user .ssh directory exists
+    #   ansible.windows.win_file:
+    #   path: "{{lookup('ansible.builtin.env', 'HOME')}}"
+    #   state: touch
+        # path: "{{ ansible_env.USERPROFILE }}\\.ssh"
 
     - name: Read execution node public key
       ansible.builtin.set_fact:
@@ -61,7 +57,7 @@
 
     - name: Install public key in authorized_keys
       community.windows.win_lineinfile:
-        path: "{{ ansible_env.USERPROFILE }}\\.ssh\\authorized_keys"
+        path: "{{ ansible_env.USERPROFILE }}\\ssh\\authorized_keys"
         line: "{{ ansible_pub_key_content }}"
         create: true
         state: present
