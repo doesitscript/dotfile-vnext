@@ -15,6 +15,14 @@ source "${SCRIPTS_DIR}/lib.sh"
 # Ensure we're in the repo root (ansible-playbook runs from here)
 cd "${REPO_ROOT}"
 
+# Load .envrc if present (required for WinRM on macOS: OBJC_DISABLE_INITIALIZE_FORK_SAFETY, no_proxy)
+if [[ -f "${REPO_ROOT}/.envrc" ]]; then
+  set +u
+  # shellcheck source=/dev/null
+  source "${REPO_ROOT}/.envrc"
+  set -u
+fi
+
 # Parse global flags before command dispatch.
 FZ_FORCE_BOOTSTRAP=false
 FZ_REFRESH_DEPS=false

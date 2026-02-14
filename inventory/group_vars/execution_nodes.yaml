@@ -3,3 +3,10 @@
 # Delegation to execution_nodes[0] reads the public key from that host at run time.
 ansible_connection: local
 # i don't know if i can delete this, i put htat line i nthe ma_dev
+
+transport_execnode_ssh_key_basename: "id_ed25519_ansible"
+transport_known_hosts_manage: true
+transport_known_hosts_targets:
+  - name: "server-225-win"
+    host: "{{ hostvars['server-225-win'].ansible_host | default('server-225-win') }}"
+    port: 22

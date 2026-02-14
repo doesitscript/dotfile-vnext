@@ -1,0 +1,37 @@
+---
+- name: Ensure ~/.ssh exists
+  ansible.builtin.file:
+    path: "{{ transport_execnode_ssh_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Ensure ansible SSH key pair exists
+  community.crypto.openssh_keypair:
+    path: "{{ transport_execnode_ssh_private_key_path }}"
+    type: ed25519
+    state: present
+    force: false
+
+- name: Export execution node SSH pubkey path as host fact
+  ansible.builtin.set_fact:
+    execution_node_pub_key_path: "{{ transport_execnode_ssh_public_key_path }}"
+    cacheable: true
+
+- name: Export execution node SSH pubkey content as host fact
+  ansible.builtin.set_fact:
+    execution_node_pub_key_content: "{{ lookup('file', transport_execnode_ssh_public_key_path) | trim }}"
+    cacheable: true
+
+# optional: known_hosts — community.crypto has no ssh_known_hosts module; ansible.builtin.known_hosts is the standard (same behavior)
+- name: Manage known_hosts entries for targets (optional)
+  when:
+    - transport_known_hosts_manage | bool
+    - transport_known_hosts_targets | length > 0
+  block:
+    - name: Ensure known_hosts entries exist
+      ansible.builtin.known_hosts:
+        path: "{{ transport_execnode_ssh_dir }}/known_hosts"
+        name: "{{ item.host }}"
+        key: "{{ lookup('pipe', 'ssh-keyscan -p ' ~ (item.port | default(22)) ~ ' ' ~ item.host) }}"
+        state: present
+      loop: "{{ transport_known_hosts_targets }}"

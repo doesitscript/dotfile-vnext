@@ -15,7 +15,16 @@ The first time you run `bin/fz`, it will automatically:
 2. Install required Python dependencies from `scripts/requirements.txt`
 3. Activate the virtual environment for subsequent commands
 
-No manual setup required!
+**WinRM on macOS:** Ansible has a bug that can cause "worker dead" when connecting to Windows via WinRM. You need these exports before running any playbook that targets Windows hosts. Create a `.envrc` in the repo root (or run `direnv allow` if you use direnv):
+
+```bash
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=yes
+export no_proxy=*
+```
+
+`bin/fz` automatically sources `.envrc` when present, so WinRM playbooks work without manual export.
+
+No other manual setup required!
 
 ## Usage
 
