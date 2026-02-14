@@ -7,6 +7,17 @@
     state: directory
     mode: "0755"
 
+- name: Ensure .bash_profile sources .bashrc (login shells)
+  ansible.builtin.blockinfile:
+    path: "{{ ansible_env.HOME }}/.bash_profile"
+    marker: "# {mark} ANSIBLE MANAGED - DO NOT EDIT BETWEEN MARKERS"
+    block: |
+      # Run .bashrc so login shells get .bashrc.d (direnv, aliases, path)
+      if [ -f ~/.bashrc ]; then
+        source ~/.bashrc
+      fi
+    create: true
+
 - name: Ensure .bashrc sources .bashrc.d directory
   ansible.builtin.blockinfile:
     path: "{{ ansible_env.HOME }}/.bashrc"

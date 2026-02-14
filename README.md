@@ -9,6 +9,7 @@ The only manual steps are: **(1)** put your vault secret in `.vault_pass` at rep
 ## Structure
 
 - `playbooks/bootstrap_local.yml` - Local bootstrap playbook (runs in WSL on each Windows node)
+- `playbooks/deploy_shell_config.yaml` - Standalone shell configuration deployment (direnv, cursor, aliases)
 - `contracts/` - Canonical contract definitions
 - `inventory/` - Ansible inventory and variables
 - `playbooks/` - Ansible playbooks
@@ -111,6 +112,20 @@ echo -n 'YOUR_VAULT_PASSWORD' > .vault_pass   # or use --ask-vault-pass when run
 ## Quick Start
 
 See `docs/architecture_rules.md` for governance and checkpoint rules.
+
+## Deploy Shell Configuration
+
+Deploy direnv, cursor editor, and shell aliases independently of bootstrap:
+
+```bash
+# Deploy to Mac
+./bin/run-playbook.sh playbooks/deploy_shell_config.yaml --limit mac-dev
+
+# Deploy to WSL
+./bin/run-playbook.sh playbooks/deploy_shell_config.yaml --limit server-225-wsl
+```
+
+See `docs/deploy_shell_config.md` for detailed usage and troubleshooting.
 
 ## Contract
 

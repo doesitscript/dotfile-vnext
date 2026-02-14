@@ -1,17 +1,19 @@
 # Shell Configuration Role
 
-Manages `.bashrc` using a modular `.bashrc.d` pattern. This role:
+Manages bash startup using a modular `.bashrc.d` pattern. This role:
 
 1. Creates `~/.bashrc.d/` directory for modular shell configs
-2. Ensures `.bashrc` sources all files in `.bashrc.d/`
-3. Deploys common aliases and shell configurations
-4. **WSL PATH management**: Ensures Linux binaries take precedence over Windows binaries
+2. Ensures `~/.bash_profile` sources `~/.bashrc` (so login shells get the same config)
+3. Ensures `.bashrc` sources all `~/.bashrc.d/*.bash` files
+4. Deploys `path.bash` and `aliases.bash` into `.bashrc.d/`
+5. **WSL PATH management**: Ensures Linux binaries take precedence over Windows binaries
 
-## Pattern
+## Pattern (build order)
 
-- Each capability role (git, python, hub, etc.) deploys its own `.bash` file to `~/.bashrc.d/`
-- `.bashrc` automatically sources everything in `.bashrc.d/`
-- Non-destructive: preserves user customizations in `.bashrc`
+- **Login shells** (e.g. macOS Terminal): `~/.bash_profile` → sources `~/.bashrc` → sources `~/.bashrc.d/*.bash`
+- **Interactive non-login**: `~/.bashrc` → sources `~/.bashrc.d/*.bash`
+- Other roles (direnv, cursor, hub, etc.) add their own `*.bash` files into `~/.bashrc.d/`; no changes to `.bash_profile` or `.bashrc` needed
+- Non-destructive: uses blockinfile so user customizations in `.bash_profile` and `.bashrc` are preserved
 - **WSL-specific**: In WSL, Linux paths are prioritized over Windows paths to prevent conflicts
 
 ## WSL PATH Priority

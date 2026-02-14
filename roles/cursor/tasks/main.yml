@@ -1,0 +1,11 @@
+---
+# Cursor Editor Role
+# Configures Cursor as the default editor
+
+- name: Process cursor role for Unix-like systems
+  ansible.builtin.import_tasks: unix.yml
+  when: ansible_facts['system'] != "Windows"
+
+- name: Process cursor role for Windows
+  ansible.builtin.import_tasks: windows.yml
+  when: ansible_facts['system'] == "Windows"

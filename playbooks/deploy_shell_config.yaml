@@ -1,0 +1,54 @@
+---
+# Deploy Shell Configuration (direnv, cursor, aliases, PATH)
+# Standalone playbook - can be run independently of bootstrap
+#
+# Quick Start:
+#   ./bin/run-playbook.sh playbooks/deploy_shell_config.yaml --limit mac-dev
+#   ./bin/run-playbook.sh playbooks/deploy_shell_config.yaml --limit server-225-wsl
+#
+# Full Documentation: docs/deploy_shell_config.md
+#
+# What it deploys:
+#   - common/shell_config: Sets up .bashrc.d pattern, PATH management, aliases
+#   - direnv: Installs direnv and configures bash hook
+#   - cursor: Sets Cursor as default editor (EDITOR="cursor --wait")
+#
+# After deployment:
+#   source ~/.bashrc  # Reload shell to activate
+#   direnv allow      # In directories with .envrc files
+
+- name: Deploy shell configuration to target host
+  hosts: all
+  gather_facts: true
+  become: false
+  roles:
+    - role: common/shell_config
+    - role: direnv
+    - role: cursor
+
+- name: Display shell configuration summary
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check .bashrc.d directory
+      ansible.builtin.stat:
+        path: "{{ ansible_env.HOME }}/.bashrc.d"
+      register: bashrc_d_stat
+
+    - name: List deployed shell config files
+      ansible.builtin.find:
+        paths: "{{ ansible_env.HOME }}/.bashrc.d"
+        patterns: "*.bash"
+      register: shell_config_files
+      when: bashrc_d_stat.stat.exists
+
+    - name: Display summary
+      ansible.builtin.debug:
+        msg:
+          - "Shell configuration deployed successfully"
+          - ".bashrc.d directory: {{ 'exists' if bashrc_d_stat.stat.exists else 'missing' }}"
+          - "Deployed config files:"
+          - "{{ shell_config_files.files | map(attribute='path') | list | join('\n  - ') if shell_config_files.files is defined else '  (none found)' }}"
+          - ""
+          - "To activate, run: source ~/.bashrc"
+          - "Or open a new terminal"

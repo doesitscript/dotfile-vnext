@@ -77,7 +77,6 @@ pipx inject "pywinrm[credssp]>=0.4.0"  # for winrm
 ####
 
 # Enables the WinRM service and sets up the HTTP listener
-Enable-PSRemoting -Force
 
 # Opens port 5985 for all profiles
 $firewallParams = @{
@@ -100,11 +99,54 @@ $tokenFilterParams = @{
     PropertyType = 'DWORD'
     Force        = $true
 }
-New-ItemProperty @tokenFilterParams
+New-ItemProperty @tokeEnable-PSRemoting -Force
+nFilterParams
 
 
 
 #########
-Using the winrm or psrp connection plugins in Ansible on MacOS in the latest releases typically fails. This is a known problem that occurs deep within the Python stack and cannot be changed by Ansible. The only workaround today is to set the environment variable OBJC_DISABLE_INITIALIZE_FORK_SAFETY=yes, no_proxy=* and avoid using Kerberos auth.
+Using the winrm or psrp connection plugins in Ansible on MacOS in the latest releases typically fails. This is a known problem that occurs deep within the Python stack and cannot be changed by Ansible. The only workaround today is to set the environment variable 
+```
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=yes
+export no_proxy=*
+``` and avoid using Kerberos auth.
 
 pipx inject ansible "pywinrm>=0.4.0"  # for winrm
+ansible server-225-win -m win_ping -i inven
+ansible server-225-win -m win_ping -i inventory/inventory.yaml -vvv
+tory/inventory.yaml -vvv
+
+
+
+
+
+# need to do this soon: ~/.bash_profile
+# Todo:
+https://github.com/lyze/posh-git-sh
+
+# many here:
+https://github.com/detro/.bashrc.d?tab=readme-ov-file
+
+
+### Brew install
+# Usually, on Mac Intel
+if [[ -x "/usr/local/bin/brew" ]]; then
+	export BREW_HOME="/usr/local"
+fi
+
+# Usually, on Mac ARM
+if [[ -x "/opt/homebrew/bin/brew" ]]; then
+	export BREW_HOME="/opt/homebrew"
+fi
+
+export BREW_BIN="${BREW_HOME}/bin/brew"
+
+# Setup shell for Homebrew
+if [[ -x "${BREW_BIN}" ]]; then
+	eval $(${BREW_BIN} shellenv)
+
+	# Setup "bash-completion@2" if found
+	if [[ -r "$(${BREW_BIN} --prefix)/etc/profile.d/bash_completion.sh" ]]; then
+		source "$(${BREW_BIN} --prefix)/etc/profile.d/bash_completion.sh"
+	fi
+fi

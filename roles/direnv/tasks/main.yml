@@ -1,0 +1,22 @@
+---
+# Direnv Role
+# Installs direnv and configures bash hook
+
+- name: Process direnv role for macOS
+  ansible.builtin.import_tasks: mac.yml
+  when: ansible_facts['system'] == "Darwin"
+
+- name: Process direnv role for Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when: ansible_facts['distribution'] == "Ubuntu"
+
+- name: Process direnv role for Windows
+  ansible.builtin.import_tasks: windows.yml
+  when: ansible_facts['system'] == "Windows"
+
+- name: Deploy direnv bash hook to .bashrc.d (Unix-like systems)
+  ansible.builtin.template:
+    src: direnv.bash.j2
+    dest: "{{ ansible_env.HOME }}/.bashrc.d/direnv.bash"
+    mode: "0644"
+  when: ansible_facts['system'] != "Windows"

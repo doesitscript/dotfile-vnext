@@ -349,7 +349,34 @@ Test changes without applying:
 | Deploy network | `./bin/fz deploy network` |
 | Deploy main | `./bin/fz deploy main` |
 | Deploy dev | `./bin/fz deploy dev` |
+| Deploy shell config | `./bin/run-playbook.sh playbooks/deploy_shell_config.yaml --limit <host>` |
 | Verify fabric | `./bin/fz verify` |
 | Edit vault | `./bin/fz vault edit <scope>` |
 | Contract lint | `./bin/fz contract lint` |
+
+## Deploy Shell Configuration
+
+Deploy direnv, cursor editor, and shell aliases to development environments:
+
+```bash
+# Deploy to Mac
+./bin/run-playbook.sh playbooks/deploy_shell_config.yaml --limit mac-dev
+
+# Deploy to WSL
+./bin/run-playbook.sh playbooks/deploy_shell_config.yaml --limit server-225-wsl
+```
+
+**What it does:**
+- Sets up `.bashrc.d` modular shell configuration
+- Installs and configures direnv (automatic env var loading)
+- Sets Cursor as default editor
+- Deploys common aliases and PATH management
+
+**After deployment:**
+```bash
+source ~/.bashrc  # Reload shell
+direnv allow      # In directories with .envrc files
+```
+
+See `docs/deploy_shell_config.md` for complete documentation.
 
