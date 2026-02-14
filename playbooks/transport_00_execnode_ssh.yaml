@@ -1,0 +1,46 @@
+---
+# transport_00_execnode_ssh.yaml
+# execution node (mac): ensure deterministic ansible ssh key exists and expose a pubkey fact for other plays
+
+- name: Transport 00 - bootstrap execution node SSH identity
+  hosts: execution_nodes
+  connection: local
+  gather_facts: true
+
+  vars:
+    ssh_dir: "{{ lookup('env','HOME') }}/.ssh"
+    ansible_ssh_private_key_path: "{{ ssh_dir }}/id_ed25519_ansible"
+    ansible_ssh_public_key_path: "{{ ansible_ssh_private_key_path }}.pub"
+
+  tasks:
+    - name: Ensure ~/.ssh exists
+      ansible.builtin.file:
+        path: "{{ ssh_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Ensure ansible SSH key pair exists
+      community.crypto.openssh_keypair:
+        path: "{{ ansible_ssh_private_key_path }}"
+        type: ed25519
+        state: present
+        force: false
+
+    - name: Export execution node SSH pubkey path as host fact
+      ansible.builtin.set_fact:
+        execution_node_pub_key_path: "{{ ansible_ssh_public_key_path }}"
+
+    - name: Export execution node SSH pubkey content as host fact
+      ansible.builtin.set_fact:
+        execution_node_pub_key_content: "{{ lookup('file', ansible_ssh_public_key_path) | trim }}"
+
+    - name: Display key location
+      ansible.builtin.debug:
+        msg:
+          - "Execution node SSH identity ensured at {{ ansible_ssh_private_key_path }}"
+          - "Public key path: {{ ansible_ssh_public_key_path }}"
+
+  # notes:
+  #   - this keeps everything local and deterministic
+  #   - no delegate_to, no group indexing tricks beyond normal hostvars usage later
+  #   - facts are ON here (mac), by design

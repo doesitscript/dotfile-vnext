@@ -1,0 +1,95 @@
+---
+# transport_10_windows_openssh_via_winrm.yaml
+# windows: enable OpenSSH via WinRM without breaking key auth (keeps the ACL/inheritance block)
+# winrm stays intact; ssh is additive
+
+- name: Transport 10 - enable Windows OpenSSH via WinRM
+  hosts: windows_hosts
+  gather_facts: false
+
+  vars:
+    sshd_config_path: "C:\\ProgramData\\ssh\\sshd_config"
+    administrators_authorized_keys_path: "C:\\ProgramData\\ssh\\administrators_authorized_keys"
+
+  tasks:
+
+    - name: Ensure OpenSSH Server capability installed (use explicit capability name)
+      ansible.windows.win_shell: |
+        $capName = "OpenSSH.Server~~~~0.0.1.0"
+        $state = (Get-WindowsCapability -Online -Name $capName).State
+        if ($state -ne "Installed") {
+          Add-WindowsCapability -Online -Name $capName | Out-Null
+          Write-Output "INSTALLED"
+        } else {
+          Write-Output "AlreadyInstalled"
+        }
+      register: ssh_install
+      changed_when: "'INSTALLED' in (ssh_install.stdout | default(''))"
+
+    - name: Ensure sshd service is running
+      ansible.windows.win_service:
+        name: sshd
+        state: started
+        start_mode: auto
+
+    - name: Ensure OpenSSH firewall rule (port 22 unless win_ssh_port is set)
+      community.windows.win_firewall_rule:
+        name: sshd-Server-In-TCP
+        localport: "{{ win_ssh_port | default(22) }}"
+        protocol: tcp
+        action: allow
+        direction: in
+        state: present
+        enabled: true
+
+    # DO NOT DELETE OR "SIMPLIFY" THIS BLOCK
+    # administrators_authorized_keys: create file and set ACL (no inheritance; Administrators + SYSTEM FullControl only)
+
+    - name: Ensure administrators_authorized_keys file exists
+      ansible.windows.win_file:
+        path: "{{ administrators_authorized_keys_path }}"
+        state: touch
+
+    - name: Disable ACL inheritance on administrators_authorized_keys (do not reorganize)
+      ansible.windows.win_acl_inheritance:
+        path: "{{ administrators_authorized_keys_path }}"
+        state: absent
+        reorganize: false
+
+    - name: Grant Administrators FullControl on administrators_authorized_keys
+      ansible.windows.win_acl:
+        path: "{{ administrators_authorized_keys_path }}"
+        user: Administrators
+        type: allow
+        rights: FullControl
+        state: present
+
+    - name: Grant SYSTEM FullControl on administrators_authorized_keys
+      ansible.windows.win_acl:
+        path: "{{ administrators_authorized_keys_path }}"
+        user: SYSTEM
+        type: allow
+        rights: FullControl
+        state: present
+
+    - name: Install public key in administrators_authorized_keys (from execution node host facts)
+      community.windows.win_lineinfile:
+        path: "{{ administrators_authorized_keys_path }}"
+        line: "{{ hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content }}"
+        create: true
+        state: present
+      register: install_pub_key_result
+      when:
+        - hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content is defined
+        - hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content | length > 0
+
+    - name: Restart sshd after key or capability change
+      ansible.windows.win_service:
+        name: sshd
+        state: restarted
+      when: install_pub_key_result is changed or ssh_install is changed
+
+  # notes:
+  #   - facts are OFF on windows for bootstrap stability/speed
+  #   - capability install uses the explicit string to avoid $cap null/multi-object errors
+  #   - the ACL/inheritance/key install block is preserved and is treated as invariant
