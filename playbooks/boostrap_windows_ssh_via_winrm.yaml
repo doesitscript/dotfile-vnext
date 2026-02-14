@@ -1,11 +1,9 @@
 ---
 # Bootstrap Windows OpenSSH configuration.
-# Assumes WinRM transport already works.
-# Does NOT enable PSRemoting.
-# Does NOT modify transport layer.
-# ansible-playbook playbooks/boostrap_windows_ssh_via_winrm.yaml -i inventory/inventory.yaml --limit windows_hosts
+# Run bootstrap_execution_node.yaml first so the SSH key exists on this machine.
+# Assumes WinRM transport already works. Does NOT enable PSRemoting.
+#
 # ansible-playbook playbooks/boostrap_windows_ssh_via_winrm.yaml -i inventory/inventory.yaml --limit server-225-win
-
 
 - name: Bootstrap Windows OpenSSH
   hosts: windows_hosts
@@ -13,8 +11,22 @@
 
   vars:
     sshd_config_path: "C:\\ProgramData\\ssh\\sshd_config"
+    execution_node_pub_key: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519_ansible.pub"
 
   tasks:
+    - name: Ensure execution node public key exists (run bootstrap_execution_node.yaml first)
+      ansible.builtin.stat:
+        path: "{{ execution_node_pub_key }}"
+      register: execution_node_key_stat
+      delegate_to: "{{ groups['execution_nodes'][0] }}"
+      run_once: true
+
+    - name: Fail if execution node SSH key missing
+      ansible.builtin.fail:
+        msg: "Public key not found at {{ execution_node_pub_key }}. Run: ansible-playbook playbooks/bootstrap_execution_node.yaml -i inventory/inventory.yaml"
+      when: not execution_node_key_stat.stat.exists
+      run_once: true
+
     - name: Ensure OpenSSH capability installed
       ansible.windows.win_shell: |
         $cap = Get-WindowsCapability -Name OpenSSH.Server* -Online
@@ -47,7 +59,7 @@
 
     - name: Read execution node public key
       ansible.builtin.set_fact:
-        ansible_pub_key_content: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_ed25519_ansible.pub') | trim }}"
+        ansible_pub_key_content: "{{ lookup('file', execution_node_pub_key) | trim }}"
       delegate_to: "{{ groups['execution_nodes'][0] }}"
       delegate_facts: true
       run_once: true
