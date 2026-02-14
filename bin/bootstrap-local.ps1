@@ -517,10 +517,18 @@ Write-Verbose "Beginning privileged setup and fact collection."
 # Use preferred IP
 $bestIP = if ($preferredIP) { $preferredIP } else { "0.0.0.0" }
 
-Write-Set "Configuring WinRM HTTP listener/service/firewall (port 5985)"
-Write-Verbose "Running winrm quickconfig -force"
-winrm quickconfig -force | Out-Null
-# This sets up: WinRM HTTP listener on 5985, firewall rules, service startup. Mac connects via HTTP (5985).
+# WinRM and PS Remoting (CredSSP, firewall 5985, LocalAccountTokenFilterPolicy). Uses ansible.cfg for connection settings from Mac.
+$setupWinrmPath = Join-Path $scriptDir "setup-winrm-psremoting.ps1"
+if (Test-Path $setupWinrmPath) {
+    Write-Set "Running WinRM/PSRemoting setup (CredSSP, firewall, token policy)"
+    & $setupWinrmPath
+    Write-Ok "WinRM/PSRemoting setup completed"
+} else {
+    Write-Set "Configuring WinRM HTTP listener/service/firewall (port 5985)"
+    Write-Verbose "Running winrm quickconfig -force"
+    winrm quickconfig -force | Out-Null
+}
+# This sets up: WinRM HTTP listener on 5985, firewall rules, service startup. Mac connects via HTTP (5985) using ansible.cfg [winrm] settings.
 
 # Configure WinRM HTTPS listener (port 5986)
 Write-Check "Checking for WinRM HTTPS listener"

@@ -73,7 +73,7 @@ On the Windows machine (as Administrator):
 
 ### 2. Run Ansible **against** Server-225
 
-From your **Mac** (mac-dev), with the repo cloned and inventory/host_vars in place (or synced from Server-225):
+From your **Mac** (mac-dev), with the repo cloned and inventory/host_vars in place (or synced from Server-225). **WinRM from macOS** requires two environment variables (see `docs/winrm_from_mac.md`); use `.envrc` (direnv) or copy `.env.example` to `.env` and source it.
 
 ```bash
 cd /path/to/dotfile-vnext
