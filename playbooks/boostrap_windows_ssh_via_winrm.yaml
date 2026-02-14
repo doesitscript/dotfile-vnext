@@ -8,11 +8,10 @@
 
 
 - name: Bootstrap Windows OpenSSH
-  hosts: ansible-playbook playbooks/boostrap_windows_ssh_via_winrm.yaml -i inventory/inventory.yaml --limit server-225-win
-  gather_facts: false
+  hosts: windows_hosts
+  gather_facts: true
 
   vars:
-    win_ssh_port: "{{ win_ssh_port | default(22) }}"
     sshd_config_path: "C:\\ProgramData\\ssh\\sshd_config"
 
   tasks:
@@ -43,9 +42,8 @@
     - name: Ensure user .ssh directory exists
       ansible.windows.win_file:
         path: "{{ ansible_env.USERPROFILE }}\\.ssh"
-        mode: "0700"
-        force: true
         state: directory
+        mode: "0700"
 
     - name: Read execution node public key
       ansible.builtin.set_fact:
