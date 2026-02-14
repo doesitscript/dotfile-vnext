@@ -6,8 +6,30 @@ Multi-node AI infrastructure automation using Ansible.
 
 The only manual steps are: **(1)** put your vault secret in `.vault_pass` at repo root (see `config/README_vault_pass.md`), and **(2)** run the first kick-off command for the node (e.g. `.\bin\bootstrap-local.cmd` on Windows, or `./bin/fz bootstrap --limit mac-dev` on the Mac). Everything else (venv, collections, SSH key generation, host_vars, WSL bootstrap) is automated.
 
+## Most up-to-date capabilities (two sides of the same coin)
+
+Two playbooks represent the current, stable automation: the **execution node** (Mac) and **Windows OpenSSH via WinRM**. Run them in order from the Mac.
+
+**1. Execution node (Mac)** – Ensures the Mac has the Ansible SSH key and is ready as the control plane. Creates `~/.ssh` and `~/.ssh/id_ed25519_ansible` (and `.pub`) if missing.
+
+```bash
+cd /path/to/dotfile-vnext
+ansible-playbook playbooks/bootstrap_execution_node.yaml -i inventory/inventory.yaml --limit execution_nodes
+```
+
+**2. Windows OpenSSH (via WinRM)** – Sets up OpenSSH Server on Windows: capability, sshd service, firewall rule, `administrators_authorized_keys` file and ACL, installs the execution node’s public key, restarts sshd when needed. Assumes WinRM is already reachable. Target any Windows host(s) with `--limit` (e.g. `server-225-win`).
+
+```bash
+ansible-playbook playbooks/boostrap_windows_ssh_via_winrm.yaml -i inventory/inventory.yaml --limit server-225-win
+```
+
+Run the execution-node playbook first so the SSH key exists; then run the Windows OpenSSH playbook against the desired Windows host(s).
+
 ## Structure
 
+- `playbooks/bootstrap_execution_node.yaml` - Execution node (Mac): SSH key and control-plane readiness
+- `playbooks/boostrap_windows_ssh_via_winrm.yaml` - Windows OpenSSH via WinRM (key from execution node)
+- `playbooks/bootstrap_server_225.yaml` - Server-225 full bootstrap (WinRM, roles; separate from the SSH pair above)
 - `playbooks/bootstrap_local.yml` - Local bootstrap playbook (runs in WSL on each Windows node)
 - `playbooks/deploy_shell_config.yaml` - Standalone shell configuration deployment (direnv, cursor, aliases)
 - `contracts/` - Canonical contract definitions
