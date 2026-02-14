@@ -1,3 +1,35 @@
 # One line: default path for vault password file when not using repo root.
 # Example (WSL, Windows home): /mnt/c/Users/YOUR_USERNAME/.vault_pass
 # Scripts suggest this when .vault_pass is missing. Leave blank or comment to only suggest repo root.
+
+/  playbooks/boostrap_windows_ssh_via_winrm.yaml
+        modified:   playbooks/bootstrap_execution_node.yaml
+
+        Origin: /Users/joshc/develop/dotfile-vnext/inventory/group_vars/mac_dev.yaml:25:1
+
+        ansible-playbook playbooks/bootstrap_execution_node.yaml -i inventory/inventory.yaml --limit execution_nodes
+
+          vars:
+    ssh_dir: "{{ lookup('env','HOME') }}/.ssh"
+    ansible_ssh_private_key_path: "{{ ssh_dir }}/id_ed25519_ansible"
+    id_ed25519_ansible.pub
+    (.venv) Joshs-MBP:dotfile-vnext joshc$ ls ~/.ssh
+id_ed25519_ansible     id_ed25519_ansible.pub
+
+
+####
+sshd_config
+AllowUsers localuser@192.168.2.23
+AllowGroups sshusers < may need this
+
+NT Authority\SYSTEM  <-- full control
+BUILTIN\Administrators
+%programdata%/ssh/administrators_authorized_keys <-- this is a file 
+
+*****
+#  cursor convert the following to ansible 
+icacls.exe "C:\ProgramData\ssh\administrators_authorized_keys" /inheritance:r /grant "Administrators:F" /grant "SYSTEM:F"
+
+icacls "C:\ProgramData\ssh\administrators_authorized_keys" /inheritance:r
+icacls "C:\ProgramData\ssh\administrators_authorized_keys" /grant "Administrators:F"
+icacls "C:\ProgramData\ssh\administrators_authorized_keys" /grant "SYSTEM:F"
