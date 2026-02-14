@@ -22,11 +22,13 @@
       ansible.windows.win_shell: |
         $cap = Get-WindowsCapability -Name OpenSSH.Server* -Online
         if ($cap.State -ne 'Installed') {
-          Add-WindowsCapability -Online -Name $cap.Name
+          Add-WindowsCapability -Online -Name $cap.Name | Out-Null
           Write-Output "INSTALLED"
+        } else {
+          Write-Output "AlreadyInstalled"
         }
       register: ssh_install
-      changed_when: "'INSTALLED' in ssh_install.stdout"
+      changed_when: "'INSTALLED' in (ssh_install.stdout | default('') | replace('\r\n', '') | replace('\r', '') | replace('\n', ''))"
 
     - name: Ensure sshd service is running
       ansible.windows.win_service:
