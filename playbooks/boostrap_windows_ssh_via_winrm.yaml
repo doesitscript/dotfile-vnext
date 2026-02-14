@@ -80,3 +80,10 @@
         line: "{{ lookup('file', execution_node_pub_key_path) | trim }}"
         create: true
         state: present
+      register: install_pub_key_result
+
+    - name: Restart sshd after key or capability change
+      ansible.windows.win_service:
+        name: sshd
+        state: restarted
+      when: install_pub_key_result is changed or ssh_install is changed
