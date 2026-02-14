@@ -19,10 +19,6 @@
     wsl_hostvars_path: "{{ host_vars_dir }}/{{ physical_node }}-wsl.yaml"
     wsl_ssh_port: 22
     mac_public_key_path: "{{ playbook_dir }}/../bootstrap/mac_ssh_key.pub"
-    ansible_ssh_vault_path: "{{ repo_root }}/vault/ansible_ssh.vault.yml"
-    # Temp key must live on a native FS so chattr works (e.g. WSL /mnt/d does not support it)
-    ansible_ssh_tmp_base: "{{ (ansible_facts['env']['HOME'] | default(lookup('env', 'HOME'))) ~ '/.tmp_ansible_ssh' }}"
-
   tasks:
     - name: Fail if not running in WSL (this playbook is for server WSL only, not Mac)
       ansible.builtin.fail:
@@ -123,113 +119,15 @@
       become: true
       when: mac_public_key_file.stat.exists
 
-    # Ansible SSH key: ONE key pair for the whole project. Create ONLY when vault does not exist; never overwrite vault.
-    # When vault exists we only load it and install the existing public key. See docs/ansible_ssh_vault.md.
-    - name: Check if ansible SSH vault already exists
-      ansible.builtin.stat:
-        path: "{{ ansible_ssh_vault_path }}"
-      register: ansible_ssh_vault_file
-
-    - name: Generate ansible SSH key pair (ed25519)
-      community.crypto.openssh_keypair:
-        path: "{{ ansible_ssh_tmp_base }}"
-        type: ed25519
-        state: present
-        force: false
-      register: ansible_ssh_keypair_result
-      when: not ansible_ssh_vault_file.stat.exists
-
-    - name: Slurp generated ansible private key for vault
-      ansible.builtin.slurp:
-        src: "{{ ansible_ssh_tmp_base }}"
-      register: ansible_ssh_private_slurp
-      when: not ansible_ssh_vault_file.stat.exists
-
-    - name: Set ansible SSH key content for vault template
-      ansible.builtin.set_fact:
-        ansible_ssh_private_key_content: "{{ ansible_ssh_private_slurp.content | b64decode }}"
-        ansible_ssh_public_key_content: "{{ ansible_ssh_keypair_result.public_key | trim }}"
-      when: not ansible_ssh_vault_file.stat.exists
-
-    - name: Ensure vault directory exists
-      ansible.builtin.file:
-        path: "{{ repo_root }}/vault"
-        state: directory
-        mode: "0755"
-      when: not ansible_ssh_vault_file.stat.exists
-
-    - name: Write ansible SSH vault file (plain, before encrypt)
-      ansible.builtin.template:
-        src: "{{ playbook_dir }}/templates/ansible_ssh_vault.yml.j2"
-        dest: "{{ ansible_ssh_vault_path }}"
-        mode: "0644"
-      when: not ansible_ssh_vault_file.stat.exists
-
-    - name: Encrypt ansible SSH vault file
-      ansible.builtin.shell: |
-        cd "{{ repo_root }}" && .venv/bin/ansible-vault encrypt vault/ansible_ssh.vault.yml
-      when: not ansible_ssh_vault_file.stat.exists
-
-    - name: Remove temporary ansible SSH key files
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: absent
-      loop:
-        - "{{ ansible_ssh_tmp_base }}"
-        - "{{ ansible_ssh_tmp_base }}.pub"
-      when: not ansible_ssh_vault_file.stat.exists
-
-    - name: Install ansible public key into authorized_keys (from generated content)
-      ansible.posix.authorized_key:
-        user: "{{ ansible_facts['user_id'] }}"
-        key: "{{ ansible_ssh_public_key_content | trim }}"
-        state: present
-      become: true
-      when: not ansible_ssh_vault_file.stat.exists and ansible_ssh_public_key_content is defined
-
-    - name: Load ansible SSH vault when file exists
-      ansible.builtin.include_vars:
-        file: "{{ ansible_ssh_vault_path }}"
-      when: ansible_ssh_vault_file.stat.exists
-
-    - name: Install ansible public key into authorized_keys (from vault)
-      ansible.posix.authorized_key:
-        user: "{{ ansible_facts['user_id'] }}"
-        key: "{{ vault_ansible_ssh_public_key }}"
-        state: present
-      become: true
-      when: ansible_ssh_vault_file.stat.exists
-
-    # Export ansible public key to repo so Windows bootstrap can add it to Windows authorized_keys (no vault decrypt on Windows)
-    - name: Ensure .mgmt directory exists
-      ansible.builtin.file:
-        path: "{{ repo_root }}/.mgmt"
-        state: directory
-        mode: "0755"
-
-    - name: Write ansible public key to .mgmt/ansible_ssh.pub (from vault)
-      ansible.builtin.copy:
-        content: "{{ vault_ansible_ssh_public_key | trim }}\n"
-        dest: "{{ repo_root }}/.mgmt/ansible_ssh.pub"
-        mode: "0644"
-      when: ansible_ssh_vault_file.stat.exists and vault_ansible_ssh_public_key is defined
-
-    - name: Write ansible public key to .mgmt/ansible_ssh.pub (from just-generated key)
-      ansible.builtin.copy:
-        content: "{{ ansible_ssh_public_key_content | trim }}\n"
-        dest: "{{ repo_root }}/.mgmt/ansible_ssh.pub"
-        mode: "0644"
-      when: not ansible_ssh_vault_file.stat.exists and ansible_ssh_public_key_content is defined
-
+    # Ansible SSH key lives only on the execution node (Mac) at ~/.ssh/id_ed25519_ansible. Deploy to this WSL by running playbooks from the Mac (e.g. fz bootstrap --limit <win>, fz deploy main --limit <wsl>).
     - name: Display SSH setup summary
       ansible.builtin.debug:
         msg:
           - "SSH server configured and running"
-          - "Ansible SSH public key installed in authorized_keys for user: {{ ansible_facts['user_id'] }}"
           - "localhost is in known_hosts (no fingerprint prompt)"
-          - "From this WSL use: ssh {{ ansible_facts['user_id'] }}@localhost (user is {{ ansible_facts['user_id'] }}, not joshc; password or key)"
+          - "From this WSL use: ssh {{ ansible_facts['user_id'] }}@localhost"
           - "Host vars will be written with SSH connection info"
-          - "Mac can now SSH into this node using the private key from vault"
+          - "Deploy Ansible key to this host by running playbooks from the Mac (key at ~/.ssh/id_ed25519_ansible on Mac)"
 
     - name: Read Windows facts JSON
       ansible.builtin.slurp:
@@ -350,5 +248,5 @@
           - "SSH host: {{ host_ip }}"
           - "SSH user: {{ wsl_user }}"
           - "SSH port: {{ wsl_ssh_port }}"
-          - "Ansible SSH key stored in vault: {{ ansible_ssh_vault_path }}"
+          - "Deploy Ansible key from Mac (~/.ssh/id_ed25519_ansible.pub) by running playbooks from the Mac."
           - "Mac can now connect using: ansible {{ physical_node }}-wsl -m ping -i inventory/inventory.yaml"

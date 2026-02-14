@@ -4,7 +4,7 @@
 # Target: windows_hosts. Pre-tasks: PSRemoting, WinRM firewall 5985, optional TrustedHosts.
 # Tasks: OpenSSH capability (guide pipeline), firewall (win_ssh_port), host keys from vault, sshd service,
 #       DefaultShell = WSL bash (wsl_distro from group_vars), sshd_config so authorized_keys in user profile,
-#       .ssh dir, .mgmt/ansible_ssh.pub → authorized_keys.
+#       .ssh dir; authorized_keys from execution node ~/.ssh/id_ed25519_ansible.pub (read at run time).
 # When using SSH to this host, set ansible_shell_type: bash (DefaultShell is WSL bash).
 # Run: source .envrc && .venv/bin/ansible-playbook playbooks/setup_openssh_via_winrm.yaml -i inventory/inventory.yaml --limit server-225-win
 # Use --ask-vault-pass if using vault/openssh_host_keys.vault.yml. Temporary; to be merged into bootstrap_windows.yaml.
@@ -14,7 +14,6 @@
   become: false
   vars:
     repo_root: "{{ playbook_dir }}/.."
-    ansible_ssh_pub_path: "{{ repo_root }}/.mgmt/ansible_ssh.pub"
     openssh_host_keys_vault_path: "{{ repo_root }}/vault/openssh_host_keys.vault.yml"
     sshd_config_path: "C:\\ProgramData\\ssh\\sshd_config"
   pre_tasks:
@@ -163,29 +162,20 @@
         state: directory
         mode: "0700"
 
-    - name: Check if ansible public key file exists on controller
-      ansible.builtin.stat:
-        path: "{{ ansible_ssh_pub_path }}"
-      register: ansible_pub_key_file
-      delegate_to: localhost
-      run_once: true
-
-    - name: Read ansible public key from controller and set for host
+    - name: Read execution node public key
       ansible.builtin.set_fact:
-        ansible_pub_key_content: "{{ lookup('file', ansible_ssh_pub_path) | trim }}"
-      delegate_to: localhost
+        ansible_pub_key_content: "{{ lookup('file', lookup('env', 'HOME') + '/.ssh/id_ed25519_ansible.pub') | trim }}"
+      delegate_to: "{{ groups['execution_nodes'][0] }}"
       delegate_facts: true
       run_once: true
-      when: ansible_pub_key_file.stat.exists
 
-    - name: Add Mac (controller) public key to Windows authorized_keys
+    - name: Add execution node public key to Windows authorized_keys
       community.windows.win_lineinfile:
         path: "{{ ansible_env.USERPROFILE }}\\.ssh\\authorized_keys"
         line: "{{ ansible_pub_key_content }}"
         create: true
         state: present
       when:
-        - ansible_pub_key_file.stat.exists
         - ansible_pub_key_content is defined
         - ansible_pub_key_content | length > 0
 

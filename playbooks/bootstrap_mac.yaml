@@ -4,114 +4,40 @@
 # Purpose: Set up development control plane
 # Output: follows repo logging (ansible.cfg stdout_callback; task names and run from fz use log_step/log_ok)
 
-# Ansible SSH key: ONE key pair for the project. Use vault if present; only generate when vault does not exist (never overwrite vault).
-# Private key is installed to ~/.ssh/id_ed25519_ansible; public key is in vault and .mgmt/ansible_ssh.pub. See docs/ansible_ssh_vault.md.
-- name: Install or create ansible SSH key (vault or generate on Mac)
+# Ansible SSH key: single source of truth ~/.ssh/id_ed25519_ansible (and .pub). No repo copy, no .mgmt.
+- name: Ensure ansible SSH key exists on Mac (canonical location only)
   hosts: mac-dev
   connection: local
   gather_facts: true
   vars:
-    repo_root: "{{ playbook_dir }}/.."
-    ansible_ssh_vault_path: "{{ repo_root }}/vault/ansible_ssh.vault.yml"
     ansible_ssh_private_key_path: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519_ansible"
-    ansible_ssh_tmp_base: "{{ repo_root }}/.mgmt/.tmp_ansible_ssh"
+    ansible_ssh_public_key_path: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519_ansible.pub"
   tasks:
-    - name: Check if ansible SSH vault exists
-      ansible.builtin.stat:
-        path: "{{ ansible_ssh_vault_path }}"
-      register: ansible_ssh_vault_file
-
-    # When vault is missing: generate key on Mac, create vault, install private key, write .mgmt/ansible_ssh.pub
-    - name: Ensure vault and .mgmt directories exist (Mac-first key generation)
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: directory
-        mode: "0755"
-      loop:
-        - "{{ repo_root }}/vault"
-        - "{{ repo_root }}/.mgmt"
-      when: not ansible_ssh_vault_file.stat.exists
-
-    - name: Generate ansible SSH key pair on Mac (ed25519)
-      community.crypto.openssh_keypair:
-        path: "{{ ansible_ssh_tmp_base }}"
-        type: ed25519
-        state: present
-        force: false
-      register: ansible_ssh_keypair_result
-      when: not ansible_ssh_vault_file.stat.exists
-
-    - name: Slurp generated ansible private key for vault
-      ansible.builtin.slurp:
-        src: "{{ ansible_ssh_tmp_base }}"
-      register: ansible_ssh_private_slurp
-      when: not ansible_ssh_vault_file.stat.exists
-
-    - name: Set ansible SSH key content for vault template (Mac-first)
-      ansible.builtin.set_fact:
-        ansible_ssh_private_key_content: "{{ ansible_ssh_private_slurp.content | b64decode }}"
-        ansible_ssh_public_key_content: "{{ ansible_ssh_keypair_result.public_key | trim }}"
-      when: not ansible_ssh_vault_file.stat.exists
-
-    - name: Write ansible SSH vault file (plain, before encrypt) on Mac
-      ansible.builtin.template:
-        src: "{{ playbook_dir }}/templates/ansible_ssh_vault.yml.j2"
-        dest: "{{ ansible_ssh_vault_path }}"
-        mode: "0644"
-      when: not ansible_ssh_vault_file.stat.exists
-
-    - name: Encrypt ansible SSH vault file on Mac
-      ansible.builtin.shell: |
-        cd "{{ repo_root }}" && .venv/bin/ansible-vault encrypt vault/ansible_ssh.vault.yml
-      when: not ansible_ssh_vault_file.stat.exists
-
-    - name: Write ansible public key to .mgmt/ansible_ssh.pub (Mac-first)
-      ansible.builtin.copy:
-        content: "{{ ansible_ssh_public_key_content | trim }}\n"
-        dest: "{{ repo_root }}/.mgmt/ansible_ssh.pub"
-        mode: "0644"
-      when: not ansible_ssh_vault_file.stat.exists and ansible_ssh_public_key_content is defined
-
-    - name: Remove temporary ansible SSH key files (Mac)
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: absent
-      loop:
-        - "{{ ansible_ssh_tmp_base }}"
-        - "{{ ansible_ssh_tmp_base }}.pub"
-      when: not ansible_ssh_vault_file.stat.exists
-
-    - name: Load ansible SSH vault when file exists
-      ansible.builtin.include_vars:
-        file: "{{ ansible_ssh_vault_path }}"
-      when: ansible_ssh_vault_file.stat.exists
-
     - name: Ensure ~/.ssh exists
       ansible.builtin.file:
         path: "{{ lookup('env', 'HOME') }}/.ssh"
         state: directory
         mode: "0700"
 
-    - name: Install ansible private key from vault
-      ansible.builtin.copy:
-        content: "{{ vault_ansible_ssh_private_key }}"
-        dest: "{{ ansible_ssh_private_key_path }}"
-        mode: "0600"
-      when: ansible_ssh_vault_file.stat.exists and vault_ansible_ssh_private_key is defined
+    - name: Check if ansible SSH key already exists
+      ansible.builtin.stat:
+        path: "{{ ansible_ssh_private_key_path }}"
+      register: ansible_ssh_key_stat
 
-    - name: Install ansible private key from just-generated key (Mac-first)
-      ansible.builtin.copy:
-        content: "{{ ansible_ssh_private_key_content }}"
-        dest: "{{ ansible_ssh_private_key_path }}"
-        mode: "0600"
-      when: not ansible_ssh_vault_file.stat.exists and ansible_ssh_private_key_content is defined
+    - name: Generate ansible SSH key pair (ed25519) in canonical location
+      community.crypto.openssh_keypair:
+        path: "{{ ansible_ssh_private_key_path }}"
+        type: ed25519
+        state: present
+        force: false
+      when: not ansible_ssh_key_stat.stat.exists
 
-    - name: Display SSH key installation summary
+    - name: Display SSH key status
       ansible.builtin.debug:
         msg:
-          - "Ansible SSH private key installed at: {{ ansible_ssh_private_key_path }}"
-          - "This key will be used to SSH into WSL nodes"
-          - "WSL nodes get the public key from .mgmt/ansible_ssh.pub or vault when you run server bootstrap"
+          - "Ansible SSH key at: {{ ansible_ssh_private_key_path }}"
+          - "Public key at: {{ ansible_ssh_public_key_path }}"
+          - "Deploy to Windows/WSL by running bootstrap from this Mac; key is read from here at run time."
 
 - name: Bootstrap mac-dev node
   hosts: mac-dev
@@ -127,7 +53,6 @@
     # - role: mac_dev/dev_tools
     # - role: mac_dev/dotfiles
     - role: mac_dev/ansible_runner
-    # SSH key setup is handled by the play above (loads from vault created by WSL bootstrap)
 
 - name: Write Mac facts to repo (facts/mac-dev.json)
   hosts: mac-dev
@@ -162,5 +87,3 @@
         mode: "0644"
       delegate_to: localhost
       run_once: true
-
-

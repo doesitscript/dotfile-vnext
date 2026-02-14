@@ -55,8 +55,11 @@ Write-Verbose "repoRoot=$repoRoot"
 
 # File paths used by this script:
 # - inventory\host_vars\server-225-wsl.yaml (required) - WSL host vars containing wsl_user and wsl_distro
-# - inventory\host_vars\server-225-win.yaml (required) - Windows host vars containing win_password
+# - inventory\host_vars\server-225-win.yaml (required) - Windows host vars; win_password or default lab password
 # - $env:USERPROFILE\.cloud-init\$wslDistro.user-data (created) - Cloud-init user data file
+#
+# Default lab password when win_password is missing (no vault). Must match bootstrap-local.ps1.
+$DefaultLabPassword = 'Pass@w0rd'
 
 $wslHostVarsPath = Join-Path $repoRoot "inventory\host_vars\server-225-wsl.yaml"
 $winHostVarsPath = Join-Path $repoRoot "inventory\host_vars\server-225-win.yaml"
@@ -94,35 +97,29 @@ if (-not $wslUser -or $wslUser -eq $null) {
     exit 1
 }
 
-# Read win_password from Windows host_vars (required, no fallback)
+# Read win_password from Windows host_vars; fall back to default lab password (no vault required)
 # Note: This script uses win_password from Windows host_vars as the WSL password
 $wslPassword = $null
 if (-not (Test-Path $winHostVarsPath)) {
-    Write-Error "[ERROR] Required file not found: server-225-win.yaml" -ErrorAction Continue
-    Write-Host "  Expected location: $winHostVarsPath" -ForegroundColor Red
-    Write-Host "  This file must contain 'win_password:' entry (used as WSL password)" -ForegroundColor Yellow
-    exit 1
-}
-
-$winHostVarsContent = Get-Content $winHostVarsPath -Raw
-if ($winHostVarsContent -match 'win_password:\s*"?([^"\r\n]+)"?') {
-    $wslPassword = $Matches[1].Trim().Trim('"')
-    Write-Host "  Found win_password: ***" -ForegroundColor Green
-    Write-Host "  Password source: $winHostVarsPath" -ForegroundColor Yellow
+    Write-Host "  server-225-win.yaml not found; using default lab password." -ForegroundColor Cyan
+    $wslPassword = $DefaultLabPassword
 } else {
-    Write-Error "[ERROR] Required field 'win_password:' not found in file: server-225-win.yaml" -ErrorAction Continue
-    Write-Host "  File location: $winHostVarsPath" -ForegroundColor Red
-    Write-Host "  Please ensure the file contains 'win_password: <password>'" -ForegroundColor Yellow
-    Write-Host "  Note: This password will be used as the WSL user password" -ForegroundColor Yellow
-    exit 1
+    $winHostVarsContent = Get-Content $winHostVarsPath -Raw
+    if ($winHostVarsContent -match 'win_password:\s*"?([^"\r\n]+)"?') {
+        $wslPassword = $Matches[1].Trim().Trim('"')
+        if ($wslPassword) {
+            Write-Host "  Found win_password: ***" -ForegroundColor Green
+            Write-Host "  Password source: $winHostVarsPath" -ForegroundColor Yellow
+        }
+    }
+    if (-not $wslPassword) {
+        Write-Host "  win_password not in host_vars or empty; using default lab password." -ForegroundColor Cyan
+        $wslPassword = $DefaultLabPassword
+    }
 }
 
-# Ensure win_password was successfully retrieved - exit if still null
-if (-not $wslPassword -or $wslPassword -eq $null) {
-    Write-Error "[ERROR] win_password is null or empty after reading host_vars file" -ErrorAction Continue
-    Write-Host "  File: server-225-win.yaml at $winHostVarsPath" -ForegroundColor Red
-    exit 1
-}
+# Ensure we have a password (default is always set)
+if (-not $wslPassword) { $wslPassword = $DefaultLabPassword }
 
 Write-Host "  [INFO] This script is not currently compatible with Ansible Vault" -ForegroundColor Green
 

@@ -1,20 +1,32 @@
 # bin/bootstrap-local.ps1
-# Run as admin on the target Windows machine
+# Run as admin on the target Windows machine.
+#
+# PRIMARY PURPOSE: Get the device ready so the Mac can WinRM into it (port 5985).
+#   - Configures WinRM HTTP (5985), firewall, host_vars, and facts. That's it for "bootstrap for WinRM."
+# OPENSSH: Off by default. Pass -InstallOpenSSH to install/configure OpenSSH Server from this script.
+#   Otherwise install from the Mac via Ansible (e.g. setup_openssh_via_winrm.yaml or bootstrap_windows.yaml).
+#
 # This script:
 # 1. Auto-detects which physical node it's running on (by hostname or IP)
-# 2. Collects runtime facts (hostname, IP, WSL distros)
-# 3. Generates host_vars files for Windows and WSL surfaces
-# 4. Writes facts JSON for auditing/reuse
+# 2. Configures WinRM HTTP (5985) and firewall so the Mac can connect
+# 3. Collects runtime facts and generates host_vars for Windows and WSL surfaces
+# 4. (Optional) Installs/configures OpenSSH Server only when -InstallOpenSSH is passed
 #
 # .QUICK COMMANDS
-#   .\bin\bootstrap-local.ps1 -FactsOnly       Only collect facts (no host_vars, no chain)
-#   .\bin\bootstrap-local.ps1 -RunAll:$false   Facts + host_vars only (no WSL/fz chain)
-#   .\bin\bootstrap-local.ps1                  Full chain -> bootstrap-ansible-local.ps1 -> WSL -> fz
+#   .\bin\bootstrap-local.ps1 -FactsOnly         Only collect facts (no host_vars, no chain)
+#   .\bin\bootstrap-local.ps1 -RunAll:$false      Facts + host_vars + WinRM (no OpenSSH, no chain)
+#   .\bin\bootstrap-local.ps1 -InstallOpenSSH    WinRM + host_vars + OpenSSH (then chain if RunAll)
+#   .\bin\bootstrap-local.ps1                     Full: WinRM + host_vars only; chain -> bootstrap-ansible-local.ps1 -> WSL -> fz
 
 param(
     [bool]$RunAll = $true,
-    [switch]$FactsOnly = $false
+    [switch]$FactsOnly = $false,
+    [switch]$InstallOpenSSH = $false
 )
+
+# Default lab password for new Windows hosts (no vault required). Used when no existing win_password in host_vars.
+# Change in host_vars after first run if you need a different password.
+$DefaultLabPassword = 'Pass@w0rd'
 
 $ErrorActionPreference = "Stop"
 $VerbosePreference = "Continue"
@@ -695,21 +707,25 @@ $winVars = [ordered]@{
     win_user = if ($existingWinVars.win_user) { $existingWinVars.win_user } else { "josh" }
 }
 
-# Preserve win_password if it exists
+# Preserve win_password if it exists; otherwise use default lab password so Mac can WinRM without vault
 if ($existingWinVars.win_password) {
     $winVars.win_password = $existingWinVars.win_password
     Write-Host "Preserved win_password in generated file" -ForegroundColor Green
 } elseif (Test-Path $winVarsPath -and (Get-Content $winVarsPath -Raw) -match 'win_password') {
     Write-Host "WARNING: win_password found in existing file but could not be parsed. It may be lost!" -ForegroundColor Red
-    Write-Host "Please manually re-add win_password after this script completes." -ForegroundColor Yellow
+    Write-Host "Using default lab password. Re-add win_password in host_vars if needed." -ForegroundColor Yellow
+    $winVars.win_password = $DefaultLabPassword
+} else {
+    $winVars.win_password = $DefaultLabPassword
+    Write-Host "Using default lab password (win_password) for new host; change in host_vars if needed." -ForegroundColor Cyan
 }
 
 # Add Ansible connection settings (WinRM HTTP 5985; Mac runs playbooks from Mac)
 $winVars.ansible_connection = "winrm"
 $winVars.ansible_host = $ansibleHost
 $winVars.ansible_user = $winVars.win_user
-$winVars.ansible_password = if ($winVars.win_password) { $winVars.win_password } else { "" }
-$winVars.ansible_winrm_password = if ($winVars.win_password) { $winVars.win_password } else { "" }
+$winVars.ansible_password = $winVars.win_password
+$winVars.ansible_winrm_password = $winVars.win_password
 $winVars.ansible_port = 5985
 $winVars.ansible_winrm_transport = "ntlm"
 $winVars.ansible_winrm_scheme = "http"
@@ -761,9 +777,11 @@ Write-Host "  - $wslVarsPath" -ForegroundColor White
 Write-Host ''
 
 # ============================================================================
-# OpenSSH Server (Windows): install, port from Ansible (win_ssh_port), firewall, default shell = WSL bash
-# Uses distro from our ansible (wsl_distro). Keys: same pattern as WSL so Mac/Win/WSL can talk.
+# OpenSSH Server (Windows): only when -InstallOpenSSH. Otherwise install from Mac via Ansible later.
 # ============================================================================
+if (-not $InstallOpenSSH) {
+    Write-Skip "Skipping OpenSSH Server (pass -InstallOpenSSH to configure here, or install from Mac via Ansible later)"
+} else {
 $winSshPort = if ($winVars.win_ssh_port) { $winVars.win_ssh_port } else { 22 }
 Write-Step "Configuring OpenSSH Server on Windows (port $winSshPort, default shell WSL bash)"
 
@@ -832,11 +850,10 @@ New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShellCommandOption 
 Write-Ok "Default shell set to WSL bash ($defaultWslDistro)"
 
 # Ensure host keys exist: idempotent. Use keys from the project when present (Mac bootstrap --SSHGenForce or fz bootstrap-openssh-host-keys).
-# Check repo at bootstrap/openssh_host_keys/ first, then .mgmt/ (ssh_host_ed25519_key, ssh_host_rsa_key + .pub).
+# Check repo at bootstrap/openssh_host_keys/ for host keys (ssh_host_ed25519_key, ssh_host_rsa_key + .pub).
 $sshDataDir = 'C:\ProgramData\ssh'
 $hostKeyCandidates = @(
-    (Join-Path $repoRoot 'bootstrap\openssh_host_keys'),
-    (Join-Path $repoRoot '.mgmt')
+    (Join-Path $repoRoot 'bootstrap\openssh_host_keys')
 )
 $ourHostKeysDir = $null
 $ourPrivateKeys = @()
@@ -903,14 +920,14 @@ if ($weHaveOurKeys) {
                 Write-Host '  ****************************************' -ForegroundColor Red
                 Write-Host '  ***  TEMPORARY / DEFAULT HOST KEYS  ***' -ForegroundColor Red
                 Write-Host '  ****************************************' -ForegroundColor Red
-                Write-Host '  No project keys found in bootstrap/openssh_host_keys or .mgmt' -ForegroundColor Yellow
-                Write-Host '  (e.g. from Mac: fz bootstrap --limit mac-dev --SSHGenForce, then sync repo).' -ForegroundColor Yellow
+                Write-Host '  No project keys found in bootstrap/openssh_host_keys' -ForegroundColor Yellow
+                Write-Host '  (e.g. from Mac: fz bootstrap-openssh-host-keys then sync repo, or fz bootstrap --limit server-225-win).' -ForegroundColor Yellow
                 Write-Host '  These keys are only so sshd can start. Add keys and re-run.' -ForegroundColor Yellow
                 Write-Host '  ****************************************' -ForegroundColor Red
                 Write-Host ''
-                Write-Ok 'Temporary host keys generated (add keys to bootstrap/openssh_host_keys or .mgmt and re-run)'
+                Write-Ok 'Temporary host keys generated (add keys to bootstrap/openssh_host_keys and re-run)'
             } else {
-                Write-Ok 'Host key set verified/updated (no project keys in bootstrap/openssh_host_keys or .mgmt)'
+                Write-Ok 'Host key set verified/updated'
             }
         } catch {
             Write-Host ('  [WARNING] ssh-keygen -A failed: ' + $_) -ForegroundColor Yellow
@@ -953,9 +970,7 @@ if (Get-Service -Name sshd -ErrorAction SilentlyContinue) {
     }
 }
 
-# Windows authorized_keys: same pattern as WSL so Mac / Windows / WSL can talk
-# 1) Use ansible key from .mgmt/ansible_ssh.pub (written by WSL bootstrap from vault)
-# 2) Or optional bootstrap/mac_ssh_key.pub (user-placed Mac key)
+# Windows authorized_keys: optional bootstrap/mac_ssh_key.pub (user-placed). Ansible key is deployed from Mac at run time (~/.ssh/id_ed25519_ansible.pub).
 $winSshDir = Join-Path $env:USERPROFILE '.ssh'
 $winAuthorizedKeys = Join-Path $winSshDir 'authorized_keys'
 if (-not (Test-Path $winSshDir)) {
@@ -965,13 +980,12 @@ if (-not (Test-Path $winSshDir)) {
 
 $keyAdded = $false
 $keySourceUsed = $false
-$ansibleKeyPath = Join-Path $repoRoot '.mgmt\ansible_ssh.pub'
 $macKeyPath = Join-Path $repoRoot 'bootstrap\mac_ssh_key.pub'
-Write-Verbose ('Checking key sources for authorized_keys: ' + $ansibleKeyPath + ', ' + $macKeyPath + ' -> ' + $winAuthorizedKeys)
+Write-Verbose ('Checking key source for authorized_keys: ' + $macKeyPath + ' -> ' + $winAuthorizedKeys)
 Write-Verbose ('Target authorized_keys file: ' + $winAuthorizedKeys)
 
-foreach ($keyPath in @($ansibleKeyPath, $macKeyPath)) {
-    $keyName = if ($keyPath -eq $ansibleKeyPath) { 'ansible (from vault)' } else { 'Mac (bootstrap/mac_ssh_key.pub)' }
+foreach ($keyPath in @($macKeyPath)) {
+    $keyName = 'Mac (bootstrap/mac_ssh_key.pub)'
     Write-Verbose ('[CHECK] Examining key file: ' + $keyPath + ' (' + $keyName + ')')
     
     if (-not (Test-Path $keyPath)) { 
@@ -1058,35 +1072,14 @@ foreach ($keyPath in @($ansibleKeyPath, $macKeyPath)) {
     }
 }
 if (-not $keySourceUsed) {
-    Write-Host '  [INFO] No SSH public key found for Windows authorized_keys.' -ForegroundColor Yellow
-    Write-Verbose ('  [DEBUG] Key check summary:')
-    Write-Verbose ('    - Checked: ' + $ansibleKeyPath + ' (exists: ' + (Test-Path $ansibleKeyPath) + ')')
-    Write-Verbose ('    - Checked: ' + $macKeyPath + ' (exists: ' + (Test-Path $macKeyPath) + ')')
-    Write-Verbose ('    - Target: ' + $winAuthorizedKeys + ' (exists: ' + (Test-Path $winAuthorizedKeys) + ')')
-    if (Test-Path $ansibleKeyPath) {
-        $ansibleKeyInfo = Get-Item $ansibleKeyPath -ErrorAction SilentlyContinue
-        if ($ansibleKeyInfo) {
-            Write-Verbose ('    - ansible_ssh.pub file size: ' + $ansibleKeyInfo.Length + ' bytes')
-            Write-Verbose ('    - ansible_ssh.pub last modified: ' + $ansibleKeyInfo.LastWriteTime)
-        }
-        $testContent = Get-Content $ansibleKeyPath -Raw -ErrorAction SilentlyContinue
-        if ($testContent) {
-            Write-Verbose ('    - ansible_ssh.pub content preview: ' + ($testContent.Substring(0, [Math]::Min(80, $testContent.Length)).Trim()))
-            Write-Verbose ('    - ansible_ssh.pub content length: ' + $testContent.Length + ' characters')
-        } else {
-            Write-Verbose ('    - ansible_ssh.pub appears to be empty or unreadable')
-        }
-    }
-    if (Test-Path $macKeyPath) {
-        $macKeyInfo = Get-Item $macKeyPath -ErrorAction SilentlyContinue
-        if ($macKeyInfo) {
-            Write-Verbose ('    - mac_ssh_key.pub file size: ' + $macKeyInfo.Length + ' bytes')
-        }
-    }
+    Write-Host '  [INFO] No SSH public key found for Windows authorized_keys (bootstrap/mac_ssh_key.pub not present).' -ForegroundColor Yellow
+    Write-Verbose ('  [DEBUG] Key check: ' + $macKeyPath + ' (exists: ' + (Test-Path $macKeyPath) + '), target: ' + $winAuthorizedKeys)
     Write-Host '  To fix (pick one):' -ForegroundColor Cyan
-    Write-Host '    1) From Mac: run  ./bin/fz bootstrap --limit server-225-win   (deploys .mgmt/ansible_ssh.pub to this host, then re-run this script)' -ForegroundColor White
-    Write-Host '    2) Or: copy your Mac public key into repo as  bootstrap/mac_ssh_key.pub  (e.g.  cat ~/.ssh/id_ed25519.pub on Mac), sync repo, then re-run this script' -ForegroundColor White
+    Write-Host '    1) From Mac: run  ./bin/fz bootstrap --limit server-225-win   (deploys ~/.ssh/id_ed25519_ansible.pub to this host)' -ForegroundColor White
+    Write-Host '    2) Or: copy your Mac public key into repo as  bootstrap/mac_ssh_key.pub, sync repo, then re-run this script' -ForegroundColor White
 }
+
+} # end if ($InstallOpenSSH)
 
 Write-Host ''
 

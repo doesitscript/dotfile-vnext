@@ -12,8 +12,7 @@ This doc describes the temporary playbook `playbooks/setup_openssh_via_winrm.yam
 
 | Check | Value |
 |-------|--------|
-| `.mgmt/ansible_ssh.pub` exists | Yes |
-| `vault/ansible_ssh.vault.yml` exists | Yes |
+| Execution node `~/.ssh/id_ed25519_ansible.pub` exists | Yes |
 | `vault/openssh_host_keys.vault.yml` exists | Yes |
 | `bootstrap/openssh_host_keys/` key files | `ssh_host_ed25519_key`, `ssh_host_ed25519_key.pub`, `ssh_host_rsa_key`, `ssh_host_rsa_key.pub` |
 
@@ -54,7 +53,7 @@ So on server-225-win: OpenSSH Server is installed, the firewall allows port 22, 
 6. **DefaultShell:** Set `HKLM:\SOFTWARE\OpenSSH` DefaultShell to `C:\Windows\System32\wsl.exe` and DefaultShellCommandOption to `-d {{ wsl_distro }} -e /bin/bash -l` so SSH sessions use WSL bash.
 7. **sshd_config:** Comment out `Match Group administrators` and `AuthorizedKeysFile __PROGRAMDATA__/ssh/administrators_authorized_keys` so `%USERPROFILE%\.ssh\authorized_keys` is used for all users; restart sshd if changed.
 8. **User .ssh:** Ensure `%USERPROFILE%\.ssh` exists with mode 0700.
-9. **authorized_keys:** If `.mgmt/ansible_ssh.pub` exists on the controller, ensure its line is in `%USERPROFILE%\.ssh\authorized_keys`.
+9. **authorized_keys:** Read public key from execution node `~/.ssh/id_ed25519_ansible.pub` (delegate to execution_nodes) and ensure its line is in `%USERPROFILE%\.ssh\authorized_keys`.
 
 When connecting to this host via SSH, set `ansible_shell_type: bash` (DefaultShell is WSL bash).
 

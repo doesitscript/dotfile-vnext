@@ -1,26 +1,26 @@
 ---
 # Extended fact gather: current state of OpenSSH/WinRM setup (controller + Windows).
-# Run from Mac: source .envrc && .venv/bin/ansible-playbook playbooks/current_state_openssh_winrm.yaml -i inventory/inventory.yaml --limit localhost,server-225-win
+# Run from Mac: source .envrc && .venv/bin/ansible-playbook playbooks/current_state_openssh_winrm.yaml -i inventory/inventory.yaml --limit mac-dev,server-225-win
 # Writes: facts/current_state_openssh_winrm.json
 # Used to ground docs/setup_openssh_via_winrm_summary.md in reality.
 
-- name: Gather controller (Mac) state for OpenSSH/ansible keys
-  hosts: localhost
-  gather_facts: false
+- name: Gather execution node and controller state for OpenSSH/ansible keys
+  hosts: execution_nodes
+  gather_facts: true
   vars:
     repo_root: "{{ playbook_dir }}/.."
     controller_report: {}
   tasks:
-    - name: Stat controller files
+    - name: Stat execution node public key (canonical location)
       ansible.builtin.stat:
-        path: "{{ item }}"
-      register: controller_stats
-      loop:
-        - "{{ repo_root }}/.mgmt/ansible_ssh.pub"
-        - "{{ repo_root }}/vault/ansible_ssh.vault.yml"
-        - "{{ repo_root }}/vault/openssh_host_keys.vault.yml"
-      loop_control:
-        label: "{{ item | basename }}"
+        path: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519_ansible.pub"
+      register: execution_node_pubkey_stat
+
+    - name: Stat openssh host keys vault (controller repo)
+      ansible.builtin.stat:
+        path: "{{ repo_root }}/vault/openssh_host_keys.vault.yml"
+      register: openssh_vault_stat
+      run_once: true
 
     - name: List bootstrap openssh host keys directory
       ansible.builtin.find:
@@ -28,14 +28,15 @@
         patterns: "ssh_host_*"
       register: bootstrap_keys
       failed_when: false
+      run_once: true
 
-    - name: Set controller state fact
+    - name: Set controller state fact (for report)
       ansible.builtin.set_fact:
         controller_state:
-          ansible_ssh_pub_exists: "{{ (controller_stats.results | selectattr('item', 'equalto', repo_root + '/.mgmt/ansible_ssh.pub') | map(attribute='stat.exists') | first) | default(false) }}"
-          ansible_ssh_vault_exists: "{{ (controller_stats.results | selectattr('item', 'equalto', repo_root + '/vault/ansible_ssh.vault.yml') | map(attribute='stat.exists') | first) | default(false) }}"
-          openssh_host_keys_vault_exists: "{{ (controller_stats.results | selectattr('item', 'equalto', repo_root + '/vault/openssh_host_keys.vault.yml') | map(attribute='stat.exists') | first) | default(false) }}"
+          ansible_ssh_pub_exists: "{{ execution_node_pubkey_stat.stat.exists | default(false) }}"
+          openssh_host_keys_vault_exists: "{{ openssh_vault_stat.stat.exists | default(false) }}"
           bootstrap_openssh_key_files: "{{ bootstrap_keys.files | map(attribute='path') | map('basename') | list | default([]) }}"
+      run_once: true
 
 - name: Gather Windows (server-225-win) OpenSSH/WinRM state via WinRM
   hosts: windows_hosts
@@ -112,10 +113,9 @@
         current_state_report:
           gathered_at: "{{ ansible_date_time.iso8601 }}"
           controller:
-            ansible_ssh_pub_exists: "{{ hostvars['localhost'].controller_state.ansible_ssh_pub_exists | default(false) }}"
-            ansible_ssh_vault_exists: "{{ hostvars['localhost'].controller_state.ansible_ssh_vault_exists | default(false) }}"
-            openssh_host_keys_vault_exists: "{{ hostvars['localhost'].controller_state.openssh_host_keys_vault_exists | default(false) }}"
-            bootstrap_openssh_key_files: "{{ hostvars['localhost'].controller_state.bootstrap_openssh_key_files | default([]) }}"
+            ansible_ssh_pub_exists: "{{ hostvars[groups['execution_nodes'][0]].controller_state.ansible_ssh_pub_exists | default(false) }}"
+            openssh_host_keys_vault_exists: "{{ hostvars[groups['execution_nodes'][0]].controller_state.openssh_host_keys_vault_exists | default(false) }}"
+            bootstrap_openssh_key_files: "{{ hostvars[groups['execution_nodes'][0]].controller_state.bootstrap_openssh_key_files | default([]) }}"
           windows_hosts: {}
       run_once: true
 
