@@ -783,53 +783,53 @@ if ($openSshCapability -and $openSshCapability.State -ne 'Installed') {
     Write-Skip "OpenSSH Server already installed"
 }
 
-# Firewall for OpenSSH (port from win_ssh_port in host_vars). Do not set Port in sshd_config global config.
-$fwRule = Get-NetFirewallRule -Name 'sshd' -ErrorAction SilentlyContinue
+# Firewall for OpenSSH (port from win_ssh_port in host_vars). Align with Ansible guide: sshd-Server-In-TCP.
+$fwRule = Get-NetFirewallRule -Name 'sshd-Server-In-TCP' -ErrorAction SilentlyContinue
 $ruleNeedsUpdate = $false
 if ($fwRule) {
     $portFilter = $fwRule | Get-NetFirewallPortFilter -ErrorAction SilentlyContinue
     $currentPorts = if ($portFilter -and $portFilter.LocalPort) { @($portFilter.LocalPort) } else { @() }
     if ($currentPorts -notcontains $winSshPort) {
         $ruleNeedsUpdate = $true
-        Write-Verbose "Firewall rule 'sshd' has LocalPort $($currentPorts -join ','); expected $winSshPort (win_ssh_port). Will update."
+        Write-Verbose "Firewall rule 'sshd-Server-In-TCP' has LocalPort $($currentPorts -join ','); expected $winSshPort (win_ssh_port). Will update."
     }
 }
 if (-not $fwRule -or $ruleNeedsUpdate) {
     if ($fwRule -and $ruleNeedsUpdate) {
-        Remove-NetFirewallRule -Name 'sshd' -ErrorAction SilentlyContinue
-        Write-Verbose "Removed existing 'sshd' rule to recreate with port $winSshPort"
+        Remove-NetFirewallRule -Name 'sshd-Server-In-TCP' -ErrorAction SilentlyContinue
+        Write-Verbose "Removed existing 'sshd-Server-In-TCP' rule to recreate with port $winSshPort"
     }
     if (-not $fwRule -or $ruleNeedsUpdate) {
-        New-NetFirewallRule -Name sshd `
-            -DisplayName "OpenSSH Server (Port $winSshPort)" `
+        New-NetFirewallRule -Name sshd-Server-In-TCP `
+            -DisplayName "Inbound rule for OpenSSH Server (sshd) on TCP port $winSshPort" `
             -Enabled True `
             -Direction Inbound `
             -Protocol TCP `
             -Action Allow `
             -LocalPort $winSshPort | Out-Null
-        Write-Ok "Firewall rule 'sshd' (port $winSshPort) created"
+        Write-Ok "Firewall rule 'sshd-Server-In-TCP' (port $winSshPort) created"
     }
 }
 # Verify: do not trust without checking
-$verifyRule = Get-NetFirewallRule -Name 'sshd' -ErrorAction SilentlyContinue
+$verifyRule = Get-NetFirewallRule -Name 'sshd-Server-In-TCP' -ErrorAction SilentlyContinue
 $verifyPorts = if ($verifyRule) { @(($verifyRule | Get-NetFirewallPortFilter -ErrorAction SilentlyContinue).LocalPort) } else { @() }
 if ($verifyPorts -notcontains $winSshPort) {
-    Write-Host "  [ERROR] Firewall verification failed: rule 'sshd' LocalPort is $($verifyPorts -join ','); expected $winSshPort (win_ssh_port from host_vars)." -ForegroundColor Red
+    Write-Host "  [ERROR] Firewall verification failed: rule 'sshd-Server-In-TCP' LocalPort is $($verifyPorts -join ','); expected $winSshPort (win_ssh_port from host_vars)." -ForegroundColor Red
 } else {
-    Write-Verbose "Firewall verified: sshd rule LocalPort=$($verifyPorts -join ',')"
+    Write-Verbose "Firewall verified: sshd-Server-In-TCP rule LocalPort=$($verifyPorts -join ',')"
 }
 
-# Default shell = WSL bash so SSH to Windows drops into our Ubuntu distro
-$defaultWslDistro = if ($wslVars.wsl_distro) { $wslVars.wsl_distro } else { 'Ubuntu' }
+# Default shell = WSL bash so SSH to Windows drops into our Ubuntu distro (align with group_vars wsl_distro)
+$defaultWslDistro = if ($wslVars.wsl_distro) { $wslVars.wsl_distro } else { 'Ubuntu-24.04' }
 $defaultWslDistro = Strip-YamlControlChars $defaultWslDistro
-if (-not $defaultWslDistro) { $defaultWslDistro = 'Ubuntu' }
+if (-not $defaultWslDistro) { $defaultWslDistro = 'Ubuntu-24.04' }
 
 if (-not (Test-Path 'HKLM:\SOFTWARE\OpenSSH')) {
     New-Item -Path 'HKLM:\SOFTWARE\OpenSSH' -Force | Out-Null
 }
 New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell -Value 'C:\Windows\System32\wsl.exe' -PropertyType String -Force | Out-Null
-New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShellCommandOption -Value "-d $defaultWslDistro" -PropertyType String -Force | Out-Null
-Write-Ok "Default shell set to WSL ($defaultWslDistro)"
+New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShellCommandOption -Value "-d $defaultWslDistro -e /bin/bash -l" -PropertyType String -Force | Out-Null
+Write-Ok "Default shell set to WSL bash ($defaultWslDistro)"
 
 # Ensure host keys exist: idempotent. Use keys from the project when present (Mac bootstrap --SSHGenForce or fz bootstrap-openssh-host-keys).
 # Check repo at bootstrap/openssh_host_keys/ first, then .mgmt/ (ssh_host_ed25519_key, ssh_host_rsa_key + .pub).

@@ -22,7 +22,7 @@ This doc describes the temporary playbook `playbooks/setup_openssh_via_winrm.yam
 | Check | Value |
 |-------|--------|
 | OpenSSH Server capability | Installed |
-| Firewall rule `sshd` | Enabled=True, LocalPort=22 |
+| Firewall rule `sshd-Server-In-TCP` | Enabled=True, LocalPort=22 |
 | `C:\ProgramData\ssh\` host keys | `ssh_host_ecdsa_key`, `ssh_host_ed25519_key`, `ssh_host_rsa_key` |
 | `%USERPROFILE%\.ssh\authorized_keys` | Exists=True, Lines=1 |
 | Inventory `ansible_host` | DESKTOP-VLLM |
@@ -46,13 +46,17 @@ So on server-225-win: OpenSSH Server is installed, the firewall allows port 22, 
 
 ### Tasks
 
-1. **Install OpenSSH Server:** Run `Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0` only if the capability is not already Installed.
-2. **Firewall for SSH:** Ensure rule `sshd` allows TCP on `win_ssh_port` (default 22).
-3. **Verify firewall port:** Fail if rule `sshd` LocalPort does not match `win_ssh_port`.
-4. **Host keys:** If `vault/openssh_host_keys.vault.yml` exists on the controller, load it and deploy its contents to `C:\ProgramData\ssh\`. If the vault does not exist, run `ssh-keygen -A` in `C:\ProgramData\ssh` on the Windows host (fallback).
+1. **Install OpenSSH Server:** OpenSSH.Server is a Windows *Capability* (not an optional feature). We use `win_shell` with `Add-WindowsCapability -Online`; `ansible.windows.win_optional_feature` is for DISM optional features only. Per [Windows SSH guide](https://docs.ansible.com/projects/ansible/latest/os_guide/windows_ssh.html): `Get-WindowsCapability -Name OpenSSH.Server* -Online | Add-WindowsCapability -Online`. Service `sshd` is managed with `ansible.windows.win_service` (start_mode=auto, state=started).
+2. **Firewall for SSH:** Ensure rule `sshd-Server-In-TCP` (display name "Inbound rule for OpenSSH Server (sshd) on TCP port …") allows TCP on `win_ssh_port` (default 22).
+3. **Verify firewall port:** Fail if rule `sshd-Server-In-TCP` LocalPort does not match `win_ssh_port`.
+4. **Host keys:** If `vault/openssh_host_keys.vault.yml` exists on the controller, deploy to `C:\ProgramData\ssh\`. Else run `ssh-keygen -A` in `C:\ProgramData\ssh` (fallback).
 5. **sshd service:** Set service `sshd` to start_mode=auto and state=started.
-6. **User .ssh:** Ensure `%USERPROFILE%\.ssh` exists with mode 0700.
-7. **authorized_keys:** If `.mgmt/ansible_ssh.pub` exists on the controller, ensure its single-line content is present in `%USERPROFILE%\.ssh\authorized_keys` (create file if missing).
+6. **DefaultShell:** Set `HKLM:\SOFTWARE\OpenSSH` DefaultShell to `C:\Windows\System32\wsl.exe` and DefaultShellCommandOption to `-d {{ wsl_distro }} -e /bin/bash -l` so SSH sessions use WSL bash.
+7. **sshd_config:** Comment out `Match Group administrators` and `AuthorizedKeysFile __PROGRAMDATA__/ssh/administrators_authorized_keys` so `%USERPROFILE%\.ssh\authorized_keys` is used for all users; restart sshd if changed.
+8. **User .ssh:** Ensure `%USERPROFILE%\.ssh` exists with mode 0700.
+9. **authorized_keys:** If `.mgmt/ansible_ssh.pub` exists on the controller, ensure its line is in `%USERPROFILE%\.ssh\authorized_keys`.
+
+When connecting to this host via SSH, set `ansible_shell_type: bash` (DefaultShell is WSL bash).
 
 ### Modules used (FQCN)
 
@@ -70,6 +74,14 @@ From the Mac (repo root), with env loaded (e.g. `source .envrc` or direnv):
 
 - Use `--ask-vault-pass` or `.vault_pass` if the playbook needs to read `vault/openssh_host_keys.vault.yml`.
 - For multiple Windows hosts: `--limit server-225-win,network-server-win` or run once per host.
+
+### Windows capabilities (lookup / install / remove)
+
+- **List capabilities:** `ansible -m win_shell -a "Get-WindowsCapability -Online" -i inventory/inventory.yaml windows_hosts`
+- **Install by name:** `ansible -m win_shell -a "Add-WindowsCapability -Online -Name {Name}" -i inventory/inventory.yaml windows_hosts`
+- **Remove by name:** `ansible -m win_shell -a "Remove-WindowsCapability -Online -Name {Name}" -i inventory/inventory.yaml windows_hosts`
+
+Use `ansible.windows.win_optional_feature` for *optional features* (e.g. `Microsoft-Windows-Subsystem-Linux`, `.NET 3.5`); use `win_shell` + `Add-WindowsCapability` for *capabilities* like OpenSSH.Server.
 
 ### Merge note
 

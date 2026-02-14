@@ -1,5 +1,7 @@
 # OpenSSH host keys for Windows (server-225)
 
+The **Mac is the source of truth and controller** for OpenSSH on Windows: host keys and user keys (`.mgmt/ansible_ssh.pub`) are generated or hosted on the Mac and deployed via Ansible. No manual copy.
+
 OpenSSH server host keys are **generated on the Mac** (control node), stored in **Ansible vault**, and **deployed to Windows** by the bootstrap playbook. Login keys in `authorized_keys` on Windows also come from the Mac (e.g. `.mgmt/ansible_ssh.pub` or `bootstrap/mac_ssh_key.pub`). No manual copy.
 
 ## Flow (fully automated)
