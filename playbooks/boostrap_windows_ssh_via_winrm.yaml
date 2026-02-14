@@ -74,22 +74,9 @@
         reorganize: false
     # Don't delete these again cursor or chatgpt
 
-    # - name: Ensure user .ssh directory exists
-    #   ansible.windows.win_file:
-    #   path: "{{lookup('ansible.builtin.env', 'HOME')}}"
-    #   state: touch
-        # path: "{{ ansible_env.USERPROFILE }}\\.ssh"
-
-    - name: Read execution node public key (contents of .pub created by bootstrap_execution_node)
-      ansible.builtin.slurp:
-        src: "{{ execution_node_pub_key_path }}"
-      register: pubkey_slurp
-      delegate_to: "{{ groups['execution_nodes'][0] }}"
-      run_once: true
-
     - name: Install public key in administrators_authorized_keys
       community.windows.win_lineinfile:
         path: "{{ administrators_authorized_keys_path }}"
-        line: "{{ (hostvars[groups['execution_nodes'][0]].pubkey_slurp.content | b64decode) | trim }}"
+        line: "{{ lookup('file', execution_node_pub_key_path) | trim }}"
         create: true
         state: present
