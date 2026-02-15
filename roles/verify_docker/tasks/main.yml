@@ -1,0 +1,41 @@
+---
+# ============================================================
+# Role: verify_docker
+# Description:
+#   Validates that Docker Engine and Docker Compose v2
+#   are installed and functional on the target host.
+#   Non-destructive. No changes.
+# ============================================================
+#
+# Minimal playbook to run this role: playbooks/verify_docker.yaml
+#
+# Run it:
+#   ansible-playbook playbooks/verify_docker.yaml -i inventory/inventory.yaml
+#
+# If your WSL host is in another group (e.g. wsl_hosts), adjust the
+# playbook hosts: accordingly.
+#
+# Optional (run only this role by tag):
+#   ansible-playbook playbooks/verify_docker.yaml -i inventory/inventory.yaml --tags verify
+# ============================================================
+
+- name: Validate docker CLI exists
+  ansible.builtin.command: docker version --format '{{ "{{.Server.Version}}" }}'
+  register: docker_version_check
+  changed_when: false
+  failed_when: docker_version_check.rc != 0
+  tags: [verify]
+
+- name: Validate docker compose plugin exists
+  ansible.builtin.command: docker compose version
+  register: docker_compose_check
+  changed_when: false
+  failed_when: docker_compose_check.rc != 0
+  tags: [verify]
+
+- name: Show docker validation results
+  ansible.builtin.debug:
+    msg:
+      - "Docker version: {{ docker_version_check.stdout | default('N/A') }}"
+      - "Compose version: {{ docker_compose_check.stdout | default('N/A') }}"
+  tags: [verify]

@@ -1,0 +1,20 @@
+---
+# Verify Docker and that Traefik container is running.
+# Tags: verify, docker
+
+- name: Gather docker info
+  community.docker.docker_host_info:
+  register: docker_info
+  changed_when: false
+  tags:
+    - verify
+    - docker
+
+- name: Ensure traefik is running
+  ansible.builtin.assert:
+    that:
+      - "'traefik' in docker_info.containers | map(attribute='Names') | join(' ')"
+    fail_msg: "Traefik container not running"
+  tags:
+    - verify
+    - docker

@@ -1,0 +1,15 @@
+---
+# Ensure Docker is installed and running (Linux).
+# Prerequisite for docker_stack; idempotent.
+
+- name: Ensure Docker package is installed
+  ansible.builtin.package:
+    name: "{{ docker_package_name | default('docker.io') }}"
+    state: present
+  when: docker_engine_install_package | default(true) | bool
+
+- name: Ensure Docker service is started
+  ansible.builtin.service:
+    name: "{{ docker_service_name | default('docker') }}"
+    state: started
+    enabled: true
