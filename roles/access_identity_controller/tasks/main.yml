@@ -13,8 +13,13 @@
     type: ed25519
     state: present
     force: "{{ regenerate_controller_ssh_key | default(false) }}"
+  register: controller_ssh_keypair_result
+  delegate_to: "{{ groups['execution_nodes'][0] }}"
+
+- name: Read controller public key file content
+  ansible.builtin.slurp:
+    src: "{{ controller_ssh_public_key_path }}"
   register: controller_pubkey_slurp
-  # delegate_to: localhost
   delegate_to: "{{ groups['execution_nodes'][0] }}"
 
 # controller facts = canonical interface for the rest of the repo
