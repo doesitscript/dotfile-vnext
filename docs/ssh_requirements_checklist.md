@@ -48,7 +48,7 @@ Ansible runs on the Mac and SSHs to server-225-wsl using the private key and hos
 | Requirement | Where it's set up | File / location |
 |-------------|-------------------|------------------|
 | Private key on Mac | `~/.ssh/id_ed25519_ansible` | `playbooks/bootstrap_mac.yaml` – installs from vault or from just-generated key (Mac-first) |
-| Correct host_vars for server-225-wsl | Inventory | `inventory/host_vars/server-225-wsl.yaml` – written by `bin/bootstrap-local.ps1` (and overwritten by `playbooks/bootstrap_local.yml` template). Must include: `ansible_connection: ssh`, `ansible_host`, `ansible_user`, `ansible_port`, `ansible_ssh_private_key_file: "~/.ssh/id_ed25519_ansible"`, `ansible_python_interpreter: /usr/bin/python3`. |
+| Correct host_vars for server-225-wsl | Inventory | `inventory/host_vars/server-225-wsl.yaml` (and/or `inventory/group_vars/wsl_hosts.yaml`). Must include: `ansible_connection: ssh`, `ansible_host`, `ansible_user`, `ansible_port`, `ansible_ssh_private_key_file: "~/.ssh/id_ed25519_ansible"`, `ansible_python_interpreter: /usr/bin/python3`. Written by `bin/bootstrap-local.ps1`; overwritten by `playbooks/bootstrap_local.yml` template. |
 
 `ansible_ssh_private_key_file` and `ansible_python_interpreter` are written by:
 - **PowerShell:** `bin/bootstrap-local.ps1` when it writes WSL host_vars (so they exist even if you run with `-RunAll:$false`).
@@ -59,3 +59,24 @@ Ansible runs on the Mac and SSHs to server-225-wsl using the private key and hos
 ## Verification
 
 Use Ansible (playbooks and inventory) and the steps in this checklist to verify SSH setup. No separate verification script; playbooks and host_vars are the source of truth.
+
+### Verify server-225-wsl host_vars in debug output
+
+Run:
+
+```bash
+ansible server-225-wsl -i inventory/inventory.yaml -m ping -vvv
+```
+
+In the debug output, the line starting with `<DESKTOP-VLLM> SSH: EXEC ssh ...` should show each required setting as follows:
+
+| Required host_var | What to look for in the SSH EXEC line |
+|-------------------|--------------------------------------|
+| `ansible_connection: ssh` | Line says `ESTABLISH SSH CONNECTION` (not WinRM). |
+| `ansible_host` | Hostname in the `ssh` command (e.g. `DESKTOP-VLLM`). |
+| `ansible_user` | `-o 'User="josh"'` (or your user). |
+| `ansible_port` | `-o Port=22`. |
+| `ansible_ssh_private_key_file` | `-o 'IdentityFile="/Users/joshc/.ssh/id_ed25519_ansible"'` (path may differ). |
+| `ansible_python_interpreter` | Remote command ends with `'/usr/bin/python3 && sleep 0'`. |
+
+If any of these are missing or wrong, update `inventory/host_vars/server-225-wsl.yaml` or `inventory/group_vars/wsl_hosts.yaml` (group_vars apply to all WSL hosts).

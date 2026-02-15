@@ -39,6 +39,26 @@
     type: string
     state: present
 
+- name: set the default shell to Bash
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\OpenSSH
+    name: DefaultShell
+    data: C:\Windows\System32\wsl.exe # bash.exe
+    type: string
+    state: present
+    become: yes
+    # become_user: josh
+
+- name: set the default shell to Bash
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\OpenSSH
+    name: DefaultShellCommandOption
+    data: "-d Ubuntu-24.04"
+    type: string
+    state: present
+    become: yes
+    # become_user: josh
+
 - name: reset SSH connection after shell change
   ansible.builtin.meta: reset_connection
 

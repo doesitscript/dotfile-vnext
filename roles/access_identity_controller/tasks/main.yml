@@ -6,13 +6,16 @@
     path: "{{ controller_ssh_dir }}"
     state: directory
     mode: "0700"
-z
+
 - name: Ensure controller SSH keypair exists
   community.crypto.openssh_keypair:
     path: "{{ controller_ssh_private_key_path }}"
     type: ed25519
     state: present
     force: "{{ regenerate_controller_ssh_key | default(false) }}"
+  register: controller_pubkey_slurp
+  # delegate_to: localhost
+  delegate_to: "{{ groups['execution_nodes'][0] }}"
 
 # controller facts = canonical interface for the rest of the repo
 - name: Publish controller public key path (host fact)
@@ -27,7 +30,7 @@ z
 
 - name: Publish controller public key content (host fact)
   ansible.builtin.set_fact:
-    execution_node_pub_key_content: "{{ lookup('file', controller_ssh_public_key_path) | trim }}"
+    execution_node_pub_key_content: "{{ controller_pubkey_slurp.content | b64decode | trim }}"
     cacheable: true
 
 # optional: known_hosts, OFF by default
@@ -49,3 +52,8 @@ z
         key: "{{ lookup('pipe', 'ssh-keyscan -p ' ~ (item.port | default(22)) ~ ' -H ' ~ item.host) }}"
         state: present
       loop: "{{ controller_known_hosts_targets }}"
+
+
+- name: Debug controller SSH keypair result
+  ansible.builtin.debug:
+    var: controller_ssh_keypair_result
