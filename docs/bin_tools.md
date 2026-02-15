@@ -26,6 +26,14 @@ export no_proxy=*
 
 No other manual setup required!
 
+**Optional — shell completion for Ansible:** To get tab-completion for `ansible`, `ansible-playbook`, `ansible-vault`, and `ansible-galaxy` in your current shell, use the project activate script (instead of sourcing `.venv` only). From repo root:
+
+```bash
+source activate
+```
+
+This sources `.venv/bin/activate` and enables argcomplete for the session. No global completion setup is required.
+
 ## Usage
 
 ```bash

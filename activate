@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Activate project .venv and enable argcomplete for ansible commands in this shell.
+# Usage (from repo root): source activate
+# Or: source /path/to/dotfile-vnext/activate
+
+_activate_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" && pwd)"
+_venv_activate="${_activate_script_dir}/.venv/bin/activate"
+
+if [[ ! -f "${_venv_activate}" ]]; then
+  echo "activate: .venv not found at ${_activate_script_dir}/.venv — run ./bin/fz bootstrap (or create .venv) first." >&2
+  return 1 2>/dev/null || exit 1
+fi
+
+# shellcheck source=/dev/null
+source "${_venv_activate}"
+
+# Enable argcomplete for Ansible CLI in this session (no global install).
+if command -v register-python-argcomplete &>/dev/null; then
+  eval "$(register-python-argcomplete -s bash ansible ansible-playbook ansible-vault ansible-galaxy)"
+fi
+
+unset _activate_script_dir _venv_activate
