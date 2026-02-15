@@ -1,18 +1,10 @@
 ---
-# ============================================================
-# Role: docker_engine
-# Implements: compose/docker/docker-engine-resources.md (from stage-from-chat.md)
-# Resources: prerequisite apt packages, /etc/apt/keyrings, Docker GPG key,
-#   Docker CE apt repo, docker-ce + plugins, docker group, user in group,
-#   systemd docker enabled + started. Official Docker CE; no snap.
-# ============================================================
-#
-# Playbook: playbooks/docker_engine.yaml  (hosts: wsl_hosts)
-# Run: ansible-playbook playbooks/docker_engine.yaml -i inventory/inventory.yaml
-# After run: log out of WSL and reconnect, then docker version / docker compose version
-# ============================================================
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+  become: true
 
-- name: Install prerequisite packages
+- name: Install required packages
   ansible.builtin.apt:
     name:
       - ca-certificates
@@ -20,42 +12,12 @@
       - gnupg
       - lsb-release
     state: present
-    update_cache: yes
   become: true
 
-- name: Create Docker keyring directory
-  ansible.builtin.file:
-    path: /etc/apt/keyrings
-    state: directory
-    mode: '0755'
-  become: true
-
-- name: Add Docker GPG key
-  ansible.builtin.get_url:
-    url: https://download.docker.com/linux/ubuntu/gpg
-    dest: /etc/apt/keyrings/docker.asc
-    mode: '0644'
-  become: true
-
-- name: Add Docker apt repository
-  ansible.builtin.apt_repository:
-    repo: >
-      deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc]
-      https://download.docker.com/linux/ubuntu
-      {{ ansible_distribution_release }} stable
-    state: present
-  become: true
-
-- name: Install Docker Engine and Compose plugin
+- name: Install docker.io
   ansible.builtin.apt:
-    name:
-      - docker-ce
-      - docker-ce-cli
-      - containerd.io
-      - docker-buildx-plugin
-      - docker-compose-plugin
+    name: docker.io
     state: present
-    update_cache: yes
   become: true
 
 - name: Ensure docker group exists

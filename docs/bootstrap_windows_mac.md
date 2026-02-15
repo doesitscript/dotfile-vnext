@@ -4,7 +4,7 @@ The **Mac** is the control node: you run Ansible from the Mac to manage Windows 
 
 ## Overview
 
-- **WinRM HTTP (5985)** – Ansible on the Mac connects to Windows over WinRM HTTP with NTLM. Used for `fz bootstrap --limit server-225-win`, `fz bootstrap-winrm`, and all deploy playbooks.
+- **WinRM HTTP (5985)** – Ansible on the Mac connects to Windows over WinRM HTTP with NTLM. Used for `fz bootstrap --limit server-225-win`, `fz bootstrap-winrm`, and all deploy playbooks. If you see "Module result deserialization failed" or "ConvertFrom-Json ... System.Object[]", see [WinRM troubleshooting](winrm_troubleshooting.md).
 - **OpenSSH Server (port 22)** – So you can `ssh user@<host>` to the Windows box (default shell is WSL bash). Same `authorized_keys` pattern as WSL; the Mac’s key is deployed so the Mac can remote in.
 
 ## One-time setup on the Windows node (run as Administrator)

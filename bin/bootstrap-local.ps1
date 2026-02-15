@@ -837,17 +837,35 @@ if ($verifyPorts -notcontains $winSshPort) {
     Write-Verbose "Firewall verified: sshd-Server-In-TCP rule LocalPort=$($verifyPorts -join ',')"
 }
 
-# Default shell = WSL bash so SSH to Windows drops into our Ubuntu distro (align with group_vars wsl_distro)
+# Default shell = WSL bash so SSH to Windows drops into our Ubuntu distro (align with group_vars wsl_distro).
+# Win32-OpenSSH runs: DefaultShell DefaultShellCommandOption command. So we must use a wrapper that accepts -c
+# and runs wsl -d <distro> -e /bin/bash -l -c "<command>". Using -d ... -e ... as DefaultShellCommandOption
+# causes that entire string to be passed as the "command", so bash sees "-d Ubuntu-24.04" and fails.
 $defaultWslDistro = if ($wslVars.wsl_distro) { $wslVars.wsl_distro } else { 'Ubuntu-24.04' }
 $defaultWslDistro = Strip-YamlControlChars $defaultWslDistro
 if (-not $defaultWslDistro) { $defaultWslDistro = 'Ubuntu-24.04' }
 
+$sshDataDirForShell = 'C:\ProgramData\ssh'
+if (-not (Test-Path $sshDataDirForShell)) {
+    New-Item -ItemType Directory -Path $sshDataDirForShell -Force | Out-Null
+}
+$wslWrapperPath = Join-Path $sshDataDirForShell 'wsl-bash-wrapper.cmd'
+$wrapperContent = @"
+@echo off
+setlocal
+set WSL_DISTRO=$defaultWslDistro
+rem Written by bootstrap-local.ps1 so OpenSSH runs: wrapper -c "command" -> wsl -d distro -e bash -l -c "command"
+wsl -d %WSL_DISTRO% -e /bin/bash -l -c "%~2"
+"@
+Set-Content -Path $wslWrapperPath -Value $wrapperContent -Encoding ASCII -Force
+Write-Verbose "WSL wrapper written: $wslWrapperPath (distro=$defaultWslDistro)"
+
 if (-not (Test-Path 'HKLM:\SOFTWARE\OpenSSH')) {
     New-Item -Path 'HKLM:\SOFTWARE\OpenSSH' -Force | Out-Null
 }
-New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell -Value 'C:\Windows\System32\wsl.exe' -PropertyType String -Force | Out-Null
-New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShellCommandOption -Value "-d $defaultWslDistro -e /bin/bash -l" -PropertyType String -Force | Out-Null
-Write-Ok "Default shell set to WSL bash ($defaultWslDistro)"
+New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell -Value $wslWrapperPath -PropertyType String -Force | Out-Null
+New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShellCommandOption -Value '-c' -PropertyType String -Force | Out-Null
+Write-Ok "Default shell set to WSL bash via wrapper ($defaultWslDistro)"
 
 # Ensure host keys exist: idempotent. Use keys from the project when present (Mac bootstrap --SSHGenForce or fz bootstrap-openssh-host-keys).
 # Check repo at bootstrap/openssh_host_keys/ for host keys (ssh_host_ed25519_key, ssh_host_rsa_key + .pub).

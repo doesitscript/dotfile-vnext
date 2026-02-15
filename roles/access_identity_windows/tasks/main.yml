@@ -31,6 +31,17 @@
     state: present
     enabled: true
 
+- name: set the default shell to Bash
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\OpenSSH
+    name: DefaultShell
+    data: bash.exe
+    type: string
+    state: present
+
+- name: reset SSH connection after shell change
+  ansible.builtin.meta: reset_connection
+
 # 4) CRITICAL INVARIANT BLOCK (DO NOT REMOVE OR "SIMPLIFY")
 - name: Ensure administrators_authorized_keys file exists
   ansible.windows.win_file:

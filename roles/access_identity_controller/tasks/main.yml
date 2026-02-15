@@ -1,16 +1,18 @@
+# regenerate_controller_ssh_key: true | false (default: false)
+# ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml  --limit server-225-win  -e regenerate_controller_ssh_key=true
 ---
 - name: Ensure ~/.ssh exists
   ansible.builtin.file:
     path: "{{ controller_ssh_dir }}"
     state: directory
     mode: "0700"
-
+z
 - name: Ensure controller SSH keypair exists
   community.crypto.openssh_keypair:
     path: "{{ controller_ssh_private_key_path }}"
     type: ed25519
     state: present
-    force: false
+    force: "{{ regenerate_controller_ssh_key | default(false) }}"
 
 # controller facts = canonical interface for the rest of the repo
 - name: Publish controller public key path (host fact)
