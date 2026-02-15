@@ -38,26 +38,25 @@
     data: bash.exe
     type: string
     state: present
-
-- name: set the default shell to Bash
-  ansible.windows.win_regedit:
-    path: HKLM:\SOFTWARE\OpenSSH
-    name: DefaultShell
-    data: C:\Windows\System32\wsl.exe # bash.exe
-    type: string
-    state: present
-    become: yes
+  # become: yes
     # become_user: josh
 
-- name: set the default shell to Bash
-  ansible.windows.win_regedit:
-    path: HKLM:\SOFTWARE\OpenSSH
-    name: DefaultShellCommandOption
-    data: "-d Ubuntu-24.04"
-    type: string
-    state: present
-    become: yes
+
+  # become: yes
     # become_user: josh
+    # may need to use runas 
+    # it is very picky if we take ownership, that's bad
+
+
+    # name: DefaultShellCommandOption
+#     # data: "-d Ubuntu-24.04"
+# - name: set the default shell to Bash
+#   ansible.windows.win_regedit:
+#     path: HKLM:\SOFTWARE\OpenSSH
+#     name: DefaultShell
+#     data: bash.exe
+#     type: string
+#     state: present
 
 - name: reset SSH connection after shell change
   ansible.builtin.meta: reset_connection
@@ -93,7 +92,8 @@
 - name: Install controller public key in administrators_authorized_keys
   community.windows.win_lineinfile:
     path: "{{ administrators_authorized_keys_path }}"
-    line: "{{ hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content }}"
+    line: "REPLACE_ME_AGAIN"
+    # line: "{{ hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content }}"
     create: true
     state: present
   register: install_pub_key_result

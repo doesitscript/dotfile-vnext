@@ -20,7 +20,7 @@ SSH to the Windows host (port 22) then into WSL via default shell.
 | sshd_config Port 22 | Admin config | `bin/bootstrap-local.ps1` – writes/updates `C:\ProgramData\ssh\sshd_config` |
 | Host keys present | `C:\ProgramData\ssh\` | `bin/bootstrap-local.ps1` – runs `ssh-keygen -A` in that dir if no `ssh_host_*_key` |
 | sshd service Automatic + started | Service `sshd` | `bin/bootstrap-local.ps1` – `Set-Service sshd -StartupType Automatic`, `Start-Service sshd` (with try/catch) |
-| Your key in Windows authorized_keys | User profile | From Mac: playbook reads `~/.ssh/id_ed25519_ansible.pub` and adds to `authorized_keys`. Or `bin/bootstrap-local.ps1` appends `bootstrap\mac_ssh_key.pub` if present. |
+| Your key in Windows authorized_keys | User profile | Standard key: `id_ed25519_ansible`. From Mac: playbook reads `~/.ssh/id_ed25519_ansible.pub` and adds to `authorized_keys`. Or `bin/bootstrap-local.ps1` appends `bootstrap/id_ed25519_ansible.pub` if present (deprecated: `bootstrap/mac_ssh_key.pub`). |
 
 Optional: DefaultShell = WSL so SSH drops into bash – same script sets `HKLM:\SOFTWARE\OpenSSH` DefaultShell and DefaultShellCommandOption.
 

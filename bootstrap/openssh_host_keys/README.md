@@ -2,7 +2,7 @@
 
 The **Mac is the source of truth and controller** for OpenSSH on Windows: host keys are generated on the Mac and deployed via Ansible. The Ansible SSH key lives only at `~/.ssh/id_ed25519_ansible` on the Mac; playbooks read it from the execution node at run time. No key files in the repo.
 
-OpenSSH server host keys are **generated on the Mac** (control node), stored in **Ansible vault**, and **deployed to Windows** by the bootstrap playbook. Login keys in `authorized_keys` on Windows come from the execution node’s `~/.ssh/id_ed25519_ansible.pub` (deployed when you run bootstrap from the Mac) or optionally from `bootstrap/mac_ssh_key.pub` (user-placed). No manual copy.
+OpenSSH server host keys are **generated on the Mac** (control node), stored in **Ansible vault**, and **deployed to Windows** by the bootstrap playbook. Login keys in `authorized_keys` on Windows come from the execution node’s `~/.ssh/id_ed25519_ansible.pub` (deployed when you run bootstrap from the Mac) or optionally from `bootstrap/id_ed25519_ansible.pub` (deprecated: `bootstrap/mac_ssh_key.pub`). No manual copy.
 
 ## Flow (fully automated)
 

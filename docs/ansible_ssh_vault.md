@@ -20,6 +20,6 @@ The Ansible SSH key has a **single source of truth**: the execution node’s `~/
 3. The playbook ensures **`~/.ssh/id_ed25519_ansible`** exists; if not, it generates an ed25519 key pair there. Nothing is written into the repo.
 4. Run **`./bin/fz bootstrap --limit server-225-win`** (and similar) from the Mac to deploy that public key to Windows/WSL. The playbook reads from the execution node’s `~/.ssh/id_ed25519_ansible.pub`.
 
-## Optional: bootstrap/mac_ssh_key.pub
+## Optional: bootstrap key file (local script only)
 
-You can still place a **separate** Mac public key in **`bootstrap/mac_ssh_key.pub`** (e.g. your personal key). The Windows script `bin\bootstrap-local.ps1` will add it to `authorized_keys` if present. The primary, automated path is: key on execution node → read at run time → deploy by Ansible.
+If you run `bin\bootstrap-local.ps1` on Windows without running the playbook from the Mac first, you can place the controller public key in **`bootstrap/id_ed25519_ansible.pub`**. The script will add it to Windows `authorized_keys`. Deprecated: **`bootstrap/mac_ssh_key.pub`** is still supported as a fallback. The primary, automated path is: key on execution node → read at run time → deploy by Ansible.

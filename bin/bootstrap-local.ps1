@@ -12,6 +12,12 @@
 # 3. Collects runtime facts and generates host_vars for Windows and WSL surfaces
 # 4. (Optional) Installs/configures OpenSSH Server only when -InstallOpenSSH is passed
 #
+# RUNNING REMOTELY (e.g. Invoke-Command, WinRM, SSH into the box then run):
+# - Script must still execute ON the target Windows machine (paths and hostname are for that machine).
+# - Run as Administrator (required for WinRM, firewall, OpenSSH, C:\ProgramData\ssh).
+# - authorized_keys is written for the Windows login user (win_user, e.g. josh), not the user
+#   running the script, so SSH key auth works for that account even when you run as Administrator.
+#
 # .QUICK COMMANDS
 #   .\bin\bootstrap-local.ps1 -FactsOnly         Only collect facts (no host_vars, no chain)
 #   .\bin\bootstrap-local.ps1 -RunAll:$false      Facts + host_vars + WinRM (no OpenSSH, no chain)
@@ -846,7 +852,7 @@ $defaultWslDistro = Strip-YamlControlChars $defaultWslDistro
 if (-not $defaultWslDistro) { $defaultWslDistro = 'Ubuntu-24.04' }
 
 $sshDataDirForShell = 'C:\ProgramData\ssh'
-if (-not (Test-Path $sshDataDirForShell)) {
+if (-not (Test-Path $ )) {
     New-Item -ItemType Directory -Path $sshDataDirForShell -Force | Out-Null
 }
 $wslWrapperPath = Join-Path $sshDataDirForShell 'wsl-bash-wrapper.cmd'
@@ -988,8 +994,10 @@ if (Get-Service -Name sshd -ErrorAction SilentlyContinue) {
     }
 }
 
-# Windows authorized_keys: optional bootstrap/mac_ssh_key.pub (user-placed). Ansible key is deployed from Mac at run time (~/.ssh/id_ed25519_ansible.pub).
-$winSshDir = Join-Path $env:USERPROFILE '.ssh'
+# Windows authorized_keys: standard key id_ed25519_ansible. Try bootstrap/id_ed25519_ansible.pub first, then deprecated bootstrap/mac_ssh_key.pub. Ansible also deploys from Mac at run time (~/.ssh/id_ed25519_ansible.pub).
+# Use win_user's profile so key is in the right account when script is run remotely as Administrator.
+$winUserProfile = Join-Path 'C:\Users' $winVars.win_user
+$winSshDir = Join-Path $winUserProfile '.ssh'
 $winAuthorizedKeys = Join-Path $winSshDir 'authorized_keys'
 if (-not (Test-Path $winSshDir)) {
     New-Item -ItemType Directory -Path $winSshDir -Force | Out-Null
@@ -998,18 +1006,24 @@ if (-not (Test-Path $winSshDir)) {
 
 $keyAdded = $false
 $keySourceUsed = $false
-$macKeyPath = Join-Path $repoRoot 'bootstrap\mac_ssh_key.pub'
-Write-Verbose ('Checking key source for authorized_keys: ' + $macKeyPath + ' -> ' + $winAuthorizedKeys)
-Write-Verbose ('Target authorized_keys file: ' + $winAuthorizedKeys)
+# Standard key first; deprecated path as fallback
+$keySources = @(
+    @{ Path = (Join-Path $repoRoot 'bootstrap\id_ed25519_ansible.pub'); Name = 'id_ed25519_ansible (bootstrap/id_ed25519_ansible.pub)' }
+    @{ Path = (Join-Path $repoRoot 'bootstrap\mac_ssh_key.pub'); Name = 'mac_ssh_key (bootstrap/mac_ssh_key.pub, deprecated)' }
+)
+Write-Verbose ('Checking key source for authorized_keys -> ' + $winAuthorizedKeys)
 
-foreach ($keyPath in @($macKeyPath)) {
-    $keyName = 'Mac (bootstrap/mac_ssh_key.pub)'
+foreach ($keySource in $keySources) {
+    $keyPath = $keySource.Path
+    $keyName = $keySource.Name
     Write-Verbose ('[CHECK] Examining key file: ' + $keyPath + ' (' + $keyName + ')')
     
-    if (-not (Test-Path $keyPath)) { 
+    if (-not (Test-Path $keyPath)) {
         Write-Verbose ('  [SKIP] File not found: ' + $keyPath)
-        Write-Verbose ('  [INFO] File existence check failed for: ' + $keyPath)
-        continue 
+        continue
+    }
+    if ($keyName -match 'deprecated') {
+        Write-Host '  [DEPRECATED] Prefer bootstrap/id_ed25519_ansible.pub over bootstrap/mac_ssh_key.pub' -ForegroundColor Yellow
     }
     Write-Verbose ('  [OK] File exists: ' + $keyPath)
     
@@ -1088,13 +1102,13 @@ foreach ($keyPath in @($macKeyPath)) {
         Write-Verbose ('  [INFO] Key was found in existing authorized_keys file')
         $keySourceUsed = $true
     }
+    if ($keySourceUsed) { break }
 }
 if (-not $keySourceUsed) {
-    Write-Host '  [INFO] No SSH public key found for Windows authorized_keys (bootstrap/mac_ssh_key.pub not present).' -ForegroundColor Yellow
-    Write-Verbose ('  [DEBUG] Key check: ' + $macKeyPath + ' (exists: ' + (Test-Path $macKeyPath) + '), target: ' + $winAuthorizedKeys)
+    Write-Host '  [INFO] No SSH public key found for Windows authorized_keys (bootstrap/id_ed25519_ansible.pub or bootstrap/mac_ssh_key.pub not present).' -ForegroundColor Yellow
     Write-Host '  To fix (pick one):' -ForegroundColor Cyan
     Write-Host '    1) From Mac: run  ./bin/fz bootstrap --limit server-225-win   (deploys ~/.ssh/id_ed25519_ansible.pub to this host)' -ForegroundColor White
-    Write-Host '    2) Or: copy your Mac public key into repo as  bootstrap/mac_ssh_key.pub, sync repo, then re-run this script' -ForegroundColor White
+    Write-Host '    2) Or: copy ~/.ssh/id_ed25519_ansible.pub into repo as  bootstrap/id_ed25519_ansible.pub, sync repo, then re-run this script' -ForegroundColor White
 }
 
 } # end if ($InstallOpenSSH)
