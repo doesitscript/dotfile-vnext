@@ -15,7 +15,7 @@ Enables OpenSSH Server on Windows hosts reachable via WinRM, configures the requ
 |----------|---------|-------------|
 | `openssh_server_capability` | `OpenSSH.Server~~~~0.0.1.0` | Windows capability name |
 | `win_ssh_port` | `22` | SSH port |
-| `win_ssh_user` | `Administrator` | User for SSH key auth |
+| `win_ssh_user` | (set in host_vars/group_vars) | User for SSH key auth; e.g. same as `win_user` or `ansible_user` |
 | `administrators_authorized_keys_path` | `C:\ProgramData\ssh\administrators_authorized_keys` | Key file path |
 | `verify_ssh_from_controller` | `true` | Run SSH test from controller after config |
 | `verify_ssh_connect_timeout_seconds` | `15` | SSH connect timeout for verification |
@@ -38,7 +38,7 @@ ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --lim
 
 ```bash
 ansible server-225-win -i inventory/inventory.yaml -m ansible.builtin.raw -a "whoami" \
-  -e "ansible_connection=ssh ansible_user=Administrator ansible_ssh_private_key_file=~/.ssh/id_ed25519_ansible"
+  -e "ansible_connection=ssh ansible_user=<win_ssh_user from host_vars> ansible_ssh_private_key_file=~/.ssh/id_ed25519_ansible"
 ```
 
 ## Best practices
