@@ -1,0 +1,49 @@
+---
+- name: Ensure ~/.ssh exists
+  ansible.builtin.file:
+    path: "{{ controller_ssh_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Ensure controller SSH keypair exists
+  community.crypto.openssh_keypair:
+    path: "{{ controller_ssh_private_key_path }}"
+    type: ed25519
+    state: present
+    force: false
+
+# controller facts = canonical interface for the rest of the repo
+- name: Publish controller public key path (host fact)
+  ansible.builtin.set_fact:
+    execution_node_pub_key_path: "{{ controller_ssh_public_key_path }}"
+    cacheable: true
+
+- name: Publish controller private key path (host fact, for SSH client -i)
+  ansible.builtin.set_fact:
+    execution_node_private_key_path: "{{ controller_ssh_private_key_path }}"
+    cacheable: true
+
+- name: Publish controller public key content (host fact)
+  ansible.builtin.set_fact:
+    execution_node_pub_key_content: "{{ lookup('file', controller_ssh_public_key_path) | trim }}"
+    cacheable: true
+
+# optional: known_hosts, OFF by default
+- name: Manage known_hosts entries (optional)
+  when:
+    - controller_manage_known_hosts | bool
+    - controller_known_hosts_targets | length > 0
+  block:
+    - name: Ensure known_hosts file exists
+      ansible.builtin.file:
+        path: "{{ controller_ssh_dir }}/known_hosts"
+        state: touch
+        mode: "0644"
+
+    - name: Add target fingerprints
+      ansible.builtin.known_hosts:
+        path: "{{ controller_ssh_dir }}/known_hosts"
+        name: "{{ item.host }}"
+        key: "{{ lookup('pipe', 'ssh-keyscan -p ' ~ (item.port | default(22)) ~ ' -H ' ~ item.host) }}"
+        state: present
+      loop: "{{ controller_known_hosts_targets }}"

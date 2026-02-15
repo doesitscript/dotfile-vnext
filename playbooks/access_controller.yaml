@@ -1,0 +1,14 @@
+---
+# Access: controller identity (SSH keypair + facts on execution_nodes).
+# Run first so access_windows can use execution_node_pub_key_* facts.
+#
+# Example:
+#   ansible-playbook playbooks/access_controller.yaml -i inventory/inventory.yaml --limit execution_nodes
+#
+- name: Access - controller identity
+  hosts: execution_nodes
+  connection: local
+  gather_facts: true
+
+  roles:
+    - access_identity_controller
