@@ -1,0 +1,84 @@
+---
+# access_identity_windows tasks (user): user .ssh dir, authorized_keys, sshd_config for user key auth.
+# Run only these tasks: add --tags user to the playbook command.
+#   ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags user
+#
+# Paths come from group_vars/host_vars: ansible_ssh_dir_path, ansible_authorized_keys_path, sshd_config_path (same naming as ansible_ssh_private_key_file).
+#
+- block:
+  - name: reset SSH connection after shell change
+    ansible.builtin.meta: reset_connection
+
+  - name: Ensure ansible_ssh_dir_path directory exists
+    ansible.windows.win_file:
+      path: "{{ ansible_ssh_dir_path }}"
+      state: directory
+
+  - name: Disable ACL inheritance on ansible_ssh_dir_path
+    ansible.windows.win_acl_inheritance:
+      path: "{{ ansible_ssh_dir_path }}"
+      state: absent
+      reorganize: false
+
+  - name: Grant run user FullControl on ansible_ssh_dir_path
+    ansible.windows.win_acl:
+      path: "{{ ansible_ssh_dir_path }}"
+      user: "{{ win_ssh_user | default(ansible_user) }}"
+      type: allow
+      rights: FullControl
+      state: present
+
+  - name: Grant SYSTEM FullControl on ansible_ssh_dir_path
+    ansible.windows.win_acl:
+      path: "{{ ansible_ssh_dir_path }}"
+      user: SYSTEM
+      type: allow
+      rights: FullControl
+      state: present
+
+  - name: Ensure ansible_authorized_keys_path exists
+    ansible.windows.win_file:
+      path: "{{ ansible_authorized_keys_path }}"
+      state: touch
+
+  - name: Disable ACL inheritance on ansible_authorized_keys_path
+    ansible.windows.win_acl_inheritance:
+      path: "{{ ansible_authorized_keys_path }}"
+      state: absent
+      reorganize: false
+
+  - name: Grant run user FullControl on ansible_authorized_keys_path
+    ansible.windows.win_acl:
+      path: "{{ ansible_authorized_keys_path }}"
+      user: "{{ win_ssh_user | default(ansible_user) }}"
+      type: allow
+      rights: FullControl
+      state: present
+
+  - name: Grant SYSTEM FullControl on ansible_authorized_keys_path
+    ansible.windows.win_acl:
+      path: "{{ ansible_authorized_keys_path }}"
+      user: SYSTEM
+      type: allow
+      rights: FullControl
+      state: present
+
+  - name: Install controller public key in ansible_authorized_keys_path
+    community.windows.win_lineinfile:`
+      path: "{{ ansible_authorized_keys_path }}"
+      line: "{{ hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content }}"
+      create: true
+      state: present
+    register: install_ansible_pub_key_result
+    when:
+      - hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content is defined
+      - hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content | length > 0
+
+  - name: Restart sshd when sshd_config or ansible key updated
+    ansible.windows.win_service:
+      name: sshd
+      state: restarted
+    when: >
+      (install_ansible_pub_key_result is changed | default(false))
+      
+  tags: [user]

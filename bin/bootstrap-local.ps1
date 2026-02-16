@@ -15,7 +15,7 @@
 # RUNNING REMOTELY (e.g. Invoke-Command, WinRM, SSH into the box then run):
 # - Script must still execute ON the target Windows machine (paths and hostname are for that machine).
 # - Run as Administrator (required for WinRM, firewall, OpenSSH, C:\ProgramData\ssh).
-# - authorized_keys is written for the Windows login user (win_user, e.g. josh), not the user
+# - authorized_keys is written for the Windows login user (win_user, e.g. joshc), not the user
 #   running the script, so SSH key auth works for that account even when you run as Administrator.
 #
 # .QUICK COMMANDS
@@ -710,7 +710,7 @@ $winVars = [ordered]@{
     surface_type = "windows_host"
     host_ip = $bestIP
     winrm_port = 5985
-    win_user = if ($existingWinVars.win_user) { $existingWinVars.win_user } else { "josh" }
+    win_user = if ($existingWinVars.win_user) { $existingWinVars.win_user } else { "joshc" }
 }
 
 # Preserve win_password if it exists; otherwise use default lab password so Mac can WinRM without vault
@@ -746,7 +746,7 @@ $wslVars = [ordered]@{
     physical_node = $physicalNode
     surface_type = "wsl"
     host_ip = $bestIP
-    wsl_user = if ($existingWslVars.wsl_user) { $existingWslVars.wsl_user } else { "josh" }
+    wsl_user = if ($existingWslVars.wsl_user) { $existingWslVars.wsl_user } else { "joshc" }
     wsl_ssh_port = if ($existingWslVars.wsl_ssh_port) { $existingWslVars.wsl_ssh_port } else { 22 }
 }
 
@@ -852,7 +852,7 @@ $defaultWslDistro = Strip-YamlControlChars $defaultWslDistro
 if (-not $defaultWslDistro) { $defaultWslDistro = 'Ubuntu-24.04' }
 
 $sshDataDirForShell = 'C:\ProgramData\ssh'
-if (-not (Test-Path $ )) {
+if (-not (Test-Path $sshDataDirForShell)) {
     New-Item -ItemType Directory -Path $sshDataDirForShell -Force | Out-Null
 }
 $wslWrapperPath = Join-Path $sshDataDirForShell 'wsl-bash-wrapper.cmd'
@@ -945,7 +945,7 @@ if ($weHaveOurKeys) {
                 Write-Host '  ***  TEMPORARY / DEFAULT HOST KEYS  ***' -ForegroundColor Red
                 Write-Host '  ****************************************' -ForegroundColor Red
                 Write-Host '  No project keys found in bootstrap/openssh_host_keys' -ForegroundColor Yellow
-                Write-Host '  (e.g. from Mac: fz bootstrap-openssh-host-keys then sync repo, or fz bootstrap --limit server-225-win).' -ForegroundColor Yellow
+                Write-Host "  (e.g. from Mac: fz bootstrap-openssh-host-keys then sync repo, or fz bootstrap --limit $physicalNode-win)." -ForegroundColor Yellow
                 Write-Host '  These keys are only so sshd can start. Add keys and re-run.' -ForegroundColor Yellow
                 Write-Host '  ****************************************' -ForegroundColor Red
                 Write-Host ''
@@ -1107,7 +1107,7 @@ foreach ($keySource in $keySources) {
 if (-not $keySourceUsed) {
     Write-Host '  [INFO] No SSH public key found for Windows authorized_keys (bootstrap/id_ed25519_ansible.pub or bootstrap/mac_ssh_key.pub not present).' -ForegroundColor Yellow
     Write-Host '  To fix (pick one):' -ForegroundColor Cyan
-    Write-Host '    1) From Mac: run  ./bin/fz bootstrap --limit server-225-win   (deploys ~/.ssh/id_ed25519_ansible.pub to this host)' -ForegroundColor White
+    Write-Host "    1) From Mac: run  ./bin/fz bootstrap --limit $physicalNode-win   (deploys ~/.ssh/id_ed25519_ansible.pub to this host)" -ForegroundColor White
     Write-Host '    2) Or: copy ~/.ssh/id_ed25519_ansible.pub into repo as  bootstrap/id_ed25519_ansible.pub, sync repo, then re-run this script' -ForegroundColor White
 }
 
@@ -1123,7 +1123,7 @@ if ($RunAll) {
     Write-Host '  TO RUN WITHOUT CHAINING: .\bin\bootstrap-local.ps1 -RunAll:$false' -ForegroundColor Yellow
     Write-Host '================================================================================' -ForegroundColor Cyan
     Write-Host ''
-    & $nextScriptPath
+    & $nextScriptPath -PhysicalNode $physicalNode
     if ($LASTEXITCODE -ne 0) {
         Write-Host ('bootstrap-ansible-local.ps1 exited with code ' + $LASTEXITCODE) -ForegroundColor Red
         exit $LASTEXITCODE

@@ -74,7 +74,7 @@ In the debug output, the line starting with `<DESKTOP-VLLM> SSH: EXEC ssh ...` s
 |-------------------|--------------------------------------|
 | `ansible_connection: ssh` | Line says `ESTABLISH SSH CONNECTION` (not WinRM). |
 | `ansible_host` | Hostname in the `ssh` command (e.g. `DESKTOP-VLLM`). |
-| `ansible_user` | `-o 'User="josh"'` (or your user). |
+| `ansible_user` | `-o 'User="joshc"'` (or your user). |
 | `ansible_port` | `-o Port=22`. |
 | `ansible_ssh_private_key_file` | `-o 'IdentityFile="/Users/joshc/.ssh/id_ed25519_ansible"'` (path may differ). |
 | `ansible_python_interpreter` | Remote command ends with `'/usr/bin/python3 && sleep 0'`. |

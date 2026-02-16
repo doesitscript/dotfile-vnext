@@ -1,49 +1,56 @@
 ---
-# 1) Install OpenSSH capability (explicit)
-- name: Ensure OpenSSH Server capability installed
-  ansible.windows.win_shell: |
-    $capName = "{{ openssh_server_capability }}"
-    $state = (Get-WindowsCapability -Online -Name $capName).State
-    if ($state -ne "Installed") {
-      Add-WindowsCapability -Online -Name $capName | Out-Null
-      Write-Output "INSTALLED"
-    } else {
-      Write-Output "AlreadyInstalled"
-    }
-  register: ssh_install
-  changed_when: "'INSTALLED' in (ssh_install.stdout | default(''))"
+# access_identity_windows tasks (admin): OpenSSH install, sshd, firewall, shell, administrators_authorized_keys.
+# Run only these tasks: add --tags admin to the playbook command.
+#   ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags admin
+# Full run (no tags) runs this file then user.yml.
+#
+# TODO this needs to be moved to default location
+- block:
+  # 1) Install OpenSSH capability (explicit)
+  - name: Ensure OpenSSH Server capability installed
+    ansible.windows.win_shell: |
+      $capName = "{{ openssh_server_capability }}"
+      $state = (Get-WindowsCapability -Online -Name $capName).State
+      if ($state -ne "Installed") {
+        Add-WindowsCapability -Online -Name $capName | Out-Null
+        Write-Output "INSTALLED"
+      } else {
+        Write-Output "AlreadyInstalled"
+      }
+    register: ssh_install
+    changed_when: "'INSTALLED' in (ssh_install.stdout | default(''))"
 
-# 2) Ensure service running
-- name: Ensure sshd service is enabled and started
-  ansible.windows.win_service:
-    name: sshd
-    start_mode: auto
-    state: started
+  # 2) Ensure service running
+  - name: Ensure sshd service is enabled and started
+    ansible.windows.win_service:
+      name: sshd
+      start_mode: auto
+      state: started
 
-# 3) Firewall rule
-- name: Ensure SSH firewall rule exists
-  community.windows.win_firewall_rule:
-    name: sshd-Server-In-TCP
-    localport: "{{ win_ssh_port }}"
-    protocol: tcp
-    direction: in
-    action: allow
-    state: present
-    enabled: true
+  # 3) Firewall rule
+  - name: Ensure SSH firewall rule exists
+    community.windows.win_firewall_rule:
+      name: sshd-Server-In-TCP
+      localport: "{{ win_ssh_port }}"
+      protocol: tcp
+      direction: in
+      action: allow
+      state: present
+      enabled: true
 
-- name: set the default shell to Bash
-  ansible.windows.win_regedit:
-    path: HKLM:\SOFTWARE\OpenSSH
-    name: DefaultShell
-    data: bash.exe
-    type: string
-    state: present
+  - name: set the default shell to Bash
+    ansible.windows.win_regedit:
+      path: HKLM:\SOFTWARE\OpenSSH
+      name: DefaultShell
+      data: bash.exe
+      type: string
+      state: present
+      # become: yes
+    # become_user: joshc
+
+
   # become: yes
-    # become_user: josh
-
-
-  # become: yes
-    # become_user: josh
+    # become_user: joshc
     # may need to use runas 
     # it is very picky if we take ownership, that's bad
 
@@ -58,55 +65,55 @@
 #     type: string
 #     state: present
 
-- name: reset SSH connection after shell change
-  ansible.builtin.meta: reset_connection
+  - name: reset SSH connection after shell change
+    ansible.builtin.meta: reset_connection
 
-# 4) CRITICAL INVARIANT BLOCK (DO NOT REMOVE OR "SIMPLIFY")
-- name: Ensure administrators_authorized_keys file exists
-  ansible.windows.win_file:
-    path: "{{ administrators_authorized_keys_path }}"
-    state: touch
+  # 4) CRITICAL INVARIANT BLOCK (DO NOT REMOVE OR "SIMPLIFY")
+  - name: Ensure administrators_authorized_keys file exists
+    ansible.windows.win_file:
+      path: "{{ administrators_authorized_keys_path }}"
+      state: touch
 
-- name: Disable ACL inheritance on administrators_authorized_keys
-  ansible.windows.win_acl_inheritance:
-    path: "{{ administrators_authorized_keys_path }}"
-    state: absent
-    reorganize: false
+  - name: Disable ACL inheritance on administrators_authorized_keys
+    ansible.windows.win_acl_inheritance:
+      path: "{{ administrators_authorized_keys_path }}"
+      state: absent
+      reorganize: false
 
-- name: Grant Administrators FullControl on administrators_authorized_keys
-  ansible.windows.win_acl:
-    path: "{{ administrators_authorized_keys_path }}"
-    user: Administrators
-    type: allow
-    rights: FullControl
-    state: present
+  - name: Grant Administrators FullControl on administrators_authorized_keys
+    ansible.windows.win_acl:
+      path: "{{ administrators_authorized_keys_path }}"
+      user: Administrators
+      type: allow
+      rights: FullControl
+      state: present
 
-- name: Grant SYSTEM FullControl on administrators_authorized_keys
-  ansible.windows.win_acl:
-    path: "{{ administrators_authorized_keys_path }}"
-    user: SYSTEM
-    type: allow
-    rights: FullControl
-    state: present
+  - name: Grant SYSTEM FullControl on administrators_authorized_keys
+    ansible.windows.win_acl:
+      path: "{{ administrators_authorized_keys_path }}"
+      user: SYSTEM
+      type: allow
+      rights: FullControl
+      state: present
 
-- name: Install controller public key in administrators_authorized_keys
-  community.windows.win_lineinfile:
-    path: "{{ administrators_authorized_keys_path }}"
-    line: "REPLACE_ME_AGAIN"
-    # line: "{{ hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content }}"
-    create: true
-    state: present
-  register: install_pub_key_result
-  when:
-    - hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content is defined
-    - hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content | length > 0
+  - name: Install controller public key in administrators_authorized_keys
+    community.windows.win_lineinfile:
+      path: "{{ administrators_authorized_keys_path }}"
+      # line: "REPLACE_ME_AGAIN"
+      line: "{{ hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content }}"
+      create: true
+      state: present
+    register: install_pub_key_result
+    when:
+      - hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content is defined
+      - hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content | length > 0
 
-# 5) Restart sshd if capability or keys changed
-- name: Restart sshd when OpenSSH installed or key updated
-  ansible.windows.win_service:
-    name: sshd
-    state: restarted
-  when: ssh_install is changed or install_pub_key_result is changed
+  # 5) Restart sshd if capability or keys changed
+  - name: Restart sshd when OpenSSH installed or key updated
+    ansible.windows.win_service:
+      name: sshd
+      state: restarted
+    when: ssh_install is changed or install_pub_key_result is changed
 
 # # 6) Verification from controller (proves cross-machine capability)
 # - name: Verify port 22 reachable from controller
@@ -138,3 +145,9 @@
 #     - (ssh_verify.stdout | default('')) is not search('ssh_ok')
 #   ansible.builtin.fail:
 #     msg: "ssh verification failed for {{ inventory_hostname }} (rc {{ ssh_verify.rc | default('') }}): {{ ssh_verify.stderr | default('') }}"
+  tags: [admin]
+
+# Include user tasks; run with --tags user to run only user tasks.
+- name: Include user tasks
+  ansible.builtin.include_tasks: user.yml
+  tags: [user]

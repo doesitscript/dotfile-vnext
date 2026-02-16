@@ -25,7 +25,7 @@ This doc describes the temporary playbook `playbooks/setup_openssh_via_winrm.yam
 | `C:\ProgramData\ssh\` host keys | `ssh_host_ecdsa_key`, `ssh_host_ed25519_key`, `ssh_host_rsa_key` |
 | `%USERPROFILE%\.ssh\authorized_keys` | Exists=True, Lines=1 |
 | Inventory `ansible_host` | DESKTOP-VLLM |
-| Inventory `ansible_user` | josh |
+| Inventory `ansible_user` | joshc |
 | `win_ssh_port` (host_var) | 22 |
 
 So on server-225-win: OpenSSH Server is installed, the firewall allows port 22, host keys are present, and the controller’s public key is already in `authorized_keys` (one line). Running `setup_openssh_via_winrm.yaml` against this host is idempotent and will not change behavior.

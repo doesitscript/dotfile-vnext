@@ -61,7 +61,7 @@ Sync the repo to the Mac (or pull) so the Mac has the updated host_vars (and key
 
 - **SSH to the Windows box** (after OpenSSH and keys are set):
   ```bash
-  ssh josh@<ansible_host>
+  ssh joshc@<ansible_host>
   ```
   You land in WSL (default shell is WSL bash). Use the same key the repo uses (e.g. `~/.ssh/id_ed25519_ansible`); its public half should be in `authorized_keys`.
 

@@ -34,15 +34,45 @@ ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --lim
   -e "verify_ssh_from_controller=false"
 ```
 
-## Proof Ansible over SSH (no inventory change)
+## Manual SSH from the Mac (why you must use `-i`)
 
+The role installs the **execution node’s** public key (`~/.ssh/id_ed25519_ansible.pub` on the Mac) into Windows `authorized_keys`. The SSH client does **not** try `id_ed25519_ansible` by default; it tries `id_rsa`, `id_ed25519`, etc. So you must pass the key explicitly:
+
+```bash
+ssh -i ~/.ssh/id_ed25519_ansible joshc@DESKTOP-VLLM
+```
+
+If you don’t have that key yet: run the **access_controller** playbook first (it creates `~/.ssh/id_ed25519_ansible` if missing), then run **access_windows** so that key is deployed. To create the key manually:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_ansible -N ""
+```
+
+Then re-run the Windows playbook so the new `.pub` is installed. Optional: add to `~/.ssh/config` so you don’t need `-i` every time:
+
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_ansible -N ""
+
+```
+
+Host DESKTOP-VLLM
+  User joshc
+  IdentityFile ~/.ssh/id_ed25519_ansible
+```
+
+## Proof Ansible over SSH (no inventory change)
+   ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_ansible -N ""
 ```bash
 ansible server-225-win -i inventory/inventory.yaml -m ansible.builtin.raw -a "whoami" \
   -e "ansible_connection=ssh ansible_user=<win_ssh_user from host_vars> ansible_ssh_private_key_file=~/.ssh/id_ed25519_ansible"
 ```
-
+/Users/joshc/.ssh/id_ed25519_ansible already exists.
+Overwrite (y/n)? y
+Your identification has been saved in /Users/joshc/.ssh/id_ed25519_ansible
+Your public key has been saved in /Users/joshc/.ssh/id_ed25519_ansible.pub
+The key fingerprint is:
+SHA256:vyWLHWVCetEtAkjsMXD+cqlUliqFVIw3STij6G/3+X8 joshc@Joshs-MBP
 ## Best practices
-
+****
 - Run `access_controller` first so `execution_node_pub_key_content` is set.
 - Target via `hosts: windows_hosts` and use `--limit` for a single host when needed.
 - Do not remove or “simplify” the ACL block (inheritance disabled, Administrators + SYSTEM FullControl).
