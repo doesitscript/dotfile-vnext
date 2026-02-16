@@ -1,5 +1,5 @@
 # tmux
-
+tmux_default_shell https://www.wenbo.io/en-US/Tools/Persistent-VSCode-Remote-Terminals
 Installs and configures tmux.
 
 ## What it does

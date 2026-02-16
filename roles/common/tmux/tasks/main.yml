@@ -18,6 +18,8 @@
   ansible.builtin.copy:
     dest: "{{ dotfiles_user_home }}/.tmux.conf"
     content: |
+      # ~/.tmux.conf
+
       setw -g automatic-rename on
       set -g allow-rename on
       set -g mouse on
@@ -25,11 +27,25 @@
       set -g default-terminal "tmux-256color"
 
       # Clipboard: Let tmux interface with system clipboard through terminal's OSC 52 mechanism
-      set -g set-clipboard on          # Whether it works depends on terminal support
+      set -g set-clipboard on          
+      # Whether it works depends on terminal support
       # If you have tools that can send OSC 52 (like osc, tty-copy), you can also unify the copy outlet:
-      # set -s copy-command 'osc copy'   # or 'tty-copy'
+      # set -s copy-command 
+      ##'osc copy'   # or 'tty-copy'
 
       # In VSCode, "copy on mouse select" is unnecessary; let outer VSCode handle it more naturally
       set -g @yank_with_mouse off
+
+
+      # Mouse support
+      set -g mouse on
+
+      # Increase history
+      set -g history-limit 10000
+
+      # Status bar
+      set -g status-style 'bg=#333333 fg=#ffffff'
+      set -g status-right '%Y-%m-%d %H:%M'
+
   when: ansible_facts['system'] != "Windows"
   notify: Reload tmux configuration
