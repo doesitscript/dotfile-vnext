@@ -1,3 +1,9 @@
+# RUn a command on a remote system:
+
+ansible  server-225-win -m win_shell -a "bash --version"
+
+
+
 ansible windows -m win_command -a "Get-ItemProperty HKLM:\SOFTWARE\OpenSSH" --limit server-225-win
 
 <!-- ansible windows -i inventory.ini -m win_shell -a "Get-Service" -->
@@ -21,7 +27,6 @@ PSDrive                   : HKLM
 PSProvider                : Microsoft.PowerShell.Core\Registry
 ####
 
-ansible  server-225-win -m win_shell -a "bash hostname"
 ---
 - name: Run a command on Windows host
   hosts: windows
