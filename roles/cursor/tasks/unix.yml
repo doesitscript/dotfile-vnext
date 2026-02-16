@@ -6,3 +6,35 @@
     src: cursor.bash.j2
     dest: "{{ ansible_env.HOME }}/.bashrc.d/cursor.bash"
     mode: "0644"
+
+# Remote-SSH: deploy SSH config entries so Cursor can connect to infrastructure hosts.
+# Only deploys when cursor_remote_ssh_hosts is defined and non-empty.
+- name: Ensure .ssh directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.ssh"
+    state: directory
+    mode: "0700"
+  when: cursor_remote_ssh_hosts | default([]) | length > 0
+
+- name: Ensure .ssh/config.d directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.ssh/config.d"
+    state: directory
+    mode: "0700"
+  when: cursor_remote_ssh_hosts | default([]) | length > 0
+
+- name: Ensure SSH config includes config.d directory
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.ssh/config"
+    line: "Include config.d/*"
+    insertbefore: BOF
+    create: true
+    mode: "0600"
+  when: cursor_remote_ssh_hosts | default([]) | length > 0
+
+- name: Deploy Cursor Remote-SSH host entries to SSH config
+  ansible.builtin.template:
+    src: ssh_config_remote.j2
+    dest: "{{ ansible_env.HOME }}/.ssh/config.d/cursor_remote_hosts"
+    mode: "0600"
+  when: cursor_remote_ssh_hosts | default([]) | length > 0

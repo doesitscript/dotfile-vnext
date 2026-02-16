@@ -1,0 +1,19 @@
+---
+# Ubuntu-specific tasks for tmux
+
+- name: Capture tmux version on Ubuntu when available
+  ansible.builtin.command: tmux -V
+  changed_when: false
+  failed_when: false
+  register: tmux_version_ubuntu
+
+- name: Report tmux install ownership on Ubuntu
+  ansible.builtin.debug:
+    msg: "tmux installation is managed manually. Detected: {{ tmux_version_ubuntu.stdout | default('not found') }}"
+
+# - name: Symlink .tmux.conf
+#   file:
+#     src: "{{ dotfiles_home }}/roles/tmux/files/tmux.conf"
+#     dest: "{{dotfiles_user_home}}/.tmux.conf"
+#     state: link
+#   when: ansible_os_family != "Darwin"

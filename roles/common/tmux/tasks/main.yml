@@ -1,0 +1,35 @@
+---
+# tmux – main task dispatcher
+
+- name: Process tmux role for macOS
+  ansible.builtin.import_tasks: mac.yml
+  when: ansible_facts['system'] == "Darwin"
+
+- name: Process tmux role for Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when: ansible_facts['distribution'] == "Ubuntu"
+
+- name: Process tmux role for Windows
+  ansible.builtin.import_tasks: windows.yml
+  when: ansible_facts['system'] == "Windows"
+
+
+- name: Ensure tmux.conf is present
+  ansible.builtin.copy:
+    dest: "{{ dotfiles_user_home }}/.tmux.conf"
+    content: |
+      setw -g automatic-rename on
+      set -g allow-rename on
+      set -g mouse on
+      set -g allow-passthrough on      # Allow escape sequences to reach outer terminal, recommended for tmux 3.3+
+      set -g default-terminal "tmux-256color"
+
+      # Clipboard: Let tmux interface with system clipboard through terminal's OSC 52 mechanism
+      set -g set-clipboard on          # Whether it works depends on terminal support
+      # If you have tools that can send OSC 52 (like osc, tty-copy), you can also unify the copy outlet:
+      # set -s copy-command 'osc copy'   # or 'tty-copy'
+
+      # In VSCode, "copy on mouse select" is unnecessary; let outer VSCode handle it more naturally
+      set -g @yank_with_mouse off
+  when: ansible_facts['system'] != "Windows"
+  notify: Reload tmux configuration

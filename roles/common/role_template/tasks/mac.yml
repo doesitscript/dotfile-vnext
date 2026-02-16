@@ -1,0 +1,12 @@
+---
+# macOS-specific tasks for <role_name>
+
+- name: Capture <role_name> version on macOS when available
+  ansible.builtin.command: <role_name> --version
+  changed_when: false
+  failed_when: false
+  register: role_version_mac
+
+- name: Report <role_name> install ownership on macOS
+  ansible.builtin.debug:
+    msg: "<role_name> installation is managed manually. Detected: {{ role_version_mac.stdout | default('not found') }}"

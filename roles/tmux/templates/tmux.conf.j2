@@ -1,0 +1,48 @@
+# tmux configuration
+# Managed by Ansible role: tmux
+
+# --- General ---
+set-option -g default-shell {{ tmux_default_shell }}
+set-option -g history-limit {{ tmux_history_limit }}
+set-option -g mouse {{ tmux_mouse }}
+
+# --- Prefix key ---
+unbind C-b
+set-option -g prefix {{ tmux_prefix }}
+bind-key {{ tmux_prefix }} send-prefix
+
+# --- Window / pane numbering ---
+set-option -g base-index {{ tmux_base_index }}
+set-window-option -g pane-base-index {{ tmux_base_index }}
+
+# --- Reload config ---
+bind r source-file ~/.tmux.conf \; display-message "Config reloaded"
+
+# --- Intuitive split keys ---
+bind | split-window -h -c "#{pane_current_path}"
+bind - split-window -v -c "#{pane_current_path}"
+unbind '"'
+unbind %
+
+# --- Pane navigation (vim-style) ---
+bind h select-pane -L
+bind j select-pane -D
+bind k select-pane -U
+bind l select-pane -R
+
+# --- Pane resizing ---
+bind -r H resize-pane -L 5
+bind -r J resize-pane -D 5
+bind -r K resize-pane -U 5
+bind -r L resize-pane -R 5
+
+# --- Status bar ---
+set-option -g status-position bottom
+set-option -g status-interval 5
+
+# --- 256 colour support ---
+set-option -g default-terminal "screen-256color"
+set-option -sa terminal-overrides ",xterm-256color:Tc"
+
+# --- Reduce escape-time for snappy vim usage ---
+set-option -sg escape-time 10

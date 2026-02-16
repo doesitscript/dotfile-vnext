@@ -77,3 +77,7 @@ SHA256:vyWLHWVCetEtAkjsMXD+cqlUliqFVIw3STij6G/3+X8 joshc@Joshs-MBP
 - Target via `hosts: windows_hosts` and use `--limit` for a single host when needed.
 - Do not remove or “simplify” the ACL block (inheritance disabled, Administrators + SYSTEM FullControl).
 - Leave WinRM enabled; this role only adds OpenSSH.
+
+
+ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags admin
+(.venv) Joshs-MBP:dotfile-vnext joshc$ 

@@ -1,0 +1,14 @@
+---
+# <role_name> – main task dispatcher
+
+- name: Process <role_name> role for macOS
+  ansible.builtin.import_tasks: mac.yml
+  when: ansible_facts['system'] == "Darwin"
+
+- name: Process <role_name> role for Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when: ansible_facts['distribution'] == "Ubuntu"
+
+- name: Process <role_name> role for Windows
+  ansible.builtin.import_tasks: windows.yml
+  when: ansible_facts['system'] == "Windows"

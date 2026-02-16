@@ -1,0 +1,12 @@
+---
+# Ubuntu-specific tasks for <role_name>
+
+- name: Capture <role_name> version on Ubuntu when available
+  ansible.builtin.command: <role_name> --version
+  changed_when: false
+  failed_when: false
+  register: role_version_ubuntu
+
+- name: Report <role_name> install ownership on Ubuntu
+  ansible.builtin.debug:
+    msg: "<role_name> installation is managed manually. Detected: {{ role_version_ubuntu.stdout | default('not found') }}"

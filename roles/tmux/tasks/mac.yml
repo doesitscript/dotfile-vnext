@@ -1,0 +1,12 @@
+---
+# macOS-specific tasks for tmux
+
+- name: Capture tmux version on macOS when available
+  ansible.builtin.command: tmux -V
+  changed_when: false
+  failed_when: false
+  register: tmux_version_mac
+
+- name: Report tmux install ownership on macOS
+  ansible.builtin.debug:
+    msg: "tmux installation is managed manually. Detected: {{ tmux_version_mac.stdout | default('not found') }}"

@@ -1,0 +1,27 @@
+---
+# macOS-specific tasks for tmux
+
+ame: Install tmux with homebrew
+  homebrew: name=tmux state=present
+
+- name: Install reattach-to-user-namespace
+  homebrew: name=reattach-to-user-namespace state=present
+
+- name: Install urlview for tmux-urlview
+  homebrew: name=urlview state=present
+
+
+# - name: Install tpm
+#   git:
+#     repo: https://github.com/tmux-plugins/tpm
+#     dest: "{{dotfiles_user_home}}/.tmux/plugins/tpm"
+
+
+# On macOS, use the same tmux.conf, but also use
+# reattach_to_user_namespace (for clipboard support)
+# - name: Symlink .tmux.conf (macOS)
+#   file:
+#     src: "{{ dotfiles_home }}/roles/tmux/files/tmux-mac.conf"
+#     dest: "{{dotfiles_user_home}}/.tmux.conf"
+#     state: link
+#   when: ansible_os_family == "Darwin"

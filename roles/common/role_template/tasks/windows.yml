@@ -1,0 +1,12 @@
+---
+# Windows-specific tasks for <role_name>
+
+- name: Capture <role_name> version on Windows when available
+  ansible.windows.win_command: <role_name> --version
+  changed_when: false
+  failed_when: false
+  register: role_version_windows
+
+- name: Report <role_name> install ownership on Windows
+  ansible.builtin.debug:
+    msg: "<role_name> installation is managed manually. Detected: {{ role_version_windows.stdout | default('not found') }}"
