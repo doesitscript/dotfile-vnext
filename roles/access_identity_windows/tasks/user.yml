@@ -1,14 +1,13 @@
 ---
-# access_identity_windows tasks (user): user .ssh dir, authorized_keys, sshd_config for user key auth.
+# access_identity_windows tasks (user): user .ssh dir, authorized_keys, sshd restart.
 # Run only these tasks: add --tags user to the playbook command.
 #   ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags user
 #
-# Paths come from group_vars/host_vars: ansible_ssh_dir_path, ansible_authorized_keys_path, sshd_config_path (same naming as ansible_ssh_private_key_file).
+# Paths come from group_vars/host_vars: ansible_ssh_dir_path, ansible_authorized_keys_path.
+# controller_pub_key_content is set by main.yml before this file is included.
 #
 - block:
-  - name: reset SSH connection after shell change
-    ansible.builtin.meta: reset_connection
-
+  # 1) User .ssh directory
   - name: Ensure ansible_ssh_dir_path directory exists
     ansible.windows.win_file:
       path: "{{ ansible_ssh_dir_path }}"
@@ -36,6 +35,7 @@
       rights: FullControl
       state: present
 
+  # 2) User authorized_keys file
   - name: Ensure ansible_authorized_keys_path exists
     ansible.windows.win_file:
       path: "{{ ansible_authorized_keys_path }}"
@@ -63,22 +63,20 @@
       rights: FullControl
       state: present
 
+  # 3) Install controller public key into user authorized_keys
   - name: Install controller public key in ansible_authorized_keys_path
-    community.windows.win_lineinfile:`
+    community.windows.win_lineinfile:
       path: "{{ ansible_authorized_keys_path }}"
-      line: "{{ hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content }}"
+      line: "{{ controller_pub_key_content }}"
       create: true
       state: present
-    register: install_ansible_pub_key_result
-    when:
-      - hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content is defined
-      - hostvars[groups['execution_nodes'][0]].execution_node_pub_key_content | length > 0
+    register: install_user_pub_key_result
 
-  - name: Restart sshd when sshd_config or ansible key updated
+  # 4) Restart sshd if user key was updated
+  - name: Restart sshd when user authorized key updated
     ansible.windows.win_service:
       name: sshd
       state: restarted
-    when: >
-      (install_ansible_pub_key_result is changed | default(false))
-      
+    when: install_user_pub_key_result is changed
+
   tags: [user]

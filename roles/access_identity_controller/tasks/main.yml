@@ -1,8 +1,11 @@
-# regenerate_controller_ssh_key: true | false (default: false)
-# ansible-playbook playbooks/access_controller.yaml -i inventory/inventory.yaml --limit execution_nodes -e regenerate_controller_ssh_key=true -vvv
-# ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml  --limit server-225-win  -e regenerate_controller_ssh_key=true
 ---
-- name: Ensure ~/.ssh exists
+# access_identity_controller: generate SSH keypair on execution node, publish key facts.
+#
+# regenerate_controller_ssh_key: true | false (default: false)
+#   ansible-playbook playbooks/access_controller.yaml -i inventory/inventory.yaml --limit execution_nodes
+#   ansible-playbook playbooks/access_controller.yaml -i inventory/inventory.yaml --limit execution_nodes -e regenerate_controller_ssh_key=true -vvv
+
+- name: Ensure ~/.ssh directory exists
   ansible.builtin.file:
     path: "{{ controller_ssh_dir }}"
     state: directory
@@ -14,22 +17,21 @@
     type: ed25519
     state: present
     force: "{{ regenerate_controller_ssh_key | default(false) }}"
-  register: controller_ssh_keypair_result
-  delegate_to: "{{ groups['execution_nodes'][0] }}"
+  register: controller_keypair_result
 
 - name: Read controller public key file content
   ansible.builtin.slurp:
     src: "{{ controller_ssh_public_key_path }}"
   register: controller_pubkey_slurp
-  delegate_to: "{{ groups['execution_nodes'][0] }}"
 
-# controller facts = canonical interface for the rest of the repo
+# Controller facts = canonical interface for the rest of the repo.
+# cacheable: true keeps these across plays within the same ansible-playbook invocation.
 - name: Publish controller public key path (host fact)
   ansible.builtin.set_fact:
     execution_node_pub_key_path: "{{ controller_ssh_public_key_path }}"
     cacheable: true
 
-- name: Publish controller private key path (host fact, for SSH client -i)
+- name: Publish controller private key path (host fact)
   ansible.builtin.set_fact:
     execution_node_private_key_path: "{{ controller_ssh_private_key_path }}"
     cacheable: true
@@ -39,7 +41,7 @@
     execution_node_pub_key_content: "{{ controller_pubkey_slurp.content | b64decode | trim }}"
     cacheable: true
 
-# optional: known_hosts, OFF by default
+# Optional: known_hosts management (OFF by default)
 - name: Manage known_hosts entries (optional)
   when:
     - controller_manage_known_hosts | bool
@@ -51,7 +53,7 @@
         state: touch
         mode: "0644"
 
-    - name: Add target fingerprints
+    - name: Add target fingerprints to known_hosts
       ansible.builtin.known_hosts:
         path: "{{ controller_ssh_dir }}/known_hosts"
         name: "{{ item.host }}"
@@ -59,7 +61,10 @@
         state: present
       loop: "{{ controller_known_hosts_targets }}"
 
-
-- name: Debug controller SSH keypair result
+- name: Display controller keypair summary
   ansible.builtin.debug:
-    var: controller_ssh_keypair_result
+    msg:
+      keypair_changed: "{{ controller_keypair_result is changed }}"
+      fingerprint: "{{ controller_keypair_result.fingerprint | default('n/a') }}"
+      public_key_path: "{{ controller_ssh_public_key_path }}"
+      public_key_content: "{{ controller_pubkey_slurp.content | b64decode | trim }}"
