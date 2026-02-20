@@ -26,9 +26,9 @@ This doc describes the temporary playbook `playbooks/setup_openssh_via_winrm.yam
 | `%USERPROFILE%\.ssh\authorized_keys` | Exists=True, Lines=1 |
 | Inventory `ansible_host` | DESKTOP-VLLM |
 | Inventory `ansible_user` | joshc |
-| `win_ssh_port` (host_var) | 22 |
+| `win_ssh_port` (host_var) | 2222 |
 
-So on server-225-win: OpenSSH Server is installed, the firewall allows port 22, host keys are present, and the controller’s public key is already in `authorized_keys` (one line). Running `setup_openssh_via_winrm.yaml` against this host is idempotent and will not change behavior.
+So on server-225-win: OpenSSH Server is installed, the firewall allows port 2222, host keys are present, and the controller’s public key is already in `authorized_keys` (one line). Running `setup_openssh_via_winrm.yaml` against this host is idempotent and will not change behavior.
 
 ---
 
@@ -46,7 +46,7 @@ So on server-225-win: OpenSSH Server is installed, the firewall allows port 22, 
 ### Tasks
 
 1. **Install OpenSSH Server:** OpenSSH.Server is a Windows *Capability* (not an optional feature). We use `win_shell` with `Add-WindowsCapability -Online`; `ansible.windows.win_optional_feature` is for DISM optional features only. Per [Windows SSH guide](https://docs.ansible.com/projects/ansible/latest/os_guide/windows_ssh.html): `Get-WindowsCapability -Name OpenSSH.Server* -Online | Add-WindowsCapability -Online`. Service `sshd` is managed with `ansible.windows.win_service` (start_mode=auto, state=started).
-2. **Firewall for SSH:** Ensure rule `sshd-Server-In-TCP` (display name "Inbound rule for OpenSSH Server (sshd) on TCP port …") allows TCP on `win_ssh_port` (default 22).
+2. **Firewall for SSH:** Ensure rule `sshd-Server-In-TCP` (display name "Inbound rule for OpenSSH Server (sshd) on TCP port …") allows TCP on `win_ssh_port` (default 2222).
 3. **Verify firewall port:** Fail if rule `sshd-Server-In-TCP` LocalPort does not match `win_ssh_port`.
 4. **Host keys:** If `vault/openssh_host_keys.vault.yml` exists on the controller, deploy to `C:\ProgramData\ssh\`. Else run `ssh-keygen -A` in `C:\ProgramData\ssh` (fallback).
 5. **sshd service:** Set service `sshd` to start_mode=auto and state=started.

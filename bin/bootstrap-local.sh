@@ -165,6 +165,12 @@ else
   fi
 fi
 
+# ============================================================================
+# WSL SSH setup: DISABLED — now managed by Ansible roles.
+# The SSH server install, sshd_config, and authorized_keys deployment have been
+# commented out. Run the appropriate Ansible playbook instead.
+# ============================================================================
+: << 'COMMENTED_OUT_SSH_SETUP'
 log_step "Setting up SSH server in WSL"
 
 # Install openssh-server if not present
@@ -264,6 +270,8 @@ else
   log_info "Expected: bootstrap/id_ed25519_ansible.pub"
   log_info "Copy from Mac: cp ~/.ssh/id_ed25519_ansible.pub bootstrap/id_ed25519_ansible.pub"
 fi
+COMMENTED_OUT_SSH_SETUP
+log_skip "SSH setup disabled in bootstrap (now managed by Ansible roles)"
 
 if [[ "$RUN_FZ_BOOTSTRAP" == "true" ]]; then
   echo ""

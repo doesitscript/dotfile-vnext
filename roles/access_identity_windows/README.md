@@ -4,7 +4,7 @@ Enables OpenSSH Server on Windows hosts reachable via WinRM, configures the requ
 
 ## Purpose
 
-- Install OpenSSH Server capability, start sshd, open firewall (port 22).
+- Install OpenSSH Server capability, start sshd, configure listen port (`win_ssh_port`), open firewall.
 - Create `C:\ProgramData\ssh\administrators_authorized_keys` with correct ACL (invariant).
 - Add controller public key from `execution_nodes` host facts (run access_controller first).
 - Optionally verify SSH key auth from the controller.
@@ -14,7 +14,7 @@ Enables OpenSSH Server on Windows hosts reachable via WinRM, configures the requ
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `openssh_server_capability` | `OpenSSH.Server~~~~0.0.1.0` | Windows capability name |
-| `win_ssh_port` | `22` | SSH port |
+| `win_ssh_port` | `2222` | SSH port |
 | `win_ssh_user` | (set in host_vars/group_vars) | User for SSH key auth; e.g. same as `win_user` or `ansible_user` |
 | `administrators_authorized_keys_path` | `C:\ProgramData\ssh\administrators_authorized_keys` | Key file path |
 | `verify_ssh_from_controller` | `true` | Run SSH test from controller after config |

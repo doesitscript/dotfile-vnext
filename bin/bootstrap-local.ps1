@@ -783,12 +783,17 @@ Write-Host "  - $wslVarsPath" -ForegroundColor White
 Write-Host ''
 
 # ============================================================================
-# OpenSSH Server (Windows): only when -InstallOpenSSH. Otherwise install from Mac via Ansible later.
+# OpenSSH Server (Windows): DISABLED — now managed by Ansible role access_identity_windows.
+# The -InstallOpenSSH flag and all OpenSSH setup (capability install, firewall,
+# default shell, host keys, sshd service, authorized_keys) have been commented
+# out. Run the Ansible role instead:
+#   ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit <host> --tags admin
 # ============================================================================
+<#  --- COMMENTED OUT: OpenSSH setup moved to Ansible role access_identity_windows ---
 if (-not $InstallOpenSSH) {
     Write-Skip "Skipping OpenSSH Server (pass -InstallOpenSSH to configure here, or install from Mac via Ansible later)"
 } else {
-$winSshPort = if ($winVars.win_ssh_port) { $winVars.win_ssh_port } else { 22 }
+$winSshPort = if ($winVars.win_ssh_port) { $winVars.win_ssh_port } else { 2222 }
 Write-Step "Configuring OpenSSH Server on Windows (port $winSshPort, default shell WSL bash)"
 
 $openSshCapability = Get-WindowsCapability -Online -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'OpenSSH.Server*' }
@@ -807,7 +812,6 @@ if ($openSshCapability -and $openSshCapability.State -ne 'Installed') {
     Write-Skip "OpenSSH Server already installed"
 }
 
-# Firewall for OpenSSH (port from win_ssh_port in host_vars). Align with Ansible guide: sshd-Server-In-TCP.
 $fwRule = Get-NetFirewallRule -Name 'sshd-Server-In-TCP' -ErrorAction SilentlyContinue
 $ruleNeedsUpdate = $false
 if ($fwRule) {
@@ -834,7 +838,6 @@ if (-not $fwRule -or $ruleNeedsUpdate) {
         Write-Ok "Firewall rule 'sshd-Server-In-TCP' (port $winSshPort) created"
     }
 }
-# Verify: do not trust without checking
 $verifyRule = Get-NetFirewallRule -Name 'sshd-Server-In-TCP' -ErrorAction SilentlyContinue
 $verifyPorts = if ($verifyRule) { @(($verifyRule | Get-NetFirewallPortFilter -ErrorAction SilentlyContinue).LocalPort) } else { @() }
 if ($verifyPorts -notcontains $winSshPort) {
@@ -843,10 +846,6 @@ if ($verifyPorts -notcontains $winSshPort) {
     Write-Verbose "Firewall verified: sshd-Server-In-TCP rule LocalPort=$($verifyPorts -join ',')"
 }
 
-# Default shell = WSL bash so SSH to Windows drops into our Ubuntu distro (align with group_vars wsl_distro).
-# Win32-OpenSSH runs: DefaultShell DefaultShellCommandOption command. So we must use a wrapper that accepts -c
-# and runs wsl -d <distro> -e /bin/bash -l -c "<command>". Using -d ... -e ... as DefaultShellCommandOption
-# causes that entire string to be passed as the "command", so bash sees "-d Ubuntu-24.04" and fails.
 $defaultWslDistro = if ($wslVars.wsl_distro) { $wslVars.wsl_distro } else { 'Ubuntu-24.04' }
 $defaultWslDistro = Strip-YamlControlChars $defaultWslDistro
 if (-not $defaultWslDistro) { $defaultWslDistro = 'Ubuntu-24.04' }
@@ -873,8 +872,6 @@ New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell -Value $wslWr
 New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShellCommandOption -Value '-c' -PropertyType String -Force | Out-Null
 Write-Ok "Default shell set to WSL bash via wrapper ($defaultWslDistro)"
 
-# Ensure host keys exist: idempotent. Use keys from the project when present (Mac bootstrap --SSHGenForce or fz bootstrap-openssh-host-keys).
-# Check repo at bootstrap/openssh_host_keys/ for host keys (ssh_host_ed25519_key, ssh_host_rsa_key + .pub).
 $sshDataDir = 'C:\ProgramData\ssh'
 $hostKeyCandidates = @(
     (Join-Path $repoRoot 'bootstrap\openssh_host_keys')
@@ -938,7 +935,6 @@ if ($weHaveOurKeys) {
             if ($generatedKeys.Count -gt 0) {
                 Write-Verbose ('Generated/updated host key files in ' + $sshDataDir + ' : ' + ($generatedKeys -join ', '))
             }
-            # Only show the temporary-keys warning when we had no project keys AND we just generated new keys.
             if ($needKeys) {
                 Write-Host ''
                 Write-Host '  ****************************************' -ForegroundColor Red
@@ -984,7 +980,6 @@ if ($sshdService) {
     Write-Host '  [WARNING] sshd service not found. OpenSSH Server may not be installed.' -ForegroundColor Yellow
 }
 
-# Restart sshd so config and default shell take effect (best-effort)
 if (Get-Service -Name sshd -ErrorAction SilentlyContinue) {
     try {
         Restart-Service sshd -Force -ErrorAction Stop
@@ -994,8 +989,6 @@ if (Get-Service -Name sshd -ErrorAction SilentlyContinue) {
     }
 }
 
-# Windows authorized_keys: standard key id_ed25519_ansible. Try bootstrap/id_ed25519_ansible.pub first, then deprecated bootstrap/mac_ssh_key.pub. Ansible also deploys from Mac at run time (~/.ssh/id_ed25519_ansible.pub).
-# Use win_user's profile so key is in the right account when script is run remotely as Administrator.
 $winUserProfile = Join-Path 'C:\Users' $winVars.win_user
 $winSshDir = Join-Path $winUserProfile '.ssh'
 $winAuthorizedKeys = Join-Path $winSshDir 'authorized_keys'
@@ -1006,7 +999,6 @@ if (-not (Test-Path $winSshDir)) {
 
 $keyAdded = $false
 $keySourceUsed = $false
-# Standard key first; deprecated path as fallback
 $keySources = @(
     @{ Path = (Join-Path $repoRoot 'bootstrap\id_ed25519_ansible.pub'); Name = 'id_ed25519_ansible (bootstrap/id_ed25519_ansible.pub)' }
     @{ Path = (Join-Path $repoRoot 'bootstrap\mac_ssh_key.pub'); Name = 'mac_ssh_key (bootstrap/mac_ssh_key.pub, deprecated)' }
@@ -1027,7 +1019,6 @@ foreach ($keySource in $keySources) {
     }
     Write-Verbose ('  [OK] File exists: ' + $keyPath)
     
-    # Read key file, strip control chars, trim, and get first non-empty line
     Write-Verbose ('  [READ] Reading file content from: ' + $keyPath)
     try {
         $keyContent = Get-Content $keyPath -Raw -ErrorAction Stop
@@ -1059,7 +1050,6 @@ foreach ($keySource in $keySources) {
         Write-Verbose ('  [INFO] Split result count: ' + (($keyContent -split "`r?`n").Count))
     }
     
-    # Validate SSH public key format: key-type key-data [comment]
     if (-not $keyLine) {
         Write-Verbose ('  [SKIP] No key line extracted from: ' + $keyPath)
         Write-Verbose ('  [INFO] Validation failed: key line is empty or null')
@@ -1112,6 +1102,8 @@ if (-not $keySourceUsed) {
 }
 
 } # end if ($InstallOpenSSH)
+#>
+Write-Skip "OpenSSH setup disabled in bootstrap (now managed by Ansible role access_identity_windows)"
 
 Write-Host ''
 
