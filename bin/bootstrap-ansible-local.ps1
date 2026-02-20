@@ -141,6 +141,7 @@ if (-not $wslUser -or $wslUser -eq $null) {
 }
 
 # Read win_password from Windows host_vars; fall back to default lab password (no vault required)
+# Read win_password from Windows host_vars; fall back to default lab password (no vault required)
 # Note: This script uses win_password from Windows host_vars as the WSL password
 $wslPassword = $null
 if (-not (Test-Path $winHostVarsPath)) {
@@ -161,6 +162,8 @@ if (-not (Test-Path $winHostVarsPath)) {
     }
 }
 
+# Ensure we have a password (default is always set)
+if (-not $wslPassword) { $wslPassword = $DefaultLabPassword }
 # Ensure we have a password (default is always set)
 if (-not $wslPassword) { $wslPassword = $DefaultLabPassword }
 

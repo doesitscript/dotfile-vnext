@@ -1,10 +1,12 @@
 # OpenSSH host keys for Windows (server-225)
 
-OpenSSH server host keys are **generated on the Mac** (control node), stored in **Ansible vault**, and **deployed to Windows** by the bootstrap playbook. Login keys in `authorized_keys` on Windows also come from the Mac (e.g. `.mgmt/ansible_ssh.pub` or `bootstrap/mac_ssh_key.pub`). No manual copy.
+The **Mac is the source of truth and controller** for OpenSSH on Windows: host keys are generated on the Mac and deployed via Ansible. The Ansible SSH key lives only at `~/.ssh/id_ed25519_ansible` on the Mac; playbooks read it from the execution node at run time. No key files in the repo.
+
+OpenSSH server host keys are **generated on the Mac** (control node), stored in **Ansible vault**, and **deployed to Windows** by the bootstrap playbook. Login keys in `authorized_keys` on Windows come from the execution node’s `~/.ssh/id_ed25519_ansible.pub` (deployed when you run bootstrap from the Mac) or optionally from `bootstrap/mac_ssh_key.pub` (user-placed). No manual copy.
 
 ## Flow (fully automated)
 
-1. **Generate keys (Mac):** Run from repo root on the control node:
+1. **Generate keys (Mac):** Run from repo root on the control node. Key generation is done entirely by Ansible (`community.crypto.openssh_keypair`); no shell script.
    ```bash
    ./bin/fz bootstrap-openssh-host-keys
    ```
@@ -20,7 +22,7 @@ OpenSSH server host keys are **generated on the Mac** (control node), stored in 
 
 ## Optional: local keys on Windows
 
-If you have key files in this directory (or in `.mgmt`) on the Windows machine, `bin\bootstrap-local.ps1` will still install them into `C:\ProgramData\ssh`. The canonical, automated path is vault → playbook; the script is a fallback for local-only use.
+If you have key files in this directory on the Windows machine, `bin\bootstrap-local.ps1` will still install them into `C:\ProgramData\ssh`. The canonical, automated path is vault → playbook; the script is a fallback for local-only use.
 
 ## Required key files (names must match)
 

@@ -59,9 +59,9 @@ ensure_venv() {
   repo_root="$(repo_root)"
   local venv_dir="${repo_root}/.venv"
   local requirements_file="${repo_root}/scripts/requirements.txt"
-  local mgmt_dir="${repo_root}/.mgmt"
-  local bootstrap_stamp="${mgmt_dir}/.fz_bootstrap_complete"
-  local requirements_hash_file="${mgmt_dir}/requirements.sha256"
+  local run_dir="${repo_root}/logs"
+  local bootstrap_stamp="${run_dir}/.fz_bootstrap_complete"
+  local requirements_hash_file="${run_dir}/requirements.sha256"
   local python_cmd
   python_cmd="$(get_python)"
   local activate_path="${venv_dir}/bin/activate"
@@ -71,7 +71,7 @@ ensure_venv() {
   local venv_created=false
   local full_bootstrap=false
 
-  mkdir -p "${mgmt_dir}"
+  mkdir -p "${run_dir}"
 
   create_venv() {
     log_info "Creating virtual environment at ${venv_dir}"
@@ -151,8 +151,8 @@ ensure_venv() {
 
   # Install Ansible Galaxy collections (for bootstrap_mac, Homebrew roles, etc.) when pip deps were installed or collections file changed.
   local requirements_yml="${repo_root}/requirements.yml"
-  local collections_hash_file="${mgmt_dir}/requirements_yml.sha256"
-  mkdir -p "${mgmt_dir}"
+  local collections_hash_file="${run_dir}/requirements_yml.sha256"
+  mkdir -p "${run_dir}"
   if [ -f "${requirements_yml}" ]; then
     local col_hash
     col_hash="$(file_sha256 "${requirements_yml}")"
@@ -199,8 +199,8 @@ setup_ansible_env() {
   log_info "ANSIBLE_ROLES_PATH=${ANSIBLE_ROLES_PATH}"
   log_info "ANSIBLE_COLLECTIONS_PATH=${ANSIBLE_COLLECTIONS_PATH}"
 
-  # Ansible log_path in ansible.cfg points to .mgmt/ansible.log; ensure .mgmt exists.
-  mkdir -p "${repo_root}/.mgmt"
+  # Ansible log_path in ansible.cfg points to logs/ansible.log; ensure logs exists.
+  mkdir -p "${repo_root}/logs"
 }
 
 # Configure Git globally for push/pull
