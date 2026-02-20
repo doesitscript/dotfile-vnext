@@ -14,3 +14,5 @@ When assisting with anything related to Ansible, inventory structure, variable p
 Use these docs to validate correctness, identify misconfigurations, and ensure recommendations align with official Ansible behavior. Surface discrepancies between the repository and the authoritative docs.
 
 Always validate recommendations against these docs and surface discrepancies between the repo and the authoritative Ansible documentation.
+
+Any other links i gve you , read and indexz  and apply the avoe instruction so ththem too, infer the title of each of the  after you read them. report on each , two sentences each after reading them.

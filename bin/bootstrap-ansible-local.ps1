@@ -1,7 +1,11 @@
 # bin/bootstrap-ansible-local.ps1
-# Configures the Ubuntu (WSL) distro and runs Ansible bootstrap only for that Ubuntu.
-# Does NOT run playbooks against Windows (server-225-win); run those from the Mac.
-# Reads username and password from server-225-wsl and server-225-win host_vars (for WSL user/pass only).
+# Configures the Ubuntu (WSL) distro and runs Ansible bootstrap inside it.
+# Does NOT run playbooks against Windows (<node>-win); run those from the Mac.
+# Reads username and password from <node>-wsl and <node>-win host_vars.
+#
+# Can be called standalone or chained from bootstrap-local.ps1.
+# When chained, -PhysicalNode is passed automatically.
+# When run standalone, auto-detects from hostname or requires -PhysicalNode.
 
 # ============================================================================
 # Configuration Variables (commented out - values are read from host_vars files)
@@ -10,24 +14,26 @@
 # values into file contents. Uncomment and set these if you want to override
 # the values read from host_vars files.
 #
-# $wslUser = "josh"                    # WSL username (inserted into cloud-init user-data)
+# $wslUser = "joshc"                    # WSL username (inserted into cloud-init user-data)
 # $wslPassword = "Pass@w0rd1"          # WSL password (inserted into cloud-init user-data)
-# $wslDistroOverride = "Ubuntu-24.04" # WSL distribution name (used in file paths and commands)
-#                                      # Set to $null to use value from host_vars instead
 #
-# File paths (determined dynamically from script location):
+# File paths (determined dynamically from script location + PhysicalNode):
 # $repoRoot = "D:\develop\dotfile-vnext"  # Repository root (auto-detected from script location)
-# $wslHostVarsPath = "$repoRoot\inventory\host_vars\server-225-wsl.yaml"
-# $winHostVarsPath = "$repoRoot\inventory\host_vars\server-225-win.yaml"
+# $wslHostVarsPath = "$repoRoot\inventory\host_vars\<node>-wsl.yaml"
+# $winHostVarsPath = "$repoRoot\inventory\host_vars\<node>-win.yaml"
 # $cloudInitDir = "$env:USERPROFILE\.cloud-init"  # Cloud-init directory (auto-created)
 # $userDataFile = "$cloudInitDir\$wslDistro.user-data"  # Cloud-init user-data file
 # ============================================================================
 #
 # .QUICK COMMANDS
 #   Run from repo root (after bootstrap-local.ps1): .\bin\bootstrap-ansible-local.ps1
-#   Skip fz at the end:  .\bin\bootstrap-ansible-local.ps1 -RunFzBootstrap:$false
+#   Explicit node:  .\bin\bootstrap-ansible-local.ps1 -PhysicalNode server-225
+#   Skip fz at the end:  .\bin\bootstrap-ansible-local.ps1 -RunWslBootstrap:$false
 
 param(
+    # Physical node name (e.g., server-225, dev-3090, network-server).
+    # Auto-detected from hostname if not provided.
+    [string]$PhysicalNode = "",
     # If $true (default), unregister the WSL distribution if it already exists (wsl --unregister)
     # then redeploy from cache (wsl --install). Set to $false to keep existing instance and use wsl -d.
     [bool]$UnregisterIfExists = $true,
@@ -53,25 +59,65 @@ $repoRoot = Split-Path -Parent $scriptDir
 Write-Verbose "scriptDir=$scriptDir"
 Write-Verbose "repoRoot=$repoRoot"
 
-# File paths used by this script:
-# - inventory\host_vars\server-225-wsl.yaml (required) - WSL host vars containing wsl_user and wsl_distro
-# - inventory\host_vars\server-225-win.yaml (required) - Windows host vars containing win_password
-# - $env:USERPROFILE\.cloud-init\$wslDistro.user-data (created) - Cloud-init user data file
+# ============================================================================
+# Auto-detect physical node if not provided
+# ============================================================================
+if (-not $PhysicalNode) {
+    $detectedHostname = $env:COMPUTERNAME.ToUpper()
+    $mappingPath = Join-Path $repoRoot "inventory\hosts_mapping.yaml"
+    Write-Verbose "PhysicalNode not provided; auto-detecting from hostname '$detectedHostname'"
 
-$wslHostVarsPath = Join-Path $repoRoot "inventory\host_vars\server-225-wsl.yaml"
-$winHostVarsPath = Join-Path $repoRoot "inventory\host_vars\server-225-win.yaml"
+    if (Test-Path $mappingPath) {
+        $lines = Get-Content $mappingPath
+        $currentNode = $null
+        foreach ($line in $lines) {
+            # Match 2-space indented node name under physical_nodes (e.g., "  server-225:")
+            if ($line -match '^\s{2}([a-z0-9_-]+):\s*$') {
+                $currentNode = $Matches[1]
+            }
+            # Match hostname line and compare case-insensitively
+            if ($currentNode -and $line -match 'hostname:\s*"?([^"#\s]+)"?') {
+                if ($Matches[1].ToUpper() -eq $detectedHostname) {
+                    $PhysicalNode = $currentNode
+                    break
+                }
+            }
+        }
+    }
+
+    if (-not $PhysicalNode) {
+        Write-Error "[ERROR] Could not auto-detect physical node from hostname '$($env:COMPUTERNAME)'." -ErrorAction Continue
+        Write-Host "  Pass -PhysicalNode <name> explicitly (e.g., server-225, dev-3090, network-server)" -ForegroundColor Yellow
+        Write-Host "  Or ensure this machine's hostname is in inventory/hosts_mapping.yaml" -ForegroundColor Yellow
+        exit 1
+    }
+    Write-Ok "Auto-detected physical node: $PhysicalNode (from hostname $detectedHostname)"
+} else {
+    Write-Verbose "PhysicalNode provided: $PhysicalNode"
+}
+
+# ============================================================================
+# File paths based on physical node (no hardcoded node names)
+# ============================================================================
+$wslHostVarsPath = Join-Path $repoRoot "inventory\host_vars\$PhysicalNode-wsl.yaml"
+$winHostVarsPath = Join-Path $repoRoot "inventory\host_vars\$PhysicalNode-win.yaml"
 Write-Verbose "wslHostVarsPath=$wslHostVarsPath"
 Write-Verbose "winHostVarsPath=$winHostVarsPath"
 
-Write-Step "Reading server-225 WSL configuration"
+# Default lab password when win_password is missing (no vault). Must match bootstrap-local.ps1.
+$DefaultLabPassword = 'Pass@w0rd'
+
+Write-Step "Reading $PhysicalNode WSL configuration"
 Write-Host "Repository root: $repoRoot" -ForegroundColor Cyan
+Write-Host "Physical node: $PhysicalNode" -ForegroundColor Cyan
 
 # Read WSL username from host_vars (required, no fallback)
 $wslUser = $null
 if (-not (Test-Path $wslHostVarsPath)) {
-    Write-Error "[ERROR] Required file not found: server-225-wsl.yaml" -ErrorAction Continue
+    Write-Error "[ERROR] Required file not found: $PhysicalNode-wsl.yaml" -ErrorAction Continue
     Write-Host "  Expected location: $wslHostVarsPath" -ForegroundColor Red
     Write-Host "  This file must contain 'wsl_user:' and 'wsl_distro:' entries" -ForegroundColor Yellow
+    Write-Host "  Run bootstrap-local.ps1 first to generate host_vars files" -ForegroundColor Yellow
     exit 1
 }
 
@@ -81,7 +127,7 @@ if ($hostVarsContent -match 'wsl_user:\s*"?([^"\r\n]+)"?') {
     Write-Host "  Found WSL user: $wslUser" -ForegroundColor Green
     Write-Host "  Username source: $wslHostVarsPath" -ForegroundColor Yellow
 } else {
-    Write-Error "[ERROR] Required field 'wsl_user:' not found in file: server-225-wsl.yaml" -ErrorAction Continue
+    Write-Error "[ERROR] Required field 'wsl_user:' not found in file: $PhysicalNode-wsl.yaml" -ErrorAction Continue
     Write-Host "  File location: $wslHostVarsPath" -ForegroundColor Red
     Write-Host "  Please ensure the file contains 'wsl_user: <username>'" -ForegroundColor Yellow
     exit 1
@@ -90,87 +136,69 @@ if ($hostVarsContent -match 'wsl_user:\s*"?([^"\r\n]+)"?') {
 # Ensure wsl_user was successfully retrieved - exit if still null
 if (-not $wslUser -or $wslUser -eq $null) {
     Write-Error "[ERROR] WSL user is null or empty after reading host_vars file" -ErrorAction Continue
-    Write-Host "  File: server-225-wsl.yaml at $wslHostVarsPath" -ForegroundColor Red
+    Write-Host "  File: $PhysicalNode-wsl.yaml at $wslHostVarsPath" -ForegroundColor Red
     exit 1
 }
 
-# Read win_password from Windows host_vars (required, no fallback)
+# Read win_password from Windows host_vars; fall back to default lab password (no vault required)
 # Note: This script uses win_password from Windows host_vars as the WSL password
 $wslPassword = $null
 if (-not (Test-Path $winHostVarsPath)) {
-    Write-Error "[ERROR] Required file not found: server-225-win.yaml" -ErrorAction Continue
-    Write-Host "  Expected location: $winHostVarsPath" -ForegroundColor Red
-    Write-Host "  This file must contain 'win_password:' entry (used as WSL password)" -ForegroundColor Yellow
-    exit 1
-}
-
-$winHostVarsContent = Get-Content $winHostVarsPath -Raw
-if ($winHostVarsContent -match 'win_password:\s*"?([^"\r\n]+)"?') {
-    $wslPassword = $Matches[1].Trim().Trim('"')
-    Write-Host "  Found win_password: ***" -ForegroundColor Green
-    Write-Host "  Password source: $winHostVarsPath" -ForegroundColor Yellow
+    Write-Host "  $PhysicalNode-win.yaml not found; using default lab password." -ForegroundColor Cyan
+    $wslPassword = $DefaultLabPassword
 } else {
-    Write-Error "[ERROR] Required field 'win_password:' not found in file: server-225-win.yaml" -ErrorAction Continue
-    Write-Host "  File location: $winHostVarsPath" -ForegroundColor Red
-    Write-Host "  Please ensure the file contains 'win_password: <password>'" -ForegroundColor Yellow
-    Write-Host "  Note: This password will be used as the WSL user password" -ForegroundColor Yellow
-    exit 1
+    $winHostVarsContent = Get-Content $winHostVarsPath -Raw
+    if ($winHostVarsContent -match 'win_password:\s*"?([^"\r\n]+)"?') {
+        $wslPassword = $Matches[1].Trim().Trim('"')
+        if ($wslPassword) {
+            Write-Host "  Found win_password: ***" -ForegroundColor Green
+            Write-Host "  Password source: $winHostVarsPath" -ForegroundColor Yellow
+        }
+    }
+    if (-not $wslPassword) {
+        Write-Host "  win_password not in host_vars or empty; using default lab password." -ForegroundColor Cyan
+        $wslPassword = $DefaultLabPassword
+    }
 }
 
-# Ensure win_password was successfully retrieved - exit if still null
-if (-not $wslPassword -or $wslPassword -eq $null) {
-    Write-Error "[ERROR] win_password is null or empty after reading host_vars file" -ErrorAction Continue
-    Write-Host "  File: server-225-win.yaml at $winHostVarsPath" -ForegroundColor Red
-    exit 1
-}
+# Ensure we have a password (default is always set)
+if (-not $wslPassword) { $wslPassword = $DefaultLabPassword }
 
 Write-Host "  [INFO] This script is not currently compatible with Ansible Vault" -ForegroundColor Green
 
-# Determine WSL distro name from host_vars (with override support for testing)
-$wslDistroFromHostVars = $null
-# Re-read host_vars content (already loaded above, but keeping for clarity)
+# Determine WSL distro name from host_vars
+$wslDistro = $null
 if (Test-Path $wslHostVarsPath) {
     $hostVarsContent = Get-Content $wslHostVarsPath -Raw
     if ($hostVarsContent -match 'wsl_distro:\s*"?([^"\r\n]+)"?') {
         $detectedDistro = $Matches[1].Trim().Trim('"')
         # Map common distro names to WSL distribution names
         if ($detectedDistro -like "*Ubuntu*22*" -or $detectedDistro -eq "Ubuntu-22.04") {
-            $wslDistroFromHostVars = "Ubuntu-22.04"
+            $wslDistro = "Ubuntu-22.04"
         } elseif ($detectedDistro -like "*Ubuntu*24*" -or $detectedDistro -eq "Ubuntu-24.04") {
-            $wslDistroFromHostVars = "Ubuntu-24.04"
+            $wslDistro = "Ubuntu-24.04"
         } elseif ($detectedDistro -eq "Ubuntu") {
-            $wslDistroFromHostVars = "Ubuntu"
+            $wslDistro = "Ubuntu"
+        } else {
+            # Accept any distro name from host_vars as-is
+            $wslDistro = $detectedDistro
         }
-        Write-Host "  Found WSL distro in host_vars: $wslDistroFromHostVars" -ForegroundColor Green
-        
+        Write-Host "  Found WSL distro in host_vars: $wslDistro" -ForegroundColor Green
+
         # Warning: Only Ubuntu-24.04 is advertised as fully automated
-        if ($wslDistroFromHostVars -ne "Ubuntu-24.04") {
+        if ($wslDistro -ne "Ubuntu-24.04") {
             Write-Host "  [WARNING] ONLY Ubuntu-24.04 advertised as fully automated user/pass provisioning and auto app trigger" -ForegroundColor Red
         }
     } else {
-        Write-Host "  [WARNING] 'wsl_distro:' not found in file: server-225-wsl.yaml" -ForegroundColor Yellow
+        Write-Host "  [WARNING] 'wsl_distro:' not found in file: $PhysicalNode-wsl.yaml" -ForegroundColor Yellow
         Write-Host "  File location: $wslHostVarsPath" -ForegroundColor Yellow
     }
 }
 
-# Override value for testing (set this variable to override host_vars value)
-# Set $wslDistroOverride to a value (e.g., "Ubuntu-24.04") to use it instead of host_vars value
-$wslDistroOverride = "Ubuntu-24.04"  # Override value for testing - set to $null to use host_vars instead
-
-# Use override if set, otherwise use value from host_vars
-if ($wslDistroOverride -and $wslDistroOverride -ne $null) {
-    $wslDistro = $wslDistroOverride
-    Write-Host "  [OVERRIDE] Using test override value: $wslDistro" -ForegroundColor Yellow
-    if ($wslDistroFromHostVars) {
-        Write-Host "    (Overriding value from host_vars: $wslDistroFromHostVars)" -ForegroundColor Yellow
-    }
-} elseif ($wslDistroFromHostVars) {
-    $wslDistro = $wslDistroFromHostVars
-    Write-Verbose "Using wsl_distro from host_vars: $wslDistro"
-} else {
-    Write-Error "[ERROR] No WSL distro found in host_vars and no override set" -ErrorAction Continue
-    Write-Host "  File: server-225-wsl.yaml at $wslHostVarsPath" -ForegroundColor Red
-    Write-Host "  Either add 'wsl_distro: Ubuntu-24.04' to the file, or set `$wslDistroOverride variable" -ForegroundColor Yellow
+if (-not $wslDistro) {
+    Write-Error "[ERROR] No WSL distro found in host_vars for $PhysicalNode" -ErrorAction Continue
+    Write-Host "  File: $PhysicalNode-wsl.yaml at $wslHostVarsPath" -ForegroundColor Red
+    Write-Host "  Ensure the file contains 'wsl_distro: Ubuntu-24.04' (or your target distro)" -ForegroundColor Yellow
     exit 1
 }
 
@@ -215,7 +243,7 @@ write_files:
   append: true
   content: |
     [boot]
-    ystemd=true
+    systemd=true
     [user]
     default=$wslUser
 "@
@@ -316,7 +344,7 @@ Write-Host ""
 Write-Step "Running Ansible Local Bootstrap (destructive idempotent process)"
 Write-Host "  [WARNING] This is a destructive idempotent process for provisioning Ansible in WSL" -ForegroundColor Red
 Write-Host "  It will configure SSH server, passwordless sudo, and other Ansible requirements" -ForegroundColor Yellow
-Write-Host "  Running: ./bin/bootstrap-local.sh inside WSL distribution: $wslDistro" -ForegroundColor Cyan
+Write-Host "  Running: ./bin/bootstrap-local.sh --physical-node $PhysicalNode inside WSL distribution: $wslDistro" -ForegroundColor Cyan
 
 # Get the repo path in WSL format (convert Windows path to WSL path)
 # Convert D:\develop\dotfile-vnext to /mnt/d/develop/dotfile-vnext
@@ -337,8 +365,8 @@ Write-Host "  Targeting WSL distribution by name: $wslDistroForBootstrap (not th
 Write-Verbose "WSL bootstrap command target distro: $wslDistroForBootstrap"
 
 $bootstrapScriptPath = "$wslRepoPath/bin/bootstrap-local.sh"
-# Pass --skip-fz-bootstrap so the script does not run fz; we run fz from here after success.
-$wslCommand = "cd '$wslRepoPath' && bash '$bootstrapScriptPath' --skip-fz-bootstrap"
+# Pass --skip-fz-bootstrap and --physical-node so the script knows which node and does not run fz
+$wslCommand = "cd '$wslRepoPath' && bash '$bootstrapScriptPath' --skip-fz-bootstrap --physical-node '$PhysicalNode'"
 
 $wslBootstrapSucceeded = $false
 if (-not $RunWslBootstrap) {
@@ -365,7 +393,7 @@ try {
             Write-Host "  Right-click PowerShell and choose 'Run as administrator', then run this script again." -ForegroundColor Yellow
             Write-Host "" -ForegroundColor Red
         }
-        Write-Host "  You may need to run './bin/bootstrap-local.sh' manually inside WSL" -ForegroundColor Yellow
+        Write-Host "  You may need to run './bin/bootstrap-local.sh --physical-node $PhysicalNode' manually inside WSL" -ForegroundColor Yellow
     }
 } catch {
     $errMsg = $_.ToString()
@@ -376,7 +404,7 @@ try {
         Write-Host "  Right-click PowerShell and choose 'Run as administrator', then run this script again." -ForegroundColor Yellow
         Write-Host "" -ForegroundColor Red
     }
-    Write-Host "  You may need to run './bin/bootstrap-local.sh' manually inside WSL" -ForegroundColor Yellow
+    Write-Host "  You may need to run './bin/bootstrap-local.sh --physical-node $PhysicalNode' manually inside WSL" -ForegroundColor Yellow
 } finally {
     $ErrorActionPreference = $prevErrorAction
 }
@@ -384,11 +412,12 @@ try {
 
 Write-Host ""
 Write-Ok "WSL setup complete"
+Write-Host "  Physical node: $PhysicalNode" -ForegroundColor Cyan
 Write-Host "  WSL distribution: $wslDistro" -ForegroundColor Cyan
 Write-Host "  WSL user: $wslUser" -ForegroundColor Cyan
 Write-Host "  To access WSL manually: wsl -d $wslDistro" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  To run Windows bootstrap (WinRM) from the Mac: ./bin/fz bootstrap --limit server-225-win" -ForegroundColor Yellow
+Write-Host "  To run Windows bootstrap (WinRM) from the Mac: ./bin/fz bootstrap --limit $PhysicalNode-win" -ForegroundColor Yellow
 Write-Host "  This script only configures the Ubuntu distro; it does not target Windows." -ForegroundColor Yellow
 
 if (-not $wslBootstrapSucceeded) {
