@@ -16,12 +16,14 @@
 #   .\bin\bootstrap-local.ps1 -FactsOnly         Only collect facts (no host_vars, no chain)
 #   .\bin\bootstrap-local.ps1 -RunAll:$false      Facts + host_vars + WinRM (no OpenSSH, no chain)
 #   .\bin\bootstrap-local.ps1 -InstallOpenSSH    WinRM + host_vars + OpenSSH (then chain if RunAll)
+#   .\bin\bootstrap-local.ps1 -Force             Unregister existing WSL distro before reinstalling
 #   .\bin\bootstrap-local.ps1                     Full: WinRM + host_vars only; chain -> bootstrap-ansible-local.ps1 -> WSL -> fz
 
 param(
     [bool]$RunAll = $true,
     [switch]$FactsOnly = $false,
-    [switch]$InstallOpenSSH = $false
+    [switch]$InstallOpenSSH = $false,
+    [switch]$Force = $false
 )
 
 # Default lab password for new Windows hosts (no vault required). Used when no existing win_password in host_vars.
@@ -522,6 +524,27 @@ Write-Ok "Physical node: $physicalNode"
 Write-Ok "Ansible host: $ansibleHost"
 Write-Host ''
 
+# Load group_vars for this physical node (server-225 -> server_225.yaml)
+$groupVarsWslDistro = $null
+if ($physicalNode) {
+    $groupName = $physicalNode -replace '-', '_'
+    $groupVarsPath = Join-Path $repoRoot "inventory\group_vars\$groupName.yaml"
+    Write-Verbose "Looking for group_vars at: $groupVarsPath"
+    if (Test-Path $groupVarsPath) {
+        try {
+            $groupVars = Read-Yaml -Path $groupVarsPath
+            if ($groupVars -and $groupVars.wsl_distro) {
+                $groupVarsWslDistro = $groupVars.wsl_distro.ToString().Trim().Trim('"')
+                Write-Ok "Loaded wsl_distro from group_vars: $groupVarsWslDistro"
+            }
+        } catch {
+            Write-Verbose "Could not parse group_vars: $_"
+        }
+    } else {
+        Write-Verbose "No group_vars file found at $groupVarsPath"
+    }
+}
+
 # Collect facts
 Write-Step "Collecting runtime facts"
 Write-Verbose "Beginning privileged setup and fact collection."
@@ -590,10 +613,31 @@ if (-not $wslInstalled) {
 # Get WSL distros
 $wslDistros = Get-WSLDistros
 
-if ($wslDistros.Count -eq 0) {
+# Determine which distro we want (from group_vars or default)
+$distroToInstall = if ($groupVarsWslDistro) { $groupVarsWslDistro } else { "Ubuntu-24.04" }
+
+# -Force: Unregister existing distro before reinstalling (clean slate)
+if ($Force -and $wslInstalled) {
+    if ($wslDistros -contains $distroToInstall) {
+        Write-Set "Force mode: Unregistering existing WSL distro '$distroToInstall'..."
+        try {
+            wsl.exe --unregister $distroToInstall 2>&1 | Out-Null
+            Write-Ok "Unregistered '$distroToInstall'"
+        } catch {
+            Write-Verbose "Unregister returned error (may not have been running): $_"
+        }
+        # Refresh distro list after unregister
+        Start-Sleep -Seconds 1
+        $wslDistros = Get-WSLDistros
+    } else {
+        Write-Skip "Force mode: Distro '$distroToInstall' not found, nothing to unregister"
+    }
+}
+
+if ($wslDistros.Count -eq 0 -or ($Force -and $wslDistros -notcontains $distroToInstall)) {
     if ($wslInstalled) {
-        Write-Set "No WSL distros found. Installing Ubuntu..."
-        Install-WSLDistro -DistroName "Ubuntu"
+        Write-Set "Installing WSL distro: $distroToInstall (from group_vars or default)..."
+        Install-WSLDistro -DistroName $distroToInstall
         # Refresh distro list after installation attempt
         Start-Sleep -Seconds 2
         $wslDistros = Get-WSLDistros
@@ -845,8 +889,9 @@ if ($verifyPorts -notcontains $winSshPort) {
     Write-Verbose "Firewall verified: sshd-Server-In-TCP rule LocalPort=$($verifyPorts -join ',')"
 }
 
-# Default shell = WSL bash so SSH to Windows drops into our Ubuntu distro (align with group_vars wsl_distro)
-$defaultWslDistro = if ($wslVars.wsl_distro) { $wslVars.wsl_distro } else { 'Ubuntu-24.04' }
+# Default shell = WSL bash so SSH to Windows drops into our Ubuntu distro (from group_vars wsl_distro)
+# Priority: group_vars wsl_distro > detected wsl_distro in host_vars > fallback Ubuntu-24.04
+$defaultWslDistro = if ($groupVarsWslDistro) { $groupVarsWslDistro } elseif ($wslVars.wsl_distro) { $wslVars.wsl_distro } else { 'Ubuntu-24.04' }
 $defaultWslDistro = Strip-YamlControlChars $defaultWslDistro
 if (-not $defaultWslDistro) { $defaultWslDistro = 'Ubuntu-24.04' }
 
