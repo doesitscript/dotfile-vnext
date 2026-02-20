@@ -1,0 +1,25 @@
+---
+# firewall.yml — Windows Firewall rules for OpenSSH ports.
+# Manages inbound TCP rules for the primary SSH port (WSL/bash)
+# and the secondary PowerShell SSH port.
+
+- name: Ensure firewall rule for primary SSH port
+  community.windows.win_firewall_rule:
+    name: sshd-Server-In-TCP
+    localport: "{{ win_ssh_port }}"
+    protocol: tcp
+    direction: in
+    action: allow
+    state: present
+    enabled: true
+
+- name: Ensure firewall rule for PowerShell SSH port
+  community.windows.win_firewall_rule:
+    name: sshd-PowerShell-In-TCP
+    localport: "{{ win_ssh_powershell_port }}"
+    protocol: tcp
+    direction: in
+    action: allow
+    state: present
+    enabled: true
+    description: "OpenSSH PowerShell session (port {{ win_ssh_powershell_port }})"

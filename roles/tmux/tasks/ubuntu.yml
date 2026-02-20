@@ -1,12 +1,26 @@
 ---
-# Ubuntu-specific tasks for tmux
+# Ubuntu/WSL: install tmux and deploy config
 
-- name: Capture tmux version on Ubuntu when available
+# comes with wsl and may not need to be installed
+- name: Ensure tmux is installed
+  ansible.builtin.apt:
+    name: tmux
+    state: present
+  become: true
+
+- name: Capture tmux version
   ansible.builtin.command: tmux -V
   changed_when: false
-  failed_when: false
   register: tmux_version_ubuntu
 
-- name: Report tmux install ownership on Ubuntu
-  ansible.builtin.debug:
-    msg: "tmux installation is managed manually. Detected: {{ tmux_version_ubuntu.stdout | default('not found') }}"
+# - name: Report tmux version
+#   ansible.builtin.debug:
+#     msg: "{{ tmux_version_ubuntu.stdout }}"
+
+# Uses content + lookup instead of src to avoid SFTP, which breaks through
+# Windows sshd → WSL (sftp-server.exe runs in Windows filesystem context).
+- name: Deploy tmux.conf to home directory
+  ansible.builtin.copy:
+    content: "{{ lookup('file', 'tmux.conf') }}"
+    dest: "/home/{{ ansible_user }}/.tmux.conf"
+    mode: "0644"

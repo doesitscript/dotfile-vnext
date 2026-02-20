@@ -1,0 +1,555 @@
+---
+# ubuntu.yml — Enable WSL, install a distribution, configure user and SSH on Windows hosts.
+# Runs via WinRM against the Windows surface (not SSH into WSL).
+# Tag: wsl, standalone
+#
+# Adapted from myllynen/windows-ansible-roles wsl_configuration role:
+#   https://github.com/myllynen/windows-ansible-roles/tree/master/roles/wsl_configuration
+# and bootstrap-ansible-local.ps1 cloud-init provisioning logic.
+#
+# Uses win_powershell with native $Ansible.Changed / $Ansible.Failed tracking,
+# WSL_UTF8 environment to avoid UTF-16 null-byte issues from wsl.exe output,
+# and wsl.exe --install --no-distribution to let Microsoft's installer handle
+# the underlying Windows features (WSL + Virtual Machine Platform).
+#
+# Variables are resolved from the companion WSL host (e.g. server-225-wsl)
+# using the naming convention: <inventory_hostname> with -win replaced by -wsl.
+#
+# WSL host_vars consumed:
+#   wsl_distro           — distribution name (e.g. Ubuntu-24.04)
+# Role defaults consumed:
+#   wsl_reboot_after     — reboot after WSL feature install (default: true)
+#
+#  ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit server-225-win --tags standalone
+
+# --- Resolve companion WSL host variables ---
+
+- name: Resolve WSL companion hostname
+  ansible.builtin.set_fact:
+    _wsl_companion: "{{ inventory_hostname | regex_replace('-win$', '-wsl') }}"
+
+- name: Verify WSL companion host exists in inventory
+  ansible.builtin.assert:
+    that:
+      - _wsl_companion in hostvars
+    fail_msg: >
+      Cannot find WSL companion host '{{ _wsl_companion }}' in inventory.
+      Expected naming convention: {{ inventory_hostname }} → {{ _wsl_companion }}.
+      Ensure a matching -wsl host exists in inventory with wsl_distro defined.
+
+# Underscore-prefixed facts (_wsl_*) are internal copies resolved from the companion host's hostvars.
+- name: Resolve WSL variables from companion host
+  ansible.builtin.set_fact:
+    _wsl_distro: "{{ hostvars[_wsl_companion]['wsl_distro'] | default(wsl_distro) }}"
+    _wsl_user: "{{ hostvars[_wsl_companion]['wsl_user'] | default(hostvars[_wsl_companion]['ansible_user']) }}"
+    _wsl_password: "{{ win_password | default(ansible_password) }}"
+    _wsl_ssh_port: "{{ hostvars[_wsl_companion]['wsl_ssh_port'] | default(2224) }}"
+    _wsl_ssh_dir: "{{ hostvars[_wsl_companion]['ansible_ssh_dir_path'] }}"
+    _wsl_authorized_keys: "{{ hostvars[_wsl_companion]['ansible_authorized_keys_path'] }}"
+
+- name: Display resolved WSL configuration
+  ansible.builtin.debug:
+    msg: >-
+      WSL companion: {{ _wsl_companion }} |
+      distro: {{ _wsl_distro }} |
+      user: {{ _wsl_user }} |
+      ssh_port: {{ _wsl_ssh_port }} |
+      ssh_dir: {{ _wsl_ssh_dir }} |
+      authorized_keys: {{ _wsl_authorized_keys }}
+
+# --- Step 1: Install WSL (feature + kernel) ---
+
+- name: Install WSL (Windows Subsystem for Linux)
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $status = (wsl.exe --status) -replace '\x00', '' | ? { $_ -ne '' } | Out-String
+      if ($LASTEXITCODE -ne 0) {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        $opts = if ($status -match 'not found') { '--update' } else { '--install', '--no-distribution' }
+        $result = Start-Process -FilePath wsl.exe -ArgumentList "$opts" -PassThru -Verb RunAs -Wait
+        if ($result.ExitCode -ne 0) {
+          $Ansible.Result = "Failed to install WSL: $result"
+          $Ansible.Failed = $true
+          Exit 1
+        }
+      }
+  register: wsl_install
+
+- name: Reboot after WSL install
+  ansible.windows.win_reboot:
+    reboot_timeout: 600
+    msg: "Ansible reboot after WSL changes"
+  when:
+    - wsl_reboot_after | default(true) | bool
+    - wsl_install is changed
+
+# --- Step 1.5: Create cloud-init user-data on the Windows host ---
+# Ubuntu 24.04 WSL reads %USERPROFILE%\.cloud-init\<distro>.user-data on first
+# launch to auto-provision the user, password, sudo, and /etc/wsl.conf.
+# Adapted from bootstrap-ansible-local.ps1 lines 218-266.
+
+- name: Create cloud-init user-data for WSL distro
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro }}'
+      $user = '{{ _wsl_user }}'
+      $password = '{{ _wsl_password }}'
+
+      $cloudInitDir = "$env:USERPROFILE\.cloud-init"
+      $userDataFile = Join-Path $cloudInitDir "$distro.user-data"
+
+      $userData = @"
+      #cloud-config
+      users:
+        - name: $user
+          groups: [sudo, adm]
+          sudo: ALL=(ALL) NOPASSWD:ALL
+          shell: /bin/bash
+          lock_passwd: false
+          passwd: $password
+
+      write_files:
+      - path: /etc/wsl.conf
+        append: true
+        content: |
+          [boot]
+          systemd=true
+          [user]
+          default=$user
+      "@
+      $userData = ($userData -split "`n" | ForEach-Object { $_.TrimStart() }) -join "`n"
+
+      if (-not (Test-Path $cloudInitDir)) {
+        New-Item -ItemType Directory -Path $cloudInitDir -Force | Out-Null
+      }
+
+      $existing = if (Test-Path $userDataFile) { [System.IO.File]::ReadAllText($userDataFile) } else { '' }
+      if ($existing -ne $userData) {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        $lines = $userData -split "`r?`n"
+        [System.IO.File]::WriteAllLines($userDataFile, $lines)
+      }
+
+      $Ansible.Result = $userDataFile
+  register: _cloud_init_result
+
+- name: Report cloud-init user-data path
+  ansible.builtin.debug:
+    msg: >-
+      Cloud-init user-data: {{ _cloud_init_result.result | default('unknown') }}
+      ({{ 'created/updated' if _cloud_init_result is changed else 'already current' }})
+
+# --- Step 2: Install WSL distribution ---
+
+- name: Check installed WSL distributions
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $Ansible.Result = @((wsl.exe --list --quiet) -replace '\x00', '' | ? { $_ -ne '' })
+  register: wsl_distros
+  retries: 10
+  delay: 3
+  until: wsl_distros is not failed
+
+- name: Install WSL distribution ({{ _wsl_distro }})
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $current = @((wsl.exe --list --quiet) -replace '\x00', '' | ? { $_ -ne '' })
+      if ($current -notcontains '{{ _wsl_distro }}') {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        $result = (wsl.exe --install '{{ _wsl_distro }}' --no-launch) -replace '\x00', '' | ? { $_ -ne '' } | Out-String
+        if ($LASTEXITCODE -ne 0) {
+          $Ansible.Result = "Failed to install '{{ _wsl_distro }}': $result"
+          $Ansible.Failed = $true
+          Exit 1
+        }
+      }
+  register: wsl_distro_install
+
+# --- Step 2.1: First launch + shutdown so cloud-init runs and wsl.conf takes effect ---
+# Cloud-init only runs on first boot. We launch the distro, wait for cloud-init
+# to create the user and write /etc/wsl.conf, then shutdown so wsl.conf settings
+# (systemd, default user) take effect on next launch.
+
+- name: First launch and shutdown WSL distro (cloud-init + wsl.conf apply)
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $true
+      wsl.exe -d '{{ _wsl_distro }}' -e true
+      Start-Sleep -Seconds 10
+      wsl.exe --shutdown
+      Start-Sleep -Seconds 3
+  when: wsl_distro_install is defined and wsl_distro_install is changed
+
+- name: Set default WSL distribution to {{ _wsl_distro }}
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $current = @((wsl.exe --status) -replace '\x00', '' | ? { $_ -ne '' })
+      if ($current -notcontains 'Default Distribution: {{ _wsl_distro }}') {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        $result = (wsl.exe --set-default '{{ _wsl_distro }}') -replace '\x00', '' | ? { $_ -ne '' } | Out-String
+        if ($LASTEXITCODE -ne 0) {
+          $Ansible.Result = "Failed to set default distribution: $result"
+          $Ansible.Failed = $true
+          Exit 1
+        }
+      }
+  when:
+    - wsl_install is not changed or wsl_reboot_after | default(true) | bool
+
+- name: Report WSL distribution status
+  ansible.builtin.debug:
+    msg: >-
+      WSL distro '{{ _wsl_distro }}':
+      {{ 'just installed' if (wsl_distro_install is defined and wsl_distro_install is changed) else 'already present' }}
+
+# --- Step 2.5: Update WSL distribution packages ---
+# Adapted from myllynen/windows-ansible-roles wsl_configuration update logic.
+# Runs apt-get update && apt-get upgrade inside the distro via wsl.exe.
+
+- name: Update WSL distribution packages
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro }}'
+      $commands = @('apt-get update', 'apt-get upgrade -y')
+      foreach ($cmd in $commands) {
+        $result = (wsl.exe --distribution $distro --user root --exec ($cmd -split ' ')) -replace '\x00', '' | ? { $_ -ne '' }
+        $rc = $LASTEXITCODE
+        if ($cmd -ne 'apt-get update' -and $result -join ',' -notmatch ',0 upgraded') {
+          $Ansible.Changed = $true
+        }
+        if ($rc -ne 0) {
+          $Ansible.Result = "Failed to run '$cmd': $($result -join "`n")"
+          $Ansible.Failed = $true
+          Exit 1
+        }
+      }
+
+# --- Step 3: Configure passwordless sudo ---
+# Ensures /etc/sudoers.d/<user> exists with NOPASSWD:ALL.
+# Cloud-init should have done this on first boot, but this is idempotent
+# and handles cases where cloud-init didn't run or was skipped.
+
+- name: Configure passwordless sudo for WSL user
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro }}'
+      $user = '{{ _wsl_user }}'
+      $sudoersFile = "/etc/sudoers.d/$user"
+      $expectedLine = "$user ALL=(ALL) NOPASSWD:ALL"
+
+      $current = (wsl.exe -d $distro -u root -- bash -c "cat $sudoersFile 2>/dev/null || true") -replace '\x00', '' | ? { $_ -ne '' }
+
+      if ($current -notcontains $expectedLine) {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        $expectedLine | wsl.exe -d $distro -u root -- tee $sudoersFile | Out-Null
+        wsl.exe -d $distro -u root -- chmod 440 $sudoersFile
+        $rc = $LASTEXITCODE
+        if ($rc -ne 0) {
+          $Ansible.Result = "Failed to set sudoers for $user"
+          $Ansible.Failed = $true
+          Exit 1
+        }
+      }
+
+- name: Verify passwordless sudo works
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro }}'
+      $user = '{{ _wsl_user }}'
+      $result = (wsl.exe -d $distro -u $user -- sudo -n true 2>&1) -replace '\x00', '' | ? { $_ -ne '' }
+      if ($LASTEXITCODE -ne 0) {
+        $Ansible.Result = "Passwordless sudo verification failed for $user"
+        $Ansible.Failed = $true
+        Exit 1
+      }
+
+# --- Step 4: Install and enable OpenSSH server in WSL ---
+# Installs openssh-server and enables the ssh service via systemd.
+# sshd_config (Port 22, PubkeyAuthentication, ListenAddress) is set in Step 4.5.
+# authorized_keys deployment is handled in Step 5.
+
+- name: Install openssh-server in WSL distro
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro }}'
+
+      $check = (wsl.exe -d $distro -u root -- bash -c 'dpkg -s openssh-server 2>/dev/null || echo NOT_INSTALLED') -replace '\x00', '' | ? { $_ -ne '' }
+      $installed = ($check | Where-Object { $_ -match '^Status:.*installed' }).Count -gt 0
+
+      if (-not $installed) {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        $result = (wsl.exe -d $distro -u root -- bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y openssh-server") -replace '\x00', '' | ? { $_ -ne '' }
+        $rc = $LASTEXITCODE
+        if ($rc -ne 0) {
+          $Ansible.Result = "Failed to install openssh-server: $($result -join "`n")"
+          $Ansible.Failed = $true
+          Exit 1
+        }
+      }
+  register: _wsl_openssh_install
+
+- name: Enable and start ssh service in WSL via systemd
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro }}'
+
+      $enabled = (wsl.exe -d $distro -u root -- bash -c 'systemctl is-enabled ssh 2>/dev/null || echo DISABLED') -replace '\x00', '' | ? { $_ -ne '' }
+      $active = (wsl.exe -d $distro -u root -- bash -c 'systemctl is-active ssh 2>/dev/null || echo INACTIVE') -replace '\x00', '' | ? { $_ -ne '' }
+
+      if ($enabled -notmatch '^enabled') {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        wsl.exe -d $distro -u root -- bash -c 'systemctl enable ssh 2>&1'
+      }
+
+      if ($active -notmatch '^active') {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        wsl.exe -d $distro -u root -- bash -c 'systemctl start ssh 2>&1'
+      }
+
+- name: Restart ssh service if openssh-server was just installed
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $true
+      wsl.exe -d '{{ _wsl_distro }}' -u root -- bash -c 'systemctl restart ssh 2>&1'
+  when: _wsl_openssh_install is changed
+
+# --- Step 4.5: Configure WSL sshd — Port 22, PubkeyAuthentication, ListenAddress ---
+
+- name: Configure WSL sshd to listen on port 22 with pubkey auth
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro }}'
+      $config = '/etc/ssh/sshd_config'
+      $restartNeeded = $false
+
+      $settings = @{
+        'Port'                  = '22'
+        'ListenAddress'         = '0.0.0.0'
+        'PubkeyAuthentication'  = 'yes'
+        'PasswordAuthentication' = 'yes'
+      }
+
+      foreach ($key in $settings.Keys) {
+        $val = $settings[$key]
+        $current = (wsl.exe -d $distro -u root -- bash -c "grep -E '^\s*$key\s' $config 2>/dev/null || echo NOTFOUND") -replace '\x00', '' | ? { $_ -ne '' }
+        if ($current -notmatch "^\s*$key\s+$val\s*$") {
+          $Ansible.Changed = $true
+          $restartNeeded = $true
+          if ('{{ ansible_check_mode }}' -eq 'true') { continue }
+          wsl.exe -d $distro -u root -- bash -c "sed -i '/^\s*#\?\s*$key\s/d' $config 2>&1"
+          wsl.exe -d $distro -u root -- bash -c "echo '$key $val' >> $config"
+        }
+      }
+
+      if ($restartNeeded -and '{{ ansible_check_mode }}' -ne 'true') {
+        wsl.exe -d $distro -u root -- bash -c 'systemctl restart ssh 2>&1'
+      }
+
+# --- Step 4.6: Windows port forwarding to WSL sshd ---
+# WSL 2 uses a virtual network adapter with a dynamic internal IP.
+# netsh portproxy forwards from a Windows-side port to WSL's sshd on port 22.
+# The WSL IP changes on reboot, so this rule must be refreshed.
+
+- name: Configure Windows port forwarding to WSL sshd (port {{ _wsl_ssh_port }} → WSL:22)
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro }}'
+      $listenPort = {{ _wsl_ssh_port }}
+      $connectPort = 22
+
+      $wslIp = (wsl.exe -d $distro -- bash -c "hostname -I | awk '{print `$1}'") -replace '\x00', '' | ? { $_ -ne '' } | Select-Object -First 1
+      $wslIp = $wslIp.Trim()
+      if (-not $wslIp) {
+        $Ansible.Result = "Could not determine WSL internal IP"
+        $Ansible.Failed = $true
+        Exit 1
+      }
+
+      $existing = netsh interface portproxy show v4tov4 | Out-String
+      if ($existing -notmatch "$listenPort.*$([regex]::Escape($wslIp)).*$connectPort") {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        netsh interface portproxy delete v4tov4 listenport=$listenPort listenaddress=0.0.0.0 2>$null
+        netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=$listenPort connectaddress=$wslIp connectport=$connectPort
+        if ($LASTEXITCODE -ne 0) {
+          $Ansible.Result = "Failed to add portproxy rule"
+          $Ansible.Failed = $true
+          Exit 1
+        }
+      }
+
+      $Ansible.Result = @{ wsl_ip = $wslIp; listen_port = $listenPort; connect_port = $connectPort }
+  register: _wsl_portproxy
+
+- name: Report port forwarding configuration
+  ansible.builtin.debug:
+    msg: >-
+      Port forwarding: Windows:{{ _wsl_ssh_port }} →
+      {{ _wsl_portproxy.result.wsl_ip | default('unknown') }}:22
+      ({{ 'configured' if _wsl_portproxy is changed else 'already in place' }})
+
+# --- Step 4.7: Firewall rule for WSL direct SSH port ---
+
+- name: Ensure firewall rule for WSL direct SSH port
+  community.windows.win_firewall_rule:
+    name: sshd-WSL-Direct-In-TCP
+    localport: "{{ _wsl_ssh_port }}"
+    protocol: tcp
+    direction: in
+    action: allow
+    state: present
+    enabled: true
+    description: "WSL direct SSH access (port {{ _wsl_ssh_port }} → WSL:22 via portproxy)"
+
+# --- Step 5: Deploy controller SSH key into WSL distro ---
+# Mirrors the logic from user.yml (Windows SSH key deployment) but executes
+# inside the distro via wsl.exe. The \\wsl$\ UNC path is NOT accessible
+# from WinRM sessions (Plan 9 share is per-interactive-session), so all
+# filesystem operations go through wsl.exe commands instead.
+
+- name: Ensure WSL user .ssh directory exists with correct permissions
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $user = '{{ _wsl_user }}'
+      $sshDir = '{{ _wsl_ssh_dir }}'
+      $distro = '{{ _wsl_distro }}'
+
+      $exists = (wsl.exe -d $distro -u $user -- test -d $sshDir '&&' echo YES '||' echo NO) -replace '\x00', '' | ? { $_ -ne '' }
+      if ($exists -match 'NO') {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        wsl.exe -d $distro -u $user -- mkdir -p $sshDir
+      }
+
+      $dirPerms = (wsl.exe -d $distro -u root -- stat -c '%a %U' $sshDir) -replace '\x00', '' | ? { $_ -ne '' }
+      if ($dirPerms -notmatch "^700 $user$") {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        wsl.exe -d $distro -u root -- chown "${user}:${user}" $sshDir
+        wsl.exe -d $distro -u root -- chmod 700 $sshDir
+      }
+
+- name: Install controller public key in WSL authorized_keys
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $user = '{{ _wsl_user }}'
+      $authKeys = '{{ _wsl_authorized_keys }}'
+      $distro = '{{ _wsl_distro }}'
+      $pubKey = '{{ controller_pub_key_content }}'
+
+      $current = (wsl.exe -d $distro -u $user -- cat $authKeys 2>$null) -replace '\x00', '' | ? { $_ -ne '' }
+      if ($current -notcontains $pubKey) {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        $pubKey | wsl.exe -d $distro -u $user -- tee -a $authKeys | Out-Null
+      }
+  register: _wsl_pub_key_result
+
+- name: Ensure correct permissions on WSL authorized_keys
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $user = '{{ _wsl_user }}'
+      $authKeys = '{{ _wsl_authorized_keys }}'
+      $distro = '{{ _wsl_distro }}'
+
+      $filePerms = (wsl.exe -d $distro -u root -- stat -c '%a %U' $authKeys) -replace '\x00', '' | ? { $_ -ne '' }
+      if ($filePerms -notmatch "^600 $user$") {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        wsl.exe -d $distro -u root -- chown "${user}:${user}" $authKeys
+        wsl.exe -d $distro -u root -- chmod 600 $authKeys
+      }
+
+- name: Report WSL SSH key deployment
+  ansible.builtin.debug:
+    msg: >-
+      WSL SSH key for {{ _wsl_user }}@{{ _wsl_distro }}:
+      {{ 'deployed/updated' if _wsl_pub_key_result is changed else 'already present' }}

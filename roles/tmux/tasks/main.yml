@@ -1,37 +1,14 @@
 ---
 # tmux – main task dispatcher
 
-- name: Process tmux role for macOS
+- name: Install and configure tmux on macOS
   ansible.builtin.import_tasks: mac.yml
   when: ansible_facts['system'] == "Darwin"
 
-- name: Process tmux role for Ubuntu
+- name: Install and configure tmux on Ubuntu
   ansible.builtin.import_tasks: ubuntu.yml
   when: ansible_facts['distribution'] == "Ubuntu"
 
-- name: Process tmux role for Windows
+- name: Install and configure tmux on Windows
   ansible.builtin.import_tasks: windows.yml
   when: ansible_facts['system'] == "Windows"
-
-- name: Check whether tmux.conf already exists
-  ansible.builtin.stat:
-    path: "{{ dotfiles_user_home }}/.tmux.conf"
-  register: tmux_conf_stat
-  when: ansible_facts['system'] != "Windows"
-
-- name: Back up existing tmux.conf once
-  ansible.builtin.copy:
-    src: "{{ dotfiles_user_home }}/.tmux.conf"
-    dest: "{{ dotfiles_user_home }}/.tmux.conf.bak"
-    remote_src: true
-    force: false
-  when:
-    - ansible_facts['system'] != "Windows"
-    - tmux_conf_stat.stat.exists
-
-- name: Ensure tmux.conf matches template
-  ansible.builtin.template:
-    src: tmux.conf.j2
-    dest: "{{ dotfiles_user_home }}/.tmux.conf"
-  when: ansible_facts['system'] != "Windows"
-  notify: Reload tmux configuration

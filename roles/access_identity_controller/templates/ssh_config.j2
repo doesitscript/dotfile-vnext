@@ -19,6 +19,15 @@ Host {{ host }}
     # starting dir can be set in ~/.ssh/rc or possibly bash profile
 {% if hv.get('ssh_powershell_port') is defined %}
 
+# This is a experimental setup. It uses teh windows openssh server with bash as default
+# and enters wsl directly. The alternative is to directly ssh into this wsl distro.
+Host server-225-wsl
+    HostName DESKTOP-VLLM
+    User joshc
+    Port 2222
+    IdentityFile /Users/joshc/.ssh/id_ed25519_ansible
+    StrictHostKeyChecking no
+    
 # EXPERIMENTAL — subject to change. Direct PowerShell session for
 # troubleshooting or when WSL/bash access is broken.
 Host {{ host }}-powershell

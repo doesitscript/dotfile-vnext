@@ -10,12 +10,12 @@
     src: "{{ controller_ssh_public_key_path }}"
   register: _controller_pubkey_slurp
   delegate_to: "{{ groups['execution_nodes'][0] }}"
-  tags: [admin, user]
+  tags: [admin, user, wsl, standalone]
 
 - name: Set controller public key content fact
   ansible.builtin.set_fact:
     controller_pub_key_content: "{{ _controller_pubkey_slurp.content | b64decode | trim }}"
-  tags: [admin, user]
+  tags: [admin, user, wsl, standalone]
 
 - name: Verify controller public key was loaded
   ansible.builtin.assert:
@@ -25,7 +25,7 @@
     fail_msg: >
       Controller public key is empty or missing.
       Ensure {{ controller_ssh_public_key_path }} exists on {{ groups['execution_nodes'][0] }}.
-  tags: [admin, user]
+  tags: [admin, user, wsl, standalone]
 
 # --- OpenSSH Server: install, configure, firewall, default shell ---
 # 1) Install OpenSSH capability
@@ -61,15 +61,9 @@
   register: sshd_port_result
   tags: [admin]
 
-- name: Ensure SSH firewall rule for primary port
-  community.windows.win_firewall_rule:
-    name: sshd-Server-In-TCP
-    localport: "{{ win_ssh_port }}"
-    protocol: tcp
-    direction: in
-    action: allow
-    state: present
-    enabled: true
+# --- Firewall rules for all SSH ports (primary + PowerShell) ---
+- name: Configure Windows Firewall rules for SSH
+  ansible.builtin.import_tasks: firewall.yml
   tags: [admin]
 
 # 5) Default shell
@@ -141,18 +135,6 @@
       state: present
     register: sshd_ps_force_result
 
-  # powershell-ssh — firewall rule
-  - name: Ensure firewall rule for PowerShell SSH port
-    community.windows.win_firewall_rule:
-      name: sshd-PowerShell-In-TCP
-      localport: "{{ win_ssh_powershell_port }}"
-      protocol: tcp
-      direction: in
-      action: allow
-      state: present
-      enabled: true
-      description: "OpenSSH PowerShell session (port {{ win_ssh_powershell_port }})"
-
   # powershell-ssh — restart sshd if any of the above changed
   - name: Restart sshd when PowerShell SSH config changed
     ansible.windows.win_service:
@@ -175,6 +157,11 @@
     ssh_host: "{{ ansible_host }}"
     cacheable: true
   tags: [admin]
+
+# --- WSL: enable feature + install distro ---
+- name: Configure WSL and install distribution
+  ansible.builtin.import_tasks: ubuntu.yml
+  tags: [wsl, standalone]
 
 # Include user tasks; run with --tags user to run only user tasks.
 - name: Include user tasks
