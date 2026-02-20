@@ -1,0 +1,59 @@
+---
+# administrator.yml — SSH access for the built-in Administrator account.
+#
+# This file manages the administrators_authorized_keys file and its ACL,
+# which controls SSH pubkey auth for accounts in the Administrators group.
+# This is NOT about individual user SSH access (see user.yml for that).
+#
+# Windows OpenSSH reads administrators_authorized_keys instead of
+# ~/.ssh/authorized_keys for any user in the Administrators group.
+# The file must have strict ACLs: no inheritance, only Administrators
+# and SYSTEM with FullControl.
+
+# 6) administrators_authorized_keys file and permissions
+- name: Ensure administrators_authorized_keys file exists
+  ansible.windows.win_file:
+    path: "{{ administrators_authorized_keys_path }}"
+    state: touch
+
+- name: Disable ACL inheritance on administrators_authorized_keys
+  ansible.windows.win_acl_inheritance:
+    path: "{{ administrators_authorized_keys_path }}"
+    state: absent
+    reorganize: false
+
+- name: Grant Administrators FullControl on administrators_authorized_keys
+  ansible.windows.win_acl:
+    path: "{{ administrators_authorized_keys_path }}"
+    user: Administrators
+    type: allow
+    rights: FullControl
+    state: present
+
+- name: Grant SYSTEM FullControl on administrators_authorized_keys
+  ansible.windows.win_acl:
+    path: "{{ administrators_authorized_keys_path }}"
+    user: SYSTEM
+    type: allow
+    rights: FullControl
+    state: present
+
+# 7) Install controller public key
+- name: Install controller public key in administrators_authorized_keys
+  community.windows.win_lineinfile:
+    path: "{{ administrators_authorized_keys_path }}"
+    line: "{{ controller_pub_key_content }}"
+    create: true
+    state: present
+  register: install_admin_pub_key_result
+
+# 8) Restart sshd if capability, port, shell, or keys changed
+- name: Restart sshd when OpenSSH installed, port changed, shell changed, or admin key updated
+  ansible.windows.win_service:
+    name: sshd
+    state: restarted
+  when: >-
+    ssh_install is changed or
+    sshd_port_result is changed or
+    sshd_shell_result is changed or
+    install_admin_pub_key_result is changed

@@ -1,0 +1,40 @@
+# ~/.ssh/config — managed by Ansible (access_identity_controller)
+# Generated from inventory group: ssh_targets
+# Only hosts with ssh_configured=true get entries.
+# Manual edits below the ANSIBLE MANAGED block will be preserved.
+
+{% for host in groups['ssh_targets'] | default([]) | sort %}
+{% set hv = hostvars[host] %}
+{% if hv.get('ssh_configured', false) %}
+# NOTE: SSH to Windows hosts lands in WSL bash (DefaultShell = bash.exe), but
+# this is NOT true SSH into the WSL distribution. Windows sshd accepts the
+# connection and forwards to WSL. Auth, keys, and sshd_config are Windows-side.
+Host {{ host }}
+    HostName {{ hv['ssh_host'] | default(hv.get('ansible_host', host)) }}
+    User {{ hv['ssh_user'] | default(hv.get('ansible_user', 'joshc')) }}
+    Port {{ hv['ssh_port'] | default(hv.get('ansible_port', 22)) }}
+    IdentityFile {{ controller_ssh_private_key_path }}
+    StrictHostKeyChecking no
+    # RequestTTY yes # SSH normall: allocates a TTY on the remote side. But with RemoteCommand, SSH assumes we're not interactive and does allocate one
+    # starting dir can be set in ~/.ssh/rc or possibly bash profile
+{% if hv.get('ssh_powershell_port') is defined %}
+
+# EXPERIMENTAL — subject to change. Direct PowerShell session for
+# troubleshooting or when WSL/bash access is broken.
+Host {{ host }}-powershell
+    HostName {{ hv['ssh_host'] | default(hv.get('ansible_host', host)) }}
+    User {{ hv['ssh_user'] | default(hv.get('ansible_user', 'joshc')) }}
+    Port {{ hv['ssh_powershell_port'] }}
+    IdentityFile {{ controller_ssh_private_key_path }}
+    StrictHostKeyChecking no
+{% endif %}
+
+{% endif %}
+{% endfor %}
+# --- ControlMaster multiplexing ---
+Host *
+    ControlMaster auto
+    ControlPath {{ controller_ssh_dir }}/sockets/%r@%h-%p
+    ControlPersist 10m
+    ServerAliveInterval 60
+    ServerAliveCountMax 5

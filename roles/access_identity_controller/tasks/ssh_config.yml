@@ -1,0 +1,26 @@
+---
+# access_identity_controller entry point: ssh_config
+# Templates ~/.ssh/config from cached ssh_configured facts set by setup roles.
+# Use via: ansible.builtin.include_role: name=access_identity_controller tasks_from=ssh_config.yml
+#
+# Execution order: this file must run AFTER target setup roles (access_identity_windows,
+# etc.) have set ssh_configured=true on their hosts. The orchestration playbook
+# (playbooks/access.yaml) enforces this by placing the ssh_config play last.
+# This file is intentionally NOT called from main.yml so that running
+# access_controller.yaml alone does not attempt to template before targets exist.
+#
+# Requires fact caching enabled in ansible.cfg and at least one target host
+# with ssh_configured=true in the cache (set by access_identity_windows, etc.).
+
+- name: Ensure ~/.ssh/sockets directory exists for ControlMaster
+  ansible.builtin.file:
+    path: "{{ controller_ssh_dir }}/sockets"
+    state: directory
+    mode: "0700"
+
+- name: Template ~/.ssh/config from deployed SSH targets
+  ansible.builtin.template:
+    src: ssh_config.j2
+    dest: "{{ controller_ssh_dir }}/config"
+    mode: "0600"
+    backup: true

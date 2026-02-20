@@ -39,7 +39,7 @@ all:
           ansible_host: DESKTOP-VLLM
           ansible_connection: ssh
           ansible_user: joshc
-          ansible_port: 22
+          # ansible_port: 22
           # All connection details in host_vars/server-225-wsl.yaml
 
         dev-3090-wsl:
@@ -47,6 +47,13 @@ all:
 
         network-server-wsl:
           # All connection details in host_vars/network-server-wsl.yaml
+
+    # SSH targets: hosts that may need an entry in the controller's ~/.ssh/config.
+    # The template only emits entries for hosts where ssh_configured=true (set by setup roles).
+    ssh_targets:
+      children:
+        windows_hosts: {}
+        wsl_hosts: {}
 
     # Physical-node groups (names match group_vars/<group>.yaml and host_vars base names)
     server_225:

@@ -4,7 +4,19 @@
 openssh_server_capability: "OpenSSH.Server~~~~0.0.1.0"
 
 win_ssh_port: 2222
+
+# WARNING: win_ssh_powershell_port is experimental and subject to change.
+# This secondary port exists for two purposes:
+#   1) Troubleshooting — provides a direct PowerShell session when WSL/bash is broken.
+#   2) Enabling SSH access to WSL via the primary port's DefaultShell (bash.exe).
+#
+# IMPORTANT: SSH to the primary port (2222) lands in WSL bash, but this is NOT true
+# SSH access to the WSL distribution. Windows OpenSSH accepts the connection and
+# forwards it to WSL via bash.exe. The SSH server is Windows sshd, not an sshd
+# running inside WSL. Authentication, keys, and sshd_config are all Windows-side.
+# The WSL session inherits Windows environment constraints.
 win_ssh_powershell_port: 2223
+
 # win_ssh_user: set in host_vars/group_vars (e.g. same as win_user or ansible_user); no hardcoded usernames.
 
 administrators_authorized_keys_path: "C:\\ProgramData\\ssh\\administrators_authorized_keys"

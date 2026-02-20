@@ -1,8 +1,28 @@
 ---
-# Access: run both controller identity and Windows OpenSSH (imports only, no extra logic).
+# Access: full identity + SSH pipeline.
 #
-# Example:
+# 1) Controller: generate SSH keypair, publish key facts.
+# 2) Windows: install OpenSSH, deploy keys, configure ports + firewall.
+# 3) Controller (again): template ~/.ssh/config from cached ssh_configured facts.
+#
+# Single command:
 #   ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml
+#
+# Limit to one Windows host:
+#   ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit 'execution_nodes,server-225-win'
 #
 - import_playbook: access_controller.yaml
 - import_playbook: access_windows.yaml
+
+# Re-run controller (ssh_config entry point only) to pick up ssh_configured
+# facts from the Windows play and template ~/.ssh/config for deployed hosts.
+- name: Access - update controller SSH client config
+  hosts: execution_nodes
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Generate SSH client config from deployed targets
+      ansible.builtin.include_role:
+        name: access_identity_controller
+        tasks_from: ssh_config.yml

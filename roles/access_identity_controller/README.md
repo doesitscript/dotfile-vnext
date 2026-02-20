@@ -1,11 +1,13 @@
 # access_identity_controller
 
-Ensures the Ansible controller (e.g. your Mac) has an SSH keypair and publishes its public key path/content as host facts so other roles (e.g. Windows OpenSSH) can consume them. No hostnames or inventory assumptions—only `execution_nodes` group.
+Ensures the Ansible controller (e.g. your Mac) has an SSH keypair, publishes its public key as host facts, and templates `~/.ssh/config` from deployed SSH targets.
 
 ## Purpose
 
 - Create/ensure `~/.ssh` and an ed25519 keypair (default: `~/.ssh/id_ed25519_ansible`).
 - Set facts: `execution_node_pub_key_path`, `execution_node_private_key_path`, `execution_node_pub_key_content`.
+- Template `~/.ssh/config` from cached `ssh_configured` facts (only hosts actually deployed get entries).
+- Create `~/.ssh/sockets/` for SSH ControlMaster multiplexing.
 - Optional: manage `known_hosts` entries (off by default).
 
 ## Defaults (override in group_vars / host_vars / CLI)
@@ -16,6 +18,7 @@ Ensures the Ansible controller (e.g. your Mac) has an SSH keypair and publishes 
 | `controller_ssh_key_basename` | `id_ed25519_ansible` | Key filename without extension |
 | `controller_ssh_private_key_path` | `controller_ssh_dir` + basename | Full path to private key |
 | `controller_ssh_public_key_path` | private path + `.pub` | Full path to public key |
+| `controller_manage_ssh_config` | `true` | Template `~/.ssh/config` from deployed targets |
 | `controller_manage_known_hosts` | `false` | Whether to add known_hosts entries |
 | `controller_known_hosts_targets` | `[]` | List of `{ host: "name", port: 22 }` |
 
@@ -36,12 +39,34 @@ ansible-playbook playbooks/access_controller.yaml -i inventory/inventory.yaml --
 - Do not define `execution_node_pub_key_*` in inventory—they are set by this role.
 - Use `connection: local` and `hosts: execution_nodes` so the play runs on the machine where the key lives.
 
-## TODO: `~/.ssh/config` management
+## `~/.ssh/config` management
 
-This role does **not** yet manage `~/.ssh/config`. That file is currently hand-edited on the controller. There are two known issues with the manual setup:
+This role templates `~/.ssh/config` from the `ssh_targets` inventory group. Only hosts where the setup role (e.g. `access_identity_windows`) has set the cached fact `ssh_configured: true` get entries. This means:
 
-1. **ControlPath requires `~/.ssh/sockets/` to exist.** SSH multiplexing (`ControlMaster auto`) writes a Unix socket to the `ControlPath` directory. SSH will **not** create the parent directory — if `~/.ssh/sockets/` is missing, every connection logs `unix_listener: cannot bind to path`. You must `mkdir -p ~/.ssh/sockets` before multiplexing will work.
+- Deploy `server-225-win` today → its `ssh_configured` fact is cached → SSH config gets an entry.
+- Deploy `dev-3090-win` next week → cache now has both → both get entries on the next run.
+- Hosts that haven't been deployed yet are skipped automatically.
 
-2. **Host entries need correct `Port` values.** If a host's SSH port has been changed (e.g. `win_ssh_port: 2222`), the corresponding `Host` block in `~/.ssh/config` must match. Otherwise you have to pass `-p 2222` manually every time.
+The template also creates:
+- `Host <name>-powershell` aliases for Windows hosts with `ssh_powershell_port` defined.
+- A `Host *` block with `ControlMaster`/`ControlPath`/`ControlPersist` for SSH multiplexing.
+- The `~/.ssh/sockets/` directory required by `ControlPath`.
 
-The `Host *` block with `ControlMaster`/`ControlPath` has been **commented out** until this role can manage `~/.ssh/config` (or a file in `~/.ssh/config.d/`) via Ansible, ensuring the sockets directory exists and host entries stay in sync with inventory.
+**Requires fact caching** to be enabled in `ansible.cfg` (jsonfile, timeout 86400).
+
+Set `controller_manage_ssh_config: false` to skip templating and hand-manage the config.
+
+A backup of the previous config is created each time the template runs.
+
+## Full pipeline
+
+Use `playbooks/access.yaml` to run the entire chain in one command:
+
+```bash
+ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml
+```
+
+This runs:
+1. Controller identity (keypair + facts)
+2. Windows SSH setup (OpenSSH, keys, firewall, ports)
+3. Controller SSH config (template `~/.ssh/config` from cached facts)

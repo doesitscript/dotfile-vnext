@@ -27,122 +27,82 @@
       Ensure {{ controller_ssh_public_key_path }} exists on {{ groups['execution_nodes'][0] }}.
   tags: [admin, user]
 
-# --- Admin block: OpenSSH install, firewall, shell, administrators_authorized_keys ---
-- block:
-  # 1) Install OpenSSH capability
-  - name: Ensure OpenSSH Server capability installed
-    ansible.windows.win_shell: |
-      $capName = "{{ openssh_server_capability }}"
-      $state = (Get-WindowsCapability -Online -Name $capName).State
-      if ($state -ne "Installed") {
-        Add-WindowsCapability -Online -Name $capName | Out-Null
-        Write-Output "INSTALLED"
-      } else {
-        Write-Output "AlreadyInstalled"
-      }
-    register: ssh_install
-    changed_when: "'INSTALLED' in (ssh_install.stdout | default(''))"
+# --- OpenSSH Server: install, configure, firewall, default shell ---
+# 1) Install OpenSSH capability
+- name: Ensure OpenSSH Server capability installed
+  ansible.windows.win_shell: |
+    $capName = "{{ openssh_server_capability }}"
+    $state = (Get-WindowsCapability -Online -Name $capName).State
+    if ($state -ne "Installed") {
+      Add-WindowsCapability -Online -Name $capName | Out-Null
+      Write-Output "INSTALLED"
+    } else {
+      Write-Output "AlreadyInstalled"
+    }
+  register: ssh_install
+  changed_when: "'INSTALLED' in (ssh_install.stdout | default(''))"
+  tags: [admin]
 
-  # 2) Ensure service running
-  - name: Ensure sshd service is enabled and started
-    ansible.windows.win_service:
-      name: sshd
-      start_mode: auto
-      state: started
+# 2) Ensure service running
+- name: Ensure sshd service is enabled and started
+  ansible.windows.win_service:
+    name: sshd
+    start_mode: auto
+    state: started
+  tags: [admin]
 
-  # 3) Primary SSH port (WSL/bash) — sshd_config + firewall
-  - name: Ensure sshd listens on the configured port
-    community.windows.win_lineinfile:
-      path: "{{ sshd_config_path }}"
-      regexp: '^#?\s*Port\s'
-      line: "Port {{ win_ssh_port }}"
-      state: present
-    register: sshd_port_result
+# 3) Primary SSH port (WSL/bash) — sshd_config + firewall
+- name: Ensure sshd listens on the configured port
+  community.windows.win_lineinfile:
+    path: "{{ sshd_config_path }}"
+    regexp: '^#?\s*Port\s'
+    line: "Port {{ win_ssh_port }}"
+    state: present
+  register: sshd_port_result
+  tags: [admin]
 
-  - name: Ensure SSH firewall rule for primary port
-    community.windows.win_firewall_rule:
-      name: sshd-Server-In-TCP
-      localport: "{{ win_ssh_port }}"
-      protocol: tcp
-      direction: in
-      action: allow
-      state: present
-      enabled: true
+- name: Ensure SSH firewall rule for primary port
+  community.windows.win_firewall_rule:
+    name: sshd-Server-In-TCP
+    localport: "{{ win_ssh_port }}"
+    protocol: tcp
+    direction: in
+    action: allow
+    state: present
+    enabled: true
+  tags: [admin]
 
-  # 5) Default shell
-  # Setting DefaultShell to bash.exe (WSL) is required for VS Code Remote-SSH
-  # and Cursor Remote-SSH to work. These editors need a Unix-like shell on the
-  # remote end. PowerShell will break the remote IDE connection.
-  #
-  # - name: Set the default OpenSSH shell to PowerShell
-  #   ansible.windows.win_regedit:
-  #     path: HKLM:\SOFTWARE\OpenSSH
-  #     name: DefaultShell
-  #     data: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
-  #     type: string
-  #     state: present
-  #   register: sshd_shell_result
+# 5) Default shell
+# Setting DefaultShell to bash.exe (WSL) is required for VS Code Remote-SSH
+# and Cursor Remote-SSH to work. These editors need a Unix-like shell on the
+# remote end. PowerShell will break the remote IDE connection.
+#
+# - name: Set the default OpenSSH shell to PowerShell
+#   ansible.windows.win_regedit:
+#     path: HKLM:\SOFTWARE\OpenSSH
+#     name: DefaultShell
+#     data: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+#     type: string
+#     state: present
+#   register: sshd_shell_result
 
-  - name: Set the default OpenSSH shell to Bash (WSL)
-    ansible.windows.win_regedit:
-      path: HKLM:\SOFTWARE\OpenSSH
-      name: DefaultShell
-      data: C:\Windows\System32\bash.exe
-      type: string
-      state: present
-    register: sshd_shell_result
+- name: Set the default OpenSSH shell to Bash (WSL)
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\OpenSSH
+    name: DefaultShell
+    data: C:\Windows\System32\bash.exe
+    type: string
+    state: present
+  register: sshd_shell_result
+  tags: [admin]
 
-  - name: Reset SSH connection after shell change
-    ansible.builtin.meta: reset_connection
+- name: Reset SSH connection after shell change
+  ansible.builtin.meta: reset_connection
+  tags: [admin]
 
-  # 6) administrators_authorized_keys file and permissions
-  - name: Ensure administrators_authorized_keys file exists
-    ansible.windows.win_file:
-      path: "{{ administrators_authorized_keys_path }}"
-      state: touch
-
-  - name: Disable ACL inheritance on administrators_authorized_keys
-    ansible.windows.win_acl_inheritance:
-      path: "{{ administrators_authorized_keys_path }}"
-      state: absent
-      reorganize: false
-
-  - name: Grant Administrators FullControl on administrators_authorized_keys
-    ansible.windows.win_acl:
-      path: "{{ administrators_authorized_keys_path }}"
-      user: Administrators
-      type: allow
-      rights: FullControl
-      state: present
-
-  - name: Grant SYSTEM FullControl on administrators_authorized_keys
-    ansible.windows.win_acl:
-      path: "{{ administrators_authorized_keys_path }}"
-      user: SYSTEM
-      type: allow
-      rights: FullControl
-      state: present
-
-  # 7) Install controller public key
-  - name: Install controller public key in administrators_authorized_keys
-    community.windows.win_lineinfile:
-      path: "{{ administrators_authorized_keys_path }}"
-      line: "{{ controller_pub_key_content }}"
-      create: true
-      state: present
-    register: install_admin_pub_key_result
-
-  # 8) Restart sshd if capability, port, shell, or keys changed
-  - name: Restart sshd when OpenSSH installed, port changed, shell changed, or admin key updated
-    ansible.windows.win_service:
-      name: sshd
-      state: restarted
-    when: >-
-      ssh_install is changed or
-      sshd_port_result is changed or
-      sshd_shell_result is changed or
-      install_admin_pub_key_result is changed
-
+# --- Administrator SSH access (authorized_keys + ACL + key deployment) ---
+- name: Configure administrator SSH access
+  ansible.builtin.import_tasks: administrator.yml
   tags: [admin]
 
 # --- powershell-ssh: secondary SSH port that forces a PowerShell session ---
@@ -204,6 +164,17 @@
       sshd_ps_force_result is changed
 
   tags: [admin, powershell-ssh]
+
+# --- Publish SSH-ready facts (consumed by controller SSH config template) ---
+- name: Mark this host as SSH-configured
+  ansible.builtin.set_fact:
+    ssh_configured: true
+    ssh_port: "{{ win_ssh_port }}"
+    ssh_powershell_port: "{{ win_ssh_powershell_port }}"
+    ssh_user: "{{ win_ssh_user | default(ansible_user) }}"
+    ssh_host: "{{ ansible_host }}"
+    cacheable: true
+  tags: [admin]
 
 # Include user tasks; run with --tags user to run only user tasks.
 - name: Include user tasks
