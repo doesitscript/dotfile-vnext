@@ -4,6 +4,15 @@
 # regenerate_controller_ssh_key: true | false (default: false)
 #   ansible-playbook playbooks/access_controller.yaml -i inventory/inventory.yaml --limit execution_nodes
 #   ansible-playbook playbooks/access_controller.yaml -i inventory/inventory.yaml --limit execution_nodes -e regenerate_controller_ssh_key=true -vvv
+#
+# TODO: ~/.ssh/config management
+#   This role does NOT yet manage ~/.ssh/config. That file is currently hand-edited.
+#   Known issues with the manual config:
+#     - ControlPath requires ~/.ssh/sockets/ to exist; SSH won't create it.
+#     - Host entries need correct Port values matching win_ssh_port.
+#   A future iteration should template ~/.ssh/config (or use config.d/) so
+#   the sockets directory, ControlMaster settings, and host entries are all
+#   managed by Ansible.
 
 - name: Ensure ~/.ssh directory exists
   ansible.builtin.file:

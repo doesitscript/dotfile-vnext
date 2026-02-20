@@ -35,3 +35,13 @@ ansible-playbook playbooks/access_controller.yaml -i inventory/inventory.yaml --
 - Run this playbook first when setting up a new controller; Windows access role depends on these facts.
 - Do not define `execution_node_pub_key_*` in inventory—they are set by this role.
 - Use `connection: local` and `hosts: execution_nodes` so the play runs on the machine where the key lives.
+
+## TODO: `~/.ssh/config` management
+
+This role does **not** yet manage `~/.ssh/config`. That file is currently hand-edited on the controller. There are two known issues with the manual setup:
+
+1. **ControlPath requires `~/.ssh/sockets/` to exist.** SSH multiplexing (`ControlMaster auto`) writes a Unix socket to the `ControlPath` directory. SSH will **not** create the parent directory — if `~/.ssh/sockets/` is missing, every connection logs `unix_listener: cannot bind to path`. You must `mkdir -p ~/.ssh/sockets` before multiplexing will work.
+
+2. **Host entries need correct `Port` values.** If a host's SSH port has been changed (e.g. `win_ssh_port: 2222`), the corresponding `Host` block in `~/.ssh/config` must match. Otherwise you have to pass `-p 2222` manually every time.
+
+The `Host *` block with `ControlMaster`/`ControlPath` has been **commented out** until this role can manage `~/.ssh/config` (or a file in `~/.ssh/config.d/`) via Ansible, ensuring the sockets directory exists and host entries stay in sync with inventory.

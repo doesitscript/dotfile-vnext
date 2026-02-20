@@ -19,3 +19,8 @@ Installs and configures tmux.
 | `tmux_base_index` | `1` | Start window numbering at 1 |
 
 Override any variable in `group_vars` or `host_vars` as needed.
+
+### WIP
+See https://www.wenbo.io/en-US/Tools/Persistent-VSCode-Remote-Terminals#making-the-experience-perfect
+
+for full details
