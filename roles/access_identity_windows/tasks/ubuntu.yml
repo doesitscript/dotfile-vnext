@@ -68,11 +68,14 @@
     error_action: silently_continue
     script: |
       $Ansible.Changed = $false
+      $Ansible.Result = @{ action = 'none' }
       $status = (wsl.exe --status) -replace '\x00', '' | ? { $_ -ne '' } | Out-String
       if ($LASTEXITCODE -ne 0) {
         $Ansible.Changed = $true
+        $freshInstall = $status -notmatch 'not found'
+        $Ansible.Result = @{ action = if ($freshInstall) { 'feature_install' } else { 'kernel_update' } }
         if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
-        $opts = if ($status -match 'not found') { '--update' } else { '--install', '--no-distribution' }
+        $opts = if (-not $freshInstall) { '--update' } else { '--install', '--no-distribution' }
         $result = Start-Process -FilePath wsl.exe -ArgumentList "$opts" -PassThru -Verb RunAs -Wait
         if ($result.ExitCode -ne 0) {
           $Ansible.Result = "Failed to install WSL: $result"
@@ -82,13 +85,14 @@
       }
   register: wsl_install
 
-- name: Reboot after WSL install
+- name: Reboot after initial WSL feature install
   ansible.windows.win_reboot:
     reboot_timeout: 600
-    msg: "Ansible reboot after WSL changes"
+    msg: "Ansible reboot after initial WSL feature install"
   when:
     - wsl_reboot_after | default(true) | bool
     - wsl_install is changed
+    - wsl_install.result.action | default('none') == 'feature_install'
 
 # --- Step 1.2: Deploy .wslconfig with mirrored networking ---
 # networkingMode=mirrored makes WSL share the Windows host's network interfaces,
@@ -97,81 +101,82 @@
 # Must be deployed before the distro's first launch to take effect.
 # See: https://learn.microsoft.com/en-us/windows/wsl/wsl-config
 
-- name: Deploy .wslconfig with mirrored networking
-  ansible.windows.win_copy:
-    content: |
-      [wsl2]
-      networkingMode=mirrored
-    dest: '%USERPROFILE%\.wslconfig'
-  register: _wslconfig_result
+# - name: Deploy .wslconfig with mirrored networking
+#   ansible.windows.win_copy:
+#     content: |
+#       [wsl2]
+#       networkingMode=mirrored
+#     dest: '%USERPROFILE%\.wslconfig'
+#   register: _wslconfig_result
 
-- name: Shutdown WSL to apply .wslconfig changes
-  ansible.windows.win_powershell:
-    error_action: silently_continue
-    script: |
-      $Ansible.Changed = $true
-      wsl.exe --shutdown
-      Start-Sleep -Seconds 5
-  when: _wslconfig_result is changed
+# - name: Shutdown WSL to apply .wslconfig changes
+#   ansible.windows.win_powershell:
+#     error_action: silently_continue
+#     script: |
+#       $Ansible.Changed = $true
+#       wsl.exe --shutdown
+#       Start-Sleep -Seconds 5
+#   when: _wslconfig_result is changed
 
 # --- Step 1.5: Create cloud-init user-data on the Windows host ---
 # Ubuntu 24.04 WSL reads %USERPROFILE%\.cloud-init\<distro>.user-data on first
 # launch to auto-provision the user, password, sudo, and /etc/wsl.conf.
 # Adapted from bootstrap-ansible-local.ps1 lines 218-266.
 
+- name: Ensure cloud-init directory exists
+  ansible.windows.win_file:
+    path: "{{ ansible_env.USERPROFILE }}\\.cloud-init"
+    state: directory
+
 - name: Create cloud-init user-data for WSL distro
-  ansible.windows.win_powershell:
-    error_action: stop
-    script: |
-      $Ansible.Changed = $false
-      $distro = '{{ _wsl_distro }}'
-      $user = '{{ _wsl_user }}'
-      $password = '{{ _wsl_password }}'
-
-      $cloudInitDir = "$env:USERPROFILE\.cloud-init"
-      $userDataFile = Join-Path $cloudInitDir "$distro.user-data"
-
-      $userData = @"
+  ansible.windows.win_copy:
+    dest: "{{ ansible_env.USERPROFILE }}\\.cloud-init\\{{ _wsl_distro }}.user-data"
+    content: |
       #cloud-config
       users:
-        - name: $user
+        - name: {{ _wsl_user }}
           groups: [sudo, adm]
           sudo: ALL=(ALL) NOPASSWD:ALL
           shell: /bin/bash
           lock_passwd: false
-          passwd: $password
+          passwd: {{ _wsl_password }}
 
       write_files:
-      - path: /etc/wsl.conf
-        content: |
-          [boot]
-          systemd=true
-          command=service ssh start
-          [user]
-          default=$user
-      "@
-      $userData = ($userData -split "`n" | ForEach-Object { $_.TrimStart() }) -join "`n"
-
-      if (-not (Test-Path $cloudInitDir)) {
-        New-Item -ItemType Directory -Path $cloudInitDir -Force | Out-Null
-      }
-
-      $existing = if (Test-Path $userDataFile) { [System.IO.File]::ReadAllText($userDataFile) } else { '' }
-      if ($existing -ne $userData) {
-        $Ansible.Changed = $true
-        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
-        $lines = $userData -split "`r?`n"
-        [System.IO.File]::WriteAllLines($userDataFile, $lines)
-      }
-
-      $Ansible.Result = $userDataFile
+        - path: /etc/wsl.conf
+          content: |
+            [boot]
+            systemd=true
+            [user]
+            default={{ _wsl_user }}
   register: _cloud_init_result
 
-- name: Report cloud-init user-data path
+- name: Normalise cloud-init user-data to LF line endings
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $path = '{{ ansible_env.USERPROFILE }}\.cloud-init\{{ _wsl_distro }}.user-data'
+      $raw  = [System.IO.File]::ReadAllText($path)
+      $fixed = $raw -replace "`r`n", "`n"
+      if ($raw -ne $fixed) {
+        [System.IO.File]::WriteAllBytes($path,
+          [System.Text.Encoding]::UTF8.GetBytes($fixed))
+        $Ansible.Changed = $true
+      } else {
+        $Ansible.Changed = $false
+      }
+
+- name: Read cloud-init user-data for verification
+  ansible.builtin.slurp:
+    src: "{{ ansible_env.USERPROFILE }}\\.cloud-init\\{{ _wsl_distro }}.user-data"
+  register: _cloud_init_content
+
+- name: Report cloud-init user-data path and contents
   ansible.builtin.debug:
-    msg: >-
-      Cloud-init user-data: {{ _cloud_init_result.result | default('unknown') }}
-      ({{ 'created/updated' if _cloud_init_result is changed else 'already current' }})
+    msg: |-
+      Cloud-init user-data: {{ _cloud_init_result.dest | default('unknown') }}
+      Status: {{ 'created/updated' if _cloud_init_result is changed else 'already current' }}
+      Contents:
+      {{ _cloud_init_content.content | b64decode }}
 
 # --- Step 2: Install WSL distribution ---
 
@@ -351,22 +356,6 @@
         }
       }
 
-- name: Verify passwordless sudo works
-  environment:
-    WSL_UTF8: "1"
-  check_mode: false
-  ansible.windows.win_powershell:
-    error_action: stop
-    script: |
-      $Ansible.Changed = $false
-      $distro = '{{ _wsl_distro }}'
-      $user = '{{ _wsl_user }}'
-      $result = (wsl.exe -d $distro -u $user -- sudo -n true 2>&1) -replace '\x00', '' | ? { $_ -ne '' }
-      if ($LASTEXITCODE -ne 0) {
-        $Ansible.Result = "Passwordless sudo verification failed for $user"
-        $Ansible.Failed = $true
-        Exit 1
-      }
 
 # --- Step 4: Install and enable OpenSSH server in WSL ---
 # Installs openssh-server and enables the ssh service via systemd.

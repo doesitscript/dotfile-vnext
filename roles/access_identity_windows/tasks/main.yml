@@ -55,7 +55,7 @@
 - name: Ensure sshd listens on the configured port
   community.windows.win_lineinfile:
     path: "{{ sshd_config_path }}"
-    regexp: '^#?\s*Port\s'
+    regexp: '^(?:#\s*)?Port\s+(?:22|{{ win_ssh_port }})\s*$'
     line: "Port {{ win_ssh_port }}"
     state: present
   register: sshd_port_result
@@ -110,6 +110,7 @@
   - name: Ensure sshd_config has PowerShell port listener
     community.windows.win_lineinfile:
       path: "{{ sshd_config_path }}"
+      regexp: '^Port\s+{{ win_ssh_powershell_port }}\s*$'
       line: "Port {{ win_ssh_powershell_port }}"
       insertafter: "^Port {{ win_ssh_port }}"
       state: present
@@ -162,6 +163,10 @@
 - name: Configure WSL and install distribution
   ansible.builtin.import_tasks: ubuntu.yml
   tags: [wsl, standalone]
+
+- name: Verify WSL deployment
+  ansible.builtin.import_tasks: verify_wsl.yml
+  tags: [wsl, verify]
 
 # Include user tasks; run with --tags user to run only user tasks.
 - name: Include user tasks

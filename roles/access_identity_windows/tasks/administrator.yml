@@ -12,9 +12,10 @@
 
 # 6) administrators_authorized_keys file and permissions
 - name: Ensure administrators_authorized_keys file exists
-  ansible.windows.win_file:
-    path: "{{ administrators_authorized_keys_path }}"
-    state: touch
+  ansible.windows.win_copy:
+    dest: "{{ administrators_authorized_keys_path }}"
+    content: ""
+    force: false
 
 - name: Disable ACL inheritance on administrators_authorized_keys
   ansible.windows.win_acl_inheritance:

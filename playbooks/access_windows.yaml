@@ -11,5 +11,10 @@
   hosts: windows_hosts
   gather_facts: false
 
+  pre_tasks:
+    - name: Skip hosts not yet SSH-configured (never deployed)
+      ansible.builtin.meta: end_host
+      when: not (ansible_facts.get('ssh_configured', false) | bool)
+
   roles:
     - access_identity_windows

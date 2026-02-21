@@ -1,0 +1,21 @@
+---
+# verify_wsl.yml — post-deployment verification for the WSL distro.
+# Run after ubuntu.yml completes; requires _wsl_distro and _wsl_user facts.
+# Tag: verify — skip with --skip-tags verify, run standalone with --tags verify.
+
+- name: Verify passwordless sudo works
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro }}'
+      $user = '{{ _wsl_user }}'
+      $result = (wsl.exe -d $distro -u $user -- sudo -n true 2>&1) -replace '\x00', '' | ? { $_ -ne '' }
+      if ($LASTEXITCODE -ne 0) {
+        $Ansible.Result = "Passwordless sudo verification failed for $user"
+        $Ansible.Failed = $true
+        Exit 1
+      }
