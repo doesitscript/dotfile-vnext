@@ -10,13 +10,8 @@
 # The file must have strict ACLs: no inheritance, only Administrators
 # and SYSTEM with FullControl.
 
-# 6) administrators_authorized_keys file and permissions
-- name: Ensure administrators_authorized_keys file exists
-  ansible.windows.win_copy:
-    dest: "{{ administrators_authorized_keys_path }}"
-    content: ""
-    force: false
-
+# 6) administrators_authorized_keys file permissions
+# The file itself is created by win_lineinfile (create: true) in step 7.
 - name: Disable ACL inheritance on administrators_authorized_keys
   ansible.windows.win_acl_inheritance:
     path: "{{ administrators_authorized_keys_path }}"

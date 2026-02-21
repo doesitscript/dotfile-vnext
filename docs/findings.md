@@ -56,7 +56,7 @@ ssh server-225-wsl
 times out
 
 
-
+nc -z -w 5 192.168.50.158 22
 # troubleshooting
 sshd -t
 
