@@ -1,0 +1,16 @@
+---
+# Docker client: installs Docker CLI and configures an SSH Docker context.
+# Targets the docker_clients group (execution_nodes + server-225-win).
+# The CLI connects to the Docker engine running in WSL over SSH.
+#
+# Commands:
+#   ansible-playbook playbooks/docker_client.yaml -i inventory/inventory.yaml
+#   ansible-playbook playbooks/docker_client.yaml -i inventory/inventory.yaml --limit mac-dev
+#   ansible-playbook playbooks/docker_client.yaml -i inventory/inventory.yaml --limit server-225-win
+#
+- name: Docker Client - install CLI and create SSH context
+  hosts: docker_clients
+  gather_facts: true
+
+  roles:
+    - docker_client

@@ -1,0 +1,64 @@
+---
+# docker_client: installs Docker CLI and creates an SSH-based Docker context.
+# Follows the roles/git pattern — OS dispatcher + shared tasks.
+
+- name: Process docker_client for macOS
+  ansible.builtin.import_tasks: mac.yml
+  when: ansible_facts['os_family'] == "Darwin" or ansible_facts['system'] == "Darwin"
+
+- name: Process docker_client for Windows
+  ansible.builtin.import_tasks: windows.yml
+  when: ansible_facts['os_family'] == "Windows"
+
+# --- Shared: create Docker context pointing at the WSL engine via SSH ---
+# Runs on all client platforms after the CLI is installed.
+
+- name: Inspect existing Docker context ({{ docker_context_name }})
+  ansible.builtin.command: docker context inspect {{ docker_context_name }}
+  register: _docker_context_inspect
+  changed_when: false
+  failed_when: false
+  when: ansible_facts['os_family'] != "Windows"
+
+- name: Set expected Docker engine endpoint
+  ansible.builtin.set_fact:
+    _docker_expected_host: "ssh://{{ docker_engine_ssh_user }}@{{ docker_engine_ssh_host }}:{{ docker_engine_ssh_port }}"
+  when: ansible_facts['os_family'] != "Windows"
+
+- name: Remove stale Docker context if endpoint changed
+  ansible.builtin.command: docker context rm {{ docker_context_name }} -f
+  when:
+    - ansible_facts['os_family'] != "Windows"
+    - _docker_context_inspect.rc == 0
+    - (_docker_context_inspect.stdout | from_json)[0].Endpoints.docker.Host != _docker_expected_host
+  changed_when: true
+
+- name: Create Docker SSH context ({{ docker_context_name }})
+  ansible.builtin.command: >-
+    docker context create {{ docker_context_name }}
+    --docker "host={{ _docker_expected_host }}"
+  register: _docker_context_created
+  when:
+    - ansible_facts['os_family'] != "Windows"
+    - _docker_context_inspect.rc != 0 or (_docker_context_inspect.stdout | from_json)[0].Endpoints.docker.Host != _docker_expected_host
+
+- name: Check current Docker context
+  ansible.builtin.command: docker context show
+  register: _docker_current_context
+  changed_when: false
+  failed_when: false
+  when: ansible_facts['os_family'] != "Windows"
+
+- name: Set Docker default context to {{ docker_context_name }}
+  ansible.builtin.command: docker context use {{ docker_context_name }}
+  when:
+    - ansible_facts['os_family'] != "Windows"
+    - _docker_current_context.stdout | default('') != docker_context_name
+  changed_when: true
+
+- name: Report Docker client configuration
+  ansible.builtin.debug:
+    msg: >-
+      Docker client on {{ inventory_hostname }}:
+      context={{ docker_context_name }},
+      engine=ssh://{{ docker_engine_ssh_user }}@{{ docker_engine_ssh_host }}:{{ docker_engine_ssh_port }}

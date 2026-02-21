@@ -1,0 +1,19 @@
+---
+# docker_client: installs Docker CLI and configures an SSH-based Docker context.
+#
+# The Docker daemon runs in WSL (installed by geerlingguy.docker via docker_engine.yaml).
+# Clients connect over SSH — no exposed TCP ports, no daemon on the client host.
+#
+# Override docker_engine_ssh_host per physical-node group_vars or host_vars.
+# The context name defaults to the physical_node variable if set.
+
+# Name for the docker context on this client (e.g. "server-225")
+docker_context_name: "{{ physical_node | default('wsl-docker') }}"
+
+# SSH URI the Docker CLI uses to reach the engine (docker -H ssh://...)
+# With networkingMode=mirrored in .wslconfig, WSL shares the host's LAN IP,
+# so WSL sshd on port 22 is directly reachable without portproxy.
+# Override per host_vars (see mac-dev.yaml, server-225-win.yaml).
+docker_engine_ssh_user: "{{ wsl_user | default(ansible_user) }}"
+docker_engine_ssh_host: "{{ ansible_host | default('localhost') }}"
+docker_engine_ssh_port: "{{ wsl_ssh_port | default(22) }}"

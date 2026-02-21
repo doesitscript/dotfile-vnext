@@ -1,0 +1,46 @@
+---
+# docker_client/windows.yml — Install Docker CLI + Compose on Windows, create SSH context.
+# The engine runs in WSL on the same machine; the context connects via SSH to localhost.
+
+- name: Install Docker CLI via Chocolatey
+  chocolatey.chocolatey.win_chocolatey:
+    name: docker-cli
+    state: present
+
+- name: Install Docker Compose via Chocolatey
+  chocolatey.chocolatey.win_chocolatey:
+    name: docker-compose
+    state: present
+
+- name: Ensure Docker SSH context on Windows ({{ docker_context_name }})
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $contextName = '{{ docker_context_name }}'
+      $sshUri = 'ssh://{{ docker_engine_ssh_user }}@localhost:{{ docker_engine_ssh_port }}'
+
+      $existing = (docker context inspect $contextName 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue)
+      $currentHost = ''
+      if ($existing) { $currentHost = $existing.Endpoints.docker.Host }
+
+      if ($currentHost -eq $sshUri) {
+        $Ansible.Result = @{ context = $contextName; host = $sshUri; action = 'unchanged' }
+      } else {
+        $Ansible.Changed = $true
+        if ($existing) { docker context rm $contextName -f 2>&1 | Out-Null }
+        docker context create $contextName --docker "host=$sshUri" 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+          $Ansible.Result = "Failed to create Docker context"
+          $Ansible.Failed = $true
+          Exit 1
+        }
+        docker context use $contextName 2>&1 | Out-Null
+        $Ansible.Result = @{ context = $contextName; host = $sshUri; action = 'created' }
+      }
+
+- name: Report Docker client configuration (Windows)
+  ansible.builtin.debug:
+    msg: >-
+      Context: {{ docker_context_name }}
+      | Engine: ssh://{{ docker_engine_ssh_user }}@localhost:{{ docker_engine_ssh_port }}

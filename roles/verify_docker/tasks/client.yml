@@ -1,0 +1,55 @@
+---
+# verify_docker/client.yml — validates Docker client installation and engine connectivity.
+# Called from playbooks/docker.yaml on docker_clients hosts.
+# Uses the SSH-based Docker context configured by the docker_client role.
+# Non-destructive. No changes.
+
+# --- Client-only check (no daemon needed) ---
+
+- name: Validate Docker CLI is installed
+  ansible.builtin.command: docker --version
+  register: _docker_cli_version
+  changed_when: false
+  failed_when: _docker_cli_version.rc != 0
+  when: ansible_facts['os_family'] | default('') != "Windows"
+  tags: [verify]
+
+- name: Validate Docker CLI is installed (Windows)
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $ver = (docker --version 2>&1)
+      $Ansible.Result = @{ version = "$ver" }
+      if ($LASTEXITCODE -ne 0) { $Ansible.Failed = $true }
+  register: _docker_cli_win
+  when: ansible_facts['os_family'] | default('') == "Windows"
+  tags: [verify]
+
+# --- Engine connectivity check (requires SSH context + running engine) ---
+
+- name: Check Docker engine connectivity via context
+  ansible.builtin.command: docker info --format '{% raw %}{{.ServerVersion}}{% endraw %}'
+  register: _docker_engine_version
+  changed_when: false
+  failed_when: false
+  when: ansible_facts['os_family'] | default('') != "Windows"
+  tags: [verify]
+
+- name: Check Docker engine connectivity via context (Windows)
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $ver = (docker info --format '{% raw %}{{.ServerVersion}}{% endraw %}' 2>&1)
+      $Ansible.Result = @{ version = "$ver" }
+  register: _docker_engine_win
+  when: ansible_facts['os_family'] | default('') == "Windows"
+  tags: [verify]
+
+- name: Show Docker client verification results
+  ansible.builtin.debug:
+    msg:
+      - "CLI: {{ _docker_cli_version.stdout | default(_docker_cli_win.result.version | default('N/A')) }}"
+      - "Engine: {{ _docker_engine_version.stdout | default(_docker_engine_win.result.version | default('not reachable — is the WSL Docker engine running?')) }}"
+  tags: [verify]

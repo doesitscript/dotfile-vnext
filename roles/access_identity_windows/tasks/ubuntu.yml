@@ -90,6 +90,30 @@
     - wsl_reboot_after | default(true) | bool
     - wsl_install is changed
 
+# --- Step 1.2: Deploy .wslconfig with mirrored networking ---
+# networkingMode=mirrored makes WSL share the Windows host's network interfaces,
+# so WSL services (sshd, Docker) are directly reachable on the host's LAN IP.
+# This eliminates the need for netsh portproxy and the dynamic-IP problem.
+# Must be deployed before the distro's first launch to take effect.
+# See: https://learn.microsoft.com/en-us/windows/wsl/wsl-config
+
+- name: Deploy .wslconfig with mirrored networking
+  ansible.windows.win_copy:
+    content: |
+      [wsl2]
+      networkingMode=mirrored
+    dest: '%USERPROFILE%\.wslconfig'
+  register: _wslconfig_result
+
+- name: Shutdown WSL to apply .wslconfig changes
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $true
+      wsl.exe --shutdown
+      Start-Sleep -Seconds 5
+  when: _wslconfig_result is changed
+
 # --- Step 1.5: Create cloud-init user-data on the Windows host ---
 # Ubuntu 24.04 WSL reads %USERPROFILE%\.cloud-init\<distro>.user-data on first
 # launch to auto-provision the user, password, sudo, and /etc/wsl.conf.
@@ -119,10 +143,10 @@
 
       write_files:
       - path: /etc/wsl.conf
-        append: true
         content: |
           [boot]
           systemd=true
+          command=service ssh start
           [user]
           default=$user
       "@
@@ -204,6 +228,40 @@
       wsl.exe --shutdown
       Start-Sleep -Seconds 3
   when: wsl_distro_install is defined and wsl_distro_install is changed
+
+# --- Step 2.2: Fix wsl.conf — ensure no duplicate keys ---
+# Earlier cloud-init runs with append:true may have created duplicate [boot] entries.
+# This overwrites /etc/wsl.conf with the canonical config (idempotent).
+
+- name: Ensure /etc/wsl.conf is canonical (no duplicate keys)
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro }}'
+      $user = '{{ _wsl_user }}'
+
+      $expected = @"
+      [boot]
+      systemd=true
+      command=service ssh start
+      [user]
+      default=$user
+      "@
+      $expected = ($expected -split "`n" | ForEach-Object { $_.TrimStart() }) -join "`n"
+
+      $current = (wsl.exe -d $distro -u root -- bash -c 'cat /etc/wsl.conf 2>/dev/null') -replace '\x00', '' | ? { $_ -ne '' }
+      $currentStr = ($current -join "`n").Trim()
+
+      if ($currentStr -ne $expected.Trim()) {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        $escaped = $expected -replace "'", "'\''"
+        wsl.exe -d $distro -u root -- bash -c "printf '%s\n' '$escaped' > /etc/wsl.conf"
+      }
 
 - name: Set default WSL distribution to {{ _wsl_distro }}
   environment:
@@ -414,67 +472,11 @@
         wsl.exe -d $distro -u root -- bash -c 'systemctl restart ssh 2>&1'
       }
 
-# --- Step 4.6: Windows port forwarding to WSL sshd ---
-# WSL 2 uses a virtual network adapter with a dynamic internal IP.
-# netsh portproxy forwards the same port from the Windows external interface
-# to WSL's internal IP. The WSL IP changes on reboot, so this rule must be refreshed.
-
-- name: Configure Windows port forwarding to WSL sshd (port {{ _wsl_ssh_port }} → WSL:{{ _wsl_ssh_port }})
-  environment:
-    WSL_UTF8: "1"
-  check_mode: false
-  ansible.windows.win_powershell:
-    error_action: silently_continue
-    script: |
-      $Ansible.Changed = $false
-      $distro = '{{ _wsl_distro }}'
-      $listenPort = {{ _wsl_ssh_port }}
-      $connectPort = {{ _wsl_ssh_port }}
-
-      $wslIp = (wsl.exe -d $distro -- bash -c "hostname -I | awk '{print `$1}'") -replace '\x00', '' | ? { $_ -ne '' } | Select-Object -First 1
-      $wslIp = $wslIp.Trim()
-      if (-not $wslIp) {
-        $Ansible.Result = "Could not determine WSL internal IP"
-        $Ansible.Failed = $true
-        Exit 1
-      }
-
-      $existing = netsh interface portproxy show v4tov4 | Out-String
-      $pattern = "0\.0\.0\.0\s+$listenPort\s+$([regex]::Escape($wslIp))\s+$connectPort"
-      if ($existing -notmatch $pattern) {
-        $Ansible.Changed = $true
-        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
-        netsh interface portproxy delete v4tov4 listenport=$listenPort listenaddress=0.0.0.0 2>$null
-        netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=$listenPort connectaddress=$wslIp connectport=$connectPort
-        if ($LASTEXITCODE -ne 0) {
-          $Ansible.Result = "Failed to add portproxy rule"
-          $Ansible.Failed = $true
-          Exit 1
-        }
-      }
-
-      $Ansible.Result = @{ wsl_ip = $wslIp; listen_port = $listenPort; connect_port = $connectPort }
-  register: _wsl_portproxy
-
-- name: Report port forwarding configuration
-  ansible.builtin.debug:
-    msg: >-
-      Port forwarding: Windows:{{ _wsl_ssh_port }} →
-      {{ _wsl_portproxy.result.wsl_ip | default('unknown') }}:{{ _wsl_ssh_port }}
-      ({{ 'configured' if _wsl_portproxy is changed else 'already in place' }})
-
-# --- Step 4.7: Firewall rule for WSL direct SSH port ---
-
-- name: Ensure firewall rule for WSL direct SSH port
-  community.windows.win_firewall_rule:
-    name: sshd-WSL-Direct-In-TCP
-    localport: "{{ _wsl_ssh_port }}"
-    protocol: tcp
-    direction: in
-    action: allow
-    state: present
-    enabled: true
-    description: "WSL direct SSH access (port {{ _wsl_ssh_port }} via portproxy to WSL sshd)"
+# --- Step 4.6/4.7: REMOVED ---
+# netsh portproxy and its firewall rule are no longer needed.
+# networkingMode=mirrored in .wslconfig makes WSL share the Windows host's
+# network interfaces, so WSL sshd on port {{ _wsl_ssh_port }} is directly
+# reachable on the host's LAN IP without port forwarding.
 
 # --- Step 5: Deploy controller SSH key into WSL distro ---
 # Mirrors the logic from user.yml (Windows SSH key deployment) but executes

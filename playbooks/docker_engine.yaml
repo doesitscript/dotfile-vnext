@@ -1,7 +1,31 @@
 ---
-- name: Install Docker Engine
+# Docker engine: installs Docker Engine + Compose inside WSL distros.
+# Uses geerlingguy.docker for a battle-tested, maintained install.
+# Old roles/docker_engine is retired — see roles/docker_engine/RETIRED.md.
+#
+# The geerlingguy.docker role handles: apt repo, GPG key, docker-ce,
+# docker-compose-plugin, docker group, service enablement.
+#
+# Guard: only runs when docker_engine_in_wsl is true (set in group_vars/wsl_hosts
+# or host_vars). This prevents accidental Docker installs on unrelated WSL hosts.
+#
+# Commands:
+#   ansible-playbook playbooks/docker_engine.yaml -i inventory/inventory.yaml
+#   ansible-playbook playbooks/docker_engine.yaml -i inventory/inventory.yaml --limit server-225-wsl
+#
+- name: Docker Engine - install on WSL hosts
   hosts: wsl_hosts
   gather_facts: true
+  become: true
+  ignore_unreachable: true
 
-  roles:
-    - docker_engine
+  tasks:
+    - name: Apply geerlingguy.docker to WSL hosts with Docker enabled
+      ansible.builtin.include_role:
+        name: geerlingguy.docker
+      vars:
+        docker_users:
+          - "{{ wsl_user | default(ansible_user) }}"
+      when:
+        - docker_engine_in_wsl | default(false)
+        - ansible_facts['distribution'] is defined

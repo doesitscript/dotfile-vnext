@@ -1,0 +1,11 @@
+---
+# mac-dev host_vars — Docker client configuration.
+# The Docker engine runs in WSL on server-225. The Mac connects over SSH.
+
+# Docker client — reaches the WSL Docker engine via mirrored networking on port 22.
+# networkingMode=mirrored in .wslconfig makes WSL share the host's LAN IP, so
+# WSL sshd on port 22 is directly reachable. No portproxy needed.
+# Uses the SSH config alias "server-225-wsl" so IdentityFile is inherited.
+docker_engine_ssh_host: "server-225-wsl"
+docker_engine_ssh_port: 22
+docker_engine_ssh_user: "joshc"

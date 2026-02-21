@@ -1,0 +1,18 @@
+---
+# docker_client/mac.yml — Install Docker CLI on macOS via Homebrew.
+# Installs the CLI only (docker formula), NOT Docker Desktop (docker cask).
+
+- name: Install Docker CLI via Homebrew
+  community.general.homebrew:
+    name: docker
+    state: present
+  register: _docker_cli_install
+
+- name: Install Docker Compose plugin via Homebrew
+  community.general.homebrew:
+    name: docker-compose
+    state: present
+
+- name: Report Docker CLI install status (macOS)
+  ansible.builtin.debug:
+    msg: "Docker CLI: {{ 'installed' if _docker_cli_install is changed else 'already present' }}"

@@ -1,0 +1,19 @@
+# docker_engine -- RETIRED
+
+This role has been replaced by the `geerlingguy.docker` Galaxy role. See `RETIRED.md` for migration details.
+
+## Why retired
+
+The original `tasks/main.yml` installed `docker.io` (the Debian-packaged version), which lags behind official Docker releases and lacks the Compose v2 plugin. `geerlingguy.docker` installs from Docker's official apt repository and handles GPG keys, service enablement, and user group membership.
+
+## Current setup
+
+- **Engine install**: `playbooks/docker_engine.yaml` applies `geerlingguy.docker` to `wsl_hosts` (guarded by `docker_engine_in_wsl: true`).
+- **Client setup**: `playbooks/docker_client.yaml` applies `roles/docker_client` to `docker_clients`.
+- **Orchestrator**: `playbooks/docker.yaml` chains engine + client + verification.
+
+## Related
+
+- **`geerlingguy.docker`** -- the replacement (installed to `roles/galaxy/` via `requirements.yml`)
+- **`docker_client`** -- installs Docker CLI on Mac and Windows
+- **`verify_docker`** -- validates the installation
