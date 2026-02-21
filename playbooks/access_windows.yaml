@@ -17,4 +17,6 @@
       when: not (ansible_facts.get('ssh_configured', false) | bool)
 
   roles:
+    - role: hyperv_networking
+      when: wsl_networking_mode | default('nat') == 'bridged'
     - access_identity_windows

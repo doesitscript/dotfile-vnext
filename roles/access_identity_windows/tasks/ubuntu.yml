@@ -22,6 +22,7 @@
 #
 #  ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit server-225-win --tags standalone
 # configures a ssh server complete independent of windows
+# ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit server-225-win --tags wsl-reset,wsl
 
 # --- Resolve companion WSL host variables ---
 
@@ -48,6 +49,10 @@
     _wsl_ssh_dir: "{{ hostvars[_wsl_companion]['ansible_ssh_dir_path'] }}"
     _wsl_authorized_keys: "{{ hostvars[_wsl_companion]['ansible_authorized_keys_path'] }}"
 
+- name: Resolve WSL networking mode
+  ansible.builtin.set_fact:
+    _wsl_networking_mode: "{{ wsl_networking_mode | default('nat') }}"
+
 - name: Display resolved WSL configuration
   ansible.builtin.debug:
     msg: >-
@@ -56,7 +61,8 @@
       user: {{ _wsl_user }} |
       ssh_port: {{ _wsl_ssh_port }} |
       ssh_dir: {{ _wsl_ssh_dir }} |
-      authorized_keys: {{ _wsl_authorized_keys }}
+      authorized_keys: {{ _wsl_authorized_keys }} |
+      networking_mode: {{ _wsl_networking_mode }}
 
 # --- Step 1: Install WSL (feature + kernel) ---
 
@@ -94,29 +100,10 @@
     - wsl_install is changed
     - wsl_install.result.action | default('none') == 'feature_install'
 
-# --- Step 1.2: Deploy .wslconfig with mirrored networking ---
-# networkingMode=mirrored makes WSL share the Windows host's network interfaces,
-# so WSL services (sshd, Docker) are directly reachable on the host's LAN IP.
-# This eliminates the need for netsh portproxy and the dynamic-IP problem.
-# Must be deployed before the distro's first launch to take effect.
-# See: https://learn.microsoft.com/en-us/windows/wsl/wsl-config
-
-# - name: Deploy .wslconfig with mirrored networking
-#   ansible.windows.win_copy:
-#     content: |
-#       [wsl2]
-#       networkingMode=mirrored
-#     dest: '%USERPROFILE%\.wslconfig'
-#   register: _wslconfig_result
-
-# - name: Shutdown WSL to apply .wslconfig changes
-#   ansible.windows.win_powershell:
-#     error_action: silently_continue
-#     script: |
-#       $Ansible.Changed = $true
-#       wsl.exe --shutdown
-#       Start-Sleep -Seconds 5
-#   when: _wslconfig_result is changed
+# --- Step 1.2: .wslconfig networking ---
+# Handled by the hyperv_networking role (when wsl_networking_mode == 'bridged')
+# or left as default NAT (no .wslconfig needed).
+# See roles/hyperv_networking/README.md for details.
 
 # --- Step 1.5: Create cloud-init user-data on the Windows host ---
 # Ubuntu 24.04 WSL reads %USERPROFILE%\.cloud-init\<distro>.user-data on first
@@ -128,6 +115,9 @@
     path: "{{ ansible_env.USERPROFILE }}\\.cloud-init"
     state: directory
 
+# TODO: Re-enable write_files section once Hyper-V bridge mode is validated.
+# Cloud-init was overwriting /etc/wsl.conf on every re-provision, competing
+# with manual and Ansible post-install changes during bridge-mode testing.
 - name: Create cloud-init user-data for WSL distro
   ansible.windows.win_copy:
     dest: "{{ ansible_env.USERPROFILE }}\\.cloud-init\\{{ _wsl_distro }}.user-data"
@@ -140,14 +130,6 @@
           shell: /bin/bash
           lock_passwd: false
           passwd: {{ _wsl_password }}
-
-      write_files:
-        - path: /etc/wsl.conf
-          content: |
-            [boot]
-            systemd=true
-            [user]
-            default={{ _wsl_user }}
   register: _cloud_init_result
 
 - name: Normalise cloud-init user-data to LF line endings
@@ -249,11 +231,16 @@
       $distro = '{{ _wsl_distro }}'
       $user = '{{ _wsl_user }}'
 
+      $networkingMode = '{{ _wsl_networking_mode }}'
+      $genResolv = if ($networkingMode -eq 'bridged') { 'false' } else { 'true' }
+
       $expected = @"
       [boot]
       systemd=true
       [user]
       default=$user
+      [network]
+      generateResolvConf=$genResolv
       "@
       $expected = ($expected -split "`n" | ForEach-Object { $_.TrimStart() }) -join "`n"
 
@@ -460,11 +447,138 @@
         wsl.exe -d $distro -u root -- bash -c 'systemctl restart ssh 2>&1'
       }
 
-# --- Step 4.6/4.7: REMOVED ---
-# netsh portproxy and its firewall rule are no longer needed.
-# networkingMode=mirrored in .wslconfig makes WSL share the Windows host's
-# network interfaces, so WSL sshd on port {{ _wsl_ssh_port }} is directly
-# reachable on the host's LAN IP without port forwarding.
+# --- Step 4.6: Disable ssh.socket to prevent conflict with boot command ---
+# Ubuntu 24.04 enables ssh.socket (systemd socket activation) by default.
+# This fights with the [boot] command=service ssh start in wsl.conf.
+# Mask it so the boot command cleanly owns port 22.
+
+- name: Disable and mask ssh.socket in WSL distro
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro }}'
+
+      $masked = (wsl.exe -d $distro -u root -- bash -c 'systemctl is-enabled ssh.socket 2>&1') -replace '\x00', '' | ? { $_ -ne '' }
+      if ($masked -notmatch '^masked') {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        wsl.exe -d $distro -u root -- bash -c 'systemctl stop ssh.socket 2>&1; systemctl disable ssh.socket 2>&1; systemctl mask ssh.socket 2>&1'
+      }
+
+# --- Step 4.7: Bridged networking — configure WSL guest static IP ---
+# Only runs when wsl_networking_mode == 'bridged'. Writes a Netplan config
+# with the static IP, gateway, and DNS from hyperv_networking defaults/hostvars.
+# Persistent across WSL restarts.
+
+- name: Configure Netplan static IP for bridged networking
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro }}'
+      $staticIp = '{{ wsl_static_ip | default("192.168.50.222/24") }}'
+      $gateway = '{{ wsl_gateway | default("192.168.50.1") }}'
+      $dns = '{{ wsl_dns_server | default("8.8.8.8") }}'
+
+      $netplanFile = '/etc/netplan/01-wsl-bridge.yaml'
+
+      $lines = @(
+        'network:'
+        '  version: 2'
+        '  ethernets:'
+        '    eth0:'
+        '      dhcp4: false'
+        '      addresses:'
+        "        - $staticIp"
+        '      routes:'
+        '        - to: default'
+        "          via: $gateway"
+        '      nameservers:'
+        '        addresses:'
+        "          - $dns"
+      )
+      $expected = $lines -join "`n"
+
+      $current = (wsl.exe -d $distro -u root -- bash -c "cat $netplanFile 2>/dev/null || echo NOTFOUND") -replace '\x00', '' | ? { $_ -ne '' }
+      $currentStr = ($current -join "`n").Trim()
+
+      if ($currentStr -ne $expected.Trim()) {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        wsl.exe -d $distro -u root -- bash -c "mkdir -p /etc/netplan"
+        $expected | wsl.exe -d $distro -u root -- tee $netplanFile | Out-Null
+        wsl.exe -d $distro -u root -- chmod 600 $netplanFile
+        wsl.exe -d $distro -u root -- bash -c 'netplan apply 2>&1 || true'
+      }
+  when: _wsl_networking_mode == 'bridged'
+
+# DNS: systemd-resolved handles resolution natively in WSL.
+# No manual /etc/resolv.conf override needed — the stub resolver at 127.0.0.53 works.
+# The Netplan nameservers config above feeds upstream DNS to systemd-resolved.
+
+# --- Step 4.8: NAT networking — netsh portproxy for WSL SSH access ---
+# Only runs when wsl_networking_mode == 'nat'. Dynamically resolves
+# WSL's internal IP and forwards the configured port to it.
+
+- name: Configure netsh portproxy for WSL SSH (NAT mode)
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro }}'
+      $listenPort = '{{ _wsl_ssh_port }}'
+      $connectPort = '22'
+
+      $wslIp = ((wsl.exe -d $distro -- bash -c 'hostname -I 2>/dev/null') -replace '\x00', '' | ? { $_ -ne '' }).Trim() -split '\s+' | Select-Object -First 1
+      if (-not $wslIp) {
+        $Ansible.Result = "Cannot resolve WSL IP for $distro"
+        $Ansible.Failed = $true
+        Exit 1
+      }
+
+      $existing = netsh interface portproxy show v4tov4 2>&1
+      $pattern = "0\.0\.0\.0\s+$listenPort\s+$([regex]::Escape($wslIp))\s+$connectPort"
+      if ($existing -match $pattern) {
+        $Ansible.Result = @{ action = 'unchanged'; wsl_ip = $wslIp }
+        Exit 0
+      }
+
+      $Ansible.Changed = $true
+      if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+
+      netsh interface portproxy delete v4tov4 listenport=$listenPort listenaddress=0.0.0.0 2>&1 | Out-Null
+      netsh interface portproxy add v4tov4 listenport=$listenPort listenaddress=0.0.0.0 connectport=$connectPort connectaddress=$wslIp 2>&1 | Out-Null
+      $Ansible.Result = @{ action = 'created'; wsl_ip = $wslIp; listen = "0.0.0.0:$listenPort"; connect = "${wslIp}:$connectPort" }
+  when: _wsl_networking_mode == 'nat'
+  register: _portproxy_result
+
+- name: Report portproxy status (NAT mode)
+  ansible.builtin.debug:
+    msg: >-
+      netsh portproxy: {{ _portproxy_result.result | default('skipped') }}
+  when: _wsl_networking_mode == 'nat'
+
+- name: Ensure firewall rule for WSL SSH port (NAT mode)
+  community.windows.win_firewall_rule:
+    name: sshd-WSL-Direct-In-TCP
+    localport: "{{ _wsl_ssh_port }}"
+    protocol: tcp
+    direction: in
+    action: allow
+    state: present
+    enabled: true
+    description: "WSL direct SSH via portproxy (port {{ _wsl_ssh_port }})"
+  when: _wsl_networking_mode == 'nat'
 
 # --- Step 5: Deploy controller SSH key into WSL distro ---
 # Mirrors the logic from user.yml (Windows SSH key deployment) but executes

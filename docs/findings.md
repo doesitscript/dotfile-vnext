@@ -62,3 +62,20 @@ sshd -t
 
 sudo systemctl restart ssh.service
 cat /etc/ssh/sshd_config
+
+ss -tlnp
+ ss -tlnp
+State  Recv-Q Send-Q   Local Address:Port       Peer Address:Port      Process
+LISTEN 0      4096           0.0.0.0:22              0.0.0.0:*   
+
+# make sure on windows nothing is conflicing with your port (22)
+netstat -ano | findstr :22
+
+
+PS C:\Users\joshc> netstat -ano | findstr :22
+PS C:\Users\joshc> netstat -ano | findstr :22
+  TCP    0.0.0.0:2222           0.0.0.0:0              LISTENING       17916
+  TCP    0.0.0.0:2223           0.0.0.0:0              LISTENING       17916
+  TCP    127.0.0.1:22           0.0.0.0:0              LISTENING       20624
+  TCP    192.168.50.158:2222    192.168.50.33:58793    ESTABLISHED     17916
+  TCP    192.168.50.158:2223    192.168.50.33:58804    ESTABLISHED     17916

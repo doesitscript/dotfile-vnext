@@ -1,0 +1,159 @@
+---
+# hyperv_networking — Enable Hyper-V, create External Virtual Switch, deploy .wslconfig.
+#
+# Patterns adapted from myllynen/windows-ansible-roles:
+#   - dsc_settings  → ansible.windows.win_dsc with WindowsOptionalFeature
+#   - wsl_configuration → ansible.windows.win_template for .wslconfig
+# Self-contained: no external role dependencies beyond ansible.windows collection.
+#
+# WARNING: Changing a Virtual Switch to External can briefly disconnect the network.
+#
+# Run standalone:
+#   ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win
+
+# --- Phase 1: Enable Hyper-V features ---
+# Uses ansible.windows.win_optional_feature (wraps DISM Enable-WindowsOptionalFeature).
+# The features have parent/child dependencies so we enable them in the right order.
+- name: Enable Hyper-V core feature
+  ansible.windows.win_optional_feature:
+    name:
+      - Microsoft-Hyper-V
+    state: present
+  register: _hyperv_core
+
+- name: Reboot after Hyper-V core installation
+  ansible.windows.win_reboot:
+    reboot_timeout: 600
+    msg: "Ansible reboot after Hyper-V install"
+  when: _hyperv_core.reboot_required | default(false)
+
+- name: Enable Hyper-V management PowerShell tools (with parent features)
+  ansible.windows.win_optional_feature:
+    name:
+      - Microsoft-Hyper-V-Management-PowerShell
+    state: present
+    include_parent: true
+  register: _hyperv_mgmt
+
+- name: Reboot after Hyper-V management tools installation
+  ansible.windows.win_reboot:
+    reboot_timeout: 600
+    msg: "Ansible reboot after Hyper-V management tools install"
+  when: _hyperv_mgmt.reboot_required | default(false)
+
+# --- Phase 2: Create External Virtual Switch for WSL bridged networking ---
+# Creating an External VMSwitch bound to the physical NIC temporarily disconnects
+# the network, which causes WinRM to time out. We check first, and if creation
+# is needed we fire-and-forget with async and then wait for reconnection.
+
+- name: Check if External VMSwitch already exists
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $switchName = '{{ hyperv_switch_name }}'
+      $adapterName = '{{ hyperv_adapter_name }}'
+      $allowMgmt = [bool]::Parse('{{ hyperv_allow_management_os | lower }}')
+
+      $existing = Get-VMSwitch -Name $switchName -ErrorAction SilentlyContinue
+      if ($existing) {
+        $adapter = Get-NetAdapter -Name $adapterName -ErrorAction SilentlyContinue
+        if ($existing.SwitchType -eq 'External' -and
+            $existing.NetAdapterInterfaceDescription -eq $adapter.InterfaceDescription -and
+            $existing.AllowManagementOS -eq $allowMgmt) {
+          $Ansible.Result = @{ exists = $true; action = 'unchanged' }
+          Exit 0
+        }
+        $Ansible.Result = @{ exists = $true; action = 'needs_update' }
+      } else {
+        $Ansible.Result = @{ exists = $false; action = 'needs_creation' }
+      }
+  register: _vmswitch_check
+
+- name: Create or update External VMSwitch (may briefly disconnect network)
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $switchName = '{{ hyperv_switch_name }}'
+      $adapterName = '{{ hyperv_adapter_name }}'
+      $allowMgmt = [bool]::Parse('{{ hyperv_allow_management_os | lower }}')
+
+      $existing = Get-VMSwitch -Name $switchName -ErrorAction SilentlyContinue
+      if ($existing) {
+        $adapter = Get-NetAdapter -Name $adapterName -ErrorAction SilentlyContinue
+        Set-VMSwitch -Name $switchName -SwitchType External `
+          -NetAdapterInterfaceDescription $adapter.InterfaceDescription `
+          -AllowManagementOS $allowMgmt
+      } else {
+        New-VMSwitch -Name $switchName -NetAdapterName $adapterName `
+          -AllowManagementOS $allowMgmt | Out-Null
+      }
+      $Ansible.Changed = $true
+  async: 120
+  poll: 0
+  when: _vmswitch_check.result.action != 'unchanged'
+  register: _vmswitch_async
+
+- name: Wait for WinRM to reconnect after VMSwitch change
+  ansible.builtin.wait_for_connection:
+    delay: 15
+    timeout: 120
+  when: _vmswitch_async is changed
+
+- name: Verify External VMSwitch is operational
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $switch = Get-VMSwitch -Name '{{ hyperv_switch_name }}' -ErrorAction Stop
+      $Ansible.Result = @{
+        name = $switch.Name
+        type = $switch.SwitchType.ToString()
+        adapter = $switch.NetAdapterInterfaceDescription
+        allow_mgmt_os = $switch.AllowManagementOS
+      }
+  when: _vmswitch_async is changed
+
+# --- Phase 3: Deploy .wslconfig with bridged networking ---
+# Pattern from myllynen wsl_configuration role (win_template + \r\n line endings).
+- name: Deploy .wslconfig with bridged networking
+  ansible.windows.win_template:
+    src: wslconfig_bridged.j2
+    dest: '%USERPROFILE%\.wslconfig'
+    newline_sequence: '\r\n'
+  register: _wslconfig_result
+
+- name: Shutdown WSL to apply .wslconfig changes
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $true
+      wsl.exe --shutdown
+      Start-Sleep -Seconds 8
+  when: _wslconfig_result is changed
+
+# --- Phase 4: Hyper-V firewall rule for inbound SSH to WSL VM ---
+# The Hyper-V firewall is separate from the Windows Firewall and filters
+# traffic for VMs on virtual switches. Without this rule, external hosts
+# can ping WSL (ICMP is allowed by default) but TCP connections are blocked.
+- name: Ensure Hyper-V firewall allows inbound SSH to WSL
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $ruleName = 'WSL-SSH-Inbound-TCP-22'
+      $wslCreatorId = '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}'
+
+      $existing = Get-NetFirewallHyperVRule -Name $ruleName -ErrorAction SilentlyContinue
+      if ($existing) {
+        $Ansible.Result = @{ action = 'unchanged'; rule = $ruleName }
+        Exit 0
+      }
+
+      New-NetFirewallHyperVRule -Name $ruleName `
+        -DisplayName 'Allow inbound SSH to WSL (TCP 22)' `
+        -Direction Inbound -Action Allow `
+        -VMCreatorId $wslCreatorId `
+        -Protocol TCP -LocalPorts 22 | Out-Null
+      $Ansible.Changed = $true
+      $Ansible.Result = @{ action = 'created'; rule = $ruleName }

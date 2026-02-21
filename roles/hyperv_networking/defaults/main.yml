@@ -1,0 +1,19 @@
+---
+# hyperv_networking: creates a Hyper-V External Virtual Switch and deploys
+# .wslconfig with networkingMode=bridged so WSL gets its own LAN IP.
+#
+# Composed from myllynen/windows-ansible-roles:
+#   - dsc_settings  (Hyper-V feature + VMSwitch DSC resource)
+#   - wsl_configuration (.wslconfig template deployment)
+#
+# Override per host_vars for different adapters or IPs.
+
+# Hyper-V External Virtual Switch
+hyperv_switch_name: "WSL-Bridge"
+hyperv_adapter_name: "Wi-Fi"
+hyperv_allow_management_os: true
+
+# WSL guest static IP (consumed by ubuntu.yml Netplan tasks)
+wsl_static_ip: "192.168.50.222/24"
+wsl_gateway: "192.168.50.1"
+wsl_dns_server: "8.8.8.8"

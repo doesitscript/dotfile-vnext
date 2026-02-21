@@ -11,7 +11,7 @@
 # this is NOT true SSH into the WSL distribution. Windows sshd accepts the
 # connection and forwards to WSL. Auth, keys, and sshd_config are Windows-side.
 {% elif hv.get('surface_type', '') == 'wsl' %}
-# WSL direct SSH — connects to the distro's own sshd via netsh portproxy.
+# WSL direct SSH — connects to the distro's own sshd (bridged LAN IP or NAT portproxy).
 {% endif %}
 Host {{ host }}
     HostName {{ hv['ssh_host'] | default(hv.get('ansible_host', host)) }}
