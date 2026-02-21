@@ -197,3 +197,21 @@ If SSH falls through to a password prompt instead of accepting your key, check:
 
 1. You are passing the correct key: `ssh -i ~/.ssh/id_ed25519_ansible -p 2222 user@host`
 2. The key is in the right `authorized_keys` file. For admin users, Windows OpenSSH reads `C:\ProgramData\ssh\administrators_authorized_keys` instead of `~\.ssh\authorized_keys`. Both files must have correct ACLs (no inheritance; only Administrators + SYSTEM with FullControl).
+
+
+### Troubleshooting
+
+kills sessions tmux is aware of
+```sh
+tmux ls | awk '/vsct-/ {print $1}' | sed 's/:$//' | xargs -r -n 1 tmux kill-session -t
+```
+Option 2 — Kill a specific session
+If you know the name:
+
+Code
+tmux kill-session -t vsct-12345
+Option 3 — From inside tmux
+If you’re inside the session and want to nuke it:
+
+Code
+tmux kill-session
