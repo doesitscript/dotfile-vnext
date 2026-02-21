@@ -21,6 +21,7 @@
 #   wsl_reboot_after     — reboot after WSL feature install (default: true)
 #
 #  ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit server-225-win --tags standalone
+# configures a ssh server complete independent of windows
 
 # --- Resolve companion WSL host variables ---
 
@@ -43,7 +44,7 @@
     _wsl_distro: "{{ hostvars[_wsl_companion]['wsl_distro'] | default(wsl_distro) }}"
     _wsl_user: "{{ hostvars[_wsl_companion]['wsl_user'] | default(hostvars[_wsl_companion]['ansible_user']) }}"
     _wsl_password: "{{ win_password | default(ansible_password) }}"
-    _wsl_ssh_port: "{{ hostvars[_wsl_companion]['wsl_ssh_port'] | default(2224) }}"
+    _wsl_ssh_port: "{{ hostvars[_wsl_companion]['wsl_ssh_port'] | default(22) }}"
     _wsl_ssh_dir: "{{ hostvars[_wsl_companion]['ansible_ssh_dir_path'] }}"
     _wsl_authorized_keys: "{{ hostvars[_wsl_companion]['ansible_authorized_keys_path'] }}"
 
@@ -311,7 +312,7 @@
 
 # --- Step 4: Install and enable OpenSSH server in WSL ---
 # Installs openssh-server and enables the ssh service via systemd.
-# sshd_config (Port 22, PubkeyAuthentication, ListenAddress) is set in Step 4.5.
+# sshd_config (Port, PubkeyAuthentication, ListenAddress) is set in Step 4.5.
 # authorized_keys deployment is handled in Step 5.
 
 - name: Install openssh-server in WSL distro
@@ -376,9 +377,9 @@
       wsl.exe -d '{{ _wsl_distro }}' -u root -- bash -c 'systemctl restart ssh 2>&1'
   when: _wsl_openssh_install is changed
 
-# --- Step 4.5: Configure WSL sshd — Port 22, PubkeyAuthentication, ListenAddress ---
+# --- Step 4.5: Configure WSL sshd — port, PubkeyAuthentication, ListenAddress ---
 
-- name: Configure WSL sshd to listen on port 22 with pubkey auth
+- name: Configure WSL sshd (port {{ _wsl_ssh_port }}, pubkey auth, listen on all interfaces)
   environment:
     WSL_UTF8: "1"
   check_mode: false
@@ -391,7 +392,7 @@
       $restartNeeded = $false
 
       $settings = @{
-        'Port'                  = '22'
+        'Port'                  = '{{ _wsl_ssh_port }}'
         'ListenAddress'         = '0.0.0.0'
         'PubkeyAuthentication'  = 'yes'
         'PasswordAuthentication' = 'yes'
@@ -415,10 +416,10 @@
 
 # --- Step 4.6: Windows port forwarding to WSL sshd ---
 # WSL 2 uses a virtual network adapter with a dynamic internal IP.
-# netsh portproxy forwards from a Windows-side port to WSL's sshd on port 22.
-# The WSL IP changes on reboot, so this rule must be refreshed.
+# netsh portproxy forwards the same port from the Windows external interface
+# to WSL's internal IP. The WSL IP changes on reboot, so this rule must be refreshed.
 
-- name: Configure Windows port forwarding to WSL sshd (port {{ _wsl_ssh_port }} → WSL:22)
+- name: Configure Windows port forwarding to WSL sshd (port {{ _wsl_ssh_port }} → WSL:{{ _wsl_ssh_port }})
   environment:
     WSL_UTF8: "1"
   check_mode: false
@@ -428,7 +429,7 @@
       $Ansible.Changed = $false
       $distro = '{{ _wsl_distro }}'
       $listenPort = {{ _wsl_ssh_port }}
-      $connectPort = 22
+      $connectPort = {{ _wsl_ssh_port }}
 
       $wslIp = (wsl.exe -d $distro -- bash -c "hostname -I | awk '{print `$1}'") -replace '\x00', '' | ? { $_ -ne '' } | Select-Object -First 1
       $wslIp = $wslIp.Trim()
@@ -439,7 +440,8 @@
       }
 
       $existing = netsh interface portproxy show v4tov4 | Out-String
-      if ($existing -notmatch "$listenPort.*$([regex]::Escape($wslIp)).*$connectPort") {
+      $pattern = "0\.0\.0\.0\s+$listenPort\s+$([regex]::Escape($wslIp))\s+$connectPort"
+      if ($existing -notmatch $pattern) {
         $Ansible.Changed = $true
         if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
         netsh interface portproxy delete v4tov4 listenport=$listenPort listenaddress=0.0.0.0 2>$null
@@ -458,7 +460,7 @@
   ansible.builtin.debug:
     msg: >-
       Port forwarding: Windows:{{ _wsl_ssh_port }} →
-      {{ _wsl_portproxy.result.wsl_ip | default('unknown') }}:22
+      {{ _wsl_portproxy.result.wsl_ip | default('unknown') }}:{{ _wsl_ssh_port }}
       ({{ 'configured' if _wsl_portproxy is changed else 'already in place' }})
 
 # --- Step 4.7: Firewall rule for WSL direct SSH port ---
@@ -472,7 +474,7 @@
     action: allow
     state: present
     enabled: true
-    description: "WSL direct SSH access (port {{ _wsl_ssh_port }} → WSL:22 via portproxy)"
+    description: "WSL direct SSH access (port {{ _wsl_ssh_port }} via portproxy to WSL sshd)"
 
 # --- Step 5: Deploy controller SSH key into WSL distro ---
 # Mirrors the logic from user.yml (Windows SSH key deployment) but executes
@@ -553,3 +555,18 @@
     msg: >-
       WSL SSH key for {{ _wsl_user }}@{{ _wsl_distro }}:
       {{ 'deployed/updated' if _wsl_pub_key_result is changed else 'already present' }}
+
+# --- Step 6: Publish SSH-ready facts for WSL companion host ---
+# Mirrors main.yml's "Mark this host as SSH-configured" but targets the
+# companion WSL host. These cacheable facts are consumed by the controller's
+# ssh_config.j2 template to auto-generate ~/.ssh/config entries.
+
+- name: Mark WSL companion as SSH-configured
+  ansible.builtin.set_fact:
+    ssh_configured: true
+    ssh_port: "{{ _wsl_ssh_port }}"
+    ssh_user: "{{ _wsl_user }}"
+    ssh_host: "{{ hostvars[_wsl_companion]['ansible_host'] }}"
+    cacheable: true
+  delegate_to: "{{ _wsl_companion }}"
+  delegate_facts: true
