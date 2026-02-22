@@ -1,0 +1,34 @@
+---
+# Azure SQL Mock — complete variable structure for a production-ready layout.
+#
+# All values are defaulted for local experimentation. In a real deployment:
+#   - azure_subscription would come from host_vars or inventory
+#   - azure_resource_group from group_vars for the target environment
+#   - db_admin_password from ansible-vault (vault_db_admin_password)
+#
+# Run with overrides:
+#   ansible-playbook -i inventory.yaml playbook.yaml \
+#     -e azure_subscription=<real-sub-id> \
+#     -e azure_resource_group=<real-rg>
+
+# --- Azure targeting ---
+azure_subscription: "00000000-0000-0000-0000-000000000000"
+azure_resource_group: "rg-mcp-demo"
+azure_location: "eastus"
+
+# --- SQL Server instance ---
+db_server_name: "mcp-demo-sqlserver"
+db_admin_login: "ansible"
+db_admin_password: "{{ vault_db_admin_password | default('MockP@ssw0rd!2026') }}"
+
+# --- SQL Database ---
+db_name: "mcp-demo-db"
+db_edition: "GeneralPurpose"
+db_compute_model: "Serverless"
+db_max_size_gb: 32
+
+# --- Tags (production pattern: every resource gets tagged) ---
+resource_tags:
+  environment: demo
+  managed_by: ansible-mcp
+  project: mcp-demo

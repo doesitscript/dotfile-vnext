@@ -1,0 +1,20 @@
+---
+# AWS Core MCP Server — Dev-Tools + Solutions Architect profiles.
+# Enables multiple roles simultaneously to show how the Core proxy
+# imports sub-servers from each role group without duplication.
+all:
+  children:
+    mcp_servers:
+      hosts:
+        aws_core_server:
+          ansible_connection: ansible.mcp.mcp
+          ansible_mcp_server_name: awslabs.core-mcp-server
+          ansible_mcp_server_args: []
+          ansible_mcp_server_env:
+            AWS_REGION: "{{ aws_region }}"
+            AWS_PROFILE: "{{ aws_profile }}"
+            FASTMCP_LOG_LEVEL: "{{ mcp_log_level }}"
+            AWS_FOUNDATION: "true"
+            dev-tools: "true"
+            solutions-architect: "true"
+          ansible_mcp_manifest_path: "{{ playbook_dir }}/manifest.json"

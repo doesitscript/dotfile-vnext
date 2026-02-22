@@ -1,0 +1,91 @@
+---
+# AWS Core MCP Server Demo — Dev-Tools + Solutions Architect
+#
+# This demo activates multiple Core server roles simultaneously:
+#   - AWS_FOUNDATION: aws-knowledge-server, aws-api-server
+#   - dev-tools: git-repo-research-server, code-doc-gen-server, aws-knowledge-server
+#   - solutions-architect: diagram-server, pricing-server, cost-explorer-server,
+#                          syntheticdata-server, aws-knowledge-server
+#
+# The proxy strategy imports each sub-server only once even when multiple
+# roles reference it (e.g. aws-knowledge-server).
+#
+# Usage:
+#   ansible-playbook -i inventory.yaml demo.yml
+
+- name: AWS Core MCP Server Demo - Dev-Tools + Solutions Architect
+  hosts: aws_core_server
+  gather_facts: false
+
+  tasks:
+    - name: Retrieve server information
+      ansible.mcp.server_info:
+      register: server_info
+
+    - name: Display server details
+      ansible.builtin.debug:
+        msg: >-
+          Connected to {{ server_info.server_info.serverInfo.name }}
+          version {{ server_info.server_info.serverInfo.version }}
+
+    - name: Discover all available tools
+      ansible.mcp.tools_info:
+      register: tools_list
+
+    - name: Display total tool count
+      ansible.builtin.debug:
+        msg: "Total tools available (foundation + dev-tools + solutions-architect): {{ tools_list.tools | length }}"
+
+    # --- Foundation tools ---
+    - name: Display AWS Knowledge Server tools
+      ansible.builtin.debug:
+        msg: "Knowledge tools: {{ tools_list.tools | selectattr('name', 'search', 'aws_knowledge') | map(attribute='name') | list }}"
+
+    - name: Display AWS API Server tools
+      ansible.builtin.debug:
+        msg: "API tools: {{ tools_list.tools | selectattr('name', 'search', 'aws_api') | map(attribute='name') | list }}"
+
+    # --- Dev-tools role additions ---
+    - name: Display Code Documentation tools
+      ansible.builtin.debug:
+        msg: "Code doc tools: {{ tools_list.tools | selectattr('name', 'search', 'code_doc') | map(attribute='name') | list }}"
+
+    - name: Display Git Repo Research tools
+      ansible.builtin.debug:
+        msg: "Git research tools: {{ tools_list.tools | selectattr('name', 'search', 'git_repo') | map(attribute='name') | list }}"
+
+    # --- Solutions-architect role additions ---
+    - name: Display Diagram Server tools
+      ansible.builtin.debug:
+        msg: "Diagram tools: {{ tools_list.tools | selectattr('name', 'search', 'diagram') | map(attribute='name') | list }}"
+
+    - name: Display Pricing Server tools
+      ansible.builtin.debug:
+        msg: "Pricing tools: {{ tools_list.tools | selectattr('name', 'search', 'pricing') | map(attribute='name') | list }}"
+
+    # --- Exercise a solutions-architect tool ---
+    - name: Get pricing information for Lambda
+      ansible.mcp.run_tool:
+        name: pricing_get_products
+        args:
+          service_code: AWSLambda
+          region: "{{ aws_region }}"
+      register: pricing_result
+      ignore_errors: true
+
+    - name: Display pricing result
+      ansible.builtin.debug:
+        msg: "{{ pricing_result.content.0.text | default('Pricing lookup completed') | truncate(500) }}"
+      when: pricing_result is defined
+
+    # --- Exercise a dev-tools tool ---
+    - name: Get AWS CLI command suggestions for S3 operations
+      ansible.mcp.run_tool:
+        name: aws_api_suggest_aws_commands
+        args:
+          query: "sync local directory to S3 bucket"
+      register: s3_suggestions
+
+    - name: Display S3 command suggestions
+      ansible.builtin.debug:
+        msg: "{{ s3_suggestions.content.0.text }}"

@@ -1,0 +1,20 @@
+# Docker CLI configuration
+# Managed by Ansible role: docker_client
+
+{% if ansible_facts['system'] == 'Darwin' %}
+# Homebrew Docker CLI — ensure the correct Homebrew prefix is on PATH
+# Intel: /usr/local/bin  ·  Apple Silicon: /opt/homebrew/bin
+for _d in /opt/homebrew/bin /usr/local/bin; do
+  if [ -x "$_d/docker" ]; then
+    case ":$PATH:" in
+      *":$_d:"*) ;;
+      *) export PATH="$_d:$PATH" ;;
+    esac
+    break
+  fi
+done
+unset _d
+{% else %}
+# Linux / WSL — Docker CE installs to /usr/bin; nothing extra needed
+:
+{% endif %}

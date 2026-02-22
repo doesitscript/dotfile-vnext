@@ -1,0 +1,52 @@
+---
+# mcp_servers/build.yml — Stage Dockerfiles on Docker host and build images.
+# Runs on hosts with docker_engine_in_wsl: true (i.e. server-225-wsl).
+
+- name: Ensure MCP build directory exists
+  ansible.builtin.file:
+    path: "{{ mcp_build_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Stage Dockerfile.aws to build directory
+  ansible.builtin.copy:
+    src: Dockerfile.aws
+    dest: "{{ mcp_build_dir }}/Dockerfile.aws"
+    mode: "0644"
+  register: _dockerfile_aws
+
+- name: Stage Dockerfile.iac to build directory
+  ansible.builtin.copy:
+    src: Dockerfile.iac
+    dest: "{{ mcp_build_dir }}/Dockerfile.iac"
+    mode: "0644"
+  register: _dockerfile_iac
+
+- name: Stage docker-compose.build.yml to build directory
+  ansible.builtin.copy:
+    src: docker-compose.build.yml
+    dest: "{{ mcp_build_dir }}/docker-compose.build.yml"
+    mode: "0644"
+
+- name: Build mcp-aws container image
+  ansible.builtin.command:
+    cmd: docker compose -f docker-compose.build.yml build mcp-aws
+    chdir: "{{ mcp_build_dir }}"
+  register: _build_aws
+  changed_when: "'exporting layers' in _build_aws.stderr or _dockerfile_aws is changed"
+  when: _dockerfile_aws is changed or _force_mcp_rebuild | default(false)
+
+- name: Build mcp-iac container image
+  ansible.builtin.command:
+    cmd: docker compose -f docker-compose.build.yml build mcp-iac
+    chdir: "{{ mcp_build_dir }}"
+  register: _build_iac
+  changed_when: "'exporting layers' in _build_iac.stderr or _dockerfile_iac is changed"
+  when: _dockerfile_iac is changed or _force_mcp_rebuild | default(false)
+
+- name: Report MCP image build results
+  ansible.builtin.debug:
+    msg: >-
+      MCP images built on {{ inventory_hostname }}:
+      aws={{ mcp_aws_image }},
+      iac={{ mcp_iac_image }}

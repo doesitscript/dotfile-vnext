@@ -61,6 +61,28 @@
   register: sshd_port_result
   tags: [admin]
 
+# 3b) Keepalive — detect dead sessions and clean up stale connections.
+# Without this, dropped SSH clients leave zombie sessions indefinitely.
+- name: Ensure sshd has ClientAliveInterval configured
+  community.windows.win_lineinfile:
+    path: "{{ sshd_config_path }}"
+    regexp: '^(?:#\s*)?ClientAliveInterval\s'
+    line: "ClientAliveInterval 60"
+    insertafter: '^#?TCPKeepAlive'
+    state: present
+  register: sshd_keepalive_interval
+  tags: [admin]
+
+- name: Ensure sshd has ClientAliveCountMax configured
+  community.windows.win_lineinfile:
+    path: "{{ sshd_config_path }}"
+    regexp: '^(?:#\s*)?ClientAliveCountMax\s'
+    line: "ClientAliveCountMax 3"
+    insertafter: '^ClientAliveInterval'
+    state: present
+  register: sshd_keepalive_count
+  tags: [admin]
+
 # --- Firewall rules for all SSH ports (primary + PowerShell) ---
 - name: Configure Windows Firewall rules for SSH
   ansible.builtin.import_tasks: firewall.yml
@@ -160,10 +182,12 @@
   tags: [admin]
 
 # --- WSL: optional reset (nuke and pave) ---
-# Run with --tags wsl-reset,wsl to unregister and re-provision from scratch.
+# The 'never' tag ensures this ONLY runs when explicitly requested:
+#   ansible-playbook ... --tags wsl-reset,wsl
+# A normal full run (no --tags) will skip this entirely.
 - name: Reset WSL distro (unregister for clean re-provision)
   ansible.builtin.import_tasks: wsl_reset.yml
-  tags: [wsl-reset]
+  tags: [wsl-reset, never]
 
 # --- WSL: enable feature + install distro ---
 - name: Configure WSL and install distribution
@@ -178,3 +202,9 @@
 - name: Include user tasks
   ansible.builtin.include_tasks: user.yml
   tags: [user]
+
+# --- Debug output: collect logs and diagnostics from all systems ---
+# Run with --tags debug to collect only diagnostics, or automatically at end of full run.
+- name: Collect debug diagnostics from all systems
+  ansible.builtin.import_tasks: debug_output.yml
+  tags: [debug]

@@ -115,9 +115,6 @@
     path: "{{ ansible_env.USERPROFILE }}\\.cloud-init"
     state: directory
 
-# TODO: Re-enable write_files section once Hyper-V bridge mode is validated.
-# Cloud-init was overwriting /etc/wsl.conf on every re-provision, competing
-# with manual and Ansible post-install changes during bridge-mode testing.
 - name: Create cloud-init user-data for WSL distro
   ansible.windows.win_copy:
     dest: "{{ ansible_env.USERPROFILE }}\\.cloud-init\\{{ _wsl_distro }}.user-data"
@@ -126,10 +123,16 @@
       users:
         - name: {{ _wsl_user }}
           groups: [sudo, adm]
-          sudo: ALL=(ALL) NOPASSWD:ALL
+          sudo: "ALL=(ALL) NOPASSWD:ALL"
           shell: /bin/bash
           lock_passwd: false
           passwd: {{ _wsl_password }}
+
+      write_files:
+        - path: /etc/wsl.conf
+          content: |
+            [user]
+            default={{ _wsl_user }}
   register: _cloud_init_result
 
 - name: Normalise cloud-init user-data to LF line endings
@@ -200,7 +203,7 @@
 # --- Step 2.1: First launch + shutdown so cloud-init runs and wsl.conf takes effect ---
 # Cloud-init only runs on first boot. We launch the distro, wait for cloud-init
 # to create the user and write /etc/wsl.conf, then shutdown so wsl.conf settings
-# (systemd, default user) take effect on next launch.
+# (default user) take effect on next launch.
 
 - name: First launch and shutdown WSL distro (cloud-init + wsl.conf apply)
   environment:
@@ -215,44 +218,6 @@
       wsl.exe --shutdown
       Start-Sleep -Seconds 3
   when: wsl_distro_install is defined and wsl_distro_install is changed
-
-# --- Step 2.2: Fix wsl.conf — ensure no duplicate keys ---
-# Earlier cloud-init runs with append:true may have created duplicate [boot] entries.
-# This overwrites /etc/wsl.conf with the canonical config (idempotent).
-
-- name: Ensure /etc/wsl.conf is canonical (no duplicate keys)
-  environment:
-    WSL_UTF8: "1"
-  check_mode: false
-  ansible.windows.win_powershell:
-    error_action: silently_continue
-    script: |
-      $Ansible.Changed = $false
-      $distro = '{{ _wsl_distro }}'
-      $user = '{{ _wsl_user }}'
-
-      $networkingMode = '{{ _wsl_networking_mode }}'
-      $genResolv = if ($networkingMode -eq 'bridged') { 'false' } else { 'true' }
-
-      $expected = @"
-      [boot]
-      systemd=true
-      [user]
-      default=$user
-      [network]
-      generateResolvConf=$genResolv
-      "@
-      $expected = ($expected -split "`n" | ForEach-Object { $_.TrimStart() }) -join "`n"
-
-      $current = (wsl.exe -d $distro -u root -- bash -c 'cat /etc/wsl.conf 2>/dev/null') -replace '\x00', '' | ? { $_ -ne '' }
-      $currentStr = ($current -join "`n").Trim()
-
-      if ($currentStr -ne $expected.Trim()) {
-        $Ansible.Changed = $true
-        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
-        $escaped = $expected -replace "'", "'\''"
-        wsl.exe -d $distro -u root -- bash -c "printf '%s\n' '$escaped' > /etc/wsl.conf"
-      }
 
 - name: Set default WSL distribution to {{ _wsl_distro }}
   environment:
@@ -343,6 +308,33 @@
       }
 
 
+# --- Step 3.5: Ensure DNS resolution works before package installs ---
+# WSL auto-generates resolv.conf on boot, but in bridged mode the initial
+# config may not resolve correctly before netplan applies. This safety net
+# writes a resolv.conf pointing at the gateway if resolution is broken.
+
+- name: Ensure WSL distro has working DNS before package installs
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro }}'
+      $gateway = '{{ wsl_gateway | default("192.168.50.1") }}'
+
+      $current = (wsl.exe -d $distro -u root -- bash -c 'cat /etc/resolv.conf 2>/dev/null || echo MISSING') -replace '\x00', '' | ? { $_ -ne '' }
+      $currentStr = ($current -join "`n").Trim()
+
+      $canResolve = (wsl.exe -d $distro -u root -- bash -c 'getent hosts archive.ubuntu.com >/dev/null 2>&1 && echo OK || echo FAIL') -replace '\x00', '' | ? { $_ -ne '' }
+
+      if ($canResolve -notcontains 'OK') {
+        $Ansible.Changed = $true
+        wsl.exe -d $distro -u root -- bash -c "rm -f /etc/resolv.conf && echo 'nameserver $gateway' > /etc/resolv.conf"
+      }
+  when: _wsl_networking_mode == 'bridged'
+
 # --- Step 4: Install and enable OpenSSH server in WSL ---
 # Installs openssh-server and enables the ssh service via systemd.
 # sshd_config (Port, PubkeyAuthentication, ListenAddress) is set in Step 4.5.
@@ -425,10 +417,12 @@
       $restartNeeded = $false
 
       $settings = @{
-        'Port'                  = '{{ _wsl_ssh_port }}'
-        'ListenAddress'         = '0.0.0.0'
-        'PubkeyAuthentication'  = 'yes'
-        'PasswordAuthentication' = 'yes'
+        'Port'                    = '{{ _wsl_ssh_port }}'
+        'ListenAddress'           = '0.0.0.0'
+        'PubkeyAuthentication'    = 'yes'
+        'PasswordAuthentication'  = 'yes'
+        'ClientAliveInterval'     = '60'
+        'ClientAliveCountMax'     = '3'
       }
 
       foreach ($key in $settings.Keys) {
@@ -471,7 +465,8 @@
 
 # --- Step 4.7: Bridged networking — configure WSL guest static IP ---
 # Only runs when wsl_networking_mode == 'bridged'. Writes a Netplan config
-# with the static IP, gateway, and DNS from hyperv_networking defaults/hostvars.
+# with the static IP and gateway from hyperv_networking defaults/hostvars.
+# DNS is handled by the gateway (router) — systemd-resolved uses it via netplan.
 # Persistent across WSL restarts.
 
 - name: Configure Netplan static IP for bridged networking
@@ -485,7 +480,6 @@
       $distro = '{{ _wsl_distro }}'
       $staticIp = '{{ wsl_static_ip | default("192.168.50.222/24") }}'
       $gateway = '{{ wsl_gateway | default("192.168.50.1") }}'
-      $dns = '{{ wsl_dns_server | default("8.8.8.8") }}'
 
       $netplanFile = '/etc/netplan/01-wsl-bridge.yaml'
 
@@ -502,7 +496,7 @@
         "          via: $gateway"
         '      nameservers:'
         '        addresses:'
-        "          - $dns"
+        "          - $gateway"
       )
       $expected = $lines -join "`n"
 
@@ -519,13 +513,58 @@
       }
   when: _wsl_networking_mode == 'bridged'
 
+# --- Step 4.7.1: Flush pre-boot DHCP address from eth0 (bridged mode) ---
+# In WSL2 bridged mode, Hyper-V assigns a DHCP address from the LAN router
+# during kernel init, before systemd-networkd/netplan start. This creates a
+# duplicate IP (e.g. the Windows host's .158) alongside the intended static IP.
+# This one-shot systemd unit flushes all IPv4 on eth0 before networkd runs,
+# so only the netplan-configured address ends up on the interface.
+
+- name: Deploy systemd service to flush pre-boot DHCP addresses on eth0
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro }}'
+
+      $unitFile = '/etc/systemd/system/flush-eth0-preboot.service'
+      $unitContent = @(
+        '[Unit]'
+        'Description=Flush pre-boot DHCP addresses from eth0'
+        'Before=systemd-networkd.service'
+        'After=sys-subsystem-net-devices-eth0.device'
+        ''
+        '[Service]'
+        'Type=oneshot'
+        'ExecStart=/usr/sbin/ip addr flush dev eth0'
+        'RemainAfterExit=yes'
+        ''
+        '[Install]'
+        'WantedBy=network-pre.target'
+      ) -join "`n"
+
+      $current = (wsl.exe -d $distro -u root -- bash -c "cat $unitFile 2>/dev/null || echo NOTFOUND") -replace '\x00', '' | ? { $_ -ne '' }
+      $currentStr = ($current -join "`n").Trim()
+
+      if ($currentStr -ne $unitContent.Trim()) {
+        $Ansible.Changed = $true
+        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
+        $unitContent | wsl.exe -d $distro -u root -- tee $unitFile | Out-Null
+        wsl.exe -d $distro -u root -- bash -c 'systemctl daemon-reload 2>&1; systemctl enable flush-eth0-preboot.service 2>&1'
+      }
+  when: _wsl_networking_mode == 'bridged'
+
 # DNS: systemd-resolved handles resolution natively in WSL.
 # No manual /etc/resolv.conf override needed — the stub resolver at 127.0.0.53 works.
-# The Netplan nameservers config above feeds upstream DNS to systemd-resolved.
+# The Netplan nameservers config above feeds the gateway (router) to systemd-resolved.
 
 # --- Step 4.8: NAT networking — netsh portproxy for WSL SSH access ---
-# Only runs when wsl_networking_mode == 'nat'. Dynamically resolves
-# WSL's internal IP and forwards the configured port to it.
+# FIXME: We are not using portproxy with bridge networking. These tasks are gated
+# by _wsl_networking_mode == 'nat' and will not run in bridged mode. Retained for
+# hosts that still use NAT mode. Consider removing once all hosts are bridged.
 
 - name: Configure netsh portproxy for WSL SSH (NAT mode)
   environment:

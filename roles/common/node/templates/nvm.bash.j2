@@ -1,0 +1,19 @@
+# NVM (Node Version Manager) — lazy-loaded
+# Managed by Ansible role: common/node
+#
+# Stub functions for nvm, node, npm, npx, and yarn that load the real
+# nvm.sh on first invocation, then re-execute the command.  This avoids
+# the ~200-400 ms startup penalty of sourcing nvm.sh in every shell.
+
+export NVM_DIR="$HOME/.nvm"
+
+_nvm_lazy_load() {
+  unset -f nvm node npm npx yarn _nvm_lazy_load 2>/dev/null
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+}
+
+for _nvm_cmd in nvm node npm npx yarn; do
+  eval "${_nvm_cmd}() { _nvm_lazy_load; ${_nvm_cmd} \"\$@\"; }"
+done
+unset _nvm_cmd

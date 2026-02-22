@@ -1,0 +1,108 @@
+---
+# GitHub MCP Server Demo — Create repository and pull request.
+#
+# Demonstrates HTTP transport (vs stdio in the AWS demos) and
+# bearer token authentication via GitHub Copilot's MCP endpoint.
+#
+# Prerequisites:
+#   - GitHub Copilot access token
+#   - ansible.mcp collection installed
+#
+# Usage:
+#   ansible-playbook -i inventory.yaml playbook.yaml \
+#     -e github_token=ghp_...
+#
+# Create in an organization:
+#   ansible-playbook -i inventory.yaml playbook.yaml \
+#     -e github_token=ghp_... \
+#     -e github_organization=my-org
+
+- name: GitHub MCP Demo - Create Repository and Pull Request
+  hosts: github
+  gather_facts: false
+
+  tasks:
+    - name: Retrieve server information
+      ansible.mcp.server_info:
+      register: server_info
+
+    - name: Display GitHub MCP server details
+      ansible.builtin.debug:
+        msg: >-
+          Connected to {{ server_info.server_info.serverInfo.name }}
+          version {{ server_info.server_info.serverInfo.version }}
+
+    - name: Discover available GitHub tools
+      ansible.mcp.tools_info:
+      register: tools_list
+
+    - name: Display available GitHub tool count
+      ansible.builtin.debug:
+        msg: "Available GitHub tools: {{ tools_list.tools | length }}"
+
+    - name: Retrieve user personal account
+      when: github_organization is undefined
+      block:
+        - name: Get GitHub user details
+          ansible.mcp.run_tool:
+            name: get_me
+          register: get_me_result
+
+        - name: Set personal account as owner
+          ansible.builtin.set_fact:
+            github_owner: "{{ user_info.login }}"
+          vars:
+            user_info: "{{ get_me_result.content.0.text | from_json }}"
+
+    - name: Create GitHub repository
+      ansible.mcp.run_tool:
+        name: create_repository
+        args:
+          organization: "{{ github_organization | default(omit) }}"
+          name: "{{ github_repository_name }}"
+          autoInit: true
+      register: repo_result
+
+    - name: Display repository creation result
+      ansible.builtin.debug:
+        msg: "Repository created: {{ github_repository_name }}"
+
+    - name: Create repository branch
+      ansible.mcp.run_tool:
+        name: create_branch
+        args:
+          branch: "{{ github_branch_name }}"
+          owner: "{{ github_organization | default(github_owner) }}"
+          repo: "{{ github_repository_name }}"
+
+    - name: Add file to the branch
+      ansible.mcp.run_tool:
+        name: create_or_update_file
+        args:
+          branch: "{{ github_branch_name }}"
+          content: "{{ file_content }}"
+          message: "File pushed using ansible.mcp collection"
+          owner: "{{ github_organization | default(github_owner) }}"
+          repo: "{{ github_repository_name }}"
+          path: "{{ file_path }}"
+
+    - name: Create pull request
+      ansible.mcp.run_tool:
+        name: create_pull_request
+        args:
+          owner: "{{ github_organization | default(github_owner) }}"
+          repo: "{{ github_repository_name }}"
+          base: main
+          head: "{{ github_branch_name }}"
+          title: "{{ pull_request_title }}"
+          body: "{{ pull_request_body }}"
+      register: pr_result
+
+    - name: Report demo summary
+      ansible.builtin.debug:
+        msg: |
+          GitHub MCP Demo Complete:
+            Repository: {{ github_organization | default(github_owner | default('personal')) }}/{{ github_repository_name }}
+            Branch: {{ github_branch_name }}
+            File: {{ file_path }}
+            PR: {{ pull_request_title }}

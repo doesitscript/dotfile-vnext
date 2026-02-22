@@ -11,8 +11,8 @@
 docker_context_name: "{{ physical_node | default('wsl-docker') }}"
 
 # SSH URI the Docker CLI uses to reach the engine (docker -H ssh://...)
-# With networkingMode=mirrored in .wslconfig, WSL shares the host's LAN IP,
-# so WSL sshd on port 22 is directly reachable without portproxy.
+# With networkingMode=bridged, WSL has its own LAN IP via Hyper-V External Switch.
+# WSL sshd on port 22 is directly reachable from the LAN.
 # Override per host_vars (see mac-dev.yaml, server-225-win.yaml).
 docker_engine_ssh_user: "{{ wsl_user | default(ansible_user) }}"
 docker_engine_ssh_host: "{{ ansible_host | default('localhost') }}"

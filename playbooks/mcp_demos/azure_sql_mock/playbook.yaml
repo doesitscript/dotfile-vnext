@@ -1,0 +1,89 @@
+---
+# Azure SQL Database — self-contained mock example.
+#
+# Demonstrates a production-ready variable structure using the Azure MCP
+# server. All values come from group_vars/all.yml with mock defaults.
+#
+# Prerequisites:
+#   - Node.js (for npx)
+#   - Azure CLI logged in: az login
+#   - ansible.mcp collection installed
+#
+# Usage:
+#   ansible-playbook -i inventory.yaml playbook.yaml
+#
+# With real Azure values:
+#   ansible-playbook -i inventory.yaml playbook.yaml \
+#     -e azure_subscription=<sub-id> \
+#     -e azure_resource_group=<rg-name> \
+#     -e vault_db_admin_password=<secure-password>
+
+- name: Create SQL database on Azure (mock demo)
+  hosts: azure
+  gather_facts: false
+
+  tasks:
+    - name: Retrieve Azure MCP server information
+      ansible.mcp.server_info:
+      register: server_info
+
+    - name: Display Azure MCP server details
+      ansible.builtin.debug:
+        msg: >-
+          Connected to {{ server_info.server_info.serverInfo.name }}
+          version {{ server_info.server_info.serverInfo.version }}
+
+    - name: Discover available Azure tools
+      ansible.mcp.tools_info:
+      register: tools_list
+
+    - name: Display available Azure tool count
+      ansible.builtin.debug:
+        msg: "Available Azure tools: {{ tools_list.tools | length }}"
+
+    - name: Create SQL server instance
+      ansible.mcp.run_tool:
+        name: sql
+        args:
+          command: sql_server_create
+          intent: "create sql server instance"
+          parameters:
+            resource-group: "{{ azure_resource_group }}"
+            subscription: "{{ azure_subscription }}"
+            location: "{{ azure_location }}"
+            server: "{{ db_server_name }}"
+            administrator-login: "{{ db_admin_login }}"
+            administrator-password: "{{ db_admin_password }}"
+      register: sql_server_result
+
+    - name: Display SQL server creation result
+      ansible.builtin.debug:
+        msg: "SQL Server: {{ sql_server_result.content.0.text | default('created') | truncate(300) }}"
+
+    - name: Create SQL database
+      ansible.mcp.run_tool:
+        name: sql
+        args:
+          command: sql_db_create
+          intent: "create sql database"
+          parameters:
+            subscription: "{{ azure_subscription }}"
+            resource-group: "{{ azure_resource_group }}"
+            server: "{{ db_server_name }}"
+            database: "{{ db_name }}"
+      register: sql_db_result
+
+    - name: Display SQL database creation result
+      ansible.builtin.debug:
+        msg: "SQL Database: {{ sql_db_result.content.0.text | default('created') | truncate(300) }}"
+
+    - name: Report deployment summary
+      ansible.builtin.debug:
+        msg: |
+          Azure SQL Deployment Summary:
+            Subscription: {{ azure_subscription }}
+            Resource Group: {{ azure_resource_group }}
+            Location: {{ azure_location }}
+            Server: {{ db_server_name }}
+            Database: {{ db_name }}
+            Admin: {{ db_admin_login }}

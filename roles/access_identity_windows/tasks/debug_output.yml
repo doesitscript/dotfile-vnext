@@ -1,0 +1,304 @@
+---
+# debug_output.yml — Collect diagnostic output from all systems/services at end of run.
+# Tag: debug — run with --tags debug, or included automatically at end of role.
+# Collects: WinRM state, Windows OpenSSH events/config, WSL sshd status,
+#           network adapters/IPs, Hyper-V firewall, and WSL networking.
+
+# ============================================================================
+# WINDOWS HOST DIAGNOSTICS
+# ============================================================================
+
+- name: "DEBUG: Collect Windows OpenSSH service status and config"
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $out = @{}
+
+      # sshd service
+      $svc = Get-Service sshd -ErrorAction SilentlyContinue
+      $out['sshd_service'] = @{
+        status    = "$($svc.Status)"
+        startType = "$($svc.StartType)"
+      }
+
+      # sshd processes
+      $procs = Get-Process sshd -ErrorAction SilentlyContinue |
+        Select-Object Id, StartTime, CPU, WorkingSet64
+      $out['sshd_processes'] = @($procs | ForEach-Object {
+        @{ pid = $_.Id; started = "$($_.StartTime)"; cpu = $_.CPU; mem_bytes = $_.WorkingSet64 }
+      })
+
+      # sshd_config
+      $configPath = 'C:\ProgramData\ssh\sshd_config'
+      if (Test-Path $configPath) {
+        $out['sshd_config_path'] = $configPath
+        $out['sshd_config'] = (Get-Content $configPath -Raw)
+      }
+
+      # SSH log files
+      $logDir = 'C:\ProgramData\ssh\logs'
+      if (Test-Path $logDir) {
+        $out['ssh_log_files'] = @(Get-ChildItem $logDir -ErrorAction SilentlyContinue |
+          ForEach-Object { @{ name = $_.Name; size = $_.Length; modified = "$($_.LastWriteTime)" } })
+      } else {
+        $out['ssh_log_files'] = @()
+        $out['ssh_log_dir_note'] = 'Directory does not exist — file logging not enabled'
+      }
+
+      $Ansible.Result = $out
+  register: _debug_win_ssh
+  tags: [debug]
+
+- name: "DEBUG: Collect Windows OpenSSH event log entries"
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $out = @{}
+      $lookback = (Get-Date).AddHours(-6)
+
+      # OpenSSH Operational (last 25)
+      try {
+        $ops = Get-WinEvent -LogName 'OpenSSH/Operational' -MaxEvents 25 -ErrorAction Stop
+        $out['operational'] = @($ops | ForEach-Object {
+          @{ time = "$($_.TimeCreated)"; level = $_.LevelDisplayName; id = $_.Id; msg = $_.Message }
+        })
+      } catch { $out['operational'] = @(); $out['operational_error'] = "$_" }
+
+      # OpenSSH Admin — errors/criticals (last 25)
+      try {
+        $adm = Get-WinEvent -LogName 'OpenSSH/Admin' -MaxEvents 25 -ErrorAction Stop
+        $out['admin'] = @($adm | ForEach-Object {
+          @{ time = "$($_.TimeCreated)"; level = $_.LevelDisplayName; id = $_.Id; msg = $_.Message }
+        })
+      } catch { $out['admin'] = @(); $out['admin_error'] = "$_" }
+
+      $Ansible.Result = $out
+  register: _debug_win_ssh_events
+  tags: [debug]
+
+- name: "DEBUG: Collect WinRM state and stale sessions"
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $out = @{}
+
+      # WinRM service
+      $svc = Get-Service WinRM -ErrorAction SilentlyContinue
+      $out['winrm_service'] = @{ status = "$($svc.Status)"; startType = "$($svc.StartType)" }
+
+      # Listener config
+      $out['winrm_listener'] = (winrm enumerate winrm/config/listener 2>&1 | Out-String).Trim()
+
+      # Active shells (stale session detection)
+      try {
+        $shells = Get-WSManInstance -ResourceURI shell -Enumerate 2>&1
+        $out['active_shells'] = @($shells | ForEach-Object {
+          @{
+            shellId     = $_.ShellId
+            owner       = $_.Owner
+            clientIP    = $_.ClientIP
+            runTime     = $_.ShellRunTime
+            inactivity  = $_.ShellInactivity
+            idleTimeout = $_.IdleTimeOut
+          }
+        })
+        $out['active_shell_count'] = $out['active_shells'].Count
+      } catch {
+        $out['active_shells'] = @()
+        $out['active_shell_count'] = 0
+        $out['shells_error'] = "$_"
+      }
+
+      # WinRM events (warnings/errors in last 6h)
+      try {
+        $events = Get-WinEvent -FilterHashtable @{
+          LogName = 'System'; ProviderName = 'Microsoft-Windows-WinRM';
+          Level = 1,2,3; StartTime = (Get-Date).AddHours(-6)
+        } -MaxEvents 10 -ErrorAction Stop
+        $out['winrm_system_events'] = @($events | ForEach-Object {
+          @{ time = "$($_.TimeCreated)"; level = $_.LevelDisplayName; id = $_.Id; msg = $_.Message }
+        })
+      } catch { $out['winrm_system_events'] = @(); $out['winrm_events_note'] = 'No WinRM warnings/errors in System log (last 6h)' }
+
+      $Ansible.Result = $out
+  register: _debug_winrm
+  tags: [debug]
+
+- name: "DEBUG: Collect Windows network state"
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $out = @{}
+
+      # Network adapters
+      $out['adapters'] = @(Get-NetAdapter | ForEach-Object {
+        @{ name = $_.Name; desc = $_.InterfaceDescription; status = "$($_.Status)"; mac = $_.MacAddress; speed = $_.LinkSpeed }
+      })
+
+      # IPv4 addresses
+      $out['ipv4'] = @(Get-NetIPAddress -AddressFamily IPv4 | ForEach-Object {
+        @{ iface = $_.InterfaceAlias; ip = $_.IPAddress; prefix = $_.PrefixLength; origin = "$($_.PrefixOrigin)" }
+      })
+
+      # Firewall rules (SSH + WinRM)
+      $out['firewall_ssh_winrm'] = @(
+        Get-NetFirewallRule |
+          Where-Object { $_.DisplayName -match 'WinRM|SSH|sshd|Remote Management' -and $_.Enabled -eq 'True' } |
+          ForEach-Object {
+            @{ name = $_.DisplayName; direction = "$($_.Direction)"; action = "$($_.Action)"; profile = "$($_.Profile)" }
+          }
+      )
+
+      # Hyper-V firewall rules
+      try {
+        $out['hyperv_fw'] = @(Get-NetFirewallHyperVRule -ErrorAction Stop | ForEach-Object {
+          @{ name = $_.DisplayName; direction = "$($_.Direction)"; action = "$($_.Action)"; enabled = $_.Enabled }
+        })
+      } catch { $out['hyperv_fw'] = @(); $out['hyperv_fw_note'] = "$_" }
+
+      # System events (network-related warnings/errors, last 6h)
+      try {
+        $events = Get-WinEvent -FilterHashtable @{
+          LogName = 'System'; Level = 1,2,3; StartTime = (Get-Date).AddHours(-6)
+        } -MaxEvents 50 -ErrorAction Stop |
+          Where-Object { $_.ProviderName -match 'Hyper-V|TCPIP|DNS|DHCP|NetBT|vmswitch' }
+        $out['network_system_events'] = @($events | ForEach-Object {
+          @{ time = "$($_.TimeCreated)"; provider = $_.ProviderName; level = $_.LevelDisplayName; id = $_.Id; msg = $_.Message }
+        })
+      } catch { $out['network_system_events'] = @() }
+
+      $Ansible.Result = $out
+  register: _debug_network
+  tags: [debug]
+
+# ============================================================================
+# WSL DIAGNOSTICS
+# ============================================================================
+
+- name: "DEBUG: Collect WSL sshd and networking state"
+  environment:
+    WSL_UTF8: "1"
+  check_mode: false
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $distro = '{{ _wsl_distro | default("Ubuntu-24.04") }}'
+      $out = @{}
+
+      # Check if distro is running
+      $state = (wsl.exe -l -v 2>&1) -replace '\x00', '' | ? { $_ -ne '' }
+      $out['wsl_list'] = ($state -join "`n").Trim()
+
+      # sshd service status
+      $sshd = (wsl.exe -d $distro -u root -- bash -c 'systemctl is-active ssh 2>&1; echo "---"; systemctl status ssh --no-pager -l 2>&1') -replace '\x00', '' | ? { $_ -ne '' }
+      $out['sshd_status'] = ($sshd -join "`n").Trim()
+
+      # sshd_config
+      $config = (wsl.exe -d $distro -u root -- bash -c 'cat /etc/ssh/sshd_config 2>&1') -replace '\x00', '' | ? { $_ -ne '' }
+      $out['sshd_config'] = ($config -join "`n").Trim()
+
+      # SSH auth log (last 30 lines)
+      $authlog = (wsl.exe -d $distro -u root -- bash -c 'tail -30 /var/log/auth.log 2>&1 || echo "No auth.log"') -replace '\x00', '' | ? { $_ -ne '' }
+      $out['auth_log_tail'] = ($authlog -join "`n").Trim()
+
+      # Network interfaces
+      $ipAddr = (wsl.exe -d $distro -u root -- bash -c 'ip -4 addr show 2>&1') -replace '\x00', '' | ? { $_ -ne '' }
+      $out['ip_addresses'] = ($ipAddr -join "`n").Trim()
+
+      # Routes
+      $routes = (wsl.exe -d $distro -u root -- bash -c 'ip route show 2>&1') -replace '\x00', '' | ? { $_ -ne '' }
+      $out['routes'] = ($routes -join "`n").Trim()
+
+      # DNS (resolv.conf + resolvectl)
+      $resolv = (wsl.exe -d $distro -u root -- bash -c 'cat /etc/resolv.conf 2>&1; echo "---"; resolvectl status 2>&1 || systemd-resolve --status 2>&1 || echo "resolvectl not available"') -replace '\x00', '' | ? { $_ -ne '' }
+      $out['dns_config'] = ($resolv -join "`n").Trim()
+
+      # Netplan config
+      $netplan = (wsl.exe -d $distro -u root -- bash -c 'cat /etc/netplan/*.yaml 2>&1 || echo "No netplan config"') -replace '\x00', '' | ? { $_ -ne '' }
+      $out['netplan'] = ($netplan -join "`n").Trim()
+
+      # systemd-networkd status
+      $networkd = (wsl.exe -d $distro -u root -- bash -c 'systemctl is-active systemd-networkd 2>&1; networkctl status eth0 2>&1 || echo "networkctl not available"') -replace '\x00', '' | ? { $_ -ne '' }
+      $out['networkd_status'] = ($networkd -join "`n").Trim()
+
+      # flush-eth0-preboot service
+      $flush = (wsl.exe -d $distro -u root -- bash -c 'systemctl is-enabled flush-eth0-preboot 2>&1; systemctl status flush-eth0-preboot --no-pager 2>&1 || echo "Service not found"') -replace '\x00', '' | ? { $_ -ne '' }
+      $out['flush_eth0_service'] = ($flush -join "`n").Trim()
+
+      # ssh.socket status (should be masked)
+      $sshSocket = (wsl.exe -d $distro -u root -- bash -c 'systemctl is-enabled ssh.socket 2>&1; systemctl status ssh.socket --no-pager 2>&1') -replace '\x00', '' | ? { $_ -ne '' }
+      $out['ssh_socket'] = ($sshSocket -join "`n").Trim()
+
+      # Journal entries for sshd (last 20)
+      $journal = (wsl.exe -d $distro -u root -- bash -c 'journalctl -u ssh --no-pager -n 20 2>&1 || echo "journalctl not available"') -replace '\x00', '' | ? { $_ -ne '' }
+      $out['sshd_journal'] = ($journal -join "`n").Trim()
+
+      $Ansible.Result = $out
+  register: _debug_wsl
+  when: _wsl_distro is defined
+  tags: [debug]
+
+# ============================================================================
+# OUTPUT: Print all collected diagnostics
+# ============================================================================
+
+- name: "DEBUG OUTPUT: Log locations and sources"
+  ansible.builtin.debug:
+    msg: |
+      ╔══════════════════════════════════════════════════════════════╗
+      ║              LOG LOCATIONS & DATA SOURCES                   ║
+      ╠══════════════════════════════════════════════════════════════╣
+      ║ WINDOWS HOST ({{ inventory_hostname }})                     ║
+      ║  • WinRM Event Log:    Microsoft-Windows-WinRM/Operational  ║
+      ║  • OpenSSH Operational: OpenSSH/Operational                 ║
+      ║  • OpenSSH Admin:       OpenSSH/Admin                      ║
+      ║  • sshd_config:         C:\ProgramData\ssh\sshd_config     ║
+      ║  • SSH log dir:         C:\ProgramData\ssh\logs\           ║
+      ║  • System log:          System (WinRM, Hyper-V, TCPIP)     ║
+      ║  • Application log:     Application (sshd provider)        ║
+      ╠══════════════════════════════════════════════════════════════╣
+      ║ WSL ({{ _wsl_distro | default('N/A') }})                   ║
+      ║  • Auth log:            /var/log/auth.log                  ║
+      ║  • sshd_config:         /etc/ssh/sshd_config               ║
+      ║  • sshd journal:        journalctl -u ssh                  ║
+      ║  • Netplan config:      /etc/netplan/*.yaml                ║
+      ║  • DNS:                 /etc/resolv.conf + resolvectl      ║
+      ║  • Network:             ip addr / ip route                 ║
+      ╠══════════════════════════════════════════════════════════════╣
+      ║ MAC CONTROLLER                                              ║
+      ║  • SSH client config:   ~/.ssh/config                      ║
+      ║  • SSH mux sockets:     ~/.ssh/ssh_mux_*                   ║
+      ║  • Ansible log:         (stdout / callback plugin)         ║
+      ╚══════════════════════════════════════════════════════════════╝
+  tags: [debug]
+
+- name: "DEBUG OUTPUT: Windows OpenSSH — service and config"
+  ansible.builtin.debug:
+    var: _debug_win_ssh.result
+  when: _debug_win_ssh is defined
+  tags: [debug]
+
+- name: "DEBUG OUTPUT: Windows OpenSSH — event log entries"
+  ansible.builtin.debug:
+    var: _debug_win_ssh_events.result
+  when: _debug_win_ssh_events is defined
+  tags: [debug]
+
+- name: "DEBUG OUTPUT: WinRM state and sessions"
+  ansible.builtin.debug:
+    var: _debug_winrm.result
+  when: _debug_winrm is defined
+  tags: [debug]
+
+- name: "DEBUG OUTPUT: Windows network state"
+  ansible.builtin.debug:
+    var: _debug_network.result
+  when: _debug_network is defined
+  tags: [debug]
+
+- name: "DEBUG OUTPUT: WSL sshd and networking"
+  ansible.builtin.debug:
+    var: _debug_wsl.result
+  when: _debug_wsl is defined and _debug_wsl.result is defined
+  tags: [debug]

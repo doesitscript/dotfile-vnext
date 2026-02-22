@@ -1,0 +1,3678 @@
+#!/usr/bin/env zsh
+
+# shortcut to this dotfiles path is $ZSH
+export ZSH=$HOME/dotfiles
+
+# https://gist.github.com/QinMing/364774610afc0e06cc223b467abe83c0
+lazy_load() {
+    # $1: space separated list of alias to release after the first load
+    # $2: file to source
+    # $3: name of the command to run after it's loaded
+    # $4+: argv to be passed to $3
+    printf '\e[1;90m%-6s\e[m\n' "Lazy loading $1 ..." >&2
+
+    # $1.split(' ') using the s flag. In bash, this can be simply ($1) #http://unix.stackexchange.com/questions/28854/list-elements-with-spaces-in-zsh
+    # Single line won't work: local names=("${(@s: :)${1}}"). Due to http://stackoverflow.com/questions/14917501/local-arrays-in-zsh   (zsh 5.0.8 (x86_64-apple-darwin15.0))
+    local -a names
+    if [[ -n "$ZSH_VERSION" ]]; then
+        names=("${(@s: :)${1}}")
+    else
+        names=($1)
+    fi
+    unalias "${names[@]}"
+    . $2
+    shift 2
+    $*
+}
+
+group_lazy_load() {
+    local script
+    script=$1
+    shift 1
+    for cmd in "$@"; do
+        alias $cmd="lazy_load \"$*\" $script $cmd"
+    done
+}
+
+# all of our zsh files
+typeset -U config_files
+config_files=($ZSH/**/*.zsh)
+
+# load the path files
+for file in ${(M)config_files:#*/path.zsh}
+do
+  source $file
+done
+
+# load everything but the path and completion files
+for file in ${${${config_files:#*/path.zsh}:#*/completion.zsh}:#*/final.zsh}
+do
+  source $file
+done
+
+# TODO check if convertable
+# initialize autocomplete here, otherwise functions won't be loaded
+# autoload -U compinit
+# compinit
+
+# load every completion after autocomplete loads
+for file in ${(M)config_files:#*/completion.zsh}
+do
+  source $file
+done
+# TODO check if convertable
+# for file in ${(M)config_files:#*/final.zsh}
+# do
+#   source $file
+# done
+
+unset config_files
+unset -f group_lazy_load
+
+# use .localrc for SUPER SECRET CRAP that you don't
+# want in your public, versioned repo.
+if [[ -a ~/.localrc ]]
+then
+  source ~/.localrc
+fi
+
+# FIXME looks like this doesn't belong
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+# add improved history
+# Larger bash history (allow 32³ entries; default is 500)
+export HISTSIZE=50000000;
+export HISTFILESIZE=$HISTSIZE;
+export HISTCONTROL=ignoredups;
+# Make some commands not show up in history
+export HISTIGNORE=" *:ls:cd:cd -:pwd:exit:date:* --help:* -h:pony:pony add *:pony update *:pony save *:pony ls:pony ls *";
+#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
+# export SDKMAN_DIR="/Users/i859113/.sdkman"
+
+# added by travis gem
+# [ ! -s /Users/i859113/.travis/travis.sh ] || source /Users/i859113/.travis/travis.sh
+export PATH=$PATH:$HOME/telosys
+source "/usr/local/opt/kube-ps1/share/kube-ps1.sh"
+#PS1='$(kube_ps1)'$PS1
+PROMPT='$(kube_ps1)'$PROMPT
+
+export PATH="$HOME/.poetry/bin:$PATH"
+# export PATH="/usr/local/lib/ruby/gems/3.0.0/bin:$PATH"
+# export PATH="/usr/local/lib/ruby/gems/3.0.0/bin:$PATH"
+# export LDFLAGS="-L/usr/local/opt/ruby/lib"
+# CPPFLAGS="-I/usr/local/opt/ruby/include"
+# export PKG_CONFIG_PATH="/usr/local/opt/ruby/lib/pkgconfig"
+
+# export AWS_ACCESS_KEY_ID="AKIATLI4...REDACTED"
+# export AWS_SECRET_ACCESS_KEY="SaTvrGdD...REDACTED"
+export PATH="$HOME/.chefdk/gem/ruby/2.3.0/bin:$PATH"
+export TF_VAR_dev_account_id=366228832010
+export TF_VAR_es_created_user_pool_client_id=265ourveeji915sstibisv88hm
+export TF_VAR_uat_account_id=447842300196
+export TF_VAR_prod_account_id=230377472753
+export TF_VAR_dms_password=not-a-real-password
+export TF_VAR_security_account_id=109242005616
+export TF_VAR_dev_es_created_user_pool_client_id=3jp7s9spms35f3lb6o7k04ljbk
+export TF_VAR_opsgenie_api_key=7b12a3d5-3cad-4887-a9b5-b5205e89c544
+export TF_VAR_nonprod_account_id=281330047118
+export TF_VAR_bread2_uat_account_id=984307825483
+export TF_VAR_initial_database_password=not-a-real-password
+
+export DEV_AWS_ACCOUNT_ID=366228832010
+export UAT_AWS_ACCOUNT_ID=447842300196
+export SECURITY_AWS_ACCOUNT_ID=109242005616
+export AWS_REGION=us-east-1
+export AWS_ACCOUNT_ID=230377472753
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
+###-begin-codefresh-completions-###
+#
+# codefresh command completion script
+#
+# Installation: codefresh completion zsh >> ~/.zshrc
+#
+_codefresh_completions()
+{
+    type_list=($(codefresh --impl-zsh-file-dir --get-yargs-completions "${words[@]}"))
+
+    if [[ ${type_list[1]} == '__files_completion__' ]]; then
+        compadd -- "${type_list[@]:1}"
+    else
+        compadd -- "${type_list[@]}"
+    fi
+
+    return 0
+}
+compdef _codefresh_completions codefresh
+###-end-codefresh-completions-###
+
