@@ -1,1 +1,39 @@
 ---
+# networking.yml — Create External VMSwitch using gocallag.hyperv.switch module.
+#
+# Replacement for the raw win_powershell approach in main.yml (Phase 2).
+# Uses the hyperv_config API contract (_hyperv resolved by caller).
+# Wired into main.yml as Phase 2 (External Virtual Switch creation).
+#
+# Limitation: gocallag.hyperv.switch does not support check mode and does not
+# update an existing switch if parameters differ (reports changed: false).
+# The async wrapper handles the network drop during External switch creation.
+
+# - name: Check if External VMSwitch already exists
+#   gocallag.hyperv.switch_info:
+#     name: "{{ _hyperv.switch_name | default('External') }}"
+#   register: _vmswitch_info
+#   ignore_errors: true
+
+- name: Create External VMSwitch via gocallag.hyperv.switch
+  gocallag.hyperv.switch:
+    name: "{{ _hyperv.switch_name | default('External') }}"
+    state: present
+    switchType: External
+    netAdapterName: "{{ _hyperv.adapter_name | default('Ethernet') }}"
+    allowManagementOS: "{{ _hyperv.allow_management_os | default(true) | string | lower }}"
+  async: 120
+  poll: 0
+  register: _vmswitch_create
+
+- name: Wait for WinRM to reconnect after VMSwitch creation
+  ansible.builtin.wait_for_connection:
+    delay: 15
+    timeout: 120
+  when: _vmswitch_create is changed
+
+- name: Verify External VMSwitch is operational
+  gocallag.hyperv.switch_info:
+    name: "{{ _hyperv.switch_name | default('External') }}"
+  register: _vmswitch_verify
+  when: _vmswitch_create is changed

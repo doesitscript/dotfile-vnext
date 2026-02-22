@@ -6,7 +6,7 @@
 #
 # API contract: receives a single 'hyperv_config' dictionary.
 # See defaults/main.yml for the full schema and defaults.
-#ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit server-225-win
+#
 # Standalone:
 #   ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit server-225-win
 # Also invoked via include_role from playbooks/access_windows.yaml.
@@ -24,74 +24,5 @@
   ansible.builtin.include_tasks: hyperv_feature.yml
 
 # --- Phase 2: Create External Virtual Switch ---
-# Creating an External VMSwitch bound to the physical NIC temporarily disconnects
-# the network, which causes WinRM to time out. We check first, and if creation
-# is needed we fire-and-forget with async and then wait for reconnection.
-
-- name: Check if External VMSwitch already exists
-  ansible.windows.win_powershell:
-    error_action: stop
-    script: |
-      $Ansible.Changed = $false
-      $switchName = '{{ _hyperv.switch_name | default("WSL-Bridge") }}'
-      $adapterName = '{{ _hyperv.adapter_name | default("Ethernet") }}'
-      $allowMgmt = [bool]::Parse('{{ _hyperv.allow_management_os | default(true) | lower }}')
-
-      $existing = Get-VMSwitch -Name $switchName -ErrorAction SilentlyContinue
-      if ($existing) {
-        $adapter = Get-NetAdapter -Name $adapterName -ErrorAction SilentlyContinue
-        if ($existing.SwitchType -eq 'External' -and
-            $existing.NetAdapterInterfaceDescription -eq $adapter.InterfaceDescription -and
-            $existing.AllowManagementOS -eq $allowMgmt) {
-          $Ansible.Result = @{ exists = $true; action = 'unchanged' }
-          Exit 0
-        }
-        $Ansible.Result = @{ exists = $true; action = 'needs_update' }
-      } else {
-        $Ansible.Result = @{ exists = $false; action = 'needs_creation' }
-      }
-  register: _vmswitch_check
-
-- name: Create or update External VMSwitch (may briefly disconnect network)
-  ansible.windows.win_powershell:
-    error_action: stop
-    script: |
-      $switchName = '{{ _hyperv.switch_name | default("WSL-Bridge") }}'
-      $adapterName = '{{ _hyperv.adapter_name | default("Ethernet") }}'
-      $allowMgmt = [bool]::Parse('{{ _hyperv.allow_management_os | default(true) | lower }}')
-
-      $existing = Get-VMSwitch -Name $switchName -ErrorAction SilentlyContinue
-      if ($existing) {
-        $adapter = Get-NetAdapter -Name $adapterName -ErrorAction SilentlyContinue
-        Set-VMSwitch -Name $switchName -SwitchType External `
-          -NetAdapterInterfaceDescription $adapter.InterfaceDescription `
-          -AllowManagementOS $allowMgmt
-      } else {
-        New-VMSwitch -Name $switchName -NetAdapterName $adapterName `
-          -AllowManagementOS $allowMgmt | Out-Null
-      }
-      $Ansible.Changed = $true
-  async: 120
-  poll: 0
-  when: _vmswitch_check.result.action != 'unchanged'
-  register: _vmswitch_async
-
-- name: Wait for WinRM to reconnect after VMSwitch change
-  ansible.builtin.wait_for_connection:
-    delay: 15
-    timeout: 120
-  when: _vmswitch_async is changed
-
-- name: Verify External VMSwitch is operational
-  ansible.windows.win_powershell:
-    error_action: stop
-    script: |
-      $Ansible.Changed = $false
-      $switch = Get-VMSwitch -Name '{{ _hyperv.switch_name | default("WSL-Bridge") }}' -ErrorAction Stop
-      $Ansible.Result = @{
-        name = $switch.Name
-        type = $switch.SwitchType.ToString()
-        adapter = $switch.NetAdapterInterfaceDescription
-        allow_mgmt_os = $switch.AllowManagementOS
-      }
-  when: _vmswitch_async is changed
+- name: Create External Virtual Switch
+  ansible.builtin.include_tasks: networking.yml

@@ -4,9 +4,12 @@
 # Pure infrastructure: enables Hyper-V and creates an External Virtual Switch
 # bridged to a physical NIC. No guest (WSL, VM) awareness.
 #
+# adapter_name is a comma-separated fallback list. The role picks the first
+# adapter that is Up (e.g. "Wi-Fi,Ethernet" tries Wi-Fi first, falls back to Ethernet).
+#
 # Override in host_vars / group_vars or pass via include_role vars.
 hyperv_config:
   external_switch_enabled: false
-  switch_name: "WSL-Bridge"
-  adapter_name: "Ethernet"
+  switch_name: "External"
+  adapter_name: "Wi-Fi,Ethernet"
   allow_management_os: true

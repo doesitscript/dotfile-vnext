@@ -15,18 +15,18 @@ The role receives a single dictionary variable `hyperv_config`:
 
 ```yaml
 hyperv_config:
-  external_switch_enabled: true   # gate — role skips when false
-  switch_name: "WSL-Bridge"       # name of the Hyper-V External VMSwitch
-  adapter_name: "Wi-Fi"           # physical NIC to bridge
-  allow_management_os: true       # keep Windows host connected through the bridge
+  external_switch_enabled: true    # gate — role skips when false
+  switch_name: "External"          # name of the Hyper-V External VMSwitch
+  adapter_name: "Wi-Fi,Ethernet"   # comma-separated fallback list; first Up adapter wins
+  allow_management_os: true        # keep Windows host connected through the bridge
 ```
 
 Set in `host_vars` or `group_vars`. The role provides safe defaults in
-`defaults/main.yml` (switch disabled, adapter `Ethernet`).
+`defaults/main.yml` (switch disabled, adapter fallback `Wi-Fi,Ethernet`).
 
 ## Playbook Integration
 
-Use `include_role` with scoped vars to prevent variable bleed:
+Use `include_role` to prevent variable bleed:
 
 ```yaml
 tasks:
@@ -34,6 +34,12 @@ tasks:
     ansible.builtin.include_role:
       name: hyperv_networking
     when: (hyperv_config | default({})).external_switch_enabled | default(false) | bool
+```
+
+Standalone:
+
+```bash
+ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit server-225-win
 ```
 
 ## What This Role Does NOT Do
