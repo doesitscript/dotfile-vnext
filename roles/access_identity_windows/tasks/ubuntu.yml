@@ -19,10 +19,12 @@
 #   wsl_distro           — distribution name (e.g. Ubuntu-24.04)
 # Role defaults consumed:
 #   wsl_reboot_after     — reboot after WSL feature install (default: true)
+#   wsl_config           — dictionary with networking_mode, static_ip, gateway
 #
-#  ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit server-225-win --tags standalone
-# configures a ssh server complete independent of windows
-# ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit server-225-win --tags wsl-reset,wsl
+# Commands (via playbooks/access_windows.yaml):
+#   WSL install/configure:   --tags wsl
+#   WSL standalone SSH:      --tags standalone
+#   WSL reset + reinstall:   --tags wsl-reset,wsl   (DESTRUCTIVE: unregisters distro first)
 
 # --- Resolve companion WSL host variables ---
 
@@ -49,9 +51,10 @@
     _wsl_ssh_dir: "{{ hostvars[_wsl_companion]['ansible_ssh_dir_path'] }}"
     _wsl_authorized_keys: "{{ hostvars[_wsl_companion]['ansible_authorized_keys_path'] }}"
 
-- name: Resolve WSL networking mode
+- name: Resolve WSL config contract
   ansible.builtin.set_fact:
-    _wsl_networking_mode: "{{ wsl_networking_mode | default('nat') }}"
+    _wsl: "{{ wsl_config | default({}) }}"
+    _wsl_networking_mode: "{{ (wsl_config | default({})).networking_mode | default('nat') }}"
 
 - name: Display resolved WSL configuration
   ansible.builtin.debug:
@@ -63,6 +66,16 @@
       ssh_dir: {{ _wsl_ssh_dir }} |
       authorized_keys: {{ _wsl_authorized_keys }} |
       networking_mode: {{ _wsl_networking_mode }}
+
+- name: Ensure bridged WSL requires Hyper-V bridge infrastructure
+  ansible.builtin.assert:
+    that:
+      - _wsl_networking_mode != 'bridged' or
+        (hyperv_config | default({})).external_switch_enabled | default(false) | bool
+    fail_msg: >-
+      WSL bridged mode requires hyperv_config.external_switch_enabled=true
+      in host_vars. The Hyper-V External Switch must be configured as
+      infrastructure before WSL can consume it.
 
 # --- Step 1: Install WSL (feature + kernel) ---
 
@@ -100,10 +113,57 @@
     - wsl_install is changed
     - wsl_install.result.action | default('none') == 'feature_install'
 
-# --- Step 1.2: .wslconfig networking ---
-# Handled by the hyperv_networking role (when wsl_networking_mode == 'bridged')
-# or left as default NAT (no .wslconfig needed).
-# See roles/hyperv_networking/README.md for details.
+# --- Step 1.2: .wslconfig bridged networking (consumer of Hyper-V External Switch) ---
+# Deploys .wslconfig to tell WSL to use the External VMSwitch created by
+# hyperv_networking. The switch_name comes from hyperv_config in host_vars.
+# In NAT mode, no .wslconfig is needed.
+
+- name: Deploy .wslconfig with bridged networking
+  ansible.windows.win_template:
+    src: wslconfig_bridged.j2
+    dest: '%USERPROFILE%\.wslconfig'
+    newline_sequence: '\r\n'
+  register: _wslconfig_result
+  when: _wsl_networking_mode == 'bridged'
+
+- name: Shutdown WSL to apply .wslconfig changes
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $true
+      wsl.exe --shutdown
+      Start-Sleep -Seconds 8
+  when:
+    - _wsl_networking_mode == 'bridged'
+    - _wslconfig_result is changed
+
+# --- Step 1.3: Hyper-V firewall rule for inbound SSH to WSL VM ---
+# The Hyper-V firewall is separate from the Windows Firewall and filters
+# traffic for VMs on virtual switches. Without this rule, external hosts
+# can ping WSL (ICMP is allowed by default) but TCP connections are blocked.
+
+- name: Ensure Hyper-V firewall allows inbound SSH to WSL
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $ruleName = 'WSL-SSH-Inbound-TCP-22'
+      $wslCreatorId = '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}'
+
+      $existing = Get-NetFirewallHyperVRule -Name $ruleName -ErrorAction SilentlyContinue
+      if ($existing) {
+        $Ansible.Result = @{ action = 'unchanged'; rule = $ruleName }
+        Exit 0
+      }
+
+      New-NetFirewallHyperVRule -Name $ruleName `
+        -DisplayName 'Allow inbound SSH to WSL (TCP 22)' `
+        -Direction Inbound -Action Allow `
+        -VMCreatorId $wslCreatorId `
+        -Protocol TCP -LocalPorts 22 | Out-Null
+      $Ansible.Changed = $true
+      $Ansible.Result = @{ action = 'created'; rule = $ruleName }
+  when: _wsl_networking_mode == 'bridged'
 
 # --- Step 1.5: Create cloud-init user-data on the Windows host ---
 # Ubuntu 24.04 WSL reads %USERPROFILE%\.cloud-init\<distro>.user-data on first
@@ -117,6 +177,7 @@
 
 - name: Create cloud-init user-data for WSL distro
   ansible.windows.win_copy:
+    force: true
     dest: "{{ ansible_env.USERPROFILE }}\\.cloud-init\\{{ _wsl_distro }}.user-data"
     content: |
       #cloud-config
@@ -131,6 +192,8 @@
       write_files:
         - path: /etc/wsl.conf
           content: |
+            [boot]
+            systemd=true
             [user]
             default={{ _wsl_user }}
   register: _cloud_init_result
@@ -322,7 +385,7 @@
     script: |
       $Ansible.Changed = $false
       $distro = '{{ _wsl_distro }}'
-      $gateway = '{{ wsl_gateway | default("192.168.50.1") }}'
+      $gateway = '{{ _wsl.gateway | default("192.168.50.1") }}'
 
       $current = (wsl.exe -d $distro -u root -- bash -c 'cat /etc/resolv.conf 2>/dev/null || echo MISSING') -replace '\x00', '' | ? { $_ -ne '' }
       $currentStr = ($current -join "`n").Trim()
@@ -464,8 +527,8 @@
       }
 
 # --- Step 4.7: Bridged networking — configure WSL guest static IP ---
-# Only runs when wsl_networking_mode == 'bridged'. Writes a Netplan config
-# with the static IP and gateway from hyperv_networking defaults/hostvars.
+# Only runs when networking_mode == 'bridged'. Writes a Netplan config
+# with the static IP and gateway from wsl_config dictionary.
 # DNS is handled by the gateway (router) — systemd-resolved uses it via netplan.
 # Persistent across WSL restarts.
 
@@ -478,8 +541,8 @@
     script: |
       $Ansible.Changed = $false
       $distro = '{{ _wsl_distro }}'
-      $staticIp = '{{ wsl_static_ip | default("192.168.50.222/24") }}'
-      $gateway = '{{ wsl_gateway | default("192.168.50.1") }}'
+      $staticIp = '{{ _wsl.static_ip | default("192.168.50.222/24") }}'
+      $gateway = '{{ _wsl.gateway | default("192.168.50.1") }}'
 
       $netplanFile = '/etc/netplan/01-wsl-bridge.yaml'
 
@@ -563,7 +626,7 @@
 
 # --- Step 4.8: NAT networking — netsh portproxy for WSL SSH access ---
 # FIXME: We are not using portproxy with bridge networking. These tasks are gated
-# by _wsl_networking_mode == 'nat' and will not run in bridged mode. Retained for
+# by networking_mode == 'nat' and will not run in bridged mode. Retained for
 # hosts that still use NAT mode. Consider removing once all hosts are bridged.
 
 - name: Configure netsh portproxy for WSL SSH (NAT mode)

@@ -3,9 +3,26 @@
 # Run after access_controller. Targets windows_hosts.
 #
 # Commands:
-#   Full run (admin + user):  ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win
-#   Admin only (main.yml):    ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags admin
-#   User only (user.yml):     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags user
+#   Full run (admin + user + WSL):
+#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win
+#
+#   Admin only (OpenSSH, sshd, firewall, shell):
+#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags admin
+#
+#   User only (user SSH keys):
+#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags user
+#
+#   WSL only (install/configure distro, idempotent):
+#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags wsl
+#
+#   WSL standalone SSH server (independent of Windows sshd):
+#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags standalone
+#
+#   WSL reset + reinstall (DESTRUCTIVE — unregisters distro then re-provisions from scratch):
+#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags wsl-reset,wsl
+#
+#   Debug diagnostics only:
+#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags debug
 #
 - name: Access - windows identity
   hosts: windows_hosts
@@ -15,8 +32,16 @@
     - name: Skip hosts not yet SSH-configured (never deployed)
       ansible.builtin.meta: end_host
       when: not (ansible_facts.get('ssh_configured', false) | bool)
+      tags: [always]
 
-  roles:
-    - role: hyperv_networking
-      when: wsl_networking_mode | default('nat') == 'bridged'
-    - access_identity_windows
+  tasks:
+    - name: Configure Hyper-V bridge infrastructure
+      ansible.builtin.include_role:
+        name: hyperv_networking
+      when: (hyperv_config | default({})).external_switch_enabled | default(false) | bool
+      tags: [always]
+
+    - name: Configure Windows identity and WSL
+      ansible.builtin.include_role:
+        name: access_identity_windows
+      tags: [always]

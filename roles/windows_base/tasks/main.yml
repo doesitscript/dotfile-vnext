@@ -1,0 +1,186 @@
+---
+# windows_base — Shared Windows base configuration.
+#
+# Enables Windows features, configures power settings, creates data directories,
+# configures Defender exclusions, enables long paths.
+#
+# API contract: windows_base_config dictionary (see defaults/main.yml).
+# Data directories come from group_vars: windows_data_root, stacks_root, data_root.
+#
+# Consumed by: server_225/windows_base, dev_3090/windows_base, network_server/windows_base.
+
+- name: Resolve windows_base_config contract
+  ansible.builtin.set_fact:
+    _wb: "{{ windows_base_config | default({}) }}"
+
+# --- Windows Features ---
+
+- name: Enable Hyper-V feature
+  ansible.windows.win_optional_feature:
+    name:
+      - Microsoft-Hyper-V
+      - Microsoft-Hyper-V-Management-PowerShell
+    state: present
+    include_parent: true
+  register: _wb_hyperv
+  when: _wb.enable_hyperv | default(true) | bool
+
+- name: Enable Containers feature
+  ansible.windows.win_optional_feature:
+    name:
+      - Containers
+    state: present
+  register: _wb_containers
+  when: _wb.enable_containers | default(true) | bool
+
+- name: Enable Virtual Machine Platform feature
+  ansible.windows.win_optional_feature:
+    name:
+      - VirtualMachinePlatform
+    state: present
+  register: _wb_vmp
+  when: _wb.enable_vmp | default(true) | bool
+
+- name: Enable WSL feature
+  ansible.windows.win_optional_feature:
+    name:
+      - Microsoft-Windows-Subsystem-Linux
+    state: present
+  register: _wb_wsl
+  when: _wb.enable_wsl | default(false) | bool
+
+- name: Reboot if Windows features were installed
+  ansible.windows.win_reboot:
+    msg: "Ansible reboot after Windows feature installation"
+    reboot_timeout: 600
+  when: >-
+    (_wb_hyperv is defined and _wb_hyperv is changed) or
+    (_wb_containers is defined and _wb_containers is changed) or
+    (_wb_vmp is defined and _wb_vmp is changed) or
+    (_wb_wsl is defined and _wb_wsl is changed)
+
+- name: Wait for system to come back online after reboot
+  ansible.builtin.wait_for_connection:
+    timeout: 600
+  when: >-
+    (_wb_hyperv is defined and _wb_hyperv is changed) or
+    (_wb_containers is defined and _wb_containers is changed) or
+    (_wb_vmp is defined and _wb_vmp is changed) or
+    (_wb_wsl is defined and _wb_wsl is changed)
+
+# --- OpenSSH Server ---
+
+- name: Install OpenSSH Server capability
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $cap = Get-WindowsCapability -Online -Name 'OpenSSH.Server*'
+      if ($cap.State -ne 'Installed') {
+        Add-WindowsCapability -Online -Name $cap.Name
+        $Ansible.Changed = $true
+      }
+  register: _wb_openssh
+  when: _wb.enable_openssh | default(true) | bool
+
+- name: Ensure sshd service is running and set to auto-start
+  ansible.windows.win_service:
+    name: sshd
+    state: started
+    start_mode: auto
+  when: _wb.enable_openssh | default(true) | bool
+
+# --- Power Management ---
+
+- name: Set power plan to High Performance
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $current = (powercfg /getactivescheme) -match '([a-f0-9-]{36})'
+      if ($Matches[1] -ne '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c') {
+        powercfg /setactive SCHEME_MIN
+        $Ansible.Changed = $true
+      }
+  when: _wb.high_performance_power | default(true) | bool
+
+- name: Disable sleep and hibernate
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      powercfg -change -standby-timeout-ac 0
+      powercfg -change -hibernate-timeout-ac 0
+      $Ansible.Changed = $true
+  when: _wb.disable_sleep | default(true) | bool
+
+- name: Disable USB selective suspend
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      powercfg -setacvalueindex SCHEME_CURRENT 2a737441-1930-4402-8d77-b2bebba308a3 48e6b7a6-50f5-4782-a5d4-53bb8f07e226 0
+      powercfg -setactive SCHEME_CURRENT
+      $Ansible.Changed = $true
+  when: _wb.disable_usb_suspend | default(true) | bool
+
+# --- Data Directories ---
+
+- name: Verify data drive exists
+  ansible.windows.win_stat:
+    path: "{{ windows_data_root }}"
+  register: _wb_data_drive
+  failed_when: not _wb_data_drive.stat.exists
+
+- name: Create data root directory
+  ansible.windows.win_file:
+    path: "{{ windows_data_root }}"
+    state: directory
+
+- name: Create stacks directory
+  ansible.windows.win_file:
+    path: "{{ stacks_root }}"
+    state: directory
+
+- name: Create data directory
+  ansible.windows.win_file:
+    path: "{{ data_root }}"
+    state: directory
+
+# --- Windows Defender ---
+
+- name: Disable Windows Defender indexing on data directories
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $paths = @('{{ windows_data_root }}', '{{ stacks_root }}', '{{ data_root }}')
+      foreach ($path in $paths) {
+        if (Test-Path $path) {
+          attrib.exe +s $path
+          $Ansible.Changed = $true
+        }
+      }
+  when: _wb.defender_exclusions | default(true) | bool
+
+- name: Add Windows Defender exclusions for data directories
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $paths = @('{{ windows_data_root }}', '{{ stacks_root }}', '{{ data_root }}')
+      foreach ($path in $paths) {
+        if (Test-Path $path) {
+          Add-MpPreference -ExclusionPath $path -ErrorAction SilentlyContinue
+          $Ansible.Changed = $true
+        }
+      }
+  when: _wb.defender_exclusions | default(true) | bool
+
+# --- Registry ---
+
+- name: Enable long paths in Windows
+  ansible.windows.win_regedit:
+    path: HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem
+    name: LongPathsEnabled
+    data: 1
+    type: dword
+  when: _wb.long_paths | default(true) | bool

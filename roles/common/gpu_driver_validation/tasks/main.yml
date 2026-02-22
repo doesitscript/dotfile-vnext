@@ -1,0 +1,52 @@
+---
+# common/gpu_driver_validation — Validate NVIDIA GPU driver presence.
+#
+# Does not install drivers, only validates. Uses the 'gpu' variable
+# from group_vars for expected model reporting.
+#
+# Consumed by: server_225/gpu_driver_validation, dev_3090/gpu_driver_validation.
+
+- name: Check if nvidia-smi is available
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $version = & nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>&1
+      if ($LASTEXITCODE -eq 0) {
+        $Ansible.Result = @{ installed = $true; driver_version = $version.Trim() }
+      } else {
+        $Ansible.Result = @{ installed = $false; driver_version = 'not found' }
+      }
+  register: _gpu_check
+
+- name: Get GPU information
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $info = & nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>&1
+      $status = & nvidia-smi --query-gpu=temperature.gpu,utilization.gpu --format=csv,noheader 2>&1
+      $Ansible.Result = @{
+        info = if ($LASTEXITCODE -eq 0) { $info.Trim() } else { 'unavailable' }
+        status = if ($LASTEXITCODE -eq 0) { $status.Trim() } else { 'unavailable' }
+      }
+  register: _gpu_info
+  when: _gpu_check.result.installed | default(false)
+
+- name: Fail if GPU driver is not installed
+  ansible.builtin.fail:
+    msg: >-
+      NVIDIA GPU driver not found. nvidia-smi command failed.
+      Expected GPU: {{ gpu | default('unknown') }}.
+      Please install NVIDIA Studio Driver.
+  when: not (_gpu_check.result.installed | default(false))
+
+- name: Display GPU driver validation summary
+  ansible.builtin.debug:
+    msg: >-
+      GPU validation passed |
+      Expected: {{ gpu | default('unknown') }} |
+      Driver: {{ _gpu_check.result.driver_version }} |
+      Info: {{ _gpu_info.result.info | default('n/a') }} |
+      Status: {{ _gpu_info.result.status | default('n/a') }}
+  when: _gpu_check.result.installed | default(false)
