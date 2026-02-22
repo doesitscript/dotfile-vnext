@@ -1,3 +1,4 @@
+---
 - name: Ensure Python is installed on Windows via Chocolatey
   chocolatey.chocolatey.win_chocolatey:
     name: python
@@ -8,8 +9,9 @@
   changed_when: false
   failed_when: false
 
-- name: Ensure poetry is installed via pipx on Windows
-  ansible.windows.win_command: py -m pipx install poetry
+- name: Install Python CLI tools via pipx on Windows
+  ansible.windows.win_command: "py -m pipx install {{ item }}"
+  loop: "{{ pipx_packages }}"
   changed_when: false
   failed_when: false
 

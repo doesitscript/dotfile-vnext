@@ -196,6 +196,19 @@
             systemd=true
             [user]
             default={{ _wsl_user }}
+        - path: /etc/profile.d/wsl-path.sh
+          permissions: '0644'
+          content: |
+            # Ensure core Linux paths are always present in WSL shells.
+            # Without this, wsl.exe entry points may only have Windows paths,
+            # making systemctl, journalctl, and other system binaries unavailable.
+            for _d in /usr/local/sbin /usr/local/bin /usr/sbin /usr/bin /sbin /bin; do
+              case ":$PATH:" in
+                *":$_d:"*) ;;
+                *) export PATH="$_d:$PATH" ;;
+              esac
+            done
+            unset _d
   register: _cloud_init_result
 
 - name: Normalise cloud-init user-data to LF line endings

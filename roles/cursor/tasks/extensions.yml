@@ -1,0 +1,12 @@
+---
+# Install Cursor extensions via CLI.
+# Bypasses the marketplace GUI checkForTrustedPublishers call
+# that can fail with HTTP 500.
+
+- name: Install Cursor extensions via CLI
+  ansible.builtin.command: "cursor --install-extension {{ item }}"
+  loop: "{{ cursor_extensions }}"
+  register: _cursor_ext_result
+  changed_when: "'was successfully installed' in _cursor_ext_result.stdout"
+  failed_when: false
+  tags: cursor_extensions

@@ -1,3 +1,4 @@
+---
 - name: Process python role for macOS
   ansible.builtin.import_tasks: mac.yml
   when: ansible_facts['system'] == "Darwin"
@@ -9,3 +10,22 @@
 - name: Process python role for Windows
   ansible.builtin.import_tasks: windows.yml
   when: ansible_facts['system'] == "Windows"
+
+- name: Symlink Python shell configs into ~/.bashrc.d
+  ansible.builtin.file:
+    src: "{{ dotfiles_home }}/roles/python/{{ item.src }}"
+    dest: "{{ ansible_env.HOME }}/.bashrc.d/{{ item.dest }}"
+    state: link
+  loop:
+    - { src: env.bash, dest: python-env.bash }
+    - { src: aliases.bash, dest: python-aliases.bash }
+    - { src: files/pyenv-docker.bash, dest: pyenv-docker.bash }
+  when: ansible_facts['system'] != "Windows"
+
+- name: Install Python-related VS Code extensions via CLI
+  ansible.builtin.command: "{{ vscode_cli_binary }} --install-extension {{ item }}"
+  loop: "{{ python_vscode_extensions }}"
+  register: _vscode_ext_result
+  changed_when: "'was successfully installed' in _vscode_ext_result.stdout"
+  failed_when: false
+  tags: vscode_extensions

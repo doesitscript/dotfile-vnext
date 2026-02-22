@@ -1,0 +1,39 @@
+---
+# mcp_servers/build.yml — Build MCP sysoperator EE image via ansible-builder.
+# Runs on hosts with docker_engine_in_wsl: true (i.e. server-225-wsl).
+
+- name: Ensure MCP build directory exists
+  ansible.builtin.file:
+    path: "{{ mcp_build_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Stage execution-environment.yml to build directory
+  ansible.builtin.copy:
+    src: execution-environment.yml
+    dest: "{{ mcp_build_dir }}/execution-environment.yml"
+    mode: "0644"
+  register: _ee_definition
+
+- name: Ensure ansible-builder is installed
+  ansible.builtin.pip:
+    name: ansible-builder
+    state: present
+
+- name: Build mcp-sysoperator EE image with ansible-builder
+  ansible.builtin.command:
+    cmd: >-
+      ansible-builder build
+      --file execution-environment.yml
+      --tag {{ mcp_sysoperator_image }}
+      --container-runtime docker
+    chdir: "{{ mcp_build_dir }}"
+  register: _build_ee
+  changed_when: "'Complete!' in _build_ee.stdout"
+  when: _ee_definition is changed or _force_mcp_rebuild | default(false)
+
+- name: Report MCP EE build result
+  ansible.builtin.debug:
+    msg: >-
+      MCP sysoperator EE built on {{ inventory_hostname }}:
+      image={{ mcp_sysoperator_image }}

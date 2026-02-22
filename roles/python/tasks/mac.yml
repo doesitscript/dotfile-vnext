@@ -1,4 +1,5 @@
-- name: Ensure pyenv dependencies are installed on macOS
+---
+- name: Ensure Python tooling dependencies are installed on macOS
   community.general.homebrew:
     name:
       - openssl
@@ -6,20 +7,55 @@
       - sqlite3
       - xz
       - zlib
+      - ca-certificates
+      - pipx
     state: present
 
-- name: Install Python versions with pyenv on macOS
-  ansible.builtin.shell: "pyenv install {{ item }} --skip-existing"
-  loop: "{{ pyenv_global_versions }}"
-  args:
-    executable: /bin/bash
-  changed_when: false
+- name: Ensure Homebrew CA certs are linked into OpenSSL directory
+  ansible.builtin.file:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    state: link
+    force: true
+  loop:
+    - src: /usr/local/share/ca-certificates/cacert.pem
+      dest: /usr/local/etc/openssl@3/cert.pem
+  loop_control:
+    label: "{{ item.dest }}"
+
+- name: Ensure pyenv-docker persistent directory exists
+  ansible.builtin.file:
+    path: "{{ dotfiles_user_home }}/.pyenv-docker"
+    state: directory
+    mode: "0755"
   tags: pyenv
 
-- name: Set global Python versions with pyenv on macOS
+- name: Stage Dockerfile.pyenv to build directory
   ansible.builtin.copy:
-    content: "system\n{% for version in pyenv_global_versions %}{{ version }}\n{% endfor %}"
-    dest: "{{ dotfiles_user_home }}/.pyenv/version"
+    src: Dockerfile.pyenv
+    dest: "{{ pyenv_docker_build_dir }}/Dockerfile.pyenv"
+    mode: "0644"
+  register: _dockerfile_pyenv
+  tags: pyenv
+
+- name: Build pyenv-env Docker image
+  ansible.builtin.command:
+    cmd: "docker build -f Dockerfile.pyenv -t {{ pyenv_docker_image }} ."
+    chdir: "{{ pyenv_docker_build_dir }}"
+  register: _build_pyenv
+  changed_when: "'exporting layers' in _build_pyenv.stderr"
+  when: _dockerfile_pyenv is changed or _force_pyenv_rebuild | default(false)
+  tags: pyenv
+
+- name: Install default Python versions in pyenv-env container
+  ansible.builtin.command:
+    cmd: >-
+      docker run --rm
+      -v {{ dotfiles_user_home }}/.pyenv-docker:/root/.pyenv
+      {{ pyenv_docker_image }}
+      "pyenv install {{ item }} --skip-existing && pyenv global {{ pyenv_global_versions | join(' ') }}"
+  loop: "{{ pyenv_global_versions }}"
+  changed_when: false
   tags: pyenv
 
 - name: Check whether pytest.ini already exists
@@ -33,7 +69,14 @@
     dest: "{{ dotfiles_user_home }}/pytest.ini.bak"
     remote_src: true
     force: false
+    mode: "0644"
   when: pytest_stat.stat.exists
+
+- name: Ensure pipx path is initialized on macOS
+  ansible.builtin.command: pipx ensurepath
+  changed_when: false
+  failed_when: false
+  tags: pipx
 
 - name: Ensure pytest.ini symlink exists on macOS
   ansible.builtin.file:
@@ -41,16 +84,12 @@
     dest: "{{ dotfiles_user_home }}/pytest.ini"
     state: link
 
-- name: Ensure pipx is installed on macOS
-  ansible.builtin.command: python3 -m pip install --user pipx
-  changed_when: false
+- name: Install Python CLI tools via pipx on macOS
+  ansible.builtin.command: "pipx install {{ item }}"
+  loop: "{{ pipx_packages }}"
+  register: _pipx_result
+  changed_when: "'installed package' in _pipx_result.stdout"
+  failed_when:
+    - _pipx_result.rc != 0
+    - "'already seems to be installed' not in _pipx_result.stderr"
   tags: pipx
-
-- name: Ensure poetry is installed via pipx on macOS
-  ansible.builtin.command: "{{ dotfiles_user_home }}/.local/bin/pipx install poetry"
-  changed_when: false
-  tags: poetry
-
-- name: Ensure virtualenv is installed on macOS
-  ansible.builtin.command: python3 -m pip install --user virtualenv
-  changed_when: false

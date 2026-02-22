@@ -5,3 +5,13 @@
     state: present
     executable: pip3
   become: false
+
+- name: Install Ansible CLI tools via pipx (macOS)
+  ansible.builtin.command: "pipx install {{ item }}"
+  loop: "{{ ansible_pipx_packages }}"
+  register: _ansible_pipx_result
+  changed_when: "'installed package' in _ansible_pipx_result.stdout"
+  failed_when:
+    - _ansible_pipx_result.rc != 0
+    - "'already seems to be installed' not in _ansible_pipx_result.stderr"
+  tags: pipx

@@ -1,1 +1,2 @@
-export PYENV_VIRTUALENV_DISABLE_PROMPT=1
+# pipx CLI tools PATH
+export PATH="$HOME/.local/bin:$PATH"

@@ -1,3 +1,4 @@
+---
 - name: Ensure Python tooling packages are installed on Ubuntu
   ansible.builtin.apt:
     name:
@@ -13,11 +14,17 @@
   ansible.builtin.command: pipx ensurepath
   changed_when: false
   failed_when: false
+  tags: pipx
 
-- name: Ensure poetry is installed with pipx on Ubuntu
-  ansible.builtin.command: pipx install poetry
-  changed_when: false
-  failed_when: false
+- name: Install Python CLI tools via pipx on Ubuntu
+  ansible.builtin.command: "pipx install {{ item }}"
+  loop: "{{ pipx_packages }}"
+  register: _pipx_result
+  changed_when: "'installed package' in _pipx_result.stdout"
+  failed_when:
+    - _pipx_result.rc != 0
+    - "'already seems to be installed' not in _pipx_result.stderr"
+  tags: pipx
 
 - name: Ensure pytest.ini symlink exists on Ubuntu
   ansible.builtin.file:
