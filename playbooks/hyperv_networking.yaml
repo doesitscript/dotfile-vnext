@@ -13,6 +13,12 @@
   hosts: windows_hosts
   gather_facts: false
 
+  pre_tasks:
+    - name: Skip hosts not yet deployed
+      ansible.builtin.meta: end_host
+      when: not (ansible_facts.get('ssh_configured', false) | bool)
+      tags: [always]
+
   tasks:
     - name: Configure Hyper-V bridge infrastructure
       ansible.builtin.include_role:

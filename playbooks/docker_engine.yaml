@@ -15,9 +15,18 @@
 #
 - name: Docker Engine - install on WSL hosts
   hosts: wsl_hosts
-  gather_facts: true
+  gather_facts: false
   become: true
-  ignore_unreachable: true
+
+  pre_tasks:
+    - name: Skip hosts not yet deployed
+      ansible.builtin.meta: end_host
+      when: not (ansible_facts.get('ssh_configured', false) | bool)
+      tags: [always]
+
+    - name: Gather facts on deployed hosts
+      ansible.builtin.setup:
+      tags: [always]
 
   tasks:
     - name: Apply geerlingguy.docker to WSL hosts with Docker enabled

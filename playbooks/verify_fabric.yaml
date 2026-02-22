@@ -5,7 +5,19 @@
 
 - name: Verify Windows hosts
   hosts: windows_hosts
+  gather_facts: false
   become: false
+
+  pre_tasks:
+    - name: Skip hosts not yet deployed
+      ansible.builtin.meta: end_host
+      when: not (ansible_facts.get('ssh_configured', false) | bool)
+      tags: [always]
+
+    - name: Gather facts on deployed hosts
+      ansible.builtin.setup:
+      tags: [always]
+
   roles:
     - role: common/baseline
     - role: common/health_checks
@@ -17,7 +29,19 @@
 
 - name: Verify WSL hosts
   hosts: wsl_hosts
+  gather_facts: false
   become: false
+
+  pre_tasks:
+    - name: Skip hosts not yet deployed
+      ansible.builtin.meta: end_host
+      when: not (ansible_facts.get('ssh_configured', false) | bool)
+      tags: [always]
+
+    - name: Gather facts on deployed hosts
+      ansible.builtin.setup:
+      tags: [always]
+
   roles:
     - role: common/baseline
     - role: common/health_checks

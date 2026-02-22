@@ -19,8 +19,19 @@
 
 - name: Deploy shell configuration to target host
   hosts: all
-  gather_facts: true
+  gather_facts: false
   become: false
+
+  pre_tasks:
+    - name: Skip hosts not yet deployed
+      ansible.builtin.meta: end_host
+      when: not (ansible_facts.get('ssh_configured', false) | bool)
+      tags: [always]
+
+    - name: Gather facts on deployed hosts
+      ansible.builtin.setup:
+      tags: [always]
+
   roles:
     - role: common/shell_config
     - role: direnv
@@ -29,6 +40,13 @@
 - name: Display shell configuration summary
   hosts: all
   gather_facts: false
+
+  pre_tasks:
+    - name: Skip hosts not yet deployed
+      ansible.builtin.meta: end_host
+      when: not (ansible_facts.get('ssh_configured', false) | bool)
+      tags: [always]
+
   tasks:
     - name: Check .bashrc.d directory
       ansible.builtin.stat:

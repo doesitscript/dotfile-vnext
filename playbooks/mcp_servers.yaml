@@ -12,8 +12,17 @@
 
 - name: MCP Servers - build container images
   hosts: wsl_hosts
-  gather_facts: true
-  ignore_unreachable: true
+  gather_facts: false
+
+  pre_tasks:
+    - name: Skip hosts not yet deployed
+      ansible.builtin.meta: end_host
+      when: not (ansible_facts.get('ssh_configured', false) | bool)
+      tags: [always]
+
+    - name: Gather facts on deployed hosts
+      ansible.builtin.setup:
+      tags: [always]
 
   tasks:
     - name: Build MCP server images on Docker host
@@ -24,7 +33,17 @@
 
 - name: MCP Servers - configure IDE clients
   hosts: docker_clients
-  gather_facts: true
+  gather_facts: false
+
+  pre_tasks:
+    - name: Skip hosts not yet deployed
+      ansible.builtin.meta: end_host
+      when: not (ansible_facts.get('ssh_configured', false) | bool)
+      tags: [always]
+
+    - name: Gather facts on deployed hosts
+      ansible.builtin.setup:
+      tags: [always]
 
   tasks:
     - name: Configure Cursor MCP server settings
