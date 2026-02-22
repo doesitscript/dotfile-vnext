@@ -15,16 +15,14 @@
 
 # --- Windows Features ---
 
-- name: Enable Hyper-V feature
-  ansible.windows.win_optional_feature:
-    name:
-      - Microsoft-Hyper-V
-      - Microsoft-Hyper-V-Management-PowerShell
-    state: present
-    include_parent: true
-  register: _wb_hyperv
+- name: Enable Hyper-V features
+  ansible.builtin.include_role:
+    name: hyperv_networking
+    tasks_from: hyperv_feature.yml
   when: _wb.enable_hyperv | default(true) | bool
 
+
+# Containers
 - name: Enable Containers feature
   ansible.windows.win_optional_feature:
     name:
@@ -54,7 +52,6 @@
     msg: "Ansible reboot after Windows feature installation"
     reboot_timeout: 600
   when: >-
-    (_wb_hyperv is defined and _wb_hyperv is changed) or
     (_wb_containers is defined and _wb_containers is changed) or
     (_wb_vmp is defined and _wb_vmp is changed) or
     (_wb_wsl is defined and _wb_wsl is changed)
@@ -63,7 +60,6 @@
   ansible.builtin.wait_for_connection:
     timeout: 600
   when: >-
-    (_wb_hyperv is defined and _wb_hyperv is changed) or
     (_wb_containers is defined and _wb_containers is changed) or
     (_wb_vmp is defined and _wb_vmp is changed) or
     (_wb_wsl is defined and _wb_wsl is changed)

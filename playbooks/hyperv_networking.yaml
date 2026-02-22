@@ -1,0 +1,20 @@
+---
+# Hyper-V Networking: enable Hyper-V features and create an External Virtual Switch.
+# Targets windows_hosts with hyperv_config.external_switch_enabled == true in host_vars.
+#
+# Commands:
+#   Full run:
+#     ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit server-225-win
+#
+#   Dry run (check mode):
+#     ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit server-225-win --check
+#
+- name: Hyper-V networking infrastructure
+  hosts: windows_hosts
+  gather_facts: false
+
+  tasks:
+    - name: Configure Hyper-V bridge infrastructure
+      ansible.builtin.include_role:
+        name: hyperv_networking
+      when: (hyperv_config | default({})).external_switch_enabled | default(false) | bool

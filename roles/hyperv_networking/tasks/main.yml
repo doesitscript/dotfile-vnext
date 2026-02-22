@@ -6,10 +6,11 @@
 #
 # API contract: receives a single 'hyperv_config' dictionary.
 # See defaults/main.yml for the full schema and defaults.
-#
-# Invoked via include_role from playbooks/access_windows.yaml:
-#   ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win
-# Runs automatically when hyperv_config.external_switch_enabled == true in host_vars.
+#ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit server-225-win
+# Standalone:
+#   ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit server-225-win
+# Also invoked via include_role from playbooks/access_windows.yaml.
+# Runs when hyperv_config.external_switch_enabled == true in host_vars.
 #
 # WARNING: Changing a Virtual Switch to External can briefly disconnect the network.
 
@@ -19,32 +20,8 @@
     _hyperv: "{{ hyperv_config | default({}) }}"
 
 # --- Phase 1: Enable Hyper-V features ---
-- name: Enable Hyper-V core feature
-  ansible.windows.win_optional_feature:
-    name:
-      - Microsoft-Hyper-V
-    state: present
-  register: _hyperv_core
-
-- name: Reboot after Hyper-V core installation
-  ansible.windows.win_reboot:
-    reboot_timeout: 600
-    msg: "Ansible reboot after Hyper-V install"
-  when: _hyperv_core.reboot_required | default(false)
-
-- name: Enable Hyper-V management PowerShell tools (with parent features)
-  ansible.windows.win_optional_feature:
-    name:
-      - Microsoft-Hyper-V-Management-PowerShell
-    state: present
-    include_parent: true
-  register: _hyperv_mgmt
-
-- name: Reboot after Hyper-V management tools installation
-  ansible.windows.win_reboot:
-    reboot_timeout: 600
-    msg: "Ansible reboot after Hyper-V management tools install"
-  when: _hyperv_mgmt.reboot_required | default(false)
+- name: Enable Hyper-V features
+  ansible.builtin.include_tasks: hyperv_feature.yml
 
 # --- Phase 2: Create External Virtual Switch ---
 # Creating an External VMSwitch bound to the physical NIC temporarily disconnects
