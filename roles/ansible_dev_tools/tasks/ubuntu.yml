@@ -1,10 +1,21 @@
 ---
 - name: Install ansible-dev-tools via pip (Ubuntu)
   ansible.builtin.pip:
-    name: "{{ ansible_dev_tools_package }}"
+    name: ansible-dev-tools
     state: present
-    executable: pip3
+    executable: "{{ ansible_dev_tools_pip }}"
   become: false
+  when: ansible_dev_tools_install | bool
+  tags: [ansible-dev-tools]
+
+- name: Install ansible-navigator via pip (Ubuntu)
+  ansible.builtin.pip:
+    name: ansible-navigator
+    state: present
+    executable: "{{ ansible_dev_tools_pip }}"
+  become: false
+  when: ansible_navigator_install | bool
+  tags: [ansible-navigator]
 
 - name: Install Ansible CLI tools via pipx (Ubuntu)
   ansible.builtin.command: "pipx install {{ item }}"

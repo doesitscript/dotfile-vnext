@@ -1,5 +1,4 @@
 ---
-# Multi-OS layout only: dispatch by OS. No hub-specific behavior.
 - name: Process ansible_dev_tools role for macOS
   ansible.builtin.import_tasks: mac.yml
   when: ansible_facts['system'] == "Darwin"
@@ -11,3 +10,7 @@
 - name: Process ansible_dev_tools role for Windows
   ansible.builtin.import_tasks: windows.yml
   when: ansible_facts['system'] == "Windows"
+
+- name: Configure Ansible MCP server for project
+  ansible.builtin.import_tasks: project.yml
+  tags: [project]

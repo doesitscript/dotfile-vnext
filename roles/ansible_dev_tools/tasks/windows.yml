@@ -1,7 +1,27 @@
 ---
 - name: Install ansible-dev-tools via pip (Windows)
   ansible.builtin.pip:
-    name: "{{ ansible_dev_tools_package }}"
+    name: ansible-dev-tools
     state: present
     executable: pip
   become: false
+  when: ansible_dev_tools_install | bool
+  tags: [ansible-dev-tools]
+
+- name: Install ansible-navigator via pip (Windows)
+  ansible.builtin.pip:
+    name: ansible-navigator
+    state: present
+    executable: pip
+  become: false
+  when: ansible_navigator_install | bool
+  tags: [ansible-navigator]
+
+- name: Install ansible-builder via pip (Windows)
+  ansible.builtin.pip:
+    name: ansible-builder
+    state: present
+    executable: pip
+  become: false
+  when: ansible_builder_install | bool
+  tags: [ansible-builder]

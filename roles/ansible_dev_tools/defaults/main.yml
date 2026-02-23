@@ -1,6 +1,18 @@
 ---
-ansible_dev_tools_package: ansible-dev-tools
+# Toggle individual tool installs via host_vars/group_vars.
+ansible_dev_tools_install: true
+ansible_navigator_install: true
+ansible_builder_install: true
+
+# pip executable (override for virtualenv or alternate pip).
+ansible_dev_tools_pip: pip3
 
 # Ansible CLI tools installed via pipx (isolated venvs, globally available).
 ansible_pipx_packages:
   - ansible-builder
+
+# Ansible MCP server configuration (used by the 'project' tag tasks).
+ansible_mcp_extension: "redhat.ansible-26.1.3-universal"
+ansible_mcp_cli_path: "{{ ansible_env.HOME }}/.cursor/extensions/{{ ansible_mcp_extension }}/out/mcp/cli.js"
+ansible_mcp_workspace_root: "{{ playbook_dir | dirname }}"
+ansible_mcp_project_dir: "{{ ansible_mcp_workspace_root }}/.cursor"
