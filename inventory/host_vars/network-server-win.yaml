@@ -1,0 +1,44 @@
+---
+# Windows surface: WinRM for bootstrap; SSH uses DefaultShell = WSL bash (wsl_distro from group_vars).
+# When using ansible_connection: ssh to this host, set ansible_shell_type: bash.
+ansible_host: "AI-NET-SERVER"
+ansible_password: "Pass@w0rd1"
+surface_type: "windows_host"
+host_ip: "192.168.50.223"
+ansible_connection: winrm
+win_ssh_port: 2222
+win_ssh_user: "joshc"
+verify_ssh_from_execnode: true
+winrm_port: 5985
+ansible_port: 5985
+win_user: "joshc"
+ansible_user: "joshc"
+physical_node: "network-server"
+win_password: "Pass@w0rd1"
+ansible_winrm_password: "Pass@w0rd1"
+ansible_winrm_scheme: "http"
+ansible_winrm_transport: "ntlm"
+# HTTPS WinRM configuration (uncomment when HTTPS is enabled on server):
+# winrm_port: 5986
+# ansible_port: 5986
+# ansible_winrm_scheme: "https"
+# ansible_winrm_server_cert_validation: "ignore"
+
+# Infrastructure: Hyper-V External Switch (backbone, independent of any guest).
+hyperv_config:
+  external_switch_enabled: true
+  switch_name: "External"
+  adapter_name: "Wi-Fi,Ethernet"
+  allow_management_os: true
+
+# WSL: consumer of the bridge (requires hyperv_config.external_switch_enabled).
+wsl_config:
+  networking_mode: "bridged"
+  static_ip: "192.168.50.223/24"
+  gateway: "192.168.50.1"
+
+# Docker client — connects to the Docker engine in WSL.
+docker_engine_ssh_host: "192.168.50.223"
+docker_engine_ssh_port: 22
+docker_engine_ssh_user: "joshc"
+

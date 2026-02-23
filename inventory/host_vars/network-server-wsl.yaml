@@ -1,0 +1,26 @@
+---
+# WSL surface for server-225. wsl_distro/wsl_ssh_port align with group_vars/server_225.yaml.
+# ansible_connection, ansible_ssh_private_key_file inherited from group_vars/wsl_hosts (matches controller Mac: ~/.ssh/id_ed25519_ansible from bootstrap_mac).
+# i should be able to have a winrm one too for thissrver by amkdine a file like this and speicifying it at the cmdline
+wsl_user: "joshc"
+physical_node: "network-server"
+ansible_port: 22
+ansible_host: "192.168.50.223"
+host_ip: "192.168.50.223"
+surface_type: "wsl"
+ansible_user: "joshc"
+wsl_distro: "Ubuntu-24.04"
+# WSL sshd listens on this port inside the distro.
+# With bridged networking, WSL has its own LAN IP and is directly reachable.
+# With NAT, netsh portproxy forwards this port from the Windows host to WSL.
+# Windows sshd uses 2222/2223 — no conflict.
+wsl_ssh_port: 22
+ansible_python_interpreter: "/usr/bin/python3"
+# SSH paths (same names as windows; destinations identical in purpose).
+ansible_ssh_dir_path: "/home/joshc/.ssh"
+ansible_authorized_keys_path: "/home/joshc/.ssh/authorized_keys"
+
+# Docker Engine — geerlingguy.docker installs Docker inside this WSL distro.
+# Clients (mac-dev, server-225-win) connect via SSH Docker contexts.
+docker_engine_in_wsl: true
+

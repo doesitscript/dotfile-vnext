@@ -2,32 +2,37 @@
 # Run as admin on the target Windows machine.
 #
 # PRIMARY PURPOSE: Get the device ready so the Mac can WinRM into it (port 5985).
-#   - Configures WinRM HTTP (5985), firewall, host_vars, and facts. That's it for "bootstrap for WinRM."
-# OPENSSH: Off by default. Pass -InstallOpenSSH to install/configure OpenSSH Server from this script.
-#   Otherwise install from the Mac via Ansible (e.g. setup_openssh_via_winrm.yaml or bootstrap_windows.yaml).
+#   - Enables PSRemoting, sets TrustedHosts, generates Windows host_vars and facts.
+# WSL: Off by default. Pass -ConfigureWSL to invoke bootstrap-wsl.ps1 for WSL setup.
+# OPENSSH: Off by default. Managed by Ansible role access_identity_windows.
+# RENAME: Pass -Rename to rename the computer and restart.
 #
 # This script:
 # 1. Auto-detects which physical node it's running on (by hostname or IP)
-# 2. Configures WinRM HTTP (5985) and firewall so the Mac can connect
-# 3. Collects runtime facts and generates host_vars for Windows and WSL surfaces
-# 4. (Optional) Installs/configures OpenSSH Server only when -InstallOpenSSH is passed
+# 2. Enables PSRemoting (WinRM HTTP 5985) and sets TrustedHosts
+# 3. Collects runtime facts and generates Windows host_vars
+# 4. (Optional) Calls bootstrap-wsl.ps1 when -ConfigureWSL is passed
+# 5. (Optional) Renames the computer when -Rename is passed
 #
 # RUNNING REMOTELY (e.g. Invoke-Command, WinRM, SSH into the box then run):
 # - Script must still execute ON the target Windows machine (paths and hostname are for that machine).
-# - Run as Administrator (required for WinRM, firewall, OpenSSH, C:\ProgramData\ssh).
+# - Run as Administrator (required for PSRemoting, C:\ProgramData\ssh).
 # - authorized_keys is written for the Windows login user (win_user, e.g. joshc), not the user
 #   running the script, so SSH key auth works for that account even when you run as Administrator.
 #
 # .QUICK COMMANDS
 #   .\bin\bootstrap-local.ps1 -FactsOnly         Only collect facts (no host_vars, no chain)
-#   .\bin\bootstrap-local.ps1 -RunAll:$false      Facts + host_vars + WinRM (no OpenSSH, no chain)
-#   .\bin\bootstrap-local.ps1 -InstallOpenSSH    WinRM + host_vars + OpenSSH (then chain if RunAll)
-#   .\bin\bootstrap-local.ps1                     Full: WinRM + host_vars only; chain -> bootstrap-ansible-local.ps1 -> WSL -> fz
+#   .\bin\bootstrap-local.ps1 -RunAll:$false      Facts + host_vars + PSRemoting (no chain)
+#   .\bin\bootstrap-local.ps1 -ConfigureWSL       Also configure WSL (installs feature + distro)
+#   .\bin\bootstrap-local.ps1 -Rename             Prompt for new computer name and restart
+#   .\bin\bootstrap-local.ps1                     Full: PSRemoting + host_vars; chain -> bootstrap-ansible-local.ps1
 
 param(
     [bool]$RunAll = $true,
     [switch]$FactsOnly = $false,
-    [switch]$InstallOpenSSH = $false
+    [switch]$InstallOpenSSH = $false,
+    [switch]$ConfigureWSL = $false,
+    [switch]$Rename = $false
 )
 
 # Default lab password for new Windows hosts (no vault required). Used when no existing win_password in host_vars.
@@ -70,6 +75,17 @@ if (-not $isAdmin) {
     Write-Host "    .\bin\bootstrap-ide-cursor.ps1" -ForegroundColor Cyan
     Write-Host "  Then restart Cursor as Administrator and run this script again." -ForegroundColor Yellow
     exit 1
+}
+
+if ($Rename) {
+    $newName = Read-Host "Enter the new computer name"
+    if ([string]::IsNullOrWhiteSpace($newName)) {
+        Write-Host "No computer name provided. Aborting rename." -ForegroundColor Yellow
+    } else {
+        Write-Step "Renaming computer to '$newName' and restarting..."
+        Rename-Computer -NewName $newName -Restart
+        exit 0
+    }
 }
 
 # Get script directory and repo root (resolve to absolute so host-key detection always uses the real repo)
@@ -333,87 +349,6 @@ function Get-DesiredAnsibleHost {
     }
 }
 
-function Test-WSLInstalled {
-    # Check if WSL feature is enabled
-    try {
-        $wslFeature = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -ErrorAction Stop
-        Write-Verbose "WSL feature state: $($wslFeature.State)"
-        return ($wslFeature -and $wslFeature.State -eq "Enabled")
-    } catch {
-        # Non-admin or DISM unavailable in current session.
-        Write-Verbose "Test-WSLInstalled failed to query feature state: $_"
-        return $false
-    }
-}
-
-function Install-WSLFeature {
-    Write-Host "WSL feature not installed. Installing..." -ForegroundColor Yellow
-    Write-Verbose "Running Enable-WindowsOptionalFeature for Microsoft-Windows-Subsystem-Linux"
-    try {
-        Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -NoRestart -ErrorAction Stop | Out-Null
-        Write-Host "WSL feature installed. Reboot may be required." -ForegroundColor Green
-        return $true
-    } catch {
-        Write-Host "Failed to install WSL feature: $_" -ForegroundColor Red
-        return $false
-    }
-}
-
-function Install-WSLDistro {
-    param([string]$DistroName = "Ubuntu")
-    
-    Write-Host "Installing WSL distro: $DistroName" -ForegroundColor Yellow
-    Write-Verbose "Running wsl.exe --install -d $DistroName"
-    try {
-        # Install the distro using wsl --install
-        wsl.exe --install -d $DistroName 2>&1 | Out-Null
-        
-        # Wait a moment for installation to start/complete
-        Start-Sleep -Seconds 3
-        
-        # Check if installation was successful
-        $distros = Get-WSLDistros
-        if ($distros -contains $DistroName) {
-            Write-Host "WSL distro '$DistroName' installed successfully" -ForegroundColor Green
-            return $true
-        } else {
-            # Installation may be in progress or require reboot
-            Write-Host "WSL distro installation initiated for '$DistroName'" -ForegroundColor Yellow
-            Write-Host "Note: Installation may take several minutes and a reboot may be required." -ForegroundColor Yellow
-            Write-Host "After reboot, run 'wsl' to complete the setup." -ForegroundColor Yellow
-            return $false
-        }
-    } catch {
-        Write-Host "Failed to install WSL distro: $_" -ForegroundColor Red
-        return $false
-    }
-}
-
-function Get-WSLDistros {
-    $distros = @()
-    Write-Verbose "Querying installed WSL distros via 'wsl.exe --list --quiet'"
-    try {
-        $wslOutput = wsl.exe --list --quiet 2>&1
-        if ($LASTEXITCODE -eq 0 -and $wslOutput) {
-            # Process output - handle both array and string formats
-            $lines = if ($wslOutput -is [array]) { $wslOutput } else { $wslOutput -split "`r?`n" }
-            $distros = @($lines | ForEach-Object { 
-                # Remove null bytes and trim
-                $cleaned = $_ -replace "`0", "" | ForEach-Object { $_.Trim() }
-                # Only include if it has printable characters (not just control chars or whitespace)
-                if ($cleaned -and $cleaned.Length -gt 0 -and $cleaned -match '[a-zA-Z0-9]') { 
-                    $cleaned 
-                }
-            } | Where-Object { $_ })
-            Write-Verbose "Parsed WSL distro list: $($distros -join ', ')"
-        }
-    } catch {
-        # WSL not available, return empty array
-        Write-Verbose "Get-WSLDistros failed: $_"
-    }
-    return $distros
-}
-
 # Remove control characters (0x00-0x1F) except tab, newline, carriage return. Prevents YAML "unacceptable character #x0000" errors.
 function Strip-YamlControlChars {
     param([string]$Text)
@@ -535,77 +470,13 @@ Write-Verbose "Beginning privileged setup and fact collection."
 # Use preferred IP
 $bestIP = if ($preferredIP) { $preferredIP } else { "0.0.0.0" }
 
-Write-Set "Configuring WinRM HTTP listener/service/firewall (port 5985)"
-Write-Verbose "Running winrm quickconfig -force"
-winrm quickconfig -force | Out-Null
-# This sets up: WinRM HTTP listener on 5985, firewall rules, service startup. Mac connects via HTTP (5985).
+Write-Set "Enabling PowerShell Remoting (WinRM HTTP 5985)"
+Enable-PSRemoting -Force -SkipNetworkProfileCheck
+Write-Ok "PSRemoting enabled (WinRM listener, service, and firewall configured)"
 
-# Configure WinRM HTTPS listener (port 5986)
-Write-Check "Checking for WinRM HTTPS listener"
-$httpsListener = winrm enumerate winrm/config/Listener | Select-String -Pattern "Transport = HTTPS" -SimpleMatch
-if (-not $httpsListener) {
-    Write-Set "Configuring WinRM HTTPS listener (port 5986)"
-    try {
-        # Create self-signed certificate
-        $cert = New-SelfSignedCertificate -DnsName $env:COMPUTERNAME -CertStoreLocation Cert:\LocalMachine\My
-        Write-Verbose "Created certificate with thumbprint: $($cert.Thumbprint)"
-        
-        # Create WinRM HTTPS listener
-        $listenerCmd = "winrm create winrm/config/Listener?Address=*+Transport=HTTPS `"@{Hostname='$env:COMPUTERNAME'; CertificateThumbprint='$($cert.Thumbprint)'}`""
-        Write-Verbose "Running: $listenerCmd"
-        Invoke-Expression $listenerCmd | Out-Null
-        Write-Ok "WinRM HTTPS listener configured on port 5986"
-    } catch {
-        Write-Host "WARNING: Failed to configure WinRM HTTPS: $_" -ForegroundColor Yellow
-    }
-} else {
-    Write-Skip "WinRM HTTPS listener already exists"
-}
-
-# Ensure WinRM HTTPS firewall rule (port 5986)
-Write-Check "Checking WinRM HTTPS firewall rule (port 5986)"
-$httpsFirewall = Get-NetFirewallRule -DisplayName "WinRM HTTPS*" -ErrorAction SilentlyContinue
-if (-not $httpsFirewall) {
-    Write-Set "Creating WinRM HTTPS firewall rule (port 5986)"
-    New-NetFirewallRule -DisplayName "WinRM HTTPS (5986)" -Name "WinRM-HTTPS-In-TCP" -LocalPort 5986 -Protocol TCP -Direction Inbound -Action Allow -ErrorAction SilentlyContinue | Out-Null
-    Write-Ok "WinRM HTTPS firewall rule created"
-} else {
-    Write-Skip "WinRM HTTPS firewall rule already exists"
-}
-
-# Check and install WSL if needed
-Write-Check "Checking WSL feature state"
-$wslInstalled = Test-WSLInstalled
-Write-Verbose "Initial WSL installed check: $wslInstalled"
-
-if (-not $wslInstalled) {
-    $wslInstalled = Install-WSLFeature
-    if (-not $wslInstalled) {
-        Write-Host "WARNING: Could not install WSL feature. WSL functionality will be unavailable." -ForegroundColor Red
-    }
-}
-
-# Get WSL distros
-$wslDistros = Get-WSLDistros
-
-if ($wslDistros.Count -eq 0) {
-    if ($wslInstalled) {
-        Write-Set "No WSL distros found. Installing Ubuntu..."
-        Install-WSLDistro -DistroName "Ubuntu"
-        # Refresh distro list after installation attempt
-        Start-Sleep -Seconds 2
-        $wslDistros = Get-WSLDistros
-        Write-Verbose "WSL distros after install attempt: $($wslDistros -join ', ')"
-    } else {
-        Write-Host "WSL feature not available. Skipping distro installation." -ForegroundColor Yellow
-    }
-}
-
-if ($wslDistros.Count -gt 0) {
-    Write-Ok "WSL distribution found: $($wslDistros -join ', ')"
-} else {
-    Write-Skip "No WSL distros available"
-}
+Write-Set "Setting WinRM TrustedHosts to wildcard (allows any client)"
+Set-Item WSMan:\localhost\Client\TrustedHosts -Value * -Force
+Write-Ok "TrustedHosts set to *"
 
 # Build facts object (WinRM HTTP 5985 for Mac/Ansible)
 $facts = [ordered]@{
@@ -616,10 +487,6 @@ $facts = [ordered]@{
         winrm_port = 5985
         winrm_transport = "ntlm"
         winrm_scheme = "http"
-    }
-    
-    wsl = [ordered]@{
-        distros = $wslDistros
     }
 }
 
@@ -642,10 +509,8 @@ $hostVarsDir = Join-Path $repoRoot "inventory\host_vars"
 # or non-standard YAML formatting. If regex parsing fails, the password will be lost.
 # Consider using Ansible Vault for sensitive values instead of plaintext host_vars.
 $winVarsPath = Join-Path $hostVarsDir "$physicalNode-win.yaml"
-$wslVarsPath = Join-Path $hostVarsDir "$physicalNode-wsl.yaml"
 
 $existingWinVars = @{}
-$existingWslVars = @{}
 
 if (Test-Path $winVarsPath) {
     Write-Verbose "Existing Windows host_vars found at: $winVarsPath"
@@ -676,32 +541,6 @@ if (Test-Path $winVarsPath) {
     } catch {
         Write-Host "Warning: Could not parse existing Windows host_vars: $_" -ForegroundColor Yellow
     }
-}
-
-if (Test-Path $wslVarsPath) {
-    Write-Verbose "Existing WSL host_vars found at: $wslVarsPath"
-    try {
-        $rawWsl = Get-Content $wslVarsPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
-        if (-not $rawWsl) { $rawWsl = Get-Content $wslVarsPath -Raw }
-        $existingWslContent = Strip-YamlControlChars $rawWsl
-        # Parse wsl_user (handle quoted and unquoted values)
-        if ($existingWslContent -match 'wsl_user:\s*"?([^"\r\n]+)"?') { 
-            $existingWslVars.wsl_user = $Matches[1].Trim().Trim('"')
-        }
-        # Parse wsl_ssh_port
-        if ($existingWslContent -match 'wsl_ssh_port:\s*(\d+)') { 
-            $existingWslVars.wsl_ssh_port = [int]$Matches[1]
-        }
-        # Parse wsl_distro (handle quoted and unquoted, including empty string)
-        # Only preserve if it's a valid non-empty value
-        if ($existingWslContent -match 'wsl_distro:\s*"?([^"\r\n]+)"?') { 
-            $parsedDistro = $Matches[1].Trim().Trim('"')
-            # Only keep if it looks like a valid distro name (has alphanumeric chars)
-            if ($parsedDistro -match '[a-zA-Z0-9]') {
-                $existingWslVars.wsl_distro = $parsedDistro
-            }
-        }
-    } catch { }
 }
 
 # Generate Windows host_vars (WinRM HTTP 5985 for Mac management)
@@ -741,46 +580,30 @@ Write-Set "Writing Windows host_vars to: $winVarsPath"
 Write-Yaml -Path $winVarsPath -Data $winVars
 Write-Verbose "Windows host_vars write complete."
 
-# Generate WSL host_vars (matching template format)
-$wslVars = [ordered]@{
-    physical_node = $physicalNode
-    surface_type = "wsl"
-    host_ip = $bestIP
-    wsl_user = if ($existingWslVars.wsl_user) { $existingWslVars.wsl_user } else { "joshc" }
-    wsl_ssh_port = if ($existingWslVars.wsl_ssh_port) { $existingWslVars.wsl_ssh_port } else { 22 }
-}
-
-# Set wsl_distro - prefer detected distro over existing (which may be malformed)
-if ($wslDistros.Count -gt 0) {
-    # Ensure we get the first element as a string, not a character
-    $firstDistro = if ($wslDistros -is [array]) { $wslDistros[0] } else { $wslDistros }
-    $wslVars.wsl_distro = $firstDistro.ToString()
-} elseif ($existingWslVars.wsl_distro -and $existingWslVars.wsl_distro -match '[a-zA-Z0-9]{2,}') {
-    # Only use existing if it looks valid (at least 2 alphanumeric chars)
-    $wslVars.wsl_distro = $existingWslVars.wsl_distro
-} else {
-    $wslVars.wsl_distro = ""
-}
-
-# Add Ansible connection settings (Mac uses id_ed25519_ansible to SSH to this host)
-$wslVars.ansible_connection = "ssh"
-$wslVars.ansible_host = $ansibleHost
-$wslVars.ansible_user = $wslVars.wsl_user
-$wslVars.ansible_port = $wslVars.wsl_ssh_port
-$wslVars.ansible_python_interpreter = "/usr/bin/python3"
-$wslVars.ansible_ssh_private_key_file = "~/.ssh/id_ed25519_ansible"
-
-Write-Set "Writing WSL host_vars to: $wslVarsPath"
-Write-Yaml -Path $wslVarsPath -Data $wslVars
-Write-Verbose "WSL host_vars write complete."
-
 Write-Host ''
 Write-Ok "Bootstrap Complete"
 Write-Step "Generated files"
 Write-Host "  - $factsPath" -ForegroundColor White
 Write-Host "  - $winVarsPath" -ForegroundColor White
-Write-Host "  - $wslVarsPath" -ForegroundColor White
 Write-Host ''
+
+if ($ConfigureWSL) {
+    $wslScript = Join-Path $scriptDir 'bootstrap-wsl.ps1'
+    if (Test-Path $wslScript) {
+        Write-Host ''
+        Write-Host '================================================================================' -ForegroundColor Cyan
+        Write-Host '  [NEXT] CALLING: bin\bootstrap-wsl.ps1 (WSL feature + distro + host_vars)' -ForegroundColor Cyan
+        Write-Host '================================================================================' -ForegroundColor Cyan
+        Write-Host ''
+        & $wslScript -PhysicalNode $physicalNode -RepoRoot $repoRoot -BestIP $bestIP -AnsibleHost $ansibleHost
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host ('bootstrap-wsl.ps1 exited with code ' + $LASTEXITCODE) -ForegroundColor Red
+            exit $LASTEXITCODE
+        }
+    } else {
+        Write-Host "WARNING: bootstrap-wsl.ps1 not found at: $wslScript" -ForegroundColor Red
+    }
+}
 
 # ============================================================================
 # OpenSSH Server (Windows): DISABLED — now managed by Ansible role access_identity_windows.
@@ -1123,6 +946,7 @@ if ($RunAll) {
 } else {
     Write-Step 'Next steps'
     Write-Host '  1. Review generated host_vars files' -ForegroundColor White
-    Write-Host '  2. Run bin\bootstrap-ansible-local.ps1 to continue the chain (WSL + fz)' -ForegroundColor White
-    Write-Host '  3. Or run bin\bootstrap-local.sh inside WSL with --skip-fz-bootstrap' -ForegroundColor White
+    Write-Host '  2. Run bin\bootstrap-local.ps1 -ConfigureWSL to set up WSL (if needed)' -ForegroundColor White
+    Write-Host '  3. Run bin\bootstrap-ansible-local.ps1 to continue the chain (WSL + fz)' -ForegroundColor White
+    Write-Host '  4. Or run bin\bootstrap-local.sh inside WSL with --skip-fz-bootstrap' -ForegroundColor White
 }
