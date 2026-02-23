@@ -1,0 +1,35 @@
+#### run this this :
+# ansible-playbook playbooks/local.yaml
+---
+- name: Set up local development environment
+  hosts: local
+  # debugger: on_failed
+  vars:
+    # ansible_python_interpreter: /usr/bin/python3
+    debug: yes
+    # go_version: 1.16.7
+    # mode_codebase: 0755
+    # mode_workspace: 0755
+    # GO111MODULE: "on"
+    # go_install_clean: true
+
+    # GOPATH: /home/vagrant/go
+    # GOROOT: /usr/local/go
+    # GOPROXY: https://proxy.golang.org
+    # # Optional
+    # GO111MODULE: "on" # Needs to be of type string, not on/off which will be handled as a boolean.
+    # GOOS: darwin
+    # GOARCH: amd64
+    # go_checksum: sha256:24e95aa60f516cfc34139cfd1192efe97724ea62ab36ad9404df36b926b1f879
+
+  collections:
+    # RUN ansible-galaxy collection install pandemonium1986.k8s_toolbox
+    # - pandemonium1986.k8s_toolbox
+    - community.general
+    # - solutiondrive.terraform
+  tasks:
+
+  roles:
+    - role: node 
+    - role: common/shell_config
+    - role: ansible_dev_tools

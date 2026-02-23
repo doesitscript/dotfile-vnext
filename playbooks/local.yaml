@@ -1,0 +1,21 @@
+---
+# Local development environment setup (bash shell, nvm/node, ansible dev tools).
+#
+# Run from repo root:
+#   ansible-playbook playbooks/local.yaml
+#
+# With the main inventory (uses mac-dev / execution_nodes connection: local):
+#   ansible-playbook playbooks/local.yaml -i inventory/inventory.yaml
+#
+# Standalone (no inventory needed — targets localhost directly):
+#   ansible-playbook playbooks/local.yaml
+#
+- name: Set up local development environment
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  roles:
+    - role: common/node
+    - role: common/shell_config
+    - role: ansible_dev_tools
