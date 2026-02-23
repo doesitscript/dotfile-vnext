@@ -29,9 +29,9 @@
   gather_facts: false
 
   pre_tasks:
-    - name: Skip hosts not yet SSH-configured (never deployed)
+    - name: Skip hosts without WinRM connection configuration
       ansible.builtin.meta: end_host
-      when: not (ansible_facts.get('ssh_configured', false) | bool)
+      when: (ansible_connection | default('ssh')) != 'winrm'
       tags: [always]
 
   tasks:

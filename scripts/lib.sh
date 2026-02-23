@@ -32,6 +32,18 @@ get_python() {
   echo "${FZ_PYTHON:-python3}"
 }
 
+# Resolve the venv binary subdirectory (Scripts on Windows/MSYS2, bin elsewhere).
+venv_bin_dir() {
+  local venv_dir="${1:-$(repo_root)/.venv}"
+  if [ -d "${venv_dir}/Scripts" ] && [ ! -d "${venv_dir}/bin" ]; then
+    echo "${venv_dir}/Scripts"
+  elif [ -d "${venv_dir}/Scripts" ] && [ -x "${venv_dir}/Scripts/python.exe" ]; then
+    echo "${venv_dir}/Scripts"
+  else
+    echo "${venv_dir}/bin"
+  fi
+}
+
 file_sha256() {
   local target_file="$1"
   if command -v sha256sum >/dev/null 2>&1; then
@@ -64,7 +76,7 @@ ensure_venv() {
   local requirements_hash_file="${run_dir}/requirements.sha256"
   local python_cmd
   python_cmd="$(get_python)"
-  local activate_path="${venv_dir}/bin/activate"
+  local activate_path="$(venv_bin_dir "${venv_dir}")/activate"
   local force_bootstrap="${FZ_FORCE_BOOTSTRAP:-false}"
   local refresh_deps="${FZ_REFRESH_DEPS:-false}"
   local upgrade_pip_now="${FZ_UPGRADE_PIP_NOW:-false}"
@@ -240,7 +252,7 @@ setup_git_config() {
 fz_ansible() {
   local repo_root
   repo_root="$(repo_root)"
-  local venv_ansible="${repo_root}/.venv/bin/ansible-playbook"
+  local venv_ansible="$(venv_bin_dir)/ansible-playbook"
   local inventory_file="${repo_root}/inventory/inventory.yaml"
   local playbook="$1"
   shift || true
@@ -398,7 +410,7 @@ fz_ansible() {
 fz_ansible_adhoc() {
   local repo_root
   repo_root="$(repo_root)"
-  local venv_ansible="${repo_root}/.venv/bin/ansible"
+  local venv_ansible="$(venv_bin_dir)/ansible"
   local inventory_file="${repo_root}/inventory/inventory.yaml"
   local host_pattern="${1:-}"
 
@@ -465,7 +477,7 @@ run_ansible_playbook() {
   fi
 
   # Build ansible-playbook command
-  local venv_ansible="${repo_root}/.venv/bin/ansible-playbook"
+  local venv_ansible="$(venv_bin_dir)/ansible-playbook"
   local ansible_cmd=(
     "${venv_ansible}"
     "${playbook}"
@@ -601,7 +613,7 @@ require_vault_pass_setup() {
 run_local_bootstrap_playbook() {
   local repo_root
   repo_root="$(repo_root)"
-  local venv_ansible="${repo_root}/.venv/bin/ansible-playbook"
+  local venv_ansible="$(venv_bin_dir)/ansible-playbook"
   local playbook="${repo_root}/playbooks/bootstrap_local.yml"
 
   ensure_venv
@@ -633,7 +645,7 @@ run_local_bootstrap_playbook() {
 run_controller_ssh_install() {
   local repo_root
   repo_root="$(repo_root)"
-  local venv_ansible="${repo_root}/.venv/bin/ansible-playbook"
+  local venv_ansible="$(venv_bin_dir)/ansible-playbook"
   local playbook="${repo_root}/playbooks/controller_ssh_install.yml"
 
   ensure_venv
@@ -674,7 +686,7 @@ run_ansible_vault_edit() {
   setup_ansible_env
 
   # Build ansible-vault command (use venv version)
-  local venv_vault="${repo_root}/.venv/bin/ansible-vault"
+  local venv_vault="$(venv_bin_dir)/ansible-vault"
   local ansible_cmd=(
     "${venv_vault}"
     edit
@@ -732,12 +744,15 @@ run_local_role_playbook() {
 
   local repo_root
   repo_root="$(repo_root)"
-  local venv_ansible="${repo_root}/.venv/bin/ansible-playbook"
+  local venv_ansible="$(venv_bin_dir)/ansible-playbook"
   local tmp_playbook
   tmp_playbook="$(mktemp "${TMPDIR:-/tmp}/fz-role-local.XXXXXX.yml")"
   local dotfiles_home_default="${repo_root}"
   local dotfiles_user_home_default="${HOME}"
-  local local_python_interpreter="${repo_root}/.venv/bin/python3"
+  local _venv_bin
+  _venv_bin="$(venv_bin_dir)"
+  local local_python_interpreter="${_venv_bin}/python3"
+  [ -x "${local_python_interpreter}" ] || local_python_interpreter="${_venv_bin}/python"
 
   ensure_venv
   setup_ansible_env

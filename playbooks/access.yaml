@@ -5,11 +5,15 @@
 # 2) Windows: install OpenSSH, deploy keys, configure ports + firewall.
 # 3) Controller (again): template ~/.ssh/config from cached ssh_configured facts.
 #
-# Single command:
+# Single command (all deployed hosts):
 #   ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml
 #
-# Limit to one Windows host:
+# Limit to one node (include execution_nodes for controller SSH keypair + config):
 #   ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit 'execution_nodes,server-225-win'
+#   ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit 'execution_nodes,network-server-win'
+#
+# Limit by group (underscore, not dash — matches inventory group name):
+#   ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit 'execution_nodes,network_server'
 #
 - import_playbook: access_controller.yaml
 - import_playbook: access_windows.yaml

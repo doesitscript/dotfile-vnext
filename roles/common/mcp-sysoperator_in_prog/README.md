@@ -1,3 +1,4 @@
+the build use this image: ghcr.io/ansible/community-ansible-dev-tools:latest
 zsh-autoenv
 ===========
 1. Clone the repository

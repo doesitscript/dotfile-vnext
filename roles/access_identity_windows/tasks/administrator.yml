@@ -10,8 +10,16 @@
 # The file must have strict ACLs: no inheritance, only Administrators
 # and SYSTEM with FullControl.
 
-# 6) administrators_authorized_keys file permissions
-# The file itself is created by win_lineinfile (create: true) in step 7.
+# 6) Install controller public key (creates the file on first deploy)
+- name: Install controller public key in administrators_authorized_keys
+  community.windows.win_lineinfile:
+    path: "{{ administrators_authorized_keys_path }}"
+    line: "{{ controller_pub_key_content }}"
+    create: true
+    state: present
+  register: install_admin_pub_key_result
+
+# 7) Lock down administrators_authorized_keys ACL (file must exist first)
 - name: Disable ACL inheritance on administrators_authorized_keys
   ansible.windows.win_acl_inheritance:
     path: "{{ administrators_authorized_keys_path }}"
@@ -33,15 +41,6 @@
     type: allow
     rights: FullControl
     state: present
-
-# 7) Install controller public key
-- name: Install controller public key in administrators_authorized_keys
-  community.windows.win_lineinfile:
-    path: "{{ administrators_authorized_keys_path }}"
-    line: "{{ controller_pub_key_content }}"
-    create: true
-    state: present
-  register: install_admin_pub_key_result
 
 # 8) Restart sshd if capability, port, shell, or keys changed
 - name: Restart sshd when OpenSSH installed, port changed, shell changed, or admin key updated

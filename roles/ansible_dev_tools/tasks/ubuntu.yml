@@ -1,28 +1,50 @@
 ---
-- name: Install ansible-dev-tools via pip (Ubuntu)
-  ansible.builtin.pip:
-    name: ansible-dev-tools
-    state: present
-    executable: "{{ ansible_dev_tools_pip }}"
-  become: false
-  when: ansible_dev_tools_install | bool
-  tags: [ansible-dev-tools]
-
-- name: Install ansible-navigator via pip (Ubuntu)
-  ansible.builtin.pip:
-    name: ansible-navigator
-    state: present
-    executable: "{{ ansible_dev_tools_pip }}"
-  become: false
-  when: ansible_navigator_install | bool
-  tags: [ansible-navigator]
-
-- name: Install Ansible CLI tools via pipx (Ubuntu)
-  ansible.builtin.command: "pipx install {{ item }}"
-  loop: "{{ ansible_pipx_packages }}"
-  register: _ansible_pipx_result
-  changed_when: "'installed package' in _ansible_pipx_result.stdout"
-  failed_when:
-    - _ansible_pipx_result.rc != 0
-    - "'already seems to be installed' not in _ansible_pipx_result.stderr"
+- name: Ensure pipx binary path is initialized on Ubuntu
+  ansible.builtin.command: pipx ensurepath
+  changed_when: false
+  failed_when: false
   tags: pipx
+
+- name: Install ansible-dev-tools via pipx (Ubuntu)
+  ansible.builtin.command: pipx install ansible-dev-tools
+  register: _adt_pipx_result
+  changed_when: "'installed package' in _adt_pipx_result.stdout"
+  failed_when:
+    - _adt_pipx_result.rc != 0
+    - "'already seems to be installed' not in _adt_pipx_result.stderr"
+  when: ansible_dev_tools_install | bool
+  notify: Re-source shell profile
+  tags: [ansible-dev-tools, pipx]
+
+- name: Install ansible-navigator via pipx (Ubuntu)
+  ansible.builtin.command: pipx install ansible-navigator
+  register: _anav_pipx_result
+  changed_when: "'installed package' in _anav_pipx_result.stdout"
+  failed_when:
+    - _anav_pipx_result.rc != 0
+    - "'already seems to be installed' not in _anav_pipx_result.stderr"
+  when: ansible_navigator_install | bool
+  notify: Re-source shell profile
+  tags: [ansible-navigator, pipx]
+
+- name: Install ansible-builder via pipx (Ubuntu)
+  ansible.builtin.command: pipx install ansible-builder
+  register: _abld_pipx_result
+  changed_when: "'installed package' in _abld_pipx_result.stdout"
+  failed_when:
+    - _abld_pipx_result.rc != 0
+    - "'already seems to be installed' not in _abld_pipx_result.stderr"
+  when: ansible_builder_install | bool
+  notify: Re-source shell profile
+  tags: [ansible-builder, pipx]
+
+- name: Install ansible-lint via pipx (Ubuntu)
+  ansible.builtin.command: pipx install ansible-lint
+  register: _alint_pipx_result
+  changed_when: "'installed package' in _alint_pipx_result.stdout"
+  failed_when:
+    - _alint_pipx_result.rc != 0
+    - "'already seems to be installed' not in _alint_pipx_result.stderr"
+  when: ansible_lint_install | bool
+  notify: Re-source shell profile
+  tags: [ansible-lint, pipx]

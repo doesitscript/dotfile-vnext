@@ -1,0 +1,15 @@
+---
+- name: Re-source shell profile
+  ansible.builtin.shell: |
+    bash -lc '
+      echo "Re-sourced bash profile -- verifying Ansible dev tools on PATH:"
+      for cmd in ansible-dev-tools ansible-navigator ansible-builder ansible-lint; do
+        if command -v "$cmd" >/dev/null 2>&1; then
+          echo "  OK: $cmd -> $(command -v $cmd)"
+        else
+          echo "  MISSING: $cmd not found on PATH"
+        fi
+      done
+    '
+  changed_when: false
+  failed_when: false
