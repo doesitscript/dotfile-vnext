@@ -5,10 +5,17 @@ ansible_navigator_install: true
 ansible_builder_install: true
 ansible_lint_install: true
 
-
 # Ansible MCP server configuration (used by the 'project' tag tasks).
 ansible_mcp_extension: "redhat.ansible-26.1.3-universal"
-ansible_mcp_cli_path: "{{ ansible_env.HOME }}/.cursor/extensions/{{ ansible_mcp_extension }}/out/mcp/cli.js"
-# ansible_mcp_workspace_root: "{{ playbook_dir | dirname }}"
+
+# On remote connections (SSH/WSL) Cursor installs extensions under
+# ~/.cursor-server/extensions/ instead of ~/.cursor/extensions/.
+# Auto-detect: prefer .cursor-server when it exists (remote), fall back to .cursor (local).
+ansible_mcp_cursor_ext_base: >-
+  {{ (ansible_env.HOME + '/.cursor-server/extensions')
+     if (ansible_env.HOME + '/.cursor-server/extensions') is directory
+     else (ansible_env.HOME + '/.cursor/extensions') }}
+
+ansible_mcp_cli_path: "{{ ansible_mcp_cursor_ext_base }}/{{ ansible_mcp_extension }}/out/mcp/cli.js"
 ansible_mcp_workspace_root: "{{ playbook_dir | dirname }}"
-ansible_mcp_project_dir: "/mnt/d/develop/dotfile-vnext/.cursor"
+ansible_mcp_project_dir: "{{ ansible_mcp_workspace_root }}/.cursor"

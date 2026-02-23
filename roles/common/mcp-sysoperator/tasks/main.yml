@@ -1,0 +1,25 @@
+---
+- name: Install mcp-sysoperator on macOS
+  ansible.builtin.import_tasks: mac.yml
+  when: ansible_os_family == "Darwin"
+
+- name: Install mcp-sysoperator on Ubuntu/WSL
+  ansible.builtin.import_tasks: ubuntu.yml
+  when: ansible_os_family == "Debian"
+
+- name: Install mcp-sysoperator on Windows
+  ansible.builtin.import_tasks: windows.yml
+  when: ansible_os_family == "Windows"
+
+- name: Display MCP server configuration snippet
+  ansible.builtin.debug:
+    msg: |
+      mcp-sysoperator built at {{ mcp_sysoperator_install_dir }}
+
+      Add the following to your project .cursor/mcp.json (mcpServers section):
+
+      "sysoperator": {
+        "command": "node",
+        "args": ["{{ mcp_sysoperator_entry_point }}"],
+        "env": {}
+      }

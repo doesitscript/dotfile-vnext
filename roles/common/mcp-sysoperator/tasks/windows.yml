@@ -1,0 +1,25 @@
+---
+- name: Clone mcp-sysoperator repository (Windows)
+  ansible.builtin.git:
+    repo: "{{ mcp_sysoperator_repo }}"
+    dest: "{{ mcp_sysoperator_install_dir }}"
+    version: "{{ mcp_sysoperator_version }}"
+    update: true
+
+- name: Install mcp-sysoperator npm dependencies (Windows)
+  ansible.windows.win_shell: |
+    $env:NVM_DIR = "{{ dotfiles_user_home }}\.nvm"
+    & "$env:NVM_DIR\nvm.exe" use default
+    npm install
+  args:
+    chdir: "{{ mcp_sysoperator_install_dir }}"
+    creates: "{{ mcp_sysoperator_install_dir }}\\node_modules\\.package-lock.json"
+
+- name: Build mcp-sysoperator (Windows)
+  ansible.windows.win_shell: |
+    $env:NVM_DIR = "{{ dotfiles_user_home }}\.nvm"
+    & "$env:NVM_DIR\nvm.exe" use default
+    npm run build
+  args:
+    chdir: "{{ mcp_sysoperator_install_dir }}"
+    creates: "{{ mcp_sysoperator_entry_point }}"

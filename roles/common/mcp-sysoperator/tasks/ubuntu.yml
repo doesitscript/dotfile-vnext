@@ -1,0 +1,27 @@
+---
+- name: Clone mcp-sysoperator repository (Ubuntu/WSL)
+  ansible.builtin.git:
+    repo: "{{ mcp_sysoperator_repo }}"
+    dest: "{{ mcp_sysoperator_install_dir }}"
+    version: "{{ mcp_sysoperator_version }}"
+    update: true
+
+- name: Install mcp-sysoperator npm dependencies (Ubuntu/WSL)
+  ansible.builtin.shell: |
+    export NVM_DIR="{{ dotfiles_user_home }}/.nvm"
+    . "$NVM_DIR/nvm.sh"
+    npm install
+  args:
+    chdir: "{{ mcp_sysoperator_install_dir }}"
+    creates: "{{ mcp_sysoperator_install_dir }}/node_modules/.package-lock.json"
+    executable: /bin/bash
+
+- name: Build mcp-sysoperator (Ubuntu/WSL)
+  ansible.builtin.shell: |
+    export NVM_DIR="{{ dotfiles_user_home }}/.nvm"
+    . "$NVM_DIR/nvm.sh"
+    npm run build
+  args:
+    chdir: "{{ mcp_sysoperator_install_dir }}"
+    creates: "{{ mcp_sysoperator_entry_point }}"
+    executable: /bin/bash
