@@ -1,0 +1,14 @@
+---
+- name: Install ansible-mcp on macOS
+  ansible.builtin.import_tasks: mac.yml
+  when: ansible_facts['system'] == "Darwin"
+  tags: [mcp, ansible-mcp]
+
+- name: Install ansible-mcp on Ubuntu/WSL
+  ansible.builtin.import_tasks: ubuntu.yml
+  when: ansible_facts['distribution'] == "Ubuntu"
+  tags: [mcp, ansible-mcp]
+
+- name: Configure ansible-mcp entry in .cursor/mcp.json
+  ansible.builtin.import_tasks: configure.yml
+  tags: [mcp, ansible-mcp]

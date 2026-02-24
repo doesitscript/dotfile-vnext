@@ -23,24 +23,6 @@
   loop_control:
     label: "{{ item.dest }}"
 
-- name: Ensure pyenv-docker persistent volume directory exists
-  ansible.builtin.file:
-    path: "{{ dotfiles_user_home }}/.pyenv-docker"
-    state: directory
-    mode: "0755"
-  tags: pyenv
-
-- name: Build pyenv-env Docker image from Dockerfile
-  community.docker.docker_image:
-    name: pyenv-env
-    tag: latest
-    source: build
-    build:
-      path: "{{ dotfiles_home }}/roles/python/files"
-      dockerfile: Dockerfile.pyenv
-    force_source: false
-  tags: pyenv
-
 - name: Check whether pytest.ini already exists
   ansible.builtin.stat:
     path: "{{ dotfiles_user_home }}/pytest.ini"

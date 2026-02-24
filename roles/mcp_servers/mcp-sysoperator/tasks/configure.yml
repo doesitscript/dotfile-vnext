@@ -1,0 +1,53 @@
+---
+- name: Ensure .cursor directory exists in project root
+  ansible.builtin.file:
+    path: "{{ mcp_sysoperator_project_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Check whether .cursor/mcp.json exists
+  ansible.builtin.stat:
+    path: "{{ mcp_sysoperator_project_dir }}/mcp.json"
+  register: _mcp_json_stat
+
+- name: Create .cursor/mcp.json with sysoperator entry
+  ansible.builtin.copy:
+    dest: "{{ mcp_sysoperator_project_dir }}/mcp.json"
+    mode: "0644"
+    content: "{{ {'mcpServers': {'sysoperator': _sysoperator_entry}} | to_nice_json }}\n"
+  vars:
+    _sysoperator_entry:
+      command: node
+      args:
+        - "{{ mcp_sysoperator_entry_point }}"
+      env:
+        _MCP_ANSIBLE_ROLE_PATH: "{{ mcp_sysoperator_role_path }}"
+  when: not _mcp_json_stat.stat.exists
+
+- name: Ensure sysoperator entry exists in .cursor/mcp.json
+  when: _mcp_json_stat.stat.exists
+  block:
+    - name: Read existing .cursor/mcp.json
+      ansible.builtin.slurp:
+        src: "{{ mcp_sysoperator_project_dir }}/mcp.json"
+      register: _mcp_json_raw
+
+    - name: Merge sysoperator entry into existing config
+      vars:
+        _existing: "{{ _mcp_json_raw.content | b64decode | from_json }}"
+        _sysoperator_entry:
+          command: node
+          args:
+            - "{{ mcp_sysoperator_entry_point }}"
+          env:
+            _MCP_ANSIBLE_ROLE_PATH: "{{ mcp_sysoperator_role_path }}"
+        _merged: >-
+          {{ _existing | combine({
+               'mcpServers': (_existing.mcpServers | default({})) | combine({
+                 'sysoperator': _sysoperator_entry
+               })
+             }) }}
+      ansible.builtin.copy:
+        dest: "{{ mcp_sysoperator_project_dir }}/mcp.json"
+        content: "{{ _merged | to_nice_json }}\n"
+        mode: "0644"

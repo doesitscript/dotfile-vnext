@@ -1,0 +1,32 @@
+---
+- name: Clone ansible-mcp repository (macOS)
+  ansible.builtin.git:
+    repo: "{{ mcp_ansible_repo }}"
+    dest: "{{ mcp_ansible_install_dir }}"
+    version: "{{ mcp_ansible_version }}"
+    update: true
+
+- name: Create Python virtual environment for ansible-mcp (macOS)
+  ansible.builtin.command:
+    cmd: python3 -m venv "{{ mcp_ansible_venv_dir }}"
+    creates: "{{ mcp_ansible_venv_dir }}/bin/python"
+
+- name: Upgrade pip inside ansible-mcp venv (macOS)
+  ansible.builtin.command:
+    cmd: "{{ mcp_ansible_venv_dir }}/bin/pip install -U pip"
+  register: _pip_upgrade
+  changed_when: "'Successfully installed' in _pip_upgrade.stdout"
+
+- name: Install ansible-mcp requirements (macOS)
+  ansible.builtin.command:
+    cmd: "{{ mcp_ansible_venv_dir }}/bin/pip install -r requirements.txt"
+    chdir: "{{ mcp_ansible_install_dir }}"
+  register: _pip_reqs
+  changed_when: "'Successfully installed' in _pip_reqs.stdout"
+
+- name: Install ansible-mcp package in editable mode (macOS)
+  ansible.builtin.command:
+    cmd: "{{ mcp_ansible_venv_dir }}/bin/pip install -e ."
+    chdir: "{{ mcp_ansible_install_dir }}"
+  register: _pip_editable
+  changed_when: "'Successfully installed' in _pip_editable.stdout"

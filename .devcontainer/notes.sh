@@ -1,1 +1,0 @@
-/home/joshc/.cursor-server/extensions/extensions.json

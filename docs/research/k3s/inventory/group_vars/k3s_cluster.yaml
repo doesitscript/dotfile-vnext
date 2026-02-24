@@ -1,0 +1,23 @@
+---
+# k3s Cluster-Wide Configuration
+
+k3s_version: "v1.28.4"
+k3s_channel: "stable"
+k3s_install_dir: /usr/local/bin
+k3s_data_dir: /var/lib/rancher/k3s
+
+# API Server Configuration
+k3s_api_host: "192.168.50.38"
+k3s_api_port: 6443
+k3s_api_url: "https://{{ k3s_api_host }}:{{ k3s_api_port }}"
+
+# Cluster Configuration
+k3s_cni: flannel
+k3s_cluster_dns: "10.43.0.10"
+k3s_cluster_domain: "cluster.local"
+
+# Security: Token is passed via environment (K3S_TOKEN)
+k3s_token: "{{ lookup('env', 'K3S_TOKEN') | default('') }}"
+
+# Local storage disabled; we manage PV's ourselves
+k3s_disable_local_storage: true

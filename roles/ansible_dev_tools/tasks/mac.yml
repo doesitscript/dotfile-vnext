@@ -1,29 +1,15 @@
 ---
-- name: Install ansible-lint via Homebrew (macOS)
-  community.general.homebrew:
-    name: ansible-lint
-    state: present
-  tags: [ansible-lint]
+- name: Install Ansible with dependency CLIs exposed via pipx (macOS)
+  ansible.builtin.command: "pipx install --include-deps {{ item }}"
+  loop: "{{ ansible_pipx_include_deps_packages }}"
+  register: _ansible_deps_pipx_result
+  changed_when: "'installed package' in _ansible_deps_pipx_result.stdout"
+  failed_when:
+    - _ansible_deps_pipx_result.rc != 0
+    - "'already seems to be installed' not in _ansible_deps_pipx_result.stderr"
+  tags: pipx
 
-- name: Install ansible-dev-tools via pip (macOS)
-  ansible.builtin.pip:
-    name: ansible-dev-tools
-    state: present
-    executable: "{{ ansible_dev_tools_pip }}"
-  become: false
-  when: ansible_dev_tools_install | bool
-  tags: [ansible-dev-tools]
-
-- name: Install ansible-navigator via pip (macOS)
-  ansible.builtin.pip:
-    name: ansible-navigator
-    state: present
-    executable: "{{ ansible_dev_tools_pip }}"
-  become: false
-  when: ansible_navigator_install | bool
-  tags: [ansible-navigator]
-
-- name: Install Ansible CLI tools via pipx (macOS)
+- name: Install standalone Ansible CLI tools via pipx (macOS)
   ansible.builtin.command: "pipx install {{ item }}"
   loop: "{{ ansible_pipx_packages }}"
   register: _ansible_pipx_result

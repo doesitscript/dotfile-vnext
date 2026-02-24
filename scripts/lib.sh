@@ -827,6 +827,11 @@ Commands:
   collect-facts          Write facts for a node to facts/<node>.json
                         Requires --limit (e.g. --limit mac-dev)
                         Windows hosts: run on that machine: .\bin\bootstrap-local.ps1 -FactsOnly
+  gather-facts           Gather Ansible facts from all reachable hosts
+                        Requires --limit or --all
+                        Saves YAML snapshots to inventory/facts/ and updates .facts_cache/
+                        Example: fz gather-facts --all
+                        Example: fz gather-facts --limit dev-workstation-win
   role-local <role>      Run one role locally on localhost
                         Example: fz role-local git
                         Supports ansible-playbook flags (e.g. --check, --diff)
@@ -866,6 +871,8 @@ Examples:
   fz deploy network --limit network-server-win  Deploy network stacks with confirmation prompt
   fz deploy network --limit network-server-win --yes  Deploy network stacks without prompt
   fz deploy main --limit server-225-wsl    Deploy main stacks to a specific host
+  fz gather-facts --all                      Gather facts from all reachable hosts
+  fz gather-facts --limit windows_hosts      Gather facts from Windows hosts only
   fz verify                                 Verify fabric health and connectivity
   fz verify --check                         Dry-run verify playbook without applying changes
   fz role-local git                         Run the git role locally on localhost

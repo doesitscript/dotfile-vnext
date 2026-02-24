@@ -1,0 +1,57 @@
+---
+# k3s Debug & Verification Playbook
+
+- name: k3s Cluster Debug
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Get all nodes
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml get nodes -o wide
+      register: nodes_info
+      changed_when: false
+
+    - name: Display nodes
+      ansible.builtin.debug:
+        msg: "{{ nodes_info.stdout_lines }}"
+
+    - name: Get system pods
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml get pods -n kube-system -o wide
+      register: system_pods
+      changed_when: false
+
+    - name: Display system pods
+      ansible.builtin.debug:
+        msg: "{{ system_pods.stdout_lines }}"
+
+    - name: Get ai-infra namespace pods (if exists)
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml get pods -n ai-infra -o wide 2>/dev/null || echo "Namespace ai-infra not yet created"
+      register: workload_pods
+      changed_when: false
+
+    - name: Display workload pods
+      ansible.builtin.debug:
+        msg: "{{ workload_pods.stdout_lines }}"
+
+    - name: Check storage
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml get pv,pvc -A
+      register: storage_info
+      changed_when: false
+
+    - name: Display storage
+      ansible.builtin.debug:
+        msg: "{{ storage_info.stdout_lines }}"
+
+    - name: Get services
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml get svc -A
+      register: services_info
+      changed_when: false
+
+    - name: Display services
+      ansible.builtin.debug:
+        msg: "{{ services_info.stdout_lines }}"

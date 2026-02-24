@@ -1,0 +1,66 @@
+---
+# k3s Control Plane Installation Tasks
+
+- name: Check if k3s is already installed
+  ansible.builtin.stat:
+    path: "{{ k3s_install_dir }}/k3s"
+  register: k3s_binary_stat
+
+- name: Download and install k3s
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | \
+    K3S_TOKEN="{{ k3s_token }}" \
+    K3S_URL="{{ k3s_api_url }}" \
+    INSTALL_K3S_VERSION="{{ k3s_version }}" \
+    INSTALL_K3S_SKIP_ENABLE=true \
+    bash -s - server \
+      --cluster-init \
+      --bind-address="{{ k3s_api_host }}" \
+      --https-listen-port="{{ k3s_api_port }}" \
+      --data-dir="{{ k3s_data_dir }}" \
+      --cluster-domain="{{ k3s_cluster_domain }}" \
+      --cluster-dns="{{ k3s_cluster_dns }}" \
+      --disable=local-storage \
+      --flannel-backend=vxlan
+  when: not k3s_binary_stat.stat.exists
+  register: k3s_install_result
+  changed_when: "'installed' in k3s_install_result.stderr"
+
+- name: Enable and start k3s service
+  ansible.builtin.systemd:
+    name: k3s
+    enabled: true
+    state: started
+    daemon_reload: true
+  register: k3s_service_result
+
+- name: Wait for k3s service to be ready
+  ansible.builtin.shell: |
+    until /usr/local/bin/k3s kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml get nodes >/dev/null 2>&1; do
+      sleep 5
+    done
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Extract kubeconfig for distribution
+  ansible.builtin.slurp:
+    src: "{{ k3s_kubeconfig_src }}"
+  register: k3s_kubeconfig_content
+  changed_when: false
+
+- name: Verify control plane is Ready
+  ansible.builtin.shell: |
+    /usr/local/bin/k3s kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml get nodes -o jsonpath='{.items[0].status.conditions[?(@.type=="Ready")].status}'
+  register: control_plane_ready
+  until: control_plane_ready.stdout == "True"
+  retries: 10
+  delay: 10
+  changed_when: false
+
+- name: Display control plane readiness
+  ansible.builtin.debug:
+    msg:
+      - "k3s control plane is Ready"
+      - "API Server: {{ k3s_api_url }}"
+      - "Kubeconfig available at: {{ k3s_kubeconfig_src }}"

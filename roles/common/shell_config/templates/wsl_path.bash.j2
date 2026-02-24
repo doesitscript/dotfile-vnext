@@ -1,0 +1,34 @@
+# PATH configuration for WSL/Linux
+# Managed by Ansible role: common/shell_config
+# Ensures Linux binaries take precedence over Windows binaries in WSL
+
+# In WSL, Windows paths are automatically added to PATH, which can cause conflicts
+# This ensures Linux binaries are found first by prepending Linux paths
+if [ -n "${WSL_DISTRO_NAME:-}" ] || [ -n "${WSLENV:-}" ]; then
+  # Store original PATH
+  ORIGINAL_PATH="$PATH"
+  
+  # Extract Linux paths (everything not under /mnt/)
+  LINUX_PATH=$(echo "$PATH" | tr ':' '\n' | grep -v "^/mnt/" | tr '\n' ':' | sed 's/:$//')
+  
+  # Extract Windows paths (everything under /mnt/)
+  WINDOWS_PATH=$(echo "$PATH" | tr ':' '\n' | grep "^/mnt/" | tr '\n' ':' | sed 's/:$//')
+  
+  # Rebuild PATH with Linux paths first, then Windows paths
+  # This ensures Linux binaries (like hub) are found before Windows versions
+  export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$HOME/.local/bin:$HOME/bin:$LINUX_PATH"
+  
+  # Append Windows paths at the end (so they're available but not preferred)
+  if [ -n "$WINDOWS_PATH" ]; then
+    export PATH="$PATH:$WINDOWS_PATH"
+  fi
+  
+  # Verify hub is the Linux version (not Windows) - warn if Windows version is found first
+  if command -v hub >/dev/null 2>&1; then
+    hub_path=$(command -v hub)
+    if echo "$hub_path" | grep -q "^/mnt/"; then
+      echo "WARNING: Windows hub found at $hub_path. Linux hub should be used in WSL." >&2
+      echo "  Check that hub is installed in WSL: sudo apt install hub" >&2
+    fi
+  fi
+fi

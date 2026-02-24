@@ -1,7 +1,7 @@
 ---
 - name: Process ansible_dev_tools role for macOS
   ansible.builtin.import_tasks: mac.yml
-  when: ansible_facts['distribution'] == "Darwin"
+  when: ansible_facts['system'] == "Darwin"
 
 - name: Process ansible_dev_tools role for Ubuntu
   ansible.builtin.import_tasks: ubuntu.yml
@@ -11,6 +11,9 @@
   ansible.builtin.import_tasks: windows.yml
   when: ansible_facts['system'] == "Windows"
 
-- name: Configure Ansible MCP server for project
-  ansible.builtin.import_tasks: project.yml
-  tags: [project]
+- name: Symlink Ansible Docker wrapper functions into ~/.bashrc.d (macOS only)
+  ansible.builtin.file:
+    src: "{{ dotfiles_home }}/roles/ansible_dev_tools/files/ansible-functions.bash"
+    dest: "{{ ansible_env.HOME }}/.bashrc.d/ansible-functions.bash"
+    state: link
+  when: ansible_facts['system'] == "Darwin"

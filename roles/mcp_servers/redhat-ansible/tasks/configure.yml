@@ -1,0 +1,65 @@
+---
+- name: Ensure .cursor directory exists in project root
+  ansible.builtin.file:
+    path: "{{ redhat_ansible_project_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Check whether .cursor/mcp.json exists
+  ansible.builtin.stat:
+    path: "{{ redhat_ansible_project_dir }}/mcp.json"
+  register: _mcp_json_stat
+
+- name: Create .cursor/mcp.json with redhat-ansible entry
+  ansible.builtin.copy:
+    dest: "{{ redhat_ansible_project_dir }}/mcp.json"
+    mode: "0644"
+    content: "{{ {'mcpServers': {'ansible': _rh_ansible_entry}} | to_nice_json }}\n"
+  vars:
+    _rh_ansible_entry:
+      command: node
+      args:
+        - "{{ redhat_ansible_cli_path }}"
+        - "--stdio"
+      env:
+        PATH: "{{ redhat_ansible_server_path }}"
+        WORKSPACE_ROOT: "{{ redhat_ansible_workspace_root }}"
+        MCP_ANSIBLE_COLLECTIONS_PATHS: "{{ redhat_ansible_collections_paths }}"
+        MCP_ANSIBLE_ROLES_PATH: "{{ redhat_ansible_roles_path }}"
+        MCP_ANSIBLE_ENV_ANSIBLE_CONFIG: "{{ redhat_ansible_config }}"
+        _MCP_ANSIBLE_ROLE_PATH: "{{ redhat_ansible_role_path }}"
+  when: not _mcp_json_stat.stat.exists
+
+- name: Ensure redhat-ansible entry exists in .cursor/mcp.json
+  when: _mcp_json_stat.stat.exists
+  block:
+    - name: Read existing .cursor/mcp.json
+      ansible.builtin.slurp:
+        src: "{{ redhat_ansible_project_dir }}/mcp.json"
+      register: _mcp_json_raw
+
+    - name: Merge redhat-ansible entry into existing config
+      vars:
+        _existing: "{{ _mcp_json_raw.content | b64decode | from_json }}"
+        _rh_ansible_entry:
+          command: node
+          args:
+            - "{{ redhat_ansible_cli_path }}"
+            - "--stdio"
+          env:
+            PATH: "{{ redhat_ansible_server_path }}"
+            WORKSPACE_ROOT: "{{ redhat_ansible_workspace_root }}"
+            MCP_ANSIBLE_COLLECTIONS_PATHS: "{{ redhat_ansible_collections_paths }}"
+            MCP_ANSIBLE_ROLES_PATH: "{{ redhat_ansible_roles_path }}"
+            MCP_ANSIBLE_ENV_ANSIBLE_CONFIG: "{{ redhat_ansible_config }}"
+            _MCP_ANSIBLE_ROLE_PATH: "{{ redhat_ansible_role_path }}"
+        _merged: >-
+          {{ _existing | combine({
+               'mcpServers': (_existing.mcpServers | default({})) | combine({
+                 'ansible': _rh_ansible_entry
+               })
+             }) }}
+      ansible.builtin.copy:
+        dest: "{{ redhat_ansible_project_dir }}/mcp.json"
+        content: "{{ _merged | to_nice_json }}\n"
+        mode: "0644"

@@ -61,6 +61,12 @@ Installed to the project `.cursor/mcp.json` on a WSL host reached via SSH:
 }
 ```
 
-## Ref
+## Source
 
 https://github.com/tarnover/mcp-sysoperator
+
+## Tags
+
+**Ansible tags:** `[mcp, mcp-sysoperator]`
+
+**Classification:** `["infrastructure", "workspace"]`

@@ -464,6 +464,19 @@ case "${COMMAND}" in
     log_warn "collect-facts for '${cf_limit}' not implemented; use --limit mac-dev or run bootstrap on the target host."
     exit 1
     ;;
+  gather-facts)
+    if ! has_limit_or_all "$@"; then
+      log_error "gather-facts requires --limit <hosts> or --all"
+      log_info "Example: fz gather-facts --all"
+      log_info "Example: fz gather-facts --limit dev-workstation-win"
+      log_info "Example: fz gather-facts --limit windows_hosts"
+      exit 1
+    fi
+
+    if fz_ansible "playbooks/gather_facts.yaml" "$@"; then
+      log_ok "Fact snapshots updated in inventory/facts/"
+    fi
+    ;;
   role-local)
     ROLE_NAME="${1:-}"
     shift || true

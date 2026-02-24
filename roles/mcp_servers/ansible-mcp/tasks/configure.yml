@@ -1,0 +1,67 @@
+---
+- name: Ensure .cursor directory exists in project root
+  ansible.builtin.file:
+    path: "{{ mcp_ansible_project_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Check whether .cursor/mcp.json exists
+  ansible.builtin.stat:
+    path: "{{ mcp_ansible_project_dir }}/mcp.json"
+  register: _mcp_json_stat
+
+- name: Create .cursor/mcp.json with ansible-mcp entry
+  ansible.builtin.copy:
+    dest: "{{ mcp_ansible_project_dir }}/mcp.json"
+    mode: "0644"
+    content: "{{ {'mcpServers': {'ansible-mcp': _ansible_mcp_entry}} | to_nice_json }}\n"
+  vars:
+    _ansible_mcp_entry:
+      command: "{{ mcp_ansible_entry_point }}"
+      args:
+        - "{{ mcp_ansible_server_script }}"
+      env:
+        PATH: "{{ mcp_ansible_server_path }}"
+        MCP_ANSIBLE_PROJECT_ROOT: "{{ mcp_ansible_project_root }}"
+        MCP_ANSIBLE_INVENTORY: "{{ mcp_ansible_inventory }}"
+        MCP_ANSIBLE_PROJECT_NAME: "{{ mcp_ansible_project_name }}"
+        MCP_ANSIBLE_COLLECTIONS_PATHS: "{{ mcp_ansible_collections_paths }}"
+        MCP_ANSIBLE_ROLES_PATH: "{{ mcp_ansible_roles_path }}"
+        MCP_ANSIBLE_ENV_ANSIBLE_CONFIG: "{{ mcp_ansible_config }}"
+        _MCP_ANSIBLE_ROLE_PATH: "{{ mcp_ansible_role_path }}"
+  when: not _mcp_json_stat.stat.exists
+
+- name: Ensure ansible-mcp entry exists in .cursor/mcp.json
+  when: _mcp_json_stat.stat.exists
+  block:
+    - name: Read existing .cursor/mcp.json
+      ansible.builtin.slurp:
+        src: "{{ mcp_ansible_project_dir }}/mcp.json"
+      register: _mcp_json_raw
+
+    - name: Merge ansible-mcp entry into existing config
+      vars:
+        _existing: "{{ _mcp_json_raw.content | b64decode | from_json }}"
+        _ansible_mcp_entry:
+          command: "{{ mcp_ansible_entry_point }}"
+          args:
+            - "{{ mcp_ansible_server_script }}"
+          env:
+            PATH: "{{ mcp_ansible_server_path }}"
+            MCP_ANSIBLE_PROJECT_ROOT: "{{ mcp_ansible_project_root }}"
+            MCP_ANSIBLE_INVENTORY: "{{ mcp_ansible_inventory }}"
+            MCP_ANSIBLE_PROJECT_NAME: "{{ mcp_ansible_project_name }}"
+            MCP_ANSIBLE_COLLECTIONS_PATHS: "{{ mcp_ansible_collections_paths }}"
+            MCP_ANSIBLE_ROLES_PATH: "{{ mcp_ansible_roles_path }}"
+            MCP_ANSIBLE_ENV_ANSIBLE_CONFIG: "{{ mcp_ansible_config }}"
+            _MCP_ANSIBLE_ROLE_PATH: "{{ mcp_ansible_role_path }}"
+        _merged: >-
+          {{ _existing | combine({
+               'mcpServers': (_existing.mcpServers | default({})) | combine({
+                 'ansible-mcp': _ansible_mcp_entry
+               })
+             }) }}
+      ansible.builtin.copy:
+        dest: "{{ mcp_ansible_project_dir }}/mcp.json"
+        content: "{{ _merged | to_nice_json }}\n"
+        mode: "0644"

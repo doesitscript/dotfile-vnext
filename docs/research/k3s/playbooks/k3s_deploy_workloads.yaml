@@ -1,0 +1,33 @@
+---
+# k3s Workloads Deployment Playbook
+# Deploys Model Server, Data Store, Log Aggregation, Dashboard
+
+- name: k3s Workloads Deployment
+  hosts: localhost
+  gather_facts: false
+
+  pre_tasks:
+    - name: Verify cluster is accessible
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml cluster-info
+      changed_when: false
+
+  tasks:
+    - name: Deploy workloads to ai-infra namespace
+      ansible.builtin.include_role:
+        name: k3s_workloads
+
+  post_tasks:
+    - name: Display deployment status
+      ansible.builtin.debug:
+        msg:
+          - "✓ Workloads deployment complete!"
+          - ""
+          - "Namespace: ai-infra"
+          - ""
+          - "Check pod status:"
+          - "  kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n ai-infra get pods"
+          - ""
+          - "Forward ports (local access):"
+          - "  kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n ai-infra port-forward svc/model-server 8000:8000"
+          - "  kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n ai-infra port-forward svc/postgres 5432:5432"

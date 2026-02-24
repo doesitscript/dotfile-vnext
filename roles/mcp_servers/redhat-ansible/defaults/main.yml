@@ -1,0 +1,35 @@
+---
+# Cursor extension identifier (marketplace ID + version + platform suffix).
+redhat_ansible_extension: "redhat.ansible-26.1.3-universal"
+
+# Cursor CLI binary name ("cursor" for Cursor IDE, "code" for VS Code).
+redhat_ansible_cli_binary: cursor
+
+# On remote connections (SSH/WSL) Cursor installs extensions under
+# ~/.cursor-server/extensions/ instead of ~/.cursor/extensions/.
+# Auto-detect: prefer .cursor-server when it exists (remote), fall back
+# to .cursor (local).
+redhat_ansible_ext_base: >-
+  {{ (ansible_env.HOME + '/.cursor-server/extensions')
+     if (ansible_env.HOME + '/.cursor-server/extensions') is directory
+     else (ansible_env.HOME + '/.cursor/extensions') }}
+
+# Full path to the MCP CLI entry point inside the installed extension.
+redhat_ansible_cli_path: "{{ redhat_ansible_ext_base }}/{{ redhat_ansible_extension }}/out/mcp/cli.js"
+
+# Cursor project directory for .cursor/mcp.json
+redhat_ansible_project_dir: "{{ dotfiles_home }}/.cursor"
+
+# Relative path from project root (for tracking/debugging)
+redhat_ansible_role_path: "roles/mcp_servers/redhat-ansible"
+
+# PATH exported to the MCP server so it can find ansible CLIs in ~/.local/bin
+redhat_ansible_server_path: "{{ dotfiles_user_home }}/.local/bin:{{ dotfiles_user_home }}/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+# WORKSPACE_ROOT tells the extension which project tree to analyze.
+redhat_ansible_workspace_root: "{{ dotfiles_home }}"
+
+# Shared Ansible env vars
+redhat_ansible_collections_paths: "{{ dotfiles_home }}/collections"
+redhat_ansible_roles_path: "{{ dotfiles_home }}/roles:{{ dotfiles_home }}/roles/galaxy:{{ dotfiles_home }}/playbooks/roles"
+redhat_ansible_config: "{{ dotfiles_home }}/ansible.cfg"
