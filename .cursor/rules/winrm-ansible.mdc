@@ -1,0 +1,26 @@
+---
+description: WinRM environment setup required for Ansible to connect to Windows hosts from macOS
+alwaysApply: true
+---
+
+# WinRM / Ansible on macOS
+
+Before running ANY Ansible command that targets Windows hosts (WinRM), the following
+environment variables MUST be set. They live in the project `.envrc` file and are
+loaded automatically by direnv (`direnv allow`).
+
+```bash
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=yes
+export no_proxy=*
+```
+
+When using the Shell tool, always source `.envrc` (or export these vars) before
+running `ansible`, `ansible-playbook`, or any `./bin/fz` command that targets
+Windows hosts. Without these, WinRM connections will crash with
+"A worker was found in a dead state".
+
+Example:
+
+```bash
+cd /Users/joshc/develop/dotfile-vnext && source .envrc && source .venv/bin/activate && ansible ...
+```

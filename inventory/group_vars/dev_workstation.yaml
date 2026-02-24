@@ -1,21 +1,49 @@
 ---
 # dev-workstation (physical node: dev-workstation-win + dev-workstation-wsl eventually)
 # group_vars filename matches inventory group name dev_workstation
+# Fact collection: 2026-02-24 via ansible.builtin.setup over WinRM
 host_name: dev-workstation
 physical_node: dev-workstation
 lan_ip: "192.168.50.70"
 
 node_role: dev-gpu-node
-os: windows-11
+os: windows-10-pro
 authority_level: execution
-# gpu: TBD (from fact collection)
-# persistent_data_allowed: TBD
+
+# --- Hardware (from fact collection) ---
+cpu: "Intel Core i7-6700K @ 4.00GHz"
+cpu_cores: 4
+cpu_threads: 8
+ram_mb: 16345
+system_vendor: "MSI"
+motherboard: "MS-7A12"
+bios_version: "1.A0"
+bios_date: "07/04/2018"
+architecture: "x86_64"
+gpu: "AMD Radeon RX 9060 XT"
+gpu_vram_bytes: 4293918720
+gpu_driver_version: "32.0.23017.1001"
+persistent_data_allowed: true
+
+# --- OS details ---
+os_name: "Microsoft Windows 10 Pro"
+os_version: "10.0.19045.0"
+os_install_date: "2024-11-02"
+powershell_version: 5
+windows_domain: "WORKGROUP"
+domain_member: false
+
+# --- Network ---
+# Primary NIC: ASUS USB-BE92 Nano (Wi-Fi) -- carries LAN IP
+# Secondary NIC: Intel I219-V Ethernet -- currently APIPA (no DHCP)
+primary_mac: "CC:28:AA:6C:D0:57"
+ethernet_mac: "4C:CC:6A:63:AF:16"
 
 # Windows base configuration (consumed by common/windows_base role)
 # windows_base_config:
 #   enable_wsl: true
 
-# Storage paths (TBD from fact collection -- depends on disk layout)
+# Storage paths (TBD -- depends on disk layout)
 # windows_data_root: "D:\\ai"
 # wsl_mount_root: "/mnt/d/ai"
 # stacks_root: "D:\\ai\\stacks"
