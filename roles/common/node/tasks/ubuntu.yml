@@ -1,0 +1,30 @@
+---
+# Ubuntu/WSL-specific tasks for node
+
+- name: Install nvm {{ nvm_version }} from upstream script
+  ansible.builtin.shell: >-
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/{{ nvm_version }}/install.sh | PROFILE=/dev/null bash
+  args:
+    creates: "{{ dotfiles_user_home }}/.nvm/nvm.sh"
+    executable: /bin/bash
+
+- name: Install default Node.js version via nvm
+  ansible.builtin.shell: |
+    export NVM_DIR="{{ dotfiles_user_home }}/.nvm"
+    . "$NVM_DIR/nvm.sh"
+    nvm install {{ node_default_version }}
+    nvm alias default {{ node_default_version }}
+  args:
+    creates: "{{ dotfiles_user_home }}/.nvm/alias/default"
+    executable: /bin/bash
+
+- name: Install global npm packages
+  ansible.builtin.shell: |
+    export NVM_DIR="{{ dotfiles_user_home }}/.nvm"
+    . "$NVM_DIR/nvm.sh"
+    npm install -g {{ item }}
+  loop: "{{ npm_global_packages }}"
+  args:
+    executable: /bin/bash
+  register: _npm_global
+  changed_when: "'added' in _npm_global.stdout or 'updated' in _npm_global.stdout"
