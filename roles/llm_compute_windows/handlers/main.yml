@@ -1,0 +1,9 @@
+---
+- name: Reboot after NVIDIA Studio Driver install
+  ansible.windows.win_reboot:
+    msg: "Ansible reboot after NVIDIA Studio Driver installation"
+    reboot_timeout: "{{ llm_compute_windows_reboot_timeout }}"
+
+- name: Wait for system to come back online after driver reboot
+  ansible.builtin.wait_for_connection:
+    timeout: "{{ llm_compute_windows_reboot_timeout }}"

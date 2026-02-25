@@ -1,0 +1,83 @@
+---
+# k3s_debug.yaml — Cluster health checks and inspection.
+#
+# Usage:
+#   ansible-playbook playbooks/k3s_debug.yaml -i inventory/inventory.yaml
+
+- name: K3s cluster health check
+  hosts: server
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Check k3s service status
+      ansible.builtin.systemd:
+        name: k3s
+      register: k3s_debug_svc
+      check_mode: true
+      changed_when: false
+      failed_when: false
+
+    - name: Report k3s service status
+      ansible.builtin.debug:
+        msg: "k3s service: {{ k3s_debug_svc.status.ActiveState | default('unknown') }}"
+
+    - name: Get cluster nodes
+      ansible.builtin.command:
+        cmd: kubectl get nodes -o wide
+      register: k3s_debug_nodes
+      changed_when: false
+
+    - name: Display cluster nodes
+      ansible.builtin.debug:
+        msg: "{{ k3s_debug_nodes.stdout_lines }}"
+
+    - name: Get all pods across namespaces
+      ansible.builtin.command:
+        cmd: kubectl get pods -A -o wide
+      register: k3s_debug_pods
+      changed_when: false
+
+    - name: Display all pods
+      ansible.builtin.debug:
+        msg: "{{ k3s_debug_pods.stdout_lines }}"
+
+    - name: Check node resource allocations
+      ansible.builtin.command:
+        cmd: kubectl describe nodes
+      register: k3s_debug_describe
+      changed_when: false
+
+    - name: Display allocatable and reserved resources
+      ansible.builtin.debug:
+        msg: >-
+          {{ k3s_debug_describe.stdout_lines
+             | select('search', 'Allocatable|Allocated|system-reserved|kube-reserved|Name:')
+             | list }}
+
+    - name: Check for GPU resources on nodes
+      ansible.builtin.command:
+        cmd: kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.allocatable}{"\n"}{end}'
+      register: k3s_debug_gpu
+      changed_when: false
+      failed_when: false
+
+    - name: Display GPU resource availability
+      ansible.builtin.debug:
+        msg: "{{ k3s_debug_gpu.stdout_lines }}"
+
+- name: K3s agent health check
+  hosts: agent
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Check k3s-agent service status
+      ansible.builtin.systemd:
+        name: k3s-agent
+      register: k3s_debug_agent_svc
+      check_mode: true
+      changed_when: false
+      failed_when: false
+
+    - name: Report k3s-agent service status
+      ansible.builtin.debug:
+        msg: "k3s-agent on {{ inventory_hostname }}: {{ k3s_debug_agent_svc.status.ActiveState | default('unknown') }}"

@@ -1,0 +1,26 @@
+---
+# k3s_firewall — Open Windows Firewall ports for k3s cluster traffic.
+# Targets: Windows hosts (-win surfaces) via WinRM.
+# Pattern follows roles/access_identity_windows/tasks/firewall.yml.
+
+- name: Open k3s firewall ports on Windows host
+  community.windows.win_firewall_rule:
+    name: "{{ item.name }}"
+    localport: "{{ item.port }}"
+    protocol: "{{ item.protocol }}"
+    direction: in
+    action: allow
+    state: present
+    enabled: true
+    description: "{{ item.description }}"
+  loop: "{{ k3s_firewall_rules }}"
+  loop_control:
+    label: "{{ item.name }} ({{ item.protocol }}/{{ item.port }})"
+
+- name: Report k3s firewall rules applied
+  ansible.builtin.debug:
+    msg: >-
+      k3s firewall rules on {{ inventory_hostname }}:
+      {% for rule in k3s_firewall_rules %}
+        {{ rule.name }}: {{ rule.protocol }}/{{ rule.port }}
+      {% endfor %}

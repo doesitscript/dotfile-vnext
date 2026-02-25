@@ -1,0 +1,63 @@
+---
+# k3s_node_config — Label and taint nodes after k3s cluster is up.
+# Runs on the control plane node (server group) with kubectl access.
+
+- name: All k3s nodes are Ready
+  kubernetes.core.k8s_info:
+    kind: Node
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+  register: k3s_node_config_node_info
+  retries: 12
+  delay: 10
+  until: >-
+    k3s_node_config_node_info.resources | length > 0
+    and k3s_node_config_node_info.resources
+      | selectattr('status.conditions', 'defined')
+      | map(attribute='status.conditions')
+      | flatten
+      | selectattr('type', 'equalto', 'Ready')
+      | selectattr('status', 'equalto', 'True')
+      | list | length == k3s_node_config_node_info.resources | length
+
+- name: Node labels match declared state
+  kubernetes.core.k8s:
+    kind: Node
+    name: "{{ item.key }}"
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    apply: true
+    definition:
+      apiVersion: v1
+      kind: Node
+      metadata:
+        name: "{{ item.key }}"
+        labels: "{{ item.value }}"
+  loop: "{{ k3s_node_config_labels | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Node taints are present
+  kubernetes.core.k8s_taint:
+    name: "{{ item.key }}"
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    taints: "{{ item.value }}"
+    state: present
+  loop: "{{ k3s_node_config_taints | default({}) | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: k3s_node_config_taints is defined
+
+- name: Report current node labels and taints
+  kubernetes.core.k8s_info:
+    kind: Node
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+  register: k3s_node_config_report
+
+- name: Node configuration summary
+  ansible.builtin.debug:
+    msg: >-
+      {{ item.metadata.name }}
+      labels={{ item.metadata.labels | default({}) | dict2items | map(attribute='key') | list }}
+      taints={{ item.spec.taints | default([]) | map(attribute='key') | list }}
+  loop: "{{ k3s_node_config_report.resources }}"
+  loop_control:
+    label: "{{ item.metadata.name }}"

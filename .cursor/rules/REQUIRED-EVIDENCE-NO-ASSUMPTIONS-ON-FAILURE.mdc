@@ -1,0 +1,172 @@
+---
+description: 
+alwaysApply: true
+---
+
+CURSOR RULE — NO ASSUMPTIONS ON FAILURE + REQUIRED EVIDENCE COLLECTION (UNIVERSAL)
+INTENT
+When a host is unreachable or a task fails, the agent must not assume the cause.
+The agent must collect real system evidence using all available connection methods:
+
+SSH
+
+WinRM
+
+PowerShell (via OpenSSH)
+
+WSL commands (via PowerShell)
+
+This rule applies to all hosts: Windows, Linux, WSL, K3s nodes, GPU nodes, etc.
+
+RULE 1 — NO ASSUMPTIONS ABOUT FAILURE
+When a host cannot be reached or a task errors:
+
+The agent must not guess the cause
+
+The agent must not assume reboot, shutdown, WSL stopped, service down, network issue, etc.
+
+The agent must not continue with hypothetical explanations
+
+The agent must explicitly state:
+
+Code
+Cause unknown — evidence required.
+RULE 2 — REQUIRED EVIDENCE COLLECTION (ALL SYSTEMS)
+When a host is unreachable, the agent must attempt evidence collection in this order:
+
+1. Primary connection
+SSH (Linux/WSL)
+
+WinRM (Windows)
+
+If this fails → proceed to fallback.
+
+2. Fallback connection (MANDATORY)
+Windows fallback
+Use OpenSSH to enter PowerShell:
+
+Code
+ssh <host>
+powershell
+Collect raw output:
+
+Code
+Get-Service -Name WinRM
+Get-Service -Name LxssManager
+Get-EventLog -LogName System -Newest 20
+wsl.exe --status
+wsl.exe -l -v
+Linux fallback
+Use SSH:
+
+Code
+ssh <host>
+journalctl -xe
+systemctl status <service>
+df -h
+uptime
+WSL fallback
+If Windows is reachable but WSL is not:
+
+Code
+wsl.exe --status
+wsl.exe -l -v
+wsl.exe -e dmesg | tail
+RULE 3 — RAW LOG OUTPUT REQUIRED
+The agent must always show real, raw system output, not summaries.
+
+Examples:
+
+SSH error messages
+
+WinRM connection errors
+
+PowerShell service status
+
+WSL status output
+
+Windows Event Log entries
+
+Linux journalctl output
+
+Systemctl service status
+
+The agent must paste the actual output, not paraphrase it.
+
+RULE 4 — NO CONTINUATION WITHOUT EVIDENCE
+If evidence cannot be collected:
+
+The agent must stop and state:
+
+Code
+Evidence unavailable — cannot proceed without real system output.
+The agent must not continue with:
+
+Hypothetical causes
+
+Speculative fixes
+
+Assumptions about system state
+
+RULE 5 — REQUIRED FAILURE MESSAGE FORMAT
+When a failure occurs, the agent must output:
+
+Code
+FAILURE DETECTED — NO ASSUMPTIONS ALLOWED
+
+Primary connection failed:
+<error>
+
+Attempting fallback connection:
+<results>
+
+Collected evidence:
+<raw logs>
+
+Next required step:
+<explicit action based on evidence only>
+RULE 6 — UNIVERSAL SCOPE
+This rule applies to:
+
+Windows hosts
+
+Linux hosts
+
+WSL instances
+
+K3s nodes
+
+GPU nodes
+
+Any system reachable via SSH or WinRM
+
+The agent must always use:
+
+SSH → PowerShell (Windows fallback)
+
+SSH (Linux fallback)
+
+WSL commands (WSL fallback)
+
+No exceptions.
+
+RULE 7 — NEVER GUESS SYSTEM STATE
+The agent must not assume:
+
+The host rebooted
+
+WSL is stopped
+
+A service is down
+
+A firewall is blocking traffic
+
+A driver is missing
+
+A cluster is offline
+
+The agent must prove each condition with real logs.
+
+####****!!!!!!! ALWAYS TRY THE OTHER CONNECTIONS !!!!#####
+ ssh server-225-win-powershell
+OK you into the window system you can enter Bash and get inside of the Linux system from here.

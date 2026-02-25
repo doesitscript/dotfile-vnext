@@ -5,6 +5,16 @@ openssh_server_capability: "OpenSSH.Server~~~~0.0.1.0"
 
 win_ssh_port: 2222
 
+# sshd_config tunables — override in group_vars or host_vars as needed.
+# LoginGraceTime: seconds sshd waits for authentication before disconnecting.
+# Default upstream is 120s (2m); 60s is tighter without breaking slow links.
+sshd_login_grace_time: 60
+
+# MaxSessions: max concurrent sessions per network connection.
+# Should be >= ansible.cfg forks so parallel Ansible runs never hit the cap.
+# ansible.cfg sets forks = 20; match that here.
+sshd_max_sessions: 20
+
 # WARNING: win_ssh_powershell_port is experimental and subject to change.
 # This secondary port exists for two purposes:
 #   1) Troubleshooting — provides a direct PowerShell session when WSL/bash is broken.

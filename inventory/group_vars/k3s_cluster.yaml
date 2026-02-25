@@ -1,0 +1,38 @@
+---
+# k3s cluster-wide variables
+# Used by the k3s.orchestration collection and our custom roles.
+
+k3s_version: "v1.31.12+k3s1"
+
+# Token for node-to-node auth. Generate once, vault-encrypt, reuse.
+# Generate: openssl rand -base64 32 | tr '/' '_'
+# Encrypt: ansible-vault encrypt_string --name k3s_token '<value>'
+token: "{{ k3s_token }}"
+
+# API endpoint -- control plane address
+api_endpoint: "{{ hostvars['network-server-wsl']['ansible_host'] }}"
+
+# All k3s data on D: drive (mounted at /mnt/d in WSL)
+k3s_server_location: /mnt/d/k3s/rancher
+
+# Control plane config -- written to /etc/rancher/k3s/config.yaml on server nodes.
+# Tighter reserves: control plane runs etcd-equivalent + API server.
+server_config_yaml: |
+  write-kubeconfig-mode: "0644"
+  data-dir: /mnt/d/k3s/rancher
+  node-label:
+    - "role=control"
+  kubelet-arg:
+    - "system-reserved=cpu=1,memory=1Gi"
+    - "kube-reserved=cpu=1,memory=1Gi"
+    - "eviction-hard=memory.available<256Mi,nodefs.available<10%"
+  disable:
+    - servicelb
+
+# Agent config -- written to /etc/rancher/k3s/config.yaml on agent nodes.
+agent_config_yaml: |
+  data-dir: /mnt/d/k3s/rancher
+  kubelet-arg:
+    - "system-reserved=cpu=500m,memory=512Mi"
+    - "kube-reserved=cpu=500m,memory=512Mi"
+    - "eviction-hard=memory.available<256Mi,nodefs.available<10%"

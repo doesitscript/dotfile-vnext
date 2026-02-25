@@ -1,0 +1,83 @@
+---
+# k3s_storage_prep — Ensure k3s data directories live on D: drive.
+# Must run BEFORE k3s install so the symlinks are in place when k3s first starts.
+# Targets WSL surfaces via SSH (standard Ubuntu).
+
+- name: Verify D drive mount exists
+  ansible.builtin.stat:
+    path: "{{ k3s_storage_prep_d_mount }}"
+  register: k3s_storage_prep_d_stat
+
+- name: Fail if D drive is not mounted
+  ansible.builtin.fail:
+    msg: >-
+      D: drive mount not found at {{ k3s_storage_prep_d_mount }}.
+      Ensure the D: drive is accessible in WSL before running k3s setup.
+  when: not k3s_storage_prep_d_stat.stat.exists
+
+- name: Check free space on D drive
+  ansible.builtin.shell: |
+    set -o pipefail
+    df -BM --output=avail "{{ k3s_storage_prep_d_mount }}" | tail -1 | tr -d ' M'
+  args:
+    executable: /bin/bash
+  register: k3s_storage_prep_free_mb
+  changed_when: false
+
+- name: Fail if insufficient free space on D drive
+  ansible.builtin.fail:
+    msg: >-
+      D: drive has {{ k3s_storage_prep_free_mb.stdout }}MB free,
+      need at least {{ k3s_storage_prep_min_free_mb }}MB.
+  when: k3s_storage_prep_free_mb.stdout | int < k3s_storage_prep_min_free_mb
+
+- name: Create k3s data directories on D drive
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ k3s_storage_prep_dirs }}"
+
+- name: Remove existing directories before symlinking
+  ansible.builtin.file:
+    path: "{{ item.dest }}"
+    state: absent
+  loop: "{{ k3s_storage_prep_symlinks }}"
+  when: >-
+    ansible_facts['file_' + (item.dest | regex_replace('/', '_'))] is not defined
+    or not ansible_facts['file_' + (item.dest | regex_replace('/', '_'))].islnk | default(false)
+  register: k3s_storage_prep_remove_check
+  failed_when: false
+  changed_when: false
+
+- name: Check current state of symlink targets
+  ansible.builtin.stat:
+    path: "{{ item.dest }}"
+  loop: "{{ k3s_storage_prep_symlinks }}"
+  register: k3s_storage_prep_link_stat
+
+- name: Remove non-symlink directories blocking symlink creation
+  ansible.builtin.file:
+    path: "{{ item.item.dest }}"
+    state: absent
+  loop: "{{ k3s_storage_prep_link_stat.results }}"
+  loop_control:
+    label: "{{ item.item.dest }}"
+  when: item.stat.exists and not item.stat.islnk
+
+- name: Create symlinks from default paths to D drive
+  ansible.builtin.file:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    state: link
+    force: true
+  loop: "{{ k3s_storage_prep_symlinks }}"
+
+- name: Report storage preparation complete
+  ansible.builtin.debug:
+    msg: >-
+      k3s storage on {{ inventory_hostname }}:
+      {% for link in k3s_storage_prep_symlinks %}
+        {{ link.dest }} -> {{ link.src }}
+      {% endfor %}
+      Free space: {{ k3s_storage_prep_free_mb.stdout }}MB

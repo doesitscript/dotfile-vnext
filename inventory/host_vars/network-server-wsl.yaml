@@ -1,7 +1,9 @@
 ---
-# WSL surface for network-server. wsl_distro/wsl_ssh_port align with group_vars/server_225.yaml.
-# ansible_connection, ansible_ssh_private_key_file inherited from group_vars/wsl_hosts (matches controller Mac: ~/.ssh/id_ed25519_ansible from bootstrap_mac).
-# i should be able to have a winrm one too for thissrver by amkdine a file like this and speicifying it at the cmdline
+# WSL surface for network-server.
+# STATUS: WSL NOT YET INSTALLED — wsl.exe --list showed no distributions on 2026-02-25.
+# ansible_host is the router DHCP reservation for the future bridged WSL instance.
+# Update ansible_host/host_ip to actual WSL IP after Ubuntu-24.04 is provisioned.
+# ansible_connection, ansible_ssh_private_key_file inherited from group_vars/wsl_hosts.
 wsl_user: "joshc"
 physical_node: "network-server"
 ansible_port: 22
@@ -23,3 +25,8 @@ ansible_authorized_keys_path: "/home/joshc/.ssh/authorized_keys"
 # Docker Engine — geerlingguy.docker installs Docker inside this WSL distro.
 # Clients (mac-dev, network-server) connect via SSH Docker contexts.
 docker_engine_in_wsl: true
+
+# log output locations
+# journalctl -u ssh.service
+#  tail -f /var/log/auth.log
+# on windows: Get-WinEvent -LogName OpenSSH/Operational -Oldest | select -ExpandProperty Message

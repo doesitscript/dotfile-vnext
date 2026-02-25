@@ -1,10 +1,12 @@
 ---
 # Windows surface: WinRM for bootstrap; SSH uses DefaultShell = WSL bash (wsl_distro from group_vars).
 # When using ansible_connection: ssh to this host, set ansible_shell_type: bash.
-ansible_host: "AI-NET-SERVER"
+# AI-NET-SERVER resolves via LAN mDNS but not from Mac controller — use IP directly.
+# Confirmed live: 192.168.50.233 (Wi-Fi adapter, ARP mac 9c:c7:d3:10:68:5a)
+ansible_host: "192.168.50.233"
 ansible_password: "Pass@w0rd1"
 surface_type: "windows_host"
-host_ip: "192.168.50.223"
+host_ip: "192.168.50.233"
 ansible_connection: winrm
 win_ssh_port: 2222
 win_ssh_user: "joshc"
@@ -31,14 +33,15 @@ hyperv_config:
   adapter_name: "Wi-Fi,Ethernet"
   allow_management_os: true
 
-# WSL: consumer of the bridge (requires hyperv_config.external_switch_enabled).
+# WSL: NOT YET INSTALLED on this machine (wsl --list shows no distributions).
+# static_ip is a router reservation placeholder — update after WSL is provisioned.
 wsl_config:
   networking_mode: "bridged"
-  static_ip: "192.168.50.223/24"
+  static_ip: "192.168.50.240/24"
   gateway: "192.168.50.1"
 
-# Docker client — connects to the Docker engine in WSL.
-docker_engine_ssh_host: "192.168.50.223"
+# Docker client — WSL not yet installed; IP is the planned reservation from router.
+docker_engine_ssh_host: "192.168.50.240"
 docker_engine_ssh_port: 22
 docker_engine_ssh_user: "joshc"
 

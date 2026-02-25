@@ -1,0 +1,16 @@
+---
+# llm_compute_windows — Install and pin NVIDIA Studio Driver for LLM workloads.
+#
+# Targets Windows GPU hosts via WinRM. Uses Chocolatey for driver lifecycle.
+# Reboots only when the driver package changes (via handler).
+
+- name: Install and pin NVIDIA Studio Driver
+  chocolatey.chocolatey.win_chocolatey:
+    name: nvidia-studio-driver
+    version: "{{ llm_compute_windows_studio_driver_version }}"
+    pinned: "{{ llm_compute_windows_studio_driver_pinned }}"
+    state: present
+    package_params: "/RemoveOtherVersions /SkipCompatCheck"
+  notify:
+    - Reboot after NVIDIA Studio Driver install
+    - Wait for system to come back online after driver reboot

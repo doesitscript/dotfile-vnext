@@ -19,6 +19,8 @@ Host {{ host }}
     Port {{ hv['ssh_port'] | default(hv.get('ansible_port', 22)) }}
     IdentityFile {{ controller_ssh_private_key_path }}
     StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    LogLevel ERROR
 {% if hv.ssh_powershell_port is defined %}
 
 # EXPERIMENTAL — subject to change. Direct PowerShell session for
@@ -29,6 +31,8 @@ Host {{ host }}-powershell
     Port {{ hv['ssh_powershell_port'] }}
     IdentityFile {{ controller_ssh_private_key_path }}
     StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    LogLevel ERROR
 {% endif %}
 
 {% endif %}

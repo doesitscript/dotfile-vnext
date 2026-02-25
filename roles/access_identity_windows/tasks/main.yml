@@ -68,7 +68,7 @@
     path: "{{ sshd_config_path }}"
     regexp: '^(?:#\s*)?ClientAliveInterval\s'
     line: "ClientAliveInterval 60"
-    insertafter: '^#?TCPKeepAlive'
+    insertafter: '^#? '
     state: present
   register: sshd_keepalive_interval
   tags: [admin]
@@ -81,6 +81,26 @@
     insertafter: '^ClientAliveInterval'
     state: present
   register: sshd_keepalive_count
+  tags: [admin]
+
+- name: Ensure sshd has MaxSessions configured
+  community.windows.win_lineinfile:
+    path: "{{ sshd_config_path }}"
+    regexp: '^(?:#\s*)?MaxSessions\s'
+    line: "MaxSessions {{ sshd_max_sessions }}"
+    insertafter: '^(?:#\s*)?MaxAuthTries\s'
+    state: present
+  register: sshd_max_sessions_result
+  tags: [admin]
+
+- name: Ensure sshd has LoginGraceTime configured
+  community.windows.win_lineinfile:
+    path: "{{ sshd_config_path }}"
+    regexp: '^(?:#\s*)?LoginGraceTime\s'
+    line: "LoginGraceTime {{ sshd_login_grace_time }}"
+    insertafter: '^# Authentication:'
+    state: present
+  register: sshd_login_grace
   tags: [admin]
 
 # --- Firewall rules for all SSH ports (primary + PowerShell) ---

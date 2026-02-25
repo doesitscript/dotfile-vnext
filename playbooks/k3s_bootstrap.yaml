@@ -1,0 +1,40 @@
+---
+# k3s_bootstrap.yaml — Full k3s cluster bootstrap.
+#
+# Play order:
+#   1. Open firewall ports on Windows hosts (WinRM)
+#   2. Prepare storage directories on WSL surfaces (SSH)
+#   3. Deploy k3s cluster via official collection
+#   4. Label and taint nodes from control plane
+#
+# Usage:
+#   source .envrc
+#   export K3S_TOKEN=$(openssl rand -base64 32 | tr '/' '_')
+#   ansible-playbook playbooks/k3s_bootstrap.yaml -i inventory/inventory.yaml
+#
+# GPU plays are added separately after NVIDIA driver setup is confirmed.
+
+# --- Play 1: Windows Firewall ---
+- name: Open k3s firewall ports on Windows hosts
+  hosts: server-225-win,network-server-win
+  gather_facts: false
+  roles:
+    - k3s_firewall
+
+# --- Play 2: Storage Prep (before k3s install) ---
+- name: Prepare k3s storage directories on D drive
+  hosts: k3s_cluster
+  become: true
+  roles:
+    - k3s_storage_prep
+
+# --- Play 3: Deploy k3s (official collection) ---
+- name: Deploy k3s cluster
+  ansible.builtin.import_playbook: k3s.orchestration.site
+
+# --- Play 4: Node Labels + Taints ---
+- name: Configure k3s node labels and taints
+  hosts: server
+  become: true
+  roles:
+    - k3s_node_config

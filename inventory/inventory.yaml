@@ -40,19 +40,12 @@ all:
     wsl_hosts:
       hosts:
         server-225-wsl:
-          ansible_host: DESKTOP-VLLM
-          ansible_connection: ssh
-          ansible_user: joshc
-          # ansible_port: 2222
           # All connection details in host_vars/server-225-wsl.yaml
 
         dev-3090-wsl:
           # All connection details in host_vars/dev-3090-wsl.yaml
 
         network-server-wsl:
-          ansible_host: AI-NET-SERVER
-          ansible_connection: ssh
-          ansible_user: joshc
           # All connection details in host_vars/network-server-wsl.yaml
 
     # SSH targets: hosts that may need an entry in the controller's ~/.ssh/config.
@@ -90,6 +83,24 @@ all:
     dev_workstation:
       hosts:
         dev-workstation-win:
+        # dev-workstation-wsl:  # WSL + SSH not yet set up on this machine
+
+    # -- k3s cluster groups (collection expects k3s_cluster > server + agent) ----------
+    # k3s_version, token, api_endpoint live in group_vars/k3s_cluster.yaml -- do not duplicate here.
+    k3s_cluster:
+      children:
+        server:
+          hosts:
+            network-server-wsl:
+        agent:
+          hosts:
+            server-225-wsl:
+
+    # Deferred k3s nodes -- NOT under k3s_cluster so the collection won't target them.
+    # Move to k3s_cluster > agent when WSL + SSH + RAM are ready.
+    k3s_agents_deferred:
+      hosts: {}
+        # dev-workstation-wsl:  # enable when WSL + SSH set up
 
     mac_dev:
       hosts:

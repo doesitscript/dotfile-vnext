@@ -5,22 +5,37 @@ alwaysApply: true
 
 # WinRM / Ansible on macOS
 
-Before running ANY Ansible command that targets Windows hosts (WinRM), the following
-environment variables MUST be set. They live in the project `.envrc` file and are
-loaded automatically by direnv (`direnv allow`).
+Before running ANY Ansible command, two things MUST be done — both are mandatory, not optional:
+
+## 1. Activate the Python virtual environment
+
+The project Ansible installation lives in `.venv`. Without activating it, `ansible`,
+`ansible-playbook`, and all related commands will either not be found or will use the
+wrong Python interpreter.
+
+```bash
+source .venv/bin/activate
+```
+
+## 2. Set WinRM environment variables (Windows hosts only)
+
+Before targeting any Windows host (WinRM), the following environment variables MUST
+also be set. They live in `.envrc` and are loaded automatically by direnv (`direnv allow`).
 
 ```bash
 export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=yes
 export no_proxy=*
 ```
 
-When using the Shell tool, always source `.envrc` (or export these vars) before
-running `ansible`, `ansible-playbook`, or any `./bin/fz` command that targets
-Windows hosts. Without these, WinRM connections will crash with
-"A worker was found in a dead state".
+Without these, WinRM connections will crash with "A worker was found in a dead state".
 
-Example:
+## Required shell setup — always use this exact sequence
+
+When using the Shell tool, always run the full setup before `ansible` or `ansible-playbook`:
 
 ```bash
 cd /Users/joshc/develop/dotfile-vnext && source .envrc && source .venv/bin/activate && ansible ...
 ```
+
+Both `source .envrc` (env vars) and `source .venv/bin/activate` (Python venv) are required
+every time. Skipping either will cause connection or interpreter failures.
