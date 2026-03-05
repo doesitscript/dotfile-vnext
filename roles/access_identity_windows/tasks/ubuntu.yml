@@ -328,6 +328,31 @@
       WSL distro '{{ _wsl_distro }}':
       {{ 'just installed' if (wsl_distro_install is defined and wsl_distro_install is changed) else 'already present' }}
 
+# --- Step 2.6: Pre-warm WSL bridge (bridged mode only) ---
+# When WSL first starts with networkingMode=bridged, Windows reconfigures the
+# physical NIC into a Hyper-V bridge. That adapter reassignment causes a brief
+# WinRM disruption (connection refused). Fire-and-forget the start so the
+# disruption happens in a controlled window, then wait for WinRM to recover
+# before proceeding with any tasks that require network inside WSL.
+
+- name: Pre-warm WSL to trigger bridged network initialization
+  environment:
+    WSL_UTF8: "1"
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      wsl.exe -d '{{ _wsl_distro }}' -u root -- bash -c 'exit 0'
+  async: 60
+  poll: 0
+  when: _wsl_networking_mode == 'bridged'
+
+- name: Wait for WinRM to recover after WSL bridged network initialization
+  ansible.builtin.wait_for_connection:
+    delay: 10
+    timeout: 120
+  when: _wsl_networking_mode == 'bridged'
+
 # --- Step 2.5: Update WSL distribution packages ---
 # Adapted from myllynen/windows-ansible-roles wsl_configuration update logic.
 # Runs apt-get update && apt-get upgrade inside the distro via wsl.exe.

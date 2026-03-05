@@ -15,22 +15,56 @@
 #   register: _vmswitch_info
 #   ignore_errors: true
 
+# adapter_name is a comma-separated fallback list (e.g. "Wi-Fi,Ethernet").
+# gocallag.hyperv.switch expects a single adapter name, so resolve the first
+# adapter from the list that is currently Up before calling the module.
+- name: Resolve first Up adapter from fallback list
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $candidates = '{{ _hyperv.adapter_name | default("Ethernet") }}'.Split(',') | ForEach-Object { $_.Trim() }
+      $resolved = $null
+      foreach ($name in $candidates) {
+        $adapter = Get-NetAdapter -Name $name -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Up' }
+        if ($adapter) {
+          $resolved = $name
+          break
+        }
+      }
+      if (-not $resolved) {
+        $Ansible.Failed = $true
+        $Ansible.Result = "No Up adapter found in list: {{ _hyperv.adapter_name }}"
+        Exit 1
+      }
+      $Ansible.Result = $resolved
+  register: _resolved_adapter
+
 - name: Create External VMSwitch via gocallag.hyperv.switch
   gocallag.hyperv.switch:
     name: "{{ _hyperv.switch_name | default('External') }}"
     state: present
     switchType: External
-    netAdapterName: "{{ _hyperv.adapter_name | default('Ethernet') }}"
+    netAdapterName: "{{ _resolved_adapter.result }}"
     allowManagementOS: "{{ _hyperv.allow_management_os | default(true) | string | lower }}"
   async: 120
   poll: 0
-  register: _vmswitch_create
+  register: _vmswitch_job
 
+# Always wait unconditionally — WinRM may have dropped during switch creation
+# and we cannot know without waiting first.
 - name: Wait for WinRM to reconnect after VMSwitch creation
   ansible.builtin.wait_for_connection:
     delay: 15
     timeout: 120
-  when: _vmswitch_create is changed
+
+- name: Collect VMSwitch creation result
+  ansible.builtin.async_status:
+    jid: "{{ _vmswitch_job.ansible_job_id }}"
+  register: _vmswitch_create
+  until: _vmswitch_create.finished
+  retries: 10
+  delay: 10
 
 - name: Verify External VMSwitch is operational
   gocallag.hyperv.switch_info:
