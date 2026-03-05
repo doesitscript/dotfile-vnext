@@ -147,6 +147,13 @@
 # shell with powershell.exe for connections on this port.
 # This block MUST go at the bottom of sshd_config (after all global directives
 # and after Match Group administrators) to avoid capturing unrelated directives.
+#
+# IMPORTANT — WSL lockout by design:
+# The DefaultShell registry key (HKLM:\SOFTWARE\OpenSSH) is set to bash.exe,
+# which makes port 2222 land in a WSL distro. ForceCommand in the Match block
+# below takes precedence over DefaultShell for port 2223, running powershell.exe
+# instead. This intentionally prevents any connection on port 2223 from dropping
+# into a Linux distro — port 2223 is always a pure Windows PowerShell session.
 - block:
   # powershell-ssh — sshd_config: add Port listener
   - name: Ensure sshd_config has PowerShell port listener
@@ -158,6 +165,17 @@
       state: present
     register: sshd_ps_port_result
 
+  # powershell-ssh — sshd_config: declare PowerShell subsystem so the SSH
+  # subsystem request (-s powershell) in the controller ssh_config ProxyCommand works.
+  - name: Ensure sshd_config declares PowerShell subsystem
+    community.windows.win_lineinfile:
+      path: "{{ sshd_config_path }}"
+      regexp: '^Subsystem\s+powershell\s'
+      line: "Subsystem    powershell    powershell.exe -sshs -NoLogo -NoProfile"
+      insertafter: '^Subsystem\s+sftp'
+      state: present
+    register: sshd_ps_subsystem_result
+
   # powershell-ssh — sshd_config: Match LocalPort block (must be at EOF)
   - name: Ensure Match LocalPort block for PowerShell exists at end of sshd_config
     community.windows.win_lineinfile:
@@ -168,7 +186,9 @@
       state: present
     register: sshd_ps_match_result
 
-  # powershell-ssh — sshd_config: ForceCommand under Match block
+  # powershell-ssh — sshd_config: ForceCommand under Match block.
+  # ForceCommand overrides DefaultShell (bash.exe registry key) for this port,
+  # ensuring port {{ win_ssh_powershell_port }} is always PowerShell — never WSL.
   - name: Ensure ForceCommand powershell under Match LocalPort block
     community.windows.win_lineinfile:
       path: "{{ sshd_config_path }}"
@@ -185,10 +205,11 @@
       state: restarted
     when: >-
       sshd_ps_port_result is changed or
+      sshd_ps_subsystem_result is changed or
       sshd_ps_match_result is changed or
       sshd_ps_force_result is changed
 
-  tags: [admin, powershell-ssh]
+  tags: [admin, powershell-ssh, ps_port]
 
 # --- Publish SSH-ready facts (consumed by controller SSH config template) ---
 - name: Mark this host as SSH-configured
@@ -199,7 +220,7 @@
     ssh_user: "{{ win_ssh_user | default(ansible_user) }}"
     ssh_host: "{{ ansible_host }}"
     cacheable: true
-  tags: [admin]
+  tags: [admin, ps_port]
 
 # --- WSL: optional reset (nuke and pave) ---
 # The 'never' tag ensures this ONLY runs when explicitly requested:

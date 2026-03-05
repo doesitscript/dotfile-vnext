@@ -170,15 +170,20 @@
 # launch to auto-provision the user, password, sudo, and /etc/wsl.conf.
 # Adapted from bootstrap-ansible-local.ps1 lines 218-266.
 
+- name: Resolve Windows USERPROFILE path
+  ansible.windows.win_powershell:
+    script: $Ansible.Result = $env:USERPROFILE
+  register: _win_userprofile
+
 - name: Ensure cloud-init directory exists
   ansible.windows.win_file:
-    path: "{{ ansible_env.USERPROFILE }}\\.cloud-init"
+    path: "{{ _win_userprofile.result }}\\.cloud-init"
     state: directory
 
 - name: Create cloud-init user-data for WSL distro
   ansible.windows.win_copy:
     force: true
-    dest: "{{ ansible_env.USERPROFILE }}\\.cloud-init\\{{ _wsl_distro }}.user-data"
+    dest: "{{ _win_userprofile.result }}\\.cloud-init\\{{ _wsl_distro }}.user-data"
     content: |
       #cloud-config
       users:
@@ -215,7 +220,7 @@
   ansible.windows.win_powershell:
     error_action: stop
     script: |
-      $path = '{{ ansible_env.USERPROFILE }}\.cloud-init\{{ _wsl_distro }}.user-data'
+      $path = '{{ _win_userprofile.result }}\.cloud-init\{{ _wsl_distro }}.user-data'
       $raw  = [System.IO.File]::ReadAllText($path)
       $fixed = $raw -replace "`r`n", "`n"
       if ($raw -ne $fixed) {
@@ -228,7 +233,7 @@
 
 - name: Read cloud-init user-data for verification
   ansible.builtin.slurp:
-    src: "{{ ansible_env.USERPROFILE }}\\.cloud-init\\{{ _wsl_distro }}.user-data"
+    src: "{{ _win_userprofile.result }}\\.cloud-init\\{{ _wsl_distro }}.user-data"
   register: _cloud_init_content
 
 - name: Report cloud-init user-data path and contents

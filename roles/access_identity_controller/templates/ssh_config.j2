@@ -23,12 +23,23 @@ Host {{ host }}
     LogLevel ERROR
 {% if hv.ssh_powershell_port is defined %}
 
-# EXPERIMENTAL — subject to change. Direct PowerShell session for
-# troubleshooting or when WSL/bash access is broken.
+# Direct PowerShell session for connecting to windows host, uses port win_ssh_powershell_port
 Host {{ host }}-powershell
     HostName {{ hv['ssh_host'] | default(hv.get('ansible_host', host)) }}
     User {{ hv['ssh_user'] | default(hv.get('ansible_user', 'joshc')) }}
     Port {{ hv['ssh_powershell_port'] }}
+    IdentityFile {{ controller_ssh_private_key_path }}
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    LogLevel ERROR
+
+# Direct PowerShell session for connecting to windows host, uses  session
+# uses : Subsystem    powershell    powershell.exe -sshs -NoLogo -NoProfile  in the sshd_config
+Host {{ host }}-powershell-bysession
+    HostName {{ hv['ssh_host'] | default(hv.get('ansible_host', host)) }}
+    User {{ hv['ssh_user'] | default(hv.get('ansible_user', 'joshc')) }}
+    Port {{ hv['ssh_powershell_port'] }}
+    ProxyCommand ssh -W %h:%p %r@%h -s powershell
     IdentityFile {{ controller_ssh_private_key_path }}
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null

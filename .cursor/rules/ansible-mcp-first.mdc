@@ -1,0 +1,121 @@
+---
+description: Prioritize available Ansible MCP tools over shell commands or ad-hoc methods for all Ansible work in this project.
+alwaysApply: true
+# Source copy stored in: roles/cursor/rules/ansible-mcp-first.mdc.cursor
+---
+
+# Ansible MCP Tools — Use First
+
+This project has two MCP servers providing Ansible tooling. **Always reach for these before running shell commands, ad-hoc ansible CLI, or kubectl.**
+
+## Server: `ansible` (Red Hat ADT)
+
+| Tool | When to use |
+|---|---|
+| `ansible_lint` | After editing any playbook or role task file |
+| `ansible_navigator` | Running playbooks end-to-end |
+| `ade_environment_info` | Checking installed collections, Python, Ansible versions |
+| `ade_setup_environment` | Setting up or repairing the dev environment |
+| `define_and_build_execution_env` | Building execution environment images |
+
+## Server: `ansible-mcp` (Operational)
+
+### Inventory & Facts
+| Tool | When to use |
+|---|---|
+| `inventory-graph` | Get a human-readable view of all groups and hosts |
+| `inventory-find-host` | Look up a host's groups and merged variables |
+| `inventory-parse` | Full inventory dump including group_vars/host_vars |
+| `ansible-gather-facts` | Collect live facts from a host before writing tasks |
+
+### Playbook Lifecycle
+| Tool | When to use |
+|---|---|
+| `validate-playbook` | Syntax-check any playbook before running it |
+| `validate-yaml` | Check raw YAML files for parse errors |
+| `project-playbooks` | Discover all playbooks in the project |
+| `project-run-playbook` | Run a playbook within the registered project context |
+| `ansible-test-idempotence` | Run a playbook twice to confirm no changes on second run |
+| `ansible-playbook` | Run a playbook directly |
+
+### Roles & Galaxy
+| Tool | When to use |
+|---|---|
+| `create-role-structure` | Scaffold a new role directory |
+| `ansible-role` | Execute a role in isolation for testing |
+| `galaxy-install` | Install collections/roles from requirements files |
+| `galaxy-lock` | Pin installed versions to a lock file |
+
+### Host Operations
+| Tool | When to use |
+|---|---|
+| `ansible-remote-command` | Run ad-hoc commands on a host (prefer a module instead) |
+| `ansible-gather-facts` | Inspect live host state |
+| `ansible-diagnose-host` | Full health assessment of a target host |
+| `ansible-fetch-logs` | Pull and analyze log files remotely |
+| `ansible-service-manager` | Check/manage services on a remote host |
+
+### Vault
+| Tool | When to use |
+|---|---|
+| `vault-view` | Inspect encrypted vault files |
+| `vault-encrypt` / `vault-decrypt` | Manage vault encryption |
+| `vault-rekey` | Rotate vault passwords |
+
+### Diagnostics & Drift
+| Tool | When to use |
+|---|---|
+| `ansible-capture-baseline` | Snapshot system state before a change |
+| `ansible-compare-states` | Diff current state against a baseline snapshot |
+| `ansible-health-monitor` | Continuous health trend analysis |
+| `ansible-security-audit` | Security posture check |
+| `ansible-network-matrix` | Verify connectivity between all hosts |
+| `ansible-log-hunter` | Correlate logs across multiple sources |
+
+## Server: `sysoperator`
+
+### Ansible (overlapping — prefer `ansible-mcp` equivalents when project context matters)
+| Tool | When to use |
+|---|---|
+| `run_playbook` | Run a playbook (use `project-run-playbook` from ansible-mcp instead when available) |
+| `run_ad_hoc` | Ad-hoc command against hosts |
+| `list_inventory` | List hosts and groups (use `inventory-graph` from ansible-mcp for richer output) |
+| `list_tasks` | **Unique** — dry-list every task a playbook would execute without running it |
+| `check_syntax` | Syntax check (use `validate-playbook` from ansible-mcp instead) |
+| `vault_encrypt_string` | Encrypt a single string value with Ansible Vault |
+| `vault_decrypt_string` | Decrypt a single encrypted string |
+
+### Terraform
+| Tool | When to use |
+|---|---|
+| `terraform` | Run any Terraform command (init, plan, apply, destroy, validate, output) |
+
+### AWS
+| Tool | When to use |
+|---|---|
+| `aws_ec2` | Manage EC2 instances |
+| `aws_s3` | Manage S3 buckets and objects |
+| `aws_vpc` | Manage VPC networks |
+| `aws_iam` | Manage IAM roles and policies |
+| `aws_rds` | Manage RDS instances |
+| `aws_elb` | Manage Elastic Load Balancers |
+| `aws_lambda` | Manage Lambda functions |
+| `aws_route53` | Manage Route53 DNS |
+| `aws_cloudformation` | Manage CloudFormation stacks |
+| `aws_dynamic_inventory` | Generate AWS dynamic inventory |
+
+## Tool Priority (when servers overlap)
+
+When multiple servers offer the same capability, use in this order:
+1. `ansible-mcp` — project-aware, uses registered inventory and config
+2. `ansible` (Red Hat ADT) — dev tooling, linting, environment management
+3. `sysoperator` — use for unique tools (`list_tasks`, `terraform`, AWS) or as fallback
+
+## Required Workflow
+
+For every Ansible change:
+1. `validate-playbook` (ansible-mcp) — syntax check before running
+2. `ansible_lint` (ansible) — lint the changed file
+3. `list_tasks` (sysoperator) — preview what will execute
+4. Run the playbook via `project-run-playbook` (ansible-mcp)
+5. `ansible-test-idempotence` (ansible-mcp) — confirm no changes on second run

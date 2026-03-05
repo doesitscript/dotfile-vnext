@@ -1,0 +1,26 @@
+---
+# macOS: install Microsoft Remote Desktop (community mirror build for macOS 12 Monterey)
+
+- name: Community mirror notice for Microsoft Remote Desktop
+  ansible.builtin.debug:
+    msg: |
+      \033[1;33m╔══════════════════════════════════════════════════════════════════╗\033[0m
+      \033[1;33m║         COMMUNITY-MAINTAINED REMOTE DESKTOP BUILD                ║\033[0m
+      \033[1;33m╠══════════════════════════════════════════════════════════════════╣\033[0m
+      \033[1;36m║  This installs microsoft-remote-desktop-for-macos12 via the      ║\033[0m
+      \033[1;36m║  junian/homebrew-mirrors tap — a community-maintained mirror      ║\033[0m
+      \033[1;36m║  for macOS 12 Monterey (your current OS version).                ║\033[0m
+      \033[1;33m║                                                                  ║\033[0m
+      \033[1;31m║  ⚠  This is NOT the official Microsoft Homebrew cask.            ║\033[0m
+      \033[1;31m║     Verify the tap and formula before trusting in production.    ║\033[0m
+      \033[1;33m╚══════════════════════════════════════════════════════════════════╝\033[0m
+
+- name: Tap junian/homebrew-mirrors community mirror
+  community.general.homebrew_tap:
+    name: junian/homebrew-mirrors
+    state: present
+
+- name: Install Microsoft Remote Desktop (macOS 12 community build)
+  community.general.homebrew_cask:
+    name: microsoft-remote-desktop-for-macos12
+    state: present
