@@ -1,0 +1,192 @@
+---
+description: At the start of every conversation, brief the user on all available MCP servers, tools, and resources, and declare which are active in the current conversation mode.
+alwaysApply: true
+# This is the stored source copy. Active rule deployed to: .cursor/rules/mcp-conversation-briefing.mdc
+---
+
+# MCP Server Briefing — Required at Conversation Start
+
+At the start of every new conversation, read ALL MCP server tool and resource descriptors
+from the mcps folder, then present the briefing below to the user before any other work.
+Do not summarize or skip tools. Do not assume you already know the tool list — re-read it.
+
+## Briefing Format
+
+Present a single message at conversation open structured as:
+
+```
+## MCP Tools Active This Conversation — Mode: [Agent | Plan | Debug | Ask]
+
+### REQUIRED in this mode
+[list tools that must be called for the current mode]
+
+### AVAILABLE in this mode (discretionary)
+[list tools usable at agent judgment]
+
+### NOT USED in this mode
+[list tools that do not apply to this mode — state why]
+
+### REQUIRES EXPLICIT USER INSTRUCTION BEFORE USE (any mode)
+[list tools that must never be called without the user asking]
+
+### REFERENCE RESOURCES AVAILABLE (any mode)
+[list MCP resources — documents — and what they contain]
+```
+
+---
+
+## Tool Mode Map
+
+### Agent mode — full execution
+
+**Required workflow (must call in this order for every Ansible change):**
+- `validate-playbook` (ansible-mcp) — syntax check before touching a playbook
+- `ansible_lint` (ansible) — lint after every edit
+- `list_tasks` (sysoperator) — preview task execution before running
+- `project-run-playbook` (ansible-mcp) — run the playbook
+- `ansible-test-idempotence` (ansible-mcp) — confirm no changes on second run
+
+**Required pre-task (before writing any task or role):**
+- `inventory-graph` (ansible-mcp) — understand host/group structure
+- `inventory-find-host` (ansible-mcp) — resolve merged variables for target host
+- `ade_environment_info` (ansible) — confirm installed collections and Ansible version
+- `zen_of_ansible` (ansible) — consult design philosophy when making structural decisions
+
+**Discretionary (use when relevant):**
+- `inventory-parse`, `inventory-diff` (ansible-mcp)
+- `ansible-gather-facts` (ansible-mcp) — before writing tasks that depend on host state
+- `ansible-capture-baseline` / `ansible-compare-states` (ansible-mcp) — for any change with drift risk
+- `ansible-role` (ansible-mcp) — test a role in isolation
+- `galaxy-install`, `galaxy-lock` (ansible-mcp)
+- `vault-view`, `vault-encrypt`, `vault-decrypt` (ansible-mcp)
+- `vault_encrypt_string`, `vault_decrypt_string` (sysoperator)
+- `project-playbooks`, `list-projects` (ansible-mcp)
+- `adt_check_env` (ansible)
+
+**Not used in Agent mode unless task is explicitly about it:**
+- `create_ansible_projects`, `define_and_build_execution_env` (ansible) — project scaffolding only
+- `check_syntax` (sysoperator) — redundant with `validate-playbook`
+- All AWS tools, `terraform` (sysoperator) — different domain
+- All `cursor-ide-browser` tools — different domain
+
+---
+
+### Plan mode — read-only planning, no execution
+
+**Required (must call before writing any plan involving Ansible):**
+- `inventory-graph` (ansible-mcp) — understand what hosts/groups are in scope
+- `inventory-find-host` (ansible-mcp) — resolve merged variables for any host referenced in plan
+- `ade_environment_info` (ansible) — verify collections are installed before recommending modules
+- `zen_of_ansible` (ansible) — consult before any structural or design recommendation
+- `ansible-content-best-practices` resource (ansible) — fetch before answering any question about Ansible idiom, patterns, or best practice
+
+**Discretionary:**
+- `inventory-parse`, `inventory-diff` (ansible-mcp)
+- `ansible-gather-facts` (ansible-mcp) — if live host state is relevant to the plan
+
+**Not used in Plan mode:**
+- `validate-playbook`, `ansible_lint`, `project-run-playbook`, `ansible-test-idempotence` — nothing is executed until plan is approved and mode switches to Agent
+- `list_tasks` (sysoperator) — requires a runnable playbook; used post-edit in Agent mode
+- All destructive or write tools
+
+---
+
+### Debug mode — evidence collection and diagnosis
+
+**Required (per REQUIRED-EVIDENCE-NO-ASSUMPTIONS-ON-FAILURE rule):**
+- `ansible-gather-facts` (ansible-mcp) — collect live host state before hypothesizing
+- `ansible-fetch-logs` (ansible-mcp) — pull and analyze logs
+- `ansible-diagnose-host` (ansible-mcp) — full health assessment
+- `ansible-service-manager` (ansible-mcp) — verify service states
+
+**Discretionary:**
+- `ansible-log-hunter` (ansible-mcp) — correlate logs across sources
+- `ansible-health-monitor` (ansible-mcp) — trend analysis
+- `ansible-network-matrix` (ansible-mcp) — connectivity verification
+- `ansible-capture-baseline` / `ansible-compare-states` (ansible-mcp)
+- `ansible-remote-command` (ansible-mcp) — ad-hoc evidence only; prefer modules
+- `ansible-performance-baseline` (ansible-mcp)
+- `validate-playbook`, `ansible_lint` — if a task file is being edited as part of a fix
+- `ansible-content-best-practices` resource — if fix involves idiomatic questions
+
+**Not used in Debug mode:**
+- `project-run-playbook`, `ansible-test-idempotence` — only after fix is confirmed and mode returns to Agent
+- All AWS tools, `terraform`, browser tools
+
+---
+
+### Ask mode — conversational and informational only
+
+**Required for any Ansible design or idiom question:**
+- `zen_of_ansible` (ansible)
+- `ansible-content-best-practices` resource (ansible)
+
+**Discretionary:**
+- `ade_environment_info` (ansible) — if question involves installed state
+- `inventory-graph`, `inventory-find-host` (ansible-mcp) — if question involves host structure
+
+**Not used in Ask mode:**
+- All execution, lint, run, diagnostic, and write tools
+
+---
+
+## Tools Requiring Explicit User Instruction — Any Mode
+
+Never call the following without the user explicitly requesting:
+
+| Tool | Server | Reason |
+|---|---|---|
+| `ansible-auto-heal` | ansible-mcp | Automatically modifies live systems |
+| `vault-rekey` | ansible-mcp | Destructive — rotates vault password |
+| `ade_setup_environment` | ansible | Modifies dev environment packages |
+| `define_and_build_execution_env` | ansible | Builds and pushes EE images |
+| `create_ansible_projects` | ansible | Scaffolds project structure on disk |
+| `project-bootstrap`, `register-project` | ansible-mcp | Modifies project registry |
+| `create-playbook`, `create-role-structure` | ansible-mcp | Creates files on disk |
+| `terraform` | sysoperator | Infrastructure changes, separate domain |
+| `aws_*` (all 10 tools) | sysoperator | AWS infrastructure changes |
+| All `browser_*` tools | cursor-ide-browser | Browser automation, separate domain |
+
+---
+
+## Reference Resources (available in all modes)
+
+Fetched via `FetchMcpResource` — read-only documents, never "run":
+
+| Resource URI | Server | Content |
+|---|---|---|
+| `guidelines://ansible-content-best-practices` | ansible | Full Ansible coding guidelines and idiom reference |
+| `guidelines://execution-environment-rules` | ansible | Rules for building execution environments |
+| `guidelines://execution-environment-sample` | ansible | Sample EE definition |
+| `guidelines://execution-environment-schema` | ansible | EE YAML schema |
+
+---
+
+## Tools Not Covered in ansible-mcp-first.mdc or Other Existing Rules
+
+The following tools exist in your MCP servers but are NOT mentioned in any workspace `.mdc` rule.
+They are available but have no rule-defined workflow:
+
+**ansible server:**
+- `zen_of_ansible` — should be used for design decisions (not in any rule)
+- `ansible-content-best-practices` resource — should be used for idiom questions (not in any rule)
+- `ade_setup_environment` — environment setup (explicit request only)
+- `define_and_build_execution_env` — EE build (explicit request only)
+- `create_ansible_projects` — project scaffolding (explicit request only)
+- `adt_check_env`, `list_available_tools` — env diagnostics (discretionary)
+- `execution-environment-*` resources — EE reference docs (discretionary)
+
+**ansible-mcp server:**
+- `inventory-diff` — compare inventory states (discretionary)
+- `ansible-auto-heal` — automated healing (explicit request only)
+- `ansible-performance-baseline` — performance baselining (discretionary)
+- `project-bootstrap`, `register-project`, `list-projects` — project management (explicit request only)
+- `create-playbook` — playbook scaffolding (explicit request only)
+- `ansible-network-matrix` — connectivity matrix (discretionary in Debug)
+
+**sysoperator server:**
+- `terraform` and all `aws_*` tools — different domain entirely (explicit request only)
+- `run_playbook` — use `project-run-playbook` from ansible-mcp instead; sysoperator version is a fallback
+
+**cursor-ide-browser server:**
+- All browser tools — web automation, separate domain entirely (explicit request only)

@@ -17,6 +17,7 @@ defaults. Current active rules:
 - `k3s-cluster.mdc` — k3s lab cluster constraints
 - `REQUIRED-EVIDENCE-NO-ASSUMPTIONS-ON-FAILURE.mdc` — failure investigation protocol
 - `devops.mdc` — general DevOps standards
+- `mcp-conversation-briefing.mdc` — MCP server/tool briefing at conversation start
 
 
 ## Context & Standards
@@ -49,3 +50,30 @@ This project has three MCP servers. Before ANY Ansible work (editing, running, v
 6. Use `ansible-gather-facts`, `inventory-graph`, `inventory-find-host` (ansible-mcp) before writing tasks
 Never use the Shell tool for Ansible work when an MCP tool covers the same operation.
 Full tool reference: see `.cursor/rules/ansible-mcp-first.mdc`
+
+
+## Post-Rule Processing — Mandatory Conversation Summary
+# This section runs AFTER all other rules are loaded, at the start of every conversation.
+# Its purpose is to give the user full visibility into which rules are active and which
+# were loaded but not exercised, so gaps and unused rules are always surfaced explicitly.
+#
+# Current rule files in .cursor/rules/ (update this list when rules are added or removed):
+#   ansible-mcp-first.mdc
+#   ansible-declarative-enforcement.mdc
+#   ansible-kubernetes-declarative.mdc
+#   winrm-ansible.mdc
+#   k3s-cluster.mdc
+#   REQUIRED-EVIDENCE-NO-ASSUMPTIONS-ON-FAILURE.mdc
+#   devops.mdc
+#   mcp-conversation-briefing.mdc
+
+After loading all rules, output the following at conversation start:
+
+### Rules Loaded This Conversation
+List every .mdc file that was read and loaded, with a one-line summary of what it governs.
+
+### Rules Loaded But Not Yet Applied
+List any loaded rules whose constraints have not been triggered by the current conversation
+context. For example: if no Kubernetes work is happening, note that
+`ansible-kubernetes-declarative.mdc` is loaded but not yet active. Update this list
+throughout the conversation as rules become relevant or remain unused.
