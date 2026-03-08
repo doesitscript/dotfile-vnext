@@ -33,6 +33,11 @@
     error_action: stop
     script: |
       $distro = '{{ _wsl_distro }}'
+      # Terminate any running sessions before unregistering — wsl --unregister
+      # hangs indefinitely if the distro has active processes or open sessions.
+      # --terminate is safe when the distro is already stopped (exits 0, no-op).
+      wsl.exe --terminate $distro 2>&1 | Out-Null
+      Start-Sleep -Seconds 3
       wsl.exe --unregister $distro 2>&1 | Out-Null
       if ($LASTEXITCODE -ne 0) {
         $Ansible.Failed = $true

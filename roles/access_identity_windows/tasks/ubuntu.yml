@@ -584,7 +584,7 @@
     script: |
       $Ansible.Changed = $false
       $distro = '{{ _wsl_distro }}'
-      $staticIp = '{{ _wsl.static_ip | default("192.168.50.222/24") }}'
+      $staticIp = '{{ _wsl.static_ip | default(hostvars[_wsl_companion]["ansible_host"] ~ "/24") }}'
       $gateway = '{{ _wsl.gateway | default("192.168.50.1") }}'
 
       $netplanFile = '/etc/netplan/01-wsl-bridge.yaml'
