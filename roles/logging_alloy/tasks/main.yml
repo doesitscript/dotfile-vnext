@@ -1,0 +1,31 @@
+---
+# logging_alloy — Dispatch to platform-specific task files.
+#
+# Detects the current surface type via ansible_os_family and delegates
+# to windows.yml, linux.yml, or macos.yml accordingly.
+#
+# API contract: logging_alloy_* variables (see defaults/main.yml).
+
+- name: Include Windows agent tasks
+  ansible.builtin.include_tasks:
+    file: windows.yml
+    apply:
+      tags: [logging, logging_alloy, logging_windows]
+  when: ansible_os_family == "Windows"
+  tags: [logging, logging_alloy, logging_windows]
+
+- name: Include Linux/WSL agent tasks
+  ansible.builtin.include_tasks:
+    file: linux.yml
+    apply:
+      tags: [logging, logging_alloy, logging_linux]
+  when: ansible_os_family in ["Debian", "RedHat"]
+  tags: [logging, logging_alloy, logging_linux]
+
+- name: Include macOS agent tasks
+  ansible.builtin.include_tasks:
+    file: macos.yml
+    apply:
+      tags: [logging, logging_alloy, logging_macos]
+  when: ansible_os_family == "Darwin"
+  tags: [logging, logging_alloy, logging_macos]

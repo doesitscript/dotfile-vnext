@@ -1,0 +1,67 @@
+---
+# logging_alloy/tasks/linux.yml
+# Install and configure Grafana Alloy on WSL/Linux hosts via Grafana APT repository.
+#
+# Config path:  /etc/alloy/config.alloy
+# Service:      alloy.service (systemd)
+# Log sources:  journald — broad (warning+) + targeted units (all priorities)
+
+- name: Create keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+  become: true
+  tags: [logging, logging_alloy, logging_linux, logging_install]
+
+- name: Download Grafana GPG key
+  ansible.builtin.get_url:
+    url: https://apt.grafana.com/gpg.key
+    dest: /tmp/grafana-gpg.key
+    mode: "0644"
+    force: false
+  tags: [logging, logging_alloy, logging_linux, logging_install]
+
+- name: Dearmor Grafana GPG key into keyrings
+  ansible.builtin.shell:
+    cmd: gpg --dearmor < /tmp/grafana-gpg.key > /etc/apt/keyrings/grafana.gpg
+    creates: /etc/apt/keyrings/grafana.gpg
+  become: true
+  changed_when: false
+  tags: [logging, logging_alloy, logging_linux, logging_install]
+
+- name: Add Grafana APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main"
+    state: present
+    filename: grafana
+  become: true
+  tags: [logging, logging_alloy, logging_linux, logging_install]
+
+- name: Install Alloy package
+  ansible.builtin.apt:
+    name: alloy
+    state: present
+    update_cache: true
+  become: true
+  tags: [logging, logging_alloy, logging_linux, logging_install]
+
+- name: Write Alloy configuration
+  ansible.builtin.template:
+    src: alloy_linux.alloy.j2
+    dest: "{{ logging_alloy_linux_config_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: Restart Alloy service (Linux)
+  tags: [logging, logging_alloy, logging_linux, logging_config]
+
+- name: Ensure Alloy service is enabled and started
+  ansible.builtin.systemd:
+    name: alloy
+    state: started
+    enabled: true
+    daemon_reload: true
+  become: true
+  tags: [logging, logging_alloy, logging_linux, logging_install]

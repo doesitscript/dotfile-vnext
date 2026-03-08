@@ -1,0 +1,84 @@
+---
+# logging_alloy — API contract.
+#
+# Cross-platform Grafana Alloy agent: installs, configures, and manages
+# the Alloy service on Windows, WSL/Linux, and macOS.
+# Override per-platform sections in group_vars or host_vars.
+
+# Alloy agent version to install
+logging_alloy_version: "1.13.2"
+
+# Loki push endpoint — all agents send here
+logging_alloy_loki_endpoint: "http://server-225-wsl:3100/loki/api/v1/push"
+
+# --- Windows settings ---
+
+# Windows Event Log channels and optional XPath query per channel.
+# Setting xpath_query to "" collects all events in that channel.
+logging_alloy_windows_event_channels:
+  - name: "OpenSSH/Operational"
+    xpath_query: ""
+    job_label: "windows_openssh"
+  - name: "Security"
+    xpath_query: >-
+      *[System[(EventID=4624 or EventID=4625 or EventID=4634 or EventID=4647
+      or EventID=4648 or EventID=4672 or EventID=4720 or EventID=4726 or EventID=4740)]]
+    job_label: "windows_security"
+  - name: "System"
+    xpath_query: "*[System[Level=1 or Level=2]]"
+    job_label: "windows_system"
+  - name: "Application"
+    xpath_query: "*[System[Level=1 or Level=2]]"
+    job_label: "windows_application"
+
+# Whether to collect the OpenSSH sshd.log file (only present if
+# SyslogFacility is configured to write to a file in sshd_config)
+logging_alloy_windows_openssh_log_file: true
+logging_alloy_windows_openssh_log_path: 'C:\ProgramData\ssh\logs\sshd.log'
+
+# Alloy install dir and config path (post-installer defaults)
+logging_alloy_windows_install_dir: 'C:\Program Files\GrafanaLabs\Alloy'
+logging_alloy_windows_config_path: 'C:\Program Files\GrafanaLabs\Alloy\config.alloy'
+
+# Windows service name created by the Alloy installer
+logging_alloy_windows_service_name: "Alloy"
+
+# --- Linux / WSL settings ---
+
+# Systemd units collected at full verbosity (all log priorities).
+# Everything else is collected at warning level and above.
+logging_alloy_linux_targeted_units:
+  - "sshd.service"
+  - "docker.service"
+  - "containerd.service"
+  - "k3s.service"
+  - "k3s-agent.service"
+  - "systemd.service"
+
+# Syslog identifiers whose auth/audit entries are always kept regardless of priority
+logging_alloy_linux_auth_identifiers:
+  - "sudo"
+  - "su"
+  - "sshd"
+  - "pam_unix"
+  - "useradd"
+  - "userdel"
+  - "passwd"
+
+# Alloy config path after apt installation
+logging_alloy_linux_config_path: "/etc/alloy/config.alloy"
+
+# --- macOS settings ---
+
+# Homebrew prefix — override to /usr/local for Intel Macs
+logging_alloy_macos_homebrew_prefix: "/opt/homebrew"
+
+# File paths to tail (glob patterns supported)
+logging_alloy_macos_log_paths:
+  - path: "/var/log/auth.log"
+    job: "macos_auth"
+  - path: "/var/log/system.log"
+    job: "macos_system"
+
+# Docker Desktop log glob — expands to the user's home directory at runtime
+logging_alloy_macos_docker_desktop_log_glob: "{{ ansible_env.HOME }}/Library/Logs/Docker Desktop/*.log"

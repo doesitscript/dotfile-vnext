@@ -1,0 +1,66 @@
+---
+# logging_alloy/tasks/windows.yml
+# Install and configure Grafana Alloy on Windows hosts.
+#
+# Install path:   C:\Program Files\GrafanaLabs\Alloy\
+# Config path:    C:\Program Files\GrafanaLabs\Alloy\config.alloy
+# Service name:   Alloy
+# Log sources:    Windows Event Log channels + OpenSSH sshd.log file
+
+- name: Check currently installed Alloy version
+  ansible.windows.win_reg_stat:
+    path: HKLM:\SOFTWARE\GrafanaLabs\Alloy
+    name: Version
+  register: _alloy_win_installed_version
+  ignore_errors: true
+  tags: [logging, logging_alloy, logging_windows, logging_install]
+
+- name: Download Alloy Windows installer
+  ansible.windows.win_get_url:
+    url: >-
+      https://github.com/grafana/alloy/releases/download/v{{ logging_alloy_version }}/alloy-installer-windows-amd64.exe
+    dest: "{{ ansible_env.TEMP }}\\alloy-installer-windows-amd64.exe"
+    force: false
+  when: >-
+    not _alloy_win_installed_version.exists or
+    _alloy_win_installed_version.value != logging_alloy_version
+  tags: [logging, logging_alloy, logging_windows, logging_install]
+
+- name: Install Alloy silently
+  ansible.windows.win_package:
+    path: "{{ ansible_env.TEMP }}\\alloy-installer-windows-amd64.exe"
+    arguments: "/S"
+    product_id: "Grafana Alloy"
+    state: present
+  register: _alloy_win_install
+  when: >-
+    not _alloy_win_installed_version.exists or
+    _alloy_win_installed_version.value != logging_alloy_version
+  tags: [logging, logging_alloy, logging_windows, logging_install]
+
+- name: Stop Alloy service before writing config
+  ansible.windows.win_service:
+    name: "{{ logging_alloy_windows_service_name }}"
+    state: stopped
+  when: _alloy_win_install is changed
+  tags: [logging, logging_alloy, logging_windows, logging_install]
+
+- name: Ensure Alloy install directory exists
+  ansible.windows.win_file:
+    path: "{{ logging_alloy_windows_install_dir }}"
+    state: directory
+  tags: [logging, logging_alloy, logging_windows, logging_config]
+
+- name: Write Alloy configuration
+  ansible.windows.win_template:
+    src: alloy_windows.alloy.j2
+    dest: "{{ logging_alloy_windows_config_path }}"
+  notify: Restart Alloy service (Windows)
+  tags: [logging, logging_alloy, logging_windows, logging_config]
+
+- name: Ensure Alloy service is running and set to auto-start
+  ansible.windows.win_service:
+    name: "{{ logging_alloy_windows_service_name }}"
+    state: started
+    start_mode: auto
+  tags: [logging, logging_alloy, logging_windows, logging_install]

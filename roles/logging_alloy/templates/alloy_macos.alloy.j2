@@ -1,0 +1,53 @@
+// {{ ansible_managed }}
+// Grafana Alloy configuration — macOS host: {{ ansible_hostname }}
+//
+// Collects:
+//   - /var/log/auth.log       — SSH auth, sudo, PAM events
+//   - /var/log/system.log     — System-level events
+//   - Docker Desktop logs     — Docker daemon and component logs
+//
+// Note: This Mac is a Docker CLIENT. Container stdout/stderr is collected
+// on the Docker engine host (server-225-wsl), not here.
+
+// ---------------------------------------------------------------------------
+// Standard macOS log file sources
+// ---------------------------------------------------------------------------
+
+{% for log in logging_alloy_macos_log_paths %}
+loki.source.file "{{ log.job | replace('-', '_') }}" {
+  targets = [
+    {
+      __path__ = "{{ log.path }}",
+      job      = "{{ log.job }}",
+      host     = "{{ ansible_hostname }}",
+    },
+  ]
+  forward_to = [loki.write.default.receiver]
+}
+
+{% endfor %}
+
+// ---------------------------------------------------------------------------
+// Docker Desktop log files
+// ---------------------------------------------------------------------------
+
+loki.source.file "docker_desktop" {
+  targets = [
+    {
+      __path__ = "{{ logging_alloy_macos_docker_desktop_log_glob }}",
+      job      = "docker_desktop",
+      host     = "{{ ansible_hostname }}",
+    },
+  ]
+  forward_to = [loki.write.default.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// Loki write endpoint
+// ---------------------------------------------------------------------------
+
+loki.write "default" {
+  endpoint {
+    url = "{{ logging_alloy_loki_endpoint }}"
+  }
+}

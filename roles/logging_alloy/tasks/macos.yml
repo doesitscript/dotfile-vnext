@@ -1,0 +1,50 @@
+---
+# logging_alloy/tasks/macos.yml
+# Install and configure Grafana Alloy on macOS via Homebrew.
+#
+# Config path:  {{ logging_alloy_macos_homebrew_prefix }}/etc/alloy/config.alloy
+# Service:      Managed via brew services (launchd user agent)
+# Log sources:  /var/log/auth.log, /var/log/system.log, Docker Desktop logs
+
+- name: Tap Grafana Homebrew formula repository
+  community.general.homebrew_tap:
+    name: grafana/grafana
+    state: present
+  tags: [logging, logging_alloy, logging_macos, logging_install]
+
+- name: Install Alloy via Homebrew
+  community.general.homebrew:
+    name: grafana/grafana/alloy
+    state: present
+  tags: [logging, logging_alloy, logging_macos, logging_install]
+
+- name: Detect Homebrew prefix
+  ansible.builtin.command: brew --prefix
+  register: _alloy_homebrew_prefix
+  changed_when: false
+  tags: [logging, logging_alloy, logging_macos, logging_config]
+
+- name: Ensure Alloy config directory exists
+  ansible.builtin.file:
+    path: "{{ _alloy_homebrew_prefix.stdout }}/etc/alloy"
+    state: directory
+    mode: "0755"
+  tags: [logging, logging_alloy, logging_macos, logging_config]
+
+- name: Write Alloy configuration
+  ansible.builtin.template:
+    src: alloy_macos.alloy.j2
+    dest: "{{ _alloy_homebrew_prefix.stdout }}/etc/alloy/config.alloy"
+    mode: "0644"
+  notify: Restart Alloy service (macOS)
+  tags: [logging, logging_alloy, logging_macos, logging_config]
+
+- name: Start Alloy service via brew services
+  ansible.builtin.command: >-
+    brew services start grafana/grafana/alloy
+  register: _alloy_macos_start
+  changed_when: "'Successfully started' in _alloy_macos_start.stdout"
+  failed_when: >-
+    _alloy_macos_start.rc != 0 and
+    'already started' not in _alloy_macos_start.stderr | default('')
+  tags: [logging, logging_alloy, logging_macos, logging_install]

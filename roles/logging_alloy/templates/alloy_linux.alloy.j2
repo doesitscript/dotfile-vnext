@@ -1,0 +1,101 @@
+// {{ ansible_managed }}
+// Grafana Alloy configuration — Linux/WSL host: {{ ansible_hostname }}
+//
+// Collects from systemd journal:
+//   - All units:        warning level and above (errors, criticals, emergencies)
+//   - Targeted units:   all priorities (debug through emergency)
+//                       {{ logging_alloy_linux_targeted_units | join(', ') }}
+//   - Auth identifiers: always collected regardless of priority
+//                       {{ logging_alloy_linux_auth_identifiers | join(', ') }}
+
+// ---------------------------------------------------------------------------
+// Journal source — collects all entries with metadata labels
+// ---------------------------------------------------------------------------
+
+loki.source.journal "system" {
+  max_age    = "12h"
+  labels     = {
+    job  = "journal",
+    host = "{{ ansible_hostname }}",
+  }
+  forward_to = [loki.process.journal_filter.receiver]
+
+  relabel_rules {
+    // Map systemd unit name to a queryable label
+    rule {
+      source_labels = ["__journal__systemd_unit"]
+      target_label  = "unit"
+    }
+    // Map priority keyword (emerg/alert/crit/err/warning/notice/info/debug)
+    rule {
+      source_labels = ["__journal__priority_keyword"]
+      target_label  = "level"
+    }
+    // Map syslog identifier (process name — useful for auth events)
+    rule {
+      source_labels = ["__journal__syslog_identifier"]
+      target_label  = "identifier"
+    }
+    // Map transport (syslog / journal / kernel / stdout)
+    rule {
+      source_labels = ["__journal__transport"]
+      target_label  = "transport"
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Filter pipeline — retain full verbosity for targeted units and auth events;
+// drop notice/info/debug from everything else.
+// ---------------------------------------------------------------------------
+
+loki.process "journal_filter" {
+  forward_to = [loki.write.default.receiver]
+
+  // Stage 1: Mark targeted service units for full verbosity retention
+  stage.match {
+    selector = `{unit=~"{{ logging_alloy_linux_targeted_units | join('|') }}"}`
+    pipeline_stages {
+      stage.static_labels {
+        values = { targeted = "true" }
+      }
+    }
+  }
+
+  // Stage 2: Mark auth-related syslog identifiers for full verbosity retention
+  stage.match {
+    selector = `{identifier=~"{{ logging_alloy_linux_auth_identifiers | join('|') }}"}`
+    pipeline_stages {
+      stage.static_labels {
+        values = { targeted = "true" }
+      }
+    }
+  }
+
+  // Stage 3: Mark kernel transport entries (OOM kills, filesystem, network driver events)
+  stage.match {
+    selector = `{transport="kernel"}`
+    pipeline_stages {
+      stage.static_labels {
+        values = { targeted = "true" }
+      }
+    }
+  }
+
+  // Stage 4: Drop notice/info/debug from anything not explicitly marked as targeted.
+  // Levels 5=notice, 6=info, 7=debug are verbose and low-signal for non-targeted units.
+  stage.match {
+    selector = `{targeted!="true", level=~"notice|info|debug"}`
+    action   = "drop"
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Loki write endpoint
+// ---------------------------------------------------------------------------
+
+loki.write "default" {
+  endpoint {
+    url = "{{ logging_alloy_loki_endpoint }}"
+  }
+}

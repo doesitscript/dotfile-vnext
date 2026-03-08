@@ -1,0 +1,87 @@
+---
+# logging_loki — Deploy Grafana Loki (and optionally Grafana) as Docker containers.
+#
+# API contract: logging_loki_* variables (see defaults/main.yml).
+# Consumed by: playbooks/logging.yaml targeting logging_server group.
+
+- name: Create Loki data directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0777"
+  loop:
+    - "{{ logging_loki_data_path }}"
+    - "{{ logging_loki_data_path }}/chunks"
+    - "{{ logging_loki_data_path }}/index"
+    - "{{ logging_loki_data_path }}/index_cache"
+    - "{{ logging_loki_data_path }}/rules"
+    - "{{ logging_loki_data_path }}/retention"
+  become: true
+  tags: [logging, logging_loki, logging_install]
+
+- name: Write Loki configuration
+  ansible.builtin.template:
+    src: loki_config.yml.j2
+    dest: "{{ logging_loki_data_path }}/config.yml"
+    mode: "0644"
+  become: true
+  notify: Restart Loki container
+  tags: [logging, logging_loki, logging_config]
+
+- name: Create Docker network for logging stack
+  community.docker.docker_network:
+    name: "{{ logging_loki_docker_network }}"
+    state: present
+  tags: [logging, logging_loki, logging_install]
+
+- name: Deploy Loki container
+  community.docker.docker_container:
+    name: loki
+    image: "grafana/loki:{{ logging_loki_version }}"
+    state: started
+    restart_policy: unless-stopped
+    user: "0"
+    command: "-config.file=/etc/loki/local-config.yaml"
+    ports:
+      - "{{ logging_loki_port }}:3100"
+    volumes:
+      - "{{ logging_loki_data_path }}/config.yml:/etc/loki/local-config.yaml:ro"
+      - "{{ logging_loki_data_path }}:/loki"
+    networks:
+      - name: "{{ logging_loki_docker_network }}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3100/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+  tags: [logging, logging_loki, logging_install]
+
+- name: Deploy Grafana container
+  community.docker.docker_container:
+    name: grafana
+    image: "grafana/grafana:{{ logging_grafana_version }}"
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "{{ logging_grafana_port }}:3000"
+    env:
+      GF_SECURITY_ADMIN_PASSWORD: "admin"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - name: "{{ logging_loki_docker_network }}"
+  when: logging_loki_deploy_grafana | bool
+  tags: [logging, logging_loki, logging_install]
+
+- name: Wait for Loki to be ready
+  ansible.builtin.uri:
+    url: "http://localhost:{{ logging_loki_port }}/ready"
+    status_code: 200
+  register: _loki_ready
+  until: _loki_ready.status == 200
+  retries: 12
+  delay: 5
+  tags: [logging, logging_loki, logging_install]

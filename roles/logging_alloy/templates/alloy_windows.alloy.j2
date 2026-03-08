@@ -1,0 +1,54 @@
+// {{ ansible_managed }}
+// Grafana Alloy configuration — Windows host: {{ ansible_hostname }}
+//
+// Collects:
+//   - Windows Event Log: OpenSSH/Operational, Security (filtered IDs),
+//                        System (Critical+Error), Application (Critical+Error)
+//   - OpenSSH sshd.log file (if present)
+
+// ---------------------------------------------------------------------------
+// Event Log sources
+// ---------------------------------------------------------------------------
+
+{% for channel in logging_alloy_windows_event_channels %}
+loki.source.windowsevent "{{ channel.job_label }}" {
+  eventlog_name     = "{{ channel.name }}"
+{% if channel.xpath_query | default('') | length > 0 %}
+  xpath_query       = "{{ channel.xpath_query | trim }}"
+{% endif %}
+  use_incoming_timestamp = true
+  forward_to        = [loki.write.default.receiver]
+  labels = {
+    job  = "{{ channel.job_label }}",
+    host = "{{ ansible_hostname }}",
+  }
+}
+
+{% endfor %}
+
+// ---------------------------------------------------------------------------
+// OpenSSH log file (present when SyslogFacility writes to file in sshd_config)
+// ---------------------------------------------------------------------------
+
+{% if logging_alloy_windows_openssh_log_file | bool %}
+loki.source.file "openssh_file" {
+  targets = [
+    {
+      __path__ = "{{ logging_alloy_windows_openssh_log_path | replace('\\', '\\\\') }}",
+      job      = "windows_openssh_file",
+      host     = "{{ ansible_hostname }}",
+    },
+  ]
+  forward_to = [loki.write.default.receiver]
+}
+{% endif %}
+
+// ---------------------------------------------------------------------------
+// Loki write endpoint
+// ---------------------------------------------------------------------------
+
+loki.write "default" {
+  endpoint {
+    url = "{{ logging_alloy_loki_endpoint }}"
+  }
+}

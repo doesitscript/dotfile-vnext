@@ -1,0 +1,18 @@
+---
+- name: Restart Alloy service (Windows)
+  ansible.windows.win_service:
+    name: "{{ logging_alloy_windows_service_name }}"
+    state: restarted
+  tags: [logging, logging_alloy, logging_windows]
+
+- name: Restart Alloy service (Linux)
+  ansible.builtin.systemd:
+    name: alloy
+    state: restarted
+  become: true
+  tags: [logging, logging_alloy, logging_linux]
+
+- name: Restart Alloy service (macOS)
+  ansible.builtin.command: brew services restart grafana/grafana/alloy
+  changed_when: true
+  tags: [logging, logging_alloy, logging_macos]
