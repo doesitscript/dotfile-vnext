@@ -8,6 +8,55 @@ alwaysApply: true
 
 This project has two MCP servers providing Ansible tooling. **Always reach for these before running shell commands, ad-hoc ansible CLI, or kubectl.**
 
+---
+
+## Decision-Type Pre-Flight Gates — MANDATORY
+
+Classify every request before producing any output. Run the gate sequence for that
+type in full. **STOP — do not produce any output until all steps are complete.**
+
+### Gate: Placement / Structural Design
+
+Any question of "where does this go", "which role/playbook", "how should this be organized":
+
+1. `project-playbooks` (ansible-mcp) — enumerate all playbooks and their stated purposes
+2. `list_tasks` (sysoperator) — run on each candidate playbook to see what it actually executes
+3. `zen_of_ansible` (ansible) — consult design philosophy before proposing structure
+4. FetchMcpResource `guidelines://ansible-content-best-practices` (ansible) — idiom and patterns
+5. Cross-check `101-ansible--canonical-coding.md` playbook purpose rules before proposing
+
+### Gate: New Task or Role
+
+Before writing any task file, role, or defaults:
+
+1. `inventory-graph` (ansible-mcp) — host/group structure
+2. `inventory-find-host` (ansible-mcp) — merged vars for target host
+3. `zen_of_ansible` (ansible) — design philosophy
+4. `ade_environment_info` (ansible) — collection availability
+5. `ansible-gather-facts` (ansible-mcp) — if task reads live host state (packages, files, services, users)
+6. Fetch `ansible-windows-collection` @doc — if task targets Windows hosts
+
+### Gate: Debugging / Failure
+
+Per `REQUIRED-EVIDENCE-NO-ASSUMPTIONS-ON-FAILURE` — cause is unknown until evidence is collected:
+
+1. `ansible-gather-facts` (ansible-mcp) — live host state
+2. `ansible-diagnose-host` (ansible-mcp) — full health assessment
+3. `ansible-fetch-logs` (ansible-mcp) — pull and analyze logs
+4. `ansible-service-manager` (ansible-mcp) — verify service states
+
+### Gate: Execution
+
+Before running any playbook:
+
+1. `validate-playbook` (ansible-mcp) — syntax check
+2. `ansible_lint` (ansible) — lint the changed file
+3. `list_tasks` (sysoperator) — preview what will execute
+4. `project-run-playbook` (ansible-mcp) — run within registered project context
+5. `ansible-test-idempotence` (ansible-mcp) — confirm no changes on second run
+
+---
+
 ## Server: `ansible` (Red Hat ADT)
 
 | Tool | When to use |
@@ -17,6 +66,10 @@ This project has two MCP servers providing Ansible tooling. **Always reach for t
 | `ade_environment_info` | Checking installed collections, Python, Ansible versions |
 | `ade_setup_environment` | Setting up or repairing the dev environment |
 | `define_and_build_execution_env` | Building execution environment images |
+| `zen_of_ansible` | REQUIRED for any structural, design, or placement decision |
+| `ansible-content-best-practices` | Fetch via `FetchMcpResource guidelines://ansible-content-best-practices` — REQUIRED for any idiom, pattern, or role-design question |
+| `adt_check_env` | Verify dev environment state before running |
+| `list_available_tools` | Enumerate all available MCP tools (used by generate-mcp-briefing skill) |
 
 ## Server: `ansible-mcp` (Operational)
 

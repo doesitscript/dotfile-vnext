@@ -67,12 +67,18 @@ this file when MCP servers or tools change.
 
 ### Plan mode — read-only planning, no execution
 
-**Required (must call before writing any plan involving Ansible):**
-- `inventory-graph` (ansible-mcp) — understand what hosts/groups are in scope
-- `inventory-find-host` (ansible-mcp) — resolve merged variables for any host referenced in plan
-- `ade_environment_info` (ansible) — verify collections are installed before recommending modules
-- `zen_of_ansible` (ansible) — consult before any structural or design recommendation
-- `ansible-content-best-practices` resource (ansible) — fetch before answering any question about Ansible idiom, patterns, or best practice
+**Plan mode pre-flight — numbered gate (complete ALL before producing any output):**
+
+1. `inventory-graph` (ansible-mcp) — understand what hosts/groups are in scope
+2. `inventory-find-host` (ansible-mcp) — resolve merged variables for any host referenced in plan
+3. `ade_environment_info` (ansible) — verify collections are installed before recommending modules
+4. `zen_of_ansible` (ansible) — consult before any structural or design recommendation
+5. FetchMcpResource `guidelines://ansible-content-best-practices` (ansible) — fetch before answering any question about Ansible idiom, patterns, or best practice
+
+**STOP — do not produce any plan output until steps 1–5 are complete.**
+
+**Required when [condition applies]:**
+- `list_tasks` (sysoperator) — REQUIRED when deciding playbook placement; reveals what a playbook actually executes before proposing to add anything to it
 
 **Call when [trigger]:**
 - `ansible-gather-facts` (ansible-mcp) — live host state is required to make a recommendation in the plan
@@ -83,7 +89,6 @@ this file when MCP servers or tools change.
 
 **Not used in Plan mode:**
 - `validate-playbook`, `ansible_lint`, `project-run-playbook`, `ansible-test-idempotence` — nothing is executed until plan is approved and mode switches to Agent
-- `list_tasks` (sysoperator) — requires a runnable playbook; used post-edit in Agent mode
 - All destructive or write tools
 
 ---

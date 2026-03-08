@@ -180,3 +180,12 @@
     data: 1
     type: dword
   when: _wb.long_paths | default(true) | bool
+
+- name: Disable UEFI Secure Boot DB/DBX/SBAT update attempts
+  ansible.windows.win_regedit:
+    path: HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot\State
+    name: UEFIUpdateDisabled
+    data: 1
+    type: dword
+    state: present
+  when: _wb.disable_secure_boot_updates | default(true) | bool

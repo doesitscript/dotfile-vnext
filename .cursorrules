@@ -11,16 +11,25 @@ At the start of every session, read and apply all `.mdc` and `.md` files found i
 `.cursor/rules/` — excluding anything under `.cursor/rules/archive/`. Do not proceed
 with any work until all rules are loaded.
 
-## MCP Tools — Apply in ALL Modes
+## MCP Tools — Mandatory Gates, ALL Modes
 
-The MCP tool rules in this project apply in **every Cursor mode**: Agent, Plan, Debug,
-and Ask. They are not code-creation-only rules. An agent in Plan mode that skips
-`inventory-graph` before describing a host change, or a Debug agent that skips
-`ansible-gather-facts` before diagnosing a failure, is violating these rules.
+These are not suggestions. They are operating gates. The agent CANNOT produce
+any proposal, plan, placement, design, or implementation until the pre-flight
+tool sequence for that decision type has been completed and its output is in
+context.
 
-Before any Ansible work in any mode, use the MCP servers. Full reference: see
-`02--cussorrules-mcp-briefieng-GENERATED.mdc` (mode-based) and
-`03--ansible-mcp-tools-northstar.mdc` (category-based).
+**Decision type classification is the FIRST action on every request.**
+Before producing any output, classify the request:
+- Placement / structural design → run Decision-Type Gate: Placement (see 03)
+- New task or role → run Decision-Type Gate: New Task/Role (see 03)
+- Debugging / failure → run Decision-Type Gate: Debug (see 03)
+- Execution → run Decision-Type Gate: Execution (see 03)
+
+An agent that produces output before completing the gate for its decision type
+is violating these rules regardless of mode.
+
+Full tool reference: `02--cussorrules-mcp-briefieng-GENERATED.mdc` (mode-based)
+and `03--ansible-mcp-tools-northstar.mdc` (decision-type gates + category lookup).
 
 ## Conversation Start — Mandatory Summary
 
