@@ -1,30 +1,26 @@
 ---
 # docker_client: installs Docker CLI and creates an SSH-based Docker context.
 # Follows the roles/git pattern — OS dispatcher + shared tasks.
+#
+# Uses ansible_os_family (flat variable) rather than ansible_facts['os_family']
+# so it works whether facts came from setup or from a set_fact in the calling play.
 
 - name: Process docker_client for macOS
   ansible.builtin.import_tasks: mac.yml
-  when: ansible_facts['os_family'] == "Darwin" or ansible_facts['system'] == "Darwin"
+  when: ansible_os_family == "Darwin"
 
 - name: Process docker_client for Windows
   ansible.builtin.import_tasks: windows.yml
-  when: ansible_facts['os_family'] == "Windows"
+  when: ansible_os_family == "Windows"
 
 # --- Shell config: ensure Docker CLI is on PATH via .bashrc.d pattern ---
-
-# - name: Remove stale podman aliases block from .bashrc
-#   ansible.builtin.blockinfile:
-#     path: "{{ ansible_env.HOME }}/.bashrc"
-#     marker: "# {mark} ANSIBLE MANAGED BLOCK - Podman docker-compatible aliases"
-#     state: absent
-#   when: ansible_facts['system'] != "Windows"
 
 - name: Deploy Docker CLI shell config to .bashrc.d
   ansible.builtin.template:
     src: docker.bash.j2
-    dest: "{{ ansible_env.HOME }}/.bashrc.d/docker.bash"
+    dest: "{{ ansible_user_dir }}/.bashrc.d/docker.bash"
     mode: "0644"
-  when: ansible_facts['system'] != "Windows"
+  when: ansible_os_family != "Windows"
 
 # --- Shared: create Docker context pointing at the WSL engine via SSH ---
 # Runs on all client platforms after the CLI is installed.
@@ -34,17 +30,17 @@
   register: _docker_context_inspect
   changed_when: false
   failed_when: false
-  when: ansible_facts['os_family'] != "Windows"
+  when: ansible_os_family != "Windows"
 
 - name: Set expected Docker engine endpoint
   ansible.builtin.set_fact:
     _docker_expected_host: "ssh://{{ docker_engine_ssh_user }}@{{ docker_engine_ssh_host }}:{{ docker_engine_ssh_port }}"
-  when: ansible_facts['os_family'] != "Windows"
+  when: ansible_os_family != "Windows"
 
 - name: Remove stale Docker context if endpoint changed
   ansible.builtin.command: docker context rm {{ docker_context_name }} -f
   when:
-    - ansible_facts['os_family'] != "Windows"
+    - ansible_os_family != "Windows"
     - _docker_context_inspect.rc == 0
     - (_docker_context_inspect.stdout | from_json)[0].Endpoints.docker.Host != _docker_expected_host
   changed_when: true
@@ -54,8 +50,9 @@
     docker context create {{ docker_context_name }}
     --docker "host={{ _docker_expected_host }}"
   register: _docker_context_created
+  changed_when: true
   when:
-    - ansible_facts['os_family'] != "Windows"
+    - ansible_os_family != "Windows"
     - _docker_context_inspect.rc != 0 or (_docker_context_inspect.stdout | from_json)[0].Endpoints.docker.Host != _docker_expected_host
 
 - name: Check current Docker context
@@ -63,12 +60,12 @@
   register: _docker_current_context
   changed_when: false
   failed_when: false
-  when: ansible_facts['os_family'] != "Windows"
+  when: ansible_os_family != "Windows"
 
 - name: Set Docker default context to {{ docker_context_name }}
   ansible.builtin.command: docker context use {{ docker_context_name }}
   when:
-    - ansible_facts['os_family'] != "Windows"
+    - ansible_os_family != "Windows"
     - _docker_current_context.stdout | default('') != docker_context_name
   changed_when: true
 

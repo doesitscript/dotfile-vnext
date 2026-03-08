@@ -2,6 +2,69 @@
 # docker_client/windows.yml — Install Docker CLI + Compose on Windows, create SSH context.
 # The engine runs in WSL on the same machine; the context connects via SSH to localhost.
 
+- name: Ensure Windows SSH key pair exists for Docker context
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $sshDir  = "$env:USERPROFILE\.ssh"
+      $keyPath = "$sshDir\id_ed25519"
+      if (-not (Test-Path $keyPath)) {
+        New-Item -ItemType Directory -Path $sshDir -Force | Out-Null
+        # Windows OpenSSH ssh-keygen does not accept -N "" as empty passphrase;
+        # pipe two newlines to accept the empty passphrase prompts interactively.
+        Write-Output "`n`n" | ssh-keygen -t ed25519 -f $keyPath -q 2>&1 | Out-Null
+        $Ansible.Changed = $true
+      }
+      $pubKey = (Get-Content "$keyPath.pub" -Raw -ErrorAction Stop).Trim()
+      [System.IO.File]::WriteAllText('C:\Windows\Temp\win_docker_pubkey.txt', $pubKey)
+      $Ansible.Result = @{ pub_key_prefix = $pubKey.Substring(0, [Math]::Min(40, $pubKey.Length)) }
+  when: docker_engine_in_wsl | default(false)
+  tags: [docker, docker-client]
+
+- name: Write SSH key authorization script to Windows temp dir
+  ansible.windows.win_copy:
+    content: |
+      #!/bin/bash
+      set -e
+      PK=$(cat /mnt/c/Windows/Temp/win_docker_pubkey.txt)
+      AK="/home/{{ docker_engine_ssh_user }}/.ssh/authorized_keys"
+      mkdir -p "$(dirname "$AK")"
+      touch "$AK"
+      if grep -qF "$PK" "$AK" 2>/dev/null; then
+        echo already_present
+      else
+        echo "$PK" >> "$AK"
+        chmod 600 "$AK"
+        chown {{ docker_engine_ssh_user }}:{{ docker_engine_ssh_user }} "$AK"
+        echo added
+      fi
+    dest: 'C:\Windows\Temp\win_authorize_ssh.sh'
+  when: docker_engine_in_wsl | default(false)
+  tags: [docker, docker-client]
+
+- name: Authorize Windows SSH key in WSL for Docker context
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $distro  = '{{ wsl_distro | default("Ubuntu-24.04") }}'
+
+      # win_copy writes CRLF+BOM; bash requires LF and no BOM.
+      $raw = [System.IO.File]::ReadAllText('C:\Windows\Temp\win_authorize_ssh.sh')
+      $noBomUtf8 = New-Object System.Text.UTF8Encoding $false
+      [System.IO.File]::WriteAllText(
+        'C:\Windows\Temp\win_authorize_ssh.sh',
+        ($raw -replace "`r`n", "`n"),
+        $noBomUtf8
+      )
+
+      $out = wsl.exe -d $distro -u root -- bash /mnt/c/Windows/Temp/win_authorize_ssh.sh
+      if ($out -contains 'added') { $Ansible.Changed = $true }
+      $Ansible.Result = ($out -join ' ')
+  when: docker_engine_in_wsl | default(false)
+  tags: [docker, docker-client]
+
 - name: Install Docker CLI via Chocolatey
   chocolatey.chocolatey.win_chocolatey:
     name: docker-cli
@@ -18,7 +81,7 @@
     script: |
       $Ansible.Changed = $false
       $contextName = '{{ docker_context_name }}'
-      $sshUri = 'ssh://{{ docker_engine_ssh_user }}@localhost:{{ docker_engine_ssh_port }}'
+      $sshUri = 'ssh://{{ docker_engine_ssh_user }}@{{ docker_engine_ssh_host }}:{{ docker_engine_ssh_port }}'
 
       $existing = (docker context inspect $contextName 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue)
       $currentHost = ''
@@ -43,4 +106,4 @@
   ansible.builtin.debug:
     msg: >-
       Context: {{ docker_context_name }}
-      | Engine: ssh://{{ docker_engine_ssh_user }}@localhost:{{ docker_engine_ssh_port }}
+      | Engine: ssh://{{ docker_engine_ssh_user }}@{{ docker_engine_ssh_host }}:{{ docker_engine_ssh_port }}

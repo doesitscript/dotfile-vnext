@@ -10,7 +10,29 @@
 #
 - name: Docker Client - install CLI and create SSH context
   hosts: docker_clients
-  gather_facts: true
+  gather_facts: false
+  ignore_unreachable: true
+
+  pre_tasks:
+    # Avoid calling setup on WinRM (Windows) hosts — the Windows fact module
+    # unconditionally initialises an SMBIOSInfo object which fails on Hyper-V VMs
+    # and emits four [WARNING] lines. Since we only need os_family, we set it
+    # directly from the connection type (winrm == Windows) instead.
+    - name: Gather OS identity facts (non-Windows hosts only)
+      ansible.builtin.setup:
+        gather_subset:
+          - "min"
+          - "distribution"
+      when: ansible_connection != "winrm"
+      tags: [always]
+
+    - name: Set OS identity facts for Windows hosts (WinRM — avoid SMBIOS warnings)
+      ansible.builtin.set_fact:
+        ansible_os_family: "Windows"
+        ansible_system: "Win32NT"
+        ansible_distribution: "Windows"
+      when: ansible_connection == "winrm"
+      tags: [always]
 
   roles:
     - docker_client

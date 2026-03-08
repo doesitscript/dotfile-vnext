@@ -18,6 +18,23 @@
 - name: Docker - verify client connectivity
   hosts: docker_clients
   gather_facts: false
+  ignore_unreachable: true
+
+  pre_tasks:
+    # Docker SSH contexts use localhost:22 (Windows) or a LAN IP (Mac).
+    # The target WSL instance must be running for docker info to return data.
+    # Wake it here — the verify task runs within the 15 s idle window.
+    - name: Wake WSL Docker engine on Windows clients before verify
+      ansible.windows.win_powershell:
+        script: |
+          $distro = '{{ wsl_distro | default("Ubuntu-24.04") }}'
+          wsl.exe -d $distro -u root -- bash -c 'systemctl start docker' 2>&1 | Out-Null
+          $Ansible.Result = 'WSL Docker engine started'
+      become: false
+      ignore_unreachable: true
+      ignore_errors: true
+      when: ansible_connection == "winrm"
+      tags: [always]
 
   tasks:
     - name: Validate Docker client can reach engine
