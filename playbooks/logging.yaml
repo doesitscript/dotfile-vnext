@@ -1,0 +1,62 @@
+---
+# Logging: deploy Grafana Loki server + Alloy agents on all surfaces.
+#
+# Play 1 — Loki server (server-225-wsl):
+#   Deploys Loki as a Docker container with filesystem storage and
+#   an optional Grafana container pre-wired to Loki as a datasource.
+#
+# Play 2 — Alloy agents (all surfaces):
+#   Installs and configures the Grafana Alloy agent on every managed
+#   surface. Platform dispatch is handled inside the logging_alloy role.
+#
+# Usage examples:
+#
+#   Full deploy (Loki + all agents):
+#     ansible-playbook playbooks/logging.yaml -i inventory/inventory.yaml
+#
+#   Loki server only:
+#     ansible-playbook playbooks/logging.yaml -i inventory/inventory.yaml --tags logging_loki
+#
+#   Agents only (all surfaces):
+#     ansible-playbook playbooks/logging.yaml -i inventory/inventory.yaml --tags logging_alloy
+#
+#   Windows agents only:
+#     ansible-playbook playbooks/logging.yaml -i inventory/inventory.yaml --tags logging_windows
+#
+#   Push config update to all agents (no reinstall):
+#     ansible-playbook playbooks/logging.yaml -i inventory/inventory.yaml --tags logging_config
+#
+#   Single host:
+#     ansible-playbook playbooks/logging.yaml -i inventory/inventory.yaml --limit server-225-wsl
+
+- name: Logging - deploy Loki server
+  hosts: logging_server
+  gather_facts: true
+  become: false
+
+  pre_tasks:
+    - name: Verify Docker is available on logging server
+      ansible.builtin.command: docker info
+      changed_when: false
+      tags: [always]
+
+  roles:
+    - role: logging_loki
+      tags: [logging, logging_loki]
+
+- name: Logging - deploy Alloy agents
+  hosts: "windows_hosts:wsl_hosts:mac_dev"
+  gather_facts: true
+  become: false
+
+  pre_tasks:
+    - name: Skip Windows hosts not using WinRM (avoids SSH-mode Windows confusion)
+      ansible.builtin.meta: end_host
+      when: >-
+        ansible_os_family == "Windows" and
+        (ansible_connection | default('ssh')) != 'winrm'
+      tags: [always]
+
+  roles:
+    - role: logging_alloy
+      tags: [logging, logging_alloy]
