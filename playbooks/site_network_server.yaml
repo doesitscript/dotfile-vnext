@@ -1,0 +1,23 @@
+---
+# Configure network-server Windows node to desired state.
+# Idempotent — safe to re-run at any time.
+# Targets: network-server-win (WinRM)
+
+- name: Configure network-server Windows host
+  hosts: network-server-win
+  become: false
+
+  pre_tasks:
+    - name: Enable PowerShell remoting
+      ansible.windows.win_shell: Enable-PSRemoting -Force
+
+  roles:
+    - role: common/baseline
+    - role: package_manager
+    - role: python
+    - role: network_server/windows_base
+    # TODO: uncomment when roles are ready for production
+    # - role: network_server/docker_runtime
+    # - role: network_server/storage_layout
+    # - role: network_server/backup_baseline
+    - role: common/firewall

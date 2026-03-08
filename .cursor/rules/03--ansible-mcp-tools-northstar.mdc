@@ -19,26 +19,54 @@ type in full. **STOP — do not produce any output until all steps are complete.
 
 Any question of "where does this go", "which role/playbook", "how should this be organized":
 
+**Project role categories — use to determine placement before proposing anything:**
+- **Category 1 — Access/Identity** (`access_identity_*`, `transport_execnode_*`): SSH keys, OpenSSH server, authorized_keys, identity
+- **Category 2 — Common** (`common/*`): Shared across all nodes (baseline, shell_config, node, firewall)
+- **Category 3 — Node-specific** (`server_225/*`, `dev_3090/*`, `network_server/*`): Hardware or environment-specific configuration
+- **Category 4 — Tooling** (top-level: `python/`, `docker_engine/`, `package_manager/`, etc.): Software installation
+
 1. `project-playbooks` (ansible-mcp) — enumerate all playbooks and their stated purposes
 2. `list_tasks` (sysoperator) — run on each candidate playbook to see what it actually executes
 3. `zen_of_ansible` (ansible) — consult design philosophy before proposing structure
 4. FetchMcpResource `guidelines://ansible-content-best-practices` (ansible) — idiom and patterns
-5. Cross-check `101-ansible--canonical-coding.md` playbook purpose rules before proposing
+5. Cross-check `101-ansible--canonical-coding.md` — specifically: Role Design Principles (functionality not implementation, limited scope), Playbook Structure (use `roles` or `tasks` section, not both), and Anti-Patterns (do not mix roles and tasks sections)
 
 ### Gate: New Task or Role
 
 Before writing any task file, role, or defaults:
 
+**Step 0 — State the resource and desired state:**
+Before writing anything, explicitly state:
+> "I am managing `<resource or system>` to ensure it is `<desired state>`."
+This determines whether to search for a module (single resource) or role (multi-resource system).
+
 1. `inventory-graph` (ansible-mcp) — host/group structure
 2. `inventory-find-host` (ansible-mcp) — merged vars for target host
 3. `zen_of_ansible` (ansible) — design philosophy
-4. `ade_environment_info` (ansible) — collection availability
+4. `ade_environment_info` (ansible) — collection availability. After running: identify any
+   installed collection covering the target platform and function. Prefer it over custom
+   `win_powershell`/`shell` workarounds. For Windows hosts, cross-reference
+   `myllynen.windows_ansible_roles` explicitly. If a maintained role covers ≥80% of the
+   problem — use it. Do not reimplement.
 5. `ansible-gather-facts` (ansible-mcp) — if task reads live host state (packages, files, services, users)
-6. Fetch `ansible-windows-collection` @doc — if task targets Windows hosts
+6. Fetch `ansible-windows-collection` @doc AND `community-windows-collection` @doc —
+   REQUIRED when any target host has `ansible_connection: winrm` or
+   `surface_type: windows_host`. Both must be fetched before writing any task.
+7. Role structure check — before modifying any existing role, verify presence of
+   `meta/argument_specs.yml` and a README. If either is missing, add creation to
+   the implementation plan.
+
+**Role conflict check — mandatory before writing any task:**
+For every `include_role` or `import_role` found in `list_tasks` output of any playbook
+targeting the same host group, read that role's `tasks/main.yml` before writing any new
+task. Any functionality already present MUST NOT be re-implemented.
 
 ### Gate: Debugging / Failure
 
-Per `REQUIRED-EVIDENCE-NO-ASSUMPTIONS-ON-FAILURE` — cause is unknown until evidence is collected:
+Per `REQUIRED-EVIDENCE-NO-ASSUMPTIONS-ON-FAILURE` — cause is unknown until evidence is collected.
+**Both** this gate's MCP tools and the full evidence collection sequence in
+`REQUIRED-EVIDENCE-NO-ASSUMPTIONS-ON-FAILURE.mdc` are mandatory and complementary —
+apply both, not one or the other:
 
 1. `ansible-gather-facts` (ansible-mcp) — live host state
 2. `ansible-diagnose-host` (ansible-mcp) — full health assessment
@@ -48,6 +76,13 @@ Per `REQUIRED-EVIDENCE-NO-ASSUMPTIONS-ON-FAILURE` — cause is unknown until evi
 ### Gate: Execution
 
 Before running any playbook:
+
+**Step 0 — Environment pre-flight (per `80--ansible-project-required-considerations.mdc`):**
+Source `.envrc` and activate `.venv` before any playbook execution targeting Windows or
+remote hosts. Use the exact sequence:
+```bash
+cd /Users/joshc/develop/dotfile-vnext && source .envrc && source .venv/bin/activate
+```
 
 1. `validate-playbook` (ansible-mcp) — syntax check
 2. `ansible_lint` (ansible) — lint the changed file
@@ -164,15 +199,38 @@ When multiple servers offer the same capability, use in this order:
 2. `ansible` (Red Hat ADT) — dev tooling, linting, environment management
 3. `sysoperator` — use for unique tools (`list_tasks`, `terraform`, AWS) or as fallback
 
-## Required Workflow
+---
 
-For every Ansible change:
-1. `validate-playbook` (ansible-mcp) — syntax check before running
-2. `ansible_lint` (ansible) — lint the changed file
-3. `list_tasks` (sysoperator) — preview what will execute
-4. Run the playbook via `project-run-playbook` (ansible-mcp)
-5. `ansible-test-idempotence` (ansible-mcp) — confirm no changes on second run
+## Post-Edit Mandatory Sequence
 
+After **every** file edit — before responding to the user:
+
+1. `ansible_lint` (ansible) — run on the edited file. Fix any violations before continuing.
+2. `validate-playbook` (ansible-mcp) — run if the edited file is a playbook.
+
+This sequence is not part of the Execution gate. It fires on every edit in every mode.
+Do not report the edit as complete until both steps have been run and results reported.
+
+---
+
+## Kubernetes Hard Rule
+
+If `kubernetes.core` is installed:
+- `kubectl` is **disallowed in production roles**
+- Allowed for diagnostics only
+- All Kubernetes resource operations must use `kubernetes.core.*` modules
+- Node labels: use `apply: true` to enforce full declarative state
+
+---
+
+## Node Standardization Rule
+
+When a node's configuration is incomplete or inconsistent with its inventory category peers,
+standardize it to match the established pattern for that category. Do not ask the user —
+apply the category pattern (see Gate: Placement for categories). Document any remaining
+gaps as TODO comments in the role or playbook.
+
+---
 
 ## Mode Scope
 

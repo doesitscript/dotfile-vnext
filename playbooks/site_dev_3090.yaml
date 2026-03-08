@@ -1,9 +1,9 @@
 ---
-# Bootstrap dev-3090 node
+# Configure dev-3090 Windows node to desired state.
+# Idempotent — safe to re-run at any time.
 # Targets: dev-3090-win (WinRM)
-# Purpose: Make Windows host structurally ready
 
-- name: Bootstrap dev-3090 Windows host
+- name: Configure dev-3090 Windows host
   hosts: dev-3090-win
   become: false
   pre_tasks:
@@ -11,13 +11,14 @@
       ansible.windows.win_shell: Enable-PSRemoting -Force
 
     - name: Ensure WinRM HTTP firewall rule (port 5985)
-      ansible.windows.win_firewall_rule:
+      community.windows.win_firewall_rule:
         name: WinRM-HTTP-In-TCP
         display_name: WinRM HTTP (5985)
         localport: 5985
         protocol: tcp
         action: allow
         direction: in
+        enabled: true
         state: present
 
     - name: Set TrustedHosts when explicitly provided

@@ -1,0 +1,70 @@
+---
+argument_specs:
+  main:
+    short_description: Shared Windows base configuration
+    description: >-
+      Applies Windows feature state, power management, data directory creation,
+      Windows Defender exclusions, and registry settings to a managed Windows host.
+      All options are controlled via the windows_base_config dictionary.
+    options:
+      windows_base_config:
+        type: dict
+        required: false
+        description: >-
+          Configuration dictionary controlling which features are applied.
+          All keys default to true unless otherwise noted.
+        options:
+          enable_hyperv:
+            type: bool
+            default: true
+            description: Enable Hyper-V features via hyperv_networking role.
+          enable_containers:
+            type: bool
+            default: true
+            description: Enable the Windows Containers optional feature.
+          enable_vmp:
+            type: bool
+            default: true
+            description: Enable the Virtual Machine Platform optional feature.
+          enable_wsl:
+            type: bool
+            default: false
+            description: Enable the Microsoft-Windows-Subsystem-Linux optional feature.
+          high_performance_power:
+            type: bool
+            default: true
+            description: Set the active power plan to High Performance.
+          disable_sleep:
+            type: bool
+            default: true
+            description: Disable sleep and hibernate timeouts on AC power.
+          disable_usb_suspend:
+            type: bool
+            default: true
+            description: Disable USB selective suspend.
+          defender_exclusions:
+            type: bool
+            default: true
+            description: Add data directories to Windows Defender exclusions.
+          long_paths:
+            type: bool
+            default: true
+            description: Enable long path support via registry (LongPathsEnabled).
+          disable_secure_boot_updates:
+            type: bool
+            default: true
+            description: >-
+              Disable UEFI Secure Boot DB/DBX/SBAT update attempts.
+              Prevents Event ID 1796.
+      windows_data_root:
+        type: str
+        required: true
+        description: Root path for AI/data storage (e.g. D:\ai).
+      stacks_root:
+        type: str
+        required: true
+        description: Path for Docker stacks (e.g. D:\ai\stacks).
+      data_root:
+        type: str
+        required: true
+        description: Path for data storage (e.g. D:\ai\data).

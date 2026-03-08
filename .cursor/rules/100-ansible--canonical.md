@@ -23,12 +23,15 @@ When assisting with Ansible in this project, follow the behavior defined in `ins
 
 Use these @doc handles when relevant: `ansible-core-index`, `ansible-developer-guide`, `ansible-collections`, `ansible-tips-tricks`, `ansible-inventory-guide`, `ansible-host-group-vars`, `ansible-var-merge`, `ansible-variable-precedence`, `ansible-general-precedence`, `ansible-roles`, `ansible-yaml-syntax`, `ansible-builtin-collection`.
 
-## @doc Trigger Map — Auto-Consultation Required
+## @doc Trigger Gates — BLOCKING
 
-Consult the following @doc sources automatically when the listed condition is true.
+These are not advisory. The agent MUST NOT write, review, or propose any task, role,
+or playbook until the @doc sources for the applicable condition have been fetched and
+are in context. **STOP — fetch the required docs before producing any output.**
+
 Do not wait for the user to reference them explicitly:
 
-| Condition | @doc to consult |
+| Condition | @doc to fetch — REQUIRED before any output |
 |---|---|
 | Writing any task or role targeting Windows hosts | `ansible-windows-collection`, `community-windows-collection` |
 | Designing role structure, deciding role placement, or role interface questions | `ansible-roles` |
