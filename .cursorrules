@@ -21,32 +21,6 @@ defaults. Current active rules:
 - **Documentation:** Always prioritize indexed @Ansible Core and @Collections docs.
 - **Terminology:** Use "operational modalities" instead of "regimes" when discussing system states.
 
-## Structural Guidelines
-- **Project Layout:** Follow the "Alternative Directory Layout" (roles-based).
-- **Naming Conventions:** Use snake_case for variables and descriptive names for tasks.
-- **Modality Awareness:** Ensure playbooks account for different operational modalities (e.g., Check Mode, Diff Mode, and Maintenance Mode).
-
-## Formatting
-- Use YAML block scalars (`|` or `>`) for multi-line scripts.
-- Every task must have a `name:` attribute that describes the *outcome*, not the command.
-- Use `ansible.builtin` fully qualified collection names (FQCN) for all core modules.
-
-## Logic Constraints
-- Prefer the `template` module over `copy` for configuration files.
-- Use `handlers` for service restarts to maintain idempotency.
-- Avoid `shell` or `command` modules unless no native module exists.
-
-## MCP Tools — Mandatory First
-This project has three MCP servers. Before ANY Ansible work (editing, running, validating, diagnosing):
-1. Use `validate-playbook` (ansible-mcp) before touching a playbook
-2. Use `ansible_lint` (ansible) after every edit
-3. Use `list_tasks` (sysoperator) to preview execution before running
-4. Use `project-run-playbook` (ansible-mcp) to run — not the shell
-5. Use `ansible-test-idempotence` (ansible-mcp) to confirm no second-run changes
-6. Use `ansible-gather-facts`, `inventory-graph`, `inventory-find-host` (ansible-mcp) before writing tasks
-Never use the Shell tool for Ansible work when an MCP tool covers the same operation.
-Full tool reference: see `.cursor/rules/ansible-mcp-first.mdc`
-
 
 ## Post-Rule Processing — Mandatory Conversation Summary
 # This section runs AFTER all other rules are loaded, at the start of every conversation.

@@ -1,116 +1,195 @@
 ---
 name: generate-mcp-briefing
-description: Discovers all MCP servers, tools, and resources, then generates the Tool Mode Map and writes it to .cursor/rules/02--cussorrules-mcp-briefieng-GENERATED.mdc. Use when the user asks to regenerate the MCP briefing, update the generated rule, refresh the tool map, evaluate the briefing, or report on MCP drift.
+description: Discovers all MCP servers and tools dynamically, classifies them by mode and trigger condition, and writes the Tool Mode Map to .cursor/rules/02--cussorrules-mcp-briefieng-GENERATED.mdc. Run occasionally to keep the knowledge base current. Use when MCP servers change, tools are added, or the briefing needs refreshing.
 ---
 
-# Generate MCP Briefing Rule
+# Generate MCP Briefing Skill
 
 ## Purpose
 
-Converts the dynamic procedure in `01--cursorrules--mcp-briefing.mdc` into a concrete output file. The rule instructs the agent to read MCP descriptors and produce a briefing; this skill performs that discovery and writes the result to the GENERATED file.
+This skill maintains `02--cussorrules-mcp-briefieng-GENERATED.mdc` as the persistent MCP tool knowledge base for this project. Agents read that file at conversation start to know which tools to use in which mode — preventing them from ignoring MCP tools or re-deriving tool usage from scratch each conversation.
+
+Run this skill when MCP servers or tools change. It discovers tools dynamically, classifies them using their descriptions and names, and surfaces uncertain placements for your review rather than guessing silently.
+
+---
 
 ## Capabilities
 
-### Capability 1: Generate (full workflow)
+### Generate
+Discover all MCP tools, classify them, write the full generated file.
 
-**When:** User says "regenerate the MCP briefing", "refresh the tool map", "update 02--cussorrules-mcp-briefieng-GENERATED", or after changing MCP configuration.
+**Triggered by:** "regenerate the MCP briefing", "refresh the tool map", "update the generated rule", or after changing `.cursor/mcp.json`.
 
-### Capability 2: Evaluate / Report (read-only)
+### Evaluate
+Discover current MCP tools, compare against the existing generated file, report what is missing or changed. No writes.
 
-**When:** User says "evaluate the MCP briefing", "report on the MCP briefing", "check if the briefing is up to date", "what's different in the MCP tools?", or "is the briefing in sync?"
+**Triggered by:** "evaluate the MCP briefing", "is the briefing in sync?", "what tools are missing?", "report on MCP drift."
 
-**Behavior:** Discover current MCP state, read the existing `02--cussorrules-mcp-briefieng-GENERATED.mdc`, compare, and report only (no writes):
-- Tools or resources in MCP but missing from the file
-- Tools in the file that no longer exist or have changed
-- Whether the file is in sync or needs regeneration
+---
 
-## Required Workflow (Generate)
+## Workflow: Generate
 
-### 1. Discover MCP Tools and Resources
+### Step 1 — Discover MCP Servers and Tools
 
-- Read `.cursor/mcp.json` for server names (ansible, ansible-mcp, sysoperator, etc.)
-- Enumerate all tools available from those servers (from your tool list / MCP interface)
-- Enumerate all resources (e.g. `guidelines://ansible-content-best-practices`, etc.)
-- Do not assume or use a cached list — discover fresh each time
+- Read `.cursor/mcp.json` to get all server names — do NOT hardcode server names
+- For each server found, enumerate all available tools and their descriptions from your live tool list
+- Enumerate all available resources via `ListMcpResources`
+- Discover fresh each time — do not use a cached list
 
-### 2. Categorize by Mode
+### Step 2 — Classify Each Tool
 
-For each tool, assign to one or more modes based on purpose:
+For each discovered tool, read its name and description. Reason about:
 
-| Mode | Criteria |
-|------|----------|
-| **Agent** | Execution tools: validate, lint, run playbook, gather facts, etc. |
-| **Plan** | Read-only: inventory, zen_of_ansible, best-practices resource. No execution. |
-| **Debug** | Evidence collection: gather-facts, fetch-logs, diagnose-host, service-manager. |
-| **Ask** | Informational only: zen_of_ansible, best-practices resource. No execution. |
+1. **Which modes it applies to** — Agent, Plan, Debug, Ask, or multiple
+2. **Which section within each applicable mode** — use the section definitions below
+3. **What the trigger/condition text should be** — a short, specific "when X" phrase
 
-### 3. Output Format
+**Section definitions:**
 
-Generate content matching the structure of `02--cussorrules-mcp-briefieng-GENERATED.mdc`:
+| Section | When to use it |
+|---|---|
+| `Required workflow` | Must be called in a fixed sequence for every Ansible change |
+| `Required pre-task` | Must be called before writing any task or role |
+| `Required when [condition]` | Becomes mandatory when a specific condition is true |
+| `Call when [trigger]` | Should be called when a specific situation arises |
+| `Not used unless explicit` | Does not apply to this mode or requires explicit user request |
+| `Explicit instruction only` | Must never be called without the user explicitly asking |
 
-```markdown
+**Confidence rule:**
+- Confident in placement → classify it, write the trigger text, place it in the output
+- Uncertain → mark it `[SUGGESTED]` and collect it for Step 4
+
+### Step 3 — Write the Generated File
+
+Write to `.cursor/rules/02--cussorrules-mcp-briefieng-GENERATED.mdc` using this exact structure:
+
+```
 ---
 alwaysApply: true
+---
+
+## MCP Tool Knowledge Base
+
+**Scope:** This file applies to ALL Cursor modes — Agent, Plan, Debug, and Ask.
+It is not a code-creation-only reference. Any agent in any mode must consult
+this file before deciding which tools to use. Ignoring these tools because you
+are in Plan, Debug, or Ask mode is a rule violation.
+
+**Purpose:** Persistent reference so agents do not re-derive tool usage from
+scratch each conversation. Run the `generate-mcp-briefing` skill to refresh
+this file when MCP servers or tools change.
+
 ---
 
 ## Tool Mode Map
 
 ### Agent mode — full execution
-**Required workflow:** ...
-**Required pre-task:** ...
-**Discretionary:** ...
-**Not used in Agent mode unless task is explicitly about it:** ...
+
+**Required workflow (must call in this order for every Ansible change):**
+[ordered list]
+
+**Required pre-task (before writing any task or role):**
+[list]
+
+**Required when [condition applies]:**
+[list — each entry states the specific condition]
+
+**Call when [trigger]:**
+[list — each entry states the specific trigger]
+
+**Not used in Agent mode unless task is explicitly about it:**
+[list]
+
+---
 
 ### Plan mode — read-only planning, no execution
-**Required:** ...
-**Discretionary:** ...
-**Not used in Plan mode:** ...
+
+**Required (must call before writing any plan involving Ansible):**
+[list]
+
+**Call when [trigger]:**
+[list]
+
+**Not used in Plan mode:**
+[list]
+
+---
 
 ### Debug mode — evidence collection and diagnosis
-**Required:** ...
-**Discretionary:** ...
-**Not used in Debug mode:** ...
+
+**Required (per REQUIRED-EVIDENCE-NO-ASSUMPTIONS-ON-FAILURE rule):**
+[list]
+
+**Required when [condition applies]:**
+[list]
+
+**Call when [trigger]:**
+[list]
+
+**Not used in Debug mode:**
+[list]
+
+---
 
 ### Ask mode — conversational and informational only
-**Required:** ...
-**Discretionary:** ...
-**Not used in Ask mode:** ...
+
+**Required for any Ansible design or idiom question:**
+[list]
+
+**Call when [trigger]:**
+[list]
+
+**Not used in Ask mode:**
+[list]
+
+---
+
+## Tools Requiring Explicit User Instruction — Any Mode
+
+Never call the following without the user explicitly requesting:
+
+| Tool | Server | Reason |
+
+---
 
 ## Reference Resources (available in all modes)
+
+Fetched via `FetchMcpResource` — read-only documents, never "run":
+
 | Resource URI | Server | Content |
 
-## Tools Not Covered in ansible-mcp-first.mdc or Other Existing Rules
-[By server, list tools with no rule-defined workflow]
+---
+
+## Needs Classification
+
+Tools discovered but not confidently classified. Review and confirm or adjust
+each suggested placement, then run the skill again to incorporate them.
+
+[list of SUGGESTED items, each with: tool name, server, proposed section, reasoning]
 ```
 
-### 4. Write Output
+### Step 4 — Surface Suggestions to User
 
-Write the generated content to:
+After writing the file:
+- List every `[SUGGESTED]` item with its proposed placement and your reasoning
+- Ask the user to confirm, adjust, or reassign each one
+- Remind user to run the skill again after confirming to write the final placements
 
-```
-.cursor/rules/02--cussorrules-mcp-briefieng-GENERATED.mdc
-```
+---
 
-Include the YAML frontmatter with `alwaysApply: true`.
+## Workflow: Evaluate
 
-### 5. Confirm to User
-
-- State that the file was regenerated
-- Note any tools or resources added or removed compared to the previous version (if detectable)
-- Remind user they can run this skill again whenever MCP servers change
-
-## Required Workflow (Evaluate / Report)
-
-1. Discover current MCP tools and resources (same as Generate step 1)
-2. Read existing `.cursor/rules/02--cussorrules-mcp-briefieng-GENERATED.mdc`
-3. Compare current MCP state with what is documented in the file
+1. Read `.cursor/mcp.json` — get all server names dynamically, no hardcoding
+2. Enumerate all current tools and resources from the live MCP interface
+3. Read existing `.cursor/rules/02--cussorrules-mcp-briefieng-GENERATED.mdc`
 4. Report to user (no writes):
-   - Tools or resources in MCP but missing from the file
-   - Tools in the file that no longer exist or have changed
-   - Whether the file is in sync or needs regeneration
+   - Tools present in MCP but absent from the file
+   - Tools in the file that no longer exist in MCP
+   - Whether the file needs regeneration
+
+---
 
 ## Reference
 
-- Source rule (procedure only): `.cursor/rules/01--cursorrules--mcp-briefing.mdc`
 - Output file: `.cursor/rules/02--cussorrules-mcp-briefieng-GENERATED.mdc`
-- Current MCP config: `.cursor/mcp.json`
+- MCP config (source of server names): `.cursor/mcp.json`

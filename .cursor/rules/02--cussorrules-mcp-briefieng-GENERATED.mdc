@@ -2,6 +2,16 @@
 alwaysApply: true
 ---
 
+## MCP Tool Knowledge Base
+
+**Scope:** This file applies to ALL Cursor modes — Agent, Plan, Debug, and Ask.
+It is not a code-creation-only reference. Any agent in any mode must consult
+this file before deciding which tools to use. Ignoring these tools because you
+are in Plan, Debug, or Ask mode is a rule violation.
+
+**Purpose:** Persistent reference so agents do not re-derive tool usage from
+scratch each conversation. Run the `generate-mcp-briefing` skill to refresh
+this file when MCP servers or tools change.
 
 ---
 
@@ -22,22 +32,36 @@ alwaysApply: true
 - `ade_environment_info` (ansible) — confirm installed collections and Ansible version
 - `zen_of_ansible` (ansible) — consult design philosophy when making structural decisions
 
-**Discretionary (use when relevant):**
-- `inventory-parse`, `inventory-diff` (ansible-mcp)
-- `ansible-gather-facts` (ansible-mcp) — before writing tasks that depend on host state
-- `ansible-capture-baseline` / `ansible-compare-states` (ansible-mcp) — for any change with drift risk
-- `ansible-role` (ansible-mcp) — test a role in isolation
-- `galaxy-install`, `galaxy-lock` (ansible-mcp)
-- `vault-view`, `vault-encrypt`, `vault-decrypt` (ansible-mcp)
-- `vault_encrypt_string`, `vault_decrypt_string` (sysoperator)
-- `project-playbooks`, `list-projects` (ansible-mcp)
-- `adt_check_env` (ansible)
+**Required when [condition applies]:**
+- `ansible-gather-facts` (ansible-mcp) — required when writing tasks that read host state (packages, files, services, users, etc.)
+- `validate-yaml` (ansible-mcp) — required when editing any raw YAML file that is not a playbook
+- `ansible-capture-baseline` (ansible-mcp) — required before any task that modifies system state with drift risk
+- `vault-view` (ansible-mcp) — required when the task involves vault-encrypted variables or files
+- `galaxy-install` (ansible-mcp) — required when requirements files are added or changed
+- `ansible_navigator` (ansible) — required when an execution environment (EE) is in scope; otherwise use `project-run-playbook`
+
+**Call when [trigger]:**
+- `inventory-parse` (ansible-mcp) — need full merged group_vars/host_vars and `inventory-find-host` is insufficient
+- `inventory-diff` (ansible-mcp) — need to compare two inventory states before or after a change
+- `ansible_inventory` (ansible-mcp) — need a raw host/group list; prefer `inventory-graph` for richer output
+- `ansible-compare-states` (ansible-mcp) — need to diff current state against a previously captured baseline
+- `ansible-role` (ansible-mcp) — testing a role in isolation before integrating into a playbook
+- `galaxy-lock` (ansible-mcp) — pinning installed collection/role versions after a `galaxy-install`
+- `vault-encrypt` / `vault-decrypt` (ansible-mcp) — encrypting or decrypting vault files as part of the task
+- `vault_encrypt_string` / `vault_decrypt_string` (sysoperator) — encrypting/decrypting a single string value
+- `project-playbooks` (ansible-mcp) — discovering what playbooks exist before deciding which to run
+- `list-projects` (ansible-mcp) — confirming project registration before running
+- `adt_check_env` (ansible) — verifying the dev environment state before running
+- `ansible-playbook` (ansible-mcp) — running a playbook directly when project context is not needed; otherwise prefer `project-run-playbook`
+- `ansible-task` (ansible-mcp) — running an ad-hoc module call during development; prefer a proper task in a role for anything repeatable
+- `run_ad_hoc` (sysoperator) — fallback only when `ansible-task` from ansible-mcp is unavailable
 
 **Not used in Agent mode unless task is explicitly about it:**
 - `create_ansible_projects`, `define_and_build_execution_env` (ansible) — project scaffolding only
 - `check_syntax` (sysoperator) — redundant with `validate-playbook`
 - All AWS tools, `terraform` (sysoperator) — different domain
 - All `cursor-ide-browser` tools — different domain
+- `ansible-security-audit` (ansible-mcp) — security audit domain
 
 ---
 
@@ -50,9 +74,12 @@ alwaysApply: true
 - `zen_of_ansible` (ansible) — consult before any structural or design recommendation
 - `ansible-content-best-practices` resource (ansible) — fetch before answering any question about Ansible idiom, patterns, or best practice
 
-**Discretionary:**
-- `inventory-parse`, `inventory-diff` (ansible-mcp)
-- `ansible-gather-facts` (ansible-mcp) — if live host state is relevant to the plan
+**Call when [trigger]:**
+- `ansible-gather-facts` (ansible-mcp) — live host state is required to make a recommendation in the plan
+- `inventory-parse` (ansible-mcp) — full merged group_vars/host_vars is needed; `inventory-find-host` is insufficient
+- `inventory-diff` (ansible-mcp) — comparing two inventory states as part of the plan
+- `ansible_inventory` (ansible-mcp) — raw host/group list needed; prefer `inventory-graph` for richer output
+- `list_inventory` (sysoperator) — fallback only when `inventory-graph` from ansible-mcp is unavailable
 
 **Not used in Plan mode:**
 - `validate-playbook`, `ansible_lint`, `project-run-playbook`, `ansible-test-idempotence` — nothing is executed until plan is approved and mode switches to Agent
@@ -69,15 +96,24 @@ alwaysApply: true
 - `ansible-diagnose-host` (ansible-mcp) — full health assessment
 - `ansible-service-manager` (ansible-mcp) — verify service states
 
-**Discretionary:**
-- `ansible-log-hunter` (ansible-mcp) — correlate logs across sources
-- `ansible-health-monitor` (ansible-mcp) — trend analysis
-- `ansible-network-matrix` (ansible-mcp) — connectivity verification
-- `ansible-capture-baseline` / `ansible-compare-states` (ansible-mcp)
-- `ansible-remote-command` (ansible-mcp) — ad-hoc evidence only; prefer modules
-- `ansible-performance-baseline` (ansible-mcp)
-- `validate-playbook`, `ansible_lint` — if a task file is being edited as part of a fix
-- `ansible-content-best-practices` resource — if fix involves idiomatic questions
+**Required when [condition applies]:**
+- `validate-playbook` (ansible-mcp) — required when a task file or playbook is being edited as part of a fix
+- `ansible_lint` (ansible) — required after every task file edit during a fix
+- `validate-yaml` (ansible-mcp) — required when editing raw YAML files as part of a fix
+- `ansible-content-best-practices` resource (ansible) — required when the fix involves an idiomatic or structural question
+
+**Call when [trigger]:**
+- `ansible-log-hunter` (ansible-mcp) — correlating logs across multiple sources when `ansible-fetch-logs` output is insufficient
+- `ansible-health-monitor` (ansible-mcp) — need trend analysis over time, not just a point-in-time snapshot
+- `ansible-network-matrix` (ansible-mcp) — connectivity between hosts is suspected as the failure cause
+- `ansible-capture-baseline` (ansible-mcp) — capturing state before applying a fix for before/after comparison
+- `ansible-compare-states` (ansible-mcp) — diffing current state against a previously captured baseline
+- `ansible-remote-command` (ansible-mcp) — collecting raw evidence when no module covers the query; prefer modules
+- `ansible-performance-baseline` (ansible-mcp) — performance regression is suspected as the failure cause
+- `ansible-security-audit` (ansible-mcp) — the failure involves a permission, access, or security posture issue
+- `ansible-task` (ansible-mcp) — running an ad-hoc module to collect targeted evidence
+- `ansible-playbook` (ansible-mcp) — running a diagnostic playbook to reproduce or isolate the failure
+- `run_ad_hoc` (sysoperator) — fallback only when `ansible-task` from ansible-mcp is unavailable
 
 **Not used in Debug mode:**
 - `project-run-playbook`, `ansible-test-idempotence` — only after fix is confirmed and mode returns to Agent
@@ -91,9 +127,10 @@ alwaysApply: true
 - `zen_of_ansible` (ansible)
 - `ansible-content-best-practices` resource (ansible)
 
-**Discretionary:**
-- `ade_environment_info` (ansible) — if question involves installed state
-- `inventory-graph`, `inventory-find-host` (ansible-mcp) — if question involves host structure
+**Call when [trigger]:**
+- `ade_environment_info` (ansible) — question involves installed collections, Python version, or environment state
+- `inventory-graph` (ansible-mcp) — question involves host/group structure
+- `inventory-find-host` (ansible-mcp) — question involves a specific host's merged variables
 
 **Not used in Ask mode:**
 - All execution, lint, run, diagnostic, and write tools
@@ -134,12 +171,12 @@ Fetched via `FetchMcpResource` — read-only documents, never "run":
 
 ## Tools Not Covered in ansible-mcp-first.mdc or Other Existing Rules
 
-The following tools exist in your MCP servers but are NOT mentioned in any workspace `.mdc` rule.
-They are available but have no rule-defined workflow:
+The following tools exist in your MCP servers but are NOT mentioned in ansible-mcp-first.mdc.
+They are documented in the mode map above but have no workflow in the curated rule file:
 
 **ansible server:**
-- `zen_of_ansible` — should be used for design decisions (not in any rule)
-- `ansible-content-best-practices` resource — should be used for idiom questions (not in any rule)
+- `zen_of_ansible` — should be used for design decisions (not in ansible-mcp-first.mdc)
+- `ansible-content-best-practices` resource — should be used for idiom questions (not in ansible-mcp-first.mdc)
 - `ade_setup_environment` — environment setup (explicit request only)
 - `define_and_build_execution_env` — EE build (explicit request only)
 - `create_ansible_projects` — project scaffolding (explicit request only)
@@ -147,6 +184,8 @@ They are available but have no rule-defined workflow:
 - `execution-environment-*` resources — EE reference docs (discretionary)
 
 **ansible-mcp server:**
+- `ansible_inventory` — list inventory hosts/groups; prefer inventory-graph for richer output (discretionary)
+- `ansible-task` — run ad-hoc module; prefer ansible-remote-command for remote commands (discretionary)
 - `inventory-diff` — compare inventory states (discretionary)
 - `ansible-auto-heal` — automated healing (explicit request only)
 - `ansible-performance-baseline` — performance baselining (discretionary)
