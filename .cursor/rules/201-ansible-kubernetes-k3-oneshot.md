@@ -1,180 +1,117 @@
-Phase 0 — Identify the Resource or System
+---
+description: Declarative discovery and enforcement workflow for Ansible resource and system management. Applies to all Ansible work involving Kubernetes, K3s, and any multi-resource orchestration.
+alwaysApply: true
+---
 
-Before touching code:
+# Ansible Declarative Enforcement — Resource and System Discovery
 
-Write this sentence:
+## Phase 0 — Identify the Resource or System
 
-I am managing a <resource or system> to ensure it is <desired state>.
+Before writing any task, state clearly:
 
-Examples:
+> I am managing a `<resource or system>` to ensure it is `<desired state>`.
 
-Kubernetes Node taint → resource
+This determines whether to search for a **module** (single resource) or a **role** (full system).
 
-Windows firewall rule → resource
+| Problem type | Example | Search for |
+|---|---|---|
+| Single resource | Kubernetes Node taint, Windows firewall rule | Module |
+| Multi-resource system | K3s cluster install, WireGuard router, NVIDIA toolkit | Role |
 
-Install K3s cluster → system
+---
 
-Configure WireGuard router → system
+## Phase 1 — Galaxy Search (System-Level Problems)
 
-This determines whether you search for a module or a role.
+If the problem is a system (multi-resource orchestration), search Galaxy first:
 
-Phase 1 — Galaxy Search (System-Level Problems)
-
-If the problem is a system (multi-resource orchestration):
-
-Run:
-
+```bash
 ansible-galaxy search <keyword>
 ansible-galaxy collection search <keyword>
+```
 
-Examples:
+Then inspect what the role/collection provides:
 
-ansible-galaxy search k3s
-ansible-galaxy collection search nvidia
-ansible-galaxy search wireguard
-
-Then inspect:
-
+```bash
 ansible-doc -l -t role <namespace>.<collection>
 ansible-doc -l -t module <namespace>.<collection>
+```
 
-Then inspect examples:
+Check bundled examples:
 
+```
 ~/.ansible/roles/<namespace>.<role>/examples/
 ~/.ansible/collections/ansible_collections/<ns>/<collection>/playbooks/
+```
 
-Only if no suitable role exists do you write your own orchestration.
+If a maintained role covers ≥80% of the problem — use it. Do not reimplement orchestration.
 
-This prevents re-implementing K3s install logic when a maintained role exists.
+---
 
-Phase 2 — Module Namespace Search (Resource-Level Problems)
+## Phase 2 — Module Namespace Search (Resource-Level Problems)
 
-If the problem is manipulating a specific resource:
+Search installed modules before writing any task:
 
-Search built-ins and installed collections first.
-
-Core search:
-
+```bash
 ansible-doc -l | grep <keyword>
-
-Collection search:
-
 ansible-doc -l -t module <namespace>.<collection>
+```
 
-Examples:
+Examples by platform:
 
-Kubernetes:
+```bash
+ansible-doc -l | grep k8s      # Kubernetes
+ansible-doc -l | grep win_     # Windows
+ansible-doc -l | grep docker   # Docker
+ansible-doc -l | grep file     # Linux files
+ansible-doc -l | grep service  # Linux services
+```
 
-ansible-doc -l | grep k8s
+If a module exists → use it. Shell or command in its place is a violation.
 
-Windows:
+---
 
-ansible-doc -l | grep win_
+## Phase 3 — Installed Collection Inspection
 
-Docker:
+Before writing tasks, check what is already available:
 
-ansible-doc -l | grep docker
+```bash
+ansible-doc -l -t module kubernetes.core   # if kubernetes.core is installed
+ansible-doc -l -t module community.windows # if community.windows is installed
+```
 
-Linux:
+---
 
-ansible-doc -l | grep file
-ansible-doc -l | grep service
-ansible-doc -l | grep mount
+## Phase 4 — Idempotent Expression
 
-If a module exists → use it.
+All tasks must express **state**, not action.
 
-No scripting allowed.
+**Allowed:**
+- `state: present`
+- `state: absent`
+- `ensure: configured`
+- `ensure: ready`
 
-Phase 3 — Installed Collection Inspection
+**Disallowed mindset:** run, execute, call, invoke
 
-If kubernetes.core is installed:
+---
 
-ansible-doc -l -t module kubernetes.core
+## Phase 5 — Scripted Fallback (Last Resort Only)
 
-If community.windows is installed:
+Only use `command` or `shell` if no module and no maintained role exists. When used:
 
-ansible-doc -l -t module community.windows
+- Must include justification comment explaining why no module exists
+- Must include `changed_when`
+- Must include `creates` or `removes` where applicable
 
-This forces awareness of what you already have before inventing commands.
+Missing any of those → violation.
 
-Phase 4 — Idempotent Expression
+---
 
-All tasks must be expressed as:
+## Kubernetes Hard Rule
 
-state: present
+If `kubernetes.core` is installed:
 
-state: absent
-
-ensure: exists
-
-ensure: configured
-
-ensure: ready
-
-Never:
-
-run
-
-execute
-
-call
-
-invoke
-
-That language shift matters.
-
-Phase 5 — Scripted Fallback (Last Resort)
-
-Only if:
-
-No module exists
-
-No maintained role exists
-
-Then:
-
-Must include justification
-
-Must include changed_when
-
-Must include creates/removes if possible
-
-Must include comment explaining why no module exists
-
-If any of those are missing → violation.
-
-Updated Hard Rule
-
-For Kubernetes specifically:
-
-If kubernetes.core is installed:
-
-kubectl usage is disallowed in production roles.
-
-Only allowed for debugging tasks.
-
-This would have prevented your k3s_node_config mess entirely.
-
-Why This Time It Works
-
-Previously the rule was:
-
-“Search for modules.”
-
-That was incomplete.
-
-Now the rule is layered:
-
-Identify resource vs system
-
-Galaxy search (system)
-
-Namespace search (resource)
-
-Inspect installed collections
-
-Express desired state declaratively
-
-Only then script
-
-There is no ambiguity left.
+- `kubectl` is **disallowed in production roles**
+- Allowed for diagnostics only
+- All Kubernetes resource operations must use `kubernetes.core.*` modules
+- Node labels: use `apply: true` to enforce full declarative state; use `merge_type: strategic` only when removal of existing labels is not desired
