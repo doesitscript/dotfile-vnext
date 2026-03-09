@@ -15,6 +15,16 @@ Each Windows physical node exposes **two inventory surfaces**:
 
 Example: The physical machine `server-225` appears as both `server-225-win` and `server-225-wsl` in inventory.
 
+## Connection Resilience
+
+When executing remote commands, multiple connection paths exist. If one fails, try another before giving up:
+
+| Target      | Primary                   | Fallback(s)                                                                  |
+|-------------|---------------------------|------------------------------------------------------------------------------|
+| Windows     | WinRM                     | SSH to `-win-powershell` (port 2223); SSH to WSL then `wsl.exe` into Windows |
+| WSL         | SSH to `-wsl`             | SSH to `-win` (lands in WSL via DefaultShell); WinRM then `wsl -d <distro>` |
+| Mac (local) | Local / connection: local | N/A                                                                         |
+
 ## Physical Nodes
 
 | Physical Node    | IP              | Windows Surface       | WSL Surface           |

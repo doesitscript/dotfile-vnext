@@ -109,9 +109,10 @@
   tags: [admin]
 
 # 5) Default shell
-# Setting DefaultShell to bash.exe (WSL) is required for VS Code Remote-SSH
+# Setting DefaultShell to wsl.exe (WSL) is required for VS Code Remote-SSH
 # and Cursor Remote-SSH to work. These editors need a Unix-like shell on the
-# remote end. PowerShell will break the remote IDE connection.
+# remote end. Use wsl.exe (not bash.exe — bash.exe is deprecated/legacy).
+# PowerShell will break the remote IDE connection.
 #
 # - name: Set the default OpenSSH shell to PowerShell
 #   ansible.windows.win_regedit:
@@ -122,7 +123,7 @@
 #     state: present
 #   register: sshd_shell_result
 
-- name: Set the default OpenSSH shell to Bash (WSL)
+- name: Set the default OpenSSH shell to WSL
   ansible.windows.win_regedit:
     path: HKLM:\SOFTWARE\OpenSSH
     name: DefaultShell
@@ -130,6 +131,16 @@
     type: string
     state: present
   register: sshd_shell_result
+  tags: [admin]
+
+- name: Set OpenSSH DefaultShellCommandOption for wsl.exe
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\OpenSSH
+    name: DefaultShellCommandOption
+    data: "-e"
+    type: string
+    state: present
+  register: sshd_shell_opt_result
   tags: [admin]
 
 - name: Reset SSH connection after shell change
@@ -149,7 +160,7 @@
 # and after Match Group administrators) to avoid capturing unrelated directives.
 #
 # IMPORTANT — WSL lockout by design:
-# The DefaultShell registry key (HKLM:\SOFTWARE\OpenSSH) is set to bash.exe,
+# The DefaultShell registry key (HKLM:\SOFTWARE\OpenSSH) is set to wsl.exe,
 # which makes port 2222 land in a WSL distro. ForceCommand in the Match block
 # below takes precedence over DefaultShell for port 2223, running powershell.exe
 # instead. This intentionally prevents any connection on port 2223 from dropping
@@ -187,7 +198,7 @@
     register: sshd_ps_match_result
 
   # powershell-ssh — sshd_config: ForceCommand under Match block.
-  # ForceCommand overrides DefaultShell (bash.exe registry key) for this port,
+  # ForceCommand overrides DefaultShell (wsl.exe registry key) for this port,
   # ensuring port {{ win_ssh_powershell_port }} is always PowerShell — never WSL.
   - name: Ensure ForceCommand powershell under Match LocalPort block
     community.windows.win_lineinfile:
@@ -204,10 +215,10 @@
       name: sshd
       state: restarted
     when: >-
-      sshd_ps_port_result is changed or
-      sshd_ps_subsystem_result is changed or
-      sshd_ps_match_result is changed or
-      sshd_ps_force_result is changed
+      (sshd_ps_port_result | default({})).changed | default(false) or
+      (sshd_ps_subsystem_result | default({})).changed | default(false) or
+      (sshd_ps_match_result | default({})).changed | default(false) or
+      (sshd_ps_force_result | default({})).changed | default(false)
 
   tags: [admin, powershell-ssh, ps_port]
 

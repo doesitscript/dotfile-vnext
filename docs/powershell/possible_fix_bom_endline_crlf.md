@@ -1,0 +1,1 @@
+https://superuser.com/questions/1456511/is-there-a-way-to-change-the-default-shell-in-windows-terminal

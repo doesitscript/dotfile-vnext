@@ -1,0 +1,45 @@
+---
+# Deploy development tooling to nodes designated as development nodes.
+#
+# A node is a development node when node_purpose: development is set in its
+# group_vars file. This uses Ansible's group_by module to dynamically classify
+# nodes at runtime — no static host lists required.
+#
+# To designate a new node as a development node: add node_purpose: development
+# to its group_vars file. No changes to this playbook are needed.
+#
+# Usage:
+#   # All development nodes
+#   ansible-playbook playbooks/deploy_development_nodes.yaml
+#
+#   # One specific surface
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --limit server-225-wsl
+#
+#   # Cursor settings only
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_settings
+#
+#   # Windows tasks only
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_windows --limit server-225-win
+#
+#   # Extensions update only
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_extensions
+#
+# Current development nodes (node_purpose: development in group_vars):
+#   - mac-dev        (group_vars/mac_dev.yaml)
+#   - server-225-win (group_vars/server_225.yaml)
+#   - server-225-wsl (group_vars/server_225.yaml)
+
+- name: Classify nodes by purpose
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Group development nodes from node_purpose variable
+      ansible.builtin.group_by:
+        key: "node_purpose_{{ node_purpose | default('unclassified') }}"
+
+- name: Deploy development tooling to development nodes
+  hosts: node_purpose_development
+  gather_facts: true
+  become: false
+  roles:
+    - role: cursor

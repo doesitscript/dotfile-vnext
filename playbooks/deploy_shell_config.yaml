@@ -1,48 +1,72 @@
 ---
-# Deploy development tools to development nodes (shell config, direnv, cursor).
+# Deploy Shell Configuration (direnv, cursor, aliases, PATH)
+# Standalone playbook - can be run independently of bootstrap
 #
-# A node is a development node when node_purpose: development is set in its
-# group_vars file. This uses Ansible's group_by module to dynamically classify
-# nodes at runtime — no static host lists required.
+# Quick Start:
+#   ./bin/run-playbook.sh playbooks/deploy_shell_config.yaml --limit mac-dev
+#   ./bin/run-playbook.sh playbooks/deploy_shell_config.yaml --limit server-225-wsl
 #
-# Usage:
-#   # All development nodes
-#   ansible-playbook playbooks/deploy_shell_config.yaml
+# Full Documentation: docs/deploy_shell_config.md
 #
-#   # One specific surface
-#   ansible-playbook playbooks/deploy_shell_config.yaml --limit server-225-wsl
+# What it deploys:
+#   - common/shell_config: Sets up .bashrc.d pattern, PATH management, aliases
+#   - direnv: Installs direnv and configures bash hook
+#   - cursor: Sets Cursor as default editor (EDITOR="cursor --wait")
 #
-#   # Cursor settings only (all development nodes)
-#   ansible-playbook playbooks/deploy_shell_config.yaml --tags cursor_settings
-#
-#   # Windows cursor tasks only
-#   ansible-playbook playbooks/deploy_shell_config.yaml --tags cursor_windows --limit server-225-win
-#
-#   # Extensions update only
-#   ansible-playbook playbooks/deploy_shell_config.yaml --tags cursor_extensions
-#
-# Current development nodes (node_purpose: development in group_vars):
-#   - mac-dev        (group_vars/mac_dev.yaml)
-#   - server-225-win (group_vars/server_225.yaml)
-#   - server-225-wsl (group_vars/server_225.yaml)
-#
-# To designate a new node as a development node: add node_purpose: development
-# to its group_vars file. No changes to this playbook required.
+# After deployment:
+#   source ~/.bashrc  # Reload shell to activate
+#   direnv allow      # In directories with .envrc files
 
-- name: Classify nodes by purpose
+- name: Deploy shell configuration to target host
   hosts: all
   gather_facts: false
-  tasks:
-    - name: Group development nodes from node_purpose variable
-      ansible.builtin.group_by:
-        key: "node_purpose_{{ node_purpose | default('unclassified') }}"
-
-- name: Deploy development tools to development nodes
-  hosts: node_purpose_development
-  gather_facts: true
   become: false
+
+  pre_tasks:
+    - name: Skip hosts not yet deployed
+      ansible.builtin.meta: end_host
+      when: not (ansible_facts.get('ssh_configured', false) | bool)
+      tags: [always]
+
+    - name: Gather facts on deployed hosts
+      ansible.builtin.setup:
+      tags: [always]
 
   roles:
     - role: common/shell_config
     - role: direnv
     - role: cursor
+
+- name: Display shell configuration summary
+  hosts: all
+  gather_facts: false
+
+  pre_tasks:
+    - name: Skip hosts not yet deployed
+      ansible.builtin.meta: end_host
+      when: not (ansible_facts.get('ssh_configured', false) | bool)
+      tags: [always]
+
+  tasks:
+    - name: Check .bashrc.d directory
+      ansible.builtin.stat:
+        path: "{{ ansible_env.HOME }}/.bashrc.d"
+      register: bashrc_d_stat
+
+    - name: List deployed shell config files
+      ansible.builtin.find:
+        paths: "{{ ansible_env.HOME }}/.bashrc.d"
+        patterns: "*.bash"
+      register: shell_config_files
+      when: bashrc_d_stat.stat.exists
+
+    - name: Display summary
+      ansible.builtin.debug:
+        msg:
+          - "Shell configuration deployed successfully"
+          - ".bashrc.d directory: {{ 'exists' if bashrc_d_stat.stat.exists else 'missing' }}"
+          - "Deployed config files:"
+          - "{{ shell_config_files.files | map(attribute='path') | list | join('\n  - ') if shell_config_files.files is defined else '  (none found)' }}"
+          - ""
+          - "To activate, run: source ~/.bashrc"
+          - "Or open a new terminal"

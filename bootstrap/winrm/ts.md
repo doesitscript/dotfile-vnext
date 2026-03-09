@@ -18,8 +18,8 @@ server-225-win -m win_shell -a "Get-ItemProperty HKLM:\SOFTWARE\OpenSSH"
 server-225-win | CHANGED | rc=0 >>
 
 
-DefaultShell              : bash.exe
-DefaultShellCommandOption : -d Ubuntu-24.04
+DefaultShell              : wsl.exe
+DefaultShellCommandOption : -e
 PSPath                    : Microsoft.PowerShell.Core\Registry::HKEY_LOCAL_MACHINE\SOFTWARE\OpenSSH
 PSParentPath              : Microsoft.PowerShell.Core\Registry::HKEY_LOCAL_MACHINE\SOFTWARE
 PSChildName               : OpenSSH

@@ -5,18 +5,18 @@ Enables OpenSSH Server on Windows hosts reachable via WinRM, configures the requ
 ## Purpose
 
 - Install OpenSSH Server capability, start sshd, configure listen port (`win_ssh_port`), open firewall.
-- Set `DefaultShell` to `C:\Windows\System32\bash.exe` (WSL Bash).
+- Set `DefaultShell` to `C:\Windows\System32\wsl.exe` (WSL).
 - Create `C:\ProgramData\ssh\administrators_authorized_keys` with correct ACL (invariant).
 - Add controller public key from `execution_nodes` host facts (run access_controller first).
 - Optionally verify SSH key auth from the controller.
 
-## Default shell: why Bash (WSL) is required
+## Default shell: why WSL is required
 
-The `DefaultShell` registry value (`HKLM:\SOFTWARE\OpenSSH\DefaultShell`) controls what shell runs when a user connects via SSH. This role sets it to `C:\Windows\System32\bash.exe` (WSL).
+The `DefaultShell` registry value (`HKLM:\SOFTWARE\OpenSSH\DefaultShell`) controls what shell runs when a user connects via SSH. This role sets it to `C:\Windows\System32\wsl.exe` (WSL). `DefaultShellCommandOption` is set to `-e` so commands are passed correctly to WSL.
 
 **This is required for VS Code Remote-SSH and Cursor Remote-SSH to work.** These editors expect a Unix-like shell on the remote end. If `DefaultShell` is set to PowerShell, the remote IDE connection will fail.
 
-- `bash.exe` requires WSL to be installed on the Windows host.
+- `wsl.exe` requires WSL to be installed on the Windows host.
 - If WSL is not installed, sshd will reject all logins with "shell does not exist".
 - A commented-out PowerShell block is preserved in `tasks/main.yml` in case you need to temporarily switch back for debugging plain SSH sessions.
 - For direct PowerShell access without changing the default shell, use the secondary port (see below).
@@ -148,10 +148,10 @@ sshd validates the `DefaultShell` registry value (`HKLM:\SOFTWARE\OpenSSH\Defaul
 **Symptoms:** Every SSH attempt fails with `Permission denied`. Logs show:
 
 ```
-sshd: User joshc not allowed because shell bash.exe does not exist
+sshd: User joshc not allowed because shell c:\windows\system32\bash.exe does not exist
 ```
 
-**Fix:** Set `DefaultShell` to an executable that exists. To check the current value via WinRM:
+**Fix:** Set `DefaultShell` to an executable that exists. Use `wsl.exe` (not `bash.exe` — bash.exe is deprecated/legacy). To check the current value via WinRM:
 
 ```bash
 ansible server-225-win -i inventory/inventory.yaml -m ansible.windows.win_shell \
