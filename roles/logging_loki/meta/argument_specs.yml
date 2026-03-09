@@ -1,0 +1,69 @@
+---
+argument_specs:
+  main:
+    short_description: "Deploy Grafana Loki and optional Grafana as Docker containers"
+    description:
+      - "Deploys Grafana Loki as a single-node Docker container with TSDB + filesystem storage."
+      - "Optionally deploys a Grafana container pre-wired to Loki as a datasource."
+      - "Manages Docker network, data directories, and a healthcheck readiness gate."
+    options:
+      logging_loki_version:
+        type: str
+        required: false
+        default: "3.6.7"
+        description: "Grafana Loki Docker image tag to deploy."
+
+      logging_loki_port:
+        type: int
+        required: false
+        default: 3100
+        description: "Host port mapped to Loki's HTTP listener (container port 3100)."
+
+      logging_loki_data_path:
+        type: str
+        required: false
+        default: "/opt/loki"
+        description: >-
+          Directory on the host for Loki config and all persistent data (chunks, index, retention).
+          Must exist and be writable before the role runs; created by this role.
+          For persistent storage on a non-OS disk, set to the mount point of that disk
+          (e.g. /mnt/e/loki for a WSL E-drive mount).
+
+      logging_loki_retention_days:
+        type: int
+        required: false
+        default: 30
+        description: "Log retention period in days. Applied to the Loki compactor retention config."
+
+      logging_loki_deploy_grafana:
+        type: bool
+        required: false
+        default: true
+        description: "When true, deploy a Grafana container alongside Loki, pre-wired to Loki as a datasource."
+
+      logging_loki_grafana_version:
+        type: str
+        required: false
+        default: "latest"
+        description: "Grafana Docker image tag. Pin to a specific version in production."
+
+      logging_loki_grafana_port:
+        type: int
+        required: false
+        default: 3000
+        description: "Host port mapped to Grafana's HTTP listener (container port 3000)."
+
+      logging_loki_grafana_admin_password:
+        type: str
+        required: true
+        description: >-
+          Grafana admin password. MUST be overridden in inventory — the role has no safe default.
+          Set via vault: group_vars/logging_server/vault.yml using vault_encrypt_string.
+          See inventory/group_vars/logging_server/vars.yml for the reference pattern.
+        no_log: true
+
+      logging_loki_docker_network:
+        type: str
+        required: false
+        default: "logging"
+        description: "Docker network name shared by Loki and Grafana containers."

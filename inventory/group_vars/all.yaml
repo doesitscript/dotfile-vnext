@@ -16,3 +16,9 @@ dotfiles_user_home: >-
   {{ (ansible_facts['env'].USERPROFILE | default('C:\\Users\\' ~ ansible_facts['user_id']))
      if ansible_facts['system'] == 'Windows'
      else (ansible_facts['env'].HOME | default(ansible_facts['user_dir'])) }}
+
+# ─── Logging stack ────────────────────────────────────────────────────────────
+# Loki push endpoint — all Alloy agents on every host send logs here.
+# Single place to change when the Loki server moves (e.g. server-225-wsl → network-server-wsl).
+# This overrides the role default in logging_alloy/defaults/main.yml.
+logging_alloy_loki_endpoint: "http://network-server-wsl:3100/loki/api/v1/push"

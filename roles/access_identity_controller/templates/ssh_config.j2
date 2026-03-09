@@ -24,6 +24,8 @@ Host {{ host }}
 {% if hv.ssh_powershell_port is defined %}
 
 # Direct PowerShell session for connecting to windows host, uses port win_ssh_powershell_port
+# Troubleshooting: if port {{ hv['ssh_powershell_port'] }} is down, use the WSL fallback:
+#   ssh {{ host }} -t /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
 Host {{ host }}-powershell
     HostName {{ hv['ssh_host'] | default(hv.get('ansible_host', host)) }}
     User {{ hv['ssh_user'] | default(hv.get('ansible_user', 'joshc')) }}

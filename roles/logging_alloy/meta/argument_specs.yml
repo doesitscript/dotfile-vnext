@@ -1,0 +1,104 @@
+---
+argument_specs:
+  main:
+    short_description: "Install and configure Grafana Alloy log agent on all platforms"
+    description:
+      - "Cross-platform Grafana Alloy agent deployment: Windows, Linux/WSL, and macOS."
+      - "Dispatches to platform-specific task files based on ansible_os_family."
+      - "All agents push log streams to a central Loki instance via HTTP."
+    options:
+      logging_alloy_version:
+        type: str
+        required: false
+        default: "1.13.2"
+        description: "Grafana Alloy version to install. Used for Windows installer URL and APT package pin."
+
+      logging_alloy_loki_endpoint:
+        type: str
+        required: false
+        default: "http://server-225-wsl:3100/loki/api/v1/push"
+        description: >-
+          Loki push endpoint all agents send logs to.
+          Override this in group_vars/all.yaml or per-group when the Loki server moves
+          (e.g. to network-server-wsl once WSL is provisioned there).
+
+      # ─── Windows ──────────────────────────────────────────────────────────────
+
+      logging_alloy_windows_event_channels:
+        type: list
+        required: false
+        description: >-
+          List of Windows Event Log channels to collect. Each entry is a dict with
+          keys: name (channel name), xpath_query (XPath filter, empty string = all events),
+          and job_label (Loki stream label applied to this channel's logs).
+
+      logging_alloy_windows_openssh_log_file:
+        type: bool
+        required: false
+        default: true
+        description: "When true, tail the OpenSSH sshd.log file on Windows."
+
+      logging_alloy_windows_openssh_log_path:
+        type: str
+        required: false
+        default: 'C:\ProgramData\ssh\logs\sshd.log'
+        description: "Absolute path to the OpenSSH sshd.log file on Windows."
+
+      logging_alloy_windows_install_dir:
+        type: str
+        required: false
+        default: 'C:\Program Files\GrafanaLabs\Alloy'
+        description: "Alloy installation directory on Windows (post-installer default)."
+
+      logging_alloy_windows_config_path:
+        type: str
+        required: false
+        default: 'C:\Program Files\GrafanaLabs\Alloy\config.alloy'
+        description: "Alloy configuration file path on Windows."
+
+      logging_alloy_windows_service_name:
+        type: str
+        required: false
+        default: "Alloy"
+        description: "Windows service name created by the Alloy installer."
+
+      # ─── Linux / WSL ──────────────────────────────────────────────────────────
+
+      logging_alloy_linux_targeted_units:
+        type: list
+        required: false
+        description: >-
+          Systemd unit names collected at full verbosity (all log priorities).
+          All other units are collected at warning level and above.
+
+      logging_alloy_linux_auth_identifiers:
+        type: list
+        required: false
+        description: >-
+          Syslog identifiers whose auth/audit log entries are always forwarded
+          regardless of priority level (e.g. sudo, sshd, pam_unix).
+
+      logging_alloy_linux_config_path:
+        type: str
+        required: false
+        default: "/etc/alloy/config.alloy"
+        description: "Alloy configuration file path after APT installation on Linux."
+
+      # ─── macOS ────────────────────────────────────────────────────────────────
+
+      logging_alloy_macos_homebrew_prefix:
+        type: str
+        required: false
+        default: "/opt/homebrew"
+        description: >-
+          Homebrew installation prefix. Override to /usr/local for Intel Macs.
+          Apple Silicon default is /opt/homebrew.
+
+      logging_alloy_macos_log_paths:
+        type: list
+        required: false
+        description: >-
+          File paths (glob patterns supported) for Alloy to tail on macOS.
+          NOTE: /var/log/auth.log is incomplete on macOS Sequoia — auth events
+          moved to Unified Log (accessible via `log` CLI, not file tailing).
+          Review this list before deploying on Sequoia (macOS 15+).

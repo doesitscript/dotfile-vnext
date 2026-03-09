@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logging Stack Architecture — dotfile-vnext</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --surface2: #1c2030;
+    --border: #252a3a;
+    --accent-orange: #f97316;
+    --accent-yellow: #fbbf24;
+    --accent-blue: #38bdf8;
+    --accent-purple: #a78bfa;
+    --accent-green: #34d399;
+    --accent-red: #f87171;
+    --accent-teal: #2dd4bf;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --text-mid: #94a3b8;
+    --loki-color: #f97316;
+    --grafana-color: #f59e0b;
+    --alloy-color: #38bdf8;
+    --win-color: #a78bfa;
+    --linux-color: #34d399;
+    --mac-color: #e2e8f0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    min-height: 100vh;
+    padding: 32px 40px 60px;
+  }
+
+  /* ─── Header ─────────────────────────────── */
+  .header {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    margin-bottom: 8px;
+  }
+  .header h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 26px;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .header .sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .playbook-path {
+    font-size: 11px;
+    color: var(--accent-orange);
+    margin-bottom: 32px;
+    letter-spacing: 0;
+  }
+
+  /* ─── Section labels ─────────────────────── */
+  .section-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+
+  /* ─── Main layout ────────────────────────── */
+  .diagram-root {
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 0;
+  }
+
+  /* ─── Play blocks ────────────────────────── */
+  .play {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 18px 20px;
+    position: relative;
+  }
+  .play-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .play-badge {
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+  }
+  .play1-badge { background: #1e2a1a; color: var(--accent-green); border: 1px solid #2a3d22; }
+  .play2-badge { background: #1a1e2e; color: var(--accent-blue); border: 1px solid #222a42; }
+  .play-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .play-hosts {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .play-hosts code {
+    color: var(--accent-yellow);
+    background: #1a1500;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+  }
+
+  /* ─── Connector column ───────────────────── */
+  .connector-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+  }
+
+  /* ─── Role cards ─────────────────────────── */
+  .role-card {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .role-card:last-child { margin-bottom: 0; }
+
+  .role-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .role-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .role-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .role-desc {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-left: auto;
+  }
+  .role-body { padding: 10px 12px; }
+
+  /* ─── Task list ──────────────────────────── */
+  .task-list { list-style: none; }
+  .task-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid #1a1e28;
+    font-size: 11px;
+    color: var(--text-mid);
+  }
+  .task-list li:last-child { border-bottom: none; }
+  .task-icon {
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .task-module {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  /* ─── Tags pill row ──────────────────────── */
+  .tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .tag-pill {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .tag-logging    { background: #1a1e0a; color: #84cc16; border: 1px solid #2d3510; }
+  .tag-loki       { background: #1e1408; color: var(--accent-orange); border: 1px solid #3d2810; }
+  .tag-alloy      { background: #081420; color: var(--accent-blue); border: 1px solid #0d2038; }
+  .tag-windows    { background: #1a1228; color: var(--accent-purple); border: 1px solid #2a1e40; }
+  .tag-linux      { background: #0a1e16; color: var(--accent-green); border: 1px solid #123024; }
+  .tag-macos      { background: #1e1e1e; color: var(--mac-color); border: 1px solid #2e2e2e; }
+  .tag-install    { background: #0d1420; color: var(--accent-teal); border: 1px solid #142230; }
+  .tag-config     { background: #1e1408; color: var(--accent-yellow); border: 1px solid #3d2810; }
+  .tag-always     { background: #1e0808; color: var(--accent-red); border: 1px solid #3d1010; }
+
+  /* ─── Pre-task block ─────────────────────── */
+  .pretask-block {
+    background: #0e1018;
+    border: 1px dashed #252a3a;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .pretask-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent-red);
+    margin-bottom: 4px;
+    font-weight: 700;
+  }
+
+  /* ─── Platform dispatch ──────────────────── */
+  .platform-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .platform-card {
+    border-radius: 4px;
+    padding: 10px;
+    border: 1px solid;
+  }
+  .platform-card.windows {
+    background: #130f1e;
+    border-color: #2a1e40;
+  }
+  .platform-card.linux {
+    background: #0a160f;
+    border-color: #123024;
+  }
+  .platform-card.macos {
+    background: #111218;
+    border-color: #252a3a;
+  }
+  .platform-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .windows .platform-title { color: var(--accent-purple); }
+  .linux .platform-title { color: var(--accent-green); }
+  .macos .platform-title { color: var(--mac-color); }
+
+  .platform-hosts {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    line-height: 1.7;
+  }
+  .platform-detail {
+    font-size: 10px;
+    color: var(--text-mid);
+    line-height: 1.7;
+  }
+  .platform-detail .key { color: var(--text-dim); }
+
+  /* ─── Arrow connector ────────────────────── */
+  .arrow-down {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 6px 0;
+  }
+  .arrow-line {
+    width: 2px;
+    height: 20px;
+    background: var(--border);
+  }
+  .arrow-head {
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid var(--border);
+  }
+  .arrow-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 2px 0;
+  }
+
+  /* ─── Bottom section — data flow ─────────── */
+  .dataflow-section {
+    margin-top: 32px;
+  }
+  .dataflow-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr) 40px repeat(2, 1fr);
+    gap: 8px;
+    align-items: center;
+  }
+  .df-agent {
+    border-radius: 4px;
+    padding: 8px 6px;
+    text-align: center;
+    border: 1px solid;
+    font-size: 10px;
+  }
+  .df-agent.win { background: #130f1e; border-color: #2a1e40; color: var(--accent-purple); }
+  .df-agent.wsl { background: #0a160f; border-color: #123024; color: var(--accent-green); }
+  .df-agent.mac { background: #111218; border-color: #252a3a; color: var(--mac-color); }
+  .df-agent .hostname {
+    font-family: 'Syne', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    display: block;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .df-agent .agent-label {
+    font-size: 9px;
+    color: var(--text-dim);
+  }
+  .df-arrow-group {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .df-arrow {
+    font-size: 18px;
+    color: var(--border);
+  }
+  .df-server {
+    border-radius: 4px;
+    padding: 10px;
+    text-align: center;
+    border: 1px solid;
+  }
+  .df-server.loki {
+    background: #1a0d00;
+    border-color: #3d2010;
+    grid-column: span 1;
+  }
+  .df-server.grafana {
+    background: #1a1000;
+    border-color: #3d3010;
+    grid-column: span 1;
+  }
+  .df-server .svc-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .df-server .svc-port {
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+  .loki .svc-name { color: var(--accent-orange); }
+  .grafana .svc-name { color: var(--accent-yellow); }
+
+  /* ─── Structural notes ───────────────────── */
+  .notes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-top: 32px;
+  }
+  .note-card {
+    border-radius: 4px;
+    padding: 14px;
+    border: 1px solid;
+    font-size: 11px;
+    line-height: 1.8;
+  }
+  .note-card.green { background: #080f0a; border-color: #123024; }
+  .note-card.yellow { background: #0f0d00; border-color: #2a2400; }
+  .note-card.red { background: #0f0808; border-color: #2a1010; }
+  .note-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .note-card.green .note-title { color: var(--accent-green); }
+  .note-card.yellow .note-title { color: var(--accent-yellow); }
+  .note-card.red .note-title { color: var(--accent-red); }
+  .note-card li {
+    list-style: none;
+    color: var(--text-mid);
+    padding-left: 14px;
+    position: relative;
+    margin-bottom: 4px;
+  }
+  .note-card.green li::before { content: '✓'; position: absolute; left: 0; color: var(--accent-green); }
+  .note-card.yellow li::before { content: '⚑'; position: absolute; left: 0; color: var(--accent-yellow); }
+  .note-card.red li::before { content: '✗'; position: absolute; left: 0; color: var(--accent-red); }
+
+  /* ─── Config paths table ─────────────────── */
+  .config-table {
+    margin-top: 32px;
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .config-table th {
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: left;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .config-table td {
+    font-size: 11px;
+    padding: 7px 12px;
+    border-bottom: 1px solid #141820;
+    vertical-align: top;
+  }
+  .config-table tr:last-child td { border-bottom: none; }
+  .config-table code {
+    background: var(--surface2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    color: var(--accent-teal);
+  }
+
+  /* ─── Stagger animation ──────────────────── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .play, .dataflow-section, .notes-grid, .config-table {
+    animation: fadeUp 0.4s ease both;
+  }
+  .play:nth-child(1) { animation-delay: 0.05s; }
+  .play:nth-child(3) { animation-delay: 0.15s; }
+  .dataflow-section { animation-delay: 0.25s; }
+  .notes-grid { animation-delay: 0.35s; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Logging Stack Architecture</h1>
+  <span class="sub">Plan Mode · dotfile-vnext</span>
+</div>
+<div class="playbook-path">playbooks/logging.yaml — Grafana Loki server + Alloy agents, all surfaces</div>
+
+<!-- ════════════════════════════════════════════ PLAYS ══ -->
+<div class="section-label">Playbook — 2 plays, 10 declared tasks</div>
+
+<div class="diagram-root">
+
+  <!-- Play 1 -->
+  <div class="play">
+    <div class="play-header">
+      <span class="play-badge play1-badge">PLAY 1</span>
+      <div>
+        <div class="play-title">Deploy Loki Server</div>
+        <div class="play-hosts">hosts: <code>logging_server</code> → <code>server-225-wsl</code> &nbsp;·&nbsp; become: false &nbsp;·&nbsp; gather_facts: true</div>
+      </div>
+    </div>
+
+    <div class="pretask-block">
+      <div class="pretask-label">pre_tasks · tags: always</div>
+      Verify Docker is available on logging server
+      <div class="task-module">ansible.builtin.command — docker info</div>
+    </div>
+
+    <div class="role-card">
+      <div class="role-header" style="background:#1a0d00;">
+        <div class="role-dot" style="background:var(--accent-orange)"></div>
+        <span class="role-name" style="color:var(--accent-orange)">logging_loki</span>
+        <span class="role-desc">Loki 3.6.7 + Grafana via Docker</span>
+      </div>
+      <div class="role-body">
+        <ul class="task-list">
+          <li>
+            <span class="task-icon">📁</span>
+            <div>
+              Create Loki data directories
+              <div class="task-module">ansible.builtin.file — /opt/loki/{chunks,index,index_cache,rules,retention} · become: true</div>
+            </div>
+          </li>
+          <li>
+            <span class="task-icon">📝</span>
+            <div>
+              Write Loki configuration
+              <div class="task-module">ansible.builtin.template ← loki_config.yml.j2 → /opt/loki/config.yml · notify: Restart Loki container</div>
+            </div>
+          </li>
+          <li>
+            <span class="task-icon">🌐</span>
+            <div>
+              Create Docker network
+              <div class="task-module">community.docker.docker_network — name: "logging"</div>
+            </div>
+          </li>
+          <li>
+            <span class="task-icon">🐳</span>
+            <div>
+              Deploy Loki container
+              <div class="task-module">community.docker.docker_container — grafana/loki:3.6.7 · port 3100 · restart: unless-stopped</div>
+            </div>
+          </li>
+          <li>
+            <span class="task-icon">📊</span>
+            <div>
+              Deploy Grafana container <span style="color:var(--text-dim);font-size:10px;">(when: logging_loki_deploy_grafana)</span>
+              <div class="task-module">community.docker.docker_container — grafana/grafana:latest · port 3000 · GF_SECURITY_ADMIN_PASSWORD: admin</div>
+            </div>
+          </li>
+          <li>
+            <span class="task-icon">⏳</span>
+            <div>
+              Wait for Loki ready
+              <div class="task-module">ansible.builtin.uri — http://localhost:3100/ready · retries: 12, delay: 5s</div>
+            </div>
+          </li>
+        </ul>
+        <div class="tags-row">
+          <span class="tag-pill tag-logging">logging</span>
+          <span class="tag-pill tag-loki">logging_loki</span>
+          <span class="tag-pill tag-install">logging_install</span>
+          <span class="tag-pill tag-config">logging_config</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Center connector -->
+  <div class="connector-col">
+    <div style="width:1px;height:100%;background:var(--border);position:relative;">
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--surface2);padding:4px;border-radius:50%;border:1px solid var(--border);">
+        <div style="width:6px;height:6px;background:var(--border);border-radius:50%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Play 2 -->
+  <div class="play">
+    <div class="play-header">
+      <span class="play-badge play2-badge">PLAY 2</span>
+      <div>
+        <div class="play-title">Deploy Alloy Agents</div>
+        <div class="play-hosts">hosts: <code>windows_hosts:wsl_hosts:mac_dev</code> &nbsp;·&nbsp; become: false &nbsp;·&nbsp; gather_facts: true</div>
+      </div>
+    </div>
+
+    <div class="pretask-block">
+      <div class="pretask-label">pre_tasks · tags: always</div>
+      Skip Windows hosts not using WinRM
+      <div class="task-module">ansible.builtin.meta: end_host — when: os_family==Windows AND connection!=winrm</div>
+    </div>
+
+    <div class="role-card">
+      <div class="role-header" style="background:#081420;">
+        <div class="role-dot" style="background:var(--accent-blue)"></div>
+        <span class="role-name" style="color:var(--accent-blue)">logging_alloy</span>
+        <span class="role-desc">Alloy 1.13.2 · platform dispatch</span>
+      </div>
+      <div class="role-body">
+        <ul class="task-list">
+          <li>
+            <span class="task-icon">🪟</span>
+            <div>
+              Include Windows agent tasks <span style="color:var(--text-dim);font-size:10px;">(when: os_family==Windows)</span>
+              <div class="task-module">ansible.builtin.include_tasks: windows.yml · apply tags: logging_windows</div>
+            </div>
+          </li>
+          <li>
+            <span class="task-icon">🐧</span>
+            <div>
+              Include Linux/WSL agent tasks <span style="color:var(--text-dim);font-size:10px;">(when: os_family in [Debian, RedHat])</span>
+              <div class="task-module">ansible.builtin.include_tasks: linux.yml · apply tags: logging_linux</div>
+            </div>
+          </li>
+          <li>
+            <span class="task-icon">🍎</span>
+            <div>
+              Include macOS agent tasks <span style="color:var(--text-dim);font-size:10px;">(when: os_family==Darwin)</span>
+              <div class="task-module">ansible.builtin.include_tasks: macos.yml · apply tags: logging_macos</div>
+            </div>
+          </li>
+        </ul>
+
+        <div class="platform-grid">
+          <div class="platform-card windows">
+            <div class="platform-title">Windows</div>
+            <div class="platform-hosts">server-225-win<br>network-server-win<br>dev-3090-win<br>dev-workstation-win</div>
+            <div class="platform-detail">
+              <span class="key">install:</span> .exe /S silent<br>
+              <span class="key">config:</span> win_template<br>
+              <span class="key">service:</span> win_service "Alloy"<br>
+              <span class="key">sources:</span> Event Log channels<br>
+              <span class="key">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> + sshd.log file<br>
+              <span class="key">modules:</span> ansible.windows.*
+            </div>
+          </div>
+          <div class="platform-card linux">
+            <div class="platform-title">Linux / WSL</div>
+            <div class="platform-hosts">server-225-wsl<br>dev-3090-wsl<br>network-server-wsl</div>
+            <div class="platform-detail">
+              <span class="key">install:</span> Grafana APT repo<br>
+              <span class="key">key:</span> gpg dearmor<br>
+              <span class="key">service:</span> systemd alloy<br>
+              <span class="key">sources:</span> journald<br>
+              <span class="key">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> targeted units (all)<br>
+              <span class="key">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> rest at warn+
+            </div>
+          </div>
+          <div class="platform-card macos">
+            <div class="platform-title">macOS</div>
+            <div class="platform-hosts">mac-dev</div>
+            <div class="platform-detail">
+              <span class="key">install:</span> Homebrew tap<br>
+              <span class="key">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> grafana/grafana<br>
+              <span class="key">service:</span> brew services<br>
+              <span class="key">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> (launchd user agent)<br>
+              <span class="key">sources:</span> auth.log, system.log<br>
+              <span class="key">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> Docker Desktop logs
+            </div>
+          </div>
+        </div>
+
+        <div class="tags-row">
+          <span class="tag-pill tag-logging">logging</span>
+          <span class="tag-pill tag-alloy">logging_alloy</span>
+          <span class="tag-pill tag-windows">logging_windows</span>
+          <span class="tag-pill tag-linux">logging_linux</span>
+          <span class="tag-pill tag-macos">logging_macos</span>
+          <span class="tag-pill tag-install">logging_install</span>
+          <span class="tag-pill tag-config">logging_config</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════ DATA FLOW ══ -->
+<div class="dataflow-section">
+  <div class="section-label" style="margin-bottom:14px;">Runtime Data Flow — All Agents → Loki Push Endpoint → http://server-225-wsl:3100/loki/api/v1/push</div>
+  <div class="dataflow-grid">
+    <div class="df-agent win"><span class="hostname">s225-win</span><span class="agent-label">Alloy</span></div>
+    <div class="df-agent wsl"><span class="hostname">s225-wsl</span><span class="agent-label">Alloy</span></div>
+    <div class="df-agent win"><span class="hostname">ns-win</span><span class="agent-label">Alloy</span></div>
+    <div class="df-agent wsl"><span class="hostname">ns-wsl</span><span class="agent-label">Alloy</span></div>
+    <div class="df-agent win"><span class="hostname">d3090-win</span><span class="agent-label">Alloy</span></div>
+    <div class="df-agent wsl"><span class="hostname">d3090-wsl</span><span class="agent-label">Alloy</span></div>
+    <div class="df-agent win"><span class="hostname">dws-win</span><span class="agent-label">Alloy</span></div>
+    <div class="df-agent mac"><span class="hostname">mac-dev</span><span class="agent-label">Alloy</span></div>
+    <div class="df-arrow-group"><div class="df-arrow">→</div></div>
+    <div class="df-server loki"><span class="svc-name">Loki</span><span class="svc-port">:3100</span></div>
+    <div class="df-server grafana"><span class="svc-name">Grafana</span><span class="svc-port">:3000</span></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════ CONFIG TABLE ══ -->
+<div class="section-label" style="margin-top:32px;margin-bottom:10px;">Config Paths & Service Management — Per Platform</div>
+<table class="config-table">
+  <thead>
+    <tr>
+      <th>Platform</th>
+      <th>Alloy Config Path</th>
+      <th>Service Manager</th>
+      <th>Service Name</th>
+      <th>Log Sources</th>
+      <th>Install Method</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="color:var(--accent-purple);font-weight:700;">Windows</td>
+      <td><code>C:\Program Files\GrafanaLabs\Alloy\config.alloy</code></td>
+      <td>win_service</td>
+      <td><code>Alloy</code></td>
+      <td>Event Log: OpenSSH, Security, System, Application + <code>sshd.log</code></td>
+      <td><code>alloy-installer-windows-amd64.exe /S</code></td>
+    </tr>
+    <tr>
+      <td style="color:var(--accent-green);font-weight:700;">Linux / WSL</td>
+      <td><code>/etc/alloy/config.alloy</code></td>
+      <td>systemd</td>
+      <td><code>alloy.service</code></td>
+      <td>journald — targeted: sshd, docker, k3s, k3s-agent (all); rest at warn+; auth identifiers always kept</td>
+      <td>Grafana APT repo + <code>apt install alloy</code></td>
+    </tr>
+    <tr>
+      <td style="color:var(--mac-color);font-weight:700;">macOS</td>
+      <td><code>/opt/homebrew/etc/alloy/config.alloy</code></td>
+      <td>launchd (brew services)</td>
+      <td><code>grafana/grafana/alloy</code></td>
+      <td><code>/var/log/auth.log</code>, <code>/var/log/system.log</code>, Docker Desktop logs</td>
+      <td><code>brew tap grafana/grafana</code> + <code>brew install</code></td>
+    </tr>
+    <tr>
+      <td style="color:var(--accent-orange);font-weight:700;">Loki Server</td>
+      <td><code>/opt/loki/config.yml</code></td>
+      <td>Docker (restart: unless-stopped)</td>
+      <td><code>loki</code> container</td>
+      <td>Ingest from all Alloy agents · filesystem storage · retention: 30 days</td>
+      <td><code>grafana/loki:3.6.7</code> Docker image</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ════════════════════════════════════════════ NOTES ══ -->
+<div class="notes-grid">
+  <div class="note-card green">
+    <div class="note-title">Design Strengths</div>
+    <ul>
+      <li>Single playbook, two plays — clean separation of server vs. agents</li>
+      <li>Platform dispatch via os_family — no host-specific conditionals in playbook</li>
+      <li>Tag granularity: install/config split enables config-only runs</li>
+      <li>WinRM guard (pre_task end_host) prevents SSH-mode Windows confusion</li>
+      <li>Loki ready-check: blocks until healthy before returning</li>
+      <li>Docker pre-flight verify at play start (always tag)</li>
+      <li>Three handler names (Windows/Linux/macOS) — correct platform isolation</li>
+      <li>logging_server group defined in inventory — not embedded in playbook</li>
+      <li>Both roles have defaults/, handlers/, templates/ — proper role structure</li>
+    </ul>
+  </div>
+  <div class="note-card yellow">
+    <div class="note-title">Gaps / Pre-Implementation Flags</div>
+    <ul>
+      <li>logging_loki: missing meta/argument_specs.yml (required by project rules)</li>
+      <li>logging_alloy: missing meta/argument_specs.yml (required by project rules)</li>
+      <li>Neither role has a README.md (required by project rules)</li>
+      <li>linux.yml: changed_when: false on gpg dearmor shell task — misleading; task uses creates: so it is idempotent but won't report initial run as changed</li>
+      <li>logging_alloy_loki_endpoint hardcoded to server-225-wsl hostname — no DNS abstraction or variable override documented for other Loki targets</li>
+      <li>mac_dev group in Play 2 — verify matches @mac_dev inventory group (confirmed: mac-dev host)</li>
+      <li>macOS: brew services start uses command module, not declarative — no idempotence guard beyond failed_when</li>
+      <li>logging_alloy_macos_log_paths: /var/log/auth.log may not exist on modern macOS (Sequoia moved auth logging to unified log)</li>
+    </ul>
+  </div>
+  <div class="note-card red">
+    <div class="note-title">Security / Hardening — Fixed + Remaining</div>
+    <ul>
+      <li>GF_SECURITY_ADMIN_PASSWORD — FIXED: now uses {{ logging_loki_grafana_admin_password }} → vault.yml</li>
+      <li>Loki: auth_enabled: false — no auth between agents and server; acceptable for home lab</li>
+      <li>Alloy push endpoint is HTTP (not HTTPS) — plaintext log shipping on LAN</li>
+      <li>Loki data path uses mode 0777 — overly permissive; consider 0750 with explicit user</li>
+      <li>Windows installer downloaded from GitHub releases — no checksum verification on win_get_url</li>
+      <li>network-server-win host_vars: ansible_password in plaintext — must be vaulted</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════ LOG DATA FLOW — HOW LOKI WORKS ══ -->
+<div class="dataflow-section" style="margin-top:48px;">
+  <div class="section-label" style="margin-bottom:14px;">How Loki Works — Push Model (NOT a Shared Drive)</div>
+  <div style="background:#0a1020;border:1px solid #1e3050;border-radius:6px;padding:20px 24px;margin-bottom:16px;">
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#38bdf8;margin-bottom:10px;">IMPORTANT: Loki is a log aggregation server, not a shared file store</div>
+    <div style="font-size:12px;color:#94a3b8;line-height:2;max-width:900px;">
+      Each Alloy agent collects logs locally on its own machine (Event Log, journald, files) and
+      <strong style="color:#e2e8f0;">pushes them over HTTP</strong> to Loki's API endpoint
+      (<code style="background:#1a2030;padding:1px 5px;border-radius:2px;color:#2dd4bf;">POST /loki/api/v1/push</code>).
+      Loki stores the compressed log chunks on its own local disk (or object store like MinIO).
+      <br><br>
+      There is <strong style="color:#f87171;">no shared folder, no NFS mount, no SMB drive</strong> that agents write to.
+      The E Drive is where <em>Loki itself</em> stores its database — agents never touch it directly.
+      This is the same model as Prometheus: agents forward metrics/logs to a central server over HTTP.
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 40px 1fr;gap:16px;align-items:center;">
+    <!-- Agent side -->
+    <div style="background:#0d1018;border:1px solid #252a3a;border-radius:6px;padding:16px;">
+      <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#64748b;margin-bottom:12px;">On Each Agent Host</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="background:#130f1e;border:1px solid #2a1e40;border-radius:4px;padding:8px;font-size:11px;color:#a78bfa;">
+          <div style="font-weight:700;margin-bottom:4px;">Windows</div>
+          <div style="color:#64748b;">Event Log channels<br>OpenSSH sshd.log<br>→ Alloy service</div>
+        </div>
+        <div style="background:#0a160f;border:1px solid #123024;border-radius:4px;padding:8px;font-size:11px;color:#34d399;">
+          <div style="font-weight:700;margin-bottom:4px;">Linux / WSL</div>
+          <div style="color:#64748b;">journald (systemd)<br>targeted units<br>→ alloy.service</div>
+        </div>
+        <div style="background:#111218;border:1px solid #252a3a;border-radius:4px;padding:8px;font-size:11px;color:#e2e8f0;">
+          <div style="font-weight:700;margin-bottom:4px;">macOS</div>
+          <div style="color:#64748b;">File tailing<br>(Unified Log: TBD)<br>→ brew services</div>
+        </div>
+        <div style="background:#0d1018;border:1px dashed #252a3a;border-radius:4px;padding:8px;font-size:11px;color:#64748b;">
+          <div style="font-weight:700;margin-bottom:4px;">No mount needed</div>
+          <div>Agents never write<br>to a shared drive</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Arrow -->
+    <div style="text-align:center;">
+      <div style="font-size:24px;color:#38bdf8;">→</div>
+      <div style="font-size:9px;color:#64748b;letter-spacing:1px;text-transform:uppercase;margin-top:4px;">HTTP POST<br>:3100</div>
+    </div>
+
+    <!-- Loki server side -->
+    <div style="background:#0d1018;border:1px solid #252a3a;border-radius:6px;padding:16px;">
+      <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#64748b;margin-bottom:12px;">On the Loki Server Host</div>
+      <div style="background:#1a0d00;border:1px solid #3d2010;border-radius:4px;padding:10px;margin-bottom:8px;font-size:11px;">
+        <div style="color:#f97316;font-weight:700;margin-bottom:4px;">Loki container receives logs</div>
+        <div style="color:#94a3b8;">Decompresses, indexes metadata (labels)</div>
+        <div style="color:#94a3b8;">Compresses chunks to disk</div>
+      </div>
+      <div style="background:#0a0f00;border:1px solid #1e2a10;border-radius:4px;padding:10px;font-size:11px;">
+        <div style="color:#84cc16;font-weight:700;margin-bottom:4px;">Loki data directory</div>
+        <div style="color:#94a3b8;line-height:1.8;">
+          NOW: <code style="background:#0d1008;padding:1px 4px;border-radius:2px;">/opt/loki</code> on server-225-wsl<br>
+          FUTURE: <code style="background:#0d1008;padding:1px 4px;border-radius:2px;">/mnt/e/loki</code> on network-server-wsl<br>
+          <span style="color:#64748b;">(E Drive visible in WSL at /mnt/e)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════ LOKI MIGRATION PLAN ══ -->
+<div class="dataflow-section" style="margin-top:32px;">
+  <div class="section-label" style="margin-bottom:14px;">Loki Migration Plan — server-225-wsl → network-server-wsl (E Drive)</div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+    <!-- Current state -->
+    <div style="background:#0d1018;border:1px solid #252a3a;border-radius:6px;padding:16px;">
+      <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#f97316;margin-bottom:12px;">CURRENT STATE</div>
+      <div style="font-size:11px;color:#94a3b8;line-height:2;">
+        <div>Loki server: <strong style="color:#e2e8f0;">server-225-wsl</strong> (192.168.50.222)</div>
+        <div>Data path: <code style="background:#1a2030;padding:1px 4px;border-radius:2px;color:#2dd4bf;">/opt/loki</code> (OS disk — ephemeral risk)</div>
+        <div>Storage: filesystem (Docker volume)</div>
+        <div>inventory group: <code style="background:#1a2030;padding:1px 4px;border-radius:2px;color:#2dd4bf;">logging_server</code></div>
+        <div>Alloy endpoint: <code style="background:#1a2030;padding:1px 4px;border-radius:2px;color:#2dd4bf;">http://server-225-wsl:3100</code></div>
+        <div style="color:#f97316;margin-top:6px;">server-225-wsl is a K3s agent — not ideal for persistent storage</div>
+      </div>
+    </div>
+
+    <!-- Target state -->
+    <div style="background:#0a120a;border:1px solid #1a3020;border-radius:6px;padding:16px;">
+      <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#34d399;margin-bottom:12px;">TARGET STATE (after network-server-wsl provisioned)</div>
+      <div style="font-size:11px;color:#94a3b8;line-height:2;">
+        <div>Loki server: <strong style="color:#e2e8f0;">network-server-wsl</strong> (192.168.50.240)</div>
+        <div>node_role = <strong style="color:#34d399;">storage-observability-node</strong> ✓</div>
+        <div>Data path: <code style="background:#0d180d;padding:1px 4px;border-radius:2px;color:#2dd4bf;">/mnt/e/loki</code> (E Drive, persistent)</div>
+        <div>Storage option A: filesystem → E Drive</div>
+        <div>Storage option B: MinIO (planned on network-server) → S3 backend</div>
+        <div>Endpoint change: <code style="background:#0d180d;padding:1px 4px;border-radius:2px;color:#2dd4bf;">http://network-server-wsl:3100</code></div>
+        <div style="color:#34d399;margin-top:6px;">One-line change in group_vars/all.yaml</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Migration steps -->
+  <div style="background:#0d1018;border:1px solid #252a3a;border-radius:6px;padding:16px;margin-top:12px;">
+    <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Migration Steps (when ready)</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;font-size:10px;">
+      <div style="background:#111820;border:1px solid #252a3a;border-radius:4px;padding:8px;text-align:center;">
+        <div style="color:#f97316;font-weight:700;margin-bottom:4px;">1</div>
+        <div style="color:#94a3b8;">Provision WSL on network-server-win<br>(Ubuntu 24.04)</div>
+      </div>
+      <div style="background:#111820;border:1px solid #252a3a;border-radius:4px;padding:8px;text-align:center;">
+        <div style="color:#f97316;font-weight:700;margin-bottom:4px;">2</div>
+        <div style="color:#94a3b8;">Run docker_engine playbook on network-server-wsl</div>
+      </div>
+      <div style="background:#111820;border:1px solid #252a3a;border-radius:4px;padding:8px;text-align:center;">
+        <div style="color:#f97316;font-weight:700;margin-bottom:4px;">3</div>
+        <div style="color:#94a3b8;">Move logging_server group to network-server-wsl</div>
+      </div>
+      <div style="background:#111820;border:1px solid #252a3a;border-radius:4px;padding:8px;text-align:center;">
+        <div style="color:#f97316;font-weight:700;margin-bottom:4px;">4</div>
+        <div style="color:#94a3b8;">Set logging_loki_data_path: /mnt/e/loki in group_vars/logging_server/vars.yml</div>
+      </div>
+      <div style="background:#111820;border:1px solid #252a3a;border-radius:4px;padding:8px;text-align:center;">
+        <div style="color:#f97316;font-weight:700;margin-bottom:4px;">5</div>
+        <div style="color:#94a3b8;">Update logging_alloy_loki_endpoint in group_vars/all.yaml → redeploy all agents</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════ VAULT PATTERN ══ -->
+<div class="dataflow-section" style="margin-top:32px;">
+  <div class="section-label" style="margin-bottom:14px;">Secrets Pattern — Ansible Vault (implemented)</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:11px;">
+
+    <div style="background:#0d1018;border:1px solid #252a3a;border-radius:6px;padding:14px;">
+      <div style="font-family:'Syne',sans-serif;font-weight:700;color:#fbbf24;margin-bottom:8px;font-size:11px;">1 — VAULT.YML (encrypted)</div>
+      <div style="background:#0a0d00;border:1px solid #1e2000;border-radius:4px;padding:8px;color:#84cc16;font-family:monospace;font-size:10px;line-height:1.8;">
+        vault_logging_loki_grafana_admin_password: !vault |<br>
+        &nbsp;&nbsp;$ANSIBLE_VAULT;1.1;AES256<br>
+        &nbsp;&nbsp;62313365396662343...
+      </div>
+      <div style="color:#64748b;margin-top:6px;font-size:10px;">ansible-vault encrypt vault.yml</div>
+    </div>
+
+    <div style="background:#0d1018;border:1px solid #252a3a;border-radius:6px;padding:14px;">
+      <div style="font-family:'Syne',sans-serif;font-weight:700;color:#38bdf8;margin-bottom:8px;font-size:11px;">2 — VARS.YML (plaintext reference)</div>
+      <div style="background:#08100a;border:1px solid #102010;border-radius:4px;padding:8px;color:#34d399;font-family:monospace;font-size:10px;line-height:1.8;">
+        logging_loki_grafana_admin_password:<br>
+        &nbsp;&nbsp;"{{ vault_logging_loki_grafana_admin_password }}"
+      </div>
+      <div style="color:#64748b;margin-top:6px;font-size:10px;">Human-readable, safe to grep/review</div>
+    </div>
+
+    <div style="background:#0d1018;border:1px solid #252a3a;border-radius:6px;padding:14px;">
+      <div style="font-family:'Syne',sans-serif;font-weight:700;color:#a78bfa;margin-bottom:8px;font-size:11px;">3 — ROLE TASK (consumes variable)</div>
+      <div style="background:#0f0a18;border:1px solid #1e1028;border-radius:4px;padding:8px;color:#a78bfa;font-family:monospace;font-size:10px;line-height:1.8;">
+        env:<br>
+        &nbsp;&nbsp;GF_SECURITY_ADMIN_PASSWORD:<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;"{{ logging_loki_grafana_admin_password }}"
+      </div>
+      <div style="color:#64748b;margin-top:6px;font-size:10px;">no_log: true in argument_specs</div>
+    </div>
+  </div>
+  <div style="background:#080a10;border:1px solid #1e2030;border-radius:4px;padding:10px;margin-top:10px;font-size:11px;color:#64748b;line-height:1.8;">
+    <strong style="color:#94a3b8;">To encrypt:</strong>
+    ansible-vault encrypt inventory/group_vars/logging_server/vault.yml &nbsp;|&nbsp;
+    <strong style="color:#94a3b8;">To run:</strong>
+    ansible-playbook playbooks/logging.yaml --ask-vault-pass &nbsp;|&nbsp;
+    <strong style="color:#94a3b8;">Kubernetes future:</strong> External Secrets Operator → HashiCorp Vault / AWS Secrets Manager
+  </div>
+</div>
+
+</body>
+</html>

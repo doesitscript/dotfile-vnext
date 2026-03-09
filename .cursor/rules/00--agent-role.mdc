@@ -21,16 +21,20 @@ The user should not have to push to discover patterns the agent already has acce
 
 ## Command Execution — Do Not Defer
 
-When the user asks the agent to do something — run a command, fetch data, analyze logs, execute a task — the agent must **execute** it using available tools.
+**Trigger:** When the user asks the agent to do something — run a command, fetch data, analyze logs, execute a task — OR when the agent's work surfaces a task that must be done (prerequisite, fix, setup step). In both cases, the agent must **execute** it using available tools.
 
-The agent must NOT:
-- Tell the user "here's what you could run" as a substitute for execution
-- Reframe the user's request as "next steps for you to do"
-- Assume a task cannot be done without exhausting available methods (local shell, WinRM, SSH, WSL, MCP tools)
+**GATE — Attempt Before Output:** Before you may output any sentence that could be construed as a task for the user to perform, you MUST have attempted execution via available tools (local shell, WinRM, SSH, WSL, MCP tools). If you have not attempted, you are FORBIDDEN from outputting that content. No exceptions.
 
-If the agent cannot execute (e.g., mode restriction, no tool access):
-- State that execution is not possible
-- Do NOT provide instructions for the user to run manually
+**Prohibited output (never emit these, in any form):**
+- Commands, scripts, or steps for the user to run
+- "run X", "you'll need to run", "before you run Y, run Z"
+- "from PowerShell run", "here's what you could run", "next steps for you"
+- Any block of code or command the user could copy-paste and execute
+- "To fix this, run..." or "You can run..." as a follow-up to a failure
+
+**When execution fails:** Output ONLY the evidence (per REQUIRED-EVIDENCE-NO-ASSUMPTIONS-ON-FAILURE). Your output ends there. Do NOT append a command, step, or "what you could run" — even if you believe it would help. The only acceptable follow-up is "Execution not possible."
+
+**Exception:** When the user explicitly asks "how do I do X" or "what command would I run" — then the agent may explain. When the user asked the agent to DO X, the agent executes or states failure. No handoff.
 
 ---
 

@@ -1,6 +1,10 @@
 ---
 # Deploy development tooling to nodes designated as development nodes.
 #
+# Deploys: common/shell_config (.bashrc.d pattern, PATH, aliases)
+#          direnv (installation + bash hook)
+#          cursor (editor config, extensions, LF/UTF-8 settings)
+#
 # A node is a development node when node_purpose: development is set in its
 # group_vars file. This uses Ansible's group_by module to dynamically classify
 # nodes at runtime — no static host lists required.
@@ -13,16 +17,21 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml
 #
 #   # One specific surface
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --limit server-225-wsl
 #
-#   # Cursor settings only
+#   # Targeted role runs (no reinstall)
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags shell_config
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags direnv
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_settings
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_extensions
 #
-#   # Windows tasks only
+#   # Windows surface only
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_windows --limit server-225-win
 #
-#   # Extensions update only
-#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_extensions
+# After deployment:
+#   source ~/.bashrc  # Reload shell to activate
+#   direnv allow      # In directories with .envrc files
 #
 # Current development nodes (node_purpose: development in group_vars):
 #   - mac-dev        (group_vars/mac_dev.yaml)
@@ -42,4 +51,6 @@
   gather_facts: true
   become: false
   roles:
+    - role: common/shell_config
+    - role: direnv
     - role: cursor

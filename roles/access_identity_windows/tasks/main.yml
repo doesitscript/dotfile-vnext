@@ -154,18 +154,30 @@
 
 # --- powershell-ssh: secondary SSH port that forces a PowerShell session ---
 # Port 2223 listens alongside the primary WSL/bash port (2222).
-# A Match LocalPort block at the END of sshd_config overrides the default
-# shell with powershell.exe for connections on this port.
+# A Match LocalPort block at the END of sshd_config sets ForceCommand for this port.
 # This block MUST go at the bottom of sshd_config (after all global directives
 # and after Match Group administrators) to avoid capturing unrelated directives.
 #
-# IMPORTANT — WSL lockout by design:
+# IMPORTANT — ForceCommand is routed through DefaultShell (wsl.exe):
 # The DefaultShell registry key (HKLM:\SOFTWARE\OpenSSH) is set to wsl.exe,
-# which makes port 2222 land in a WSL distro. ForceCommand in the Match block
-# below takes precedence over DefaultShell for port 2223, running powershell.exe
-# instead. This intentionally prevents any connection on port 2223 from dropping
-# into a Linux distro — port 2223 is always a pure Windows PowerShell session.
+# which makes port 2222 land in a WSL distro. ForceCommand for port 2223 is
+# also executed via wsl.exe -e <command>. In non-interactive WSL sessions,
+# bare "powershell.exe" is not in the Linux PATH. Use a wrapper script in WSL
+# /usr/local/bin so wsl.exe -e receives a single executable path (no argv parsing).
 - block:
+  - name: Resolve WSL companion for ps_port (when host has -wsl sibling)
+    ansible.builtin.set_fact:
+      _ps_wsl_companion: "{{ inventory_hostname | regex_replace('-win$', '-wsl') }}"
+      _ps_wsl_distro: "{{ hostvars[inventory_hostname | regex_replace('-win$', '-wsl')]['wsl_distro'] | default('Ubuntu-24.04') }}"
+    when: (inventory_hostname | regex_replace('-win$', '-wsl')) in hostvars
+
+  - name: Ensure pwsh-sshd wrapper exists in WSL for ForceCommand
+    ansible.windows.win_shell: |
+      $distro = '{{ _ps_wsl_distro }}'
+      $script = "#!/bin/bash`nexec /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoLogo -NoProfile `"`$@`""
+      $script | wsl.exe -d $distro -u root -- bash -c 'cat > /usr/local/bin/pwsh-sshd && chmod +x /usr/local/bin/pwsh-sshd'
+    when: _ps_wsl_companion is defined
+
   # powershell-ssh — sshd_config: add Port listener
   - name: Ensure sshd_config has PowerShell port listener
     community.windows.win_lineinfile:
@@ -178,11 +190,12 @@
 
   # powershell-ssh — sshd_config: declare PowerShell subsystem so the SSH
   # subsystem request (-s powershell) in the controller ssh_config ProxyCommand works.
+  # Same DrvFs path required — subsystem runs via DefaultShell (wsl.exe).
   - name: Ensure sshd_config declares PowerShell subsystem
     community.windows.win_lineinfile:
       path: "{{ sshd_config_path }}"
       regexp: '^Subsystem\s+powershell\s'
-      line: "Subsystem    powershell    powershell.exe -sshs -NoLogo -NoProfile"
+      line: "Subsystem    powershell    /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -sshs -NoLogo -NoProfile"
       insertafter: '^Subsystem\s+sftp'
       state: present
     register: sshd_ps_subsystem_result
@@ -198,13 +211,13 @@
     register: sshd_ps_match_result
 
   # powershell-ssh — sshd_config: ForceCommand under Match block.
-  # ForceCommand overrides DefaultShell (wsl.exe registry key) for this port,
-  # ensuring port {{ win_ssh_powershell_port }} is always PowerShell — never WSL.
+  # ForceCommand runs via wsl.exe -e <command>; the whole string is one argv to -e.
+  # Use pwsh-sshd wrapper in /usr/local/bin (created above) — single executable, no parsing.
   - name: Ensure ForceCommand powershell under Match LocalPort block
     community.windows.win_lineinfile:
       path: "{{ sshd_config_path }}"
-      regexp: '^\s+ForceCommand powershell'
-      line: "    ForceCommand powershell.exe -NoLogo -NoProfile"
+      regexp: '^\s+ForceCommand'
+      line: "    ForceCommand pwsh-sshd"
       insertafter: "^Match LocalPort {{ win_ssh_powershell_port }}"
       state: present
     register: sshd_ps_force_result
