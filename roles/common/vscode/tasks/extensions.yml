@@ -1,0 +1,10 @@
+---
+# Install VS Code extensions via CLI (code --install-extension).
+# Runs after vscode is installed on Mac or Windows.
+
+- name: Install VS Code extensions via CLI
+  ansible.builtin.command: "code --install-extension {{ item }}"
+  loop: "{{ vscode_extensions }}"
+  register: _vscode_ext_result
+  changed_when: "'was successfully installed' in _vscode_ext_result.stdout"
+  failed_when: false

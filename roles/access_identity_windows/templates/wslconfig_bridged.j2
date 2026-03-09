@@ -1,7 +1,35 @@
+# =============================================================================
+# WSL .wslconfig — CRITICAL PARSING NOTES (WSL 2.6.x / Windows 11 24H2)
+# =============================================================================
+#
+# LINE ENDINGS: This file MUST use LF (\n) only. WSL 2.6.x rejects CRLF with
+# a silent parse error ("Expected ' ' or '\n' in .wslconfig: 1"). When the
+# entire file is rejected, ALL settings fall back to defaults — including
+# networkingMode — so WSL silently runs in NAT mode even though bridged is
+# specified. The win_template task that writes this file uses newline_sequence
+# '\n' specifically to enforce LF. Do NOT change it to '\r\n'.
+#
+# KEY NAMING: WSL 2.6.x does NOT accept dotted key names. The old documented
+# key "vm.idleTimeout" (with a dot) causes "Expected '=' in .wslconfig: N"
+# because the parser treats the dot as an invalid character in a key name.
+# The correct key in WSL 2.6.x is "vmIdleTimeout" (camelCase, no dot).
+#
+# vmIdleTimeout values:
+#   -1  = never auto-shutdown (VM stays alive indefinitely with no active sessions)
+#    0  = shutdown immediately when all wsl.exe sessions exit
+#   >0  = shutdown after N milliseconds of idle (default on Windows 11 ≈ 8000ms)
+#
+# KNOWN LIMITATION: Even with vmIdleTimeout=-1, WSL 2.6.3 (Build 2.6.3.0 on
+# Windows 11 26100) does not reliably prevent idle shutdown. The setting is
+# parsed without error but the auto-shutdown still fires after ~20-30 seconds.
+# The WSLKeepalive scheduled task in ubuntu.yml Step 7 is the actual fix —
+# it maintains a persistent wsl.exe session (sleep infinity) that prevents
+# WSL from ever reaching the "idle" state in the first place.
+# =============================================================================
+
 [wsl2]
 networkingMode=bridged
 vmSwitch={{ (hyperv_config | default({})).switch_name | default('External') }}
-# Keep WSL VM running after the last wsl.exe process exits.
-# vmIdleTimeout=-1 means never auto-shutdown. Without this, WSL 2 shuts down the
-# VM after a short idle period, killing all SSH connections and Docker contexts.
+# Belt-and-suspenders: keep vmIdleTimeout=-1 in case a future WSL version
+# honors it correctly. The real keepalive is the WSLKeepalive scheduled task.
 vmIdleTimeout=-1

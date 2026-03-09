@@ -1,0 +1,19 @@
+---
+# vscode — main task dispatcher (multi-OS: macOS, Windows)
+# Install: Homebrew cask (Mac), Chocolatey (Windows)
+# Extensions: code --install-extension (both platforms)
+
+- name: Process vscode role for macOS
+  ansible.builtin.import_tasks: mac.yml
+  when: ansible_facts['system'] == "Darwin"
+  tags: [vscode, vscode_install]
+
+- name: Process vscode role for Windows
+  ansible.builtin.import_tasks: windows.yml
+  when: ansible_facts['system'] == "Windows"
+  tags: [vscode, vscode_install]
+
+- name: Install VS Code extensions via CLI
+  ansible.builtin.include_tasks: extensions.yml
+  when: ansible_facts['system'] in ['Darwin', 'Windows']
+  tags: [vscode, vscode_extensions]

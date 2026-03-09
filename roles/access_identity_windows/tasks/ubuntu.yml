@@ -117,6 +117,17 @@
 # Deploys .wslconfig to tell WSL to use the External VMSwitch created by
 # hyperv_networking. The switch_name comes from hyperv_config in host_vars.
 # In NAT mode, no .wslconfig is needed.
+#
+# CRITICAL — newline_sequence: '\n' (LF only, NOT CRLF)
+# WSL 2.6.x (Windows 11 24H2, Build 26100) requires LF-only line endings in
+# .wslconfig. If the file contains CRLF, WSL silently rejects the ENTIRE file
+# with an internal parse error and falls back to all defaults — including
+# networkingMode=NAT. The failure is invisible: no error in the Windows event
+# log, no warning from wsl.exe, the VM just starts in NAT mode instead of
+# bridged. This was confirmed by reading parse errors from wsl.exe stderr
+# ("Expected ' ' or '\\n' in .wslconfig: 1") when launching with a CRLF file.
+# win_template defaults to the platform newline (CRLF on Windows), so the
+# newline_sequence override here is mandatory — do NOT remove or change it.
 
 - name: Deploy .wslconfig with bridged networking
   ansible.windows.win_template:
@@ -821,11 +832,53 @@
   delegate_facts: true
 
 # --- Step 7: WSL keepalive scheduled task ---
-# vmIdleTimeout in .wslconfig is unreliable on WSL 2.6.x (the setting is parsed
-# but the auto-shutdown is not prevented). The reliable alternative is a Windows
-# Scheduled Task that maintains a long-running wsl.exe session at all times.
-# The task is created via schtasks.exe (avoids WinRM CIM class issues) and runs
-# as the interactive user so it has access to the per-user WSL installation.
+#
+# PROBLEM STATEMENT
+# WSL 2 shuts down the entire Linux VM when it has been "idle" — meaning no
+# active wsl.exe sessions are running. On WSL 2.6.x (Windows 11 24H2 Build
+# 26100), the idle timer fires after roughly 8–30 seconds. When the VM shuts
+# down, the WSL distro's IP address becomes unreachable, killing all SSH
+# sessions and Docker contexts (e.g. docker --context mac-dev) with either
+# "Operation timed out" or "Connection refused".
+#
+# WHAT WE TRIED FIRST: vmIdleTimeout in .wslconfig
+# The .wslconfig setting vmIdleTimeout=-1 is documented to prevent auto-
+# shutdown. We confirmed the file is parsed correctly (no errors, LF endings,
+# correct camelCase key name). However, on WSL 2.6.3 (Build 2.6.3.0), the
+# setting is parsed but NOT honored — the VM still shuts down after idle.
+# This appears to be a bug or behavioral change in WSL 2.6.x. The setting is
+# kept in the template as belt-and-suspenders for future WSL versions.
+#
+# THE ACTUAL FIX: WSLKeepalive Windows Scheduled Task
+# A Windows Scheduled Task runs "wsl.exe -d <distro> -u root -- sleep infinity"
+# as the interactive user (joshc) at every logon. This keeps a permanent
+# wsl.exe process alive that holds an active session in the WSL VM. As long as
+# this process is running, WSL's idle timer never fires and the VM never shuts
+# down — SSH from Mac and Docker contexts remain permanently reachable.
+#
+# WHY sleep infinity WORKS
+# WSL's idle shutdown triggers only when there are ZERO active wsl.exe sessions.
+# systemd daemons running inside the VM (sshd, dockerd, etc.) do NOT count as
+# "active sessions" from the host's perspective. By holding one wsl.exe process
+# open via sleep infinity, the VM is permanently "in use" and will not shut down
+# until a deliberate "wsl --shutdown" or Windows reboot.
+#
+# WHY schtasks.exe INSTEAD OF PowerShell cmdlets
+# The PowerShell Scheduled Task cmdlets (New-ScheduledTaskAction, Register-
+# ScheduledTask, etc.) depend on CIM classes that are unavailable or broken in
+# WinRM remote sessions on Windows 11 24H2. They fail with:
+#   "Cannot convert value '\MSFT_TaskExecAction' to type CimInstance[]"
+# schtasks.exe is a plain Win32 executable with no CIM dependency and works
+# correctly over WinRM in all tested configurations.
+#
+# WHY IT RUNS AS joshc (NOT SYSTEM)
+# WSL distros are registered per-user, not system-wide. Running wsl.exe as
+# SYSTEM fails silently — the SYSTEM account has no WSL configuration, so the
+# VM does not start. The task must run as the same user account that owns the
+# WSL distro (joshc in this project). This means the task fires at joshc's
+# logon (/SC ONLOGON) rather than at boot (/SC ONSTART), which is acceptable
+# since the WSL use cases (SSH, Docker) require the user to be logged in anyway.
+#
 # /ONLOGON trigger fires on each user logon; /F overwrites if it already exists.
 
 - name: Register WSL keepalive scheduled task via schtasks.exe
