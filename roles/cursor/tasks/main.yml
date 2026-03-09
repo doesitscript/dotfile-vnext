@@ -1,15 +1,39 @@
 ---
-# Cursor Editor Role
-# Configures Cursor as the default editor
+- name: Include macOS tasks
+  ansible.builtin.include_tasks:
+    file: mac.yml
+    apply:
+      tags: [cursor, cursor_unix]
+  when: ansible_facts['system'] == "Darwin"
+  tags: [cursor, cursor_unix]
 
-- name: Process cursor role for Unix-like systems
-  ansible.builtin.import_tasks: unix.yml
-  when: ansible_facts['system'] != "Windows"
+- name: Include Ubuntu tasks
+  ansible.builtin.include_tasks:
+    file: ubuntu.yml
+    apply:
+      tags: [cursor, cursor_unix]
+  when: ansible_facts['distribution'] == "Ubuntu"
+  tags: [cursor, cursor_unix]
 
-- name: Process cursor role for Windows
-  ansible.builtin.import_tasks: windows.yml
+- name: Include Windows tasks
+  ansible.builtin.include_tasks:
+    file: windows.yml
+    apply:
+      tags: [cursor, cursor_windows]
   when: ansible_facts['system'] == "Windows"
+  tags: [cursor, cursor_windows]
 
 - name: Install Cursor extensions
-  ansible.builtin.import_tasks: extensions.yml
-  tags: cursor_extensions
+  ansible.builtin.include_tasks:
+    file: extensions.yml
+    apply:
+      tags: [cursor, cursor_extensions]
+  tags: [cursor, cursor_extensions]
+
+- name: Ensure Cursor settings.json has LF + UTF-8-no-BOM
+  ansible.builtin.include_tasks:
+    file: settings.yml
+    apply:
+      tags: [cursor, cursor_settings]
+  when: cursor_settings_enabled | default(true) | bool
+  tags: [cursor, cursor_settings]

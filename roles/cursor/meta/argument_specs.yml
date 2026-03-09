@@ -1,0 +1,65 @@
+---
+argument_specs:
+  main:
+    short_description: Configure Cursor editor on macOS, Ubuntu, and Windows.
+    description: >
+      Installs Cursor editor configuration, deploys shell integration, manages
+      Remote-SSH host entries, installs extensions, and idempotently merges
+      LF + UTF-8-no-BOM settings into Cursor's settings.json.
+    options:
+      cursor_extensions:
+        type: list
+        elements: str
+        required: false
+        description: >
+          List of Cursor/VS Code extension IDs to install via the CLI.
+          Bypasses marketplace GUI issues. Defaults to a baseline set.
+
+      cursor_wsl_distro:
+        type: str
+        required: false
+        default: "Ubuntu-24.04"
+        description: >
+          WSL distribution name used by the OpenSSH default shell wrapper on Windows.
+          Must match the installed WSL distribution (wsl --list).
+
+      cursor_wsl_wrapper_path:
+        type: str
+        required: false
+        default: 'C:\ProgramData\ssh\wsl-bash-wrapper.cmd'
+        description: >
+          Path to the OpenSSH DefaultShell wrapper on Windows. Routes interactive
+          SSH to a WSL login shell and command-mode SSH to WSL bash -c.
+
+      cursor_remote_ssh_hosts:
+        type: list
+        elements: dict
+        required: false
+        description: >
+          List of Remote-SSH host entries deployed to ~/.ssh/config.d/ on the
+          control node (Mac/Linux). Set to [] to skip SSH config deployment.
+          Each entry requires: name, hostname, user, port, identity_file.
+
+      cursor_settings_path:
+        type: str
+        required: false
+        description: >
+          Full path to Cursor's settings.json on the target host. Defaults to the
+          platform-appropriate location (macOS/Linux/Windows). Override only when
+          Cursor is installed in a non-standard location.
+
+      cursor_settings_enabled:
+        type: bool
+        required: false
+        default: true
+        description: >
+          Set to false to skip the settings.json merge for this node.
+
+      cursor_settings_lf_utf8:
+        type: dict
+        required: false
+        description: >
+          Settings to merge into Cursor's settings.json. Only keys not already
+          present are added — existing user values are always preserved.
+          Defaults enforce LF line endings and UTF-8-no-BOM to prevent CRLF
+          and BOM contamination in source-controlled files.

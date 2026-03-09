@@ -16,6 +16,29 @@ cursor_wsl_distro: "Ubuntu-24.04"
 # command-mode SSH to WSL bash -c (required for Ansible and Cursor Remote-SSH).
 cursor_wsl_wrapper_path: 'C:\ProgramData\ssh\wsl-bash-wrapper.cmd'
 
+# Platform-specific path to Cursor settings.json.
+# Prevents BOM and CRLF contamination in all files edited with Cursor.
+cursor_settings_path: >-
+  {{ (dotfiles_user_home | default(ansible_user_dir))
+     + ('\\AppData\\Roaming\\Cursor\\User\\settings.json'
+        if ansible_facts['system'] == 'Windows'
+        else ('/Library/Application Support/Cursor/User/settings.json'
+              if ansible_facts['system'] == 'Darwin'
+              else '/.config/Cursor/User/settings.json')) }}
+
+# Set to false to skip the settings.json merge for this node.
+cursor_settings_enabled: true
+
+# Settings merged idempotently — only keys not already present are added.
+# Existing user values are always preserved.
+# This enforces LF line endings and UTF-8-no-BOM across all files edited with Cursor,
+# preventing CRLF contamination and BOM characters in source-controlled files.
+cursor_settings_lf_utf8:
+  files.eol: "\n"
+  files.encoding: "utf8"
+  files.insertFinalNewline: true
+  files.trimFinalNewlines: true
+
 # Remote SSH host entries deployed to ~/.ssh/config on the controller (Mac/Linux).
 # Each entry creates a Host block for Cursor Remote-SSH connections.
 # Set to [] to skip SSH config deployment.

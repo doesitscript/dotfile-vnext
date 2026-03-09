@@ -1,0 +1,50 @@
+---
+# Idempotently merge LF + UTF-8-no-BOM settings into Cursor's settings.json.
+#
+# Merge strategy: existing user values always win.
+# Keys in cursor_settings_lf_utf8 that are not already in the file are added.
+# Keys already present (regardless of value) are left untouched.
+#
+# JSONC note: Cursor writes comments into settings.json. The regex_replace filter
+# strips single-line (//) and block (/* */) comments before parsing so that
+# from_json does not fail.
+
+- name: Stat Cursor settings.json
+  ansible.builtin.stat:
+    path: "{{ cursor_settings_path }}"
+  register: cursor_settings_stat
+
+- name: Ensure Cursor settings.json parent directory exists
+  ansible.builtin.file:
+    path: "{{ cursor_settings_path | dirname }}"
+    state: directory
+    mode: "0755"
+  when: not cursor_settings_stat.stat.exists
+
+- name: Write Cursor settings.json (file does not exist)
+  ansible.builtin.copy:
+    content: "{{ cursor_settings_lf_utf8 | to_nice_json }}\n"
+    dest: "{{ cursor_settings_path }}"
+    mode: "0644"
+  when: not cursor_settings_stat.stat.exists
+
+- name: Read existing Cursor settings.json
+  ansible.builtin.slurp:
+    src: "{{ cursor_settings_path }}"
+  register: cursor_settings_raw
+  when: cursor_settings_stat.stat.exists
+
+- name: Merge LF + UTF-8-no-BOM settings into existing settings.json
+  vars:
+    _raw_content: "{{ cursor_settings_raw.content | b64decode }}"
+    _stripped: >-
+      {{ _raw_content
+         | regex_replace('//[^\n]*', '')
+         | regex_replace('/\\*.*?\\*/', '') }}
+    _existing: "{{ _stripped | from_json }}"
+    _merged: "{{ cursor_settings_lf_utf8 | combine(_existing) }}"
+  ansible.builtin.copy:
+    content: "{{ _merged | to_nice_json }}\n"
+    dest: "{{ cursor_settings_path }}"
+    mode: "0644"
+  when: cursor_settings_stat.stat.exists
