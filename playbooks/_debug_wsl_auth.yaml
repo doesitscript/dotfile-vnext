@@ -1,37 +1,22 @@
 ---
-- name: Debug WSL authorized_keys authorization
+- name: Debug SSH key gen on Windows
   hosts: network-server-win
   gather_facts: false
   tasks:
-    - name: Step 1 - basic wsl stdout capture
+    - name: Clean up existing test key
       ansible.windows.win_powershell:
         script: |
-          $out = wsl.exe -d Ubuntu-24.04 -u root -- bash -c 'echo hello_from_wsl'
-          $Ansible.Result = ($out -join '|')
+          $keyPath = "$env:USERPROFILE\.ssh\id_ed25519"
+          if (Test-Path $keyPath) { Remove-Item $keyPath, "$keyPath.pub" -Force }
+          $Ansible.Result = 'cleaned'
 
-    - name: Step 2 - read pubkey file in WSL
-      ansible.windows.win_powershell:
-        script: |
-          $out = wsl.exe -d Ubuntu-24.04 -u root -- bash -c 'cat /mnt/c/Windows/Temp/win_docker_pubkey.txt && echo FILE_READ_OK'
-          $Ansible.Result = ($out -join '|')
-
-    - name: Step 3 - grep check
-      ansible.windows.win_powershell:
-        script: |
-          $out = wsl.exe -d Ubuntu-24.04 -u root -- bash -c 'pk=$(cat /mnt/c/Windows/Temp/win_docker_pubkey.txt); ak=/home/joshc/.ssh/authorized_keys; grep -qF "$pk" "$ak" && echo found || echo not_found'
-          $Ansible.Result = ($out -join '|')
-
-    - name: Step 4 - full authorization command
+    - name: Test cmd /c ssh-keygen -N empty string via cmd
       ansible.windows.win_powershell:
         script: |
           $Ansible.Changed = $false
-          $distro = 'Ubuntu-24.04'
-          $out = wsl.exe -d $distro -u root -- bash -c 'pk=$(cat /mnt/c/Windows/Temp/win_docker_pubkey.txt); ak=/home/joshc/.ssh/authorized_keys; mkdir -p $(dirname "$ak"); touch "$ak"; grep -qF "$pk" "$ak" && echo already_present || { echo "$pk" >> "$ak"; chmod 600 "$ak"; chown joshc:joshc "$ak"; echo added; }'
-          if ($out -contains 'added') { $Ansible.Changed = $true }
-          $Ansible.Result = ($out -join '|')
-
-    - name: Step 5 - check authorized_keys after
-      ansible.windows.win_powershell:
-        script: |
-          $out = wsl.exe -d Ubuntu-24.04 -u root -- bash -c 'wc -l /home/joshc/.ssh/authorized_keys && cat /home/joshc/.ssh/authorized_keys'
-          $Ansible.Result = ($out -join '|')
+          $keyPath = "$env:USERPROFILE\.ssh\id_ed25519"
+          New-Item -ItemType Directory -Path "$env:USERPROFILE\.ssh" -Force | Out-Null
+          $escapedPath = $keyPath -replace '"', '""'
+          $out = cmd /c "ssh-keygen -t ed25519 -f ""$escapedPath"" -N """" -q 2>&1"
+          $Ansible.Changed = $true
+          $Ansible.Result = @{exit = $LASTEXITCODE; pub_exists = (Test-Path "$keyPath.pub"); out = ($out -join '|')}

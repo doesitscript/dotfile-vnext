@@ -1,3 +1,7 @@
 [wsl2]
 networkingMode=bridged
 vmSwitch={{ (hyperv_config | default({})).switch_name | default('External') }}
+# Keep WSL VM running after the last wsl.exe process exits.
+# vmIdleTimeout=-1 means never auto-shutdown. Without this, WSL 2 shuts down the
+# VM after a short idle period, killing all SSH connections and Docker contexts.
+vmIdleTimeout=-1

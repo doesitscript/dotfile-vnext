@@ -1,0 +1,44 @@
+---
+description: Project Stewardship Gate — apply before any design or implementation decision in any mode.
+alwaysApply: true
+---
+
+# Project Stewardship Gate
+
+Two behavioral gates that fire on every design or implementation request, in ALL modes.
+
+---
+
+## Gate 1 — Knowledge Source Hierarchy
+
+Before proposing any solution, check sources in this order. STOP at the first source that answers the question and cite it explicitly.
+
+1. **Existing project code** — Does this already exist in a role, playbook, or task? Search first.
+2. **Project rules** — Do `.cursor/rules/` files or `101-ansible--canonical-coding.md` address this?
+3. **Registered @docs** — Are relevant docs registered in `.cursor/config.json`? Fetch them.
+4. **Training knowledge** — LAST resort only. If used, state explicitly: "This answer is from training — no project source or registered doc covers it."
+
+**A confident training answer is not permission to skip steps 1–3.**
+
+---
+
+## Gate 2 — Project Stewardship Check
+
+Before writing any implementation, explicitly confirm all four:
+
+1. **Already exists?** — Search existing roles, tasks, and playbooks. Do not reimplement.
+2. **Established pattern?** — Check category peers. Match the established pattern.
+3. **Toil check** — Will this require updates everywhere a new node/role/host is added? If yes, redesign.
+4. **Simplest approach?** — Per Zen of Ansible: "If the implementation is hard to explain, it is a bad idea."
+
+If any check fails, STOP and redesign before producing output.
+
+---
+
+## Research Transparency — MANDATORY
+
+Every time the agent fetches a document or resource, declare it in the response:
+
+> **Researched:** `<doc-name>` — `<one-line summary of what was found>`
+
+One line per item. This is required in all modes. The user must always know what was consulted.

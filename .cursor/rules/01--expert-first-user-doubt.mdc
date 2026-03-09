@@ -1,0 +1,65 @@
+---
+description: Research-First gate — when the user expresses doubt, asks how to do something, or needs expertise. Applies in all modes.
+alwaysApply: true
+---
+
+# Expert-First: Research Required When User Expresses Doubt
+
+## When This Gate Fires
+
+STOP and fetch registered docs before making ANY response when the user:
+
+- Says "I don't know", "I'm not sure", "I'm confused", "I'm a newbie", "I don't understand"
+- Asks "how do I", "what's the right way", "what's the pattern for", "is this correct"
+- Asks a question they cannot verify the answer to themselves
+- Asks for explanation, guidance, expert opinion, or best practices on any topic
+- Says they've been doing something "on my own" or "figured this out myself"
+- Expresses any uncertainty about whether their current approach is right
+
+## Required Actions — Before ANY Response
+
+1. Open `.cursor/config.json` and enumerate the `docs` array
+2. Identify which registered docs are relevant to the question
+3. Fetch ALL relevant docs using `WebFetch` with the registered URL
+4. Declare what was researched — one line per item (see format below)
+5. Ground every recommendation in the fetched docs with explicit citations
+
+## Research Declaration Format — MANDATORY
+
+Every response that involved fetching must include this block:
+
+> **Researched:**
+> - `<doc-name>` — <one-line summary of what it says about the topic>
+> - `<doc-name>` — <one-line summary>
+
+This block must appear before the answer, not after. The user must know what was consulted
+before reading the recommendation.
+
+## Prohibited Before Research Completes
+
+- Answering from training recall ("Typically in Ansible...", "Usually you would...")
+- Using another project role as the primary answer (project files are examples, not authority)
+- Producing any plan, direction, or implementation before docs are fetched and read
+- Skipping the research declaration
+
+## Why This Rule Exists
+
+When the user says "I don't know", they are signaling:
+
+> "I cannot verify your answer. I need you to actually know this, not guess."
+
+In that moment, a confident training answer is still a training answer — not expertise.
+The only acceptable response is grounded in authoritative docs: fetched, read, and cited.
+
+## Registered Docs Reference
+
+All available docs are in `.cursor/config.json` under `docs`. Key sources for common topics:
+
+| Topic | Docs to fetch |
+|---|---|
+| Inventory, groups, host classification | `ansible-inventory-guide`, `ansible-host-group-vars`, `ansible-tips-tricks` |
+| Variable scope and precedence | `ansible-variable-precedence`, `ansible-general-precedence` |
+| Role design and structure | `ansible-roles` |
+| Tags, playbook patterns, best practices | `ansible-tips-tricks`, `ansible-builtin-collection` |
+| Windows/WinRM tasks | `ansible-windows-collection`, `community-windows-collection` |
+| Any Ansible question | `guidelines://ansible-content-best-practices` via FetchMcpResource |

@@ -36,9 +36,11 @@ Do not wait for the user to reference them explicitly:
 | Writing any task or role targeting Windows hosts | `ansible-windows-collection`, `community-windows-collection` |
 | Designing role structure, deciding role placement, or role interface questions | `ansible-roles` |
 | Inventory, group_vars, or host_vars questions | `ansible-inventory-guide`, `ansible-host-group-vars`, `ansible-var-merge` |
+| Node categorization, environment distinction, "where does X belong", playbook targeting strategy, "which hosts get this role" | `ansible-inventory-guide`, `ansible-tips-tricks` — official docs explicitly address "when" groups (dev/test/prod) and function-based inventory targeting |
 | Variable precedence, override, or scope questions | `ansible-variable-precedence`, `ansible-general-precedence` |
 | YAML formatting or syntax questions | `ansible-yaml-syntax` |
 | Module selection or built-in module use | `ansible-builtin-collection` |
 | Collection design, FQCN, or namespace questions | `ansible-collections` |
 | Best practice, tips, or idiomatic Ansible questions | `ansible-tips-tricks` |
 | Developer guide, plugin, or module authoring | `ansible-developer-guide` |
+| Any question where the answer relies on training recall, no project example exists, or the user asks for patterns/guidance/expertise | Fetch ALL relevant docs from `.cursor/config.json` before responding. Declare what was fetched. Do not answer from training alone. |

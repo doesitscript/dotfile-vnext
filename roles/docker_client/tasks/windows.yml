@@ -11,9 +11,11 @@
       $keyPath = "$sshDir\id_ed25519"
       if (-not (Test-Path $keyPath)) {
         New-Item -ItemType Directory -Path $sshDir -Force | Out-Null
-        # Windows OpenSSH ssh-keygen does not accept -N "" as empty passphrase;
-        # pipe two newlines to accept the empty passphrase prompts interactively.
-        Write-Output "`n`n" | ssh-keygen -t ed25519 -f $keyPath -q 2>&1 | Out-Null
+        # Windows OpenSSH ssh-keygen reads the passphrase from the console (not stdin),
+        # so piping/redirecting stdin hangs in WinRM sessions (no terminal attached).
+        # Wrap in cmd.exe: """" is cmd's way to pass an empty string as -N argument.
+        $escapedPath = $keyPath -replace '"', '""'
+        cmd /c "ssh-keygen -t ed25519 -f ""$escapedPath"" -N """" -q 2>&1" | Out-Null
         $Ansible.Changed = $true
       }
       $pubKey = (Get-Content "$keyPath.pub" -Raw -ErrorAction Stop).Trim()
