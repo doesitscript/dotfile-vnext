@@ -209,17 +209,18 @@
       state: present
     register: sshd_ps_force_result
 
-  # powershell-ssh — restart sshd if any of the above changed
-  - name: Restart sshd when PowerShell SSH config changed
-    ansible.windows.win_service:
-      name: sshd
-      state: restarted
-    when: >-
-      (sshd_ps_port_result | default({})).changed | default(false) or
-      (sshd_ps_subsystem_result | default({})).changed | default(false) or
-      (sshd_ps_match_result | default({})).changed | default(false) or
-      (sshd_ps_force_result | default({})).changed | default(false)
+  tags: [admin, powershell-ssh, ps_port]
 
+# powershell-ssh — restart sshd if any config above changed (outside block so when vars exist)
+- name: Restart sshd when PowerShell SSH config changed
+  ansible.windows.win_service:
+    name: sshd
+    state: restarted
+  when: >-
+    sshd_ps_port_result is changed or
+    sshd_ps_subsystem_result is changed or
+    sshd_ps_match_result is changed or
+    sshd_ps_force_result is changed
   tags: [admin, powershell-ssh, ps_port]
 
 # --- Publish SSH-ready facts (consumed by controller SSH config template) ---
