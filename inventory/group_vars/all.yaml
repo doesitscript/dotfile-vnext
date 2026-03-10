@@ -2,6 +2,27 @@
 # Variables for all hosts
 timezone: America/Chicago  # POSIX timezone (for macOS/Linux)
 timezone_windows: Central Standard Time  # Windows timezone name
+
+# ─── Node Classification Schema ────────────────────────────────────────────
+# node_purpose classifies a physical node's role in the infrastructure.
+# Set it in the physical node's group_vars file (group_vars/<node>.yaml).
+# It applies to ALL surfaces of that node (-win and -wsl).
+#
+# Playbooks use Ansible's group_by module to create runtime groups from this
+# variable (e.g. node_purpose_development), then target those groups — no
+# static host lists are needed. To add a node to a purpose group, set
+# node_purpose here. No playbook or inventory changes required.
+#
+# Defined values and their playbooks:
+#   development  → deploy_development_nodes.yaml
+#                  Deploys: common/shell_config, direnv, cursor
+#                  Current nodes: mac-dev, server-225-win, server-225-wsl,
+#                                 dev-3090-win, dev-3090-wsl,
+#                                 dev-workstation-win, dev-workstation-wsl
+#
+# node_role is a descriptive label only — it does NOT drive playbook targeting.
+# node_purpose drives targeting. node_role describes the hardware/function.
+# ────────────────────────────────────────────────────────────────────────────
 contract_file: contracts/fuzlang.contract.yaml
 
 # Dotfiles role path defaults (override per host/group if needed).

@@ -881,64 +881,67 @@
 #
 # /ONLOGON trigger fires on each user logon; /F overwrites if it already exists.
 
-- name: Register WSL keepalive scheduled task via schtasks.exe
-  ansible.windows.win_powershell:
-    error_action: stop
-    script: |
-      $Ansible.Changed = $false
-      $taskName = 'WSLKeepalive'
-      $distro   = '{{ _wsl_distro }}'
-      $user     = '{{ ansible_user }}'
+- name: WSL keepalive scheduled task block
+  when: wsl_keepalive_enabled | bool
+  block:
+    - name: Register WSL keepalive scheduled task via schtasks.exe
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $Ansible.Changed = $false
+          $taskName = 'WSLKeepalive'
+          $distro   = '{{ _wsl_distro }}'
+          $user     = '{{ ansible_user }}'
 
-      # Check current task so we can skip if already identical
-      $existing = schtasks /Query /TN $taskName /FO LIST 2>$null
-      $wantArgs = "-d `"$distro`" -u root -- sleep infinity"
+          # Check current task so we can skip if already identical
+          $existing = schtasks /Query /TN $taskName /FO LIST 2>$null
+          $wantArgs = "-d `"$distro`" -u root -- sleep infinity"
 
-      $needsCreate = $false
-      if (-not $existing) {
-        $needsCreate = $true
-      } elseif ($existing -notmatch [regex]::Escape($distro)) {
-        # Task exists but targets a different distro — recreate
-        schtasks /Delete /TN $taskName /F | Out-Null
-        $needsCreate = $true
-      }
+          $needsCreate = $false
+          if (-not $existing) {
+            $needsCreate = $true
+          } elseif ($existing -notmatch [regex]::Escape($distro)) {
+            # Task exists but targets a different distro — recreate
+            schtasks /Delete /TN $taskName /F | Out-Null
+            $needsCreate = $true
+          }
 
-      if ($needsCreate) {
-        # Use schtasks.exe — avoids WinRM CIM class issues with PowerShell cmdlets
-        $out = schtasks /Create /TN $taskName `
-                        /TR "wsl.exe -d `"$distro`" -u root -- sleep infinity" `
-                        /SC ONLOGON /RU $user /RL HIGHEST /F 2>&1
-        $Ansible.Changed = $true
-        $Ansible.Result = @{ action = 'created'; output = ($out -join '||') }
-      } else {
-        $Ansible.Result = @{ action = 'unchanged' }
-      }
+          if ($needsCreate) {
+            # Use schtasks.exe — avoids WinRM CIM class issues with PowerShell cmdlets
+            $out = schtasks /Create /TN $taskName `
+                            /TR "wsl.exe -d `"$distro`" -u root -- sleep infinity" `
+                            /SC ONLOGON /RU $user /RL HIGHEST /F 2>&1
+            $Ansible.Changed = $true
+            $Ansible.Result = @{ action = 'created'; output = ($out -join '||') }
+          } else {
+            $Ansible.Result = @{ action = 'unchanged' }
+          }
 
-- name: Ensure WSL keepalive task is running
-  ansible.windows.win_powershell:
-    error_action: silently_continue
-    script: |
-      $Ansible.Changed = $false
-      $taskName = 'WSLKeepalive'
-      $status   = schtasks /Query /TN $taskName /FO LIST 2>$null | Select-String 'Status:'
-      if ($status -notmatch 'Running') {
-        schtasks /Run /TN $taskName 2>&1 | Out-Null
-        Start-Sleep -Seconds 10
-        $Ansible.Changed = $true
-      }
-      $wsl = (wsl.exe -l -v) -replace "`0", ""
-      $Ansible.Result = @{ wsl_state = ($wsl | Select-String '{{ _wsl_distro }}').ToString() }
+    - name: Ensure WSL keepalive task is running
+      ansible.windows.win_powershell:
+        error_action: silently_continue
+        script: |
+          $Ansible.Changed = $false
+          $taskName = 'WSLKeepalive'
+          $status   = schtasks /Query /TN $taskName /FO LIST 2>$null | Select-String 'Status:'
+          if ($status -notmatch 'Running') {
+            schtasks /Run /TN $taskName 2>&1 | Out-Null
+            Start-Sleep -Seconds 10
+            $Ansible.Changed = $true
+          }
+          $wsl = (wsl.exe -l -v) -replace "`0", ""
+          $Ansible.Result = @{ wsl_state = ($wsl | Select-String '{{ _wsl_distro }}').ToString() }
 
-- name: Remove legacy debug/test WSL scheduled tasks if present
-  ansible.windows.win_powershell:
-    error_action: silently_continue
-    script: |
-      $Ansible.Changed = $false
-      foreach ($name in @('AnsibleWSLTest', 'AnsibleWSLDiag',
-                           'AnsibleWSLKeepalive', 'AnsibleWSLKeepalive_Ubuntu_24_04')) {
-        $exists = schtasks /Query /TN $name /FO LIST 2>$null
-        if ($exists) {
-          schtasks /Delete /TN $name /F | Out-Null
-          $Ansible.Changed = $true
-        }
-      }
+    - name: Remove legacy debug/test WSL scheduled tasks if present
+      ansible.windows.win_powershell:
+        error_action: silently_continue
+        script: |
+          $Ansible.Changed = $false
+          foreach ($name in @('AnsibleWSLTest', 'AnsibleWSLDiag',
+                               'AnsibleWSLKeepalive', 'AnsibleWSLKeepalive_Ubuntu_24_04')) {
+            $exists = schtasks /Query /TN $name /FO LIST 2>$null
+            if ($exists) {
+              schtasks /Delete /TN $name /F | Out-Null
+              $Ansible.Changed = $true
+            }
+          }

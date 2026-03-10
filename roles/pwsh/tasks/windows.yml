@@ -1,7 +1,171 @@
 ---
-# Windows: placeholder for PowerShell 7+ install
-# Windows ships with Windows PowerShell 5.1; pwsh 7+ can be installed via winget.
+# Deploy AllUsersAllHosts PowerShell profile enforcing UTF-8 encoding.
+#
+# PS5.1 ($PSHOME): C:\Windows\System32\WindowsPowerShell\v1.0\profile.ps1
+# PS7   ($PSHOME): C:\Program Files\PowerShell\7\profile.ps1
+#
+# Both profiles are separate — PS5 and PS7 do not share $PSHOME.
+# Both must be configured to ensure consistent encoding in all automation
+# contexts: WinRM sessions, scheduled tasks, interactive shells, scripts.
+#
+# Encoding rule applied: 102--ansible-powershell-encoding.mdc
+# Files written with UTF8Encoding($false) — no BOM, LF only.
 
-- name: Report PowerShell not yet automated on Windows
+# --- PowerShell 5.1 ---
+
+- name: Check PS5 AllUsersAllHosts profile state
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $profilePath = 'C:\Windows\System32\WindowsPowerShell\v1.0\profile.ps1'
+      $encodingLine = '$PSDefaultParameterValues[''*:Encoding''] = ''utf8'''
+      $exists = Test-Path $profilePath
+      $hasLine = $false
+      if ($exists) {
+        $content = [System.IO.File]::ReadAllText($profilePath)
+        $hasLine = $content -match [regex]::Escape($encodingLine)
+      }
+      $Ansible.Result = @{
+        profile_exists        = $exists
+        encoding_line_present = $hasLine
+        profile_path          = $profilePath
+      }
+  register: _ps5_profile_state
+  changed_when: false
+  when: pwsh_global_encoding_enabled | default(true) | bool
+
+- name: Report PS5 profile state
   ansible.builtin.debug:
-    msg: "pwsh 7+ installation on Windows is not yet automated by this role. Windows PowerShell 5.1 is built-in."
+    msg: >-
+      PS5 profile [{{ _ps5_profile_state.result.profile_path }}]:
+      exists={{ _ps5_profile_state.result.profile_exists }},
+      encoding_line_present={{ _ps5_profile_state.result.encoding_line_present }}
+  when: pwsh_global_encoding_enabled | default(true) | bool
+
+- name: Deploy encoding setting to PS5 AllUsersAllHosts profile
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $profilePath = 'C:\Windows\System32\WindowsPowerShell\v1.0\profile.ps1'
+      $encodingLine = '$PSDefaultParameterValues[''*:Encoding''] = ''utf8'''
+      $existing = if (Test-Path $profilePath) {
+        [System.IO.File]::ReadAllText($profilePath)
+      } else { '' }
+      $newContent = if ($existing.Trim() -eq '') {
+        $encodingLine + "`n"
+      } else {
+        $existing.TrimEnd("`r`n") + "`n" + $encodingLine + "`n"
+      }
+      [System.IO.File]::WriteAllText(
+        $profilePath,
+        $newContent,
+        [System.Text.UTF8Encoding]::new($false)
+      )
+      $Ansible.Changed = $true
+      $Ansible.Result = @{ action = 'written'; profile_path = $profilePath }
+  when:
+    - pwsh_global_encoding_enabled | default(true) | bool
+    - not (_ps5_profile_state.result.encoding_line_present | bool)
+
+- name: Report PS5 profile encoding result
+  ansible.builtin.debug:
+    msg: >-
+      PS5 encoding profile:
+      {{ 'WRITTEN — $PSDefaultParameterValues[''*:Encoding''] = ''utf8'' added to ' ~ _ps5_profile_state.result.profile_path
+         if not (_ps5_profile_state.result.encoding_line_present | bool)
+         else 'OK — encoding line already present, no change' }}
+  when: pwsh_global_encoding_enabled | default(true) | bool
+
+# --- PowerShell 7 ---
+
+- name: Check if PowerShell 7 is installed
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $ps7Dir = 'C:\Program Files\PowerShell\7'
+      $Ansible.Result = @{ ps7_installed = (Test-Path $ps7Dir) }
+  register: _ps7_installed
+  changed_when: false
+  when: pwsh_global_encoding_enabled | default(true) | bool
+
+- name: Report PS7 installation status
+  ansible.builtin.debug:
+    msg: >-
+      PowerShell 7:
+      {{ 'installed — will configure encoding profile'
+         if _ps7_installed.result.ps7_installed | bool
+         else 'NOT FOUND — skipping PS7 encoding profile. PS5 profile applied above. Install PS7 to enable full coverage.' }}
+  when: pwsh_global_encoding_enabled | default(true) | bool
+
+- name: Check PS7 AllUsersAllHosts profile state
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $profilePath = 'C:\Program Files\PowerShell\7\profile.ps1'
+      $encodingLine = '$PSDefaultParameterValues[''*:Encoding''] = ''utf8'''
+      $exists = Test-Path $profilePath
+      $hasLine = $false
+      if ($exists) {
+        $content = [System.IO.File]::ReadAllText($profilePath)
+        $hasLine = $content -match [regex]::Escape($encodingLine)
+      }
+      $Ansible.Result = @{
+        profile_exists        = $exists
+        encoding_line_present = $hasLine
+        profile_path          = $profilePath
+      }
+  register: _ps7_profile_state
+  changed_when: false
+  when:
+    - pwsh_global_encoding_enabled | default(true) | bool
+    - _ps7_installed.result.ps7_installed | bool
+
+- name: Report PS7 profile state
+  ansible.builtin.debug:
+    msg: >-
+      PS7 profile [{{ _ps7_profile_state.result.profile_path }}]:
+      exists={{ _ps7_profile_state.result.profile_exists }},
+      encoding_line_present={{ _ps7_profile_state.result.encoding_line_present }}
+  when:
+    - pwsh_global_encoding_enabled | default(true) | bool
+    - _ps7_installed.result.ps7_installed | bool
+
+- name: Deploy encoding setting to PS7 AllUsersAllHosts profile
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $profilePath = 'C:\Program Files\PowerShell\7\profile.ps1'
+      $encodingLine = '$PSDefaultParameterValues[''*:Encoding''] = ''utf8'''
+      $existing = if (Test-Path $profilePath) {
+        [System.IO.File]::ReadAllText($profilePath)
+      } else { '' }
+      $newContent = if ($existing.Trim() -eq '') {
+        $encodingLine + "`n"
+      } else {
+        $existing.TrimEnd("`r`n") + "`n" + $encodingLine + "`n"
+      }
+      [System.IO.File]::WriteAllText(
+        $profilePath,
+        $newContent,
+        [System.Text.UTF8Encoding]::new($false)
+      )
+      $Ansible.Changed = $true
+      $Ansible.Result = @{ action = 'written'; profile_path = $profilePath }
+  when:
+    - pwsh_global_encoding_enabled | default(true) | bool
+    - _ps7_installed.result.ps7_installed | bool
+    - not (_ps7_profile_state.result.encoding_line_present | bool)
+
+- name: Report PS7 profile encoding result
+  ansible.builtin.debug:
+    msg: >-
+      PS7 encoding profile:
+      {{ 'WRITTEN — $PSDefaultParameterValues[''*:Encoding''] = ''utf8'' added to ' ~ _ps7_profile_state.result.profile_path
+         if not (_ps7_profile_state.result.encoding_line_present | bool)
+         else 'OK — encoding line already present, no change' }}
+  when:
+    - pwsh_global_encoding_enabled | default(true) | bool
+    - _ps7_installed.result.ps7_installed | bool

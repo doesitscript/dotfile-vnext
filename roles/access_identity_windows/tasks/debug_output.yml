@@ -172,6 +172,65 @@
   tags: [debug]
 
 # ============================================================================
+# WSL KEEPALIVE + .WSLCONFIG DIAGNOSTICS
+# ============================================================================
+# These two checks are the first things to inspect when SSH from Mac or a
+# Docker context times out after an idle period. See:
+#   docs/lessons-learned/windows/wsl-idle-shutdown-and-wslconfig-parsing.md
+
+- name: "DEBUG: WSLKeepalive scheduled task status"
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $out = @{}
+      $raw = schtasks /Query /TN WSLKeepalive /FO LIST 2>&1
+      if ($raw -match 'ERROR') {
+        $out['status']  = 'NOT FOUND — keepalive task is not registered'
+        $out['action']  = 'Set wsl_keepalive_enabled: true in host_vars and re-run --tags wsl'
+      } else {
+        $statusLine = ($raw | Select-String 'Status:')
+        $out['status'] = "$statusLine"
+        $out['raw']    = ($raw -join '||')
+        if ($statusLine -notmatch 'Running') {
+          $out['action'] = 'Task is registered but NOT running — run: schtasks /Run /TN WSLKeepalive'
+        }
+      }
+      $Ansible.Result = $out
+  register: _debug_keepalive
+  tags: [debug]
+
+- name: "DEBUG: .wslconfig content and line-ending check"
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $path = "$env:USERPROFILE\.wslconfig"
+      $out  = @{ path = $path }
+      if (-not (Test-Path $path)) {
+        $out['exists'] = $false
+        $out['action'] = 'File missing — WSL will run with all defaults (NAT mode)'
+      } else {
+        $bytes   = [System.IO.File]::ReadAllBytes($path)
+        $content = [System.Text.Encoding]::UTF8.GetString($bytes)
+        $hasCRLF = $content -match "`r`n"
+        $hasBOM  = ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)
+        $out['exists']   = $true
+        $out['has_crlf'] = $hasCRLF
+        $out['has_bom']  = $hasBOM
+        $out['content']  = (Get-Content $path -Raw)
+        if ($hasCRLF) {
+          $out['WARNING'] = 'CRLF detected — WSL 2.6.x will silently reject this entire file (all settings fall back to defaults)'
+        }
+        if ($hasBOM) {
+          $out['WARNING_BOM'] = 'BOM detected — may cause parse errors on some WSL versions'
+        }
+      }
+      $Ansible.Result = $out
+  register: _debug_wslconfig
+  tags: [debug]
+
+# ============================================================================
 # WSL DIAGNOSTICS
 # ============================================================================
 
@@ -271,6 +330,18 @@
       ║  • SSH mux sockets:     ~/.ssh/ssh_mux_*                   ║
       ║  • Ansible log:         (stdout / callback plugin)         ║
       ╚══════════════════════════════════════════════════════════════╝
+  tags: [debug]
+
+- name: "DEBUG OUTPUT: WSLKeepalive task status"
+  ansible.builtin.debug:
+    var: _debug_keepalive.result
+  when: _debug_keepalive is defined
+  tags: [debug]
+
+- name: "DEBUG OUTPUT: .wslconfig content and line-ending check"
+  ansible.builtin.debug:
+    var: _debug_wslconfig.result
+  when: _debug_wslconfig is defined
   tags: [debug]
 
 - name: "DEBUG OUTPUT: Windows OpenSSH — service and config"

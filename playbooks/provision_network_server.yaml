@@ -1,0 +1,26 @@
+---
+# Node-specific provisioning for network-server Windows host.
+# Applies roles that are only valid for this node.
+#
+# Run AFTER windows_base.yml (which handles shared base setup for all Windows hosts):
+#   ansible-playbook playbooks/windows_base.yml --limit network-server-win
+#   ansible-playbook playbooks/provision_network_server.yaml
+#
+- name: Provision network-server Windows host (node-specific)
+  hosts: network-server-win
+  become: false
+
+  pre_tasks:
+    - name: Enable PowerShell remoting
+      ansible.windows.win_shell: Enable-PSRemoting -Force
+
+  tasks:
+    - name: No node-specific roles yet
+      ansible.builtin.debug:
+        msg: >-
+          network-server node-specific provisioning has no active roles.
+          Add to roles section when network_server/docker_runtime etc. are ready.
+      # TODO: add roles section when node-specific roles are ready:
+      # - network_server/docker_runtime
+      # - network_server/storage_layout
+      # - network_server/backup_baseline

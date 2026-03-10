@@ -1,0 +1,23 @@
+---
+# Node-specific provisioning for server-225 Windows host.
+# Applies roles that are only valid for this node.
+#
+# Run AFTER windows_base.yml (which handles shared base setup for all Windows hosts):
+#   ansible-playbook playbooks/windows_base.yml --limit server-225-win
+#   ansible-playbook playbooks/provision_server_225.yaml
+#
+# Or targeted by tag:
+#   ansible-playbook playbooks/provision_server_225.yaml --tags wsl
+#
+- name: Provision server-225 Windows host (node-specific)
+  hosts: server-225-win
+  become: false
+
+  pre_tasks:
+    - name: Enable PowerShell remoting
+      ansible.windows.win_shell: Enable-PSRemoting -Force
+
+  roles:
+    - role: server_225/wsl2
+    - role: server_225/task_scheduler_autostart
+    - role: server_225/gpu_driver_validation

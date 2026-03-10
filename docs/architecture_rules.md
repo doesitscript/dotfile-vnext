@@ -72,6 +72,39 @@
 - **DO**: Eliminate manual configuration (rendered .env files, vault separation)
 - **DO NOT**: Print secrets or duplicate across scopes
 
+## Node Classification Pattern
+
+Playbooks that deploy tooling to a subset of nodes use `node_purpose` + Ansible's
+`group_by` module for runtime host classification. This avoids static host lists in
+inventory and avoids `hosts: all` with runtime pre_task filters.
+
+### How it works
+
+1. A "classify" play runs against `hosts: all` with `gather_facts: false`. It calls
+   `group_by` to create a dynamic group from each host's `node_purpose` variable:
+   ```yaml
+   - ansible.builtin.group_by:
+       key: "node_purpose_{{ node_purpose | default('unclassified') }}"
+   ```
+2. A "deploy" play targets `hosts: node_purpose_<value>` — populated by step 1.
+3. `node_purpose` is declared in the physical node's `group_vars/<node>.yaml` and
+   applies to all surfaces (-win and -wsl) of that node.
+
+### Adding a new node to a purpose group
+
+Set `node_purpose: development` (or the appropriate value) in the node's
+`group_vars` file. No changes to playbooks or inventory groups are required.
+
+### Rules
+
+- `node_purpose` drives playbook targeting. `node_role` is a descriptive label only.
+- Do NOT use tags (e.g. `--tags dev`) for node classification. Tags are for role
+  tasks and specific purposes within a role, not for selecting which hosts to target.
+- Do NOT use `hosts: all` with a pre_task runtime filter as a substitute for this
+  pattern. That is an anti-pattern — the filter belongs in inventory, not in tasks.
+- The schema for all valid `node_purpose` values is documented in
+  `inventory/group_vars/all.yaml`.
+
 ## Failure Signals
 
 If any of these occur, stop and report:

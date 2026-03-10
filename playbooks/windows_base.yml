@@ -1,14 +1,21 @@
 ---
 # Apply shared Windows base configuration to all managed Windows hosts.
 # Enables Windows features, configures power, data directories, Defender exclusions,
-# and registry settings (long paths, Secure Boot update suppression).
+# registry settings (long paths, Secure Boot update suppression), and base
+# firewall rules (ICMP ping response).
+#
+# This is the canonical playbook for ALL common Windows base setup.
+# Node-specific roles live in playbooks/provision_<node>.yaml.
 #
 # Commands:
 #   All hosts:
-#     ansible-playbook playbooks/windows_base.yaml -i inventory/inventory.yaml
+#     ansible-playbook playbooks/windows_base.yml
 #
 #   Single host:
-#     ansible-playbook playbooks/windows_base.yaml -i inventory/inventory.yaml --limit server-225-win
+#     ansible-playbook playbooks/windows_base.yml --limit server-225-win
+#
+#   Firewall only (targeted):
+#     ansible-playbook playbooks/windows_base.yml --tags firewall_icmp
 #
 - name: Apply Windows base configuration
   hosts: windows_hosts
@@ -24,3 +31,13 @@
     - name: Apply shared Windows base configuration
       ansible.builtin.include_role:
         name: windows_base
+
+    - name: Ensure PowerShell global encoding profile (PS5.1 + PS7)
+      ansible.builtin.include_role:
+        name: pwsh
+      when: pwsh_global_encoding_enabled | default(true) | bool
+
+    - name: Apply base Windows firewall rules
+      ansible.builtin.include_role:
+        name: common/firewall
+      tags: [firewall]

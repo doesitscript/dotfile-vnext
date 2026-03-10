@@ -1,0 +1,28 @@
+---
+argument_specs:
+  main:
+    short_description: Universal Windows base firewall rules
+    description: >-
+      Manages base connectivity firewall rules for all managed Windows hosts.
+      Currently handles ICMP echo (ping) for both IPv4 and IPv6.
+      All rules are opt-out via the firewall_rules_config dictionary.
+    options:
+      firewall_rules_config:
+        type: dict
+        required: false
+        description: >-
+          Dictionary controlling which firewall rules are applied.
+          All keys default to true (rules enabled).
+        options:
+          icmp_v4_echo:
+            type: bool
+            default: true
+            description: >-
+              Allow ICMPv4 Echo Request (type 8) inbound on all profiles.
+              Enables ping response for IPv4.
+          icmp_v6_echo:
+            type: bool
+            default: true
+            description: >-
+              Allow ICMPv6 Echo Request (type 128) inbound on all profiles.
+              Enables ping response for IPv6.

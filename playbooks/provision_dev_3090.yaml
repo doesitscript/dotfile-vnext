@@ -1,11 +1,18 @@
 ---
-# Configure dev-3090 Windows node to desired state.
-# Idempotent — safe to re-run at any time.
-# Targets: dev-3090-win (WinRM)
-
-- name: Configure dev-3090 Windows host
+# Node-specific provisioning for dev-3090 Windows host.
+# Applies roles that are only valid for this node.
+#
+# Run AFTER windows_base.yml (which handles shared base setup for all Windows hosts):
+#   ansible-playbook playbooks/windows_base.yml --limit dev-3090-win
+#   ansible-playbook playbooks/provision_dev_3090.yaml
+#
+# NOTE: dev-3090-win is not yet deployed (see inventory.yaml).
+# The WinRM bootstrap pre_task is preserved here for first-run use.
+#
+- name: Provision dev-3090 Windows host (node-specific)
   hosts: dev-3090-win
   become: false
+
   pre_tasks:
     - name: Enable PowerShell remoting
       ansible.windows.win_shell: Enable-PSRemoting -Force
@@ -22,18 +29,12 @@
         state: present
 
     - name: Set TrustedHosts when explicitly provided
-      ansible.windows.win_shell: Set-Item -Path WSMan:\localhost\Client\TrustedHosts -Value "{{ winrm_trustedhosts }}" -Force
+      ansible.windows.win_shell: >-
+        Set-Item -Path WSMan:\localhost\Client\TrustedHosts
+        -Value "{{ winrm_trustedhosts }}" -Force
       when: winrm_trustedhosts is defined
 
   roles:
-    - role: common/baseline
-    # - role: package_manager
-    - role: python
-    - role: dev_3090/windows_base
     - role: dev_3090/ssh
     - role: dev_3090/wsl2_or_windows_docker_runtime
     - role: dev_3090/gpu_driver_validation
-    - role: common/firewall
-
-
-
