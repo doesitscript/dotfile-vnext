@@ -27,6 +27,14 @@
       when: (ansible_connection | default('ssh')) != 'winrm'
       tags: [always]
 
+    # #region agent log H-C: confirm host survives end_host gate
+    - name: Debug log - host reached play body
+      ansible.builtin.shell: >-
+        echo '{"sessionId":"40ad65","hypothesisId":"H-C","location":"windows_base.yml:pre_tasks","message":"host_survived_end_host_gate","data":{"host":"{{ inventory_hostname }}","connection":"{{ ansible_connection | default(\"unknown\") }}"}}' >> /Users/joshc/develop/dotfile-vnext/.cursor/debug-40ad65.log
+      delegate_to: localhost
+      tags: [always]
+    # #endregion
+
   tasks:
     - name: Apply shared Windows base configuration
       ansible.builtin.include_role:
@@ -37,7 +45,15 @@
         name: pwsh
       when: pwsh_global_encoding_enabled | default(true) | bool
 
+    # #region agent log H-A: confirm include_role is reached under --tags firewall_icmp
+    - name: Debug log - firewall include_role reached
+      ansible.builtin.shell: >-
+        echo '{"sessionId":"40ad65","hypothesisId":"H-A","location":"windows_base.yml:firewall_include","message":"include_role_reached","data":{"host":"{{ inventory_hostname }}"}}' >> /Users/joshc/develop/dotfile-vnext/.cursor/debug-40ad65.log
+      delegate_to: localhost
+      tags: [firewall, firewall_icmp]
+    # #endregion
+
     - name: Apply base Windows firewall rules
       ansible.builtin.include_role:
         name: common/firewall
-      tags: [firewall]
+      tags: [firewall, firewall_icmp]
