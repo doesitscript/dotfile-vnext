@@ -172,6 +172,127 @@ A cluster is offline
 
 The agent must prove each condition with real logs.
 
+RULE 8 — TWO-ATTEMPT CAP + MANDATORY RESEARCH GATE
+
+Scope: Applies in ALL modes (Agent, Plan, Ask, Debug) and ALL situations. No exceptions.
+
+Prohibited: Emitting a fix proposal without a prior research step (WebSearch, mcp_web_fetch, MCP diagnostic tools, FetchMcpResource) since the last failure. Multiple fix proposals in sequence with no intervening research step = inference-based iteration. That is prohibited in all modes.
+
+Principle: When the agent has not fetched docs, run MCP tools, or performed web search for the technology in question, the agent is operating on inference. The required response is to complete a research step before emitting another fix proposal.
+
+Intent: After two fix attempts fail, the agent has demonstrated it is operating on inference alone (no fetched docs, no MCP tool output, no web search results for that technology). The agent must stop emitting fix proposals and complete a research step. No further fix proposals until research is complete.
+
+Definition — Attempt: One attempt = one complete cycle of: (1) observe a failure, (2) emit a fix proposal based on inference (error text, command output, training data — not from fetched docs or MCP tool output), (3) execute or apply the fix, (4) observe the outcome. If the outcome is failure, that counts as one attempt.
+
+Definition — Session: The attempt count is cumulative within a single debugging session: same failure, same task, no user interruption. User questions or a new user request reset the count. The agent reframing the same fix as "a different approach" does NOT reset the count.
+
+Gate: After the second failed attempt, you MUST stop. Output:
+
+TWO ATTEMPTS EXHAUSTED — RESEARCH MODE REQUIRED
+
+Attempt 1: <brief description> — failed
+Attempt 2: <brief description> — failed
+
+I have not done the work to understand the thing I am fixing. I do not know where it communicates what is going on — where it logs, which event log or journal to query, or where its diagnostic output goes. I am operating on inference. I am entering research mode. I will go find out, from the internet or documentation, where this technology reports information about what is happening. I will not emit another fix proposal until I have done that work and can cite the authoritative source.
+
+Do not propose another fix. Proceed to RULE 8a.
+
+RULE 8a — MANDATORY RESEARCH (BEFORE ANY FURTHER FIX)
+
+Trigger: You have hit the two-attempt cap (RULE 8). You must complete research before proposing any further fix.
+
+Recognition (required before any research action): You have not done the work to understand the thing you are fixing. You do not know where it communicates what is going on — where it writes logs, which event log or journal to query, or where its diagnostic output goes. You must find out, with an open mind, where the component reports information. Do not assume. Discover from documentation or vendor materials.
+
+RULE 8a1 — DIAGNOSTIC-DISCOVERY (FIRST RESEARCH EFFORT)
+
+When research is triggered, your first effort is diagnostic-discovery: find where this component reports operational state, failures, and diagnostic output.
+
+Step 0 — Check local store: Look for docs/diagnostics/<component>--<os>--diagnostics.md. Examples: openssh--linux--diagnostics.md, docker--windows--diagnostics.md, winrm--windows--diagnostics.md. If the file exists, use it. No need to re-research. Proceed to RULE 8a2 or RULE 8b as applicable.
+
+Step 1 — If file does not exist: Perform diagnostic-discovery research. Do NOT assume log locations from training or heuristics. Discover from documentation, vendor materials, or credible external references. Determine for this specific component:
+- Where it writes logs
+- Where it emits diagnostic output
+- Which logging or event subsystem it uses (journald, systemd, Windows Event Log, vendor logs, cloud logs, CLI)
+- Which commands, tools, or interfaces expose its state
+- Whether it uses files, journald, systemd units, Windows Event Log, vendor-specific logs, ephemeral output, CLI commands, proprietary tools, remote/cloud console, or other mechanism
+
+Step 2 — Create and store: Create docs/diagnostics/<component>--<os>--diagnostics.md. Use this structure:
+
+# <Component> Diagnostic Sources
+
+## Logging Locations
+- <path or subsystem>
+
+## Diagnostic Commands
+- <command>
+
+## Event / Channel Sources
+- <event log channel or journal unit>
+
+## Vendor / Tooling Diagnostics
+- <vendor CLI or tool>
+
+## Notes
+- <caveats or special behavior>
+
+Step 3 — Audit: After completing discovery or using stored file, emit one of:
+- When file existed: # Execution Audit: used stored diagnostic source docs/diagnostics/<component>--<os>--diagnostics.md
+- When file was created: # Execution Audit: performed diagnostic-discovery research to identify where this component reports operational and failure information
+
+Step 4 — Subsequent research: Once diagnostic-discovery is complete (file exists or newly created), other research (web search, MCP tools, etc.) proceeds as normal. Use the diagnostics file when available. No need to search the internet again for that component's log locations.
+
+RULE 8a2 — WEB RESEARCH (WHEN DIAGNOSTICS FILE DID NOT EXIST)
+
+If you had to create the diagnostics file, you will have done web search as part of discovery. If the file already existed, you may still need web research for other aspects of the fix. Proceed as needed.
+
+When creating the file: Search for the technology + "logs", "troubleshooting", "where does X log". Identify authoritative source. Fetch and read. Extract log location, event source, troubleshooting path. Populate the diagnostics file.
+
+Declare research complete: Output RESEARCH COMPLETE with source, log/event location, one-line summary. If no authoritative source found, output RESEARCH INCOMPLETE and stop.
+
+Do not proceed with another fix attempt until diagnostic-discovery is complete (file exists or created) and research is declared complete.
+
+RULE 8b — ANSIBLE-SPECIFIC (WHEN ANSIBLE IS INVOLVED)
+
+When the failure involves Ansible (playbook, role, module, connection), you must apply the existing rules — do not duplicate, execute what they specify.
+
+APPLY — 03--ansible-mcp-tools-northstar.mdc Gate: Debugging / Failure:
+- ansible-gather-facts (ansible-mcp) — live host state
+- ansible-diagnose-host (ansible-mcp) — full health assessment
+- ansible-fetch-logs (ansible-mcp) — pull and analyze logs
+- ansible-service-manager (ansible-mcp) — verify service states
+- When ansible-fetch-logs output is insufficient: ansible-log-hunter (ansible-mcp) — correlate logs across multiple sources
+
+APPLY — 02--cussorrules-mcp-briefieng-GENERATED.mdc Debug mode: Same tools as above. ansible-log-hunter when fetch-logs is insufficient.
+
+APPLY — 00--knowledge-hierarchy.mdc Track B: MCP tools first (use them — do not answer from memory). Registered @docs from .cursor/config.json (fetch via mcp_web_fetch). FetchMcpResource guidelines://ansible-content-best-practices — REQUIRED for idiom, pattern, or structural questions.
+
+APPLY — Web research (per RULE 8a): Find authoritative docs, log locations, troubleshooting paths for the underlying technology (Docker, WSL, WinRM, etc.).
+
+You must execute the full sequence. You must declare what you consulted and what the tools returned. You must not propose another Ansible fix until you have done all of the above. Trained data alone is not sufficient — you must use the project's MCP tools and docs. This is the library of information and expert tools. Use it.
+
+RULE 8c — EVIDENCE REDEFINED (POST-RESEARCH)
+
+Evidence means: output from the source identified by research. Examples: log lines from the log file the docs say to check; event log entries from the source the docs specify; output from the command the troubleshooting guide says to run.
+
+Evidence does NOT mean: command output from a command chosen by inference; cause inferred from error message text; conclusion from model training data; any output not from fetched docs or MCP tool result.
+
+After research is complete, you may resume troubleshooting. You must use the researched sources as primary. You must include them in your output so the user sees you are using them. Example: "Per [source], logs are at /var/log/foo. Output from that file: <paste>." You are not restricted to only those sources, but they must be primary. If the researched source is updated or superseded, use the current authoritative source.
+
+RULE 8d — LOOPHOLE CLOSER
+
+The following are violations. There are no exceptions.
+
+- Proposing a third fix before completing research (RULE 8a)
+- Calling something "evidence" that did not come from the researched source (RULE 8c)
+- Resetting the attempt count when two complete fix cycles (observe failure → emit fix → execute → fail) have already occurred
+- Claiming the action is read-only (e.g. "investigating") when it modifies system state or configuration
+- Claiming "research is complete" without having fetched and read an authoritative source that names the log/event location
+- Proceeding without checking docs/diagnostics/<component>--<os>--diagnostics.md first when diagnostic-discovery is required — if file exists, use it; if not, create it
+- Proceeding with an Ansible fix without applying 03, 02, and 00 (Gate: Debugging, Debug mode, Track B) — RULE 8b requires executing the full tool and doc sequence specified in those rules
+- Emitting a fix proposal without a prior research step since the last failure — inference-based iteration is prohibited in all modes
+
+If you find a way to proceed without completing research, or to count attempts differently, or to call something evidence that did not come from the researched source, you are violating this rule. The intent is: no more than two inference-based fix attempts before a research step. Emitting fix proposal N+1 without a tool call to WebSearch, mcp_web_fetch, MCP tools, or FetchMcpResource between failure N and proposal N+1 is prohibited. No exceptions.
+
 ####****!!!!!!! ALWAYS TRY THE OTHER CONNECTIONS !!!!#####
  ssh server-225-win-powershell
 OK you into the window system you can enter Bash and get inside of the Linux system from here.
