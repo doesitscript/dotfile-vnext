@@ -14,7 +14,7 @@
 # WSL direct SSH — connects to the distro's own sshd (bridged LAN IP or NAT portproxy).
 {% endif %}
 Host {{ host }}
-    HostName {{ hv['ssh_host'] | default(hv.get('ansible_host', host)) }}
+    HostName {{ hv.get('ansible_host', host) }}
     User {{ hv['ssh_user'] | default(hv.get('ansible_user', 'joshc')) }}
     Port {{ hv['ssh_port'] | default(hv.get('ansible_port', 22)) }}
     IdentityFile {{ controller_ssh_private_key_path }}
@@ -27,7 +27,7 @@ Host {{ host }}
 # Troubleshooting: if port {{ hv['ssh_powershell_port'] }} is down, use the WSL fallback:
 #   ssh {{ host }} -t /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
 Host {{ host }}-powershell
-    HostName {{ hv['ssh_host'] | default(hv.get('ansible_host', host)) }}
+    HostName {{ hv.get('ansible_host', host) }}
     User {{ hv['ssh_user'] | default(hv.get('ansible_user', 'joshc')) }}
     Port {{ hv['ssh_powershell_port'] }}
     ControlMaster no
@@ -39,7 +39,7 @@ Host {{ host }}-powershell
 # Direct PowerShell session for connecting to windows host, uses  session
 # uses : Subsystem    powershell    powershell.exe -sshs -NoLogo -NoProfile  in the sshd_config
 Host {{ host }}-powershell-bysession
-    HostName {{ hv['ssh_host'] | default(hv.get('ansible_host', host)) }}
+    HostName {{ hv.get('ansible_host', host) }}
     User {{ hv['ssh_user'] | default(hv.get('ansible_user', 'joshc')) }}
     Port {{ hv['ssh_powershell_port'] }}
     ProxyCommand ssh -W %h:%p %r@%h -s powershell

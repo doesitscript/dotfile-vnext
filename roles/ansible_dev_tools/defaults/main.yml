@@ -5,6 +5,18 @@ ansible_navigator_install: true
 ansible_builder_install: true
 ansible_lint_install: true
 
+# Path to the Python virtual environment where dev tools are installed.
+# Must exist before this role runs (created by the python role).
+# All pip-installed tools land here; the Cursor extension activates this venv.
+ansible_dev_tools_venv_path: "{{ dotfiles_home }}/.venv"
+
+# ansible-dev-tools is the Red Hat meta-package. It installs in one pip call:
+#   ansible-navigator, ansible-builder, ansible-lint, molecule,
+#   tox-ansible, pytest-ansible, ansible-creator, ansible-sign, and more.
+# Requires oniguruma (C lib) to be installed first on macOS (see mac.yml).
+ansible_dev_tools_pip_packages:
+  - ansible-dev-tools
+
 # The ansible meta-package needs --include-deps so that ansible-core CLIs
 # (ansible, ansible-playbook, ansible-inventory, …) are exposed on PATH.
 ansible_pipx_include_deps_packages:

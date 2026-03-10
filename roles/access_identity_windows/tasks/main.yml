@@ -237,13 +237,15 @@
   tags: [admin, powershell-ssh, ps_port]
 
 # --- Publish SSH-ready facts (consumed by controller SSH config template) ---
+# ssh_configured gates the ssh_config.j2 template loop.
+# HostName comes directly from ansible_host in host_vars (no ssh_host fact —
+# ansible_host is the SSOT so cache drift cannot occur).
 - name: Mark this host as SSH-configured
   ansible.builtin.set_fact:
     ssh_configured: true
     ssh_port: "{{ win_ssh_port }}"
     ssh_powershell_port: "{{ win_ssh_powershell_port }}"
     ssh_user: "{{ win_ssh_user | default(ansible_user) }}"
-    ssh_host: "{{ ansible_host }}"
     cacheable: true
   tags: [admin, ps_port]
 

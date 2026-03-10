@@ -771,15 +771,16 @@
 
 # --- Step 6: Publish SSH-ready facts for WSL companion host ---
 # Mirrors main.yml's "Mark this host as SSH-configured" but targets the
-# companion WSL host. These cacheable facts are consumed by the controller's
-# ssh_config.j2 template to auto-generate ~/.ssh/config entries.
+# companion WSL host. ssh_configured gates the ssh_config.j2 template loop.
+# ssh_port and ssh_user are used as fallbacks in the template.
+# HostName comes directly from ansible_host in host_vars (no ssh_host fact —
+# ansible_host is the SSOT so cache drift cannot occur).
 
 - name: Mark WSL companion as SSH-configured
   ansible.builtin.set_fact:
     ssh_configured: true
     ssh_port: "{{ _wsl_ssh_port }}"
     ssh_user: "{{ _wsl_user }}"
-    ssh_host: "{{ hostvars[_wsl_companion]['ansible_host'] }}"
     cacheable: true
   delegate_to: "{{ _wsl_companion }}"
   delegate_facts: true

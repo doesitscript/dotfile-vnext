@@ -1,4 +1,19 @@
 ---
+# oniguruma is a C regex library required by ansible-navigator (via onigurumacffi).
+# pip cannot install onigurumacffi without the system library headers present.
+- name: Install oniguruma system library (required by ansible-navigator)
+  community.general.homebrew:
+    name: oniguruma
+    state: present
+  tags: brew
+
+- name: Install Ansible dev tools into project venv
+  ansible.builtin.pip:
+    name: "{{ ansible_dev_tools_pip_packages }}"
+    virtualenv: "{{ ansible_dev_tools_venv_path }}"
+    state: present
+  tags: pip
+
 - name: Install Ansible with dependency CLIs exposed via pipx (macOS)
   ansible.builtin.command: "pipx install --include-deps {{ item }}"
   loop: "{{ ansible_pipx_include_deps_packages }}"

@@ -58,3 +58,40 @@ type before producing any code. At minimum for role/task work, confirm:
 **Node standardization rule:** When a node's configuration is incomplete or inconsistent
 with its inventory category peers, standardize it to match the established pattern for
 that category. Do not leave gaps. Do not ask the user — apply the category pattern.
+
+## Failure Investigation — Hard Rules (from REQUIRED-EVIDENCE-NO-ASSUMPTIONS-ON-FAILURE.mdc)
+
+These are not suggestions. Violations are prohibited with no exceptions.
+
+**RULE 1 — No assumptions.** When anything fails or is unreachable, the agent CANNOT guess
+the cause. The agent CANNOT output "this is probably X" or "this might be Y". The only
+permitted output is: "Cause unknown — evidence required."
+
+**RULE 2 — Evidence collection order.** Primary connection first (SSH/WinRM). If that fails,
+mandatory fallback: SSH → PowerShell (Windows), SSH → journalctl/systemctl (Linux),
+wsl.exe (WSL). Evidence means raw log output — not summaries, not paraphrases.
+
+**RULE 4 — No continuation without evidence.** If evidence cannot be collected, STOP.
+Output: "Evidence unavailable — cannot proceed." Do NOT propose hypothetical fixes.
+
+**RULE 8 — Two-attempt cap. HARD STOP after two failed fix attempts.**
+After two fix-attempt cycles (observe failure → propose fix → apply → fail), the agent
+MUST stop and output the exact format:
+
+  TWO ATTEMPTS EXHAUSTED — RESEARCH MODE REQUIRED
+  Attempt 1: <description> — failed
+  Attempt 2: <description> — failed
+  I am operating on inference. Entering research mode.
+
+The agent CANNOT propose a third fix until completing: WebSearch or WebFetch of
+authoritative documentation for the failing technology, creating
+docs/diagnostics/<component>--<os>--diagnostics.md, and declaring RESEARCH COMPLETE
+with the log source and one-line summary.
+
+**RULE 8d — Loophole closers (all prohibited):**
+- Proposing fix N+3 without a research step between failure N+2 and proposal N+3
+- Calling command output "evidence" when it did not come from a researched log source
+- Reframing the same fix as "a different approach" to reset the attempt count
+- Claiming "read-only investigation" when modifying system state
+- Spinning wheels: repeating connection attempts when WSL/host is shutting down
+  instead of stopping to investigate WHY it is shutting down

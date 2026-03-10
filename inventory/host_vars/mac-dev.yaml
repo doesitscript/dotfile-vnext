@@ -6,9 +6,10 @@
 # meta: end_host guard in broad-group playbooks pass mac-dev through.
 ssh_configured: true
 
-# Docker client — reaches the WSL Docker engine via bridged networking.
-# WSL has its own LAN IP (192.168.50.222) via Hyper-V External Switch.
-# Uses the SSH config alias "server-225-wsl" so IdentityFile is inherited.
+# Docker client — reaches the WSL Docker engine via SSH.
+# "server-225-wsl" is the SSH config alias; ~/.ssh/config resolves it to DESKTOP-VLLM:22
+# (WSL sshd, shares IP 192.168.50.158 with Windows host; Windows sshd is on port 2222).
+# Uses the SSH config alias so IdentityFile and other settings are inherited.
 docker_engine_ssh_host: "server-225-wsl"
 docker_engine_ssh_port: 22
 docker_engine_ssh_user: "joshc"
