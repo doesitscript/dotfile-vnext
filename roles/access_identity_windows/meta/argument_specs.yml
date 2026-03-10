@@ -109,7 +109,10 @@ argument_specs:
         required: false
         description: >-
           WSL networking and guest configuration dictionary. Controls
-          bridged vs NAT networking mode and gateway address.
+          bridged vs NAT networking mode and gateway address. In bridged mode,
+          the WSL distro receives its IP via DHCP from the LAN router. The
+          distro hostname (set in wsl.conf) is registered with router DNS —
+          no static IP is required or accepted.
         options:
           networking_mode:
             type: str
@@ -119,21 +122,15 @@ argument_specs:
               WSL networking mode. 'nat' uses NAT with netsh portproxy for
               inbound SSH. 'bridged' gives WSL its own LAN IP via Hyper-V
               External Switch (requires hyperv_config.external_switch_enabled
-              in host_vars).
+              in host_vars). In bridged mode, DHCP is used — address the
+              distro by hostname, not by IP.
           gateway:
             type: str
             required: false
             default: "192.168.50.1"
             description: >-
-              Default gateway for the WSL distro in bridged mode.
-          static_ip:
-            type: str
-            required: false
-            description: >-
-              Static IP address (CIDR notation, e.g. 192.168.50.222/24) assigned
-              to the WSL distro in bridged mode. Used by the Netplan config
-              deployed inside the distro. Only relevant when networking_mode
-              is 'bridged'.
+              Default gateway for the WSL distro. Used as the DNS resolver
+              address in bridged mode (router handles DNS for DHCP hostnames).
 
       wsl_keepalive_enabled:
         type: bool
@@ -141,17 +138,17 @@ argument_specs:
         default: false
         description: >-
           Enable the WSLKeepalive Windows Scheduled Task (ubuntu.yml Step 7).
-          The task runs "wsl.exe -d <distro> -- sleep infinity" as the
-          logged-in user at logon, holding a permanent wsl.exe session open
-          so the WSL 2 VM never reaches the idle-shutdown threshold.
+          Uses community.windows.win_scheduled_task with boot + logon triggers.
+          Runs "wsl.exe -d <distro> -u root -- sleep infinity" as the distro
+          owner, holding a permanent wsl.exe session open so the WSL 2 VM never
+          reaches the idle-shutdown threshold. start_when_available covers the
+          boot-to-first-logon gap.
 
           Set true in host_vars for any Windows host whose WSL distro serves
-          as a remote Docker engine target or persistent SSH endpoint from
-          another machine (e.g. mac-dev using docker --context or direct SSH).
+          as a remote Docker engine target or persistent SSH endpoint.
 
-          Background: WSL 2.6.x on Windows 11 24H2 shuts down the VM after
-          ~8s of idle (no active wsl.exe sessions). The .wslconfig setting
-          vmIdleTimeout=-1 is parsed correctly but not honored in WSL 2.6.3.
-          This scheduled task is the reliable workaround.
+          Background: WSL 2.6.x shuts down the VM after ~8s of idle. The
+          vmIdleTimeout=-1 setting is parsed but not honored in WSL 2.6.3.
+          This scheduled task is the reliable fix.
 
           See docs/lessons-learned/windows/wsl-idle-shutdown-and-wslconfig-parsing.md

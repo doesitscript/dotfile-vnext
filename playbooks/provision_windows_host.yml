@@ -1,0 +1,27 @@
+---
+# Master bootstrap sequence for all Windows hosts.
+# Declares the full dependency order for provisioning from scratch.
+# Each sub-playbook is idempotent and independently runnable.
+# Run this playbook to provision or re-provision any Windows host end-to-end.
+#
+# Dependency order is the contract:
+#   1. windows_base        — features, power, registry, firewall baseline (all Windows hosts)
+#   2. hyperv_networking   — Hyper-V features + External VMSwitch (required before WSL bridged mode)
+#   3. access              — SSH identity pipeline: controller keys, OpenSSH, WSL
+#
+# Usage:
+#   Full provision (all Windows hosts):
+#     ansible-playbook playbooks/provision_windows_host.yml
+#
+#   Single host:
+#     ansible-playbook playbooks/provision_windows_host.yml --limit server-225-win
+#
+#   Subset by tag (e.g. WSL configuration only):
+#     ansible-playbook playbooks/provision_windows_host.yml --tags wsl --limit server-225-win
+
+- name: Step 1 - Windows base configuration
+  import_playbook: windows_base.yml
+- name: Step 2 - Hyper-V networking
+  import_playbook: hyperv_networking.yaml
+- name: Step 3 - SSH identity and WSL provisioning
+  import_playbook: access.yaml

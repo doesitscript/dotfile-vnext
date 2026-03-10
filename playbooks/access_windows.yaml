@@ -2,6 +2,10 @@
 # Access: enable OpenSSH on Windows (via WinRM), set up administrators_authorized_keys and controller key.
 # Run after access_controller. Targets windows_hosts.
 #
+# Prerequisite: for hosts with hyperv_config.external_switch_enabled=true, run
+# playbooks/hyperv_networking.yaml before this playbook. For full end-to-end
+# provisioning in the correct order, use playbooks/provision_windows_host.yml.
+#
 # Commands:
 #   Full run (admin + user + WSL):
 #     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win
@@ -35,12 +39,6 @@
       tags: [always]
 
   tasks:
-    - name: Configure Hyper-V bridge infrastructure
-      ansible.builtin.include_role:
-        name: hyperv_networking
-      when: (hyperv_config | default({})).external_switch_enabled | default(false) | bool
-      tags: [always]
-
     - name: Configure Windows identity and WSL
       ansible.builtin.include_role:
         name: access_identity_windows

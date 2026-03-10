@@ -212,6 +212,9 @@
             systemd=true
             [user]
             default={{ _wsl_user }}
+            [network]
+            hostname={{ _wsl_companion }}
+            generateResolvConf=true
         - path: /etc/profile.d/wsl-path.sh
           permissions: '0644'
           content: |
@@ -580,13 +583,18 @@
         wsl.exe -d $distro -u root -- bash -c 'systemctl stop ssh.socket 2>&1; systemctl disable ssh.socket 2>&1; systemctl mask ssh.socket 2>&1'
       }
 
-# --- Step 4.7: Bridged networking — configure WSL guest static IP ---
-# Only runs when networking_mode == 'bridged'. Writes a Netplan config
-# with the static IP and gateway from wsl_config dictionary.
-# DNS is handled by the gateway (router) — systemd-resolved uses it via netplan.
-# Persistent across WSL restarts.
+# --- Step 4.7: Bridged networking — configure Netplan for DHCP ---
+# Only runs when networking_mode == 'bridged'. Configures eth0 for DHCP.
+# The WSL distro presents its hostname (set in wsl.conf [network]) to the
+# DHCP server. The router assigns an IP and registers a DNS record for the
+# hostname. No static IP is required — address by hostname only.
+#
+# Note: Hyper-V already issues a DHCP lease during kernel init. With dhcp4:true,
+# systemd-networkd takes over lease management from the kernel client cleanly.
+# No duplicate-IP conflict occurs because both come from the same router for the
+# same MAC address.
 
-- name: Configure Netplan static IP for bridged networking
+- name: Configure Netplan DHCP for bridged networking
   environment:
     WSL_UTF8: "1"
   check_mode: false
@@ -595,29 +603,18 @@
     script: |
       $Ansible.Changed = $false
       $distro = '{{ _wsl_distro }}'
-      $staticIp = '{{ _wsl.static_ip | default(hostvars[_wsl_companion]["ansible_host"] ~ "/24") }}'
-      $gateway = '{{ _wsl.gateway | default("192.168.50.1") }}'
-
       $netplanFile = '/etc/netplan/01-wsl-bridge.yaml'
 
-      $lines = @(
+      $expected = @(
         'network:'
         '  version: 2'
+        '  renderer: networkd'
         '  ethernets:'
         '    eth0:'
-        '      dhcp4: false'
-        '      addresses:'
-        "        - $staticIp"
-        '      routes:'
-        '        - to: default'
-        "          via: $gateway"
-        '      nameservers:'
-        '        addresses:'
-        "          - $gateway"
-      )
-      $expected = $lines -join "`n"
+        '      dhcp4: true'
+      ) -join "`n"
 
-      $current = (wsl.exe -d $distro -u root -- bash -c "cat $netplanFile 2>/dev/null || echo NOTFOUND") -replace '\x00', '' | ? { $_ -ne '' }
+      $current = (wsl.exe -d $distro -u root -- bash -c "cat $netplanFile 2>/dev/null || echo NOTFOUND") -replace '\x00', '' | Where-Object { $_ -ne '' }
       $currentStr = ($current -join "`n").Trim()
 
       if ($currentStr -ne $expected.Trim()) {
@@ -627,50 +624,6 @@
         $expected | wsl.exe -d $distro -u root -- tee $netplanFile | Out-Null
         wsl.exe -d $distro -u root -- chmod 600 $netplanFile
         wsl.exe -d $distro -u root -- bash -c 'netplan apply 2>&1 || true'
-      }
-  when: _wsl_networking_mode == 'bridged'
-
-# --- Step 4.7.1: Flush pre-boot DHCP address from eth0 (bridged mode) ---
-# In WSL2 bridged mode, Hyper-V assigns a DHCP address from the LAN router
-# during kernel init, before systemd-networkd/netplan start. This creates a
-# duplicate IP (e.g. the Windows host's .158) alongside the intended static IP.
-# This one-shot systemd unit flushes all IPv4 on eth0 before networkd runs,
-# so only the netplan-configured address ends up on the interface.
-
-- name: Deploy systemd service to flush pre-boot DHCP addresses on eth0
-  environment:
-    WSL_UTF8: "1"
-  check_mode: false
-  ansible.windows.win_powershell:
-    error_action: silently_continue
-    script: |
-      $Ansible.Changed = $false
-      $distro = '{{ _wsl_distro }}'
-
-      $unitFile = '/etc/systemd/system/flush-eth0-preboot.service'
-      $unitContent = @(
-        '[Unit]'
-        'Description=Flush pre-boot DHCP addresses from eth0'
-        'Before=systemd-networkd.service'
-        'After=sys-subsystem-net-devices-eth0.device'
-        ''
-        '[Service]'
-        'Type=oneshot'
-        'ExecStart=/usr/sbin/ip addr flush dev eth0'
-        'RemainAfterExit=yes'
-        ''
-        '[Install]'
-        'WantedBy=network-pre.target'
-      ) -join "`n"
-
-      $current = (wsl.exe -d $distro -u root -- bash -c "cat $unitFile 2>/dev/null || echo NOTFOUND") -replace '\x00', '' | ? { $_ -ne '' }
-      $currentStr = ($current -join "`n").Trim()
-
-      if ($currentStr -ne $unitContent.Trim()) {
-        $Ansible.Changed = $true
-        if ('{{ ansible_check_mode }}' -eq 'true') { Exit 0 }
-        $unitContent | wsl.exe -d $distro -u root -- tee $unitFile | Out-Null
-        wsl.exe -d $distro -u root -- bash -c 'systemctl daemon-reload 2>&1; systemctl enable flush-eth0-preboot.service 2>&1'
       }
   when: _wsl_networking_mode == 'bridged'
 
@@ -837,111 +790,63 @@
 # WSL 2 shuts down the entire Linux VM when it has been "idle" — meaning no
 # active wsl.exe sessions are running. On WSL 2.6.x (Windows 11 24H2 Build
 # 26100), the idle timer fires after roughly 8–30 seconds. When the VM shuts
-# down, the WSL distro's IP address becomes unreachable, killing all SSH
-# sessions and Docker contexts (e.g. docker --context mac-dev) with either
-# "Operation timed out" or "Connection refused".
+# down, the WSL distro becomes unreachable, killing all SSH sessions and Docker
+# contexts with "Operation timed out" or "Connection refused".
 #
 # WHAT WE TRIED FIRST: vmIdleTimeout in .wslconfig
-# The .wslconfig setting vmIdleTimeout=-1 is documented to prevent auto-
-# shutdown. We confirmed the file is parsed correctly (no errors, LF endings,
-# correct camelCase key name). However, on WSL 2.6.3 (Build 2.6.3.0), the
-# setting is parsed but NOT honored — the VM still shuts down after idle.
-# This appears to be a bug or behavioral change in WSL 2.6.x. The setting is
-# kept in the template as belt-and-suspenders for future WSL versions.
+# The setting vmIdleTimeout=-1 is parsed correctly but NOT honored on WSL 2.6.3.
+# Kept in the template as belt-and-suspenders for future WSL versions.
 #
-# THE ACTUAL FIX: WSLKeepalive Windows Scheduled Task
-# A Windows Scheduled Task runs "wsl.exe -d <distro> -u root -- sleep infinity"
-# as the interactive user (joshc) at every logon. This keeps a permanent
-# wsl.exe process alive that holds an active session in the WSL VM. As long as
-# this process is running, WSL's idle timer never fires and the VM never shuts
-# down — SSH from Mac and Docker contexts remain permanently reachable.
-#
-# WHY sleep infinity WORKS
-# WSL's idle shutdown triggers only when there are ZERO active wsl.exe sessions.
-# systemd daemons running inside the VM (sshd, dockerd, etc.) do NOT count as
-# "active sessions" from the host's perspective. By holding one wsl.exe process
-# open via sleep infinity, the VM is permanently "in use" and will not shut down
-# until a deliberate "wsl --shutdown" or Windows reboot.
-#
-# WHY schtasks.exe INSTEAD OF PowerShell cmdlets
-# The PowerShell Scheduled Task cmdlets (New-ScheduledTaskAction, Register-
-# ScheduledTask, etc.) depend on CIM classes that are unavailable or broken in
-# WinRM remote sessions on Windows 11 24H2. They fail with:
-#   "Cannot convert value '\MSFT_TaskExecAction' to type CimInstance[]"
-# schtasks.exe is a plain Win32 executable with no CIM dependency and works
-# correctly over WinRM in all tested configurations.
+# THE FIX: WSLKeepalive Windows Scheduled Task
+# Runs "wsl.exe -d <distro> -u root -- sleep infinity" as the interactive user
+# at both logon and system boot (start_when_available covers the boot-to-logon gap).
+# This holds a permanent wsl.exe session open — WSL's idle timer never fires.
 #
 # WHY IT RUNS AS joshc (NOT SYSTEM)
-# WSL distros are registered per-user, not system-wide. Running wsl.exe as
-# SYSTEM fails silently — the SYSTEM account has no WSL configuration, so the
-# VM does not start. The task must run as the same user account that owns the
-# WSL distro (joshc in this project). This means the task fires at joshc's
-# logon (/SC ONLOGON) rather than at boot (/SC ONSTART), which is acceptable
-# since the WSL use cases (SSH, Docker) require the user to be logged in anyway.
+# WSL distros are registered per-user. Running wsl.exe as SYSTEM fails silently —
+# SYSTEM has no WSL configuration. The task must run as the distro owner (joshc).
 #
-# /ONLOGON trigger fires on each user logon; /F overwrites if it already exists.
+# MODULE: community.windows.win_scheduled_task
+# Declarative, idempotent, fully supports multiple triggers and execution_time_limit.
+# Replaces the previous schtasks.exe/win_powershell scripted implementation.
 
 - name: WSL keepalive scheduled task block
   when: wsl_keepalive_enabled | bool
   block:
-    - name: Register WSL keepalive scheduled task via schtasks.exe
-      ansible.windows.win_powershell:
-        error_action: stop
-        script: |
-          $Ansible.Changed = $false
-          $taskName = 'WSLKeepalive'
-          $distro   = '{{ _wsl_distro }}'
-          $user     = '{{ ansible_user }}'
+    - name: Ensure WSL keepalive scheduled task (boot + logon triggers)
+      community.windows.win_scheduled_task:
+        name: WSLKeepalive
+        description: >-
+          Holds a persistent wsl.exe session to prevent WSL 2 idle shutdown.
+          Required for WSL distros serving as SSH or Docker endpoints.
+        path: "\\Ansible"
+        actions:
+          - path: wsl.exe
+            arguments: "-d {{ _wsl_distro }} -u root -- sleep infinity"
+        triggers:
+          - type: boot
+            delay: PT1M
+          - type: logon
+            user_id: "{{ ansible_user }}"
+        username: "{{ ansible_user }}"
+        logon_type: interactive_token
+        run_level: highest
+        start_when_available: true
+        execution_time_limit: PT0S
+        multiple_instances: 2
+        enabled: true
+        state: present
 
-          # Check current task so we can skip if already identical
-          $existing = schtasks /Query /TN $taskName /FO LIST 2>$null
-          $wantArgs = "-d `"$distro`" -u root -- sleep infinity"
-
-          $needsCreate = $false
-          if (-not $existing) {
-            $needsCreate = $true
-          } elseif ($existing -notmatch [regex]::Escape($distro)) {
-            # Task exists but targets a different distro — recreate
-            schtasks /Delete /TN $taskName /F | Out-Null
-            $needsCreate = $true
-          }
-
-          if ($needsCreate) {
-            # Use schtasks.exe — avoids WinRM CIM class issues with PowerShell cmdlets
-            $out = schtasks /Create /TN $taskName `
-                            /TR "wsl.exe -d `"$distro`" -u root -- sleep infinity" `
-                            /SC ONLOGON /RU $user /RL HIGHEST /F 2>&1
-            $Ansible.Changed = $true
-            $Ansible.Result = @{ action = 'created'; output = ($out -join '||') }
-          } else {
-            $Ansible.Result = @{ action = 'unchanged' }
-          }
-
-    - name: Ensure WSL keepalive task is running
-      ansible.windows.win_powershell:
-        error_action: silently_continue
-        script: |
-          $Ansible.Changed = $false
-          $taskName = 'WSLKeepalive'
-          $status   = schtasks /Query /TN $taskName /FO LIST 2>$null | Select-String 'Status:'
-          if ($status -notmatch 'Running') {
-            schtasks /Run /TN $taskName 2>&1 | Out-Null
-            Start-Sleep -Seconds 10
-            $Ansible.Changed = $true
-          }
-          $wsl = (wsl.exe -l -v) -replace "`0", ""
-          $Ansible.Result = @{ wsl_state = ($wsl | Select-String '{{ _wsl_distro }}').ToString() }
-
-    - name: Remove legacy debug/test WSL scheduled tasks if present
-      ansible.windows.win_powershell:
-        error_action: silently_continue
-        script: |
-          $Ansible.Changed = $false
-          foreach ($name in @('AnsibleWSLTest', 'AnsibleWSLDiag',
-                               'AnsibleWSLKeepalive', 'AnsibleWSLKeepalive_Ubuntu_24_04')) {
-            $exists = schtasks /Query /TN $name /FO LIST 2>$null
-            if ($exists) {
-              schtasks /Delete /TN $name /F | Out-Null
-              $Ansible.Changed = $true
-            }
-          }
+    # Remove legacy task names from root path (\\). The current task lives under
+    # \\Ansible\WSLKeepalive so there is no name conflict with the last entry.
+    - name: Remove legacy WSL scheduled tasks from root task folder
+      community.windows.win_scheduled_task:
+        name: "{{ item }}"
+        path: "\\"
+        state: absent
+      loop:
+        - AnsibleWSLTest
+        - AnsibleWSLDiag
+        - AnsibleWSLKeepalive
+        - AnsibleWSLKeepalive_Ubuntu_24_04
+        - WSLKeepalive

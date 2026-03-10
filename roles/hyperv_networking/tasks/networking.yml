@@ -1,19 +1,22 @@
 ---
 # networking.yml — Create External VMSwitch using gocallag.hyperv.switch module.
 #
-# Replacement for the raw win_powershell approach in main.yml (Phase 2).
 # Uses the hyperv_config API contract (_hyperv resolved by caller).
 # Wired into main.yml as Phase 2 (External Virtual Switch creation).
 #
+# Idempotency: switch_info checks whether the switch already exists.
+# If it exists, the entire creation + wait pipeline is skipped.
+# If absent, the switch is created async and WinRM reconnection is awaited —
+# but only because creation was actually attempted.
+#
 # Limitation: gocallag.hyperv.switch does not support check mode and does not
 # update an existing switch if parameters differ (reports changed: false).
-# The async wrapper handles the network drop during External switch creation.
 
-# - name: Check if External VMSwitch already exists
-#   gocallag.hyperv.switch_info:
-#     name: "{{ _hyperv.switch_name | default('External') }}"
-#   register: _vmswitch_info
-#   ignore_errors: true
+- name: Check if External VMSwitch already exists
+  gocallag.hyperv.switch_info:
+    name: "{{ _hyperv.switch_name | default('External') }}"
+  register: _vmswitch_info
+  ignore_errors: true
 
 # adapter_name is a comma-separated fallback list (e.g. "Wi-Fi,Ethernet").
 # gocallag.hyperv.switch expects a single adapter name, so resolve the first
@@ -39,6 +42,7 @@
       }
       $Ansible.Result = $resolved
   register: _resolved_adapter
+  when: _vmswitch_info is failed
 
 - name: Create External VMSwitch via gocallag.hyperv.switch
   gocallag.hyperv.switch:
@@ -50,13 +54,16 @@
   async: 120
   poll: 0
   register: _vmswitch_job
+  when: _vmswitch_info is failed
 
-# Always wait unconditionally — WinRM may have dropped during switch creation
-# and we cannot know without waiting first.
+# Only wait when creation was actually attempted. _vmswitch_job.ansible_job_id
+# is only defined when the creation task ran (i.e. switch was absent).
+# Per ansible-content-best-practices: wait for specific conditions, not unconditionally.
 - name: Wait for WinRM to reconnect after VMSwitch creation
   ansible.builtin.wait_for_connection:
     delay: 15
     timeout: 120
+  when: _vmswitch_job.ansible_job_id is defined
 
 - name: Collect VMSwitch creation result
   ansible.builtin.async_status:
@@ -65,9 +72,10 @@
   until: _vmswitch_create.finished
   retries: 10
   delay: 10
+  when: _vmswitch_job.ansible_job_id is defined
 
 - name: Verify External VMSwitch is operational
   gocallag.hyperv.switch_info:
     name: "{{ _hyperv.switch_name | default('External') }}"
   register: _vmswitch_verify
-  when: _vmswitch_create is changed
+  when: _vmswitch_create is defined and _vmswitch_create is changed
