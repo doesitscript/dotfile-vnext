@@ -1,30 +1,42 @@
 ---
 # hyperv_feature.yml -- Enable Hyper-V and management tools.
 # Shared task file included by hyperv_networking and windows_base.
+#
+# These two feature installations are a single logical unit. Both must be
+# present before any networking or VMSwitch configuration proceeds.
+# A reboot is triggered only when at least one of them required installation —
+# _hyperv_reboot_required combines both results into a single gate.
 
-- name: Enable Hyper-V feature
+- name: Enable Hyper-V optional features
   ansible.windows.win_optional_feature:
     name:
       - Microsoft-Hyper-V
       - Microsoft-Hyper-V-Management-PowerShell
     state: present
     include_parent: true
-  register: _hyperv_feature
+  register: _hyperv_optional_feature
 
-- name: Enable Hyper-V Windows Feature
+- name: Enable Hyper-V Windows features
   ansible.windows.win_feature:
     name:
       - Hyper-V-Tools
       - NetworkVirtualization
     state: present
+  register: _hyperv_windows_feature
+
+- name: Determine if reboot is required after Hyper-V feature installation
+  ansible.builtin.set_fact:
+    _hyperv_reboot_required: >-
+      {{ (_hyperv_optional_feature.reboot_required | default(false)) or
+         (_hyperv_windows_feature.reboot_required | default(false)) }}
 
 - name: Reboot after Hyper-V feature installation
   ansible.windows.win_reboot:
     msg: "Ansible reboot after Hyper-V feature install"
     reboot_timeout: 600
-  when: _hyperv_feature.reboot_required | default(false)
+  when: _hyperv_reboot_required | bool
 
 - name: Wait for system after Hyper-V reboot
   ansible.builtin.wait_for_connection:
     timeout: 600
-  when: _hyperv_feature.reboot_required | default(false)
+  when: _hyperv_reboot_required | bool

@@ -18,38 +18,12 @@
   register: _vmswitch_info
   ignore_errors: true
 
-# adapter_name is a comma-separated fallback list (e.g. "Wi-Fi,Ethernet").
-# gocallag.hyperv.switch expects a single adapter name, so resolve the first
-# adapter from the list that is currently Up before calling the module.
-- name: Resolve first Up adapter from fallback list
-  ansible.windows.win_powershell:
-    error_action: stop
-    script: |
-      $Ansible.Changed = $false
-      $candidates = '{{ _hyperv.adapter_name | default("Ethernet") }}'.Split(',') | ForEach-Object { $_.Trim() }
-      $resolved = $null
-      foreach ($name in $candidates) {
-        $adapter = Get-NetAdapter -Name $name -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Up' }
-        if ($adapter) {
-          $resolved = $name
-          break
-        }
-      }
-      if (-not $resolved) {
-        $Ansible.Failed = $true
-        $Ansible.Result = "No Up adapter found in list: {{ _hyperv.adapter_name }}"
-        Exit 1
-      }
-      $Ansible.Result = $resolved
-  register: _resolved_adapter
-  when: _vmswitch_info is failed
-
 - name: Create External VMSwitch via gocallag.hyperv.switch
   gocallag.hyperv.switch:
     name: "{{ _hyperv.switch_name | default('External') }}"
     state: present
     switchType: External
-    netAdapterName: "{{ _resolved_adapter.result }}"
+    netAdapterName: "{{ _hyperv.adapter_name }}"
     allowManagementOS: "{{ _hyperv.allow_management_os | default(true) | string | lower }}"
   async: 120
   poll: 0

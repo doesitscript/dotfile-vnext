@@ -8,6 +8,10 @@
 wsl_user: "joshc"
 physical_node: "network-server"
 ansible_port: 22
+# Router-managed: this IP is assigned statically by the router and has not been observed
+# to change. If it ever does, update ansible_host here and re-run access.yaml.
+# The docker_client role self-heals the Docker context on the next run (endpoint inspect
+# → remove → recreate). No manual intervention needed beyond updating this value.
 ansible_host: "192.168.50.240"
 host_ip: "192.168.50.240"
 surface_type: "wsl"
@@ -26,6 +30,12 @@ ansible_authorized_keys_path: "/home/joshc/.ssh/authorized_keys"
 # Docker Engine — geerlingguy.docker installs Docker inside this WSL distro.
 # Clients (mac-dev, network-server) connect via SSH Docker contexts.
 docker_engine_in_wsl: true
+
+# SSH desired state — To-Be information per inventory best practices (As-Is vs To-Be).
+# The runtime set_fact in access_identity_windows/tasks/ubuntu.yml also sets this as a
+# cacheable fact (alongside ssh_host/ssh_port/ssh_user). The cached fact wins at runtime
+# (variable precedence 18 vs 8); this entry is the fallback when the cache is cold.
+ssh_configured: true
 
 # log output locations
 # journalctl -u ssh.service

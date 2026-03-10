@@ -100,7 +100,8 @@
 
 - name: Verify data drive exists
   ansible.windows.win_stat:
-    path: "{{ windows_data_root }}"
+    path: >-
+      {{ windows_data_root[:2] + '\\' }}
   register: windows_base_data_drive
   failed_when: not windows_base_data_drive.stat.exists
 

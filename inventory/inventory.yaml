@@ -27,12 +27,12 @@ all:
         network-server-win:
           # All connection details in host_vars/network-server-win.yaml
 
-        #CURSOR: THIS IS NOT deployed and will not be deployed for a whle
-        dev-3090-win:
-          # All connection details in host_vars/dev-3090-win.yaml
-
-        dev-workstation-win:
-          # All connection details in host_vars/dev-workstation-win.yaml
+    # Not-yet-deployed Windows hosts. Move to windows_hosts when ready to provision.
+    # Follows k3s_agents_deferred pattern — absent from active groups = never targeted.
+    windows_hosts_deferred:
+      hosts: {}
+        # dev-3090-win:        # enable when provisioned
+        # dev-workstation-win: # enable when provisioned
 
     # WSL surfaces (SSH)
     # ansible_host and connection details come from host_vars/<node>-wsl.yaml
@@ -42,11 +42,13 @@ all:
         server-225-wsl:
           # All connection details in host_vars/server-225-wsl.yaml
 
-        dev-3090-wsl:
-          # All connection details in host_vars/dev-3090-wsl.yaml
-
         network-server-wsl:
           # All connection details in host_vars/network-server-wsl.yaml
+
+    # Not-yet-deployed WSL hosts. Move to wsl_hosts when ready to provision.
+    wsl_hosts_deferred:
+      hosts: {}
+        # dev-3090-wsl: # enable when provisioned
 
     # SSH targets: hosts that may need an entry in the controller's ~/.ssh/config.
     # The template only emits entries for hosts where ssh_configured=true (set by setup roles).
@@ -63,7 +65,7 @@ all:
       hosts:
         server-225-win:
         network-server-win:
-        dev-workstation-win:
+        # dev-workstation-win: # deferred — add back when provisioned
 
     # Physical-node groups (names match group_vars/<group>.yaml and host_vars base names)
     server_225:
