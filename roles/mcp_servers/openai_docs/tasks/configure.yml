@@ -1,0 +1,82 @@
+---
+# Merge OpenAI Docs MCP (streamable HTTP) into .cursor/mcp.json.
+# Server key: openaiDeveloperDocs. Entry: { "url": "..." }.
+- name: Ensure .cursor directory exists in project root
+  ansible.builtin.file:
+    path: "{{ openai_docs_project_dir }}"
+    state: directory
+    mode: "0755"
+  tags:
+    - mcp
+    - openai-docs
+    - codex
+    - openai
+    - development
+    - research
+
+- name: Check whether .cursor/mcp.json exists
+  ansible.builtin.stat:
+    path: "{{ openai_docs_project_dir }}/mcp.json"
+  register: _mcp_json_stat
+  tags:
+    - mcp
+    - openai-docs
+    - codex
+    - openai
+    - development
+    - research
+
+- name: Create .cursor/mcp.json with openaiDeveloperDocs entry
+  ansible.builtin.copy:
+    dest: "{{ openai_docs_project_dir }}/mcp.json"
+    mode: "0644"
+    content: "{{ {'mcpServers': {(openai_docs_server_key): _openai_docs_entry}} | to_nice_json }}\n"
+  vars:
+    _openai_docs_entry:
+      url: "{{ openai_docs_mcp_url }}"
+  when: not _mcp_json_stat.stat.exists
+  tags:
+    - mcp
+    - openai-docs
+    - codex
+    - openai
+    - development
+    - research
+
+- name: Ensure openaiDeveloperDocs entry exists in .cursor/mcp.json
+  when: _mcp_json_stat.stat.exists
+  block:
+    - name: Read existing .cursor/mcp.json
+      ansible.builtin.slurp:
+        src: "{{ openai_docs_project_dir }}/mcp.json"
+      register: _mcp_json_raw
+      tags:
+        - mcp
+        - openai-docs
+        - codex
+        - openai
+        - development
+        - research
+
+    - name: Merge openaiDeveloperDocs entry into existing config
+      ansible.builtin.copy:
+        dest: "{{ openai_docs_project_dir }}/mcp.json"
+        content: "{{ _merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _existing: "{{ _mcp_json_raw.content | b64decode | from_json }}"
+        _openai_docs_entry:
+          url: "{{ openai_docs_mcp_url }}"
+        _merged: >-
+          {{ _existing | combine({
+               'mcpServers': (_existing.mcpServers | default({})) | combine({
+                 (openai_docs_server_key): _openai_docs_entry
+               })
+             }) }}
+      tags:
+        - mcp
+        - openai-docs
+        - codex
+        - openai
+        - development
+        - research

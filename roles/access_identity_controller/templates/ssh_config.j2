@@ -29,7 +29,7 @@ Host {{ host }}
 Host {{ host }}-powershell
     HostName {{ hv.get('ansible_host', host) }}
     User {{ hv['ssh_user'] | default(hv.get('ansible_user', 'joshc')) }}
-    Port {{ hv['ssh_powershell_port'] }}
+    # Port {{ hv['ssh_powershell_port'] }}
     ControlMaster no
     ControlPath none
     IdentityFile {{ controller_ssh_private_key_path }}
@@ -51,7 +51,8 @@ Host {{ host }}-powershell-bysession
 
 {% endif %}
 {% endfor %}
-# --- ControlMaster multiplexing ---
+# --- ControlMaster multiplexing (Linux/WSL controller only; omitted on Windows/Darwin) ---
+{% if ansible_facts['system'] is defined and ansible_facts['system'] == 'Linux' %}
 Host *
     ControlMaster auto
     ControlPath ~/.ssh/sockets/%n-%C
@@ -59,3 +60,4 @@ Host *
     ServerAliveInterval 60
     ServerAliveCountMax 5
     SetEnv LC_ALL=C.UTF-8
+{% endif %}

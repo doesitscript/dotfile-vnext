@@ -7,6 +7,7 @@
   ansible.builtin.command: "cursor --install-extension {{ item }}"
   loop: "{{ cursor_extensions }}"
   register: _cursor_ext_result
-  changed_when: "'was successfully installed' in _cursor_ext_result.stdout"
+  changed_when: (_cursor_ext_result.stdout | default('')) is search('was successfully installed')
   failed_when: false
+  when: (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
   tags: cursor_extensions

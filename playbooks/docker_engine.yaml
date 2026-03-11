@@ -1,15 +1,14 @@
 ---
 # Docker Engine — install Docker Engine inside WSL distros.
 #
+# DISABLED BY DEFAULT: docker_engine_bootstrap_enabled is false in group_vars/all.
+# The two tasks below are skipped unless docker_engine_bootstrap_enabled is set true
+# (e.g. -e docker_engine_bootstrap_enabled=true or in host/group_vars).
+# Resources are kept in place; only the when condition disables execution.
+#
 # Architecture: ALL tasks delegate to the companion Windows host via WinRM and
 # execute inside WSL through wsl.exe. No direct SSH connection to the WSL host
 # is ever needed, which eliminates all WSL idle-shutdown timing issues entirely.
-#
-# wsl.exe auto-starts the distro on demand — no separate wake step required.
-# A single wsl.exe session running the install script keeps WSL alive for the
-# full duration of apt-get download + package installation (can be several min).
-#
-# Idempotent: skips installation when dockerd is already present in the distro.
 #
 # Commands:
 #   ansible-playbook playbooks/docker_engine.yaml -i inventory/inventory.yaml
@@ -21,7 +20,7 @@
   become: false
 
   tasks:
-    # Write the bash install script to the Windows temp directory.
+    # Write the bash install script to the Windows temp directory (DISABLED when docker_engine_bootstrap_enabled is false).
     # win_copy with a YAML content block avoids all PowerShell/bash quoting
     # conflicts (bash $() and ${} substitutions are literal in YAML and are
     # never evaluated by PowerShell). Jinja2 vars resolve from the WSL host context.
@@ -51,11 +50,12 @@
       ignore_unreachable: true
       ignore_errors: true
       when:
+        - docker_engine_bootstrap_enabled | default(false)
         - physical_node is defined
         - docker_engine_in_wsl | default(false)
       tags: [docker, docker-engine]
 
-    # Run the bootstrap script via a single wsl.exe call.
+    # Run the bootstrap script via a single wsl.exe call (DISABLED when docker_engine_bootstrap_enabled is false).
     # wsl.exe auto-starts the distro if it is currently shut down.
     # The single session keeps WSL alive for the full apt install duration —
     # the WSL 15 s idle-shutdown timer only fires after wsl.exe exits.
@@ -95,6 +95,7 @@
       ignore_unreachable: true
       ignore_errors: true
       when:
+        - docker_engine_bootstrap_enabled | default(false)
         - physical_node is defined
         - docker_engine_in_wsl | default(false)
       tags: [docker, docker-engine]

@@ -38,6 +38,12 @@ dotfiles_user_home: >-
      if ansible_facts['system'] == 'Windows'
      else (ansible_facts['env'].HOME | default(ansible_facts['user_dir'])) }}
 
+# ─── Docker Engine (WSL bootstrap) ────────────────────────────────────────────
+# When false, docker_engine.yaml does not write or run the Docker-in-WSL bootstrap
+# script; downstream plays (docker.yaml verify, Wake WSL) skip or tolerate missing engine.
+# Set to true to re-enable Docker Engine installation inside WSL.
+docker_engine_bootstrap_enabled: false
+
 # ─── Logging stack ────────────────────────────────────────────────────────────
 # Loki push endpoint — all Alloy agents on every host send logs here.
 # Single place to change when the Loki server moves (e.g. server-225-wsl → network-server-wsl).

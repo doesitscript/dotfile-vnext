@@ -2,10 +2,14 @@
 # Shell Configuration Role
 # Sets up .bashrc.d pattern for modular shell configuration
 
+# Unix tasks use ansible_env.HOME; Windows has USERPROFILE only. Gate on both
+# system (Win32NT is Windows) and presence of HOME so we never resolve HOME on Windows.
 - name: Process shell_config role for Unix-like systems
   ansible.builtin.import_tasks: unix.yml
-  when: ansible_facts['system'] != "Windows"
+  when: >
+    (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    and ('HOME' in ansible_env)
 
 - name: Process shell_config role for Windows
   ansible.builtin.import_tasks: windows.yml
-  when: ansible_facts['system'] == "Windows"
+  when: (ansible_facts['system'] | default('')) in ['Windows', 'Win32NT']

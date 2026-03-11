@@ -10,6 +10,7 @@ Each subdirectory is an Ansible role that installs and configures one MCP
 | `redhat-ansible` | Red Hat Ansible Cursor extension MCP | Node.js (Cursor extension) | `["ansible", "workspace"]` | [redhat.ansible](https://marketplace.visualstudio.com/items?itemName=redhat.ansible) |
 | `mcp-sysoperator` | Infrastructure ops (file, shell, Terraform) | Node.js (npm) | `["infrastructure", "workspace"]` | [tarnover/mcp-sysoperator](https://github.com/tarnover/mcp-sysoperator) |
 | `ansible-mcp` | Ansible playbook/inventory intelligence | Python (pip + venv) | `["ansible", "workspace"]` | [bsahane/mcp-ansible](https://github.com/bsahane/mcp-ansible) |
+| `openai_docs` | OpenAI developer docs (search + read) | HTTP (streamable) | `["codex", "openai", "development", "research"]` | [Docs MCP](https://developers.openai.com/resources/docs-mcp) |
 
 ## Targeting Individual Servers
 
@@ -25,6 +26,9 @@ ansible-playbook playbooks/local.yaml --limit mac-dev --tags mcp-sysoperator
 # Install only ansible-mcp
 ansible-playbook playbooks/local.yaml --limit mac-dev --tags ansible-mcp
 
+# Install only openai_docs (OpenAI Docs MCP)
+ansible-playbook playbooks/local.yaml --limit mac-dev --tags codex
+
 # Install all MCP servers
 ansible-playbook playbooks/local.yaml --limit mac-dev --tags mcp
 ```
@@ -37,6 +41,7 @@ roles/mcp_servers/
   redhat-ansible/         # Cursor extension MCP (install ext + configure)
   mcp-sysoperator/        # Node.js MCP server (clone + npm install + npm run build)
   ansible-mcp/            # Python MCP server  (clone + venv + pip install)
+  openai_docs/            # OpenAI Docs MCP (HTTP, configure-only)
   _legacy_builder/        # archived Docker-based builder approach (not active)
 ```
 

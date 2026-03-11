@@ -34,17 +34,35 @@
   register: cursor_settings_raw
   when: cursor_settings_stat.stat.exists
 
+# Normalize JSONC (comments + trailing commas) so from_json always succeeds
+- name: Normalize existing settings JSON for merge
+  ansible.builtin.shell: |
+    python3 << 'PYEOF'
+    import re, os
+    path = os.environ.get('CURSOR_SETTINGS_PATH', '')
+    raw = open(path).read()
+    s = re.sub(r'//[^\n]*', '', raw)
+    s = re.sub(r'/\*.*?\*/', '', s, flags=re.DOTALL)
+    while True:
+        n = re.sub(r',\s*}', '}', s)
+        n = re.sub(r',\s*]', ']', n)
+        if n == s:
+            break
+        s = n
+    print(s)
+    PYEOF
+  environment:
+    CURSOR_SETTINGS_PATH: "{{ cursor_settings_path }}"
+  register: _normalized_json
+  when: cursor_settings_stat.stat.exists
+  changed_when: false
+
 - name: Merge LF + UTF-8-no-BOM settings into existing settings.json
   vars:
-    _raw_content: "{{ cursor_settings_raw.content | b64decode }}"
-    _stripped: >-
-      {{ _raw_content
-         | regex_replace('//[^\n]*', '')
-         | regex_replace('/\\*.*?\\*/', '') }}
-    _existing: "{{ _stripped | from_json }}"
+    _existing: "{{ _normalized_json.stdout | from_json }}"
     _merged: "{{ cursor_settings_lf_utf8 | combine(_existing) }}"
   ansible.builtin.copy:
     content: "{{ _merged | to_nice_json }}\n"
     dest: "{{ cursor_settings_path }}"
     mode: "0644"
-  when: cursor_settings_stat.stat.exists
+  when: cursor_settings_stat.stat.exists and _normalized_json is defined

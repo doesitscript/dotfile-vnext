@@ -12,11 +12,13 @@
 
 - name: Process direnv role for Windows
   ansible.builtin.import_tasks: windows.yml
-  when: ansible_facts['system'] == "Windows"
+  when: (ansible_facts['system'] | default('')) in ['Windows', 'Win32NT']
 
 - name: Deploy direnv bash hook to .bashrc.d (Unix-like systems)
   ansible.builtin.template:
     src: direnv.bash.j2
     dest: "{{ ansible_env.HOME }}/.bashrc.d/direnv.bash"
     mode: "0644"
-  when: ansible_facts['system'] != "Windows"
+  when: >
+    (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    and ('HOME' in ansible_env)

@@ -1,0 +1,32 @@
+---
+argument_specs:
+  main:
+    short_description: Ensure MCP Inspector is usable on macOS (npx or optional install) and deploy usage docs.
+    description: >
+      The MCP Inspector runs via npx without installation. This role ensures Node/npx
+      is available on Macs, optionally installs the inspector package globally for
+      convenience, and deploys a usage document with examples for inspecting npm,
+      PyPI, and locally developed MCP servers. macOS only.
+    options:
+      mcp_inspector_install_package:
+        type: bool
+        required: false
+        default: false
+        description: >
+          If true, install @modelcontextprotocol/inspector globally so npx runs
+          without downloading each time. Default false reflects official docs —
+          no install required.
+
+      mcp_inspector_doc_path:
+        type: str
+        required: false
+        description: >
+          Path where the usage document is written. Defaults to
+          ~/docs/mcp_inspector_usage.md (under dotfiles_user_home when set).
+
+      mcp_inspector_deploy_doc:
+        type: bool
+        required: false
+        default: true
+        description: >
+          If true, deploy the usage document. Set false to only ensure npx/install.

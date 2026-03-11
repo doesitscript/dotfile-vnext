@@ -24,6 +24,7 @@
     # Docker SSH contexts use localhost:22 (Windows) or a LAN IP (Mac).
     # The target WSL instance must be running for docker info to return data.
     # Wake it here — the verify task runs within the 15 s idle window.
+    # Only run when bootstrap is enabled; when disabled, Docker may not be in WSL.
     - name: Wake WSL Docker engine on Windows clients before verify
       ansible.windows.win_powershell:
         script: |
@@ -33,7 +34,9 @@
       become: false
       ignore_unreachable: true
       ignore_errors: true
-      when: ansible_connection == "winrm"
+      when:
+        - docker_engine_bootstrap_enabled | default(false)
+        - ansible_connection == "winrm"
       tags: [always]
 
   tasks:
@@ -41,3 +44,4 @@
       ansible.builtin.include_role:
         name: verify_docker
         tasks_from: client.yml
+      ignore_errors: true

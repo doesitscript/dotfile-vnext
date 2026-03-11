@@ -1,0 +1,13 @@
+---
+# OpenAI Docs MCP: configure-only (HTTP server, no local install).
+# Skip on Windows: .cursor/mcp.json is used by Cursor on the control/dev host; WinRM module output causes deserialization errors.
+- name: Configure openaiDeveloperDocs entry in .cursor/mcp.json
+  ansible.builtin.import_tasks: configure.yml
+  when: (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+  tags:
+    - mcp
+    - openai-docs
+    - codex
+    - openai
+    - development
+    - research

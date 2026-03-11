@@ -1,0 +1,62 @@
+# MCP Inspector — Usage (no install required)
+
+The MCP Inspector runs via **npx** without requiring installation. See: [modelcontextprotocol.io/docs/tools/inspector](https://modelcontextprotocol.io/docs/tools/inspector).
+
+## Run the Inspector
+
+```bash
+npx @modelcontextprotocol/inspector <command>
+npx @modelcontextprotocol/inspector <command> <arg1> <arg2>
+```
+
+## Inspect servers from npm
+
+```bash
+npx -y @modelcontextprotocol/inspector npx <package-name> <args>
+# Example:
+npx -y @modelcontextprotocol/inspector npx @modelcontextprotocol/server-filesystem /Users/username/Desktop
+```
+
+## Inspect servers from PyPI
+
+```bash
+npx @modelcontextprotocol/inspector uvx <package-name> <args>
+# Example:
+npx @modelcontextprotocol/inspector uvx mcp-server-git --repository ~/code/mcp/servers.git
+```
+
+## Inspect locally developed servers
+
+**TypeScript:**
+```bash
+npx @modelcontextprotocol/inspector node path/to/server/index.js args...
+```
+
+**Python:**
+```bash
+npx @modelcontextprotocol/inspector \
+  uv \
+  --directory path/to/server \
+  run \
+  package-name \
+  args...
+```
+
+Read the server’s README for exact run instructions.
+
+## Features
+
+- **Server connection pane** — Choose transport, set command-line args and environment for local servers.
+- **Resources tab** — List resources, metadata (MIME, descriptions), inspect content, test subscriptions.
+- **Prompts tab** — List prompt templates, test with custom arguments, preview messages.
+- **Tools tab** — List tools, view schemas, test with custom inputs, view results.
+- **Notifications pane** — Server logs and notifications.
+
+## Best practices
+
+1. **Start** — Launch Inspector with your server; verify connectivity and capability negotiation.
+2. **Iterate** — Change server → rebuild → reconnect Inspector → test; monitor messages.
+3. **Edge cases** — Test invalid inputs, missing prompt args, concurrent ops, error handling.
+
+---
+*Document deployed by Ansible role `mcp_inspector`. Inspector repo: [github.com/modelcontextprotocol/inspector](https://github.com/modelcontextprotocol/inspector).*

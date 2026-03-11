@@ -35,5 +35,7 @@
     file: settings.yml
     apply:
       tags: [cursor, cursor_settings]
-  when: cursor_settings_enabled | default(true) | bool
+  when: >
+    cursor_settings_enabled | default(true) | bool
+    and (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
   tags: [cursor, cursor_settings]

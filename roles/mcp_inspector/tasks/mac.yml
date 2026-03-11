@@ -1,0 +1,67 @@
+---
+# MCP Inspector on macOS: ensure npx, optional global install, deploy usage doc.
+# Ref: https://modelcontextprotocol.io/docs/tools/inspector
+
+- name: Check npx is available for MCP Inspector
+  ansible.builtin.command: npx --version
+  register: _mcp_inspector_npx_check
+  changed_when: false
+  failed_when: false
+
+- name: Fail if npx is not available (install common/node first or provide Node/npm)
+  ansible.builtin.fail:
+    msg: >
+      npx not found. MCP Inspector runs via npx. Ensure Node.js is installed
+      (e.g. run the common/node role first on this host).
+  when: _mcp_inspector_npx_check.rc != 0
+  tags:
+    - mcp_inspector
+
+- name: Install MCP Inspector globally (optional, for faster npx runs)
+  ansible.builtin.shell: |
+    export NVM_DIR="{{ dotfiles_user_home | default(ansible_user_dir) }}/.nvm"
+    if [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh"; fi
+    npm install -g @modelcontextprotocol/inspector
+  args:
+    executable: /bin/bash
+  when:
+    - _mcp_inspector_npx_check.rc == 0
+    - mcp_inspector_install_package | bool
+  register: _mcp_inspector_install
+  changed_when: "'added' in _mcp_inspector_install.stdout or 'updated' in _mcp_inspector_install.stdout"
+  tags:
+    - mcp_inspector
+    - mcp_inspector_install
+
+- name: Resolve MCP Inspector usage doc path and parent directory
+  ansible.builtin.set_fact:
+    _mcp_inspector_doc_resolved: "{{ _path }}"
+    _mcp_inspector_doc_dir: "{{ _doc_dir }}"
+  vars:
+    _path: "{{ mcp_inspector_doc_path | default((dotfiles_user_home | default(ansible_user_dir)) + '/docs/mcp_inspector_usage.md') }}"
+    _doc_dir: "{{ (_path.split('/')[:-1] | join('/')) if (_path.split('/') | length > 1) else ((dotfiles_user_home | default(ansible_user_dir)) + '/docs') }}"
+  when: mcp_inspector_deploy_doc | bool
+  tags:
+    - mcp_inspector
+    - mcp_inspector_doc
+
+- name: Ensure directory for MCP Inspector usage doc exists
+  ansible.builtin.file:
+    path: "{{ _mcp_inspector_doc_dir }}"
+    state: directory
+    mode: "0755"
+  when: mcp_inspector_deploy_doc | bool
+  tags:
+    - mcp_inspector
+    - mcp_inspector_doc
+
+- name: Deploy MCP Inspector usage document
+  ansible.builtin.template:
+    src: mcp_inspector_usage.md.j2
+    dest: "{{ _mcp_inspector_doc_resolved }}"
+    mode: "0644"
+    newline_sequence: '\n'
+  when: mcp_inspector_deploy_doc | bool
+  tags:
+    - mcp_inspector
+    - mcp_inspector_doc

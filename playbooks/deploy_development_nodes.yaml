@@ -4,6 +4,7 @@
 # Deploys: common/shell_config (.bashrc.d pattern, PATH, aliases)
 #          direnv (installation + bash hook)
 #          cursor (editor config, extensions, LF/UTF-8 settings)
+#          mcp_servers/openai_docs (OpenAI Docs MCP for Cursor)
 #
 # A node is a development node when node_purpose: development is set in its
 # group_vars file. This uses Ansible's group_by module to dynamically classify
@@ -26,6 +27,7 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_settings
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_extensions
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags vscode_extensions
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags openai-docs
 #
 #   # Windows surface only
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_windows --limit server-225-win
@@ -55,4 +57,5 @@
     - role: common/shell_config
     - role: direnv
     - role: cursor
+    - role: mcp_servers/openai_docs
     - role: common/vscode
