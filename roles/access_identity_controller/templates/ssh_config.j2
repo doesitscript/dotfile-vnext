@@ -31,18 +31,18 @@ Host {{ host }}-powershell
     User {{ hv['ssh_user'] | default(hv.get('ansible_user', 'joshc')) }}
     Port {{ hv['ssh_powershell_port'] }}
     ControlMaster no
+    ControlPath none
     IdentityFile {{ controller_ssh_private_key_path }}
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
     LogLevel ERROR
 
-# Direct PowerShell session for connecting to windows host, uses  session
-# uses : Subsystem    powershell    powershell.exe -sshs -NoLogo -NoProfile  in the sshd_config
+# PowerShell session via subsystem — no explicit port, no proxy
 Host {{ host }}-powershell-bysession
     HostName {{ hv.get('ansible_host', host) }}
     User {{ hv['ssh_user'] | default(hv.get('ansible_user', 'joshc')) }}
-    Port {{ hv['ssh_powershell_port'] }}
-    ProxyCommand ssh -W %h:%p %r@%h -s powershell
+    ControlMaster no
+    ControlPath none
     IdentityFile {{ controller_ssh_private_key_path }}
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null

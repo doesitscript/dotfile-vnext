@@ -132,23 +132,5 @@ argument_specs:
               Default gateway for the WSL distro. Used as the DNS resolver
               address in bridged mode (router handles DNS for DHCP hostnames).
 
-      wsl_keepalive_enabled:
-        type: bool
-        required: false
-        default: false
-        description: >-
-          Enable the WSLKeepalive Windows Scheduled Task (ubuntu.yml Step 7).
-          Uses community.windows.win_scheduled_task with boot + logon triggers.
-          Runs "wsl.exe -d <distro> -u root -- sleep infinity" as the distro
-          owner, holding a permanent wsl.exe session open so the WSL 2 VM never
-          reaches the idle-shutdown threshold. start_when_available covers the
-          boot-to-first-logon gap.
-
-          Set true in host_vars for any Windows host whose WSL distro serves
-          as a remote Docker engine target or persistent SSH endpoint.
-
-          Background: WSL 2.6.x shuts down the VM after ~8s of idle. The
-          vmIdleTimeout=-1 setting is parsed but not honored in WSL 2.6.3.
-          This scheduled task is the reliable fix.
-
-          See docs/lessons-learned/windows/wsl-idle-shutdown-and-wslconfig-parsing.md
+      # wsl_keepalive_enabled removed — WSLKeepalive scheduled task deprecated.
+      # Idle shutdown prevention is now handled by keepwsl.service (ubuntu.yml Step 6.5).

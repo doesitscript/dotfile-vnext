@@ -215,6 +215,9 @@
             [network]
             hostname={{ _wsl_companion }}
             generateResolvConf=true
+            [automount]
+            enabled=true
+            mountFsTab=true
         - path: /etc/profile.d/wsl-path.sh
           permissions: '0644'
           content: |
@@ -228,6 +231,24 @@
               esac
             done
             unset _d
+        - path: /etc/systemd/system/keepwsl.service
+          permissions: '0644'
+          content: |
+            [Unit]
+            Description=keepwsl.service
+            After=local-fs.target
+
+            [Service]
+            Type=simple
+            ExecStart=/bin/sleep infinity
+            Restart=always
+            RestartSec=5
+
+            [Install]
+            WantedBy=default.target
+
+      runcmd:
+        - systemctl enable keepwsl.service
   register: _cloud_init_result
 
 - name: Normalise cloud-init user-data to LF line endings
@@ -785,69 +806,60 @@
   delegate_to: "{{ _wsl_companion }}"
   delegate_facts: true
 
-# --- Step 7: WSL keepalive scheduled task ---
-#
-# PROBLEM STATEMENT
-# WSL 2 shuts down the entire Linux VM when it has been "idle" — meaning no
-# active wsl.exe sessions are running. On WSL 2.6.x (Windows 11 24H2 Build
-# 26100), the idle timer fires after roughly 8–30 seconds. When the VM shuts
-# down, the WSL distro becomes unreachable, killing all SSH sessions and Docker
-# contexts with "Operation timed out" or "Connection refused".
-#
-# WHAT WE TRIED FIRST: vmIdleTimeout in .wslconfig
-# The setting vmIdleTimeout=-1 is parsed correctly but NOT honored on WSL 2.6.3.
-# Kept in the template as belt-and-suspenders for future WSL versions.
-#
-# THE FIX: WSLKeepalive Windows Scheduled Task
-# Runs "wsl.exe -d <distro> -u root -- sleep infinity" as the interactive user
-# at both logon and system boot (start_when_available covers the boot-to-logon gap).
-# This holds a permanent wsl.exe session open — WSL's idle timer never fires.
-#
-# WHY IT RUNS AS joshc (NOT SYSTEM)
-# WSL distros are registered per-user. Running wsl.exe as SYSTEM fails silently —
-# SYSTEM has no WSL configuration. The task must run as the distro owner (joshc).
-#
-# MODULE: community.windows.win_scheduled_task
-# Declarative, idempotent, fully supports multiple triggers and execution_time_limit.
-# Replaces the previous schtasks.exe/win_powershell scripted implementation.
+# --- Step 6.5: Deploy keepwsl systemd service to running WSL distro ---
+# Cloud-init writes this file on first boot (Step 1.5 write_files + runcmd).
+# This step ensures it is present and enabled on already-provisioned distros.
+# Uses ansible.windows.win_copy to write directly to the WSL filesystem via the
+# Windows UNC path \\wsl$\<distro>\ without requiring an active SSH connection.
 
-- name: WSL keepalive scheduled task block
-  when: wsl_keepalive_enabled | bool
-  block:
-    - name: Ensure WSL keepalive scheduled task (boot + logon triggers)
-      community.windows.win_scheduled_task:
-        name: WSLKeepalive
-        description: >-
-          Holds a persistent wsl.exe session to prevent WSL 2 idle shutdown.
-          Required for WSL distros serving as SSH or Docker endpoints.
-        path: "\\Ansible"
-        actions:
-          - path: wsl.exe
-            arguments: "-d {{ _wsl_distro }} -u root -- sleep infinity"
-        triggers:
-          - type: boot
-            delay: PT1M
-          - type: logon
-            user_id: "{{ ansible_user }}"
-        username: "{{ ansible_user }}"
-        logon_type: interactive_token
-        run_level: highest
-        start_when_available: true
-        execution_time_limit: PT0S
-        multiple_instances: 2
-        enabled: true
-        state: present
+- name: Deploy keepwsl systemd service unit to WSL distro
+  ansible.windows.win_copy:
+    dest: '\\wsl$\{{ _wsl_distro }}\etc\systemd\system\keepwsl.service'
+    newline_sequence: '\n'
+    content: |
+      [Unit]
+      Description=keepwsl.service
+      After=local-fs.target
 
-    # Remove legacy task names from root path (\\). The current task lives under
-    # \\Ansible\WSLKeepalive so there is no name conflict with the last entry.
-    - name: Remove legacy WSL scheduled tasks from root task folder
-      community.windows.win_scheduled_task:
-        name: "{{ item }}"
-        path: "\\"
-        state: absent
-      loop:
-        - AnsibleWSLTest
-        - AnsibleWSLDiag
-        - AnsibleWSLKeepalive
-        - AnsibleWSLKeepalive_Ubuntu_24_04
-        - WSLKeepalive
+      [Service]
+      Type=simple
+      ExecStart=/bin/sleep infinity
+      Restart=always
+      RestartSec=5
+
+      [Install]
+      WantedBy=default.target
+
+- name: Enable and start keepwsl service in WSL distro
+  ansible.windows.win_shell: >-
+    wsl -d {{ _wsl_distro }} -u root --
+    systemctl enable --now keepwsl.service
+  register: _keepwsl_enable
+  changed_when: "'Created symlink' in (_keepwsl_enable.stdout | default(''))"
+
+- name: Report keepwsl service status
+  ansible.builtin.debug:
+    msg: >-
+      keepwsl.service in {{ _wsl_distro }}:
+      {{ 'enabled/started' if _keepwsl_enable is changed else 'already enabled' }}
+
+# --- Step 7: Remove legacy WSL keepalive scheduled tasks ---
+# The Windows Scheduled Task approach (WSLKeepalive) is deprecated.
+# keepwsl.service (Step 6.5) is the replacement — a systemd unit inside the
+# distro that calls /mnt/c/Windows/System32/wsl.exe --exec /bin/sleep infinity,
+# creating a Windows-side wsl.exe process from inside Linux and keeping the
+# p9io connection open without any Windows-side task.
+# This step idempotently removes all legacy task names left on the host.
+
+- name: Remove legacy WSL keepalive scheduled tasks
+  community.windows.win_scheduled_task:
+    name: "{{ item.name }}"
+    path: "{{ item.path }}"
+    state: absent
+  loop:
+    - {name: WSLKeepalive, path: "\\Ansible"}
+    - {name: AnsibleWSLTest, path: "\\"}
+    - {name: AnsibleWSLDiag, path: "\\"}
+    - {name: AnsibleWSLKeepalive, path: "\\"}
+    - {name: AnsibleWSLKeepalive_Ubuntu_24_04, path: "\\"}
+    - {name: WSLKeepalive, path: "\\"}

@@ -1,0 +1,101 @@
+3. Docker + K3s Automation
+You’re building a single‑node or multi‑node K3s cluster.
+
+Collections
+Code
+community.docker
+kubernetes.core
+Roles
+Code
+xanmanning.k3s
+geerlingguy.docker
+Patterns
+Install Docker first
+
+Install K3s with a pinned version
+
+Store kubeconfig in a predictable path
+
+Use Traefik as ingress (K3s includes it by default, but you can override)
+
+🟦 4. Traefik Ingress + Networking
+You mentioned Traefik — good choice.
+
+Collections
+Code
+community.general
+Patterns
+Use a LoadBalancer service if you want external access
+
+Or use NodePort + Hyper‑V external switch
+
+Use a static IP for the VM
+
+Use a DNS naming scheme
+
+Example:
+
+Code
+traefik.<yourdomain>
+k3s-api.<yourdomain>
+registry.<yourdomain>
+🟩 5. Dynamic Inventory (critical for your setup)
+You want dynamic inventory because:
+
+Hyper‑V creates VMs dynamically
+
+IPs may change
+
+You want to manage multiple nodes
+
+Tools
+community.general.hv_inventory (Hyper‑V dynamic inventory plugin)
+
+community.general.proxmox (if you ever expand)
+
+kubernetes.core.k8s_inventory (for cluster introspection)
+
+Pattern
+Create inventory/hyperv.yml:
+
+yaml
+plugin: community.general.hv_inventory
+host: <hyperv-host>
+username: <user>
+password: <pass>
+validate_certs: false
+Now Ansible discovers VMs automatically.
+
+🟦 6. Naming Schemes (your specialty)
+Here’s a deterministic naming scheme that works across:
+
+Hyper‑V
+
+DNS
+
+Inventory
+
+K3s node names
+
+Docker hostnames
+
+Pattern
+Code
+<env>-<provider>-<role>-<index>
+Examples:
+
+Code
+lab-hv-k3s-master-01
+lab-hv-k3s-worker-01
+lab-hv-traefik-01
+lab-hv-registry-01
+Benefits
+Sorts lexically
+
+Works in DNS
+
+Works in inventory
+
+Works in K3s node labels
+
+Works in Docker hostnames

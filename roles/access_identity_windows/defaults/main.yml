@@ -59,35 +59,7 @@ wsl_config:
   # Override in host_vars if the router is at a different address.
   gateway: "192.168.50.1"
 
-# --- WSL keepalive scheduled task (ubuntu.yml Step 7) ---
-# Controls whether Step 7 creates the WSLKeepalive Windows Scheduled Task.
-#
-# BACKGROUND: WSL 2 shuts down the VM after a short idle period (~8s on WSL
-# 2.6.x / Windows 11 24H2) when no active wsl.exe sessions exist. Systemd
-# daemons like sshd and dockerd do NOT count as active sessions. The .wslconfig
-# setting vmIdleTimeout=-1 is meant to prevent this but is not honored in WSL
-# 2.6.3. When the VM shuts down, the distro's bridged IP becomes unreachable,
-# breaking SSH from Mac and Docker contexts.
-#
-# THE FIX: A Scheduled Task running "wsl.exe -d <distro> -- sleep infinity"
-# as the logged-in user holds a permanent wsl.exe session open, preventing the
-# idle shutdown entirely. It runs at logon and is self-maintaining.
-#
-# WHY IT IS OFF BY DEFAULT:
-# In practice, the idle shutdown only becomes a persistent problem when:
-#   1) The distro is used as a Docker engine target from a remote host (Mac)
-#   2) The distro is used as an SSH target from a remote host
-# If WSL is only used locally on the Windows machine, the idle shutdown is
-# harmless — Windows will just reopen WSL on the next wsl.exe call.
-#
-# WHEN TO ENABLE: Set to true in host_vars for any Windows host whose WSL
-# distro serves as a remote Docker engine or persistent SSH endpoint. Example:
-#
-#   # host_vars/server-225-win.yaml
-#   wsl_keepalive_enabled: true
-#
-# TROUBLESHOOTING: If SSH from Mac or docker --context starts timing out after
-# idle periods, this flag is the first thing to check. Set true and re-run
-# the access_windows playbook with --tags wsl on the affected Windows host.
-# Full context: docs/lessons-learned/windows/wsl-idle-shutdown-and-wslconfig-parsing.md
-wsl_keepalive_enabled: false
+# WSL idle shutdown prevention: handled by keepwsl.service (ubuntu.yml Step 6.5).
+# The service calls /mnt/c/Windows/System32/wsl.exe --exec /bin/sleep infinity
+# from inside the distro, creating a persistent Windows-side process that keeps
+# the WSL p9io connection open. No Windows Scheduled Task required.
