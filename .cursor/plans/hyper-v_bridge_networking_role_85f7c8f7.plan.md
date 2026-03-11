@@ -181,7 +181,7 @@ At the top with the other resolved variables:
 - Run `netplan apply` via `wsl.exe`
 - Persistent across reboots
 
-**Update `wsl.conf**`: Add `[network]` section with `generateResolvConf=false`
+**Update `wsl.conf`**: Add `[network]` section with `generateResolvConf=false`
 
 ### NAT-specific tasks (`when: _wsl_networking_mode == 'nat'`)
 
