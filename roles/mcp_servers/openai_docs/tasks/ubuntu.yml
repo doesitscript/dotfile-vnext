@@ -1,0 +1,39 @@
+---
+# Install Codex app (npm global). Includes the Codex MCP server. Binary path is used as command in mcp.json.
+# Upgrade: npm i -g @openai/codex@latest
+- name: Install Codex app via npm (Ubuntu)
+  ansible.builtin.command: npm i -g @openai/codex
+  register: _codex_npm_install
+  changed_when: "'added' in (_codex_npm_install.stdout | default('')) or 'changed' in (_codex_npm_install.stdout | default(''))"
+  tags:
+    - mcp
+    - openai-docs
+    - codex
+    - openai
+    - development
+    - research
+
+- name: Resolve Codex binary path (Ubuntu)
+  ansible.builtin.command: which codex
+  register: _codex_which
+  changed_when: false
+  failed_when: false
+  tags:
+    - mcp
+    - openai-docs
+    - codex
+    - openai
+    - development
+    - research
+
+- name: Set Codex command path for mcp.json (Ubuntu)
+  ansible.builtin.set_fact:
+    openai_docs_codex_command: "{{ _codex_which.stdout | trim }}"
+  when: _codex_which.rc == 0 and _codex_which.stdout | trim | length > 0
+  tags:
+    - mcp
+    - openai-docs
+    - codex
+    - openai
+    - development
+    - research

@@ -39,7 +39,12 @@
 # Current development nodes (node_purpose: development in group_vars):
 #   - mac-dev        (group_vars/mac_dev.yaml)
 #   - server-225-win (group_vars/server_225.yaml)
-#   - server-225-wsl (group_vars/server_225.yaml)
+#   - server-225-wsl (group_vars/server_225.yaml) — excluded by :!wsl_hosts below
+#
+# WSL exclusion: hosts in wsl_hosts (e.g. server-225-wsl) are excluded from this
+# deploy so runs do not hit UNREACHABLE when WSL is down or being phased out.
+# To include a -wsl host, pass it explicitly: --limit server-225-wsl (or remove
+# the :!wsl_hosts pattern from the play when WSL is back in scope).
 
 - name: Classify nodes by purpose
   hosts: all
@@ -48,9 +53,10 @@
     - name: Group development nodes from node_purpose variable
       ansible.builtin.group_by:
         key: "node_purpose_{{ node_purpose | default('unclassified') }}"
+      tags: [always]
 
 - name: Deploy development tooling to development nodes
-  hosts: node_purpose_development
+  hosts: node_purpose_development:!wsl_hosts
   gather_facts: true
   become: false
   roles:

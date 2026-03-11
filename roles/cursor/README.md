@@ -1,6 +1,6 @@
 # Cursor Editor Role
 
-Configures Cursor editor settings, Remote-SSH connectivity, the WSL bash wrapper for Windows OpenSSH, and idempotently merges LF + UTF-8-no-BOM file settings into Cursor's settings.json.
+Configures Cursor editor settings, Remote-SSH connectivity, and idempotently merges LF + UTF-8-no-BOM file settings into Cursor's settings.json.
 
 ## What This Role Does
 
@@ -13,8 +13,7 @@ Configures Cursor editor settings, Remote-SSH connectivity, the WSL bash wrapper
 2. **Deploys SSH config entries** to `~/.ssh/config.d/cursor_remote_hosts` for Cursor Remote-SSH connections
 
 ### Windows Hosts
-1. **Deploys `wsl-bash-wrapper.cmd`** to `C:\ProgramData\ssh\` — routes OpenSSH sessions into the WSL login shell
-2. **Configures OpenSSH DefaultShell** registry keys so SSH connections (including Cursor Remote-SSH) drop into WSL bash instead of PowerShell
+- No OpenSSH or shell configuration. OpenSSH DefaultShell is owned by the **access_identity_windows** role (playbooks/access_windows.yaml). Use the access playbook to set PowerShell (or another shell) as the default.
 
 ---
 
@@ -53,8 +52,8 @@ This role handles the infrastructure side:
 
 - **Mac controller**: SSH config entries are generated from `cursor_remote_ssh_hosts` so that
   `Cmd+Shift+P → Remote-SSH: Connect to Host` finds the target hosts automatically.
-- **Windows targets**: The WSL bash wrapper and DefaultShell registry ensure that when Cursor
-  connects over SSH, it lands in the WSL Linux environment (not PowerShell).
+- **Windows targets**: OpenSSH DefaultShell is configured by the access playbook (access_identity_windows).
+  Use that role to set the default shell (e.g. PowerShell). Cursor does not modify OpenSSH.
 
 ---
 
@@ -72,8 +71,6 @@ This role handles the infrastructure side:
 | `cursor_settings_path` | *(platform auto-detected)* | Full path to Cursor's settings.json |
 | `cursor_settings_lf_utf8` | *(see defaults)* | Settings dict merged idempotently into settings.json |
 | `cursor_extensions` | *(see defaults)* | List of extension IDs to install via CLI |
-| `cursor_wsl_distro` | `Ubuntu-24.04` | WSL distro name used in the bash wrapper |
-| `cursor_wsl_wrapper_path` | `C:\ProgramData\ssh\wsl-bash-wrapper.cmd` | Where the wrapper is deployed on Windows |
 | `cursor_remote_ssh_hosts` | *(see defaults)* | List of SSH Host entries for Remote-SSH config |
 
 Each item in `cursor_remote_ssh_hosts`:
@@ -131,6 +128,4 @@ ansible-playbook playbooks/deploy_shell_config.yaml --tags cursor_windows --limi
 | Mac/Linux | `~/.bashrc.d/cursor.bash` | EDITOR variable and shell integration |
 | Mac/Linux | `~/.ssh/config.d/cursor_remote_hosts` | Remote-SSH host definitions |
 | Mac/Linux | `~/.ssh/config` | `Include config.d/*` added at top |
-| Windows | `C:\ProgramData\ssh\wsl-bash-wrapper.cmd` | OpenSSH → WSL routing |
-| Windows | Registry `HKLM:\SOFTWARE\OpenSSH\DefaultShell` | Points to the wrapper |
 | All | `<platform settings.json path>` | LF + UTF-8-no-BOM settings (merged) |

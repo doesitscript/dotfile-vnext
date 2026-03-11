@@ -1,23 +1,26 @@
-# openai_docs — OpenAI Developer Docs MCP
+# openai_docs — OpenAI Developer Docs MCP + Codex app
 
-Adds the [OpenAI Docs MCP](https://developers.openai.com/resources/docs-mcp) to Cursor’s `mcp.json`. Read-only, streamable HTTP server — no local install.
+Adds the [OpenAI Docs MCP](https://developers.openai.com/resources/docs-mcp) to Cursor’s `mcp.json`. Docs = streamable HTTP; Codex = local binary (installed on Mac/Ubuntu).
 
-**Server URL:** `https://developers.openai.com/mcp`  
-**Cursor entry:** `mcpServers.openaiDeveloperDocs` with `{ "url": "..." }`.
+Two blocks: (1) **openaiDeveloperDocs** — `{ "url": "https://developers.openai.com/mcp" }`; (2) **codex** — `{ "command": "<path>" }` when Codex app is installed (Mac/Ubuntu). Also ensures `~/.codex/config.toml` has the openaiDeveloperDocs URL.
 
 ## What this role does
 
-- Ensures `.cursor` exists in the project root.
-- Creates `.cursor/mcp.json` with only this server if missing.
-- If `mcp.json` exists, **merges** the `openaiDeveloperDocs` entry into `mcpServers` (same pattern as ansible-mcp, redhat-ansible, mcp-sysoperator).
+- **macOS:** `brew install codex`; **Ubuntu:** `npm i -g @openai/codex` (upgrade: `npm i -g @openai/codex@latest`). **Windows:** skipped.
+- Creates or merges `.cursor/mcp.json` with both openaiDeveloperDocs and codex blocks (same pattern as ansible-mcp).
+- Ensures `~/.codex` and `~/.codex/config.toml` with openaiDeveloperDocs URL block.
 
 ## Variables
-
+cat ~/.codex/config.toml 
 | Variable | Default | Description |
+
 |----------|---------|-------------|
 | `openai_docs_mcp_url` | `https://developers.openai.com/mcp` | Streamable HTTP MCP endpoint. |
 | `openai_docs_project_dir` | `{{ dotfiles_home }}/.cursor` | Directory containing `mcp.json`. |
 | `openai_docs_server_key` | `openaiDeveloperDocs` | Key under `mcpServers` in `mcp.json`. |
+| `openai_docs_codex_command` | `""` | Set by mac.yml/ubuntu.yml; path to codex binary. |
+| `openai_docs_codex_enabled` | `true` | Set to `false` to omit the codex MCP block. |
+| `openai_docs_codex_config_dir` | `{{ dotfiles_user_home }}/.codex` | Directory for `~/.codex/config.toml`. |
 
 ## Tags
 

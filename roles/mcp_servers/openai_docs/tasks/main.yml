@@ -1,8 +1,40 @@
 ---
-# OpenAI Docs MCP: configure-only (HTTP server, no local install).
-# Skip on Windows: .cursor/mcp.json is used by Cursor on the control/dev host; WinRM module output causes deserialization errors.
-- name: Configure openaiDeveloperDocs entry in .cursor/mcp.json
+# OpenAI Docs MCP + Codex app. Skip on Windows: .cursor/mcp.json is used on control/dev host; Codex is not supported on Windows.
+- name: Install Codex app on macOS (includes Codex MCP server)
+  ansible.builtin.import_tasks: mac.yml
+  when: ansible_facts['system'] == "Darwin"
+  tags:
+    - mcp
+    - openai-docs
+    - codex
+    - openai
+    - development
+    - research
+
+- name: Install Codex app on Ubuntu (includes Codex MCP server)
+  ansible.builtin.import_tasks: ubuntu.yml
+  when: ansible_facts['distribution'] == "Ubuntu"
+  tags:
+    - mcp
+    - openai-docs
+    - codex
+    - openai
+    - development
+    - research
+
+- name: Configure openaiDeveloperDocs and Codex entries in .cursor/mcp.json
   ansible.builtin.import_tasks: configure.yml
+  when: (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+  tags:
+    - mcp
+    - openai-docs
+    - codex
+    - openai
+    - development
+    - research
+
+- name: Ensure ~/.codex/config.toml has openaiDeveloperDocs URL
+  ansible.builtin.import_tasks: codex_config.yml
   when: (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
   tags:
     - mcp

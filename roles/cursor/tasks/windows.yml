@@ -1,29 +1,4 @@
 ---
-# Configure Cursor on Windows
-# Deploys the WSL bash wrapper used by Windows OpenSSH as its DefaultShell.
-# This enables Cursor Remote-SSH and direct SSH to drop into WSL bash.
-
-- name: Ensure ProgramData ssh directory exists
-  ansible.windows.win_file:
-    path: C:\ProgramData\ssh
-    state: directory
-
-- name: Deploy WSL bash wrapper for OpenSSH DefaultShell
-  ansible.windows.win_template:
-    src: wsl-bash-wrapper.cmd.j2
-    dest: "{{ cursor_wsl_wrapper_path }}"
-
-- name: Set OpenSSH DefaultShell to WSL bash wrapper
-  ansible.windows.win_regedit:
-    path: HKLM:\SOFTWARE\OpenSSH
-    name: DefaultShell
-    data: "{{ cursor_wsl_wrapper_path }}"
-    type: string
-
-- name: Set OpenSSH DefaultShellCommandOption to -c
-  ansible.windows.win_regedit:
-    path: HKLM:\SOFTWARE\OpenSSH
-    name: DefaultShellCommandOption
-    data: "-c"
-    type: string
-  notify: Restart sshd
+# Configure Cursor on Windows.
+# OpenSSH DefaultShell is owned by access_identity_windows (PowerShell).
+# This role does not modify OpenSSH; use the access playbook for SSH/shell config.

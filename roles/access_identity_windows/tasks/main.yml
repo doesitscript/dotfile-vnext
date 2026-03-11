@@ -150,13 +150,8 @@
   tags: [admin]
 
 # --- powershell-ssh: secondary SSH port that forces a PowerShell session ---
-# Port 2223 listens alongside the primary WSL/bash port (2222).
-# A Match LocalPort block at the END of sshd_config sets ForceCommand for this port.
-# This block MUST go at the bottom of sshd_config (after all global directives
-# and after Match Group administrators) to avoid capturing unrelated directives.
-#
-# DefaultShell is now PowerShell — port 2222 lands in PowerShell directly.
-# Port 2223 Match LocalPort block remains for targeted ForceCommand use.
+# Port 2223 listens alongside the primary port (2222). Requires WSL for pwsh-sshd wrapper.
+# Skipped when wsl_enabled is false (default).
 - block:
   - name: Resolve WSL companion for ps_port (when host has -wsl sibling)
     ansible.builtin.set_fact:
@@ -214,6 +209,7 @@
       state: present
     register: sshd_ps_force_result
 
+  when: wsl_enabled | default(false) | bool
   tags: [admin, powershell-ssh, ps_port]
 
 # powershell-ssh — restart sshd if any config above changed (outside block so when vars exist)
@@ -222,10 +218,11 @@
     name: sshd
     state: restarted
   when: >-
+    (wsl_enabled | default(false) | bool) and (
     sshd_ps_port_result is changed or
     sshd_ps_subsystem_result is changed or
     sshd_ps_match_result is changed or
-    sshd_ps_force_result is changed
+    sshd_ps_force_result is changed)
   tags: [admin, powershell-ssh, ps_port]
 
 # --- Publish SSH-ready facts (consumed by controller SSH config template) ---
@@ -249,13 +246,16 @@
   ansible.builtin.import_tasks: wsl_reset.yml
   tags: [wsl-reset, never]
 
-# --- WSL: enable feature + install distro ---
+# --- WSL: enable feature + install distro (disabled by default) ---
+# Use include_tasks so when wsl_enabled is false the file is never loaded.
 - name: Configure WSL and install distribution
-  ansible.builtin.import_tasks: ubuntu.yml
+  ansible.builtin.include_tasks: ubuntu.yml
+  when: wsl_enabled | default(false) | bool
   tags: [wsl, standalone]
 
 - name: Verify WSL deployment
-  ansible.builtin.import_tasks: verify_wsl.yml
+  ansible.builtin.include_tasks: verify_wsl.yml
+  when: wsl_enabled | default(false) | bool
   tags: [wsl, verify]
 
 # Include user tasks; run with --tags user to run only user tasks.

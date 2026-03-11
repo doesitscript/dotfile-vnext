@@ -1,12 +1,12 @@
 ---
 argument_specs:
   main:
-    short_description: Add OpenAI Docs MCP to Cursor mcp.json (streamable HTTP, no local install).
+    short_description: Add OpenAI Docs MCP and Codex MCP to Cursor mcp.json; install Codex on Mac/Ubuntu.
     description: >
-      Merges the OpenAI developer documentation MCP server (openaiDeveloperDocs)
-      into .cursor/mcp.json. Read-only, streamable HTTP; no local install.
-      Uses the same create-or-merge pattern as other mcp_servers roles.
-      Ref: https://developers.openai.com/resources/docs-mcp
+      Two MCP server blocks: (1) openaiDeveloperDocs (streamable HTTP, URL only);
+      (2) codex (command from Codex app binary). Installs Codex on macOS (Homebrew)
+      and Ubuntu (npm); skips Windows. Merges into .cursor/mcp.json; ensures
+      ~/.codex/config.toml has openaiDeveloperDocs URL. Ref: https://developers.openai.com/resources/docs-mcp
     options:
       openai_docs_mcp_url:
         type: str
@@ -28,3 +28,22 @@ argument_specs:
         description: >
           Key under mcpServers in mcp.json (Cursor / Codex).
 
+      openai_docs_codex_command:
+        type: str
+        required: false
+        default: ""
+        description: >
+          Path to codex binary. Set by mac.yml/ubuntu.yml after install.
+
+      openai_docs_codex_enabled:
+        type: bool
+        required: false
+        default: true
+        description: >
+          If false, the codex MCP server block is omitted from mcp.json.
+
+      openai_docs_codex_config_dir:
+        type: str
+        required: false
+        description: >
+          Directory for ~/.codex/config.toml. Defaults to dotfiles_user_home/.codex.

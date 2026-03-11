@@ -1,6 +1,7 @@
 ---
-# Merge OpenAI Docs MCP (streamable HTTP) into .cursor/mcp.json.
-# Server key: openaiDeveloperDocs. Entry: { "url": "..." }.
+# Merge two MCP server blocks into .cursor/mcp.json:
+# 1) openaiDeveloperDocs: { "url": "..." } (streamable HTTP)
+# 2) codex: { "command": "<path>" } when Codex app is installed (mac/ubuntu) and enabled
 - name: Ensure .cursor directory exists in project root
   ansible.builtin.file:
     path: "{{ openai_docs_project_dir }}"
@@ -26,14 +27,17 @@
     - development
     - research
 
-- name: Create .cursor/mcp.json with openaiDeveloperDocs entry
+- name: Create .cursor/mcp.json with openaiDeveloperDocs and optional codex entries
   ansible.builtin.copy:
     dest: "{{ openai_docs_project_dir }}/mcp.json"
     mode: "0644"
-    content: "{{ {'mcpServers': {(openai_docs_server_key): _openai_docs_entry}} | to_nice_json }}\n"
+    content: "{{ {'mcpServers': _initial_servers} | to_nice_json }}\n"
   vars:
     _openai_docs_entry:
       url: "{{ openai_docs_mcp_url }}"
+    _codex_enabled: "{{ (openai_docs_codex_command | default('')) and (openai_docs_codex_enabled | default(true) | bool) }}"
+    _codex_entry: "{{ {'codex': {'command': openai_docs_codex_command}} if _codex_enabled else {} }}"
+    _initial_servers: "{{ {(openai_docs_server_key): _openai_docs_entry} | combine(_codex_entry) }}"
   when: not _mcp_json_stat.stat.exists
   tags:
     - mcp
@@ -43,7 +47,7 @@
     - development
     - research
 
-- name: Ensure openaiDeveloperDocs entry exists in .cursor/mcp.json
+- name: Ensure openaiDeveloperDocs and codex entries exist in .cursor/mcp.json
   when: _mcp_json_stat.stat.exists
   block:
     - name: Read existing .cursor/mcp.json
@@ -58,7 +62,7 @@
         - development
         - research
 
-    - name: Merge openaiDeveloperDocs entry into existing config
+    - name: Merge openaiDeveloperDocs and codex entries into existing config
       ansible.builtin.copy:
         dest: "{{ openai_docs_project_dir }}/mcp.json"
         content: "{{ _merged | to_nice_json }}\n"
@@ -67,12 +71,10 @@
         _existing: "{{ _mcp_json_raw.content | b64decode | from_json }}"
         _openai_docs_entry:
           url: "{{ openai_docs_mcp_url }}"
-        _merged: >-
-          {{ _existing | combine({
-               'mcpServers': (_existing.mcpServers | default({})) | combine({
-                 (openai_docs_server_key): _openai_docs_entry
-               })
-             }) }}
+        _codex_enabled: "{{ (openai_docs_codex_command | default('')) and (openai_docs_codex_enabled | default(true) | bool) }}"
+        _codex_entry: "{{ {'codex': {'command': openai_docs_codex_command}} if _codex_enabled else {} }}"
+        _servers: "{{ (_existing.mcpServers | default({})) | combine({(openai_docs_server_key): _openai_docs_entry}) | combine(_codex_entry) }}"
+        _merged: "{{ _existing | combine({'mcpServers': _servers}) }}"
       tags:
         - mcp
         - openai-docs
