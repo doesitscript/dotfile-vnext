@@ -1,10 +1,11 @@
 ---
-# Install Codex app (Homebrew). Includes the Codex MCP server. Binary path is used as command in mcp.json.
+# Install Codex app (Homebrew). Includes the Codex MCP server.
+# Binary path is resolved via 'brew --prefix codex' — the authoritative Homebrew path source.
 - name: Install Codex app via Homebrew (macOS)
   community.general.homebrew:
     name: codex
     state: present
-  register: _codex_brew_install
+  timeout: 120
   tags:
     - mcp
     - openai-docs
@@ -13,11 +14,10 @@
     - development
     - research
 
-- name: Resolve Codex binary path (macOS)
-  ansible.builtin.command: which codex
-  register: _codex_which
+- name: Get Codex install prefix from Homebrew (macOS)
+  ansible.builtin.command: brew --prefix codex
+  register: _codex_brew_prefix
   changed_when: false
-  failed_when: false
   tags:
     - mcp
     - openai-docs
@@ -28,8 +28,7 @@
 
 - name: Set Codex command path for mcp.json (macOS)
   ansible.builtin.set_fact:
-    openai_docs_codex_command: "{{ _codex_which.stdout | trim }}"
-  when: _codex_which.rc == 0 and _codex_which.stdout | trim | length > 0
+    openai_docs_codex_command: "{{ _codex_brew_prefix.stdout | trim }}/bin/codex"
   tags:
     - mcp
     - openai-docs

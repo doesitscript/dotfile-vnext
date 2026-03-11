@@ -1,10 +1,14 @@
 ---
-# Install Codex app (npm global). Includes the Codex MCP server. Binary path is used as command in mcp.json.
+# Install Codex app (npm global via nvm-managed npm). Includes the Codex MCP server.
 # Upgrade: npm i -g @openai/codex@latest
+# Requires: roles/common/node must run first (provides nvm + node_default_version).
 - name: Install Codex app via npm (Ubuntu)
-  ansible.builtin.command: npm i -g @openai/codex
-  register: _codex_npm_install
-  changed_when: "'added' in (_codex_npm_install.stdout | default('')) or 'changed' in (_codex_npm_install.stdout | default(''))"
+  community.general.npm:
+    name: "@openai/codex"
+    global: true
+    state: present
+    executable: "{{ dotfiles_user_home }}/.nvm/versions/node/{{ node_default_version }}/bin/npm"
+  timeout: 300
   tags:
     - mcp
     - openai-docs
@@ -13,11 +17,11 @@
     - development
     - research
 
-- name: Resolve Codex binary path (Ubuntu)
-  ansible.builtin.command: which codex
-  register: _codex_which
-  changed_when: false
-  failed_when: false
+- name: Stat Codex binary candidates (Ubuntu)
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ openai_docs_codex_bin_candidates }}"
+  register: _codex_stat_results
   tags:
     - mcp
     - openai-docs
@@ -28,8 +32,7 @@
 
 - name: Set Codex command path for mcp.json (Ubuntu)
   ansible.builtin.set_fact:
-    openai_docs_codex_command: "{{ _codex_which.stdout | trim }}"
-  when: _codex_which.rc == 0 and _codex_which.stdout | trim | length > 0
+    openai_docs_codex_command: "{{ (_codex_stat_results.results | selectattr('stat.exists') | first).item }}"
   tags:
     - mcp
     - openai-docs

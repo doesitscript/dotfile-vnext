@@ -1,21 +1,16 @@
 ---
-# Cursor extension identifier (marketplace ID + version + platform suffix).
-redhat_ansible_extension: "redhat.ansible-26.1.3-universal"
+# Build from source: clone vscode-ansible and build the MCP package.
+# Pin to a release tag; change this only when you want to upgrade.
+redhat_ansible_version: "v24.6"
 
-# Cursor CLI binary name ("cursor" for Cursor IDE, "code" for VS Code).
-redhat_ansible_cli_binary: cursor
+# Upstream repository
+redhat_ansible_repo: "https://github.com/ansible/vscode-ansible.git"
 
-# On remote connections (SSH/WSL) Cursor installs extensions under
-# ~/.cursor-server/extensions/ instead of ~/.cursor/extensions/.
-# Auto-detect: prefer .cursor-server when it exists (remote), fall back
-# to .cursor (local).
-redhat_ansible_ext_base: >-
-  {{ (ansible_env.HOME + '/.cursor-server/extensions')
-     if (ansible_env.HOME + '/.cursor-server/extensions') is directory
-     else (ansible_env.HOME + '/.cursor/extensions') }}
+# Install location (XDG-aligned ~/.local/lib)
+redhat_ansible_install_dir: "{{ dotfiles_user_home }}/.local/lib/vscode-ansible"
 
-# Full path to the MCP CLI entry point inside the installed extension.
-redhat_ansible_cli_path: "{{ redhat_ansible_ext_base }}/{{ redhat_ansible_extension }}/out/mcp/cli.js"
+# Built MCP entry point (packages/ansible-mcp-server/out/server/src/cli.js)
+redhat_ansible_entry_point: "{{ redhat_ansible_install_dir }}/packages/ansible-mcp-server/out/server/src/cli.js"
 
 # Cursor project directory for .cursor/mcp.json
 redhat_ansible_project_dir: "{{ dotfiles_home }}/.cursor"
@@ -23,10 +18,10 @@ redhat_ansible_project_dir: "{{ dotfiles_home }}/.cursor"
 # Relative path from project root (for tracking/debugging)
 redhat_ansible_role_path: "roles/mcp_servers/redhat-ansible"
 
-# PATH exported to the MCP server so it can find ansible CLIs in ~/.local/bin
+# PATH exported to the MCP server so it can find ansible CLIs
 redhat_ansible_server_path: "{{ dotfiles_user_home }}/.local/bin:{{ dotfiles_user_home }}/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
-# WORKSPACE_ROOT tells the extension which project tree to analyze.
+# WORKSPACE_ROOT tells the MCP server which project tree to analyze
 redhat_ansible_workspace_root: "{{ dotfiles_home }}"
 
 # Shared Ansible env vars

@@ -1,0 +1,28 @@
+---
+- name: Clone vscode-ansible repository (macOS)
+  ansible.builtin.git:
+    repo: "{{ redhat_ansible_repo }}"
+    dest: "{{ redhat_ansible_install_dir }}"
+    version: "{{ redhat_ansible_version }}"
+    update: true
+
+- name: Install vscode-ansible yarn dependencies (macOS)
+  ansible.builtin.shell: |
+    export NVM_DIR="{{ dotfiles_user_home }}/.nvm"
+    . "$NVM_DIR/nvm.sh"
+    corepack enable 2>/dev/null || true
+    yarn install
+  args:
+    chdir: "{{ redhat_ansible_install_dir }}"
+    creates: "{{ redhat_ansible_install_dir }}/node_modules"
+    executable: /bin/bash
+
+- name: Build Red Hat Ansible MCP package (macOS)
+  ansible.builtin.shell: |
+    export NVM_DIR="{{ dotfiles_user_home }}/.nvm"
+    . "$NVM_DIR/nvm.sh"
+    npm run build
+  args:
+    chdir: "{{ redhat_ansible_install_dir }}/packages/ansible-mcp-server"
+    creates: "{{ redhat_ansible_entry_point }}"
+    executable: /bin/bash

@@ -1,0 +1,26 @@
+---
+- name: Clone vscode-ansible repository (Windows)
+  ansible.builtin.git:
+    repo: "{{ redhat_ansible_repo }}"
+    dest: "{{ redhat_ansible_install_dir }}"
+    version: "{{ redhat_ansible_version }}"
+    update: true
+
+- name: Install vscode-ansible yarn dependencies (Windows)
+  ansible.windows.win_shell: |
+    $env:NVM_DIR = "{{ dotfiles_user_home }}\.nvm"
+    & "$env:NVM_DIR\nvm.exe" use default
+    corepack enable 2>$null; if (-not $?) { }
+    yarn install
+  args:
+    chdir: "{{ redhat_ansible_install_dir }}"
+    creates: "{{ redhat_ansible_install_dir }}\\node_modules"
+
+- name: Build Red Hat Ansible MCP package (Windows)
+  ansible.windows.win_shell: |
+    $env:NVM_DIR = "{{ dotfiles_user_home }}\.nvm"
+    & "$env:NVM_DIR\nvm.exe" use default
+    npm run build
+  args:
+    chdir: "{{ redhat_ansible_install_dir }}\\packages\\ansible-mcp-server"
+    creates: "{{ redhat_ansible_entry_point }}"

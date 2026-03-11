@@ -1,0 +1,42 @@
+---
+argument_specs:
+  main:
+    short_description: Build Red Hat Ansible MCP from source and configure .cursor/mcp.json.
+    description: >
+      Clones ansible/vscode-ansible, runs yarn install and builds the
+      packages/ansible-mcp-server package. Writes the "ansible" entry into
+      .cursor/mcp.json with the built cli.js path and required env vars.
+      Version is pinned via redhat_ansible_version; upgrade only when you change it.
+    options:
+      redhat_ansible_version:
+        type: str
+        required: false
+        default: "v24.6"
+        description: >
+          Git ref to pin (tag, branch, or sha). Change only when you want to upgrade.
+
+      redhat_ansible_repo:
+        type: str
+        required: false
+        default: "https://github.com/ansible/vscode-ansible.git"
+        description: Upstream repository URL.
+
+      redhat_ansible_install_dir:
+        type: str
+        required: false
+        description: Clone and build directory (default ~/.local/lib/vscode-ansible).
+
+      redhat_ansible_entry_point:
+        type: str
+        required: false
+        description: Built MCP CLI path (default install_dir/packages/ansible-mcp-server/out/server/src/cli.js).
+
+      redhat_ansible_project_dir:
+        type: str
+        required: false
+        description: Directory containing mcp.json (default dotfiles_home/.cursor).
+
+      redhat_ansible_workspace_root:
+        type: str
+        required: false
+        description: WORKSPACE_ROOT for the MCP server (default dotfiles_home).

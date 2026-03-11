@@ -6,21 +6,24 @@ Two blocks: (1) **openaiDeveloperDocs** — `{ "url": "https://developers.openai
 
 ## What this role does
 
-- **macOS:** `brew install codex`; **Ubuntu:** `npm i -g @openai/codex` (upgrade: `npm i -g @openai/codex@latest`). **Windows:** skipped.
-- Creates or merges `.cursor/mcp.json` with both openaiDeveloperDocs and codex blocks (same pattern as ansible-mcp).
+- **macOS:** `community.general.homebrew` installs codex; binary path resolved via `brew --prefix codex`. **Requires nothing external.**
+- **Ubuntu:** `community.general.npm` installs `@openai/codex` globally using the nvm-managed npm at `~/.nvm/versions/node/<node_default_version>/bin/npm`. **Requires `roles/common/node` to run first** (provides nvm + Node.js). Binary path resolved via stat on `openai_docs_codex_bin_candidates` (first existing path wins).
+- **Windows:** Skipped (Codex not supported).
+- Creates or merges `.cursor/mcp.json` with both openaiDeveloperDocs and codex blocks (same merge pattern as ansible-mcp).
 - Ensures `~/.codex` and `~/.codex/config.toml` with openaiDeveloperDocs URL block.
 
 ## Variables
-cat ~/.codex/config.toml 
 | Variable | Default | Description |
 
 |----------|---------|-------------|
 | `openai_docs_mcp_url` | `https://developers.openai.com/mcp` | Streamable HTTP MCP endpoint. |
 | `openai_docs_project_dir` | `{{ dotfiles_home }}/.cursor` | Directory containing `mcp.json`. |
 | `openai_docs_server_key` | `openaiDeveloperDocs` | Key under `mcpServers` in `mcp.json`. |
-| `openai_docs_codex_command` | `""` | Set by mac.yml/ubuntu.yml; path to codex binary. |
+| `openai_docs_codex_command` | `""` | Set by mac.yml/ubuntu.yml after install; path to codex binary. |
 | `openai_docs_codex_enabled` | `true` | Set to `false` to omit the codex MCP block. |
 | `openai_docs_codex_config_dir` | `{{ dotfiles_user_home }}/.codex` | Directory for `~/.codex/config.toml`. |
+| `node_default_version` | `"20"` | Node.js version used by nvm (Ubuntu path resolution). Keep in sync with `roles/common/node`. |
+| `openai_docs_codex_bin_candidates` | see defaults | Ordered list of Codex binary paths for Ubuntu stat resolution. First existing path wins. |
 
 ## Tags
 
