@@ -19,8 +19,8 @@
 - name: Build Red Hat Ansible MCP package (Windows)
   ansible.windows.win_shell: |
     $env:NVM_DIR = "{{ dotfiles_user_home }}\.nvm"
-    & "$env:NVM_DIR\nvm.exe" use default
-    npm run build
+    & "$env:NVM_DIR\nvm.exe" install 24 2>$null; & "$env:NVM_DIR\nvm.exe" use 24
+    corepack enable 2>$null; yarn run build
   args:
-    chdir: "{{ redhat_ansible_install_dir }}\\packages\\ansible-mcp-server"
+    chdir: "{{ redhat_ansible_install_dir }}"
     creates: "{{ redhat_ansible_entry_point }}"
