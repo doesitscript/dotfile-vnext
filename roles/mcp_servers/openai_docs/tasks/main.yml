@@ -1,5 +1,31 @@
 ---
 # OpenAI Docs MCP + Codex app. Skip on Windows: .cursor/mcp.json is used on control/dev host; Codex is not supported on Windows.
+
+# Ensure node_npm_executable is available when common/node has not run in this play
+# (e.g. targeted tag runs). No-op when common/node has already set the fact.
+- name: Resolve node_npm_executable if not already set by common/node
+  ansible.builtin.include_role:
+    name: common/node
+    tasks_from: resolve_npm.yml
+    apply:
+      tags:
+        - mcp
+        - openai-docs
+        - codex
+        - openai
+        - development
+        - research
+  when:
+    - node_npm_executable is not defined
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+  tags:
+    - mcp
+    - openai-docs
+    - codex
+    - openai
+    - development
+    - research
+
 - name: Install Codex app on macOS (includes Codex MCP server)
   ansible.builtin.import_tasks: mac.yml
   when: ansible_facts['system'] == "Darwin"

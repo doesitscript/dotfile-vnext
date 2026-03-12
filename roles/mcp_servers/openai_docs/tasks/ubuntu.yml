@@ -1,27 +1,14 @@
 ---
-# Install Codex app (npm global via nvm-managed npm). Includes the Codex MCP server.
+# Install Codex app via nvm-managed npm (Ubuntu/WSL). Includes the Codex MCP server.
 # Upgrade: npm i -g @openai/codex@latest
-# Requires: roles/common/node must run first (provides nvm + node_default_version).
+# Requires: roles/common/node must run first — provides node_npm_executable.
 - name: Install Codex app via npm (Ubuntu)
   community.general.npm:
     name: "@openai/codex"
     global: true
     state: present
-    executable: "{{ dotfiles_user_home }}/.nvm/versions/node/{{ node_default_version }}/bin/npm"
+    executable: "{{ node_npm_executable }}"
   timeout: 300
-  tags:
-    - mcp
-    - openai-docs
-    - codex
-    - openai
-    - development
-    - research
-
-- name: Stat Codex binary candidates (Ubuntu)
-  ansible.builtin.stat:
-    path: "{{ item }}"
-  loop: "{{ openai_docs_codex_bin_candidates }}"
-  register: _codex_stat_results
   tags:
     - mcp
     - openai-docs
@@ -32,7 +19,7 @@
 
 - name: Set Codex command path for mcp.json (Ubuntu)
   ansible.builtin.set_fact:
-    openai_docs_codex_command: "{{ (_codex_stat_results.results | selectattr('stat.exists') | first).item }}"
+    openai_docs_codex_command: "{{ node_npm_executable | dirname }}/codex"
   tags:
     - mcp
     - openai-docs

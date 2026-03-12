@@ -1,23 +1,14 @@
 ---
-# Install Codex app (Homebrew). Includes the Codex MCP server.
-# Binary path is resolved via 'brew --prefix codex' — the authoritative Homebrew path source.
-- name: Install Codex app via Homebrew (macOS)
-  community.general.homebrew:
-    name: codex
+# Install Codex app via nvm-managed npm (macOS). Includes the Codex MCP server.
+# Upgrade: npm i -g @openai/codex@latest
+# Requires: roles/common/node must run first — provides node_npm_executable.
+- name: Install Codex app via npm (macOS)
+  community.general.npm:
+    name: "@openai/codex"
+    global: true
     state: present
-  timeout: 120
-  tags:
-    - mcp
-    - openai-docs
-    - codex
-    - openai
-    - development
-    - research
-
-- name: Get Codex install prefix from Homebrew (macOS)
-  ansible.builtin.command: brew --prefix codex
-  register: _codex_brew_prefix
-  changed_when: false
+    executable: "{{ node_npm_executable }}"
+  timeout: 300
   tags:
     - mcp
     - openai-docs
@@ -28,7 +19,7 @@
 
 - name: Set Codex command path for mcp.json (macOS)
   ansible.builtin.set_fact:
-    openai_docs_codex_command: "{{ _codex_brew_prefix.stdout | trim }}/bin/codex"
+    openai_docs_codex_command: "{{ node_npm_executable | dirname }}/codex"
   tags:
     - mcp
     - openai-docs

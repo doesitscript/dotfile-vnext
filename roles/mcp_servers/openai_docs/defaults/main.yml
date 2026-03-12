@@ -18,13 +18,5 @@ openai_docs_codex_enabled: true
 # Codex app config directory (for ~/.codex/config.toml)
 openai_docs_codex_config_dir: "{{ dotfiles_user_home | default(ansible_user_dir) }}/.codex"
 
-# Node.js default version (inherited from roles/common/node; duplicated here so
-# openai_docs can run without common/node in scope — keep in sync).
-node_default_version: "20"
-
-# Ordered candidate paths for the Codex binary on Ubuntu (first existing path wins).
-# Primary: nvm-managed node. Fallbacks: system npm global bin locations.
-openai_docs_codex_bin_candidates:
-  - "{{ dotfiles_user_home }}/.nvm/versions/node/{{ node_default_version }}/bin/codex"
-  - "/usr/local/bin/codex"
-  - "/usr/bin/codex"
+# Codex binary path is derived at runtime: {{ node_npm_executable | dirname }}/codex
+# Set by mac.yml and ubuntu.yml after npm install. Requires roles/common/node.

@@ -1,34 +1,31 @@
 ---
 # MCP Inspector on macOS: ensure npx, optional global install, deploy usage doc.
 # Ref: https://modelcontextprotocol.io/docs/tools/inspector
+# Requires: roles/common/node must run first — provides node_npm_executable.
 
 - name: Check npx is available for MCP Inspector
-  ansible.builtin.command: npx --version
-  register: _mcp_inspector_npx_check
-  changed_when: false
-  failed_when: false
+  ansible.builtin.stat:
+    path: "{{ node_npm_executable | dirname }}/npx"
+  register: _mcp_inspector_npx_stat
 
-- name: Fail if npx is not available (install common/node first or provide Node/npm)
+- name: Fail if npx is not available (run common/node role first)
   ansible.builtin.fail:
     msg: >
-      npx not found. MCP Inspector runs via npx. Ensure Node.js is installed
-      (e.g. run the common/node role first on this host).
-  when: _mcp_inspector_npx_check.rc != 0
+      npx not found at {{ node_npm_executable | dirname }}/npx.
+      Ensure roles/common/node has run on this host.
+  when: not _mcp_inspector_npx_stat.stat.exists
   tags:
     - mcp_inspector
 
-- name: Install MCP Inspector globally (optional, for faster npx runs)
-  ansible.builtin.shell: |
-    export NVM_DIR="{{ dotfiles_user_home | default(ansible_user_dir) }}/.nvm"
-    if [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh"; fi
-    npm install -g @modelcontextprotocol/inspector
-  args:
-    executable: /bin/bash
+- name: Install MCP Inspector globally via npm (optional, for faster npx runs)
+  community.general.npm:
+    name: "@modelcontextprotocol/inspector"
+    global: true
+    state: present
+    executable: "{{ node_npm_executable }}"
   when:
-    - _mcp_inspector_npx_check.rc == 0
+    - _mcp_inspector_npx_stat.stat.exists
     - mcp_inspector_install_package | bool
-  register: _mcp_inspector_install
-  changed_when: "'added' in _mcp_inspector_install.stdout or 'updated' in _mcp_inspector_install.stdout"
   tags:
     - mcp_inspector
     - mcp_inspector_install

@@ -567,6 +567,49 @@ A playbook project orchestrates landscapes and types via one or more playbooks, 
 - [ ] Use backslash escapes in double quoted strings for long URLs without spaces
 - [ ] Avoid lines longer than 160 characters
 
+## Project Patterns — Enforced Conventions
+
+These are project-level design decisions that must be followed by every agent and every
+new role. They are not suggestions. Violating them introduces the exact class of bug they
+were written to prevent.
+
+### npm / nvm — `node_npm_executable`
+
+**Rule:** Any role that requires npm or a globally-installed npm binary **must** declare
+`roles/common/node` as a prerequisite and use `{{ node_npm_executable }}`. No role may
+construct a nvm path directly.
+
+**Prohibited in all roles:**
+- Hardcoding `~/.nvm/versions/node/` path segments
+- Using `node_default_version` as a path component (it is an install alias, not a directory name)
+- Calling `which npm` or `which node`
+- Sourcing `nvm.sh` for the purpose of resolving a global binary path
+
+**Why:** `node_default_version: "20"` is the alias nvm uses to install. The actual
+directory nvm creates is `v20.20.0` — the alias string is never a valid path component.
+`roles/common/node` resolves this once via `nvm which {{ node_default_version }}` (a
+deterministic nvm query) and sets `node_npm_executable` as a play-scoped fact. This
+separates "the identifier used to install" from "the path used to reference the result."
+
+**Correct usage in a consumer role:**
+```yaml
+- name: Install my-package globally via npm
+  community.general.npm:
+    name: my-package
+    global: true
+    state: present
+    executable: "{{ node_npm_executable }}"
+```
+
+**Where `node_npm_executable` is set:** `roles/common/node/tasks/main.yml` (and
+`mac.yml`, `ubuntu.yml`) — the final two tasks in each file after node installation.
+
+**If `common/node` has not run in the current play:** `node_npm_executable` will be
+undefined. The role must either list `common/node` as a dependency in
+`meta/main.yml` or assert `node_npm_executable is defined` at the top of the task file.
+
+---
+
 ## Glossary
 
 ### Full Qualified Collection Name (FQCN)

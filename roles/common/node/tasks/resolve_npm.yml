@@ -1,0 +1,20 @@
+---
+# Resolve the nvm default alias to the actual installed node binary path and set
+# node_npm_executable. This file is included by roles that need node_npm_executable
+# when roles/common/node has not run in the current play (e.g. targeted tag runs).
+#
+# Guard: callers should wrap this with:
+#   when: node_npm_executable is not defined
+- name: Resolve nvm default alias to actual installed node path
+  ansible.builtin.shell: |
+    export NVM_DIR="{{ dotfiles_user_home }}/.nvm"
+    . "$NVM_DIR/nvm.sh"
+    nvm which {{ node_default_version }}
+  register: _node_which
+  changed_when: false
+  args:
+    executable: /bin/bash
+
+- name: Set node_npm_executable fact
+  ansible.builtin.set_fact:
+    node_npm_executable: "{{ _node_which.stdout | trim | dirname }}/npm"

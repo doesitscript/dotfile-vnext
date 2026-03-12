@@ -1,10 +1,9 @@
 ---
+# Requires: roles/common/node must run first — provides node_npm_executable.
 - name: Install supergateway globally via npm (Ubuntu/WSL)
-  ansible.builtin.shell: |
-    export NVM_DIR="{{ dotfiles_user_home }}/.nvm"
-    . "$NVM_DIR/nvm.sh"
-    npm install -g supergateway{{ '@' + supergateway_version if supergateway_version else '' }}
-  args:
-    executable: /bin/bash
-  register: _sg_install
-  changed_when: "'added' in _sg_install.stdout or 'updated' in _sg_install.stdout"
+  community.general.npm:
+    name: supergateway
+    version: "{{ supergateway_version | default(omit) }}"
+    global: true
+    state: present
+    executable: "{{ node_npm_executable }}"
