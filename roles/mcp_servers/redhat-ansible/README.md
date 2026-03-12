@@ -12,7 +12,10 @@ The Red Hat Ansible VS Code/Cursor extension used to ship an MCP entry point at 
 
 1. Clones [ansible/vscode-ansible](https://github.com/ansible/vscode-ansible) to `~/.local/lib/vscode-ansible` (version-pinned via git ref).
 2. Runs `yarn install` and `yarn run build` at repo root (using NVM-managed Node 24 where available).
-3. Merges the `"ansible"` server entry into `.cursor/mcp.json` with the built `cli.js` path and required environment variables.
+3. Resolves the Node binary via `nvm which 24` (fallback `nvm which default`) — project pattern: resolve with nvm, never construct nvm paths.
+4. Merges the `"ansible"` server entry into `.cursor/mcp.json` with the **full path to node** as the command, the built `cli.js` path in args, and required environment variables.
+
+**Why the full path to node?** Cursor often runs without nvm on PATH (e.g. when launched from the GUI). Using `command: "node"` then causes spawn ENOENT. We intentionally write the resolved full path (e.g. `~/.nvm/versions/node/v24.14.0/bin/node`) into `mcp.json` so the MCP server starts reliably. This is intentional and acceptable.
 
 ## Dependencies
 
@@ -48,6 +51,10 @@ Example (pin to a newer tag):
 ```yaml
 redhat_ansible_version: "v26.4.0"
 ```
+
+## #FIXME
+
+Re-run the playbook (with this role) when you use a different Node 24.x or a different machine. The role rewrites `.cursor/mcp.json` with the **resolved** Node path (via `nvm which 24` or `nvm which default`). If you upgrade Node 24 or move to another host, run the playbook once so the role writes the correct node path into the ansible MCP entry; otherwise Cursor may still point at an old or missing node binary and the MCP will fail with spawn ENOENT.
 
 ## Tags
 

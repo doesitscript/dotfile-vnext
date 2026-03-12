@@ -6,19 +6,11 @@
     version: "{{ redhat_ansible_version }}"
     update: true
 
-- name: Ensure Node 24 is available for MCP build (macOS)
-  ansible.builtin.shell: |
-    export NVM_DIR="{{ dotfiles_user_home }}/.nvm"
-    . "$NVM_DIR/nvm.sh"
-    nvm install 24
-  args:
-    executable: /bin/bash
-
 - name: Install vscode-ansible yarn dependencies (macOS)
   ansible.builtin.shell: |
     export NVM_DIR="{{ dotfiles_user_home }}/.nvm"
     . "$NVM_DIR/nvm.sh"
-    nvm exec 24 bash -c 'corepack enable 2>/dev/null || true; yarn install'
+    nvm exec default bash -c 'corepack enable 2>/dev/null || true; yarn install'
   args:
     chdir: "{{ redhat_ansible_install_dir }}"
     creates: "{{ redhat_ansible_install_dir }}/node_modules"
@@ -28,7 +20,7 @@
   ansible.builtin.shell: |
     export NVM_DIR="{{ dotfiles_user_home }}/.nvm"
     . "$NVM_DIR/nvm.sh"
-    nvm exec 24 bash -c 'corepack enable && yarn run build'
+    nvm exec default bash -c 'yarn workspace @ansible/ansible-mcp-server run build'
   args:
     chdir: "{{ redhat_ansible_install_dir }}"
     creates: "{{ redhat_ansible_entry_point }}"

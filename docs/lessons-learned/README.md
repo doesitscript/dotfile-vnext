@@ -27,7 +27,7 @@ one-line summary row to the index below.
 
 | File | One-line summary |
 |---|---|
-| *(empty — add entries here)* | |
+| [vscode-ansible-mcp-server-bundler-tsconfig--UNRESOLVED.md](ansible/vscode-ansible-mcp-server-bundler-tsconfig--UNRESOLVED.md) | v26.x tsconfig switched to `moduleResolution: "bundler"` + `@src/*` path aliases; plain `tsc` leaves aliases unresolved in compiled JS; `ERR_MODULE_NOT_FOUND` at runtime; workaround is pinning to v25.12.2; fix for v26.x+ is `tsc-alias` post-build step |
 
 ### `docker/` — Docker Engine, contexts, Compose, daemon config
 

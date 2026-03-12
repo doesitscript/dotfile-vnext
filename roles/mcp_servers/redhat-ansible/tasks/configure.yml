@@ -5,6 +5,20 @@
     state: directory
     mode: "0755"
 
+# Resolve node via nvm (project pattern: nvm which, never construct paths). Prefer Node 24 for MCP.
+- name: Resolve full path to Node for MCP (nvm which 24, fallback default)
+  ansible.builtin.shell: |
+    export NVM_DIR="{{ dotfiles_user_home }}/.nvm"
+    . "$NVM_DIR/nvm.sh"
+    nvm which 24 2>/dev/null || nvm which default
+  register: _node_path_result
+  changed_when: false
+  failed_when: not (_node_path_result.stdout | default('') | trim)
+
+- name: Set full path to node for MCP command
+  ansible.builtin.set_fact:
+    _redhat_ansible_node_command: "{{ _node_path_result.stdout | trim }}"
+
 - name: Check whether .cursor/mcp.json exists
   ansible.builtin.stat:
     path: "{{ redhat_ansible_project_dir }}/mcp.json"
@@ -17,7 +31,7 @@
     content: "{{ {'mcpServers': {'ansible': _rh_ansible_entry}} | to_nice_json }}\n"
   vars:
     _rh_ansible_entry:
-      command: node
+      command: "{{ _redhat_ansible_node_command }}"
       args:
         - "{{ redhat_ansible_entry_point }}"
         - "--stdio"
@@ -42,7 +56,7 @@
       vars:
         _existing: "{{ _mcp_json_raw.content | b64decode | from_json }}"
         _rh_ansible_entry:
-          command: node
+          command: "{{ _redhat_ansible_node_command }}"
           args:
             - "{{ redhat_ansible_entry_point }}"
             - "--stdio"
