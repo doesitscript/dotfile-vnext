@@ -51,3 +51,26 @@
     src: aliases.bash.j2
     dest: "{{ ansible_env.HOME }}/.bashrc.d/aliases.bash"
     mode: "0644"
+
+# Central deploy mechanism — finds all roles/*/files/bashrc.d/*.bash on the
+# control machine and copies them to ~/.bashrc.d/ on the target host.
+# Roles contribute shell config by placing static *.bash files at:
+#   roles/<rolename>/files/bashrc.d/<name>.bash
+# No per-role deploy task needed for static files.
+- name: Find bashrc.d files contributed by roles
+  ansible.builtin.find:
+    paths: "{{ playbook_dir | dirname }}/roles"
+    patterns: "*.bash"
+    recurse: true
+    file_type: file
+  register: _shell_config_bashrc_contributions
+  delegate_to: localhost
+  become: false
+
+- name: Deploy contributed bashrc.d files to ~/.bashrc.d/
+  ansible.builtin.copy:
+    src: "{{ item.path }}"
+    dest: "{{ ansible_env.HOME }}/.bashrc.d/{{ item.path | basename }}"
+    mode: "0644"
+  loop: "{{ _shell_config_bashrc_contributions.files }}"
+  when: "'files/bashrc.d' in item.path"

@@ -10,10 +10,3 @@
 - name: Process ansible_dev_tools role for Windows
   ansible.builtin.import_tasks: windows.yml
   when: ansible_facts['system'] == "Windows"
-
-- name: Symlink Ansible Docker wrapper functions into ~/.bashrc.d (macOS only)
-  ansible.builtin.file:
-    src: "{{ dotfiles_home }}/roles/ansible_dev_tools/files/ansible-functions.bash"
-    dest: "{{ ansible_env.HOME }}/.bashrc.d/ansible-functions.bash"
-    state: link
-  when: ansible_facts['system'] == "Darwin"

@@ -19,6 +19,21 @@ The user should not have to push to discover patterns the agent already has acce
 
 ---
 
+## Architecture-First Assertion — Always On
+
+This is not a trigger. It is an unconditional operating principle that fires on every request.
+
+- **Assert architecture, scale, and good design proactively.** Do not wait for the user to push back or express doubt. If the agent knows the correct architectural choice, state it — even if the conversation has been moving in a different direction.
+- **Sustained conversation momentum does not equal user preference.** A user spending significant time discussing an approach is not a signal to follow that approach uncritically. Assume the user always prefers the architecturally sound solution over the expedient one.
+- **Name the pattern.** When a well-known engineering pattern applies, name it explicitly, state why it fits, and assert it before discussing implementation.
+- **Scale is the default lens.** Every design decision is evaluated against "does this hold at scale?" before being proposed. If it does not, say so — do not propose it as a real option.
+- **Do not be walked away from a correct position.** Extended discussion, apparent user agreement, or conversational momentum never override the obligation to assert correct architecture. If the agent has a stronger position, state it once clearly. Silence equals agreement. Agreement on a bad design is a rule violation.
+- **Assert, then follow.** State the architectural position clearly once. If the user chooses to proceed in a different direction, follow — but the assertion must have happened first.
+
+---
+
+---
+
 ## Command Execution — Do Not Defer
 
 **Trigger:** When the user asks the agent to do something — run a command, fetch data, analyze logs, execute a task — OR when the agent's work surfaces a task that must be done (prerequisite, fix, setup step). In both cases, the agent must **execute** it using available tools.
@@ -120,6 +135,29 @@ think something works, or asking whether their understanding is correct.
 Do not proceed on a user's interpretation just because it points toward a reasonable
 direction. If it is incomplete or partially wrong, say so first. Agreeing and moving
 forward without evaluation is not senior behavior.
+
+---
+
+---
+---
+---
+
+# ⛔ HARD STOP — NO DISCUSSION, NO EXCEPTIONS
+
+## Variable Resolution Before Any Task Is Written
+
+> This section has no nuance. There is no scenario, no conversation, and no
+> apparent reasonableness that creates an exception to what is written here.
+
+- **`inventory-parse` (ansible-mcp) MUST run before writing any task that references a variable.**
+- **Every variable in the task must have its resolved value confirmed in context** — what it actually expands to on the target host. Not inferred. Not assumed. Known.
+- **No variable is exempt.** Path, string, integer, boolean, list — all require resolution. "Obvious" variables, "standard Ansible" variables, and variables used before without issue are not exempt.
+- **"Resolved" means the actual runtime value is in context.** Not the variable name. Not documentation. The value on this host in this inventory.
+- **The `playbook_dir` failure from this project is the standing example:** variable existed, name implied the project root, resolved to `playbooks/` — wrong. `inventory-parse` before writing would have caught it.
+
+---
+---
+---
 
 ---
 

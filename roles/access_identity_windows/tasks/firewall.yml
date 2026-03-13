@@ -13,16 +13,12 @@
     state: present
     enabled: true
 
-- name: Ensure firewall rule for PowerShell SSH port
+# TODO: disabled — PowerShell SSH port not needed while OpenSSH is removed.
+# Re-enable (state: present) when openssh_server_enabled is restored.
+- name: Remove firewall rule for PowerShell SSH port
   community.windows.win_firewall_rule:
     name: sshd-PowerShell-In-TCP
-    localport: "{{ win_ssh_powershell_port }}"
-    protocol: tcp
-    direction: in
-    action: allow
-    state: present
-    enabled: true
-    description: "OpenSSH PowerShell session (port {{ win_ssh_powershell_port }})"
+    state: absent
   tags: [ps_port]
 
 - name: Ensure firewall rule for WSL direct SSH port

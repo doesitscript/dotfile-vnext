@@ -127,12 +127,14 @@ node_default_version: "20"
 
 ## Files to Change
 
-| File | Change |
-|------|--------|
-| `roles/mcp_servers/openai_docs/tasks/mac.yml` | Add `timeout: 120` to homebrew task; replace `which`/set_fact with `brew --prefix codex` + `changed_when: false` + set_fact |
-| `roles/mcp_servers/openai_docs/tasks/ubuntu.yml` | Replace `command: npm i -g` with `community.general.npm` + `executable` + `timeout: 300`; replace `which`/set_fact with stat loop on candidates + selectattr set_fact |
-| `roles/mcp_servers/openai_docs/defaults/main.yml` | Add `openai_docs_codex_bin_candidates` list; add `node_default_version: "20"` with comment |
-| `roles/mcp_servers/openai_docs/README.md` | Document: common/node must run first (provides nvm + Node); macOS path via `brew --prefix`; Ubuntu path via stat on candidate list |
-| `roles/mcp_servers/openai_docs/meta/argument_specs.yml` | Add `openai_docs_codex_bin_candidates` and `node_default_version` options |
+
+| File                                                    | Change                                                                                                                                                                |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `roles/mcp_servers/openai_docs/tasks/mac.yml`           | Add `timeout: 120` to homebrew task; replace `which`/set_fact with `brew --prefix codex` + `changed_when: false` + set_fact                                           |
+| `roles/mcp_servers/openai_docs/tasks/ubuntu.yml`        | Replace `command: npm i -g` with `community.general.npm` + `executable` + `timeout: 300`; replace `which`/set_fact with stat loop on candidates + selectattr set_fact |
+| `roles/mcp_servers/openai_docs/defaults/main.yml`       | Add `openai_docs_codex_bin_candidates` list; add `node_default_version: "20"` with comment                                                                            |
+| `roles/mcp_servers/openai_docs/README.md`               | Document: common/node must run first (provides nvm + Node); macOS path via `brew --prefix`; Ubuntu path via stat on candidate list                                    |
+| `roles/mcp_servers/openai_docs/meta/argument_specs.yml` | Add `openai_docs_codex_bin_candidates` and `node_default_version` options                                                                                             |
+
 
 Lint and validate after every file edit.

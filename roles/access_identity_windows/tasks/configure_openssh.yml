@@ -1,0 +1,128 @@
+---
+# configure_openssh.yml — Install and configure Windows OpenSSH server.
+# Called from main.yml when openssh_server_enabled is true.
+# Tags on individual tasks are preserved so --tags admin still works.
+
+# 1) Install OpenSSH capability
+- name: Ensure OpenSSH Server capability installed
+  ansible.windows.win_shell: |
+    $capName = "{{ openssh_server_capability }}"
+    $state = (Get-WindowsCapability -Online -Name $capName).State
+    if ($state -ne "Installed") {
+      Add-WindowsCapability -Online -Name $capName | Out-Null
+      Write-Output "INSTALLED"
+    } else {
+      Write-Output "AlreadyInstalled"
+    }
+  register: ssh_install
+  changed_when: "'INSTALLED' in (ssh_install.stdout | default(''))"
+  tags: [admin]
+
+# 2) Ensure service running
+- name: Ensure sshd service is enabled and started
+  ansible.windows.win_service:
+    name: sshd
+    start_mode: auto
+    state: started
+  tags: [admin]
+
+# 3) Primary SSH port (WSL/bash) — sshd_config + firewall
+- name: Ensure sshd listens on the configured port
+  community.windows.win_lineinfile:
+    path: "{{ sshd_config_path }}"
+    regexp: '^(?:#\s*)?Port\s+(?:22|{{ win_ssh_port }})\s*$'
+    line: "Port {{ win_ssh_port }}"
+    state: present
+  register: sshd_port_result
+  tags: [admin]
+
+# 3b) Keepalive — detect dead sessions and clean up stale connections.
+# Without this, dropped SSH clients leave zombie sessions indefinitely.
+- name: Ensure sshd has ClientAliveInterval configured
+  community.windows.win_lineinfile:
+    path: "{{ sshd_config_path }}"
+    regexp: '^(?:#\s*)?ClientAliveInterval\s'
+    line: "ClientAliveInterval 60"
+    insertafter: '^#? '
+    state: present
+  register: sshd_keepalive_interval
+  tags: [admin]
+
+- name: Ensure sshd has ClientAliveCountMax configured
+  community.windows.win_lineinfile:
+    path: "{{ sshd_config_path }}"
+    regexp: '^(?:#\s*)?ClientAliveCountMax\s'
+    line: "ClientAliveCountMax 3"
+    insertafter: '^ClientAliveInterval'
+    state: present
+  register: sshd_keepalive_count
+  tags: [admin]
+
+- name: Ensure sshd has MaxSessions configured
+  community.windows.win_lineinfile:
+    path: "{{ sshd_config_path }}"
+    regexp: '^(?:#\s*)?MaxSessions\s'
+    line: "MaxSessions {{ sshd_max_sessions }}"
+    insertafter: '^(?:#\s*)?MaxAuthTries\s'
+    state: present
+  register: sshd_max_sessions_result
+  tags: [admin]
+
+- name: Ensure sshd has LoginGraceTime configured
+  community.windows.win_lineinfile:
+    path: "{{ sshd_config_path }}"
+    regexp: '^(?:#\s*)?LoginGraceTime\s'
+    line: "LoginGraceTime {{ sshd_login_grace_time }}"
+    insertafter: '^# Authentication:'
+    state: present
+  register: sshd_login_grace
+  tags: [admin]
+
+# --- Firewall rules for all SSH ports (primary + PowerShell) ---
+- name: Configure Windows Firewall rules for SSH
+  ansible.builtin.import_tasks: firewall.yml
+  tags: [admin]
+
+# 5) Default shell
+# DefaultShell is set to PowerShell. Port 2222 lands directly in PowerShell.
+# Note: VS Code/Cursor Remote-SSH requires a Unix-like shell — use the
+# -wsl SSH alias (port 22 → WSL bash) for Remote-SSH editor connections.
+# Use server-225-win (port 2222) for interactive PowerShell sessions only.
+
+- name: Ensure HKLM:\SOFTWARE\OpenSSH registry key exists
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\OpenSSH
+    state: present
+  tags: [admin]
+
+- name: Set the default OpenSSH shell to PowerShell
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\OpenSSH
+    name: DefaultShell
+    data: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+    type: string
+    state: present
+  register: sshd_shell_result
+  tags: [admin]
+
+- name: Set OpenSSH DefaultShellCommandOption for PowerShell
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\OpenSSH
+    name: DefaultShellCommandOption
+    data: "-NoLogo -NoProfile -c"
+    type: string
+    state: present
+  register: sshd_shell_opt_result
+  tags: [admin]
+
+- name: Reset SSH connection after shell change
+  ansible.builtin.meta: reset_connection
+  tags: [admin]
+
+# --- Administrator SSH access (authorized_keys + ACL + key deployment) ---
+# TODO: disabled — administrators_authorized_keys not needed while OpenSSH is removed.
+# Re-enable when OpenSSH is re-enabled (set openssh_server_enabled: true).
+- name: Configure administrator SSH access
+  ansible.builtin.import_tasks: administrator.yml
+  when: false
+  tags: [admin]

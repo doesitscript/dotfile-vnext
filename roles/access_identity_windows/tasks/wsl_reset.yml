@@ -46,8 +46,12 @@
       }
       $Ansible.Changed = $true
       $Ansible.Result = "Unregistered $distro"
-  when: _wsl_reset_check.result.registered | default(false) | bool
+  # TODO: disabled — WSL not installed on this host; re-enable when WSL provisioning resumes
+  # when: _wsl_reset_check.result.registered | default(false) | bool
+  when: false
 
+# Kept — reports outcome whether the distro was registered or already absent.
+# Safe to leave enabled; the debug task always runs and summarises state.
 - name: Report WSL reset result
   ansible.builtin.debug:
     msg: >-

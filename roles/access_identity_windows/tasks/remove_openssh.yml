@@ -1,0 +1,57 @@
+---
+# remove_openssh.yml — Idempotent removal of Windows OpenSSH server.
+# Fires when openssh_server_enabled is false.
+# DOD: sshd service removed from the system (capability uninstalled).
+#
+# All tasks use failed_when: false — the run continues regardless of errors.
+# Resources that are already absent are handled gracefully by each task's
+# check-before-act logic or by the module's own absent-is-ok behavior.
+#
+# Removal order:
+#   1. Stop + disable service (before capability removal — avoids stale process)
+#   2. Remove OpenSSH Server capability (removes binary, service registration, ProgramData\ssh)
+#   3. Remove firewall rules
+#   4. Remove DefaultShell and DefaultShellCommandOption registry entries
+
+- name: Stop and disable sshd service before capability removal
+  ansible.windows.win_service:
+    name: sshd
+    state: stopped
+    start_mode: disabled
+  failed_when: false
+
+- name: Remove OpenSSH Server capability
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $capName = "{{ openssh_server_capability }}"
+      $cap = Get-WindowsCapability -Online -Name $capName -ErrorAction SilentlyContinue
+      if ($null -ne $cap -and $cap.State -eq 'Installed') {
+        Remove-WindowsCapability -Online -Name $capName | Out-Null
+        $Ansible.Changed = $true
+        $Ansible.Result = @{ action = 'removed'; capability = $capName }
+      } else {
+        $Ansible.Result = @{ action = 'already_absent'; capability = $capName }
+      }
+  failed_when: false
+
+- name: Remove SSH firewall rules
+  community.windows.win_firewall_rule:
+    name: "{{ item }}"
+    state: absent
+  loop:
+    - sshd-Server-In-TCP
+    - sshd-PowerShell-In-TCP
+    - sshd-WSL-Direct-In-TCP
+  failed_when: false
+
+- name: Remove OpenSSH DefaultShell registry entries
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\OpenSSH
+    name: "{{ item }}"
+    state: absent
+  loop:
+    - DefaultShell
+    - DefaultShellCommandOption
+  failed_when: false

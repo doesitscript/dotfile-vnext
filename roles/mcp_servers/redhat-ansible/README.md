@@ -52,6 +52,76 @@ Example (pin to a newer tag):
 redhat_ansible_version: "v26.4.0"
 ```
 
+## Developer Setup Dependency — ansible_dev_tools Role
+
+This MCP server depends on the `ansible_dev_tools` role having been run first. That role:
+- Installs all Ansible tools into the project `.venv`
+- Creates the `~/.ansible-venv` symlink → project venv
+
+**The Cursor extension** (`ansible.python.activationScript` in `.vscode/settings.json`) uses
+`~/.ansible-venv/bin/activate` to activate the venv. This is resolved and working.
+
+See `roles/ansible_dev_tools/README.md` for the full setup explanation and the reason the
+symlink is required (extension bug: `activationScript` skips `${workspaceFolder}` resolution).
+
+## Known Gap — MCP Server Tool Version
+
+The MCP server process finds `ansible-lint` via `~/.local/bin/ansible-lint` (pipx install,
+version 26.1.1) — not the project venv version (26.3.0). The venv is detected but not active
+in the MCP server's process environment.
+
+**Current workaround:** None confirmed. The `.envrc` previously contained:
+```bash
+source /Users/joshc/develop/dotfile-vnext/.venv/bin/activate
+```
+This was removed after the `activationScript` fix landed. It is **not validated** whether the
+`.envrc` line helped the MCP server or was irrelevant — the extension started working after
+the `activationScript` setting was applied, not necessarily because of `.envrc`. That line is
+commented out in `.envrc` and should remain so until specifically tested.
+
+**Status: OPEN** — MCP server tool path configuration is a separate discussion. The Cursor
+extension tool gap is resolved (see `ansible_dev_tools` README).
+
+---
+> ⚠️ **WARNING — AGENT: READ THE SCHEMA BEFORE CALLING ANY MCP TOOL**
+>
+> The project rule `02--cussorrules-mcp-briefieng-GENERATED.mdc` requires reading the tool
+> schema descriptor **before** every MCP tool call. This is not optional.
+>
+> The schema files live at:
+> `mcps/project-0-dotfile-vnext-ansible/tools/<tool-name>.json`
+>
+> **Why this matters:** The agent is capable of calling MCP tools with guessed or inferred
+> parameter names. The tool will silently fail or return a misleading error when the wrong
+> parameter name is passed — and the agent may incorrectly conclude the MCP server itself
+> is broken. This has happened in this project.
+>
+> Example: `ansible_lint` requires `filePath`, not `path`. Passing `path` causes the tool
+> to return `No file path was provided` — an error that looks like a server-side failure
+> but is entirely an agent-side parameter mistake.
+>
+> **Read the schema. Every time. No exceptions.**
+
+---
+
+> ℹ️ **ENVIRONMENT STATUS — MONITOR THIS**
+>
+> The project `.envrc` currently contains:
+> ```bash
+> source /Users/joshc/develop/dotfile-vnext/.venv/bin/activate
+> ```
+> This line activates the project venv in any shell Cursor opens, making `.venv/bin/`
+> tools (ansible-lint, ansible, ansible-playbook, etc.) available to both the Ansible
+> extension and the MCP server's process environment.
+>
+> As of the last verified state, all tools are loading correctly from the venv and the
+> Ansible extension is finding `ansible-lint` as expected.
+>
+> **This configuration should be monitored.** If the MCP server reports tools as missing,
+> or the Ansible extension shows `No such file or directory` errors for activation scripts,
+> verify that `.envrc` is being sourced by Cursor's shell and that `direnv allow` has been
+> run in the project root.
+
 ## #FIXME
 
 Re-run the playbook (with this role) when you use a different Node 24.x or a different machine. The role rewrites `.cursor/mcp.json` with the **resolved** Node path (via `nvm which 24` or `nvm which default`). If you upgrade Node 24 or move to another host, run the playbook once so the role writes the correct node path into the ansible MCP entry; otherwise Cursor may still point at an old or missing node binary and the MCP will fail with spawn ENOENT.

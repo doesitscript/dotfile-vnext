@@ -29,10 +29,12 @@
 # --- Resolve companion WSL host variables ---
 
 - name: Resolve WSL companion hostname
+  when: false  # TODO: disabled during OpenSSH removal work — re-enable when WSL provisioning resumes
   ansible.builtin.set_fact:
     _wsl_companion: "{{ inventory_hostname | regex_replace('-win$', '-wsl') }}"
 
 - name: Verify WSL companion host exists in inventory
+  when: false  # TODO: disabled during OpenSSH removal work — re-enable when WSL provisioning resumes
   ansible.builtin.assert:
     that:
       - _wsl_companion in hostvars
@@ -43,6 +45,7 @@
 
 # Underscore-prefixed facts (_wsl_*) are internal copies resolved from the companion host's hostvars.
 - name: Resolve WSL variables from companion host
+  when: false  # TODO: disabled during OpenSSH removal work — re-enable when WSL provisioning resumes
   ansible.builtin.set_fact:
     _wsl_distro: "{{ hostvars[_wsl_companion]['wsl_distro'] | default(wsl_distro) }}"
     _wsl_user: "{{ hostvars[_wsl_companion]['wsl_user'] | default(hostvars[_wsl_companion]['ansible_user']) }}"
@@ -80,6 +83,7 @@
 # --- Step 1: Install WSL (feature + kernel) ---
 
 - name: Install WSL (Windows Subsystem for Linux)
+  when: false  # TODO: disabled during OpenSSH removal work — re-enable when WSL provisioning resumes
   environment:
     WSL_UTF8: "1"
   check_mode: false
@@ -153,6 +157,9 @@
 # traffic for VMs on virtual switches. Without this rule, external hosts
 # can ping WSL (ICMP is allowed by default) but TCP connections are blocked.
 
+# TODO: disabled — Hyper-V firewall rules must be managed in roles/hyperv_networking only.
+# Re-enable when WSL bridged provisioning resumes and Hyper-V ownership is resolved.
+# when: _wsl_networking_mode == 'bridged'
 - name: Ensure Hyper-V firewall allows inbound SSH to WSL
   ansible.windows.win_powershell:
     error_action: stop
@@ -174,7 +181,7 @@
         -Protocol TCP -LocalPorts 22 | Out-Null
       $Ansible.Changed = $true
       $Ansible.Result = @{ action = 'created'; rule = $ruleName }
-  when: _wsl_networking_mode == 'bridged'
+  when: false
 
 # --- Step 1.5: Create cloud-init user-data on the Windows host ---
 # Ubuntu 24.04 WSL reads %USERPROFILE%\.cloud-init\<distro>.user-data on first
@@ -191,7 +198,7 @@
     path: "{{ _win_userprofile.result }}\\.cloud-init"
     state: directory
 
-- name: Create cloud-init user-data for WSL distro
+- name: Create cloud-init user-data for Ubuntu distro
   ansible.windows.win_copy:
     force: true
     dest: "{{ _win_userprofile.result }}\\.cloud-init\\{{ _wsl_distro }}.user-data"
@@ -218,12 +225,12 @@
             [automount]
             enabled=true
             mountFsTab=true
-        - path: /etc/profile.d/wsl-path.sh
+        - path: /etc/profile.d/linux-path.sh
           permissions: '0644'
           content: |
-            # Ensure core Linux paths are always present in WSL shells.
-            # Without this, wsl.exe entry points may only have Windows paths,
-            # making systemctl, journalctl, and other system binaries unavailable.
+            # Ensure core Linux paths are always present in the shell environment.
+            # Without this, entry points that inherit a Windows PATH may be missing
+            # systemctl, journalctl, and other system binaries.
             for _d in /usr/local/sbin /usr/local/bin /usr/sbin /usr/bin /sbin /bin; do
               case ":$PATH:" in
                 *":$_d:"*) ;;
@@ -806,42 +813,10 @@
   delegate_to: "{{ _wsl_companion }}"
   delegate_facts: true
 
-# --- Step 6.5: Deploy keepwsl systemd service to running WSL distro ---
-# Cloud-init writes this file on first boot (Step 1.5 write_files + runcmd).
-# This step ensures it is present and enabled on already-provisioned distros.
-# Uses ansible.windows.win_copy to write directly to the WSL filesystem via the
-# Windows UNC path \\wsl$\<distro>\ without requiring an active SSH connection.
-
-- name: Deploy keepwsl systemd service unit to WSL distro
-  ansible.windows.win_copy:
-    dest: '\\wsl$\{{ _wsl_distro }}\etc\systemd\system\keepwsl.service'
-    newline_sequence: '\n'
-    content: |
-      [Unit]
-      Description=keepwsl.service
-      After=local-fs.target
-
-      [Service]
-      Type=simple
-      ExecStart=/bin/sleep infinity
-      Restart=always
-      RestartSec=5
-
-      [Install]
-      WantedBy=default.target
-
-- name: Enable and start keepwsl service in WSL distro
-  ansible.windows.win_shell: >-
-    wsl -d {{ _wsl_distro }} -u root --
-    systemctl enable --now keepwsl.service
-  register: _keepwsl_enable
-  changed_when: "'Created symlink' in (_keepwsl_enable.stdout | default(''))"
-
-- name: Report keepwsl service status
-  ansible.builtin.debug:
-    msg: >-
-      keepwsl.service in {{ _wsl_distro }}:
-      {{ 'enabled/started' if _keepwsl_enable is changed else 'already enabled' }}
+# --- Step 6.5: keepwsl systemd service ---
+# Cloud-init (Step 1.5 write_files + runcmd) deploys and enables keepwsl.service
+# on first boot. No separate deploy step is required — cloud-init is the
+# authoritative source for this unit on fresh distro installs.
 
 # --- Step 7: Remove legacy WSL keepalive scheduled tasks ---
 # The Windows Scheduled Task approach (WSLKeepalive) is deprecated.

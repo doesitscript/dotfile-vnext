@@ -288,7 +288,7 @@ all:
 
 Same structure but enables `dev-tools` + `solutions-architect` roles. Shows how the same Core server exposes different tool sets:
 
-`**inventory.yaml**` env section:
+`**inventory.yaml`** env section:
 
 ```yaml
 ansible_mcp_server_env:
@@ -386,9 +386,7 @@ When you add more MCP servers in the future:
 | `roles/mcp_servers/templates/mcp.json.j2`          | Profile-aware Cursor config         |
 | `playbooks/mcp_servers.yaml`                       | Orchestrator playbook               |
 | `playbooks/mcp_demos/README.md`                    | Demo overview                       |
-| `playbooks/mcp_demos/aws_core_foundation/*`        | AWS Core foundation demo (4 files)  |
-| `playbooks/mcp_demos/aws_core_devtools/*`          | AWS Core dev-tools demo (4 files)   |
+| `playbooks/mcp_demos/aws_core_foundation/`*        | AWS Core foundation demo (4 files)  |
+| `playbooks/mcp_demos/aws_core_devtools/`*          | AWS Core dev-tools demo (4 files)   |
 | `playbooks/mcp_demos/azure_sql_mock/*`             | Azure SQL mock demo (5 files)       |
 | `playbooks/mcp_demos/github_repo/*`                | GitHub MCP demo (5 files)           |
-
-

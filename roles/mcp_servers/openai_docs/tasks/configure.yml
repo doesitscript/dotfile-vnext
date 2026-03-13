@@ -36,7 +36,7 @@
     _openai_docs_entry:
       url: "{{ openai_docs_mcp_url }}"
     _codex_enabled: "{{ (openai_docs_codex_command | default('')) and (openai_docs_codex_enabled | default(true) | bool) }}"
-    _codex_entry: "{{ {'codex': {'command': openai_docs_codex_command}} if _codex_enabled else {} }}"
+    _codex_entry: "{{ {'codex': {'command': openai_docs_codex_command, 'args': ['mcp-server']}} if _codex_enabled else {} }}"
     _initial_servers: "{{ {(openai_docs_server_key): _openai_docs_entry} | combine(_codex_entry) }}"
   when: not _mcp_json_stat.stat.exists
   tags:
@@ -72,7 +72,7 @@
         _openai_docs_entry:
           url: "{{ openai_docs_mcp_url }}"
         _codex_enabled: "{{ (openai_docs_codex_command | default('')) and (openai_docs_codex_enabled | default(true) | bool) }}"
-        _codex_entry: "{{ {'codex': {'command': openai_docs_codex_command}} if _codex_enabled else {} }}"
+        _codex_entry: "{{ {'codex': {'command': openai_docs_codex_command, 'args': ['mcp-server']}} if _codex_enabled else {} }}"
         _servers: "{{ (_existing.mcpServers | default({})) | combine({(openai_docs_server_key): _openai_docs_entry}) | combine(_codex_entry) }}"
         _merged: "{{ _existing | combine({'mcpServers': _servers}) }}"
       tags:

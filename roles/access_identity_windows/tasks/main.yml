@@ -27,202 +27,81 @@
       Ensure {{ controller_ssh_public_key_path }} exists on {{ groups['execution_nodes'][0] }}.
   tags: [admin, user, wsl, standalone]
 
-# --- OpenSSH Server: install, configure, firewall, default shell ---
-# 1) Install OpenSSH capability
-- name: Ensure OpenSSH Server capability installed
-  ansible.windows.win_shell: |
-    $capName = "{{ openssh_server_capability }}"
-    $state = (Get-WindowsCapability -Online -Name $capName).State
-    if ($state -ne "Installed") {
-      Add-WindowsCapability -Online -Name $capName | Out-Null
-      Write-Output "INSTALLED"
-    } else {
-      Write-Output "AlreadyInstalled"
-    }
-  register: ssh_install
-  changed_when: "'INSTALLED' in (ssh_install.stdout | default(''))"
+# --- OpenSSH Server: install or remove (controlled by openssh_server_enabled) ---
+- name: Install and configure OpenSSH server
+  ansible.builtin.include_tasks: configure_openssh.yml
+  when: openssh_server_enabled | bool
   tags: [admin]
 
-# 2) Ensure service running
-- name: Ensure sshd service is enabled and started
-  ansible.windows.win_service:
-    name: sshd
-    start_mode: auto
-    state: started
-  tags: [admin]
-
-# 3) Primary SSH port (WSL/bash) — sshd_config + firewall
-- name: Ensure sshd listens on the configured port
-  community.windows.win_lineinfile:
-    path: "{{ sshd_config_path }}"
-    regexp: '^(?:#\s*)?Port\s+(?:22|{{ win_ssh_port }})\s*$'
-    line: "Port {{ win_ssh_port }}"
-    state: present
-  register: sshd_port_result
-  tags: [admin]
-
-# 3b) Keepalive — detect dead sessions and clean up stale connections.
-# Without this, dropped SSH clients leave zombie sessions indefinitely.
-- name: Ensure sshd has ClientAliveInterval configured
-  community.windows.win_lineinfile:
-    path: "{{ sshd_config_path }}"
-    regexp: '^(?:#\s*)?ClientAliveInterval\s'
-    line: "ClientAliveInterval 60"
-    insertafter: '^#? '
-    state: present
-  register: sshd_keepalive_interval
-  tags: [admin]
-
-- name: Ensure sshd has ClientAliveCountMax configured
-  community.windows.win_lineinfile:
-    path: "{{ sshd_config_path }}"
-    regexp: '^(?:#\s*)?ClientAliveCountMax\s'
-    line: "ClientAliveCountMax 3"
-    insertafter: '^ClientAliveInterval'
-    state: present
-  register: sshd_keepalive_count
-  tags: [admin]
-
-- name: Ensure sshd has MaxSessions configured
-  community.windows.win_lineinfile:
-    path: "{{ sshd_config_path }}"
-    regexp: '^(?:#\s*)?MaxSessions\s'
-    line: "MaxSessions {{ sshd_max_sessions }}"
-    insertafter: '^(?:#\s*)?MaxAuthTries\s'
-    state: present
-  register: sshd_max_sessions_result
-  tags: [admin]
-
-- name: Ensure sshd has LoginGraceTime configured
-  community.windows.win_lineinfile:
-    path: "{{ sshd_config_path }}"
-    regexp: '^(?:#\s*)?LoginGraceTime\s'
-    line: "LoginGraceTime {{ sshd_login_grace_time }}"
-    insertafter: '^# Authentication:'
-    state: present
-  register: sshd_login_grace
-  tags: [admin]
-
-# --- Firewall rules for all SSH ports (primary + PowerShell) ---
-- name: Configure Windows Firewall rules for SSH
-  ansible.builtin.import_tasks: firewall.yml
-  tags: [admin]
-
-# 5) Default shell
-# DefaultShell is set to PowerShell. Port 2222 lands directly in PowerShell.
-# Note: VS Code/Cursor Remote-SSH requires a Unix-like shell — use the
-# -wsl SSH alias (port 22 → WSL bash) for Remote-SSH editor connections.
-# Use server-225-win (port 2222) for interactive PowerShell sessions only.
-
-- name: Ensure HKLM:\SOFTWARE\OpenSSH registry key exists
-  ansible.windows.win_regedit:
-    path: HKLM:\SOFTWARE\OpenSSH
-    state: present
-  tags: [admin]
-
-- name: Set the default OpenSSH shell to PowerShell
-  ansible.windows.win_regedit:
-    path: HKLM:\SOFTWARE\OpenSSH
-    name: DefaultShell
-    data: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
-    type: string
-    state: present
-  register: sshd_shell_result
-  tags: [admin]
-
-- name: Set OpenSSH DefaultShellCommandOption for PowerShell
-  ansible.windows.win_regedit:
-    path: HKLM:\SOFTWARE\OpenSSH
-    name: DefaultShellCommandOption
-    data: "-NoLogo -NoProfile -c"
-    type: string
-    state: present
-  register: sshd_shell_opt_result
-  tags: [admin]
-
-- name: Reset SSH connection after shell change
-  ansible.builtin.meta: reset_connection
-  tags: [admin]
-
-# --- Administrator SSH access (authorized_keys + ACL + key deployment) ---
-- name: Configure administrator SSH access
-  ansible.builtin.import_tasks: administrator.yml
+- name: Remove OpenSSH server
+  ansible.builtin.include_tasks: remove_openssh.yml
+  when: not (openssh_server_enabled | bool)
   tags: [admin]
 
 # --- powershell-ssh: secondary SSH port that forces a PowerShell session ---
 # Port 2223 listens alongside the primary port (2222). Requires WSL for pwsh-sshd wrapper.
-# Skipped when wsl_enabled is false (default).
-- block:
-  - name: Resolve WSL companion for ps_port (when host has -wsl sibling)
-    ansible.builtin.set_fact:
-      _ps_wsl_companion: "{{ inventory_hostname | regex_replace('-win$', '-wsl') }}"
-      _ps_wsl_distro: "{{ hostvars[inventory_hostname | regex_replace('-win$', '-wsl')]['wsl_distro'] | default('Ubuntu-24.04') }}"
-    when: (inventory_hostname | regex_replace('-win$', '-wsl')) in hostvars
-
-  - name: Ensure pwsh-sshd wrapper exists in WSL for ForceCommand
-    ansible.windows.win_shell: |
-      $distro = '{{ _ps_wsl_distro }}'
-      $script = "#!/bin/bash`nexec /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoLogo -NoProfile `"`$@`""
-      $script | wsl.exe -d $distro -u root -- bash -c 'cat > /usr/local/bin/pwsh-sshd && chmod +x /usr/local/bin/pwsh-sshd'
-    when: _ps_wsl_companion is defined
-
-  # powershell-ssh — sshd_config: add Port listener
-  - name: Ensure sshd_config has PowerShell port listener
-    community.windows.win_lineinfile:
-      path: "{{ sshd_config_path }}"
-      regexp: '^Port\s+{{ win_ssh_powershell_port }}\s*$'
-      line: "Port {{ win_ssh_powershell_port }}"
-      insertafter: "^Port {{ win_ssh_port }}"
-      state: present
-    register: sshd_ps_port_result
-
-  # powershell-ssh — sshd_config: declare PowerShell subsystem.
-  # Native Windows path — runs directly in PowerShell (DefaultShell).
-  - name: Ensure sshd_config declares PowerShell subsystem
-    community.windows.win_lineinfile:
-      path: "{{ sshd_config_path }}"
-      regexp: '^Subsystem\s+powershell\s'
-      line: "Subsystem    powershell    C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -sshs -NoLogo -NoProfile"
-      insertafter: '^Subsystem\s+sftp'
-      state: present
-    register: sshd_ps_subsystem_result
-
-  # powershell-ssh — sshd_config: Match LocalPort block (must be at EOF)
-  - name: Ensure Match LocalPort block for PowerShell exists at end of sshd_config
-    community.windows.win_lineinfile:
-      path: "{{ sshd_config_path }}"
-      regexp: '^Match LocalPort {{ win_ssh_powershell_port }}'
-      line: "Match LocalPort {{ win_ssh_powershell_port }}"
-      insertafter: EOF
-      state: present
-    register: sshd_ps_match_result
-
-  # powershell-ssh — sshd_config: ForceCommand under Match block.
-  # ForceCommand runs via wsl.exe -e <command>; the whole string is one argv to -e.
-  # Use pwsh-sshd wrapper in /usr/local/bin (created above) — single executable, no parsing.
-  - name: Ensure ForceCommand powershell under Match LocalPort block
-    community.windows.win_lineinfile:
-      path: "{{ sshd_config_path }}"
-      regexp: '^\s+ForceCommand'
-      line: "    ForceCommand pwsh-sshd"
-      insertafter: "^Match LocalPort {{ win_ssh_powershell_port }}"
-      state: present
-    register: sshd_ps_force_result
-
-  when: wsl_enabled | default(false) | bool
+# TODO: disabled — WSL not installed; OpenSSH removed. Re-enable when WSL+OpenSSH resumes.
+# when: (wsl_enabled | default(false) | bool) and (openssh_server_enabled | bool)
+- name: Configure PowerShell SSH port
+  when: false
   tags: [admin, powershell-ssh, ps_port]
+  block:
+    - name: Resolve WSL companion for ps_port (when host has -wsl sibling)
+      ansible.builtin.set_fact:
+        _ps_wsl_companion: "{{ inventory_hostname | regex_replace('-win$', '-wsl') }}"
+        _ps_wsl_distro: "{{ hostvars[inventory_hostname | regex_replace('-win$', '-wsl')]['wsl_distro'] | default('Ubuntu-24.04') }}"
+      when: (inventory_hostname | regex_replace('-win$', '-wsl')) in hostvars
+
+    - name: Ensure pwsh-sshd wrapper exists in WSL for ForceCommand
+      ansible.windows.win_shell: |
+        $distro = '{{ _ps_wsl_distro }}'
+        $script = "#!/bin/bash`nexec /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoLogo -NoProfile `"`$@`""
+        $script | wsl.exe -d $distro -u root -- bash -c 'cat > /usr/local/bin/pwsh-sshd && chmod +x /usr/local/bin/pwsh-sshd'
+      when: _ps_wsl_companion is defined
+
+    # powershell-ssh — sshd_config: remove Port listener
+    - name: Remove PowerShell port listener from sshd_config
+      community.windows.win_lineinfile:
+        path: "{{ sshd_config_path }}"
+        regexp: '^Port\s+{{ win_ssh_powershell_port }}\s*$'
+        state: absent
+      register: sshd_ps_port_result
+
+    # powershell-ssh — sshd_config: declare PowerShell subsystem.
+    # Native Windows path — runs directly in PowerShell (DefaultShell).
+    - name: Ensure sshd_config declares PowerShell subsystem
+      community.windows.win_lineinfile:
+        path: "{{ sshd_config_path }}"
+        regexp: '^Subsystem\s+powershell\s'
+        line: "Subsystem    powershell    C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -sshs -NoLogo -NoProfile"
+        insertafter: '^Subsystem\s+sftp'
+        state: present
+      register: sshd_ps_subsystem_result
+
+    # powershell-ssh — sshd_config: remove Match LocalPort block
+    - name: Remove Match LocalPort block for PowerShell from sshd_config
+      community.windows.win_lineinfile:
+        path: "{{ sshd_config_path }}"
+        regexp: '^Match LocalPort {{ win_ssh_powershell_port }}'
+        state: absent
+      register: sshd_ps_match_result
+
+    # powershell-ssh — sshd_config: remove ForceCommand under Match block
+    - name: Remove ForceCommand powershell from sshd_config
+      community.windows.win_lineinfile:
+        path: "{{ sshd_config_path }}"
+        regexp: '^\s+ForceCommand'
+        state: absent
+      register: sshd_ps_force_result
 
 # powershell-ssh — restart sshd if any config above changed (outside block so when vars exist)
+# TODO: disabled — matches the powershell-ssh block above; re-enable together.
+# when: (openssh_server_enabled | bool) and (wsl_enabled | default(false) | bool) and (...)
 - name: Restart sshd when PowerShell SSH config changed
   ansible.windows.win_service:
     name: sshd
     state: restarted
-  when: >-
-    (wsl_enabled | default(false) | bool) and (
-    sshd_ps_port_result is changed or
-    sshd_ps_subsystem_result is changed or
-    sshd_ps_match_result is changed or
-    sshd_ps_force_result is changed)
+  when: false
   tags: [admin, powershell-ssh, ps_port]
 
 # --- Publish SSH-ready facts (consumed by controller SSH config template) ---
@@ -236,6 +115,7 @@
     ssh_powershell_port: "{{ win_ssh_powershell_port }}"
     ssh_user: "{{ win_ssh_user | default(ansible_user) }}"
     cacheable: true
+  when: openssh_server_enabled | bool
   tags: [admin, ps_port]
 
 # --- WSL: optional reset (nuke and pave) ---
