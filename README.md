@@ -154,4 +154,16 @@ See `docs/deploy_shell_config.md` for detailed usage and troubleshooting.
 All configuration is driven by `contracts/fuzlang.contract.yaml`.
 
 
+## Current issues:
+The extension reads the setting with the VS Code configuration API:
 
+activationScript: await e.get("python.activationScript")
+interpreterPath:  await e.get("python.interpreterPath")
+
+Found the root cause. Here is exactly what's happening:
+
+The extension reads the setting with the VS Code configuration API:
+
+activationScript: await e.get("python.activationScript")
+interpreterPath:  await e.get("python.interpreterPath")
+Both are read the same way — raw get() calls. The VS Code configuration API does not resolve ${workspaceFolder} automatically.

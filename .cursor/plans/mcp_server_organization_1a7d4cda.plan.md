@@ -388,5 +388,5 @@ When you add more MCP servers in the future:
 | `playbooks/mcp_demos/README.md`                    | Demo overview                       |
 | `playbooks/mcp_demos/aws_core_foundation/`*        | AWS Core foundation demo (4 files)  |
 | `playbooks/mcp_demos/aws_core_devtools/`*          | AWS Core dev-tools demo (4 files)   |
-| `playbooks/mcp_demos/azure_sql_mock/*`             | Azure SQL mock demo (5 files)       |
-| `playbooks/mcp_demos/github_repo/*`                | GitHub MCP demo (5 files)           |
+| `playbooks/mcp_demos/azure_sql_mock/`*             | Azure SQL mock demo (5 files)       |
+| `playbooks/mcp_demos/github_repo/`*                | GitHub MCP demo (5 files)           |
