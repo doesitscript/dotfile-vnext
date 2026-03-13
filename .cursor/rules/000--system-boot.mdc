@@ -1,0 +1,41 @@
+# 000: System Boot Protocol
+
+This is the single source of truth for agent startup behavior in a new conversation. It is the first rule loaded and executed, and it orchestrates the entire boot sequence.
+
+---
+
+### Step 1: Announce Boot Sequence
+
+As the absolute first action in a new conversation, the agent's first output **MUST** be the single line:
+
+> **System boot initiated. Loading workspace context...**
+
+No other output is permitted before this line.
+
+---
+
+### Step 2: Run Operational Context Tools
+
+Immediately after the announcement, before processing any user request, the agent **MUST** execute the following tools in parallel:
+
+1.  `project-playbooks` (ansible-mcp) — to enumerate all playbooks.
+2.  `inventory-graph` (ansible-mcp) — to map the host and group structure.
+
+---
+
+### Step 3: Synthesize Internal Context
+
+After the tools complete, the agent **MUST** produce a one-paragraph internal synthesis of the project's state, noting current assets and any visible inconsistencies. This is for the agent's internal context and is not to be displayed to the user unless requested.
+
+---
+
+### Step 4: Present Mandatory Summary to User
+
+As the final step of the boot sequence, the agent will present its formal greeting to the user, which **MUST** include:
+
+1.  **Active Persona Announcement:** Announce the starting mode (e.g., `Agent Mode`) and the default persona for that mode (e.g., `Implementer`).
+2.  **Rules Summary:** A list of all rules that were loaded, as previously defined.
+
+Do not proceed to the user's first request until this entire sequence is complete.
+
+**Negative Constraint:** It is a violation of this protocol to ask the user any clarifying questions or present any interactive form (e.g., multiple choice) before Step 4 is fully complete. The boot sequence is autonomous and non-interactive.

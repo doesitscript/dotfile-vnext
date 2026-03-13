@@ -10,6 +10,10 @@ Invoke this skill after the `ansible-researcher` skill has completed and produce
 
 When this skill is invoked, you will adopt the `Planner` agent persona and execute the following sequence of actions without deviation.
 
+### Phase 0: Announce Persona (Automated)
+
+1.  Your first conversational output **MUST** be: "**Activating Planner Persona (Chief Architect & Project Steward).**"
+
 ### Phase 1: Acknowledge and State Intent
 
 1.  Acknowledge the user's objective and confirm you have the `Research Brief` as your input.

@@ -627,3 +627,236 @@ Single Source of Truth refers to the practice of structuring information models 
 ---
 
 These guidelines represent good practices developed through community experience. Apply them where they make sense for your specific use case and organization. The goal is maintainability, readability, and reusability rather than blind adherence to rules.
+
+---
+# Ansible documentation: canonical references
+
+When assisting with Ansible in this project, follow the behavior defined in `instructions.md` (lines 88–96).
+
+## Behavior
+
+1. **Automatic consultation**  
+   Consult the relevant registered @doc sources for Ansible work without requiring the user to tag them manually. Use the docs listed in `.cursor/config.json` under the `docs` array (e.g. `ansible-inventory-guide`, `ansible-variable-precedence`, `ansible-roles`, `ansible-yaml-syntax`, `ansible-builtin-collection`, etc.).
+
+2. **Explicit @doc references**  
+   When the user references a document with `@doc <name>`, load and use that remote source in your reasoning.
+
+3. **Alignment with docs**  
+   When analyzing or generating Ansible code, inventories, roles, or variable structures, align recommendations with the authoritative behavior described in these registered documentation sources.
+
+4. **Conflicts**  
+   When the repository and the official documentation disagree, surface the discrepancy and explain the authoritative behavior from the registered docs.
+
+5. **Canonical**  
+   Treat these documentation sources as canonical references for all Ansible-related reasoning for the duration of the session.
+
+## Registered Ansible doc names (from config)
+
+Use these @doc handles when relevant: `ansible-core-index`, `ansible-developer-guide`, `ansible-collections`, `ansible-tips-tricks`, `ansible-inventory-guide`, `ansible-host-group-vars`, `ansible-var-merge`, `ansible-variable-precedence`, `ansible-general-precedence`, `ansible-roles`, `ansible-yaml-syntax`, `ansible-builtin-collection`.
+
+## @doc Trigger Gates — BLOCKING
+
+These are not advisory. The agent MUST NOT write, review, or propose any task, role,
+or playbook until the @doc sources for the applicable condition have been fetched and
+are in context. **STOP — fetch the required docs before producing any output.**
+
+Do not wait for the user to reference them explicitly:
+
+| Condition | @doc to fetch — REQUIRED before any output |
+|---|---|
+| Writing any task or role targeting Windows hosts | `ansible-windows-collection`, `community-windows-collection` |
+| Designing role structure, deciding role placement, or role interface questions | `ansible-roles` |
+| Inventory, group_vars, or host_vars questions | `ansible-inventory-guide`, `ansible-host-group-vars`, `ansible-var-merge` |
+| Node categorization, environment distinction, "where does X belong", playbook targeting strategy, "which hosts get this role" | `ansible-inventory-guide`, `ansible-tips-tricks` — official docs explicitly address "when" groups (dev/test/prod) and function-based inventory targeting |
+| Variable precedence, override, or scope questions | `ansible-variable-precedence`, `ansible-general-precedence` |
+| YAML formatting or syntax questions | `ansible-yaml-syntax` |
+| Module selection or built-in module use | `ansible-builtin-collection` |
+| Collection design, FQCN, or namespace questions | `ansible-collections` |
+| Best practice, tips, or idiomatic Ansible questions | `ansible-tips-tricks` |
+| Developer guide, plugin, or module authoring | `ansible-developer-guide` |
+| Any question where the answer relies on training recall, no project example exists, or the user asks for patterns/guidance/expertise | Fetch ALL relevant docs from `.cursor/config.json` before responding. Declare what was fetched. Do not answer from training alone. |
+
+---
+# Encoding Hygiene — Ansible + PowerShell Operational Rules
+
+These rules apply when the agent is writing Ansible tasks, PowerShell scripts
+embedded in `win_powershell`, or responding to in-chat requests involving
+scripting on Windows or WSL hosts.
+
+---
+
+## Rule 1 — `newline_sequence` on Template/Copy Tasks Targeting Windows
+
+Any `ansible.builtin.template`, `ansible.builtin.copy`, or
+`ansible.windows.win_template` task that writes a file to a Windows host
+**must** include `newline_sequence: '\n'`.
+
+**Required pattern:**
+```yaml
+- name: Deploy config file
+  ansible.windows.win_template:
+    src: myfile.j2
+    dest: C:\path\file.txt
+    newline_sequence: '\n'
+```
+
+**When this rule cannot be applied** (e.g. a third-party module does not
+support `newline_sequence`): the agent must state this explicitly and add a
+post-write normalization task using the CRLF fallback pattern below. Silently
+omitting the protection is not permitted.
+
+---
+
+## Rule 2 — PowerShell File Writes Must Use `WriteAllText` with No-BOM UTF-8
+
+Inside `ansible.windows.win_powershell` scripts, any file write operation
+**must** use:
+
+```powershell
+[System.IO.File]::WriteAllText(
+    $path,
+    $content,
+    [System.Text.UTF8Encoding]::new($false)
+)
+```
+
+**Never use:**
+- `Out-File` (defaults to UTF-16LE with BOM, CRLF)
+- `Set-Content` (platform-dependent encoding)
+- `>` or `>>` redirection (CRLF, platform encoding)
+- `Add-Content` (platform encoding)
+
+---
+
+## Rule 3 — CRLF Normalization Fallback Pattern
+
+When a write cannot be intercepted upstream (e.g. a Windows API or third-party
+cmdlet produces CRLF), normalize immediately after:
+
+```powershell
+$raw   = [System.IO.File]::ReadAllText($path)
+$fixed = $raw -replace "`r`n", "`n"
+if ($raw -ne $fixed) {
+    [System.IO.File]::WriteAllBytes(
+        $path,
+        [System.Text.Encoding]::UTF8.GetBytes($fixed)
+    )
+    $Ansible.Changed = $true
+} else {
+    $Ansible.Changed = $false
+}
+```
+
+This is the established pattern in `roles/access_identity_windows/tasks/ubuntu.yml`.
+
+---
+
+## Rule 4 — `WSL_UTF8: "1"` for All `wsl.exe` Calls
+
+Any `ansible.windows.win_powershell` task that calls `wsl.exe` **must** include:
+
+```yaml
+environment:
+  WSL_UTF8: "1"
+```
+
+Without this, `wsl.exe` output is UTF-16 with null bytes, breaking string
+parsing.
+
+---
+
+## Rule 5 — Verbosity Requirements
+
+### When applying this rule in a task:
+
+The agent must emit a comment at the top of the relevant task block identifying
+which rule is being applied. Example:
+
+```yaml
+# Encoding rule: WriteAllText + UTF8Encoding($false) — Rule 2 (102--ansible-powershell-encoding)
+```
+
+### After every `win_powershell` file write task:
+
+A companion `ansible.builtin.debug` task must follow showing the written path
+and encoding method. Example:
+
+```yaml
+- name: Report file write result
+  ansible.builtin.debug:
+    msg: >-
+      Written: {{ _result.result.profile_path }}
+      Encoding: UTF-8 no-BOM, LF-only (WriteAllText + UTF8Encoding($false))
+```
+
+### When a rule cannot be applied:
+
+The agent must output:
+
+```
+ENCODING RULE EXCEPTION: [rule number] cannot be applied to [task name]
+because [reason]. Falling back to: [post-write normalization / explicit fail / other].
+```
+
+This must appear as a task comment AND as a `debug` message in the playbook
+output, not just in the agent's response text.
+
+---
+
+## Rule 6 — In-Chat PowerShell Commands
+
+When the agent runs a PowerShell command during troubleshooting or diagnosis
+(via `win_powershell`, `ansible-remote-command`, or similar), file reads and
+writes follow the same rules. Any ad-hoc PowerShell command involving file I/O
+must use `ReadAllText`/`WriteAllText` with `UTF8Encoding($false)`.
+
+---
+
+## Quick Reference
+
+| Operation | Use | Never Use |
+|---|---|---|
+| Write file (PS) | `[IO.File]::WriteAllText(path, content, UTF8Encoding($false))` | `Out-File`, `Set-Content`, `>` |
+| Read file (PS) | `[IO.File]::ReadAllText(path)` | `Get-Content` (encoding-sensitive) |
+| Template to Windows | `win_template` with `newline_sequence: '\n'` | omitting `newline_sequence` |
+| Copy to Windows | `copy` with `newline_sequence: '\n'` | omitting `newline_sequence` |
+| `wsl.exe` task | `environment: WSL_UTF8: "1"` | omitting the env var |
+| Post-write normalize | `-replace "`r`n", "`n"` + WriteAllBytes | leaving CRLF in place |
+
+---
+# WinRM / Ansible on macOS
+
+Before running ANY Ansible command, two things MUST be done — both are mandatory, not optional:
+
+## 1. Activate the Python virtual environment
+
+The project Ansible installation lives in `.venv`. Without activating it, `ansible`,
+`ansible-playbook`, and all related commands will either not be found or will use the
+wrong Python interpreter.
+
+```bash
+source .venv/bin/activate
+```
+
+## 2. Set WinRM environment variables (Windows hosts only)
+
+Before targeting any Windows host (WinRM), the following environment variables MUST
+also be set. They live in `.envrc` and are loaded automatically by direnv (`direnv allow`).
+
+```bash
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=yes
+export no_proxy=*
+```
+
+Without these, WinRM connections will crash with "A worker was found in a dead state".
+
+## Required shell setup — always use this exact sequence
+
+When using the Shell tool, always run the full setup before `ansible` or `ansible-playbook`:
+
+```bash
+cd /Users/joshc/develop/dotfile-vnext && source .envrc && source .venv/bin/activate && ansible ...
+```
+
+Both `source .envrc` (env vars) and `source .venv/bin/activate` (Python venv) are required
+every time. Skipping either will cause connection or interpreter failures.
