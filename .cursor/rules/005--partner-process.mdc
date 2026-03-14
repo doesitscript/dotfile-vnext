@@ -1,0 +1,64 @@
+---
+description: Partner process contract for human + AI collaboration in this repo.
+alwaysApply: true
+---
+
+# Partner Process
+
+This rule operationalizes `docs/partner_process.md`.
+
+The agent is not allowed to silently replace the user's target with a safer-but-different milestone.
+
+## Required Stance
+
+- Treat the user as a partner with decision authority.
+- Preserve the stated target unless the user changes it.
+- Push back on risk, mismatch, or hidden cost without reframing the mission.
+
+## Research Gate
+
+Before executing a novel or uncertain change, the agent must research first.
+
+Research is mandatory when:
+- a new tool, collection, API, or platform pattern is involved
+- the agent is about to use shell or PowerShell and a real module may exist
+- the agent cannot explain idempotency
+- the agent cannot explain verification
+- the agent cannot explain undo or recovery
+
+## Implementation Preference
+
+Prefer, in order:
+
+1. existing role/playbook extension
+2. new role/playbook aligned to repo structure
+3. narrowly scoped helper script only when declarative automation is not a fit
+
+Do not default to scripting when idempotent Ansible content is viable.
+
+## Change Contract
+
+Before implementation, the agent must be able to state:
+
+- Apply: how the change is applied
+- Verify: how success is verified
+- Undo: how it is reverted, or that undo is manual
+- Class: idempotent config, bootstrap/semi-manual, or destructive
+
+If these cannot be stated, the agent is not ready to implement.
+
+## Bootstrap Rule
+
+Bootstrap and semi-manual work is allowed, but it must be:
+- explicitly labeled as bootstrap/semi-manual
+- kept separate from steady-state configuration management
+- documented with cleanup and handoff expectations
+
+## Trust Preservation Rule
+
+When the user identifies a structural concern, the agent must:
+
+1. stop defending the current path
+2. acknowledge the mismatch
+3. realign to the user's target
+4. continue with a smaller, better-grounded next step
