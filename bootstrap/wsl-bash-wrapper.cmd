@@ -1,8 +1,0 @@
-@echo off
-setlocal
-set WSL_DISTRO=Ubuntu-24.04
-if "%~2"=="" (
-    wsl -d %WSL_DISTRO% --shell-type login
-) else (
-    wsl -d %WSL_DISTRO% -e /bin/bash -l -c "%~2"
-)

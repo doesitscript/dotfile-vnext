@@ -119,7 +119,6 @@ In [playbooks/access_windows.yaml](playbooks/access_windows.yaml), the role only
 
 Split into two layers:
 
-- `**hyperv_networking**` — Phases 1-2 only: enable Hyper-V, create External VMSwitch. Generic. Triggered by a host having `hyperv_switch_name` defined (or a boolean like `hyperv_external_switch: true`).
+- `**hyperv_networking`** — Phases 1-2 only: enable Hyper-V, create External VMSwitch. Generic. Triggered by a host having `hyperv_switch_name` defined (or a boolean like `hyperv_external_switch: true`).
 - **WSL bridged config** — Phases 3-4: `.wslconfig` deployment + Hyper-V FW rule. Move into `access_identity_windows` (where the rest of the WSL config already lives in `ubuntu.yml`), gated by `_wsl_networking_mode == 'bridged'`.
 - **Variables**: `wsl_static_ip` and `wsl_gateway` move to `access_identity_windows/defaults` (they're only consumed there). `hyperv_switch_name` and `hyperv_adapter_name` stay in `hyperv_networking`.
-

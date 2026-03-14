@@ -45,10 +45,11 @@ flowchart TD
 
 ## Resolved items
 
-| Item | Resolution |
-|---|---|
+
+| Item                                   | Resolution                                                                                                                                                                 |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ssh_configured` fact-cache dependency | `ssh_configured: true` added to `host_vars/server-225-wsl.yaml` and `host_vars/network-server-wsl.yaml` as inventory SSOT. Cache is no longer the single point of failure. |
-| Bridged IP change concern | Router-managed comment added to all wsl host_vars files. Docker context self-heals. No operational steps warranted. |
-| WSL idle-shutdown / sshd not running | WSL keepalive scheduled task eliminates the root cause. |
-| Docker context endpoint drift | docker_client role already self-heals (inspect → compare → remove → recreate). |
-| `dev-3090-wsl` | Not yet deployed. `ssh_configured: true` must be added to its host_vars after `access.yaml` runs against `dev-3090-win` and SSH is confirmed working. |
+| Bridged IP change concern              | Router-managed comment added to all wsl host_vars files. Docker context self-heals. No operational steps warranted.                                                        |
+| WSL idle-shutdown / sshd not running   | WSL keepalive scheduled task eliminates the root cause.                                                                                                                    |
+| Docker context endpoint drift          | docker_client role already self-heals (inspect → compare → remove → recreate).                                                                                             |
+| `dev-3090-wsl`                         | Not yet deployed. `ssh_configured: true` must be added to its host_vars after `access.yaml` runs against `dev-3090-win` and SSH is confirmed working.                      |
