@@ -4,11 +4,11 @@
 # Controller (Mac) only:
 #   ansible-playbook playbooks/role_only.yaml --limit execution_nodes
 #
-# Single WSL host (run from Mac, reaches WSL over SSH):
+# Single Linux companion host (run from Mac after SSH is verified):
 #   ansible-playbook playbooks/role_only.yaml --limit server-225-wsl
 #   ansible-playbook playbooks/role_only.yaml --limit network-server-wsl
 #
-# Everything (Mac + all deployed WSL hosts):
+# Everything (Mac + all SSH-ready Linux companion hosts in `wsl_hosts`):
 #   ansible-playbook playbooks/role_only.yaml
 #
 
@@ -22,12 +22,12 @@
     - role: common/shell_config
     - role: ansible_dev_tools
 
-- name: Set up dev environment on WSL hosts
+- name: Set up dev environment on SSH-ready Linux companion hosts
   hosts: wsl_hosts
   gather_facts: true
 
   pre_tasks:
-    - name: Skip WSL hosts without SSH access
+    - name: Skip Linux companion hosts without SSH access
       ansible.builtin.meta: end_host
       when: (ansible_connection | default('ssh')) != 'ssh'
       tags: [always]

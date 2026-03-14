@@ -24,7 +24,7 @@ Everything related to Ansible lives in the top‑level tree; there’s no hidden
 
 ## 🧭 2. Inventory & variable hierarchy
 
-- **Dual‑surface model.**  Each Windows physical node appears twice (`…‑win` for WinRM, `…‑wsl` for SSH).  
+- **Dual‑surface model.**  Each Windows physical node appears twice (`…‑win` for WinRM bootstrap, `…‑wsl` for the Linux companion side once it is directly reachable over SSH).  
 ‑‑> children `windows_hosts` and `wsl_hosts` are grouped under `ssh_targets` when SSH entries are needed.
 
 - **Group‑vars** exist for every purpose (`all`, `execution_nodes`, `windows_hosts`, the physical‑node groups such as `server_225`, etc.).  File names match the inventory groups (Appreciate the comment in `inventory.yaml` explaining the naming pattern).

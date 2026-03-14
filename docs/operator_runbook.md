@@ -5,8 +5,8 @@ This document describes the operational workflow for managing the FuzLang infras
 ## Overview
 
 The infrastructure uses a **remote-first workflow** with a dual-surface model:
-- **WinRM** for Windows host management (initial bootstrap, Windows features, services)
-- **SSH** for WSL2 and Linux operations (Docker, stack deployment, day-to-day operations)
+- **WinRM** for Windows host management and for creating/configuring the Linux companion side
+- **SSH** for Linux companion operations after that side has been promoted to direct use
 
 ## Workflow Phases
 
@@ -27,7 +27,7 @@ Run on the Windows node in an elevated terminal:
 
 ### Phase 1: Initial Bootstrap (WinRM-Only)
 
-**Goal**: Enable SSH and WSL prerequisites on Windows hosts.
+**Goal**: Enable Windows access, install/configure the Linux companion side, and make direct SSH possible.
 
 **Steps**:
 
@@ -57,17 +57,17 @@ Run on the Windows node in an elevated terminal:
 - GPU drivers are validated
 
 **After this phase**:
-- SSH is available on all Windows hosts
-- WSL2 is ready for Docker operations
-- You can pivot to SSH-based control
+- Windows bootstrap access is stable
+- The Linux companion side exists and is configured through `*-win`
+- Direct SSH may now be verified and promoted into normal use
 
 ### Phase 2: Pivot to SSH-Based Control
 
-**Goal**: Use SSH for day-to-day operations and WSL operations.
+**Goal**: Use SSH for day-to-day operations on Linux companion hosts that have been promoted to direct use.
 
 **Why SSH?**
 - Faster for repeated operations
-- Better for WSL2 access
+- Better for direct access to the Linux companion side
 - More efficient for Docker operations
 - Standard Linux tooling works
 
@@ -207,10 +207,10 @@ Run on the Windows node in an elevated terminal:
 - Service configuration
 - Scheduled task management
 
-### SSH (WSL2 and Linux Operations)
+### SSH (Linux Companion Operations)
 
 **Used for**:
-- WSL2 access
+- Direct access to the Linux companion side
 - Docker operations
 - Stack deployment
 - Day-to-day management
@@ -224,7 +224,7 @@ Run on the Windows node in an elevated terminal:
 **When to use**:
 - Stack deployment
 - Docker operations
-- WSL2 management
+- Linux companion management after SSH is verified
 - Regular maintenance
 
 ## Troubleshooting
@@ -243,7 +243,7 @@ Run on the Windows node in an elevated terminal:
 **SSH connection fails**:
 - Verify OpenSSH Server is running on Windows host
 - Check SSH port (22) is accessible
-- Verify WSL distro is accessible
+- Verify the Linux companion side exists and is reachable through the Windows host first
 
 ### Reboot Handling
 
@@ -379,4 +379,3 @@ direnv allow      # In directories with .envrc files
 ```
 
 See `docs/deploy_shell_config.md` for complete documentation.
-

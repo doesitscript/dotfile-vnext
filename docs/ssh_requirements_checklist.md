@@ -26,9 +26,9 @@ Optional: DefaultShell = WSL so SSH drops into bash – same script sets `HKLM:\
 
 ---
 
-## WSL (Ubuntu openssh-server)
+## Linux companion side (Ubuntu openssh-server)
 
-Ansible (and Mac) SSH into the WSL user; same key as Windows.
+This side is installed/configured through the companion `*-win` host first. After SSH is working, Ansible (and the Mac) can target the `*-wsl` inventory host directly with the same key material.
 
 | Requirement | Where it's set up | File / location |
 |-------------|-------------------|------------------|
@@ -48,7 +48,7 @@ Ansible runs on the Mac and SSHs to server-225-wsl using the private key and hos
 | Requirement | Where it's set up | File / location |
 |-------------|-------------------|------------------|
 | Private key on Mac | `~/.ssh/id_ed25519_ansible` | `playbooks/bootstrap_mac.yaml` – installs from vault or from just-generated key (Mac-first) |
-| Correct host_vars for server-225-wsl | Inventory | `inventory/host_vars/server-225-wsl.yaml` (and/or `inventory/group_vars/wsl_hosts.yaml`). Must include: `ansible_connection: ssh`, `ansible_host`, `ansible_user`, `ansible_port`, `ansible_ssh_private_key_file: "~/.ssh/id_ed25519_ansible"`, `ansible_python_interpreter: /usr/bin/python3`. Written by `bin/bootstrap-local.ps1`; overwritten by `playbooks/bootstrap_local.yml` template. |
+| Correct host_vars for server-225-wsl | Inventory | `inventory/host_vars/server-225-wsl.yaml` (and/or `inventory/group_vars/wsl_hosts.yaml`). Must include: `ansible_connection: ssh`, `ansible_host`, `ansible_user`, `ansible_port`, `ansible_ssh_private_key_file: "~/.ssh/id_ed25519_ansible"`, `ansible_python_interpreter: /usr/bin/python3`. Written by `bin/bootstrap-local.ps1` to represent the future direct Linux companion surface, then updated by Ansible when that side is configured. |
 
 `ansible_ssh_private_key_file` and `ansible_python_interpreter` are written by:
 - **PowerShell:** `bin/bootstrap-local.ps1` when it writes WSL host_vars (so they exist even if you run with `-RunAll:$false`).
@@ -79,4 +79,4 @@ In the debug output, the line starting with `<DESKTOP-VLLM> SSH: EXEC ssh ...` s
 | `ansible_ssh_private_key_file` | `-o 'IdentityFile="/Users/joshc/.ssh/id_ed25519_ansible"'` (path may differ). |
 | `ansible_python_interpreter` | Remote command ends with `'/usr/bin/python3 && sleep 0'`. |
 
-If any of these are missing or wrong, update `inventory/host_vars/server-225-wsl.yaml` or `inventory/group_vars/wsl_hosts.yaml` (group_vars apply to all WSL hosts).
+If any of these are missing or wrong, update `inventory/host_vars/server-225-wsl.yaml` or `inventory/group_vars/wsl_hosts.yaml` (group_vars apply to all SSH-ready Linux companion hosts).

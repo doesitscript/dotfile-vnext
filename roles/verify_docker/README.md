@@ -4,7 +4,7 @@ Non-destructive validation role for Docker. Makes no changes -- only checks that
 
 ## Task files
 
-- **`tasks/main.yml`** -- Engine-side verification. Runs `docker version` and `docker compose version` directly on the host where Docker Engine is installed. Use this against `wsl_hosts`.
+- **`tasks/main.yml`** -- Engine-side verification. Runs `docker version` and `docker compose version` directly on the host where Docker Engine is installed. Use this against `wsl_hosts` only after those `*-wsl` identities are functioning as direct SSH targets.
 - **`tasks/client.yml`** -- Client-side verification. Runs `docker info` through the SSH-based Docker context to confirm the client can reach the remote engine. Works on both macOS and Windows clients.
 
 ## Playbooks

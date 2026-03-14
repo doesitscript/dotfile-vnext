@@ -8,7 +8,7 @@ The original `tasks/main.yml` installed `docker.io` (the Debian-packaged version
 
 ## Current setup
 
-- **Engine install**: `playbooks/docker_engine.yaml` applies `geerlingguy.docker` to `wsl_hosts` (guarded by `docker_engine_in_wsl: true`).
+- **Engine install**: `playbooks/docker_engine.yaml` operates on the `*-wsl` inventory hosts, but all work is delegated through the companion `*-win` host via `wsl.exe`. The `wsl_hosts` group should only contain Linux companion surfaces that are meant to be direct SSH targets.
 - **Client setup**: `playbooks/docker_client.yaml` applies `roles/docker_client` to `docker_clients`.
 - **Orchestrator**: `playbooks/docker.yaml` chains engine + client + verification.
 
