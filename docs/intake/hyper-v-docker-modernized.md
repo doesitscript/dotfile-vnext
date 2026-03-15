@@ -17,9 +17,10 @@ Use that adapter name with the --network Multipass option.
 Step B — Create cloud-config.yaml
 Create a cloud‑init file to configure SSH access and preinstall development tools. Replace the SSH key placeholder with your public key:
 
+# ai this shoul dbe a secret vua ansible's secret 
 #cloud-config
 ssh_authorized_keys:
-  - ssh-rsa AAAAB3Nza...<YOUR_PUBLIC_KEY>... user@machine
+  - ssh-rsa AAAAB3Nza...<YOUR_PUBLIC_KEY>... user@machine 
 packages:
   - git
   - curl
