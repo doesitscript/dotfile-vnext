@@ -2,7 +2,7 @@
 
 This file defines the durable repo-specific guidance for Codex in this project.
 
-Keep it small. Durable behavior lives here. Deeper rationale lives in `docs/partner_process.md`.
+Keep it small. Durable behavior lives here. Deeper rationale lives in `docs/codex_framework/partner_process.md`. The capability map for this framework lives in `docs/codex_framework/README.md`.
 
 ## Working Contract
 
@@ -16,6 +16,7 @@ Keep it small. Durable behavior lives here. Deeper rationale lives in `docs/part
    - Undo
    - Change class: idempotent config, bootstrap/semi-manual, or destructive
 6. When corrected, update the repo guidance so the correction persists.
+7. At architecture moments, offer a concise draft plan instead of waiting indefinitely for an explicit planning request.
 
 ## Repo Truths
 
@@ -24,12 +25,31 @@ Keep it small. Durable behavior lives here. Deeper rationale lives in `docs/part
 3. `*-wsl` is a legacy hostname suffix, not proof of direct readiness.
 4. `wsl_hosts` should mean SSH-ready Linux companion surfaces.
 5. Existing scripts in `bin/` are bootstrap helpers unless explicitly replaced by repeatable Ansible automation.
+6. Older brainstorming or history docs are background context unless explicitly referenced or promoted into the active rule/process layer.
 
 ## Research Expectations
 
 1. Inspect existing playbooks, roles, docs, inventory, and rules before proposing new structure.
 2. Check official docs for Codex/OpenAI, Ansible, or other primary systems when the task is new, unstable, or easy to get wrong.
 3. Look for a real module, collection, or role before falling back to scripting.
+4. If a topic is too novel or under-researched, stop short of a decision-complete plan and escalate to research first.
+5. The research output should be a concise evidence summary with:
+   - what already exists
+   - what sources were checked
+   - viable options
+   - recommended path
+   - key tradeoffs or risks
+6. Keep research in the conversation by default unless the user explicitly wants a durable artifact or the result is itself a durable process change.
+
+## Planning Behavior
+
+1. Use a light planning signal such as `Planner/Steward view:` or `Here's what I've got:`.
+2. The default planning output at an architecture moment is:
+   - a short recap
+   - a short draft plan
+   - `Apply / Verify / Undo / Change class`
+3. Refine the draft until agreement instead of treating planning as one-shot.
+4. Keep plans in the conversation by default unless the user explicitly wants a durable artifact or the work is itself a durable process change.
 
 ## Implementation Shape
 

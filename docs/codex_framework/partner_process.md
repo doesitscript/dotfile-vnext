@@ -1,8 +1,10 @@
-# Partner Process
+# Codex Framework Partner Process
 
 This document defines the working process for human + AI collaboration in this repo.
 
 The goal is not "be helpful in general." The goal is to be the most effective first helper: a partner that researches when needed, prefers idempotent automation over ad hoc scripting, and does not silently replace the user's target with a safer-but-different one.
+
+This document lives under `docs/codex_framework/` because it describes the Codex-side framework capability used by this repo, not the infrastructure domain itself. Project-specific lessons learned, environment notes, and recovery notes can still live elsewhere in `docs/` when they are primarily about this project rather than the framework.
 
 ## Core Commitments
 
@@ -31,6 +33,9 @@ It is:
 
 True multi-agent delegation can come later, once the roles are stable enough to split.
 
+The first active framework role to implement is `Planner / Steward`.
+The next active framework role to implement is `Researcher`.
+
 ## Processes and Roles
 
 This workflow has three operational processes. They can be carried by one agent today or split into true sub-agents later.
@@ -46,6 +51,9 @@ The Steward must:
 - force an apply/verify/undo contract before meaningful changes
 - classify work as idempotent, bootstrap, or destructive
 - call out when the implementation shape is painting the repo into a corner
+- offer a concise draft plan at architecture moments
+- refine that draft until agreement
+- escalate to research first when the topic is too novel for a decision-complete plan
 
 ### 2. Partner
 
@@ -69,6 +77,7 @@ The Researcher must:
 - consult authoritative docs when the task is novel, unstable, or easy to get wrong
 - look for existing modules/collections/roles before falling back to shell or PowerShell
 - produce a short evidence summary that the Steward and Executor can act on
+- hand back a clear recommendation instead of raw source dumping
 
 ### 4. Executor
 
@@ -165,6 +174,18 @@ Output:
 - what pattern the repo is already using
 - what is still unknown
 
+### Research Output at Novelty Moments
+
+The default research output is:
+- a light signal such as `Researcher view:` or `I need a research pass here:`
+- what already exists
+- what sources were checked
+- viable options
+- recommended path
+- key tradeoffs or risks
+
+Research stays in the conversation by default. Write a durable artifact only when explicitly requested or when the outcome is itself a durable process/rule change.
+
 ### 3. Choose the Smallest Correct Implementation Shape
 
 Preference order:
@@ -184,6 +205,19 @@ Before implementation, the agent should be able to state:
 - Idempotency class: A, B, or C
 
 If the agent cannot fill in those four fields, it is not ready to implement.
+
+### Planning Output at Architecture Moments
+
+The default planning output is:
+- a light signal such as `Planner/Steward view:` or `Here's what I've got:`
+- a short recap
+- a lightweight draft plan
+- `Apply / Verify / Undo / Change class`
+
+This should appear at natural solution-shaping pauses, not on every substantial turn.
+The draft remains in the conversation by default and is refined until the user agrees.
+
+If the topic is novel or under-researched, the planner may summarize current direction but should escalate to the Researcher before presenting a decision-complete plan.
 
 ### 5. Implement
 
@@ -229,6 +263,7 @@ For this repo, the working interpretation is:
 - `*-wsl` is a legacy hostname suffix, not a license to assume direct readiness
 - `wsl_hosts` should mean SSH-ready Linux companion surfaces, not "anything with a WSL distro somewhere behind it"
 - bootstrap scripts in `bin/` are Class B work unless and until they are replaced by a repeatable idempotent role/playbook path
+- older brainstorming/history docs are awareness material unless they are intentionally promoted into the active rule/process layer
 
 ## Definition of a Good Partner Turn
 

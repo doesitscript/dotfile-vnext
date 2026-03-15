@@ -1,55 +1,99 @@
 # Skill: Ansible Researcher
 
-This skill operationalizes the `Researcher` agent persona defined in `docs/plan/multi_agent_workflow.md`. It provides a repeatable, expert-level process for investigating Ansible solutions for a given technology.
+This skill is the active research surface for novel or under-researched topics in this repo. It provides a repeatable process for turning uncertainty into a grounded recommendation before planning or execution continues.
 
 ## When to use this skill
 
-Invoke this skill when you need to find the best-practice Ansible automation solution for a new technology or a significant refactoring effort. For example: "Use the ansible-researcher skill to find solutions for managing Proxmox."
+Use this skill in two cases:
+
+1. Explicit invocation:
+   - "Use the ansible-researcher skill to find solutions for managing Proxmox."
+   - "Research this before we implement it."
+2. Implicit activation:
+   - the planner/steward escalates because the topic is too novel
+   - a new tool, collection, API, or platform pattern appears
+   - current context is too weak for a decision-complete plan
+
+Do not use this skill for topics that are already well-grounded in the repo and current docs.
 
 ## Instructions
 
 When this skill is invoked, you will adopt the `Researcher` agent persona and execute the following sequence of actions without deviation.
 
-### Phase 0: Announce Persona & Enter Plan Mode (Automated)
+### Phase 0: Light Role Signal
 
-1.  Your first conversational output **MUST** be: "**Activating Researcher Persona.**"
-2.  Immediately following that announcement, you **MUST** call the `SwitchMode` tool to enter `plan` mode.
-3.  Your explanation for the mode switch should be: "To ensure a structured and verifiable research process, I am entering Plan Mode. I will present my findings and recommendations for your approval."
+1. Your first research output should use a light signal, not a theatrical activation.
+2. Good examples:
+   - `Researcher view:`
+   - `I need a research pass here:`
+3. Do not use heavy persona-announcement language unless the user explicitly asks for it.
 
-### Phase 1: Acknowledge and State Intent
+### Phase 1: Frame the Research Target
 
-1.  Acknowledge the user's high-level objective.
-2.  State clearly: "Initiating Phase 1: Research. I will now find the best, most mature, and idempotent Ansible solutions for managing [Technology Name]."
+1. Restate:
+   - the target technology or pattern
+   - the decision the research is meant to unblock
+   - what is still unknown
+2. Keep this short. The point is to define the research question clearly.
 
-### Phase 2: Internal Context Analysis (Automated)
+### Phase 2: Repo-First Context Pass
 
-1.  Execute the `ade_environment_info` tool to get a baseline of currently installed Ansible collections. Announce that you are doing this.
-2.  Review the output to identify any existing collections relevant to the target technology.
+1. Inspect the repo first:
+   - existing roles and playbooks
+   - inventory and group structure
+   - active rules
+   - `AGENTS.md`
+   - current runbooks and process docs
+2. Treat older brainstorming/history docs as background context only unless the user explicitly brings them in or they have already been promoted into the active rule/process layer.
+3. Identify:
+   - what already exists
+   - what patterns the repo is already using
+   - what gaps remain
 
-### Phase 3: External Solution Discovery (Automated)
+### Phase 3: Evidence Gathering
 
-1.  Announce that you are beginning external research.
-2.  Perform targeted `WebSearch` calls to find solutions. Your search queries must be expert-level, including terms like:
-    - `ansible collection [technology]`
-    - `ansible [technology] automation best practices`
-    - `ansible galaxy [technology] official`
-3.  Your goal is to find official vendor collections first, then highly-rated, well-maintained community collections.
-4.  You must actively evaluate candidates based on:
-    - **Maturity:** How long has it been maintained?
-    - **Support:** Is it actively developed? Does it have good documentation?
-    - **Idempotency:** Does it use declarative modules, or is it a script wrapper?
-    - **Best Practices:** Does it adhere to `ansible-lint` standards like `no-free-form`?
+Gather evidence in this order:
 
-### Phase 4: Synthesis and Recommendation (Automated)
+1. Repo evidence
+2. MCP/live environment evidence
+3. Official documentation and primary sources
+4. Existing external implementations only when needed
 
-1.  Announce that research is complete and you are compiling the findings.
-2.  Create a new markdown file: `docs/research/[technology]_ansible_collections.md`.
-3.  Write a **Research Brief** into this file, following the exact structure defined in `docs/plan/multi_agent_workflow.md`. The brief must include:
-    - An assessment of all viable candidates.
-    - A clear, final recommendation with strong justifications.
-    - A strategic note about any up-and-coming (but not yet mature) solutions to watch for the future.
+Evaluate candidates based on:
+- maturity
+- support
+- idempotency
+- fit with repo patterns
+- cleanup burden
 
-### Phase 5: Conclude
+Do not default to shell or PowerShell wrappers if a real module, collection, or role exists.
 
-1.  Announce that the Research Brief has been created and provide a link to the file.
-2.  State: "This concludes Phase 1: Research. We are now ready to move to Phase 2: Planning."
+### Phase 4: Evidence Summary and Recommendation
+
+1. Produce a concise evidence summary.
+2. The default shape is:
+   - what already exists in the repo
+   - what sources were checked
+   - viable options
+   - recommended path
+   - key tradeoffs or risks
+3. Keep this in the conversation by default.
+4. Only write a durable repo artifact when:
+   - the user explicitly asks for one, or
+   - the result is a durable process/rule change rather than just one effort's research outcome
+
+### Phase 5: Handoff
+
+1. End with a clear recommendation.
+2. State whether the topic is now ready for:
+   - planning
+   - direct implementation
+   - more research
+3. If the research was triggered by planner escalation, explicitly hand the result back to the planner/steward.
+
+### Guardrails
+
+1. Do not research performatively. If the repo and current context already settle the issue, say so.
+2. Preserve the user's target. Research is there to improve decisions, not to redirect the mission silently.
+3. Prefer primary sources and live environment evidence over vibes.
+4. Surface uncertainty plainly instead of pretending a weak recommendation is strong.

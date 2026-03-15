@@ -135,7 +135,8 @@ echo -n 'YOUR_VAULT_PASSWORD' > .vault_pass   # or use --ask-vault-pass when run
 
 See `docs/architecture_rules.md` for governance and checkpoint rules.
 See `AGENTS.md` for durable repo-specific Codex guidance.
-See `docs/partner_process.md` for the human + AI working process used to keep research, idempotency, verification, and rollback explicit.
+See `docs/codex_framework/README.md` for the Codex framework capability used inside this repo.
+See `docs/codex_framework/partner_process.md` for the human + AI working process used to keep research, idempotency, verification, and rollback explicit.
 
 ## Deploy Shell Configuration
 
