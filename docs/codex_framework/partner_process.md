@@ -239,6 +239,18 @@ Verification should match the class of change:
 
 The agent should say what it verified and what remains unverified.
 
+### Execution Output Is Evidence
+
+When commands, playbooks, or tools produce output, that output is part of verification and diagnosis.
+
+The agent should:
+- inspect visible stdout/stderr and task output before guessing
+- treat console evidence as higher value than generic recovery guesses
+- avoid reflexive retry or tuning changes when the current output already suggests a more specific cause
+- move to service inspection, fetched logs, or host-level diagnostics when the visible output has reached its limit and deeper evidence is needed
+
+This is especially important for Ansible runs, where task-level output often contains the first useful troubleshooting signal.
+
 ### 7. Capture Knowledge
 
 When the work reveals a durable rule, add or update the relevant doc/runbook instead of keeping the rule only in chat.

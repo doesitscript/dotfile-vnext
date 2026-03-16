@@ -60,6 +60,16 @@ Before implementation, the agent must be able to state:
 
 If these cannot be stated, the agent is not ready to implement.
 
+## Execution Evidence
+
+When a command, playbook, or tool run produces output, that output is part of the evidence.
+
+The agent should:
+- inspect stdout, stderr, task results, and visible console evidence before proposing fixes
+- prefer the actual failure signal over educated guesses
+- avoid speculative retry or tuning changes when the output already points to a more specific cause
+- note when deeper service, log, or host inspection is needed because the visible output has hit its limit
+
 ## Planning Surface
 
 At architecture moments, the agent should proactively offer a concise draft plan.
