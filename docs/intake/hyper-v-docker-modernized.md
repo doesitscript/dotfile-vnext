@@ -1,6 +1,13 @@
 # Hyper-V + Multipass: Docker-Ready Ubuntu VMs (Development Workflow)
 Workflow for deploying development-ready Ubuntu instances on Windows Server (Hyper‑V backend) using Multipass and Ansible.
 ---
+NOTE: There may be a ansible resource that makes calling cmdline unecesary for many or any parts OR is may not be compatable with windows and the below is the closet to converting this setup to an ansible implmentation. See the following:
+https://galaxy.ansible.com/ui/repo/published/theko2fi/multipass/content/module/multipass_vm/
+https://galaxy.ansible.com/ui/repo/published/theko2fi/multipass/content/connection/multipass/
+https://github.com/theko2fi/ansible-multipass-collection
+
+---
+
 ## 1. Technical requirements
 - Host OS: Windows Server (with Hyper‑V enabled) or Windows 10/11 Pro (Hyper‑V).
 - Tooling: Multipass (Canonical’s lightweight VM orchestrator).
