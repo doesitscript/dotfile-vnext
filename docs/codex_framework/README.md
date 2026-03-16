@@ -103,3 +103,13 @@ The direction is:
 - make the framework extractable later without dragging the whole project layout with it
 
 The root project should only need to say that it uses this capability. The capability itself should be documented here.
+
+## Naming Guidance For Domain-Specific Additions
+
+If the framework later gains domain-specific extensions, the names should say so plainly.
+
+Examples:
+- `ansible-*` for Ansible-specific rules, workflows, or skills
+- project-qualified names when something is specific to this repo rather than reusable elsewhere
+
+That keeps the generic Codex framework visible and reduces accidental coupling between reusable framework behavior and project-specific automation concerns.
