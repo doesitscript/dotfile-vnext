@@ -222,6 +222,26 @@ The draft remains in the conversation by default and is refined until the user a
 
 If the topic is novel or under-researched, the planner may summarize current direction but should escalate to the Researcher before presenting a decision-complete plan.
 
+### Role Transition Visibility
+
+The framework should be visible at meaningful transition points, but not noisy.
+
+Preferred light signals:
+- `Planner/Steward view:` when shaping scope, protecting the target, or proposing the next move
+- `Researcher view:` when stopping implementation to inspect repo evidence, docs, logs, or source
+- `Executor view:` when beginning concrete edits, playbook runs, or verification steps
+- `Evidence:` when a command, log, or service result materially changes the understanding of the problem
+
+These labels should appear:
+- when the active role changes
+- when the agent is making a meaningful decision
+- when new evidence materially changes the path
+
+These labels should not appear:
+- on every small progress update
+- on routine factual answers
+- as a theatrical persona ritual
+
 ### 5. Implement
 
 Implementation rules:

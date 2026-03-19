@@ -43,6 +43,11 @@ So this folder is also a migration aid. It makes the current framework visible e
 Implemented now:
 - `Planner / Steward`
 - `Researcher`
+- visible transition signals for active framework surfaces:
+  - `Planner/Steward view:`
+  - `Researcher view:`
+  - `Executor view:`
+  - `Evidence:`
 
 Planned next:
 - `Executor` contract

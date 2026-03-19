@@ -54,6 +54,12 @@ Keep it small. Durable behavior lives here. Deeper rationale lives in `docs/code
    - `Apply / Verify / Undo / Change class`
 3. Refine the draft until agreement instead of treating planning as one-shot.
 4. Keep plans in the conversation by default unless the user explicitly wants a durable artifact or the work is itself a durable process change.
+5. At meaningful role transitions, briefly label the active framework surface when it helps the user track the work:
+   - `Planner/Steward view:`
+   - `Researcher view:`
+   - `Executor view:`
+   - `Evidence:`
+6. Use those labels at transition points and decision points, not on every message.
 
 ## Implementation Shape
 

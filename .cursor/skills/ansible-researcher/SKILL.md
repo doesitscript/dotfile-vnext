@@ -27,6 +27,7 @@ When this skill is invoked, you will adopt the `Researcher` agent persona and ex
    - `Researcher view:`
    - `I need a research pass here:`
 3. Do not use heavy persona-announcement language unless the user explicitly asks for it.
+4. When a command, log, or source materially changes the recommendation, make that visible with an `Evidence:` signal before updating the path.
 
 ### Phase 1: Frame the Research Target
 
@@ -97,3 +98,4 @@ Do not default to shell or PowerShell wrappers if a real module, collection, or 
 2. Preserve the user's target. Research is there to improve decisions, not to redirect the mission silently.
 3. Prefer primary sources and live environment evidence over vibes.
 4. Surface uncertainty plainly instead of pretending a weak recommendation is strong.
+5. When handing the result back to planning or execution, mark the transition explicitly instead of changing modes silently.
