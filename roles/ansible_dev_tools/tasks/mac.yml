@@ -36,7 +36,8 @@
   changed_when: "'uninstalled package' in (_ansible_pipx_uninstall_result.stdout | lower)"
   failed_when:
     - _ansible_pipx_uninstall_result.rc != 0
-    - "'not installed' not in (_ansible_pipx_uninstall_result.stderr | lower)"
+    - "'not installed' not in ((_ansible_pipx_uninstall_result.stderr | default('')) | lower)"
+    - "'nothing to uninstall' not in ((_ansible_pipx_uninstall_result.stdout | default('')) | lower)"
   when: ansible_dev_tools_remove_mac_pipx_duplicates | bool
   tags: [pipx, path]
 
