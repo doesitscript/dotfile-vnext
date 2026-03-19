@@ -155,6 +155,7 @@ See `docs/architecture_rules.md` for governance and checkpoint rules.
 See `AGENTS.md` for durable repo-specific Codex guidance.
 See `docs/codex_framework/README.md` for the Codex framework capability used inside this repo.
 See `docs/codex_framework/partner_process.md` for the human + AI working process used to keep research, idempotency, verification, and rollback explicit.
+See `docs/tool_access/README.md` for the tool-access map across shell, IDE, MCP servers, and agents.
 
 ## Deploy Shell Configuration
 
