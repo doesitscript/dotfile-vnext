@@ -18,6 +18,7 @@ Keep it small. Durable behavior lives here. Deeper rationale lives in `docs/code
 6. When corrected, update the repo guidance so the correction persists.
 7. At architecture moments, offer a concise draft plan instead of waiting indefinitely for an explicit planning request.
 8. When commands, playbooks, or tools produce output, inspect that output before guessing at failure causes. Do not make speculative retry or tuning changes unless the available evidence supports them.
+9. One-off remote teardown or cleanup commands against provisioned hosts require explicit user approval and must be treated as a scoped exception, not the default automation path.
 
 ## Repo Truths
 

@@ -4,10 +4,8 @@ argument_specs:
     short_description: Windows identity, OpenSSH, and WSL configuration
     description: >-
       Installs and configures Windows OpenSSH Server, deploys SSH keys,
-      configures sshd_config tunables, enables WSL 2, installs a Linux
-      distribution, configures bridged networking via .wslconfig, and
-      optionally registers a keepalive scheduled task to prevent WSL
-      idle-shutdown.
+      manages sshd_config tunables for direct Windows SSH access, and
+      optionally configures WSL only when explicitly enabled.
     options:
       openssh_server_enabled:
         type: bool
@@ -32,22 +30,18 @@ argument_specs:
       win_ssh_port:
         type: int
         required: false
-        default: 2222
+        default: 22
         description: >-
-          TCP port Windows OpenSSH sshd listens on. Default 2222 avoids
-          conflict with any WSL sshd that may listen on 22.
+          TCP port Windows OpenSSH sshd listens on for the preferred
+          direct-to-Windows SSH path.
 
       win_ssh_powershell_port:
         type: int
         required: false
         default: 2223
         description: >-
-          Secondary OpenSSH port whose DefaultShell is PowerShell.exe.
-          Provides a direct PowerShell session for troubleshooting when the
-          primary WSL-redirected port is broken. Note: connecting to the
-          primary port (win_ssh_port) lands in WSL bash via wsl.exe as the
-          DefaultShell — that session is hosted by Windows sshd, not by a
-          sshd running inside WSL.
+          Legacy cleanup variable for older PowerShell-over-SSH experiments.
+          Not part of the current preferred Windows-only SSH path.
 
       sshd_login_grace_time:
         type: int

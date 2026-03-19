@@ -38,9 +38,9 @@
   when: not (openssh_server_enabled | bool)
   tags: [admin]
 
-# --- powershell-ssh: secondary SSH port that forces a PowerShell session ---
-# Port 2223 listens alongside the primary port (2222). Requires WSL for pwsh-sshd wrapper.
-# TODO: disabled — WSL not installed; OpenSSH removed. Re-enable when WSL+OpenSSH resumes.
+# --- Legacy powershell-ssh block kept only as reference/cleanup material ---
+# The current preferred path is a single Windows OpenSSH listener that lands
+# directly in Windows via DefaultShell. Do not re-enable this block casually.
 # when: (wsl_enabled | default(false) | bool) and (openssh_server_enabled | bool)
 - name: Configure PowerShell SSH port
   when: false
@@ -112,7 +112,6 @@
   ansible.builtin.set_fact:
     ssh_configured: true
     ssh_port: "{{ win_ssh_port }}"
-    ssh_powershell_port: "{{ win_ssh_powershell_port }}"
     ssh_user: "{{ win_ssh_user | default(ansible_user) }}"
     cacheable: true
   when: openssh_server_enabled | bool
@@ -126,7 +125,7 @@
   ansible.builtin.import_tasks: wsl_reset.yml
   tags: [wsl-reset, never]
 
-# --- WSL: enable feature + install distro (disabled by default) ---
+# --- WSL: enable feature + install distro (disabled by default / separate scope) ---
 # Use include_tasks so when wsl_enabled is false the file is never loaded.
 - name: Configure WSL and install distribution
   ansible.builtin.include_tasks: ubuntu.yml

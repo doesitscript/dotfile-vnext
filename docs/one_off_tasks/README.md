@@ -1,0 +1,24 @@
+# One-off Tasks
+
+This folder is for narrowly scoped, operator-approved exceptions.
+
+Use it when work is:
+- intentionally one-time
+- semi-manual or bootstrap-like
+- too irregular or risky to present as normal repeatable automation
+- specific enough that future agents should not assume it is reusable by default
+
+This folder is not the place for:
+- general runbooks
+- normal Ansible role behavior
+- generic framework guidance
+- cleanup logic that should really be made idempotent
+
+## Rule of thumb
+
+If a task needs ad-hoc remote commands because the original implementation was not cleanly reversible, document it here as an exception and keep the scope explicit.
+
+Future agents should read these notes as:
+- allowed only for the specific situation described
+- not a standing permission to improvise remote cleanup
+- something to confirm with the user before execution

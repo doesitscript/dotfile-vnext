@@ -5,7 +5,7 @@ The **Mac** is the control node: you run Ansible from the Mac to manage Windows 
 ## Overview
 
 - **WinRM HTTP (5985)** – Ansible on the Mac connects to Windows over WinRM HTTP with NTLM. This is the bootstrap path for `*-win` hosts and the path used to install/configure the Linux companion side before it is directly reachable.
-- **OpenSSH Server (port 22)** – After bootstrap, the Linux companion side can be reached directly over SSH and treated as its own target. Same `authorized_keys` pattern as WSL; the Mac’s key is deployed so the Mac can remote in.
+- **OpenSSH Server (port 22)** – After bootstrap, the Windows host itself can be reached directly over SSH and land in a Windows shell. The same controller key is deployed so the Mac can remote in.
 
 ## One-time setup on the Windows node (run as Administrator)
 
@@ -25,14 +25,15 @@ The **Mac** is the control node: you run Ansible from the Mac to manage Windows 
    ```
    This script:
    - Configures **WinRM HTTP (5985)** (listener + firewall via `winrm quickconfig`).
-   - Installs/configures **OpenSSH Server** (port 22, firewall, `sshd_config`, default shell = WSL bash).
+   - Installs/configures **OpenSSH Server** (port 22, firewall, `sshd_config`, default shell = Windows PowerShell).
    - Writes **host_vars** (`inventory/host_vars/<node>-win.yaml`, `-wsl.yaml`) so the Mac has both the bootstrap surface (`-win`) and the future direct Linux companion identity (`-wsl`).
    - Optionally appends a key to Windows **authorized_keys** from `bootstrap/id_ed25519_ansible.pub` if present (deprecated: `bootstrap/mac_ssh_key.pub`). The main path is: run the playbook from the Mac so it deploys the execution node’s `~/.ssh/id_ed25519_ansible.pub`.
 
 **Is the Windows box ready to accept connections from the Mac after this?**
 
 - **WinRM**: Yes. The Mac can run playbooks as soon as the repo on the Mac has the same host_vars (sync the repo so the Mac has the generated `ansible_host`, `ansible_port: 5985`, and credentials).
-- **Direct Linux SSH**: Not yet by default. First use the Windows bootstrap surface, then enable/verify SSH for the Linux companion side. After that, the `-wsl` inventory host can be treated as a direct target.
+- **Direct Windows SSH**: Yes, once OpenSSH and key deployment are complete.
+- **Direct Linux SSH**: Not yet by default. First use the Windows bootstrap surface, then enable/verify SSH for the Linux companion side if you intentionally bring WSL back into scope.
 
 5. **Optional – facts only:**  
    `.\bin\bootstrap-local.ps1 -FactsOnly` – only refreshes facts; does not overwrite host_vars or chain to other scripts.
@@ -59,11 +60,11 @@ Sync the repo to the Mac (or pull) so the Mac has the updated host_vars (and key
   ./bin/fz verify
   ```
 
-- **SSH to the Linux companion side** (after SSH and keys are set):
+- **SSH to the Windows host** (after SSH and keys are set):
   ```bash
   ssh joshc@<ansible_host>
   ```
-  You land in the Linux companion environment. Use the same key the repo uses (e.g. `~/.ssh/id_ed25519_ansible`); its public half should be in `authorized_keys`.
+  You land in the Windows shell configured as `DefaultShell`. Use the same key the repo uses (e.g. `~/.ssh/id_ed25519_ansible`); its public half should be in `authorized_keys` or `administrators_authorized_keys`.
 
 ## Requirements
 

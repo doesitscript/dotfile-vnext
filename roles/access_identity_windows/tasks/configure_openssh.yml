@@ -18,22 +18,43 @@
   changed_when: "'INSTALLED' in (ssh_install.stdout | default(''))"
   tags: [admin]
 
-# 2) Ensure service running
-- name: Ensure sshd service is enabled and started
+# 2) Ensure service is enabled; start only after config cleanup
+- name: Ensure sshd service is enabled
   ansible.windows.win_service:
     name: sshd
     start_mode: auto
-    state: started
   tags: [admin]
 
-# 3) Primary SSH port (WSL/bash) — sshd_config + firewall
-- name: Ensure sshd listens on the configured port
+# 3) Primary SSH port (Windows DefaultShell) — sshd_config + firewall
+- name: Remove active SSH listener ports before inserting the desired one
   community.windows.win_lineinfile:
     path: "{{ sshd_config_path }}"
-    regexp: '^(?:#\s*)?Port\s+(?:22|{{ win_ssh_port }})\s*$'
+    regexp: '^Port\s+\d+\s*$'
+    state: absent
+  register: sshd_existing_port_cleanup
+  tags: [admin]
+
+- name: Ensure sshd listens on the configured port before any Match block
+  community.windows.win_lineinfile:
+    path: "{{ sshd_config_path }}"
+    regexp: '^Port\s+{{ win_ssh_port }}\s*$'
     line: "Port {{ win_ssh_port }}"
+    insertbefore: '^Match\s'
     state: present
   register: sshd_port_result
+  tags: [admin]
+
+- name: Remove legacy SSH listener ports from sshd_config
+  community.windows.win_lineinfile:
+    path: "{{ sshd_config_path }}"
+    regexp: '^Port\s+{{ item }}\s*$'
+    state: absent
+  loop:
+    - 22
+    - 2222
+    - "{{ win_ssh_powershell_port }}"
+  when: (item | string) != (win_ssh_port | string)
+  register: sshd_legacy_port_cleanup
   tags: [admin]
 
 # 3b) Keepalive — detect dead sessions and clean up stale connections.
@@ -78,16 +99,14 @@
   register: sshd_login_grace
   tags: [admin]
 
-# --- Firewall rules for all SSH ports (primary + PowerShell) ---
+# --- Firewall rules for Windows SSH ---
 - name: Configure Windows Firewall rules for SSH
   ansible.builtin.import_tasks: firewall.yml
   tags: [admin]
 
 # 5) Default shell
-# DefaultShell is set to PowerShell. Port 2222 lands directly in PowerShell.
-# Note: VS Code/Cursor Remote-SSH requires a Unix-like shell — use the
-# -wsl SSH alias (port 22 → WSL bash) for Remote-SSH editor connections.
-# Use server-225-win (port 2222) for interactive PowerShell sessions only.
+# DefaultShell is set to Windows PowerShell so direct SSH lands on Windows and
+# cannot be redirected into a WSL distro by shell configuration drift.
 
 - name: Ensure HKLM:\SOFTWARE\OpenSSH registry key exists
   ansible.windows.win_regedit:
@@ -105,14 +124,78 @@
   register: sshd_shell_result
   tags: [admin]
 
-- name: Set OpenSSH DefaultShellCommandOption for PowerShell
+- name: Remove custom OpenSSH DefaultShellCommandOption override
   ansible.windows.win_regedit:
     path: HKLM:\SOFTWARE\OpenSSH
     name: DefaultShellCommandOption
-    data: "-NoLogo -NoProfile -c"
-    type: string
-    state: present
+    state: absent
   register: sshd_shell_opt_result
+  tags: [admin]
+
+- name: Remove legacy PowerShell subsystem from sshd_config
+  community.windows.win_lineinfile:
+    path: "{{ sshd_config_path }}"
+    regexp: '^Subsystem\s+powershell\s'
+    state: absent
+  register: sshd_legacy_subsystem_cleanup
+  tags: [admin]
+
+- name: Remove legacy Match LocalPort block for PowerShell from sshd_config
+  community.windows.win_lineinfile:
+    path: "{{ sshd_config_path }}"
+    regexp: '^Match LocalPort {{ win_ssh_powershell_port }}'
+    state: absent
+  register: sshd_legacy_match_cleanup
+  tags: [admin]
+
+- name: Remove legacy ForceCommand pwsh-sshd from sshd_config
+  community.windows.win_lineinfile:
+    path: "{{ sshd_config_path }}"
+    regexp: '^\s+ForceCommand\s+pwsh-sshd\s*$'
+    state: absent
+  register: sshd_legacy_forcecommand_cleanup
+  tags: [admin]
+
+- name: Check WSL distro state before finalizing Windows SSH shell
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      $Ansible.Changed = $false
+      $lines = @((wsl.exe -l -v 2>&1) -replace '\x00', '' | Where-Object { $_ -ne '' })
+      $data = @()
+      if ($LASTEXITCODE -eq 0 -and $lines.Count -gt 1) {
+        $data = @($lines | Select-Object -Skip 1 | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
+      }
+      $joined = $data -join ' '
+      $Ansible.Result = @{
+        present = ($data.Count -gt 0)
+        running = ($joined -match '\bRunning\b')
+        installing = ($joined -match '\bInstalling\b')
+        raw = $data
+      }
+  register: _windows_wsl_state
+  failed_when: false
+  tags: [admin]
+
+- name: Shut down WSL so SSH lands on Windows only
+  ansible.windows.win_powershell:
+    error_action: silently_continue
+    script: |
+      wsl.exe --shutdown 2>&1 | Out-Null
+      $Ansible.Changed = $true
+      $Ansible.Result = @{ action = 'shutdown_requested' }
+  when:
+    - (_windows_wsl_state.result.running | default(false)) or
+      (_windows_wsl_state.result.installing | default(false))
+  failed_when: false
+  tags: [admin]
+
+- name: Ensure sshd service is started after config cleanup
+  ansible.windows.win_service:
+    name: sshd
+    start_mode: auto
+    state: started
+  register: sshd_service_start_result
   tags: [admin]
 
 - name: Reset SSH connection after shell change
@@ -124,5 +207,4 @@
 # Re-enable when OpenSSH is re-enabled (set openssh_server_enabled: true).
 - name: Configure administrator SSH access
   ansible.builtin.import_tasks: administrator.yml
-  when: false
   tags: [admin]

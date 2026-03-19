@@ -1,12 +1,11 @@
 ---
-# Windows surface: WinRM for bootstrap; SSH uses DefaultShell = WSL bash (wsl_distro from group_vars).
-# When using ansible_connection: ssh to this host, set ansible_shell_type: bash.
+# Windows surface: WinRM for bootstrap; OpenSSH should land directly on Windows.
 ansible_host: "DESKTOP-VLLM"
 ansible_password: "Pass@w0rd1"
 surface_type: "windows_host"
 host_ip: "192.168.50.158"
 ansible_connection: winrm
-win_ssh_port: 2222
+win_ssh_port: 22
 win_ssh_user: "joshc"
 verify_ssh_from_execnode: true
 winrm_port: 5985
@@ -36,8 +35,8 @@ wsl_config:
   networking_mode: "bridged"
   gateway: "192.168.50.1"
 
-# OpenSSH Server: disabled — service removed from system.
-openssh_server_enabled: false
+# OpenSSH Server: enabled for direct SSH into Windows.
+openssh_server_enabled: true
 
 # Docker client — connects to the Docker engine in WSL.
 # Hostname resolved via router DNS (WSL distro presents server-225-wsl to DHCP).

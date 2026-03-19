@@ -1,7 +1,7 @@
 ---
 # firewall.yml — Windows Firewall rules for OpenSSH ports.
-# Manages inbound TCP rules for the primary SSH port (WSL/bash),
-# the secondary PowerShell SSH port, and the WSL direct SSH port.
+# Manages inbound TCP rules for the primary Windows SSH port and, only when WSL
+# provisioning is explicitly enabled, the separate WSL direct SSH port.
 
 - name: Ensure firewall rule for primary SSH port
   community.windows.win_firewall_rule:
@@ -31,17 +31,25 @@
     state: present
     enabled: true
     description: "WSL direct SSH (port {{ hostvars[wsl_companion]['wsl_ssh_port'] | default(22) }})"
-  when: wsl_companion is defined
+  when:
+    - wsl_enabled | default(false) | bool
+    - wsl_companion is defined
+
+- name: Remove firewall rule for WSL direct SSH port when WSL is out of scope
+  community.windows.win_firewall_rule:
+    name: sshd-WSL-Direct-In-TCP
+    state: absent
+  when: not (wsl_enabled | default(false) | bool)
 
 - name: Report SSH firewall rule synopsis
   ansible.builtin.debug:
     msg: |-
       SSH firewall rules managed on {{ inventory_hostname }}:
-        Primary (WSL/bash):  port {{ win_ssh_port }} — sshd-Server-In-TCP
+        Primary (Windows shell): port {{ win_ssh_port }} — sshd-Server-In-TCP
         PowerShell:          port {{ win_ssh_powershell_port }} — sshd-PowerShell-In-TCP
-      {% if wsl_companion is defined %}
+      {% if (wsl_enabled | default(false) | bool) and (wsl_companion is defined) %}
         WSL direct SSH:      port {{ hostvars[wsl_companion]['wsl_ssh_port'] | default(22) }} — sshd-WSL-Direct-In-TCP
       {% else %}
-        WSL direct SSH:      skipped (no wsl_companion defined)
+        WSL direct SSH:      skipped (Windows-only OpenSSH scope)
       {% endif %}
   tags: [ps_port]

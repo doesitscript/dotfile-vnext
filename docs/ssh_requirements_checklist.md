@@ -11,7 +11,7 @@ This doc maps each mandatory SSH requirement to where it is set up in the repo. 
 
 ## Windows (OpenSSH Server)
 
-SSH to the Windows host (port 22) then into WSL via default shell.
+SSH to the Windows host (port 22) and land directly in a Windows shell via `DefaultShell`.
 
 | Requirement | Where it's set up | File / location |
 |-------------|-------------------|------------------|
@@ -22,7 +22,7 @@ SSH to the Windows host (port 22) then into WSL via default shell.
 | sshd service Automatic + started | Service `sshd` | `bin/bootstrap-local.ps1` – `Set-Service sshd -StartupType Automatic`, `Start-Service sshd` (with try/catch) |
 | Your key in Windows authorized_keys | User profile | Standard key: `id_ed25519_ansible`. From Mac: playbook reads `~/.ssh/id_ed25519_ansible.pub` and adds to `authorized_keys`. Or `bin/bootstrap-local.ps1` appends `bootstrap/id_ed25519_ansible.pub` if present (deprecated: `bootstrap/mac_ssh_key.pub`). |
 
-Optional: DefaultShell = WSL so SSH drops into bash – same script sets `HKLM:\SOFTWARE\OpenSSH` DefaultShell and DefaultShellCommandOption.
+Preferred for the current Windows-only SSH path: `DefaultShell = PowerShell` so SSH lands on Windows and not inside a WSL distro.
 
 ---
 
