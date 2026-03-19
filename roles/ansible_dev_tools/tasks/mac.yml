@@ -21,22 +21,31 @@
     state: link
   tags: pip
 
-- name: Install Ansible with dependency CLIs exposed via pipx (macOS)
-  ansible.builtin.command: "pipx install --include-deps {{ item }}"
-  loop: "{{ ansible_pipx_include_deps_packages }}"
-  register: _ansible_deps_pipx_result
-  changed_when: "'installed package' in _ansible_deps_pipx_result.stdout"
-  failed_when:
-    - _ansible_deps_pipx_result.rc != 0
-    - "'already seems to be installed' not in _ansible_deps_pipx_result.stderr"
-  tags: pipx
+- name: Ensure ~/.local/bin exists for globally visible Ansible shims
+  ansible.builtin.file:
+    path: "{{ ansible_dev_tools_global_bin_dir }}"
+    state: directory
+    mode: "0755"
+  when: ansible_dev_tools_publish_venv_toolchain_globally | bool
+  tags: [pip, path]
 
-- name: Install standalone Ansible CLI tools via pipx (macOS)
-  ansible.builtin.command: "pipx install {{ item }}"
-  loop: "{{ ansible_pipx_packages }}"
-  register: _ansible_pipx_result
-  changed_when: "'installed package' in _ansible_pipx_result.stdout"
+- name: Remove pipx-installed duplicate Ansible toolchain packages (macOS)
+  ansible.builtin.command: "pipx uninstall {{ item }}"
+  loop: "{{ ansible_dev_tools_pipx_conflicting_packages }}"
+  register: _ansible_pipx_uninstall_result
+  changed_when: "'uninstalled package' in (_ansible_pipx_uninstall_result.stdout | lower)"
   failed_when:
-    - _ansible_pipx_result.rc != 0
-    - "'already seems to be installed' not in _ansible_pipx_result.stderr"
-  tags: pipx
+    - _ansible_pipx_uninstall_result.rc != 0
+    - "'not installed' not in (_ansible_pipx_uninstall_result.stderr | lower)"
+  when: ansible_dev_tools_remove_mac_pipx_duplicates | bool
+  tags: [pipx, path]
+
+- name: Publish project venv Ansible tools into ~/.local/bin
+  ansible.builtin.file:
+    src: "{{ ansible_dev_tools_venv_path }}/bin/{{ item }}"
+    dest: "{{ ansible_dev_tools_global_bin_dir }}/{{ item }}"
+    state: link
+    force: true
+  loop: "{{ ansible_dev_tools_global_cli_tools }}"
+  when: ansible_dev_tools_publish_venv_toolchain_globally | bool
+  tags: [pip, path]

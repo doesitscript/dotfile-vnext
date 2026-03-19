@@ -4,11 +4,14 @@ ansible_dev_tools_install: true
 ansible_navigator_install: true
 ansible_builder_install: true
 ansible_lint_install: true
+ansible_dev_tools_remove_mac_pipx_duplicates: true
+ansible_dev_tools_publish_venv_toolchain_globally: true
 
 # Path to the Python virtual environment where dev tools are installed.
 # Must exist before this role runs (created by the python role).
 # All pip-installed tools land here; the Cursor extension activates this venv.
 ansible_dev_tools_venv_path: "{{ dotfiles_home }}/.venv"
+ansible_dev_tools_global_bin_dir: "{{ ansible_env.HOME }}/.local/bin"
 
 # ansible-dev-tools is the Red Hat meta-package. It installs in one pip call:
 #   ansible-navigator, ansible-builder, ansible-lint, molecule,
@@ -17,12 +20,22 @@ ansible_dev_tools_venv_path: "{{ dotfiles_home }}/.venv"
 ansible_dev_tools_pip_packages:
   - ansible-dev-tools
 
-# The ansible meta-package needs --include-deps so that ansible-core CLIs
-# (ansible, ansible-playbook, ansible-inventory, …) are exposed on PATH.
-ansible_pipx_include_deps_packages:
+# Packages that should not provide a second Ansible toolchain on macOS when
+# the project venv is the source of truth.
+ansible_dev_tools_pipx_conflicting_packages:
   - ansible
-
-# Standalone tools installed via plain pipx (no --include-deps needed).
-ansible_pipx_packages:
   - ansible-lint
   - ansible-builder
+
+# Publish the project venv into ~/.local/bin so editor/MCP/agent processes can
+# resolve the same Ansible toolchain through PATH without a second install.
+ansible_dev_tools_global_cli_tools:
+  - ansible
+  - ansible-playbook
+  - ansible-lint
+  - ansible-builder
+  - ansible-config
+  - ansible-doc
+  - ansible-galaxy
+  - ansible-inventory
+  - ansible-vault

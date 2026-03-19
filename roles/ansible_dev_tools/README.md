@@ -9,6 +9,7 @@ Before using the Cursor Ansible extension or the ansible MCP server on a new mac
 1. Installs `oniguruma` (system C library required by ansible-navigator)
 2. Installs all Ansible dev tools into the project `.venv` via pip
 3. Creates `~/.ansible-venv` → symlink pointing to the project venv
+4. Publishes the same Ansible CLI binaries into `~/.local/bin` as symlinks to the project venv
 
 The `~/.ansible-venv` symlink is what the Cursor extension uses via `ansible.python.activationScript`
 (configured in `.vscode/settings.json`). Without the symlink, the extension cannot activate the
@@ -23,6 +24,32 @@ into committed settings.
 
 See `.vscode/settings.json` for the active configuration and the comment explaining the bug.
 See `roles/mcp_servers/redhat-ansible/README.md` for the MCP server's separate tool visibility gap.
+
+## Preferred execution path on macOS
+
+Prefer the focused native-Ansible playbook:
+
+```bash
+.venv/bin/ansible-playbook playbooks/mac/ansible_dev_tools.yaml \
+  -i inventory/inventory.yaml --limit mac-dev
+```
+
+This is preferred over:
+
+- `./bin/fz role-local ansible_dev_tools`
+- broad local umbrella playbooks when you only want the Ansible toolchain
+
+## Future refinement
+
+The current playbook is the preferred first-pass local path, but the role can
+still be tightened further.
+
+Future improvement target:
+
+- reduce coupling to broader local workstation setup where practical
+- keep `ansible_dev_tools` centered on the Ansible toolchain itself
+- preserve the focused playbook as the normal entrypoint for controller-side
+  convergence
 
 ## Tools Installed
 
@@ -66,11 +93,36 @@ The table below describes the install method per platform for the three primary 
 | Tool group         | macOS (pip into .venv) | Ubuntu (pipx) | Windows (pip) |
 |--------------------|------------------------|---------------|---------------|
 | ansible-dev-tools  | pip                    | pipx          | pip           |
-| ansible (core)     | pipx `--include-deps`  | pipx          | pip           |
-| ansible-lint       | pipx                   | pipx          | -             |
+| ansible (core)     | pip via `.venv`        | pipx          | pip           |
+| ansible-lint       | pip via `.venv`        | pipx          | -             |
+
+On macOS, the project `.venv` is the source of truth for the Ansible toolchain.
+The role removes duplicate `pipx` installs for `ansible`, `ansible-lint`, and
+`ansible-builder`, then publishes the `.venv` binaries into `~/.local/bin` so
+editor, MCP, and agent processes can still discover them on `PATH`.
 
 On macOS, tools that cannot compile natively (e.g. `ansible-navigator`) are
 provided as Docker wrapper functions deployed to `~/.bashrc.d/`.
+
+## macOS Toolchain Sync
+
+The short version of the problem:
+
+- running `ansible-playbook` from `PATH` can hit a different Python environment
+  than the project `.venv`
+- Windows/WinRM support (`pywinrm`, `requests`, related deps) may be present in
+  one environment but missing in the other
+- that makes repo behavior look flaky when it is really just toolchain drift
+
+The role now treats this as a sync problem, not a “remember the right command”
+problem:
+
+- install Ansible dev tools once into the project `.venv`
+- remove duplicate `pipx` Ansible packages on macOS
+- symlink key Ansible CLIs from `.venv/bin/` into `~/.local/bin`
+
+That keeps one effective Ansible toolchain while preserving global discovery for
+Cursor, MCP servers, and shell-launched agents.
 
 ## venv Installation (All Tools)
 

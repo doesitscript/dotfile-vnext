@@ -2,6 +2,15 @@
 
 Multi-node AI infrastructure automation using Ansible.
 
+## Execution Preference
+
+Prefer native `ansible-playbook` commands and focused playbooks over custom CLI
+wrappers. `./bin/fz` is being de-emphasized for normal execution and should be
+treated as transitional convenience/orchestration glue, not the preferred
+long-term interface.
+
+See [docs/ansible/native-ansible-first.md](docs/ansible/native-ansible-first.md).
+
 ## Hands-free flow
 
 The only manual steps are: **(1)** put your vault secret in `.vault_pass` at repo root (see `config/README_vault_pass.md`), and **(2)** run the first kick-off command for the node (e.g. `.\bin\bootstrap-local.cmd` on Windows, or `./bin/fz bootstrap --limit mac-dev` on the Mac). Everything else (venv, collections, SSH key generation, host_vars, WSL bootstrap) is automated.
@@ -130,6 +139,15 @@ echo -n 'YOUR_VAULT_PASSWORD' > .vault_pass   # or use --ask-vault-pass when run
 ```
 
 `fz bootstrap --limit mac-dev` does everything: creates `.venv`, installs Python deps and Ansible Galaxy collections (`requirements.yml`), then runs the Mac bootstrap playbook. The playbook ensures the Ansible SSH key exists at **`~/.ssh/id_ed25519_ansible`** (and `.pub`) on the Mac—generating it only if missing; the key is never copied into the repo. It then runs baseline, python, git, hub, homebrew, ansible_runner. Windows/WSL bootstrap playbooks read the public key from the execution node (Mac) at run time. After that, from this repo run `./bin/fz deploy main --limit server-225-wsl` and similar.
+
+For focused local Ansible toolchain convergence on the Mac, prefer:
+
+```bash
+.venv/bin/ansible-playbook playbooks/mac/ansible_dev_tools.yaml \
+  -i inventory/inventory.yaml --limit mac-dev
+```
+
+instead of `./bin/fz role-local ansible_dev_tools`.
 
 ## Quick Start
 

@@ -1,0 +1,18 @@
+---
+# Focused controller playbook for Ansible developer tooling on the Mac.
+#
+# Preferred over `./bin/fz role-local ansible_dev_tools` and narrower than
+# `playbooks/local.yaml` when the goal is only to converge the Ansible toolchain.
+#
+# Example:
+#   .venv/bin/ansible-playbook playbooks/mac/ansible_dev_tools.yaml \
+#     -i inventory/inventory.yaml --limit mac-dev
+#
+
+- name: Converge Ansible developer tooling on the controller
+  hosts: execution_nodes
+  connection: local
+  gather_facts: true
+
+  roles:
+    - role: ansible_dev_tools

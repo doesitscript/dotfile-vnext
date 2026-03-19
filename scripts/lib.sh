@@ -754,6 +754,8 @@ run_local_role_playbook() {
   local local_python_interpreter="${_venv_bin}/python3"
   [ -x "${local_python_interpreter}" ] || local_python_interpreter="${_venv_bin}/python"
 
+  log_warn "fz role-local is deprecated. Prefer a focused playbook and a native ansible-playbook command when possible."
+
   ensure_venv
   setup_ansible_env
 
@@ -817,6 +819,8 @@ Commands:
                         Run on the Mac; then sync folder to Windows and run bootstrap-local.ps1 there.
   deploy <target>        Deploy stacks to target node
                         Requires --limit or --all
+                        Legacy orchestration wrapper. Prefer explicit
+                        ansible-playbook commands when a focused playbook exists.
     main                 Deploy main stacks (server-225)
     network              Deploy network stacks (network-server)
                         Prompts for confirmation unless --yes is provided
@@ -833,6 +837,8 @@ Commands:
                         Example: fz gather-facts --all
                         Example: fz gather-facts --limit dev-workstation-win
   role-local <role>      Run one role locally on localhost
+                        Deprecated. Prefer a focused playbook and a native
+                        ansible-playbook command.
                         Example: fz role-local git
                         Supports ansible-playbook flags (e.g. --check, --diff)
                         Uses repo venv Python for deterministic local execution
@@ -882,4 +888,3 @@ Examples:
 
 EOF
 }
-
