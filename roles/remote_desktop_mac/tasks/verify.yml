@@ -75,10 +75,10 @@
 - name: Require core install evidence for this special-case app
   ansible.builtin.assert:
     that:
-      - remote_desktop_mac_brew_list.rc == 0
       - remote_desktop_mac_app_bundle.stat.exists
+      - remote_desktop_mac_pkg_info.rc == 0
     fail_msg: >-
-      remote_desktop_mac install is not yet proven successful. Homebrew and the app
-      bundle must both be present before this role is considered installed.
+      remote_desktop_mac install is not yet proven successful. The app bundle and
+      the pkg receipt must both be present before this role is considered installed.
     success_msg: >-
-      remote_desktop_mac install is proven at the package-manager and app-bundle layer.
+      remote_desktop_mac install is proven at the app-bundle and pkg-receipt layer.

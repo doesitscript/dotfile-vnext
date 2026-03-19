@@ -53,6 +53,26 @@ For pkg-based apps, also consider:
 - `spctl --assess`
 - `codesign --verify`
 
+## Password And Privilege Handling
+
+When a role needs privilege for only one part of the install path, do not guess.
+
+Check the module or tool behavior first:
+- does the module already support password passing
+- does it shell out to another installer tool
+- does Homebrew need to stay non-root while a later step needs elevation
+
+For macOS/Homebrew special cases, prefer the narrowest correct privilege boundary:
+- user-space fetch or package-manager preparation
+- explicit elevated installer/remediation step only where needed
+
+Do not default to root-running Homebrew just because the downstream installer needs privilege.
+
+For Ansible specifically, thread privilege only into the task that actually needs it:
+- do not escalate the whole playbook if only one installer step needs elevation
+- do not escalate the package manager if only the downstream installer needs elevation
+- prefer role/task design where the password requirement is attached to the exact step that consumes it
+
 ## Concise Patterns To Reuse
 
 ### Pattern A: Standard Homebrew cask

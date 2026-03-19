@@ -76,6 +76,8 @@ The Researcher must:
 - inspect existing playbooks, roles, docs, and inventory before proposing new structure
 - consult authoritative docs when the task is novel, unstable, or easy to get wrong
 - look for existing modules/collections/roles before falling back to shell or PowerShell
+- inspect module or tool documentation/source when password flow, privilege escalation, or installer behavior is the point of uncertainty
+- recognize when implementation retries have hit diminishing returns and switch to research instead of continuing speculative changes
 - produce a short evidence summary that the Steward and Executor can act on
 - hand back a clear recommendation instead of raw source dumping
 
@@ -102,6 +104,7 @@ The agent must enter a research step before execution when any of the following 
 - it cannot explain how to undo the change
 - the repo's existing patterns conflict with what the agent was about to do
 - the user has already corrected the model once and the agent still feels tempted to generalize
+- repeated implementation attempts are no longer producing new evidence
 
 ## Change Classes
 

@@ -61,10 +61,12 @@ For this special-case app, installation success is evaluated in layers.
 ### Core install proof
 
 The role now checks:
-- Homebrew reports the cask installed
 - the `.app` bundle exists at the expected path
+- the pkg receipt exists
 
 If either of those is missing, the role treats install as not yet proven successful.
+
+Homebrew state is still reported as useful evidence, but it is no longer the blocking success gate for this role because the current install path uses `brew fetch` plus a direct pkg install.
 
 ### Extra evidence for pkg-based installs
 
@@ -84,6 +86,10 @@ This means a run can be a partial success:
 - one or more stabilization checks may still be red at the end
 
 For this role, that should be treated as "installed, but still needs trust/stabilization follow-up" rather than "not installed at all."
+
+In practice:
+- green install proof means app bundle and pkg receipt agree
+- red stabilization checks after that mean the app is installed but still needs trust/remediation follow-up
 
 ### Optional stabilization
 
@@ -143,6 +149,12 @@ That pattern should live in Ansible role docs and Ansible-side helper guidance, 
 See [docs/ansible/mac-homebrew-special-cases.md](/Users/joshc/develop/dotfile-vnext/docs/ansible/mac-homebrew-special-cases.md).
 
 Future macOS/Homebrew roles with similar behavior should reuse that pattern doc instead of re-explaining the whole model inside each role README.
+
+## Old Mac Operational Note
+
+On older Macs, automatic operating-system or App Store update behavior can become part of the risk surface for legacy-compatible apps.
+
+For machines like this one, it can be reasonable to treat automatic updates as an explicit operator choice rather than a default assumption. That is separate from this role's install logic, but worth documenting when the host is intentionally pinned to an older macOS release.
 
 ---
 

@@ -41,6 +41,8 @@ Keep it small. Durable behavior lives here. Deeper rationale lives in `docs/code
    - recommended path
    - key tradeoffs or risks
 6. Keep research in the conversation by default unless the user explicitly wants a durable artifact or the result is itself a durable process change.
+7. When repeated implementation attempts stop producing new evidence, stop iterating blindly and switch to documentation/source-backed research before changing strategy.
+8. When password passing, privilege escalation, or installer flow behaves unexpectedly, inspect the actual module/tool documentation or source before changing escalation strategy.
 
 ## Planning Behavior
 
