@@ -59,7 +59,10 @@
 # No per-role deploy task needed for static files.
 - name: Find bashrc.d files contributed by roles
   ansible.builtin.find:
-    paths: "{{ playbook_dir | dirname }}/roles"
+    # Derive the repo roles root from this role's own location so nested
+    # playbook paths (for example playbooks/mac/*.yaml) do not produce a
+    # bogus playbooks/roles lookup.
+    paths: "{{ role_path | dirname | dirname }}"
     patterns: "*.bash"
     recurse: true
     file_type: file
