@@ -1,0 +1,1 @@
+Ok, this is a hard one. and a good example of how I'm not trying to solve every situation and make eveything perfectly wokr. FOr instance, everhtin you checked. I think was good enough gernally speaking, however, this package is old, my laptop is old. RIght now. I cannot see this app on in application list.
