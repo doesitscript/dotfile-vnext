@@ -4,6 +4,7 @@
 # Deploys: common/shell_config (.bashrc.d pattern, PATH, aliases)
 #          direnv (installation + bash hook)
 #          cursor (editor config, extensions, LF/UTF-8 settings)
+#          remote_desktop_mac (macOS-only Microsoft Remote Desktop install)
 #          mcp_servers/openai_docs (OpenAI Docs MCP for Cursor)
 #
 # A node is a development node when node_purpose: development is set in its
@@ -27,6 +28,7 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_settings
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_extensions
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags vscode_extensions
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags remote_desktop_mac --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags openai-docs
 #
 #   # Windows surface only
@@ -63,5 +65,7 @@
     - role: common/shell_config
     - role: direnv
     - role: cursor
+    - role: remote_desktop_mac
+      tags: [remote_desktop_mac]
     - role: mcp_servers/openai_docs
     - role: common/vscode

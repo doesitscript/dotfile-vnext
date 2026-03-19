@@ -1,0 +1,50 @@
+---
+- name: Remove quarantine attribute from app bundle
+  ansible.builtin.command:
+    argv:
+      - xattr
+      - -dr
+      - com.apple.quarantine
+      - "{{ remote_desktop_mac_app_path }}"
+  register: remote_desktop_mac_quarantine_remove
+  changed_when: remote_desktop_mac_quarantine_remove.rc == 0
+  failed_when:
+    - remote_desktop_mac_enforce_stabilization
+    - remote_desktop_mac_quarantine_remove.rc != 0
+  become: "{{ remote_desktop_mac_stabilization_become }}"
+
+- name: Re-sign app bundle ad hoc for local trust stabilization
+  ansible.builtin.command:
+    argv:
+      - codesign
+      - --force
+      - --deep
+      - --sign
+      - "-"
+      - "{{ remote_desktop_mac_app_path }}"
+  register: remote_desktop_mac_codesign_fix
+  changed_when: remote_desktop_mac_codesign_fix.rc == 0
+  failed_when:
+    - remote_desktop_mac_enforce_stabilization
+    - remote_desktop_mac_codesign_fix.rc != 0
+  become: "{{ remote_desktop_mac_stabilization_become }}"
+
+- name: Re-assess app bundle after stabilization attempt
+  ansible.builtin.command:
+    argv:
+      - spctl
+      - --assess
+      - --verbose
+      - "{{ remote_desktop_mac_app_path }}"
+  register: remote_desktop_mac_spctl_after_fix
+  changed_when: false
+  failed_when:
+    - remote_desktop_mac_enforce_stabilization
+    - remote_desktop_mac_spctl_after_fix.rc != 0
+
+- name: Report stabilization attempt results
+  ansible.builtin.debug:
+    msg:
+      quarantine_remove_rc: "{{ remote_desktop_mac_quarantine_remove.rc }}"
+      codesign_fix_rc: "{{ remote_desktop_mac_codesign_fix.rc }}"
+      spctl_after_fix_rc: "{{ remote_desktop_mac_spctl_after_fix.rc }}"

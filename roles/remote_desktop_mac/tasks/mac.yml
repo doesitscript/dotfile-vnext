@@ -17,10 +17,66 @@
 
 - name: Tap junian/homebrew-mirrors community mirror
   community.general.homebrew_tap:
-    name: junian/homebrew-mirrors
+    name: "{{ remote_desktop_mac_tap_name }}"
     state: present
 
-- name: Install Microsoft Remote Desktop (macOS 12 community build)
-  community.general.homebrew_cask:
-    name: microsoft-remote-desktop-for-macos12
-    state: present
+- name: Check whether Remote Desktop app bundle already exists
+  ansible.builtin.stat:
+    path: "{{ remote_desktop_mac_app_path }}"
+  register: remote_desktop_mac_existing_app
+
+- name: Check whether pkg receipt already exists
+  ansible.builtin.command:
+    argv:
+      - pkgutil
+      - --pkg-info
+      - "{{ remote_desktop_mac_pkg_id }}"
+  register: remote_desktop_mac_existing_pkg
+  changed_when: false
+  failed_when: false
+
+- name: Fetch Microsoft Remote Desktop installer pkg with Homebrew
+  ansible.builtin.command:
+    argv:
+      - brew
+      - fetch
+      - --cask
+      - "{{ remote_desktop_mac_cask_name }}"
+  register: remote_desktop_mac_fetch
+  changed_when: false
+  when: not (remote_desktop_mac_existing_app.stat.exists and remote_desktop_mac_existing_pkg.rc == 0)
+
+- name: Resolve cached Microsoft Remote Desktop installer pkg path
+  ansible.builtin.command:
+    argv:
+      - brew
+      - --cache
+      - --cask
+      - "{{ remote_desktop_mac_cask_name }}"
+  register: remote_desktop_mac_pkg_cache
+  changed_when: false
+  when: not (remote_desktop_mac_existing_app.stat.exists and remote_desktop_mac_existing_pkg.rc == 0)
+
+- name: Install Microsoft Remote Desktop pkg through macOS installer
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/installer
+      - -pkg
+      - "{{ remote_desktop_mac_pkg_cache.stdout }}"
+      - -target
+      - /
+  register: remote_desktop_mac_installer
+  changed_when: remote_desktop_mac_installer.rc == 0
+  become: true
+  when: not (remote_desktop_mac_existing_app.stat.exists and remote_desktop_mac_existing_pkg.rc == 0)
+
+- name: Verify special-case pkg install landed correctly
+  ansible.builtin.import_tasks: verify.yml
+  when: remote_desktop_mac_verify_install
+
+- name: Attempt special-case post-install stabilization
+  ansible.builtin.import_tasks: stabilize.yml
+  when:
+    - remote_desktop_mac_attempt_stabilization
+    - remote_desktop_mac_verify_install
+    - remote_desktop_mac_app_bundle.stat.exists | default(false)

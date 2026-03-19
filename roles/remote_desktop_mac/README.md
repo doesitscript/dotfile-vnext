@@ -18,10 +18,18 @@ The [`junian/homebrew-mirrors`](https://github.com/junian/homebrew-mirrors) tap 
 ## What this role does
 
 1. Taps `junian/homebrew-mirrors` via `community.general.homebrew_tap`.
-2. Installs the `microsoft-remote-desktop-for-macos12` cask via `community.general.homebrew_cask`.
+2. Uses `brew fetch --cask` as the normal user to obtain the pkg-backed installer artifact.
+3. Runs the macOS `installer` command with Ansible privilege escalation for the actual pkg install step.
 3. Prints a colorful notice to the console before installing so the operator is aware of the community-mirror origin.
 
 This role is **macOS-only**. It skips on all other platforms.
+
+This app is a special case:
+- community-maintained source
+- deprecated/legacy macOS compatibility path
+- pkg-based install rather than a straightforward `.app` cask drop
+
+Because of that, this role treats success in layers instead of assuming Homebrew alone proves installation.
 
 ---
 
@@ -45,6 +53,96 @@ Include the role in a playbook that targets `mac_dev` or any macOS host:
   roles:
     - remote_desktop_mac
 ```
+
+## Success Model For This Role
+
+For this special-case app, installation success is evaluated in layers.
+
+### Core install proof
+
+The role now checks:
+- Homebrew reports the cask installed
+- the `.app` bundle exists at the expected path
+
+If either of those is missing, the role treats install as not yet proven successful.
+
+### Extra evidence for pkg-based installs
+
+The role also collects:
+- pkg receipt presence via `pkgutil`
+- quarantine inspection via `xattr`
+- security assessment via `spctl`
+- code-signature verification via `codesign --verify`
+
+These help distinguish:
+- install presence problems
+- trust/stabilization problems after install
+
+This means a run can be a partial success:
+- install may succeed
+- core install proof may pass
+- one or more stabilization checks may still be red at the end
+
+For this role, that should be treated as "installed, but still needs trust/stabilization follow-up" rather than "not installed at all."
+
+### Optional stabilization
+
+This role includes optional post-install stabilization tasks for this app:
+- remove quarantine recursively
+- apply ad hoc deep signing
+- reassess with `spctl`
+
+They are disabled by default because they may require elevated permissions and are not appropriate for every install.
+
+Variables:
+
+```yaml
+remote_desktop_mac_attempt_stabilization: false
+remote_desktop_mac_enforce_stabilization: false
+remote_desktop_mac_stabilization_become: false
+```
+
+If you enable stabilization for a local `/Applications` install, you may also need privilege escalation.
+
+## Important Privilege Note
+
+Do not run the Homebrew cask install for this role as root and do not fix it with playbook-level `become` on the Homebrew task.
+
+Why:
+- Homebrew refuses to run as root
+- this cask is pkg-backed, so the privileged part is the macOS installer step, not Homebrew itself
+
+The current role uses a split install path:
+- Homebrew fetches the pkg as the normal user
+- Ansible runs `/usr/sbin/installer` with `become` for the privileged pkg step
+
+For interactive runs, use:
+
+```bash
+ansible-playbook playbooks/deploy_development_nodes.yaml \
+  -i inventory/inventory.yaml \
+  --tags remote_desktop_mac \
+  --limit mac-dev \
+  --ask-become-pass
+```
+
+This is different from `become: true`:
+- `become: true` on Homebrew itself makes Homebrew run as root, which fails
+- the split path keeps Homebrew non-root and elevates only the pkg installer step
+
+## Deprecated / Special Instructions Pattern
+
+This role is also the current example of a broader pattern:
+- deprecated or legacy-compatible app
+- community-maintained source
+- pkg-based install artifact
+- extra verification or remediation needed after package-manager install
+
+That pattern should live in Ansible role docs and Ansible-side helper guidance, not in the generic Codex framework.
+
+See [docs/ansible/mac-homebrew-special-cases.md](/Users/joshc/develop/dotfile-vnext/docs/ansible/mac-homebrew-special-cases.md).
+
+Future macOS/Homebrew roles with similar behavior should reuse that pattern doc instead of re-explaining the whole model inside each role README.
 
 ---
 

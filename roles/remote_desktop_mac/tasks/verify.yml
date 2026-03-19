@@ -1,0 +1,84 @@
+---
+- name: Verify Homebrew reports the cask installed
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --cask
+      - "{{ remote_desktop_mac_cask_name }}"
+  register: remote_desktop_mac_brew_list
+  changed_when: false
+  failed_when: false
+
+- name: Verify Remote Desktop app bundle exists
+  ansible.builtin.stat:
+    path: "{{ remote_desktop_mac_app_path }}"
+  register: remote_desktop_mac_app_bundle
+
+- name: Verify pkg receipt exists
+  ansible.builtin.command:
+    argv:
+      - pkgutil
+      - --pkg-info
+      - "{{ remote_desktop_mac_pkg_id }}"
+  register: remote_desktop_mac_pkg_info
+  changed_when: false
+  failed_when: false
+
+- name: Inspect quarantine attributes for app bundle
+  ansible.builtin.command:
+    argv:
+      - xattr
+      - -lr
+      - "{{ remote_desktop_mac_app_path }}"
+  register: remote_desktop_mac_xattr
+  changed_when: false
+  failed_when: false
+  when: remote_desktop_mac_app_bundle.stat.exists
+
+- name: Assess app bundle with spctl
+  ansible.builtin.command:
+    argv:
+      - spctl
+      - --assess
+      - --verbose
+      - "{{ remote_desktop_mac_app_path }}"
+  register: remote_desktop_mac_spctl
+  changed_when: false
+  failed_when: false
+  when: remote_desktop_mac_app_bundle.stat.exists
+
+- name: Verify code signature for app bundle
+  ansible.builtin.command:
+    argv:
+      - codesign
+      - --verify
+      - --deep
+      - --strict
+      - --verbose=2
+      - "{{ remote_desktop_mac_app_path }}"
+  register: remote_desktop_mac_codesign
+  changed_when: false
+  failed_when: false
+  when: remote_desktop_mac_app_bundle.stat.exists
+
+- name: Report install and stabilization checks
+  ansible.builtin.debug:
+    msg:
+      package_manager_present: "{{ remote_desktop_mac_brew_list.rc == 0 }}"
+      app_bundle_present: "{{ remote_desktop_mac_app_bundle.stat.exists }}"
+      pkg_receipt_present: "{{ remote_desktop_mac_pkg_info.rc == 0 }}"
+      quarantine_check_rc: "{{ remote_desktop_mac_xattr.rc | default('not-run') }}"
+      spctl_rc: "{{ remote_desktop_mac_spctl.rc | default('not-run') }}"
+      codesign_rc: "{{ remote_desktop_mac_codesign.rc | default('not-run') }}"
+
+- name: Require core install evidence for this special-case app
+  ansible.builtin.assert:
+    that:
+      - remote_desktop_mac_brew_list.rc == 0
+      - remote_desktop_mac_app_bundle.stat.exists
+    fail_msg: >-
+      remote_desktop_mac install is not yet proven successful. Homebrew and the app
+      bundle must both be present before this role is considered installed.
+    success_msg: >-
+      remote_desktop_mac install is proven at the package-manager and app-bundle layer.
