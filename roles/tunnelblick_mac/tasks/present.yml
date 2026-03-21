@@ -1,0 +1,112 @@
+---
+- name: Official deprecated Tunnelblick notice for Monterey
+  ansible.builtin.debug:
+    msg: |
+      \033[1;33m╔══════════════════════════════════════════════════════════════════╗\033[0m
+      \033[1;33m║        DEPRECATED TUNNELBLICK BUILD FOR MACOS 12 MONTEREY        ║\033[0m
+      \033[1;33m╠══════════════════════════════════════════════════════════════════╣\033[0m
+      \033[1;36m║  This installs Tunnelblick {{ tunnelblick_mac_expected_version }} from the      ║\033[0m
+      \033[1;36m║  official Tunnelblick deprecated-downloads page because the       ║\033[0m
+      \033[1;36m║  current Tunnelblick app requires macOS 13 or later.             ║\033[0m
+      \033[1;33m║                                                                  ║\033[0m
+      \033[1;31m║  ⚠  Tunnelblick marks this release as deprecated and says it      ║\033[0m
+      \033[1;31m║     contains serious security vulnerabilities.                    ║\033[0m
+      \033[1;33m╚══════════════════════════════════════════════════════════════════╝\033[0m
+
+- name: Check whether Tunnelblick app bundle already exists
+  ansible.builtin.stat:
+    path: "{{ tunnelblick_mac_app_path }}"
+  register: tunnelblick_mac_existing_app
+
+- name: Read current Tunnelblick version if app bundle exists
+  ansible.builtin.command:
+    argv:
+      - defaults
+      - read
+      - "{{ tunnelblick_mac_app_path }}/Contents/Info"
+      - CFBundleShortVersionString
+  register: tunnelblick_mac_existing_version
+  changed_when: false
+  failed_when: false
+  when: tunnelblick_mac_existing_app.stat.exists
+
+- name: Determine whether deprecated Tunnelblick install is needed
+  ansible.builtin.set_fact:
+    tunnelblick_mac_install_needed: >-
+      {{
+        (not tunnelblick_mac_existing_app.stat.exists) or
+        (
+          (tunnelblick_mac_existing_version.stdout | default('') | trim)
+          is not search('^' ~ (tunnelblick_mac_expected_version | regex_escape))
+        )
+      }}
+
+- name: Download pinned Tunnelblick deprecated DMG
+  ansible.builtin.get_url:
+    url: "{{ tunnelblick_mac_download_url }}"
+    dest: "{{ tunnelblick_mac_download_path }}"
+    checksum: "{{ tunnelblick_mac_download_checksum }}"
+    mode: "0644"
+  when: tunnelblick_mac_install_needed
+
+- name: Install deprecated Tunnelblick from mounted DMG
+  when: tunnelblick_mac_install_needed
+  block:
+    - name: Ensure stale Tunnelblick DMG mount is detached
+      ansible.builtin.command:
+        argv:
+          - hdiutil
+          - detach
+          - "{{ tunnelblick_mac_mount_path }}"
+      register: tunnelblick_mac_pre_detach
+      changed_when: tunnelblick_mac_pre_detach.rc == 0
+      failed_when: false
+
+    - name: Ensure Tunnelblick mount path exists
+      ansible.builtin.file:
+        path: "{{ tunnelblick_mac_mount_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: Mount deprecated Tunnelblick DMG
+      ansible.builtin.command:
+        argv:
+          - hdiutil
+          - attach
+          - "{{ tunnelblick_mac_download_path }}"
+          - -nobrowse
+          - -readonly
+          - -mountpoint
+          - "{{ tunnelblick_mac_mount_path }}"
+      register: tunnelblick_mac_attach
+      changed_when: tunnelblick_mac_attach.rc == 0
+
+    - name: Install Tunnelblick using the app's documented command-line installer
+      ansible.builtin.command:
+        argv:
+          - "{{ tunnelblick_mac_app_in_dmg_path }}/Contents/Resources/installer"
+          - "259"
+      register: tunnelblick_mac_installer
+      changed_when: tunnelblick_mac_installer.rc == 0
+      become: true
+  always:
+    - name: Detach deprecated Tunnelblick DMG after install attempt
+      ansible.builtin.command:
+        argv:
+          - hdiutil
+          - detach
+          - "{{ tunnelblick_mac_mount_path }}"
+      register: tunnelblick_mac_detach
+      changed_when: tunnelblick_mac_detach.rc == 0
+      failed_when: false
+
+- name: Verify deprecated Tunnelblick install
+  ansible.builtin.import_tasks: verify.yml
+  when: tunnelblick_mac_verify_install
+
+- name: Attempt Tunnelblick post-install stabilization
+  ansible.builtin.import_tasks: stabilize.yml
+  when:
+    - tunnelblick_mac_attempt_stabilization
+    - tunnelblick_mac_verify_install
+    - tunnelblick_mac_app_bundle.stat.exists | default(false)

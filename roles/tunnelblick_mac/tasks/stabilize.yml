@@ -1,0 +1,33 @@
+---
+- name: Remove quarantine attribute from Tunnelblick app bundle
+  ansible.builtin.command:
+    argv:
+      - xattr
+      - -dr
+      - com.apple.quarantine
+      - "{{ tunnelblick_mac_app_path }}"
+  register: tunnelblick_mac_quarantine_remove
+  changed_when: tunnelblick_mac_quarantine_remove.rc == 0
+  failed_when:
+    - tunnelblick_mac_enforce_stabilization
+    - tunnelblick_mac_quarantine_remove.rc != 0
+  become: "{{ tunnelblick_mac_stabilization_become }}"
+
+- name: Reassess Tunnelblick app bundle after stabilization attempt
+  ansible.builtin.command:
+    argv:
+      - spctl
+      - --assess
+      - --verbose
+      - "{{ tunnelblick_mac_app_path }}"
+  register: tunnelblick_mac_spctl_after_fix
+  changed_when: false
+  failed_when:
+    - tunnelblick_mac_enforce_stabilization
+    - tunnelblick_mac_spctl_after_fix.rc != 0
+
+- name: Report Tunnelblick stabilization attempt results
+  ansible.builtin.debug:
+    msg:
+      quarantine_remove_rc: "{{ tunnelblick_mac_quarantine_remove.rc }}"
+      spctl_after_fix_rc: "{{ tunnelblick_mac_spctl_after_fix.rc }}"

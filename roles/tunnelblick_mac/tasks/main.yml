@@ -1,0 +1,12 @@
+---
+- name: Ensure deprecated Tunnelblick build is present on macOS
+  ansible.builtin.import_tasks: present.yml
+  when:
+    - ansible_facts['system'] == "Darwin"
+    - tunnelblick_mac_state == "present"
+
+- name: Ensure Tunnelblick is absent on macOS
+  ansible.builtin.import_tasks: absent.yml
+  when:
+    - ansible_facts['system'] == "Darwin"
+    - tunnelblick_mac_state == "absent"

@@ -5,6 +5,7 @@
 #          direnv (installation + bash hook)
 #          cursor (editor config, extensions, LF/UTF-8 settings)
 #          remote_desktop_mac (macOS-only Microsoft Remote Desktop install)
+#          tunnelblick_mac (macOS-only deprecated Tunnelblick install for Monterey)
 #          mcp_servers/openai_docs (OpenAI Docs MCP for Cursor)
 #
 # A node is a development node when node_purpose: development is set in its
@@ -29,6 +30,8 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_extensions
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags vscode_extensions
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags remote_desktop_mac --limit mac-dev
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags tunnelblick_mac --limit mac-dev
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags tunnelblick_mac --limit mac-dev -e tunnelblick_mac_state=absent
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags openai-docs
 #
 #   # Windows surface only
@@ -55,6 +58,7 @@
     - name: Group development nodes from node_purpose variable
       ansible.builtin.group_by:
         key: "node_purpose_{{ node_purpose | default('unclassified') }}"
+      changed_when: false
       tags: [always]
 
 - name: Deploy development tooling to development nodes
@@ -67,5 +71,7 @@
     - role: cursor
     - role: remote_desktop_mac
       tags: [remote_desktop_mac]
+    - role: tunnelblick_mac
+      tags: [tunnelblick_mac]
     - role: mcp_servers/openai_docs
     - role: common/vscode

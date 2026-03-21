@@ -2,6 +2,8 @@
 
 This note is for Ansible-side installation patterns on macOS when a role cannot be treated like a normal Homebrew app install.
 
+Despite the filename, some legacy-app cases may skip Homebrew entirely and use an official deprecated DMG or other direct-download path. The same layered thinking still applies.
+
 It is not part of the generic Codex framework. It exists so edge cases stay close to Ansible role design instead of bloating the cross-project framework layer.
 
 ## When To Use This Pattern
@@ -23,6 +25,14 @@ For these roles, separate the work into three layers:
    prove what is really present on disk and in package-manager state
 3. stabilize
    optional remediation steps for trust, quarantine, signing, or other special handling
+
+And expose the capability itself as state whenever possible:
+
+```yaml
+role_name_state: present | absent
+```
+
+If install and uninstall are asymmetric, keep the interface state-based anyway and hide the asymmetry behind separate internal present/absent task paths.
 
 ## Quick Decision Guide
 
@@ -118,6 +128,18 @@ Inspect:
 
 Treat this as a stabilization problem, not an installation-presence problem.
 
+### Pattern E: Official deprecated direct-download app
+
+Use when the vendor still provides an older compatible release, but not through current package-manager channels.
+
+Prove:
+- the pinned official download URL is exact
+- the checksum matches
+- the app bundle lands at the expected path
+- the installed version matches the pinned legacy release
+
+If the vendor documents a supported command-line installer, prefer that over inventing a copy/mount flow from scratch.
+
 ## Why This Matters
 
 For some macOS apps, "Homebrew says installed" is not enough.
@@ -139,3 +161,12 @@ It currently demonstrates:
 - pkg-backed install
 - layered verification
 - optional stabilization
+
+Another special-case pattern in this repo is:
+- `roles/tunnelblick_mac`
+
+That role demonstrates:
+- official deprecated direct-download DMG
+- checksum-pinned legacy release
+- documented command-line installer
+- layered verification without relying on Homebrew state

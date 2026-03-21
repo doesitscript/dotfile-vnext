@@ -1,0 +1,44 @@
+---
+- name: Check whether Tunnelblick app bundle exists before uninstall
+  ansible.builtin.stat:
+    path: "{{ tunnelblick_mac_app_path }}"
+  register: tunnelblick_mac_existing_app_absent
+
+- name: Try to quit Tunnelblick before uninstall
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/osascript
+      - -e
+      - tell application "Tunnelblick" to quit
+  register: tunnelblick_mac_quit
+  changed_when: tunnelblick_mac_quit.rc == 0
+  failed_when: false
+  when: tunnelblick_mac_existing_app_absent.stat.exists
+
+- name: Run Tunnelblick's bundled uninstaller
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/osascript
+      - "{{ tunnelblick_mac_app_path }}/Contents/Resources/tunnelblick-uninstaller.applescript"
+  register: tunnelblick_mac_uninstaller
+  changed_when: tunnelblick_mac_uninstaller.rc == 0
+  failed_when:
+    - tunnelblick_mac_existing_app_absent.stat.exists
+    - tunnelblick_mac_uninstaller.rc != 0
+  when: tunnelblick_mac_existing_app_absent.stat.exists
+
+- name: Verify Tunnelblick app bundle is absent
+  ansible.builtin.stat:
+    path: "{{ tunnelblick_mac_app_path }}"
+  register: tunnelblick_mac_app_bundle_absent
+  when: tunnelblick_mac_verify_absent
+
+- name: Require Tunnelblick to be absent
+  ansible.builtin.assert:
+    that:
+      - not tunnelblick_mac_app_bundle_absent.stat.exists
+    fail_msg: >-
+      tunnelblick_mac state=absent was requested, but {{ tunnelblick_mac_app_path }}
+      still exists after the uninstall attempt.
+    success_msg: tunnelblick_mac is absent at the app-bundle layer.
+  when: tunnelblick_mac_verify_absent

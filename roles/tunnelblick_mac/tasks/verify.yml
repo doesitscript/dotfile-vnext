@@ -1,0 +1,93 @@
+---
+- name: Verify Tunnelblick app bundle exists
+  ansible.builtin.stat:
+    path: "{{ tunnelblick_mac_app_path }}"
+  register: tunnelblick_mac_app_bundle
+
+- name: Read installed Tunnelblick version
+  ansible.builtin.command:
+    argv:
+      - defaults
+      - read
+      - "{{ tunnelblick_mac_app_path }}/Contents/Info"
+      - CFBundleShortVersionString
+  register: tunnelblick_mac_installed_version
+  changed_when: false
+  failed_when: false
+  when: tunnelblick_mac_app_bundle.stat.exists
+
+- name: Read installed Tunnelblick build version
+  ansible.builtin.command:
+    argv:
+      - defaults
+      - read
+      - "{{ tunnelblick_mac_app_path }}/Contents/Info"
+      - CFBundleVersion
+  register: tunnelblick_mac_installed_build_version
+  changed_when: false
+  failed_when: false
+  when: tunnelblick_mac_app_bundle.stat.exists
+
+- name: Inspect quarantine attributes for Tunnelblick app bundle
+  ansible.builtin.command:
+    argv:
+      - xattr
+      - -lr
+      - "{{ tunnelblick_mac_app_path }}"
+  register: tunnelblick_mac_xattr
+  changed_when: false
+  failed_when: false
+  when: tunnelblick_mac_app_bundle.stat.exists
+
+- name: Assess Tunnelblick app bundle with spctl
+  ansible.builtin.command:
+    argv:
+      - spctl
+      - --assess
+      - --verbose
+      - "{{ tunnelblick_mac_app_path }}"
+  register: tunnelblick_mac_spctl
+  changed_when: false
+  failed_when: false
+  when: tunnelblick_mac_app_bundle.stat.exists
+
+- name: Verify code signature for Tunnelblick app bundle
+  ansible.builtin.command:
+    argv:
+      - codesign
+      - --verify
+      - --deep
+      - --strict
+      - --verbose=2
+      - "{{ tunnelblick_mac_app_path }}"
+  register: tunnelblick_mac_codesign
+  changed_when: false
+  failed_when: false
+  when: tunnelblick_mac_app_bundle.stat.exists
+
+- name: Report Tunnelblick install and stabilization checks
+  ansible.builtin.debug:
+    msg:
+      app_bundle_present: "{{ tunnelblick_mac_app_bundle.stat.exists }}"
+      installed_version: "{{ tunnelblick_mac_installed_version.stdout | default('missing') | trim }}"
+      installed_build_version: "{{ tunnelblick_mac_installed_build_version.stdout | default('missing') | trim }}"
+      expected_version: "{{ tunnelblick_mac_expected_version }}"
+      expected_build_version: "{{ tunnelblick_mac_expected_build_version }}"
+      version_match: "{{ (tunnelblick_mac_installed_version.stdout | default('') | trim) is search('^' ~ (tunnelblick_mac_expected_version | regex_escape)) }}"
+      build_version_match: "{{ (tunnelblick_mac_installed_build_version.stdout | default('') | trim) == tunnelblick_mac_expected_build_version }}"
+      quarantine_check_rc: "{{ tunnelblick_mac_xattr.rc | default('not-run') }}"
+      spctl_rc: "{{ tunnelblick_mac_spctl.rc | default('not-run') }}"
+      codesign_rc: "{{ tunnelblick_mac_codesign.rc | default('not-run') }}"
+
+- name: Require core install evidence for deprecated Tunnelblick
+  ansible.builtin.assert:
+    that:
+      - tunnelblick_mac_app_bundle.stat.exists
+      - (tunnelblick_mac_installed_version.stdout | default('') | trim) is search('^' ~ (tunnelblick_mac_expected_version | regex_escape))
+      - (tunnelblick_mac_installed_build_version.stdout | default('') | trim) == tunnelblick_mac_expected_build_version
+    fail_msg: >-
+      tunnelblick_mac install is not yet proven successful. The app bundle must
+      exist and the installed version/build must match
+      {{ tunnelblick_mac_expected_version }} / {{ tunnelblick_mac_expected_build_version }}.
+    success_msg: >-
+      tunnelblick_mac install is proven at the app-bundle, version, and build layer.

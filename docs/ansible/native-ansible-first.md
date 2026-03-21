@@ -41,6 +41,29 @@ instead of:
 ./bin/fz role-local ansible_dev_tools
 ```
 
+## Quality gate
+
+For direct Ansible validation work in this repo, prefer the native command:
+
+```bash
+.venv/bin/ansible-lint playbooks/deploy_development_nodes.yaml roles/tunnelblick_mac
+```
+
+The thin repo wrapper exists mainly for hook usage and a stable shared entrypoint:
+
+```bash
+./bin/ansible-quality-gate.sh playbooks/deploy_development_nodes.yaml roles/tunnelblick_mac
+```
+
+If no paths are provided, it defaults to:
+
+```bash
+./bin/ansible-quality-gate.sh
+```
+
+Both paths use the repo's `.ansible-lint` configuration and inherit Ansible
+syntax checking through `ansible-lint`.
+
 ## Next refinement
 
 The current replacement is good enough for first-pass use, but there is still
