@@ -1,3 +1,8 @@
+---
+description: Ansible-specific coding standards and idempotency guidance for AI agents working in this repo.
+alwaysApply: true
+---
+
 # Ansible Coding Guidelines for AI Agents
 
 This document provides comprehensive guidelines for AI agents working with Ansible code. Following these practices ensures code quality, maintainability, and consistency.
@@ -64,6 +69,16 @@ The Zen of Ansible serves as a guidepost when specific practices are unclear:
 - Just because something works, doesn't mean it can't be improved
 - Friction should be eliminated whenever possible
 - Automation is a continuous journey that never ends
+
+## Repo Defaults
+
+- [ ] Treat `.ansible-lint` as the single source of truth for active Ansible lint configuration in this repo
+- [ ] Prefer native `.venv/bin/ansible-lint` for direct Ansible validation work
+- [ ] Remember that `ansible-lint` already runs Ansible syntax checks, so lint + syntax are one default verification path here
+- [ ] Treat `./bin/ansible-quality-gate.sh` as a thin repo hook/wrapper around `.venv/bin/ansible-lint`, not as a separate policy source
+- [ ] Treat `.pre-commit-config.yaml` as the commit-time enforcement hook configuration for that quality gate
+- [ ] If active debugging, REPL-style investigation, or narrow troubleshooting makes lint/syntax/idempotence checks inappropriate for the moment, say that explicitly in the conversation and final output
+- [ ] Do not imply that checks ran just because the repo has hooks or config files; report what actually ran
 
 ## Development Workflow
 
@@ -368,6 +383,9 @@ A playbook project orchestrates landscapes and types via one or more playbooks, 
 - [ ] Use specific package managers when platform differences require it
 - [ ] Always specify `state` parameter in modules for clarity and consistency
 - [ ] Explicitly define desired state rather than relying on defaults
+- [ ] Model each user-facing capability as lifecycle state whenever practical
+- [ ] Prefer a single role/playbook control point such as `capability_state: present|absent`
+- [ ] If setup and teardown are asymmetric, keep one stateful interface and use separate internal present/absent task paths
 
 ##### Idempotency and Check Mode
 
@@ -378,6 +396,8 @@ A playbook project orchestrates landscapes and types via one or more playbooks, 
 - [ ] Tasks should not fail in check mode
 - [ ] Register variables properly for check mode support
 - [ ] Handle commands in check mode using dry-run flags when available
+- [ ] For CLI fallback patterns, query current state first, then create only if absent and remove only if present
+- [ ] Document the lifecycle control point that switches the capability between `present` and `absent`
 
 ##### Control Flow and Handlers
 

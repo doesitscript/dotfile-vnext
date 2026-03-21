@@ -50,6 +50,9 @@ When this skill is invoked, you will adopt the `Researcher` agent persona and ex
    - what already exists
    - what patterns the repo is already using
    - what gaps remain
+4. For Ansible capabilities, identify the current lifecycle surface:
+   - is there a `present|absent` control point already
+   - if not, is the current code install-only or otherwise incomplete as a capability
 
 ### Phase 3: Evidence Gathering
 
@@ -78,6 +81,7 @@ Do not default to shell or PowerShell wrappers if a real module, collection, or 
    - viable options
    - recommended path
    - key tradeoffs or risks
+   - whether the capability has a real lifecycle control point
 3. Keep this in the conversation by default.
 4. Only write a durable repo artifact when:
    - the user explicitly asks for one, or
@@ -99,3 +103,4 @@ Do not default to shell or PowerShell wrappers if a real module, collection, or 
 3. Prefer primary sources and live environment evidence over vibes.
 4. Surface uncertainty plainly instead of pretending a weak recommendation is strong.
 5. When handing the result back to planning or execution, mark the transition explicitly instead of changing modes silently.
+6. For Ansible work, treat missing `present|absent` lifecycle modeling as a research finding, not just a style note.

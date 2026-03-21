@@ -59,6 +59,7 @@ When this skill is invoked, you will adopt the `Planner` agent persona and execu
    - short recap of current understanding
    - recommended implementation shape
    - `Apply / Verify / Undo / Change class`
+   - lifecycle control point for the capability (`present` / `absent`)
 3. Keep the first draft lightweight. Do not jump to a giant formal plan unless the moment is already mature.
 
 ### Phase 4: Iterative Refinement
@@ -78,6 +79,7 @@ When this skill is invoked, you will adopt the `Planner` agent persona and execu
    - major files or surfaces to change
    - important interfaces or behavior changes
    - `Apply / Verify / Undo / Change class`
+   - lifecycle control point for the capability
    - assumptions chosen
 3. Keep the plan in the conversation unless the user explicitly asks for a durable repo artifact or the work is itself a durable process/rule change.
 
@@ -88,3 +90,4 @@ When this skill is invoked, you will adopt the `Planner` agent persona and execu
 3. If planning reveals a better pattern than existing repo code, say so explicitly.
 4. Use the planning surface at architecture moments, not on every substantive turn.
 5. When handing off to research or execution, make the transition visible with a brief role label rather than an unmarked mode shift.
+6. For Ansible work, push toward a stateful capability interface rather than install-only behavior.

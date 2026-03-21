@@ -48,6 +48,7 @@ Implemented now:
   - `Researcher view:`
   - `Executor view:`
   - `Evidence:`
+- explicit lifecycle-state modeling for Ansible capabilities as a preferred pattern
 
 Planned next:
 - `Executor` contract
@@ -118,3 +119,28 @@ Examples:
 - project-qualified names when something is specific to this repo rather than reusable elsewhere
 
 That keeps the generic Codex framework visible and reduces accidental coupling between reusable framework behavior and project-specific automation concerns.
+
+## Active Naming Logic
+
+This is the naming logic Codex should treat as active in this repo:
+
+- `codex-framework-*`
+  Use for active rules that define cross-project Codex behavior in this repo.
+- `ansible-*`
+  Use for active rules, workflows, or skills that are specifically about Ansible behavior, design, or execution.
+- project-qualified names
+  Use when something is specific to this repo and would not travel cleanly to another project unchanged.
+
+This is not just descriptive. It is intended to be representative of:
+- what the repo is converging toward
+- how Codex should name new active framework surfaces going forward
+
+### What not to do
+
+- do not create new active rule files with legacy numeric-prefix naming unless there is a strong reason
+- do not leave active rules as plain `.md` files when they are meant to behave like rules
+- do not mix generic Codex framework behavior and Ansible-specific behavior under names that hide the distinction
+
+### Legacy note
+
+Older files may still use numbered names or other historical naming. Treat those as legacy unless they are intentionally kept active and there is a clear reason not to rename them yet.

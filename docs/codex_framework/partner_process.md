@@ -6,14 +6,22 @@ The goal is not "be helpful in general." The goal is to be the most effective fi
 
 This document lives under `docs/codex_framework/` because it describes the Codex-side framework capability used by this repo, not the infrastructure domain itself. Project-specific lessons learned, environment notes, and recovery notes can still live elsewhere in `docs/` when they are primarily about this project rather than the framework.
 
+Naming should reflect ownership and scope:
+- `codex-framework-*` for active cross-project Codex behavior
+- `ansible-*` for active Ansible-specific rules, workflows, and skills
+- project-qualified names for repo-specific extensions
+
+Codex should treat that as an active naming convention, not just documentation flavor.
+
 ## Core Commitments
 
 1. The user sets the target. The agent does not invent a new milestone and quietly optimize for that instead.
 2. Research happens before novel execution. If the agent is about to do something it has not already grounded in repo evidence or authoritative docs, it must learn first.
 3. Idempotent automation is preferred over scripting. If a task can be expressed as an Ansible role/module/playbook, that is the default.
-4. Every meaningful change should have an apply path, a verify path, and an undo path, or an explicit statement that undo is manual.
-5. One-time bootstrap work is allowed, but it must be isolated and labeled as one-time/bootstrap/semi-manual rather than disguised as normal configuration management.
-6. Pushback is part of the job. The agent should surface hidden cost, mismatch, or risk without treating the user as junior to the process.
+4. For Ansible capabilities, the preferred public interface is lifecycle state: `present` or `absent`. If setup and teardown are asymmetric, keep one stateful control point and hide the asymmetry behind internal paths.
+5. Every meaningful change should have an apply path, a verify path, and an undo path, or an explicit statement that undo is manual.
+6. One-time bootstrap work is allowed, but it must be isolated and labeled as one-time/bootstrap/semi-manual rather than disguised as normal configuration management.
+7. Pushback is part of the job. The agent should surface hidden cost, mismatch, or risk without treating the user as junior to the process.
 
 ## Operating Stack
 
@@ -89,6 +97,7 @@ The Executor must:
 - preserve the target set by the partner
 - state assumptions when acting on them
 - prefer idempotent Ansible changes over one-off scripts
+- model Ansible capabilities as lifecycle state whenever practical
 - keep bootstrap/semi-manual logic clearly separated from normal operations
 - verify what changed
 - record what still needs manual handling
@@ -100,6 +109,7 @@ The agent must enter a research step before execution when any of the following 
 - it is about to use a new collection, tool, API, service, or platform pattern
 - it is about to write shell or PowerShell because a real module might exist
 - it cannot explain how the change is supposed to be idempotent
+- it cannot explain the lifecycle control point for the capability
 - it cannot explain how to verify success
 - it cannot explain how to undo the change
 - the repo's existing patterns conflict with what the agent was about to do
@@ -198,6 +208,13 @@ Preference order:
 3. add a small helper script only if declarative automation is not a good fit
 4. avoid free-form scripting when a module already exists
 
+For Ansible role and playbook design, also prefer:
+
+1. one capability-level state interface such as `foo_state: present|absent`
+2. one task with module-native `state` when the module supports it
+3. internal present/absent task paths when the lifecycle is asymmetric
+4. command or shell fallbacks only after a real state-query step proves no better module exists
+
 ### 4. Write the Change Contract
 
 Before implementation, the agent should be able to state:
@@ -206,8 +223,9 @@ Before implementation, the agent should be able to state:
 - Verify: how success is checked
 - Undo: how to back it out, or that undo is manual
 - Idempotency class: A, B, or C
+- Lifecycle control point: the variable or module state that switches between `present` and `absent`
 
-If the agent cannot fill in those four fields, it is not ready to implement.
+If the agent cannot fill in those fields, it is not ready to implement.
 
 ### Planning Output at Architecture Moments
 
@@ -261,6 +279,7 @@ Verification should match the class of change:
 - direct command evidence
 
 The agent should say what it verified and what remains unverified.
+If syntax checks, lint, idempotence checks, or runtime verification were not run, the agent should say that explicitly and state why.
 
 ### Execution Output Is Evidence
 

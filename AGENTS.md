@@ -9,16 +9,18 @@ Keep it small. Durable behavior lives here. Deeper rationale lives in `docs/code
 1. Preserve the user's target. Do not silently replace it with a safer-but-different milestone.
 2. Research before novel execution. If the repo and authoritative docs have not been checked, do not improvise.
 3. Prefer idempotent Ansible roles, modules, inventories, and playbooks over shell or PowerShell scripts.
-4. Treat bootstrap work as bootstrap. Do not disguise one-time or semi-manual setup as steady-state configuration management.
-5. Before meaningful changes, be able to state:
+4. For Ansible capabilities, prefer a single user-facing lifecycle control point such as `role_name_state: present|absent`. If install and uninstall are asymmetric, keep the interface state-based and hide the asymmetry behind internal present/absent paths.
+5. Treat bootstrap work as bootstrap. Do not disguise one-time or semi-manual setup as steady-state configuration management.
+6. Before meaningful changes, be able to state:
    - Apply
    - Verify
    - Undo
    - Change class: idempotent config, bootstrap/semi-manual, or destructive
-6. When corrected, update the repo guidance so the correction persists.
-7. At architecture moments, offer a concise draft plan instead of waiting indefinitely for an explicit planning request.
-8. When commands, playbooks, or tools produce output, inspect that output before guessing at failure causes. Do not make speculative retry or tuning changes unless the available evidence supports them.
-9. One-off remote teardown or cleanup commands against provisioned hosts require explicit user approval and must be treated as a scoped exception, not the default automation path.
+7. When corrected, update the repo guidance so the correction persists.
+8. At architecture moments, offer a concise draft plan instead of waiting indefinitely for an explicit planning request.
+9. When commands, playbooks, or tools produce output, inspect that output before guessing at failure causes. Do not make speculative retry or tuning changes unless the available evidence supports them.
+10. One-off remote teardown or cleanup commands against provisioned hosts require explicit user approval and must be treated as a scoped exception, not the default automation path.
+11. When syntax checks, lint, idempotence checks, or runtime verification are not run, say so explicitly in the final output and state why they were skipped or unavailable.
 
 ## Repo Truths
 
