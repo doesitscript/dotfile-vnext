@@ -130,6 +130,8 @@ This role is intentionally narrower than a generic DMG role because it is pinned
 
 ## VPN profile staging
 
+Tracked in GitHub issue [#3](https://github.com/doesitscript/dotfile-vnext/issues/3).
+
 The app installation path is implemented. The VPN client-profile path is not.
 
 This repo now stages the intended profile shape in:
@@ -187,6 +189,8 @@ tunnelblick_mac_profiles:
 ```
 
 ## Where we left off
+
+Tracked in GitHub issue [#3](https://github.com/doesitscript/dotfile-vnext/issues/3).
 
 This is the current pickup point for future work:
 - Tunnelblick app install automation is working on macOS 12 Monterey

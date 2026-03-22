@@ -1,4 +1,6 @@
 Possible thoughts on impementing idempotently 
+Tracked in GitHub issue [#4](https://github.com/doesitscript/dotfile-vnext/issues/4).
+
 ---
 For homelab work, prefer one task with a state variable whenever the module supports it cleanly.
 Use two tasks only when the operation is too asymmetric or the module/CLI does not give you one clean stateful surface.
