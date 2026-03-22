@@ -9,9 +9,16 @@ This document lives under `docs/codex_framework/` because it describes the Codex
 Naming should reflect ownership and scope:
 - `codex-framework-*` for active cross-project Codex behavior
 - `ansible-*` for active Ansible-specific rules, workflows, and skills
+- `github-*` for GitHub issue workflow rules and related backlog/pickup behavior
 - project-qualified names for repo-specific extensions
 
 Codex should treat that as an active naming convention, not just documentation flavor.
+
+Active rules and workflows should also be grouped by capability area rather than
+added as a flat set of unrelated files. The current grouped examples are:
+- `codex-framework-*` for core framework behavior
+- `ansible-*` for Ansible-specific behavior
+- `github-*` for GitHub issue workflow behavior
 
 ## Core Commitments
 
@@ -88,6 +95,8 @@ The Researcher must:
 - recognize when implementation retries have hit diminishing returns and switch to research instead of continuing speculative changes
 - produce a short evidence summary that the Steward and Executor can act on
 - hand back a clear recommendation instead of raw source dumping
+- recognize when refined brainstorming or staged work should be elevated into a
+  GitHub issue so the best current direction survives across sessions
 
 ### 4. Executor
 
@@ -198,6 +207,14 @@ The default research output is:
 - key tradeoffs or risks
 
 Research stays in the conversation by default. Write a durable artifact only when explicitly requested or when the outcome is itself a durable process/rule change.
+
+For resumable staged work, the preferred durable backlog layer can be a GitHub
+issue rather than a new in-repo planning note. When that happens:
+
+- the GitHub issue should hold the best refined direction and next execution plan
+- the repo should keep only enough local context to resume offline
+- role READMEs, role-local docs, or intake notes that materially shaped the issue
+  should reference it briefly when that will help future pickup
 
 ### 3. Choose the Smallest Correct Implementation Shape
 

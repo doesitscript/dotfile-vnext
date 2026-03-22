@@ -49,6 +49,8 @@ Implemented now:
   - `Executor view:`
   - `Evidence:`
 - explicit lifecycle-state modeling for Ansible capabilities as a preferred pattern
+- lightweight GitHub-issue workflow support for staged work that should outlive local notes
+  or rough brainstorming once it becomes concrete enough to preserve
 
 Planned next:
 - `Executor` contract
@@ -83,6 +85,8 @@ These are the current files actively shaping this capability.
   Supporting MCP-first and validation/tool-usage rule.
 - [.cursor/rules/codex-framework-user-interaction-style.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-user-interaction-style.mdc)
   Supporting collaboration rule for working with Josh.
+- [.cursor/rules/codex-framework-github-issue-workflow.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-github-issue-workflow.mdc)
+  The dedicated rule surface that introduces and governs the GitHub issue workflow as its own reusable capability area.
 
 ### Skill workflows
 
@@ -90,6 +94,8 @@ These are the current files actively shaping this capability.
   The current `Planner / Steward` workflow.
 - [.cursor/skills/ansible-researcher/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/ansible-researcher/SKILL.md)
   The current `Researcher` workflow.
+- [.cursor/skills/github-issue-workflow/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/github-issue-workflow/SKILL.md)
+  A small reusable workflow for turning staged work or concrete brainstorming into GitHub issues when durable backlog tracking is better than local notes alone. The issue is treated as the highest practical planning layer when that helps preserve refined direction across sessions, while repo docs and READMEs remain the offline pickup layer. The workflow now uses a non-optional light label schema: one `type:*`, one `state:*`, and one `scope:*` label on every created issue.
 
 ## Supporting But Not Owned By This Capability
 
@@ -116,6 +122,7 @@ If the framework later gains domain-specific extensions, the names should say so
 
 Examples:
 - `ansible-*` for Ansible-specific rules, workflows, or skills
+- `github-*` for GitHub issue workflow rules and related durable backlog behavior
 - project-qualified names when something is specific to this repo rather than reusable elsewhere
 
 That keeps the generic Codex framework visible and reduces accidental coupling between reusable framework behavior and project-specific automation concerns.
@@ -128,6 +135,8 @@ This is the naming logic Codex should treat as active in this repo:
   Use for active rules that define cross-project Codex behavior in this repo.
 - `ansible-*`
   Use for active rules, workflows, or skills that are specifically about Ansible behavior, design, or execution.
+- `github-*`
+  Use for active rules and workflows that govern GitHub issue creation, staging, labeling, and pickup behavior.
 - project-qualified names
   Use when something is specific to this repo and would not travel cleanly to another project unchanged.
 
@@ -140,6 +149,52 @@ This is not just descriptive. It is intended to be representative of:
 - do not create new active rule files with legacy numeric-prefix naming unless there is a strong reason
 - do not leave active rules as plain `.md` files when they are meant to behave like rules
 - do not mix generic Codex framework behavior and Ansible-specific behavior under names that hide the distinction
+
+## Rule And Skill Grouping Strategy
+
+Codex should not create active rules and skills as a flat pile of unrelated
+files. New active surfaces should be grouped by capability area and named so the
+group is obvious from the filename.
+
+Current grouping model:
+
+- `codex-framework-*`
+  Core framework rules that shape how Codex behaves across the repo.
+- `ansible-*`
+  Domain-specific rules, workflows, or skills for Ansible behavior.
+- `github-*`
+  Workflow surfaces for durable GitHub issue tracking, staging, labeling, and
+  pickup behavior.
+
+This means:
+
+- rules should show both ownership and grouping in the filename
+- skills can stay a bit more task-oriented, but should still align to the same
+  capability areas when they are active framework workflows
+- new capability areas should be introduced intentionally, not casually
+
+### Current examples
+
+Rules:
+- [codex-framework-partner-process.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-partner-process.mdc)
+- [codex-framework-github-issue-workflow.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-github-issue-workflow.mdc)
+- [ansible-coding-standards.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/ansible-coding-standards.mdc)
+
+Skills:
+- [ansible-planner](/Users/joshc/develop/dotfile-vnext/.cursor/skills/ansible-planner/SKILL.md)
+- [ansible-researcher](/Users/joshc/develop/dotfile-vnext/.cursor/skills/ansible-researcher/SKILL.md)
+- [github-issue-workflow](/Users/joshc/develop/dotfile-vnext/.cursor/skills/github-issue-workflow/SKILL.md)
+
+### Creation rule
+
+When Codex creates a new active rule or workflow surface, it should decide:
+
+1. is this core framework behavior, a domain behavior, or a project-specific extension?
+2. which existing capability group should own it?
+3. does the filename make that ownership obvious without extra explanation?
+
+If the answer is not clear, prefer updating an existing grouped surface instead
+of creating a new one.
 
 ### Legacy note
 
