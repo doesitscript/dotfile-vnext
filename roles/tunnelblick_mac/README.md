@@ -128,6 +128,80 @@ That works, but it is weaker operational hygiene than a prompt or vaulted variab
 
 This role is intentionally narrower than a generic DMG role because it is pinned to one official deprecated Tunnelblick build for Monterey.
 
+## VPN profile staging
+
+The app installation path is implemented. The VPN client-profile path is not.
+
+This repo now stages the intended profile shape in:
+- [inventory/host_vars/mac-dev.yaml](/Users/joshc/develop/dotfile-vnext/inventory/host_vars/mac-dev.yaml)
+- [vault/mac_dev.vault.yml](/Users/joshc/develop/dotfile-vnext/vault/mac_dev.vault.yml)
+- [private/tunnelblick/README.md](/Users/joshc/develop/dotfile-vnext/private/tunnelblick/README.md)
+
+Current staged values:
+- profile name: `router-openvpn`
+- remote address: `99.63.7.93`
+- remote netmask: `255.255.255.255`
+- password placeholder: `V7j________`
+- temporary local secret env var: `TUNNELBLICK_MAC_ROUTER_OPENVPN_AUTH_PASSWORD`
+- vault variable names:
+  - `vault_tunnelblick_mac_router_openvpn_auth_username`
+  - `vault_tunnelblick_mac_router_openvpn_auth_password`
+  - `vault_tunnelblick_mac_router_openvpn_ovpn_content`
+
+Important:
+- the role does **not** consume those profile variables yet
+- they exist so the repo captures where we are and how to resume
+- the actual VPN profile import work is blocked on the missing router-exported
+  client config (`.ovpn` or `.tblk`)
+
+### What is still needed to finish Tunnelblick setup
+
+To complete the VPN-profile side of this role, we still need:
+- the router-exported OpenVPN client config (`.ovpn` or `.tblk`)
+- the username, if the router-exported profile uses username/password auth
+- any CA, client cert, client key, or TLS auth material if it is not embedded in
+  the export
+- a decision on the durable secret home
+
+Recommended secret handling:
+- short term: local `.envrc` or shell env using
+  `TUNNELBLICK_MAC_ROUTER_OPENVPN_AUTH_PASSWORD`
+- better long term: move the password into Ansible Vault under
+  [vault/mac_dev.vault.yml](/Users/joshc/develop/dotfile-vnext/vault/mac_dev.vault.yml)
+
+Recommended client-export handling:
+- if the router exports a plain `.ovpn`, either:
+  - place it temporarily at `private/tunnelblick/router-openvpn.ovpn`, or
+  - copy its full text into `vault_tunnelblick_mac_router_openvpn_ovpn_content`
+- if the router exports a `.tblk` bundle or zip archive, place it temporarily in
+  `private/tunnelblick/` first so we can inspect and translate it cleanly
+
+Once the router export is available, the next improvement should be to make the
+profile itself a stateful capability behind the same lifecycle pattern as the
+app:
+
+```yaml
+tunnelblick_mac_profiles:
+  - name: router-openvpn
+    state: present
+```
+
+## Where we left off
+
+This is the current pickup point for future work:
+- Tunnelblick app install automation is working on macOS 12 Monterey
+- profile metadata is staged in `inventory/host_vars/mac-dev.yaml`
+- Mac-specific secret placeholders live in `vault/mac_dev.vault.yml`
+- the ignored local landing zone for raw client exports is `private/tunnelblick/`
+- the missing blocker is the router-exported client config (`.ovpn` or `.tblk`)
+- the role does not yet import or manage VPN profiles
+
+If you ask later "where did we leave off on Tunnelblick?", the short answer is:
+- app install is done
+- profile automation is staged but blocked on the missing client export
+- the next implementation step is to consume `tunnelblick_mac_profiles` plus
+  `vault/mac_dev.vault.yml` and render/import the actual profile
+
 ## Defaults
 
 | Variable | Default |

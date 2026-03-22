@@ -13,3 +13,22 @@ ssh_configured: true
 docker_engine_ssh_host: "server-225-wsl"
 docker_engine_ssh_port: 22
 docker_engine_ssh_user: "joshc"
+
+# Tunnelblick profile staging.
+# These values capture the current intended VPN profile shape for mac-dev, but
+# the role does not yet install or import the VPN client profile itself.
+# That work is blocked on the missing router-exported OpenVPN client config
+# (.ovpn or .tblk bundle).
+tunnelblick_mac_profiles:
+  - name: "router-openvpn"
+    state: present
+    remote_address: "99.63.7.93"
+    remote_netmask: "255.255.255.255"
+    auth_username_vault_var: "vault_tunnelblick_mac_router_openvpn_auth_username"
+    auth_password_vault_var: "vault_tunnelblick_mac_router_openvpn_auth_password"
+    auth_password_env_var: "TUNNELBLICK_MAC_ROUTER_OPENVPN_AUTH_PASSWORD"
+    auth_password_placeholder: "V7j________"
+    ovpn_content_vault_var: "vault_tunnelblick_mac_router_openvpn_ovpn_content"
+    local_client_export_path: "private/tunnelblick/router-openvpn.ovpn"
+    client_export_status: "missing"
+    setup_status: "staged_waiting_for_client_export"
