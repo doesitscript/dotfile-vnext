@@ -16,6 +16,38 @@ Use this skill in two cases:
 
 Do not use this skill for topics that are already well-grounded in the repo and current docs.
 
+## Suggested workflow placement
+
+This skill is designed to be reusable across projects.
+
+Suggested placement in a project workflow:
+
+- research step
+  Use this when current context is too weak for safe planning or execution.
+- planning support step
+  Use this after planner/steward escalation so the next plan is grounded instead
+  of speculative.
+- execution support step
+  Use this when implementation attempts stop producing new evidence and the work
+  needs a source-backed reset.
+
+If a project uses named roles or agents, a good default mapping is:
+
+- planner / steward agent
+  invokes this skill when a research gate is hit
+- researcher agent
+  owns this skill directly
+- executor agent
+  receives its recommendation or pauses work until it returns
+
+These do not have to be separate agents. They can be separate steps in a single
+agent workflow. The important part is the concept:
+
+- inspect
+- gather evidence
+- recommend
+- hand back
+
 ## Instructions
 
 When this skill is invoked, you will adopt the `Researcher` agent persona and execute the following sequence of actions without deviation.

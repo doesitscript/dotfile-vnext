@@ -27,6 +27,26 @@ Do not use it when:
 - the user expects Codex to magically extract the entire hidden conversation transcript from the chat system
 - only a partial recollection exists and the user asked for a full transcript
 
+## Suggested workflow placement
+
+This skill is designed to be reusable across projects.
+
+Suggested placement in a project workflow:
+
+- closeout / capture step
+  Use it when the conversation itself should become a dated artifact for later
+  review or analysis.
+- lessons-learned step
+  Use it when a session contains process or implementation insights worth
+  preserving beyond the live chat.
+- handoff support step
+  Use it when future work will benefit from a preserved transcript or export
+  file rather than a short summary alone.
+
+This is usually not a planner, researcher, or executor role by itself. It is a
+supporting archival step that helps those other workflow surfaces preserve
+context between sessions.
+
 ## Workflow
 
 1. Confirm the source text exists in a readable form:

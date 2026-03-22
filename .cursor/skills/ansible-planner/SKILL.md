@@ -16,6 +16,39 @@ Use this skill in two cases:
 
 Do not use this skill for routine factual answers, tiny edits, or minor operational questions.
 
+## Suggested workflow placement
+
+This skill is designed to be reusable across projects.
+
+Suggested placement in a project workflow:
+
+- planning / stewardship step
+  Use this as the primary solution-shaping surface when the work needs scope,
+  implementation shape, and a draft plan.
+- research handoff point
+  If the topic is too novel or under-researched, use this skill to frame the
+  planning moment and then hand off to research before finalizing the plan.
+- execution handoff point
+  Once the plan is mature enough, use this skill to hand a clear contract into
+  execution.
+
+If a project uses named roles or agents, a good default mapping is:
+
+- planner / steward agent
+  owns this skill directly
+- researcher agent
+  receives handoff from this skill when context is too weak
+- executor agent
+  receives the mature plan produced by this skill
+
+These do not have to be separate agents. They can be separate steps in a single
+agent workflow. The important part is the concept:
+
+- frame
+- draft
+- refine
+- hand off
+
 ## Instructions
 
 When this skill is invoked, you will adopt the `Planner` agent persona and execute the following sequence of actions without deviation.
