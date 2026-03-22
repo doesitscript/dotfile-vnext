@@ -166,6 +166,44 @@ Current grouping model:
   Workflow surfaces for durable GitHub issue tracking, staging, labeling, and
   pickup behavior.
 
+The `github-*` group should be treated as a capability family, not a one-off
+exception. The first active member of that family is:
+
+- [codex-framework-github-issue-workflow.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-github-issue-workflow.mdc)
+
+### Naming anatomy example
+
+`codex-framework-github-issue-workflow.mdc` is meant to read as:
+
+- `codex-framework`
+  This is an active framework-owned rule surface, not just an incidental doc or
+  one-off project note.
+- `github`
+  This belongs to the GitHub-backed planning/backlog capability family.
+- `issue-workflow`
+  This specific rule governs how issues are created, updated, closed, labeled,
+  and used for pickup.
+- `.mdc`
+  This is an active rule file, not plain markdown.
+
+So the filename is doing three jobs at once:
+
+- showing framework ownership
+- showing capability-family grouping
+- showing the specific behavior owned by the file
+
+The family purpose is lightweight GitHub-backed project planning and lifecycle
+handling for things like:
+
+- new capabilities
+- features
+- bugs
+- cleanup work
+- staged follow-ups
+
+This is intentionally loose. It is meant to reduce rough planning clutter in
+the repo, not replace judgment with rigid process.
+
 This means:
 
 - rules should show both ownership and grouping in the filename
@@ -195,6 +233,15 @@ When Codex creates a new active rule or workflow surface, it should decide:
 
 If the answer is not clear, prefer updating an existing grouped surface instead
 of creating a new one.
+
+For the `github-*` family specifically, do not wait for multiple rule files
+before calling it a family. If the repo has:
+
+- a named capability group
+- at least one active rule in that group
+- an active skill aligned to that group
+
+then it should already be documented and treated as a scalable family.
 
 ### Legacy note
 

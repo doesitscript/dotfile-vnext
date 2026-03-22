@@ -8,6 +8,10 @@ alwaysApply: true
 Use the `github-issue-workflow` skill when work is real enough to deserve
 durable tracking beyond the current conversation.
 
+This rule is the first active member of the repo's `github-*` capability
+family. Treat that family as the lightweight GitHub-backed planning area for
+features, bugs, cleanup, staged capabilities, and follow-up work.
+
 ## When To Elevate Work
 
 Prefer elevating work into a GitHub issue when:
@@ -30,6 +34,58 @@ If the `github-issue-workflow` skill is available, use it when the user asks to:
 
 Loose prompts are enough. The user does not need to pre-format the issue.
 
+Do not trigger this skill as background bookkeeping.
+
+Use it when:
+
+- the user explicitly asks for issue creation, update, or closure
+- the work has reached a meaningful planning or implementation point where durable
+  GitHub tracking now makes sense
+- the agent is about to perform a real GitHub operation
+
+Do not use it just because a topic exists in the repo.
+Do not keep re-checking GitHub once the current issue state is already known,
+unless new work, a new decision point, or an explicit user request makes another
+check useful.
+
+If a repo note being used for implementation already points at a GitHub issue,
+that is a strong signal to hydrate from the issue once before continuing.
+After that initial issue read, do not keep re-reading it during the same
+implementation stretch unless:
+
+- the agent is about to update or close the issue
+- the direction may have changed
+- new evidence means the issue should be revised
+- the user explicitly asks for another issue check
+
+## Framework Role Usage
+
+Use the `github-issue-workflow` skill across the framework surfaces like this:
+
+- `Planner/Steward`
+  Use it to decide when staged work, refined brainstorming, or partial-state
+  notes should be elevated into a durable GitHub issue.
+- `Researcher`
+  Use it to turn role READMEs, intake notes, or other staged repo state into a
+  structured issue draft with the right references and labels.
+- `Executor`
+  Use it to create, update, label, reference, or close the issue once the work
+  is ready for GitHub operations.
+
+This is the repo-specific framework mapping for the skill. The skill itself
+should stay portable, but this rule defines how the framework roles here are
+expected to use it.
+
+The normal flow is:
+
+- planning discovers the need
+- research gathers the material
+- execution performs the GitHub action once
+
+It is not a standing background check.
+It is also not a repeated read loop once the current issue context has already
+been loaded into the work.
+
 ## Planning Layer
 
 For resumable work tracked this way:
@@ -39,6 +95,17 @@ For resumable work tracked this way:
 - repo docs and READMEs remain the local context and offline recovery layer
 
 If GitHub is unavailable, resume from the repo and re-research as needed.
+
+## General Lifecycle Handling
+
+Keep issue lifecycle handling lightweight:
+
+- create an issue when work becomes real enough to deserve durable tracking
+- update an issue when direction changes or useful learning should be preserved
+- close an issue when the work lands or is no longer real remaining work
+
+This workflow is meant to help organize work, not force exhaustive lifecycle
+formalism for every case.
 
 ## Repo Reference Rule
 

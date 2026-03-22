@@ -8,6 +8,10 @@ description: Create, refine, close, and reference GitHub issues for staged work,
 Use this skill when work is real enough to deserve durable tracking outside the
 conversation, but not every note deserves a GitHub issue.
 
+This skill fits a lightweight GitHub-backed planning style well, especially for
+solo or small-team work where GitHub issues are being adapted into the main
+feature/bug/follow-up planning area.
+
 ## What this skill is for
 
 - turning staged or blocked work into GitHub issues
@@ -17,6 +21,64 @@ conversation, but not every note deserves a GitHub issue.
 - deciding when a role README note is enough vs when GitHub should track it
 - closing or updating issues after work lands
 - keeping repo docs aligned with issue references when useful
+
+## Suggested workflow placement
+
+This skill is designed to be reusable across projects.
+
+Suggested placement in a project workflow:
+
+- planning / stewardship step
+  Decide whether the work should stay local or be elevated into a GitHub issue.
+- research step
+  Gather the right repo notes, intake docs, role READMEs, and current-state
+  references so the issue body is actually useful.
+- execution step
+  Create, update, label, reference, or close the issue once the shape is ready.
+
+If a project uses named roles or agents, a good default mapping is:
+
+- planner / steward agent
+  decides that the issue should exist
+- researcher agent
+  drafts the issue from the available repo context
+- executor agent
+  performs the GitHub operation and keeps repo references aligned
+
+These do not have to be separate agents. They can be separate steps in a single
+agent workflow. The important part is the concept:
+
+- decide
+- draft
+- execute
+
+This skill is trigger-based, not ambient.
+
+Use it when:
+
+- the user explicitly asks for issue creation, update, or closure
+- planning has reached the point where durable GitHub tracking is now warranted
+- execution is about to perform a real GitHub operation
+
+Do not keep invoking it just because a topic exists in the repo. Once the
+current GitHub state is already known, do not re-check or re-draft unless new
+work, a new decision point, or an explicit user request makes that useful.
+
+If a repo note or README already points at an issue and that note is being used
+to start implementation, treat the issue read as a one-time hydration step:
+
+1. read the issue once to load the best refined direction
+2. continue implementation from that issue + local repo context
+3. do not keep calling back to GitHub during the same work stretch unless:
+   - you are about to update or close the issue
+   - the direction may have changed
+   - new evidence means the issue should be revised
+   - the user explicitly asks for another issue check
+
+Think of it like this:
+
+- first issue read = load the current plan into working memory
+- repeated issue reads = only when state may have changed or needs to change
 
 ## When to create an issue
 
@@ -35,6 +97,16 @@ Do not create an issue by default when:
 - the note is purely exploratory or disposable
 - the work is fully local and unlikely to be resumed later
 - a short role README note already captures the whole state sufficiently
+
+## General lifecycle handling
+
+Use the skill loosely but intentionally:
+
+- create an issue when the work becomes real enough to deserve durable tracking
+- update an issue when direction changes or useful learning should be preserved
+- close an issue when the work lands or is no longer real remaining work
+
+You do not need a perfectly modeled edge-case taxonomy to use this skill well.
 
 ## Where to look first
 

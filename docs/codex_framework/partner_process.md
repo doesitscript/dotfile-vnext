@@ -20,6 +20,11 @@ added as a flat set of unrelated files. The current grouped examples are:
 - `ansible-*` for Ansible-specific behavior
 - `github-*` for GitHub issue workflow behavior
 
+For this repo, the `github-*` family is intended to act as a lightweight
+project-planning area for a solo operator. It should be flexible enough to
+handle features, bugs, cleanup, staged capabilities, and follow-up work without
+turning issue handling into heavy ceremony.
+
 ## Core Commitments
 
 1. The user sets the target. The agent does not invent a new milestone and quietly optimize for that instead.
@@ -215,6 +220,15 @@ issue rather than a new in-repo planning note. When that happens:
 - the repo should keep only enough local context to resume offline
 - role READMEs, role-local docs, or intake notes that materially shaped the issue
   should reference it briefly when that will help future pickup
+
+General lifecycle handling for that GitHub planning layer is intentionally
+simple:
+
+- create an issue when work becomes real enough to deserve durable tracking
+- update an issue when direction changes or new learning should be preserved
+- close an issue when the work lands or is no longer real remaining work
+
+This does not require every edge case to be formalized up front.
 
 ### 3. Choose the Smallest Correct Implementation Shape
 
