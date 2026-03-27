@@ -1,0 +1,35 @@
+---
+- name: Resolve Hyper-V Ubuntu VM inventory contract
+  ansible.builtin.assert:
+    that:
+      - hyperv_ubuntu_vm_inventory_host in hostvars
+      - hyperv_ubuntu_vm_switch_name | length > 0
+    fail_msg: >-
+      Inventory host '{{ hyperv_ubuntu_vm_inventory_host }}' must exist and
+      hyperv_ubuntu_vm_switch_name must be set before managing this VM.
+
+- name: Resolve controller public key from execution node
+  ansible.builtin.slurp:
+    src: "{{ controller_ssh_public_key_path }}"
+  register: _hyperv_ubuntu_vm_controller_pubkey_slurp
+  delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
+
+- name: Set controller public key content fact for Hyper-V Ubuntu VM bootstrap
+  ansible.builtin.set_fact:
+    controller_pub_key_content: "{{ _hyperv_ubuntu_vm_controller_pubkey_slurp.content | b64decode | trim }}"
+
+- name: Verify controller public key was loaded for Hyper-V Ubuntu VM bootstrap
+  ansible.builtin.assert:
+    that:
+      - controller_pub_key_content | length > 0
+    fail_msg: >-
+      Controller public key is empty or missing.
+      Ensure {{ controller_ssh_public_key_path }} exists on {{ hyperv_ubuntu_vm_controller_host }}.
+
+- name: Include Hyper-V Ubuntu VM present path
+  ansible.builtin.include_tasks: present.yml
+  when: hyperv_ubuntu_vm_state == 'present'
+
+- name: Include Hyper-V Ubuntu VM absent path
+  ansible.builtin.include_tasks: absent.yml
+  when: hyperv_ubuntu_vm_state == 'absent'

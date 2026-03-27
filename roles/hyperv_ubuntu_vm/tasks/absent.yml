@@ -1,0 +1,60 @@
+---
+- name: Probe Hyper-V Ubuntu VM state before removal
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
+      $Ansible.Result = @{
+        exists = [bool]$vm
+        state = if ($vm) { $vm.State.ToString() } else { $null }
+      }
+  register: _hyperv_ubuntu_vm_absent_probe
+  changed_when: false
+
+- name: Stop Hyper-V Ubuntu VM before removal when present
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop
+      if ($vm.State.ToString() -ne 'Off') {
+        Stop-VM -Name '{{ hyperv_ubuntu_vm_name }}' -TurnOff -Force
+        $Ansible.Changed = $true
+      }
+  when: _hyperv_ubuntu_vm_absent_probe.result.exists | default(false)
+
+- name: Remove Hyper-V Ubuntu VM when present
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      if (Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue) {
+        Remove-VM -Name '{{ hyperv_ubuntu_vm_name }}' -Force
+        $Ansible.Changed = $true
+      }
+  when: _hyperv_ubuntu_vm_absent_probe.result.exists | default(false)
+
+- name: Remove Hyper-V Ubuntu VM host artifact directory
+  ansible.windows.win_file:
+    path: "{{ hyperv_ubuntu_vm_host_root_dir }}"
+    state: absent
+
+- name: Remove Hyper-V Ubuntu VM controller staging directory
+  ansible.builtin.file:
+    path: "{{ hyperv_ubuntu_vm_controller_staging_dir }}"
+    state: absent
+  delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
+
+- name: Mark Hyper-V Ubuntu VM inventory host as not SSH-configured
+  ansible.builtin.set_fact:
+    ssh_configured: false
+    cacheable: true
+  delegate_to: "{{ hyperv_ubuntu_vm_inventory_host }}"
+  delegate_facts: true
+
+- name: Report Hyper-V Ubuntu VM removal summary
+  ansible.builtin.debug:
+    msg:
+      vm_name: "{{ hyperv_ubuntu_vm_name }}"
+      removed: "{{ _hyperv_ubuntu_vm_absent_probe.result.exists | default(false) }}"
