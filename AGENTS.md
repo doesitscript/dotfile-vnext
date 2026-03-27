@@ -4,6 +4,22 @@ This file defines the durable repo-specific guidance for Codex in this project.
 
 Keep it small. Durable behavior lives here. Deeper rationale lives in `docs/codex_framework/partner_process.md`. The capability map for this framework lives in `docs/codex_framework/README.md`.
 
+## Instruction Bootstrap
+
+For Codex/OpenAI conversations in this repo, treat this file as the highest
+repo-level enforcement surface.
+
+Before substantive work, load the repo's active framework surfaces in this
+order:
+1. `AGENTS.md`
+2. `.cursorrules` as the workspace boot/rule-loading intent
+3. active `.cursor/rules/*.mdc` files
+4. `docs/codex_framework/README.md`
+5. `docs/codex_framework/partner_process.md`
+
+For this repo, `.cursor/rules/*.mdc` and framework docs are not optional
+background reading in Codex/OpenAI conversations. This file bootstraps them.
+
 ## Working Contract
 
 1. Preserve the user's target. Do not silently replace it with a safer-but-different milestone.
