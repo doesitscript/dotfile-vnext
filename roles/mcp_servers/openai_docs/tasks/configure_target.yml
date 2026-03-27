@@ -1,0 +1,44 @@
+---
+- name: Ensure target directory exists for {{ _openai_docs_target_name }}
+  ansible.builtin.file:
+    path: "{{ _openai_docs_target_config_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Check whether mcp.json exists for {{ _openai_docs_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _openai_docs_target_config_path }}"
+  register: _openai_docs_target_mcp_json_stat
+
+- name: Create mcp.json with OpenAI Docs entry for {{ _openai_docs_target_name }}
+  ansible.builtin.copy:
+    dest: "{{ _openai_docs_target_config_path }}"
+    mode: "0644"
+    content: "{{ {'mcpServers': {(_openai_docs_target_server_key): _openai_docs_target_entry}} | to_nice_json }}\n"
+  when: not _openai_docs_target_mcp_json_stat.stat.exists
+
+- name: Merge OpenAI Docs entry into existing mcp.json for {{ _openai_docs_target_name }}
+  when: _openai_docs_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _openai_docs_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _openai_docs_target_config_path }}"
+      register: _openai_docs_target_mcp_json_raw
+
+    - name: Write merged mcp.json for {{ _openai_docs_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _openai_docs_target_config_path }}"
+        content: "{{ _openai_docs_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _openai_docs_target_existing: "{{ _openai_docs_target_mcp_json_raw.content | b64decode | from_json }}"
+        _openai_docs_target_servers: >-
+          {{
+            (_openai_docs_target_existing.mcpServers | default({}))
+            | combine({(_openai_docs_target_server_key): _openai_docs_target_entry})
+          }}
+        _openai_docs_target_merged: >-
+          {{
+            _openai_docs_target_existing
+            | combine({'mcpServers': _openai_docs_target_servers})
+          }}

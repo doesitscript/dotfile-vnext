@@ -1,22 +1,27 @@
 ---
-# OpenAI Docs MCP — streamable HTTP, no local install.
-# Ref: https://developers.openai.com/resources/docs-mcp
+openai_docs_mcp_state: present
+openai_docs_mcp_project_root: "{{ dotfiles_home | default(playbook_dir | dirname | dirname) }}"
+openai_docs_mcp_targets:
+  - cursor
+  - codex
+openai_docs_mcp_supported_targets:
+  - cursor
+  - codex
+  - openapi
+openai_docs_mcp_cursor_config_path: "{{ openai_docs_mcp_project_root }}/.cursor/mcp.json"
+openai_docs_mcp_codex_config_path: "{{ openai_docs_mcp_project_root }}/.codex/config.toml"
+openai_docs_mcp_role_path: "roles/mcp_servers/openai_docs"
+
+openai_docs_server_key: "openaiDeveloperDocs"
+openai_docs_codex_server_key: "codex"
 openai_docs_mcp_url: "https://developers.openai.com/mcp"
 
-# Cursor project directory for .cursor/mcp.json
-openai_docs_project_dir: "{{ dotfiles_home }}/.cursor"
-
-# Server key in mcp.json (Cursor / Codex)
-openai_docs_server_key: "openaiDeveloperDocs"
-
-# Codex app (includes Codex MCP server). Set by mac.yml/ubuntu.yml after install.
+# Local Codex runtime binary. Set by mac.yml/ubuntu.yml after install.
 openai_docs_codex_command: ""
-
-# Set to false to omit the codex MCP server block from mcp.json.
 openai_docs_codex_enabled: true
 
-# Codex app config directory (for ~/.codex/config.toml)
-openai_docs_codex_config_dir: "{{ dotfiles_user_home | default(ansible_user_dir) }}/.codex"
-
-# Codex binary path is derived at runtime: {{ node_npm_executable | dirname }}/codex
-# Set by mac.yml and ubuntu.yml after npm install. Requires roles/common/node.
+# Structured Codex config entries for the project .codex/config.toml target.
+openai_docs_docs_codex_entry:
+  url: "{{ openai_docs_mcp_url }}"
+  required: true
+openai_docs_codex_entry: {}

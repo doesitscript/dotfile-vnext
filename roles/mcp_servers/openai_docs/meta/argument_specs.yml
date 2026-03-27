@@ -1,65 +1,110 @@
 ---
 argument_specs:
   main:
-    short_description: Add OpenAI Docs MCP and Codex MCP to Cursor mcp.json; install Codex on Mac/Ubuntu.
+    short_description: Install OpenAI Docs MCP support and manage Cursor/Codex project targets.
     description: >
-      Two MCP server blocks: (1) openaiDeveloperDocs (streamable HTTP, URL only);
-      (2) codex (command from Codex app binary). Installs Codex on macOS (Homebrew)
-      and Ubuntu (npm); skips Windows. Merges into .cursor/mcp.json; ensures
-      ~/.codex/config.toml has openaiDeveloperDocs URL. Ref: https://developers.openai.com/resources/docs-mcp
+      Installs the local Codex runtime on macOS and Ubuntu, manages the
+      openaiDeveloperDocs and codex entries in repo-local Cursor config, and
+      manages per-server blocks in project .codex/config.toml through the shared
+      Codex target helper pattern.
     options:
-      openai_docs_mcp_url:
+      openai_docs_mcp_state:
         type: str
-        required: false
-        default: "https://developers.openai.com/mcp"
-        description: >
-          Streamable HTTP MCP endpoint for OpenAI developer docs.
+        default: present
+        choices:
+          - present
+          - absent
+        description: Ensure the openai_docs MCP capability is present or absent.
 
-      openai_docs_project_dir:
+      openai_docs_mcp_project_root:
         type: str
         required: false
+        description: Repo root used to derive the default config target paths.
+
+      openai_docs_mcp_targets:
+        type: list
+        elements: str
+        default:
+          - cursor
+          - codex
         description: >
-          Directory containing mcp.json. Defaults to dotfiles_home/.cursor.
+          Target configs to manage. Supported values are cursor, codex, and
+          openapi. openapi is a stub in this pass and fails fast if selected.
+
+      openai_docs_mcp_supported_targets:
+        type: list
+        elements: str
+        default:
+          - cursor
+          - codex
+          - openapi
+        description: Supported target names for validation and guardrails.
+
+      openai_docs_mcp_cursor_config_path:
+        type: str
+        required: false
+        description: Path to the Cursor mcp.json file.
+
+      openai_docs_mcp_codex_config_path:
+        type: str
+        required: false
+        description: Path to the project Codex config.toml file.
 
       openai_docs_server_key:
         type: str
-        required: false
         default: "openaiDeveloperDocs"
-        description: >
-          Key under mcpServers in mcp.json (Cursor / Codex).
+        description: Server key used for the OpenAI docs MCP entry.
+
+      openai_docs_codex_server_key:
+        type: str
+        default: "codex"
+        description: Server key used for the local Codex MCP entry.
+
+      openai_docs_mcp_url:
+        type: str
+        default: "https://developers.openai.com/mcp"
+        description: Streamable HTTP MCP endpoint for OpenAI developer docs.
 
       openai_docs_codex_command:
         type: str
-        required: false
         default: ""
-        description: >
-          Path to codex binary. Set by mac.yml/ubuntu.yml after install.
+        description: Path to the local Codex binary. Set by mac.yml/ubuntu.yml after install.
 
       openai_docs_codex_enabled:
         type: bool
-        required: false
         default: true
         description: >
-          If false, the codex MCP server block is omitted from mcp.json.
+          Whether the local Codex MCP entry should be managed alongside the docs
+          entry for supported targets.
 
-      openai_docs_codex_config_dir:
-        type: str
+      openai_docs_docs_codex_entry:
+        type: dict
         required: false
+        default:
+          url: "https://developers.openai.com/mcp"
+          required: true
+        description: Structured Codex entry for the OpenAI docs MCP server.
+
+      openai_docs_codex_entry:
+        type: dict
+        required: false
+        default: {}
         description: >
-          Directory for ~/.codex/config.toml. Defaults to dotfiles_user_home/.codex.
+          Structured Codex entry for the local Codex MCP server. Define command
+          or override fields only when deviating from the runtime-discovered
+          default.
 
       node_default_version:
         type: str
         required: false
         default: "20"
         description: >
-          Node.js version installed by nvm (roles/common/node). Used to resolve the
-          nvm npm executable path on Ubuntu. Keep in sync with common/node defaults.
+          Node.js version installed by nvm (roles/common/node). Keep in sync
+          with the common/node defaults.
 
       openai_docs_codex_bin_candidates:
         type: list
         required: false
         description: >
-          Ordered list of candidate paths for the Codex binary on Ubuntu.
-          ansible.builtin.stat checks each; first existing path is used as the MCP command.
-          Primary path is the nvm-managed node bin; system paths are fallbacks.
+          Ordered list of candidate paths for the Codex binary on Ubuntu. The
+          first existing path is used as the MCP command.
