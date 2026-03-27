@@ -53,17 +53,18 @@ background reading in Codex/OpenAI conversations. This file bootstraps them.
 
 1. Inspect existing playbooks, roles, docs, inventory, and rules before proposing new structure.
 2. Check official docs for Codex/OpenAI, Ansible, or other primary systems when the task is new, unstable, or easy to get wrong.
-3. Look for a real module, collection, or role before falling back to scripting.
-4. If a topic is too novel or under-researched, stop short of a decision-complete plan and escalate to research first.
-5. The research output should be a concise evidence summary with:
+3. When the task involves the OpenAI API, ChatGPT Apps SDK, Codex, Codex configuration, `AGENTS.md` customization, MCP usage, or subagents, use the `openaiDeveloperDocs` MCP server by default without waiting for the user to ask explicitly.
+4. Look for a real module, collection, or role before falling back to scripting.
+5. If a topic is too novel or under-researched, stop short of a decision-complete plan and escalate to research first.
+6. The research output should be a concise evidence summary with:
    - what already exists
    - what sources were checked
    - viable options
    - recommended path
    - key tradeoffs or risks
-6. Keep research in the conversation by default unless the user explicitly wants a durable artifact or the result is itself a durable process change.
-7. When repeated implementation attempts stop producing new evidence, stop iterating blindly and switch to documentation/source-backed research before changing strategy.
-8. When password passing, privilege escalation, or installer flow behaves unexpectedly, inspect the actual module/tool documentation or source before changing escalation strategy.
+7. Keep research in the conversation by default unless the user explicitly wants a durable artifact or the result is itself a durable process change.
+8. When repeated implementation attempts stop producing new evidence, stop iterating blindly and switch to documentation/source-backed research before changing strategy.
+9. When password passing, privilege escalation, or installer flow behaves unexpectedly, inspect the actual module/tool documentation or source before changing escalation strategy.
 
 ## Planning Behavior
 

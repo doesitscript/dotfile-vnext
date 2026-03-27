@@ -1,0 +1,24 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
+required = true
+
+[features]
+multi_agent = true
+
+[agents]
+max_threads = 6
+max_depth = 1
+
+[agents.default]
+description = "Main repo collaboration role. Own planning/stewardship in the primary thread, preserve the user's target, and bootstrap the repo framework before work."
+config_file = "agents/default.toml"
+
+[agents.explorer]
+description = "Read-heavy research and evidence role. Use for repo inspection, official docs, logs, diagnostics, and concise evidence summaries."
+config_file = "agents/explorer.toml"
+
+[agents.worker]
+description = "Bounded execution role. Use for focused implementation, verification, and follow-through on a clearly scoped slice of work."
+config_file = "agents/worker.toml"

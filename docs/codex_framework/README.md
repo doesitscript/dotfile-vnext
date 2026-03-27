@@ -32,9 +32,17 @@ The capability-specific rule files no longer use numeric prefixes or double-dash
 
 Today the working stack is:
 1. `AGENTS.md`
-2. skill workflows
-3. MCP and live environment tools
-4. multi-agent delegation later, only after the first three are stable
+2. project Codex runtime config in `.codex/config.toml`
+3. skill workflows
+4. MCP and live environment tools
+5. multi-agent delegation later, only after the first four are stable
+
+For OpenAI/Codex topics in this repo, the default authoritative-docs path is the
+`openaiDeveloperDocs` MCP server before training knowledge or generic web use.
+This applies broadly, not just to a narrow "researcher-only" role: Codex/API
+questions, AGENTS/customization questions, MCP/config questions, and
+subagent/multi-agent questions should all start there when the docs server can
+answer them.
 
 So this folder is also a migration aid. It makes the current framework visible even though parts of it were introduced incrementally inside the project.
 
@@ -43,6 +51,11 @@ So this folder is also a migration aid. It makes the current framework visible e
 Implemented now:
 - `Planner / Steward`
 - `Researcher`
+- official project-level Codex runtime config in `.codex/config.toml`
+- built-in Codex role mapping:
+  - `default` -> `Planner / Steward` in the main thread
+  - `explorer` -> `Researcher`
+  - `worker` -> `Executor`
 - visible transition signals for active framework surfaces:
   - `Planner/Steward view:`
   - `Researcher view:`
@@ -56,13 +69,12 @@ Implemented now:
   or rough brainstorming once it becomes concrete enough to preserve
 
 Planned next:
-- `Executor` contract
 - quality comparison workflow for the next 2-3 efforts
 - one real repo problem taken through the framework end to end
 - runtime validation of the effective Codex instruction stack:
   - confirm which surfaces are actually injected into Codex sessions
   - confirm whether `.cursor/rules/*.mdc` files are enforced, advisory, or inactive
-  - distinguish documented multi-agent intent from verified separate-agent execution
+  - distinguish configured multi-agent support from verified separate-agent execution
 
 ## Environment-Specific Enforcement Hierarchy
 
@@ -74,13 +86,16 @@ the chat/runtime environment.
 Use this hierarchy:
 
 1. `AGENTS.md`
-2. `.cursorrules`
-3. active `.cursor/rules/*.mdc`
-4. `docs/codex_framework/README.md`
-5. `docs/codex_framework/partner_process.md`
+2. project `.codex/config.toml`
+3. `.cursorrules`
+4. active `.cursor/rules/*.mdc`
+5. `docs/codex_framework/README.md`
+6. `docs/codex_framework/partner_process.md`
 
 In this environment, `AGENTS.md` is the highest repo-level contract and is
-responsible for bootstrapping the rest of the framework surfaces.
+responsible for bootstrapping the rest of the instruction/doc surfaces, while
+`.codex/config.toml` is the official Codex runtime layer for project-scoped MCP
+and subagent configuration.
 
 ### Cursor-native workspace conversations
 
@@ -105,9 +120,12 @@ The repo now has three different layers that can be easy to conflate:
 Current evidence supports the following:
 
 - `AGENTS.md` is part of the active repo contract
+- the repo now has a project-level Codex config surface at `.codex/config.toml`
 - Codex tooling and Codex MCP integration are present and configured
 - the repo clearly documents `Planner / Steward`, `Researcher`, and later
   `Executor` as framework roles
+- the project now maps official Codex built-in agent roles to those framework
+  roles instead of describing them only as abstract personas
 
 What still needs explicit validation:
 
@@ -115,13 +133,14 @@ What still needs explicit validation:
   sessions or are primarily a Cursor-side rule layer
 - whether a given Codex session is using only one agent with multiple role
   signals, or is actually spawning separate agents
-- whether "multi-agent" references in repo docs are implementation evidence or
-  still an intended future direction
+- whether the configured `default` / `explorer` / `worker` mapping is being used
+  automatically in practice or only when delegation is explicitly requested
 
 Until that validation is done, the safest language is:
 
 - the repo has a documented Codex framework
 - parts of that framework are operational at the process/instruction level
+- the repo now has an official Codex project-config layer for MCP and subagents
 - true separate-agent enforcement/execution should not be claimed without
   direct runtime evidence
 

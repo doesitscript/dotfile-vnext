@@ -40,27 +40,37 @@ turning issue handling into heavy ceremony.
 In Codex terms, this repo should be built in layers:
 
 1. `AGENTS.md` for durable repo behavior
-2. skills for repeatable workflows
-3. MCP for external systems and live context
-4. multi-agents only after the first three are earning their keep
+2. project `.codex/config.toml` for Codex runtime behavior in this repo
+3. skills for repeatable workflows
+4. MCP for external systems and live context
+5. multi-agents only after the first four are earning their keep
 
 For Codex/OpenAI conversations in this repo, `AGENTS.md` is also the bootstrap
 surface that should force loading of the active workspace framework surfaces:
 
 1. `AGENTS.md`
-2. `.cursorrules`
-3. active `.cursor/rules/*.mdc`
-4. `docs/codex_framework/README.md`
-5. `docs/codex_framework/partner_process.md`
+2. project `.codex/config.toml` as the official Codex runtime layer
+3. `.cursorrules`
+4. active `.cursor/rules/*.mdc`
+5. `docs/codex_framework/README.md`
+6. `docs/codex_framework/partner_process.md`
 
 So for this repo, the immediate structure is not "spawn more agents first."
 It is:
 
 - a persistent instruction layer
+- an official project-scoped Codex runtime layer
 - an explicit researcher/steward/executor workflow
 - then reusable skills for recurring jobs
 
-True multi-agent delegation can come later, once the roles are stable enough to split.
+The current official Codex role mapping for this repo is:
+
+- `default` -> `Planner / Steward` in the primary thread
+- `explorer` -> `Researcher`
+- `worker` -> `Executor`
+
+True multi-agent delegation still needs runtime evidence. Configuration alone is
+not proof that separate agent threads are being used automatically.
 
 The first active framework role to implement is `Planner / Steward`.
 The next active framework role to implement is `Researcher`.
@@ -104,6 +114,9 @@ The Researcher must:
 - inspect the repo first
 - inspect existing playbooks, roles, docs, and inventory before proposing new structure
 - consult authoritative docs when the task is novel, unstable, or easy to get wrong
+- use the `openaiDeveloperDocs` MCP server by default for OpenAI API, ChatGPT
+  Apps SDK, Codex, AGENTS/customization, MCP/config, and subagent questions
+  instead of answering those topics from memory
 - look for existing modules/collections/roles before falling back to shell or PowerShell
 - inspect module or tool documentation/source when password flow, privilege escalation, or installer behavior is the point of uncertainty
 - recognize when implementation retries have hit diminishing returns and switch to research instead of continuing speculative changes
