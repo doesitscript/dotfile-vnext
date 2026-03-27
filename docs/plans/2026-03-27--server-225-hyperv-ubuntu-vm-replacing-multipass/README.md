@@ -5,6 +5,11 @@ Canonical approved plan for replacing the deprecated Multipass-backed
 
 Tracked in GitHub issue [#4](https://github.com/doesitscript/dotfile-vnext/issues/4).
 
+Supporting research for the approved implementation direction lives in
+[research.md](/Users/joshc/develop/dotfile-vnext/docs/plans/2026-03-27--server-225-hyperv-ubuntu-vm-replacing-multipass/research.md).
+Runtime command evidence for the first implementation pass lives in
+[evidence--hyperv-live-runs.md](/Users/joshc/develop/dotfile-vnext/docs/plans/2026-03-27--server-225-hyperv-ubuntu-vm-replacing-multipass/evidence--hyperv-live-runs.md).
+
 ## Summary
 
 Abandon Multipass as the provisioning mechanism for `server-225-ubuntu`.
@@ -38,6 +43,9 @@ adaptation is sequencing:
 3. replacement checkpoint
    - introduce a new `hyperv_ubuntu_vm` role instead of rewriting
      `multipass_ubuntu_vm` in place
+   - add a dedicated `server_225_hyperv_ubuntu_vm` playbook
+   - keep cutover out of the broad server-225 provisioning path until runtime
+     verification succeeds
 4. cutover checkpoint
    - switch active server-225 provisioning to the new Hyper-V-native role
    - remove the old Multipass role/playbook once the replacement is proven
@@ -86,9 +94,10 @@ In scope now:
 
 Not in scope for this checkpoint:
 
-- creating the new Hyper-V-native role
+- full cutover into the broad server-225 provisioning play
 - deleting the old Multipass role from the repo
-- implementing the new Hyper-V-native role
+- deleting the archived Multipass reference role before the replacement is
+  proven
 
 ## Apply / Verify / Undo / Change Class
 

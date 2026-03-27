@@ -47,11 +47,15 @@
       $Ansible.Result = $result.Trim()
   register: _vmswitch_create
   when: not (_vmswitch_probe.result.exists | default(false))
+  vars:
+    ansible_winrm_connection_timeout: "{{ hyperv_networking_switch_create_winrm_timeout }}"
 
 - name: Wait for WinRM to reconnect after VMSwitch creation
   ansible.builtin.wait_for_connection:
+    connect_timeout: 10
     delay: 15
-    timeout: 180
+    sleep: 5
+    timeout: "{{ hyperv_networking_reconnect_timeout }}"
   when: _vmswitch_create is changed
 
 - name: Re-probe External VMSwitch state after create path

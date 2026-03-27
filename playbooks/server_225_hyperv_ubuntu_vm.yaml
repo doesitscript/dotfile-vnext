@@ -1,0 +1,46 @@
+---
+# Dedicated control surface for the Hyper-V-native Ubuntu VM on server-225.
+#
+# Runs:
+#   1. controller key setup (or reuse)
+#   2. Hyper-V host feature / switch prerequisite
+#   3. Hyper-V Ubuntu VM lifecycle on the Windows host
+#   4. controller SSH config refresh after VM facts are published
+#
+# Example:
+#   .venv/bin/ansible-playbook playbooks/server_225_hyperv_ubuntu_vm.yaml \
+#     -i inventory/inventory.yaml \
+#     --limit 'execution_nodes,server-225-win'
+#
+
+- name: Access - controller identity
+  hosts: execution_nodes
+  connection: local
+  gather_facts: true
+
+  roles:
+    - access_identity_controller
+
+- name: Server-225 Hyper-V Ubuntu VM lifecycle
+  hosts: server-225-win
+  gather_facts: false
+
+  tasks:
+    - name: Ensure Hyper-V host networking prerequisites are ready
+      ansible.builtin.include_role:
+        name: hyperv_networking
+
+    - name: Ensure Hyper-V Ubuntu VM capability is in the requested lifecycle state
+      ansible.builtin.include_role:
+        name: hyperv_ubuntu_vm
+
+- name: Access - update controller SSH client config
+  hosts: execution_nodes
+  connection: local
+  gather_facts: true
+
+  tasks:
+    - name: Generate SSH client config from deployed targets
+      ansible.builtin.include_role:
+        name: access_identity_controller
+        tasks_from: ssh_config.yml

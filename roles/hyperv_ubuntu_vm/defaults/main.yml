@@ -1,0 +1,44 @@
+---
+hyperv_ubuntu_vm_state: present
+hyperv_ubuntu_vm_name: server-225-ubuntu
+hyperv_ubuntu_vm_inventory_host: server-225-ubuntu
+hyperv_ubuntu_vm_generation: 2
+hyperv_ubuntu_vm_cpus: 4
+hyperv_ubuntu_vm_memory: "8G"
+hyperv_ubuntu_vm_disk: "40G"
+hyperv_ubuntu_vm_switch_name: "{{ (hyperv_config | default({})).switch_name | default('External') }}"
+hyperv_ubuntu_vm_user: ubuntu
+hyperv_ubuntu_vm_hostname: "{{ hyperv_ubuntu_vm_name }}"
+hyperv_ubuntu_vm_ssh_port: 22
+hyperv_ubuntu_vm_python_interpreter: /usr/bin/python3
+hyperv_ubuntu_vm_secure_boot_template: "MicrosoftUEFICertificateAuthority"
+hyperv_ubuntu_vm_verify_ssh: true
+hyperv_ubuntu_vm_wait_for_ip_retries: 60
+hyperv_ubuntu_vm_wait_for_ip_delay: 10
+hyperv_ubuntu_vm_wait_for_ssh_timeout: 300
+
+hyperv_ubuntu_vm_cloud_image_url: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+hyperv_ubuntu_vm_cloud_image_filename: "{{ hyperv_ubuntu_vm_cloud_image_url.split('/')[-1] }}"
+
+hyperv_ubuntu_vm_host_root_dir: "C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\{{ hyperv_ubuntu_vm_name }}"
+hyperv_ubuntu_vm_host_vm_dir: "{{ hyperv_ubuntu_vm_host_root_dir }}\\vm"
+hyperv_ubuntu_vm_host_image_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_cloud_image_filename }}"
+hyperv_ubuntu_vm_host_vhdx_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_name }}.vhdx"
+hyperv_ubuntu_vm_host_seed_iso_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_name }}-cidata.iso"
+hyperv_ubuntu_vm_host_metadata_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_name }}-state.json"
+
+hyperv_ubuntu_vm_controller_host: "{{ groups['execution_nodes'][0] }}"
+hyperv_ubuntu_vm_controller_staging_dir: >-
+  {{ hostvars[hyperv_ubuntu_vm_controller_host].dotfiles_user_home }}/.local/state/dotfile-vnext/hyperv_ubuntu_vm/{{ hyperv_ubuntu_vm_name }}
+hyperv_ubuntu_vm_controller_seed_dir: "{{ hyperv_ubuntu_vm_controller_staging_dir }}/seed"
+hyperv_ubuntu_vm_controller_user_data_path: "{{ hyperv_ubuntu_vm_controller_seed_dir }}/user-data"
+hyperv_ubuntu_vm_controller_meta_data_path: "{{ hyperv_ubuntu_vm_controller_seed_dir }}/meta-data"
+hyperv_ubuntu_vm_controller_seed_iso_path: "{{ hyperv_ubuntu_vm_controller_staging_dir }}/{{ hyperv_ubuntu_vm_name }}-cidata.iso"
+hyperv_ubuntu_vm_controller_seed_signature_path: "{{ hyperv_ubuntu_vm_controller_staging_dir }}/seed.signature"
+hyperv_ubuntu_vm_controller_iso_command: /usr/bin/hdiutil
+
+hyperv_ubuntu_vm_windows_package_qemu: qemu
+hyperv_ubuntu_vm_qemu_img_candidate_paths:
+  - C:\Program Files\qemu\qemu-img.exe
+  - C:\ProgramData\chocolatey\bin\qemu-img.exe
+controller_ssh_public_key_path: "~/.ssh/id_ed25519_ansible.pub"
