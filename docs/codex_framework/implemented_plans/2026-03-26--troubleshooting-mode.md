@@ -29,7 +29,7 @@ operator-facing evidence options easy to enable.
 
 ## Repo-Level Outcomes
 
-- add `codex-framework-troubleshooting-mode.mdc`
+- add `framework-troubleshooting-mode.mdc`
 - update framework docs to describe the mode and implemented-plan history
 - update Ansible rule layer with standard troubleshooting variables and
   operator-facing evidence options

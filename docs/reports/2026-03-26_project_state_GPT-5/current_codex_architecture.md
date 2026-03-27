@@ -84,13 +84,13 @@ The repo has a substantial Cursor/Codex rule layer in `.cursor/rules/`:
 - `02--cussorrules-mcp-briefieng-GENERATED.mdc`
 - `900--failure-and-diagnostics.mdc`
 - `ansible-coding-standards.mdc`
-- `codex-framework-agent-role-and-persona.mdc`
-- `codex-framework-github-issue-workflow.mdc`
-- `codex-framework-knowledge-and-research.mdc`
-- `codex-framework-mcp-and-tool-usage.mdc`
-- `codex-framework-partner-process.mdc`
-- `codex-framework-troubleshooting-mode.mdc`
-- `codex-framework-user-interaction-style.mdc`
+- `framework-agent-role-and-persona.mdc`
+- `framework-github-issue-workflow.mdc`
+- `framework-knowledge-and-research.mdc`
+- `framework-mcp-and-tool-usage.mdc`
+- `framework-partner-process.mdc`
+- `framework-troubleshooting-mode.mdc`
+- `framework-user-interaction-style.mdc`
 
 ### What is safe to claim
 

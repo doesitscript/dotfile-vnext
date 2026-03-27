@@ -23,6 +23,22 @@ Project-specific information docs can still live elsewhere in `docs/` when they 
 
 Those notes can be important and still remain outside this folder. They are project information first, framework definition second.
 
+## Scope Boundary
+
+This folder name stays `docs/codex_framework/` on purpose.
+
+- The folder documents this project's Codex-specific implementation and usage of
+  the framework.
+- The active rule family under `.cursor/rules/` uses `framework-*` filenames on
+  purpose so those rule files stay as agent-agnostic as practical.
+
+Do not treat those two naming decisions as the same scope. The filename family
+for active rule surfaces is intentionally broader; the docs folder remains
+Codex-scoped because it describes the Codex implementation layer for this repo.
+
+The agnostic companion area for reusable framework-compatible surfaces now lives
+under [docs/framework-compatible/](/Users/joshc/develop/dotfile-vnext/docs/framework-compatible/README.md).
+
 ## Why This Is Transitional
 
 Some of the active rule files were created before the current OpenAI/Codex customization shape was better understood.
@@ -162,19 +178,19 @@ These are the current files actively shaping this capability.
 
 ### Capability-specific rule layer
 
-- [.cursor/rules/codex-framework-partner-process.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-partner-process.mdc)
+- [.cursor/rules/framework-partner-process.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/framework-partner-process.mdc)
   The main rule that operationalizes the partner process.
-- [.cursor/rules/codex-framework-agent-role-and-persona.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-agent-role-and-persona.mdc)
+- [.cursor/rules/framework-agent-role-and-persona.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/framework-agent-role-and-persona.mdc)
   Supporting role/persona rule currently affecting how the framework presents and asserts.
-- [.cursor/rules/codex-framework-knowledge-and-research.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-knowledge-and-research.mdc)
+- [.cursor/rules/framework-knowledge-and-research.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/framework-knowledge-and-research.mdc)
   Supporting research hierarchy and stewardship gate.
-- [.cursor/rules/codex-framework-mcp-and-tool-usage.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-mcp-and-tool-usage.mdc)
+- [.cursor/rules/framework-mcp-and-tool-usage.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/framework-mcp-and-tool-usage.mdc)
   Supporting MCP-first and validation/tool-usage rule.
-- [.cursor/rules/codex-framework-user-interaction-style.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-user-interaction-style.mdc)
+- [.cursor/rules/framework-user-interaction-style.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/framework-user-interaction-style.mdc)
   Supporting collaboration rule for working with Josh, including voice-to-text tolerance, strong-context inference, and explicit surfacing of text that still does not make sense.
-- [.cursor/rules/codex-framework-github-issue-workflow.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-github-issue-workflow.mdc)
+- [.cursor/rules/framework-github-issue-workflow.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/framework-github-issue-workflow.mdc)
   The dedicated rule surface that introduces and governs the GitHub issue workflow as its own reusable capability area.
-- [.cursor/rules/codex-framework-troubleshooting-mode.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-troubleshooting-mode.mdc)
+- [.cursor/rules/framework-troubleshooting-mode.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/framework-troubleshooting-mode.mdc)
   The dedicated rule surface that governs troubleshooting-mode triggers,
   evidence hierarchy, per-run reporting, and operator-facing evidence options.
 
@@ -204,6 +220,7 @@ Those are background, support, or historical surfaces unless explicitly promoted
 The direction is:
 - keep project-specific infrastructure knowledge in project docs
 - keep Codex behavior and workflow definition in this folder, `AGENTS.md`, and the capability-specific rules/skills
+- keep the reusable compatibility layer in `docs/framework-compatible/`
 - make the framework extractable later without dragging the whole project layout with it
 
 The root project should only need to say that it uses this capability. The capability itself should be documented here.
@@ -223,8 +240,8 @@ That keeps the generic Codex framework visible and reduces accidental coupling b
 
 This is the naming logic Codex should treat as active in this repo:
 
-- `codex-framework-*`
-  Use for active rules that define cross-project Codex behavior in this repo.
+- `framework-*`
+  Use for active rules that define framework-owned behavior in an agent-agnostic way where practical.
 - `ansible-*`
   Use for active rules, workflows, or skills that are specifically about Ansible behavior, design, or execution.
 - `github-*`
@@ -250,28 +267,30 @@ group is obvious from the filename.
 
 Current grouping model:
 
-- `codex-framework-*`
-  Core framework rules that shape how Codex behaves across the repo.
+- `framework-*`
+  Core framework rules that shape the repo's AI working framework without tying the filenames to a single host or agent brand.
 - `ansible-*`
   Domain-specific rules, workflows, or skills for Ansible behavior.
 - `github-*`
   Workflow surfaces for durable GitHub issue tracking, staging, labeling, and
   pickup behavior.
 - `troubleshooting-*` is not a separate family; troubleshooting mode is a
-  framework-owned capability and therefore stays under `codex-framework-*`.
+  framework-owned capability and therefore stays under `framework-*`.
 
 The `github-*` group should be treated as a capability family, not a one-off
 exception. The first active member of that family is:
 
-- [codex-framework-github-issue-workflow.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-github-issue-workflow.mdc)
+- [framework-github-issue-workflow.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/framework-github-issue-workflow.mdc)
 
 ### Naming anatomy example
 
-`codex-framework-github-issue-workflow.mdc` is meant to read as:
+`framework-github-issue-workflow.mdc` is meant to read as:
 
-- `codex-framework`
+- `framework`
   This is an active framework-owned rule surface, not just an incidental doc or
-  one-off project note.
+  one-off project note. The name is intentionally agent-agnostic so the same
+  rule family can make sense across Codex/OpenAI, Cursor-native, and similar
+  chat/runtime environments.
 - `github`
   This belongs to the GitHub-backed planning/backlog capability family.
 - `issue-workflow`
@@ -388,8 +407,8 @@ This means:
 ### Current examples
 
 Rules:
-- [codex-framework-partner-process.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-partner-process.mdc)
-- [codex-framework-github-issue-workflow.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-github-issue-workflow.mdc)
+- [framework-partner-process.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/framework-partner-process.mdc)
+- [framework-github-issue-workflow.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/framework-github-issue-workflow.mdc)
 - [ansible-coding-standards.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/ansible-coding-standards.mdc)
 
 Skills:

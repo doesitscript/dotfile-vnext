@@ -117,7 +117,7 @@ Related GitHub issues: #4 (VM lifecycle), #7 (WSL deprecation and safe removal).
 ### 2. Troubleshooting Mode Framework Addition (implemented)
 
 A new first-class troubleshooting mode was designed and implemented:
-- `codex-framework-troubleshooting-mode.mdc` rule file added
+- `framework-troubleshooting-mode.mdc` rule file added
 - `multipass_ubuntu_vm` role is the first pilot with evidence tags and troubleshooting variables
 - `troubleshooting_collectors` role handles optional artifact collection
 - `docs/diagnostics/multipass--windows--diagnostics.md` is the first stored diagnostics reference
@@ -287,7 +287,7 @@ If picking up Multipass work: `multipass networks` fails despite Windows Hyper-V
 ### Understanding the framework itself
 1. `docs/codex_framework/README.md`
 2. `docs/codex_framework/partner_process.md`
-3. `.cursor/rules/codex-framework-*.mdc`
+3. `.cursor/rules/framework-*.mdc`
 4. `.cursor/skills/ansible-planner/SKILL.md`
 5. `.cursor/skills/ansible-researcher/SKILL.md`
 
@@ -357,7 +357,7 @@ Primary sources consulted for this report:
 - `roles/mcp_servers/drawio/mcp_contract.yml`
 - `.cursor/mcp.json`
 - `.cursor/rules/000--system-boot.mdc`
-- `.cursor/rules/codex-framework-user-interaction-style.mdc`
+- `.cursor/rules/framework-user-interaction-style.mdc`
 - `ansible.cfg`
 - `git log --oneline -30`
 - Prior reports: `docs/reports/2026-03-26_project_state_GPT-5/` and `docs/reports/2026-03-26_project_state_Gemini-2.5-Pro/`
