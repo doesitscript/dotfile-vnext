@@ -24,6 +24,17 @@ hyperv_config:
 Set in `host_vars` or `group_vars`. The role provides safe defaults in
 `defaults/main.yml` (switch disabled, adapter fallback `Wi-Fi,Ethernet`).
 
+The Hyper-V prerequisite features are also lifecycle-driven:
+
+```yaml
+hyperv_feature_state: present | absent
+```
+
+Use `present` for the normal path. Use `absent` when you need to intentionally
+tear down the Hyper-V prerequisite stack before rebuilding it. The feature
+taskfile removes and reinstalls the same role-owned prerequisites so cleanup
+does not drift into one-off host surgery.
+
 ## Playbook Integration
 
 Use `include_role` to prevent variable bleed:
@@ -40,6 +51,16 @@ Standalone:
 
 ```bash
 ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit server-225-win
+```
+
+Feature-only teardown / rebuild through the Multipass flow:
+
+```bash
+.venv/bin/ansible-playbook playbooks/server_225_multipass_ubuntu_vm.yaml \
+  -i inventory/inventory.yaml \
+  --limit 'execution_nodes,server-225-win' \
+  --tags hyperv_feature_prereq \
+  -e hyperv_feature_state=absent
 ```
 
 ## What This Role Does NOT Do

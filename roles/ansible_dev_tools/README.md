@@ -51,6 +51,16 @@ Future improvement target:
 - preserve the focused playbook as the normal entrypoint for controller-side
   convergence
 
+Tracked follow-up:
+
+- issue [#6](https://github.com/doesitscript/dotfile-vnext/issues/6)
+  This tracks the open lifecycle-design question for `ansible_dev_tools`.
+  The short version: for roles that install multiple related tools through a
+  meta-package or package list, `present|absent` may make the most sense at the
+  whole-role level. But if the role also supports selective per-tool install
+  toggles, the repo needs a clearer strategy for how partial selection and
+  lifecycle-idempotent removal are supposed to work.
+
 ## Tools Installed
 
 The `ansible-dev-tools` meta-package installs the following binaries into `.venv/bin/`:
@@ -67,7 +77,7 @@ The `ansible-dev-tools` meta-package installs the following binaries into `.venv
 | `ansible-galaxy` | ansible-core | Collection/role install |
 | `ansible-inventory` | ansible-core | Inventory inspection |
 | `ansible-lint` | ansible-lint | Lint and style checks |
-| `ansible-navigator` | ansible-navigator | TUI runner |
+| `ansible-navigator` | ansible-navigator | Terminal UI / stdout runner |
 | `ansible-playbook` | ansible-core | Playbook runner |
 | `ansible-pull` | ansible-core | Pull-mode execution |
 | `ansible-runner` | ansible-runner | Execution environment runner |
@@ -101,8 +111,33 @@ The role removes duplicate `pipx` installs for `ansible`, `ansible-lint`, and
 `ansible-builder`, then publishes the `.venv` binaries into `~/.local/bin` so
 editor, MCP, and agent processes can still discover them on `PATH`.
 
-On macOS, tools that cannot compile natively (e.g. `ansible-navigator`) are
-provided as Docker wrapper functions deployed to `~/.bashrc.d/`.
+## Optional exploration path: ansible-navigator
+
+`ansible-navigator` is already installed by this role as part of the project
+toolchain. It is a terminal-based tool, not a desktop GUI:
+
+- `--mode stdout` gives a CLI-style first pass that is easy to read and copy
+- default interactive mode gives a TUI for drilling into results
+
+This repo still prefers native `ansible-playbook` for day-to-day execution.
+`ansible-navigator` is an optional controller-side UX tool for inspection and
+exploration.
+
+Recommended first-pass examples:
+
+```bash
+.venv/bin/ansible-navigator settings --mode stdout --ee false
+.venv/bin/ansible-navigator inventory --list -i inventory/inventory.yaml --mode stdout --ee false
+.venv/bin/ansible-navigator run playbooks/mac/ansible_dev_tools.yaml -i inventory/inventory.yaml --limit mac-dev --mode stdout --ee false
+```
+
+For this repo, start with `--ee false` so navigator uses the same local project
+toolchain as `.venv/bin/ansible-playbook`. Execution environments can be
+explored later if navigator proves useful enough to justify more project
+surface area.
+
+See [docs/ansible/ansible-navigator-try-it.md](/Users/joshc/develop/dotfile-vnext/docs/ansible/ansible-navigator-try-it.md)
+for a few repo-specific commands and the intended first-pass usage.
 
 ## macOS Toolchain Sync
 

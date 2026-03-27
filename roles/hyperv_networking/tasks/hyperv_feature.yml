@@ -1,38 +1,87 @@
 ---
-# hyperv_feature.yml -- Enable Hyper-V and management tools.
+# hyperv_feature.yml -- Manage Hyper-V prerequisite features.
 # Shared task file included by hyperv_networking and windows_base.
 #
-# These two feature installations are a single logical unit. Both must be
-# present before any networking or VMSwitch configuration proceeds.
-# A reboot is triggered only when at least one of them required installation —
-# _hyperv_reboot_required combines both results into a single gate.
+# These feature changes are a single logical unit. They must be applied or
+# removed together so the host can be intentionally torn down and rebuilt
+# through the same playbook surface.
 
-- name: Enable Hyper-V optional features
+- name: Validate Hyper-V feature lifecycle state
+  ansible.builtin.assert:
+    that:
+      - hyperv_feature_state in ['present', 'absent']
+    fail_msg: >-
+      hyperv_feature_state must be 'present' or 'absent', not
+      '{{ hyperv_feature_state | default('undefined') }}'.
+
+- name: Manage Hyper-V optional features
   ansible.windows.win_optional_feature:
     name:
       - Microsoft-Hyper-V
       - Microsoft-Hyper-V-Management-PowerShell
-    state: present
+    state: "{{ hyperv_feature_state }}"
     include_parent: true
   register: _hyperv_optional_feature
 
-- name: Enable Hyper-V Windows features
+- name: Manage Hyper-V hypervisor component when available via DISM cmdlets
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $feature = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-Hypervisor -ErrorAction SilentlyContinue
+      if (-not $feature) {
+        $Ansible.Result = @{ available = $false; reboot_required = $false }
+        Exit 0
+      }
+
+      $desired = '{{ hyperv_feature_state }}'
+      if ($desired -eq 'present') {
+        if ($feature.State -ne 'Enabled') {
+          Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-Hypervisor -All -NoRestart | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            $Ansible.Result = "Failed to enable Microsoft-Hyper-V-Hypervisor"
+            $Ansible.Failed = $true
+            Exit 1
+          }
+          $Ansible.Changed = $true
+          $Ansible.Result = @{ available = $true; reboot_required = $true }
+        } else {
+          $Ansible.Result = @{ available = $true; reboot_required = $false }
+        }
+      } else {
+        if ($feature.State -eq 'Enabled') {
+          Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-Hypervisor -NoRestart | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            $Ansible.Result = "Failed to disable Microsoft-Hyper-V-Hypervisor"
+            $Ansible.Failed = $true
+            Exit 1
+          }
+          $Ansible.Changed = $true
+          $Ansible.Result = @{ available = $true; reboot_required = $true }
+        } else {
+          $Ansible.Result = @{ available = $true; reboot_required = $false }
+        }
+      }
+  register: _hyperv_hypervisor_feature
+
+- name: Manage Hyper-V Windows features
   ansible.windows.win_feature:
     name:
       - Hyper-V-Tools
       - NetworkVirtualization
-    state: present
+    state: "{{ hyperv_feature_state }}"
   register: _hyperv_windows_feature
 
-- name: Determine if reboot is required after Hyper-V feature installation
+- name: Determine if reboot is required after Hyper-V feature lifecycle change
   ansible.builtin.set_fact:
     _hyperv_reboot_required: >-
       {{ (_hyperv_optional_feature.reboot_required | default(false)) or
+         (_hyperv_hypervisor_feature.result.reboot_required | default(false)) or
          (_hyperv_windows_feature.reboot_required | default(false)) }}
 
-- name: Reboot after Hyper-V feature installation
+- name: Reboot after Hyper-V feature lifecycle change
   ansible.windows.win_reboot:
-    msg: "Ansible reboot after Hyper-V feature install"
+    msg: "Ansible reboot after Hyper-V feature lifecycle change"
     reboot_timeout: 600
   when: _hyperv_reboot_required | bool
 

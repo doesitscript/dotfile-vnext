@@ -102,6 +102,28 @@ The Researcher must:
 - hand back a clear recommendation instead of raw source dumping
 - recognize when refined brainstorming or staged work should be elevated into a
   GitHub issue so the best current direction survives across sessions
+- enter troubleshooting mode on repeated failure or explicit request and treat
+  evidence collection as a required step before more fix iteration
+- treat "find the logs, output surfaces, event channels, or verbosity controls
+  for this thing" as a first-class research request
+- prefer existing repo diagnostics notes under `docs/diagnostics/` before
+  rediscovering the same output surfaces from scratch
+- report which evidence surfaces are already available, which are missing, and
+  what simple knobs can be used to collect more evidence on the next run
+
+Typical request shapes include:
+
+- "research where Multipass logs on Windows"
+- "find the output surfaces for this service"
+- "what knobs can I turn on to get more debug output for this tool"
+
+The expected standardized research result is:
+
+- where the component logs or reports state
+- how to enable more output
+- what surfaces are already wired into the repo
+- what is still missing
+- what simple operator knobs can be used on later runs
 
 ### 4. Executor
 
@@ -115,6 +137,37 @@ The Executor must:
 - keep bootstrap/semi-manual logic clearly separated from normal operations
 - verify what changed
 - record what still needs manual handling
+- explicitly report collected vs missing evidence surfaces when troubleshooting
+  mode is active
+
+### 5. Troubleshooting Mode
+
+Troubleshooting mode is a first-class framework behavior for repeated failures
+and explicit debugging requests.
+
+Default trigger:
+
+- automatic on repeated failure for the same component or capability
+- immediate when the user explicitly asks to troubleshoot or gather more output
+
+Required report on every troubleshooting run:
+
+- `Troubleshooting mode: on`
+- `Component(s): ...`
+- `Evidence surfaces identified: ...`
+- `Collected this run: ...`
+- `Missing this run: ...`
+- `Actual output seen this run: ...`
+
+Evidence hierarchy:
+
+1. component-native logs, events, status, or vendor diagnostics
+2. explicit remote command output
+3. module results and registered task output
+4. Ansible verbosity or transport output
+
+Ansible verbosity helps, but it does not replace service logs, event logs,
+vendor diagnostics, or explicitly printed remote stdout/stderr.
 
 ## When Research Is Mandatory
 
@@ -213,11 +266,17 @@ The default research output is:
 
 Research stays in the conversation by default. Write a durable artifact only when explicitly requested or when the outcome is itself a durable process/rule change.
 
-For resumable staged work, the preferred durable backlog layer can be a GitHub
-issue rather than a new in-repo planning note. When that happens:
+Draft planning can stay conversational, but an approved plan should not live
+only in chat. The default durable pattern is:
 
-- the GitHub issue should hold the best refined direction and next execution plan
-- the repo should keep only enough local context to resume offline
+- store the full approved plan in `docs/plans/`
+- treat that repo plan as the canonical standalone artifact
+- mirror the work into GitHub as a higher-level roadmap when GitHub is available
+
+For resumable staged work with a GitHub mirror:
+
+- the repo plan should hold the best refined direction and next execution plan
+- the GitHub issue should stay compact and roadmap-oriented
 - role READMEs, role-local docs, or intake notes that materially shaped the issue
   should reference it briefly when that will help future pickup
 
@@ -324,9 +383,42 @@ The agent should:
 
 This is especially important for Ansible runs, where task-level output often contains the first useful troubleshooting signal.
 
+When troubleshooting mode is active, missing logs, events, CLI diagnostics, or
+command output must be reported explicitly every run. They are not allowed to
+remain implicit.
+
 ### 7. Capture Knowledge
 
 When the work reveals a durable rule, add or update the relevant doc/runbook instead of keeping the rule only in chat.
+
+## Durable Plan Storage
+
+When a plan is approved, store it under:
+
+- `docs/plans/`
+
+Use date-prefixed names such as:
+
+- `YYYY-MM-DD--mcp-role-pattern-v1.md`
+
+These repo plans are the canonical durable planning layer for accepted work.
+They should remain useful even if GitHub is unavailable.
+
+For work that benefits from external tracking:
+
+- mirror the plan into a GitHub issue at a higher level
+- keep the GitHub issue shorter and more roadmap-like than the repo plan
+- link between the repo plan and the issue when that improves pickup
+
+## Implemented Framework Plan History
+
+For framework-specific design history that has already landed, keep short
+historical notes under:
+
+- `docs/codex_framework/implemented_plans/`
+
+This remains a framework-focused history layer, while `docs/plans/` is the
+general durable planning layer for approved work across the repo.
 
 ## Anti-Patterns
 

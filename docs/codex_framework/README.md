@@ -48,6 +48,9 @@ Implemented now:
   - `Researcher view:`
   - `Executor view:`
   - `Evidence:`
+- troubleshooting mode for repeated failures and explicit debugging requests
+- diagnostic-discovery research for finding logs, event channels, output
+  surfaces, and verbosity controls for a component under investigation
 - explicit lifecycle-state modeling for Ansible capabilities as a preferred pattern
 - lightweight GitHub-issue workflow support for staged work that should outlive local notes
   or rough brainstorming once it becomes concrete enough to preserve
@@ -56,6 +59,41 @@ Planned next:
 - `Executor` contract
 - quality comparison workflow for the next 2-3 efforts
 - one real repo problem taken through the framework end to end
+- runtime validation of the effective Codex instruction stack:
+  - confirm which surfaces are actually injected into Codex sessions
+  - confirm whether `.cursor/rules/*.mdc` files are enforced, advisory, or inactive
+  - distinguish documented multi-agent intent from verified separate-agent execution
+
+## Known Validation Gap
+
+The repo now has three different layers that can be easy to conflate:
+
+- documented framework intent in `docs/codex_framework/` and `.cursor/rules/`
+- Codex and MCP tooling installed/configured on the machine
+- the subset of instructions that are actually active inside a given Codex session
+
+Current evidence supports the following:
+
+- `AGENTS.md` is part of the active repo contract
+- Codex tooling and Codex MCP integration are present and configured
+- the repo clearly documents `Planner / Steward`, `Researcher`, and later
+  `Executor` as framework roles
+
+What still needs explicit validation:
+
+- whether `.cursor/rules/*.mdc` are actually injected/enforced in Codex runtime
+  sessions or are primarily a Cursor-side rule layer
+- whether a given Codex session is using only one agent with multiple role
+  signals, or is actually spawning separate agents
+- whether "multi-agent" references in repo docs are implementation evidence or
+  still an intended future direction
+
+Until that validation is done, the safest language is:
+
+- the repo has a documented Codex framework
+- parts of that framework are operational at the process/instruction level
+- true separate-agent enforcement/execution should not be claimed without
+  direct runtime evidence
 
 ## Active Capability Surfaces
 
@@ -84,18 +122,23 @@ These are the current files actively shaping this capability.
 - [.cursor/rules/codex-framework-mcp-and-tool-usage.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-mcp-and-tool-usage.mdc)
   Supporting MCP-first and validation/tool-usage rule.
 - [.cursor/rules/codex-framework-user-interaction-style.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-user-interaction-style.mdc)
-  Supporting collaboration rule for working with Josh.
+  Supporting collaboration rule for working with Josh, including voice-to-text tolerance, strong-context inference, and explicit surfacing of text that still does not make sense.
 - [.cursor/rules/codex-framework-github-issue-workflow.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-github-issue-workflow.mdc)
   The dedicated rule surface that introduces and governs the GitHub issue workflow as its own reusable capability area.
+- [.cursor/rules/codex-framework-troubleshooting-mode.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/codex-framework-troubleshooting-mode.mdc)
+  The dedicated rule surface that governs troubleshooting-mode triggers,
+  evidence hierarchy, per-run reporting, and operator-facing evidence options.
 
 ### Skill workflows
 
 - [.cursor/skills/ansible-planner/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/ansible-planner/SKILL.md)
   The current `Planner / Steward` workflow.
 - [.cursor/skills/ansible-researcher/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/ansible-researcher/SKILL.md)
-  The current `Researcher` workflow.
+  The current `Researcher` workflow. This now explicitly includes
+  diagnostic-discovery research for questions like "where does this thing log"
+  and "how do we surface more output for troubleshooting?"
 - [.cursor/skills/github-issue-workflow/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/github-issue-workflow/SKILL.md)
-  A small reusable workflow for turning staged work or concrete brainstorming into GitHub issues when durable backlog tracking is better than local notes alone. The issue is treated as the highest practical planning layer when that helps preserve refined direction across sessions, while repo docs and READMEs remain the offline pickup layer. The workflow now uses a non-optional light label schema: one `type:*`, one `state:*`, and one `scope:*` label on every created issue.
+  A small reusable workflow for turning staged work or concrete brainstorming into GitHub issues when durable backlog tracking is better than local notes alone. The repo plan under `docs/plans/` is the canonical durable plan, while the issue acts as the higher-level roadmap/tracking layer. The workflow now uses a non-optional light label schema: one `type:*`, one `state:*`, and one `scope:*` label on every created issue.
 
 ## Supporting But Not Owned By This Capability
 
@@ -165,6 +208,8 @@ Current grouping model:
 - `github-*`
   Workflow surfaces for durable GitHub issue tracking, staging, labeling, and
   pickup behavior.
+- `troubleshooting-*` is not a separate family; troubleshooting mode is a
+  framework-owned capability and therefore stays under `codex-framework-*`.
 
 The `github-*` group should be treated as a capability family, not a one-off
 exception. The first active member of that family is:
@@ -203,6 +248,86 @@ handling for things like:
 
 This is intentionally loose. It is meant to reduce rough planning clutter in
 the repo, not replace judgment with rigid process.
+
+## Troubleshooting Mode
+
+Troubleshooting mode is an active framework capability for repeated failures and
+explicit debugging requests.
+
+Default trigger:
+
+- automatic on repeated failure for the same component or capability
+- immediate when the user explicitly asks to troubleshoot or gather more output
+
+In troubleshooting mode, every retry or reapply should report:
+
+- the component under investigation
+- evidence surfaces identified
+- evidence surfaces collected in that run
+- evidence surfaces still missing
+- the actual output seen in that run
+
+The framework treats these as separate first-class evidence categories:
+
+1. component-native logs, events, status, or vendor diagnostics
+2. explicit remote command output
+3. module results and registered task output
+4. Ansible verbosity or transport output
+
+This means `-vvv` or `-vvvv` are useful, but they do not replace logs, event
+sources, vendor CLI diagnostics, or explicit remote stdout/stderr.
+
+## Diagnostic Discovery
+
+Diagnostic discovery is an active Researcher capability.
+
+It covers requests like:
+
+- where this component logs
+- what event channels it uses
+- what CLI diagnostics it exposes
+- how to enable more output or debug verbosity
+- which evidence surfaces are already wired into the repo
+- research where Multipass logs on Windows
+- find the output surfaces for this service
+- what knobs can I turn on to get more debug output for this tool
+
+The expected standardized result is:
+
+- where the component logs or reports state
+- how to enable more output
+- what surfaces are already wired into the repo
+- what is still missing
+- what simple operator knobs can be used on later runs
+
+The expected durable home for those findings is:
+
+- [docs/diagnostics](/Users/joshc/develop/dotfile-vnext/docs/diagnostics)
+
+When the answer should survive beyond one run, Codex should prefer creating or
+updating a diagnostics note there instead of leaving the research only in chat.
+
+## Implemented Plan History
+
+Approved plans should be stored under:
+
+- [docs/plans](/Users/joshc/develop/dotfile-vnext/docs/plans)
+
+That repo plan is the canonical durable artifact. It should be detailed enough
+to stand alone if GitHub is unavailable.
+
+When GitHub is available:
+
+- mirror the work into a higher-level issue
+- keep the issue more roadmap-like than the repo plan
+- link the two when that helps future pickup
+
+Framework-specific implemented-plan history should still be stored under:
+
+- [docs/codex_framework/implemented_plans](/Users/joshc/develop/dotfile-vnext/docs/codex_framework/implemented_plans)
+
+This is the framework-only history layer for accepted framework plans that have
+already been implemented.
 
 This means:
 

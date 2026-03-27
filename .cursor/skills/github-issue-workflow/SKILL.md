@@ -194,15 +194,17 @@ If the issue is small, those sections can stay very short. The important thing
 is that a future agent can pick the work back up without rereading the entire
 repo.
 
-Treat the issue as the highest practical planning layer for the work when:
+Use a GitHub issue as the higher-level roadmap and tracking layer for the work when:
 
 - the work is expected to continue across sessions
 - the work has meaningful staged context or a real next step
 - the user wants the repo to stop carrying rough backlog state by itself
 
-That does not replace repo notes entirely. It means the issue should hold the
-best refined direction, while local docs and READMEs preserve enough context to
-work offline or recover if GitHub is unavailable.
+That does not replace repo plans. The intended model is:
+
+- repo plan under `docs/plans/` = canonical detailed plan
+- GitHub issue = higher-level roadmap and tracking layer
+- local docs and READMEs = implementation context and recovery layer
 
 ## CLI path
 
@@ -263,13 +265,15 @@ The goal is:
 When a role README, role-local doc, or intake note references a GitHub issue
 created through this workflow:
 
-1. start with the GitHub issue for the best refined direction and current plan
-2. use the linked repo notes for implementation context, local state, and offline recovery
-3. if GitHub is unavailable, resume from the repo notes and re-research as needed
+1. start with the repo plan for the full refined direction and current plan
+2. use the linked GitHub issue for roadmap state and tracking context
+3. use linked repo notes for implementation context, local state, and offline recovery
+4. if GitHub is unavailable, resume from the repo plan and local notes and re-research as needed
 
 This is the intended balance:
 
-- GitHub issue = highest practical planning layer
+- repo plan = canonical detailed planning layer
+- GitHub issue = higher-level roadmap and tracking layer
 - repo notes = local context and recovery layer
 
 ## Default behavior

@@ -53,12 +53,20 @@ all:
       hosts: {}
         # dev-3090-wsl: # enable when provisioned
 
+    # Linux VMs that are directly reachable over SSH.
+    # These are not WSL companion surfaces and should not inherit the legacy -wsl naming model.
+    linux_vm_hosts:
+      hosts:
+        server-225-ubuntu:
+          # Multipass-backed Ubuntu VM on server-225 Hyper-V host
+
     # SSH targets: hosts that may need an entry in the controller's ~/.ssh/config.
     # The template only emits entries for hosts where ssh_configured=true (set by setup roles).
     ssh_targets:
       children:
         windows_hosts: {}
         wsl_hosts: {}
+        linux_vm_hosts: {}
 
     # Docker clients: hosts that need the Docker CLI + SSH context to a Docker engine.
     # The engine itself runs on the Linux companion side; these are consumers only.
@@ -75,6 +83,7 @@ all:
       hosts:
         server-225-win:
         server-225-wsl:
+        server-225-ubuntu:
 
     network_server:
       hosts:
