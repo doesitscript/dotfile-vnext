@@ -1,0 +1,42 @@
+---
+- name: Uninstall Codex runtime on macOS
+  ansible.builtin.import_tasks: mac.yml
+  vars:
+    openai_docs_codex_package_state: "absent"
+  when: ansible_facts['system'] == "Darwin"
+
+- name: Uninstall Codex runtime on Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  vars:
+    openai_docs_codex_package_state: "absent"
+  when: ansible_facts['distribution'] == "Ubuntu"
+
+- name: Remove OpenAI Docs entry from Cursor config
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _openai_docs_target_name: "cursor"
+    _openai_docs_target_config_path: "{{ openai_docs_mcp_cursor_config_path }}"
+    _openai_docs_target_server_key: "{{ openai_docs_server_key }}"
+  when: _openai_docs_target_cursor_selected | bool
+
+- name: Remove local Codex entry from Cursor config
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _openai_docs_target_name: "cursor"
+    _openai_docs_target_config_path: "{{ openai_docs_mcp_cursor_config_path }}"
+    _openai_docs_target_server_key: "{{ openai_docs_codex_server_key }}"
+  when: _openai_docs_target_cursor_selected | bool
+
+- name: Remove OpenAI Docs entry from Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ openai_docs_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ openai_docs_server_key }}"
+  when: _openai_docs_target_codex_selected | bool
+
+- name: Remove local Codex entry from Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ openai_docs_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ openai_docs_codex_server_key }}"
+  when: _openai_docs_target_codex_selected | bool

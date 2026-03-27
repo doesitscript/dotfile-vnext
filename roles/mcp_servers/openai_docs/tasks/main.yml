@@ -1,8 +1,4 @@
 ---
-# OpenAI Docs MCP + Codex app. Skip on Windows: .cursor/mcp.json is used on control/dev host; Codex is not supported on Windows.
-
-# Ensure node_npm_executable is available when common/node has not run in this play
-# (e.g. targeted tag runs). No-op when common/node has already set the fact.
 - name: Resolve node_npm_executable if not already set by common/node
   ansible.builtin.include_role:
     name: common/node
@@ -25,10 +21,17 @@
     - openai
     - development
     - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi
 
-- name: Install Codex app on macOS (includes Codex MCP server)
-  ansible.builtin.import_tasks: mac.yml
-  when: ansible_facts['system'] == "Darwin"
+- name: Capture requested OpenAI Docs MCP target tags
+  ansible.builtin.set_fact:
+    _openai_docs_requested_target_tags: >-
+      {{
+        (ansible_run_tags | default([]))
+        | intersect(['mcp_target_cursor', 'mcp_target_codex', 'mcp_target_openapi'])
+      }}
   tags:
     - mcp
     - openai-docs
@@ -36,10 +39,17 @@
     - openai
     - development
     - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi
 
-- name: Install Codex app on Ubuntu (includes Codex MCP server)
-  ansible.builtin.import_tasks: ubuntu.yml
-  when: ansible_facts['distribution'] == "Ubuntu"
+- name: Validate configured OpenAI Docs MCP targets
+  ansible.builtin.assert:
+    that:
+      - (openai_docs_mcp_targets | difference(openai_docs_mcp_supported_targets)) | length == 0
+    fail_msg: >-
+      openai_docs_mcp_targets contains unsupported values:
+      {{ openai_docs_mcp_targets | difference(openai_docs_mcp_supported_targets) | to_json }}
   tags:
     - mcp
     - openai-docs
@@ -47,10 +57,39 @@
     - openai
     - development
     - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi
 
-- name: Configure openaiDeveloperDocs and Codex entries in .cursor/mcp.json
-  ansible.builtin.import_tasks: configure.yml
-  when: (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+- name: Determine active OpenAI Docs MCP client targets
+  ansible.builtin.set_fact:
+    _openai_docs_target_cursor_selected: >-
+      {{
+        ('mcp_target_cursor' in _openai_docs_requested_target_tags)
+        or
+        (
+          (_openai_docs_requested_target_tags | length) == 0
+          and ('cursor' in openai_docs_mcp_targets)
+        )
+      }}
+    _openai_docs_target_codex_selected: >-
+      {{
+        ('mcp_target_codex' in _openai_docs_requested_target_tags)
+        or
+        (
+          (_openai_docs_requested_target_tags | length) == 0
+          and ('codex' in openai_docs_mcp_targets)
+        )
+      }}
+    _openai_docs_target_openapi_selected: >-
+      {{
+        ('mcp_target_openapi' in _openai_docs_requested_target_tags)
+        or
+        (
+          (_openai_docs_requested_target_tags | length) == 0
+          and ('openapi' in openai_docs_mcp_targets)
+        )
+      }}
   tags:
     - mcp
     - openai-docs
@@ -58,10 +97,13 @@
     - openai
     - development
     - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi
 
-- name: Ensure ~/.codex/config.toml has openaiDeveloperDocs URL
-  ansible.builtin.import_tasks: codex_config.yml
-  when: (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+- name: Fail fast for the OpenAI Docs OpenAPI target stub
+  ansible.builtin.import_tasks: openapi_stub.yml
+  when: _openai_docs_target_openapi_selected | bool
   tags:
     - mcp
     - openai-docs
@@ -69,3 +111,36 @@
     - openai
     - development
     - research
+    - mcp_target_openapi
+
+- name: Ensure openai_docs MCP role is present
+  ansible.builtin.import_tasks: present.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - openai_docs_mcp_state == "present"
+  tags:
+    - mcp
+    - openai-docs
+    - codex
+    - openai
+    - development
+    - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Ensure openai_docs MCP role is absent
+  ansible.builtin.import_tasks: absent.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - openai_docs_mcp_state == "absent"
+  tags:
+    - mcp
+    - openai-docs
+    - codex
+    - openai
+    - development
+    - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi

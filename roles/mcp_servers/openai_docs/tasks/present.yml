@@ -1,0 +1,85 @@
+---
+- name: Install Codex runtime on macOS
+  ansible.builtin.import_tasks: mac.yml
+  when: ansible_facts['system'] == "Darwin"
+
+- name: Install Codex runtime on Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when: ansible_facts['distribution'] == "Ubuntu"
+
+- name: Fail if local Codex MCP is enabled but the command is still empty
+  ansible.builtin.fail:
+    msg: >-
+      openai_docs_codex_enabled is true, but openai_docs_codex_command is empty.
+      Ensure the Codex runtime install path resolves correctly.
+  when:
+    - openai_docs_codex_enabled | bool
+    - not (openai_docs_codex_command | default(''))
+
+- name: Ensure OpenAI Docs entries exist in Cursor config
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _openai_docs_target_name: "cursor"
+    _openai_docs_target_config_path: "{{ openai_docs_mcp_cursor_config_path }}"
+    _openai_docs_target_server_key: "{{ openai_docs_server_key }}"
+    _openai_docs_target_entry:
+      url: "{{ openai_docs_mcp_url }}"
+  when: _openai_docs_target_cursor_selected | bool
+
+- name: Ensure local Codex entry exists in Cursor config
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _openai_docs_target_name: "cursor"
+    _openai_docs_target_config_path: "{{ openai_docs_mcp_cursor_config_path }}"
+    _openai_docs_target_server_key: "{{ openai_docs_codex_server_key }}"
+    _openai_docs_target_entry:
+      command: "{{ openai_docs_codex_command }}"
+      args:
+        - "mcp-server"
+  when:
+    - _openai_docs_target_cursor_selected | bool
+    - openai_docs_codex_enabled | bool
+
+- name: Remove local Codex entry from Cursor config when disabled
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _openai_docs_target_name: "cursor"
+    _openai_docs_target_config_path: "{{ openai_docs_mcp_cursor_config_path }}"
+    _openai_docs_target_server_key: "{{ openai_docs_codex_server_key }}"
+  when:
+    - _openai_docs_target_cursor_selected | bool
+    - not (openai_docs_codex_enabled | bool)
+
+- name: Ensure OpenAI Docs entry exists in Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ openai_docs_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ openai_docs_server_key }}"
+    _mcp_codex_entry: "{{ openai_docs_docs_codex_entry | combine({'url': openai_docs_mcp_url}, recursive=True) }}"
+  when: _openai_docs_target_codex_selected | bool
+
+- name: Ensure local Codex entry exists in Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ openai_docs_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ openai_docs_codex_server_key }}"
+    _mcp_codex_entry: >-
+      {{
+        {
+          'command': openai_docs_codex_command,
+          'args': ['mcp-server']
+        }
+        | combine(openai_docs_codex_entry | default({}), recursive=True)
+      }}
+  when:
+    - _openai_docs_target_codex_selected | bool
+    - openai_docs_codex_enabled | bool
+
+- name: Remove local Codex entry from Codex config when disabled
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ openai_docs_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ openai_docs_codex_server_key }}"
+  when:
+    - _openai_docs_target_codex_selected | bool
+    - not (openai_docs_codex_enabled | bool)

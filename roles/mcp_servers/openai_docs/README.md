@@ -1,60 +1,55 @@
-# openai_docs — OpenAI Developer Docs MCP + Codex app
+# openai_docs — OpenAI developer docs MCP + local Codex runtime
 
-Adds the [OpenAI Docs MCP](https://developers.openai.com/resources/docs-mcp) to Cursor’s `mcp.json`. Docs = streamable HTTP; Codex = local binary (installed on Mac/Ubuntu).
+Adds the OpenAI developer docs MCP server to repo-local Cursor config and
+project Codex config, and installs the local Codex runtime used for the `codex`
+MCP server entry on macOS and Ubuntu.
 
-Two blocks: (1) **openaiDeveloperDocs** — `{ "url": "https://developers.openai.com/mcp" }`; (2) **codex** — `{ "command": "<path>" }` when Codex app is installed (Mac/Ubuntu). Also ensures `~/.codex/config.toml` has the openaiDeveloperDocs URL.
+Apply: converge the role from `playbooks/mac/mcp_servers.yaml`.
+Verify: inspect `.cursor/mcp.json`, inspect `.codex/config.toml`, and confirm
+the `openaiDeveloperDocs` and `codex` entries match the selected targets.
+Undo: set `openai_docs_mcp_state: absent` and rerun the role.
+Change class: idempotent config.
 
 ## What this role does
 
-- **macOS:** `community.general.npm` installs `@openai/codex` globally using the resolved nvm-managed npm on the controller. Binary path is set from the installed npm bin directory.
-- **Ubuntu:** `community.general.npm` installs `@openai/codex` globally using the nvm-managed npm at `~/.nvm/versions/node/<node_default_version>/bin/npm`. **Requires `roles/common/node` to run first** (provides nvm + Node.js). Binary path resolved via stat on `openai_docs_codex_bin_candidates` (first existing path wins).
-- **Windows:** Skipped (Codex not supported).
-- Creates or merges `.cursor/mcp.json` with both openaiDeveloperDocs and codex blocks (same merge pattern as ansible-mcp).
-- Ensures `~/.codex` and `~/.codex/config.toml` with openaiDeveloperDocs URL block.
+- installs `@openai/codex` via the nvm-managed npm on macOS and Ubuntu
+- manages the `openaiDeveloperDocs` entry in Cursor config
+- manages the optional local `codex` entry in Cursor config
+- manages the `openaiDeveloperDocs` and optional local `codex` blocks in project `.codex/config.toml`
+- keeps Codex TOML merge/remove behavior on the shared helper path instead of using `codex mcp` CLI mutation
+
+## Target model
+
+Supported targets for this role:
+- `cursor`
+- `codex`
+- `openapi` stub
+
+Default targets:
+- `cursor`
+- `codex`
+
+Target tags:
+- `mcp_target_cursor`
+- `mcp_target_codex`
+- `mcp_target_openapi`
 
 ## Variables
+
 | Variable | Default | Description |
+|---|---|---|
+| `openai_docs_mcp_state` | `present` | Ensure the capability is present or absent. |
+| `openai_docs_mcp_targets` | `['cursor', 'codex']` | Config targets to manage. |
+| `openai_docs_mcp_cursor_config_path` | `{{ openai_docs_mcp_project_root }}/.cursor/mcp.json` | Cursor config path. |
+| `openai_docs_mcp_codex_config_path` | `{{ openai_docs_mcp_project_root }}/.codex/config.toml` | Project Codex config path. |
+| `openai_docs_mcp_url` | `https://developers.openai.com/mcp` | Streamable HTTP docs MCP URL. |
+| `openai_docs_codex_command` | `""` | Resolved local Codex binary path. |
+| `openai_docs_codex_enabled` | `true` | Whether the local `codex` MCP entry is managed. |
+| `openai_docs_docs_codex_entry` | docs URL entry | Structured Codex entry for `openaiDeveloperDocs`. |
+| `openai_docs_codex_entry` | `{}` | Optional overrides for the local `codex` entry. |
 
-|----------|---------|-------------|
-| `openai_docs_mcp_url` | `https://developers.openai.com/mcp` | Streamable HTTP MCP endpoint. |
-| `openai_docs_project_dir` | `{{ dotfiles_home }}/.cursor` | Directory containing `mcp.json`. |
-| `openai_docs_server_key` | `openaiDeveloperDocs` | Key under `mcpServers` in `mcp.json`. |
-| `openai_docs_codex_command` | `""` | Set by mac.yml/ubuntu.yml after install; path to codex binary. |
-| `openai_docs_codex_enabled` | `true` | Set to `false` to omit the codex MCP block. |
-| `openai_docs_codex_config_dir` | `{{ dotfiles_user_home }}/.codex` | Directory for `~/.codex/config.toml`. |
-| `node_default_version` | `"20"` | Node.js version used by nvm (Ubuntu path resolution). Keep in sync with `roles/common/node`. |
-| `openai_docs_codex_bin_candidates` | see defaults | Ordered list of Codex binary paths for Ubuntu stat resolution. First existing path wins. |
+## Notes
 
-## Tags
-
-| Tag | Description |
-|-----|-------------|
-| `mcp` | All MCP configure tasks. |
-| `openai-docs` | This role’s tasks. |
-| `codex` | Codex / OpenAI tooling. |
-| `openai` | OpenAI ecosystem. |
-| `development` | Development tooling. |
-| `research` | Research / docs lookup. |
-
-## Usage
-
-The role is included in `playbooks/mac/mcp_servers.yaml` for controller-side
-Mac MCP convergence.
-
-```yaml
-roles:
-  - role: mcp_servers/openai_docs
-```
-
-Run only this server:
-
-```bash
-ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags codex
-ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags openai-docs
-ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags openai
-ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags research
-```
-
-## Reference
-
-- [Docs MCP — OpenAI Developers](https://developers.openai.com/resources/docs-mcp)
+- `openapi` remains a deliberate stub target for this role in this pass.
+- Codex config is managed in project `.codex/config.toml`, not `~/.codex/config.toml`.
+- The shared helper pattern preserves unrelated Codex config outside the managed MCP blocks.
