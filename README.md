@@ -149,6 +149,13 @@ For focused local Ansible toolchain convergence on the Mac, prefer:
 
 instead of `./bin/fz role-local ansible_dev_tools`.
 
+For focused local MCP server convergence on the Mac, prefer:
+
+```bash
+.venv/bin/ansible-playbook playbooks/mac/mcp_servers.yaml \
+  -i inventory/inventory.yaml --limit mac-dev
+```
+
 ## Quick Start
 
 See `docs/architecture_rules.md` for governance and checkpoint rules.

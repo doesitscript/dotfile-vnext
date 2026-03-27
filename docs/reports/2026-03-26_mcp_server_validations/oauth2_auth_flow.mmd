@@ -1,0 +1,21 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Browser
+    participant App as Web App
+    participant IdP as OAuth Provider
+    participant API
+
+    User->>Browser: Click "Sign in"
+    Browser->>App: GET /login
+    App-->>Browser: 302 redirect to provider
+    Browser->>IdP: Authorization request
+    IdP-->>Browser: Login + consent
+    Browser->>IdP: Submit credentials
+    IdP-->>Browser: 302 with auth code
+    Browser->>App: GET /callback?code=...
+    App->>IdP: Exchange code for tokens
+    IdP-->>App: Access token + ID token
+    App->>API: Call API with access token
+    API-->>App: Protected data
+    App-->>Browser: Session established

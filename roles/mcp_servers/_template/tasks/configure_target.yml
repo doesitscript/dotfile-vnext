@@ -1,0 +1,51 @@
+---
+- name: Ensure target directory exists for {{ _template_target_name }}
+  ansible.builtin.file:
+    path: "{{ _template_target_config_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Check whether mcp.json exists for {{ _template_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _template_target_config_path }}"
+  register: _template_mcp_json_stat
+
+- name: Create mcp.json with template server entry for {{ _template_target_name }}
+  ansible.builtin.copy:
+    dest: "{{ _template_target_config_path }}"
+    mode: "0644"
+    content: "{{ {'mcpServers': {(template_mcp_server_key): _template_entry}} | to_nice_json }}\n"
+  vars:
+    _template_entry:
+      command: "{{ template_mcp_command }}"
+      args: "{{ template_mcp_args }}"
+      env:
+        _MCP_ANSIBLE_ROLE_PATH: "{{ template_mcp_role_path }}"
+  when: not _template_mcp_json_stat.stat.exists
+
+- name: Merge template server entry into existing mcp.json for {{ _template_target_name }}
+  when: _template_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _template_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _template_target_config_path }}"
+      register: _template_mcp_json_raw
+
+    - name: Write merged mcp.json for {{ _template_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _template_target_config_path }}"
+        content: "{{ _template_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _template_existing: "{{ _template_mcp_json_raw.content | b64decode | from_json }}"
+        _template_entry:
+          command: "{{ template_mcp_command }}"
+          args: "{{ template_mcp_args }}"
+          env:
+            _MCP_ANSIBLE_ROLE_PATH: "{{ template_mcp_role_path }}"
+        _template_servers: >-
+          {{
+            (_template_existing.mcpServers | default({}))
+            | combine({(template_mcp_server_key): _template_entry})
+          }}
+        _template_merged: "{{ _template_existing | combine({'mcpServers': _template_servers}) }}"

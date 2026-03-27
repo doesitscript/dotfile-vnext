@@ -1,0 +1,134 @@
+---
+# draw.io MCP tool server. Official docs cover both remote MCP app server and
+# local npm-backed MCP tool server; this role installs the local tool server.
+
+- name: Resolve node_npm_executable if not already set by common/node
+  ansible.builtin.include_role:
+    name: common/node
+    tasks_from: resolve_npm.yml
+    apply:
+      tags:
+        - mcp
+        - drawio
+        - diagrams
+        - workspace
+  when:
+    - node_npm_executable is not defined
+    - drawio_mcp_state == "absent" or not (drawio_mcp_command | default(''))
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+  tags:
+    - mcp
+    - drawio
+    - diagrams
+    - workspace
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_openapi
+
+- name: Capture requested draw.io MCP target tags
+  ansible.builtin.set_fact:
+    _drawio_requested_target_tags: >-
+      {{
+        (ansible_run_tags | default([]))
+        | intersect(['mcp_target_cursor', 'mcp_target_vscode', 'mcp_target_openapi'])
+      }}
+  tags:
+    - mcp
+    - drawio
+    - diagrams
+    - workspace
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_openapi
+
+- name: Validate configured draw.io MCP targets
+  ansible.builtin.assert:
+    that:
+      - (drawio_mcp_targets | difference(drawio_mcp_supported_targets)) | length == 0
+    fail_msg: >-
+      drawio_mcp_targets contains unsupported values:
+      {{ drawio_mcp_targets | difference(drawio_mcp_supported_targets) | to_json }}
+  tags:
+    - mcp
+    - drawio
+    - diagrams
+    - workspace
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_openapi
+
+- name: Determine active draw.io MCP client targets
+  ansible.builtin.set_fact:
+    _drawio_target_cursor_selected: >-
+      {{
+        ('mcp_target_cursor' in _drawio_requested_target_tags)
+        or
+        (
+          (_drawio_requested_target_tags | length) == 0
+          and ('cursor' in drawio_mcp_targets)
+        )
+      }}
+    _drawio_target_vscode_selected: >-
+      {{
+        ('mcp_target_vscode' in _drawio_requested_target_tags)
+        or
+        (
+          (_drawio_requested_target_tags | length) == 0
+          and ('vscode' in drawio_mcp_targets)
+        )
+      }}
+    _drawio_target_openapi_selected: >-
+      {{
+        ('mcp_target_openapi' in _drawio_requested_target_tags)
+        or
+        (
+          (_drawio_requested_target_tags | length) == 0
+          and ('openapi' in drawio_mcp_targets)
+        )
+      }}
+  tags:
+    - mcp
+    - drawio
+    - diagrams
+    - workspace
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_openapi
+
+- name: Fail fast for the draw.io OpenAPI target stub
+  ansible.builtin.import_tasks: openapi_stub.yml
+  when: _drawio_target_openapi_selected | bool
+  tags:
+    - mcp
+    - drawio
+    - diagrams
+    - workspace
+    - mcp_target_openapi
+
+- name: Ensure draw.io MCP server is present
+  ansible.builtin.import_tasks: present.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - drawio_mcp_state == "present"
+  tags:
+    - mcp
+    - drawio
+    - diagrams
+    - workspace
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_openapi
+
+- name: Ensure draw.io MCP server is absent
+  ansible.builtin.import_tasks: absent.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - drawio_mcp_state == "absent"
+  tags:
+    - mcp
+    - drawio
+    - diagrams
+    - workspace
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_openapi

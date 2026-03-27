@@ -1,0 +1,69 @@
+---
+argument_specs:
+  main:
+    short_description: Scaffold contract for a target-aware MCP server role.
+    description: >
+      Copy this role, rename the prefix, fill in mcp_contract.yml, and replace
+      the install/uninstall stubs with real runtime logic.
+    options:
+      template_mcp_state:
+        type: str
+        default: present
+        choices:
+          - present
+          - absent
+        description: Ensure the MCP server install/config is present or absent.
+
+      template_mcp_server_key:
+        type: str
+        default: "template-server"
+        description: Key written under mcpServers in target mcp.json files.
+
+      template_mcp_project_root:
+        type: str
+        required: false
+        description: Repo root used to derive the default target config paths.
+
+      template_mcp_targets:
+        type: list
+        elements: str
+        default:
+          - cursor
+        description: >
+          Target client configs to manage. Supported values are cursor, vscode,
+          and openapi. openapi is a stub in v1 and should fail fast if selected.
+
+      template_mcp_supported_targets:
+        type: list
+        elements: str
+        default:
+          - cursor
+          - vscode
+          - openapi
+        description: Supported target names for validation and guardrails.
+
+      template_mcp_cursor_config_path:
+        type: str
+        required: false
+        description: Path to the Cursor mcp.json file.
+
+      template_mcp_vscode_config_path:
+        type: str
+        required: false
+        description: Path to the VS Code mcp.json file.
+
+      template_mcp_role_path:
+        type: str
+        default: "roles/mcp_servers/_template"
+        description: Relative repo path for tracking/debugging.
+
+      template_mcp_command:
+        type: str
+        default: ""
+        description: Resolved MCP server executable path. Setting this can skip install stubs.
+
+      template_mcp_args:
+        type: list
+        elements: str
+        default: []
+        description: Optional runtime args passed to the MCP server.

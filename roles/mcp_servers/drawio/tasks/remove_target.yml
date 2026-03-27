@@ -1,0 +1,33 @@
+---
+- name: Check whether mcp.json exists for {{ _drawio_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _drawio_target_config_path }}"
+  register: _drawio_remove_target_mcp_json_stat
+
+- name: Remove draw.io entry from mcp.json for {{ _drawio_target_name }}
+  when: _drawio_remove_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _drawio_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _drawio_target_config_path }}"
+      register: _drawio_remove_target_mcp_json_raw
+
+    - name: Write mcp.json without the draw.io entry for {{ _drawio_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _drawio_target_config_path }}"
+        content: "{{ _drawio_remove_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _drawio_remove_target_existing: "{{ _drawio_remove_target_mcp_json_raw.content | b64decode | from_json }}"
+        _drawio_remove_target_filtered_servers: >-
+          {{
+            (_drawio_remove_target_existing.mcpServers | default({}))
+            | dict2items
+            | rejectattr('key', 'equalto', drawio_mcp_server_key)
+            | items2dict
+          }}
+        _drawio_remove_target_merged: >-
+          {{
+            _drawio_remove_target_existing
+            | combine({'mcpServers': _drawio_remove_target_filtered_servers})
+          }}

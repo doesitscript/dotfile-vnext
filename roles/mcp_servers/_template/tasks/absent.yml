@@ -1,0 +1,17 @@
+---
+- name: Uninstall template MCP server
+  ansible.builtin.import_tasks: uninstall.yml
+
+- name: Remove the template MCP entry from Cursor config
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _template_target_name: "cursor"
+    _template_target_config_path: "{{ template_mcp_cursor_config_path }}"
+  when: _template_mcp_target_cursor_selected | bool
+
+- name: Remove the template MCP entry from VS Code config
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _template_target_name: "vscode"
+    _template_target_config_path: "{{ template_mcp_vscode_config_path }}"
+  when: _template_mcp_target_vscode_selected | bool

@@ -1,0 +1,101 @@
+---
+- name: Capture requested MCP target tags for the template role
+  ansible.builtin.set_fact:
+    _template_mcp_requested_target_tags: >-
+      {{
+        (ansible_run_tags | default([]))
+        | intersect(['mcp_target_cursor', 'mcp_target_vscode', 'mcp_target_openapi'])
+      }}
+  tags:
+    - mcp
+    - template-mcp
+    - workspace
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_openapi
+
+- name: Validate configured MCP targets for the template role
+  ansible.builtin.assert:
+    that:
+      - (template_mcp_targets | difference(template_mcp_supported_targets)) | length == 0
+    fail_msg: >-
+      template_mcp_targets contains unsupported values:
+      {{ template_mcp_targets | difference(template_mcp_supported_targets) | to_json }}
+  tags:
+    - mcp
+    - template-mcp
+    - workspace
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_openapi
+
+- name: Determine active MCP client targets for the template role
+  ansible.builtin.set_fact:
+    _template_mcp_has_target_tag_override: "{{ (_template_mcp_requested_target_tags | length) > 0 }}"
+    _template_mcp_target_cursor_selected: >-
+      {{
+        ('mcp_target_cursor' in _template_mcp_requested_target_tags)
+        or
+        (
+          (_template_mcp_requested_target_tags | length) == 0
+          and ('cursor' in template_mcp_targets)
+        )
+      }}
+    _template_mcp_target_vscode_selected: >-
+      {{
+        ('mcp_target_vscode' in _template_mcp_requested_target_tags)
+        or
+        (
+          (_template_mcp_requested_target_tags | length) == 0
+          and ('vscode' in template_mcp_targets)
+        )
+      }}
+    _template_mcp_target_openapi_selected: >-
+      {{
+        ('mcp_target_openapi' in _template_mcp_requested_target_tags)
+        or
+        (
+          (_template_mcp_requested_target_tags | length) == 0
+          and ('openapi' in template_mcp_targets)
+        )
+      }}
+  tags:
+    - mcp
+    - template-mcp
+    - workspace
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_openapi
+
+- name: Fail fast for the OpenAPI target stub
+  ansible.builtin.import_tasks: openapi_stub.yml
+  when: _template_mcp_target_openapi_selected | bool
+  tags:
+    - mcp
+    - template-mcp
+    - workspace
+    - mcp_target_openapi
+
+- name: Ensure template MCP role is present
+  ansible.builtin.import_tasks: present.yml
+  when:
+    - template_mcp_state == "present"
+  tags:
+    - mcp
+    - template-mcp
+    - workspace
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_openapi
+
+- name: Ensure template MCP role is absent
+  ansible.builtin.import_tasks: absent.yml
+  when:
+    - template_mcp_state == "absent"
+  tags:
+    - mcp
+    - template-mcp
+    - workspace
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_openapi

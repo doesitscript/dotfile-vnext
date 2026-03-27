@@ -20,33 +20,47 @@ Treat these short prompts as direct requests to run this skill:
 2. If the zip already exists, delete it first.
 3. Recursively collect files from the project root.
 4. Exclude any file under these directories (at project root or anywhere nested):
-   - `.git`
-   - `node_modules`
-   - `.venv`
-   - `venv`
-   - `vendor`
-   - `dependencies`
-   - `sources`
-   - `downloaded`
-   - `downloads`
-5. **Critical for zip on macOS/Unix:** Paths in the archive are relative to the project root. You must exclude both root-level and nested paths. A pattern like `*/.venv/*` matches only `something/.venv/...`, not `.venv/...` at the root. Always include root-level patterns (e.g. `.venv/*`, `.git/*`) as well as nested ones (e.g. `*/.venv/*`, `*/.git/*`) so that root-level directories are excluded. On macOS/Unix, use the zip command template below.
+   - `.git` — repo metadata (root and any nested sub-repos)
+   - `node_modules` — npm dependencies
+   - `.venv` — Python virtual environment
+   - `.venv-win` — Windows Python virtual environment
+   - `venv` — alternate Python venv name
+   - `vendor` — vendored dependencies
+   - `dependencies` / `sources` / `downloaded` / `downloads` — downloaded content
+   - `roles/galaxy` — downloaded Ansible Galaxy roles (gitignored)
+   - `collections/ansible_collections` — downloaded Ansible collections (gitignored)
+   - `.facts_cache` — Ansible fact cache (gitignored)
+   - `.ansible` — Ansible runtime directory (gitignored)
+   - `.direnv` — direnv cache (gitignored)
+5. **Critical for zip on macOS/Unix:** Paths in the archive are relative to the project root. The zip `-x` wildcard `*` does NOT match `/` in fnmatch, so `*/.git/*` only matches one level deep. Always include:
+   - root-level patterns (e.g. `.venv/*`, `.git/*`)
+   - one-level-deep nested patterns (e.g. `*/.venv/*`, `*/.git/*`)
+   - two-level-deep nested patterns (e.g. `*/*/.git/*`) for sub-repos cloned inside the project
+   On macOS/Unix, use the zip command template below.
 6. Create the zip with optimal compression.
 7. Return the full archive path to the user.
 
 ## zip (macOS / Unix)
-Run from project root. Exclude both root-level and nested dirs so `.venv` and `.git` at root are not included:
+Run from project root. Exclude root-level, one-level-deep, and two-level-deep nested dirs.
+The two-level pattern (`*/*/.git/*`) covers sub-repos cloned one directory inside the project.
 
 ```bash
 zip -r -q "<project-root>/<project-folder-name>.zip" . \
-  -x ".git/*" -x "*/.git/*" \
+  -x ".git/*" -x "*/.git/*" -x "*/*/.git/*" \
   -x ".venv/*" -x "*/.venv/*" \
+  -x ".venv-win/*" -x "*/.venv-win/*" \
   -x "venv/*" -x "*/venv/*" \
   -x "node_modules/*" -x "*/node_modules/*" \
   -x "vendor/*" -x "*/vendor/*" \
   -x "dependencies/*" -x "*/dependencies/*" \
   -x "sources/*" -x "*/sources/*" \
   -x "downloaded/*" -x "*/downloaded/*" \
-  -x "downloads/*" -x "*/downloads/*"
+  -x "downloads/*" -x "*/downloads/*" \
+  -x "roles/galaxy/*" -x "*/roles/galaxy/*" \
+  -x "collections/ansible_collections/*" -x "*/collections/ansible_collections/*" \
+  -x ".facts_cache/*" -x "*/.facts_cache/*" \
+  -x ".ansible/*" -x "*/.ansible/*" \
+  -x ".direnv/*" -x "*/.direnv/*"
 ```
 
 ## PowerShell Command Template

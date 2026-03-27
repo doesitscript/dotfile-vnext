@@ -1,0 +1,79 @@
+---
+argument_specs:
+  main:
+    short_description: Install the draw.io MCP tool server and configure repo-local Cursor or VS Code targets on macOS or Ubuntu.
+    description: >
+      Installs the official draw.io MCP npm package with the nvm-managed npm,
+      resolves the installed executable, and merges a drawio entry into the
+      selected repo-local mcp.json targets. The openapi target remains an
+      explicit v1 stub and should fail fast if selected.
+    options:
+      drawio_mcp_state:
+        type: str
+        default: present
+        choices:
+          - present
+          - absent
+        description: Ensure the draw.io MCP package and local config are present or absent.
+
+      drawio_mcp_package_name:
+        type: str
+        default: "@drawio/mcp"
+        description: npm package name for the draw.io MCP server.
+
+      drawio_mcp_server_key:
+        type: str
+        default: "drawio"
+        description: Key under mcpServers in target mcp.json files.
+
+      drawio_mcp_project_root:
+        type: str
+        required: false
+        description: Repo root used to derive default Cursor and VS Code target paths.
+
+      drawio_mcp_targets:
+        type: list
+        elements: str
+        default:
+          - cursor
+        description: >
+          Target client configs to manage. Supported values are cursor, vscode,
+          and openapi. openapi is a deliberate v1 stub and fails fast if selected.
+
+      drawio_mcp_supported_targets:
+        type: list
+        elements: str
+        required: false
+        description: Supported target names used for validation and guardrails.
+
+      drawio_mcp_cursor_config_path:
+        type: str
+        required: false
+        description: Path to the repo-local Cursor mcp.json file.
+
+      drawio_mcp_vscode_config_path:
+        type: str
+        required: false
+        description: Path to the repo-local VS Code mcp.json file.
+
+      drawio_mcp_role_path:
+        type: str
+        default: "roles/mcp_servers/drawio"
+        description: Relative repo path for role tracking/debugging.
+
+      drawio_mcp_command:
+        type: str
+        default: ""
+        description: Resolved draw.io MCP executable path. Setting this skips install tasks.
+
+      drawio_mcp_args:
+        type: list
+        elements: str
+        default: []
+        description: Optional runtime args passed to the draw.io MCP server.
+
+      drawio_mcp_bin_candidates:
+        type: list
+        elements: str
+        required: false
+        description: Candidate executable paths checked after npm install. First existing path wins.

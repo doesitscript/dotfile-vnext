@@ -1,0 +1,26 @@
+---
+# Focused controller playbook for MCP server tooling on the Mac.
+#
+# Preferred over broad umbrella local plays when the goal is to converge MCP
+# runtimes, packages, and client config on mac-dev.
+#
+# Example:
+#   .venv/bin/ansible-playbook playbooks/mac/mcp_servers.yaml \
+#     -i inventory/inventory.yaml --limit mac-dev
+#
+
+- name: Converge MCP server tooling on the controller
+  hosts: execution_nodes
+  connection: local
+  gather_facts: true
+
+  roles:
+    - role: common/node
+    - role: python
+    - role: ansible_dev_tools
+    - role: mcp_inspector
+    - role: mcp_servers/redhat-ansible
+    - role: mcp_servers/mcp-sysoperator
+    - role: mcp_servers/ansible-mcp
+    - role: mcp_servers/openai_docs
+    - role: mcp_servers/drawio

@@ -1,0 +1,33 @@
+---
+- name: Install draw.io MCP on macOS
+  ansible.builtin.import_tasks: mac.yml
+  when:
+    - not (drawio_mcp_command | default(''))
+    - ansible_facts['system'] == "Darwin"
+
+- name: Install draw.io MCP on Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when:
+    - not (drawio_mcp_command | default(''))
+    - ansible_facts['distribution'] == "Ubuntu"
+
+- name: Fail if draw.io MCP command could not be resolved
+  ansible.builtin.fail:
+    msg: >-
+      draw.io MCP command is empty after installation. This role currently
+      supports macOS and Ubuntu via npm, or an explicit drawio_mcp_command override.
+  when: not (drawio_mcp_command | default(''))
+
+- name: Ensure draw.io entry exists in Cursor mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _drawio_target_name: "cursor"
+    _drawio_target_config_path: "{{ drawio_mcp_cursor_config_path }}"
+  when: _drawio_target_cursor_selected | bool
+
+- name: Ensure draw.io entry exists in VS Code mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _drawio_target_name: "vscode"
+    _drawio_target_config_path: "{{ drawio_mcp_vscode_config_path }}"
+  when: _drawio_target_vscode_selected | bool

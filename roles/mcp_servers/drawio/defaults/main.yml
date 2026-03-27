@@ -1,0 +1,36 @@
+---
+drawio_mcp_state: present
+
+# Official draw.io MCP tool server package.
+drawio_mcp_package_name: "@drawio/mcp"
+
+# Server key under mcpServers.
+drawio_mcp_server_key: "drawio"
+
+# Repo root used to derive target config paths.
+drawio_mcp_project_root: "{{ dotfiles_home | default(playbook_dir | dirname | dirname) }}"
+
+# Repo-local client targets to manage. openapi is a deliberate v1 stub.
+drawio_mcp_targets:
+  - cursor
+
+drawio_mcp_supported_targets:
+  - cursor
+  - vscode
+  - openapi
+
+drawio_mcp_cursor_config_path: "{{ drawio_mcp_project_root }}/.cursor/mcp.json"
+drawio_mcp_vscode_config_path: "{{ drawio_mcp_project_root }}/.vscode/mcp.json"
+
+# Role tracking/debugging path.
+drawio_mcp_role_path: "roles/mcp_servers/drawio"
+
+# Set by install tasks after npm install, or by an explicit override.
+drawio_mcp_command: ""
+
+# Optional runtime args for the draw.io MCP server.
+drawio_mcp_args: []
+
+# Optional candidate binary paths after global npm install. When empty, the
+# role derives sensible defaults from node_npm_executable at runtime.
+drawio_mcp_bin_candidates: []

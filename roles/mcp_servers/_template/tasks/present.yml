@@ -1,0 +1,33 @@
+---
+- name: Install template MCP server on macOS
+  ansible.builtin.import_tasks: mac.yml
+  when:
+    - not (template_mcp_command | default(''))
+    - ansible_facts['system'] == "Darwin"
+
+- name: Install template MCP server on Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when:
+    - not (template_mcp_command | default(''))
+    - ansible_facts['distribution'] == "Ubuntu"
+
+- name: Fail if the template MCP command is still empty
+  ansible.builtin.fail:
+    msg: >-
+      template_mcp_command is empty. Replace the install stubs in mac.yml /
+      ubuntu.yml or set an explicit command override for validation.
+  when: not (template_mcp_command | default(''))
+
+- name: Ensure the template MCP entry exists in Cursor config
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _template_target_name: "cursor"
+    _template_target_config_path: "{{ template_mcp_cursor_config_path }}"
+  when: _template_mcp_target_cursor_selected | bool
+
+- name: Ensure the template MCP entry exists in VS Code config
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _template_target_name: "vscode"
+    _template_target_config_path: "{{ template_mcp_vscode_config_path }}"
+  when: _template_mcp_target_vscode_selected | bool
