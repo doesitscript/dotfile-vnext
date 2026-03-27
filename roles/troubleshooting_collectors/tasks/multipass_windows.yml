@@ -39,6 +39,7 @@
     - "{{ __multipass_troubleshooting_artifact_dir }}/installer_logs"
     - "{{ __multipass_troubleshooting_artifact_dir }}/app_logs"
     - "{{ __multipass_troubleshooting_artifact_dir }}/probes"
+    - "{{ __multipass_troubleshooting_artifact_dir }}/event_logs/providers"
   tags:
     - multipass_troubleshooting
     - collect_troubleshooting
@@ -75,6 +76,86 @@
     - multipass_troubleshooting
     - collect_troubleshooting
     - multipass_event_logs
+
+- name: Collect vmcompute event entries
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $start = (Get-Date).AddMinutes(-30)
+      $events = Get-WinEvent -FilterHashtable @{
+        LogName = 'Application'
+        StartTime = $start
+      } -ErrorAction SilentlyContinue |
+      Where-Object {
+        $_.ProviderName -match 'vmcompute'
+      } |
+      Select-Object TimeCreated, ProviderName, Id, LevelDisplayName, Message
+
+      $events | ConvertTo-Json -Depth 5
+  register: __vmcompute_event_entries
+  changed_when: false
+  tags:
+    - multipass_troubleshooting
+    - collect_troubleshooting
+    - multipass_event_logs
+    - vmcompute_event_logs
+
+- name: Save vmcompute event entries locally
+  ansible.builtin.copy:
+    content: >-
+      {{
+        (__vmcompute_event_entries.output | default([], true) | first)
+        if (__vmcompute_event_entries.output | default([], true) | length > 0)
+        else '[]'
+      }}
+    dest: "{{ __multipass_troubleshooting_artifact_dir }}/event_logs/providers/vmcompute_events.json"
+    mode: "0644"
+  delegate_to: localhost
+  tags:
+    - multipass_troubleshooting
+    - collect_troubleshooting
+    - multipass_event_logs
+    - vmcompute_event_logs
+
+- name: Collect HNS event entries
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $start = (Get-Date).AddMinutes(-30)
+      $events = Get-WinEvent -FilterHashtable @{
+        LogName = 'Application'
+        StartTime = $start
+      } -ErrorAction SilentlyContinue |
+      Where-Object {
+        $_.ProviderName -match 'hns'
+      } |
+      Select-Object TimeCreated, ProviderName, Id, LevelDisplayName, Message
+
+      $events | ConvertTo-Json -Depth 5
+  register: __hns_event_entries
+  changed_when: false
+  tags:
+    - multipass_troubleshooting
+    - collect_troubleshooting
+    - multipass_event_logs
+    - hns_event_logs
+
+- name: Save HNS event entries locally
+  ansible.builtin.copy:
+    content: >-
+      {{
+        (__hns_event_entries.output | default([], true) | first)
+        if (__hns_event_entries.output | default([], true) | length > 0)
+        else '[]'
+      }}
+    dest: "{{ __multipass_troubleshooting_artifact_dir }}/event_logs/providers/hns_events.json"
+    mode: "0644"
+  delegate_to: localhost
+  tags:
+    - multipass_troubleshooting
+    - collect_troubleshooting
+    - multipass_event_logs
+    - hns_event_logs
 
 - name: Collect Multipass Windows probe bundle
   ansible.windows.win_powershell:
@@ -211,6 +292,8 @@
       surface_tag_map:
         multipass_event_logs:
           - event_logs/multipass_events.json
+          - event_logs/providers/vmcompute_events.json
+          - event_logs/providers/hns_events.json
         multipass_probe_bundle:
           - probes/multipass_probe_bundle.json
         multipass_host_probes:
@@ -219,16 +302,29 @@
           - installer_logs/*
         multipass_gui_logs:
           - app_logs/*
+        vmcompute_event_logs:
+          - event_logs/providers/vmcompute_events.json
+        hns_event_logs:
+          - event_logs/providers/hns_events.json
       collected_artifacts:
         - event_logs/multipass_events.json
+        - event_logs/providers/vmcompute_events.json
+        - event_logs/providers/hns_events.json
         - probes/multipass_probe_bundle.json
         - installer_logs/*
         - app_logs/*
-      missing_or_optional_artifacts: >-
+      collected_absence_or_empty_surfaces: >-
         {{
-          ['Multipass GUI log missing']
-          if not (__multipass_gui_log_stat.stat.exists | default(false))
-          else []
+          (
+            ['No candidate installer logs found in %TEMP%']
+            if (__multipass_temp_logs.matched | default(0) | int) == 0
+            else []
+          ) +
+          (
+            ['Multipass GUI log path checked but file is absent']
+            if not (__multipass_gui_log_stat.stat.exists | default(false))
+            else []
+          )
         }}
   changed_when: false
   tags:

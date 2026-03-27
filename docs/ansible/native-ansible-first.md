@@ -45,6 +45,13 @@ instead of:
 ./bin/fz role-local ansible_dev_tools
 ```
 
+For converging local MCP server tooling on the Mac controller, prefer:
+
+```bash
+.venv/bin/ansible-playbook playbooks/mac/mcp_servers.yaml \
+  -i inventory/inventory.yaml --limit mac-dev
+```
+
 If you want to try navigator without changing the repo's default execution
 model, start with:
 
