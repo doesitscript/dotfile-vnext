@@ -42,3 +42,32 @@ you should know all of the above^^^ You are to bookmark this when we finish inst
 It’s in the same slow Windows feature-change phase we saw during teardown, so I’m holding on the live run rather than splitting it into smaller guesses.
 
 i wonder if we shoul denable stdout or something to capture what those commands do when they run and stream them to our console or do you do that already? ** what is the prctice around output or logging setup for when yourun ansible**?
+
+note: multipass networks again triggered the role’s “Hyper-V hypervisor not yet ready”
+--- evidence:
+me:
+what does the logs and other sources of outptu from multipss say: list each one and what they say about this last attempt
+said:
+'
+Evidence Map
+
+Hyper-V prerequisite features were re-enabled
+
+Source: full playbook run
+Command:
+ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ANSIBLE_REMOTE_TEMP=/tmp/ansible-remote \
+.venv/bin/ansible-playbook playbooks/server_225_multipass_ubuntu_vm.yaml \
+  -i inventory/inventory.yaml \
+  --limit 'execution_nodes,server-225-win'
+Repo implementation:
+hyperv_feature.yml
+Live output:
+Manage Hyper-V optional features -> changed
+Manage Hyper-V Windows features -> changed
+The host rebooted successfully after rebuild
+
+Source: same playbook run
+Repo',.. you conitinued to show seak evidenc
+me:
+'Hyper-V prerequisite features were re-enabled
+' in suffucient. what commadns show we eid anything, ansible showing changes is a weak signal of evidence. Log output and outptu from commands run are stronger signals

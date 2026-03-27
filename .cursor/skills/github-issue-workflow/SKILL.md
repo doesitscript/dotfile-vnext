@@ -1,12 +1,13 @@
 ---
 name: github-issue-workflow
-description: Create, refine, close, and reference GitHub issues for staged work, next-state improvements, and feature follow-ups. Use when repo docs, role READMEs, intake notes, or partial-state notes should become durable GitHub issues, or when existing issues need to be updated or closed after work lands.
+description: Create, refine, close, and reference GitHub issues for concrete brainstorming, resumable work, next-state improvements, and feature follow-ups.
 ---
 
 # GitHub Issue Workflow
 
-Use this skill when work is real enough to deserve durable tracking outside the
-conversation, but not every note deserves a GitHub issue.
+Use this skill when brainstorming, partial-state notes, or real follow-up work
+have become concrete enough to deserve durable GitHub tracking outside the
+conversation, but not every note deserves an issue.
 
 This skill fits a lightweight GitHub-backed planning style well, especially for
 solo or small-team work where GitHub issues are being adapted into the main
@@ -14,13 +15,36 @@ feature/bug/follow-up planning area.
 
 ## What this skill is for
 
-- turning staged or blocked work into GitHub issues
+- turning concrete or blocked work into GitHub issues
 - turning meaningful brainstorming into durable backlog items when the thought is
   refined enough to survive beyond the current session
 - creating issue titles and bodies that scale across projects
 - deciding when a role README note is enough vs when GitHub should track it
 - closing or updating issues after work lands
 - keeping repo docs aligned with issue references when useful
+
+## Suggested framework roles
+
+Suggested owners:
+
+- `Planner / Steward`
+  decides whether the conversation has become concrete enough to preserve as a
+  durable issue
+- `Researcher`
+  gathers the best repo context and shapes the issue body
+- `Executor`
+  performs the GitHub operation and aligns repo references when needed
+
+These can be separate agents or separate steps in one agent workflow.
+
+## Typical trigger phrases
+
+Examples:
+
+- "Make this a GitHub issue"
+- "Turn this brainstorming into a durable direction"
+- "Capture this follow-up in the backlog"
+- "Update the issue now that the work landed"
 
 ## Suggested workflow placement
 
@@ -57,7 +81,10 @@ This skill is trigger-based, not ambient.
 Use it when:
 
 - the user explicitly asks for issue creation, update, or closure
-- planning has reached the point where durable GitHub tracking is now warranted
+- brainstorming or planning has become concrete enough that future pickup should
+  not depend on rediscovering the same context
+- the repo has meaningful resumable work that should be tracked beyond local
+  notes
 - execution is about to perform a real GitHub operation
 
 Do not keep invoking it just because a topic exists in the repo. Once the
@@ -87,7 +114,8 @@ Create or update a GitHub issue when at least one of these is true:
 - the next step is real, bounded, and likely to be picked up later
 - the work spans multiple sessions or contributors
 - repo docs would benefit from pointing at an external tracked next step
-- a role or node has meaningful staged state that should survive beyond a local note
+- a role or node has meaningful partial-state or resumable work that should
+  survive beyond a local note
 - the user wants backlog visibility without inventing a custom in-repo tracker
 - brainstorming has become concrete enough that a future agent should inherit the
   refined direction instead of rediscovering it from scratch
@@ -112,7 +140,7 @@ You do not need a perfectly modeled edge-case taxonomy to use this skill well.
 
 Check these surfaces before drafting the issue:
 
-1. role README files, especially "where we left off" or staged-state sections
+1. role README files, especially "where we left off" or partial-state sections
 2. role-local `docs/` folders for node- or role-specific logic
 3. `docs/intake/` for massaged but not yet active work
 4. current inventory/host vars if the issue is about host-specific configuration
@@ -197,7 +225,7 @@ repo.
 Use a GitHub issue as the higher-level roadmap and tracking layer for the work when:
 
 - the work is expected to continue across sessions
-- the work has meaningful staged context or a real next step
+- the work has meaningful concrete context or a real next step
 - the user wants the repo to stop carrying rough backlog state by itself
 
 That does not replace repo plans. The intended model is:
@@ -301,4 +329,4 @@ missing.
 ## Examples
 
 Read [references/examples.md](references/examples.md) when you need concrete
-examples of issue shape, titles, or when to elevate staged work into GitHub.
+examples of issue shape, titles, or when to elevate resumable work into GitHub.

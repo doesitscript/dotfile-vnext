@@ -49,7 +49,7 @@ The capability-specific rule files no longer use numeric prefixes or double-dash
 Today the working stack is:
 1. `AGENTS.md`
 2. project Codex runtime config in `.codex/config.toml`
-3. skill workflows
+3. skill discovery via `.cursor/skills/catalog.yml` and per-skill manifests
 4. MCP and live environment tools
 5. multi-agent delegation later, only after the first four are stable
 
@@ -81,8 +81,9 @@ Implemented now:
 - diagnostic-discovery research for finding logs, event channels, output
   surfaces, and verbosity controls for a component under investigation
 - explicit lifecycle-state modeling for Ansible capabilities as a preferred pattern
-- lightweight GitHub-issue workflow support for staged work that should outlive local notes
-  or rough brainstorming once it becomes concrete enough to preserve
+- lightweight GitHub-issue workflow support for concrete brainstorming or
+  resumable work that should outlive local notes once it becomes durable enough
+  to preserve
 
 Planned next:
 - quality comparison workflow for the next 2-3 efforts
@@ -196,6 +197,12 @@ These are the current files actively shaping this capability.
 
 ### Skill workflows
 
+- [.cursor/skills/catalog.yml](/Users/joshc/develop/dotfile-vnext/.cursor/skills/catalog.yml)
+  Machine-readable skill inventory and first-stop discovery surface for what
+  capabilities exist.
+- [.cursor/skills/README.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/README.md)
+  The standard skill pattern, discovery order, and update/remove guidance.
+
 - [.cursor/skills/ansible-planner/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/ansible-planner/SKILL.md)
   The current `Planner / Steward` workflow.
 - [.cursor/skills/ansible-researcher/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/ansible-researcher/SKILL.md)
@@ -203,7 +210,15 @@ These are the current files actively shaping this capability.
   diagnostic-discovery research for questions like "where does this thing log"
   and "how do we surface more output for troubleshooting?"
 - [.cursor/skills/github-issue-workflow/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/github-issue-workflow/SKILL.md)
-  A small reusable workflow for turning staged work or concrete brainstorming into GitHub issues when durable backlog tracking is better than local notes alone. The repo plan under `docs/plans/` is the canonical durable plan, while the issue acts as the higher-level roadmap/tracking layer. The workflow now uses a non-optional light label schema: one `type:*`, one `state:*`, and one `scope:*` label on every created issue.
+  A small reusable workflow for turning concrete brainstorming or resumable work
+  into GitHub issues when durable backlog tracking is better than local notes
+  alone. The repo plan under `docs/plans/` is the canonical durable plan, while
+  the issue acts as the higher-level roadmap/tracking layer. The workflow now
+  uses a non-optional light label schema: one `type:*`, one `state:*`, and one
+  `scope:*` label on every created issue.
+- [.cursor/skills/github-issue-workflow/capability.yml](/Users/joshc/develop/dotfile-vnext/.cursor/skills/github-issue-workflow/capability.yml)
+  The machine-readable manifest for the GitHub issue workflow, including
+  suggested roles, capabilities, companion rule, and owned-file inventory.
 
 ## Supporting But Not Owned By This Capability
 
@@ -224,6 +239,31 @@ The direction is:
 - make the framework extractable later without dragging the whole project layout with it
 
 The root project should only need to say that it uses this capability. The capability itself should be documented here.
+
+## Skill Discovery Pattern
+
+For repo-local skills, the standard discovery order is:
+
+1. `.cursor/skills/catalog.yml`
+2. per-skill `capability.yml`
+3. per-skill `SKILL.md`
+4. companion rule files listed by the manifest
+5. `docs/codex_framework/*`
+
+Use that order on purpose:
+
+- catalog first for quick capability discovery
+- manifest second for machine-readable role, trigger, and ownership data
+- skill body third for the actual portable workflow
+- rule fourth for repo-specific ambient guidance
+- docs last for broader explanation and capability inventory
+
+New or meaningfully updated skills should carry:
+
+- a `capability.yml`
+- a catalog entry
+- an `owned_files` list in the manifest when the capability owns companion rule
+  files, references, or other update/remove surfaces
 
 ## Naming Guidance For Domain-Specific Additions
 
@@ -312,7 +352,7 @@ handling for things like:
 - features
 - bugs
 - cleanup work
-- staged follow-ups
+- durable follow-ups
 
 This is intentionally loose. It is meant to reduce rough planning clutter in
 the repo, not replace judgment with rigid process.

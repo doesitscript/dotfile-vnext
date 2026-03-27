@@ -31,8 +31,27 @@ added as a flat set of unrelated files. The current grouped examples are:
 
 For this repo, the `github-*` family is intended to act as a lightweight
 project-planning area for a solo operator. It should be flexible enough to
-handle features, bugs, cleanup, staged capabilities, and follow-up work without
+handle features, bugs, cleanup, resumable capabilities, and follow-up work without
 turning issue handling into heavy ceremony.
+
+For repo-local skills, use this discovery pattern:
+
+1. `.cursor/skills/catalog.yml`
+2. per-skill `capability.yml`
+3. per-skill `SKILL.md`
+4. companion rule files listed in the manifest
+5. `docs/codex_framework/*`
+
+That split is intentional:
+
+- the manifest makes capability discovery and ownership lookup easy
+- the skill keeps portable workflow logic
+- the rule keeps repo-specific ambient behavior
+- the docs keep longer explanation and capability inventory
+
+When a skill owns companion rule files, references, or other removable/update
+surfaces, list them under `owned_files` in the manifest so updated drops can
+replace the right files and removals do not leave companion surfaces behind.
 
 ## Core Commitments
 
@@ -131,7 +150,7 @@ The Researcher must:
 - recognize when implementation retries have hit diminishing returns and switch to research instead of continuing speculative changes
 - produce a short evidence summary that the Steward and Executor can act on
 - hand back a clear recommendation instead of raw source dumping
-- recognize when refined brainstorming or staged work should be elevated into a
+- recognize when refined brainstorming or resumable work should be elevated into a
   GitHub issue so the best current direction survives across sessions
 - enter troubleshooting mode on repeated failure or explicit request and treat
   evidence collection as a required step before more fix iteration
@@ -304,7 +323,7 @@ only in chat. The default durable pattern is:
 - treat that repo plan as the canonical standalone artifact
 - mirror the work into GitHub as a higher-level roadmap when GitHub is available
 
-For resumable staged work with a GitHub mirror:
+For resumable work with a GitHub mirror:
 
 - the repo plan should hold the best refined direction and next execution plan
 - the GitHub issue should stay compact and roadmap-oriented
@@ -328,6 +347,9 @@ Preference order:
 2. add a new role/playbook that fits repo structure
 3. add a small helper script only if declarative automation is not a good fit
 4. avoid free-form scripting when a module already exists
+5. when a config file is already owned by a durable automation path, prefer
+   changing that automation path over making an ad hoc manual file edit unless
+   the user explicitly asks for a one-off exception
 
 For Ansible role and playbook design, also prefer:
 

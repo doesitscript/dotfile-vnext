@@ -154,3 +154,29 @@ event logs
 vendor diagnostic output
 the stdout/stderr of every remote command unless we explicitly capture and print it
 structured evidence from the component’s own logging system'
+
+
+Validate:'I also found you already have a strong seed for this in 900--failure-and-diagnostics.mdc. What’s missing is a simpler Codex-framework-facing “troubleshooting mode” contract that:
+
+turns this into a user-friendly mode
+makes it obvious when it auto-triggers
+requires per-run reporting of collected vs missing surfaces
+gives you simple knobs like -e debug_remote_output=true or -vvvv
+Before I lock the plan, there’s one meaningful design choice to settle: when should troubleshooting mode turn on by default?'
+did you fix the game and giv eus the "missing simplere piece"?
+
+---
+'
+At the end of every Ansible-related response, include simple evidence knobs the
+user can enable:
+
+- `-vv`
+- `-vvv`
+- `-vvvv`
+- `-e debug_remote_output=true`
+- `-e ansible_troubleshooting_mode=true`
+- `--tags evidence`
+- `--tags debug_resources`
+
+Only mention the tags when the relevant role or playbook exposes them. If a
+surface is not wired yet, say so plainly.' <-- maybe add a oneliner or  explaing brieflyw what each is?>

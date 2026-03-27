@@ -84,6 +84,16 @@ When this skill is invoked, you will adopt the `Planner` agent persona and execu
    - provide only a short current-direction recap
    - explicitly escalate to the `ansible-researcher` skill before producing a decision-complete plan
 5. Do not finalize a full blueprint from weak context.
+6. For Ansible design, placement, refactor-ownership, or technical-debt work, do not finalize the plan until the framework-mandated authority set is in context:
+   - `ansible.zen_of_ansible`
+   - `guidelines://ansible-content-best-practices`
+   - relevant registered `@doc` sources
+7. When existing playbooks are candidate homes, also bring in:
+   - `ansible-mcp.project_playbooks`
+   - `sysoperator.list_tasks`
+8. When host groups, inventory scope, or merged vars affect the plan, also bring in:
+   - `ansible-mcp.inventory_graph`
+   - `ansible-mcp.inventory_find_host`
 
 ### Phase 3: Draft Plan Offer
 
