@@ -1,11 +1,18 @@
 ---
-# End-to-end bootstrap for the Multipass-backed Ubuntu VM on server-225.
+# Legacy control surface for the old Multipass-backed Ubuntu VM on server-225.
 #
 # Runs:
 #   1. controller key setup (or reuse)
 #   2. Hyper-V feature prerequisite on the Windows host
 #   3. Multipass Ubuntu VM lifecycle on the Windows host
 #   4. controller SSH config refresh after VM facts are published
+#
+# Current status:
+#   This playbook is now a deprecation / teardown path. The repo has abandoned
+#   Multipass as the target provisioning mechanism for `server-225-ubuntu` and
+#   is moving to a Hyper-V-native Ubuntu VM. Keep this playbook only long
+#   enough to drive the old capability to `absent` and harvest any final
+#   troubleshooting artifacts if needed.
 #
 # Diagnostics:
 #   The multipass_ubuntu_vm role emits Windows Multipass troubleshooting
@@ -42,7 +49,7 @@
   roles:
     - access_identity_controller
 
-- name: Server-225 Hyper-V Multipass Ubuntu VM
+- name: Server-225 legacy Multipass Ubuntu VM teardown path
   hosts: server-225-win
   gather_facts: false
 
@@ -57,7 +64,7 @@
       tags:
         - hyperv_feature_prereq
 
-    - name: Ensure Multipass Ubuntu VM capability
+    - name: Ensure Multipass Ubuntu VM legacy capability is absent/preserved only for teardown
       ansible.builtin.include_role:
         name: multipass_ubuntu_vm
         apply:
@@ -70,7 +77,7 @@
         - evidence
         - debug_resources
 
-    - name: Collect Multipass troubleshooting artifacts when requested
+    - name: Collect legacy Multipass troubleshooting artifacts when requested
       ansible.builtin.include_role:
         name: troubleshooting_collectors
         tasks_from: multipass_windows.yml

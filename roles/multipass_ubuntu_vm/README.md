@@ -2,6 +2,16 @@
 
 Stateful role for a Multipass-backed Ubuntu VM on a Windows Hyper-V host.
 
+## Status
+
+Deprecated as an active provisioning direction.
+
+The repo has abandoned Multipass as the target provisioning mechanism for
+`server-225-ubuntu` and is moving to a Hyper-V-native Ubuntu VM built from an
+Ubuntu cloud image. This role is retained for now only because it already has a
+real `present|absent` lifecycle and gives us a safe teardown path for the old
+capability before removal.
+
 ## Purpose
 
 - keep the public interface lifecycle-based: `present|absent`
@@ -9,6 +19,13 @@ Stateful role for a Multipass-backed Ubuntu VM on a Windows Hyper-V host.
 - publish the guest as a real SSH target in inventory/controller config
 - translate useful Linux bootstrap ideas from the older WSL path without
   carrying WSL-specific mechanics forward
+
+Current practical use:
+
+- drive the old Multipass capability to `absent`
+- preserve teardown/troubleshooting behavior until the replacement is proven
+- keep reusable Day-0/cloud-init patterns available for translation into the
+  upcoming Hyper-V-native role
 
 Tracked in GitHub issue [#4](https://github.com/doesitscript/dotfile-vnext/issues/4).
 

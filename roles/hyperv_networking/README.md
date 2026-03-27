@@ -53,7 +53,7 @@ Standalone:
 ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit server-225-win
 ```
 
-Feature-only teardown / rebuild through the Multipass flow:
+Legacy feature-only teardown / rebuild through the old Multipass flow:
 
 ```bash
 .venv/bin/ansible-playbook playbooks/server_225_multipass_ubuntu_vm.yaml \
