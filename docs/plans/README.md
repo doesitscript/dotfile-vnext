@@ -11,13 +11,18 @@ Approved plans belong here.
 
 ## Naming
 
-Use date-prefixed filenames:
+Use date-prefixed names:
 
 - `YYYY-MM-DD--short-slug.md`
+- `YYYY-MM-DD--short-slug/`
 
 Example:
 
 - `2026-03-26--mcp-role-pattern-v1.md`
+- `2026-03-27--subagents-v1/`
+
+When a plan needs bundled research, references, or validation notes, prefer a
+folder-backed plan packet with a `README.md` as the canonical entrypoint.
 
 ## Relationship To Other Docs
 

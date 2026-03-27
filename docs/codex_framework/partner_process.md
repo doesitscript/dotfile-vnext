@@ -453,6 +453,10 @@ When a plan is approved, store it under:
 Use date-prefixed names such as:
 
 - `YYYY-MM-DD--mcp-role-pattern-v1.md`
+- `YYYY-MM-DD--subagents-v1/`
+
+When the plan needs bundled research, references, or later validation notes,
+prefer a folder-backed plan packet with `README.md` as the canonical entrypoint.
 
 These repo plans are the canonical durable planning layer for accepted work.
 They should remain useful even if GitHub is unavailable.
