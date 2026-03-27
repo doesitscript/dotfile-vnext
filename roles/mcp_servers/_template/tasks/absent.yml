@@ -15,3 +15,10 @@
     _template_target_name: "vscode"
     _template_target_config_path: "{{ template_mcp_vscode_config_path }}"
   when: _template_mcp_target_vscode_selected | bool
+
+- name: Remove the template MCP entry from Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ template_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ template_mcp_server_key }}"
+  when: _template_mcp_target_codex_selected | bool

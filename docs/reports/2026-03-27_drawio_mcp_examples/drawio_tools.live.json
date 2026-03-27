@@ -1,0 +1,510 @@
+{
+  "generated_at": "2026-03-27T09:28:16.524Z",
+  "command": "/Users/joshc/.nvm/versions/node/v20.20.0/bin/drawio-mcp-server",
+  "args": [
+    "--editor",
+    "--extension-port",
+    "3347",
+    "--http-port",
+    "3004"
+  ],
+  "package": {
+    "name": "drawio-mcp-server",
+    "version": "1.8.0"
+  },
+  "server_info": {
+    "name": "drawio-mcp-server",
+    "version": "1.8.0"
+  },
+  "notes": [
+    "Tool listing was captured live from a stdio-launched drawio-mcp-server instance.",
+    "Interactive shape-library calls require a browser-backed editor session; this report therefore combines live tool discovery with source-backed shape examples."
+  ],
+  "stderr": [
+    "DEBUG: Draw.io MCP Server (1.8.0) starting (WebSocket extension port: 3347)",
+    "DEBUG: Draw.io MCP Server STDIO transport active",
+    "DEBUG: Draw.io editor enabled at: http://localhost:3004/",
+    "DEBUG: Draw.io MCP Server HTTP active on port 3004",
+    "DEBUG: Editor: http://localhost:3004/",
+    "DEBUG: Draw.io MCP Server running on stdio",
+    "DEBUG: [start_websocket_server] Listening to port 3347"
+  ],
+  "tool_count": 18,
+  "tools": [
+    {
+      "name": "get-selected-cell",
+      "description": "This tool allows you to retrieve selected cell (whether vertex or edge) on the current page of a Draw.io diagram. The response is a JSON containing attributes of the cell.",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "add-rectangle",
+      "description": "This tool allows you to add new Rectangle vertex cell (object) on the current page of a Draw.io diagram. It accepts multiple optional input parameter.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "default": 100,
+            "description": "X-axis position of the Rectangle vertex cell",
+            "type": "number"
+          },
+          "y": {
+            "default": 100,
+            "description": "Y-axis position of the Rectangle vertex cell",
+            "type": "number"
+          },
+          "width": {
+            "default": 200,
+            "description": "Width of the Rectangle vertex cell",
+            "type": "number"
+          },
+          "height": {
+            "default": 100,
+            "description": "Height of the Rectangle vertex cell",
+            "type": "number"
+          },
+          "text": {
+            "default": "New Cell",
+            "description": "Text content placed inside of the Rectangle vertex cell",
+            "type": "string"
+          },
+          "style": {
+            "default": "whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;",
+            "description": "Semi-colon separated list of Draw.io visual styles, in the form of `key=value`. Example: `whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;`",
+            "type": "string"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "add-edge",
+      "description": "This tool creates an edge, sometimes called also a relation, between two vertexes (cells).",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "description": "Source ID of a cell. It is represented by `id` attribute.",
+            "type": "string"
+          },
+          "target_id": {
+            "description": "Target ID of a cell. It is represented by `id` attribute.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text content placed over the edge cell",
+            "type": "string"
+          },
+          "style": {
+            "default": "edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;",
+            "description": "Semi-colon separated list of Draw.io visual styles, in the form of `key=value`. Example: `edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;`",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "target_id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "delete-cell-by-id",
+      "description": "Deletes a cell, whether it is a vertex or edge.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "cell_id": {
+            "description": "The ID of a cell to delete. The cell can be either vertex or edge. The ID is located in `id` attribute.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cell_id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get-shape-categories",
+      "description": "Retrieves available shape categories from the diagram's library. Library is split into multiple categories.",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get-shapes-in-category",
+      "description": "Retrieve all shapes in the provided category from the diagram's library. A shape primarily contains `style` based on which you can create new vertex cells.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "description": "Identifier (ID / key) of the category from which all the shapes should be retrieved.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category_id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get-shape-by-name",
+      "description": "Retrieve a specific shape by its name from all available shapes in the diagram's library. It returns the shape and also the category it belongs.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "shape_name": {
+            "description": "Name of the shape to retrieve from the shape library of the current diagram.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "shape_name"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "add-cell-of-shape",
+      "description": "This tool allows you to add new vertex cell (object) on the current page of a Draw.io diagram by its shape name. It accepts multiple optional input parameter.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "shape_name": {
+            "description": "Name of the shape to retrieved from the shape library of the current diagram.",
+            "type": "string"
+          },
+          "x": {
+            "default": 100,
+            "description": "X-axis position of the vertex cell of the shape",
+            "type": "number"
+          },
+          "y": {
+            "default": 100,
+            "description": "Y-axis position of the vertex cell of the shape",
+            "type": "number"
+          },
+          "width": {
+            "default": 200,
+            "description": "Width of the vertex cell of the shape",
+            "type": "number"
+          },
+          "height": {
+            "default": 100,
+            "description": "Height of the vertex cell of the shape",
+            "type": "number"
+          },
+          "text": {
+            "description": "Text content placed inside of the vertex cell of the shape",
+            "type": "string"
+          },
+          "style": {
+            "description": "Semi-colon separated list of Draw.io visual styles, in the form of `key=value`. Example: `whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;`",
+            "type": "string"
+          }
+        },
+        "required": [
+          "shape_name"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "set-cell-shape",
+      "description": "Updates the visual style of an existing vertex cell to match a library shape by name.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "cell_id": {
+            "description": "Identifier (`id` attribute) of the cell whose shape should change.",
+            "type": "string"
+          },
+          "shape_name": {
+            "description": "Name of the library shape whose style should be applied to the existing cell.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cell_id",
+          "shape_name"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "set-cell-data",
+      "description": "Sets or updates a custom attribute on an existing cell.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "cell_id": {
+            "description": "Identifier (`id` attribute) of the cell to update with custom data.",
+            "type": "string"
+          },
+          "key": {
+            "description": "Name of the attribute to set on the cell.",
+            "type": "string"
+          },
+          "value": {
+            "description": "Value to store for the attribute. Non-string values are stringified before storage.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cell_id",
+          "key",
+          "value"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "edit-cell",
+      "description": "Update properties of an existing vertex/shape cell by its ID. Only provided fields are modified; unspecified properties remain unchanged.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "cell_id": {
+            "description": "Identifier (`id` attribute) of the cell to update. Applies to vertex/shape cells.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Replace the cell's text/label content.",
+            "type": "string"
+          },
+          "x": {
+            "description": "Set a new X-axis position for the cell.",
+            "type": "number"
+          },
+          "y": {
+            "description": "Set a new Y-axis position for the cell.",
+            "type": "number"
+          },
+          "width": {
+            "description": "Set a new width for the cell.",
+            "type": "number"
+          },
+          "height": {
+            "description": "Set a new height for the cell.",
+            "type": "number"
+          },
+          "style": {
+            "description": "Replace the cell's style string (semi-colon separated `key=value` pairs).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cell_id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "edit-edge",
+      "description": "Update properties of an existing edge by its ID. Only provided fields are modified; unspecified properties remain unchanged.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "cell_id": {
+            "description": "Identifier (`id` attribute) of the edge cell to update. The ID must reference an edge.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Replace the edge's label text.",
+            "type": "string"
+          },
+          "source_id": {
+            "description": "Reassign the edge's source terminal to a different cell ID.",
+            "type": "string"
+          },
+          "target_id": {
+            "description": "Reassign the edge's target terminal to a different cell ID.",
+            "type": "string"
+          },
+          "style": {
+            "description": "Replace the edge's style string (semi-colon separated `key=value` pairs).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cell_id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "list-paged-model",
+      "description": "Retrieves a paginated view of all cells (vertices and edges) in the current Draw.io diagram. This tool provides access to the complete model data with essential fields only, sanitized to remove circular dependencies and excessive data. It allows to filter based on multiple criteria and attribute boolean logic. Useful for programmatic inspection of diagram structure without overwhelming response sizes.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "default": 0,
+            "description": "Zero-based page number for pagination. Page 0 returns the first batch of cells, page 1 returns the next batch, etc. Default is 0.",
+            "type": "number"
+          },
+          "page_size": {
+            "default": 50,
+            "description": "Maximum number of cells to return in a single page. Controls response size and performance. Must be between 1 and 1000. Default is 50.",
+            "type": "number"
+          },
+          "filter": {
+            "default": {},
+            "description": "Optional filter criteria to apply to cells before pagination",
+            "type": "object",
+            "properties": {
+              "cell_type": {
+                "description": "Filter by cell type: 'edge' for connection lines, 'vertex' for vertices/shapes, 'object' for any cell type, 'layer' for layer cells, 'group' for grouped cells",
+                "type": "string",
+                "enum": [
+                  "edge",
+                  "vertex",
+                  "object",
+                  "layer",
+                  "group"
+                ]
+              },
+              "parent_ids": {
+                "description": "Filter cells to only those whose parent is one of the specified parent IDs.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "layer_ids": {
+                "description": "Filter cells to only those whose parent is one of the specified layer IDs. Alias for parent_ids.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "ids": {
+                "description": "Filter cells to only those whose ID is one of the specified IDs.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "attributes": {
+                "description": "Boolean logic array expressions for filtering cell attributes. Format: [\"and\" | \"or\", ...expressions] or [\"equal\", key, value]. Matches against cell attributes and parsed style properties.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/__schema0"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "__schema0": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/definitions/__schema0"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "list-layers",
+      "description": "Lists all available layers in the diagram with their IDs and names.",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "set-active-layer",
+      "description": "Sets the active layer for creating new elements. All subsequent element creation will happen in this layer.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "layer_id": {
+            "description": "ID of the layer to set as active",
+            "type": "string"
+          }
+        },
+        "required": [
+          "layer_id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "move-cell-to-layer",
+      "description": "Moves a cell from its current layer to a target layer.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "cell_id": {
+            "description": "ID of the cell to move",
+            "type": "string"
+          },
+          "target_layer_id": {
+            "description": "ID of the target layer where the cell will be moved",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cell_id",
+          "target_layer_id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get-active-layer",
+      "description": "Gets the currently active layer information.",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "create-layer",
+      "description": "Creates a new layer in the diagram.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "Name for the new layer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    }
+  ]
+}

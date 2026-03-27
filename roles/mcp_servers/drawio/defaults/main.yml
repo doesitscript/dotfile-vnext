@@ -1,8 +1,8 @@
 ---
 drawio_mcp_state: present
 
-# Official draw.io MCP tool server package.
-drawio_mcp_package_name: "@drawio/mcp"
+# Active draw.io MCP server package.
+drawio_mcp_package_name: "drawio-mcp-server"
 
 # Server key under mcpServers.
 drawio_mcp_server_key: "drawio"
@@ -28,9 +28,16 @@ drawio_mcp_role_path: "roles/mcp_servers/drawio"
 # Set by install tasks after npm install, or by an explicit override.
 drawio_mcp_command: ""
 
-# Optional runtime args for the draw.io MCP server.
-drawio_mcp_args: []
+# Runtime args for the draw.io MCP server. The lgazo server uses a built-in
+# local editor when started with --editor.
+drawio_mcp_args:
+  - "--editor"
 
 # Optional candidate binary paths after global npm install. When empty, the
 # role derives sensible defaults from node_npm_executable at runtime.
 drawio_mcp_bin_candidates: []
+
+# Alternative or legacy draw.io MCP npm packages to remove so the active
+# lgazo server is the only local draw.io server managed by this role.
+drawio_mcp_legacy_packages:
+  - "@drawio/mcp"

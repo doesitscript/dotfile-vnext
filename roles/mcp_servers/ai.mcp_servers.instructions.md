@@ -19,7 +19,7 @@ Record these decisions in the role's `mcp_contract.yml`:
 - `verify_mode`
   Examples: `command_smoke_test`, `tool_listing`, `manual_editor_validation`
 - `supported_targets`
-  For v1: `cursor`, `vscode`, `openapi`
+  For v1: `cursor`, `vscode`, `codex`, `openapi`
 
 Do not guess these from memory when the upstream repo can answer them.
 
@@ -72,6 +72,10 @@ Every MCP role should expose:
   Default: `{{ <server>_project_root }}/.cursor/mcp.json`
 - `<server>_vscode_config_path`
   Default: `{{ <server>_project_root }}/.vscode/mcp.json`
+- `<server>_codex_config_path`
+  Default: `{{ <server>_project_root }}/.codex/config.toml`
+- `<server>_codex_entry`
+  Structured Codex MCP entry with exactly one of `url` or `command`, plus optional `args`, `env`, `cwd`, and `required`
 
 `openapi` is an explicit stub target in v1. If selected, fail fast with a clear
 message rather than pretending to support it.
@@ -86,6 +90,7 @@ Tags are focused execution helpers:
 
 - `mcp_target_cursor`
 - `mcp_target_vscode`
+- `mcp_target_codex`
 - `mcp_target_openapi`
 
 Behavior:
@@ -106,6 +111,22 @@ Cursor and VS Code share the same JSON merge behavior:
 4. On `absent`, remove only the role's server key and leave other entries alone.
 
 Use `configure_target.yml` and `remove_target.yml` for this pattern.
+
+Codex uses the shared project `.codex/config.toml` block-management pattern:
+
+1. Ensure the parent directory exists.
+2. Create the file if it does not exist.
+3. Manage one Ansible-owned block per MCP server key.
+4. Preserve unrelated config outside that block.
+5. On `absent`, remove only the role's block.
+
+Use the shared helper tasks under `roles/mcp_servers/_shared/tasks/` for this
+pattern instead of per-role TOML merge logic or `codex mcp` CLI mutation.
+
+Do not hand-edit `.cursor/mcp.json` or `.vscode/mcp.json` as an implementation
+shortcut when those files are already owned by an MCP role. Change the owning
+role/tasks instead. Only make a one-off manual config edit when the user
+explicitly asks for that exception.
 
 ## README Requirements
 

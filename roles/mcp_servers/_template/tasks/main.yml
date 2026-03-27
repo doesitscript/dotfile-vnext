@@ -4,7 +4,7 @@
     _template_mcp_requested_target_tags: >-
       {{
         (ansible_run_tags | default([]))
-        | intersect(['mcp_target_cursor', 'mcp_target_vscode', 'mcp_target_openapi'])
+        | intersect(['mcp_target_cursor', 'mcp_target_vscode', 'mcp_target_codex', 'mcp_target_openapi'])
       }}
   tags:
     - mcp
@@ -12,6 +12,7 @@
     - workspace
     - mcp_target_cursor
     - mcp_target_vscode
+    - mcp_target_codex
     - mcp_target_openapi
 
 - name: Validate configured MCP targets for the template role
@@ -27,6 +28,7 @@
     - workspace
     - mcp_target_cursor
     - mcp_target_vscode
+    - mcp_target_codex
     - mcp_target_openapi
 
 - name: Determine active MCP client targets for the template role
@@ -59,12 +61,22 @@
           and ('openapi' in template_mcp_targets)
         )
       }}
+    _template_mcp_target_codex_selected: >-
+      {{
+        ('mcp_target_codex' in _template_mcp_requested_target_tags)
+        or
+        (
+          (_template_mcp_requested_target_tags | length) == 0
+          and ('codex' in template_mcp_targets)
+        )
+      }}
   tags:
     - mcp
     - template-mcp
     - workspace
     - mcp_target_cursor
     - mcp_target_vscode
+    - mcp_target_codex
     - mcp_target_openapi
 
 - name: Fail fast for the OpenAPI target stub
@@ -86,6 +98,7 @@
     - workspace
     - mcp_target_cursor
     - mcp_target_vscode
+    - mcp_target_codex
     - mcp_target_openapi
 
 - name: Ensure template MCP role is absent
@@ -98,4 +111,5 @@
     - workspace
     - mcp_target_cursor
     - mcp_target_vscode
+    - mcp_target_codex
     - mcp_target_openapi
