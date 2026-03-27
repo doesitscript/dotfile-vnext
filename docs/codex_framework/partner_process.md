@@ -69,19 +69,25 @@ In Codex terms, this repo should be built in layers:
 
 1. `AGENTS.md` for durable repo behavior
 2. project `.codex/config.toml` for Codex runtime behavior in this repo
-3. skills for repeatable workflows
-4. MCP for external systems and live context
-5. multi-agents only after the first four are earning their keep
+3. framework docs for Codex-side process and capability visibility
+4. selected `framework-*` and supporting `.cursor/rules/*.mdc` files loaded by
+   the repo bootstrap
+5. skills for repeatable workflows
+6. MCP for external systems and live context
+7. multi-agents only after the first six are earning their keep
 
 For Codex/OpenAI conversations in this repo, `AGENTS.md` is also the bootstrap
 surface that should force loading of the active workspace framework surfaces:
 
 1. `AGENTS.md`
 2. project `.codex/config.toml` as the official Codex runtime layer
-3. `.cursorrules`
-4. active `.cursor/rules/*.mdc`
-5. `docs/codex_framework/README.md`
-6. `docs/codex_framework/partner_process.md`
+3. `docs/codex_framework/README.md`
+4. `docs/codex_framework/partner_process.md`
+5. active `framework-*` files under `.cursor/rules/`, plus any explicitly
+   referenced supporting rule files
+
+Treat `.cursorrules` as a Cursor/workspace boot file rather than a Codex
+startup source that is guaranteed to be auto-injected.
 
 So for this repo, the immediate structure is not "spawn more agents first."
 It is:
@@ -99,6 +105,10 @@ The current official Codex role mapping for this repo is:
 
 True multi-agent delegation still needs runtime evidence. Configuration alone is
 not proof that separate agent threads are being used automatically.
+
+The current startup default therefore stays on a stable single-agent profile.
+Experimental multi-agent behavior is preserved behind an opt-in profile instead
+of being the repo's default runtime stance.
 
 The first active framework role to implement is `Planner / Steward`.
 The next active framework role to implement is `Researcher`.

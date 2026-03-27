@@ -1,11 +1,23 @@
 #:schema https://developers.openai.com/codex/config-schema.json
 
-[mcp_servers.openaiDeveloperDocs]
-url = "https://developers.openai.com/mcp"
-required = true
+profile = "stable_single_agent"
+project_doc_max_bytes = 65536
+project_doc_fallback_filenames = [".agents.md", ".cursorrules"]
+
+developer_instructions = """
+In this repo, AGENTS.md is the primary project instruction source and this
+project-scoped config is the secondary runtime layer.
+
+Do not assume `.cursorrules` or `.cursor/rules/*.mdc` were auto-injected at
+startup. Treat them as repo guidance to load when AGENTS.md or the task calls
+for them.
+
+For Codex/OpenAI/MCP/subagent questions in this repo, use the
+`openaiDeveloperDocs` MCP server first.
+"""
 
 [features]
-multi_agent = true
+multi_agent = false
 
 [agents]
 max_threads = 6
@@ -22,3 +34,52 @@ config_file = "agents/explorer.toml"
 [agents.worker]
 description = "Bounded execution role. Use for focused implementation, verification, and follow-through on a clearly scoped slice of work."
 config_file = "agents/worker.toml"
+
+[profiles.stable_single_agent.features]
+multi_agent = false
+
+[profiles.experimental_multi_agent.features]
+multi_agent = true
+
+[profiles.mcp_probe_drawio.features]
+multi_agent = false
+sqlite = false
+apps = false
+shell_snapshot = false
+
+[profiles.mcp_probe_drawio.mcp_servers.ansible]
+enabled = false
+
+[profiles.mcp_probe_drawio.mcp_servers.ansible-mcp]
+enabled = false
+
+[profiles.mcp_probe_drawio.mcp_servers.sysoperator]
+enabled = false
+
+[profiles.mcp_probe_drawio.mcp_servers.openaiDeveloperDocs]
+enabled = false
+
+[profiles.mcp_probe_drawio.mcp_servers.codex]
+enabled = false
+
+[profiles.mcp_probe_drawio.mcp_servers.drawio]
+enabled = true
+# BEGIN ANSIBLE MANAGED BLOCK: mcp_server_drawio
+[mcp_servers.drawio]
+command = "/Users/joshc/develop/dotfile-vnext/bin/drawio-mcp-codex-stdio-wrapper.js"
+args = ["/Users/joshc/.nvm/versions/node/v20.20.0/bin/drawio-mcp-server", "--editor", "--asset-path", "/Users/joshc/.cache/drawio-mcp-server-assets", "--extension-port", "3349", "--http-port", "3006"]
+startup_timeout_sec = 45
+
+[mcp_servers.drawio.env]
+_MCP_ANSIBLE_ROLE_PATH = "roles/mcp_servers/drawio"
+# END ANSIBLE MANAGED BLOCK: mcp_server_drawio
+# BEGIN ANSIBLE MANAGED BLOCK: mcp_server_codex
+[mcp_servers.codex]
+command = "/Users/joshc/.nvm/versions/node/v20.20.0/bin/codex"
+args = ["mcp-server"]
+# END ANSIBLE MANAGED BLOCK: mcp_server_codex
+# BEGIN ANSIBLE MANAGED BLOCK: mcp_server_openaiDeveloperDocs
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
+required = true
+# END ANSIBLE MANAGED BLOCK: mcp_server_openaiDeveloperDocs

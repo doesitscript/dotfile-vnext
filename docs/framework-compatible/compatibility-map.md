@@ -53,16 +53,20 @@ through:
 
 - `AGENTS.md`
 - `.codex/config.toml`
-- `.cursorrules`
-- active `.cursor/rules/*.mdc`
 - `docs/codex_framework/README.md`
 - `docs/codex_framework/partner_process.md`
+- selected `framework-*` and supporting `.cursor/rules/*.mdc` files loaded by
+  the repo bootstrap
 
 In other words:
 
 - the compatible surfaces are the reusable building blocks
 - the Codex framework docs explain how Codex/OpenAI loads and uses them in this
   repo
+
+`.cursorrules` remains relevant as a Cursor/workspace boot surface, but it
+should not be treated as a native Codex startup source without direct runtime
+evidence.
 
 ## Naming Intent
 
