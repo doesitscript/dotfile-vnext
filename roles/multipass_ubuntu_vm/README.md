@@ -226,6 +226,8 @@ reconciled in place.
 
 ## What was translated from the old WSL path
 
+WSL deprecation and safe removal tracked in GitHub issue [#7](https://github.com/doesitscript/dotfile-vnext/issues/7).
+
 Useful pieces translated forward:
 
 - controller SSH key bootstrap from the execution node

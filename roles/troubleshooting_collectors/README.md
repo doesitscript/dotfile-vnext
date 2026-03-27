@@ -45,12 +45,19 @@ Surface tags:
   - `%TEMP%` installer/MSI logs when present
 - `multipass_gui_logs`
   - `%APPDATA%\\com.canonical\\Multipass GUI\\multipass_gui.log` when present
+- `vmcompute_event_logs`
+  - provider-focused `vmcompute` event entries saved separately
+- `hns_event_logs`
+  - provider-focused `hns` event entries saved separately
 
 These tags are the collector-side mapping between:
 
 - playbook/role resource
 - output surface
 - saved artifact location
+
+If a surface is checked and absent, that should be reported as collected
+absence, not as an unexamined missing surface.
 
 This role is intentionally collector-oriented, not a long-term centralized
 logging system.
