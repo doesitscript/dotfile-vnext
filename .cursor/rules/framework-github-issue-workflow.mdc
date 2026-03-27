@@ -12,6 +12,9 @@ This rule is the first active member of the repo's `github-*` capability
 family. Treat that family as the lightweight GitHub-backed planning area for
 features, bugs, cleanup, resumable capabilities, and follow-up work.
 
+For cross-repo work, treat the skill as an issue-set workflow rather than a
+sequence of unrelated single-issue drafts.
+
 ## When To Elevate Work
 
 Prefer elevating work into a GitHub issue when:
@@ -43,6 +46,14 @@ Use it when:
   GitHub tracking now makes sense
 - the agent is about to perform a real GitHub operation
 
+When the user asks for linked issues, supporting repo work, or cross-repo
+coordination:
+
+- use explicit repo roles such as `primary`, `secondary`, and `reference_only`
+- do not assume a default secondary repo
+- default to `supporting_tracking` unless the work is clearly blocker semantics
+  or true parent/child work
+
 Do not use it just because a topic exists in the repo.
 Do not keep re-checking GitHub once the current issue state is already known,
 unless new work, a new decision point, or an explicit user request makes another
@@ -71,6 +82,16 @@ Use the `github-issue-workflow` skill across the framework surfaces like this:
 - `Executor`
   Use it to create, update, label, reference, or close the issue once the work
   is ready for GitHub operations.
+
+For cross-repo issue sets, the expected default behavior in this repo is:
+
+- primary issue in the main product repo
+- secondary issue in the supporting repo
+- workflows or audit material may be `reference_only` without becoming a third
+  issue by default
+- body backlinks are mandatory
+- primary issue should use a tasklist reference to the secondary issue when the
+  relationship is supporting/tracking
 
 This is the repo-specific framework mapping for the skill. The skill itself
 should stay portable, but this rule defines how the framework roles here are
@@ -126,3 +147,7 @@ Issues created through this workflow must use the light required schema:
 
 Optional labels such as `area:*`, `platform:*`, and `topic:*` may be added when
 they materially improve filtering or triage.
+
+For cross-repo work, optional labels such as `coordination:cross-repo` or
+`repo-role:*` may be useful, but they are recommendations rather than required
+labels.
