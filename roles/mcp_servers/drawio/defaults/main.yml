@@ -13,14 +13,22 @@ drawio_mcp_project_root: "{{ dotfiles_home | default(playbook_dir | dirname | di
 # Repo-local client targets to manage. openapi is a deliberate v1 stub.
 drawio_mcp_targets:
   - cursor
+  - codex
 
 drawio_mcp_supported_targets:
   - cursor
   - vscode
+  - codex
   - openapi
 
 drawio_mcp_cursor_config_path: "{{ drawio_mcp_project_root }}/.cursor/mcp.json"
 drawio_mcp_vscode_config_path: "{{ drawio_mcp_project_root }}/.vscode/mcp.json"
+drawio_mcp_codex_config_path: "{{ drawio_mcp_project_root }}/.codex/config.toml"
+drawio_mcp_codex_wrapper_path: "{{ drawio_mcp_project_root }}/bin/drawio-mcp-codex-stdio-wrapper.js"
+drawio_mcp_codex_extension_port: 3349
+drawio_mcp_codex_http_port: 3006
+drawio_mcp_codex_startup_timeout_sec: 45
+drawio_mcp_codex_asset_path: "{{ ansible_env.HOME }}/.cache/drawio-mcp-server-assets"
 
 # Role tracking/debugging path.
 drawio_mcp_role_path: "roles/mcp_servers/drawio"
@@ -32,6 +40,27 @@ drawio_mcp_command: ""
 # local editor when started with --editor.
 drawio_mcp_args:
   - "--editor"
+
+drawio_mcp_env:
+  _MCP_ANSIBLE_ROLE_PATH: "{{ drawio_mcp_role_path }}"
+
+drawio_mcp_codex_entry:
+  command: "{{ drawio_mcp_codex_wrapper_path }}"
+  args: >-
+    {{
+      [drawio_mcp_command]
+      + drawio_mcp_args
+      + [
+        '--asset-path',
+        drawio_mcp_codex_asset_path,
+        '--extension-port',
+        (drawio_mcp_codex_extension_port | string),
+        '--http-port',
+        (drawio_mcp_codex_http_port | string)
+      ]
+    }}
+  startup_timeout_sec: "{{ drawio_mcp_codex_startup_timeout_sec | int }}"
+  env: "{{ drawio_mcp_env }}"
 
 # Optional candidate binary paths after global npm install. When empty, the
 # role derives sensible defaults from node_npm_executable at runtime.

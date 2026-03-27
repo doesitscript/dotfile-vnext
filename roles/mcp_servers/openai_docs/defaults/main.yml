@@ -15,6 +15,21 @@ openai_docs_mcp_role_path: "roles/mcp_servers/openai_docs"
 openai_docs_server_key: "openaiDeveloperDocs"
 openai_docs_codex_server_key: "codex"
 openai_docs_mcp_url: "https://developers.openai.com/mcp"
+openai_docs_codex_package_base_name: "@openai/codex"
+openai_docs_codex_version: "{{ codex_tooling_version_contract.cli | default('') }}"
+openai_docs_codex_package_name: >-
+  {{
+    openai_docs_codex_package_base_name
+    if (openai_docs_codex_package_state | default('present')) == 'absent'
+    else (
+      openai_docs_codex_package_base_name
+      ~ (
+        '@' ~ openai_docs_codex_version
+        if (openai_docs_codex_version | default('') | length) > 0
+        else ''
+      )
+    )
+  }}
 
 # Local Codex runtime binary. Set by mac.yml/ubuntu.yml after install.
 openai_docs_codex_command: ""

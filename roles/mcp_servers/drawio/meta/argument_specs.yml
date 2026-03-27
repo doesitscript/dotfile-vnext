@@ -1,13 +1,13 @@
 ---
 argument_specs:
   main:
-    short_description: Install the active draw.io MCP server and configure repo-local Cursor or VS Code targets on macOS or Ubuntu.
+    short_description: Install the active draw.io MCP server and configure repo-local Cursor, Codex, or VS Code targets on macOS or Ubuntu.
     description: >
       Installs the active draw.io MCP npm package with the nvm-managed npm,
       resolves the installed executable, removes legacy alternative packages,
-      and merges a drawio entry into the selected repo-local mcp.json targets.
-      The openapi target remains an explicit v1 stub and should fail fast if
-      selected.
+      and merges a drawio entry into the selected repo-local MCP client
+      targets. The openapi target remains an explicit v1 stub and should fail
+      fast if selected.
     options:
       drawio_mcp_state:
         type: str
@@ -37,9 +37,10 @@ argument_specs:
         elements: str
         default:
           - cursor
+          - codex
         description: >
           Target client configs to manage. Supported values are cursor, vscode,
-          and openapi. openapi is a deliberate v1 stub and fails fast if selected.
+          codex, and openapi. openapi is a deliberate v1 stub and fails fast if selected.
 
       drawio_mcp_supported_targets:
         type: list
@@ -57,6 +58,36 @@ argument_specs:
         required: false
         description: Path to the repo-local VS Code mcp.json file.
 
+      drawio_mcp_codex_config_path:
+        type: str
+        required: false
+        description: Path to the repo-local Codex config.toml file.
+
+      drawio_mcp_codex_wrapper_path:
+        type: str
+        required: false
+        description: Path to the repo-local wrapper used for Codex stdio startup.
+
+      drawio_mcp_codex_extension_port:
+        type: int
+        required: false
+        description: Dedicated draw.io extension WebSocket port for the Codex target.
+
+      drawio_mcp_codex_http_port:
+        type: int
+        required: false
+        description: Dedicated draw.io editor HTTP port for the Codex target.
+
+      drawio_mcp_codex_startup_timeout_sec:
+        type: int
+        required: false
+        description: Startup timeout used for the Draw.io Codex MCP entry.
+
+      drawio_mcp_codex_asset_path:
+        type: str
+        required: false
+        description: Asset cache path used by the Draw.io Codex MCP entry.
+
       drawio_mcp_role_path:
         type: str
         default: "roles/mcp_servers/drawio"
@@ -73,6 +104,19 @@ argument_specs:
         default:
           - "--editor"
         description: Runtime args passed to the draw.io MCP server.
+
+      drawio_mcp_env:
+        type: dict
+        required: false
+        description: Environment variables passed to the draw.io MCP server.
+
+      drawio_mcp_codex_entry:
+        type: dict
+        required: false
+        description: >
+          Structured Codex MCP entry override for the draw.io server. Supports
+          command or url plus optional args, env, cwd, startup_timeout_sec, and
+          required.
 
       drawio_mcp_bin_candidates:
         type: list

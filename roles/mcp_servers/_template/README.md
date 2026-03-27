@@ -14,6 +14,14 @@ it for real automation.
 - explicit `openapi` stub target
 - small machine-readable contract in `mcp_contract.yml`
 - required README sections and validation shape
+- reusable `template_mcp_env` surface for role-owned MCP runtime env vars
+
+For Ansible-capable MCP servers on macOS, the generated MCP env should carry
+the repo's WinRM safety vars instead of depending on interactive shell startup:
+
+- `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=yes`
+- `no_proxy=*`
+- `NO_PROXY=*`
 
 ## Apply / Verify / Undo / Change Class
 

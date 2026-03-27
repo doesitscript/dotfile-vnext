@@ -20,15 +20,7 @@
       command: "{{ mcp_ansible_entry_point }}"
       args:
         - "{{ mcp_ansible_server_script }}"
-      env:
-        PATH: "{{ mcp_ansible_server_path }}"
-        MCP_ANSIBLE_PROJECT_ROOT: "{{ mcp_ansible_project_root }}"
-        MCP_ANSIBLE_INVENTORY: "{{ mcp_ansible_inventory }}"
-        MCP_ANSIBLE_PROJECT_NAME: "{{ mcp_ansible_project_name }}"
-        MCP_ANSIBLE_COLLECTIONS_PATHS: "{{ mcp_ansible_collections_paths }}"
-        MCP_ANSIBLE_ROLES_PATH: "{{ mcp_ansible_roles_path }}"
-        MCP_ANSIBLE_ENV_ANSIBLE_CONFIG: "{{ mcp_ansible_config }}"
-        _MCP_ANSIBLE_ROLE_PATH: "{{ mcp_ansible_role_path }}"
+      env: "{{ mcp_ansible_runtime_env }}"
   when: not _mcp_json_stat.stat.exists
 
 - name: Ensure ansible-mcp entry exists in .cursor/mcp.json
@@ -46,15 +38,7 @@
           command: "{{ mcp_ansible_entry_point }}"
           args:
             - "{{ mcp_ansible_server_script }}"
-          env:
-            PATH: "{{ mcp_ansible_server_path }}"
-            MCP_ANSIBLE_PROJECT_ROOT: "{{ mcp_ansible_project_root }}"
-            MCP_ANSIBLE_INVENTORY: "{{ mcp_ansible_inventory }}"
-            MCP_ANSIBLE_PROJECT_NAME: "{{ mcp_ansible_project_name }}"
-            MCP_ANSIBLE_COLLECTIONS_PATHS: "{{ mcp_ansible_collections_paths }}"
-            MCP_ANSIBLE_ROLES_PATH: "{{ mcp_ansible_roles_path }}"
-            MCP_ANSIBLE_ENV_ANSIBLE_CONFIG: "{{ mcp_ansible_config }}"
-            _MCP_ANSIBLE_ROLE_PATH: "{{ mcp_ansible_role_path }}"
+          env: "{{ mcp_ansible_runtime_env }}"
         _merged: >-
           {{ _existing | combine({
                'mcpServers': (_existing.mcpServers | default({})) | combine({

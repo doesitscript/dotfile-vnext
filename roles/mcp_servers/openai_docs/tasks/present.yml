@@ -16,6 +16,57 @@
     - openai_docs_codex_enabled | bool
     - not (openai_docs_codex_command | default(''))
 
+- name: Check whether the project Codex config already exists
+  ansible.builtin.stat:
+    path: "{{ openai_docs_mcp_codex_config_path }}"
+  register: _openai_docs_codex_config_stat
+  when: _openai_docs_target_codex_selected | bool
+
+- name: Read the current project Codex config when present
+  ansible.builtin.slurp:
+    src: "{{ openai_docs_mcp_codex_config_path }}"
+  register: _openai_docs_codex_config_slurp
+  when:
+    - _openai_docs_target_codex_selected | bool
+    - _openai_docs_codex_config_stat.stat.exists | default(false)
+
+- name: Derive current OpenAI Docs entry state in the project Codex config
+  ansible.builtin.set_fact:
+    _openai_docs_codex_docs_entry_count: >-
+      {{
+        (
+          (
+            (_openai_docs_codex_config_slurp.content | b64decode)
+            if (_openai_docs_codex_config_stat.stat.exists | default(false))
+            else ''
+          )
+          | regex_findall('(?m)^\[mcp_servers\.openaiDeveloperDocs\]$')
+          | length
+        )
+      }}
+    _openai_docs_codex_docs_managed_block_present: >-
+      {{
+        (
+          (
+            (_openai_docs_codex_config_slurp.content | b64decode)
+            if (_openai_docs_codex_config_stat.stat.exists | default(false))
+            else ''
+          )
+          is search('(?m)^# BEGIN ANSIBLE MANAGED BLOCK: mcp_server_openaiDeveloperDocs$')
+        )
+      }}
+  when: _openai_docs_target_codex_selected | bool
+
+- name: Remove duplicate managed OpenAI Docs block from project Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ openai_docs_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ openai_docs_server_key }}"
+  when:
+    - _openai_docs_target_codex_selected | bool
+    - (_openai_docs_codex_docs_entry_count | int) > 1
+    - _openai_docs_codex_docs_managed_block_present | bool
+
 - name: Ensure OpenAI Docs entries exist in Cursor config
   ansible.builtin.include_tasks: configure_target.yml
   vars:
@@ -56,7 +107,10 @@
     _mcp_codex_target_config_path: "{{ openai_docs_mcp_codex_config_path }}"
     _mcp_codex_server_key: "{{ openai_docs_server_key }}"
     _mcp_codex_entry: "{{ openai_docs_docs_codex_entry | combine({'url': openai_docs_mcp_url}, recursive=True) }}"
-  when: _openai_docs_target_codex_selected | bool
+  when:
+    - _openai_docs_target_codex_selected | bool
+    - (_openai_docs_codex_docs_entry_count | default(0) | int) == 0
+      or (_openai_docs_codex_docs_managed_block_present | default(false) | bool)
 
 - name: Ensure local Codex entry exists in Codex config
   ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"

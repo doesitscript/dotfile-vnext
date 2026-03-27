@@ -29,6 +29,19 @@
       supports macOS and Ubuntu via npm, or an explicit drawio_mcp_command override.
   when: not (drawio_mcp_command | default(''))
 
+- name: Warm draw.io editor assets for the Codex target
+  ansible.builtin.command:
+    argv:
+      - "{{ (node_npm_executable | dirname) ~ '/node' }}"
+      - "--input-type=module"
+      - "-e"
+      - >-
+        import { ensureAssets } from
+        "{{ ((drawio_mcp_command | dirname | dirname) ~ '/lib/node_modules/' ~ drawio_mcp_package_name ~ '/build/assets/downloader.js') }}";
+        await ensureAssets({ assetPath: {{ drawio_mcp_codex_asset_path | to_json }} }, (msg) => console.error(msg));
+    creates: "{{ drawio_mcp_codex_asset_path }}/webapp/index.html"
+  when: _drawio_target_codex_selected | bool
+
 - name: Ensure draw.io entry exists in Cursor mcp.json
   ansible.builtin.include_tasks: configure_target.yml
   vars:
@@ -42,3 +55,11 @@
     _drawio_target_name: "vscode"
     _drawio_target_config_path: "{{ drawio_mcp_vscode_config_path }}"
   when: _drawio_target_vscode_selected | bool
+
+- name: Ensure draw.io entry exists in Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ drawio_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ drawio_mcp_server_key }}"
+    _mcp_codex_entry: "{{ drawio_mcp_codex_entry }}"
+  when: _drawio_target_codex_selected | bool

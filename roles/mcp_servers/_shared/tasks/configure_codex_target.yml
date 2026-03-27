@@ -18,11 +18,11 @@
     path: "{{ _mcp_codex_target_config_path }}"
     create: true
     mode: "0644"
-    marker: "# {mark} ANSIBLE MANAGED BLOCK: {{ _mcp_codex_marker_name }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: {{ _mcp_codex_effective_marker_name }}"
     insertafter: EOF
     block: "{{ _mcp_codex_rendered_block | trim }}"
   vars:
-    _mcp_codex_marker_name: "{{ _mcp_codex_marker_name | default('mcp_server_' ~ _mcp_codex_server_key) }}"
+    _mcp_codex_effective_marker_name: "{{ _mcp_codex_marker_name | default('mcp_server_' ~ _mcp_codex_server_key) }}"
     _mcp_codex_rendered_block: |
       [mcp_servers.{{ _mcp_codex_server_key }}]
       {% if _mcp_codex_entry.url is defined %}
@@ -36,6 +36,9 @@
       {% endif %}
       {% if _mcp_codex_entry.cwd is defined %}
       cwd = {{ _mcp_codex_entry.cwd | to_json }}
+      {% endif %}
+      {% if _mcp_codex_entry.startup_timeout_sec is defined %}
+      startup_timeout_sec = {{ _mcp_codex_entry.startup_timeout_sec | int }}
       {% endif %}
       {% if _mcp_codex_entry.required is defined %}
       required = {{ _mcp_codex_entry.required | to_json }}

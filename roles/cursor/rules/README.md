@@ -9,9 +9,12 @@ not activated directly.
 The repo now uses a clearer split:
 
 - `.cursorrules`
-  - always-on bootstrap layer
+  - Cursor/workspace bootstrap layer
+- `AGENTS.md` plus project `.codex/config.toml`
+  - Codex-native bootstrap layer for this repo
 - active `.cursor/rules/*.mdc`
-  - runtime rule layer
+  - runtime rule layer for Cursor and repo guidance surfaces for Codex when the
+    bootstrap instructs them to be consulted
 - `roles/cursor/rules/*.mdc.cursor`
   - source copies for durable rule content that should be managed from the repo
 
@@ -39,7 +42,10 @@ than in `AGENTS.md`, runtime config, or ad hoc skill prose.
 
 When the `cursor` Ansible role manages these files, it should:
 1. copy each tracked `*.mdc.cursor` file to `.cursor/rules/` stripping the suffix
-2. keep `.cursorrules` aligned with the active framework file names
+2. keep `.cursorrules` aligned with the active framework file names for
+   Cursor-native sessions
+3. avoid describing `.cursorrules` as a native Codex startup source unless that
+   behavior has been re-validated against current Codex docs/runtime
 
 Until that deployment task is fully automated, keep the source copy and active
 rule in sync manually for any file managed from this folder.

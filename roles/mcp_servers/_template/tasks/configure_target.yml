@@ -19,8 +19,7 @@
     _template_entry:
       command: "{{ template_mcp_command }}"
       args: "{{ template_mcp_args }}"
-      env:
-        _MCP_ANSIBLE_ROLE_PATH: "{{ template_mcp_role_path }}"
+      env: "{{ template_mcp_env }}"
   when: not _template_mcp_json_stat.stat.exists
 
 - name: Merge template server entry into existing mcp.json for {{ _template_target_name }}
@@ -41,8 +40,7 @@
         _template_entry:
           command: "{{ template_mcp_command }}"
           args: "{{ template_mcp_args }}"
-          env:
-            _MCP_ANSIBLE_ROLE_PATH: "{{ template_mcp_role_path }}"
+          env: "{{ template_mcp_env }}"
         _template_servers: >-
           {{
             (_template_existing.mcpServers | default({}))
