@@ -4,13 +4,14 @@ Stateful role for a Multipass-backed Ubuntu VM on a Windows Hyper-V host.
 
 ## Status
 
-Deprecated as an active provisioning direction.
+Archived legacy reference. No longer wired into active playbooks.
 
 The repo has abandoned Multipass as the target provisioning mechanism for
 `server-225-ubuntu` and is moving to a Hyper-V-native Ubuntu VM built from an
-Ubuntu cloud image. This role is retained for now only because it already has a
-real `present|absent` lifecycle and gives us a safe teardown path for the old
-capability before removal.
+Ubuntu cloud image. The legacy teardown has been completed and the active
+Multipass playbook surfaces have been removed. This role is retained
+temporarily only as a reference source while the Hyper-V-native replacement is
+implemented.
 
 ## Purpose
 
@@ -22,10 +23,9 @@ capability before removal.
 
 Current practical use:
 
-- drive the old Multipass capability to `absent`
-- preserve teardown/troubleshooting behavior until the replacement is proven
-- keep reusable Day-0/cloud-init patterns available for translation into the
-  upcoming Hyper-V-native role
+- reference the old lifecycle and cloud-init pattern during Hyper-V-native role
+  implementation
+- preserve the teardown logic that was used to retire the old capability
 
 Tracked in GitHub issue [#4](https://github.com/doesitscript/dotfile-vnext/issues/4).
 
@@ -198,27 +198,9 @@ will emit:
   surfaces
 - the full structured diagnostics block for the current failure
 
-Optional artifact collection is separate from that reporting layer. It can be
-invoked through the same playbook path when you want to save logs and probes to
-the controller:
-
-```bash
-.venv/bin/ansible-playbook playbooks/server_225_multipass_ubuntu_vm.yaml \
-  -i inventory/inventory.yaml \
-  --limit server-225-win \
-  --tags multipass_troubleshooting
-```
-
-or:
-
-```bash
-.venv/bin/ansible-playbook playbooks/server_225_multipass_ubuntu_vm.yaml \
-  -i inventory/inventory.yaml \
-  --limit server-225-win \
-  -e multipass_collect_troubleshooting=true
-```
-
-Those saved artifacts land under:
+Optional artifact collection used to be available through the retired
+Multipass-specific collector/playbook path. The collector entrypoint has now
+been removed, but the historical artifacts remain under:
 
 - `artifacts/troubleshooting/multipass_bridge_failure/<host>/<timestamp>/`
 
@@ -290,19 +272,6 @@ future work does not have to rediscover it from scratch:
 
 ## Example
 
-End-to-end on server-225:
-
-```bash
-.venv/bin/ansible-playbook playbooks/server_225_multipass_ubuntu_vm.yaml \
-  -i inventory/inventory.yaml \
-  --limit 'execution_nodes,server-225-win'
-```
-
-Node-specific role path:
-
-```bash
-.venv/bin/ansible-playbook playbooks/provision_server_225.yaml \
-  -i inventory/inventory.yaml \
-  --tags multipass_ubuntu_vm \
-  --limit server-225-win
-```
+There is no active example command anymore because the Multipass playbook
+surfaces were retired after teardown. Keep this role as reference material
+only while the Hyper-V-native replacement is implemented.
