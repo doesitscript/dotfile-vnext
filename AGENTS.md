@@ -9,16 +9,34 @@ Keep it small. Durable behavior lives here. Deeper rationale lives in `docs/code
 For Codex/OpenAI conversations in this repo, treat this file as the highest
 repo-level enforcement surface.
 
-Before substantive work, load the repo's active framework surfaces in this
-order:
+Before substantive work, load the repo's Codex-native framework surfaces in
+this order:
 1. `AGENTS.md`
-2. `.cursorrules` as the workspace boot/rule-loading intent
-3. active `.cursor/rules/*.mdc` files
-4. `docs/codex_framework/README.md`
-5. `docs/codex_framework/partner_process.md`
+2. project `.codex/config.toml`
+3. `docs/codex_framework/README.md`
+4. `docs/codex_framework/partner_process.md`
+5. active `framework-*` files under `.cursor/rules/`, plus any explicitly
+   referenced supporting rule files
 
-For this repo, `.cursor/rules/*.mdc` and framework docs are not optional
-background reading in Codex/OpenAI conversations. This file bootstraps them.
+For this repo, framework docs and the referenced `framework-*` rule family are
+not optional background reading in Codex/OpenAI conversations. This file
+bootstraps them.
+
+Treat `.cursorrules` as a Cursor/workspace boot-intent file, not as a Codex
+startup source that is guaranteed to be auto-injected.
+
+At the start of a fresh Codex session in this repo, before substantive work,
+output a short:
+
+`Instruction sources in effect:`
+
+Include:
+- `AGENTS.md`
+- project `.codex/config.toml`
+- any framework docs or `.cursor/rules/*.mdc` files actually loaded after this
+  bootstrap step
+- do not claim `.cursorrules` or `.cursor/rules/*.mdc` were startup-injected
+  unless that is directly evidenced in the session
 
 ## Working Contract
 

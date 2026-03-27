@@ -49,9 +49,25 @@ The capability-specific rule files no longer use numeric prefixes or double-dash
 Today the working stack is:
 1. `AGENTS.md`
 2. project Codex runtime config in `.codex/config.toml`
-3. skill discovery via `.cursor/skills/catalog.yml` and per-skill manifests
-4. MCP and live environment tools
-5. multi-agent delegation later, only after the first four are stable
+3. framework docs under `docs/codex_framework/`
+4. selected `framework-*` and supporting `.cursor/rules/*.mdc` files loaded by
+   the repo bootstrap
+5. skill discovery via `.cursor/skills/catalog.yml` and per-skill manifests
+6. MCP and live environment tools
+7. multi-agent delegation later, only after the first six are stable
+
+The current startup default is a stable single-agent Codex profile.
+Experimental multi-agent behavior remains available, but it is no longer the
+default entry path while runtime validation is still incomplete.
+
+For MCP validation, this repo now also keeps a small probe profile in project
+`.codex/config.toml`:
+- `mcp_probe_drawio`
+
+That profile is not meant for normal work. It is a low-noise validation entry
+point for `codex exec` when the goal is to isolate one MCP server from other
+runtime chatter such as SQLite warnings, app/plugin sync, or unrelated MCP
+startup.
 
 For OpenAI/Codex topics in this repo, the default authoritative-docs path is the
 `openaiDeveloperDocs` MCP server before training knowledge or generic web use.
@@ -68,6 +84,10 @@ Implemented now:
 - `Planner / Steward`
 - `Researcher`
 - official project-level Codex runtime config in `.codex/config.toml`
+- startup default profile:
+  - `stable_single_agent`
+- opt-in experimental profile:
+  - `experimental_multi_agent`
 - built-in Codex role mapping:
   - `default` -> `Planner / Steward` in the main thread
   - `explorer` -> `Researcher`
@@ -104,10 +124,12 @@ Use this hierarchy:
 
 1. `AGENTS.md`
 2. project `.codex/config.toml`
-3. `.cursorrules`
-4. active `.cursor/rules/*.mdc`
-5. `docs/codex_framework/README.md`
-6. `docs/codex_framework/partner_process.md`
+3. `docs/codex_framework/README.md`
+4. `docs/codex_framework/partner_process.md`
+5. active `framework-*` files under `.cursor/rules/`, plus any explicitly
+   referenced supporting rule files
+6. `.cursorrules` only as workspace boot intent, not as a native Codex startup
+   source
 
 In this environment, `AGENTS.md` is the highest repo-level contract and is
 responsible for bootstrapping the rest of the instruction/doc surfaces, while
@@ -138,6 +160,10 @@ Current evidence supports the following:
 
 - `AGENTS.md` is part of the active repo contract
 - the repo now has a project-level Codex config surface at `.codex/config.toml`
+- official Codex discovery behavior aligns with `AGENTS.md` and project-scoped
+  `.codex/config.toml`
+- the startup default now intentionally favors stable single-agent operation
+  over experimental multi-agent operation
 - Codex tooling and Codex MCP integration are present and configured
 - the repo clearly documents `Planner / Steward`, `Researcher`, and later
   `Executor` as framework roles
@@ -146,8 +172,15 @@ Current evidence supports the following:
 
 What still needs explicit validation:
 
-- whether `.cursor/rules/*.mdc` are actually injected/enforced in Codex runtime
-  sessions or are primarily a Cursor-side rule layer
+- whether `AGENTS.md`-bootstrapped loading of selected `.cursor/rules/*.mdc`
+  files is happening consistently enough to treat them as durable Codex process
+  inputs rather than repo guidance that must be re-read per task
+- whether `.cursor/rules/*.mdc` are actually startup-injected/enforced in Codex
+  runtime sessions or are primarily a Cursor-side rule layer
+- whether `.cursorrules` should remain in the Codex-framework conversation at
+  all beyond documenting Cursor-native behavior, given official Codex discovery
+  uses `AGENTS.md` plus fallback filenames and includes at most one instruction
+  file per directory
 - whether a given Codex session is using only one agent with multiple role
   signals, or is actually spawning separate agents
 - whether the configured `default` / `explorer` / `worker` mapping is being used
@@ -158,8 +191,42 @@ Until that validation is done, the safest language is:
 - the repo has a documented Codex framework
 - parts of that framework are operational at the process/instruction level
 - the repo now has an official Codex project-config layer for MCP and subagents
+- the default startup posture should stay on `stable_single_agent`
+- multi-agent behavior should be treated as an explicit experiment via
+  `experimental_multi_agent`
+- `.cursorrules` should not be treated as a native Codex startup source without
+  direct evidence
 - true separate-agent enforcement/execution should not be claimed without
   direct runtime evidence
+
+## MCP Probe Profiles
+
+When a repo-local MCP server needs startup validation, prefer a dedicated
+profile over ad hoc `codex exec` overrides when the pattern is likely to be
+reused.
+
+Current practical profile:
+
+- `mcp_probe_drawio`
+  - disables `sqlite`
+  - disables `apps`
+  - disables unrelated MCP servers
+  - leaves only `drawio` enabled
+
+Use it like:
+
+```bash
+codex exec \
+  -C /Users/joshc/develop/dotfile-vnext \
+  -p mcp_probe_drawio \
+  --ephemeral \
+  'Very short probe: tell me whether the drawio MCP server started successfully in this session.'
+```
+
+This is a practical repo-local documentation and validation surface, not yet a
+generalized framework abstraction. If more MCP servers need this treatment,
+either add sibling probe profiles or promote the pattern into a more reusable
+Codex validation note later.
 
 ## Active Capability Surfaces
 
