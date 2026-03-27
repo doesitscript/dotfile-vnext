@@ -21,6 +21,8 @@ Keep it small. Durable behavior lives here. Deeper rationale lives in `docs/code
 9. When commands, playbooks, or tools produce output, inspect that output before guessing at failure causes. Do not make speculative retry or tuning changes unless the available evidence supports them.
 10. One-off remote teardown or cleanup commands against provisioned hosts require explicit user approval and must be treated as a scoped exception, not the default automation path.
 11. When syntax checks, lint, idempotence checks, or runtime verification are not run, say so explicitly in the final output and state why they were skipped or unavailable.
+12. During active implementation, required live state queries against the target system should be treated as normal execution, not as optional permission checkpoints. Ask only when the action is destructive, carries hidden side effects, or depends on unresolved user intent.
+13. Non-destructive Git housekeeping during active work should be treated as normal execution. Ask only for destructive Git actions or actions with hidden history consequences.
 
 ## Repo Truths
 
@@ -55,7 +57,7 @@ Keep it small. Durable behavior lives here. Deeper rationale lives in `docs/code
    - a short draft plan
    - `Apply / Verify / Undo / Change class`
 3. Refine the draft until agreement instead of treating planning as one-shot.
-4. Keep plans in the conversation by default unless the user explicitly wants a durable artifact or the work is itself a durable process change.
+4. Keep draft plans in the conversation until they are accepted. Store approved plans under `docs/plans/` as the canonical durable artifact and mirror them to a GitHub issue as a higher-level roadmap when GitHub is available.
 5. At meaningful role transitions, briefly label the active framework surface when it helps the user track the work:
    - `Planner/Steward view:`
    - `Researcher view:`

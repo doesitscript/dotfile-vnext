@@ -79,10 +79,19 @@ The Zen of Ansible serves as a guidepost when specific practices are unclear:
 - [ ] Treat `.pre-commit-config.yaml` as the commit-time enforcement hook configuration for that quality gate
 - [ ] If active debugging, REPL-style investigation, or narrow troubleshooting makes lint/syntax/idempotence checks inappropriate for the moment, say that explicitly in the conversation and final output
 - [ ] Do not imply that checks ran just because the repo has hooks or config files; report what actually ran
+- [ ] During active implementation, run required live host-state queries when they are the normal evidence path for Ansible work; do not turn them into optional permission questions unless the query is destructive, has hidden side effects, or depends on unresolved user intent
+- [ ] Treat `ansible_troubleshooting_mode`, `debug_remote_output`, and `debug_collect_component_evidence` as the standard repo-side controls for Ansible troubleshooting output
+- [ ] In troubleshooting mode, report the component under investigation, the evidence surfaces identified, what was collected this run, what is still missing, and the actual output seen
+- [ ] Treat known-but-uncollected logs, events, CLI diagnostics, log files, and service output as explicit missing evidence surfaces; do not rely on memory or omit them because the role has not wired them yet
+- [ ] Treat still-unknown evidence categories as explicit deficits too; if service logs, event logs, vendor diagnostics, remote command stdout/stderr, or component-native structured logging have not yet been identified or researched, say so plainly
+- [ ] Treat component-native logs, events, service output, and vendor CLI diagnostics as higher-value evidence than Ansible `changed` status
+- [ ] Treat `-vv`, `-vvv`, and `-vvvv` as additive Ansible-side detail only; they do not replace logs, events, or explicit remote stdout/stderr
+- [ ] Prefer evidence tags such as `evidence` and `debug_resources` when a role exposes them, so the operator can collect diagnostics without guessing at internals
+- [ ] At the end of every Ansible-related response, include simple operator options for more evidence: `-vv`, `-vvv`, `-vvvv`, `-e debug_remote_output=true`, `-e ansible_troubleshooting_mode=true`, and any relevant evidence tags if the role or playbook exposes them
 - [ ] When staged role or node work has a clear next implementation step that should survive beyond a local note, consider elevating it into a GitHub issue instead of inventing a custom in-repo backlog mechanism
 - [ ] If the `github-issue-workflow` skill is available, use it to draft or manage issues for staged Ansible work
 - [ ] When a role README, role-local doc, or intake note materially shapes a GitHub issue for staged Ansible work, add a short issue reference there if it will help future pickup
-- [ ] Treat the GitHub issue as the highest practical planning layer for resumable staged Ansible work, while keeping enough local context in the repo to resume if GitHub is unavailable
+- [ ] Treat the repo plan under `docs/plans/` as the canonical planning layer for resumable staged Ansible work, and use the GitHub issue as the higher-level roadmap/tracking layer
 
 ## Development Workflow
 
@@ -158,6 +167,20 @@ A playbook project orchestrates landscapes and types via one or more playbooks, 
 - [ ] Use simple health checks to validate service availability
 - [ ] Implement quick validation tests for critical paths
 - [ ] Fail fast if smoke tests indicate problems
+
+### Troubleshooting Mode
+
+- [ ] On repeated failure for the same component or on explicit debugging request, enter troubleshooting mode instead of continuing normal iteration
+- [ ] Identify the failing component before proposing more fixes
+- [ ] Identify the evidence surfaces that component exposes before retrying
+- [ ] If evidence surfaces are not yet known, do diagnostic discovery first and prefer `docs/diagnostics/<component>--<os>--diagnostics.md` when it exists
+- [ ] Every troubleshooting run must explicitly list missing evidence surfaces if logs, events, CLI diagnostics, or command output were not collected
+- [ ] Every troubleshooting run must also list known-but-uncollected evidence surfaces in the conversation response, even when the playbook or role does not yet print them automatically
+- [ ] Every troubleshooting run should tell the operator the simple next-step requests available when deficits remain: research the output surfaces, wire the surfaces into the role or playbook, or rerun with troubleshooting controls enabled
+- [ ] Treat optional artifact collection as a complement to troubleshooting mode, not a replacement for the mandatory collected/missing/actual-output report
+- [ ] Prefer explicit probe tasks with `register` + `debug` over relying on module `changed` status as the main proof of state
+- [ ] Gate noisy probe output behind repo-standard variables such as `debug_remote_output` or `debug_collect_component_evidence`
+- [ ] Treat component-native logs/events plus explicit remote command output as first-class verification evidence for retries and re-applies
 
 ## Coding Standards
 

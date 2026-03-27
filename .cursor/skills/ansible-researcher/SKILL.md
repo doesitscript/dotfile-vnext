@@ -13,6 +13,8 @@ Use this skill in two cases:
    - the planner/steward escalates because the topic is too novel
    - a new tool, collection, API, or platform pattern appears
    - current context is too weak for a decision-complete plan
+   - the user asks where a component logs, emits events, shows status, or how
+     to surface more output for troubleshooting
 
 Do not use this skill for topics that are already well-grounded in the repo and current docs.
 
@@ -104,6 +106,31 @@ Evaluate candidates based on:
 
 Do not default to shell or PowerShell wrappers if a real module, collection, or role exists.
 
+When the research target is diagnostic discovery, gather evidence in this order:
+
+1. repo-stored diagnostics notes under `docs/diagnostics/`
+2. component CLI diagnostic surfaces
+3. logs, event channels, or service output
+4. verbosity controls
+5. official documentation for where the component reports state and failures
+
+The deliverable for diagnostic-discovery research is:
+
+- where the component reports output
+- how to enable more output
+- which of those surfaces are already enabled
+- which are still missing or not yet wired into the repo
+- what simple knobs the operator can turn on future runs
+- which evidence categories are still unknown or not yet researched
+
+When some surfaces are still unknown, use short-form deficit categories such as:
+
+- `service logs`
+- `event logs`
+- `vendor diagnostic output`
+- `remote command stdout/stderr`
+- `component-native structured logging`
+
 ### Phase 4: Evidence Summary and Recommendation
 
 1. Produce a concise evidence summary.
@@ -114,10 +141,14 @@ Do not default to shell or PowerShell wrappers if a real module, collection, or 
    - recommended path
    - key tradeoffs or risks
    - whether the capability has a real lifecycle control point
+   - if diagnostic discovery was the target, the available output surfaces and
+     any missing surfaces that still need wiring
 3. Keep this in the conversation by default.
 4. Only write a durable repo artifact when:
    - the user explicitly asks for one, or
    - the result is a durable process/rule change rather than just one effort's research outcome
+5. When diagnostic discovery identifies durable output locations, prefer adding
+   or updating `docs/diagnostics/<component>--<os>--diagnostics.md`.
 
 ### Phase 5: Handoff
 
@@ -136,3 +167,5 @@ Do not default to shell or PowerShell wrappers if a real module, collection, or 
 4. Surface uncertainty plainly instead of pretending a weak recommendation is strong.
 5. When handing the result back to planning or execution, mark the transition explicitly instead of changing modes silently.
 6. For Ansible work, treat missing `present|absent` lifecycle modeling as a research finding, not just a style note.
+7. Treat "find the output locations/logs/events/verbosity controls for this
+   thing" as a first-class research request that this skill should satisfy.

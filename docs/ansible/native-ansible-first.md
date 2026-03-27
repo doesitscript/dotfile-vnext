@@ -4,6 +4,10 @@ This repo should prefer native Ansible execution patterns over custom shell
 wrappers whenever the work can be expressed clearly with playbooks, roles,
 inventory, and normal `ansible-playbook` commands.
 
+This preference does not exclude `ansible-navigator`. In this repo, navigator
+is an optional terminal UX layer for exploration and inspection. It does not
+replace the native `ansible-playbook` path as the default execution model.
+
 ## Preferred shape
 
 - use focused playbooks with clear intent
@@ -40,6 +44,16 @@ instead of:
 ```bash
 ./bin/fz role-local ansible_dev_tools
 ```
+
+If you want to try navigator without changing the repo's default execution
+model, start with:
+
+```bash
+.venv/bin/ansible-navigator settings --mode stdout --ee false
+```
+
+See [docs/ansible/ansible-navigator-try-it.md](/Users/joshc/develop/dotfile-vnext/docs/ansible/ansible-navigator-try-it.md)
+for the low-commitment exploration path.
 
 ## Quality gate
 

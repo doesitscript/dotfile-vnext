@@ -1,0 +1,117 @@
+---
+description: Codex framework troubleshooting-mode contract for repeated failures and evidence-first debugging.
+alwaysApply: true
+---
+
+# Codex Framework Troubleshooting Mode
+
+This rule defines the repo-standard troubleshooting mode for repeated failures
+and explicit debugging requests.
+
+## Trigger
+
+Troubleshooting mode turns on when either of these is true:
+
+- the user explicitly asks to troubleshoot, debug, retry with more evidence, or
+  gather more output
+- the same component or capability has failed more than once in the current
+  implementation stretch
+
+The default auto-trigger is repeated failure. Manual request always enables it
+immediately.
+
+## Scope
+
+Troubleshooting mode is for active failure analysis, not normal happy-path
+execution.
+
+The agent must identify:
+
+- the component or capability being troubleshot
+- the evidence surfaces that component exposes
+- which of those surfaces were collected in the current run
+- which of those surfaces are still missing
+
+## Evidence Hierarchy
+
+Evidence should be collected in this order when available:
+
+1. component-native logs, events, status, or vendor diagnostics
+2. explicit remote command output and probe output
+3. module results and registered Ansible task output
+4. Ansible verbosity or transport output
+
+`-vvv` and `-vvvv` improve Ansible-side detail, but they do not replace:
+
+- service logs
+- Windows Event Viewer entries
+- vendor CLI diagnostics
+- explicit stdout/stderr from remote probes
+
+## Required Per-Run Reporting
+
+In troubleshooting mode, every retry, reapply, diagnostic run, or fix attempt
+must explicitly report:
+
+- `Troubleshooting mode: on`
+- `Component(s): ...`
+- `Evidence surfaces identified: ...`
+- `Collected this run: ...`
+- `Missing this run: ...`
+- `Actual output seen this run: ...`
+
+If logs, events, CLI output, or debug output were not collected, they must be
+listed under `Missing this run` every time.
+
+Known-but-uncollected surfaces are mandatory deficits, not optional reminders.
+If the agent knows a component exposes additional logs, events, files, service
+output, or CLI diagnostics that were not collected in the current run, those
+must be listed explicitly as missing even if they are not yet wired into the
+repo.
+
+If some evidence categories have not yet been identified or researched, report
+them explicitly as not done or still unknown. Use short-form categories such as:
+
+- `service logs`
+- `event logs`
+- `vendor diagnostic output`
+- `remote command stdout/stderr`
+- `component-native structured logging`
+
+## Required Behavior
+
+- Do not iterate on fixes without first-class evidence once troubleshooting mode
+  is active.
+- If the evidence surfaces for a component are not yet known, the first step is
+  diagnostic discovery.
+- Prefer stored diagnostic notes under `docs/diagnostics/` when they exist.
+- If no diagnostics note exists, research and create one before further blind
+  fix iteration.
+- In troubleshooting mode, the conversation response must also name any
+  known-but-uncollected evidence surfaces, not just rely on task output to do
+  it implicitly.
+- In troubleshooting mode, the conversation response must also name any
+  still-unknown evidence categories that have not yet been researched or wired.
+- When unknown surfaces exist, tell the user how to request the next step in
+  simple terms:
+  - research what output surfaces are available
+  - wire those surfaces into the role or playbook
+  - rerun with troubleshooting controls enabled
+- Optional artifact collection is support work only. It does not replace the
+  mandatory per-run troubleshooting report.
+
+## Operator Options
+
+At the end of every Ansible-related response, include simple evidence knobs the
+user can enable:
+
+- `-vv`
+- `-vvv`
+- `-vvvv`
+- `-e debug_remote_output=true`
+- `-e ansible_troubleshooting_mode=true`
+- `--tags evidence`
+- `--tags debug_resources`
+
+Only mention the tags when the relevant role or playbook exposes them. If a
+surface is not wired yet, say so plainly.

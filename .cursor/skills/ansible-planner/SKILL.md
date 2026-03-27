@@ -97,7 +97,7 @@ When this skill is invoked, you will adopt the `Planner` agent persona and execu
 
 ### Phase 4: Iterative Refinement
 
-1. Treat the plan as a conversation artifact by default.
+1. Treat the draft as a conversation artifact until the user accepts it.
 2. Keep refining it until the user agrees.
 3. If corrected:
    - revise the draft
@@ -114,7 +114,8 @@ When this skill is invoked, you will adopt the `Planner` agent persona and execu
    - `Apply / Verify / Undo / Change class`
    - lifecycle control point for the capability
    - assumptions chosen
-3. Keep the plan in the conversation unless the user explicitly asks for a durable repo artifact or the work is itself a durable process/rule change.
+3. Once the plan is accepted, store it under `docs/plans/` as the canonical durable artifact.
+4. When GitHub is available and the work benefits from backlog tracking, mirror the plan into a higher-level GitHub issue that points back to the repo plan.
 
 ### Guardrails
 

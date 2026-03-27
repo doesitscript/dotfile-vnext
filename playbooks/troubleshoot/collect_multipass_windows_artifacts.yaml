@@ -1,0 +1,23 @@
+---
+# On-demand artifact collection for Multipass/Hyper-V troubleshooting on the
+# Windows host. This complements, but does not replace, the mandatory
+# troubleshooting-mode reporting in the main playbook/role path.
+#
+# Example:
+#   .venv/bin/ansible-playbook playbooks/troubleshoot/collect_multipass_windows_artifacts.yaml \
+#     -i inventory/inventory.yaml \
+#     --limit server-225-win
+#
+
+- name: Collect Multipass Windows troubleshooting artifacts
+  hosts: server-225-win
+  gather_facts: false
+
+  tasks:
+    - name: Collect Multipass Windows troubleshooting artifacts
+      ansible.builtin.include_role:
+        name: troubleshooting_collectors
+        tasks_from: multipass_windows.yml
+      tags:
+        - multipass_troubleshooting
+        - collect_troubleshooting
