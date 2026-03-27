@@ -34,6 +34,18 @@ These filenames intentionally avoid a `codex-` prefix so they can remain as
 agent-agnostic as practical while still being usable by the Codex framework in
 this repo.
 
+Those rule surfaces are also the right place to encode decision-type tool or
+resource requirements, such as "for Ansible design questions, fetch the Ansible
+best-practices resource and consult the design-philosophy tool before proposing
+structure."
+
+That compatibility pattern should stay explicit:
+
+- workflow-role and decision-type tool routing belongs in `framework-*`
+- source-managed copies of those rule surfaces live under `roles/cursor/rules/`
+- implementation-specific runtime config such as `.codex/config.toml` stays
+  outside this compatibility layer
+
 ## Current Codex/OpenAI Implementation
 
 The current Codex/OpenAI implementation consumes those compatible surfaces
@@ -102,3 +114,5 @@ This folder is the source of truth for:
 - why `framework-*` names exist
 - how those surfaces should remain compatible across implementations
 - what should be kept portable as the framework matures
+- the rule that decision-type MCP/doc enforcement belongs in framework-owned
+  rule surfaces rather than in implementation-specific runtime config

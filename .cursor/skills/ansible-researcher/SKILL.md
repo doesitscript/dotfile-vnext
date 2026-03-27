@@ -97,6 +97,23 @@ Gather evidence in this order:
 3. Official documentation and primary sources
 4. Existing external implementations only when needed
 
+For Ansible-specific questions, the default MCP authority set is:
+- design / idiom / best-practice question
+  - `ansible.zen_of_ansible`
+  - `guidelines://ansible-content-best-practices`
+  - relevant registered `@doc` sources
+- environment / Python / collections / MCP runtime-env question
+  - `ansible.ade_environment_info`
+  - `ansible.adt_check_env` when the question is specifically ADT health
+- inventory truth question
+  - `ansible-mcp.inventory_graph`
+  - `ansible-mcp.inventory_find_host`
+  - `ansible-mcp.inventory_parse` when a full merged view is needed
+- live host state question
+  - `ansible-mcp.ansible_gather_facts`
+- OpenAI / Codex / MCP / config question
+  - `openaiDeveloperDocs`
+
 Evaluate candidates based on:
 - maturity
 - support

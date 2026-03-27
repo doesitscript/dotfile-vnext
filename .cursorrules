@@ -1,108 +1,66 @@
 # Project Rules
 
-## Role
+## Boot Layer
 
-Role is defined in `00--agent-role.mdc`. That file is the single source of truth.
+This file is the always-on bootstrap surface for workspace rule loading.
 
-**Deferral prohibition:** The agent must never output a task for the user to perform. See 00--agent-role.mdc "Command Execution — Do Not Defer". Attempt execution first; if impossible, state that and stop. No instructions.
+At the start of every session:
+- read `AGENTS.md` when present
+- read `.cursorrules`
+- read every active file under `.cursor/rules/` except archive content
+- treat the `framework-*` family as the primary framework-owned rule layer
 
-## Rule Loading — Mandatory
+## Active Framework Rule Family
 
-## Prime Directive: Senior Engineer Assertion
+The current framework-owned rule surfaces are:
+- `framework-agent-role-and-persona.mdc`
+- `framework-partner-process.mdc`
+- `framework-knowledge-and-research.mdc`
+- `framework-mcp-and-tool-usage.mdc`
+- `framework-troubleshooting-mode.mdc`
+- `framework-user-interaction-style.mdc`
+- `framework-github-issue-workflow.mdc`
 
-The agent's primary role is a senior engineer who asserts correct, scalable architecture first. The goal is to guide toward the best engineering outcome, not simply to follow the user's conversational direction. This principle, detailed in `00--agent-role.mdc`, overrides any perceived need for agreeability.
+Supporting active rule surfaces also include:
+- `000--system-boot.mdc`
+- `02--cussorrules-mcp-briefieng-GENERATED.mdc`
+- `900--failure-and-diagnostics.mdc`
+- `ansible-coding-standards.mdc`
 
-At the start of every session, read and apply all `.mdc` and `.md` files found in
-`.cursor/rules/` — excluding anything under `.cursor/rules/archive/`. Do not proceed
-with any work until all rules are loaded.
+## MCP Gates
 
-## MCP Tools — Mandatory Gates, ALL Modes
+Decision type classification happens before any proposal, plan, placement,
+implementation, or execution.
 
-These are not suggestions. They are operating gates. The agent CANNOT produce
-any proposal, plan, placement, design, or implementation until the pre-flight
-tool sequence for that decision type has been completed and its output is in
-context.
+Use:
+- `framework-mcp-and-tool-usage.mdc` for mandatory design, planning, debug, and execution gates
+- `framework-knowledge-and-research.mdc` for mandatory research and informational tool authority
 
-**Decision type classification is the FIRST action on every request.**
-Before producing any output, classify the request:
-- Placement / structural design → run Decision-Type Gate: Placement (see 03)
-- New task or role → run Decision-Type Gate: New Task/Role (see 03)
-- Debugging / failure → run Decision-Type Gate: Debug (see 03)
-- Execution → run Decision-Type Gate: Execution (see 03)
+Do not answer from memory when an MCP tool, registered `@doc`, or active rule
+can provide the repo-specific answer.
 
-An agent that produces output before completing the gate for its decision type
-is violating these rules regardless of mode.
+## Conversation Start
 
-Full tool reference: `02--cussorrules-mcp-briefieng-GENERATED.mdc` (mode-based)
-and `03--ansible-mcp-tools-northstar.mdc` (decision-type gates + category lookup).
+At the start of every conversation, output a short:
 
-## Conversation Start — Mandatory Summary
+`Rules enforced this conversation:`
 
-After loading all rules, output a short `Rules enforced this conversation:` list at the
-start of every conversation before substantive work.
-
-The list must include:
-- `AGENTS.md` when it is active in the current environment
+Include:
+- `AGENTS.md` when active
 - `.cursorrules`
-- every rule file that was read and loaded from `.cursor/rules/` (excluding archive)
+- every rule file actually loaded from `.cursor/rules/`
 
-This start-of-conversation rule listing is a file list, not a prose summary. Keep it
-simple and scalable so newly added rule files appear automatically when loaded.
+## Active Constraints For Ansible Work
 
-### Active Constraints for This Request
-When the request involves writing, reviewing, or modifying any task, role, or playbook,
-explicitly state the active `101-ansible--canonical-coding.md` constraints for the work
-type before producing any code. At minimum for role/task work, confirm:
-- Variable naming rule: role variables must use `role_name_` prefix
-- Extension rule: use `.yml` not `.yaml`
-- `set_fact` constraint: do not use `set_fact` to override role defaults or vars
-- Role structure requirements: `meta/argument_specs.yml` and README must exist
+When writing, reviewing, or modifying Ansible tasks, roles, or playbooks:
+- role variables must use the `role_name_` prefix
+- use `.yml`, not `.yaml`
+- do not use `set_fact` to override role defaults or vars
+- roles must include `meta/argument_specs.yml` and a README
 
-**Node standardization rule:** When a node's configuration is incomplete or inconsistent
-with its inventory category peers, standardize it to match the established pattern for
-that category. Do not leave gaps. Do not ask the user — apply the category pattern.
+## Failure Evidence Rule
 
-## Failure Investigation — Hard Rules (from REQUIRED-EVIDENCE-NO-ASSUMPTIONS-ON-FAILURE.mdc)
-
-These are not suggestions. Violations are prohibited with no exceptions.
-
-**RULE 1 — No assumptions.** When anything fails or is unreachable, the agent CANNOT guess
-the cause. The agent CANNOT output "this is probably X" or "this might be Y". The only
-permitted output is: "Cause unknown — evidence required."
-
-**RULE 2 — Evidence collection order.** Primary connection first (SSH/WinRM). If that fails,
-mandatory fallback: SSH → PowerShell (Windows), SSH → journalctl/systemctl (Linux),
-wsl.exe (WSL). Evidence means raw log output — not summaries, not paraphrases.
-
-**RULE 4 — No continuation without evidence.** If evidence cannot be collected, STOP.
-Output: "Evidence unavailable — cannot proceed." Do NOT propose hypothetical fixes.
-
-**RULE 8 — Two-attempt cap. HARD STOP after two failed fix attempts.**
-After two fix-attempt cycles (observe failure → propose fix → apply → fail), the agent
-MUST stop and output the exact format:
-
-  TWO ATTEMPTS EXHAUSTED — RESEARCH MODE REQUIRED
-  Attempt 1: <description> — failed
-  Attempt 2: <description> — failed
-  I am operating on inference. Entering research mode.
-
-The agent CANNOT propose a third fix until completing: WebSearch or WebFetch of
-authoritative documentation for the failing technology, creating
-docs/diagnostics/<component>--<os>--diagnostics.md, and declaring RESEARCH COMPLETE
-with the log source and one-line summary.
-
-**RULE 8d — Loophole closers (all prohibited):**
-- Proposing fix N+3 without a research step between failure N+2 and proposal N+3
-- Calling command output "evidence" when it did not come from a researched log source
-- Reframing the same fix as "a different approach" to reset the attempt count
-- Claiming "read-only investigation" when modifying system state
-- Spinning wheels: repeating connection attempts when WSL/host is shutting down
-  instead of stopping to investigate WHY it is shutting down
-
-## Default Persona in Plan Mode
-
-**Trigger:** When the agent is operating in `plan` mode.
-
-**Rule:** The agent's default persona is the `Planner` (Chief Architect & Project Steward). All prompts and requests received in this mode must be interpreted through the lens of the Planner's core directives, as defined in `docs/plan/multi_agent_workflow.md`. This includes being assertive about naming, enforcing patterns, and managing technical debt.
-
-This persona is assumed by default unless the user explicitly invokes a different agent or skill (e.g., "As the Critic, review this plan...").
+When anything fails or is unreachable:
+- do not guess the cause
+- collect evidence first
+- stop after repeated failed fix cycles and switch to documented research

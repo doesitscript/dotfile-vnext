@@ -1,66 +1,45 @@
 # Cursor Rules — Source Storage
 
-This folder is the **source of truth** for all Cursor AI rules used in this project.
-Files here are stored with a `.cursor` suffix so Cursor does not activate them directly.
-The Ansible `cursor` role is responsible for deploying them to their active locations.
+This folder stores the source-of-truth copies for rule surfaces that the repo
+intends to preserve and deploy. Files here use the `.cursor` suffix so they are
+not activated directly.
 
----
+## Rule Ownership Model
 
-## Rule Hierarchy (Three Layers)
+The repo now uses a clearer split:
 
-### Layer 1 — Always On: `.cursorrules` (project root)
-**Most reliable.** A single flat file at the root of the project.
-Cursor injects its entire contents into the system prompt for **every agent session**,
-with no exceptions. Context window pressure does not affect it.
+- `.cursorrules`
+  - always-on bootstrap layer
+- active `.cursor/rules/*.mdc`
+  - runtime rule layer
+- `roles/cursor/rules/*.mdc.cursor`
+  - source copies for durable rule content that should be managed from the repo
 
-- Bootstraps awareness of all other rules at session start
-- Explicitly lists every active `.mdc` rule so the agent knows to load them
-- Contains: Ansible Architect role context, MCP tools mandate, structural guidelines
-- Stored here as: `.cursorrules.cursor`
-- Active location: `../../.cursorrules`
+For the framework capability, the primary source-managed family is now:
+- `framework-mcp-and-tool-usage.mdc.cursor`
+- `framework-knowledge-and-research.mdc.cursor`
 
-### Layer 2 — Project Rules: `.cursor/rules/*.mdc`
-**Conditionally reliable.** A folder of `.mdc` files with YAML frontmatter.
-Rules with `alwaysApply: true` are intended to load every session, but Cursor's
-relevance engine may skip them when the context window fills. Layer 1 compensates
-by listing all rule names so the agent knows to seek them out.
+Those are the authority surfaces for:
+- decision-type MCP tool enforcement
+- tool/resource authority by workflow role and question type
 
-Each `.mdc` file covers a specific domain. Active files:
+## Framework Rule Direction
 
-| File | Purpose |
-|---|---|
-| `ansible-mcp-first.mdc` | MCP tool priority — full tool reference for all 3 servers |
-| `ansible-declarative-enforcement.mdc` | No scripting, use native modules, violation levels |
-| `ansible-kubernetes-declarative.mdc` | Kubernetes label/taint declarative enforcement |
-| `winrm-ansible.mdc` | WinRM env setup required before any Windows Ansible work |
-| `k3s-cluster.mdc` | k3s lab cluster constraints, GPU boundary, anti-overengineering |
-| `REQUIRED-EVIDENCE-NO-ASSUMPTIONS-ON-FAILURE.mdc` | Failure investigation protocol |
-| `devops.mdc` | General DevOps and Ansible standards |
+The framework-owned rule family under `.cursor/rules/` is intentionally
+implementation-agnostic where possible:
 
-Stored here with `.cursor` suffix appended (e.g. `k3s-cluster.mdc.cursor`).
-Active location: `../../.cursor/rules/`
+- `framework-*` for portable framework behavior
+- `ansible-*` for domain-specific Ansible behavior
+- `github-*` for GitHub workflow behavior
 
-### Layer 3 — Global: Cursor Settings → Rules for AI
-**Most global.** Configured in Cursor's user settings, not in this repo.
-Applies across **all projects**, not just this one. Use for cross-project standards
-that should never be absent regardless of which repo is open.
-
----
+Decision-type tool/resource routing belongs in the `framework-*` family rather
+than in `AGENTS.md`, runtime config, or ad hoc skill prose.
 
 ## Deploying Rules
 
-When the `cursor` Ansible role is wired to deploy rules, it will:
-1. Copy each `*.mdc.cursor` file to `.cursor/rules/` stripping the `.cursor` suffix
-2. Copy `.cursorrules.cursor` to `.cursorrules` at the project root
+When the `cursor` Ansible role manages these files, it should:
+1. copy each tracked `*.mdc.cursor` file to `.cursor/rules/` stripping the suffix
+2. keep `.cursorrules` aligned with the active framework file names
 
-Until that task is written, keep `.cursor/rules/` and `.cursorrules` in sync manually
-by editing both the active file and its `.cursor` counterpart here.
-
----
-
-## Adding a New Rule
-
-1. Create the rule as `roles/cursor/rules/<name>.mdc.cursor`
-2. Copy it to `.cursor/rules/<name>.mdc`
-3. Add the filename and purpose to the table in Layer 2 above
-4. Add it to the rule list in `.cursorrules` (Layer 1) so it is always announced at session start
+Until that deployment task is fully automated, keep the source copy and active
+rule in sync manually for any file managed from this folder.
