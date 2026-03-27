@@ -10,13 +10,14 @@ Each subdirectory is an Ansible role that installs and configures one MCP
 | `redhat-ansible` | Red Hat Ansible Cursor extension MCP | Node.js (extension build) | interactive/editor | Cursor | [redhat.ansible](https://marketplace.visualstudio.com/items?itemName=redhat.ansible) |
 | `mcp-sysoperator` | Infrastructure ops (file, shell, Terraform) | Node.js (npm) | launcher | Cursor | [tarnover/mcp-sysoperator](https://github.com/tarnover/mcp-sysoperator) |
 | `ansible-mcp` | Ansible playbook/inventory intelligence | Python (pip + venv) | launcher | Cursor | [bsahane/mcp-ansible](https://github.com/bsahane/mcp-ansible) |
-| `openai_docs` | OpenAI developer docs (search + read) | HTTP + local Codex | launcher | Cursor | [Docs MCP](https://developers.openai.com/resources/docs-mcp) |
-| `drawio` | draw.io MCP tool server | Node.js (npm) | launcher | Cursor, VS Code, OpenAPI stub | [draw.io AI + MCP](https://www.drawio.com/doc/faq/ai-drawio-generation) |
+| `openai_docs` | OpenAI developer docs (search + read) | HTTP + local Codex | launcher | Cursor, Codex | [Docs MCP](https://developers.openai.com/resources/docs-mcp) |
+| `drawio` | draw.io MCP tool server | Node.js (npm) | interactive/editor | Cursor, VS Code, OpenAPI stub | [lgazo/drawio-mcp-server](https://github.com/lgazo/drawio-mcp-server) |
 
 ## Canonical Pattern
 
 - `roles/mcp_servers/_template/` is the MCP role scaffold.
-- `roles/mcp_servers/drawio/` is the first canonical example of the target-aware pattern.
+- `roles/mcp_servers/drawio/` is the first canonical JSON-target example.
+- `roles/mcp_servers/openai_docs/` is the first Codex-target example.
 - `playbooks/mac/mcp_servers.yaml` is the focused controller-side control surface for local MCP convergence on the Mac.
 
 ## Target Model
@@ -28,12 +29,15 @@ For v1, new MCP roles should use:
 - repo-local config targets:
   - `.cursor/mcp.json`
   - `.vscode/mcp.json`
+- project Codex config target:
+  - `.codex/config.toml`
 - `openapi` as an explicit stub target that fails fast until implemented
 
 Target tags are available for focused runs:
 
 - `mcp_target_cursor`
 - `mcp_target_vscode`
+- `mcp_target_codex`
 - `mcp_target_openapi`
 
 ## Targeting Individual Servers

@@ -1,0 +1,49 @@
+---
+- name: Validate Codex MCP entry shape for {{ _mcp_codex_server_key }}
+  ansible.builtin.assert:
+    that:
+      - ((_mcp_codex_entry.url is defined) | bool) != ((_mcp_codex_entry.command is defined) | bool)
+    fail_msg: >-
+      Codex MCP entry {{ _mcp_codex_server_key }} must define exactly one of
+      url or command.
+
+- name: Ensure Codex target directory exists for {{ _mcp_codex_server_key }}
+  ansible.builtin.file:
+    path: "{{ _mcp_codex_target_config_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Ensure Codex MCP block exists for {{ _mcp_codex_server_key }}
+  ansible.builtin.blockinfile:
+    path: "{{ _mcp_codex_target_config_path }}"
+    create: true
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: {{ _mcp_codex_marker_name }}"
+    insertafter: EOF
+    block: "{{ _mcp_codex_rendered_block | trim }}"
+  vars:
+    _mcp_codex_marker_name: "{{ _mcp_codex_marker_name | default('mcp_server_' ~ _mcp_codex_server_key) }}"
+    _mcp_codex_rendered_block: |
+      [mcp_servers.{{ _mcp_codex_server_key }}]
+      {% if _mcp_codex_entry.url is defined %}
+      url = {{ _mcp_codex_entry.url | to_json }}
+      {% endif %}
+      {% if _mcp_codex_entry.command is defined %}
+      command = {{ _mcp_codex_entry.command | to_json }}
+      {% endif %}
+      {% if (_mcp_codex_entry.args | default([]) | length) > 0 %}
+      args = {{ _mcp_codex_entry.args | to_json }}
+      {% endif %}
+      {% if _mcp_codex_entry.cwd is defined %}
+      cwd = {{ _mcp_codex_entry.cwd | to_json }}
+      {% endif %}
+      {% if _mcp_codex_entry.required is defined %}
+      required = {{ _mcp_codex_entry.required | to_json }}
+      {% endif %}
+      {% if (_mcp_codex_entry.env | default({}) | length) > 0 %}
+
+      [mcp_servers.{{ _mcp_codex_server_key }}.env]
+      {% for _mcp_codex_env_item in (_mcp_codex_entry.env | dict2items | sort(attribute='key')) %}
+      {{ _mcp_codex_env_item.key }} = {{ _mcp_codex_env_item.value | to_json }}
+      {% endfor %}
+      {% endif %}

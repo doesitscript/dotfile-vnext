@@ -1,4 +1,15 @@
 ---
+- name: Remove legacy or alternative draw.io MCP npm packages
+  community.general.npm:
+    name: "{{ item }}"
+    global: true
+    state: absent
+    executable: "{{ node_npm_executable }}"
+  loop: "{{ drawio_mcp_legacy_packages }}"
+  timeout: 300
+  when:
+    - drawio_mcp_legacy_packages | length > 0
+
 - name: Install draw.io MCP on macOS
   ansible.builtin.import_tasks: mac.yml
   when:

@@ -10,6 +10,7 @@ it for real automation.
 - one lifecycle variable: `<server>_state: present|absent`
 - repo-local target model via `<server>_targets`
 - shared Cursor / VS Code `mcp.json` merge pattern
+- shared Codex `config.toml` block-management pattern
 - explicit `openapi` stub target
 - small machine-readable contract in `mcp_contract.yml`
 - required README sections and validation shape

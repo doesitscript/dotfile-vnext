@@ -31,7 +31,8 @@ argument_specs:
           - cursor
         description: >
           Target client configs to manage. Supported values are cursor, vscode,
-          and openapi. openapi is a stub in v1 and should fail fast if selected.
+          codex, and openapi. openapi is a stub in v1 and should fail fast if
+          selected.
 
       template_mcp_supported_targets:
         type: list
@@ -39,6 +40,7 @@ argument_specs:
         default:
           - cursor
           - vscode
+          - codex
           - openapi
         description: Supported target names for validation and guardrails.
 
@@ -51,6 +53,11 @@ argument_specs:
         type: str
         required: false
         description: Path to the VS Code mcp.json file.
+
+      template_mcp_codex_config_path:
+        type: str
+        required: false
+        description: Path to the project Codex config.toml file.
 
       template_mcp_role_path:
         type: str
@@ -67,3 +74,12 @@ argument_specs:
         elements: str
         default: []
         description: Optional runtime args passed to the MCP server.
+
+      template_mcp_codex_entry:
+        type: dict
+        required: false
+        default: {}
+        description: >
+          Structured Codex MCP entry used when the codex target is selected.
+          Define exactly one of url or command, plus optional args, env, cwd,
+          and required.

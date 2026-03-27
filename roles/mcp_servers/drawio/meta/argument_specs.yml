@@ -1,12 +1,13 @@
 ---
 argument_specs:
   main:
-    short_description: Install the draw.io MCP tool server and configure repo-local Cursor or VS Code targets on macOS or Ubuntu.
+    short_description: Install the active draw.io MCP server and configure repo-local Cursor or VS Code targets on macOS or Ubuntu.
     description: >
-      Installs the official draw.io MCP npm package with the nvm-managed npm,
-      resolves the installed executable, and merges a drawio entry into the
-      selected repo-local mcp.json targets. The openapi target remains an
-      explicit v1 stub and should fail fast if selected.
+      Installs the active draw.io MCP npm package with the nvm-managed npm,
+      resolves the installed executable, removes legacy alternative packages,
+      and merges a drawio entry into the selected repo-local mcp.json targets.
+      The openapi target remains an explicit v1 stub and should fail fast if
+      selected.
     options:
       drawio_mcp_state:
         type: str
@@ -18,8 +19,8 @@ argument_specs:
 
       drawio_mcp_package_name:
         type: str
-        default: "@drawio/mcp"
-        description: npm package name for the draw.io MCP server.
+        default: "drawio-mcp-server"
+        description: npm package name for the active draw.io MCP server.
 
       drawio_mcp_server_key:
         type: str
@@ -69,11 +70,18 @@ argument_specs:
       drawio_mcp_args:
         type: list
         elements: str
-        default: []
-        description: Optional runtime args passed to the draw.io MCP server.
+        default:
+          - "--editor"
+        description: Runtime args passed to the draw.io MCP server.
 
       drawio_mcp_bin_candidates:
         type: list
         elements: str
         required: false
         description: Candidate executable paths checked after npm install. First existing path wins.
+
+      drawio_mcp_legacy_packages:
+        type: list
+        elements: str
+        required: false
+        description: Alternative draw.io MCP npm packages removed during present-state convergence.

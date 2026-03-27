@@ -1,14 +1,14 @@
 # drawio — draw.io MCP tool server
 
-Installs the official draw.io MCP tool server from npm and manages repo-local
-MCP client config for Cursor and VS Code. The `openapi` target is present as an
+Installs the active draw.io MCP server from npm and manages repo-local MCP
+client config for Cursor and VS Code. The `openapi` target is present as an
 explicit v1 stub and fails fast if selected.
 
 ## Classification
 
 - Runtime: Node.js
 - Install method: npm
-- Interaction model: launcher
+- Interaction model: interactive/editor
 - Verify mode: tool listing plus editor-launch validation
 - Supported targets: Cursor, VS Code, OpenAPI stub
 
@@ -21,8 +21,9 @@ explicit v1 stub and fails fast if selected.
 
 ## What this role does
 
-- macOS: installs `@drawio/mcp` globally using the nvm-managed npm already used elsewhere in this repo.
+- macOS: installs `drawio-mcp-server` globally using the nvm-managed npm already used elsewhere in this repo.
 - Ubuntu: installs the same package globally using the resolved nvm npm.
+- Legacy cleanup: removes the previous `@drawio/mcp` package if it is present so the lgazo server is the only managed local draw.io server.
 - Cursor: creates or merges a `drawio` entry into `.cursor/mcp.json`.
 - VS Code: creates or merges a `drawio` entry into `.vscode/mcp.json`.
 - OpenAPI: deliberately fails fast until that target is implemented.
@@ -33,15 +34,16 @@ explicit v1 stub and fails fast if selected.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `drawio_mcp_state` | `present` | Ensure the package/config is present or absent. |
-| `drawio_mcp_package_name` | `@drawio/mcp` | Official draw.io MCP npm package. |
+| `drawio_mcp_package_name` | `drawio-mcp-server` | Active draw.io MCP npm package. |
 | `drawio_mcp_server_key` | `drawio` | Key written under `mcpServers`. |
 | `drawio_mcp_project_root` | `{{ dotfiles_home }}` | Repo root used to derive default config targets. |
 | `drawio_mcp_targets` | `['cursor']` | Target client configs to manage. |
 | `drawio_mcp_cursor_config_path` | `{{ drawio_mcp_project_root }}/.cursor/mcp.json` | Repo-local Cursor target path. |
 | `drawio_mcp_vscode_config_path` | `{{ drawio_mcp_project_root }}/.vscode/mcp.json` | Repo-local VS Code target path. |
 | `drawio_mcp_command` | `""` | Resolved executable path. Setting this skips install tasks for validation or custom installs. |
-| `drawio_mcp_args` | `[]` | Optional runtime args passed to the server. |
+| `drawio_mcp_args` | `['--editor']` | Runtime args passed to the server. |
 | `drawio_mcp_bin_candidates` | `[]` | Optional override for executable candidates checked after npm install. |
+| `drawio_mcp_legacy_packages` | `['@drawio/mcp']` | Previous draw.io MCP npm packages removed during present-state convergence. |
 
 ## Tags
 
@@ -73,5 +75,4 @@ the draw.io-specific validation artifacts.
 
 ## Reference
 
-- https://www.drawio.com/doc/faq/ai-drawio-generation
-- https://github.com/jgraph/drawio-mcp
+- https://github.com/lgazo/drawio-mcp-server
