@@ -1,0 +1,51 @@
+---
+- name: Ensure target directory exists for {{ _drawio_target_name }}
+  ansible.builtin.file:
+    path: "{{ _drawio_target_config_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Check whether mcp.json exists for {{ _drawio_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _drawio_target_config_path }}"
+  register: _drawio_target_mcp_json_stat
+
+- name: Create mcp.json with draw.io entry for {{ _drawio_target_name }}
+  ansible.builtin.copy:
+    dest: "{{ _drawio_target_config_path }}"
+    mode: "0644"
+    content: "{{ {'mcpServers': {(drawio_mcp_server_key): _drawio_entry}} | to_nice_json }}\n"
+  vars:
+    _drawio_entry:
+      command: "{{ drawio_mcp_command }}"
+      args: "{{ drawio_mcp_args }}"
+      env:
+        _MCP_ANSIBLE_ROLE_PATH: "{{ drawio_mcp_role_path }}"
+  when: not _drawio_target_mcp_json_stat.stat.exists
+
+- name: Merge draw.io entry into existing mcp.json for {{ _drawio_target_name }}
+  when: _drawio_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _drawio_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _drawio_target_config_path }}"
+      register: _drawio_target_mcp_json_raw
+
+    - name: Write merged mcp.json for {{ _drawio_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _drawio_target_config_path }}"
+        content: "{{ _drawio_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _drawio_target_existing: "{{ _drawio_target_mcp_json_raw.content | b64decode | from_json }}"
+        _drawio_entry:
+          command: "{{ drawio_mcp_command }}"
+          args: "{{ drawio_mcp_args }}"
+          env:
+            _MCP_ANSIBLE_ROLE_PATH: "{{ drawio_mcp_role_path }}"
+        _drawio_target_servers: >-
+          {{
+            (_drawio_target_existing.mcpServers | default({}))
+            | combine({(drawio_mcp_server_key): _drawio_entry})
+          }}
+        _drawio_target_merged: "{{ _drawio_target_existing | combine({'mcpServers': _drawio_target_servers}) }}"

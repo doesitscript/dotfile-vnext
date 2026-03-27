@@ -1,0 +1,33 @@
+---
+- name: Check whether mcp.json exists for {{ _template_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _template_target_config_path }}"
+  register: _template_target_mcp_json_stat
+
+- name: Remove template server entry from mcp.json for {{ _template_target_name }}
+  when: _template_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _template_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _template_target_config_path }}"
+      register: _template_target_mcp_json_raw
+
+    - name: Write mcp.json without the template server entry for {{ _template_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _template_target_config_path }}"
+        content: "{{ _template_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _template_target_existing: "{{ _template_target_mcp_json_raw.content | b64decode | from_json }}"
+        _template_target_filtered_servers: >-
+          {{
+            (_template_target_existing.mcpServers | default({}))
+            | dict2items
+            | rejectattr('key', 'equalto', template_mcp_server_key)
+            | items2dict
+          }}
+        _template_target_merged: >-
+          {{
+            _template_target_existing
+            | combine({'mcpServers': _template_target_filtered_servers})
+          }}

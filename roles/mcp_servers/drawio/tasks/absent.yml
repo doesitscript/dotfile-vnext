@@ -1,0 +1,22 @@
+---
+- name: Remove draw.io MCP package via npm
+  community.general.npm:
+    name: "{{ drawio_mcp_package_name }}"
+    global: true
+    state: absent
+    executable: "{{ node_npm_executable }}"
+  timeout: 300
+
+- name: Remove draw.io entry from Cursor mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _drawio_target_name: "cursor"
+    _drawio_target_config_path: "{{ drawio_mcp_cursor_config_path }}"
+  when: _drawio_target_cursor_selected | bool
+
+- name: Remove draw.io entry from VS Code mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _drawio_target_name: "vscode"
+    _drawio_target_config_path: "{{ drawio_mcp_vscode_config_path }}"
+  when: _drawio_target_vscode_selected | bool

@@ -1,85 +1,82 @@
 # MCP Server Roles
 
 Each subdirectory is an Ansible role that installs and configures one MCP
-(Model Context Protocol) server for IDE integration (Cursor / VS Code).
+(Model Context Protocol) server for repo-local client integration.
 
 ## Roles
 
-| Role | Server | Runtime | Tags | Repo |
-|---|---|---|---|---|
-| `redhat-ansible` | Red Hat Ansible Cursor extension MCP | Node.js (Cursor extension) | `["ansible", "workspace"]` | [redhat.ansible](https://marketplace.visualstudio.com/items?itemName=redhat.ansible) |
-| `mcp-sysoperator` | Infrastructure ops (file, shell, Terraform) | Node.js (npm) | `["infrastructure", "workspace"]` | [tarnover/mcp-sysoperator](https://github.com/tarnover/mcp-sysoperator) |
-| `ansible-mcp` | Ansible playbook/inventory intelligence | Python (pip + venv) | `["ansible", "workspace"]` | [bsahane/mcp-ansible](https://github.com/bsahane/mcp-ansible) |
-| `openai_docs` | OpenAI developer docs (search + read) | HTTP (streamable) | `["codex", "openai", "development", "research"]` | [Docs MCP](https://developers.openai.com/resources/docs-mcp) |
+| Role | Server | Runtime | Interaction | Targets | Repo |
+|---|---|---|---|---|---|
+| `redhat-ansible` | Red Hat Ansible Cursor extension MCP | Node.js (extension build) | interactive/editor | Cursor | [redhat.ansible](https://marketplace.visualstudio.com/items?itemName=redhat.ansible) |
+| `mcp-sysoperator` | Infrastructure ops (file, shell, Terraform) | Node.js (npm) | launcher | Cursor | [tarnover/mcp-sysoperator](https://github.com/tarnover/mcp-sysoperator) |
+| `ansible-mcp` | Ansible playbook/inventory intelligence | Python (pip + venv) | launcher | Cursor | [bsahane/mcp-ansible](https://github.com/bsahane/mcp-ansible) |
+| `openai_docs` | OpenAI developer docs (search + read) | HTTP + local Codex | launcher | Cursor | [Docs MCP](https://developers.openai.com/resources/docs-mcp) |
+| `drawio` | draw.io MCP tool server | Node.js (npm) | launcher | Cursor, VS Code, OpenAPI stub | [draw.io AI + MCP](https://www.drawio.com/doc/faq/ai-drawio-generation) |
+
+## Canonical Pattern
+
+- `roles/mcp_servers/_template/` is the MCP role scaffold.
+- `roles/mcp_servers/drawio/` is the first canonical example of the target-aware pattern.
+- `playbooks/mac/mcp_servers.yaml` is the focused controller-side control surface for local MCP convergence on the Mac.
+
+## Target Model
+
+For v1, new MCP roles should use:
+
+- `<server>_targets`
+  Default: `['cursor']`
+- repo-local config targets:
+  - `.cursor/mcp.json`
+  - `.vscode/mcp.json`
+- `openapi` as an explicit stub target that fails fast until implemented
+
+Target tags are available for focused runs:
+
+- `mcp_target_cursor`
+- `mcp_target_vscode`
+- `mcp_target_openapi`
 
 ## Targeting Individual Servers
 
-Every role is tagged so you can install just the one you need:
+Install only one server:
 
 ```bash
-# Install only redhat-ansible (Cursor extension MCP)
-ansible-playbook playbooks/local.yaml --limit mac-dev --tags redhat-ansible
-
-# Install only mcp-sysoperator
-ansible-playbook playbooks/local.yaml --limit mac-dev --tags mcp-sysoperator
-
-# Install only ansible-mcp
-ansible-playbook playbooks/local.yaml --limit mac-dev --tags ansible-mcp
-
-# Install only openai_docs (OpenAI Docs MCP)
-ansible-playbook playbooks/local.yaml --limit mac-dev --tags codex
-
-# Install all MCP servers
-ansible-playbook playbooks/local.yaml --limit mac-dev --tags mcp
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags drawio
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags ansible-mcp
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags mcp-sysoperator
 ```
+
+Install one server and target a specific client config:
+
+```bash
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags drawio,mcp_target_cursor
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags drawio,mcp_target_vscode
+```
+
+If no target tag is supplied, the role uses its `<server>_targets` default or
+explicit variable override.
 
 ## Directory Layout
 
-```
+```text
 roles/mcp_servers/
-  README.md               # this file
-  redhat-ansible/         # Cursor extension MCP (install ext + configure)
-  mcp-sysoperator/        # Node.js MCP server (clone + npm install + npm run build)
-  ansible-mcp/            # Python MCP server  (clone + venv + pip install)
-  openai_docs/            # OpenAI Docs MCP (HTTP, configure-only)
-  _legacy_builder/        # archived Docker-based builder approach (not active)
+  README.md
+  _template/
+  redhat-ansible/
+  mcp-sysoperator/
+  ansible-mcp/
+  openai_docs/
+  drawio/
+  _legacy_builder/
 ```
 
-## Tagging Taxonomy
+## Adding A New MCP Server
 
-Every MCP server carries a two-part tag set: **domain** + **execution context**.
-
-**Primary tag -- domain:**
-The functional area the server covers (e.g. `ansible`, `infrastructure`).
-
-**Secondary tag -- execution context:**
-
-| Context     | Meaning                                                    |
-|-------------|------------------------------------------------------------|
-| `workspace` | Runs in a local dev environment (Cursor, terminal, laptop) |
-| `pipeline`  | Runs inside Langfuse, RAG, or an orchestrated workflow     |
-| `runtime`   | Runs inside deployed infrastructure (containers, CI/CD)    |
-
-All roles in this repo currently target `workspace`. Future deployments into
-orchestration layers or CI/CD would use the same domain tag with `pipeline` or
-`runtime`:
-
-```jsonc
-// Local Ansible MCP (Cursor, laptop)
-["ansible", "workspace"]
-
-// Langfuse / RAG / orchestrated automation
-["ansible", "pipeline"]
-
-// CI/CD or cloud-hosted Ansible MCP
-["ansible", "runtime"]
-```
-
-## Adding a New MCP Server
-
-1. Create a new subdirectory under `roles/mcp_servers/` with `defaults/`, `meta/`, and `tasks/`.
-2. Follow the pattern from `mcp-sysoperator` (Node.js) or `ansible-mcp` (Python).
-3. Tag all tasks with `[mcp, <your-server-name>]`.
-4. Assign a domain + execution-context tag set and document it in the role README.
-5. Add the role to `playbooks/local.yaml`.
-6. See `ai.mcp_servers.instructions.md` for the full pattern reference.
+1. Classify the upstream server from its repo/README.
+2. Copy `roles/mcp_servers/_template/`.
+3. Fill in the role's `mcp_contract.yml`.
+4. Replace the install/uninstall stubs with runtime-appropriate tasks.
+5. Keep the public interface state-based and target-list-based.
+6. Add validation artifacts under `docs/reports/mcp_server_validations/`.
+7. Add the role to `playbooks/mac/mcp_servers.yaml` when it belongs on the controller.
+8. See `roles/mcp_servers/ai.mcp_servers.instructions.md` for the full pattern.

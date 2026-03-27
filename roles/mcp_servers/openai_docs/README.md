@@ -6,7 +6,7 @@ Two blocks: (1) **openaiDeveloperDocs** — `{ "url": "https://developers.openai
 
 ## What this role does
 
-- **macOS:** `community.general.homebrew` installs codex; binary path resolved via `brew --prefix codex`. **Requires nothing external.**
+- **macOS:** `community.general.npm` installs `@openai/codex` globally using the resolved nvm-managed npm on the controller. Binary path is set from the installed npm bin directory.
 - **Ubuntu:** `community.general.npm` installs `@openai/codex` globally using the nvm-managed npm at `~/.nvm/versions/node/<node_default_version>/bin/npm`. **Requires `roles/common/node` to run first** (provides nvm + Node.js). Binary path resolved via stat on `openai_docs_codex_bin_candidates` (first existing path wins).
 - **Windows:** Skipped (Codex not supported).
 - Creates or merges `.cursor/mcp.json` with both openaiDeveloperDocs and codex blocks (same merge pattern as ansible-mcp).
@@ -38,9 +38,8 @@ Two blocks: (1) **openaiDeveloperDocs** — `{ "url": "https://developers.openai
 
 ## Usage
 
-The role is included in both `playbooks/local.yaml` (controller + WSL) and
-`playbooks/deploy_development_nodes.yaml` (nodes with `node_purpose: development`),
-so development nodes get the Docs MCP when you run either playbook.
+The role is included in `playbooks/mac/mcp_servers.yaml` for controller-side
+Mac MCP convergence.
 
 ```yaml
 roles:
@@ -50,11 +49,10 @@ roles:
 Run only this server:
 
 ```bash
-ansible-playbook playbooks/local.yaml --limit mac-dev --tags codex
-ansible-playbook playbooks/local.yaml --limit mac-dev --tags openai-docs
-ansible-playbook playbooks/local.yaml --limit mac-dev --tags openai
-ansible-playbook playbooks/local.yaml --limit mac-dev --tags research
-ansible-playbook playbooks/deploy_development_nodes.yaml --tags openai-docs
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags codex
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags openai-docs
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags openai
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags research
 ```
 
 ## Reference

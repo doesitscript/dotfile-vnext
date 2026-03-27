@@ -1,0 +1,45 @@
+---
+- name: Install draw.io MCP package via npm on Ubuntu
+  community.general.npm:
+    name: "{{ drawio_mcp_package_name }}"
+    global: true
+    state: present
+    executable: "{{ node_npm_executable }}"
+  timeout: 300
+
+- name: Check draw.io MCP binary candidates on Ubuntu
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ _drawio_bin_candidates }}"
+  register: _drawio_mcp_bin_stats_ubuntu
+  vars:
+    _drawio_bin_candidates: >-
+      {{
+        drawio_mcp_bin_candidates
+        if (drawio_mcp_bin_candidates | length > 0)
+        else [
+          (node_npm_executable | dirname) ~ '/drawio-mcp',
+          (node_npm_executable | dirname) ~ '/drawio-mcp-server'
+        ]
+      }}
+
+- name: Set draw.io MCP command path for mcp clients on Ubuntu
+  ansible.builtin.set_fact:
+    drawio_mcp_command: "{{ (_drawio_mcp_bin_stats_ubuntu.results | selectattr('stat.exists') | map(attribute='item') | first) | default('') }}"
+
+- name: Fail if draw.io MCP binary was not found on Ubuntu
+  ansible.builtin.fail:
+    msg: >-
+      draw.io MCP package installed, but no executable was found in
+      drawio_mcp_bin_candidates={{ _drawio_bin_candidates | to_json }}.
+  when: not (drawio_mcp_command | default(''))
+  vars:
+    _drawio_bin_candidates: >-
+      {{
+        drawio_mcp_bin_candidates
+        if (drawio_mcp_bin_candidates | length > 0)
+        else [
+          (node_npm_executable | dirname) ~ '/drawio-mcp',
+          (node_npm_executable | dirname) ~ '/drawio-mcp-server'
+        ]
+      }}

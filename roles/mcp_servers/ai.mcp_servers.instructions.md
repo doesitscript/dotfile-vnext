@@ -1,153 +1,145 @@
 # AI Instructions: Building MCP Server Roles
 
-This document describes the repeatable patterns used to create Ansible roles
-that install and configure MCP (Model Context Protocol) servers. Follow these
-guidelines when adding a new server or modifying an existing one.
+This document captures the repo-native pattern for MCP server roles. Use it
+when adding a new MCP server or refactoring an existing one.
 
-## Extracting Patterns from a GitHub Repo
+## Start With Upstream Classification
 
-Every MCP server starts as an upstream project on GitHub. The repo README
-contains the three things you need:
+Before writing tasks, classify the upstream server from its README, package
+metadata, and example client config.
 
-1. **Runtime** -- look at the repo's language stats and dependency files.
-   - `package.json` / `tsconfig.json` --> Node.js runtime, use `common/node` dependency.
-   - `requirements.txt` / `pyproject.toml` --> Python runtime, use `python` dependency.
-   - Cursor/VS Code extension --> no clone needed; install via `cursor --install-extension`.
+Record these decisions in the role's `mcp_contract.yml`:
 
-2. **Install steps** -- find the "Quick start", "Setup", or "Installation"
-   section. These steps map directly to the platform task files (`mac.yml`,
-   `ubuntu.yml`). Typical patterns:
-   - **Node.js**: `git clone` -> `npm install` -> `npm run build`
-   - **Python**: `git clone` -> `python3 -m venv .venv` -> `pip install -U pip`
-     -> `pip install -r requirements.txt` -> `pip install -e .`
-   - **Extension**: `cursor --install-extension <publisher>.<name>`
+- `runtime`
+  Usually `node`, `python`, `http`, or `other`
+- `install_method`
+  Examples: `npm`, `pipx`, `uvx`, `clone-build`, `configure-only`
+- `interaction_model`
+  `launcher` or `interactive/editor`
+- `verify_mode`
+  Examples: `command_smoke_test`, `tool_listing`, `manual_editor_validation`
+- `supported_targets`
+  For v1: `cursor`, `vscode`, `openapi`
 
-3. **MCP client config** -- find the JSON block under "Cursor config",
-   "Claude Desktop config", or similar. This block tells you:
-   - `command` + `args` -- the entry point (becomes the `*_entry_point` /
-     `*_server_script` / `*_cli_path` variable).
-   - `env` -- runtime environment variables (each becomes a default variable
-     with the role prefix).
+Do not guess these from memory when the upstream repo can answer them.
 
-## Role Directory Structure
+## Canonical Control Surface
 
-Every MCP server role lives under `roles/mcp_servers/<role-name>/` and follows
+Controller-side MCP installs belong in:
+
+- `playbooks/mac/mcp_servers.yaml`
+
+Do not add a new MCP role to a broad dev-node umbrella play by default.
+Only do that when the server is intentionally part of baseline workstation
+convergence for many hosts.
+
+## Role Layout
+
+Every MCP role should live under `roles/mcp_servers/<role-name>/` and follow
 this layout:
 
-```
+```text
 <role-name>/
-  defaults/main.yml      # all variables (repo, version, paths, env vars)
-  meta/main.yml           # role dependencies (python, common/node, or [])
+  README.md
+  mcp_contract.yml
+  defaults/main.yml
+  meta/argument_specs.yml
+  meta/main.yml
   tasks/
-    main.yml              # OS dispatch + import configure.yml
-    mac.yml               # macOS install steps
-    ubuntu.yml            # Ubuntu/WSL install steps
-    configure.yml         # create/merge entry in .cursor/mcp.json
-  README.md               # human docs (source, variables, env vars, tags)
+    main.yml
+    present.yml
+    absent.yml
+    mac.yml
+    ubuntu.yml
+    configure_target.yml
+    remove_target.yml
+    openapi_stub.yml
 ```
 
-## Variable Naming Convention
+Use `roles/mcp_servers/_template/` as the scaffold reference and
+`roles/mcp_servers/drawio/` as the first canonical example.
 
-All defaults use the role name (snake_case) as a prefix:
+## Required Public Interface
 
-| Role directory      | Variable prefix         |
-|---------------------|-------------------------|
-| `mcp-sysoperator`   | `mcp_sysoperator_*`     |
-| `ansible-mcp`       | `mcp_ansible_*`         |
-| `redhat-ansible`    | `redhat_ansible_*`      |
+Every MCP role should expose:
 
-Standard variables every role declares:
+- `<server>_state: present|absent`
+- `<server>_targets`
+  Default: `['cursor']`
+- `<server>_project_root`
+  Default: current repo root for the playbook run
+- `<server>_cursor_config_path`
+  Default: `{{ <server>_project_root }}/.cursor/mcp.json`
+- `<server>_vscode_config_path`
+  Default: `{{ <server>_project_root }}/.vscode/mcp.json`
 
-| Variable suffix       | Purpose                                         |
-|-----------------------|-------------------------------------------------|
-| `_repo`               | Upstream git URL (clone-based roles only)        |
-| `_version`            | Git ref to pin (tag, branch, SHA)                |
-| `_install_dir`        | Clone destination (`~/.local/lib/<name>`)        |
-| `_entry_point`        | Binary or script the MCP client invokes          |
-| `_project_dir`        | Path to the `.cursor` directory for `mcp.json`   |
-| `_role_path`          | Relative path from project root for tracking     |
+`openapi` is an explicit stub target in v1. If selected, fail fast with a clear
+message rather than pretending to support it.
 
-## Standard Ansible Environment Variables
+## Target Selection Rules
 
-Every Ansible-related MCP server should include these env vars in its
-`configure.yml` entry so the server can locate project resources:
+Variables are the canonical interface:
 
-| Env var                            | Purpose                            |
-|------------------------------------|------------------------------------|
-| `MCP_ANSIBLE_COLLECTIONS_PATHS`    | Colon-separated collections paths  |
-| `MCP_ANSIBLE_ROLES_PATH`          | Colon-separated roles paths        |
-| `MCP_ANSIBLE_ENV_ANSIBLE_CONFIG`  | Path to `ansible.cfg`              |
-| `_MCP_ANSIBLE_ROLE_PATH`          | Relative role path for tracking    |
+- `<server>_targets: ['cursor']`
 
-Non-Ansible servers (e.g. `mcp-sysoperator`) only need `_MCP_ANSIBLE_ROLE_PATH`.
+Tags are focused execution helpers:
 
-## The `configure.yml` Pattern
+- `mcp_target_cursor`
+- `mcp_target_vscode`
+- `mcp_target_openapi`
 
-All roles share the same create-or-merge pattern for `.cursor/mcp.json`:
+Behavior:
 
-1. `ansible.builtin.file` -- ensure the `.cursor` directory exists.
-2. `ansible.builtin.stat` -- check whether `mcp.json` already exists.
-3. **If missing**: `ansible.builtin.copy` -- create `mcp.json` with the single
-   server entry rendered via `to_nice_json`.
-4. **If present**: `ansible.builtin.slurp` + `from_json` to read the existing
-   file, then `combine()` to merge the new entry under `mcpServers`, and
-   `ansible.builtin.copy` to write the result back.
+- if no target tags are requested, use `<server>_targets`
+- if one or more target tags are requested, those tags override the variable for
+  that run
+- target-independent install/uninstall tasks should still be reachable when a
+  target tag is used
 
-The entry key in `mcpServers` is the server's short name (e.g. `ansible`,
-`sysoperator`, `ansible-mcp`).
+## Configure / Remove Pattern
 
-## Tagging
+Cursor and VS Code share the same JSON merge behavior:
 
-### Ansible tags
+1. Ensure the parent directory exists.
+2. Create `mcp.json` with a single `mcpServers` entry when missing.
+3. Read and merge when the file already exists.
+4. On `absent`, remove only the role's server key and leave other entries alone.
 
-All tasks in a role are tagged with two Ansible tags:
+Use `configure_target.yml` and `remove_target.yml` for this pattern.
 
-- `mcp` -- selects all MCP server roles at once.
-- `<role-name>` -- selects a single server (e.g. `ansible-mcp`, `redhat-ansible`).
+## README Requirements
 
-### MCP server classification tags
+Every MCP role README should include:
 
-Each MCP server is classified with a two-axis tag set: **domain** +
-**execution context**.
+- upstream source
+- classification summary
+- `Apply / Verify / Undo / Change class`
+- variables
+- target model
+- tags
+- validation approach
 
-**Primary tag -- domain:**
-The functional domain the server operates in (e.g. `ansible`, `infrastructure`).
+Keep install, config, verify, and remove in the same shape across roles.
 
-**Secondary tag -- execution context:**
+## Validation Pattern
 
-| Context     | Meaning                                                    |
-|-------------|------------------------------------------------------------|
-| `workspace` | Runs in a local dev environment (Cursor, terminal, laptop) |
-| `pipeline`  | Runs inside Langfuse, RAG, or an orchestrated workflow     |
-| `runtime`   | Runs inside deployed infrastructure (containers, CI/CD)    |
+Use `docs/reports/mcp_server_validations/_template/` for the reusable validation
+shape.
 
-**Current tag assignments:**
+The validation artifact should prove:
 
-| Role               | Tag set                          |
-|--------------------|----------------------------------|
-| `redhat-ansible`   | `["ansible", "workspace"]`       |
-| `ansible-mcp`      | `["ansible", "workspace"]`       |
-| `mcp-sysoperator`  | `["infrastructure", "workspace"]`|
+- install surface
+- config merge behavior
+- tool surface or command surface
+- notable side effects such as browser launch or editor handoff
 
-**Future context examples (for documentation):**
+## New Role Checklist
 
-| Scenario                                 | Tag set                  |
-|------------------------------------------|--------------------------|
-| Langfuse / RAG / orchestrated automation | `["ansible", "pipeline"]`|
-| CI/CD or cloud-hosted Ansible MCP        | `["ansible", "runtime"]` |
-
-## Adding a New MCP Server Role
-
-1. Find the upstream repo and read its README.
-2. Identify the runtime, install steps, and MCP config JSON (see above).
-3. Copy the closest existing role as a starting point:
-   - Node.js server --> copy `mcp-sysoperator`
-   - Python server --> copy `ansible-mcp`
-   - Cursor extension --> copy `redhat-ansible`
-4. Rename the directory and update the variable prefix.
-5. Adapt `mac.yml` / `ubuntu.yml` from the upstream install steps.
-6. Adapt `configure.yml` with the correct entry key and env vars.
-7. Tag all tasks with `[mcp, <role-name>]`.
-8. Assign domain + execution-context tags and document them in the README.
-9. Add the role to `playbooks/local.yaml`.
-10. Add a row to the parent `roles/mcp_servers/README.md` table.
+1. Read the upstream README/source.
+2. Fill in `mcp_contract.yml`.
+3. Copy `roles/mcp_servers/_template/`.
+4. Replace install/uninstall stubs with runtime-appropriate tasks.
+5. Keep the public interface state-based and target-list-based.
+6. Add the role to `playbooks/mac/mcp_servers.yaml` if it belongs on the controller.
+7. Add or update the validation report under `docs/reports/mcp_server_validations/`.
+8. Add a row to `roles/mcp_servers/README.md`.

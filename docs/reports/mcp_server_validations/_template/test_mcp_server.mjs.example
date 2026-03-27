@@ -1,0 +1,38 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
+/*
+  Copy this file beside the server-specific validation inputs and replace:
+  - serverPath
+  - SDK imports
+  - test cases
+  - report rendering
+*/
+
+const serverPath = "/absolute/path/to/mcp-server";
+const outDir = path.resolve(".");
+
+async function main() {
+  const results = {
+    generatedAt: new Date().toISOString(),
+    server: {
+      command: serverPath,
+      version: "replace-me",
+    },
+    notes: [
+      "Replace this scaffold with a real MCP validation harness.",
+      "Capture tool listing, config behavior, and notable side effects.",
+    ],
+  };
+
+  await fs.writeFile(
+    path.join(outDir, "template_validation_results.json"),
+    JSON.stringify(results, null, 2) + "\n",
+    "utf8",
+  );
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
