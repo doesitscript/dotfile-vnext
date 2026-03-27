@@ -30,10 +30,15 @@ adaptation is sequencing:
    - stop driving Multipass as `present`
    - keep the legacy role and playbooks only as teardown/deprecation paths
    - commit that checkpoint
-2. second checkpoint
+2. cleanup checkpoint
+   - run the legacy `absent` path to remove the old Multipass package/runtime
+   - remove active Multipass playbooks, host vars, and troubleshooting
+     entrypoints from the repo
+   - keep only background evidence and temporary reference material
+3. replacement checkpoint
    - introduce a new `hyperv_ubuntu_vm` role instead of rewriting
      `multipass_ubuntu_vm` in place
-3. third checkpoint
+4. cutover checkpoint
    - switch active server-225 provisioning to the new Hyper-V-native role
    - remove the old Multipass role/playbook once the replacement is proven
 
@@ -66,9 +71,9 @@ Do not carry forward:
 - Multipass-specific networking probes and diagnostics as part of normal VM
   lifecycle
 
-## First Checkpoint Scope
+## Current Checkpoint Scope
 
-This checkpoint is intentionally narrow.
+The completed cleanup work is still intentionally narrow.
 
 In scope now:
 
@@ -76,28 +81,32 @@ In scope now:
 - reframe active playbooks/docs as legacy teardown paths
 - preserve the old capability only long enough to retire it safely
 - commit that state as a durable checkpoint
+- run host-side teardown and remove active deprecated Multipass entrypoints
+  from the repo
 
 Not in scope for this checkpoint:
 
 - creating the new Hyper-V-native role
-- running remote teardown without explicit user confirmation
 - deleting the old Multipass role from the repo
+- implementing the new Hyper-V-native role
 
 ## Apply / Verify / Undo / Change Class
 
 Apply:
-- update host vars, inventory comments, and active playbook/role docs so the
-  repo drives the legacy Multipass path to `absent`
+- run the legacy `absent` path to remove Multipass from `server-225-win`
+- remove active Multipass playbooks, host vars, and troubleshooting entrypoints
+  from the repo
 
 Verify:
+- verify the Multipass MSI/runtime is gone from `server-225-win`
 - syntax-check touched playbooks
-- inspect the active control surfaces to confirm they now describe deprecation
-  instead of active provisioning
+- inspect the active control surfaces to confirm they no longer advertise
+  Multipass as a supported path
 
 Undo:
-- restore `multipass_ubuntu_vm_state: present`
-- revert the doc/playbook comment changes
+- restore the deleted playbooks/vars/docs from git
+- reinstall/recreate Multipass only as a deliberate exception, not as the
+  default direction
 
 Change class:
-- idempotent repo/config change for this checkpoint
-- real host cleanup later will be destructive/teardown execution
+- destructive host teardown plus idempotent repo cleanup

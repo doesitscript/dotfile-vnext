@@ -53,15 +53,9 @@ Standalone:
 ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit server-225-win
 ```
 
-Legacy feature-only teardown / rebuild through the old Multipass flow:
-
-```bash
-.venv/bin/ansible-playbook playbooks/server_225_multipass_ubuntu_vm.yaml \
-  -i inventory/inventory.yaml \
-  --limit 'execution_nodes,server-225-win' \
-  --tags hyperv_feature_prereq \
-  -e hyperv_feature_state=absent
-```
+The legacy Multipass teardown playbook has been retired after cleanup.
+Keep this role focused on Hyper-V feature and switch prerequisites for the
+upcoming Hyper-V-native Ubuntu VM flow.
 
 ## What This Role Does NOT Do
 
