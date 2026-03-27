@@ -44,6 +44,15 @@ In Codex terms, this repo should be built in layers:
 3. MCP for external systems and live context
 4. multi-agents only after the first three are earning their keep
 
+For Codex/OpenAI conversations in this repo, `AGENTS.md` is also the bootstrap
+surface that should force loading of the active workspace framework surfaces:
+
+1. `AGENTS.md`
+2. `.cursorrules`
+3. active `.cursor/rules/*.mdc`
+4. `docs/codex_framework/README.md`
+5. `docs/codex_framework/partner_process.md`
+
 So for this repo, the immediate structure is not "spawn more agents first."
 It is:
 

@@ -64,6 +64,36 @@ Planned next:
   - confirm whether `.cursor/rules/*.mdc` files are enforced, advisory, or inactive
   - distinguish documented multi-agent intent from verified separate-agent execution
 
+## Environment-Specific Enforcement Hierarchy
+
+This repo intentionally uses different top-level enforcement paths depending on
+the chat/runtime environment.
+
+### Codex / OpenAI conversations in this repo
+
+Use this hierarchy:
+
+1. `AGENTS.md`
+2. `.cursorrules`
+3. active `.cursor/rules/*.mdc`
+4. `docs/codex_framework/README.md`
+5. `docs/codex_framework/partner_process.md`
+
+In this environment, `AGENTS.md` is the highest repo-level contract and is
+responsible for bootstrapping the rest of the framework surfaces.
+
+### Cursor-native workspace conversations
+
+Use this hierarchy:
+
+1. `.cursorrules`
+2. active `.cursor/rules/*.mdc`
+3. `AGENTS.md`
+4. framework docs and skills
+
+In that environment, Cursor-native rule loading is the strongest path and
+`AGENTS.md` remains part of the repo contract beneath it.
+
 ## Known Validation Gap
 
 The repo now has three different layers that can be easy to conflate:
