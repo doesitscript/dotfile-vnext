@@ -69,25 +69,25 @@ conversation. Grouped by purpose:
 **Boot and persona:**
 - `000--system-boot.mdc` — requires "System boot initiated..." announcement and
   parallel `project-playbooks` + `inventory-graph` calls before first user response
-- `codex-framework-agent-role-and-persona.mdc` — senior engineer persona, architecture-
+- `framework-agent-role-and-persona.mdc` — senior engineer persona, architecture-
   first assertion, hard stops on variable resolution
 
 **Framework behavior:**
-- `codex-framework-partner-process.mdc` — change contract, research gate, implementation
+- `framework-partner-process.mdc` — change contract, research gate, implementation
   preference order, bootstrap/steady-state distinction
-- `codex-framework-knowledge-and-research.mdc` — four gates: knowledge source hierarchy,
+- `framework-knowledge-and-research.mdc` — four gates: knowledge source hierarchy,
   project stewardship check, tool authority for informational queries, diagnostic discovery
-- `codex-framework-troubleshooting-mode.mdc` — trigger conditions, evidence hierarchy,
+- `framework-troubleshooting-mode.mdc` — trigger conditions, evidence hierarchy,
   required per-run reporting format
-- `codex-framework-github-issue-workflow.mdc` — when and how to create/close issues,
+- `framework-github-issue-workflow.mdc` — when and how to create/close issues,
   labeling requirements
-- `codex-framework-user-interaction-style.mdc` — voice-to-text tolerance, distill verbose
+- `framework-user-interaction-style.mdc` — voice-to-text tolerance, distill verbose
   explanations, ask for clarification on ambiguous words
 
 **Ansible-specific:**
 - `ansible-coding-standards.mdc` — the full Ansible style guide (YAML, naming, variable
   prefixes, idempotency, anti-patterns, project-specific conventions like `node_npm_executable`)
-- `codex-framework-mcp-and-tool-usage.mdc` — mandatory pre-flight gate sequences by
+- `framework-mcp-and-tool-usage.mdc` — mandatory pre-flight gate sequences by
   decision type; tool priority; mode-by-mode tool map
 - `02--cussorrules-mcp-briefieng-GENERATED.mdc` — generated tool knowledge base: which
   tools to use in which mode under which conditions
@@ -137,7 +137,7 @@ Handles include: `ansible-inventory-guide`, `ansible-variable-precedence`, `ansi
 `ansible-yaml-syntax`, `ansible-builtin-collection`, `ansible-collections`,
 `ansible-windows-collection`, and others.
 
-These are blocking gates — the `codex-framework-mcp-and-tool-usage.mdc` and
+These are blocking gates — the `framework-mcp-and-tool-usage.mdc` and
 `ansible-coding-standards.mdc` rules both define conditions where specific docs MUST
 be fetched before any output is produced. This is the "Track B quality authority"
 mechanism.
@@ -182,7 +182,7 @@ Before writing any task file:
 5. `project-run-playbook` (ansible-mcp)
 6. `ansible-test-idempotence` (ansible-mcp)
 
-These gates are not suggestions. The `codex-framework-mcp-and-tool-usage.mdc` rule
+These gates are not suggestions. The `framework-mcp-and-tool-usage.mdc` rule
 explicitly states: "STOP — do not produce any output until all steps are complete."
 
 ---
@@ -205,7 +205,7 @@ Missing this run: <what was not collected — mandatory to list>
 Actual output seen this run: <raw evidence>
 ```
 
-This format is enforced by both `codex-framework-troubleshooting-mode.mdc` and
+This format is enforced by both `framework-troubleshooting-mode.mdc` and
 `ansible-coding-standards.mdc` (Troubleshooting Mode section). Known-but-uncollected
 surfaces must be listed explicitly every run, even when the role doesn't print them.
 
@@ -307,7 +307,7 @@ To complete this picture: here is how the framework actually shaped this session
 The rules were injected before I processed the user's first message. They governed:
 
 - The decision to read existing reports first (Track A existence check from
-  `codex-framework-knowledge-and-research.mdc`)
+  `framework-knowledge-and-research.mdc`)
 - The comprehensive project exploration before writing (Gate: Placement, research-before-output)
 - Awareness that this report's audience is another AI (from user's stated intent, preserved
   per AGENTS.md Rule 1: preserve the target)
@@ -321,7 +321,7 @@ context about the boot rule). This is itself a data point: the rules are injecte
 but observing them correctly on the very first turn requires the agent to recognize the boot
 rule as the first priority before other context shapes the response.
 
-The `codex-framework-user-interaction-style.mdc` rule was relevant: the user's request
+The `framework-user-interaction-style.mdc` rule was relevant: the user's request
 contained voice-to-text artifacts ("exampine", "you r best", "separately after you're done
 making that report", "make a date of our as a prefix"). The rule instructs the agent to
 focus on intent rather than literal string matching. That was applied.

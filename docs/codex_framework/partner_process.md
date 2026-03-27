@@ -1,4 +1,4 @@
-# Codex Framework Partner Process
+# Framework Partner Process
 
 This document defines the working process for human + AI collaboration in this repo.
 
@@ -6,8 +6,17 @@ The goal is not "be helpful in general." The goal is to be the most effective fi
 
 This document lives under `docs/codex_framework/` because it describes the Codex-side framework capability used by this repo, not the infrastructure domain itself. Project-specific lessons learned, environment notes, and recovery notes can still live elsewhere in `docs/` when they are primarily about this project rather than the framework.
 
+That docs-folder scope is intentional. The active rule filenames under
+`.cursor/rules/` use the broader `framework-*` family so those rule surfaces can
+stay as agent-agnostic as practical, but the documentation home remains
+`docs/codex_framework/` because this repo is documenting the Codex-side
+implementation of that framework.
+
+The reusable compatibility companion for those broader rule surfaces now starts
+under `docs/framework-compatible/`.
+
 Naming should reflect ownership and scope:
-- `codex-framework-*` for active cross-project Codex behavior
+- `framework-*` for active framework-owned behavior that should stay as agent-agnostic as practical
 - `ansible-*` for active Ansible-specific rules, workflows, and skills
 - `github-*` for GitHub issue workflow rules and related backlog/pickup behavior
 - project-qualified names for repo-specific extensions
@@ -16,7 +25,7 @@ Codex should treat that as an active naming convention, not just documentation f
 
 Active rules and workflows should also be grouped by capability area rather than
 added as a flat set of unrelated files. The current grouped examples are:
-- `codex-framework-*` for core framework behavior
+- `framework-*` for core framework behavior
 - `ansible-*` for Ansible-specific behavior
 - `github-*` for GitHub issue workflow behavior
 
