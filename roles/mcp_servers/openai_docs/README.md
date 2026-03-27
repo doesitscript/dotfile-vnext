@@ -17,6 +17,7 @@ Change class: idempotent config.
 - manages the optional local `codex` entry in Cursor config
 - manages the `openaiDeveloperDocs` and optional local `codex` blocks in project `.codex/config.toml`
 - keeps Codex TOML merge/remove behavior on the shared helper path instead of using `codex mcp` CLI mutation
+- consumes the shared inventory version contract so the Codex runtime can be pinned without forking role logic
 
 ## Target model
 
@@ -43,6 +44,9 @@ Target tags:
 | `openai_docs_mcp_cursor_config_path` | `{{ openai_docs_mcp_project_root }}/.cursor/mcp.json` | Cursor config path. |
 | `openai_docs_mcp_codex_config_path` | `{{ openai_docs_mcp_project_root }}/.codex/config.toml` | Project Codex config path. |
 | `openai_docs_mcp_url` | `https://developers.openai.com/mcp` | Streamable HTTP docs MCP URL. |
+| `openai_docs_codex_package_base_name` | `@openai/codex` | Base npm package name for the local Codex runtime. |
+| `openai_docs_codex_version` | `{{ codex_tooling_version_contract.cli }}` | Optional pinned version for the local Codex runtime. |
+| `openai_docs_codex_package_name` | resolved package spec | Effective npm package spec used by the install/remove task. |
 | `openai_docs_codex_command` | `""` | Resolved local Codex binary path. |
 | `openai_docs_codex_enabled` | `true` | Whether the local `codex` MCP entry is managed. |
 | `openai_docs_docs_codex_entry` | docs URL entry | Structured Codex entry for `openaiDeveloperDocs`. |
@@ -53,3 +57,6 @@ Target tags:
 - `openapi` remains a deliberate stub target for this role in this pass.
 - Codex config is managed in project `.codex/config.toml`, not `~/.codex/config.toml`.
 - The shared helper pattern preserves unrelated Codex config outside the managed MCP blocks.
+- If `.codex/config.toml` already contains an unmanaged `openaiDeveloperDocs` entry, the role leaves that single table in place instead of appending a duplicate managed table.
+- The shared inventory variable `codex_tooling_version_contract` is the intended
+  single control point for Codex runtime and Cursor-extension pinning.

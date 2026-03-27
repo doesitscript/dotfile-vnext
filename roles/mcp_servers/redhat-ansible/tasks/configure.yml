@@ -35,13 +35,7 @@
       args:
         - "{{ redhat_ansible_entry_point }}"
         - "--stdio"
-      env:
-        PATH: "{{ redhat_ansible_server_path }}"
-        WORKSPACE_ROOT: "{{ redhat_ansible_workspace_root }}"
-        MCP_ANSIBLE_COLLECTIONS_PATHS: "{{ redhat_ansible_collections_paths }}"
-        MCP_ANSIBLE_ROLES_PATH: "{{ redhat_ansible_roles_path }}"
-        MCP_ANSIBLE_ENV_ANSIBLE_CONFIG: "{{ redhat_ansible_config }}"
-        _MCP_ANSIBLE_ROLE_PATH: "{{ redhat_ansible_role_path }}"
+      env: "{{ redhat_ansible_runtime_env }}"
   when: not _mcp_json_stat.stat.exists
 
 - name: Ensure redhat-ansible entry exists in .cursor/mcp.json
@@ -60,13 +54,7 @@
           args:
             - "{{ redhat_ansible_entry_point }}"
             - "--stdio"
-          env:
-            PATH: "{{ redhat_ansible_server_path }}"
-            WORKSPACE_ROOT: "{{ redhat_ansible_workspace_root }}"
-            MCP_ANSIBLE_COLLECTIONS_PATHS: "{{ redhat_ansible_collections_paths }}"
-            MCP_ANSIBLE_ROLES_PATH: "{{ redhat_ansible_roles_path }}"
-            MCP_ANSIBLE_ENV_ANSIBLE_CONFIG: "{{ redhat_ansible_config }}"
-            _MCP_ANSIBLE_ROLE_PATH: "{{ redhat_ansible_role_path }}"
+          env: "{{ redhat_ansible_runtime_env }}"
         _merged: >-
           {{ _existing | combine({
                'mcpServers': (_existing.mcpServers | default({})) | combine({

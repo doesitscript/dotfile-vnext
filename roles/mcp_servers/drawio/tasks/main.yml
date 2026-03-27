@@ -23,6 +23,7 @@
     - workspace
     - mcp_target_cursor
     - mcp_target_vscode
+    - mcp_target_codex
     - mcp_target_openapi
 
 - name: Capture requested draw.io MCP target tags
@@ -30,7 +31,7 @@
     _drawio_requested_target_tags: >-
       {{
         (ansible_run_tags | default([]))
-        | intersect(['mcp_target_cursor', 'mcp_target_vscode', 'mcp_target_openapi'])
+        | intersect(['mcp_target_cursor', 'mcp_target_vscode', 'mcp_target_codex', 'mcp_target_openapi'])
       }}
   tags:
     - mcp
@@ -39,6 +40,7 @@
     - workspace
     - mcp_target_cursor
     - mcp_target_vscode
+    - mcp_target_codex
     - mcp_target_openapi
 
 - name: Validate configured draw.io MCP targets
@@ -55,6 +57,7 @@
     - workspace
     - mcp_target_cursor
     - mcp_target_vscode
+    - mcp_target_codex
     - mcp_target_openapi
 
 - name: Determine active draw.io MCP client targets
@@ -77,6 +80,15 @@
           and ('vscode' in drawio_mcp_targets)
         )
       }}
+    _drawio_target_codex_selected: >-
+      {{
+        ('mcp_target_codex' in _drawio_requested_target_tags)
+        or
+        (
+          (_drawio_requested_target_tags | length) == 0
+          and ('codex' in drawio_mcp_targets)
+        )
+      }}
     _drawio_target_openapi_selected: >-
       {{
         ('mcp_target_openapi' in _drawio_requested_target_tags)
@@ -93,6 +105,7 @@
     - workspace
     - mcp_target_cursor
     - mcp_target_vscode
+    - mcp_target_codex
     - mcp_target_openapi
 
 - name: Fail fast for the draw.io OpenAPI target stub
@@ -117,6 +130,7 @@
     - workspace
     - mcp_target_cursor
     - mcp_target_vscode
+    - mcp_target_codex
     - mcp_target_openapi
 
 - name: Ensure draw.io MCP server is absent
@@ -131,4 +145,5 @@
     - workspace
     - mcp_target_cursor
     - mcp_target_vscode
+    - mcp_target_codex
     - mcp_target_openapi

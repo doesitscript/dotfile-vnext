@@ -1,12 +1,24 @@
 ---
 # Cursor editor role defaults
 
+# Shared Codex Cursor extension contract.
+cursor_openai_extension_id: "openai.chatgpt"
+cursor_openai_extension_version: "{{ codex_tooling_version_contract.cursor_extension | default('') }}"
+
 # Extensions installed via CLI (bypasses marketplace GUI issues).
 cursor_extensions:
   - ms-python.python
   - ms-python.debugpy
   - redhat.vscode-yaml
-  - openai.chatgpt
+  - >-
+      {{
+        cursor_openai_extension_id
+        ~ (
+          '@' ~ cursor_openai_extension_version
+          if (cursor_openai_extension_version | default('') | length) > 0
+          else ''
+        )
+      }}
 
 # Platform-specific path to Cursor settings.json.
 # Prevents BOM and CRLF contamination in all files edited with Cursor.

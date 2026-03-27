@@ -20,3 +20,10 @@
     _drawio_target_name: "vscode"
     _drawio_target_config_path: "{{ drawio_mcp_vscode_config_path }}"
   when: _drawio_target_vscode_selected | bool
+
+- name: Remove draw.io entry from Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ drawio_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ drawio_mcp_server_key }}"
+  when: _drawio_target_codex_selected | bool

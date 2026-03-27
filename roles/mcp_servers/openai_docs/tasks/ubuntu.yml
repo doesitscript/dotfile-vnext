@@ -4,10 +4,12 @@
 # Requires: roles/common/node must run first — provides node_npm_executable.
 - name: Install Codex app via npm (Ubuntu)
   community.general.npm:
-    name: "@openai/codex"
+    name: "{{ openai_docs_codex_package_name }}"
     global: true
     state: "{{ openai_docs_codex_package_state | default('present') }}"
     executable: "{{ node_npm_executable }}"
+  environment:
+    PATH: "{{ (node_npm_executable | dirname) ~ ':' ~ ansible_facts['env']['PATH'] }}"
   timeout: 300
   tags:
     - mcp

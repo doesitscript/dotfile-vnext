@@ -67,11 +67,18 @@ This role handles the infrastructure side:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `cursor_openai_extension_id` | `openai.chatgpt` | Extension ID used for the Codex/OpenAI Cursor extension |
+| `cursor_openai_extension_version` | `{{ codex_tooling_version_contract.cursor_extension }}` | Optional pinned version for the Codex/OpenAI Cursor extension |
 | `cursor_settings_enabled` | `true` | Set to `false` to skip settings.json merge for this node |
 | `cursor_settings_path` | *(platform auto-detected)* | Full path to Cursor's settings.json |
 | `cursor_settings_lf_utf8` | *(see defaults)* | Settings dict merged idempotently into settings.json |
 | `cursor_extensions` | *(see defaults)* | List of extension IDs to install via CLI |
 | `cursor_remote_ssh_hosts` | *(see defaults)* | List of SSH Host entries for Remote-SSH config |
+
+The default Codex/OpenAI extension entry is assembled as
+`{{ cursor_openai_extension_id }}@{{ cursor_openai_extension_version }}` when a
+version is provided, so the shared inventory contract can pin it without
+rewriting the whole extension list.
 
 Each item in `cursor_remote_ssh_hosts`:
 

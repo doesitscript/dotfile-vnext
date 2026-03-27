@@ -76,6 +76,7 @@ Every MCP role should expose:
   Default: `{{ <server>_project_root }}/.codex/config.toml`
 - `<server>_codex_entry`
   Structured Codex MCP entry with exactly one of `url` or `command`, plus optional `args`, `env`, `cwd`, and `required`
+  Some interactive/editor servers may also need `startup_timeout_sec`.
 
 `openapi` is an explicit stub target in v1. If selected, fail fast with a clear
 message rather than pretending to support it.
@@ -111,6 +112,18 @@ Cursor and VS Code share the same JSON merge behavior:
 4. On `absent`, remove only the role's server key and leave other entries alone.
 
 Use `configure_target.yml` and `remove_target.yml` for this pattern.
+
+For Ansible-capable MCP servers on macOS, include the repo's WinRM safety env
+vars in the generated MCP entry instead of assuming interactive shell startup
+already happened:
+
+- `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=yes`
+- `no_proxy=*`
+- `NO_PROXY=*`
+
+This prevents the macOS `Python quit unexpectedly` fork/proxy crash path seen
+when Python touches `_scproxy` inside a multi-threaded child process launched by
+the MCP host.
 
 Codex uses the shared project `.codex/config.toml` block-management pattern:
 
