@@ -215,7 +215,9 @@ These are the current files actively shaping this capability.
   alone. The repo plan under `docs/plans/` is the canonical durable plan, while
   the issue acts as the higher-level roadmap/tracking layer. The workflow now
   uses a non-optional light label schema: one `type:*`, one `state:*`, and one
-  `scope:*` label on every created issue.
+  `scope:*` label on every created issue. It now also supports explicit
+  multi-repo issue sets with `primary` / `secondary` / `reference_only` repo
+  roles.
 - [.cursor/skills/github-issue-workflow/capability.yml](/Users/joshc/develop/dotfile-vnext/.cursor/skills/github-issue-workflow/capability.yml)
   The machine-readable manifest for the GitHub issue workflow, including
   suggested roles, capabilities, companion rule, and owned-file inventory.

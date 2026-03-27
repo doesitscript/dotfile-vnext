@@ -11,6 +11,10 @@ capabilities:
   - github_issue_close
   - issue_label_schema
   - repo_backlink_guidance
+  - multi_repo_issue_set
+  - repo_role_mapping
+  - github_native_relationship_guidance
+  - durable_issue_draft_fallback
 
 suggested_roles:
   - planner_steward
@@ -27,12 +31,44 @@ companion_rules:
 
 references:
   - .cursor/skills/github-issue-workflow/references/examples.md
+  - .cursor/skills/github-issue-workflow/references/github-native-relationship-guidance.md
+  - .cursor/skills/github-issue-workflow/references/multi_repo_issue_set_template.md
+  - .cursor/skills/github-issue-workflow/references/network_plus_cross_repo_issue_set.md
+  - .cursor/skills/github-issue-workflow/references/network_plus_primary_issue_body.md
+  - .cursor/skills/github-issue-workflow/references/network_plus_supporting_issue_body.md
+
+multi_repo:
+  supported: true
+  repo_roles:
+    - primary
+    - secondary
+    - reference_only
+  require_explicit_repo_roles: true
+  default_relationship_mode: supporting_tracking
+  relationship_modes:
+    - supporting_tracking
+    - blocking_dependency
+    - parent_child
+  required_cross_links: true
+  creation_order:
+    - create_or_draft_primary
+    - create_or_draft_secondary
+    - update_cross_links_and_tracking_markup
+  github_native_relationships:
+    supporting_tracking: tasklist_reference_plus_backlinks
+    parent_child: recommend_sub_issues
+    blocking_dependency: recommend_issue_dependencies
 
 owned_files:
   - .cursor/skills/github-issue-workflow/SKILL.md
   - .cursor/skills/github-issue-workflow/README.md
   - .cursor/skills/github-issue-workflow/capability.yml
   - .cursor/skills/github-issue-workflow/references/examples.md
+  - .cursor/skills/github-issue-workflow/references/github-native-relationship-guidance.md
+  - .cursor/skills/github-issue-workflow/references/multi_repo_issue_set_template.md
+  - .cursor/skills/github-issue-workflow/references/network_plus_cross_repo_issue_set.md
+  - .cursor/skills/github-issue-workflow/references/network_plus_primary_issue_body.md
+  - .cursor/skills/github-issue-workflow/references/network_plus_supporting_issue_body.md
   - .cursor/rules/framework-github-issue-workflow.mdc
 
 update_behavior:

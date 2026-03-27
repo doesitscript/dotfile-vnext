@@ -234,6 +234,87 @@ That does not replace repo plans. The intended model is:
 - GitHub issue = higher-level roadmap and tracking layer
 - local docs and READMEs = implementation context and recovery layer
 
+## Multi-repo issue sets
+
+When the work spans repositories, this skill can draft or create an issue set
+instead of a single issue.
+
+Use explicit repo roles:
+
+- `primary`
+  The main product or feature issue.
+- `secondary`
+  Supporting implementation, framework, or process work in another repo.
+- `reference_only`
+  Repo or document context that informs the issue set but does not get its own
+  issue by default.
+
+Do not assume a default secondary repo. When multi-repo mode is active, the
+repo-role mapping must be explicit.
+
+The minimum issue-set output should include, for each issue:
+
+- target repo
+- repo role
+- title
+- body
+- required labels
+- optional labels
+- creation order
+- cross-links
+- relationship note
+
+## Relationship modes
+
+Use one of these relationship modes for multi-repo work:
+
+- `supporting_tracking`
+  Default for primary/secondary coordination. Use backlinks in both issue
+  bodies, and after the secondary issue exists add a tasklist reference to it in
+  the primary issue body.
+- `blocking_dependency`
+  Use only when one issue truly blocks the other. Recommend GitHub issue
+  dependencies for the native relationship.
+- `parent_child`
+  Use only when the secondary issue is genuinely child work under the primary
+  issue. Recommend GitHub sub-issues for the native relationship.
+
+Do not force blocker semantics for ordinary supporting repo work.
+
+## Multi-repo body pattern
+
+Primary issue body should usually include:
+
+1. `Overview`
+2. `Why this issue lives here`
+3. `Cross-repo issue map`
+4. `Primary execution plan`
+5. `Definition of done`
+6. `Pick-up references`
+
+Secondary issue body should usually include:
+
+1. `Overview`
+2. `Why this issue lives here`
+3. `Primary issue link`
+4. `Local execution plan`
+5. `Definition of done`
+6. `Pick-up references`
+
+## Issue-set creation order
+
+For multi-repo issue creation, use this order:
+
+1. confirm repo-role mapping and relationship mode
+2. ensure the required labels exist in each target repo
+3. create or draft the primary issue
+4. create or draft the secondary issue or issues
+5. update the primary issue with the final cross-repo tasklist/backlinks
+6. update the secondary issue with the final primary issue link if needed
+
+If GitHub creation is blocked, produce a durable local draft artifact with the
+complete issue set instead of failing open.
+
 ## CLI path
 
 Preferred command:
@@ -242,6 +323,22 @@ Preferred command:
 gh issue create --repo <owner/repo> --title "<title>" --body "<body>" \
   --label "type:..." --label "state:..." --label "scope:..."
 ```
+
+For issue-set flows, also use:
+
+```bash
+gh issue edit <number> --repo <owner/repo> --body-file <file>
+```
+
+Current `gh issue create` / `gh issue edit` usage is enough for:
+
+- creating the issues
+- adding backlinks
+- adding cross-repo tasklist references
+
+Do not pretend that this CLI path directly creates GitHub-native sub-issues or
+issue dependencies. For those, recommend the GitHub UI or targeted API work
+instead of over-claiming automation.
 
 If `gh` auth is not working:
 
@@ -326,7 +423,17 @@ treat that as enough to:
 Do not require the user to pre-format the issue unless something material is
 missing.
 
+For prompts about linked issues, supporting repos, or cross-repo tracking, treat
+that as enough to draft or create a multi-repo issue set rather than repeatedly
+falling back to isolated single-repo issue drafts.
+
 ## Examples
 
 Read [references/examples.md](references/examples.md) when you need concrete
 examples of issue shape, titles, or when to elevate resumable work into GitHub.
+
+For multi-repo and GitHub-native relationship usage, also read:
+
+- [references/github-native-relationship-guidance.md](references/github-native-relationship-guidance.md)
+- [references/multi_repo_issue_set_template.md](references/multi_repo_issue_set_template.md)
+- [references/network_plus_cross_repo_issue_set.md](references/network_plus_cross_repo_issue_set.md)

@@ -103,3 +103,12 @@ Pick-up references:
 - `docs/intake/hyper-v-docker-modernized--implement-ideas.md`
 - relevant role/node docs for network-server or server-225
 ```
+
+## Multi-repo issue sets
+
+For cross-repo issue-set patterns and the current `network_plus` /
+`dotfile-vnext` use case, read:
+
+- `github-native-relationship-guidance.md`
+- `multi_repo_issue_set_template.md`
+- `network_plus_cross_repo_issue_set.md`
