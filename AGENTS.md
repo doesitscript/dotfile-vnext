@@ -151,7 +151,8 @@ planning or research question. If they are skipped, say why.
    - `Executor view:`
    - `Outcomes:`
 6. Reserve `Evidence:` for collected outputs, saved artifacts, and source-backed findings. Use `Outcomes:` or plain implementation prose for change summaries, recaps, or results that are not proof artifacts.
-7. Use those labels at transition points and decision points, not on every message.
+7. Treat Ansible task states such as `changed`, `ok`, and play recap counts as outcomes, not evidence, unless the underlying output, exception text, registered result, log/event entry, or saved artifact is also shown.
+8. Use those labels at transition points and decision points, not on every message.
 
 ## Implementation Shape
 
