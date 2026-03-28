@@ -160,6 +160,28 @@ Pinned example:
 - WinRM/OpenSSH on `server-225-win` now has diagnostics notes plus a dedicated
   saved-artifact entrypoint at
   `playbooks/troubleshoot/collect_windows_remote_access_artifacts.yaml`
+- the Windows remote-access collector now groups evidence by logical scope so
+  troubleshooting can scale from normal access checks to deeper drop-path
+  analysis without flattening all surfaces into one undifferentiated bundle
+
+### Scoped collector clarification
+
+When a component has multiple logical evidence layers, the collector pattern may
+group artifacts by evidence scope rather than treating every output surface as a
+flat list.
+
+Preferred shape:
+
+1. keep all relevant groups enabled by default for the current component
+2. let the collector document those groups explicitly
+3. allow narrower runs when the operator is targeting a specific layer
+
+Pinned example:
+
+- Windows remote-access troubleshooting now uses:
+  - `control_surfaces`
+  - `network_path`
+  - `firewall_drop_path`
 
 ## Unaddressed
 
