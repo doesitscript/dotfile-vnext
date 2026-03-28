@@ -55,6 +55,31 @@ This means the guest should be able to:
 - reach the internet through the Windows host
 - reach the Windows host on the private side
 
+## Residual operational note
+
+This setup can still have some residual adapter churn when the Windows host
+moves between networks.
+
+Pinned field note worth preserving:
+
+- moving the host between networks, such as work Wi-Fi to home Wi-Fi, may
+  require resetting or renewing one or more adapters before everything settles
+  again
+- this may happen even without the Hyper-V + ICS setup, but it appears to show
+  up more often with this topology
+- the current first-response soft recovery remains:
+  - `Clear-DnsClientCache`
+  - `ipconfig /flushdns`
+  - `ipconfig /release`
+  - `ipconfig /renew`
+
+Interpretation:
+
+- treat this as residual operational fallout to monitor, not as proof that the
+  ICS design is wrong
+- if it becomes frequent, the next improvement point is host-side recovery
+  automation around network-change or boot events
+
 ## What direct reachability should and should not mean
 
 The host and the guest are on the same private ICS subnet, so the Windows host
@@ -97,3 +122,16 @@ follow-on strategies:
 For the current implementation, the ICS/Internal-switch work solves the guest
 DHCP/IP conflict. It does **not** by itself solve controller-side direct SSH to
 the guest private IP.
+
+## Current milestone state
+
+Working now:
+
+- Hyper-V Ubuntu guest no longer collides with the host LAN IP
+- the guest can obtain a private ICS-subnet address
+- the Windows host can identify and probe the guest on the private subnet
+
+Still in progress:
+
+- controller-side direct access from the Mac to the guest private subnet
+- guest SSH/bootstrap verification from a topology-appropriate access path

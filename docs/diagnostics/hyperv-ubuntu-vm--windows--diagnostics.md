@@ -93,6 +93,14 @@ rejects the boot disk or fails the VM start path.
   - the Windows host should be able to reach that address directly
   - the Mac/controller should not be assumed to reach that private address
     directly without a separate access strategy
+- Residual operational note for roaming hosts:
+  - moving the Windows host between networks may occasionally require adapter
+    renewal or reset before the host and ICS path settle again
+  - current soft-recovery commands:
+    - `Clear-DnsClientCache`
+    - `ipconfig /flushdns`
+    - `ipconfig /release`
+    - `ipconfig /renew`
 - Interactive execution lessons and the failed `block_state_zero=off`
   experiment are captured in:
   [hyperv-ubuntu-vm--windows--lessons-learned.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-ubuntu-vm--windows--lessons-learned.md)

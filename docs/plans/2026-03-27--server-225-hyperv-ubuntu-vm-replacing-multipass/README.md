@@ -146,6 +146,33 @@ Implementation consequence:
 - probe both source and destination artifacts before Hyper-V attach/start
 - keep the raw `.img` route only as fallback or legacy experiment material
 
+## Current Networking Milestone
+
+The networking direction has now moved past the original External-switch plan.
+
+Current preferred topology on `server-225-win`:
+
+- keep the host control plane on `vEthernet (External)` on the LAN
+- attach the Ubuntu guest to an Internal Hyper-V switch
+- use Windows Internet Connection Sharing (ICS) to provide the guest a private
+  outbound path on `192.168.137.0/24`
+
+What this milestone has already proven:
+
+- the old guest/host DHCP-IP collision on the Wi-Fi-backed External switch path
+  is no longer the active blocker
+- the guest can boot and obtain a private ICS-subnet IPv4
+- the Windows host can see and probe that guest address on the private subnet
+
+What remains in progress:
+
+- a stable controller-visible access strategy from the Mac to the guest
+- proving guest bootstrap and SSH readiness from the correct access surface
+
+Reference layout note:
+
+- [hyperv-network-layout--windows--wifi-ics.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-network-layout--windows--wifi-ics.md)
+
 ## Current Cleanup Status
 
 Repo cleanup completed:
