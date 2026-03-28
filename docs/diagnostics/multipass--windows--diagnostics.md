@@ -1,5 +1,12 @@
 # Multipass Windows Diagnostic Sources
 
+Historical note:
+
+- Multipass is no longer the active implementation direction for
+  `server-225-ubuntu`
+- keep this file only as historical troubleshooting context for old evidence or
+  teardown work
+
 ## Logging Locations
 
 - Event Viewer -> `Windows Logs/Application` filtered by source `Multipass`

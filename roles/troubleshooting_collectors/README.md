@@ -9,9 +9,27 @@ Purpose:
   investigations
 - save artifacts under a controller-local, gitignored tree
 
+Evidence-quality floor:
+
+- a collector is only useful if it preserves real output
+- preferred contents are raw stdout/stderr, event-log entries, service status,
+  CLI diagnostics, and structured probe results
+- "I ran X" with no saved output is not collector-grade evidence
+
+Troubleshooting-mode expectation:
+
+- after repeated failure, the agent must identify output locations for the
+  failing component
+- if those surfaces are not already being harvested, wiring a narrow collector
+  task file or dedicated troubleshoot playbook is part of the troubleshooting
+  implementation path
+- for Ansible retries, prefer `-vvv` as the default verbosity floor in
+  addition to component-native logs and probes
+
 Current collector task files:
 
-- none active
+- `hyperv_ubuntu_vm.yml`
+- `windows_remote_access.yml`
 
 Default artifact root:
 
@@ -26,3 +44,17 @@ collector surface.
 
 This role is intentionally collector-oriented, not a long-term centralized
 logging system.
+
+Current dedicated playbook entrypoint:
+
+- [collect_hyperv_ubuntu_vm_artifacts.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/troubleshoot/collect_hyperv_ubuntu_vm_artifacts.yaml)
+- [collect_windows_remote_access_artifacts.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/troubleshoot/collect_windows_remote_access_artifacts.yaml)
+
+Current Hyper-V Ubuntu troubleshooting note:
+
+- [hyperv-ubuntu-vm--windows--lessons-learned.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-ubuntu-vm--windows--lessons-learned.md)
+
+Current Windows remote-access troubleshooting notes:
+
+- [winrm--windows--diagnostics.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/winrm--windows--diagnostics.md)
+- [openssh--windows--diagnostics.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/openssh--windows--diagnostics.md)
