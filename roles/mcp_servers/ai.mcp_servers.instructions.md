@@ -119,7 +119,6 @@ already happened:
 
 - `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=yes`
 - `no_proxy=*`
-- `NO_PROXY=*`
 
 This prevents the macOS `Python quit unexpectedly` fork/proxy crash path seen
 when Python touches `_scproxy` inside a multi-threaded child process launched by

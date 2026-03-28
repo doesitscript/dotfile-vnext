@@ -241,6 +241,24 @@ Step 3 — Audit: After completing discovery or using stored file, emit one of:
 
 Step 4 — Subsequent research: Once diagnostic-discovery is complete (file exists or newly created), other research (web search, MCP tools, etc.) proceeds as normal. Use the diagnostics file when available. No need to search the internet again for that component's log locations.
 
+Step 5 — Verification and wiring: After diagnostic-discovery is complete, verify
+the identified output surfaces with explicit probes before trusting them as the
+real evidence path. If the repo does not yet expose a collector task file or
+dedicated troubleshoot playbook for that component and the component is in
+repeated troubleshooting, treat that as framework debt and wire a narrow one
+before continuing blind fix iteration.
+
+Step 6 — Output-quality floor: For Ansible-related troubleshooting, the minimum
+acceptable evidence is actual command output, probe output, log output, or
+event output. "I ran X" with no returned output is not sufficient evidence.
+When the repo exposes a collector/playbook path, save that output into the
+artifact bundle and cite the full artifact path.
+
+Step 7 — Retry verbosity: After discovery, verification, and collector wiring,
+rerun the Ansible troubleshooting path with verbosity enabled by default. Use
+`-vvv` unless a different evidence-rich path is more appropriate for the
+component.
+
 RULE 8a2 — WEB RESEARCH (WHEN DIAGNOSTICS FILE DID NOT EXIST)
 
 If you had to create the diagnostics file, you will have done web search as part of discovery. If the file already existed, you may still need web research for other aspects of the fix. Proceed as needed.

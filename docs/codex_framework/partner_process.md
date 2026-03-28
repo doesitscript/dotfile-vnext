@@ -21,6 +21,13 @@ Naming should reflect ownership and scope:
 - `github-*` for GitHub issue workflow rules and related backlog/pickup behavior
 - project-qualified names for repo-specific extensions
 
+When a framework rule needs an explicit scoped target, prefer:
+
+- `framework-{scope}-{friendly-name}.mdc`
+
+Where `scope` identifies the project type, language, domain, or capability area
+the rule applies to.
+
 Codex should treat that as an active naming convention, not just documentation flavor.
 
 Active rules and workflows should also be grouped by capability area rather than
@@ -125,6 +132,8 @@ The Steward must:
 - preserve the user's actual goal
 - stop silent milestone substitution
 - decide when research is required
+- use the repo's high-value MCP checkpoints when placement, inventory truth,
+  Ansible interface shape, or Codex/MCP design is the actual question
 - force an apply/verify/undo contract before meaningful changes
 - classify work as idempotent, bootstrap, or destructive
 - call out when the implementation shape is painting the repo into a corner
@@ -152,6 +161,8 @@ The Researcher must:
 - inspect the repo first
 - inspect existing playbooks, roles, docs, and inventory before proposing new structure
 - consult authoritative docs when the task is novel, unstable, or easy to get wrong
+- use the repo's high-value MCP checkpoints when environment truth, inventory
+  truth, diagnostics, or runtime capability is the question
 - use the `openaiDeveloperDocs` MCP server by default for OpenAI API, ChatGPT
   Apps SDK, Codex, AGENTS/customization, MCP/config, and subagent questions
   instead of answering those topics from memory
@@ -168,6 +179,8 @@ The Researcher must:
   for this thing" as a first-class research request
 - prefer existing repo diagnostics notes under `docs/diagnostics/` before
   rediscovering the same output surfaces from scratch
+- after identifying or researching output surfaces, verify them with explicit
+  probes before treating them as trustworthy
 - report which evidence surfaces are already available, which are missing, and
   what simple knobs can be used to collect more evidence on the next run
 
@@ -184,6 +197,44 @@ The expected standardized research result is:
 - what surfaces are already wired into the repo
 - what is still missing
 - what simple operator knobs can be used on later runs
+
+### Steward / Researcher MCP checkpoints
+
+Experiment note:
+- Researcher checkpoints currently remain defined directly in `AGENTS.md`
+- Steward checkpoints are being stress-tested in the externalized
+  `framework-ansible-mcp-usage.mdc` rule surface
+- this repo is intentionally comparing both implementations during real work to
+  see whether the externalized rule path is equally or more effective
+- `AGENTS.md` should stay focused on bootstrapping and adherence to the
+  framework-owned rule family rather than duplicating narrower experiment detail
+
+Use these MCP calls when they directly answer the active planning or research
+question:
+
+- Steward:
+  - `ansible-mcp.project_playbooks`
+  - `sysoperator.list_tasks`
+  - `ansible-mcp.inventory_graph`
+  - `ansible-mcp.inventory_find_host`
+  - `ansible-mcp.inventory_parse` when a full merged inventory view is needed
+  - `ansible.zen_of_ansible`
+  - `guidelines://ansible-content-best-practices`
+  - `openaiDeveloperDocs` for Codex/OpenAI/MCP/subagent design
+- Researcher:
+  - `ansible.ade_environment_info`
+  - `ansible.adt_check_env`
+  - `ansible-mcp.inventory_graph`
+  - `ansible-mcp.inventory_find_host`
+  - `ansible-mcp.inventory_parse`
+  - `ansible-mcp.ansible_gather_facts`
+  - `ansible-mcp.ansible_service_manager`
+  - `ansible-mcp.ansible_fetch_logs`
+  - `ansible-mcp.ansible_diagnose_host`
+  - `openaiDeveloperDocs` for Codex/OpenAI/MCP/config questions
+
+If one of these checkpoints is skipped when it would directly answer the
+question, the response should say why.
 
 ### 4. Executor
 
@@ -210,10 +261,20 @@ Default trigger:
 - automatic on repeated failure for the same component or capability
 - immediate when the user explicitly asks to troubleshoot or gather more output
 
+Default automatic path:
+
+1. identify the component and output locations
+2. use or create the diagnostics note under `docs/diagnostics/`
+3. verify the identified evidence surfaces with explicit probes
+4. use the collector/playbook if it exists, or wire a narrow one if missing
+5. rerun with troubleshooting controls enabled
+
 Required report on every troubleshooting run:
 
+- `Evidence:` as the visible conversation label for the troubleshooting summary
 - `Troubleshooting mode: on`
 - `Component(s): ...`
+- `Output locations: ...`
 - `Evidence surfaces identified: ...`
 - `Collected this run: ...`
 - `Missing this run: ...`
@@ -228,6 +289,35 @@ Evidence hierarchy:
 
 Ansible verbosity helps, but it does not replace service logs, event logs,
 vendor diagnostics, or explicitly printed remote stdout/stderr.
+
+### 6. Visible Role Transitions
+
+When the active role changes in a meaningful way, the conversation should label
+that transition explicitly rather than implying it through casual prose.
+
+Required labels:
+
+- `Planner/Steward view:`
+- `Researcher view:`
+- `Executor view:`
+- `Outcomes:`
+
+Use these labels at:
+
+- architecture or scope corrections
+- transition from planning to research
+- transition from research to implementation
+- troubleshooting pivots
+- outcomes summaries after implementation or validation work
+- evidence summaries after diagnostic runs
+
+The point is durable framework visibility, not conversational flavor. Casual
+phrasing such as "I'll go do X now" does not satisfy this requirement when a
+real framework-role transition is occurring.
+
+`Evidence:` is reserved for collected outputs, saved artifacts, and source-backed
+findings. It should not be used as a generic summary-of-changes label. Use
+`Outcomes:` or a plain summary heading for implementation recaps.
 
 ## When Research Is Mandatory
 

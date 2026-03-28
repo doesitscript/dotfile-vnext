@@ -60,6 +60,15 @@ The current startup default is a stable single-agent Codex profile.
 Experimental multi-agent behavior remains available, but it is no longer the
 default entry path while runtime validation is still incomplete.
 
+Current framework experiment:
+- Researcher MCP checkpoints remain defined directly in `AGENTS.md`
+- Steward MCP checkpoints are externalized into `framework-ansible-mcp-usage.mdc`
+- this is an intentional stress test comparing direct `AGENTS.md` definition
+  versus externalized rule-surface definition during normal repo work
+- `AGENTS.md` now stays general and points Codex at the framework-owned rule
+  family instead of carrying the narrower experiment details as if they were
+  the permanent top-level contract
+
 For MCP validation, this repo now also keeps a small probe profile in project
 `.codex/config.toml`:
 - `mcp_probe_drawio`
@@ -96,7 +105,9 @@ Implemented now:
   - `Planner/Steward view:`
   - `Researcher view:`
   - `Executor view:`
-  - `Evidence:`
+  - `Outcomes:`
+- `Evidence:` is reserved for troubleshooting proof, collected outputs, saved
+  artifacts, and source-backed findings
 - troubleshooting mode for repeated failures and explicit debugging requests
 - diagnostic-discovery research for finding logs, event channels, output
   surfaces, and verbosity controls for a component under investigation
@@ -483,6 +494,27 @@ The expected durable home for those findings is:
 
 When the answer should survive beyond one run, Codex should prefer creating or
 updating a diagnostics note there instead of leaving the research only in chat.
+
+When a component is entering repeated troubleshooting and the repo still lacks a
+saved-artifact entrypoint for it, the expected follow-on is:
+
+1. create or update the diagnostics note under `docs/diagnostics/`
+2. verify the identified evidence surfaces with explicit live probes
+3. add a narrow collector task file under `roles/troubleshooting_collectors/`
+4. add a dedicated troubleshoot playbook under `playbooks/troubleshoot/`
+
+This is the default automatic path inside troubleshooting mode, not an optional
+extra workflow:
+
+1. trigger on repeated failure or explicit request
+2. identify the component and output locations
+3. use or create the diagnostics note
+4. verify the evidence surfaces with direct probes
+5. use the collector/playbook if present, or wire one if missing
+6. rerun with troubleshooting controls enabled
+
+That collector/playbook layer is support work. It does not replace the
+mandatory troubleshooting-mode report in the normal role/playbook path.
 
 ## Implemented Plan History
 

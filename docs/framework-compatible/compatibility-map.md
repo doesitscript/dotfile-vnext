@@ -82,6 +82,19 @@ Use the following rule of thumb:
 - implementation-specific docs folders
   for host/runtime-specific setup and behavior, such as `docs/codex_framework/`
 
+The more specific naming pattern is:
+
+- `framework-{scope}-{friendly-name}.mdc`
+
+Where `scope` identifies what the rule family applies to, such as:
+
+- language or ecosystem
+- project type
+- domain or capability area
+
+That lets the framework load a family such as `framework-ansible-*` or
+`framework-github-*` without pretending every rule is globally applicable.
+
 ## Supported Implementation Targets
 
 Implemented today:
