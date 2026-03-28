@@ -1,0 +1,70 @@
+[CmdletBinding()]
+param(
+    [string]$ExpectedIPv4 = "",
+    [string]$TaskName = "HyperVManagementOsBootRecovery",
+    [string]$TaskPath = "\Ansible\HyperV\"
+)
+
+$ErrorActionPreference = "Continue"
+$logDir = "C:\ProgramData\Ansible\hyperv_networking\logs"
+$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$transcriptPath = Join-Path $logDir "management-os-boot-recovery-$timestamp.txt"
+
+function Get-ActiveIPv4Addresses {
+    Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.IPAddress -ne "127.0.0.1" -and
+            $_.IPAddress -notlike "169.254.*"
+        } |
+        Select-Object -ExpandProperty IPAddress -Unique
+}
+
+try {
+    New-Item -Path $logDir -ItemType Directory -Force | Out-Null
+    Start-Transcript -Path $transcriptPath -Force | Out-Null
+
+    $before = @(Get-ActiveIPv4Addresses)
+    Write-Output "Expected IPv4: $ExpectedIPv4"
+    Write-Output "Before refresh IPv4 addresses: $($before -join ', ')"
+
+    $needsRefresh = $true
+    if ($ExpectedIPv4 -and ($before -contains $ExpectedIPv4)) {
+        $needsRefresh = $false
+        Write-Output "Expected IPv4 already present. Skipping DHCP refresh."
+    }
+
+    if ($needsRefresh) {
+        Write-Output "Applying DHCP refresh sequence."
+        Clear-DnsClientCache
+        ipconfig /flushdns | Out-String | Write-Output
+        ipconfig /release | Out-String | Write-Output
+        Start-Sleep -Seconds 3
+        ipconfig /renew | Out-String | Write-Output
+    }
+
+    $after = @(Get-ActiveIPv4Addresses)
+    Write-Output "After refresh IPv4 addresses: $($after -join ', ')"
+
+    if ($ExpectedIPv4) {
+        if ($after -contains $ExpectedIPv4) {
+            Write-Output "Recovered expected IPv4: $ExpectedIPv4"
+        }
+        else {
+            Write-Warning "Expected IPv4 $ExpectedIPv4 is still missing after DHCP refresh."
+        }
+    }
+}
+finally {
+    try {
+        Unregister-ScheduledTask -TaskName $TaskName -TaskPath $TaskPath -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
+    }
+    catch {
+        Write-Warning "Failed to unregister scheduled task $TaskPath$TaskName: $($_.Exception.Message)"
+    }
+
+    try {
+        Stop-Transcript | Out-Null
+    }
+    catch {
+    }
+}

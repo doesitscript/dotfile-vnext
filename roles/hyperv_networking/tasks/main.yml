@@ -19,11 +19,50 @@
   ansible.builtin.set_fact:
     _hyperv: "{{ hyperv_config | default({}) }}"
 
-# --- Phase 1: Enable Hyper-V features ---
-- name: Enable Hyper-V features
-  ansible.builtin.include_tasks: hyperv_feature.yml
+- name: Determine whether Hyper-V networking changes are requested
+  ansible.builtin.set_fact:
+    _hyperv_networking_requested: >-
+      {{
+        (_hyperv.external_switch_enabled | default(false) | bool)
+        or
+        (_hyperv.internal_ics_switch_enabled | default(false) | bool)
+      }}
 
-# --- Phase 2: Create External Virtual Switch ---
-- name: Create External Virtual Switch
-  ansible.builtin.include_tasks: networking.yml
-  when: hyperv_feature_state == 'present'
+# --- Phase 0: Seed one-time boot recovery before risky network changes ---
+- name: Prepare Hyper-V management OS boot recovery
+  ansible.builtin.include_tasks: management_os_boot_recovery_prepare.yml
+  when:
+    - _hyperv_networking_requested | bool
+    - hyperv_feature_state == 'present'
+    - (_hyperv.allow_management_os | default(true) | bool)
+    - (_hyperv.management_os_boot_recovery_state | default('absent')) == 'present'
+
+- name: Manage Hyper-V networking lifecycle
+  block:
+    # --- Phase 1: Enable Hyper-V features ---
+    - name: Enable Hyper-V features
+      ansible.builtin.include_tasks: hyperv_feature.yml
+      when:
+        - _hyperv_networking_requested | bool
+
+    # --- Phase 2: Create or verify the External Virtual Switch ---
+    - name: Create External Virtual Switch
+      ansible.builtin.include_tasks: networking.yml
+      when:
+        - hyperv_feature_state == 'present'
+        - (_hyperv.external_switch_enabled | default(false) | bool)
+
+    # --- Phase 3: Create or verify the Internal VMSwitch and ICS pair ---
+    - name: Create Internal Hyper-V guest switch and ICS sharing pair
+      ansible.builtin.include_tasks: internal_ics.yml
+      when:
+        - hyperv_feature_state == 'present'
+        - (_hyperv.internal_ics_switch_enabled | default(false) | bool)
+  always:
+    - name: Remove Hyper-V management OS boot recovery helper after reconnect
+      ansible.builtin.include_tasks: management_os_boot_recovery_cleanup.yml
+      when:
+        - _hyperv_networking_requested | bool
+        - hyperv_feature_state == 'present'
+        - (_hyperv.allow_management_os | default(true) | bool)
+        - (_hyperv.management_os_boot_recovery_state | default('absent')) == 'present'

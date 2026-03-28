@@ -1,0 +1,162 @@
+---
+# internal_ics.yml — Create or verify an Internal Hyper-V VMSwitch and share a
+# public adapter into it with Internet Connection Sharing.
+
+- name: Probe Internal VMSwitch state
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $switch = Get-VMSwitch -Name '{{ _hyperv.internal_ics_switch_name | default("Guest") }}' -ErrorAction SilentlyContinue
+      if (-not $switch) {
+        $Ansible.Result = @{
+          exists = $false
+          name = '{{ _hyperv.internal_ics_switch_name | default("Guest") }}'
+        }
+        Exit 0
+      }
+
+      $Ansible.Result = @{
+        exists = $true
+        name = $switch.Name
+        switch_type = $switch.SwitchType.ToString()
+      }
+  register: _hyperv_internal_switch_probe
+  changed_when: false
+
+- name: Create Internal VMSwitch when absent
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      try {
+        $result = New-VMSwitch `
+          -Name '{{ _hyperv.internal_ics_switch_name | default("Guest") }}' `
+          -SwitchType Internal `
+          -ErrorAction Stop |
+          Out-String
+      } catch {
+        $Ansible.Result = $_.Exception.Message
+        $Ansible.Failed = $true
+        Exit 1
+      }
+
+      $Ansible.Changed = $true
+      $Ansible.Result = $result.Trim()
+  register: _hyperv_internal_switch_create
+  when: not (_hyperv_internal_switch_probe.result.exists | default(false))
+
+- name: Re-probe Internal VMSwitch state after create path
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $switch = Get-VMSwitch -Name '{{ _hyperv.internal_ics_switch_name | default("Guest") }}' -ErrorAction Stop
+      $Ansible.Result = @{
+        exists = $true
+        name = $switch.Name
+        switch_type = $switch.SwitchType.ToString()
+      }
+  register: _hyperv_internal_switch_verify
+  changed_when: false
+
+- name: Require Internal VMSwitch to exist after Hyper-V guest networking
+  ansible.builtin.assert:
+    that:
+      - _hyperv_internal_switch_verify.result.exists | default(false)
+      - (_hyperv_internal_switch_verify.result.switch_type | default('')) == 'Internal'
+    fail_msg: >-
+      Hyper-V internal switch '{{ _hyperv.internal_ics_switch_name | default('Guest') }}'
+      is not present after hyperv_networking.
+
+- name: Ensure SharedAccess service is running for Internet Connection Sharing
+  ansible.windows.win_service:
+    name: SharedAccess
+    start_mode: manual
+    state: started
+
+- name: Ensure PSInternetConnectionSharing module is present for Hyper-V guest networking
+  community.windows.win_psmodule:
+    name: PSInternetConnectionSharing
+    state: "{{ _hyperv.internal_ics_psmodule_state | default('present') }}"
+    accept_license: true
+  when: (_hyperv.internal_ics_psmodule_state | default('present')) == 'present'
+
+- name: Configure Internet Connection Sharing for Hyper-V internal guest switch
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      Import-Module PSInternetConnectionSharing -ErrorAction Stop
+
+      $publicConnection = '{{ _hyperv_internal_ics_public_adapter_name }}'
+      $privateConnection = '{{ _hyperv_internal_ics_private_adapter_alias }}'
+
+      $current = @(Get-Ics -ConnectionNames $publicConnection, $privateConnection -ErrorAction Stop)
+      $publicState = @(
+        $current |
+          Where-Object {
+            $_ -and
+            $_.PSObject.Properties.Match('NetworkConnectionName').Count -gt 0 -and
+            $_.NetworkConnectionName -and
+            $_.NetworkConnectionName.Trim() -eq $publicConnection
+          }
+      ) | Select-Object -First 1
+      $privateState = @(
+        $current |
+          Where-Object {
+            $_ -and
+            $_.PSObject.Properties.Match('NetworkConnectionName').Count -gt 0 -and
+            $_.NetworkConnectionName -and
+            $_.NetworkConnectionName.Trim() -eq $privateConnection
+          }
+      ) | Select-Object -First 1
+
+      $sharingMatches =
+        ($null -ne $publicState) -and
+        ($null -ne $privateState) -and
+        ($publicState.StatusICS -eq 'Enabled') -and
+        ($publicState.ConnectionType -eq 'Public') -and
+        ($privateState.StatusICS -eq 'Enabled') -and
+        ($privateState.ConnectionType -eq 'Private')
+
+      if (-not $sharingMatches) {
+        Set-Ics -PublicConnectionName $publicConnection -PrivateConnectionName $privateConnection -ErrorAction Stop | Out-Null
+        $Ansible.Changed = $true
+        $current = @(Get-Ics -ConnectionNames $publicConnection, $privateConnection -ErrorAction Stop)
+      }
+
+      $privateIPv4 = @(
+        Get-NetIPAddress -InterfaceAlias $privateConnection -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+          Select-Object -ExpandProperty IPAddress
+      )
+
+      $Ansible.Result = @{
+        public_connection = $publicConnection
+        private_connection = $privateConnection
+        ics_status = $current
+        private_ipv4 = $privateIPv4
+      }
+  register: _hyperv_internal_ics_config
+  vars:
+    _hyperv_internal_ics_public_adapter_name: >-
+      {{
+        _hyperv.internal_ics_public_adapter_name
+        | default(_hyperv.adapter_name | default('Wi-Fi'))
+      }}
+    _hyperv_internal_ics_private_adapter_alias: >-
+      {{
+        _hyperv.internal_ics_private_adapter_alias
+        | default('vEthernet (' ~ (_hyperv.internal_ics_switch_name | default('Guest')) ~ ')')
+      }}
+
+- name: Report Hyper-V internal switch ICS status when troubleshooting
+  ansible.builtin.debug:
+    var: _hyperv_internal_ics_config.result
+  when:
+    - (ansible_troubleshooting_mode | default(false) | bool) or
+      (debug_remote_output | default(false) | bool) or
+      (debug_collect_component_evidence | default(false) | bool)
+  tags:
+    - evidence
+    - debug_resources

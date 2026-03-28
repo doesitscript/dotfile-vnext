@@ -1,0 +1,16 @@
+---
+# management_os_boot_recovery_cleanup.yml — remove the temporary recovery task
+# and script after the host has returned to the controller.
+
+- name: Remove Hyper-V management OS boot recovery scheduled task
+  community.windows.win_scheduled_task:
+    name: "HyperVManagementOsBootRecovery"
+    path: "\\Ansible\\HyperV\\"
+    state: absent
+  failed_when: false
+
+- name: Remove Hyper-V management OS boot recovery script
+  ansible.windows.win_file:
+    path: "C:\\ProgramData\\Ansible\\hyperv_networking\\scripts\\management_os_boot_recovery.ps1"
+    state: absent
+  failed_when: false

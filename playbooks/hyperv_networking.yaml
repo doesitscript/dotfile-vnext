@@ -1,6 +1,7 @@
 ---
-# Hyper-V Networking: enable Hyper-V features and create an External Virtual Switch.
-# Targets windows_hosts with hyperv_config.external_switch_enabled == true in host_vars.
+# Hyper-V Networking: enable Hyper-V features and manage Hyper-V switch
+# prerequisites, including the existing External switch path and the Internal
+# guest-switch + ICS path.
 #
 # Commands:
 #   Full run:
@@ -17,4 +18,9 @@
     - name: Configure Hyper-V bridge infrastructure
       ansible.builtin.include_role:
         name: hyperv_networking
-      when: (hyperv_config | default({})).external_switch_enabled | default(false) | bool
+      when: >-
+        (
+          (hyperv_config | default({})).external_switch_enabled | default(false) | bool
+        ) or (
+          (hyperv_config | default({})).internal_ics_switch_enabled | default(false) | bool
+        )
