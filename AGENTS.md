@@ -84,6 +84,58 @@ Include:
 8. When repeated implementation attempts stop producing new evidence, stop iterating blindly and switch to documentation/source-backed research before changing strategy.
 9. When password passing, privilege escalation, or installer flow behaves unexpectedly, inspect the actual module/tool documentation or source before changing escalation strategy.
 
+## Framework Rule Adherence
+
+Framework rule files are compatible with Codex and follow the naming shape:
+
+- `framework-{scope}-{friendly-name}.mdc`
+
+The `scope` segment identifies what the rule family applies to, such as a
+project type, language, domain, or capability area.
+
+After the bootstrap step, explicitly load all active framework rules that match
+the current work scope. In particular, load the relevant
+`framework-{scope}-*.mdc` files plus any supporting rule files they
+depend on.
+
+Framework rule files are a normal part of the active instruction stack in this
+repo, not optional background notes. When `AGENTS.md` points to them, agent
+behavior defined in those files must be followed.
+
+Those framework files may define:
+- MCP server tool usage
+- reference-doc usage
+- agent role behavior
+- implementation/modification guidance
+- troubleshooting and evidence behavior
+
+Keep the durable rule-loading contract here in `AGENTS.md`. Keep narrower
+implementation comparisons, experiments, and stress-test notes in
+`docs/codex_framework/` unless the bootstrap itself depends on them.
+
+## Researcher MCP Checkpoints
+
+When the question is about current environment truth, diagnostics, or runtime
+capability, prefer these MCP checks instead of reasoning from memory:
+
+1. Ansible environment, Python env, installed collections, or toolchain health:
+   - `ansible.ade_environment_info`
+   - `ansible.adt_check_env` when ADT health is the question
+2. Inventory truth or host/group membership:
+   - `ansible-mcp.inventory_graph`
+   - `ansible-mcp.inventory_find_host`
+   - `ansible-mcp.inventory_parse` when needed
+3. Live host state and diagnostics:
+   - `ansible-mcp.ansible_gather_facts`
+   - `ansible-mcp.ansible_service_manager`
+   - `ansible-mcp.ansible_fetch_logs`
+   - `ansible-mcp.ansible_diagnose_host`
+4. OpenAI/Codex/MCP/config questions:
+   - `openaiDeveloperDocs`
+
+These MCP checkpoints are not optional when they directly answer the current
+planning or research question. If they are skipped, say why.
+
 ## Planning Behavior
 
 1. Use a light planning signal such as `Planner/Steward view:` or `Here's what I've got:`.
@@ -97,8 +149,9 @@ Include:
    - `Planner/Steward view:`
    - `Researcher view:`
    - `Executor view:`
-   - `Evidence:`
-6. Use those labels at transition points and decision points, not on every message.
+   - `Outcomes:`
+6. Reserve `Evidence:` for collected outputs, saved artifacts, and source-backed findings. Use `Outcomes:` or plain implementation prose for change summaries, recaps, or results that are not proof artifacts.
+7. Use those labels at transition points and decision points, not on every message.
 
 ## Implementation Shape
 

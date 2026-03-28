@@ -21,7 +21,6 @@ the repo's WinRM safety vars instead of depending on interactive shell startup:
 
 - `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=yes`
 - `no_proxy=*`
-- `NO_PROXY=*`
 
 ## Apply / Verify / Undo / Change Class
 
