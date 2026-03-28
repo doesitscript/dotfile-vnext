@@ -1,0 +1,62 @@
+---
+# management_os_boot_recovery_prepare.yml — pre-seed a one-time boot recovery
+# task before risky Hyper-V network changes. The task runs locally on Windows on
+# the next boot, applies the proven DHCP refresh sequence, and unregisters
+# itself so the controller is not required to stay connected during the outage.
+
+- name: Validate Hyper-V management OS boot recovery state
+  ansible.builtin.assert:
+    that:
+      - (_hyperv.management_os_boot_recovery_state | default('absent')) in ['present', 'absent']
+    fail_msg: >-
+      hyperv_config.management_os_boot_recovery_state must be 'present' or
+      'absent', not '{{ _hyperv.management_os_boot_recovery_state | default('undefined') }}'.
+
+- name: Require host_ip when Hyper-V management OS boot recovery is enabled
+  ansible.builtin.assert:
+    that:
+      - (host_ip | default('')) | length > 0
+    fail_msg: >-
+      host_ip must be defined when hyperv_config.management_os_boot_recovery_state
+      is present so the recovery task can verify the expected control-plane IP.
+  when: (_hyperv.management_os_boot_recovery_state | default('absent')) == 'present'
+
+- name: Ensure Hyper-V management OS recovery directories exist
+  ansible.windows.win_file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "C:\\ProgramData\\Ansible\\hyperv_networking"
+    - "C:\\ProgramData\\Ansible\\hyperv_networking\\scripts"
+    - "C:\\ProgramData\\Ansible\\hyperv_networking\\logs"
+
+- name: Stage Hyper-V management OS boot recovery script
+  ansible.windows.win_template:
+    src: management_os_boot_recovery.ps1.j2
+    dest: "C:\\ProgramData\\Ansible\\hyperv_networking\\scripts\\management_os_boot_recovery.ps1"
+
+- name: Register Hyper-V management OS boot recovery scheduled task
+  community.windows.win_scheduled_task:
+    name: "HyperVManagementOsBootRecovery"
+    path: "\\Ansible\\HyperV\\"
+    description: >-
+      One-time boot recovery for Hyper-V management OS networking. Applies the
+      soft DHCP refresh sequence and unregisters itself after running.
+    actions:
+      - path: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+        arguments: >-
+          -ExecutionPolicy Bypass -NoProfile -NonInteractive
+          -File C:\ProgramData\Ansible\hyperv_networking\scripts\management_os_boot_recovery.ps1
+          -ExpectedIPv4 {{ host_ip }}
+          -TaskName HyperVManagementOsBootRecovery
+          -TaskPath \Ansible\HyperV\
+    triggers:
+      - type: boot
+        delay: "{{ _hyperv.management_os_boot_recovery_trigger_delay | default('PT45S') }}"
+    username: "SYSTEM"
+    run_level: highest
+    compatibility: 4
+    allow_demand_start: false
+    enabled: true
+    execution_time_limit: "PT10M"
+    state: present

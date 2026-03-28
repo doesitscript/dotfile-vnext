@@ -1,8 +1,9 @@
 ---
 # hyperv_networking — API contract.
 #
-# Pure infrastructure: enables Hyper-V and creates an External Virtual Switch
-# bridged to a physical NIC. No guest (WSL, VM) awareness.
+# Pure infrastructure: enables Hyper-V and manages Hyper-V networking
+# prerequisites. Supports the existing External VMSwitch path plus an Internal
+# guest switch with Internet Connection Sharing for Wi-Fi-backed guests.
 #
 # Override adapter_name, switch_name, or allow_management_os in host_vars.
 hyperv_feature_state: present
@@ -13,3 +14,10 @@ hyperv_config:
   switch_name: "External"
   adapter_name: "Wi-Fi"
   allow_management_os: true
+  management_os_boot_recovery_state: absent
+  management_os_boot_recovery_trigger_delay: "PT45S"
+  internal_ics_switch_enabled: false
+  internal_ics_switch_name: "Guest"
+  internal_ics_public_adapter_name: "{{ (hyperv_config | default({})).adapter_name | default('Wi-Fi') }}"
+  internal_ics_private_adapter_alias: "vEthernet ({{ (hyperv_config | default({})).internal_ics_switch_name | default('Guest') }})"
+  internal_ics_psmodule_state: present
