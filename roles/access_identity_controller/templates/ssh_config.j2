@@ -9,6 +9,7 @@
 {% set hv = hostvars[host] %}
 {% set openssh_state = hv.get('openssh_server_state', '') %}
 {% set windows_ssh_state = openssh_state if openssh_state else ('present' if hv.get('openssh_server_enabled', true) else 'absent') %}
+{% set ipv6_host = hv.get('host_ipv6', '') %}
 {% set emit_ssh_entry = (
   (hv.get('surface_type', '') == 'windows_host' and windows_ssh_state == 'present')
   or (hv.get('surface_type', '') == 'wsl' and host in (groups['wsl_hosts'] | default([])))
@@ -30,6 +31,17 @@ Host {{ host }}
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
     LogLevel ERROR
+{% if ipv6_host %}
+
+Host {{ host }}-ipv6
+    HostName {{ ipv6_host }}
+    User {{ hv.get('ssh_user', hv.get('win_ssh_user', hv.get('wsl_user', hv.get('ansible_user', 'joshc')))) }}
+    Port {{ hv.get('ssh_port', hv.get('win_ssh_port', hv.get('wsl_ssh_port', hv.get('ansible_port', 22)))) }}
+    IdentityFile {{ controller_ssh_private_key_path }}
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    LogLevel ERROR
+{% endif %}
 {% if hv.ssh_powershell_port is defined %}
 
 # Direct PowerShell session for connecting to windows host, uses port win_ssh_powershell_port
@@ -56,6 +68,18 @@ Host {{ host }}-powershell-bysession
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
     LogLevel ERROR
+{% if ipv6_host %}
+
+Host {{ host }}-powershell-ipv6
+    HostName {{ ipv6_host }}
+    User {{ hv.get('ssh_user', hv.get('win_ssh_user', hv.get('wsl_user', hv.get('ansible_user', 'joshc')))) }}
+    ControlMaster no
+    ControlPath none
+    IdentityFile {{ controller_ssh_private_key_path }}
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    LogLevel ERROR
+{% endif %}
 {% endif %}
 
 {% endif %}

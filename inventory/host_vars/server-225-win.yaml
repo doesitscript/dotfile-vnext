@@ -4,6 +4,8 @@ ansible_host: "DESKTOP-VLLM"
 ansible_password: "Pass@w0rd1"
 surface_type: "windows_host"
 host_ip: "192.168.50.158"
+# Stable internal ULA observed in gathered facts and verified live from mac-dev.
+host_ipv6: "fdfa:7038:521c:a5fa:7c9:f4a1:90b8:1b1e"
 ansible_connection: winrm
 win_ssh_port: 22
 win_ssh_user: "joshc"
@@ -29,6 +31,10 @@ hyperv_config:
   switch_name: "External"
   adapter_name: "Wi-Fi"
   allow_management_os: true
+  management_os_boot_recovery_state: present
+  internal_ics_switch_enabled: true
+  internal_ics_switch_name: "Guest"
+  internal_ics_public_adapter_name: "vEthernet (External)"
 
 # WSL: consumer of the bridge (requires hyperv_config.external_switch_enabled).
 wsl_config:
@@ -54,4 +60,4 @@ hyperv_ubuntu_vm_disk: "40G"
 hyperv_ubuntu_vm_user: "ubuntu"
 hyperv_ubuntu_vm_hostname: "server-225-ubuntu"
 hyperv_ubuntu_vm_ssh_port: 22
-hyperv_ubuntu_vm_cloud_image_url: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+hyperv_ubuntu_vm_cloud_image_url: "https://cloud-images.ubuntu.com/releases/server/24.04/release/ubuntu-24.04-server-cloudimg-amd64-azure.vhd.tar.gz"

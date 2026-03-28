@@ -51,8 +51,14 @@ This role templates `~/.ssh/config` from the `ssh_targets` inventory group.
 
 The template also creates:
 - `Host <name>-powershell` aliases for Windows hosts with `ssh_powershell_port` defined.
+- `Host <name>-ipv6` aliases when `host_ipv6` is defined for a target.
 - A `Host *` block with `ControlMaster`/`ControlPath`/`ControlPersist` for SSH multiplexing.
 - The `~/.ssh/sockets/` directory required by `ControlPath`.
+
+Ansible provides `ansible.utils.ipwrap` for configuration formats that require
+bracketed IPv6 addresses, but OpenSSH `HostName` entries here need the raw IPv6
+literal instead. The repo therefore does not use `ipwrap` for `~/.ssh/config`
+generation.
 
 **Requires fact caching** to be enabled in `ansible.cfg` (jsonfile, timeout 86400).
 
