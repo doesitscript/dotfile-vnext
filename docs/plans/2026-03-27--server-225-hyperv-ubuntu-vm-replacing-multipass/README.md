@@ -20,8 +20,9 @@ The repo direction is now:
 - retire the existing `multipass_ubuntu_vm` capability through its `absent`
   lifecycle
 - replace it with a new Hyper-V-native Ubuntu VM role built around:
-  - Ubuntu cloud image
-  - VHDX conversion
+  - Canonical Azure VHD as the primary source artifact
+  - source normalization on the Windows host before conversion
+  - Hyper-V-native `Convert-VHD` to the final fixed VHDX
   - cloud-init ISO
   - External Switch networking
   - SSH publication back into inventory/controller config
@@ -66,6 +67,13 @@ Recommended path:
 - new role: `hyperv_ubuntu_vm`
 - keep lifecycle state-based:
   - `hyperv_ubuntu_vm_state: present | absent`
+- primary disk path:
+  - download Canonical Azure VHD tarball
+  - extract the published VHD on `server-225-win`
+  - clear sparse/compression on the source artifact
+  - run native `Convert-VHD` to the final fixed VHDX
+- keep the old raw `.img -> qemu-img -> vhdx` path only as fallback/legacy
+  experiment material, not as the first implementation candidate
 - carry forward from `multipass_ubuntu_vm`:
   - cloud-init template pattern
   - SSH key bootstrap pattern
@@ -91,11 +99,12 @@ In scope now:
 - commit that state as a durable checkpoint
 - run host-side teardown and remove active deprecated Multipass entrypoints
   from the repo
+- remove the live repo implementation role once the replacement direction is
+  proven and no playbook still depends on it
 
 Not in scope for this checkpoint:
 
 - full cutover into the broad server-225 provisioning play
-- deleting the old Multipass role from the repo
 - deleting the archived Multipass reference role before the replacement is
   proven
 
@@ -119,3 +128,42 @@ Undo:
 
 Change class:
 - destructive host teardown plus idempotent repo cleanup
+
+## Current Replacement Update
+
+The original raw Ubuntu cloud-image conversion path is no longer the preferred
+implementation direction.
+
+Pinned runtime finding:
+
+- Canonical's published Azure VHD, after source normalization on
+  `server-225-win`, converted cleanly with native `Convert-VHD`
+- the resulting fixed VHDX booted `server-225-ubuntu` successfully
+
+Implementation consequence:
+
+- make the Azure VHD route the primary candidate
+- probe both source and destination artifacts before Hyper-V attach/start
+- keep the raw `.img` route only as fallback or legacy experiment material
+
+## Current Cleanup Status
+
+Repo cleanup completed:
+
+- the live `roles/multipass_ubuntu_vm/` implementation has been removed
+- stray Multipass troubleshooting artifacts under
+  `playbooks/troubleshoot/artifacts/troubleshooting/multipass_bridge_failure/`
+  have been removed
+
+Host cleanup blocked:
+
+- `server-225-win` is currently unreachable at the network layer, so the
+  destructive host-side teardown could not be completed in this pass
+
+Pinned blocker evidence:
+
+```text
+ssh: connect to host DESKTOP-VLLM port 22: Host is down
+nc: connectx to DESKTOP-VLLM port 5985 (tcp) failed: Host is down
+? (192.168.50.158) at (incomplete) on en0 ifscope [ethernet]
+```

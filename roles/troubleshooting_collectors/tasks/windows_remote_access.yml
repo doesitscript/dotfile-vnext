@@ -1,0 +1,271 @@
+---
+- name: Set Windows remote access troubleshooting artifact stamp when missing
+  ansible.builtin.set_fact:
+    troubleshooting_artifact_stamp: "{{ lookup('pipe', 'date +%Y%m%d-%H%M%S') }}"
+  when: (troubleshooting_artifact_stamp | default('')) | length == 0
+
+- name: Define Windows remote access troubleshooting artifact paths
+  ansible.builtin.set_fact:
+    _windows_remote_access_artifact_dir: >-
+      {{ troubleshooting_artifact_root }}/windows_remote_access/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}
+    _windows_remote_access_command_dir: >-
+      {{ troubleshooting_artifact_root }}/windows_remote_access/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}/command_results
+    _windows_remote_access_event_dir: >-
+      {{ troubleshooting_artifact_root }}/windows_remote_access/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}/event_logs
+    _windows_remote_access_notes_dir: >-
+      {{ troubleshooting_artifact_root }}/windows_remote_access/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}/notes
+
+- name: Ensure Windows remote access troubleshooting artifact directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ _windows_remote_access_artifact_dir }}"
+    - "{{ _windows_remote_access_command_dir }}"
+    - "{{ _windows_remote_access_event_dir }}"
+    - "{{ _windows_remote_access_notes_dir }}"
+  delegate_to: localhost
+
+- name: Collect Windows remote access troubleshooting bundle from Windows host
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $out = [ordered]@{
+        host = $env:COMPUTERNAME
+        winrm = [ordered]@{
+          service = $null
+          listener = ''
+          test_wsman = ''
+          active_shells = @()
+          tcp = @()
+          firewall = @()
+        }
+        openssh = [ordered]@{
+          service = $null
+          processes = @()
+          config_path = 'C:\ProgramData\ssh\sshd_config'
+          config_exists = $false
+          config = ''
+          log_dir = 'C:\ProgramData\ssh\logs'
+          log_files = @()
+          sshd_log_tail = ''
+          tcp = @()
+          firewall = @()
+        }
+        system = [ordered]@{
+          hostname = $env:COMPUTERNAME
+          adapters = @()
+          ipv4 = @()
+        }
+        winrm_operational_events = @()
+        winrm_system_events = @()
+        openssh_operational_events = @()
+        openssh_admin_events = @()
+        scm_remote_access_events = @()
+      }
+
+      try {
+        $svc = Get-Service WinRM -ErrorAction Stop
+        $out.winrm.service = @{
+          Name = $svc.Name
+          Status = $svc.Status.ToString()
+          StartType = $svc.StartType.ToString()
+        }
+      } catch {}
+
+      try { $out.winrm.listener = (winrm enumerate winrm/config/listener 2>&1 | Out-String).Trim() } catch {}
+      try { $out.winrm.test_wsman = (Test-WSMan localhost 2>&1 | Out-String).Trim() } catch {}
+      try {
+        $shells = Get-WSManInstance -ResourceURI shell -Enumerate -ErrorAction Stop
+        $out.winrm.active_shells = @($shells | ForEach-Object {
+          @{
+            ShellId = $_.ShellId
+            Owner = $_.Owner
+            ClientIP = $_.ClientIP
+            ShellRunTime = $_.ShellRunTime
+            ShellInactivity = $_.ShellInactivity
+            IdleTimeOut = $_.IdleTimeOut
+          }
+        })
+      } catch {}
+      try {
+        $out.winrm.tcp = @(
+          Get-NetTCPConnection -State Listen -ErrorAction Stop |
+          Where-Object { $_.LocalPort -in 5985,5986 } |
+          Select-Object LocalAddress,LocalPort,State,OwningProcess
+        )
+      } catch {}
+      try {
+        $out.winrm.firewall = @(
+          Get-NetFirewallRule -ErrorAction Stop |
+          Where-Object { $_.DisplayName -match 'WinRM|Remote Management' } |
+          Select-Object DisplayName,Enabled,Direction,Action
+        )
+      } catch {}
+
+      try {
+        $svc = Get-Service sshd -ErrorAction Stop
+        $out.openssh.service = @{
+          Name = $svc.Name
+          Status = $svc.Status.ToString()
+          StartType = $svc.StartType.ToString()
+        }
+      } catch {}
+      try {
+        $out.openssh.processes = @(
+          Get-Process sshd -ErrorAction SilentlyContinue |
+          Select-Object Id,StartTime,CPU,WorkingSet64
+        )
+      } catch {}
+      try {
+        if (Test-Path $out.openssh.config_path) {
+          $out.openssh.config_exists = $true
+          $out.openssh.config = Get-Content -LiteralPath $out.openssh.config_path -Raw
+        }
+      } catch {}
+      try {
+        if (Test-Path $out.openssh.log_dir) {
+          $out.openssh.log_files = @(
+            Get-ChildItem -LiteralPath $out.openssh.log_dir -ErrorAction SilentlyContinue |
+            Select-Object Name,Length,LastWriteTime,Attributes
+          )
+          $sshdLog = Join-Path $out.openssh.log_dir 'sshd.log'
+          if (Test-Path $sshdLog) {
+            $out.openssh.sshd_log_tail = (Get-Content -LiteralPath $sshdLog -Tail 100 -ErrorAction SilentlyContinue | Out-String).Trim()
+          }
+        }
+      } catch {}
+      try {
+        $out.openssh.tcp = @(
+          Get-NetTCPConnection -State Listen -ErrorAction Stop |
+          Where-Object { $_.LocalPort -eq 22 } |
+          Select-Object LocalAddress,LocalPort,State,OwningProcess
+        )
+      } catch {}
+      try {
+        $out.openssh.firewall = @(
+          Get-NetFirewallRule -ErrorAction Stop |
+          Where-Object { $_.DisplayName -match 'SSH|sshd|OpenSSH' } |
+          Select-Object DisplayName,Enabled,Direction,Action
+        )
+      } catch {}
+
+      try {
+        $out.system.adapters = @(
+          Get-NetAdapter -ErrorAction Stop |
+          Select-Object Name,InterfaceDescription,Status,MacAddress,LinkSpeed
+        )
+      } catch {}
+      try {
+        $out.system.ipv4 = @(
+          Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop |
+          Select-Object InterfaceAlias,IPAddress,PrefixLength,PrefixOrigin
+        )
+      } catch {}
+
+      try {
+        $out.winrm_operational_events = @(
+          Get-WinEvent -LogName 'Microsoft-Windows-WinRM/Operational' -MaxEvents 50 -ErrorAction Stop |
+          Select-Object TimeCreated,Id,LevelDisplayName,Message
+        )
+      } catch {}
+      try {
+        $out.winrm_system_events = @(
+          Get-WinEvent -FilterHashtable @{
+            LogName='System'
+            ProviderName='Microsoft-Windows-WinRM'
+            StartTime=(Get-Date).AddHours(-12)
+          } -MaxEvents 50 -ErrorAction Stop |
+          Select-Object TimeCreated,Id,LevelDisplayName,Message
+        )
+      } catch {}
+      try {
+        $out.openssh_operational_events = @(
+          Get-WinEvent -LogName 'OpenSSH/Operational' -MaxEvents 50 -ErrorAction Stop |
+          Select-Object TimeCreated,Id,LevelDisplayName,Message
+        )
+      } catch {}
+      try {
+        $out.openssh_admin_events = @(
+          Get-WinEvent -LogName 'OpenSSH/Admin' -MaxEvents 50 -ErrorAction Stop |
+          Select-Object TimeCreated,Id,LevelDisplayName,Message
+        )
+      } catch {}
+      try {
+        $out.scm_remote_access_events = @(
+          Get-WinEvent -FilterHashtable @{ LogName='System'; ProviderName='Service Control Manager'; StartTime=(Get-Date).AddHours(-12) } -ErrorAction Stop |
+          Where-Object { $_.Message -match 'sshd|WinRM' } |
+          Select-Object TimeCreated,Id,LevelDisplayName,Message
+        )
+      } catch {}
+
+      $Ansible.Result = $out
+  register: _windows_remote_access_collector
+  changed_when: false
+
+- name: Write Windows remote access troubleshooting bundle JSON
+  ansible.builtin.copy:
+    dest: "{{ _windows_remote_access_command_dir }}/windows_remote_access_probe.json"
+    content: "{{ _windows_remote_access_collector.result | to_nice_json }}"
+    mode: "0644"
+  delegate_to: localhost
+
+- name: Write WinRM operational event log JSON
+  ansible.builtin.copy:
+    dest: "{{ _windows_remote_access_event_dir }}/winrm_operational.json"
+    content: "{{ (_windows_remote_access_collector.result.winrm_operational_events | default([])) | to_nice_json }}"
+    mode: "0644"
+  delegate_to: localhost
+
+- name: Write WinRM system event log JSON
+  ansible.builtin.copy:
+    dest: "{{ _windows_remote_access_event_dir }}/winrm_system.json"
+    content: "{{ (_windows_remote_access_collector.result.winrm_system_events | default([])) | to_nice_json }}"
+    mode: "0644"
+  delegate_to: localhost
+
+- name: Write OpenSSH operational event log JSON
+  ansible.builtin.copy:
+    dest: "{{ _windows_remote_access_event_dir }}/openssh_operational.json"
+    content: "{{ (_windows_remote_access_collector.result.openssh_operational_events | default([])) | to_nice_json }}"
+    mode: "0644"
+  delegate_to: localhost
+
+- name: Write OpenSSH admin event log JSON
+  ansible.builtin.copy:
+    dest: "{{ _windows_remote_access_event_dir }}/openssh_admin.json"
+    content: "{{ (_windows_remote_access_collector.result.openssh_admin_events | default([])) | to_nice_json }}"
+    mode: "0644"
+  delegate_to: localhost
+
+- name: Write Service Control Manager remote access event log JSON
+  ansible.builtin.copy:
+    dest: "{{ _windows_remote_access_event_dir }}/scm_remote_access.json"
+    content: "{{ (_windows_remote_access_collector.result.scm_remote_access_events | default([])) | to_nice_json }}"
+    mode: "0644"
+  delegate_to: localhost
+
+- name: Write Windows remote access troubleshooting notes
+  ansible.builtin.copy:
+    dest: "{{ _windows_remote_access_notes_dir }}/README.txt"
+    mode: "0644"
+    content: |
+      Scenario: windows_remote_access
+      Host: {{ inventory_hostname }}
+      Artifact root: {{ _windows_remote_access_artifact_dir }}
+      Diagnostics notes:
+      - /Users/joshc/develop/dotfile-vnext/docs/diagnostics/winrm--windows--diagnostics.md
+      - /Users/joshc/develop/dotfile-vnext/docs/diagnostics/openssh--windows--diagnostics.md
+      Repo debug reference:
+      - /Users/joshc/develop/dotfile-vnext/roles/access_identity_windows/tasks/debug_output.yml
+  delegate_to: localhost
+
+- name: Report Windows remote access troubleshooting artifact location
+  ansible.builtin.debug:
+    msg:
+      artifact_root: "{{ _windows_remote_access_artifact_dir }}"
+      command_bundle: "{{ _windows_remote_access_command_dir }}/windows_remote_access_probe.json"
+      winrm_operational: "{{ _windows_remote_access_event_dir }}/winrm_operational.json"
+      openssh_operational: "{{ _windows_remote_access_event_dir }}/openssh_operational.json"
+      notes: "{{ _windows_remote_access_notes_dir }}/README.txt"

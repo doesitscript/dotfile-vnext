@@ -40,6 +40,40 @@ The role treats the VM as one capability:
 - Undo: rerun with `hyperv_ubuntu_vm_state=absent`
 - Change class: bootstrap plus idempotent lifecycle management
 
+## Troubleshooting controls
+
+Standard variables:
+
+```yaml
+ansible_troubleshooting_mode: false
+debug_remote_output: false
+debug_collect_component_evidence: false
+```
+
+Useful tags:
+
+- `evidence`
+- `debug_resources`
+
+When troubleshooting mode or debug evidence collection is enabled, the role
+emits:
+
+- the primary output locations before the start path runs
+- VHD and filesystem attribute probes for the boot disk
+- Hyper-V VM, disk-attachment, and firmware probes around the start path
+- a troubleshooting report with identified, collected, and missing evidence
+  surfaces
+- the full structured diagnostics block for the current failure
+
+Reference diagnostics note:
+
+- [hyperv-ubuntu-vm--windows--diagnostics.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-ubuntu-vm--windows--diagnostics.md)
+- [hyperv-ubuntu-vm--windows--lessons-learned.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-ubuntu-vm--windows--lessons-learned.md)
+
+Dedicated saved-artifact playbook:
+
+- [collect_hyperv_ubuntu_vm_artifacts.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/troubleshoot/collect_hyperv_ubuntu_vm_artifacts.yaml)
+
 ## Notes
 
 - Host feature and switch ownership stay with `hyperv_networking`

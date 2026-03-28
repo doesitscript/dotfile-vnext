@@ -1,0 +1,183 @@
+---
+- name: Set Hyper-V Ubuntu VM troubleshooting artifact stamp when missing
+  ansible.builtin.set_fact:
+    troubleshooting_artifact_stamp: "{{ lookup('pipe', 'date +%Y%m%d-%H%M%S') }}"
+  when: (troubleshooting_artifact_stamp | default('')) | length == 0
+
+- name: Define Hyper-V Ubuntu VM troubleshooting artifact paths
+  ansible.builtin.set_fact:
+    _hyperv_ubuntu_vm_artifact_dir: >-
+      {{ troubleshooting_artifact_root }}/hyperv_ubuntu_vm/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}
+    _hyperv_ubuntu_vm_command_dir: >-
+      {{ troubleshooting_artifact_root }}/hyperv_ubuntu_vm/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}/command_results
+    _hyperv_ubuntu_vm_event_dir: >-
+      {{ troubleshooting_artifact_root }}/hyperv_ubuntu_vm/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}/event_logs
+    _hyperv_ubuntu_vm_notes_dir: >-
+      {{ troubleshooting_artifact_root }}/hyperv_ubuntu_vm/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}/notes
+
+- name: Ensure Hyper-V Ubuntu VM troubleshooting artifact directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ _hyperv_ubuntu_vm_artifact_dir }}"
+    - "{{ _hyperv_ubuntu_vm_command_dir }}"
+    - "{{ _hyperv_ubuntu_vm_event_dir }}"
+    - "{{ _hyperv_ubuntu_vm_notes_dir }}"
+  delegate_to: localhost
+
+- name: Collect Hyper-V Ubuntu VM troubleshooting bundle from Windows host
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $vmName = '{{ hyperv_ubuntu_vm_name | default("server-225-ubuntu") }}'
+      $rootDir = '{{ hyperv_ubuntu_vm_host_root_dir | default("C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\server-225-ubuntu") }}'
+      $diskPath = '{{ hyperv_ubuntu_vm_host_vhdx_path | default("C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\server-225-ubuntu\\server-225-ubuntu.vhdx") }}'
+      $seedPath = '{{ hyperv_ubuntu_vm_host_seed_iso_path | default(
+        "C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\server-225-ubuntu\\server-225-ubuntu-cidata.iso"
+      ) }}'
+      $qemuImg = 'C:\Program Files\qemu\qemu-img.exe'
+
+      $result = [ordered]@{
+        vm_name = $vmName
+        artifact_root = $rootDir
+        boot_disk_path = $diskPath
+        seed_iso_path = $seedPath
+        vm = $null
+        disk = $null
+        dvd = $null
+        firmware = $null
+        get_vhd = $null
+        sparse = ''
+        compact = ''
+        cipher = ''
+        item = $null
+        qemu_img_info = ''
+        worker_events = @()
+        vmms_events = @()
+      }
+
+      try {
+        $vm = Get-VM -Name $vmName -ErrorAction SilentlyContinue
+        if ($vm) {
+          $result.vm = @{
+            Name = $vm.Name
+            State = $vm.State.ToString()
+            ProcessorCount = $vm.ProcessorCount
+            MemoryStartup = $vm.MemoryStartup
+          }
+        }
+      } catch {}
+
+      try {
+        $disk = Get-VMHardDiskDrive -VMName $vmName -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($disk) {
+          $result.disk = $disk | Select-Object Path, ControllerType, ControllerNumber, ControllerLocation
+        }
+      } catch {}
+
+      try {
+        $dvd = Get-VMDvdDrive -VMName $vmName -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($dvd) {
+          $result.dvd = $dvd | Select-Object Path, ControllerNumber, ControllerLocation
+        }
+      } catch {}
+
+      try {
+        $firmware = Get-VMFirmware -VMName $vmName -ErrorAction SilentlyContinue
+        if ($firmware) {
+          $result.firmware = $firmware | Select-Object SecureBoot, SecureBootTemplate, FirstBootDevice
+        }
+      } catch {}
+
+      if (Test-Path $diskPath) {
+        try {
+          $vhd = Get-VHD -Path $diskPath -ErrorAction Stop
+          $result.get_vhd = @{
+            Path = $vhd.Path
+            VhdType = $vhd.VhdType.ToString()
+            FileSize = $vhd.FileSize
+            Size = $vhd.Size
+          }
+        } catch {}
+
+        try { $result.sparse = (fsutil sparse queryflag $diskPath | Out-String).Trim() } catch {}
+        try { $result.compact = (compact /q $diskPath | Out-String).Trim() } catch {}
+        try { $result.cipher = (cipher /c $diskPath | Out-String).Trim() } catch {}
+        try {
+          $item = Get-Item $diskPath -ErrorAction Stop
+          $result.item = @{
+            FullName = $item.FullName
+            Length = $item.Length
+            Attributes = $item.Attributes.ToString()
+          }
+        } catch {}
+        try {
+          if (Test-Path $qemuImg) {
+            $result.qemu_img_info = (& $qemuImg info $diskPath 2>&1 | Out-String).Trim()
+          }
+        } catch {}
+      }
+
+      try {
+        $result.worker_events = @(
+          Get-WinEvent -LogName 'Microsoft-Windows-Hyper-V-Worker-Admin' -MaxEvents 25 -ErrorAction SilentlyContinue |
+          Select-Object TimeCreated, Id, LevelDisplayName, Message
+        )
+      } catch {}
+
+      try {
+        $result.vmms_events = @(
+          Get-WinEvent -LogName 'Microsoft-Windows-Hyper-V-VMMS-Admin' -MaxEvents 25 -ErrorAction SilentlyContinue |
+          Select-Object TimeCreated, Id, LevelDisplayName, Message
+        )
+      } catch {}
+
+      $Ansible.Result = $result
+  register: _hyperv_ubuntu_vm_collector
+  changed_when: false
+
+- name: Write Hyper-V Ubuntu VM troubleshooting bundle JSON
+  ansible.builtin.copy:
+    dest: "{{ _hyperv_ubuntu_vm_command_dir }}/hyperv_ubuntu_vm_probe.json"
+    content: "{{ _hyperv_ubuntu_vm_collector.result | to_nice_json }}"
+    mode: "0644"
+  delegate_to: localhost
+
+- name: Write Hyper-V Worker/Admin event log JSON
+  ansible.builtin.copy:
+    dest: "{{ _hyperv_ubuntu_vm_event_dir }}/hyperv_worker_admin.json"
+    content: "{{ (_hyperv_ubuntu_vm_collector.result.worker_events | default([])) | to_nice_json }}"
+    mode: "0644"
+  delegate_to: localhost
+
+- name: Write Hyper-V VMMS/Admin event log JSON
+  ansible.builtin.copy:
+    dest: "{{ _hyperv_ubuntu_vm_event_dir }}/hyperv_vmms_admin.json"
+    content: "{{ (_hyperv_ubuntu_vm_collector.result.vmms_events | default([])) | to_nice_json }}"
+    mode: "0644"
+  delegate_to: localhost
+
+- name: Write Hyper-V Ubuntu VM troubleshooting notes
+  ansible.builtin.copy:
+    dest: "{{ _hyperv_ubuntu_vm_notes_dir }}/README.txt"
+    mode: "0644"
+    content: |
+      Scenario: hyperv_ubuntu_vm
+      Host: {{ inventory_hostname }}
+      Artifact root: {{ _hyperv_ubuntu_vm_artifact_dir }}
+      Windows artifact root: {{ _hyperv_ubuntu_vm_collector.result.artifact_root | default('unknown') }}
+      Boot disk path: {{ _hyperv_ubuntu_vm_collector.result.boot_disk_path | default('unknown') }}
+      Diagnostics note: /Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-ubuntu-vm--windows--diagnostics.md
+      Role evidence path: /Users/joshc/develop/dotfile-vnext/roles/hyperv_ubuntu_vm/tasks/present.yml
+  delegate_to: localhost
+
+- name: Report Hyper-V Ubuntu VM troubleshooting artifact location
+  ansible.builtin.debug:
+    msg:
+      artifact_root: "{{ _hyperv_ubuntu_vm_artifact_dir }}"
+      command_bundle: "{{ _hyperv_ubuntu_vm_command_dir }}/hyperv_ubuntu_vm_probe.json"
+      worker_events: "{{ _hyperv_ubuntu_vm_event_dir }}/hyperv_worker_admin.json"
+      vmms_events: "{{ _hyperv_ubuntu_vm_event_dir }}/hyperv_vmms_admin.json"
+      notes: "{{ _hyperv_ubuntu_vm_notes_dir }}/README.txt"

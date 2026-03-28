@@ -46,9 +46,13 @@
     state: absent
   delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
 
-- name: Mark Hyper-V Ubuntu VM inventory host as not SSH-configured
+- name: Clear Hyper-V Ubuntu VM cached connection facts from the inventory host
   ansible.builtin.set_fact:
-    ssh_configured: false
+    ansible_host: ""
+    host_ip: ""
+    ssh_port: ""
+    ssh_user: ""
+    ansible_python_interpreter: ""
     cacheable: true
   delegate_to: "{{ hyperv_ubuntu_vm_inventory_host }}"
   delegate_facts: true

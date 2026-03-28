@@ -30,7 +30,7 @@
   - cloud-init user-data templating
   - SSH fact publication
 
-## Chosen Implementation Direction
+## Original Phase-1 Implementation Direction
 
 - New role: `hyperv_ubuntu_vm`
 - Dedicated control surface: `playbooks/server_225_hyperv_ubuntu_vm.yaml`
@@ -76,8 +76,19 @@
   - `qemu-img.exe` is installed at `C:\Program Files\qemu\qemu-img.exe`
   - the converted disk file can report `VhdType=Fixed` while still failing
     Hyper-V boot with the sparse-file limitation
-  - clearing NTFS compression and the file sparse flag after conversion was not
-    sufficient to make Hyper-V accept the disk
+- a direct troubleshooting probe also shows the same file currently carries:
+    - `fsutil sparse queryflag -> This file is set as sparse`
+    - `compact /q -> 1 are compressed and 0 are not compressed`
+    - `Get-Item.Attributes -> Archive, SparseFile, NotContentIndexed`
+  - the contradiction is therefore not theoretical: the current `qemu-img -> vhdx`
+    artifact strategy is producing a boot disk that looks fixed to `Get-VHD`
+    while still remaining sparse/compressed at the filesystem layer
+  - replacement-resource testing later proved a more viable route:
+    - Canonical Azure VHD tarball
+    - extract published VHD on `server-225-win`
+    - clear sparse flag and compression on the source artifact
+    - native `Convert-VHD` to the final fixed VHDX
+    - attach and boot successfully in Hyper-V
 
 ## Runtime Findings To Carry Forward
 
@@ -88,9 +99,28 @@
   - `qemu-img` installation and disk conversion
   - Hyper-V VM object creation
 - The remaining blocker is the disk artifact strategy, not the orchestration.
-- The next change should be source-backed research on a Hyper-V-compatible image
-  creation path for Ubuntu cloud images on Windows, rather than more blind
-  retries against the current `qemu-img -> vhdx` approach.
+- The raw `.img -> qemu-img -> vhdx` path should no longer be treated as the
+  primary candidate.
+- The first viable replacement path is now proven:
+  - use Canonical's Azure VHD as the source artifact
+  - normalize the extracted source on the Windows host
+  - use native `Convert-VHD`
+  - probe both source and destination before Hyper-V attach/start
+
+## Current Recommendation
+
+- Adopt this as the new primary path:
+  - download Canonical Azure VHD tarball
+  - extract the published VHD
+  - clear sparse flag on the source artifact
+  - clear compression on the source artifact
+  - run native `Convert-VHD` to the final fixed VHDX
+  - probe source and destination with `fsutil`, `compact`, `Get-Item`, and
+    `Get-VHD` before Hyper-V attach/start
+- Keep the raw `.img -> qemu-img -> vhdx` path only as fallback or legacy
+  experiment material.
+- Treat any future implementation that skips the source- and destination-probe
+  gates as incomplete for this host class.
 
 ## Recommended Verification
 
