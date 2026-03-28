@@ -4,17 +4,55 @@ hostname: {{ hyperv_ubuntu_vm_hostname }}
 fqdn: {{ hyperv_ubuntu_vm_hostname }}
 ssh_pwauth: false
 disable_root: true
+{% if hyperv_ubuntu_vm_cloud_init_install_packages | bool %}
 package_update: true
 packages:
   - python3
   - openssh-server
+{% endif %}
 users:
   - default
 ssh_authorized_keys:
   - {{ controller_pub_key_content }}
+write_files:
+  - path: /usr/local/sbin/hyperv-vmconnect-console-fix.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      grub_file="/etc/default/grub"
+      if [[ ! -f "${grub_file}" ]]; then
+        exit 0
+      fi
+
+      current="$(awk -F= '/^GRUB_CMDLINE_LINUX_DEFAULT=/{print $2}' "${grub_file}" | tr -d '"')"
+      current="${current//console=ttyS0/}"
+      current="${current//console=ttyS0,115200n8/}"
+      current="${current//console=tty1/}"
+      current="$(echo "${current}" | xargs)"
+
+      desired="console=tty1"
+      if [[ -n "${current}" ]]; then
+        desired="${desired} ${current}"
+      fi
+
+      if grep -q '^GRUB_CMDLINE_LINUX_DEFAULT=' "${grub_file}"; then
+        sed -i -E "s|^GRUB_CMDLINE_LINUX_DEFAULT=.*$|GRUB_CMDLINE_LINUX_DEFAULT=\"${desired}\"|" "${grub_file}"
+      else
+        printf '\nGRUB_CMDLINE_LINUX_DEFAULT="%s"\n' "${desired}" >> "${grub_file}"
+      fi
+
+      update-grub
+
 runcmd:
   - [ bash, -lc, 'ip -br address || true' ]
+{% if hyperv_ubuntu_vm_cloud_init_refresh_dhcp | bool %}
   - [ bash, -lc, 'dhclient -r || true' ]
   - [ bash, -lc, 'dhclient -v > /var/log/hyperv-firstboot-dhclient.log 2>&1 || true' ]
+{% endif %}
+  - [ bash, -lc, '/usr/local/sbin/hyperv-vmconnect-console-fix.sh > /var/log/hyperv-vmconnect-console-fix.log 2>&1 || true' ]
+  - [ bash, -lc, 'cloud-init status --wait > /var/log/hyperv-firstboot-cloud-init-status.log 2>&1 || true' ]
   - systemctl enable ssh || true
   - systemctl restart ssh || systemctl start ssh || true
+  - [ bash, -lc, 'ss -ltnp > /var/log/hyperv-firstboot-ss.log 2>&1 || true' ]

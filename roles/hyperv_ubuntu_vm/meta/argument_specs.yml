@@ -55,6 +55,19 @@ argument_specs:
       hyperv_ubuntu_vm_wait_for_ssh_timeout:
         type: int
         default: 300
+      hyperv_ubuntu_vm_cloud_init_install_packages:
+        type: bool
+        default: false
+      hyperv_ubuntu_vm_cloud_init_refresh_dhcp:
+        type: bool
+        default: false
+      hyperv_ubuntu_vm_source_mode:
+        type: str
+        default: azure_cloud_image
+        choices: [azure_cloud_image, quick_create_desktop, server_iso_installer]
+      hyperv_ubuntu_vm_publish_connection_facts:
+        type: bool
+        default: true
       ansible_troubleshooting_mode:
         type: bool
         default: false
@@ -73,6 +86,62 @@ argument_specs:
       hyperv_ubuntu_vm_source_vhd_name:
         type: str
         default: livecd.ubuntu-cpc.azure.vhd
+      hyperv_ubuntu_vm_quick_create_image_url:
+        type: str
+        default: https://partner-images.canonical.com/hyper-v/desktop/noble/release/current/ubuntu-noble-hyperv-amd64-ubuntu-desktop-hyperv.vhdx.zip
+      hyperv_ubuntu_vm_quick_create_image_filename:
+        type: str
+        default: ubuntu-noble-hyperv-amd64-ubuntu-desktop-hyperv.vhdx.zip
+      hyperv_ubuntu_vm_quick_create_checksum_url:
+        type: str
+        default: https://partner-images.canonical.com/hyper-v/desktop/noble/release/current/SHA256SUMS
+      hyperv_ubuntu_vm_quick_create_checksum:
+        type: str
+        default: cf9167f8d95e49a6ccfb09a55eb77f6f89b4bc1a2e15f04df1db57e3d1fba837
+      hyperv_ubuntu_vm_quick_create_source_vhdx_name:
+        type: str
+        default: livecd.ubuntu-desktop-hyperv.vhdx
+      hyperv_ubuntu_vm_quick_create_download_job_name:
+        type: str
+        default: server-225-ubuntu-quick-create-download
+      hyperv_ubuntu_vm_quick_create_download_retries:
+        type: int
+        default: 960
+      hyperv_ubuntu_vm_quick_create_download_poll_delay:
+        type: int
+        default: 15
+      hyperv_ubuntu_vm_server_iso_url:
+        type: str
+        default: https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso
+      hyperv_ubuntu_vm_server_iso_filename:
+        type: str
+        default: ubuntu-24.04.4-live-server-amd64.iso
+      hyperv_ubuntu_vm_server_iso_checksum_url:
+        type: str
+        default: https://releases.ubuntu.com/24.04/SHA256SUMS
+      hyperv_ubuntu_vm_server_iso_checksum:
+        type: str
+        default: e907d92eeec9df64163a7e454cbc8d7755e8ddc7ed42f99dbc80c40f1a138433
+      hyperv_ubuntu_vm_server_iso_download_job_name:
+        type: str
+        default: server-225-ubuntu-server-iso-download
+      hyperv_ubuntu_vm_server_iso_download_retries:
+        type: int
+        default: 960
+      hyperv_ubuntu_vm_server_iso_download_poll_delay:
+        type: int
+        default: 15
+      hyperv_ubuntu_vm_server_iso_autoinstall_enabled:
+        type: bool
+        default: true
+      hyperv_ubuntu_vm_autoinstall_locale:
+        type: str
+        default: en_US.UTF-8
+      hyperv_ubuntu_vm_autoinstall_keyboard_layout:
+        type: str
+        default: us
+      hyperv_ubuntu_vm_autoinstall_password:
+        type: str
       hyperv_ubuntu_vm_host_archive_path:
         type: str
         default: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\ubuntu-24.04-server-cloudimg-amd64-azure.vhd.tar.gz
@@ -88,12 +157,21 @@ argument_specs:
       hyperv_ubuntu_vm_host_source_vhd_path:
         type: str
         default: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\livecd.ubuntu-cpc.azure.vhd
+      hyperv_ubuntu_vm_host_quick_create_archive_path:
+        type: str
+        default: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\ubuntu-noble-hyperv-amd64-ubuntu-desktop-hyperv.vhdx.zip
+      hyperv_ubuntu_vm_host_quick_create_source_vhdx_path:
+        type: str
+        default: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\ubuntu-noble-hyperv-amd64-ubuntu-desktop-hyperv.vhdx
       hyperv_ubuntu_vm_host_vhdx_path:
         type: str
         default: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\server-225-ubuntu.vhdx
+      hyperv_ubuntu_vm_host_server_iso_path:
+        type: str
+        default: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\ubuntu-24.04.4-live-server-amd64.iso
       hyperv_ubuntu_vm_host_seed_iso_path:
         type: str
-        default: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\server-225-ubuntu-ovf-env.iso
+        default: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\server-225-ubuntu-cidata.iso
       hyperv_ubuntu_vm_host_metadata_path:
         type: str
         default: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\server-225-ubuntu-state.json
@@ -101,7 +179,7 @@ argument_specs:
         type: str
       hyperv_ubuntu_vm_controller_user_data_path:
         type: str
-      hyperv_ubuntu_vm_controller_ovf_env_path:
+      hyperv_ubuntu_vm_controller_meta_data_path:
         type: str
       hyperv_ubuntu_vm_controller_seed_iso_path:
         type: str

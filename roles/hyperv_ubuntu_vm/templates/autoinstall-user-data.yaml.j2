@@ -1,0 +1,22 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: {{ hyperv_ubuntu_vm_autoinstall_locale }}
+  keyboard:
+    layout: {{ hyperv_ubuntu_vm_autoinstall_keyboard_layout }}
+  identity:
+    hostname: {{ hyperv_ubuntu_vm_hostname }}
+    username: {{ hyperv_ubuntu_vm_user }}
+    password: "{{ hyperv_ubuntu_vm_autoinstall_password | password_hash('sha512') }}"
+  ssh:
+    install-server: true
+    allow-pw: false
+    authorized-keys:
+      - {{ controller_pub_key_content }}
+  storage:
+    layout:
+      name: direct
+  packages:
+    - python3
+  late-commands:
+    - curtin in-target --target=/target -- bash -lc 'systemctl enable ssh || true'

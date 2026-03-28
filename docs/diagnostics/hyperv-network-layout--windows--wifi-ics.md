@@ -6,6 +6,16 @@ This note documents the intended network layout for `server-225-win` when a
 Hyper-V Ubuntu guest is attached to an Internal switch and Windows Internet
 Connection Sharing (ICS) is used to give the guest outbound network access.
 
+Historical note:
+
+- this remains the important checkpoint that fixed the original guest/host DHCP
+  collision problem
+- the newer target design now builds on this checkpoint with explicit routing
+  for controller reachability
+- see
+  [hyperv-network-layout--windows--routed-private-subnet.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-network-layout--windows--routed-private-subnet.md)
+  for the current access-layer direction
+
 This is the preferred topology for the current repo when:
 
 - the Windows host uplink is Wi-Fi

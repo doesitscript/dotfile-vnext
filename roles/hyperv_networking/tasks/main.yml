@@ -58,6 +58,14 @@
       when:
         - hyperv_feature_state == 'present'
         - (_hyperv.internal_ics_switch_enabled | default(false) | bool)
+
+    # --- Phase 4: Enable routed access to the guest private subnet when requested ---
+    - name: Enable routed private-subnet access for the Hyper-V guest network
+      ansible.builtin.include_tasks: routed_private_subnet.yml
+      when:
+        - hyperv_feature_state == 'present'
+        - (_hyperv.internal_ics_switch_enabled | default(false) | bool)
+        - (_hyperv.guest_network_mode | default('ics')) == 'routed_private_subnet'
   always:
     - name: Remove Hyper-V management OS boot recovery helper after reconnect
       ansible.builtin.include_tasks: management_os_boot_recovery_cleanup.yml

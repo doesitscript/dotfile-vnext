@@ -82,6 +82,24 @@ rejects the boot disk or fails the VM start path.
     a NoCloud `CIDATA` seed ISO
   - when `Key-Value Pair Exchange` reports a protocol mismatch, treat
     `Get-VMNetworkAdapter ... IPAddresses` as especially untrustworthy
+- Current first-boot SSH rule:
+  - default to a minimal cloud-init payload that reuses the image's built-in
+    OpenSSH/Python baseline
+  - do not front-load package installation or forced DHCP churn until baseline
+    SSH is proven
+  - if SSH still fails, prefer guest/cloud-init evidence over adding more
+    bootstrap steps blindly
+- TODO:
+  - explicitly test `Set-VMFirmware -VMName "server-225-ubuntu" -EnableSecureBoot Off`
+    as a bounded follow-up even though the current VM does boot and receives a
+    guest IP
+  - rationale:
+    - Generation 2 VMs enable Secure Boot by default
+    - this repo currently keeps Secure Boot enabled with the
+      `MicrosoftUEFICertificateAuthority` template
+    - if guest console evidence suggests a kernel/init or early userspace
+      problem rather than pure SSH bootstrap failure, Secure Boot should be
+      re-tested before piling on more guest bootstrap changes
 - On Wi-Fi-backed Windows hosts, a Hyper-V guest attached directly to an
   External switch is a weak DHCP path:
   - prefer an Internal switch for the guest
@@ -93,6 +111,41 @@ rejects the boot disk or fails the VM start path.
   - the Windows host should be able to reach that address directly
   - the Mac/controller should not be assumed to reach that private address
     directly without a separate access strategy
+- Current routed-subnet evidence split that must be kept in mind:
+  - the Windows host did reach/ping guest-private-subnet addresses during the
+    Hyper-V Ubuntu experiments
+  - the Mac/controller had the route installed but still did not prove direct
+    end-to-end guest reachability
+  - that means the guest subnet design looked workable, but the guest image /
+    bootstrap path remained the blocker
+- Current image/bootstrap pivot:
+  - repeated Azure-image boots reached `cloud-init`, but the guest continued to
+    fall back to Azure datasource / IMDS behavior instead of consuming local
+    provisioning media as intended
+  - do not keep rerunning that path blindly
+  - Quick Create follow-up evidence:
+    - the Canonical Hyper-V Quick Create image booted successfully into the
+      Ubuntu desktop first-run configuration UI inside VMConnect
+    - that proved Hyper-V-native bootability and usable console visibility
+    - it also proved the image is a desktop/OOBE target, not a good unattended
+      server bootstrap target for `server-225-ubuntu`
+  - next image target:
+    - official Ubuntu Server ISO on Hyper-V as the cleaner server-aligned
+      installer path
+    - keep autoinstall as the explicit follow-up, not as implied behavior
+- first server-ISO installer milestone:
+  - the ISO downloaded and verified successfully on `server-225-win`
+  - the VM was recreated cleanly with the ISO attached as the DVD boot media
+  - Hyper-V reported the VM `Operating normally` on switch `Guest`
+  - no guest IP or SSH publication was attempted in this mode; this is an
+    installer checkpoint, not a false claim of guest readiness
+  - follow-up autoinstall milestone:
+    - a second `cidata` seed ISO is now attached alongside the installer ISO
+    - that means the installer media and the intended autoinstall config are
+      both present on the VM
+    - if the console still lands in the normal server installer welcome flow,
+      the remaining missing piece is the bootloader/autoinstall handoff rather
+      than missing seed media
 - Residual operational note for roaming hosts:
   - moving the Windows host between networks may occasionally require adapter
     renewal or reset before the host and ICS path settle again
@@ -106,3 +159,5 @@ rejects the boot disk or fails the VM start path.
   [hyperv-ubuntu-vm--windows--lessons-learned.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-ubuntu-vm--windows--lessons-learned.md)
 - Full layout note:
   [hyperv-network-layout--windows--wifi-ics.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-network-layout--windows--wifi-ics.md)
+- Current routed access-layer note:
+  [hyperv-network-layout--windows--routed-private-subnet.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-network-layout--windows--routed-private-subnet.md)

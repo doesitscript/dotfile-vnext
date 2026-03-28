@@ -146,16 +146,43 @@ Implementation consequence:
 - probe both source and destination artifacts before Hyper-V attach/start
 - keep the raw `.img` route only as fallback or legacy experiment material
 
+Current correction after live boot evidence:
+
+- the Azure-image / local-seed bootstrap path stopped producing new evidence
+- repeated boots reached `cloud-init`, but the guest kept falling back to Azure
+  datasource / IMDS behavior instead of consuming the local provisioning media
+  as intended
+- that path is now preserved as research, not as the active implementation
+  target
+- Quick Create follow-up result:
+  - Canonical Hyper-V Quick Create VHDX is now a validated Hyper-V-native
+    bootability checkpoint
+  - it reached the Ubuntu desktop first-run configuration UI in VMConnect
+  - that makes it a useful fallback, but not the right active target for an
+    unattended SSH/Docker server surface
+- next active image target:
+  - official Ubuntu Server ISO on Hyper-V
+- next explicit bootstrap follow-up:
+  - installer/autoinstall handoff for the Ubuntu Server ISO path
+  - current sub-checkpoint:
+    - installer ISO and `cidata` autoinstall seed are both attached
+    - fast VM-only lifecycle loops now preserve the large installer download
+    - if the installer still shows the normal welcome flow, the next solve is
+      bootloader/autoinstall handoff rather than seed creation
+
 ## Current Networking Milestone
 
-The networking direction has now moved past the original External-switch plan.
+The networking direction has now moved past the original External-switch plan
+and the earlier ICS-only checkpoint.
 
 Current preferred topology on `server-225-win`:
 
 - keep the host control plane on `vEthernet (External)` on the LAN
-- attach the Ubuntu guest to an Internal Hyper-V switch
-- use Windows Internet Connection Sharing (ICS) to provide the guest a private
-  outbound path on `192.168.137.0/24`
+- keep the Ubuntu guest on an Internal Hyper-V switch
+- keep the private guest subnet on `192.168.137.0/24`
+- make `server-225-win` the transit host between the LAN and that guest subnet
+- first add a Mac-only route to the guest subnet
+- later promote the same route to the router for whole-LAN reachability
 
 What this milestone has already proven:
 
@@ -163,15 +190,40 @@ What this milestone has already proven:
   is no longer the active blocker
 - the guest can boot and obtain a private ICS-subnet IPv4
 - the Windows host can see and probe that guest address on the private subnet
+- the Mac/controller route can be installed toward that private subnet through
+  `server-225-win`
 
 What remains in progress:
 
-- a stable controller-visible access strategy from the Mac to the guest
-- proving guest bootstrap and SSH readiness from the correct access surface
+- stable Mac-to-guest direct reachability through the routed private subnet
+- proving guest bootstrap and SSH readiness from that routed access surface
+- whole-LAN reachability as the later router-static-route milestone
+- bounded follow-up test:
+  - try Secure Boot disabled on the Generation 2 VM if current console evidence
+    suggests the guest is not reaching a healthy userspace/SSH state despite
+    booting and receiving a private IPv4
+- faster iteration improvements now in place:
+  - `absent` preserves downloaded installer/source artifacts instead of
+    deleting the whole host artifact directory
+  - a lighter VM-only control surface exists at
+    [server_225_hyperv_ubuntu_vm_lifecycle_only.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/server_225_hyperv_ubuntu_vm_lifecycle_only.yaml)
+    for loops where controller identity, networking, and guest-route setup are
+    already converged
 
 Reference layout note:
 
 - [hyperv-network-layout--windows--wifi-ics.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-network-layout--windows--wifi-ics.md)
+- [hyperv-network-layout--windows--routed-private-subnet.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-network-layout--windows--routed-private-subnet.md)
+
+Pinned routed-network evidence:
+
+- Windows host reached guest-private-subnet addresses during the Hyper-V Ubuntu
+  runs
+- Mac/controller did not yet prove direct guest reachability even after the
+  route was added
+- that split is useful evidence:
+  - the guest subnet design looks workable
+  - the guest image/bootstrap path remained the blocker
 
 ## Current Cleanup Status
 

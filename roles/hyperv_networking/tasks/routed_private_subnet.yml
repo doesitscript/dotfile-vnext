@@ -1,0 +1,89 @@
+---
+# routed_private_subnet.yml — Keep the Internal guest network as a private
+# subnet and make the Windows host the explicit forwarding point between the
+# LAN and that guest subnet.
+
+- name: Persist Windows IP router posture for routed guest subnet mode
+  ansible.windows.win_regedit:
+    path: HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters
+    name: IpEnableRouter
+    data: 1
+    type: dword
+
+- name: Ensure guest gateway IP and IPv4 forwarding are enabled for routed guest subnet mode
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+
+      $publicAlias = '{{ _hyperv_routed_public_adapter_alias }}'
+      $privateAlias = '{{ _hyperv_routed_private_adapter_alias }}'
+      $gatewayIp = '{{ _hyperv_routed_guest_gateway_ip }}'
+      $prefixLength = {{ _hyperv_routed_guest_prefix_length }}
+
+      $privateAddress = Get-NetIPAddress -InterfaceAlias $privateAlias -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+        Where-Object { $_.IPAddress -eq $gatewayIp } |
+        Select-Object -First 1
+
+      if (-not $privateAddress) {
+        New-NetIPAddress `
+          -InterfaceAlias $privateAlias `
+          -IPAddress $gatewayIp `
+          -PrefixLength $prefixLength `
+          -ErrorAction Stop | Out-Null
+        $Ansible.Changed = $true
+      }
+
+      $results = @()
+      foreach ($alias in @($publicAlias, $privateAlias)) {
+        $iface = Get-NetIPInterface -InterfaceAlias $alias -AddressFamily IPv4 -ErrorAction Stop | Select-Object -First 1
+        if ($iface.Forwarding -ne 'Enabled') {
+          Set-NetIPInterface -InterfaceAlias $alias -AddressFamily IPv4 -Forwarding Enabled -ErrorAction Stop
+          $Ansible.Changed = $true
+          $iface = Get-NetIPInterface -InterfaceAlias $alias -AddressFamily IPv4 -ErrorAction Stop | Select-Object -First 1
+        }
+
+        $results += [PSCustomObject]@{
+          InterfaceAlias  = $iface.InterfaceAlias
+          InterfaceIndex  = $iface.InterfaceIndex
+          Forwarding      = $iface.Forwarding.ToString()
+          InterfaceMetric = $iface.InterfaceMetric
+        }
+      }
+
+      $gatewayState = Get-NetIPAddress -InterfaceAlias $privateAlias -AddressFamily IPv4 -ErrorAction Stop |
+        Where-Object { $_.IPAddress -eq $gatewayIp } |
+        Select-Object -First 1
+
+      $Ansible.Result = @{
+        public_interface = $publicAlias
+        private_interface = $privateAlias
+        guest_gateway_ipv4 = if ($gatewayState) { $gatewayState.IPAddress } else { $null }
+        guest_gateway_prefix_length = if ($gatewayState) { $gatewayState.PrefixLength } else { $null }
+        forwarding = $results
+      }
+  register: _hyperv_routed_private_subnet
+  vars:
+    _hyperv_routed_public_adapter_alias: >-
+      {{
+        _hyperv.internal_ics_public_adapter_name
+        | default(_hyperv.adapter_name | default('Wi-Fi'))
+      }}
+    _hyperv_routed_private_adapter_alias: >-
+      {{
+        _hyperv.internal_ics_private_adapter_alias
+        | default('vEthernet (' ~ (_hyperv.guest_switch_name | default(_hyperv.internal_ics_switch_name | default('Guest'))) ~ ')')
+      }}
+    _hyperv_routed_guest_gateway_ip: "{{ (_hyperv.guest_gateway_ipv4 | default('192.168.137.1')).split('/')[0] }}"
+    _hyperv_routed_guest_prefix_length: "{{ (_hyperv.guest_subnet_ipv4 | default('192.168.137.0/24')).split('/')[1] }}"
+
+- name: Report routed guest-subnet forwarding status when troubleshooting
+  ansible.builtin.debug:
+    var: _hyperv_routed_private_subnet.result
+  when:
+    - (ansible_troubleshooting_mode | default(false) | bool) or
+      (debug_remote_output | default(false) | bool) or
+      (debug_collect_component_evidence | default(false) | bool)
+  tags:
+    - evidence
+    - debug_resources

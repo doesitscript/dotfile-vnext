@@ -14,13 +14,25 @@
 
 - name: Stop Hyper-V Ubuntu VM before removal when present
   ansible.windows.win_powershell:
-    error_action: stop
+    error_action: continue
     script: |
       $Ansible.Changed = $false
       $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop
       if ($vm.State.ToString() -ne 'Off') {
-        Stop-VM -Name '{{ hyperv_ubuntu_vm_name }}' -TurnOff -Force
-        $Ansible.Changed = $true
+        try {
+          Stop-VM -Name '{{ hyperv_ubuntu_vm_name }}' -TurnOff -Force -ErrorAction Stop
+          $Ansible.Changed = $true
+          $Ansible.Result = @{
+            stop_attempted = $true
+            stop_result = 'stopped'
+          }
+        } catch {
+          $Ansible.Result = @{
+            stop_attempted = $true
+            stop_result = 'proceed_to_force_remove'
+            stop_error = $_.Exception.Message
+          }
+        }
       }
   when: _hyperv_ubuntu_vm_absent_probe.result.exists | default(false)
 
@@ -35,10 +47,20 @@
       }
   when: _hyperv_ubuntu_vm_absent_probe.result.exists | default(false)
 
-- name: Remove Hyper-V Ubuntu VM host artifact directory
+- name: Remove Hyper-V Ubuntu VM instance-state files while preserving cached source artifacts
+  ansible.windows.win_file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ hyperv_ubuntu_vm_host_vm_dir }}"
+    - "{{ hyperv_ubuntu_vm_host_vhdx_path }}"
+    - "{{ hyperv_ubuntu_vm_host_seed_iso_path }}"
+    - "{{ hyperv_ubuntu_vm_host_metadata_path }}"
+
+- name: Ensure Hyper-V Ubuntu VM host root directory exists for retained cached artifacts
   ansible.windows.win_file:
     path: "{{ hyperv_ubuntu_vm_host_root_dir }}"
-    state: absent
+    state: directory
 
 - name: Remove Hyper-V Ubuntu VM controller staging directory
   ansible.builtin.file:

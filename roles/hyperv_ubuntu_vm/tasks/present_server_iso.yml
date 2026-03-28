@@ -1,0 +1,487 @@
+---
+- name: Ensure controller staging directory exists for Hyper-V Ubuntu VM
+  ansible.builtin.file:
+    path: "{{ hyperv_ubuntu_vm_controller_staging_dir }}"
+    state: directory
+    mode: "0755"
+  delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
+  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+
+- name: Ensure controller seed directory exists for Hyper-V Ubuntu VM
+  ansible.builtin.file:
+    path: "{{ hyperv_ubuntu_vm_controller_seed_dir }}"
+    state: directory
+    mode: "0755"
+  delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
+  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+
+- name: Render Hyper-V Ubuntu VM autoinstall user-data on controller
+  ansible.builtin.template:
+    src: autoinstall-user-data.yaml.j2
+    dest: "{{ hyperv_ubuntu_vm_controller_user_data_path }}"
+    mode: "0644"
+  delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
+  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+
+- name: Render Hyper-V Ubuntu VM autoinstall meta-data on controller
+  ansible.builtin.template:
+    src: autoinstall-meta-data.yaml.j2
+    dest: "{{ hyperv_ubuntu_vm_controller_meta_data_path }}"
+    mode: "0644"
+  delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
+  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+
+- name: Build autoinstall NoCloud seed image for Ubuntu Server ISO on controller
+  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+  block:
+    - name: Read controller autoinstall user-data checksum
+      ansible.builtin.stat:
+        path: "{{ hyperv_ubuntu_vm_controller_user_data_path }}"
+        checksum_algorithm: sha256
+      register: _hyperv_ubuntu_vm_server_iso_user_data_stat
+      delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
+
+    - name: Read controller autoinstall meta-data checksum
+      ansible.builtin.stat:
+        path: "{{ hyperv_ubuntu_vm_controller_meta_data_path }}"
+        checksum_algorithm: sha256
+      register: _hyperv_ubuntu_vm_server_iso_meta_data_stat
+      delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
+
+    - name: Set desired autoinstall seed signature for Hyper-V Ubuntu VM
+      ansible.builtin.set_fact:
+        _hyperv_ubuntu_vm_server_iso_seed_signature: |
+          user-data={{ _hyperv_ubuntu_vm_server_iso_user_data_stat.stat.checksum }}
+          meta-data={{ _hyperv_ubuntu_vm_server_iso_meta_data_stat.stat.checksum }}
+          volume=cidata
+
+    - name: Probe existing autoinstall seed signature for Hyper-V Ubuntu VM
+      ansible.builtin.stat:
+        path: "{{ hyperv_ubuntu_vm_controller_seed_signature_path }}"
+      register: _hyperv_ubuntu_vm_server_iso_seed_signature_stat
+      delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
+
+    - name: Read existing autoinstall seed signature when present
+      ansible.builtin.slurp:
+        path: "{{ hyperv_ubuntu_vm_controller_seed_signature_path }}"
+      register: _hyperv_ubuntu_vm_server_iso_existing_seed_signature
+      when: _hyperv_ubuntu_vm_server_iso_seed_signature_stat.stat.exists | bool
+      delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
+
+    - name: Remove stale autoinstall seed image when controller inputs changed
+      ansible.builtin.file:
+        path: "{{ hyperv_ubuntu_vm_controller_seed_iso_path }}"
+        state: absent
+      when:
+        - _hyperv_ubuntu_vm_server_iso_seed_signature_stat.stat.exists | bool
+        - >-
+          (
+            _hyperv_ubuntu_vm_server_iso_existing_seed_signature.content | b64decode | trim
+          ) != (_hyperv_ubuntu_vm_server_iso_seed_signature | trim)
+      delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
+
+    - name: Build autoinstall seed image with hdiutil on controller when absent
+      ansible.builtin.command:
+        argv:
+          - "{{ hyperv_ubuntu_vm_controller_iso_command }}"
+          - makehybrid
+          - -ov
+          - -udf
+          - -iso
+          - -default-volume-name
+          - cidata
+          - -o
+          - "{{ hyperv_ubuntu_vm_controller_seed_iso_path }}"
+          - "{{ hyperv_ubuntu_vm_controller_seed_dir }}"
+        creates: "{{ hyperv_ubuntu_vm_controller_seed_iso_path }}"
+      delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
+
+    - name: Write autoinstall seed signature for Hyper-V Ubuntu VM
+      ansible.builtin.copy:
+        dest: "{{ hyperv_ubuntu_vm_controller_seed_signature_path }}"
+        content: "{{ _hyperv_ubuntu_vm_server_iso_seed_signature }}"
+        mode: "0644"
+      delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
+
+- name: Ensure Windows staging directory exists for Hyper-V Ubuntu VM
+  ansible.windows.win_file:
+    path: "{{ hyperv_ubuntu_vm_host_root_dir }}"
+    state: directory
+
+- name: Ensure Windows VM configuration directory exists for Hyper-V Ubuntu VM
+  ansible.windows.win_file:
+    path: "{{ hyperv_ubuntu_vm_host_vm_dir }}"
+    state: directory
+
+- name: Copy autoinstall seed image to Windows host
+  ansible.windows.win_copy:
+    src: "{{ hyperv_ubuntu_vm_controller_seed_iso_path }}"
+    dest: "{{ hyperv_ubuntu_vm_host_seed_iso_path }}"
+    force: true
+  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+
+- name: Probe Ubuntu Server ISO URL from Windows host
+  ansible.windows.win_uri:
+    url: "{{ hyperv_ubuntu_vm_server_iso_url }}"
+    url_method: HEAD
+    status_code: [200]
+    url_timeout: 30
+    return_content: false
+  register: _hyperv_ubuntu_vm_server_iso_head
+
+- name: Report Ubuntu Server ISO metadata
+  ansible.builtin.debug:
+    msg:
+      source_mode: "{{ hyperv_ubuntu_vm_source_mode }}"
+      image_url: "{{ hyperv_ubuntu_vm_server_iso_url }}"
+      checksum: "{{ hyperv_ubuntu_vm_server_iso_checksum }}"
+      checksum_url: "{{ hyperv_ubuntu_vm_server_iso_checksum_url }}"
+      content_length: "{{ _hyperv_ubuntu_vm_server_iso_head.content_length | default('unknown') }}"
+
+- name: Ensure Ubuntu Server ISO is downloaded with BITS
+  block:
+    - name: Probe current Ubuntu Server ISO archive state
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $Ansible.Changed = $false
+          $path = '{{ hyperv_ubuntu_vm_host_server_iso_path }}'
+          if (-not (Test-Path $path)) {
+            $Ansible.Result = @{
+              exists = $false
+            }
+            Exit 0
+          }
+
+          $hash = (Get-FileHash -Path $path -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+          $Ansible.Result = @{
+            exists = $true
+            checksum = $hash
+            matches_expected = ($hash -eq '{{ hyperv_ubuntu_vm_server_iso_checksum }}')
+          }
+      register: _hyperv_ubuntu_vm_server_iso_probe
+      changed_when: false
+
+    - name: Remove stale Ubuntu Server ISO when checksum mismatches
+      ansible.windows.win_file:
+        path: "{{ hyperv_ubuntu_vm_host_server_iso_path }}"
+        state: absent
+      when:
+        - _hyperv_ubuntu_vm_server_iso_probe.result.exists | default(false)
+        - not (_hyperv_ubuntu_vm_server_iso_probe.result.matches_expected | default(false))
+
+    - name: Start Ubuntu Server ISO BITS download when ISO is missing
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $Ansible.Changed = $false
+          $jobName = '{{ hyperv_ubuntu_vm_server_iso_download_job_name }}'
+          $url = '{{ hyperv_ubuntu_vm_server_iso_url }}'
+          $dest = '{{ hyperv_ubuntu_vm_host_server_iso_path }}'
+
+          if (Test-Path $dest) {
+            $Ansible.Result = @{
+              started = $false
+              reason = 'iso_already_present'
+            }
+            Exit 0
+          }
+
+          Get-BitsTransfer -Name $jobName -AllUsers -ErrorAction SilentlyContinue | Remove-BitsTransfer -Confirm:$false -ErrorAction SilentlyContinue
+          $job = Start-BitsTransfer -Source $url -Destination $dest -Asynchronous -DisplayName $jobName -Description 'Ubuntu Server ISO download'
+
+          $Ansible.Changed = $true
+          $Ansible.Result = @{
+            started = $true
+            job_name = $job.DisplayName
+            job_id = $job.JobId.Guid
+            state = $job.JobState.ToString()
+          }
+      register: _hyperv_ubuntu_vm_server_iso_bits_start
+      when: not (_hyperv_ubuntu_vm_server_iso_probe.result.matches_expected | default(false))
+
+    - name: Wait for Ubuntu Server ISO BITS download to complete
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $Ansible.Changed = $false
+          $jobName = '{{ hyperv_ubuntu_vm_server_iso_download_job_name }}'
+          $dest = '{{ hyperv_ubuntu_vm_host_server_iso_path }}'
+
+          if (Test-Path $dest) {
+            $hash = (Get-FileHash -Path $dest -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+            $Ansible.Result = @{
+              finished = ($hash -eq '{{ hyperv_ubuntu_vm_server_iso_checksum }}')
+              checksum = $hash
+              state = 'iso_present'
+            }
+            Exit 0
+          }
+
+          $job = Get-BitsTransfer -Name $jobName -AllUsers -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $job) {
+            $Ansible.Result = @{
+              finished = $false
+              state = 'missing'
+            }
+            Exit 0
+          }
+
+          if ($job.JobState -eq 'Transferred') {
+            Complete-BitsTransfer -BitsJob $job
+            $hash = (Get-FileHash -Path $dest -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+            $Ansible.Result = @{
+              finished = ($hash -eq '{{ hyperv_ubuntu_vm_server_iso_checksum }}')
+              checksum = $hash
+              state = 'transferred'
+              bytes_transferred = $job.BytesTransferred
+              bytes_total = $job.BytesTotal
+            }
+            Exit 0
+          }
+
+          if ($job.JobState -in @('Error', 'TransientError')) {
+            Remove-BitsTransfer -BitsJob $job -Confirm:$false -ErrorAction SilentlyContinue
+            $Ansible.Result = @{
+              finished = $false
+              state = $job.JobState.ToString()
+              bytes_transferred = $job.BytesTransferred
+              bytes_total = $job.BytesTotal
+            }
+            $Ansible.Failed = $true
+            Exit 1
+          }
+
+          $Ansible.Result = @{
+            finished = $false
+            state = $job.JobState.ToString()
+            bytes_transferred = $job.BytesTransferred
+            bytes_total = $job.BytesTotal
+          }
+      register: _hyperv_ubuntu_vm_server_iso_bits_status
+      changed_when: false
+      until: _hyperv_ubuntu_vm_server_iso_bits_status.result.finished | default(false)
+      retries: "{{ hyperv_ubuntu_vm_server_iso_download_retries }}"
+      delay: "{{ hyperv_ubuntu_vm_server_iso_download_poll_delay }}"
+      when: not (_hyperv_ubuntu_vm_server_iso_probe.result.matches_expected | default(false))
+
+- name: Ensure role-owned installer disk exists for Ubuntu Server ISO mode
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      function Convert-ToBytes([string]$Value) {
+        $normalized = $Value.Trim().ToUpper()
+        $normalized = $normalized -replace 'GB$', 'G' -replace 'MB$', 'M' -replace 'KB$', 'K' -replace 'TB$', 'T'
+        $suffix = $normalized.Substring($normalized.Length - 1, 1)
+        $number = [double]($normalized.Substring(0, $normalized.Length - 1))
+        switch ($suffix) {
+          'K' { return [UInt64]($number * 1KB) }
+          'M' { return [UInt64]($number * 1MB) }
+          'G' { return [UInt64]($number * 1GB) }
+          'T' { return [UInt64]($number * 1TB) }
+          default { throw "Unsupported size format: $Value" }
+        }
+      }
+
+      $Ansible.Changed = $false
+      $dest = '{{ hyperv_ubuntu_vm_host_vhdx_path }}'
+      if (-not (Test-Path $dest)) {
+        New-VHD -Path $dest -Dynamic -SizeBytes (Convert-ToBytes '{{ hyperv_ubuntu_vm_disk }}') -ErrorAction Stop | Out-Null
+        $Ansible.Changed = $true
+      }
+
+      $vhd = Get-VHD -Path $dest -ErrorAction Stop
+      $Ansible.Result = @{
+        destination = $dest
+        vhd_type = $vhd.VhdType.ToString()
+        size = $vhd.Size
+        file_size = $vhd.FileSize
+      }
+
+- name: Probe current Hyper-V Ubuntu VM state
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
+      if (-not $vm) {
+        $Ansible.Result = @{ exists = $false }
+        Exit 0
+      }
+
+      $disk = Get-VMHardDiskDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
+      $dvd = Get-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
+      $adapter = Get-VMNetworkAdapter -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
+      $Ansible.Result = @{
+        exists = $true
+        state = $vm.State.ToString()
+        cpu_count = $vm.ProcessorCount
+        memory_startup = $vm.MemoryStartup
+        switch_name = if ($adapter) { $adapter.SwitchName } else { $null }
+        disk_path = if ($disk) { $disk.Path } else { $null }
+        dvd_path = if ($dvd) { $dvd.Path } else { $null }
+      }
+  register: _hyperv_ubuntu_vm_probe
+  changed_when: false
+
+- name: Create or start Hyper-V Ubuntu VM from Ubuntu Server ISO
+  block:
+    - name: Create Hyper-V Ubuntu VM when absent
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          function Convert-ToBytes([string]$Value) {
+            $normalized = $Value.Trim().ToUpper()
+            $normalized = $normalized -replace 'GB$', 'G' -replace 'MB$', 'M' -replace 'KB$', 'K' -replace 'TB$', 'T'
+            $suffix = $normalized.Substring($normalized.Length - 1, 1)
+            $number = [double]($normalized.Substring(0, $normalized.Length - 1))
+            switch ($suffix) {
+              'K' { return [UInt64]($number * 1KB) }
+              'M' { return [UInt64]($number * 1MB) }
+              'G' { return [UInt64]($number * 1GB) }
+              'T' { return [UInt64]($number * 1TB) }
+              default { throw "Unsupported size format: $Value" }
+            }
+          }
+
+          $Ansible.Changed = $false
+          $memory = Convert-ToBytes '{{ hyperv_ubuntu_vm_memory }}'
+          New-VM `
+            -Name '{{ hyperv_ubuntu_vm_name }}' `
+            -Generation {{ hyperv_ubuntu_vm_generation }} `
+            -MemoryStartupBytes $memory `
+            -NoVHD `
+            -Path '{{ hyperv_ubuntu_vm_host_vm_dir }}' `
+            -SwitchName '{{ hyperv_ubuntu_vm_switch_name }}' | Out-Null
+
+          Add-VMHardDiskDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -Path '{{ hyperv_ubuntu_vm_host_vhdx_path }}' | Out-Null
+          $dvd = Add-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -Path '{{ hyperv_ubuntu_vm_host_server_iso_path }}'
+          {% if hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool %}
+          Add-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -Path '{{ hyperv_ubuntu_vm_host_seed_iso_path }}' | Out-Null
+          {% endif %}
+          Set-VMProcessor -VMName '{{ hyperv_ubuntu_vm_name }}' -Count {{ hyperv_ubuntu_vm_cpus }}
+          Set-VMMemory -VMName '{{ hyperv_ubuntu_vm_name }}' -DynamicMemoryEnabled $false -StartupBytes $memory
+          Set-VMFirmware `
+            -VMName '{{ hyperv_ubuntu_vm_name }}' `
+            -EnableSecureBoot On `
+            -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}' `
+            -FirstBootDevice $dvd
+          $Ansible.Changed = $true
+          $Ansible.Result = @{ created = $true }
+      when: not (_hyperv_ubuntu_vm_probe.result.exists | default(false))
+
+    - name: Ensure Hyper-V Ubuntu VM installer settings are aligned
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          function Convert-ToBytes([string]$Value) {
+            $normalized = $Value.Trim().ToUpper()
+            $normalized = $normalized -replace 'GB$', 'G' -replace 'MB$', 'M' -replace 'KB$', 'K' -replace 'TB$', 'T'
+            $suffix = $normalized.Substring($normalized.Length - 1, 1)
+            $number = [double]($normalized.Substring(0, $normalized.Length - 1))
+            switch ($suffix) {
+              'K' { return [UInt64]($number * 1KB) }
+              'M' { return [UInt64]($number * 1MB) }
+              'G' { return [UInt64]($number * 1GB) }
+              'T' { return [UInt64]($number * 1TB) }
+              default { throw "Unsupported size format: $Value" }
+            }
+          }
+
+          $Ansible.Changed = $false
+          $desiredMemory = Convert-ToBytes '{{ hyperv_ubuntu_vm_memory }}'
+          $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop
+
+          if ($vm.ProcessorCount -ne {{ hyperv_ubuntu_vm_cpus }}) {
+            Set-VMProcessor -VMName '{{ hyperv_ubuntu_vm_name }}' -Count {{ hyperv_ubuntu_vm_cpus }}
+            $Ansible.Changed = $true
+          }
+
+          if ($vm.MemoryStartup -ne $desiredMemory) {
+            Set-VMMemory -VMName '{{ hyperv_ubuntu_vm_name }}' -DynamicMemoryEnabled $false -StartupBytes $desiredMemory
+            $Ansible.Changed = $true
+          }
+
+          $adapter = Get-VMNetworkAdapter -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop | Select-Object -First 1
+          if ($adapter.SwitchName -ne '{{ hyperv_ubuntu_vm_switch_name }}') {
+            Connect-VMNetworkAdapter -VMName '{{ hyperv_ubuntu_vm_name }}' -SwitchName '{{ hyperv_ubuntu_vm_switch_name }}'
+            $Ansible.Changed = $true
+          }
+
+          $disk = Get-VMHardDiskDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $disk) {
+            Add-VMHardDiskDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -Path '{{ hyperv_ubuntu_vm_host_vhdx_path }}' | Out-Null
+            $Ansible.Changed = $true
+          } elseif ($disk.Path -ne '{{ hyperv_ubuntu_vm_host_vhdx_path }}') {
+            Set-VMHardDiskDrive `
+              -VMName '{{ hyperv_ubuntu_vm_name }}' `
+              -ControllerType $disk.ControllerType.ToString() `
+              -ControllerNumber $disk.ControllerNumber `
+              -ControllerLocation $disk.ControllerLocation `
+              -Path '{{ hyperv_ubuntu_vm_host_vhdx_path }}'
+            $Ansible.Changed = $true
+          }
+
+          $dvds = @(Get-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue)
+          $dvd = $dvds | Where-Object { $_.Path -eq '{{ hyperv_ubuntu_vm_host_server_iso_path }}' } | Select-Object -First 1
+          if (-not $dvd) {
+            $dvd = Add-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -Path '{{ hyperv_ubuntu_vm_host_server_iso_path }}'
+            $Ansible.Changed = $true
+          }
+
+          {% if hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool %}
+          $seedDvd = $dvds | Where-Object { $_.Path -eq '{{ hyperv_ubuntu_vm_host_seed_iso_path }}' } | Select-Object -First 1
+          if (-not $seedDvd) {
+            Add-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -Path '{{ hyperv_ubuntu_vm_host_seed_iso_path }}' | Out-Null
+            $Ansible.Changed = $true
+          }
+          {% endif %}
+
+          Set-VMFirmware `
+            -VMName '{{ hyperv_ubuntu_vm_name }}' `
+            -EnableSecureBoot On `
+            -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}' `
+            -FirstBootDevice $dvd
+          $Ansible.Result = @{ reconciled = $true }
+      when: _hyperv_ubuntu_vm_probe.result.exists | default(false)
+
+    - name: Start Hyper-V Ubuntu VM when not running
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $Ansible.Changed = $false
+          $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop
+          if ($vm.State.ToString() -ne 'Running') {
+            Start-VM -Name '{{ hyperv_ubuntu_vm_name }}' | Out-Null
+            $Ansible.Changed = $true
+          }
+          $Ansible.Result = @{ state = (Get-VM -Name '{{ hyperv_ubuntu_vm_name }}').State.ToString() }
+      register: _hyperv_ubuntu_vm_start
+
+    - name: Publish Hyper-V Ubuntu VM installer metadata on Windows host
+      ansible.windows.win_copy:
+        dest: "{{ hyperv_ubuntu_vm_host_metadata_path }}"
+        content: |
+          {
+            "name": "{{ hyperv_ubuntu_vm_name }}",
+            "inventory_host": "{{ hyperv_ubuntu_vm_inventory_host }}",
+            "switch_name": "{{ hyperv_ubuntu_vm_switch_name }}",
+            "source_mode": "{{ hyperv_ubuntu_vm_source_mode }}",
+            "source_url": "{{ hyperv_ubuntu_vm_server_iso_url }}",
+            "autoinstall_seed_attached": {{ hyperv_ubuntu_vm_server_iso_autoinstall_enabled | to_json }},
+            "installer_requires_console": true,
+            "ssh_ready": false,
+            "notes": "Ubuntu Server ISO installer mode is a server-aligned checkpoint. Complete installer/autoinstall work before publishing connection facts."
+          }
+
+    - name: Report Hyper-V Ubuntu VM server ISO installer summary
+      ansible.builtin.debug:
+        msg:
+          vm_name: "{{ hyperv_ubuntu_vm_name }}"
+          inventory_host: "{{ hyperv_ubuntu_vm_inventory_host }}"
+          source_mode: "{{ hyperv_ubuntu_vm_source_mode }}"
+          source_url: "{{ hyperv_ubuntu_vm_server_iso_url }}"
+          switch_name: "{{ hyperv_ubuntu_vm_switch_name }}"
+          autoinstall_seed_attached: "{{ hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool }}"
+          installer_requires_console: true
+          connection_facts_published: false

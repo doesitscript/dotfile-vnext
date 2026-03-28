@@ -1,0 +1,6 @@
+’m pulling the module docs and source now rather than guessing. If there is a more robust Windows-native Ansible path for large downloads, this is where it’ll show up: module docs first, then the actual implementation behavior underneath.
+
+Ran python3 - <<'PY' from pathlib import Path for path in [ '/Users/joshc/.ansible/collections/ansible_collections/ansible/windows/plugins/modules/win_get_url.py', '/Users/joshc/.ansible/collections/ansible_collections/ansible/windows/plugins/modules/win_uri.py', '/Users/joshc/.ansible/collections/ansible_collections/community/windows/plugins/modules/win_inet_proxy.py']: p=Path(path) print(path) print('exists=', p.exists()) if p.exists(): txt=p.read_text(errors='ignore').splitlines() for i,line in enumerate(txt,1): if 'url_method' in line or 'Invoke-WebRequest' in line or 'HttpClient' in line or 'WebRequest' in line or 'BITS' in line or 'bits' in line or 'timeout' in line.lower(): print(f'{i}: {line}') print('---') PY
+
+
+The doc check is useful already: there isn’t a richer built-in Windows “large download” module hiding nearby. In the installed collections here, the actual download surfaces are basically ansible.windows.win_get_url and ansible.windows.win_uri, with win_uri more about HTTP interaction than reliable file transfer.
