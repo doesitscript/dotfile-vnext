@@ -6,8 +6,9 @@ Stateful role for a Hyper-V-native Ubuntu cloud-image VM on a Windows host.
 
 - keep the public lifecycle state-based: `present|absent`
 - use the existing `hyperv_networking` role for host prerequisites and switch ownership
-- build a NoCloud `CIDATA` seed ISO from the controller
-- convert an Ubuntu cloud image into a VM-owned VHDX on the Windows host
+- build an Azure-style `ovf-env.xml` UDF seed image from the controller
+- download Canonical's Azure VHD archive, normalize the extracted source VHD,
+  and convert it natively into a VM-owned fixed VHDX on the Windows host
 - publish the guest back into the reserved inventory identity `server-225-ubuntu`
 
 ## Status
@@ -28,8 +29,8 @@ hyperv_ubuntu_vm_state: present | absent
 
 The role treats the VM as one capability:
 
-- `present` means the VM exists, has a converted boot disk, has a NoCloud seed
-  ISO attached, is started, and is published as an SSH target
+- `present` means the VM exists, has a converted boot disk, has an Azure-style
+  OVF seed image attached, is started, and is published as an SSH target
 - `absent` means the VM and its role-owned artifacts are removed and the SSH
   publication is cleared
 
@@ -77,6 +78,16 @@ Dedicated saved-artifact playbook:
 ## Notes
 
 - Host feature and switch ownership stay with `hyperv_networking`
-- Cloud-init is Day-0 bootstrap input; treat major changes as recreate-worthy
+- When `hyperv_config.internal_ics_switch_enabled: true`, this role prefers the
+  Internal guest switch over the older Wi-Fi-backed External switch path
+- In that ICS/Internal-switch topology, the guest's `192.168.137.x` address is
+  a valid guest-network address but not automatically a controller-reachable
+  `ansible_host` from the Mac-side LAN
+- Azure cloud images should be bootstrapped through the Azure datasource path,
+  not a NoCloud `CIDATA` seed
 - This role intentionally reuses the controller public key and SSH publication
   patterns from the earlier Multipass implementation
+
+Related layout note:
+
+- [hyperv-network-layout--windows--wifi-ics.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-network-layout--windows--wifi-ics.md)

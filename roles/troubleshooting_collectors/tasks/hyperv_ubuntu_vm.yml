@@ -33,15 +33,22 @@
     script: |
       $vmName = '{{ hyperv_ubuntu_vm_name | default("server-225-ubuntu") }}'
       $rootDir = '{{ hyperv_ubuntu_vm_host_root_dir | default("C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\server-225-ubuntu") }}'
+      $archivePath = '{{ hyperv_ubuntu_vm_host_archive_path | default(
+        "C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\server-225-ubuntu\\ubuntu-24.04-server-cloudimg-amd64-azure.vhd.tar.gz"
+      ) }}'
+      $sourceVhdPath = '{{ hyperv_ubuntu_vm_host_source_vhd_path | default(
+        "C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\server-225-ubuntu\\livecd.ubuntu-cpc.azure.vhd"
+      ) }}'
       $diskPath = '{{ hyperv_ubuntu_vm_host_vhdx_path | default("C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\server-225-ubuntu\\server-225-ubuntu.vhdx") }}'
       $seedPath = '{{ hyperv_ubuntu_vm_host_seed_iso_path | default(
         "C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\server-225-ubuntu\\server-225-ubuntu-cidata.iso"
       ) }}'
-      $qemuImg = 'C:\Program Files\qemu\qemu-img.exe'
 
       $result = [ordered]@{
         vm_name = $vmName
         artifact_root = $rootDir
+        archive_path = $archivePath
+        source_vhd_path = $sourceVhdPath
         boot_disk_path = $diskPath
         seed_iso_path = $seedPath
         vm = $null
@@ -53,7 +60,6 @@
         compact = ''
         cipher = ''
         item = $null
-        qemu_img_info = ''
         worker_events = @()
         vmms_events = @()
       }
@@ -111,11 +117,6 @@
             FullName = $item.FullName
             Length = $item.Length
             Attributes = $item.Attributes.ToString()
-          }
-        } catch {}
-        try {
-          if (Test-Path $qemuImg) {
-            $result.qemu_img_info = (& $qemuImg info $diskPath 2>&1 | Out-String).Trim()
           }
         } catch {}
       }

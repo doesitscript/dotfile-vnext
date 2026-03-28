@@ -13,5 +13,8 @@ users:
 ssh_authorized_keys:
   - {{ controller_pub_key_content }}
 runcmd:
+  - [ bash, -lc, 'ip -br address || true' ]
+  - [ bash, -lc, 'dhclient -r || true' ]
+  - [ bash, -lc, 'dhclient -v > /var/log/hyperv-firstboot-dhclient.log 2>&1 || true' ]
   - systemctl enable ssh || true
   - systemctl restart ssh || systemctl start ssh || true

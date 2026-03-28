@@ -124,6 +124,29 @@ Conclusion:
 - `block_state_zero=off` did not fix the Hyper-V incompatibility
 - the current QEMU-on-Windows conversion path remains the first thing to distrust
 
+## Do not layer more workarounds onto the disproven QEMU path
+
+Once the raw `.img -> qemu-img -> vhdx` path had already been disproven by
+repeated artifact probes, the right move was replacement, not another tuning
+layer on the same branch.
+
+That means:
+
+- do not keep adding conversion flags as the primary response
+- do not normalize the bad path into looking acceptable
+- move to a more native upstream artifact or host-native conversion path
+
+Pinned replacement result:
+
+- Canonical Azure VHD plus source normalization plus native `Convert-VHD`
+  produced the first viable Hyper-V boot path
+
+Broader framework lesson:
+
+- see
+  [deprecated-or-disproven-paths-must-be-replaced-not-extended.md](/Users/joshc/develop/dotfile-vnext/docs/lessons-learned/codex/deprecated-or-disproven-paths-must-be-replaced-not-extended.md)
+  for the durable rule and the matching WSL `bash.exe -> wsl.exe` example
+
 ## Package-based converter experiments on Windows
 
 Two interactive package-discovery paths were tested on `server-225-win`.
@@ -195,6 +218,41 @@ Observed result:
 
 Conclusion:
 
+## Wi-Fi-backed External switching is a weak guest DHCP path
+
+Repeated field reports and the current incident both point to the same shape:
+
+- Windows host is uplinked through Wi-Fi
+- Hyper-V guest is attached to an External switch
+- Linux guest DHCP/IP behavior becomes unreliable or misleading
+
+Pinned direction for this repo:
+
+- keep the External switch available for existing host consumers when needed
+- stop treating it as the preferred guest path on Wi-Fi-backed hosts
+- create a dedicated Internal switch for the guest
+- enable ICS from the public Wi-Fi adapter to the Internal switch adapter
+- attach the Hyper-V Ubuntu guest to that Internal switch
+
+Important host-specific nuance discovered on `server-225-win`:
+
+- once the External Hyper-V switch already owned the active public network
+  profile, the working ICS public connection was `vEthernet (External)`, not
+  the raw `Wi-Fi` connection name
+- attempting `Set-Ics -PublicConnectionName 'Wi-Fi' -PrivateConnectionName 'vEthernet (Guest)'`
+  failed with COM `0x8000FFFF`
+- `Set-Ics -PublicConnectionName 'vEthernet (External)' -PrivateConnectionName 'vEthernet (Guest)'`
+  succeeded
+
+Reference write-up that matched the observed behavior well:
+
+- https://www.hurryupandwait.io/blog/running-an-ubuntu-guest-on-hyper-v-assigned-an-ip-via-dhcp-over-a-wifi-connection
+
+Implementation note:
+
+- the repo now treats Internal switch + ICS as the preferred Hyper-V Ubuntu
+  path on `server-225-win`
+
 - MVMC exposes real VHD/VHDX conversion cmdlets
 - but this direct `.img -> .vhdx` path did not accept the Ubuntu cloud image as
   a valid source
@@ -209,6 +267,35 @@ Cleanup result:
 
 The first replacement-resource path that produced a Hyper-V-safe boot disk was
 Canonical's published Azure VHD tarball for Ubuntu 24.04.
+
+## Azure images should use the Azure datasource path, not NoCloud
+
+Once the role pivoted to Canonical's Azure VHD image, continuing to feed the
+guest with a NoCloud `CIDATA` seed became a design mismatch.
+
+Pinned evidence from the live Hyper-V run:
+
+- `Heartbeat` integration service reported `OK`
+- `Key-Value Pair Exchange` reported `Enabled`
+- `Key-Value Pair Exchange` also reported:
+  `The protocol version of the component installed in the virtual machine does not match the version expected by the hosting system`
+- `Get-VMNetworkAdapter ... IPAddresses` kept reporting the Windows host IPv4
+  (`192.168.50.158`) as if it were the guest address
+- host-side `Get-NetNeighbor` had no IPv4 entry for the guest MAC
+
+Source-backed correction:
+
+- Canonical/cloud-init documents that the Azure datasource expects an attached
+  CD formatted in UDF containing `ovf-env.xml`
+- user-data for Azure images should be delivered inside that Azure datasource
+  path via `CustomData` or `UserData`
+
+Conclusion:
+
+- once the boot artifact is an Azure image, the controller seed path should be
+  Azure-style `ovf-env.xml` on a UDF seed image
+- treating the Azure image like a generic NoCloud guest is likely to produce
+  misleading behavior and weaker first-boot control
 
 Interactive retrieval and extraction:
 
