@@ -1,8 +1,9 @@
 # ~/.ssh/config — managed by Ansible (access_identity_controller)
 # Generated from inventory group: ssh_targets
 # Windows hosts render from OpenSSH desired state.
-# WSL surfaces render from active wsl_hosts membership.
-# Linux VMs render when they have realized connection facts.
+# Legacy WSL surfaces render from active wsl_hosts membership.
+# Ubuntu guest surfaces render from linux_vm_hosts once they have realized
+# connection facts such as ansible_host.
 # Manual edits below the ANSIBLE MANAGED block will be preserved.
 
 {% for host in groups['ssh_targets'] | default([]) | sort %}
@@ -10,6 +11,8 @@
 {% set openssh_state = hv.get('openssh_server_state', '') %}
 {% set windows_ssh_state = openssh_state if openssh_state else ('present' if hv.get('openssh_server_enabled', true) else 'absent') %}
 {% set ipv6_host = hv.get('host_ipv6', '') %}
+{% set ssh_user = hv.get('ssh_user') or hv.get('win_ssh_user') or hv.get('wsl_user') or hv.get('ansible_user') or 'joshc' %}
+{% set ssh_port = hv.get('ssh_port') or hv.get('win_ssh_port') or hv.get('wsl_ssh_port') or hv.get('ansible_port') or 22 %}
 {% set emit_ssh_entry = (
   (hv.get('surface_type', '') == 'windows_host' and windows_ssh_state == 'present')
   or (hv.get('surface_type', '') == 'wsl' and host in (groups['wsl_hosts'] | default([])))
@@ -22,11 +25,13 @@
 # connection and forwards to WSL. Auth, keys, and sshd_config are Windows-side.
 {% elif hv.get('surface_type', '') == 'wsl' %}
 # WSL direct SSH — connects to the distro's own sshd (bridged LAN IP or NAT portproxy).
+{% elif hv.get('surface_type', '') == 'ubuntu_vm' %}
+# Ubuntu guest direct SSH — Hyper-V guest surface on the routed/private guest network.
 {% endif %}
 Host {{ host }}
     HostName {{ hv.get('ansible_host', host) }}
-    User {{ hv.get('ssh_user', hv.get('win_ssh_user', hv.get('wsl_user', hv.get('ansible_user', 'joshc')))) }}
-    Port {{ hv.get('ssh_port', hv.get('win_ssh_port', hv.get('wsl_ssh_port', hv.get('ansible_port', 22)))) }}
+    User {{ ssh_user }}
+    Port {{ ssh_port }}
     IdentityFile {{ controller_ssh_private_key_path }}
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
@@ -35,8 +40,8 @@ Host {{ host }}
 
 Host {{ host }}-ipv6
     HostName {{ ipv6_host }}
-    User {{ hv.get('ssh_user', hv.get('win_ssh_user', hv.get('wsl_user', hv.get('ansible_user', 'joshc')))) }}
-    Port {{ hv.get('ssh_port', hv.get('win_ssh_port', hv.get('wsl_ssh_port', hv.get('ansible_port', 22)))) }}
+    User {{ ssh_user }}
+    Port {{ ssh_port }}
     IdentityFile {{ controller_ssh_private_key_path }}
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
@@ -49,7 +54,7 @@ Host {{ host }}-ipv6
 #   ssh {{ host }} -t /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
 Host {{ host }}-powershell
     HostName {{ hv.get('ansible_host', host) }}
-    User {{ hv.get('ssh_user', hv.get('win_ssh_user', hv.get('wsl_user', hv.get('ansible_user', 'joshc')))) }}
+    User {{ ssh_user }}
     # Port {{ hv['ssh_powershell_port'] }}
     ControlMaster no
     ControlPath none
@@ -61,7 +66,7 @@ Host {{ host }}-powershell
 # PowerShell session via subsystem — no explicit port, no proxy
 Host {{ host }}-powershell-bysession
     HostName {{ hv.get('ansible_host', host) }}
-    User {{ hv.get('ssh_user', hv.get('win_ssh_user', hv.get('wsl_user', hv.get('ansible_user', 'joshc')))) }}
+    User {{ ssh_user }}
     ControlMaster no
     ControlPath none
     IdentityFile {{ controller_ssh_private_key_path }}
@@ -72,7 +77,7 @@ Host {{ host }}-powershell-bysession
 
 Host {{ host }}-powershell-ipv6
     HostName {{ ipv6_host }}
-    User {{ hv.get('ssh_user', hv.get('win_ssh_user', hv.get('wsl_user', hv.get('ansible_user', 'joshc')))) }}
+    User {{ ssh_user }}
     ControlMaster no
     ControlPath none
     IdentityFile {{ controller_ssh_private_key_path }}

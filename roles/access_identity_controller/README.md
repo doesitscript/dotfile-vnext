@@ -44,8 +44,9 @@ ansible-playbook playbooks/access_controller.yaml -i inventory/inventory.yaml --
 This role templates `~/.ssh/config` from the `ssh_targets` inventory group.
 
 - Windows hosts get entries when their OpenSSH desired state is `present`.
-- Active `wsl_hosts` get entries by group membership.
-- Linux VMs get entries when they have realized connection facts such as `ansible_host`.
+- Active legacy `wsl_hosts` get entries by group membership.
+- Ubuntu guest surfaces in `linux_vm_hosts` get entries when they have realized
+  connection facts such as `ansible_host`.
 - The template no longer depends on cached `ssh_configured` facts, so entries do
   not disappear just because a fact cache is cold or missing.
 
