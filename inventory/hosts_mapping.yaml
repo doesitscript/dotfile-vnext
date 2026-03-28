@@ -13,11 +13,14 @@
 #   but router hostnames work perfectly fine for Ansible
 
 # Physical Node Mappings
-# Each physical node can be accessed via hostname or IP
+# Each physical node can be accessed via hostname or IP.
+# Where a stable IPv6 address is known, it can also be used as an additive
+# fallback/control-plane surface instead of replacing the primary hostname/IPv4 path.
 physical_nodes:
   server-225:
     hostname: "DESKTOP-VLLM"  # Set this in your router's hostname mapping, or use IP
     ip_address: "192.168.50.158"  # Replace with actual IP from router static assignment
+    ipv6_address: "fdfa:7038:521c:a5fa:7c9:f4a1:90b8:1b1e"
     # Router hostname: Set in router's "Manually Assigned IP" section
     # Use hostname if router provides DNS resolution, otherwise use IP
 
@@ -45,6 +48,11 @@ ansible_surfaces:
     physical_node: server-225
     connection_type: winrm
     # Use either hostname or IP from physical_nodes.server-225 above
+
+  server-225-win-ipv6:
+    physical_node: server-225
+    connection_type: winrm
+    # Explicit IPv6 fallback/control-plane surface for manual or troubleshooting use
 
   network-server-win:
     physical_node: network-server
