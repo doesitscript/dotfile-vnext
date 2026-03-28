@@ -3,7 +3,9 @@
 Pure infrastructure role: enables Hyper-V and manages the host-side switch
 prerequisites used by WSL and VMs. It supports both an External Virtual Switch
 bridged to a physical NIC and an Internal Virtual Switch shared through
-Internet Connection Sharing (ICS) for Wi-Fi-backed guests.
+Internet Connection Sharing (ICS) for Wi-Fi-backed guests, plus a routed
+private-subnet mode that lets the Windows host act as the transit point to the
+guest subnet.
 
 Consumers (WSL bridged networking, dev VMs, test labs) use the resulting
 switches independently by referencing the switch name from `hyperv_config` or
@@ -25,6 +27,10 @@ hyperv_config:
   allow_management_os: true        # keep Windows host connected through the bridge
   internal_ics_switch_enabled: true
   internal_ics_switch_name: "Guest"
+  guest_network_mode: "routed_private_subnet"
+  guest_switch_name: "Guest"
+  guest_subnet_ipv4: "192.168.137.0/24"
+  guest_gateway_ipv4: "192.168.137.1"
   internal_ics_public_adapter_name: "vEthernet (External)"
   internal_ics_private_adapter_alias: "vEthernet (Guest)"
   internal_ics_psmodule_state: present
@@ -116,6 +122,37 @@ So in the current intended layout:
 Reference layout note:
 
 - [hyperv-network-layout--windows--wifi-ics.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-network-layout--windows--wifi-ics.md)
+
+## Routed Private Subnet Mode
+
+The repo now treats the Internal guest switch and private guest subnet as the
+durable guest-network foundation. When:
+
+```yaml
+hyperv_config:
+  guest_network_mode: "routed_private_subnet"
+```
+
+the role adds the next access layer on top of that existing guest network:
+
+1. keeps the guest-side `vEthernet (Guest)` gateway on `192.168.137.1`
+2. enables IPv4 forwarding on the Windows host for the public and private
+   adapters involved in guest access
+3. persists `IpEnableRouter=1` so the host remains a valid forwarding point
+   across reboots
+
+This does not remove the value of the current ICS checkpoint. It builds from
+it:
+
+- ICS/private-subnet mode fixed the host/guest DHCP collision
+- routed-private-subnet mode is the access-layer improvement that lets other
+  systems learn a route to that subnet through the Windows host
+
+Current milestone:
+
+- first implementation target is `mac-dev` direct reachability to the guest IP
+  through a persistent route
+- the next milestone is a router-managed static route for the whole LAN
 
 ## Playbook Integration
 

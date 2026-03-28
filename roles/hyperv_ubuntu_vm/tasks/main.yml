@@ -13,10 +13,12 @@
     src: "{{ controller_ssh_public_key_path }}"
   register: _hyperv_ubuntu_vm_controller_pubkey_slurp
   delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
+  when: hyperv_ubuntu_vm_source_mode in ['azure_cloud_image', 'server_iso_installer']
 
 - name: Set controller public key content fact for Hyper-V Ubuntu VM bootstrap
   ansible.builtin.set_fact:
     controller_pub_key_content: "{{ _hyperv_ubuntu_vm_controller_pubkey_slurp.content | b64decode | trim }}"
+  when: hyperv_ubuntu_vm_source_mode in ['azure_cloud_image', 'server_iso_installer']
 
 - name: Verify controller public key was loaded for Hyper-V Ubuntu VM bootstrap
   ansible.builtin.assert:
@@ -25,10 +27,25 @@
     fail_msg: >-
       Controller public key is empty or missing.
       Ensure {{ controller_ssh_public_key_path }} exists on {{ hyperv_ubuntu_vm_controller_host }}.
+  when: hyperv_ubuntu_vm_source_mode in ['azure_cloud_image', 'server_iso_installer']
 
 - name: Include Hyper-V Ubuntu VM present path
   ansible.builtin.include_tasks: present.yml
-  when: hyperv_ubuntu_vm_state == 'present'
+  when:
+    - hyperv_ubuntu_vm_state == 'present'
+    - hyperv_ubuntu_vm_source_mode == 'azure_cloud_image'
+
+- name: Include Hyper-V Ubuntu VM Quick Create present path
+  ansible.builtin.include_tasks: present_quick_create.yml
+  when:
+    - hyperv_ubuntu_vm_state == 'present'
+    - hyperv_ubuntu_vm_source_mode == 'quick_create_desktop'
+
+- name: Include Hyper-V Ubuntu VM server ISO installer present path
+  ansible.builtin.include_tasks: present_server_iso.yml
+  when:
+    - hyperv_ubuntu_vm_state == 'present'
+    - hyperv_ubuntu_vm_source_mode == 'server_iso_installer'
 
 - name: Include Hyper-V Ubuntu VM absent path
   ansible.builtin.include_tasks: absent.yml

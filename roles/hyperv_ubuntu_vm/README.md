@@ -1,14 +1,20 @@
 # hyperv_ubuntu_vm
 
-Stateful role for a Hyper-V-native Ubuntu cloud-image VM on a Windows host.
+Stateful role for a Hyper-V-native Ubuntu VM on a Windows host.
 
 ## Purpose
 
 - keep the public lifecycle state-based: `present|absent`
 - use the existing `hyperv_networking` role for host prerequisites and switch ownership
-- build an Azure-style `ovf-env.xml` UDF seed image from the controller
-- download Canonical's Azure VHD archive, normalize the extracted source VHD,
-  and convert it natively into a VM-owned fixed VHDX on the Windows host
+- support multiple image source modes behind the same lifecycle surface
+- current source modes:
+  - `azure_cloud_image`
+  - `quick_create_desktop`
+  - `server_iso_installer`
+- build a NoCloud `CIDATA` seed image from the controller only for the
+  `azure_cloud_image` path
+- download Canonical's published source artifact and reconcile it into a
+  role-owned VHDX on the Windows host
 - publish the guest back into the reserved inventory identity `server-225-ubuntu`
 
 ## Status
@@ -18,6 +24,15 @@ New replacement role for the retired Multipass path.
 This role is intended to become the supported provisioning direction for
 `server-225-ubuntu`, but the broad cutover should happen only after runtime
 verification through the dedicated playbook.
+
+Current pivot:
+
+- the Azure cloud-image path remains preserved in the role as researched work,
+  but it is no longer the only candidate
+- the Canonical Hyper-V Quick Create VHDX path is now preserved as a validated
+  Hyper-V-native fallback/checkpoint
+- the next active target is the official Ubuntu Server ISO installer path
+  because it is better aligned with the eventual SSH/Docker server target
 
 ## Lifecycle Contract
 
@@ -29,15 +44,17 @@ hyperv_ubuntu_vm_state: present | absent
 
 The role treats the VM as one capability:
 
-- `present` means the VM exists, has a converted boot disk, has an Azure-style
-  OVF seed image attached, is started, and is published as an SSH target
+- `present` means the VM exists, has a role-owned boot disk, is started, and
+  follows the selected source-mode behavior
 - `absent` means the VM and its role-owned artifacts are removed and the SSH
   publication is cleared
 
 ## Apply / Verify / Undo / Change Class
 
 - Apply: run [server_225_hyperv_ubuntu_vm.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/server_225_hyperv_ubuntu_vm.yaml) against `execution_nodes,server-225-win`
-- Verify: confirm the VM exists in Hyper-V, gets an IPv4 address, accepts SSH, and publishes `server-225-ubuntu` facts
+- Faster iterative apply: run [server_225_hyperv_ubuntu_vm_lifecycle_only.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/server_225_hyperv_ubuntu_vm_lifecycle_only.yaml) when controller identity, host networking, and controller routing are already converged
+- Verify: confirm the VM exists in Hyper-V, gets an IPv4 address, and accepts
+  the verification expected by the selected source mode
 - Undo: rerun with `hyperv_ubuntu_vm_state=absent`
 - Change class: bootstrap plus idempotent lifecycle management
 
@@ -78,13 +95,41 @@ Dedicated saved-artifact playbook:
 ## Notes
 
 - Host feature and switch ownership stay with `hyperv_networking`
+- `absent` now preserves cached source artifacts such as downloaded ISOs and
+  Quick Create archives under the host root directory so repeated loops do not
+  redownload large files unnecessarily
 - When `hyperv_config.internal_ics_switch_enabled: true`, this role prefers the
-  Internal guest switch over the older Wi-Fi-backed External switch path
-- In that ICS/Internal-switch topology, the guest's `192.168.137.x` address is
-  a valid guest-network address but not automatically a controller-reachable
-  `ansible_host` from the Mac-side LAN
-- Azure cloud images should be bootstrapped through the Azure datasource path,
-  not a NoCloud `CIDATA` seed
+  configured guest switch over the older Wi-Fi-backed External switch path
+- In routed-private-subnet mode, this role expects:
+  - the Windows host to prove it can reach guest SSH first
+  - the controller-side route role to make the guest private subnet reachable
+    from `mac-dev` before the guest IP is published as `ansible_host`
+- The default first-boot payload is intentionally minimal:
+  - reuse the image's built-in cloud-init, Python, and OpenSSH baseline
+  - inject the controller key
+  - normalize the GRUB console line to `console=tty1` so VMConnect shows real
+    boot progress instead of appearing frozen behind `ttyS0`
+  - prove baseline SSH reachability before layering extra package work
+- Current source-mode intent:
+  - `azure_cloud_image`
+    - keep as the cloud-image/bootstrap research path
+    - still expects seed media and SSH publication
+  - `quick_create_desktop`
+    - keep as a validated Hyper-V-native bootability checkpoint
+    - validate the archive with a HEAD probe plus `SHA256SUMS` and download it
+      through a BITS-backed path so large transfers stay observable and
+      checksum-backed
+    - treat it as a console-first desktop fallback unless
+      `hyperv_ubuntu_vm_publish_connection_facts: true` is explicitly set
+  - `server_iso_installer`
+    - use the official Ubuntu Server ISO as the active next server-aligned
+      target
+    - validate the ISO with a HEAD probe plus `SHA256SUMS` and download it
+      through a BITS-backed path on Windows
+    - create a blank role-owned VM disk, attach the installer ISO, and boot the
+      VM into the installer
+    - keep this mode honest as an installer lifecycle checkpoint until
+      autoinstall is wired
 - This role intentionally reuses the controller public key and SSH publication
   patterns from the earlier Multipass implementation
 

@@ -18,6 +18,10 @@ hyperv_config:
   management_os_boot_recovery_trigger_delay: "PT45S"
   internal_ics_switch_enabled: false
   internal_ics_switch_name: "Guest"
+  guest_network_mode: "ics"
+  guest_switch_name: "{{ (hyperv_config | default({})).internal_ics_switch_name | default('Guest') }}"
+  guest_subnet_ipv4: "192.168.137.0/24"
+  guest_gateway_ipv4: "192.168.137.1"
   internal_ics_public_adapter_name: "{{ (hyperv_config | default({})).adapter_name | default('Wi-Fi') }}"
   internal_ics_private_adapter_alias: "vEthernet ({{ (hyperv_config | default({})).internal_ics_switch_name | default('Guest') }})"
   internal_ics_psmodule_state: present

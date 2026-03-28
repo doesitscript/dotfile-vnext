@@ -9,8 +9,12 @@ hyperv_ubuntu_vm_disk: "40G"
 hyperv_ubuntu_vm_switch_name: >-
   {{
     (
-      (hyperv_config | default({})).internal_ics_switch_name
-      if ((hyperv_config | default({})).internal_ics_switch_enabled | default(false) | bool)
+      (hyperv_config | default({})).guest_switch_name
+      if (
+        ((hyperv_config | default({})).internal_ics_switch_enabled | default(false) | bool)
+        and
+        (((hyperv_config | default({})).guest_network_mode | default('ics')) in ['ics', 'routed_private_subnet'])
+      )
       else (hyperv_config | default({})).switch_name
     ) | default('External')
   }}
@@ -23,6 +27,11 @@ hyperv_ubuntu_vm_verify_ssh: true
 hyperv_ubuntu_vm_wait_for_ip_retries: 60
 hyperv_ubuntu_vm_wait_for_ip_delay: 10
 hyperv_ubuntu_vm_wait_for_ssh_timeout: 300
+hyperv_ubuntu_vm_download_timeout: 300
+hyperv_ubuntu_vm_cloud_init_install_packages: false
+hyperv_ubuntu_vm_cloud_init_refresh_dhcp: false
+hyperv_ubuntu_vm_source_mode: azure_cloud_image
+hyperv_ubuntu_vm_publish_connection_facts: true
 ansible_troubleshooting_mode: false
 debug_remote_output: false
 debug_collect_component_evidence: false
@@ -30,14 +39,41 @@ debug_collect_component_evidence: false
 hyperv_ubuntu_vm_cloud_image_url: "https://cloud-images.ubuntu.com/releases/server/24.04/release/ubuntu-24.04-server-cloudimg-amd64-azure.vhd.tar.gz"
 hyperv_ubuntu_vm_cloud_image_filename: "{{ hyperv_ubuntu_vm_cloud_image_url.split('/')[-1] }}"
 hyperv_ubuntu_vm_source_vhd_name: "livecd.ubuntu-cpc.azure.vhd"
+hyperv_ubuntu_vm_quick_create_image_url: >-
+  https://partner-images.canonical.com/hyper-v/desktop/noble/release/current/ubuntu-noble-hyperv-amd64-ubuntu-desktop-hyperv.vhdx.zip
+hyperv_ubuntu_vm_quick_create_image_filename: "{{ hyperv_ubuntu_vm_quick_create_image_url.split('/')[-1] }}"
+hyperv_ubuntu_vm_quick_create_checksum_url: >-
+  {{
+    hyperv_ubuntu_vm_quick_create_image_url
+    | regex_replace('/[^/]+$', '/SHA256SUMS')
+  }}
+hyperv_ubuntu_vm_quick_create_checksum: "cf9167f8d95e49a6ccfb09a55eb77f6f89b4bc1a2e15f04df1db57e3d1fba837"
+hyperv_ubuntu_vm_quick_create_source_vhdx_name: "livecd.ubuntu-desktop-hyperv.vhdx"
+hyperv_ubuntu_vm_quick_create_download_job_name: "{{ hyperv_ubuntu_vm_name }}-quick-create-download"
+hyperv_ubuntu_vm_quick_create_download_retries: 960
+hyperv_ubuntu_vm_quick_create_download_poll_delay: 15
+hyperv_ubuntu_vm_server_iso_url: "https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso"
+hyperv_ubuntu_vm_server_iso_filename: "{{ hyperv_ubuntu_vm_server_iso_url.split('/')[-1] }}"
+hyperv_ubuntu_vm_server_iso_checksum_url: "https://releases.ubuntu.com/24.04/SHA256SUMS"
+hyperv_ubuntu_vm_server_iso_checksum: "e907d92eeec9df64163a7e454cbc8d7755e8ddc7ed42f99dbc80c40f1a138433"
+hyperv_ubuntu_vm_server_iso_download_job_name: "{{ hyperv_ubuntu_vm_name }}-server-iso-download"
+hyperv_ubuntu_vm_server_iso_download_retries: 960
+hyperv_ubuntu_vm_server_iso_download_poll_delay: 15
+hyperv_ubuntu_vm_server_iso_autoinstall_enabled: true
+hyperv_ubuntu_vm_autoinstall_locale: en_US.UTF-8
+hyperv_ubuntu_vm_autoinstall_keyboard_layout: us
+hyperv_ubuntu_vm_autoinstall_password: "{{ win_password | default('Pass@w0rd1') }}"
 
 hyperv_ubuntu_vm_host_root_dir: "C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\{{ hyperv_ubuntu_vm_name }}"
 hyperv_ubuntu_vm_host_vm_dir: "{{ hyperv_ubuntu_vm_host_root_dir }}\\vm"
 hyperv_ubuntu_vm_host_archive_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_cloud_image_filename }}"
 hyperv_ubuntu_vm_host_image_path: "{{ hyperv_ubuntu_vm_host_archive_path }}"
 hyperv_ubuntu_vm_host_source_vhd_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_source_vhd_name }}"
+hyperv_ubuntu_vm_host_quick_create_archive_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_quick_create_image_filename }}"
+hyperv_ubuntu_vm_host_quick_create_source_vhdx_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_quick_create_source_vhdx_name }}"
+hyperv_ubuntu_vm_host_server_iso_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_server_iso_filename }}"
 hyperv_ubuntu_vm_host_vhdx_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_name }}.vhdx"
-hyperv_ubuntu_vm_host_seed_iso_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_name }}-ovf-env.iso"
+hyperv_ubuntu_vm_host_seed_iso_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_name }}-cidata.iso"
 hyperv_ubuntu_vm_host_metadata_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_name }}-state.json"
 
 hyperv_ubuntu_vm_controller_host: "{{ groups['execution_nodes'][0] }}"
@@ -45,8 +81,8 @@ hyperv_ubuntu_vm_controller_staging_dir: >-
   {{ hostvars[hyperv_ubuntu_vm_controller_host].dotfiles_user_home }}/.local/state/dotfile-vnext/hyperv_ubuntu_vm/{{ hyperv_ubuntu_vm_name }}
 hyperv_ubuntu_vm_controller_seed_dir: "{{ hyperv_ubuntu_vm_controller_staging_dir }}/seed"
 hyperv_ubuntu_vm_controller_user_data_path: "{{ hyperv_ubuntu_vm_controller_seed_dir }}/user-data"
-hyperv_ubuntu_vm_controller_ovf_env_path: "{{ hyperv_ubuntu_vm_controller_seed_dir }}/ovf-env.xml"
-hyperv_ubuntu_vm_controller_seed_iso_path: "{{ hyperv_ubuntu_vm_controller_staging_dir }}/{{ hyperv_ubuntu_vm_name }}-ovf-env.iso"
+hyperv_ubuntu_vm_controller_meta_data_path: "{{ hyperv_ubuntu_vm_controller_seed_dir }}/meta-data"
+hyperv_ubuntu_vm_controller_seed_iso_path: "{{ hyperv_ubuntu_vm_controller_staging_dir }}/{{ hyperv_ubuntu_vm_name }}-cidata.iso"
 hyperv_ubuntu_vm_controller_seed_signature_path: "{{ hyperv_ubuntu_vm_controller_staging_dir }}/seed.signature"
 hyperv_ubuntu_vm_controller_iso_command: /usr/bin/hdiutil
 controller_ssh_public_key_path: "~/.ssh/id_ed25519_ansible.pub"

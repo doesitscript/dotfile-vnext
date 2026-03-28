@@ -1,0 +1,89 @@
+---
+- name: Require macOS controller for Hyper-V guest route management
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Darwin'
+    fail_msg: "hyperv_guest_route_mac must run on a macOS execution node."
+
+- name: Read current additional IPv4 routes for the configured macOS network service
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/networksetup
+      - -getadditionalroutes
+      - "{{ hyperv_guest_route_mac_network_service }}"
+  register: _hyperv_guest_route_mac_current
+  changed_when: false
+
+- name: Normalize current additional routes for Hyper-V guest route management
+  ansible.builtin.set_fact:
+    _hyperv_guest_route_mac_existing_routes: >-
+      {%- set ns = namespace(routes=[]) -%}
+      {%- set route_pattern = '(?m)^(\\d+\\.\\d+\\.\\d+\\.\\d+)\\s+(\\d+\\.\\d+\\.\\d+\\.\\d+)\\s+(\\d+\\.\\d+\\.\\d+\\.\\d+)$' -%}
+      {%- for route in (_hyperv_guest_route_mac_current.stdout | regex_findall(route_pattern)) -%}
+      {%- set ns.routes = ns.routes + [{
+        'destination': route[0],
+        'mask': route[1],
+        'gateway': route[2]
+      }] -%}
+      {%- endfor -%}
+      {{ ns.routes }}
+
+- name: Remove managed guest route from the current additional-route list
+  ansible.builtin.set_fact:
+    _hyperv_guest_route_mac_filtered_routes: >-
+      {%- set ns = namespace(routes=[]) -%}
+      {%- for route in _hyperv_guest_route_mac_existing_routes -%}
+      {%- if not (
+        route.destination == hyperv_guest_route_target_subnet and
+        route.mask == hyperv_guest_route_target_mask
+      ) -%}
+      {%- set ns.routes = ns.routes + [route] -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {{ ns.routes }}
+
+- name: Build desired additional-route list for Hyper-V guest subnet
+  ansible.builtin.set_fact:
+    _hyperv_guest_route_mac_desired_routes: >-
+      {%- set ns = namespace(routes=_hyperv_guest_route_mac_filtered_routes) -%}
+      {%- if hyperv_guest_route_mac_state == 'present' -%}
+      {%- set ns.routes = ns.routes + [{
+        'destination': hyperv_guest_route_target_subnet,
+        'mask': hyperv_guest_route_target_mask,
+        'gateway': hyperv_guest_route_gateway
+      }] -%}
+      {%- endif -%}
+      {{ ns.routes }}
+
+- name: Flatten desired route arguments for macOS networksetup
+  ansible.builtin.set_fact:
+    _hyperv_guest_route_mac_desired_args: >-
+      {%- set ns = namespace(args=[]) -%}
+      {%- for route in (_hyperv_guest_route_mac_desired_routes | sort(attribute='destination')) -%}
+      {%- set ns.args = ns.args + [route.destination, route.mask, route.gateway] -%}
+      {%- endfor -%}
+      {{ ns.args }}
+
+- name: Persist additional IPv4 routes for the Hyper-V guest subnet on macOS
+  ansible.builtin.command:
+    argv: >-
+      {{
+        ['/usr/sbin/networksetup', '-setadditionalroutes', hyperv_guest_route_mac_network_service]
+        + _hyperv_guest_route_mac_desired_args
+      }}
+  changed_when: true
+  when: >-
+    (
+      (_hyperv_guest_route_mac_existing_routes | sort(attribute='destination')) | to_json
+    ) != (
+      (_hyperv_guest_route_mac_desired_routes | sort(attribute='destination')) | to_json
+    )
+
+- name: Report final desired Hyper-V guest route state on macOS
+  ansible.builtin.debug:
+    msg:
+      network_service: "{{ hyperv_guest_route_mac_network_service }}"
+      desired_state: "{{ hyperv_guest_route_mac_state }}"
+      target_subnet: "{{ hyperv_guest_route_target_subnet }}"
+      target_mask: "{{ hyperv_guest_route_target_mask }}"
+      gateway: "{{ hyperv_guest_route_gateway }}"

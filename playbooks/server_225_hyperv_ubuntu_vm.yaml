@@ -21,7 +21,7 @@
   roles:
     - access_identity_controller
 
-- name: Server-225 Hyper-V Ubuntu VM lifecycle
+- name: Server-225 Hyper-V networking prerequisites
   hosts: "{{ hyperv_ubuntu_vm_windows_host | default('server-225-win') }}"
   gather_facts: false
 
@@ -30,10 +30,25 @@
       ansible.builtin.include_role:
         name: hyperv_networking
 
+- name: Access - route guest private subnet from the controller
+  hosts: execution_nodes
+  connection: local
+  gather_facts: true
+
+  tasks:
+    - name: Ensure the controller can route to the Hyper-V guest subnet
+      ansible.builtin.include_role:
+        name: hyperv_guest_route_mac
+      when: (hyperv_guest_route_mac_state | default('absent')) == 'present'
+
+- name: Server-225 Hyper-V Ubuntu VM lifecycle
+  hosts: "{{ hyperv_ubuntu_vm_windows_host | default('server-225-win') }}"
+  gather_facts: false
+
+  tasks:
     - name: Ensure Hyper-V Ubuntu VM capability is in the requested lifecycle state
       ansible.builtin.include_role:
         name: hyperv_ubuntu_vm
-
 - name: Access - update controller SSH client config
   hosts: execution_nodes
   connection: local

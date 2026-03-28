@@ -20,22 +20,14 @@
     mode: "0644"
   delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
 
-- name: Read rendered Hyper-V Ubuntu VM cloud-init user-data for Azure OVF seed
-  ansible.builtin.slurp:
-    path: "{{ hyperv_ubuntu_vm_controller_user_data_path }}"
-  register: _hyperv_ubuntu_vm_user_data_content
-  delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
-
-- name: Render Hyper-V Ubuntu VM Azure ovf-env.xml on controller
+- name: Render Hyper-V Ubuntu VM cloud-init meta-data on controller
   ansible.builtin.template:
-    src: azure-ovf-env.xml.j2
-    dest: "{{ hyperv_ubuntu_vm_controller_ovf_env_path }}"
+    src: cloud-init-meta-data.yaml.j2
+    dest: "{{ hyperv_ubuntu_vm_controller_meta_data_path }}"
     mode: "0644"
-  vars:
-    hyperv_ubuntu_vm_custom_data_b64: "{{ _hyperv_ubuntu_vm_user_data_content.content | b64decode | b64encode }}"
   delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
 
-- name: Build Azure OVF seed image for Hyper-V Ubuntu VM on controller
+- name: Build NoCloud seed image for Hyper-V Ubuntu VM on controller
   block:
     - name: Read controller cloud-init user-data checksum
       ansible.builtin.stat:
@@ -44,34 +36,34 @@
       register: _hyperv_ubuntu_vm_user_data_stat
       delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
 
-    - name: Read controller Azure ovf-env.xml checksum
+    - name: Read controller cloud-init meta-data checksum
       ansible.builtin.stat:
-        path: "{{ hyperv_ubuntu_vm_controller_ovf_env_path }}"
+        path: "{{ hyperv_ubuntu_vm_controller_meta_data_path }}"
         checksum_algorithm: sha256
-      register: _hyperv_ubuntu_vm_ovf_env_stat
+      register: _hyperv_ubuntu_vm_meta_data_stat
       delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
 
-    - name: Set desired Azure OVF seed signature for Hyper-V Ubuntu VM
+    - name: Set desired NoCloud seed signature for Hyper-V Ubuntu VM
       ansible.builtin.set_fact:
         _hyperv_ubuntu_vm_seed_signature: |
           user-data={{ _hyperv_ubuntu_vm_user_data_stat.stat.checksum }}
-          ovf-env={{ _hyperv_ubuntu_vm_ovf_env_stat.stat.checksum }}
-          volume=OVFENV
+          meta-data={{ _hyperv_ubuntu_vm_meta_data_stat.stat.checksum }}
+          volume=cidata
 
-    - name: Probe existing Azure OVF seed signature for Hyper-V Ubuntu VM
+    - name: Probe existing NoCloud seed signature for Hyper-V Ubuntu VM
       ansible.builtin.stat:
         path: "{{ hyperv_ubuntu_vm_controller_seed_signature_path }}"
       register: _hyperv_ubuntu_vm_seed_signature_stat
       delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
 
-    - name: Read existing Azure OVF seed signature when present
+    - name: Read existing NoCloud seed signature when present
       ansible.builtin.slurp:
         path: "{{ hyperv_ubuntu_vm_controller_seed_signature_path }}"
       register: _hyperv_ubuntu_vm_existing_seed_signature
       when: _hyperv_ubuntu_vm_seed_signature_stat.stat.exists | bool
       delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
 
-    - name: Remove stale Azure OVF seed image when controller inputs changed
+    - name: Remove stale NoCloud seed image when controller inputs changed
       ansible.builtin.file:
         path: "{{ hyperv_ubuntu_vm_controller_seed_iso_path }}"
         state: absent
@@ -83,7 +75,7 @@
           ) != (_hyperv_ubuntu_vm_seed_signature | trim)
       delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
 
-    - name: Build Azure OVF seed image with hdiutil on controller when absent
+    - name: Build NoCloud seed image with hdiutil on controller when absent
       ansible.builtin.command:
         argv:
           - "{{ hyperv_ubuntu_vm_controller_iso_command }}"
@@ -92,14 +84,14 @@
           - -udf
           - -iso
           - -default-volume-name
-          - OVFENV
+          - cidata
           - -o
           - "{{ hyperv_ubuntu_vm_controller_seed_iso_path }}"
           - "{{ hyperv_ubuntu_vm_controller_seed_dir }}"
         creates: "{{ hyperv_ubuntu_vm_controller_seed_iso_path }}"
       delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
 
-    - name: Write Azure OVF seed signature for Hyper-V Ubuntu VM
+    - name: Write NoCloud seed signature for Hyper-V Ubuntu VM
       ansible.builtin.copy:
         dest: "{{ hyperv_ubuntu_vm_controller_seed_signature_path }}"
         content: "{{ _hyperv_ubuntu_vm_seed_signature }}"
@@ -120,6 +112,8 @@
   ansible.windows.win_get_url:
     url: "{{ hyperv_ubuntu_vm_cloud_image_url }}"
     dest: "{{ hyperv_ubuntu_vm_host_archive_path }}"
+    force: false
+    url_timeout: "{{ hyperv_ubuntu_vm_download_timeout }}"
 
 - name: Extract Ubuntu Azure VHD source on Windows host when absent
   ansible.windows.win_powershell:
@@ -319,7 +313,7 @@
         current_compressed_count = $compressedCount
       }
 
-- name: Copy Azure OVF seed image to Windows host
+- name: Copy NoCloud seed image to Windows host
   ansible.windows.win_copy:
     src: "{{ hyperv_ubuntu_vm_controller_seed_iso_path }}"
     dest: "{{ hyperv_ubuntu_vm_host_seed_iso_path }}"
@@ -496,7 +490,7 @@
           $Ansible.Result = @{ created = $true }
       when: not (_hyperv_ubuntu_vm_probe.result.exists | default(false))
 
-    - name: Ensure Hyper-V Ubuntu VM CPU count, switch, firmware, and Azure OVF seed image are aligned
+    - name: Ensure Hyper-V Ubuntu VM CPU count, switch, firmware, and NoCloud seed image are aligned
       ansible.windows.win_powershell:
         error_action: stop
         script: |
@@ -643,6 +637,31 @@
       retries: "{{ hyperv_ubuntu_vm_wait_for_ip_retries }}"
       delay: "{{ hyperv_ubuntu_vm_wait_for_ip_delay }}"
       until: (_hyperv_ubuntu_vm_ip.result.ipv4 | default('', true) | string) | length > 0
+
+    - name: Wait for SSH on Hyper-V Ubuntu VM from the Windows host
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $Ansible.Changed = $false
+          $probe = Test-NetConnection `
+            -ComputerName '{{ _hyperv_ubuntu_vm_ip.result.ipv4 }}' `
+            -Port {{ hyperv_ubuntu_vm_ssh_port }} `
+            -InformationLevel Detailed `
+            -WarningAction SilentlyContinue
+
+          $Ansible.Result = @{
+            computer_name = $probe.ComputerName
+            remote_address = $probe.RemoteAddress
+            ping_succeeded = $probe.PingSucceeded
+            tcp_test_succeeded = $probe.TcpTestSucceeded
+            interface_alias = $probe.InterfaceAlias
+            source_address = $probe.SourceAddress
+          }
+      register: _hyperv_ubuntu_vm_windows_ssh
+      changed_when: false
+      retries: "{{ [((hyperv_ubuntu_vm_wait_for_ssh_timeout | int) // 5), 1] | max }}"
+      delay: 5
+      until: _hyperv_ubuntu_vm_windows_ssh.result.tcp_test_succeeded | default(false)
 
     - name: Wait for SSH on Hyper-V Ubuntu VM from controller
       ansible.builtin.wait_for:

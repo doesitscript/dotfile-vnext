@@ -1,0 +1,21 @@
+---
+# Faster VM-only control surface for iterative Hyper-V Ubuntu guest work.
+#
+# Runs only the VM lifecycle role on server-225-win and skips controller
+# identity, guest-route, and host-network prerequisite plays that are already
+# expected to be converged.
+#
+# Example:
+#   .venv/bin/ansible-playbook playbooks/server_225_hyperv_ubuntu_vm_lifecycle_only.yaml \
+#     -i inventory/inventory.yaml \
+#     --limit server-225-win
+#
+
+- name: Server-225 Hyper-V Ubuntu VM lifecycle only
+  hosts: "{{ hyperv_ubuntu_vm_windows_host | default('server-225-win') }}"
+  gather_facts: false
+
+  tasks:
+    - name: Ensure Hyper-V Ubuntu VM capability is in the requested lifecycle state
+      ansible.builtin.include_role:
+        name: hyperv_ubuntu_vm
