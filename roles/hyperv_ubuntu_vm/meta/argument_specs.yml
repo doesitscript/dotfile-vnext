@@ -43,6 +43,9 @@ argument_specs:
       hyperv_ubuntu_vm_secure_boot_template:
         type: str
         default: MicrosoftUEFICertificateAuthority
+      hyperv_ubuntu_vm_secure_boot_enabled:
+        type: bool
+        default: true
       hyperv_ubuntu_vm_verify_ssh:
         type: bool
         default: true
@@ -134,6 +137,9 @@ argument_specs:
       hyperv_ubuntu_vm_server_iso_autoinstall_enabled:
         type: bool
         default: true
+      hyperv_ubuntu_vm_server_iso_customization_version:
+        type: str
+        default: autoinstall-v8-static-routed-subnet
       hyperv_ubuntu_vm_autoinstall_locale:
         type: str
         default: en_US.UTF-8
@@ -142,6 +148,27 @@ argument_specs:
         default: us
       hyperv_ubuntu_vm_autoinstall_password:
         type: str
+      hyperv_ubuntu_vm_autoinstall_network_interface_name:
+        type: str
+        default: eth0
+      hyperv_ubuntu_vm_autoinstall_network_method:
+        type: str
+        default: dhcp
+        choices: [dhcp, static]
+      hyperv_ubuntu_vm_autoinstall_network_ipv4:
+        type: str
+        default: 192.168.137.10
+      hyperv_ubuntu_vm_autoinstall_network_prefix_length:
+        type: int
+        default: 24
+      hyperv_ubuntu_vm_autoinstall_network_gateway4:
+        type: str
+        default: 192.168.137.1
+      hyperv_ubuntu_vm_autoinstall_network_dns_servers:
+        type: list
+        elements: str
+        default:
+          - 192.168.50.1
       hyperv_ubuntu_vm_host_archive_path:
         type: str
         default: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\ubuntu-24.04-server-cloudimg-amd64-azure.vhd.tar.gz
@@ -169,6 +196,12 @@ argument_specs:
       hyperv_ubuntu_vm_host_server_iso_path:
         type: str
         default: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\ubuntu-24.04.4-live-server-amd64.iso
+      hyperv_ubuntu_vm_host_server_iso_custom_path:
+        type: str
+        default: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\server-225-ubuntu-autoinstall.iso
+      hyperv_ubuntu_vm_host_server_iso_custom_signature_path:
+        type: str
+        default: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\server-225-ubuntu-autoinstall.signature
       hyperv_ubuntu_vm_host_seed_iso_path:
         type: str
         default: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\server-225-ubuntu-cidata.iso
@@ -177,12 +210,29 @@ argument_specs:
         default: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\server-225-ubuntu-state.json
       hyperv_ubuntu_vm_controller_staging_dir:
         type: str
+      hyperv_ubuntu_vm_controller_cache_dir:
+        type: str
       hyperv_ubuntu_vm_controller_user_data_path:
         type: str
       hyperv_ubuntu_vm_controller_meta_data_path:
         type: str
       hyperv_ubuntu_vm_controller_seed_iso_path:
         type: str
+      hyperv_ubuntu_vm_controller_server_iso_cache_path:
+        type: str
+      hyperv_ubuntu_vm_controller_server_iso_extract_dir:
+        type: str
+      hyperv_ubuntu_vm_controller_server_iso_custom_dir:
+        type: str
+      hyperv_ubuntu_vm_controller_server_iso_custom_path:
+        type: str
+      hyperv_ubuntu_vm_controller_server_iso_custom_signature_path:
+        type: str
+      hyperv_ubuntu_vm_controller_server_iso_efi_image_path:
+        type: str
+      hyperv_ubuntu_vm_controller_xorriso_command:
+        type: str
+        default: /usr/local/bin/xorriso
       controller_ssh_public_key_path:
         type: str
         default: "~/.ssh/id_ed25519_ansible.pub"

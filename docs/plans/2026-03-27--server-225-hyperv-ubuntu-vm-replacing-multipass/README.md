@@ -195,8 +195,7 @@ What this milestone has already proven:
 
 What remains in progress:
 
-- stable Mac-to-guest direct reachability through the routed private subnet
-- proving guest bootstrap and SSH readiness from that routed access surface
+- proving stable SSH authentication from the routed guest address
 - whole-LAN reachability as the later router-static-route milestone
 - bounded follow-up test:
   - try Secure Boot disabled on the Generation 2 VM if current console evidence
@@ -219,11 +218,36 @@ Pinned routed-network evidence:
 
 - Windows host reached guest-private-subnet addresses during the Hyper-V Ubuntu
   runs
-- Mac/controller did not yet prove direct guest reachability even after the
-  route was added
-- that split is useful evidence:
-  - the guest subnet design looks workable
-  - the guest image/bootstrap path remained the blocker
+- Mac/controller now proves routed reachability to `192.168.137.10`
+- Mac/controller now proves `22/tcp` reachability to `192.168.137.10`
+- guest-side install is now using a static routed-subnet address:
+  - `192.168.137.10/24`
+  - gateway `192.168.137.1`
+- current remaining blocker:
+  - SSH authentication acceptance for `ubuntu@192.168.137.10`
+
+Current verification ladder:
+
+- Windows host:
+  - `Test-Connection 192.168.137.10 -Count 1`
+  - `Test-NetConnection -ComputerName 192.168.137.10 -Port 22`
+  - `Get-NetNeighbor -IPAddress 192.168.137.10`
+- Mac/controller:
+  - `route -n get 192.168.137.10`
+  - `nc -vz -G 2 192.168.137.10 22`
+  - `ssh -i ~/.ssh/id_ed25519_ansible -o IdentitiesOnly=yes ubuntu@192.168.137.10`
+- Guest console:
+  - `ip -br addr`
+  - `ip route`
+  - `systemctl is-active ssh`
+  - `ss -ltnp | grep ':22'`
+
+Current console interpretation note:
+
+- VMConnect may continue to show Subiquity/log output even when the installed
+  guest is already up and reachable on the routed subnet
+- once host ping and host/controller `22/tcp` probes succeed, treat those as
+  stronger truth than stale tty output alone
 
 ## Current Cleanup Status
 

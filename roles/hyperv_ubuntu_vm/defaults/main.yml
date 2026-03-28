@@ -23,6 +23,7 @@ hyperv_ubuntu_vm_hostname: "{{ hyperv_ubuntu_vm_name }}"
 hyperv_ubuntu_vm_ssh_port: 22
 hyperv_ubuntu_vm_python_interpreter: /usr/bin/python3
 hyperv_ubuntu_vm_secure_boot_template: "MicrosoftUEFICertificateAuthority"
+hyperv_ubuntu_vm_secure_boot_enabled: "{{ (hyperv_ubuntu_vm_source_mode != 'server_iso_installer') | bool }}"
 hyperv_ubuntu_vm_verify_ssh: true
 hyperv_ubuntu_vm_wait_for_ip_retries: 60
 hyperv_ubuntu_vm_wait_for_ip_delay: 10
@@ -60,9 +61,17 @@ hyperv_ubuntu_vm_server_iso_download_job_name: "{{ hyperv_ubuntu_vm_name }}-serv
 hyperv_ubuntu_vm_server_iso_download_retries: 960
 hyperv_ubuntu_vm_server_iso_download_poll_delay: 15
 hyperv_ubuntu_vm_server_iso_autoinstall_enabled: true
+hyperv_ubuntu_vm_server_iso_customization_version: autoinstall-v8-static-routed-subnet
 hyperv_ubuntu_vm_autoinstall_locale: en_US.UTF-8
 hyperv_ubuntu_vm_autoinstall_keyboard_layout: us
 hyperv_ubuntu_vm_autoinstall_password: "{{ win_password | default('Pass@w0rd1') }}"
+hyperv_ubuntu_vm_autoinstall_network_interface_name: eth0
+hyperv_ubuntu_vm_autoinstall_network_method: dhcp
+hyperv_ubuntu_vm_autoinstall_network_ipv4: "192.168.137.10"
+hyperv_ubuntu_vm_autoinstall_network_prefix_length: 24
+hyperv_ubuntu_vm_autoinstall_network_gateway4: "{{ ((hyperv_config | default({})).guest_gateway_ipv4 | default('192.168.137.1')).split('/')[0] }}"
+hyperv_ubuntu_vm_autoinstall_network_dns_servers:
+  - "192.168.50.1"
 
 hyperv_ubuntu_vm_host_root_dir: "C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\{{ hyperv_ubuntu_vm_name }}"
 hyperv_ubuntu_vm_host_vm_dir: "{{ hyperv_ubuntu_vm_host_root_dir }}\\vm"
@@ -72,11 +81,15 @@ hyperv_ubuntu_vm_host_source_vhd_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{
 hyperv_ubuntu_vm_host_quick_create_archive_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_quick_create_image_filename }}"
 hyperv_ubuntu_vm_host_quick_create_source_vhdx_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_quick_create_source_vhdx_name }}"
 hyperv_ubuntu_vm_host_server_iso_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_server_iso_filename }}"
+hyperv_ubuntu_vm_host_server_iso_custom_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_name }}-autoinstall.iso"
+hyperv_ubuntu_vm_host_server_iso_custom_signature_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_name }}-autoinstall.signature"
 hyperv_ubuntu_vm_host_vhdx_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_name }}.vhdx"
 hyperv_ubuntu_vm_host_seed_iso_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_name }}-cidata.iso"
 hyperv_ubuntu_vm_host_metadata_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_name }}-state.json"
 
 hyperv_ubuntu_vm_controller_host: "{{ groups['execution_nodes'][0] }}"
+hyperv_ubuntu_vm_controller_cache_dir: >-
+  {{ hostvars[hyperv_ubuntu_vm_controller_host].dotfiles_user_home }}/.local/state/dotfile-vnext/hyperv_iso_work
 hyperv_ubuntu_vm_controller_staging_dir: >-
   {{ hostvars[hyperv_ubuntu_vm_controller_host].dotfiles_user_home }}/.local/state/dotfile-vnext/hyperv_ubuntu_vm/{{ hyperv_ubuntu_vm_name }}
 hyperv_ubuntu_vm_controller_seed_dir: "{{ hyperv_ubuntu_vm_controller_staging_dir }}/seed"
@@ -84,5 +97,12 @@ hyperv_ubuntu_vm_controller_user_data_path: "{{ hyperv_ubuntu_vm_controller_seed
 hyperv_ubuntu_vm_controller_meta_data_path: "{{ hyperv_ubuntu_vm_controller_seed_dir }}/meta-data"
 hyperv_ubuntu_vm_controller_seed_iso_path: "{{ hyperv_ubuntu_vm_controller_staging_dir }}/{{ hyperv_ubuntu_vm_name }}-cidata.iso"
 hyperv_ubuntu_vm_controller_seed_signature_path: "{{ hyperv_ubuntu_vm_controller_staging_dir }}/seed.signature"
+hyperv_ubuntu_vm_controller_server_iso_cache_path: "{{ hyperv_ubuntu_vm_controller_cache_dir }}/{{ hyperv_ubuntu_vm_server_iso_filename }}"
+hyperv_ubuntu_vm_controller_server_iso_extract_dir: "{{ hyperv_ubuntu_vm_controller_cache_dir }}/{{ hyperv_ubuntu_vm_name }}-server-iso-extracted"
+hyperv_ubuntu_vm_controller_server_iso_custom_dir: "{{ hyperv_ubuntu_vm_controller_cache_dir }}/{{ hyperv_ubuntu_vm_name }}-server-iso-custom"
+hyperv_ubuntu_vm_controller_server_iso_custom_path: "{{ hyperv_ubuntu_vm_controller_cache_dir }}/{{ hyperv_ubuntu_vm_name }}-autoinstall.iso"
+hyperv_ubuntu_vm_controller_server_iso_custom_signature_path: "{{ hyperv_ubuntu_vm_controller_cache_dir }}/{{ hyperv_ubuntu_vm_name }}-server-iso.signature"
+hyperv_ubuntu_vm_controller_server_iso_efi_image_path: "{{ hyperv_ubuntu_vm_controller_server_iso_custom_dir }}/efi-partition.img"
 hyperv_ubuntu_vm_controller_iso_command: /usr/bin/hdiutil
+hyperv_ubuntu_vm_controller_xorriso_command: /usr/local/bin/xorriso
 controller_ssh_public_key_path: "~/.ssh/id_ed25519_ansible.pub"

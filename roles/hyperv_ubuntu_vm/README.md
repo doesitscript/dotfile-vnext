@@ -128,8 +128,31 @@ Dedicated saved-artifact playbook:
       through a BITS-backed path on Windows
     - create a blank role-owned VM disk, attach the installer ISO, and boot the
       VM into the installer
-    - keep this mode honest as an installer lifecycle checkpoint until
-      autoinstall is wired
+    - remaster the installer path for autoinstall and attach a `cidata` seed
+    - current routed-subnet guest target:
+      - `192.168.137.10/24`
+      - gateway `192.168.137.1`
+    - current milestone:
+      - host ping and host/controller `22/tcp` reachability are proven
+      - remaining blocker is SSH authentication acceptance, not guest-network
+        reachability
+
+Current verification commands:
+
+- Windows host:
+  - `Get-VM -Name server-225-ubuntu | Select-Object Name,State,Status,Uptime`
+  - `Get-VMDvdDrive -VMName server-225-ubuntu`
+  - `Test-Connection 192.168.137.10 -Count 1`
+  - `Test-NetConnection -ComputerName 192.168.137.10 -Port 22`
+- Mac/controller:
+  - `route -n get 192.168.137.10`
+  - `nc -vz -G 2 192.168.137.10 22`
+  - `ssh -i ~/.ssh/id_ed25519_ansible -o IdentitiesOnly=yes ubuntu@192.168.137.10`
+- Guest console:
+  - `ip -br addr`
+  - `ip route`
+  - `systemctl is-active ssh`
+  - `ss -ltnp | grep ':22'`
 - This role intentionally reuses the controller public key and SSH publication
   patterns from the earlier Multipass implementation
 
