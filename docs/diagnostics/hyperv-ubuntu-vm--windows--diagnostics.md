@@ -38,9 +38,13 @@ rejects the boot disk or fails the VM start path.
 ## Vendor / Tooling Diagnostics
 
 - Hyper-V cmdlet output from `Start-VM`, `Get-VHD`, and `Get-VMHardDiskDrive`
-- `qemu-img info` on the resulting `.vhdx`
 - filesystem attribute probes (`fsutil`, `compact`, `cipher`) because Hyper-V
   can still reject a disk that looks fixed in `Get-VHD`
+- `Get-VMNetworkAdapter -VMName <vm> | Select-Object MacAddress, IPAddresses`
+- `(Get-VM -VMName <vm>).VMIntegrationService` to inspect
+  `Key-Value Pair Exchange` state when `IPAddresses` output looks wrong
+- controller-side Azure datasource seed input:
+  `ovf-env.xml` on a UDF-capable attached seed image
 
 ## Notes
 
@@ -49,11 +53,48 @@ rejects the boot disk or fails the VM start path.
   `Virtual hard disk files must be uncompressed and unencrypted and must not be sparse`
 - File-level attribute evidence matters as much as Hyper-V module output for
   this failure class.
+- `Get-VMNetworkAdapter ... IPAddresses` is an integration-services/KVP-driven
+  surface, not authoritative network truth by itself. Microsoft documents that
+  this path depends on `Key-Value Pair Exchange` and guest-side `NetTCPIP` WMI
+  support. Treat it as advisory and verify candidate addresses before
+  publishing them.
+- Host-side neighbor-table correlation by guest MAC is a stronger second source
+  for the actual guest IPv4 on the local network than KVP-reported `IPAddresses`
+  alone.
 - Current pinned contradiction for `server-225-ubuntu`:
   - `Get-VHD` reports `VhdType=Fixed`
   - `fsutil sparse queryflag` reports `This file is set as sparse`
   - `compact /q` reports the file is compressed
   - `Get-Item` reports `Attributes = Archive, SparseFile, NotContentIndexed`
+- Current guest-IP stabilization rule:
+  - do not trust a Hyper-V-reported guest IP if it matches `host_ip` or
+    `host_ipv6`
+  - prefer a host-side `Get-NetNeighbor` match by guest MAC when available
+  - record the guest adapter MAC and the full reported IP list for later
+    analysis
+  - verify the chosen address with a real network readiness probe before
+    publishing it as `ansible_host`
+- Azure VHD images should be treated as Azure-datasource guests, not as
+  generic NoCloud guests:
+  - Canonical documents that the Azure datasource expects an attached UDF CD
+    containing `ovf-env.xml`
+  - user-data should be delivered through that Azure datasource path instead of
+    a NoCloud `CIDATA` seed ISO
+  - when `Key-Value Pair Exchange` reports a protocol mismatch, treat
+    `Get-VMNetworkAdapter ... IPAddresses` as especially untrustworthy
+- On Wi-Fi-backed Windows hosts, a Hyper-V guest attached directly to an
+  External switch is a weak DHCP path:
+  - prefer an Internal switch for the guest
+  - share the public Wi-Fi adapter to that Internal switch with ICS
+  - keep using the External switch only for host-side consumers that still
+    need it
+- In that ICS/Internal-switch topology:
+  - a guest IP like `192.168.137.63` is expected guest-network evidence
+  - the Windows host should be able to reach that address directly
+  - the Mac/controller should not be assumed to reach that private address
+    directly without a separate access strategy
 - Interactive execution lessons and the failed `block_state_zero=off`
   experiment are captured in:
   [hyperv-ubuntu-vm--windows--lessons-learned.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-ubuntu-vm--windows--lessons-learned.md)
+- Full layout note:
+  [hyperv-network-layout--windows--wifi-ics.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-network-layout--windows--wifi-ics.md)
