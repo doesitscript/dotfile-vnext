@@ -1,18 +1,19 @@
 ---
 # access_identity_controller entry point: ssh_config
-# Templates ~/.ssh/config from cached ssh_configured facts set by setup roles.
+# Templates ~/.ssh/config from durable desired-state inputs in inventory/hostvars.
 # Use via: ansible.builtin.include_role: name=access_identity_controller tasks_from=ssh_config.yml
 #
-# Execution order: this file must run AFTER target setup roles (access_identity_windows,
-# etc.) have set ssh_configured=true on their hosts. The orchestration playbook
-# (playbooks/access.yaml) enforces this by placing the ssh_config play last.
+# Execution order: this file should run after the target setup roles so the
+# controller config reflects the latest realized access path, but it no longer
+# depends on cached runtime SSH facts to decide whether a host gets an entry.
 # This file is intentionally NOT called from main.yml so that running
 # access_controller.yaml alone does not attempt to template before targets exist.
 #
-# Requires fact caching enabled in ansible.cfg and at least one target host
-# with ssh_configured=true in the cache (set by access_identity_windows, etc.).
-# Note we setup in windows an extra port to conect to and get a powershell session
-# this port is win_ssh_powershell_port and is the extra block that is defined in ssh_config.j2
+# Windows hosts render from OpenSSH desired state. Active wsl_hosts render by
+# group membership. Linux VMs render when they have realized connection facts.
+# Note we setup in windows an extra port to connect to and get a powershell
+# session this port is win_ssh_powershell_port and is the extra block that is
+# defined in ssh_config.j2.
 
 - name: Ensure ~/.ssh/sockets directory exists for ControlMaster
   ansible.builtin.file:

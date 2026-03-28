@@ -15,11 +15,6 @@
   gather_facts: false
 
   pre_tasks:
-    - name: Skip hosts not yet deployed
-      ansible.builtin.meta: end_host
-      when: not (ansible_facts.get('ssh_configured', false) | bool)
-      tags: [always]
-
     - name: Gather facts on deployed hosts
       ansible.builtin.setup:
       tags: [always]
@@ -36,9 +31,11 @@
   gather_facts: false
 
   pre_tasks:
-    - name: Skip hosts not yet deployed
+    - name: Skip non-local Docker clients whose Windows OpenSSH state is absent
       ansible.builtin.meta: end_host
-      when: not (ansible_facts.get('ssh_configured', false) | bool)
+      when:
+        - ansible_connection | default('ssh') != 'local'
+        - (openssh_server_state | default('present')) != 'present'
       tags: [always]
 
     - name: Gather facts on deployed hosts

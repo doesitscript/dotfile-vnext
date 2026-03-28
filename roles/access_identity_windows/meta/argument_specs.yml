@@ -7,17 +7,26 @@ argument_specs:
       manages sshd_config tunables for direct Windows SSH access, and
       optionally configures WSL only when explicitly enabled.
     options:
+      openssh_server_state:
+        type: str
+        required: false
+        default: "present"
+        choices:
+          - present
+          - absent
+        description: >-
+          Desired lifecycle state for the Windows OpenSSH server. `present`
+          installs and configures the service; `absent` removes it. Prefer
+          this state variable over boolean toggles for new work.
+
       openssh_server_enabled:
         type: bool
         required: false
         default: true
         description: >-
-          Master toggle for the Windows OpenSSH server. When false: stops and
-          disables the sshd service, removes the OpenSSH.Server Windows
-          capability, removes firewall rules, and removes DefaultShell registry
-          entries. administrators_authorized_keys is not deployed. Set false in
-          host_vars to remove OpenSSH from a host without touching WSL or user
-          SSH key tasks.
+          Legacy compatibility toggle for the Windows OpenSSH server. When
+          `openssh_server_state` is undefined, `true` maps to `present` and
+          `false` maps to `absent`. Prefer `openssh_server_state` for new work.
 
       openssh_server_capability:
         type: str
