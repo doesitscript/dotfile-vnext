@@ -2,7 +2,7 @@
 # Docker: full orchestrator — engine + client + verification.
 #
 # Follows the same pattern as access.yaml:
-#   1) docker_engine.yaml  — install Docker Engine in WSL distros
+#   1) docker_engine.yaml  — install Docker Engine on Linux VM hosts
 #   2) docker_client.yaml  — install Docker CLI on Mac + Windows, create SSH contexts
 #   3) Verify play         — run `docker info` from each client through its SSH context
 #
@@ -10,7 +10,7 @@
 #   ansible-playbook playbooks/docker.yaml -i inventory/inventory.yaml
 #
 # Limit to one client:
-#   ansible-playbook playbooks/docker.yaml -i inventory/inventory.yaml --limit 'wsl_hosts,mac-dev'
+#   ansible-playbook playbooks/docker.yaml -i inventory/inventory.yaml --limit 'linux_vm_hosts,mac-dev'
 
 - import_playbook: docker_engine.yaml
 - import_playbook: docker_client.yaml
@@ -19,25 +19,6 @@
   hosts: docker_clients
   gather_facts: false
   ignore_unreachable: true
-
-  pre_tasks:
-    # Docker SSH contexts use localhost:22 (Windows) or a LAN IP (Mac).
-    # The target WSL instance must be running for docker info to return data.
-    # Wake it here — the verify task runs within the 15 s idle window.
-    # Only run when bootstrap is enabled; when disabled, Docker may not be in WSL.
-    - name: Wake WSL Docker engine on Windows clients before verify
-      ansible.windows.win_powershell:
-        script: |
-          $distro = '{{ wsl_distro | default("Ubuntu-24.04") }}'
-          wsl.exe -d $distro -u root -- bash -c 'systemctl start docker' 2>&1 | Out-Null
-          $Ansible.Result = 'WSL Docker engine started'
-      become: false
-      ignore_unreachable: true
-      ignore_errors: true
-      when:
-        - docker_engine_bootstrap_enabled | default(false)
-        - ansible_connection == "winrm"
-      tags: [always]
 
   tasks:
     - name: Validate Docker client can reach engine

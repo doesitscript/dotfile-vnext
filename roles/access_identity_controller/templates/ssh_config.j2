@@ -1,7 +1,6 @@
 # ~/.ssh/config — managed by Ansible (access_identity_controller)
 # Generated from inventory group: ssh_targets
 # Windows hosts render from OpenSSH desired state.
-# Legacy WSL surfaces render from active wsl_hosts membership.
 # Ubuntu guest surfaces render from linux_vm_hosts once they have realized
 # connection facts such as ansible_host.
 # Manual edits below the ANSIBLE MANAGED block will be preserved.
@@ -11,20 +10,15 @@
 {% set openssh_state = hv.get('openssh_server_state', '') %}
 {% set windows_ssh_state = openssh_state if openssh_state else ('present' if hv.get('openssh_server_enabled', true) else 'absent') %}
 {% set ipv6_host = hv.get('host_ipv6', '') %}
-{% set ssh_user = hv.get('ssh_user') or hv.get('win_ssh_user') or hv.get('wsl_user') or hv.get('ansible_user') or 'joshc' %}
-{% set ssh_port = hv.get('ssh_port') or hv.get('win_ssh_port') or hv.get('wsl_ssh_port') or hv.get('ansible_port') or 22 %}
+{% set ssh_user = hv.get('ssh_user') or hv.get('win_ssh_user') or hv.get('ansible_user') or 'joshc' %}
+{% set ssh_port = hv.get('ssh_port') or hv.get('win_ssh_port') or hv.get('ansible_port') or 22 %}
 {% set emit_ssh_entry = (
   (hv.get('surface_type', '') == 'windows_host' and windows_ssh_state == 'present')
-  or (hv.get('surface_type', '') == 'wsl' and host in (groups['wsl_hosts'] | default([])))
   or (hv.get('surface_type', '') == 'ubuntu_vm' and hv.get('ansible_host', ''))
 ) %}
 {% if emit_ssh_entry %}
 {% if hv.ssh_powershell_port is defined %}
-# NOTE: SSH to Windows hosts lands in WSL bash (DefaultShell = wsl.exe), but
-# this is NOT true SSH into the WSL distribution. Windows sshd accepts the
-# connection and forwards to WSL. Auth, keys, and sshd_config are Windows-side.
-{% elif hv.get('surface_type', '') == 'wsl' %}
-# WSL direct SSH — connects to the distro's own sshd (bridged LAN IP or NAT portproxy).
+# Windows host direct SSH surface.
 {% elif hv.get('surface_type', '') == 'ubuntu_vm' %}
 # Ubuntu guest direct SSH — Hyper-V guest surface on the routed/private guest network.
 {% endif %}
@@ -49,9 +43,7 @@ Host {{ host }}-ipv6
 {% endif %}
 {% if hv.ssh_powershell_port is defined %}
 
-# Direct PowerShell session for connecting to windows host, uses port win_ssh_powershell_port
-# Troubleshooting: if port {{ hv['ssh_powershell_port'] }} is down, use the WSL fallback:
-#   ssh {{ host }} -t /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+# Direct PowerShell session for connecting to the Windows host.
 Host {{ host }}-powershell
     HostName {{ hv.get('ansible_host', host) }}
     User {{ ssh_user }}
@@ -89,7 +81,7 @@ Host {{ host }}-powershell-ipv6
 
 {% endif %}
 {% endfor %}
-# --- ControlMaster multiplexing (Linux/WSL controller only; omitted on Windows/Darwin) ---
+# --- ControlMaster multiplexing (Linux controller only; omitted on Windows/Darwin) ---
 {% if ansible_facts['system'] is defined and ansible_facts['system'] == 'Linux' %}
 Host *
     ControlMaster auto

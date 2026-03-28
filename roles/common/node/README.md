@@ -1,7 +1,7 @@
 node
 ====
 
-Installs nvm and a pinned Node.js version on macOS and Ubuntu/WSL. Sets
+Installs nvm and a pinned Node.js version on macOS and Ubuntu. Sets
 `node_npm_executable` as a play-scoped fact that all downstream roles must use.
 
 ## What this role does
@@ -60,5 +60,5 @@ installed version and returns the authoritative path.
 | Platform | File | Notes |
 |---|---|---|
 | macOS | `tasks/mac.yml` | Full support |
-| Ubuntu / WSL | `tasks/ubuntu.yml` | Full support |
+| Ubuntu | `tasks/ubuntu.yml` | Full support |
 | Windows | `tasks/windows.yml` | Skipped — use nvm-windows separately |

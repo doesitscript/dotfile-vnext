@@ -1,6 +1,5 @@
 ---
-# Windows surface: WinRM for bootstrap; SSH uses DefaultShell = WSL bash (wsl_distro from group_vars).
-# When using ansible_connection: ssh to this host, set ansible_shell_type: bash.
+# Windows surface: WinRM for bootstrap; OpenSSH should land directly on Windows.
 # AI-NET-SERVER resolves via LAN mDNS but not from Mac controller — use IP directly.
 # Confirmed live: 192.168.50.233 (Wi-Fi adapter, ARP mac 9c:c7:d3:10:68:5a)
 ansible_host: "192.168.50.233"
@@ -33,14 +32,8 @@ hyperv_config:
   adapter_name: "Wi-Fi"
   allow_management_os: true
 
-# WSL: NOT YET INSTALLED on this machine (wsl --list shows no distributions).
-wsl_config:
-  networking_mode: "bridged"
-  gateway: "192.168.50.1"
-
-# Docker client — WSL not yet installed; hostname will resolve via router DNS
-# once the distro is provisioned and presents network-server-wsl to DHCP.
-docker_engine_ssh_host: "network-server-wsl"
+# Docker client — reaches the central Hyper-V Ubuntu Docker engine via SSH.
+docker_engine_ssh_host: "network-server-ubuntu"
 docker_engine_ssh_port: 22
 docker_engine_ssh_user: "joshc"
 

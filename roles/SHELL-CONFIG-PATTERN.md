@@ -104,7 +104,6 @@ No task file changes. No `templates/`. No `meta/` updates. Just the file.
 |---|---|---|
 | `path.bash` | `common/shell_config` | PATH configuration (templated — deployed directly by role) |
 | `aliases.bash` | `common/shell_config` | Common shell aliases (templated — deployed directly by role) |
-| `wsl_path.bash` | `common/shell_config` | WSL PATH reordering (templated, WSL only) |
 | `winrm_env.bash` | `ansible_dev_tools` | WinRM macOS env vars — first consumer of the central convention |
 
 ---
@@ -118,7 +117,6 @@ documented here as a known gap; no attempt is being made to migrate them now.
 | File | Location |
 |---|---|
 | `functions.bash`, `env.bash`, `aliases.bash` | `roles/python/` |
-| `wsl.bash` | `roles/common/wsl/` |
 | `tmux.bash` | `roles/common/tmux/`, `roles/tmux/` |
 | `activate_nvm.bash` | `roles/common/node/` |
 | `git.bash`, `aliases.bash` | `roles/git/` |

@@ -1,4 +1,3 @@
-ansible-playbook playbooks/access_windows.yaml \
+ansible-playbook playbooks/access.yaml \
   -i inventory/inventory.yaml \
-  --limit 'server-225-win,network_server' \
-  --tags wsl-reset,wsl
+  --limit 'execution_nodes,server-225-win'

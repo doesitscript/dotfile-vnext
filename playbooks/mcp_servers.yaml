@@ -2,7 +2,7 @@
 # MCP Servers: build container images + configure IDE clients.
 #
 # Two-phase pattern (same as docker.yaml):
-#   1) Build images on SSH-ready Linux companion hosts in `wsl_hosts` (Docker engine)
+#   1) Build images on Linux VM hosts (Docker engine)
 #   2) Configure mcp.json on client hosts (Docker CLI)
 #
 # Commands:
@@ -11,7 +11,7 @@
 #   ansible-playbook playbooks/mcp_servers.yaml -e _force_mcp_rebuild=true
 
 - name: MCP Servers - build container images
-  hosts: wsl_hosts
+  hosts: linux_vm_hosts
   gather_facts: false
 
   pre_tasks:
@@ -24,7 +24,6 @@
       ansible.builtin.include_role:
         name: mcp_servers
         tasks_from: build.yml
-      when: docker_engine_in_wsl | default(false)
 
 - name: MCP Servers - configure IDE clients
   hosts: docker_clients

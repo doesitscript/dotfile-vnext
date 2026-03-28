@@ -3,7 +3,7 @@ argument_specs:
   main:
     short_description: "Install and configure Grafana Alloy log agent on all platforms"
     description:
-      - "Cross-platform Grafana Alloy agent deployment: Windows, Linux/WSL, and macOS."
+      - "Cross-platform Grafana Alloy agent deployment: Windows, Linux, and macOS."
       - "Dispatches to platform-specific task files based on ansible_os_family."
       - "All agents push log streams to a central Loki instance via HTTP."
     options:
@@ -16,11 +16,10 @@ argument_specs:
       logging_alloy_loki_endpoint:
         type: str
         required: false
-        default: "http://server-225-wsl:3100/loki/api/v1/push"
+        default: "http://network-server-ubuntu:3100/loki/api/v1/push"
         description: >-
           Loki push endpoint all agents send logs to.
-          Override this in group_vars/all.yaml or per-group when the Loki server moves
-          (e.g. to network-server-wsl once WSL is provisioned there).
+          Override this in group_vars/all.yaml or per-group when the Loki server moves.
 
       # ─── Windows ──────────────────────────────────────────────────────────────
 
@@ -62,7 +61,7 @@ argument_specs:
         default: "Alloy"
         description: "Windows service name created by the Alloy installer."
 
-      # ─── Linux / WSL ──────────────────────────────────────────────────────────
+      # ─── Linux ────────────────────────────────────────────────────────────────
 
       logging_alloy_linux_targeted_units:
         type: list

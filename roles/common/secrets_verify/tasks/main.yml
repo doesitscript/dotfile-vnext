@@ -27,7 +27,7 @@
     - inventory_hostname in groups['network_server'] or 'network' in inventory_hostname
     - ansible_facts['system'] == "Windows"
 
-- name: Set required env keys for dev node (WSL2 path)
+- name: Set required env keys for dev node (Linux path)
   set_fact:
     required_env_keys:
       - COMPOSE_PROJECT_NAME
@@ -51,7 +51,7 @@
     - inventory_hostname in groups['dev_3090'] or 'dev-3090' in inventory_hostname
     - ansible_facts['system'] == "Windows"
 
-- name: Set required env keys for main node (WSL2 path)
+- name: Set required env keys for main node (Linux path)
   set_fact:
     required_env_keys:
       - COMPOSE_PROJECT_NAME
@@ -84,14 +84,14 @@
     - inventory_hostname in groups['network_server'] or 'network' in inventory_hostname
     - env_file_path is defined
 
-- name: Set env file path for dev node (WSL2/Linux)
+- name: Set env file path for dev node (Linux)
   set_fact:
-    env_file_path: "{{ wsl_mount_root }}/stacks/dev/.env"
+    env_file_path: "{{ linux_stacks_root }}/dev/.env"
   when: 
     - ansible_facts['system'] == "Linux"
     - inventory_hostname in groups['dev_3090'] or 'dev-3090' in inventory_hostname
 
-- name: Read .env file (WSL2/Linux path - dev node)
+- name: Read .env file (Linux path - dev node)
   shell: |
     if [ -f "{{ env_file_path }}" ]; then
       grep -E '^[A-Z_]+=' "{{ env_file_path }}" | cut -d'=' -f1
@@ -106,14 +106,14 @@
     - inventory_hostname in groups['dev_3090'] or 'dev-3090' in inventory_hostname
     - env_file_path is defined
 
-- name: Set env file path for main node (WSL2 path)
+- name: Set env file path for main node (Linux path)
   set_fact:
-    env_file_path: "{{ wsl_mount_root }}/stacks/main/.env"
+    env_file_path: "{{ linux_stacks_root }}/main/.env"
   when: 
     - ansible_facts['system'] == "Linux"
     - inventory_hostname in groups['server_225'] or 'server-225' in inventory_hostname
 
-- name: Read .env file for main node (WSL2 path)
+- name: Read .env file for main node (Linux path)
   shell: |
     if [ -f "{{ env_file_path }}" ]; then
       grep -E '^[A-Z_]+=' "{{ env_file_path }}" | cut -d'=' -f1
@@ -154,4 +154,3 @@
       - "Found keys: {{ env_keys_list | length | default(0) }}"
       - "Status: {{ 'PASS' if (missing_keys | default([]) | length == 0) else 'FAIL' }}"
   when: required_env_keys is defined
-

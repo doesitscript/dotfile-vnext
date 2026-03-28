@@ -32,14 +32,14 @@
   register: current_timezone
   changed_when: false
 
-- name: Set timezone on Linux/WSL
+- name: Set timezone on Linux
   when: ansible_facts['system'] == "Linux"
   become: true
   timezone:
     name: "{{ timezone }}"
   register: timezone_result
 
-- name: Verify timezone on Linux/WSL
+- name: Verify timezone on Linux
   when: ansible_facts['system'] == "Linux"
   become: false
   command: timedatectl show --property=Timezone --value
@@ -61,7 +61,7 @@
     path: C:\ProgramData\fuzlang
     state: directory
 
-- name: Create node facts directory on Linux/WSL
+- name: Create node facts directory on Linux
   when: ansible_facts['system'] == "Linux"
   become: true
   file:
@@ -101,7 +101,7 @@
       contract_version: "{{ contract_version | default(1) }}"
       facts_path: "C:\\ProgramData\\fuzlang\\node_facts.json"
 
-- name: Gather node facts for Linux/WSL
+- name: Gather node facts for Linux
   when: ansible_facts['system'] == "Linux"
   become: false
   set_fact:
@@ -133,7 +133,7 @@
     content: "{{ node_facts | to_json(indent=2) }}"
     dest: "{{ node_facts.facts_path }}"
 
-- name: Write node facts file on Linux/WSL
+- name: Write node facts file on Linux
   when: ansible_facts['system'] == "Linux"
   become: true
   copy:
@@ -151,4 +151,3 @@
       - "Timezone: {{ node_facts.timezone }}"
       - "Physical node: {{ node_facts.physical_node }}"
       - "Surface type: {{ node_facts.surface_type }}"
-

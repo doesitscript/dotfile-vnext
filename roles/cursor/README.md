@@ -84,8 +84,8 @@ Each item in `cursor_remote_ssh_hosts`:
 
 ```yaml
 cursor_remote_ssh_hosts:
-  - name: server-225-wsl          # SSH Host alias
-    hostname: DESKTOP-VLLM        # IP or hostname
+  - name: server-225-ubuntu       # SSH Host alias
+    hostname: 192.168.137.10      # IP or hostname
     user: joshc                   # SSH user
     port: 22                      # SSH port
     identity_file: ~/.ssh/id_ed25519_ansible  # Key path

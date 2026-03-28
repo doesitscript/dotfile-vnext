@@ -680,7 +680,7 @@
             "inventory_host": "{{ hyperv_ubuntu_vm_inventory_host }}",
             "switch_name": "{{ hyperv_ubuntu_vm_switch_name }}",
             "cloud_image_url": "{{ hyperv_ubuntu_vm_cloud_image_url }}",
-            "ssh_user": "{{ hyperv_ubuntu_vm_user }}",
+            "ssh_user": "{{ hyperv_ubuntu_vm_bootstrap_user }}",
             "ssh_port": {{ hyperv_ubuntu_vm_ssh_port }}
           }
 
@@ -689,7 +689,7 @@
         ansible_host: "{{ _hyperv_ubuntu_vm_ip.result.ipv4 }}"
         host_ip: "{{ _hyperv_ubuntu_vm_ip.result.ipv4 }}"
         ssh_port: "{{ hyperv_ubuntu_vm_ssh_port }}"
-        ssh_user: "{{ hyperv_ubuntu_vm_user }}"
+        ssh_user: "{{ hyperv_ubuntu_vm_bootstrap_user }}"
         ansible_python_interpreter: "{{ hyperv_ubuntu_vm_python_interpreter }}"
         cacheable: true
       delegate_to: "{{ hyperv_ubuntu_vm_inventory_host }}"
@@ -701,7 +701,7 @@
           vm_name: "{{ hyperv_ubuntu_vm_name }}"
           inventory_host: "{{ hyperv_ubuntu_vm_inventory_host }}"
           ip: "{{ _hyperv_ubuntu_vm_ip.result.ipv4 }}"
-          ssh_user: "{{ hyperv_ubuntu_vm_user }}"
+          ssh_user: "{{ hyperv_ubuntu_vm_bootstrap_user }}"
           switch_name: "{{ hyperv_ubuntu_vm_switch_name }}"
   rescue:
     - name: Collect Hyper-V Ubuntu VM failure diagnostics

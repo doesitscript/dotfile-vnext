@@ -9,19 +9,17 @@
 # This file is intentionally NOT called from main.yml so that running
 # access_controller.yaml alone does not attempt to template before targets exist.
 #
-# Windows hosts render from OpenSSH desired state. Active legacy wsl_hosts
-# render by group membership. Ubuntu guest/linux_vm_hosts surfaces render when
-# they have realized connection facts.
-# Note we setup in windows an extra port to connect to and get a powershell
-# session this port is win_ssh_powershell_port and is the extra block that is
-# defined in ssh_config.j2.
+# Windows hosts render from OpenSSH desired state. Ubuntu guest/linux_vm_hosts
+# surfaces render when they have realized connection facts.
+# Windows hosts may also render an extra PowerShell-oriented SSH block when
+# win_ssh_powershell_port is defined.
 
 - name: Ensure ~/.ssh/sockets directory exists for ControlMaster
   ansible.builtin.file:
     path: "{{ controller_ssh_dir }}/sockets"
     state: directory
     mode: "0700"
-  tags: [wsl]
+  tags: [ssh_config]
 
 - name: Template ~/.ssh/config from deployed SSH targets
   ansible.builtin.template:
@@ -29,4 +27,4 @@
     dest: "{{ controller_ssh_dir }}/config"
     mode: "0600"
     backup: true
-  tags: [wsl]
+  tags: [ssh_config]

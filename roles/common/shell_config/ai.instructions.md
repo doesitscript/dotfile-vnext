@@ -62,7 +62,7 @@ available.
 ## macOS only
 
 The symlink task is gated with `when: ansible_facts['system'] == "Darwin"`.
-Linux and WSL can install all tools natively via pipx or apt without the
+Linux can install all tools natively via pipx or apt without the
 compilation issues that forced this workaround on macOS 12.
 
 ## Lesson learned: don't wrap what pipx can handle

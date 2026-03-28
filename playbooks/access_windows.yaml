@@ -7,8 +7,11 @@
 # provisioning in the correct order, use playbooks/provision_windows_host.yml.
 #
 # Commands:
-#   Full run (admin + user + WSL):
+#   Windows-only run (admin + user on Windows hosts):
 #     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win
+#
+#   Full access pipeline (controller + Windows + generated SSH surfaces):
+#     ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml
 #
 #   Admin only (OpenSSH, sshd, firewall, shell):
 #     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags admin
@@ -16,17 +19,12 @@
 #   User only (user SSH keys):
 #     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags user
 #
-#   WSL only (install/configure distro, idempotent):
-#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags wsl
-#
-#   WSL standalone SSH server (independent of Windows sshd):
-#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags standalone
-#
-#   WSL reset + reinstall (DESTRUCTIVE — unregisters distro then re-provisions from scratch):
-#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags wsl-reset,wsl
-#
 #   Debug diagnostics only:
 #     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags debug
+#
+# Linux guest access is not configured here. Once a Hyper-V Ubuntu guest exists
+# and has realized SSH connection facts, its generated `-ubuntu` SSH surface is
+# rendered by the controller pass in playbooks/access.yaml.
 #
 - name: Access - windows identity
   hosts: windows_hosts
@@ -38,9 +36,8 @@
       when: (ansible_connection | default('ssh')) != 'winrm'
       tags: [always]
 
-  # WIP
   tasks:
-    - name: Configure Windows identity and WSL
+    - name: Configure Windows identity
       ansible.builtin.include_role:
         name: access_identity_windows
       tags: [always]

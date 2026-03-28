@@ -1,7 +1,7 @@
 ---
 # Logging: deploy Grafana Loki server + Alloy agents on all surfaces.
 #
-# Play 1 — Loki server (server-225-wsl):
+# Play 1 — Loki server (logging_server inventory group):
 #   Deploys Loki as a Docker container with filesystem storage and
 #   an optional Grafana container pre-wired to Loki as a datasource.
 #
@@ -27,7 +27,7 @@
 #     ansible-playbook playbooks/logging.yaml -i inventory/inventory.yaml --tags logging_config
 #
 #   Single host:
-#     ansible-playbook playbooks/logging.yaml -i inventory/inventory.yaml --limit server-225-wsl
+#     ansible-playbook playbooks/logging.yaml -i inventory/inventory.yaml --limit logging_server
 
 - name: Logging - deploy Loki server
   hosts: logging_server
@@ -45,7 +45,7 @@
       tags: [logging, logging_loki]
 
 - name: Logging - deploy Alloy agents
-  hosts: "windows_hosts:wsl_hosts:mac_dev"
+  hosts: "windows_hosts:linux_vm_hosts:mac_dev"
   gather_facts: true
   become: false
 

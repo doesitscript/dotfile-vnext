@@ -14,7 +14,7 @@ Reports:
 
 - macOS: Uses standard Unix commands
 - Windows: Uses PowerShell commands
-- Linux/WSL: Uses standard Linux commands
+- Linux: Uses standard Linux commands
 
 ## Safety
 
@@ -34,4 +34,3 @@ All information is displayed via `debug` tasks, showing:
 - Disk information (formatted per platform)
 - Physical node and surface type
 - Node facts file status
-

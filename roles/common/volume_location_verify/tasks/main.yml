@@ -19,16 +19,16 @@
   changed_when: false
   when: ansible_facts['system'] == "Windows"
 
-- name: Get OS disk mount point (Linux/WSL)
+- name: Get OS disk mount point (Linux)
   shell: |
     df / | tail -1 | awk '{print $1}'
   register: os_disk
   changed_when: false
   when: ansible_facts['system'] == "Linux"
 
-- name: Get data root mount point (Linux/WSL)
+- name: Get data root mount point (Linux)
   shell: |
-    df "{{ wsl_mount_root }}" 2>/dev/null | tail -1 | awk '{print $1}' || echo "unknown"
+    df "{{ linux_data_root }}" 2>/dev/null | tail -1 | awk '{print $1}' || echo "unknown"
   register: data_disk
   changed_when: false
   when: ansible_facts['system'] == "Linux"
@@ -44,7 +44,7 @@
     - os_drive.stdout is defined
     - data_drive.stdout is defined
 
-- name: Verify volumes are not on OS disk (Linux/WSL)
+- name: Verify volumes are not on OS disk (Linux)
   assert:
     that:
       - os_disk.stdout != data_disk.stdout
@@ -68,7 +68,7 @@
     - os_drive.stdout is defined
     - data_drive.stdout is defined
 
-- name: Report volume location verification (Linux/WSL)
+- name: Report volume location verification (Linux)
   debug:
     msg:
       - "=== Volume Location Verification ==="
@@ -79,4 +79,3 @@
     - ansible_facts['system'] == "Linux"
     - os_disk.stdout is defined
     - data_disk.stdout is defined
-

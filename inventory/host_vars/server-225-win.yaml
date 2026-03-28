@@ -40,17 +40,11 @@ hyperv_config:
   guest_gateway_ipv4: "192.168.137.1"
   internal_ics_public_adapter_name: "vEthernet (External)"
 
-# WSL: consumer of the bridge (requires hyperv_config.external_switch_enabled).
-wsl_config:
-  networking_mode: "bridged"
-  gateway: "192.168.50.1"
-
 # OpenSSH Server: base feature on Windows hosts unless explicitly set absent.
 openssh_server_state: present
 
-# Docker client — connects to the Docker engine in WSL.
-# Hostname resolved via router DNS (WSL distro presents server-225-wsl to DHCP).
-docker_engine_ssh_host: "server-225-wsl"
+# Docker client — connects to the Docker engine on the Hyper-V Ubuntu guest.
+docker_engine_ssh_host: "server-225-ubuntu"
 docker_engine_ssh_port: 22
 docker_engine_ssh_user: "joshc"
 
@@ -61,7 +55,7 @@ hyperv_ubuntu_vm_inventory_host: "server-225-ubuntu"
 hyperv_ubuntu_vm_cpus: 4
 hyperv_ubuntu_vm_memory: "8G"
 hyperv_ubuntu_vm_disk: "40G"
-hyperv_ubuntu_vm_user: "ubuntu"
+hyperv_ubuntu_vm_bootstrap_user: "joshc"
 hyperv_ubuntu_vm_hostname: "server-225-ubuntu"
 hyperv_ubuntu_vm_ssh_port: 22
 hyperv_ubuntu_vm_source_mode: "server_iso_installer"

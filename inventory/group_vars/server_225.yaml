@@ -1,5 +1,5 @@
 ---
-# Server-225 (physical node: server-225-win + server-225-wsl)
+# Server-225 (physical node: server-225-win + server-225-ubuntu)
 # group_vars filename matches inventory group name server_225
 host_name: Server-225
 physical_node: server-225
@@ -9,23 +9,14 @@ node_role: primary-gpu-node
 node_purpose: development  # drives deploy_development_nodes.yaml targeting — see group_vars/all.yaml
 os: windows-server-2025
 authority_level: execution
-docker_runtime: wsl2-ubuntu-docker-engine
+docker_runtime: hyperv-ubuntu-docker-engine
 gpu: rtx-5090
 persistent_data_allowed: limited_non_authoritative
 
-# Windows base configuration (consumed by common/windows_base role)
-windows_base_config:
-  enable_wsl: false
-
 # Storage paths
 windows_data_root: "D:\\ai"
-wsl_mount_root: "/mnt/d/ai"
 stacks_root: "D:\\ai\\stacks"
 data_root: "D:\\ai\\data"
-
-# WSL configuration (must match host_vars/<node>-wsl.yaml wsl_distro for same physical node)
-wsl_distro: "Ubuntu-24.04"
-wsl_ssh_port: 22
-systemd_in_wsl: true
-docker_engine_in_wsl: true
-docker_engine_on_windows: disabled
+linux_stacks_root: "/srv/stacks"
+linux_data_root: "/srv/data"
+docker_engine_host: "server-225-ubuntu"

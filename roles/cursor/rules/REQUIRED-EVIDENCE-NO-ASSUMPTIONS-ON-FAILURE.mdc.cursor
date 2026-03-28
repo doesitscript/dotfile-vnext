@@ -15,16 +15,16 @@ WinRM
 
 PowerShell (via OpenSSH)
 
-WSL commands (via PowerShell)
+Linux guest commands (via SSH)
 
-This rule applies to all hosts: Windows, Linux, WSL, K3s nodes, GPU nodes, etc.
+This rule applies to all hosts: Windows, Linux, K3s nodes, GPU nodes, etc.
 
 RULE 1 — NO ASSUMPTIONS ABOUT FAILURE
 When a host cannot be reached or a task errors:
 
 The agent must not guess the cause
 
-The agent must not assume reboot, shutdown, WSL stopped, service down, network issue, etc.
+The agent must not assume reboot, shutdown, a Linux guest stopped, service down, network issue, etc.
 
 The agent must not continue with hypothetical explanations
 
@@ -36,7 +36,7 @@ RULE 2 — REQUIRED EVIDENCE COLLECTION (ALL SYSTEMS)
 When a host is unreachable, the agent must attempt evidence collection in this order:
 
 1. Primary connection
-SSH (Linux/WSL)
+SSH (Linux)
 
 WinRM (Windows)
 
@@ -53,10 +53,7 @@ Collect raw output:
 
 Code
 Get-Service -Name WinRM
-Get-Service -Name LxssManager
 Get-EventLog -LogName System -Newest 20
-wsl.exe --status
-wsl.exe -l -v
 Linux fallback
 Use SSH:
 
@@ -66,13 +63,6 @@ journalctl -xe
 systemctl status <service>
 df -h
 uptime
-WSL fallback
-If Windows is reachable but WSL is not:
-
-Code
-wsl.exe --status
-wsl.exe -l -v
-wsl.exe -e dmesg | tail
 RULE 3 — RAW LOG OUTPUT REQUIRED
 The agent must always show real, raw system output, not summaries.
 
@@ -83,8 +73,6 @@ SSH error messages
 WinRM connection errors
 
 PowerShell service status
-
-WSL status output
 
 Windows Event Log entries
 
@@ -139,7 +127,7 @@ Windows hosts
 
 Linux hosts
 
-WSL instances
+Linux guest instances
 
 K3s nodes
 
@@ -153,7 +141,7 @@ SSH → PowerShell (Windows fallback)
 
 SSH (Linux fallback)
 
-WSL commands (WSL fallback)
+Linux guest commands (SSH fallback)
 
 No exceptions.
 
@@ -162,7 +150,7 @@ The agent must not assume:
 
 The host rebooted
 
-WSL is stopped
+A Linux guest is stopped
 
 A service is down
 
@@ -176,4 +164,4 @@ The agent must prove each condition with real logs.
 
 ####****!!!!!!! ALWAYS TRY THE OTHER CONNECTIONS !!!!#####
  ssh server-225-win-powershell
-OK you into the window system you can enter Bash and get inside of the Linux system from here.
+OK you are into the Windows system. Use the Windows surface for Windows evidence and the Linux guest SSH surface for Linux evidence.

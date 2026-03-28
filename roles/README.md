@@ -16,7 +16,7 @@ This repository organizes automation by capability-focused roles, then by operat
 Inside role task entrypoints, OS task files are split by explicit target names used in this repo:
 
 - `windows.yml` for Windows hosts (WinRM surfaces)
-- `ubuntu.yml` for Ubuntu/WSL Linux hosts
+- `ubuntu.yml` for Ubuntu Linux hosts
 - `mac.yml` for macOS hosts
 
 Role `tasks/main.yml` files should import OS-specific task files using clear conditions, for example:

@@ -6,7 +6,7 @@ autoinstall:
     layout: {{ hyperv_ubuntu_vm_autoinstall_keyboard_layout }}
   identity:
     hostname: {{ hyperv_ubuntu_vm_hostname }}
-    username: {{ hyperv_ubuntu_vm_user }}
+    username: {{ hyperv_ubuntu_vm_bootstrap_user }}
     password: "{{ hyperv_ubuntu_vm_autoinstall_password | password_hash('sha512') }}"
   ssh:
     install-server: true
@@ -35,6 +35,7 @@ autoinstall:
   storage:
     layout:
       name: direct
+  updates: {{ hyperv_ubuntu_vm_autoinstall_updates }}
   packages:
     - python3
   late-commands:

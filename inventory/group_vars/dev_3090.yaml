@@ -1,5 +1,5 @@
 ---
-# dev-3090 (physical node: dev-3090-win + dev-3090-wsl)
+# dev-3090 (physical node: dev-3090-win)
 # group_vars filename matches inventory group name dev_3090
 host_name: dev-3090
 physical_node: dev-3090
@@ -9,25 +9,15 @@ node_role: dev-gpu-node
 node_purpose: development  # drives deploy_development_nodes.yaml targeting — see group_vars/all.yaml
 os: windows-11
 authority_level: execution
-docker_runtime: wsl2-ubuntu-docker-engine
+docker_runtime: hyperv-ubuntu-docker-engine
 gpu: rtx-3090
 persistent_data_allowed: limited
 
-# Windows base configuration (consumed by common/windows_base role)
-windows_base_config:
-  enable_wsl: true
-
 # Storage paths
 windows_data_root: "D:\\ai"
-wsl_mount_root: "/mnt/d/ai"
 stacks_root: "D:\\ai\\stacks"
 data_root: "D:\\ai\\data"
-
-# WSL configuration
-wsl_distro: "Ubuntu"
-systemd_in_wsl: true
-docker_engine_in_wsl: true
-docker_engine_on_windows: disabled
+docker_engine_host: "server-225-ubuntu"
 
 # Dev stack deployment flags (optional services)
 deploy_dev_ollama: false  # Set to true to deploy dev_ollama

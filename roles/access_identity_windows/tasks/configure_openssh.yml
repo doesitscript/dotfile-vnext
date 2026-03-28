@@ -106,7 +106,7 @@
 
 # 5) Default shell
 # DefaultShell is set to Windows PowerShell so direct SSH lands on Windows and
-# cannot be redirected into a WSL distro by shell configuration drift.
+# cannot be redirected away from the Windows host by shell configuration drift.
 
 - name: Ensure HKLM:\SOFTWARE\OpenSSH registry key exists
   ansible.windows.win_regedit:
@@ -154,40 +154,6 @@
     regexp: '^\s+ForceCommand\s+pwsh-sshd\s*$'
     state: absent
   register: sshd_legacy_forcecommand_cleanup
-  tags: [admin]
-
-- name: Check WSL distro state before finalizing Windows SSH shell
-  ansible.windows.win_powershell:
-    error_action: silently_continue
-    script: |
-      $Ansible.Changed = $false
-      $lines = @((wsl.exe -l -v 2>&1) -replace '\x00', '' | Where-Object { $_ -ne '' })
-      $data = @()
-      if ($LASTEXITCODE -eq 0 -and $lines.Count -gt 1) {
-        $data = @($lines | Select-Object -Skip 1 | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
-      }
-      $joined = $data -join ' '
-      $Ansible.Result = @{
-        present = ($data.Count -gt 0)
-        running = ($joined -match '\bRunning\b')
-        installing = ($joined -match '\bInstalling\b')
-        raw = $data
-      }
-  register: _windows_wsl_state
-  failed_when: false
-  tags: [admin]
-
-- name: Shut down WSL so SSH lands on Windows only
-  ansible.windows.win_powershell:
-    error_action: silently_continue
-    script: |
-      wsl.exe --shutdown 2>&1 | Out-Null
-      $Ansible.Changed = $true
-      $Ansible.Result = @{ action = 'shutdown_requested' }
-  when:
-    - (_windows_wsl_state.result.running | default(false)) or
-      (_windows_wsl_state.result.installing | default(false))
-  failed_when: false
   tags: [admin]
 
 - name: Ensure sshd service is started after config cleanup

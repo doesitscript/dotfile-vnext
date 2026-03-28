@@ -10,7 +10,7 @@ a well-maintained, battle-tested Docker Engine install with:
 
 ## Migration
 
-- **Engine install**: `playbooks/docker_engine.yaml` now applies `geerlingguy.docker` to `wsl_hosts`.
+- **Engine install**: `playbooks/docker_engine.yaml` now applies `geerlingguy.docker` to the Ubuntu VM engine hosts (`*-ubuntu`).
 - **Client setup**: `playbooks/docker_client.yaml` applies `roles/docker_client` to `docker_clients`.
 - **Orchestrator**: `playbooks/docker.yaml` chains engine + client + verification.
 

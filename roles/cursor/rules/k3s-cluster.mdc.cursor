@@ -8,19 +8,19 @@ alwaysApply: true
 
 ## Cluster Architecture
 
-- 2-3 nodes max. Single control plane on network-server-wsl. Embedded SQLite datastore.
+- 2-3 nodes max. Single control plane on network-server-ubuntu. Embedded SQLite datastore.
 - No HA, no etcd cluster, no service mesh, no autoscaler, no multi-replica defaults.
 - No ingress controller unless explicitly needed. No monitoring stack during bootstrap.
-- GPU nodes (server-225-wsl, dev-workstation-wsl) are compute-only: no control-plane workloads, no databases.
-- Control-plane services live on network-server-wsl only.
+- GPU nodes (server-225-ubuntu, dev-workstation-ubuntu) are compute-only: no control-plane workloads, no databases.
+- Control-plane services live on network-server-ubuntu only.
 - k3s installed via official `k3s-io/k3s-ansible` collection (`k3s.orchestration`).
 - Logging: Grafana Loki when needed (not Elasticsearch). Not in initial bootstrap scope.
 
-## WSL = Standard Ubuntu
+## Ubuntu guest surfaces
 
-- All `-wsl` hosts are accessed via SSH. They are standard Ubuntu servers.
-- Do NOT use `win_shell`, Windows passthrough, or WSL-specific hacks.
-- Do NOT manage `.wslconfig` -- that is user policy, not Ansible-managed.
+- All `-ubuntu` hosts are accessed via SSH. They are standard Ubuntu servers.
+- Do NOT use `win_shell`, Windows passthrough, or host-side Linux compatibility hacks.
+- Do NOT manage Windows-side guest policy here.
 - Do NOT reference or use docs/research/k3s/ -- that is personal reference material.
 - Resource management is at the kubelet level via k3s config, not at the Windows level.
 
@@ -43,7 +43,7 @@ alwaysApply: true
 - Ansible inventories the Windows driver version and validates GPU visibility. It does NOT install, upgrade, or manage the driver.
 - Do NOT use the `nvidia.nvidia_driver` Ansible role.
 - Do NOT install Linux GPU drivers, DKMS modules, or kernel modules.
-- NVIDIA Container Toolkit installed inside WSL via `apt` module (no curl pipelines, no shell scripts).
+- NVIDIA Container Toolkit installed inside Ubuntu via `apt` module (no curl pipelines, no shell scripts).
 - k3s embeds containerd. Configure runtime via k3s config template, NOT `nvidia-ctk runtime configure --runtime=containerd`.
 - Device plugin manifest vendored into role `files/` directory at a pinned version. Do NOT pull from live GitHub URLs.
 - Do NOT use shell where a module exists.
@@ -51,18 +51,18 @@ alwaysApply: true
 
 ## Inventory Groups
 
-- `k3s_agents_active`: nodes deployed now (server-225-wsl).
-- `k3s_agents_deferred`: nodes for future inclusion (dev-workstation-wsl). Never targeted unless user explicitly uses `--limit`.
+- `k3s_agents_active`: nodes deployed now (server-225-ubuntu).
+- `k3s_agents_deferred`: nodes for future inclusion (dev-workstation-ubuntu). Never targeted unless user explicitly uses `--limit`.
 - Playbooks target `k3s_cluster:!k3s_agents_deferred` or use explicit `--limit`.
 
 ## Resource Reserves
 
-- Control plane (network-server-wsl): `system-reserved=cpu=1,memory=1Gi`, `kube-reserved=cpu=1,memory=1Gi`
+- Control plane (network-server-ubuntu): `system-reserved=cpu=1,memory=1Gi`, `kube-reserved=cpu=1,memory=1Gi`
 - Agents: `system-reserved=cpu=500m,memory=512Mi`, `kube-reserved=cpu=500m,memory=512Mi`
 - Eviction: `eviction-hard=memory.available<256Mi,nodefs.available<10%`
 
 ## Node Labels
 
-- network-server-wsl: `role=control`
-- server-225-wsl: `role=gpu`
-- dev-workstation-wsl (future): `role=gpu`
+- network-server-ubuntu: `role=control`
+- server-225-ubuntu: `role=gpu`
+- dev-workstation-ubuntu (future): `role=gpu`

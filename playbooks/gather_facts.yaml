@@ -14,8 +14,8 @@
 #   # Only Windows hosts (WinRM)
 #   ansible-playbook playbooks/gather_facts.yaml --limit windows_hosts
 #
-#   # Only SSH-ready Linux companion hosts
-#   ansible-playbook playbooks/gather_facts.yaml --limit wsl_hosts
+#   # Only Linux VM hosts
+#   ansible-playbook playbooks/gather_facts.yaml --limit linux_vm_hosts
 #
 #   # Single host
 #   ansible-playbook playbooks/gather_facts.yaml --limit server-225-win
@@ -107,13 +107,13 @@
       delegate_to: localhost
       when: not (ansible_host is undefined)
 
-- name: Gather facts from SSH-ready Linux companion hosts
-  hosts: wsl_hosts
+- name: Gather facts from Linux VM hosts
+  hosts: linux_vm_hosts
   gather_facts: true
   ignore_unreachable: true
 
   tasks:
-    - name: Write host fact snapshot (wsl_hosts)
+    - name: Write host fact snapshot (linux_vm_hosts)
       ansible.builtin.copy:
         content: |
           ---

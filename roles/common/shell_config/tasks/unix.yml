@@ -1,5 +1,5 @@
 ---
-# Unix-like systems (macOS, Linux, WSL)
+# Unix-like systems (macOS, Linux)
 
 - name: Ensure ~/.bashrc.d directory exists
   ansible.builtin.file:
@@ -38,13 +38,6 @@
     src: path.bash.j2
     dest: "{{ ansible_env.HOME }}/.bashrc.d/path.bash"
     mode: "0644"
-
-- name: Deploy WSL PATH reordering
-  ansible.builtin.template:
-    src: wsl_path.bash.j2
-    dest: "{{ ansible_env.HOME }}/.bashrc.d/wsl_path.bash"
-    mode: "0644"
-  when: ansible_facts['kernel'] is defined and 'microsoft' in (ansible_facts['kernel'] | lower)
 
 - name: Deploy common aliases
   ansible.builtin.template:

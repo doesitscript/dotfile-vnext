@@ -7,7 +7,6 @@
 #   ansible-playbook playbooks/provision_server_225.yaml
 #
 # Or targeted by tag:
-#   ansible-playbook playbooks/provision_server_225.yaml --tags legacy_wsl2
 #   ansible-playbook playbooks/provision_server_225.yaml --tags gpu_driver_validation
 #
 - name: Provision server-225 Windows host (node-specific)
@@ -19,10 +18,5 @@
       ansible.windows.win_shell: Enable-PSRemoting -Force
 
   roles:
-    # Legacy bridge role: retained only as a reference source for future
-    # Hyper-V Ubuntu VM translation work. Do not treat this as the preferred
-    # long-term model for new Linux companion setup.
-    - role: server_225/wsl2
-      tags: [legacy_wsl2]
     - role: server_225/gpu_driver_validation
       tags: [gpu_driver_validation]

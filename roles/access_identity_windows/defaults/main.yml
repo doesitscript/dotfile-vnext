@@ -1,5 +1,5 @@
 ---
-# access_identity_windows: OpenSSH Server, port, key file path, verification.
+# access_identity_windows: Windows OpenSSH, key distribution, verification.
 # Override via group_vars / -e.
 # explicit capability string avoids null/multi-object mistakes
 openssh_server_state: "present"
@@ -32,34 +32,5 @@ ansible_ssh_dir_path: "C:\\Users\\joshc\\.ssh"
 ansible_authorized_keys_path: "C:\\Users\\joshc\\.ssh\\authorized_keys"
 
 # Controller public key path — must match access_identity_controller defaults.
-# Used by delegate_to + slurp so this role works standalone (without running controller play first).
+# Used by delegate_to + slurp so this role can run directly without a preceding controller play.
 controller_ssh_public_key_path: "~/.ssh/id_ed25519_ansible.pub"
-
-# --- WSL configuration (ubuntu.yml) ---
-# Set to true only when you want this role to install/configure WSL. Default false
-# so a normal access run does not trigger WSL feature install or distro provisioning.
-# Use -e wsl_enabled=true or set in host_vars to enable.
-wsl_enabled: false # TODO: THIS WILL BE REPLACED BY ENABLE DOCKER:TRUE
-
-# wsl_distro is NOT defaulted here — it comes from the companion -wsl host_vars
-# (e.g. host_vars/server-225-wsl.yaml). ubuntu.yml resolves it via hostvars lookup.
-# This keeps the WSL distro definition in one authoritative place.
-#
-# Reboot automatically after enabling WSL feature (set false if you handle reboots externally)
-wsl_reboot_after: true # TODO REPLCACE WITH var that does the same but is name d forhim
-
-# WSL networking and guest config — API contract dictionary.
-# 'nat'     — WSL uses NAT with netsh portproxy for inbound SSH access.
-# 'bridged' — WSL gets its own LAN IP via Hyper-V External Switch.
-#             Requires hyperv_config.external_switch_enabled=true in host_vars.
-# Override the full dict or individual keys in host_vars.
-wsl_config:
-  networking_mode: "nat"
-  # gateway: the default router address used for bridged mode DNS resolution.
-  # Override in host_vars if the router is at a different address.
-  gateway: "192.168.50.1"
-
-# WSL idle shutdown prevention: handled by keepwsl.service (ubuntu.yml Step 6.5).
-# The service calls /mnt/c/Windows/System32/wsl.exe --exec /bin/sleep infinity
-# from inside the distro, creating a persistent Windows-side process that keeps
-# the WSL p9io connection open. No Windows Scheduled Task required.

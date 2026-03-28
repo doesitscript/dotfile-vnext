@@ -14,7 +14,7 @@ Installs [supergateway](https://github.com/nicholasgriffintn/supergateway) globa
 ## Supported Platforms
 
 - macOS
-- Ubuntu / WSL
+- Ubuntu
 
 ## Variables
 

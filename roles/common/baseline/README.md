@@ -7,7 +7,7 @@ Sets timezone and creates node facts file for all nodes.
 1. **Timezone enforcement**: Sets timezone from contract (`America/Chicago`) on all platforms
    - macOS: Uses `systemsetup`
    - Windows: Uses `win_timezone` module
-   - Linux/WSL: Uses `timezone` module
+   - Linux: Uses `timezone` module
 
 2. **Node facts file**: Creates a JSON file with node identity information
    - Location per OS:
@@ -31,4 +31,3 @@ Sets timezone and creates node facts file for all nodes.
 - No package installations
 - No service modifications
 - Read-only verification of timezone after setting
-

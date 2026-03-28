@@ -15,7 +15,7 @@ Clones, builds, and installs the [mcp-sysoperator](https://github.com/tarnover/m
 ## Supported Platforms
 
 - macOS
-- Ubuntu / WSL
+- Ubuntu
 - Windows
 
 ## Variables
@@ -45,9 +45,9 @@ After the role runs, it prints the JSON snippet. Add it to your project `.cursor
 
 Replace the path with the actual `mcp_sysoperator_entry_point` value printed by the role.
 
-### Verified Working Config (WSL over SSH)
+### Verified Working Config (Ubuntu over SSH)
 
-Installed to the project `.cursor/mcp.json` on a WSL host reached via SSH:
+Installed to the project `.cursor/mcp.json` on an Ubuntu host reached via SSH:
 
 ```json
 {

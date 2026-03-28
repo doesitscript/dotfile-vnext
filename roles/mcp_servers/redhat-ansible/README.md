@@ -25,7 +25,7 @@ The Red Hat Ansible VS Code/Cursor extension used to ship an MCP entry point at 
 ## Supported Platforms
 
 - macOS
-- Ubuntu / WSL
+- Ubuntu
 - Windows
 
 ## Variables

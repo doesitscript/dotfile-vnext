@@ -1,30 +1,30 @@
 ---
-- name: Clone ansible-mcp repository (Ubuntu/WSL)
+- name: Clone ansible-mcp repository (Ubuntu)
   ansible.builtin.git:
     repo: "{{ mcp_ansible_repo }}"
     dest: "{{ mcp_ansible_install_dir }}"
     version: "{{ mcp_ansible_version }}"
     update: true
 
-- name: Create Python virtual environment for ansible-mcp (Ubuntu/WSL)
+- name: Create Python virtual environment for ansible-mcp (Ubuntu)
   ansible.builtin.command:
     cmd: python3 -m venv "{{ mcp_ansible_venv_dir }}"
     creates: "{{ mcp_ansible_venv_dir }}/bin/python"
 
-- name: Upgrade pip inside ansible-mcp venv (Ubuntu/WSL)
+- name: Upgrade pip inside ansible-mcp venv (Ubuntu)
   ansible.builtin.command:
     cmd: "{{ mcp_ansible_venv_dir }}/bin/pip install -U pip"
   register: _pip_upgrade
   changed_when: "'Successfully installed' in _pip_upgrade.stdout"
 
-- name: Install ansible-mcp requirements (Ubuntu/WSL)
+- name: Install ansible-mcp requirements (Ubuntu)
   ansible.builtin.command:
     cmd: "{{ mcp_ansible_venv_dir }}/bin/pip install -r requirements.txt"
     chdir: "{{ mcp_ansible_install_dir }}"
   register: _pip_reqs
   changed_when: "'Successfully installed' in _pip_reqs.stdout"
 
-- name: Install ansible-mcp package in editable mode (Ubuntu/WSL)
+- name: Install ansible-mcp package in editable mode (Ubuntu)
   ansible.builtin.command:
     cmd: "{{ mcp_ansible_venv_dir }}/bin/pip install -e ."
     chdir: "{{ mcp_ansible_install_dir }}"

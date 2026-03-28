@@ -20,7 +20,7 @@
 #
 #   # One specific surface
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --limit mac-dev
-#   ansible-playbook playbooks/deploy_development_nodes.yaml --limit server-225-wsl
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --limit server-225-ubuntu
 #
 #   # Targeted role runs (no reinstall)
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags shell_config
@@ -40,14 +40,9 @@
 #   direnv allow      # In directories with .envrc files
 #
 # Current development nodes (node_purpose: development in group_vars):
-#   - mac-dev        (group_vars/mac_dev.yaml)
-#   - server-225-win (group_vars/server_225.yaml)
-#   - server-225-wsl (group_vars/server_225.yaml) — excluded by :!wsl_hosts below
-#
-# WSL exclusion: hosts in wsl_hosts (e.g. server-225-wsl) are excluded from this
-# deploy so runs do not hit UNREACHABLE when WSL is down or being phased out.
-# To include a -wsl host, pass it explicitly: --limit server-225-wsl (or remove
-# the :!wsl_hosts pattern from the play when WSL is back in scope).
+#   - mac-dev          (group_vars/mac_dev.yaml)
+#   - server-225-win   (group_vars/server_225.yaml)
+#   - server-225-ubuntu (group_vars/server_225.yaml)
 
 - name: Classify nodes by purpose
   hosts: all
@@ -60,7 +55,7 @@
       tags: [always]
 
 - name: Deploy development tooling to development nodes
-  hosts: node_purpose_development:!wsl_hosts
+  hosts: node_purpose_development
   gather_facts: true
   become: false
   roles:

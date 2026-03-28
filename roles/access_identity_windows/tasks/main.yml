@@ -4,18 +4,18 @@
 #   ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags admin
 # Full run (no tags) runs this file then user.yml.
 
-# --- Fetch controller public key (works standalone or combined via access.yaml) ---
+# --- Fetch controller public key (works directly or combined via access.yaml) ---
 - name: Read controller public key from execution node
   ansible.builtin.slurp:
     src: "{{ controller_ssh_public_key_path }}"
   register: _controller_pubkey_slurp
   delegate_to: "{{ groups['execution_nodes'][0] }}"
-  tags: [admin, user, wsl, standalone]
+  tags: [admin, user]
 
 - name: Set controller public key content fact
   ansible.builtin.set_fact:
     controller_pub_key_content: "{{ _controller_pubkey_slurp.content | b64decode | trim }}"
-  tags: [admin, user, wsl, standalone]
+  tags: [admin, user]
 
 - name: Verify controller public key was loaded
   ansible.builtin.assert:
@@ -25,7 +25,7 @@
     fail_msg: >
       Controller public key is empty or missing.
       Ensure {{ controller_ssh_public_key_path }} exists on {{ groups['execution_nodes'][0] }}.
-  tags: [admin, user, wsl, standalone]
+  tags: [admin, user]
 
 # --- OpenSSH Server: install or remove (controlled by openssh_server_state) ---
 - name: Normalize OpenSSH desired state
@@ -47,92 +47,6 @@
   ansible.builtin.include_tasks: remove_openssh.yml
   when: _openssh_server_state == 'absent'
   tags: [admin]
-
-# --- Legacy powershell-ssh block kept only as reference/cleanup material ---
-# The current preferred path is a single Windows OpenSSH listener that lands
-# directly in Windows via DefaultShell. Do not re-enable this block casually.
-# when: (wsl_enabled | default(false) | bool) and (openssh_server_enabled | bool)
-- name: Configure PowerShell SSH port
-  when: false
-  tags: [admin, powershell-ssh, ps_port]
-  block:
-    - name: Resolve WSL companion for ps_port (when host has -wsl sibling)
-      ansible.builtin.set_fact:
-        _ps_wsl_companion: "{{ inventory_hostname | regex_replace('-win$', '-wsl') }}"
-        _ps_wsl_distro: "{{ hostvars[inventory_hostname | regex_replace('-win$', '-wsl')]['wsl_distro'] | default('Ubuntu-24.04') }}"
-      when: (inventory_hostname | regex_replace('-win$', '-wsl')) in hostvars
-
-    - name: Ensure pwsh-sshd wrapper exists in WSL for ForceCommand
-      ansible.windows.win_shell: |
-        $distro = '{{ _ps_wsl_distro }}'
-        $script = "#!/bin/bash`nexec /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoLogo -NoProfile `"`$@`""
-        $script | wsl.exe -d $distro -u root -- bash -c 'cat > /usr/local/bin/pwsh-sshd && chmod +x /usr/local/bin/pwsh-sshd'
-      when: _ps_wsl_companion is defined
-
-    # powershell-ssh — sshd_config: remove Port listener
-    - name: Remove PowerShell port listener from sshd_config
-      community.windows.win_lineinfile:
-        path: "{{ sshd_config_path }}"
-        regexp: '^Port\s+{{ win_ssh_powershell_port }}\s*$'
-        state: absent
-      register: sshd_ps_port_result
-
-    # powershell-ssh — sshd_config: declare PowerShell subsystem.
-    # Native Windows path — runs directly in PowerShell (DefaultShell).
-    - name: Ensure sshd_config declares PowerShell subsystem
-      community.windows.win_lineinfile:
-        path: "{{ sshd_config_path }}"
-        regexp: '^Subsystem\s+powershell\s'
-        line: "Subsystem    powershell    C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -sshs -NoLogo -NoProfile"
-        insertafter: '^Subsystem\s+sftp'
-        state: present
-      register: sshd_ps_subsystem_result
-
-    # powershell-ssh — sshd_config: remove Match LocalPort block
-    - name: Remove Match LocalPort block for PowerShell from sshd_config
-      community.windows.win_lineinfile:
-        path: "{{ sshd_config_path }}"
-        regexp: '^Match LocalPort {{ win_ssh_powershell_port }}'
-        state: absent
-      register: sshd_ps_match_result
-
-    # powershell-ssh — sshd_config: remove ForceCommand under Match block
-    - name: Remove ForceCommand powershell from sshd_config
-      community.windows.win_lineinfile:
-        path: "{{ sshd_config_path }}"
-        regexp: '^\s+ForceCommand'
-        state: absent
-      register: sshd_ps_force_result
-
-# powershell-ssh — restart sshd if any config above changed (outside block so when vars exist)
-# TODO: disabled — matches the powershell-ssh block above; re-enable together.
-# when: (openssh_server_enabled | bool) and (wsl_enabled | default(false) | bool) and (...)
-- name: Restart sshd when PowerShell SSH config changed
-  ansible.windows.win_service:
-    name: sshd
-    state: restarted
-  when: false
-  tags: [admin, powershell-ssh, ps_port]
-
-# --- WSL: optional reset (nuke and pave) ---
-# The 'never' tag ensures this ONLY runs when explicitly requested:
-#   ansible-playbook ... --tags wsl-reset,wsl
-# A normal full run (no --tags) will skip this entirely.
-- name: Reset WSL distro (unregister for clean re-provision)
-  ansible.builtin.import_tasks: wsl_reset.yml
-  tags: [wsl-reset, never]
-
-# --- WSL: enable feature + install distro (disabled by default / separate scope) ---
-# Use include_tasks so when wsl_enabled is false the file is never loaded.
-- name: Configure WSL and install distribution
-  ansible.builtin.include_tasks: ubuntu.yml
-  when: wsl_enabled | default(false) | bool
-  tags: [wsl, standalone]
-
-- name: Verify WSL deployment
-  ansible.builtin.include_tasks: verify_wsl.yml
-  when: wsl_enabled | default(false) | bool
-  tags: [wsl, verify]
 
 # Include user tasks; run with --tags user to run only user tasks.
 - name: Include user tasks

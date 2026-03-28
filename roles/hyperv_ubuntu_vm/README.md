@@ -107,6 +107,8 @@ Dedicated saved-artifact playbook:
 - The default first-boot payload is intentionally minimal:
   - reuse the image's built-in cloud-init, Python, and OpenSSH baseline
   - inject the controller key
+  - apply installer-side package updates through the supported autoinstall
+    `updates` setting
   - normalize the GRUB console line to `console=tty1` so VMConnect shows real
     boot progress instead of appearing frozen behind `ttyS0`
   - prove baseline SSH reachability before layering extra package work
@@ -133,9 +135,10 @@ Dedicated saved-artifact playbook:
       - `192.168.137.10/24`
       - gateway `192.168.137.1`
     - current milestone:
-      - host ping and host/controller `22/tcp` reachability are proven
-      - remaining blocker is SSH authentication acceptance, not guest-network
-        reachability
+      - guest static IP `192.168.137.10/24` is proven
+      - host/controller SSH reachability is proven
+      - the generated `server-225-ubuntu` SSH surface is active
+      - package update behavior is now part of the autoinstall bootstrap path
 
 Current verification commands:
 

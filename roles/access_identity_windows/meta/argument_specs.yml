@@ -1,11 +1,10 @@
 ---
 argument_specs:
   main:
-    short_description: Windows identity, OpenSSH, and WSL configuration
+    short_description: Windows identity and OpenSSH configuration
     description: >-
       Installs and configures Windows OpenSSH Server, deploys SSH keys,
-      manages sshd_config tunables for direct Windows SSH access, and
-      optionally configures WSL only when explicitly enabled.
+      and manages sshd_config tunables for direct Windows SSH access.
     options:
       openssh_server_state:
         type: str
@@ -106,46 +105,6 @@ argument_specs:
         default: "~/.ssh/id_ed25519_ansible.pub"
         description: >-
           Path (on the Ansible controller) to the public key that will be
-          authorized on Windows and WSL hosts. Must match the key used in
+          authorized on Windows hosts. Must match the key used in
           ansible.cfg ssh_args / IdentityFile. Used with delegate_to + slurp
-          so this role works standalone without a preceding controller play.
-
-      wsl_reboot_after:
-        type: bool
-        required: false
-        default: true
-        description: >-
-          Reboot the Windows host automatically after enabling the WSL
-          optional feature. Set false when reboots are managed externally
-          (e.g. a separate reboot play with a maintenance window).
-
-      wsl_config:
-        type: dict
-        required: false
-        description: >-
-          WSL networking and guest configuration dictionary. Controls
-          bridged vs NAT networking mode and gateway address. In bridged mode,
-          the WSL distro receives its IP via DHCP from the LAN router. The
-          distro hostname (set in wsl.conf) is registered with router DNS —
-          no static IP is required or accepted.
-        options:
-          networking_mode:
-            type: str
-            required: false
-            default: "nat"
-            description: >-
-              WSL networking mode. 'nat' uses NAT with netsh portproxy for
-              inbound SSH. 'bridged' gives WSL its own LAN IP via Hyper-V
-              External Switch (requires hyperv_config.external_switch_enabled
-              in host_vars). In bridged mode, DHCP is used — address the
-              distro by hostname, not by IP.
-          gateway:
-            type: str
-            required: false
-            default: "192.168.50.1"
-            description: >-
-              Default gateway for the WSL distro. Used as the DNS resolver
-              address in bridged mode (router handles DNS for DHCP hostnames).
-
-      # wsl_keepalive_enabled removed — WSLKeepalive scheduled task deprecated.
-      # Idle shutdown prevention is now handled by keepwsl.service (ubuntu.yml Step 6.5).
+          so this role can run directly without a preceding controller play.

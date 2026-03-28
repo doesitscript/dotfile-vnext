@@ -17,7 +17,7 @@
   register: hostname_result
   changed_when: false
 
-- name: Get hostname on Linux/WSL
+- name: Get hostname on Linux
   when: ansible_facts['system'] == "Linux"
   become: false
   command: hostname
@@ -47,7 +47,7 @@
     ip_info: "{{ windows_ips.stdout_lines | default([]) }}"
   changed_when: false
 
-- name: Get IP addresses on Linux/WSL
+- name: Get IP addresses on Linux
   when: ansible_facts['system'] == "Linux"
   become: false
   set_fact:
@@ -71,7 +71,7 @@
   changed_when: false
   failed_when: false
 
-- name: Get disk free space on Linux/WSL
+- name: Get disk free space on Linux
   when: ansible_facts['system'] == "Linux"
   become: false
   command: df -h /
@@ -104,7 +104,7 @@
     path: C:\ProgramData\fuzlang\node_facts.json
   register: facts_file
 
-- name: Verify node facts file exists on Linux/WSL
+- name: Verify node facts file exists on Linux
   when: ansible_facts['system'] == "Linux"
   become: false
   stat:
@@ -116,4 +116,3 @@
     msg:
       - "Node facts file exists: {{ facts_file.stat.exists | default(false) }}"
       - "Node facts file path: {{ facts_file.stat.path | default('N/A') }}"
-

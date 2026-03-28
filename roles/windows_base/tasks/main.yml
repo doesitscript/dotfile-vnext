@@ -42,30 +42,20 @@
   register: windows_base_vmp
   when: windows_base_cfg.enable_vmp | default(true) | bool
 
-- name: Enable WSL feature
-  ansible.windows.win_optional_feature:
-    name:
-      - Microsoft-Windows-Subsystem-Linux
-    state: present
-  register: windows_base_wsl
-  when: windows_base_cfg.enable_wsl | default(false) | bool
-
 - name: Reboot if Windows features were installed
   ansible.windows.win_reboot:
     msg: "Ansible reboot after Windows feature installation"
     reboot_timeout: 600
   when: >-
     (windows_base_containers is defined and windows_base_containers is changed) or
-    (windows_base_vmp is defined and windows_base_vmp is changed) or
-    (windows_base_wsl is defined and windows_base_wsl is changed)
+    (windows_base_vmp is defined and windows_base_vmp is changed)
 
 - name: Wait for system to come back online after reboot
   ansible.builtin.wait_for_connection:
     timeout: 600
   when: >-
     (windows_base_containers is defined and windows_base_containers is changed) or
-    (windows_base_vmp is defined and windows_base_vmp is changed) or
-    (windows_base_wsl is defined and windows_base_wsl is changed)
+    (windows_base_vmp is defined and windows_base_vmp is changed)
 
 # --- Power Management ---
 

@@ -1,7 +1,7 @@
 ---
-# Ubuntu/WSL: install tmux and deploy config
+# Ubuntu: install tmux and deploy config
 
-# comes with wsl and may not need to be installed
+# Some environments may already include tmux, but install it explicitly here.
 - name: Ensure tmux is installed
   ansible.builtin.apt:
     name: tmux
@@ -17,8 +17,8 @@
 #   ansible.builtin.debug:
 #     msg: "{{ tmux_version_ubuntu.stdout }}"
 
-# Uses content + lookup instead of src to avoid SFTP, which breaks through
-# Windows sshd → WSL (sftp-server.exe runs in Windows filesystem context).
+# Uses content + lookup instead of src to avoid SFTP edge cases when the
+# controller-side transport cannot use the normal source path directly.
 - name: Deploy tmux.conf to home directory
   ansible.builtin.copy:
     content: "{{ lookup('file', 'tmux.conf') }}"

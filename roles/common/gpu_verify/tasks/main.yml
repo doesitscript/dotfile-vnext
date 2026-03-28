@@ -11,7 +11,7 @@
     - ansible_facts['system'] == "Windows"
     - gpu is defined
 
-- name: Check if nvidia-smi is available (Linux/WSL)
+- name: Check if nvidia-smi is available (Linux)
   shell: nvidia-smi --version
   register: nvidia_smi_check
   changed_when: false
@@ -31,7 +31,7 @@
     - gpu is defined
     - nvidia_smi_check.rc == 0
 
-- name: Get GPU information (Linux/WSL)
+- name: Get GPU information (Linux)
   shell: |
     nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
   register: gpu_info
@@ -53,7 +53,7 @@
     - gpu is defined
     - nvidia_smi_check.rc == 0
 
-- name: Get GPU temperature and utilization (Linux/WSL)
+- name: Get GPU temperature and utilization (Linux)
   shell: |
     nvidia-smi --query-gpu=temperature.gpu,utilization.gpu --format=csv,noheader
   register: gpu_status
@@ -93,4 +93,3 @@
       - "GPU status: {{ gpu_status.stdout | default('Unknown') }}"
       - "Status: {{ 'PASS' if (nvidia_smi_check.rc == 0 and gpu_info.stdout is defined) else 'FAIL' }}"
   when: gpu is defined
-

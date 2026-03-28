@@ -1,8 +1,8 @@
 ---
-# debug_output.yml — Collect diagnostic output from all systems/services at end of run.
+# debug_output.yml — Collect diagnostic output from Windows host services.
 # Tag: debug — run with --tags debug, or included automatically at end of role.
-# Collects: WinRM state, Windows OpenSSH events/config, WSL sshd status,
-#           network adapters/IPs, Hyper-V firewall, and WSL networking.
+# Collects: WinRM state, Windows OpenSSH events/config, network adapters/IPs,
+#           and Hyper-V firewall state on the Windows host.
 
 # ============================================================================
 # WINDOWS HOST DIAGNOSTICS
@@ -172,133 +172,6 @@
   tags: [debug]
 
 # ============================================================================
-# WSL KEEPALIVE + .WSLCONFIG DIAGNOSTICS
-# ============================================================================
-# These two checks are the first things to inspect when SSH from Mac or a
-# Docker context times out after an idle period. See:
-#   docs/lessons-learned/windows/wsl-idle-shutdown-and-wslconfig-parsing.md
-
-- name: "DEBUG: WSLKeepalive scheduled task status"
-  ansible.windows.win_powershell:
-    error_action: silently_continue
-    script: |
-      $Ansible.Changed = $false
-      $out = @{}
-      $raw = schtasks /Query /TN WSLKeepalive /FO LIST 2>&1
-      if ($raw -match 'ERROR') {
-        $out['status']  = 'NOT FOUND — keepalive task is not registered'
-        $out['action']  = 'Set wsl_keepalive_enabled: true in host_vars and re-run --tags wsl'
-      } else {
-        $statusLine = ($raw | Select-String 'Status:')
-        $out['status'] = "$statusLine"
-        $out['raw']    = ($raw -join '||')
-        if ($statusLine -notmatch 'Running') {
-          $out['action'] = 'Task is registered but NOT running — run: schtasks /Run /TN WSLKeepalive'
-        }
-      }
-      $Ansible.Result = $out
-  register: _debug_keepalive
-  tags: [debug]
-
-- name: "DEBUG: .wslconfig content and line-ending check"
-  ansible.windows.win_powershell:
-    error_action: silently_continue
-    script: |
-      $Ansible.Changed = $false
-      $path = "$env:USERPROFILE\.wslconfig"
-      $out  = @{ path = $path }
-      if (-not (Test-Path $path)) {
-        $out['exists'] = $false
-        $out['action'] = 'File missing — WSL will run with all defaults (NAT mode)'
-      } else {
-        $bytes   = [System.IO.File]::ReadAllBytes($path)
-        $content = [System.Text.Encoding]::UTF8.GetString($bytes)
-        $hasCRLF = $content -match "`r`n"
-        $hasBOM  = ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)
-        $out['exists']   = $true
-        $out['has_crlf'] = $hasCRLF
-        $out['has_bom']  = $hasBOM
-        $out['content']  = (Get-Content $path -Raw)
-        if ($hasCRLF) {
-          $out['WARNING'] = 'CRLF detected — WSL 2.6.x will silently reject this entire file (all settings fall back to defaults)'
-        }
-        if ($hasBOM) {
-          $out['WARNING_BOM'] = 'BOM detected — may cause parse errors on some WSL versions'
-        }
-      }
-      $Ansible.Result = $out
-  register: _debug_wslconfig
-  tags: [debug]
-
-# ============================================================================
-# WSL DIAGNOSTICS
-# ============================================================================
-
-- name: "DEBUG: Collect WSL sshd and networking state"
-  environment:
-    WSL_UTF8: "1"
-  check_mode: false
-  ansible.windows.win_powershell:
-    error_action: silently_continue
-    script: |
-      $Ansible.Changed = $false
-      $distro = '{{ _wsl_distro | default("Ubuntu-24.04") }}'
-      $out = @{}
-
-      # Check if distro is running
-      $state = (wsl.exe -l -v 2>&1) -replace '\x00', '' | ? { $_ -ne '' }
-      $out['wsl_list'] = ($state -join "`n").Trim()
-
-      # sshd service status
-      $sshd = (wsl.exe -d $distro -u root -- bash -c 'systemctl is-active ssh 2>&1; echo "---"; systemctl status ssh --no-pager -l 2>&1') -replace '\x00', '' | ? { $_ -ne '' }
-      $out['sshd_status'] = ($sshd -join "`n").Trim()
-
-      # sshd_config
-      $config = (wsl.exe -d $distro -u root -- bash -c 'cat /etc/ssh/sshd_config 2>&1') -replace '\x00', '' | ? { $_ -ne '' }
-      $out['sshd_config'] = ($config -join "`n").Trim()
-
-      # SSH auth log (last 30 lines)
-      $authlog = (wsl.exe -d $distro -u root -- bash -c 'tail -30 /var/log/auth.log 2>&1 || echo "No auth.log"') -replace '\x00', '' | ? { $_ -ne '' }
-      $out['auth_log_tail'] = ($authlog -join "`n").Trim()
-
-      # Network interfaces
-      $ipAddr = (wsl.exe -d $distro -u root -- bash -c 'ip -4 addr show 2>&1') -replace '\x00', '' | ? { $_ -ne '' }
-      $out['ip_addresses'] = ($ipAddr -join "`n").Trim()
-
-      # Routes
-      $routes = (wsl.exe -d $distro -u root -- bash -c 'ip route show 2>&1') -replace '\x00', '' | ? { $_ -ne '' }
-      $out['routes'] = ($routes -join "`n").Trim()
-
-      # DNS (resolv.conf + resolvectl)
-      $resolv = (wsl.exe -d $distro -u root -- bash -c 'cat /etc/resolv.conf 2>&1; echo "---"; resolvectl status 2>&1 || systemd-resolve --status 2>&1 || echo "resolvectl not available"') -replace '\x00', '' | ? { $_ -ne '' }
-      $out['dns_config'] = ($resolv -join "`n").Trim()
-
-      # Netplan config
-      $netplan = (wsl.exe -d $distro -u root -- bash -c 'cat /etc/netplan/*.yaml 2>&1 || echo "No netplan config"') -replace '\x00', '' | ? { $_ -ne '' }
-      $out['netplan'] = ($netplan -join "`n").Trim()
-
-      # systemd-networkd status
-      $networkd = (wsl.exe -d $distro -u root -- bash -c 'systemctl is-active systemd-networkd 2>&1; networkctl status eth0 2>&1 || echo "networkctl not available"') -replace '\x00', '' | ? { $_ -ne '' }
-      $out['networkd_status'] = ($networkd -join "`n").Trim()
-
-      # flush-eth0-preboot service
-      $flush = (wsl.exe -d $distro -u root -- bash -c 'systemctl is-enabled flush-eth0-preboot 2>&1; systemctl status flush-eth0-preboot --no-pager 2>&1 || echo "Service not found"') -replace '\x00', '' | ? { $_ -ne '' }
-      $out['flush_eth0_service'] = ($flush -join "`n").Trim()
-
-      # ssh.socket status (should be masked)
-      $sshSocket = (wsl.exe -d $distro -u root -- bash -c 'systemctl is-enabled ssh.socket 2>&1; systemctl status ssh.socket --no-pager 2>&1') -replace '\x00', '' | ? { $_ -ne '' }
-      $out['ssh_socket'] = ($sshSocket -join "`n").Trim()
-
-      # Journal entries for sshd (last 20)
-      $journal = (wsl.exe -d $distro -u root -- bash -c 'journalctl -u ssh --no-pager -n 20 2>&1 || echo "journalctl not available"') -replace '\x00', '' | ? { $_ -ne '' }
-      $out['sshd_journal'] = ($journal -join "`n").Trim()
-
-      $Ansible.Result = $out
-  register: _debug_wsl
-  when: _wsl_distro is defined
-  tags: [debug]
-
-# ============================================================================
 # OUTPUT: Print all collected diagnostics
 # ============================================================================
 
@@ -317,31 +190,11 @@
       ║  • System log:          System (WinRM, Hyper-V, TCPIP)     ║
       ║  • Application log:     Application (sshd provider)        ║
       ╠══════════════════════════════════════════════════════════════╣
-      ║ WSL ({{ _wsl_distro | default('N/A') }})                   ║
-      ║  • Auth log:            /var/log/auth.log                  ║
-      ║  • sshd_config:         /etc/ssh/sshd_config               ║
-      ║  • sshd journal:        journalctl -u ssh                  ║
-      ║  • Netplan config:      /etc/netplan/*.yaml                ║
-      ║  • DNS:                 /etc/resolv.conf + resolvectl      ║
-      ║  • Network:             ip addr / ip route                 ║
-      ╠══════════════════════════════════════════════════════════════╣
       ║ MAC CONTROLLER                                              ║
       ║  • SSH client config:   ~/.ssh/config                      ║
       ║  • SSH mux sockets:     ~/.ssh/ssh_mux_*                   ║
       ║  • Ansible log:         (stdout / callback plugin)         ║
       ╚══════════════════════════════════════════════════════════════╝
-  tags: [debug]
-
-- name: "DEBUG OUTPUT: WSLKeepalive task status"
-  ansible.builtin.debug:
-    var: _debug_keepalive.result
-  when: _debug_keepalive is defined
-  tags: [debug]
-
-- name: "DEBUG OUTPUT: .wslconfig content and line-ending check"
-  ansible.builtin.debug:
-    var: _debug_wslconfig.result
-  when: _debug_wslconfig is defined
   tags: [debug]
 
 - name: "DEBUG OUTPUT: Windows OpenSSH — service and config"
@@ -366,10 +219,4 @@
   ansible.builtin.debug:
     var: _debug_network.result
   when: _debug_network is defined
-  tags: [debug]
-
-- name: "DEBUG OUTPUT: WSL sshd and networking"
-  ansible.builtin.debug:
-    var: _debug_wsl.result
-  when: _debug_wsl is defined and _debug_wsl.result is defined
   tags: [debug]

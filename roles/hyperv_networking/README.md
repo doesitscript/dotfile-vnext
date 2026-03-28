@@ -1,13 +1,13 @@
 # hyperv_networking
 
 Pure infrastructure role: enables Hyper-V and manages the host-side switch
-prerequisites used by WSL and VMs. It supports both an External Virtual Switch
+prerequisites used by Linux guests and VMs. It supports both an External Virtual Switch
 bridged to a physical NIC and an Internal Virtual Switch shared through
 Internet Connection Sharing (ICS) for Wi-Fi-backed guests, plus a routed
 private-subnet mode that lets the Windows host act as the transit point to the
 guest subnet.
 
-Consumers (WSL bridged networking, dev VMs, test labs) use the resulting
+Consumers (Linux guests, dev VMs, test labs) use the resulting
 switches independently by referencing the switch name from `hyperv_config` or
 their own role defaults.
 
@@ -183,12 +183,12 @@ Hyper-V-native Ubuntu VM flow.
 
 ## What This Role Does NOT Do
 
-- Deploy `.wslconfig` (that is a WSL consumer concern in `access_identity_windows`)
+- Deploy guest-specific Linux configuration (that is a consumer concern outside this role)
 - Create Hyper-V firewall rules for specific guests
 - Configure guest networking (Netplan, portproxy, DNS)
 - Export cross-role `set_fact` state
 
 ## Related
 
-- `roles/access_identity_windows/tasks/ubuntu.yml` — WSL guest networking
-  (consumer of the switch, deploys `.wslconfig`, HV firewall rules)
+- Linux guest bootstrap/configuration roles
+  (consumers of the switch and routed/private guest network)

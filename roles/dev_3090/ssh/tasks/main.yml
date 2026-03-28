@@ -1,7 +1,7 @@
 ---
 # Dev-3090 SSH Role
-# WinRM/PowerShell only - configures OpenSSH for WSL access
-# Ensures SSH is accessible for Ansible to connect to WSL
+# WinRM/PowerShell only - configures OpenSSH on the Windows host
+# Ensures Windows SSH is accessible for Ansible/operator access
 
 - name: Verify OpenSSH Server is installed
   win_feature:
@@ -34,5 +34,4 @@
     msg:
       - "OpenSSH Server: {{ 'Running' if sshd_status.status.ActiveState == 'running' else 'Not running' }}"
       - "SSH Port: {{ ssh_port.stdout | default('22') }}"
-      - "SSH is ready for WSL access"
-
+      - "SSH is ready for Windows-host access"
