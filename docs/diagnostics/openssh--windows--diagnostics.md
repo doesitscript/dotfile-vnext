@@ -23,6 +23,9 @@
 - `Get-Content C:\ProgramData\ssh\logs\sshd.log -Tail 100`
 - `Get-NetTCPConnection -LocalPort 22`
 - `Get-NetFirewallRule | Where-Object { $_.DisplayName -match 'SSH|sshd|OpenSSH' }`
+- `Get-NetFirewallProfile | Format-List Name,Enabled,DefaultInboundAction,LogFileName,LogBlocked,LogAllowed,LogIgnored,LogMaxSizeKilobytes`
+- `Get-WinEvent -LogName 'Microsoft-Windows-Windows Firewall With Advanced Security/Firewall' -MaxEvents 50`
+- `Get-WinEvent -FilterHashtable @{ LogName='Security'; Id=5152,5157; StartTime=(Get-Date).AddHours(-6) } -MaxEvents 50`
 - `Get-WinEvent -LogName 'OpenSSH/Operational' -MaxEvents 50`
 - `Get-WinEvent -LogName 'OpenSSH/Admin' -MaxEvents 50`
 - `Get-WinEvent -FilterHashtable @{ LogName='System'; ProviderName='Service Control Manager'; StartTime=(Get-Date).AddHours(-6) } | Where-Object { $_.Message -match 'sshd' }`
@@ -32,9 +35,14 @@
 - `OpenSSH/Operational`
 - `OpenSSH/Admin`
 - `System` provider `Service Control Manager` for service start/stop/failure transitions
+- `Microsoft-Windows-Windows Firewall With Advanced Security/Firewall`
+- `Security` event IDs `5152` and `5157` when Filtering Platform auditing is present
 
 If file-based logging is not enabled, Event Viewer/ETW becomes the primary
 diagnostic surface.
+If the symptom is a timeout rather than an explicit authentication or transport
+error, firewall-policy and drop/audit surfaces are often more revealing than
+OpenSSH logs alone.
 
 ## Vendor / Tooling Diagnostics
 
@@ -55,3 +63,9 @@ diagnostic surface.
 - The repo already has a Windows-side debug task that collects `sshd` service
   status, `sshd_config`, ssh log files, and OpenSSH event log entries in:
   `/Users/joshc/develop/dotfile-vnext/roles/access_identity_windows/tasks/debug_output.yml`
+- The dedicated remote-access collector now groups evidence into:
+  - `control_surfaces`
+  - `network_path`
+  - `firewall_drop_path`
+- For node-local collection on the Windows host itself, use:
+  `/Users/joshc/develop/dotfile-vnext/bin/troubleshoot-windows-remote-access-local.ps1`

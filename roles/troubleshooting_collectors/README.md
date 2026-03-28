@@ -31,6 +31,26 @@ Current collector task files:
 - `hyperv_ubuntu_vm.yml`
 - `windows_remote_access.yml`
 
+Collector scoping pattern:
+
+- collectors may expose grouped evidence scopes when a component has multiple
+  logical layers of evidence
+- default behavior should favor collecting all relevant groups for the current
+  component
+- narrower runs may override the group list when the operator is targeting a
+  specific layer
+
+Current Windows remote-access artifact groups:
+
+- `control_surfaces`
+  - WinRM/sshd services, listeners, configs, standard remote-access event logs,
+    and direct firewall rules
+- `network_path`
+  - adapters, IPv4 bindings, and recent network-related System events
+- `firewall_drop_path`
+  - firewall profile policy, configured firewall logs, advanced-security
+    channel events, and Security drop/audit events
+
 Default artifact root:
 
 ```yaml
@@ -58,3 +78,4 @@ Current Windows remote-access troubleshooting notes:
 
 - [winrm--windows--diagnostics.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/winrm--windows--diagnostics.md)
 - [openssh--windows--diagnostics.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/openssh--windows--diagnostics.md)
+- [windows-remote-access--local-run.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/windows-remote-access--local-run.md)

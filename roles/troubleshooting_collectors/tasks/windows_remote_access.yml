@@ -4,6 +4,18 @@
     troubleshooting_artifact_stamp: "{{ lookup('pipe', 'date +%Y%m%d-%H%M%S') }}"
   when: (troubleshooting_artifact_stamp | default('')) | length == 0
 
+- name: Define Windows remote access artifact groups
+  ansible.builtin.set_fact:
+    _windows_remote_access_artifact_groups: >-
+      {{
+        windows_remote_access_artifact_groups
+        | default([
+            'control_surfaces',
+            'network_path',
+            'firewall_drop_path',
+          ])
+      }}
+
 - name: Define Windows remote access troubleshooting artifact paths
   ansible.builtin.set_fact:
     _windows_remote_access_artifact_dir: >-
@@ -33,6 +45,11 @@
     script: |
       $out = [ordered]@{
         host = $env:COMPUTERNAME
+        artifact_groups = @(
+      {% for group in _windows_remote_access_artifact_groups %}
+          '{{ group }}'{% if not loop.last %},{% endif %}
+      {% endfor %}
+        )
         winrm = [ordered]@{
           service = $null
           listener = ''
@@ -57,6 +74,13 @@
           hostname = $env:COMPUTERNAME
           adapters = @()
           ipv4 = @()
+          network_system_events = @()
+        }
+        firewall_path = [ordered]@{
+          profiles = @()
+          log_files = @()
+          firewall_events = @()
+          security_drop_events = @()
         }
         winrm_operational_events = @()
         winrm_system_events = @()
@@ -65,6 +89,7 @@
         scm_remote_access_events = @()
       }
 
+      {% if 'control_surfaces' in _windows_remote_access_artifact_groups %}
       try {
         $svc = Get-Service WinRM -ErrorAction Stop
         $out.winrm.service = @{
@@ -152,19 +177,6 @@
       } catch {}
 
       try {
-        $out.system.adapters = @(
-          Get-NetAdapter -ErrorAction Stop |
-          Select-Object Name,InterfaceDescription,Status,MacAddress,LinkSpeed
-        )
-      } catch {}
-      try {
-        $out.system.ipv4 = @(
-          Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop |
-          Select-Object InterfaceAlias,IPAddress,PrefixLength,PrefixOrigin
-        )
-      } catch {}
-
-      try {
         $out.winrm_operational_events = @(
           Get-WinEvent -LogName 'Microsoft-Windows-WinRM/Operational' -MaxEvents 50 -ErrorAction Stop |
           Select-Object TimeCreated,Id,LevelDisplayName,Message
@@ -199,6 +211,82 @@
           Select-Object TimeCreated,Id,LevelDisplayName,Message
         )
       } catch {}
+      {% endif %}
+
+      {% if 'network_path' in _windows_remote_access_artifact_groups %}
+      try {
+        $out.system.adapters = @(
+          Get-NetAdapter -ErrorAction Stop |
+          Select-Object Name,InterfaceDescription,Status,MacAddress,LinkSpeed
+        )
+      } catch {}
+      try {
+        $out.system.ipv4 = @(
+          Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop |
+          Select-Object InterfaceAlias,IPAddress,PrefixLength,PrefixOrigin
+        )
+      } catch {}
+      try {
+        $out.system.network_system_events = @(
+          Get-WinEvent -FilterHashtable @{
+            LogName='System'
+            StartTime=(Get-Date).AddHours(-12)
+          } -MaxEvents 100 -ErrorAction Stop |
+          Where-Object { $_.ProviderName -match 'Hyper-V|TCPIP|DNS|DHCP|NetBT|vmswitch|NlaSvc|Netwtw|e1dexpress|NDIS' } |
+          Select-Object TimeCreated,ProviderName,Id,LevelDisplayName,Message
+        )
+      } catch {}
+      {% endif %}
+
+      {% if 'firewall_drop_path' in _windows_remote_access_artifact_groups %}
+      try {
+        $out.firewall_path.profiles = @(
+          Get-NetFirewallProfile -ErrorAction Stop |
+          Select-Object `
+            Name,Enabled,DefaultInboundAction,DefaultOutboundAction, `
+            AllowInboundRules,AllowLocalFirewallRules,AllowLocalIPsecRules, `
+            AllowUserApps,AllowUserPorts,NotifyOnListen,LogFileName, `
+            LogAllowed,LogBlocked,LogIgnored,LogMaxSizeKilobytes
+        )
+      } catch {}
+      try {
+        $logPaths = @(
+          $out.firewall_path.profiles |
+          Where-Object { $_.LogFileName } |
+          Select-Object -ExpandProperty LogFileName -Unique
+        )
+        foreach ($logPath in $logPaths) {
+          if (Test-Path $logPath) {
+            $out.firewall_path.log_files += @{
+              path = $logPath
+              tail = (Get-Content -LiteralPath $logPath -Tail 100 -ErrorAction SilentlyContinue | Out-String).Trim()
+            }
+          } else {
+            $out.firewall_path.log_files += @{
+              path = $logPath
+              tail = ''
+              note = 'Configured log path does not currently exist'
+            }
+          }
+        }
+      } catch {}
+      try {
+        $out.firewall_path.firewall_events = @(
+          Get-WinEvent -LogName 'Microsoft-Windows-Windows Firewall With Advanced Security/Firewall' -MaxEvents 50 -ErrorAction Stop |
+          Select-Object TimeCreated,Id,LevelDisplayName,Message
+        )
+      } catch {}
+      try {
+        $out.firewall_path.security_drop_events = @(
+          Get-WinEvent -FilterHashtable @{
+            LogName='Security'
+            Id=5152,5157
+            StartTime=(Get-Date).AddHours(-12)
+          } -MaxEvents 50 -ErrorAction Stop |
+          Select-Object TimeCreated,Id,LevelDisplayName,Message
+        )
+      } catch {}
+      {% endif %}
 
       $Ansible.Result = $out
   register: _windows_remote_access_collector
@@ -210,6 +298,57 @@
     content: "{{ _windows_remote_access_collector.result | to_nice_json }}"
     mode: "0644"
   delegate_to: localhost
+
+- name: Write Windows remote access control-surfaces JSON
+  ansible.builtin.copy:
+    dest: "{{ _windows_remote_access_command_dir }}/windows_remote_access_control_surfaces.json"
+    content: >-
+      {{
+        {
+          'artifact_groups': _windows_remote_access_artifact_groups,
+          'host': _windows_remote_access_collector.result.host,
+          'winrm': _windows_remote_access_collector.result.winrm,
+          'openssh': _windows_remote_access_collector.result.openssh,
+          'winrm_operational_events': _windows_remote_access_collector.result.winrm_operational_events | default([]),
+          'winrm_system_events': _windows_remote_access_collector.result.winrm_system_events | default([]),
+          'openssh_operational_events': _windows_remote_access_collector.result.openssh_operational_events | default([]),
+          'openssh_admin_events': _windows_remote_access_collector.result.openssh_admin_events | default([]),
+          'scm_remote_access_events': _windows_remote_access_collector.result.scm_remote_access_events | default([]),
+        } | to_nice_json
+      }}
+    mode: "0644"
+  delegate_to: localhost
+  when: "'control_surfaces' in _windows_remote_access_artifact_groups"
+
+- name: Write Windows remote access network-path JSON
+  ansible.builtin.copy:
+    dest: "{{ _windows_remote_access_command_dir }}/windows_remote_access_network_path.json"
+    content: >-
+      {{
+        {
+          'artifact_groups': _windows_remote_access_artifact_groups,
+          'host': _windows_remote_access_collector.result.host,
+          'system': _windows_remote_access_collector.result.system,
+        } | to_nice_json
+      }}
+    mode: "0644"
+  delegate_to: localhost
+  when: "'network_path' in _windows_remote_access_artifact_groups"
+
+- name: Write Windows remote access firewall-drop-path JSON
+  ansible.builtin.copy:
+    dest: "{{ _windows_remote_access_command_dir }}/windows_remote_access_firewall_drop_path.json"
+    content: >-
+      {{
+        {
+          'artifact_groups': _windows_remote_access_artifact_groups,
+          'host': _windows_remote_access_collector.result.host,
+          'firewall_path': _windows_remote_access_collector.result.firewall_path | default({}),
+        } | to_nice_json
+      }}
+    mode: "0644"
+  delegate_to: localhost
+  when: "'firewall_drop_path' in _windows_remote_access_artifact_groups"
 
 - name: Write WinRM operational event log JSON
   ansible.builtin.copy:
@@ -246,6 +385,22 @@
     mode: "0644"
   delegate_to: localhost
 
+- name: Write firewall advanced-security event log JSON
+  ansible.builtin.copy:
+    dest: "{{ _windows_remote_access_event_dir }}/firewall_advanced_security.json"
+    content: "{{ ((_windows_remote_access_collector.result.firewall_path | default({})).firewall_events | default([])) | to_nice_json }}"
+    mode: "0644"
+  delegate_to: localhost
+  when: "'firewall_drop_path' in _windows_remote_access_artifact_groups"
+
+- name: Write firewall drop/audit Security events JSON
+  ansible.builtin.copy:
+    dest: "{{ _windows_remote_access_event_dir }}/firewall_security_drop_events.json"
+    content: "{{ ((_windows_remote_access_collector.result.firewall_path | default({})).security_drop_events | default([])) | to_nice_json }}"
+    mode: "0644"
+  delegate_to: localhost
+  when: "'firewall_drop_path' in _windows_remote_access_artifact_groups"
+
 - name: Write Windows remote access troubleshooting notes
   ansible.builtin.copy:
     dest: "{{ _windows_remote_access_notes_dir }}/README.txt"
@@ -257,8 +412,16 @@
       Diagnostics notes:
       - /Users/joshc/develop/dotfile-vnext/docs/diagnostics/winrm--windows--diagnostics.md
       - /Users/joshc/develop/dotfile-vnext/docs/diagnostics/openssh--windows--diagnostics.md
+      Artifact groups:
+      {% for group in _windows_remote_access_artifact_groups %}
+      - {{ group }}
+      {% endfor %}
       Repo debug reference:
       - /Users/joshc/develop/dotfile-vnext/roles/access_identity_windows/tasks/debug_output.yml
+      Group descriptions:
+      - control_surfaces: WinRM/sshd services, listeners, configs, basic event channels, and remote-access firewall rules
+      - network_path: adapters, IPv4 bindings, and recent network-related System events
+      - firewall_drop_path: firewall profile policy, configured firewall log files, advanced-security channel events, and Security drop/audit events
   delegate_to: localhost
 
 - name: Report Windows remote access troubleshooting artifact location
