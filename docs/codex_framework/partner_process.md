@@ -319,6 +319,13 @@ real framework-role transition is occurring.
 findings. It should not be used as a generic summary-of-changes label. Use
 `Outcomes:` or a plain summary heading for implementation recaps.
 
+Additional rule:
+
+- high-level Ansible task-state summaries such as `changed`, `ok`, or recap
+  counts are not evidence by themselves
+- they are outcomes unless the underlying stdout/stderr, exception text,
+  registered result content, log/event output, or saved artifact is also shown
+
 ## When Research Is Mandatory
 
 The agent must enter a research step before execution when any of the following are true:

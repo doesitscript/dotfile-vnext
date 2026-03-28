@@ -26,6 +26,15 @@ Check in this order:
 
 When existing repo code does not match the higher-quality standard established by these sources, flag the gap as a stewardship improvement instead of mirroring the weaker pattern.
 
+Before settling on custom Windows or Hyper-V orchestration, explicitly sweep:
+1. native Ansible modules
+2. `community.windows` resources
+3. DSC resources reachable through `ansible.windows.win_dsc`
+
+If the final recommendation still needs custom orchestration, say which subparts
+already have cleaner building blocks and which subparts remain true workflow
+glue.
+
 ## Gate 2 — Project Stewardship Check
 
 Before implementation, explicitly confirm:
@@ -35,6 +44,25 @@ Before implementation, explicitly confirm:
 4. it is still simple enough to explain clearly
 
 If any check fails, redesign before writing code.
+
+## Gate 2.5 — Deprecated Or Disproven Path Guard
+
+When the current path is already known to be deprecated, already replaced by the
+repo's accepted direction, or repeatedly disproven by collected evidence, do not
+layer another workaround or tuning attempt onto that same path by default.
+
+Required behavior:
+1. say plainly that the current path is deprecated, disproven, or legacy-only
+2. stop treating local precedent as a reason to keep investing in it
+3. switch to replacement-path research or implementation
+4. if legacy support must remain, isolate it explicitly as fallback/retired
+   logic instead of the primary path
+
+Examples:
+- modern WSL/OpenSSH work should replace `bash.exe` with `wsl.exe` rather than
+  keep tuning the deprecated compatibility wrapper
+- Hyper-V Ubuntu work should replace a disproven `.img -> qemu-img -> vhdx`
+  path rather than keep layering conversion flags onto it
 
 ## Gate 3 — Tool Authority For Informational Queries
 

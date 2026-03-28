@@ -73,9 +73,25 @@ Lower-quality evidence:
 - paraphrases of command behavior with no pasted output
 - speculative interpretation without a corresponding log/event/probe excerpt
 - a command choice that merely "makes sense" without collected output
+- summaries of finished tasks such as `changed`, `ok`, or recap counts without
+  the underlying output that explains what actually happened
 
 Execution intent is never evidence. A planned command is not evidence. A
 theory about what output probably says is not evidence.
+
+Ansible task state by itself is not proof. Statements like:
+
+- `task -> changed`
+- `task -> ok`
+- `ok=21 changed=5 failed=0`
+
+are outcomes or status summaries unless they are accompanied by one of:
+
+- raw stdout/stderr
+- exception text
+- registered module result fields
+- log or event output
+- a saved artifact path containing that material
 
 ## Required Per-Run Reporting
 
@@ -100,6 +116,7 @@ source-backed findings from the current run. It must not be used for:
 - execution intent
 - narration of what the agent is about to try
 - speculative interpretation before outputs are collected
+- summaries of completed high-level steps with no underlying proof output
 
 If the response is about the next action rather than collected proof, use a
 different label such as:

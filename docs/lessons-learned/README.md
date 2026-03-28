@@ -29,6 +29,13 @@ one-line summary row to the index below.
 |---|---|
 | [vscode-ansible-mcp-server-bundler-tsconfig--UNRESOLVED.md](ansible/vscode-ansible-mcp-server-bundler-tsconfig--UNRESOLVED.md) | v26.x tsconfig switched to `moduleResolution: "bundler"` + `@src/*` path aliases; plain `tsc` leaves aliases unresolved in compiled JS; `ERR_MODULE_NOT_FOUND` at runtime; workaround is pinning to v25.12.2; fix for v26.x+ is `tsc-alias` post-build step |
 
+### `codex/` — Codex behavior, framework design, repo instruction workflow
+
+| File | One-line summary |
+|---|---|
+| [deprecated-or-disproven-paths-must-be-replaced-not-extended.md](codex/deprecated-or-disproven-paths-must-be-replaced-not-extended.md) | Once a path is deprecated, disproven, or already replaced, the framework should switch to replacement-path research or implementation instead of layering more workarounds on top |
+| [research-should-surface-existing-building-blocks-before-custom-orchestration.md](codex/research-should-surface-existing-building-blocks-before-custom-orchestration.md) | Research should identify native modules, community resources, and DSC building blocks before settling on custom Windows/Hyper-V orchestration |
+
 ### `docker/` — Docker Engine, contexts, Compose, daemon config
 
 | File | One-line summary |
@@ -68,6 +75,7 @@ should be migrated into this library when time allows:
 ```
 lessons-learned/
 ├── README.md          ← this file (index)
+├── codex/             ← Codex behavior, framework design, instruction workflow
 ├── windows/           ← Windows host, WSL, WinRM, PowerShell, OpenSSH
 ├── ansible/           ← Ansible engine, modules, WinRM transport, lint
 ├── docker/            ← Docker Engine, contexts, Compose, daemon config

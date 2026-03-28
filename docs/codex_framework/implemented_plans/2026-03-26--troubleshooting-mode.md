@@ -95,8 +95,18 @@ Lower-quality evidence examples:
 - "I ran X" without showing the result
 - paraphrases with no quoted output
 - interpretations based only on what a command "should" mean
+- high-level task-state summaries such as `changed`, `ok`, or recap counts with
+  no underlying output
 
 The floor in troubleshooting mode is actual output, not command intent.
+
+Additional clarification:
+
+- Ansible task states like `changed`, `ok`, and play recap counts are status
+  summaries, not evidence by themselves
+- they only count as evidence when paired with the real output, exception text,
+  registered result details, or saved artifacts that explain what the task
+  actually did
 
 When multiple output surfaces exist for a failing component, the troubleshooting
 step must inspect recent entries from all identified surfaces and base the
@@ -134,6 +144,27 @@ Pinned example:
   path was the only bootstrap option, tried Canonical's published Azure VHD
   instead, normalized that source artifact on the host, converted it with
   native `Convert-VHD`, and successfully booted the VM
+
+### Deprecated/disproven path clarification
+
+When the current path is already deprecated, already replaced by the repo's
+accepted direction, or repeatedly disproven by evidence, the framework should
+not keep layering workaround logic onto that same path.
+
+Preferred behavior:
+
+1. call out that the current path is deprecated, disproven, or legacy-only
+2. stop iterating on it as the primary solution
+3. switch to replacement-path research or implementation
+4. if fallback support must remain, isolate it clearly as legacy rather than
+   extending it as the main path
+
+Pinned examples:
+
+- WSL/OpenSSH should replace `bash.exe` with `wsl.exe` plus the correct command
+  option instead of tuning the deprecated compatibility wrapper
+- Hyper-V Ubuntu should replace the disproven raw `.img -> qemu-img -> vhdx`
+  path rather than keep adding conversion tweaks to the same bad artifact
 
 ### Automatic wiring clarification
 
