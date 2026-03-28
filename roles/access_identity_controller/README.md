@@ -1,12 +1,12 @@
 # access_identity_controller
 
-Ensures the Ansible controller (e.g. your Mac) has an SSH keypair, publishes its public key as host facts, and templates `~/.ssh/config` from deployed SSH targets.
+Ensures the Ansible controller (e.g. your Mac) has an SSH keypair, publishes its public key as host facts, and templates `~/.ssh/config` from desired-state SSH targets.
 
 ## Purpose
 
 - Create/ensure `~/.ssh` and an ed25519 keypair (default: `~/.ssh/id_ed25519_ansible`).
 - Set facts: `execution_node_pub_key_path`, `execution_node_private_key_path`, `execution_node_pub_key_content`.
-- Template `~/.ssh/config` from cached `ssh_configured` facts (only hosts actually deployed get entries).
+- Template `~/.ssh/config` from durable SSH desired state in inventory/hostvars.
 - Create `~/.ssh/sockets/` for SSH ControlMaster multiplexing.
 - Optional: manage `known_hosts` entries (off by default).
 
@@ -41,11 +41,13 @@ ansible-playbook playbooks/access_controller.yaml -i inventory/inventory.yaml --
 
 ## `~/.ssh/config` management
 
-This role templates `~/.ssh/config` from the `ssh_targets` inventory group. Only hosts where the setup role (e.g. `access_identity_windows`) has set the cached fact `ssh_configured: true` get entries. This means:
+This role templates `~/.ssh/config` from the `ssh_targets` inventory group.
 
-- Deploy `server-225-win` today → its `ssh_configured` fact is cached → SSH config gets an entry.
-- Deploy `dev-3090-win` next week → cache now has both → both get entries on the next run.
-- Hosts that haven't been deployed yet are skipped automatically.
+- Windows hosts get entries when their OpenSSH desired state is `present`.
+- Active `wsl_hosts` get entries by group membership.
+- Linux VMs get entries when they have realized connection facts such as `ansible_host`.
+- The template no longer depends on cached `ssh_configured` facts, so entries do
+  not disappear just because a fact cache is cold or missing.
 
 The template also creates:
 - `Host <name>-powershell` aliases for Windows hosts with `ssh_powershell_port` defined.
@@ -69,4 +71,4 @@ ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml
 This runs:
 1. Controller identity (keypair + facts)
 2. Windows SSH setup (OpenSSH, keys, firewall, ports)
-3. Controller SSH config (template `~/.ssh/config` from cached facts)
+3. Controller SSH config (template `~/.ssh/config` from desired-state inputs)

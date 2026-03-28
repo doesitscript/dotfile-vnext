@@ -3,7 +3,7 @@
 #
 # 1) Controller: generate SSH keypair, publish key facts.
 # 2) Windows: install OpenSSH, deploy keys, configure ports + firewall.
-# 3) Controller (again): template ~/.ssh/config from cached ssh_configured facts.
+# 3) Controller (again): template ~/.ssh/config from desired-state inputs.
 #
 # Single command (all deployed hosts):
 #   ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml
@@ -18,8 +18,8 @@
 - import_playbook: access_controller.yaml
 - import_playbook: access_windows.yaml
 
-# Re-run controller (ssh_config entry point only) to pick up ssh_configured
-# facts from the Windows play and template ~/.ssh/config for deployed hosts.
+# Re-run controller (ssh_config entry point only) after Windows access work so
+# ~/.ssh/config reflects the latest desired SSH surfaces.
 - name: Access - update controller SSH client config
   hosts: execution_nodes
   connection: local

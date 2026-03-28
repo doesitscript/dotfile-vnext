@@ -7,6 +7,7 @@ Current preferred path:
 - OpenSSH listens on the Windows host itself.
 - Direct SSH lands in a Windows shell via `DefaultShell`.
 - WSL is optional and out of scope unless `wsl_enabled=true`.
+- OpenSSH lifecycle is controlled by `openssh_server_state: present|absent`.
 
 ## Purpose
 
@@ -30,6 +31,7 @@ Current preferred path:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `openssh_server_state` | `present` | Desired lifecycle state for Windows OpenSSH |
 | `openssh_server_capability` | `OpenSSH.Server~~~~0.0.1.0` | Windows capability name |
 | `win_ssh_port` | `22` | Primary Windows OpenSSH listener |
 | `win_ssh_powershell_port` | `2223` | Legacy cleanup variable only; not an active preferred path |
@@ -76,3 +78,4 @@ Expected result: a Windows path such as `C:\Users\joshc`, not a WSL/Linux path.
 - This role no longer treats WSL as the default SSH landing shell.
 - `win_ssh_powershell_port` and older WSL-oriented SSH patterns remain only as legacy/reference cleanup material while the repo transitions.
 - If you want Linux companion access, treat that as separate work after Windows SSH is healthy.
+- The controller SSH config should render from durable desired-state inputs, not cached `ssh_configured` runtime facts.
