@@ -79,14 +79,19 @@ When this skill is invoked, you will adopt the `Planner` agent persona and execu
    - `AGENTS.md`
    - current runbooks and process docs
 2. Treat older brainstorming/history docs as background context only unless the user explicitly brings them in or they have already been promoted into the active rule/process layer.
-3. Decide whether current context is sufficient for planning.
-4. If the topic is novel, unstable, or under-researched:
+3. **Invoke the Ansible Maturity Observer subagent** via the Task tool using the
+   `ansible-maturity-observer` skill. Pass the named artifacts and current scope
+   as context. This runs in the background — do not wait for it before continuing
+   the context check. Append its output to the plan draft when it returns.
+4. Decide whether current context is sufficient for planning.
+5. If the topic is novel, unstable, or under-researched:
    - provide only a short current-direction recap
    - explicitly escalate to the `ansible-researcher` skill before producing a decision-complete plan
 5. Do not finalize a full blueprint from weak context.
 6. For Ansible design, placement, refactor-ownership, or technical-debt work, do not finalize the plan until the framework-mandated authority set is in context:
-   - `ansible.zen_of_ansible`
-   - `guidelines://ansible-content-best-practices`
+   - `ansible.zen_of_ansible` (tool call)
+   - `FetchMcpResource guidelines://ansible-content-best-practices` from the `ansible` server (resource fetch)
+   - `ansible.ade_environment_info` — confirm installed collections before recommending modules
    - relevant registered `@doc` sources
 7. When existing playbooks are candidate homes, also bring in:
    - `ansible-mcp.project_playbooks`
@@ -124,8 +129,13 @@ When this skill is invoked, you will adopt the `Planner` agent persona and execu
    - `Apply / Verify / Undo / Change class`
    - lifecycle control point for the capability
    - assumptions chosen
-3. Once the plan is accepted, store it under `docs/plans/` as the canonical durable artifact.
-4. When GitHub is available and the work benefits from backlog tracking, mirror the plan into a higher-level GitHub issue that points back to the repo plan.
+3. **Before presenting the final plan, invoke the Ansible Maturity Observer
+   subagent** via the Task tool using the `ansible-maturity-observer` skill.
+   Pass the full finalized plan as context. Append the observer's `Ansible
+   Maturity:` tag block to the end of the plan output. This is the lock-in
+   gate — every plan that leaves Phase 5 has been reviewed by the observer.
+4. Once the plan is accepted, store it under `docs/plans/` as the canonical durable artifact.
+5. When GitHub is available and the work benefits from backlog tracking, mirror the plan into a higher-level GitHub issue that points back to the repo plan.
 
 ### Guardrails
 

@@ -99,11 +99,11 @@ Gather evidence in this order:
 
 For Ansible-specific questions, the default MCP authority set is:
 - design / idiom / best-practice question
-  - `ansible.zen_of_ansible`
-  - `guidelines://ansible-content-best-practices`
+  - `ansible.zen_of_ansible` (tool call)
+  - `FetchMcpResource guidelines://ansible-content-best-practices` from the `ansible` server (resource fetch)
   - relevant registered `@doc` sources
 - environment / Python / collections / MCP runtime-env question
-  - `ansible.ade_environment_info`
+  - `ansible.ade_environment_info` (tool call)
   - `ansible.adt_check_env` when the question is specifically ADT health
 - inventory truth question
   - `ansible-mcp.inventory_graph`
