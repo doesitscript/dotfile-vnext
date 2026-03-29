@@ -7,10 +7,15 @@
 #   3. Hyper-V Ubuntu VM lifecycle on the Windows host
 #   4. controller SSH config refresh after VM facts are published
 #
-# Example:
-#   .venv/bin/ansible-playbook playbooks/server_225_hyperv_ubuntu_vm.yaml \
-#     -i inventory/inventory.yaml \
-#     --limit 'execution_nodes,server-225-win'
+# Commands:
+#   Full run (all 4 plays):
+#     ansible-playbook playbooks/server_225_hyperv_ubuntu_vm.yaml \
+#       -i inventory/inventory.yaml --limit 'execution_nodes,server-225-win'
+#
+#   VM lifecycle only (controller identity, networking, guest-route already converged):
+#     ansible-playbook playbooks/server_225_hyperv_ubuntu_vm.yaml \
+#       -i inventory/inventory.yaml --limit 'execution_nodes,server-225-win' \
+#       --tags hyperv_vm_lifecycle
 #
 # Troubleshooting:
 #   Run with --tags collect_hyperv to trigger artifact collection alongside the
@@ -29,6 +34,7 @@
   hosts: execution_nodes
   connection: local
   gather_facts: true
+  tags: [controller_identity]
 
   roles:
     - access_identity_controller
@@ -36,6 +42,7 @@
 - name: Server-225 Hyper-V networking prerequisites
   hosts: "{{ hyperv_ubuntu_vm_windows_host | default('server-225-win') }}"
   gather_facts: false
+  tags: [hyperv_networking]
 
   tasks:
     - name: Ensure Hyper-V host networking prerequisites are ready
@@ -46,6 +53,7 @@
   hosts: execution_nodes
   connection: local
   gather_facts: true
+  tags: [guest_route]
 
   tasks:
     - name: Ensure the controller can route to the Hyper-V guest subnet
@@ -56,13 +64,12 @@
 - name: Server-225 Hyper-V Ubuntu VM lifecycle
   hosts: "{{ hyperv_ubuntu_vm_windows_host | default('server-225-win') }}"
   gather_facts: false
+  tags: [hyperv_vm_lifecycle, collect_hyperv]
 
   tasks:
     - name: Ensure Hyper-V Ubuntu VM capability is in the requested lifecycle state
       ansible.builtin.include_role:
         name: hyperv_ubuntu_vm
-      tags:
-        - collect_hyperv
 
     - name: Collect Hyper-V Ubuntu VM troubleshooting artifacts
       ansible.builtin.include_role:
@@ -71,10 +78,12 @@
       tags:
         - never
         - collect_hyperv
+
 - name: Access - update controller SSH client config
   hosts: execution_nodes
   connection: local
   gather_facts: true
+  tags: [controller_ssh_config]
 
   tasks:
     - name: Generate SSH client config from deployed targets
