@@ -87,3 +87,49 @@
   tags:
     - evidence
     - debug_resources
+
+- name: Ensure host-side outbound NAT exists for routed guest subnet mode
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+
+      $natName = '{{ _hyperv_routed_nat_name }}'
+      $prefix = '{{ _hyperv_routed_guest_subnet_prefix }}'
+
+      $existing = Get-NetNat -Name $natName -ErrorAction SilentlyContinue | Select-Object -First 1
+
+      if (-not $existing) {
+        New-NetNat -Name $natName -InternalIPInterfaceAddressPrefix $prefix -ErrorAction Stop | Out-Null
+        $Ansible.Changed = $true
+      }
+      elseif ($existing.InternalIPInterfaceAddressPrefix -ne $prefix) {
+        Remove-NetNat -Name $natName -Confirm:$false -ErrorAction Stop
+        New-NetNat -Name $natName -InternalIPInterfaceAddressPrefix $prefix -ErrorAction Stop | Out-Null
+        $Ansible.Changed = $true
+      }
+
+      $natState = Get-NetNat -Name $natName -ErrorAction Stop | Select-Object -First 1
+
+      $Ansible.Result = @{
+        nat_name = $natState.Name
+        guest_subnet_ipv4 = $natState.InternalIPInterfaceAddressPrefix
+        active_sessions = $natState.ActiveSessionCount
+      }
+  register: _hyperv_routed_private_subnet_nat
+  when: _hyperv.guest_outbound_nat_enabled | default(true) | bool
+  vars:
+    _hyperv_routed_nat_name: "{{ _hyperv.guest_outbound_nat_name | default('HyperVGuestNat') }}"
+    _hyperv_routed_guest_subnet_prefix: "{{ _hyperv.guest_subnet_ipv4 | default('192.168.137.0/24') }}"
+
+- name: Report routed guest-subnet NAT status when troubleshooting
+  ansible.builtin.debug:
+    var: _hyperv_routed_private_subnet_nat.result
+  when:
+    - _hyperv.guest_outbound_nat_enabled | default(true) | bool
+    - (ansible_troubleshooting_mode | default(false) | bool) or
+      (debug_remote_output | default(false) | bool) or
+      (debug_collect_component_evidence | default(false) | bool)
+  tags:
+    - evidence
+    - debug_resources

@@ -21,6 +21,7 @@ The current working replacement is:
 - Hyper-V-native Ubuntu created from the official Ubuntu Server ISO installer
 - autoinstall-driven bootstrap
 - routed private subnet via the Windows host
+- host-owned outbound NAT on the Windows side for `192.168.137.0/24`
 - static guest address `192.168.137.10/24`
 - active SSH surface `joshc@server-225-ubuntu`
 
@@ -91,13 +92,21 @@ Current call hierarchy:
 - The guest now uses:
   - `192.168.137.10/24`
   - gateway `192.168.137.1`
+- Guest outbound internet is now proven:
+  - DNS resolution works
+  - `curl` to Ubuntu mirrors works
+  - `apt update` works
 - The generated SSH surface is:
   - `server-225-ubuntu`
 - The active runtime user is:
   - `joshc`
-- SSH reachability is proven from both the Windows host and the Mac/controller.
+- SSH reachability is proven from the Windows host and from the Mac/controller
+  via the generated `server-225-ubuntu` surface.
 - Docker engine targeting now points at the Ubuntu guest surface, not a legacy
   WSL surface.
+- Docker Engine is installed and verified on the Ubuntu guest.
+- The Mac Docker client can reach the remote engine over the generated SSH
+  surface.
 
 ## Verification Ladder
 
@@ -112,9 +121,9 @@ Current call hierarchy:
 ### Mac/controller
 
 - `route -n get 192.168.137.10`
-- `nc -vz -G 2 192.168.137.10 22`
 - `ssh server-225-ubuntu`
 - `ansible server-225-ubuntu -i inventory/inventory.yaml -m ping`
+- `docker --context mac-dev info`
 
 ### Guest console
 
@@ -125,6 +134,10 @@ Current call hierarchy:
 
 ## Remaining Near-Term Gaps
 
+- decide whether the Mac-to-guest access story should remain:
+  - direct routed-subnet SSH
+  - or the now-working generated SSH surface that can proxy through
+    `server-225-win`
 - keep tightening site-level comments/examples so readers see one canonical
   entrypoint instead of several almost-primary ones
 - validate higher-level consumers against the realized Ubuntu guest surface as

@@ -81,7 +81,42 @@ Current target:
 - keep the same private subnet
 - keep the same guest gateway
 - add explicit routing so the controller can reach the guest directly
+- add host-side outbound NAT so the guest can reach the wider network without
+  waiting on the router-static-route milestone
 
 So the routed-private-subnet design is not a throwaway replacement. It is the
 access-layer improvement on top of the stable private guest network we already
 proved out.
+
+## Current outbound-network posture
+
+The active implementation now treats outbound internet as a host-owned concern:
+
+- the Windows host remains the guest gateway at `192.168.137.1`
+- Windows forwarding keeps the controller/LAN reachability path
+- a host-owned `NetNat` object handles guest outbound internet for
+  `192.168.137.0/24`
+
+That means:
+
+- the guest can keep a stable private routed address
+- the guest does not have to wait on a router static route just to use `apt`
+
+## Current controller access note
+
+The repo currently has a working generated SSH surface for the guest even
+though the exact long-term Mac-to-guest access contract is still being
+tightened.
+
+Today, what is proven is:
+
+- the Windows host can reach `192.168.137.10`
+- the guest has outbound internet through the Windows-owned NAT path
+- the controller can reach the guest through the generated
+  `server-225-ubuntu` SSH surface
+
+What is still worth tightening later is whether the intended steady-state
+controller path should be:
+
+- direct routed SSH to the guest IP
+- or SSH mediated through `server-225-win`
