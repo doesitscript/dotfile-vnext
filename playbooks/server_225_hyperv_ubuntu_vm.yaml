@@ -12,6 +12,14 @@
 #     -i inventory/inventory.yaml \
 #     --limit 'execution_nodes,server-225-win'
 #
+# Troubleshooting:
+#   Run with --tags collect_hyperv to trigger artifact collection from the
+#   troubleshooting_collectors role alongside the normal lifecycle run.
+#   Artifacts land at: artifacts/troubleshooting/hyperv_ubuntu_vm/<host>/<timestamp>/
+#   Or run the dedicated collector directly:
+#     .venv/bin/ansible-playbook playbooks/troubleshoot/collect_hyperv_ubuntu_vm_artifacts.yaml \
+#       -i inventory/inventory.yaml
+#
 
 - name: Access - controller identity
   hosts: execution_nodes
@@ -49,6 +57,16 @@
     - name: Ensure Hyper-V Ubuntu VM capability is in the requested lifecycle state
       ansible.builtin.include_role:
         name: hyperv_ubuntu_vm
+      tags:
+        - collect_hyperv
+
+    - name: Collect Hyper-V Ubuntu VM troubleshooting artifacts
+      ansible.builtin.include_role:
+        name: troubleshooting_collectors
+        tasks_from: hyperv_ubuntu_vm.yml
+      tags:
+        - never
+        - collect_hyperv
 - name: Access - update controller SSH client config
   hosts: execution_nodes
   connection: local

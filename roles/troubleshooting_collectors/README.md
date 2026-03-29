@@ -1,30 +1,55 @@
 # troubleshooting_collectors
 
-Optional artifact collectors for troubleshooting runs.
+Artifact collectors for troubleshooting runs. Part of the repo's mirror-tree
+troubleshooting design.
 
-Purpose:
+## Mirror Tree Design
 
-- keep mandatory troubleshooting-mode reporting in the normal role/playbook path
-- provide an on-demand Ansible artifact-harvesting layer for failed or noisy
-  investigations
-- save artifacts under a controller-local, gitignored tree
+Every broken resource in this repo has (or should have) a corresponding
+collector that mirrors its structure:
 
-Evidence-quality floor:
+```
+Original playbook                        Troubleshooting mirror
+─────────────────────────────────────    ────────────────────────────────────────────────────
+playbooks/server_225_hyperv_ubuntu_vm    playbooks/troubleshoot/collect_hyperv_ubuntu_vm_artifacts.yaml
+  └─ role: hyperv_ubuntu_vm               └─ role: troubleshooting_collectors
+                                               tasks_from: hyperv_ubuntu_vm.yml
+```
+
+The collector runs FIRST when something breaks. Not after guessing. Not after
+re-running the broken playbook. First.
+
+## Two Entry Points
+
+**1. In-playbook tag** (run alongside the normal lifecycle):
+```bash
+ansible-playbook playbooks/server_225_hyperv_ubuntu_vm.yaml \
+  -i inventory/inventory.yaml \
+  --tags collect_hyperv
+```
+The `collect_hyperv` tag uses Ansible's `never` reserved tag — it is skipped
+on normal runs and only fires when explicitly requested.
+
+**2. Dedicated collector playbook** (standalone, no lifecycle side effects):
+```bash
+ansible-playbook playbooks/troubleshoot/collect_hyperv_ubuntu_vm_artifacts.yaml \
+  -i inventory/inventory.yaml
+```
+Prefer this when the broken playbook itself may not complete far enough to
+reach the tagged collector task.
+
+## Hard Gate
+
+You may not assess a failure without running a collector first.
+"I ran the collector" is not sufficient — the content of the artifact files
+is the evidence.
+
+## Evidence-Quality Floor
 
 - a collector is only useful if it preserves real output
-- preferred contents are raw stdout/stderr, event-log entries, service status,
-  CLI diagnostics, and structured probe results
+- preferred contents: raw stdout/stderr, event log entries as JSON, service
+  status, config file contents, CLI diagnostic output
 - "I ran X" with no saved output is not collector-grade evidence
-
-Troubleshooting-mode expectation:
-
-- after repeated failure, the agent must identify output locations for the
-  failing component
-- if those surfaces are not already being harvested, wiring a narrow collector
-  task file or dedicated troubleshoot playbook is part of the troubleshooting
-  implementation path
-- for Ansible retries, prefer `-vvv` as the default verbosity floor in
-  addition to component-native logs and probes
 
 Current collector task files:
 
