@@ -1,272 +1,146 @@
 # Server-225 Hyper-V Ubuntu VM Replacing Multipass
 
-Canonical approved plan for replacing the deprecated Multipass-backed
+Canonical implementation packet for replacing the retired Multipass-backed
 `server-225-ubuntu` surface with a Hyper-V-native Ubuntu VM on `server-225-win`.
 
 Tracked in GitHub issue [#4](https://github.com/doesitscript/dotfile-vnext/issues/4).
 
-Supporting research for the approved implementation direction lives in
-[research.md](/Users/joshc/develop/dotfile-vnext/docs/plans/2026-03-27--server-225-hyperv-ubuntu-vm-replacing-multipass/research.md).
-Runtime command evidence for the first implementation pass lives in
-[evidence--hyperv-live-runs.md](/Users/joshc/develop/dotfile-vnext/docs/plans/2026-03-27--server-225-hyperv-ubuntu-vm-replacing-multipass/evidence--hyperv-live-runs.md).
+Supporting background and proof remain here:
+
+- [research.md](/Users/joshc/develop/dotfile-vnext/docs/plans/2026-03-27--server-225-hyperv-ubuntu-vm-replacing-multipass/research.md)
+- [evidence--hyperv-live-runs.md](/Users/joshc/develop/dotfile-vnext/docs/plans/2026-03-27--server-225-hyperv-ubuntu-vm-replacing-multipass/evidence--hyperv-live-runs.md)
 
 ## Summary
 
-Abandon Multipass as the provisioning mechanism for `server-225-ubuntu`.
+Multipass is no longer the active implementation path for `server-225-ubuntu`.
 
-The repo direction is now:
+The current working replacement is:
 
-- keep `server-225-ubuntu` as the inventory host
-- retire the existing `multipass_ubuntu_vm` capability through its `absent`
-  lifecycle
-- replace it with a new Hyper-V-native Ubuntu VM role built around:
-  - Canonical Azure VHD as the primary source artifact
-  - source normalization on the Windows host before conversion
-  - Hyper-V-native `Convert-VHD` to the final fixed VHDX
-  - cloud-init ISO
-  - External Switch networking
-  - SSH publication back into inventory/controller config
+- `server-225-win` as the Windows control surface
+- `server-225-ubuntu` as the active Linux companion surface
+- Hyper-V-native Ubuntu created from the official Ubuntu Server ISO installer
+- autoinstall-driven bootstrap
+- routed private subnet via the Windows host
+- static guest address `192.168.137.10/24`
+- active SSH surface `joshc@server-225-ubuntu`
 
-## Adapted Repo-Specific Direction
+The repo is now converging on one canonical full-stack entrypoint:
 
-The intake note is already close to the right answer. The main repo-specific
-adaptation is sequencing:
+- [site.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/site.yaml)
 
-1. first checkpoint
-   - stop driving Multipass as `present`
-   - keep the legacy role and playbooks only as teardown/deprecation paths
-   - commit that checkpoint
-2. cleanup checkpoint
-   - run the legacy `absent` path to remove the old Multipass package/runtime
-   - remove active Multipass playbooks, host vars, and troubleshooting
-     entrypoints from the repo
-   - keep only background evidence and temporary reference material
-3. replacement checkpoint
-   - introduce a new `hyperv_ubuntu_vm` role instead of rewriting
-     `multipass_ubuntu_vm` in place
-   - add a dedicated `server_225_hyperv_ubuntu_vm` playbook
-   - keep cutover out of the broad server-225 provisioning path until runtime
-     verification succeeds
-4. cutover checkpoint
-   - switch active server-225 provisioning to the new Hyper-V-native role
-   - remove the old Multipass role/playbook once the replacement is proven
+Specialized playbooks remain as narrower operator loops, but they are no longer
+treated as competing primary entrypoints.
 
-## Why This Order
+## Current Architecture
 
-- the repo already has a working `absent` path for the old capability
-- using that path first is safer than deleting Multipass surfaces before the
-  old VM is intentionally retired
-- it gives a clean git checkpoint between deprecation and replacement
-- it preserves the reusable cloud-init/bootstrap ideas without pretending the
-  old implementation is still the desired direction
+### Canonical full-stack entrypoint
 
-## Chosen Replacement Shape
+- [site.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/site.yaml)
 
-Recommended path:
+Current call hierarchy:
 
-- new role: `hyperv_ubuntu_vm`
-- keep lifecycle state-based:
-  - `hyperv_ubuntu_vm_state: present | absent`
-- primary disk path:
-  - download Canonical Azure VHD tarball
-  - extract the published VHD on `server-225-win`
-  - clear sparse/compression on the source artifact
-  - run native `Convert-VHD` to the final fixed VHDX
-- keep the old raw `.img -> qemu-img -> vhdx` path only as fallback/legacy
-  experiment material, not as the first implementation candidate
-- carry forward from `multipass_ubuntu_vm`:
-  - cloud-init template pattern
-  - SSH key bootstrap pattern
-  - SSH publication outcome
-  - troubleshooting-mode evidence vocabulary where it still fits
+1. Windows base
+2. Hyper-V networking
+3. Access / identity surfaces
+4. Controller route to the guest subnet
+5. Hyper-V Ubuntu guest lifecycle
+6. Controller SSH config refresh after guest lifecycle
+7. Docker engine / client verification
 
-Do not carry forward:
+### Focused operator entrypoints
 
-- Multipass MSI install
-- `multipass` CLI calls
-- Multipass-specific networking probes and diagnostics as part of normal VM
-  lifecycle
+- [provision_windows_host.yml](/Users/joshc/develop/dotfile-vnext/playbooks/provision_windows_host.yml)
+  - Windows baseline only
+- [server_225_hyperv_ubuntu_vm.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/server_225_hyperv_ubuntu_vm.yaml)
+  - server-225 guest-oriented orchestration
+- [server_225_hyperv_ubuntu_vm_lifecycle_only.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/server_225_hyperv_ubuntu_vm_lifecycle_only.yaml)
+  - fast VM reinstall / iteration loop
+- [access.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/access.yaml)
+  - identity/access-only orchestration
+- [docker.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/docker.yaml)
+  - Docker-only orchestration and verification
 
-## Current Checkpoint Scope
+### Role ownership
 
-The completed cleanup work is still intentionally narrow.
+- `windows_base`
+  - Windows baseline features, policy, and host defaults
+- `hyperv_networking`
+  - Hyper-V features plus guest-network infrastructure on `server-225-win`
+- `hyperv_guest_route_mac`
+  - controller route to the guest private subnet
+- `access_identity_controller`
+  - controller SSH keypair and generated SSH config
+- `access_identity_windows`
+  - Windows OpenSSH and Windows access surfaces
+- `hyperv_ubuntu_vm`
+  - Ubuntu guest bootstrap, install, lifecycle, and publication
+- Docker roles
+  - consume the realized Linux companion surface instead of inventing it
 
-In scope now:
+## Fixed Now
 
-- set the active Multipass control surface to `absent`
-- reframe active playbooks/docs as legacy teardown paths
-- preserve the old capability only long enough to retire it safely
-- commit that state as a durable checkpoint
-- run host-side teardown and remove active deprecated Multipass entrypoints
-  from the repo
-- remove the live repo implementation role once the replacement direction is
-  proven and no playbook still depends on it
-
-Not in scope for this checkpoint:
-
-- full cutover into the broad server-225 provisioning play
-- deleting the archived Multipass reference role before the replacement is
-  proven
-
-## Apply / Verify / Undo / Change Class
-
-Apply:
-- run the legacy `absent` path to remove Multipass from `server-225-win`
-- remove active Multipass playbooks, host vars, and troubleshooting entrypoints
-  from the repo
-
-Verify:
-- verify the Multipass MSI/runtime is gone from `server-225-win`
-- syntax-check touched playbooks
-- inspect the active control surfaces to confirm they no longer advertise
-  Multipass as a supported path
-
-Undo:
-- restore the deleted playbooks/vars/docs from git
-- reinstall/recreate Multipass only as a deliberate exception, not as the
-  default direction
-
-Change class:
-- destructive host teardown plus idempotent repo cleanup
-
-## Current Replacement Update
-
-The original raw Ubuntu cloud-image conversion path is no longer the preferred
-implementation direction.
-
-Pinned runtime finding:
-
-- Canonical's published Azure VHD, after source normalization on
-  `server-225-win`, converted cleanly with native `Convert-VHD`
-- the resulting fixed VHDX booted `server-225-ubuntu` successfully
-
-Implementation consequence:
-
-- make the Azure VHD route the primary candidate
-- probe both source and destination artifacts before Hyper-V attach/start
-- keep the raw `.img` route only as fallback or legacy experiment material
-
-Current correction after live boot evidence:
-
-- the Azure-image / local-seed bootstrap path stopped producing new evidence
-- repeated boots reached `cloud-init`, but the guest kept falling back to Azure
-  datasource / IMDS behavior instead of consuming the local provisioning media
-  as intended
-- that path is now preserved as research, not as the active implementation
-  target
-- Quick Create follow-up result:
-  - Canonical Hyper-V Quick Create VHDX is now a validated Hyper-V-native
-    bootability checkpoint
-  - it reached the Ubuntu desktop first-run configuration UI in VMConnect
-  - that makes it a useful fallback, but not the right active target for an
-    unattended SSH/Docker server surface
-- next active image target:
-  - official Ubuntu Server ISO on Hyper-V
-- next explicit bootstrap follow-up:
-  - installer/autoinstall handoff for the Ubuntu Server ISO path
-  - current sub-checkpoint:
-    - installer ISO and `cidata` autoinstall seed are both attached
-    - fast VM-only lifecycle loops now preserve the large installer download
-    - if the installer still shows the normal welcome flow, the next solve is
-      bootloader/autoinstall handoff rather than seed creation
-
-## Current Networking Milestone
-
-The networking direction has now moved past the original External-switch plan
-and the earlier ICS-only checkpoint.
-
-Current preferred topology on `server-225-win`:
-
-- keep the host control plane on `vEthernet (External)` on the LAN
-- keep the Ubuntu guest on an Internal Hyper-V switch
-- keep the private guest subnet on `192.168.137.0/24`
-- make `server-225-win` the transit host between the LAN and that guest subnet
-- first add a Mac-only route to the guest subnet
-- later promote the same route to the router for whole-LAN reachability
-
-What this milestone has already proven:
-
-- the old guest/host DHCP-IP collision on the Wi-Fi-backed External switch path
-  is no longer the active blocker
-- the guest can boot and obtain a private ICS-subnet IPv4
-- the Windows host can see and probe that guest address on the private subnet
-- the Mac/controller route can be installed toward that private subnet through
-  `server-225-win`
-
-What remains in progress:
-
-- proving stable SSH authentication from the routed guest address
-- whole-LAN reachability as the later router-static-route milestone
-- bounded follow-up test:
-  - try Secure Boot disabled on the Generation 2 VM if current console evidence
-    suggests the guest is not reaching a healthy userspace/SSH state despite
-    booting and receiving a private IPv4
-- faster iteration improvements now in place:
-  - `absent` preserves downloaded installer/source artifacts instead of
-    deleting the whole host artifact directory
-  - a lighter VM-only control surface exists at
-    [server_225_hyperv_ubuntu_vm_lifecycle_only.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/server_225_hyperv_ubuntu_vm_lifecycle_only.yaml)
-    for loops where controller identity, networking, and guest-route setup are
-    already converged
-
-Reference layout note:
-
-- [hyperv-network-layout--windows--wifi-ics.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-network-layout--windows--wifi-ics.md)
-- [hyperv-network-layout--windows--routed-private-subnet.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-network-layout--windows--routed-private-subnet.md)
-
-Pinned routed-network evidence:
-
-- Windows host reached guest-private-subnet addresses during the Hyper-V Ubuntu
-  runs
-- Mac/controller now proves routed reachability to `192.168.137.10`
-- Mac/controller now proves `22/tcp` reachability to `192.168.137.10`
-- guest-side install is now using a static routed-subnet address:
+- Multipass has been retired from the active implementation path.
+- Active WSL surfaces have been removed from playbooks, roles, and inventory as
+  first-class runtime targets.
+- `server-225-ubuntu` is the active Linux companion surface.
+- The guest is installed through the Ubuntu Server ISO installer path, not the
+  earlier Azure-image or Quick Create candidate paths.
+- Bootstrap is handled through autoinstall.
+- The networking model is routed private subnet via `server-225-win`, not the
+  older Wi-Fi External-switch path.
+- The guest now uses:
   - `192.168.137.10/24`
   - gateway `192.168.137.1`
-- current remaining blocker:
-  - SSH authentication acceptance for `ubuntu@192.168.137.10`
+- The generated SSH surface is:
+  - `server-225-ubuntu`
+- The active runtime user is:
+  - `joshc`
+- SSH reachability is proven from both the Windows host and the Mac/controller.
+- Docker engine targeting now points at the Ubuntu guest surface, not a legacy
+  WSL surface.
 
-Current verification ladder:
+## Verification Ladder
 
-- Windows host:
-  - `Test-Connection 192.168.137.10 -Count 1`
-  - `Test-NetConnection -ComputerName 192.168.137.10 -Port 22`
-  - `Get-NetNeighbor -IPAddress 192.168.137.10`
-- Mac/controller:
-  - `route -n get 192.168.137.10`
-  - `nc -vz -G 2 192.168.137.10 22`
-  - `ssh -i ~/.ssh/id_ed25519_ansible -o IdentitiesOnly=yes ubuntu@192.168.137.10`
-- Guest console:
-  - `ip -br addr`
-  - `ip route`
-  - `systemctl is-active ssh`
-  - `ss -ltnp | grep ':22'`
+### Windows host
 
-Current console interpretation note:
+- `Get-VM -Name server-225-ubuntu | Select-Object Name,State,Status,Uptime`
+- `Get-VMDvdDrive -VMName server-225-ubuntu`
+- `Test-Connection 192.168.137.10 -Count 1`
+- `Test-NetConnection -ComputerName 192.168.137.10 -Port 22`
+- `Get-NetNeighbor -IPAddress 192.168.137.10`
 
-- VMConnect may continue to show Subiquity/log output even when the installed
-  guest is already up and reachable on the routed subnet
-- once host ping and host/controller `22/tcp` probes succeed, treat those as
-  stronger truth than stale tty output alone
+### Mac/controller
 
-## Current Cleanup Status
+- `route -n get 192.168.137.10`
+- `nc -vz -G 2 192.168.137.10 22`
+- `ssh server-225-ubuntu`
+- `ansible server-225-ubuntu -i inventory/inventory.yaml -m ping`
 
-Repo cleanup completed:
+### Guest console
 
-- the live `roles/multipass_ubuntu_vm/` implementation has been removed
-- stray Multipass troubleshooting artifacts under
-  `playbooks/troubleshoot/artifacts/troubleshooting/multipass_bridge_failure/`
-  have been removed
+- `ip -br addr`
+- `ip route`
+- `systemctl is-active ssh`
+- `ss -ltnp | grep ':22'`
 
-Host cleanup blocked:
+## Remaining Near-Term Gaps
 
-- `server-225-win` is currently unreachable at the network layer, so the
-  destructive host-side teardown could not be completed in this pass
+- keep tightening site-level comments/examples so readers see one canonical
+  entrypoint instead of several almost-primary ones
+- validate higher-level consumers against the realized Ubuntu guest surface as
+  more services move onto `server-225-ubuntu`
+- review background/history docs that still describe older implementation
+  mechanics as if they were current
+- explicitly review service-role semantics that were previously expressed
+  through legacy WSL naming so role ownership stays intentional
 
-Pinned blocker evidence:
+## What This Packet Does Not Own
 
-```text
-ssh: connect to host DESKTOP-VLLM port 22: Host is down
-nc: connectx to DESKTOP-VLLM port 5985 (tcp) failed: Host is down
-? (192.168.50.158) at (incomplete) on en0 ifscope [ethernet]
-```
+This packet documents the current Hyper-V replacement implementation. It does
+not own the broader vNext design work for:
+
+- future `linux_companion` / `node_companion_linux` role-family refactors
+- planner / observer / coordinator maturity improvements
+- larger deprecation-framework lessons beyond the current implementation packet
+
+Those belong in the future-state planning track, not in this fixed-now packet.

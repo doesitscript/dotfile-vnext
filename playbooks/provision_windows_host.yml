@@ -1,19 +1,19 @@
 ---
-# Master bootstrap sequence for all Windows hosts.
-# Declares the full dependency order for provisioning from scratch.
-# Each sub-playbook is idempotent and independently runnable.
-# Run this playbook to provision or re-provision any Windows host end-to-end.
+# Windows host baseline orchestrator.
 #
-# Dependency order is the contract:
-#   1. windows_base        — features, power, registry, firewall baseline (all Windows hosts)
+# This playbook owns only the Windows-side baseline stack:
+#   1. windows_base        — features, power, registry, firewall baseline
 #   2. hyperv_networking   — Hyper-V features + Windows/guest networking
-#   3. access              — SSH identity pipeline: controller keys and OpenSSH
+#   3. access              — controller keys + Windows OpenSSH surfaces
+#
+# The canonical full-stack entrypoint is playbooks/site.yaml.
+# Use this playbook when you want the Windows baseline only.
 #
 # Usage:
-#   Full provision (all Windows hosts):
+#   Windows baseline for all Windows hosts:
 #     ansible-playbook playbooks/provision_windows_host.yml
 #
-#   Single host:
+#   Single Windows host:
 #     ansible-playbook playbooks/provision_windows_host.yml --limit server-225-win
 #
 - name: Step 1 - Windows base configuration

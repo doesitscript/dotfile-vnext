@@ -25,14 +25,14 @@ This role is intended to become the supported provisioning direction for
 `server-225-ubuntu`, but the broad cutover should happen only after runtime
 verification through the dedicated playbook.
 
-Current pivot:
+Current active direction:
 
 - the Azure cloud-image path remains preserved in the role as researched work,
   but it is no longer the only candidate
 - the Canonical Hyper-V Quick Create VHDX path is now preserved as a validated
   Hyper-V-native fallback/checkpoint
-- the next active target is the official Ubuntu Server ISO installer path
-  because it is better aligned with the eventual SSH/Docker server target
+- the official Ubuntu Server ISO installer path is the active implementation
+  target because it is aligned with the eventual SSH/Docker server target
 
 ## Lifecycle Contract
 
@@ -124,8 +124,7 @@ Dedicated saved-artifact playbook:
     - treat it as a console-first desktop fallback unless
       `hyperv_ubuntu_vm_publish_connection_facts: true` is explicitly set
   - `server_iso_installer`
-    - use the official Ubuntu Server ISO as the active next server-aligned
-      target
+    - use the official Ubuntu Server ISO as the active server-aligned target
     - validate the ISO with a HEAD probe plus `SHA256SUMS` and download it
       through a BITS-backed path on Windows
     - create a blank role-owned VM disk, attach the installer ISO, and boot the
@@ -150,7 +149,7 @@ Current verification commands:
 - Mac/controller:
   - `route -n get 192.168.137.10`
   - `nc -vz -G 2 192.168.137.10 22`
-  - `ssh -i ~/.ssh/id_ed25519_ansible -o IdentitiesOnly=yes ubuntu@192.168.137.10`
+  - `ssh -i ~/.ssh/id_ed25519_ansible -o IdentitiesOnly=yes joshc@192.168.137.10`
 - Guest console:
   - `ip -br addr`
   - `ip route`
