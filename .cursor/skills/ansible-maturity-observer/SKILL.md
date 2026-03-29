@@ -52,6 +52,9 @@ Use these tools:
   this work before a new one is proposed
 - `FetchMcpResource guidelines://ansible-content-best-practices` from the
   `ansible` server — fetch before evaluating any pattern or structural question
+- `ansible-mcp.validate_yaml` — run against raw YAML files in scope (templates,
+  vars files, host_vars) that are not playbooks; `ansible_lint` covers task
+  files and playbooks, `validate_yaml` covers everything else
 - Read the relevant role's `defaults/main.yml` and `meta/argument_specs.yml`
   when a specific role is in scope
 
