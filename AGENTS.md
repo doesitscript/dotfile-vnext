@@ -28,6 +28,10 @@ startup source that is guaranteed to be auto-injected.
 At the start of a fresh Codex session in this repo, before substantive work,
 output a short:
 
+`Agent: Codex (OpenAI)`
+
+followed by:
+
 `Instruction sources in effect:`
 
 Include:

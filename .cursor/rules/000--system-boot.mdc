@@ -33,8 +33,20 @@ After the tools complete, the agent **MUST** produce a one-paragraph internal sy
 
 As the final step of the boot sequence, the agent will present its formal greeting to the user, which **MUST** include:
 
-1.  **Active Persona Announcement:** Announce the starting mode (e.g., `Agent Mode`) and the default persona for that mode (e.g., `Implementer`).
-2.  **Rules Summary:** A list of all rules that were loaded, as previously defined.
+1.  **Agent Identity:** Identify the active runtime using this format:
+    `Agent: [runtime] ([model or backend])`
+
+    Use the appropriate identity based on the active session:
+    - Cursor session: `Agent: Cursor (Claude)`
+    - Codex/OpenAI session: `Agent: Codex (OpenAI)`
+    - If the runtime is ambiguous, state: `Agent: Unknown runtime — check session context`
+
+    This line must appear first in the greeting so outputs from different agent
+    systems are immediately distinguishable in logs, docs, and conversation history.
+
+2.  **Active Persona Announcement:** Announce the starting mode (e.g., `Agent Mode`) and the default persona for that mode (e.g., `Implementer`).
+
+3.  **Rules Summary:** A list of all rules that were loaded, as previously defined.
 
 Do not proceed to the user's first request until this entire sequence is complete.
 
