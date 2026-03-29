@@ -117,9 +117,32 @@ off for future planning — not added to the current work.
 
 The architect's interaction surface is **Cursor only**. It is implemented as:
 
-1. An `alwaysApply` Cursor rule that is present in every Cursor session
-2. A skill file invoked as a subagent via the Cursor Task tool
-3. Wired invocation points inside the `ansible-planner` skill at Phase 2 and Phase 5
+1. Native Cursor subagent definitions under `.cursor/agents/` — one file per
+   specialist (coordinator, planner, researcher, maturity-observer), each
+   pointing to its `SKILL.md` for instructions
+2. Skill files under `.cursor/skills/ansible-*/SKILL.md` — the actual
+   instruction sets for each specialist
+3. Wired invocation points inside the `ansible-planner` skill at Phase 2 and
+   Phase 5 that automatically dispatch the maturity observer
+
+There is no `alwaysApply` rule. The architect is not ambient — it is invoked
+deliberately at planning time, either by the coordinator dispatching it or by
+you using one of the explicit phrases above.
 
 Codex does not load these automatically. Codex benefits from the architect by
 working with plans that passed through Cursor planning sessions.
+
+### Primary entry point
+
+For a full planning session, invoke the **coordinator** — it owns the team and
+decides which specialists to dispatch:
+
+> "Use the ansible-coordinator — we're planning [describe the work]"
+
+For a focused planning pass without the full team:
+
+> "Use the ansible-planner — [describe the work]"
+
+For a maturity review of an existing plan only:
+
+> "Observer pass on this plan before we finalize"

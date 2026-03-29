@@ -22,6 +22,14 @@
 #   Debug diagnostics only:
 #     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit server-225-win --tags debug
 #
+# Troubleshooting:
+#   Run with --tags collect_windows_remote_access to trigger artifact collection
+#   (WinRM, OpenSSH, firewall) alongside the normal identity run.
+#   Artifacts land at: artifacts/troubleshooting/windows_remote_access/<host>/<timestamp>/
+#   Or run the dedicated collector directly:
+#     .venv/bin/ansible-playbook playbooks/troubleshoot/collect_windows_remote_access_artifacts.yaml \
+#       -i inventory/inventory.yaml
+#
 # Linux guest access is not configured here. Once a Hyper-V Ubuntu guest exists
 # and has realized SSH connection facts, its generated `-ubuntu` SSH surface is
 # rendered by the controller pass in playbooks/access.yaml.
@@ -41,3 +49,11 @@
       ansible.builtin.include_role:
         name: access_identity_windows
       tags: [always]
+
+    - name: Collect Windows remote access troubleshooting artifacts
+      ansible.builtin.include_role:
+        name: troubleshooting_collectors
+        tasks_from: windows_remote_access.yml
+      tags:
+        - never
+        - collect_windows_remote_access
