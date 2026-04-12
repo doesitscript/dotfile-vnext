@@ -133,3 +133,148 @@
   tags:
     - evidence
     - debug_resources
+
+- name: Ensure IP Helper service is enabled for guest published TCP ports
+  ansible.windows.win_service:
+    name: iphlpsvc
+    start_mode: auto
+    state: started
+  when:
+    - (_hyperv.guest_published_tcp_ports | default([])) | length > 0
+
+- name: Ensure guest published TCP ports are present on the Windows host
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+
+      $desired = @'
+      {{ _hyperv_guest_published_tcp_ports | to_json }}
+      '@ | ConvertFrom-Json
+
+      $raw = netsh interface portproxy show v4tov4
+      $existing = @{}
+      foreach ($line in $raw) {
+        if ($line -match '^\s*(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s*$') {
+          $key = "$($matches[1]):$($matches[2])"
+          $existing[$key] = @{
+            listen_address = $matches[1]
+            listen_port = [int]$matches[2]
+            connect_address = $matches[3]
+            connect_port = [int]$matches[4]
+          }
+        }
+      }
+
+      foreach ($entry in $desired) {
+        $key = "$($entry.listen_address):$($entry.listen_port)"
+        $current = $existing[$key]
+        $needsReset = $false
+
+        if ($null -eq $current) {
+          $needsReset = $true
+        }
+        elseif (
+          $current.connect_address -ne $entry.connect_address -or
+          $current.connect_port -ne [int]$entry.connect_port
+        ) {
+          netsh interface portproxy delete v4tov4 listenaddress=$($entry.listen_address) listenport=$($entry.listen_port) | Out-Null
+          $needsReset = $true
+          $Ansible.Changed = $true
+        }
+
+        if ($needsReset) {
+          netsh interface portproxy add v4tov4 listenaddress=$($entry.listen_address) listenport=$($entry.listen_port) connectaddress=$($entry.connect_address) connectport=$($entry.connect_port) | Out-Null
+          $Ansible.Changed = $true
+        }
+      }
+
+      $final = @()
+      foreach ($entry in $desired) {
+        $final += [PSCustomObject]@{
+          name = $entry.name
+          listen_address = $entry.listen_address
+          listen_port = [int]$entry.listen_port
+          connect_address = $entry.connect_address
+          connect_port = [int]$entry.connect_port
+        }
+      }
+
+      $Ansible.Result = @{
+        state = 'present'
+        ports = $final
+      }
+  register: _hyperv_routed_private_subnet_published_ports
+  when:
+    - (_hyperv.guest_published_tcp_ports | default([])) | length > 0
+    - (_hyperv.guest_published_tcp_ports_state | default('present')) == 'present'
+  vars:
+    _hyperv_guest_published_tcp_ports: "{{ _hyperv.guest_published_tcp_ports | default([]) }}"
+
+- name: Ensure guest published TCP ports are absent on the Windows host
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+
+      $desired = @'
+      {{ _hyperv_guest_published_tcp_ports | to_json }}
+      '@ | ConvertFrom-Json
+
+      foreach ($entry in $desired) {
+        $raw = netsh interface portproxy show v4tov4
+        $match = $false
+        foreach ($line in $raw) {
+          if ($line -match '^\s*(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s*$') {
+            if (
+              $matches[1] -eq $entry.listen_address -and
+              [int]$matches[2] -eq [int]$entry.listen_port
+            ) {
+              $match = $true
+            }
+          }
+        }
+
+        if ($match) {
+          netsh interface portproxy delete v4tov4 listenaddress=$($entry.listen_address) listenport=$($entry.listen_port) | Out-Null
+          $Ansible.Changed = $true
+        }
+      }
+
+      $Ansible.Result = @{
+        state = 'absent'
+        ports = $desired
+      }
+  register: _hyperv_routed_private_subnet_published_ports_absent
+  when:
+    - (_hyperv.guest_published_tcp_ports | default([])) | length > 0
+    - (_hyperv.guest_published_tcp_ports_state | default('present')) == 'absent'
+  vars:
+    _hyperv_guest_published_tcp_ports: "{{ _hyperv.guest_published_tcp_ports | default([]) }}"
+
+- name: Ensure Windows firewall rules exist for guest published TCP ports
+  community.windows.win_firewall_rule:
+    name: "Hyper-V Guest Published TCP {{ item.name | default(item.listen_port) }}"
+    localport: "{{ item.listen_port }}"
+    action: allow
+    direction: in
+    enabled: true
+    protocol: tcp
+    state: present
+  loop: "{{ _hyperv.guest_published_tcp_ports | default([]) }}"
+  when:
+    - (_hyperv.guest_published_tcp_ports | default([])) | length > 0
+    - (_hyperv.guest_published_tcp_ports_state | default('present')) == 'present'
+
+- name: Report guest published TCP ports when troubleshooting
+  ansible.builtin.debug:
+    var: _hyperv_routed_private_subnet_published_ports.result
+  when:
+    - (_hyperv.guest_published_tcp_ports | default([])) | length > 0
+    - (_hyperv.guest_published_tcp_ports_state | default('present')) == 'present'
+    - (ansible_troubleshooting_mode | default(false) | bool) or
+      (debug_remote_output | default(false) | bool) or
+      (debug_collect_component_evidence | default(false) | bool)
+  tags:
+    - evidence
+    - debug_resources
