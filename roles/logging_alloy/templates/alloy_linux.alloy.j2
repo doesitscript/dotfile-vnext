@@ -12,36 +12,42 @@
 // Journal source — collects all entries with metadata labels
 // ---------------------------------------------------------------------------
 
+loki.relabel "journal_labels" {
+  forward_to = [loki.process.journal_filter.receiver]
+
+  // Map systemd unit name to a queryable label
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+
+  // Map priority keyword (emerg/alert/crit/err/warning/notice/info/debug)
+  rule {
+    source_labels = ["__journal__priority_keyword"]
+    target_label  = "level"
+  }
+
+  // Map syslog identifier (process name — useful for auth events)
+  rule {
+    source_labels = ["__journal__syslog_identifier"]
+    target_label  = "identifier"
+  }
+
+  // Map transport (syslog / journal / kernel / stdout)
+  rule {
+    source_labels = ["__journal__transport"]
+    target_label  = "transport"
+  }
+}
+
 loki.source.journal "system" {
   max_age    = "12h"
   labels     = {
     job  = "journal",
     host = "{{ ansible_hostname }}",
   }
-  forward_to = [loki.process.journal_filter.receiver]
-
-  relabel_rules {
-    // Map systemd unit name to a queryable label
-    rule {
-      source_labels = ["__journal__systemd_unit"]
-      target_label  = "unit"
-    }
-    // Map priority keyword (emerg/alert/crit/err/warning/notice/info/debug)
-    rule {
-      source_labels = ["__journal__priority_keyword"]
-      target_label  = "level"
-    }
-    // Map syslog identifier (process name — useful for auth events)
-    rule {
-      source_labels = ["__journal__syslog_identifier"]
-      target_label  = "identifier"
-    }
-    // Map transport (syslog / journal / kernel / stdout)
-    rule {
-      source_labels = ["__journal__transport"]
-      target_label  = "transport"
-    }
-  }
+  forward_to    = [loki.relabel.journal_labels.receiver]
+  relabel_rules = loki.relabel.journal_labels.rules
 }
 
 // ---------------------------------------------------------------------------
@@ -55,30 +61,24 @@ loki.process "journal_filter" {
   // Stage 1: Mark targeted service units for full verbosity retention
   stage.match {
     selector = `{unit=~"{{ logging_alloy_linux_targeted_units | join('|') }}"}`
-    pipeline_stages {
-      stage.static_labels {
-        values = { targeted = "true" }
-      }
+    stage.static_labels {
+      values = { targeted = "true" }
     }
   }
 
   // Stage 2: Mark auth-related syslog identifiers for full verbosity retention
   stage.match {
     selector = `{identifier=~"{{ logging_alloy_linux_auth_identifiers | join('|') }}"}`
-    pipeline_stages {
-      stage.static_labels {
-        values = { targeted = "true" }
-      }
+    stage.static_labels {
+      values = { targeted = "true" }
     }
   }
 
   // Stage 3: Mark kernel transport entries (OOM kills, filesystem, network driver events)
   stage.match {
     selector = `{transport="kernel"}`
-    pipeline_stages {
-      stage.static_labels {
-        values = { targeted = "true" }
-      }
+    stage.static_labels {
+      values = { targeted = "true" }
     }
   }
 

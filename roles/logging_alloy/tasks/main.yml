@@ -11,7 +11,7 @@
     file: windows.yml
     apply:
       tags: [logging, logging_alloy, logging_windows]
-  when: ansible_os_family == "Windows"
+  when: ansible_os_family is defined and ansible_os_family == "Windows"
   tags: [logging, logging_alloy, logging_windows]
 
 - name: Include Linux agent tasks
@@ -19,7 +19,7 @@
     file: linux.yml
     apply:
       tags: [logging, logging_alloy, logging_linux]
-  when: ansible_os_family in ["Debian", "RedHat"]
+  when: ansible_os_family is defined and ansible_os_family in ["Debian", "RedHat"]
   tags: [logging, logging_alloy, logging_linux]
 
 - name: Include macOS agent tasks
@@ -27,5 +27,5 @@
     file: macos.yml
     apply:
       tags: [logging, logging_alloy, logging_macos]
-  when: ansible_os_family == "Darwin"
+  when: ansible_os_family is defined and ansible_os_family == "Darwin"
   tags: [logging, logging_alloy, logging_macos]

@@ -48,11 +48,13 @@
   hosts: "windows_hosts:linux_vm_hosts:mac_dev"
   gather_facts: true
   become: false
+  ignore_unreachable: true
 
   pre_tasks:
     - name: Skip Windows hosts not using WinRM (avoids SSH-mode Windows confusion)
       ansible.builtin.meta: end_host
       when: >-
+        ansible_os_family is defined and
         ansible_os_family == "Windows" and
         (ansible_connection | default('ssh')) != 'winrm'
       tags: [always]

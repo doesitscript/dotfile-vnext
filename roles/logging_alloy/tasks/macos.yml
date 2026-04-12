@@ -12,17 +12,24 @@
     state: present
   tags: [logging, logging_alloy, logging_macos, logging_install]
 
-- name: Install Alloy via Homebrew
-  community.general.homebrew:
-    name: grafana/grafana/alloy
-    state: present
-  tags: [logging, logging_alloy, logging_macos, logging_install]
-
 - name: Detect Homebrew prefix
   ansible.builtin.command: brew --prefix
   register: _alloy_homebrew_prefix
   changed_when: false
   tags: [logging, logging_alloy, logging_macos, logging_config]
+
+- name: Wait for any in-progress Alloy Homebrew build to release its lock
+  ansible.builtin.wait_for:
+    path: "{{ _alloy_homebrew_prefix.stdout }}/var/homebrew/locks/alloy.formula.lock"
+    state: absent
+    timeout: 3600
+  tags: [logging, logging_alloy, logging_macos, logging_install]
+
+- name: Install Alloy via Homebrew
+  community.general.homebrew:
+    name: grafana/grafana/alloy
+    state: present
+  tags: [logging, logging_alloy, logging_macos, logging_install]
 
 - name: Ensure Alloy config directory exists
   ansible.builtin.file:

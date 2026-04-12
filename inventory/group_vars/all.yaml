@@ -40,9 +40,19 @@ dotfiles_user_home: >-
 
 # ─── Logging stack ────────────────────────────────────────────────────────────
 # Loki push endpoint — all Alloy agents on every host send logs here.
-# Single place to change when the Loki server moves.
-# This overrides the role default in logging_alloy/defaults/main.yml.
-logging_alloy_loki_endpoint: "http://network-server-ubuntu:3100/loki/api/v1/push"
+# It follows the active logging_server assignment instead of hardcoding a node
+# name. If the active logging server needs a published/public endpoint distinct
+# from its own host_ip, define logging_loki_public_endpoint on that host.
+logging_alloy_loki_endpoint: >-
+  {{
+    hostvars[(groups['logging_server'] | first)].logging_loki_public_endpoint
+    | default(
+      'http://' ~ (
+        hostvars[(groups['logging_server'] | first)].host_ip
+        | default(hostvars[(groups['logging_server'] | first)].ansible_host)
+      ) ~ ':3100/loki/api/v1/push'
+    )
+  }}
 
 # ─── Codex / Cursor tooling versions ────────────────────────────────────────
 # Shared version contract for the local Codex runtime and the Codex Cursor
