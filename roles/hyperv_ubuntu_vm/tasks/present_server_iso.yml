@@ -360,6 +360,49 @@
   changed_when: false
   when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
 
+- name: Detach mounted remastered Ubuntu Server ISO before replacing it
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
+      if (-not $vm) {
+        $Ansible.Result = @{ vm_exists = $false; detached = $false }
+        Exit 0
+      }
+
+      $installerDvds = @(Get-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue |
+        Where-Object { $_.Path -eq '{{ hyperv_ubuntu_vm_host_server_iso_custom_path }}' })
+
+      if (-not $installerDvds) {
+        $Ansible.Result = @{ vm_exists = $true; detached = $false }
+        Exit 0
+      }
+
+      if ($vm.State.ToString() -eq 'Running') {
+        Stop-VM -Name '{{ hyperv_ubuntu_vm_name }}' -Force -TurnOff -Confirm:$false | Out-Null
+      }
+
+      foreach ($dvd in $installerDvds) {
+        Remove-VMDvdDrive `
+          -VMName '{{ hyperv_ubuntu_vm_name }}' `
+          -ControllerNumber $dvd.ControllerNumber `
+          -ControllerLocation $dvd.ControllerLocation `
+          -Confirm:$false
+      }
+
+      $Ansible.Changed = $true
+      $Ansible.Result = @{
+        vm_exists = $true
+        detached = $true
+      }
+  when:
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+    - _hyperv_ubuntu_vm_host_custom_signature_probe.result.exists | default(false)
+    - >-
+      (_hyperv_ubuntu_vm_host_custom_signature_probe.result.signature | default('') | trim)
+      != (_hyperv_ubuntu_vm_server_iso_custom_signature | trim)
+
 - name: Remove stale remastered Ubuntu Server ISO from Windows host when signature mismatches
   ansible.windows.win_file:
     path: "{{ item }}"
