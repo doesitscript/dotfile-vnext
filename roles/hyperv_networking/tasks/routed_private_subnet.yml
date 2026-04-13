@@ -10,6 +10,37 @@
     data: 1
     type: dword
 
+- name: Ensure Windows Routing role service is installed for routed guest subnet mode
+  ansible.windows.win_feature:
+    name: Routing
+    include_management_tools: true
+    state: present
+
+- name: Ensure Remote Access is configured for routing-only mode
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      Import-Module RemoteAccess -ErrorAction Stop
+
+      $current = Get-RemoteAccess -ErrorAction Stop
+      if ($current.RoutingStatus -ne 'Installed') {
+        Install-RemoteAccess -VpnType RoutingOnly -PassThru -ErrorAction Stop | Out-Null
+        $Ansible.Changed = $true
+        $current = Get-RemoteAccess -ErrorAction Stop
+      }
+
+      $Ansible.Result = @{
+        routing_status = $current.RoutingStatus
+      }
+  register: _hyperv_routed_remote_access_role
+
+- name: Ensure RemoteAccess service is running for routed guest subnet mode
+  ansible.windows.win_service:
+    name: RemoteAccess
+    start_mode: manual
+    state: started
+
 - name: Ensure guest gateway IP and IPv4 forwarding are enabled for routed guest subnet mode
   ansible.windows.win_powershell:
     error_action: stop
@@ -37,8 +68,18 @@
       $results = @()
       foreach ($alias in @($publicAlias, $privateAlias)) {
         $iface = Get-NetIPInterface -InterfaceAlias $alias -AddressFamily IPv4 -ErrorAction Stop | Select-Object -First 1
-        if ($iface.Forwarding -ne 'Enabled') {
-          Set-NetIPInterface -InterfaceAlias $alias -AddressFamily IPv4 -Forwarding Enabled -ErrorAction Stop
+        if (
+          $iface.Forwarding -ne 'Enabled' -or
+          $iface.WeakHostReceive -ne 'Enabled' -or
+          $iface.WeakHostSend -ne 'Enabled'
+        ) {
+          Set-NetIPInterface `
+            -InterfaceAlias $alias `
+            -AddressFamily IPv4 `
+            -Forwarding Enabled `
+            -WeakHostReceive Enabled `
+            -WeakHostSend Enabled `
+            -ErrorAction Stop
           $Ansible.Changed = $true
           $iface = Get-NetIPInterface -InterfaceAlias $alias -AddressFamily IPv4 -ErrorAction Stop | Select-Object -First 1
         }
@@ -47,6 +88,8 @@
           InterfaceAlias  = $iface.InterfaceAlias
           InterfaceIndex  = $iface.InterfaceIndex
           Forwarding      = $iface.Forwarding.ToString()
+          WeakHostReceive = $iface.WeakHostReceive.ToString()
+          WeakHostSend    = $iface.WeakHostSend.ToString()
           InterfaceMetric = $iface.InterfaceMetric
         }
       }
@@ -122,11 +165,40 @@
     _hyperv_routed_nat_name: "{{ _hyperv.guest_outbound_nat_name | default('HyperVGuestNat') }}"
     _hyperv_routed_guest_subnet_prefix: "{{ _hyperv.guest_subnet_ipv4 | default('192.168.137.0/24') }}"
 
+- name: Ensure host-side outbound NAT is absent when direct routed guest access is desired
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+
+      $natName = '{{ _hyperv_routed_nat_name }}'
+      $existing = Get-NetNat -Name $natName -ErrorAction SilentlyContinue | Select-Object -First 1
+
+      if ($existing) {
+        Remove-NetNat -Name $natName -Confirm:$false -ErrorAction Stop
+        $Ansible.Changed = $true
+      }
+
+      $Ansible.Result = @{
+        nat_name = $natName
+        present = [bool](Get-NetNat -Name $natName -ErrorAction SilentlyContinue | Select-Object -First 1)
+      }
+  register: _hyperv_routed_private_subnet_nat_absent
+  when: not (_hyperv.guest_outbound_nat_enabled | default(true) | bool)
+  vars:
+    _hyperv_routed_nat_name: "{{ _hyperv.guest_outbound_nat_name | default('HyperVGuestNat') }}"
+
 - name: Report routed guest-subnet NAT status when troubleshooting
   ansible.builtin.debug:
-    var: _hyperv_routed_private_subnet_nat.result
+    msg:
+      nat_enabled: "{{ _hyperv.guest_outbound_nat_enabled | default(true) | bool }}"
+      nat_state: >-
+        {{
+          (_hyperv_routed_private_subnet_nat.result | default({}))
+          if (_hyperv.guest_outbound_nat_enabled | default(true) | bool)
+          else (_hyperv_routed_private_subnet_nat_absent.result | default({}))
+        }}
   when:
-    - _hyperv.guest_outbound_nat_enabled | default(true) | bool
     - (ansible_troubleshooting_mode | default(false) | bool) or
       (debug_remote_output | default(false) | bool) or
       (debug_collect_component_evidence | default(false) | bool)

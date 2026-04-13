@@ -10,6 +10,11 @@ It is intentionally practical:
 - what should be committed/tagged as capability checkpoints
 - what still needs design clarification later
 
+Companion current-state note:
+
+- [hyperv-ubuntu-current-implementation-slice.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-ubuntu-current-implementation-slice.md)
+  captures the current real working slice and its source-of-truth files.
+
 ## Current Stable-ish Checkpoint
 
 Current repo checkpoint:
@@ -51,8 +56,14 @@ This is the current rollback target if later milestones break the VM path.
 
 These are the important limits of the current checkpoint:
 
-- direct routed Mac-to-guest access should be reviewed against the generated
-  SSH surface now that `ProxyJump` is in use
+- current working guest access now includes direct routed reachability from
+  `mac-dev` to `192.168.137.10`
+- generated SSH with `ProxyJump` via `server-225-win` remains available as a
+  fallback
+- the first direct-network target is now achieved as Mac-only routing to
+  `192.168.137.0/24` through `192.168.50.158`
+- whole-LAN routing remains the later milestone after the Mac-only route is
+  proven
 - some identity/bootstrap semantics should still be clarified more cleanly
 - logging and other higher-level service consumers should be validated against
   the realized Ubuntu guest surface
@@ -101,18 +112,19 @@ curl -4 -I https://archive.ubuntu.com/
 sudo apt update -o Acquire::ForceIPv4=true
 ```
 
-### 4. Clarify the durable Mac-to-guest access contract
+### 4. Preserve dual access capability while keeping direct routed access primary
 
-The current repo now has a working generated SSH surface again, but the exact
-intended long-term control path should be made explicit.
+The current repo now has both:
 
-Questions to settle:
+- direct routed SSH to `192.168.137.10`
+- generated SSH using `ProxyJump` through `server-225-win`
 
-- is the desired control path:
-  - direct routed SSH to `192.168.137.10`
-  - or generated SSH using `ProxyJump` through `server-225-win`
-- should Docker and other consumers rely on that same generated SSH surface
-  explicitly
+The current intended steady-state should stay:
+
+- primary:
+  - direct routed guest-IP access
+- secondary/fallback:
+  - generated SSH through `server-225-win`
 
 ### 5. Clarify bootstrap user vs runtime user
 
@@ -172,7 +184,8 @@ For each milestone from this point:
 Suggested milestone sequence from here:
 
 1. current routed guest + remote Docker checkpoint
-2. clarify access contract: direct route vs `ProxyJump`
+2. whole-LAN route milestone: router static route for `192.168.137.0/24`
+   through `192.168.50.158`
 3. validate higher-level service consumers against `server-225-ubuntu`
 4. tighten bootstrap/runtime identity and companion-role ownership
 

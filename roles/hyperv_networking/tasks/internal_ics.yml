@@ -74,13 +74,38 @@
     name: SharedAccess
     start_mode: manual
     state: started
+  when: _hyperv.internal_ics_sharing_enabled | default(true) | bool
 
 - name: Ensure PSInternetConnectionSharing module is present for Hyper-V guest networking
   community.windows.win_psmodule:
     name: PSInternetConnectionSharing
     state: "{{ _hyperv.internal_ics_psmodule_state | default('present') }}"
     accept_license: true
-  when: (_hyperv.internal_ics_psmodule_state | default('present')) == 'present'
+  when:
+    - _hyperv.internal_ics_sharing_enabled | default(true) | bool
+    - (_hyperv.internal_ics_psmodule_state | default('present')) == 'present'
+
+- name: Disable Internet Connection Sharing when routed guest access should stay direct
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      Import-Module PSInternetConnectionSharing -ErrorAction Stop
+
+      $current = @(Get-Ics -ErrorAction Stop | Where-Object { $_.StatusICS -eq 'Enabled' })
+      if ($current.Count -gt 0) {
+        Disable-Ics -Confirm:$false -ErrorAction Stop | Out-Null
+        $Ansible.Changed = $true
+        $current = @(Get-Ics -ErrorAction Stop | Where-Object { $_.StatusICS -eq 'Enabled' })
+      }
+
+      $Ansible.Result = @{
+        sharing_enabled_connections = @($current | Select-Object -ExpandProperty NetworkConnectionName)
+      }
+  register: _hyperv_internal_ics_disabled
+  when:
+    - not (_hyperv.internal_ics_sharing_enabled | default(true) | bool)
+    - (_hyperv.internal_ics_psmodule_state | default('present')) == 'present'
 
 - name: Configure Internet Connection Sharing for Hyper-V internal guest switch
   ansible.windows.win_powershell:
@@ -149,10 +174,18 @@
         _hyperv.internal_ics_private_adapter_alias
         | default('vEthernet (' ~ (_hyperv.internal_ics_switch_name | default('Guest')) ~ ')')
       }}
+  when: _hyperv.internal_ics_sharing_enabled | default(true) | bool
 
 - name: Report Hyper-V internal switch ICS status when troubleshooting
   ansible.builtin.debug:
-    var: _hyperv_internal_ics_config.result
+    msg:
+      sharing_enabled: "{{ _hyperv.internal_ics_sharing_enabled | default(true) | bool }}"
+      sharing_state: >-
+        {{
+          (_hyperv_internal_ics_config.result | default({}))
+          if (_hyperv.internal_ics_sharing_enabled | default(true) | bool)
+          else (_hyperv_internal_ics_disabled.result | default({}))
+        }}
   when:
     - (ansible_troubleshooting_mode | default(false) | bool) or
       (debug_remote_output | default(false) | bool) or

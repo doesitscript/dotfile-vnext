@@ -33,11 +33,15 @@ hyperv_config:
   allow_management_os: true
   management_os_boot_recovery_state: present
   internal_ics_switch_enabled: true
+  # The direct routed-subnet milestone wants real guest IP reachability from
+  # mac-dev, so keep the switch but do not keep Windows ICS/NAT in the path.
+  internal_ics_sharing_enabled: false
   internal_ics_switch_name: "Guest"
   guest_network_mode: "routed_private_subnet"
   guest_switch_name: "Guest"
   guest_subnet_ipv4: "192.168.137.0/24"
   guest_gateway_ipv4: "192.168.137.1"
+  guest_outbound_nat_enabled: false
   guest_published_tcp_ports:
     - name: "loki"
       listen_address: "192.168.50.158"

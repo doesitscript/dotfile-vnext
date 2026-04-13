@@ -13,6 +13,27 @@ adds the missing reachability layer:
 - `mac-dev` learns a route to the guest subnet through `server-225-win`
 - later, the router can learn the same route for whole-LAN reachability
 
+## Status Summary
+
+This note now describes both the achieved first direct-routing milestone and
+the next whole-LAN expansion.
+
+Read the current progression like this:
+
+1. current working access:
+   - direct reachability from `mac-dev` to `192.168.137.10`
+   - generated SSH with `ProxyJump=server-225-win` still available
+2. later whole-LAN target:
+   - router static route for `192.168.137.0/24` via `192.168.50.158`
+
+So the first direct-network setup is now realized as:
+
+- one Mac controller
+- one Windows host
+- one Ubuntu VM
+
+The whole-home-LAN route is the later expansion of that design.
+
 ## Topology
 
 ```text
@@ -38,6 +59,7 @@ server-225-win
 ## What Part 1 Does
 
 Part 1 keeps the existing guest subnet and adds direct controller reachability.
+This is now the current working setup for `mac-dev`.
 
 The intended path is:
 
@@ -54,6 +76,10 @@ That means the first milestone is:
 - Mac can SSH directly to `192.168.137.x`
 - the guest IP can be published as `ansible_host`
 - Docker services can later bind to the guest IP on that same subnet
+
+This is the first **direct-network** milestone.
+It is now working for `mac-dev`, while the whole-LAN route milestone remains
+next.
 
 ## What Part 2 Adds
 
@@ -76,47 +102,43 @@ Earlier checkpoint:
 - Windows host could reach the guest
 - Mac could not directly reach the guest
 
-Current target:
+Current target/current implementation direction:
 
 - keep the same private subnet
 - keep the same guest gateway
-- add explicit routing so the controller can reach the guest directly
-- add host-side outbound NAT so the guest can reach the wider network without
-  waiting on the router-static-route milestone
+- use explicit Windows routing so the controller can reach the guest directly
+- keep ICS out of the primary access path for the direct-route milestone
 
 So the routed-private-subnet design is not a throwaway replacement. It is the
 access-layer improvement on top of the stable private guest network we already
 proved out.
 
-## Current outbound-network posture
+## Current routing posture
 
-The active implementation now treats outbound internet as a host-owned concern:
+The active implementation now treats the Windows host as an actual routed
+transit point:
 
 - the Windows host remains the guest gateway at `192.168.137.1`
-- Windows forwarding keeps the controller/LAN reachability path
-- a host-owned `NetNat` object handles guest outbound internet for
-  `192.168.137.0/24`
-
-That means:
-
-- the guest can keep a stable private routed address
-- the guest does not have to wait on a router static route just to use `apt`
+- Windows Routing / RRAS routing-only mode is enabled
+- Windows forwarding and weak-host behavior are enabled on the transit
+  interfaces
+- `mac-dev` can reach the guest directly at `192.168.137.10`
 
 ## Current controller access note
-
-The repo currently has a working generated SSH surface for the guest even
-though the exact long-term Mac-to-guest access contract is still being
-tightened.
 
 Today, what is proven is:
 
 - the Windows host can reach `192.168.137.10`
-- the guest has outbound internet through the Windows-owned NAT path
-- the controller can reach the guest through the generated
-  `server-225-ubuntu` SSH surface
+- `mac-dev` can also reach `192.168.137.10` directly
+- raw TCP/22 succeeds to the guest IP from the Mac/controller
+- direct SSH succeeds to `joshc@192.168.137.10`
+- generated SSH through `server-225-win` still works as a fallback
 
-What is still worth tightening later is whether the intended steady-state
-controller path should be:
+Operational interpretation:
 
-- direct routed SSH to the guest IP
-- or SSH mediated through `server-225-win`
+- current working primary path:
+  - direct routed guest-IP access
+- current working fallback path:
+  - `ProxyJump`
+- later broader-network path:
+  - router static route for the home LAN
