@@ -52,6 +52,10 @@
   register: minio_backup_result
 
 - name: Create placeholder backup script
+  # TODO: This placeholder may not be necessary long-term.
+  # After the project completes its first successful Windows-server backup
+  # end-to-end, review whether this stub resource should be removed instead of
+  # carried forward as part of the real backup surface.
   win_copy:
     content: |
       # Network-Server Backup Script (Placeholder)
@@ -71,6 +75,7 @@
       Write-Host "Backup targets directory: {{ backup_root | default(windows_data_root + '\\backups') }}\targets"
     dest: "{{ backup_root | default(windows_data_root + '\\backups') | regex_replace('\\\\', '\\') }}\\scripts\\backup.ps1"
   register: backup_script_result
+  when: false
 
 - name: Create backup README
   win_copy:
@@ -115,4 +120,3 @@
       - "  - targets/minio/"
       - "Placeholder script: backup.ps1"
       - "Status: Structure ready, automation pending"
-
