@@ -1,0 +1,70 @@
+---
+- name: Check Speech Central app bundle candidate paths
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ speech_central_app_bundle_candidates }}"
+  register: speech_central_app_bundle_candidates_result
+
+- name: Check whether Speech Central is already listed by mas
+  ansible.builtin.command:
+    argv:
+      - mas
+      - list
+      - "{{ speech_central_app_id }}"
+  register: speech_central_mas_list
+  changed_when: false
+  failed_when: false
+
+- name: Set Speech Central installation status
+  ansible.builtin.set_fact:
+    __speech_central_installed: >-
+      {{
+        (speech_central_app_bundle_candidates_result.results
+        | selectattr("stat.exists")
+        | list
+        | length) > 0
+        or
+        (speech_central_mas_list.stdout is search(speech_central_app_id | string))
+      }}
+
+- name: Note the Speech Central App Store purchase prerequisite
+  ansible.builtin.debug:
+    msg: >-
+      Speech Central is a paid Mac App Store app. The signed-in Apple account
+      must already own app ID {{ speech_central_app_id }} before mas can
+      install it.
+  when:
+    - speech_central_state == "present"
+    - not __speech_central_installed
+
+- name: Install Speech Central from the Mac App Store
+  ansible.builtin.command:
+    argv:
+      - mas
+      - install
+      - "{{ speech_central_app_id }}"
+  register: speech_central_install
+  changed_when: speech_central_install.rc == 0
+  become: true
+  environment: "{{ mac_environment | default({}) }}"
+  when:
+    - speech_central_state == "present"
+    - not __speech_central_installed
+
+- name: Remove Speech Central from the Mac App Store
+  ansible.builtin.command:
+    argv:
+      - mas
+      - uninstall
+      - "{{ speech_central_app_id }}"
+  register: speech_central_uninstall
+  changed_when: speech_central_uninstall.rc == 0
+  become: true
+  environment: "{{ mac_environment | default({}) }}"
+  when:
+    - speech_central_state == "absent"
+    - __speech_central_installed
+
+- name: Verify Speech Central installation state
+  ansible.builtin.import_tasks: verify.yml
+  when: speech_central_verify_install

@@ -1,0 +1,46 @@
+---
+- name: Re-check Speech Central app bundle candidate paths
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ speech_central_app_bundle_candidates }}"
+  register: speech_central_verified_app_bundle_candidates
+
+- name: Re-check whether Speech Central is listed by mas
+  ansible.builtin.command:
+    argv:
+      - mas
+      - list
+      - "{{ speech_central_app_id }}"
+  register: speech_central_verified_mas_list
+  changed_when: false
+  failed_when: false
+
+- name: Assert Speech Central is present when requested
+  ansible.builtin.assert:
+    that:
+      - >-
+        (speech_central_verified_app_bundle_candidates.results
+        | selectattr("stat.exists")
+        | list
+        | length) > 0
+        or
+        (speech_central_verified_mas_list.stdout is search(speech_central_app_id | string))
+    success_msg: "Speech Central is installed."
+    fail_msg: "Speech Central was not detected after the install attempt."
+  when: speech_central_state == "present"
+
+- name: Assert Speech Central is absent when requested
+  ansible.builtin.assert:
+    that:
+      - >-
+        not (
+          (speech_central_verified_app_bundle_candidates.results
+          | selectattr("stat.exists")
+          | list
+          | length) > 0
+          or
+          (speech_central_verified_mas_list.stdout is search(speech_central_app_id | string))
+        )
+    success_msg: "Speech Central is absent."
+    fail_msg: "Speech Central is still detected after the uninstall attempt."
+  when: speech_central_state == "absent"

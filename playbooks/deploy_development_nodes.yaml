@@ -4,6 +4,7 @@
 # Deploys: common/shell_config (.bashrc.d pattern, PATH, aliases)
 #          direnv (installation + bash hook)
 #          cursor (editor config, extensions, LF/UTF-8 settings)
+#          speech_central (Speech Central install on mac-dev via mas_cli dependency)
 #          remote_desktop_mac (macOS-only Microsoft Remote Desktop install)
 #          tunnelblick_mac (macOS-only deprecated Tunnelblick install for Monterey)
 #
@@ -28,6 +29,7 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_settings
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_extensions
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags vscode_extensions
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags speech_central --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags remote_desktop_mac --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags tunnelblick_mac --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags tunnelblick_mac --limit mac-dev -e tunnelblick_mac_state=absent
@@ -58,10 +60,26 @@
   hosts: node_purpose_development
   gather_facts: true
   become: false
+  pre_tasks:
+    - name: Load mac-dev vault for controller-local secrets
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../vault/mac_dev.vault.yml"
+      no_log: true
+      when: inventory_hostname in groups["mac_dev"]
+
+    - name: Set mac-dev become password from vault
+      ansible.builtin.set_fact:
+        ansible_become_password: "{{ vault_mac_dev_become_password }}"
+      no_log: true
+      when:
+        - inventory_hostname in groups["mac_dev"]
+        - vault_mac_dev_become_password is defined
   roles:
     - role: common/shell_config
     - role: direnv
     - role: cursor
+    - role: speech_central
+      tags: [speech_central]
     - role: remote_desktop_mac
       tags: [remote_desktop_mac]
     - role: tunnelblick_mac
