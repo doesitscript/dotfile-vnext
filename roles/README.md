@@ -28,6 +28,17 @@ This repository organizes automation by capability-focused roles, then by operat
   role shaped like `remote_desktop_mac` unless the repo is intentionally
   preserving a narrow compatibility exception.
 
+## Composition Guardrail
+
+- When one user-facing operation needs multiple distinct capabilities, compose
+  the capability-focused roles in a playbook instead of merging them into one
+  larger role by default.
+- Expose selective execution through meaningful playbook tags so operators can
+  run the combined path or a single capability path without changing the role
+  boundaries.
+- Do not add wrapper roles by default when playbook composition already gives a
+  clearer, more scalable control surface.
+
 ## OS Handling Convention
 
 Inside role task entrypoints, OS task files are split by explicit target names used in this repo:

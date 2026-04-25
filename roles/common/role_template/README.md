@@ -25,6 +25,12 @@ Name new roles by capability, not by operating system. Keep the OS split inside
 `tasks/main.yml` unless the role is an explicit narrow exception already
 accepted by the repo.
 
+## Composition Reminder
+
+If the work really spans multiple distinct capabilities, prefer composing
+multiple roles in a playbook with meaningful tags instead of turning a new role
+into a wrapper for other roles by default.
+
 ## Structure
 
 ```
