@@ -3,11 +3,26 @@ argument_specs:
   main:
     short_description: "Install the mas Mac App Store CLI"
     options:
-      mas_cli_formula_name:
+      mas_cli_install_method:
+        type: str
+        default: auto
+        choices:
+          - auto
+          - homebrew
+          - homebrew_tap
+          - pkg_release
+        description:
+          - "Installer selection for mas on macOS."
+      mas_cli_homebrew_formula_name:
         type: str
         default: mas
         description:
-          - "Homebrew formula name for the Mac App Store CLI."
+          - "Homebrew core formula name for the Mac App Store CLI."
+      mas_cli_homebrew_tap_formula_name:
+        type: str
+        default: mas-cli/tap/mas
+        description:
+          - "Homebrew tap formula used for older but still supported macOS releases."
       mas_cli_state:
         type: str
         default: present
@@ -16,3 +31,35 @@ argument_specs:
           - absent
         description:
           - "Whether mas should be installed or removed."
+      mas_cli_pkg_id:
+        type: str
+        default: io.github.mas-cli.mas
+        description:
+          - "macOS pkg receipt identifier for the official mas installer package."
+      mas_cli_pkg_release_version_legacy:
+        type: str
+        default: "4.1.2"
+        description:
+          - "Pinned official mas release used on legacy macOS versions such as Monterey."
+      mas_cli_pkg_url_map_legacy:
+        type: dict
+        default:
+          x86_64: "https://github.com/mas-cli/mas/releases/download/v4.1.2/mas-4.1.2-x86_64.pkg"
+          arm64: "https://github.com/mas-cli/mas/releases/download/v4.1.2/mas-4.1.2-arm64.pkg"
+        description:
+          - "Architecture-specific pkg URLs for the legacy mas installer."
+      mas_cli_pkg_cache_dir:
+        type: str
+        default: /tmp
+        description:
+          - "Directory used to cache the downloaded mas pkg installer."
+      mas_cli_pkg_opt_path:
+        type: str
+        default: /usr/local/opt/mas
+        description:
+          - "Primary installation root created by the official mas pkg."
+      mas_cli_pkg_symlink_path:
+        type: str
+        default: /usr/local/bin/mas
+        description:
+          - "Primary executable path created by the official mas pkg."

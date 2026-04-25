@@ -1,5 +1,147 @@
 ---
-- name: Ensure mas CLI is in the requested state
+- name: Check current mas version
+  ansible.builtin.command:
+    argv:
+      - mas
+      - version
+  register: mas_cli_current_version
+  changed_when: false
+  failed_when: false
+  environment:
+    PATH: >-
+      /usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:{{
+      ansible_env["PATH"] | default("") }}
+
+- name: Select mas installer strategy for this macOS host
+  ansible.builtin.set_fact:
+    __mas_cli_install_method: >-
+      {{
+        mas_cli_install_method
+        if mas_cli_install_method != "auto"
+        else (
+          "pkg_release"
+          if ansible_distribution_version is version("13.0", "<")
+          else (
+            "homebrew_tap"
+            if ansible_distribution_version is version("14.0", "<")
+            else "homebrew"
+          )
+        )
+      }}
+    __mas_cli_homebrew_formula_name: >-
+      {{
+        mas_cli_homebrew_tap_formula_name
+        if (
+          (mas_cli_install_method == "homebrew_tap")
+          or (
+            mas_cli_install_method == "auto"
+            and ansible_distribution_version is version("13.0", ">=")
+            and ansible_distribution_version is version("14.0", "<")
+          )
+        )
+        else mas_cli_homebrew_formula_name
+      }}
+    __mas_cli_pkg_version_target: "{{ mas_cli_pkg_release_version_legacy }}"
+    __mas_cli_pkg_url_target: "{{ mas_cli_pkg_url_map_legacy.get(ansible_architecture, '') }}"
+
+- name: Ensure mas pkg architecture is supported
+  ansible.builtin.assert:
+    that:
+      - ansible_architecture in mas_cli_pkg_url_map_legacy
+    fail_msg: >-
+      mas pkg release mapping is missing an entry for architecture
+      {{ ansible_architecture }}.
+  when: __mas_cli_install_method == "pkg_release"
+
+- name: Set mas pkg cache path
+  ansible.builtin.set_fact:
+    __mas_cli_pkg_cache_path: >-
+      {{ mas_cli_pkg_cache_dir }}/mas-{{ __mas_cli_pkg_version_target }}-{{ ansible_architecture }}.pkg
+  when: __mas_cli_install_method == "pkg_release"
+
+- name: Install mas CLI with Homebrew
   community.general.homebrew:
-    name: "{{ mas_cli_formula_name }}"
+    name: "{{ __mas_cli_homebrew_formula_name }}"
     state: "{{ mas_cli_state }}"
+  when: __mas_cli_install_method in ["homebrew", "homebrew_tap"]
+
+- name: Download official mas pkg release for legacy macOS
+  ansible.builtin.get_url:
+    url: "{{ __mas_cli_pkg_url_target }}"
+    dest: "{{ __mas_cli_pkg_cache_path }}"
+    mode: "0644"
+  when:
+    - __mas_cli_install_method == "pkg_release"
+    - mas_cli_state == "present"
+    - (mas_cli_current_version.stdout | trim) != __mas_cli_pkg_version_target
+
+- name: Install official mas pkg release for legacy macOS
+  ansible.builtin.command:
+    argv:
+      - installer
+      - -pkg
+      - "{{ __mas_cli_pkg_cache_path }}"
+      - -target
+      - /
+  register: mas_cli_pkg_install
+  changed_when: mas_cli_pkg_install.rc == 0
+  become: true
+  when:
+    - __mas_cli_install_method == "pkg_release"
+    - mas_cli_state == "present"
+    - (mas_cli_current_version.stdout | trim) != __mas_cli_pkg_version_target
+
+- name: Remove mas pkg-installed files for legacy macOS
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ mas_cli_pkg_symlink_path }}"
+    - "{{ mas_cli_pkg_opt_path }}"
+  become: true
+  when:
+    - __mas_cli_install_method == "pkg_release"
+    - mas_cli_state == "absent"
+
+- name: Forget mas pkg receipt for legacy macOS
+  ansible.builtin.command:
+    argv:
+      - pkgutil
+      - --forget
+      - "{{ mas_cli_pkg_id }}"
+  register: mas_cli_pkg_forget
+  changed_when: mas_cli_pkg_forget.rc == 0
+  failed_when: false
+  become: true
+  when:
+    - __mas_cli_install_method == "pkg_release"
+    - mas_cli_state == "absent"
+
+- name: Re-check mas version after role run
+  ansible.builtin.command:
+    argv:
+      - mas
+      - version
+  register: mas_cli_verified_version
+  changed_when: false
+  failed_when: false
+  environment:
+    PATH: >-
+      /usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:{{
+      ansible_env["PATH"] | default("") }}
+
+- name: Assert mas is present when requested
+  ansible.builtin.assert:
+    that:
+      - mas_cli_verified_version.rc == 0
+    success_msg: "mas CLI is installed."
+    fail_msg: "mas CLI was not detected after the install attempt."
+  when: mas_cli_state == "present"
+
+- name: Assert mas is absent when requested
+  ansible.builtin.assert:
+    that:
+      - mas_cli_verified_version.rc != 0
+    success_msg: "mas CLI is absent."
+    fail_msg: "mas CLI is still present after the uninstall attempt."
+  when: mas_cli_state == "absent"

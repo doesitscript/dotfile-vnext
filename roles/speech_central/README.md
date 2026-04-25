@@ -25,6 +25,8 @@ only platform Speech Central targets in this repo.
 
 - `Speech Central` is a paid Mac App Store app.
 - The signed-in Apple account must already own it before `mas install` can work.
+- `mas` cannot purchase paid apps for you; that purchase must happen directly in
+  the App Store first.
 - `mas` requires elevated privileges for install and uninstall actions.
 - This role declares a dependency on `mas_cli`, so the App Store CLI is
   installed before the app role runs.
@@ -56,6 +58,7 @@ export ANSIBLE_BECOME_PASS='your-password'
 speech_central_app_id: "1223093645"
 speech_central_state: present
 speech_central_verify_install: true
+speech_central_install_timeout_seconds: 120
 speech_central_app_bundle_candidates:
   - /Applications/Speech Central.app
   - "{{ ansible_env.HOME }}/Applications/Speech Central.app"

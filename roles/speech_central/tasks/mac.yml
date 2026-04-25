@@ -38,15 +38,28 @@
     - not __speech_central_installed
 
 - name: Install Speech Central from the Mac App Store
-  ansible.builtin.command:
-    argv:
-      - mas
-      - install
-      - "{{ speech_central_app_id }}"
-  register: speech_central_install
-  changed_when: speech_central_install.rc == 0
-  become: true
-  environment: "{{ mac_environment | default({}) }}"
+  block:
+    - name: Run mas install for Speech Central
+      ansible.builtin.command:
+        argv:
+          - mas
+          - install
+          - "{{ speech_central_app_id }}"
+      register: speech_central_install
+      changed_when: speech_central_install.rc == 0
+      become: true
+      environment: "{{ mac_environment | default({}) }}"
+      async: "{{ speech_central_install_timeout_seconds }}"
+      poll: 5
+  rescue:
+    - name: Explain Speech Central App Store ownership or auth blocker
+      ansible.builtin.fail:
+        msg: >-
+          Speech Central install did not complete through mas within
+          {{ speech_central_install_timeout_seconds }} seconds. This usually
+          means the signed-in Apple account still needs a direct App Store
+          purchase/authentication step, because mas cannot purchase paid apps
+          on your behalf.
   when:
     - speech_central_state == "present"
     - not __speech_central_installed

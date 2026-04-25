@@ -66,6 +66,7 @@
         file: "{{ playbook_dir }}/../vault/mac_dev.vault.yml"
       no_log: true
       when: inventory_hostname in groups["mac_dev"]
+      tags: [always]
 
     - name: Set mac-dev become password from vault
       ansible.builtin.set_fact:
@@ -74,6 +75,7 @@
       when:
         - inventory_hostname in groups["mac_dev"]
         - vault_mac_dev_become_password is defined
+      tags: [always]
   roles:
     - role: common/shell_config
     - role: direnv
