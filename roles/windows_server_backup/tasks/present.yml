@@ -1,0 +1,140 @@
+---
+- name: Validate Windows backup baseline inputs
+  ansible.builtin.assert:
+    that:
+      - windows_data_root is defined
+      - windows_data_root | length > 0
+      - windows_server_backup_work_root | length > 0
+      - windows_server_backup_target_drive | default("") | length > 0
+    fail_msg: >-
+      windows_server_backup requires windows_data_root and an explicit
+      windows_server_backup_target_drive for the first milestone.
+
+- name: Resolve Windows backup working drive
+  ansible.builtin.set_fact:
+    windows_server_backup_work_drive: "{{ windows_server_backup_work_root[0:2] }}"
+
+- name: Install Windows Server Backup feature
+  ansible.windows.win_feature:
+    name: "{{ windows_server_backup_feature_name }}"
+    state: present
+    include_management_tools: true
+  register: windows_server_backup_feature_result
+  when: windows_server_backup_manage_feature | bool
+
+- name: Reboot after Windows backup feature installation
+  ansible.windows.win_reboot:
+    msg: "Ansible reboot after Windows Server Backup feature installation"
+    reboot_timeout: 900
+  when:
+    - windows_server_backup_manage_feature | bool
+    - windows_server_backup_feature_result.reboot_required | default(false)
+
+- name: Wait for Windows host to return after backup-feature reboot
+  ansible.builtin.wait_for_connection:
+    timeout: 900
+  when:
+    - windows_server_backup_manage_feature | bool
+    - windows_server_backup_feature_result.reboot_required | default(false)
+
+- name: Verify backup work drive exists
+  ansible.windows.win_stat:
+    path: "{{ windows_server_backup_work_drive }}\\"
+  register: windows_server_backup_work_drive_stat
+  failed_when: not windows_server_backup_work_drive_stat.stat.exists
+
+- name: Verify backup target drive exists
+  ansible.windows.win_stat:
+    path: "{{ windows_server_backup_target_drive }}:\\"
+  register: windows_server_backup_target_drive_stat
+  failed_when: not windows_server_backup_target_drive_stat.stat.exists
+
+- name: Collect backup target volume details
+  ansible.windows.win_shell: |
+    $ProgressPreference = 'SilentlyContinue'
+    $volume = Get-Volume -DriveLetter '{{ windows_server_backup_target_drive }}' -ErrorAction Stop
+    $volume |
+      Select-Object DriveLetter, FileSystemLabel, FileSystem, SizeRemaining, Size |
+      ConvertTo-Json -Compress
+  register: windows_server_backup_target_volume_raw
+  changed_when: false
+
+- name: Parse backup target volume details
+  ansible.builtin.set_fact:
+    windows_server_backup_target_volume: >-
+      {{ windows_server_backup_target_volume_raw.stdout | trim | from_json }}
+
+- name: Validate backup target volume label
+  ansible.builtin.assert:
+    that:
+      - windows_server_backup_target_volume["FileSystemLabel"] == windows_server_backup_target_label
+    fail_msg: >-
+      Backup target drive {{ windows_server_backup_target_drive }}: label is
+      "{{ windows_server_backup_target_volume['FileSystemLabel'] }}", expected
+      "{{ windows_server_backup_target_label }}".
+  when: windows_server_backup_target_label | length > 0
+
+- name: Create Windows backup working directories
+  ansible.windows.win_file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ windows_server_backup_work_root }}"
+    - "{{ windows_server_backup_scripts_dir }}"
+    - "{{ windows_server_backup_data_dir }}"
+    - "{{ windows_server_backup_targets_dir }}"
+    - "{{ windows_server_backup_logs_dir }}"
+
+- name: Write Windows backup baseline README
+  ansible.windows.win_copy:
+    content: |
+      # Windows Server Backup Baseline
+
+      ## Scope
+
+      This host is managed by the repo's first-milestone Windows backup baseline.
+      The managed scope is intentionally narrow:
+
+      - install the Windows Server Backup feature
+      - validate the intended target drive
+      - create the repo-managed backup working structure
+      - preserve future service-target ideas outside active execution
+
+      ## Baseline Source
+
+      - Live backup baseline host: {{ windows_server_backup_baseline_source_host }}
+      - First active target group: network_server
+
+      ## Managed Paths
+
+      - Work root: {{ windows_server_backup_work_root }}
+      - Scripts: {{ windows_server_backup_scripts_dir }}
+      - Data: {{ windows_server_backup_data_dir }}
+      - Targets: {{ windows_server_backup_targets_dir }}
+      - Logs: {{ windows_server_backup_logs_dir }}
+
+      ## Backup Target
+
+      - Target drive: {{ windows_server_backup_target_drive }}:
+      - Target label: {{ windows_server_backup_target_volume["FileSystemLabel"] | default("unknown") }}
+      - Expected artifact path: {{ windows_server_backup_target_path | default("not set") }}
+
+      ## First-Milestone Boundary
+
+      This milestone does not yet manage:
+
+      - Windows Server Backup policy/schedule creation
+      - service-specific backups for Postgres, ClickHouse, Redis, or MinIO
+
+      Those future service-target ideas are preserved in:
+      roles/windows_server_backup/tasks/future_service_targets.yml
+    dest: "{{ windows_server_backup_readme_path }}"
+
+- name: Summarize Windows backup baseline
+  ansible.builtin.debug:
+    msg:
+      - "Windows backup feature: {{ windows_server_backup_feature_name }}"
+      - "Backup work root: {{ windows_server_backup_work_root }}"
+      - "Backup target: {{ windows_server_backup_target_drive }}:"
+      - "Backup target label: {{ windows_server_backup_target_volume['FileSystemLabel'] | default('unknown') }}"
+      - "Expected artifact path: {{ windows_server_backup_target_path | default('not set') }}"

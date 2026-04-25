@@ -1,0 +1,31 @@
+---
+- name: Remove Windows backup working root
+  ansible.windows.win_file:
+    path: "{{ windows_server_backup_work_root }}"
+    state: absent
+
+- name: Remove Windows Server Backup feature
+  ansible.windows.win_feature:
+    name: "{{ windows_server_backup_feature_name }}"
+    state: absent
+  register: windows_server_backup_feature_remove_result
+  when:
+    - windows_server_backup_manage_feature | bool
+    - windows_server_backup_remove_feature_on_absent | bool
+
+- name: Reboot after Windows backup feature removal
+  ansible.windows.win_reboot:
+    msg: "Ansible reboot after Windows Server Backup feature removal"
+    reboot_timeout: 900
+  when:
+    - windows_server_backup_manage_feature | bool
+    - windows_server_backup_remove_feature_on_absent | bool
+    - windows_server_backup_feature_remove_result.reboot_required | default(false)
+
+- name: Wait for Windows host to return after backup-feature removal reboot
+  ansible.builtin.wait_for_connection:
+    timeout: 900
+  when:
+    - windows_server_backup_manage_feature | bool
+    - windows_server_backup_remove_feature_on_absent | bool
+    - windows_server_backup_feature_remove_result.reboot_required | default(false)

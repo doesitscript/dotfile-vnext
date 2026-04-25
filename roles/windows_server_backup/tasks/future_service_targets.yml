@@ -1,0 +1,19 @@
+---
+# Future service-target scaffold retained outside active execution on purpose.
+# Keep this file un-included until the service backup shape is mature enough to
+# be part of the real Windows backup surface.
+
+- name: Create future backup target root
+  ansible.windows.win_file:
+    path: "{{ windows_server_backup_targets_dir }}"
+    state: directory
+
+- name: Create future service backup target directories
+  ansible.windows.win_file:
+    path: "{{ windows_server_backup_targets_dir }}\\{{ item }}"
+    state: directory
+  loop:
+    - "postgres"
+    - "clickhouse"
+    - "redis"
+    - "minio"

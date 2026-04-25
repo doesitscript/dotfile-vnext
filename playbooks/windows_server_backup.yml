@@ -1,0 +1,19 @@
+---
+# Apply the Windows Server Backup baseline to managed Windows hosts.
+#
+# Commands:
+#   First target / first test:
+#     ansible-playbook playbooks/windows_server_backup.yml --limit network-server-win
+#
+#   Later, when both Windows hosts are configured:
+#     ansible-playbook playbooks/windows_server_backup.yml
+#
+- name: Apply Windows Server Backup baseline
+  hosts: windows_hosts
+  gather_facts: false
+
+  tasks:
+    - name: Apply Windows backup baseline
+      ansible.builtin.include_role:
+        name: windows_server_backup
+      when: windows_server_backup_state is defined

@@ -1,0 +1,15 @@
+---
+- name: Validate windows_server_backup_state
+  ansible.builtin.assert:
+    that:
+      - windows_server_backup_state in ["present", "absent"]
+    fail_msg: >-
+      windows_server_backup_state must be "present" or "absent".
+
+- name: Apply Windows backup baseline
+  ansible.builtin.include_tasks: present.yml
+  when: windows_server_backup_state == "present"
+
+- name: Remove Windows backup baseline
+  ansible.builtin.include_tasks: absent.yml
+  when: windows_server_backup_state == "absent"
