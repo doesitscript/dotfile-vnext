@@ -1,11 +1,19 @@
 ---
 # Windows surface: WinRM for bootstrap; OpenSSH should land directly on Windows.
-# AI-NET-SERVER resolves via LAN mDNS but not from Mac controller — use IP directly.
-# Confirmed live: 192.168.50.233 (Wi-Fi adapter, ARP mac 9c:c7:d3:10:68:5a)
-ansible_host: "192.168.50.233"
+# ai-net-server-mgmt resolves via LAN mDNS but not from Mac controller — use IP directly.
+# Two Wi-Fi adapters will be active simultaneously once original adapter is restored.
+# Primary adapter (ansible_host): 192.168.50.234 — secondary Wi-Fi, currently active.
+# Secondary adapter (mgmt/fallback): 192.168.50.233 — original Wi-Fi (MAC 9c:c7:d3:10:68:5a), temporarily down.
+# Router DHCP reservations: bind each adapter MAC to its own IP.
+# Router hostname: ai-net-server-mgmt → 192.168.50.234 (current adapter).
+# Revisit: when original adapter restored, decide final hostname strategy for both adapters.
+# IMPORTANT: Hyper-V External Switch adapter_name must be verified below — Windows names
+# dual Wi-Fi adapters "Wi-Fi" and "Wi-Fi 2"; lock the adapter_name to the exact string
+# shown in Device Manager before both adapters are online simultaneously.
+ansible_host: "192.168.50.234"
 ansible_password: "Pass@w0rd1"
 surface_type: "windows_host"
-host_ip: "192.168.50.233"
+host_ip: "192.168.50.234"
 ansible_connection: winrm
 win_ssh_port: 2222
 win_ssh_user: "joshc"
