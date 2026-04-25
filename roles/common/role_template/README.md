@@ -19,6 +19,12 @@ Then customise:
 7. **handlers/main.yml** – Service restarts or other handler actions.
 8. **<role_name>.bash** – Shell aliases / env vars (sourced via `~/.bashrc.d/`).
 
+## Naming Reminder
+
+Name new roles by capability, not by operating system. Keep the OS split inside
+`tasks/main.yml` unless the role is an explicit narrow exception already
+accepted by the repo.
+
 ## Structure
 
 ```

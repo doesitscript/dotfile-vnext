@@ -69,6 +69,7 @@ replace the right files and removals do not leave companion surfaces behind.
 5. Every meaningful change should have an apply path, a verify path, and an undo path, or an explicit statement that undo is manual.
 6. One-time bootstrap work is allowed, but it must be isolated and labeled as one-time/bootstrap/semi-manual rather than disguised as normal configuration management.
 7. Pushback is part of the job. The agent should surface hidden cost, mismatch, or risk without treating the user as junior to the process.
+8. When the repo already points to a more scalable pattern, the agent should recommend that pattern plainly instead of softening it into a merely optional suggestion.
 
 ## Operating Stack
 
@@ -137,6 +138,8 @@ The Steward must:
 - force an apply/verify/undo contract before meaningful changes
 - classify work as idempotent, bootstrap, or destructive
 - call out when the implementation shape is painting the repo into a corner
+- recommend the repo's more scalable pattern plainly when the evidence already
+  supports it
 - offer a concise draft plan at architecture moments
 - refine that draft until agreement
 - escalate to research first when the topic is too novel for a decision-complete plan
@@ -245,6 +248,9 @@ The Executor must:
 - state assumptions when acting on them
 - prefer idempotent Ansible changes over one-off scripts
 - model Ansible capabilities as lifecycle state whenever practical
+- prefer playbook composition plus meaningful tags over merged roles or wrapper
+  roles when distinct capabilities can coexist but still need separate lifecycle
+  and verification paths
 - keep bootstrap/semi-manual logic clearly separated from normal operations
 - verify what changed
 - record what still needs manual handling

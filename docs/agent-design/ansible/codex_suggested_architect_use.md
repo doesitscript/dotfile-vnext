@@ -12,7 +12,7 @@ looks like, and how you can request its review when you need it.
 
 ---
 
-## What the Architect Is
+## What the Architect Is so I don't see can you show me
 
 The Ansible Architect is an embedded maturity observer. Its job is to ensure
 that every piece of work leaving a planning session is slightly more mature than

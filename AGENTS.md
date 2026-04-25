@@ -61,6 +61,7 @@ Include:
 11. When syntax checks, lint, idempotence checks, or runtime verification are not run, say so explicitly in the final output and state why they were skipped or unavailable.
 12. During active implementation, required live state queries against the target system should be treated as normal execution, not as optional permission checkpoints. Ask only when the action is destructive, carries hidden side effects, or depends on unresolved user intent.
 13. Non-destructive Git housekeeping during active work should be treated as normal execution. Ask only for destructive Git actions or actions with hidden history consequences.
+14. When the repo already points to a more scalable pattern, recommend that pattern plainly instead of presenting it as merely optional. For distinct capabilities that can coexist, prefer playbook composition with meaningful tags over merged roles or wrapper roles by default.
 
 ## Repo Truths
 
@@ -163,8 +164,9 @@ planning or research question. If they are skipped, say why.
 Prefer, in order:
 
 1. Extend an existing role or playbook
-2. Add a new role or playbook that fits the repo structure
-3. Add a narrow helper script only when declarative automation is not a fit
+2. Compose distinct capability-focused roles in a playbook and expose selective runs through meaningful playbook tags when one combined operation is desired
+3. Add a new role or playbook that fits the repo structure
+4. Add a narrow helper script only when declarative automation is not a fit
 
 ## Trust Rule
 

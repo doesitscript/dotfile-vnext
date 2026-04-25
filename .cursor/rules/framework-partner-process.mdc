@@ -50,10 +50,19 @@ When credential flow or privilege behavior is the point of uncertainty, the agen
 Prefer, in order:
 
 1. existing role/playbook extension
-2. new role/playbook aligned to repo structure
-3. narrowly scoped helper script only when declarative automation is not a fit
+2. playbook composition of distinct capability-focused roles with meaningful tags
+3. new role/playbook aligned to repo structure
+4. narrowly scoped helper script only when declarative automation is not a fit
 
 Do not default to scripting when idempotent Ansible content is viable.
+
+When multiple distinct capabilities can coexist and still need independent
+lifecycle, verification, or removal paths, prefer composing them in a playbook
+and exposing selective runs through playbook tags instead of merging them into
+one role or adding a wrapper role by default.
+
+When that pattern is clearly better for repo scalability and maintenance, the
+agent should recommend it plainly rather than presenting it as merely optional.
 
 When a config file is already owned by a role, playbook, or other durable
 automation path, prefer changing the owning automation over proposing an ad hoc
