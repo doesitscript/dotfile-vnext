@@ -111,6 +111,13 @@ flowchart LR
 | AI agent shell actions | shell commands | workspace shell / command runner | usually PATH, which should resolve Ansible via `~/.local/bin` -> repo `.venv` | shell env + repo docs |
 | AI agent MCP actions | MCP tool calls | Cursor MCP host | whatever runtime each MCP server owns | `.cursor/mcp.json` |
 
+Repo safety note:
+- for repo-local Python-, Ansible-, and WinRM-sensitive work on macOS, prefer
+  `bin/codex-env ...` over a separate MCP-owned Python runtime when both can
+  answer the same question
+- `ansible-mcp` is a separate Python runtime and must be explicitly wrapped or
+  environment-hardened if it is expected to behave like the repo shell
+
 ## Current source-of-truth files
 
 - IDE Ansible activation: [.vscode/settings.json](/Users/joshc/develop/dotfile-vnext/.vscode/settings.json)

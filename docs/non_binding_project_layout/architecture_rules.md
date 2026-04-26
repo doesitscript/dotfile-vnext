@@ -2,10 +2,13 @@
 
 ## Core Principles
 
-1. **Contract is Authoritative**
-   - All decisions must be traceable to `contracts/fuzlang.contract.yaml`
-   - No services, ports, or secrets may be added without contract update
-   - Any ambiguity must be left as a placeholder in the contract, not guessed
+1. **Legacy Contract Is Scaffold, Not Live Authority**
+   - `contracts/fuzlang.contract.yaml` is retained as early-project scaffold
+     context, not as the live authoritative runtime source
+   - Current decisions should be traceable to active inventory, promoted docs,
+     and current playbooks/roles
+   - No services, ports, or secrets should be added from stale scaffold notes
+     without promoting current truth into the active repo surfaces
 
 2. **Dual Surface Model**
    - Every Windows host has a `-win` surface managed by WinRM
@@ -105,6 +108,68 @@ Set `node_purpose: development` (or the appropriate value) in the node's
 - The schema for all valid `node_purpose` values is documented in
   `inventory/group_vars/all.yaml`.
 
+## Capability Targeting Policy Pattern
+
+For capability-specific targeting, use a two-layer model:
+
+1. host metadata describes what the host is
+2. derived capability policy decides whether that capability should manage the host
+
+The preferred mental model is:
+
+- metadata answers: "What kind of host is this?"
+- derived policy answers: "Should this capability even consider this host?"
+- lifecycle state answers: "If the capability manages this host, should it be
+  present or absent?"
+
+### Preferred shape
+
+- metadata describes the host category
+- dynamic grouping or equivalent derives capability-specific target groups
+- only then does lifecycle state control `present|absent`
+
+### NetBox-aligned metadata model
+
+Prefer host-description attributes that map cleanly to NetBox concepts:
+
+- device role
+- platform
+- status
+- site
+- location
+- tenant
+- tags
+- custom fields
+
+Repo-local inventory may use its own variable names, but the design should stay
+close to this model so later NetBox adoption does not require rethinking how
+capability targeting works.
+
+### Derived capability policy
+
+Prefer a derived policy variable or dynamic-group concept such as:
+
+- `<capability>_should_manage: true|false`
+
+Examples:
+
+- `windows_server_backup_should_manage`
+- `windows_driver_backup_should_manage`
+- `windows_managed_service_data_backup_disk_should_manage`
+
+These are derived policy results, not hand-set per-host enrollment flags. They
+should come from metadata and policy logic, not from explicit host naming.
+
+### Anti-patterns
+
+Do not:
+
+- use `present|absent` or variable existence as the hidden enrollment switch
+- treat transport details like WinRM/SSH or OS-family-only markers as the main
+  business-policy signal
+- rely on static host-name allowlists as the real targeting model
+- use one weak cue like "unattended" as the primary eligibility rule
+
 ## Failure Signals
 
 If any of these occur, stop and report:
@@ -123,6 +188,4 @@ If any of these occur, stop and report:
 - No ambiguity about which surface runs which tasks
 - A reader can understand lifecycle: bootstrap → deploy → verify
 - Nothing can accidentally run on the wrong surface
-
-
 
