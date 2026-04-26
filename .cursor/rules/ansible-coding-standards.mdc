@@ -420,6 +420,7 @@ A playbook project orchestrates landscapes and types via one or more playbooks, 
 - [ ] Model each user-facing capability as lifecycle state whenever practical
 - [ ] Prefer a single role/playbook control point such as `capability_state: present|absent`
 - [ ] If setup and teardown are asymmetric, keep one stateful interface and use separate internal present/absent task paths
+- [ ] If a role supports `present|absent`, ensure the owning playbook preserves both states instead of wrapper-filtering the role to only `present` or only `absent`
 
 ##### Idempotency and Check Mode
 
@@ -432,6 +433,7 @@ A playbook project orchestrates landscapes and types via one or more playbooks, 
 - [ ] Handle commands in check mode using dry-run flags when available
 - [ ] For CLI fallback patterns, query current state first, then create only if absent and remove only if present
 - [ ] Document the lifecycle control point that switches the capability between `present` and `absent`
+- [ ] Verify the top-level playbook wiring actually reaches both lifecycle paths when the capability advertises `present` and `absent`
 
 ##### Control Flow and Handlers
 

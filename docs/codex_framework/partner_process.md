@@ -469,7 +469,9 @@ For Ansible role and playbook design, also prefer:
 1. one capability-level state interface such as `foo_state: present|absent`
 2. one task with module-native `state` when the module supports it
 3. internal present/absent task paths when the lifecycle is asymmetric
-4. command or shell fallbacks only after a real state-query step proves no better module exists
+4. owning playbooks that preserve the full lifecycle interface instead of
+   wrapper-filtering the role down to only `present` or only `absent`
+5. command or shell fallbacks only after a real state-query step proves no better module exists
 
 ### 4. Write the Change Contract
 

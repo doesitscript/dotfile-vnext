@@ -62,7 +62,8 @@ Include:
 12. During active implementation, required live state queries against the target system should be treated as normal execution, not as optional permission checkpoints. Ask only when the action is destructive, carries hidden side effects, or depends on unresolved user intent.
 13. Non-destructive Git housekeeping during active work should be treated as normal execution. Ask only for destructive Git actions or actions with hidden history consequences.
 14. The first time a solution introduces or materially changes host targeting, filtering, or exclusion logic, require a read-only target-verification step before the first mutating run. That preview should show what is in scope, what is excluded, and why. If the capability also selects a subresource such as a disk or interface, the preview should show the selected candidate and the selection basis too.
-14. When the repo already points to a more scalable pattern, recommend that pattern plainly instead of presenting it as merely optional. For distinct capabilities that can coexist, prefer playbook composition with meaningful tags over merged roles or wrapper roles by default.
+15. When a role or capability exposes a lifecycle interface such as `present|absent`, the owning playbook must preserve that interface instead of wrapper-filtering it down to only one state. Let the role handle the internal present/absent split.
+16. When the repo already points to a more scalable pattern, recommend that pattern plainly instead of presenting it as merely optional. For distinct capabilities that can coexist, prefer playbook composition with meaningful tags over merged roles or wrapper roles by default.
 
 ## Repo Truths
 
