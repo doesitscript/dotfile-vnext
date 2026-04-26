@@ -13,6 +13,11 @@ It is the canonical reference for:
 This contract is intended to be enterprise-shaped but still appropriate for a
 homelab.
 
+It is the version-one naming reference extracted from the later naming
+decisions in this conversation and the related intake note:
+
+- [chat-gpt-intake-drive-provision.md](/Users/joshc/develop/dotfile-vnext/docs/intake/drive-provisioning-rebuildable-data-provision/chat-gpt-intake-drive-provision.md)
+
 ## Decision Summary
 
 The accepted contract is:
@@ -32,6 +37,30 @@ Accepted values and current defaults:
 
 This contract is documentation-only right now. It does not by itself rename
 live folders or change playbook behavior.
+
+## Resolved Corrections
+
+These points are intentionally explicit because earlier brainstorming and intake
+material included alternatives that were later corrected.
+
+- `namespace = castle` is the accepted namespace for this v1 contract.
+- Earlier exploratory names such as `fuzlab`, `fuzlang`, and `dotfile` are not
+  the accepted namespace for this contract.
+- `site = home` is the accepted current site value.
+- `environment = lab` is the accepted current default environment.
+- `stage` should usually be one of:
+  - `authoritative`
+  - `experimental`
+- `tenant` is intentionally omitted for now.
+- The accepted backup path contract uses:
+  - `system`
+  - `artifact`
+  rather than the more verbose `class/subject/artifact` structure that was
+  explored earlier.
+
+The shorter `system/artifact` choice was kept because it is easier to read in
+this project while still scaling cleanly enough for the current and near-future
+backup surfaces.
 
 ## Zone Model
 
@@ -130,6 +159,24 @@ E:\backupsets\castle\home\lab\authoritative\network-server\postgres\basebackup\2
   The backup instance identifier. Recommended format:
   - `YYYY-MM-DDTHHMMSSZ`
 
+### Why `system/artifact` Won In v1
+
+Two naming shapes were explored during design:
+
+- `system/artifact`
+- `class/subject/artifact`
+
+The accepted v1 contract keeps `system/artifact` because:
+
+- it is easier to read in day-to-day repo work
+- it still maps well to restore-oriented backup naming
+- it avoids overfitting the homelab to a more ceremonial enterprise taxonomy
+- product names are still allowed when they are the clearest stable system name
+
+If the backup program later grows into a much larger catalog with many more
+artifact families per system, the project can revisit that decision. For v1,
+`system/artifact` is the intended contract.
+
 ### Omitted Fields
 
 - `tenant`
@@ -202,6 +249,56 @@ secrets posture.
 
 It is an artifact label, not a separate application or platform.
 
+## Future Backup Surface Guidance
+
+This section captures the likely future backup surfaces already visible in the
+repo, intake notes, and current design work.
+
+These are not all active implementations yet, but they are the intended naming
+targets for future backup work.
+
+### Primary backup-worthy domains already visible in the project
+
+- Windows host recovery
+- control-plane repo / inventory / vault / SSH recovery material
+- PostgreSQL
+- ClickHouse
+- Redis
+- MinIO
+- Docker stack definitions and durable volume exports
+- k3s control-plane state
+- Loki data or retained observability state
+- Hyper-V VM metadata and provisioning surfaces
+
+### Additional guidance for how to think about them
+
+- `Langfuse`
+  Usually treat this as an application whose recovery depends mostly on its
+  underlying durable systems such as Postgres, MinIO, or config. Do not create
+  a separate `langfuse` backup domain unless it owns unique persistent data
+  that is not already captured elsewhere.
+- `WindowsImageBackup`
+  Keep this as the physical Windows-native host-recovery implementation, not as
+  a custom logical naming choice.
+- `service-specific payload backups`
+  These should use native restore objects where practical rather than generic
+  folder copies.
+
+### Recommended artifact naming by likely future domain
+
+| System | Recommended artifact names |
+|---|---|
+| `host-recovery` | `system-state`, `bare-metal`, `image` |
+| `control-plane` | `repo-snapshot`, `inventory-bundle`, `vault-bundle`, `ssh-config-bundle` |
+| `postgres` | `basebackup`, `wal` |
+| `clickhouse` | `native-backup` |
+| `redis` | `rdb`, `aof` |
+| `minio` | `config-export`, `policy-export`, `iam-export` |
+| `docker` | `stacks-bundle`, `volume-export` |
+| `k3s` | `etcd-snapshot`, `manifest-bundle` |
+| `loki` | `data-snapshot`, `config-bundle` |
+| `hyperv` | `vm-definition`, `cloud-init`, `host-network-config` |
+
 ## Example Matrix From The Actual Project
 
 This section uses examples from the current actual project and shows how they
@@ -229,9 +326,14 @@ All examples below use the current default context:
 | Docker stacks / volumes | `stacks_root`, `data_root`, `docker_data_root` on `network-server` | `docker` | `stacks-bundle` | `E:\backupsets\castle\home\lab\authoritative\network-server\docker\stacks-bundle\2026-04-25T220000Z\` |
 | Docker stacks / volumes | `stacks_root`, `data_root`, `docker_data_root` on `network-server` | `docker` | `volume-export` | `E:\backupsets\castle\home\lab\authoritative\network-server\docker\volume-export\2026-04-25T220000Z\` |
 | k3s | `server-225-ubuntu`, `k3s_cluster`, `/var/lib/rancher/k3s` | `k3s` | `etcd-snapshot` | `E:\backupsets\castle\home\lab\authoritative\server-225-ubuntu\k3s\etcd-snapshot\2026-04-25T220000Z\` |
+| k3s | `server-225-ubuntu`, cluster manifests and recovery material | `k3s` | `manifest-bundle` | `E:\backupsets\castle\home\lab\authoritative\server-225-ubuntu\k3s\manifest-bundle\2026-04-25T220000Z\` |
 | Loki | `server-225-ubuntu`, `/opt/loki` | `loki` | `data-snapshot` | `E:\backupsets\castle\home\lab\authoritative\server-225-ubuntu\loki\data-snapshot\2026-04-25T220000Z\` |
+| Loki | `server-225-ubuntu`, Loki config and retention policy surfaces | `loki` | `config-bundle` | `E:\backupsets\castle\home\lab\authoritative\server-225-ubuntu\loki\config-bundle\2026-04-25T220000Z\` |
 | Hyper-V VM metadata | `server-225-win`, `server-225-ubuntu` VM lifecycle | `hyperv` | `vm-definition` | `E:\backupsets\castle\home\lab\authoritative\server-225-win\hyperv\vm-definition\2026-04-25T220000Z\` |
 | Hyper-V VM metadata | `server-225-win`, `server-225-ubuntu` VM lifecycle | `hyperv` | `cloud-init` | `E:\backupsets\castle\home\lab\authoritative\server-225-win\hyperv\cloud-init\2026-04-25T220000Z\` |
+| Hyper-V VM metadata | `server-225-win`, host-side VM networking and provisioning surfaces | `hyperv` | `host-network-config` | `E:\backupsets\castle\home\lab\authoritative\server-225-win\hyperv\host-network-config\2026-04-25T220000Z\` |
+| MinIO | `network_server` stack surface | `minio` | `iam-export` | `E:\backupsets\castle\home\lab\authoritative\network-server\minio\iam-export\2026-04-25T220000Z\` |
+| Langfuse-related recovery | `network_server` app layer, usually via durable dependencies rather than a standalone app bucket | `control-plane` | `config-bundle` | `E:\backupsets\castle\home\lab\authoritative\network-server\control-plane\config-bundle\2026-04-25T220000Z\` |
 
 ## Zone Root Examples
 
@@ -253,6 +355,53 @@ Example staging path:
 ```text
 F:\staging\castle\home\lab\authoritative\network-server\
 ```
+
+## Related Local State Naming
+
+The intake note also explored naming for local provisioning markers and
+volume-identity files. Those are related to the naming scheme, but they are not
+backup artifact paths.
+
+For v1, keep that distinction explicit:
+
+- backup artifact naming uses the backup contract in this document
+- local machine state should use shorter local-state paths
+
+### Recommended local machine state path
+
+```text
+C:\ProgramData\<namespace>\state\storage\<profile>\<surface>\provisioned.json
+```
+
+Current project-shaped example:
+
+```text
+C:\ProgramData\castle\state\storage\backup_landing\data-i\provisioned.json
+```
+
+### Recommended per-volume identity path
+
+```text
+<drive_letter>:\_<namespace>\storage\identity.json
+```
+
+Current project-shaped example:
+
+```text
+I:\_castle\storage\identity.json
+```
+
+### Why these local paths are different from backup paths
+
+These files exist to describe local provisioned state and per-volume identity,
+not captured backup artifacts.
+
+So for local-state paths:
+
+- keep them shorter
+- do not automatically repeat `site`, `environment`, `stage`, or `node`
+- prefer the local machine already knowing those details through inventory or
+  host context unless there is a strong reason to encode them again in the path
 
 ## Current Physical Layout Notes
 
@@ -280,4 +429,5 @@ cares about the drive purpose more than the temporary disk-vendor label.
   - `E:\WindowsImageBackup\`
 - Use real project node names for `node`
 - Use restore-oriented names for `artifact`
+- Use `castle` consistently as the namespace in new examples and new work
 - Keep this contract stable and let implementation details evolve beneath it
