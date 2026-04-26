@@ -89,6 +89,21 @@ Before implementation, the agent must be able to state:
 
 If these cannot be stated, the agent is not ready to implement.
 
+When the implementation introduces or materially changes host targeting,
+filtering, or exclusion logic, the first verification run must be read-only.
+
+That first read-only pass should show:
+- what hosts are in scope
+- what hosts are excluded
+- why each host is allowed or blocked
+- what narrower target object would be selected, and why, when the capability
+  also picks a disk, interface, service, or similar subresource
+
+`--check` is helpful but not sufficient when it does not make targeting or
+selection explicit. In those cases, the agent should provide or use a true
+preview path such as preview-only tags, discovery-only tasks, inventory
+summaries, or task listing.
+
 ## Execution Evidence
 
 When a command, playbook, or tool run produces output, that output is part of the evidence.

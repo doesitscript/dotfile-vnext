@@ -534,6 +534,22 @@ Verification should match the class of change:
 - service status
 - direct command evidence
 
+When a change introduces or materially changes targeting, filtering, or
+exclusion behavior, the first verification pass should be a read-only target
+preview before any mutating run.
+
+That preview should show:
+- which hosts are in scope
+- which hosts are excluded
+- why each host is allowed or blocked
+- any selected subresource candidate and why it was selected when the role or
+  playbook also targets a disk, interface, service, or similar narrower object
+
+`--check` can help, but it is not a substitute when it does not make target
+selection explicit. In those cases, prefer a true read-only preview path such
+as a preview tag, inventory summary, task listing, or explicit discovery-only
+tasks.
+
 The agent should say what it verified and what remains unverified.
 If syntax checks, lint, idempotence checks, or runtime verification were not run, the agent should say that explicitly and state why.
 

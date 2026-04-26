@@ -80,6 +80,7 @@ The Zen of Ansible serves as a guidepost when specific practices are unclear:
 - [ ] If active debugging, REPL-style investigation, or narrow troubleshooting makes lint/syntax/idempotence checks inappropriate for the moment, say that explicitly in the conversation and final output
 - [ ] Do not imply that checks ran just because the repo has hooks or config files; report what actually ran
 - [ ] During active implementation, run required live host-state queries when they are the normal evidence path for Ansible work; do not turn them into optional permission questions unless the query is destructive, has hidden side effects, or depends on unresolved user intent
+- [ ] The first time a role or playbook introduces or materially changes host targeting, filtering, or exclusion logic, run a read-only verification pass before any mutating apply; show allowed targets, blocked targets, reasons, and any selected subresource candidates when applicable
 - [ ] Treat `ansible_troubleshooting_mode`, `debug_remote_output`, and `debug_collect_component_evidence` as the standard repo-side controls for Ansible troubleshooting output
 - [ ] In troubleshooting mode, report the component under investigation, the evidence surfaces identified, what was collected this run, what is still missing, and the actual output seen
 - [ ] Treat known-but-uncollected logs, events, CLI diagnostics, log files, and service output as explicit missing evidence surfaces; do not rely on memory or omit them because the role has not wired them yet
