@@ -269,6 +269,7 @@ targets for future backup work.
 - k3s control-plane state
 - Loki data or retained observability state
 - Hyper-V VM metadata and provisioning surfaces
+- Windows third-party driver exports
 
 ### Additional guidance for how to think about them
 
@@ -298,6 +299,35 @@ targets for future backup work.
 | `k3s` | `etcd-snapshot`, `manifest-bundle` |
 | `loki` | `data-snapshot`, `config-bundle` |
 | `hyperv` | `vm-definition`, `cloud-init`, `host-network-config` |
+| `windows-drivers` | `driver-export` |
+
+### Cumulative export exception
+
+Most backup artifacts in this contract use a timestamped leaf path because they
+represent point-in-time backup objects.
+
+Windows driver export is a little different. The active implementation uses a
+managed cumulative export tree:
+
+```text
+E:\backupsets\castle\home\lab\authoritative\<node>\windows-drivers\driver-export\current\
+```
+
+and keeps the timestamped history in the catalog zone through per-run
+manifests:
+
+```text
+E:\backup-catalog\castle\home\lab\authoritative\<node>\windows-drivers\driver-export\runs\<timestamp>.json
+```
+
+That exception is intentional because the driver-export capability supports:
+
+- one-time bootstrap export
+- later incremental export of newly unbacked drivers
+- force rebuild of the managed current export tree
+
+So the backupsets zone keeps the current cumulative export, while the
+backup-catalog zone preserves the timestamped run history.
 
 ## Example Matrix From The Actual Project
 
@@ -332,6 +362,8 @@ All examples below use the current default context:
 | Hyper-V VM metadata | `server-225-win`, `server-225-ubuntu` VM lifecycle | `hyperv` | `vm-definition` | `E:\backupsets\castle\home\lab\authoritative\server-225-win\hyperv\vm-definition\2026-04-25T220000Z\` |
 | Hyper-V VM metadata | `server-225-win`, `server-225-ubuntu` VM lifecycle | `hyperv` | `cloud-init` | `E:\backupsets\castle\home\lab\authoritative\server-225-win\hyperv\cloud-init\2026-04-25T220000Z\` |
 | Hyper-V VM metadata | `server-225-win`, host-side VM networking and provisioning surfaces | `hyperv` | `host-network-config` | `E:\backupsets\castle\home\lab\authoritative\server-225-win\hyperv\host-network-config\2026-04-25T220000Z\` |
+| Windows driver export | `server-225-win`, current third-party driver store export | `windows-drivers` | `driver-export` | `E:\backupsets\castle\home\lab\authoritative\server-225\windows-drivers\driver-export\current\` |
+| Windows driver export catalog | `server-225-win`, per-run manifests for the driver export capability | `windows-drivers` | `driver-export` | `E:\backup-catalog\castle\home\lab\authoritative\server-225\windows-drivers\driver-export\runs\2026-04-25T220000Z.json` |
 | MinIO | `network_server` stack surface | `minio` | `iam-export` | `E:\backupsets\castle\home\lab\authoritative\network-server\minio\iam-export\2026-04-25T220000Z\` |
 | Langfuse-related recovery | `network_server` app layer, usually via durable dependencies rather than a standalone app bucket | `control-plane` | `config-bundle` | `E:\backupsets\castle\home\lab\authoritative\network-server\control-plane\config-bundle\2026-04-25T220000Z\` |
 
