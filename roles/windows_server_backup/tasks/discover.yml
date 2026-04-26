@@ -5,18 +5,16 @@
       $ErrorActionPreference = 'Stop'
       $Ansible.Changed = $false
 
-      $expectedSurfaceType = '{{ __windows_server_backup_required_surface_type }}'
-      $expectedSystemUsageClass = '{{ __windows_server_backup_required_system_usage_class }}'
+      $expectedOperationModel = '{{ __windows_server_backup_required_operation_model }}'
+      $expectedManagementBoundary = '{{ __windows_server_backup_required_management_boundary }}'
       $expectedAvailability = '{{ __windows_server_backup_required_availability_expectation }}'
-      $expectedAutomation = '{{ __windows_server_backup_required_automation_management_model }}'
       $targetDrive = '{{ windows_server_backup_target_drive | default("") }}'
       $expectedTargetLabel = '{{ windows_server_backup_target_label | default("") }}'
 
       $metadataEligible =
-        ('{{ surface_type | default("") }}' -eq $expectedSurfaceType) -and
-        ('{{ system_usage_class | default("") }}' -eq $expectedSystemUsageClass) -and
-        ('{{ availability_expectation | default("") }}' -eq $expectedAvailability) -and
-        ('{{ automation_management_model | default("") }}' -eq $expectedAutomation)
+        ('{{ operation_model | default("") }}' -eq $expectedOperationModel) -and
+        ('{{ management_boundary | default("") }}' -eq $expectedManagementBoundary) -and
+        ('{{ availability_expectation | default("") }}' -eq $expectedAvailability)
 
       $feature = $null
       $featureInstalled = $false
@@ -54,21 +52,155 @@
       }
 
       $summary = $null
+      $lastSuccessfulBackupText = 'unknown'
       try {
         $summary = Get-WBSummary |
           Select-Object LastBackupTime, LastSuccessfulBackupTime, NextBackupTime, NumberOfVersions, DetailedMessage
+        if ($summary -and $summary.LastSuccessfulBackupTime) {
+          $lastSuccessfulBackupText = (Get-Date $summary.LastSuccessfulBackupTime).ToString('MM/dd/yyyy-HH:mm')
+        }
       } catch {
         $summary = [pscustomobject]@{ error = $_.Exception.Message }
       }
 
+      $backupSets = @()
+      try {
+        $backupSets = @(
+          Get-WBBackupSet |
+            Sort-Object BackupTime -Descending |
+            ForEach-Object {
+              [pscustomobject]@{
+                VersionId = $_.VersionId
+                BackupSetId = $_.BackupSetId
+                BackupTime = $_.BackupTime
+              }
+            }
+        )
+      } catch {
+        $backupSets = @()
+      }
+
+      $backupSetVersionIds = @(
+        $backupSets |
+          Where-Object { $_.VersionId } |
+          ForEach-Object { $_.VersionId }
+      )
+
       $job = $null
       $jobRunning = $false
+      $jobElapsedSeconds = 0
+      $jobElapsedHuman = ''
+      $jobBytesProcessed = 0
+      $jobBytesTotal = 0
+      $jobBytesProcessedHuman = '0 B'
+      $jobBytesTotalHuman = '0 B'
+      $jobStateLabel = 'idle'
+      $jobStateDetail = 'no active Windows backup job detected'
+      $jobOperationText = 'not running'
+      $jobStartTimeText = 'not running'
+      $jobElapsedText = 'not running'
+      $jobPercentText = 'not running'
+      $jobPayloadProgressText = 'not running'
+      $jobStateCode = '0'
+      $jobOperationValue = 'unset'
+      $jobStartTimeValue = 'unset'
+      $jobPercentValue = 'unset'
+      $targetSizeHuman = ''
+      $targetFreeHuman = ''
+
+      function Format-ByteCount {
+        param([Int64]$Bytes)
+
+        if ($Bytes -lt 1KB) {
+          return "$Bytes B"
+        }
+        if ($Bytes -lt 1MB) {
+          return ('{0:N2} KiB' -f ($Bytes / 1KB))
+        }
+        if ($Bytes -lt 1GB) {
+          return ('{0:N2} MiB' -f ($Bytes / 1MB))
+        }
+        if ($Bytes -lt 1TB) {
+          return ('{0:N2} GiB' -f ($Bytes / 1GB))
+        }
+        return ('{0:N2} TiB' -f ($Bytes / 1TB))
+      }
+
+      function Get-JobByteSummary {
+        param($Item)
+
+        $processed = 0
+        $total = 0
+        if ($null -eq $Item) {
+          return [pscustomobject]@{
+            Processed = 0
+            Total = 0
+          }
+        }
+
+        if ($Item.BytesProcessed) {
+          $processed += [int64]$Item.BytesProcessed
+        }
+        if ($Item.TotalBytes) {
+          $total += [int64]$Item.TotalBytes
+        }
+
+        foreach ($subItem in @($Item.SubItemList)) {
+          $summary = Get-JobByteSummary -Item $subItem
+          $processed += [int64]$summary.Processed
+          $total += [int64]$summary.Total
+        }
+
+        [pscustomobject]@{
+          Processed = $processed
+          Total = $total
+        }
+      }
+
       try {
         $jobObj = Get-WBJob
         if ($jobObj) {
           $job = $jobObj | Select-Object JobState, StartTime, EndTime, CurrentOperation, PercentComplete, ErrorDescription
+          if ($null -ne $job.JobState -and [string]$job.JobState -ne '') {
+            $jobStateCode = [string]$job.JobState
+          }
           if (($job.JobState -as [int]) -ne 0 -or $job.StartTime -or $job.CurrentOperation) {
             $jobRunning = $true
+            $jobStateLabel = 'running'
+            $jobStateDetail = 'active Windows backup job detected'
+            if ($job.CurrentOperation) {
+              $jobOperationText = [string]$job.CurrentOperation
+              $jobOperationValue = [string]$job.CurrentOperation
+            }
+            if ($job.StartTime) {
+              $jobElapsed = (Get-Date) - $job.StartTime
+              $jobElapsedSeconds = [math]::Max([int][math]::Floor($jobElapsed.TotalSeconds), 0)
+              $jobElapsedHuman = '{0:00}:{1:00}:{2:00}' -f $jobElapsed.Hours, $jobElapsed.Minutes, $jobElapsed.Seconds
+              $jobStartTimeText = [string]$job.StartTime
+              $jobStartTimeValue = [string]$job.StartTime
+              $jobElapsedText = $jobElapsedHuman
+            }
+            if ($null -ne $job.PercentComplete -and [string]$job.PercentComplete -ne '') {
+              $jobPercentText = "$($job.PercentComplete)%"
+              $jobPercentValue = [string]$job.PercentComplete
+            } else {
+              $jobPercentText = 'in progress'
+              $jobPercentValue = 'incomplete'
+            }
+            foreach ($jobItem in @($jobObj.JobItems)) {
+              $summary = Get-JobByteSummary -Item $jobItem
+              $jobBytesProcessed += [int64]$summary.Processed
+              $jobBytesTotal += [int64]$summary.Total
+            }
+            $jobBytesProcessedHuman = Format-ByteCount -Bytes $jobBytesProcessed
+            $jobBytesTotalHuman = Format-ByteCount -Bytes $jobBytesTotal
+            if ($jobBytesTotal -gt 0) {
+              $jobPayloadProgressText = "$jobBytesProcessedHuman / $jobBytesTotalHuman"
+            } elseif ($jobBytesProcessed -gt 0) {
+              $jobPayloadProgressText = "$jobBytesProcessedHuman / incomplete"
+            } else {
+              $jobPayloadProgressText = 'in progress'
+            }
           }
         }
       } catch {
@@ -136,11 +268,69 @@
 
       $latestManualManifest = Get-LatestManifest -Path '{{ windows_server_backup_manual_runs_dir }}'
       $latestAutomaticManifest = Get-LatestManifest -Path '{{ windows_server_backup_automatic_runs_dir }}'
+      $automaticManifestVersionId = ''
+      $automaticNativeVersionId = ''
+      $automaticStateDetail = ''
+      $automaticApplyBehaviorDetail = ''
+      $automaticApplyBehaviorBasisState = ''
+      if ($latestAutomaticManifest -and $latestAutomaticManifest.backup_set_version_id) {
+        $automaticManifestVersionId = [string]$latestAutomaticManifest.backup_set_version_id
+      }
+      if ($automaticManifestVersionId -and ($automaticManifestVersionId -in $backupSetVersionIds)) {
+        $automaticNativeVersionId = $automaticManifestVersionId
+      }
+
+      $automaticState = 'missing'
+      $automaticStateReason = 'no managed automatic backup manifest exists yet'
+      if ($latestAutomaticManifest) {
+        if ($latestAutomaticManifest.error) {
+          $automaticState = 'drifted'
+          $automaticStateReason = 'latest automatic manifest is unreadable or invalid'
+        } elseif (-not $latestAutomaticManifest.backup_set_version_id) {
+          $automaticState = 'drifted'
+          $automaticStateReason = 'latest automatic manifest does not record a backup_set_version_id'
+        } elseif ($latestAutomaticManifest.backup_set_version_id -notin $backupSetVersionIds) {
+          $automaticState = 'drifted'
+          $automaticStateReason = 'latest automatic manifest references a native backup version that is not present'
+        } else {
+          $automaticState = 'healthy'
+          $automaticStateReason = 'latest automatic manifest matches a native backup version'
+        }
+      }
+
+      if ($automaticState -eq 'healthy') {
+        $automaticStateDetail = "managed automatic manifest version $automaticManifestVersionId matches native backup version $automaticNativeVersionId"
+      } elseif ($automaticState -eq 'drifted' -and $automaticManifestVersionId) {
+        $automaticStateDetail = "managed automatic manifest version $automaticManifestVersionId is not present in native backup versions"
+      } else {
+        $automaticStateDetail = $automaticStateReason
+      }
+
+      $automaticApplyBehavior = 'noop'
+      $automaticApplyBehaviorReason = 'automatic backup state is already healthy'
+      if ($jobRunning) {
+        $automaticApplyBehavior = 'defer'
+        $automaticApplyBehaviorReason = 'a Windows backup job is already running'
+      } elseif ($automaticState -eq 'missing') {
+        $automaticApplyBehavior = 'seed'
+        $automaticApplyBehaviorReason = 'no managed automatic backup exists yet'
+      } elseif ($automaticState -eq 'drifted') {
+        $automaticApplyBehavior = 'reconcile'
+        $automaticApplyBehaviorReason = 'managed automatic state is drifted and will be rebuilt cleanly'
+      }
+      $automaticApplyBehaviorBasisState = $automaticState
+      $automaticApplyBehaviorDetail = $automaticApplyBehaviorReason
 
       $targetReady = $false
       $targetMismatches = @()
       if ($targetVolume -and -not $targetVolume.error) {
         $targetReady = $true
+        if ($targetVolume.Size) {
+          $targetSizeHuman = Format-ByteCount -Bytes ([int64]$targetVolume.Size)
+        }
+        if ($targetVolume.SizeRemaining -or $targetVolume.SizeRemaining -eq 0) {
+          $targetFreeHuman = Format-ByteCount -Bytes ([int64]$targetVolume.SizeRemaining)
+        }
         if ($expectedTargetLabel -and $targetVolume.FileSystemLabel -ne $expectedTargetLabel) {
           $targetReady = $false
           $targetMismatches += 'target drive label does not match expected label'
@@ -159,12 +349,43 @@
         staging_root_exists = $stagingRootExists
         native_root_exists = $nativeRootExists
         summary = $summary
+        last_successful_backup_text = $lastSuccessfulBackupText
+        backup_sets = $backupSets
+        backup_set_version_ids = $backupSetVersionIds
         current_job = $job
         current_job_running = $jobRunning
+        current_job_elapsed_seconds = $jobElapsedSeconds
+        current_job_elapsed_human = $jobElapsedHuman
+        current_job_bytes_processed = $jobBytesProcessed
+        current_job_bytes_total = $jobBytesTotal
+        current_job_bytes_processed_human = $jobBytesProcessedHuman
+        current_job_bytes_total_human = $jobBytesTotalHuman
+        current_job_state_label = $jobStateLabel
+        current_job_state_detail = $jobStateDetail
+        current_job_state_code = $jobStateCode
+        current_job_operation_text = $jobOperationText
+        current_job_operation_value = $jobOperationValue
+        current_job_start_time_text = $jobStartTimeText
+        current_job_start_time_value = $jobStartTimeValue
+        current_job_elapsed_text = $jobElapsedText
+        current_job_percent_text = $jobPercentText
+        current_job_percent_value = $jobPercentValue
+        current_job_payload_progress_text = $jobPayloadProgressText
         scheduled_policy = $scheduledPolicy
         automatic_task = $automaticTask
         latest_manual_manifest = $latestManualManifest
         latest_automatic_manifest = $latestAutomaticManifest
+        automatic_state = $automaticState
+        automatic_state_reason = $automaticStateReason
+        automatic_state_detail = $automaticStateDetail
+        automatic_manifest_version_id = $automaticManifestVersionId
+        automatic_native_version_id = $automaticNativeVersionId
+        automatic_apply_behavior = $automaticApplyBehavior
+        automatic_apply_behavior_reason = $automaticApplyBehaviorReason
+        automatic_apply_behavior_basis_state = $automaticApplyBehaviorBasisState
+        automatic_apply_behavior_detail = $automaticApplyBehaviorDetail
+        target_size_human = $targetSizeHuman
+        target_free_human = $targetFreeHuman
         runtime_mode = '{{ __windows_server_backup_runtime_mode }}'
         vss_mode = '{{ __windows_server_backup_vss_mode }}'
       }

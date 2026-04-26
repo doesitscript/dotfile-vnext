@@ -117,3 +117,10 @@
         } | to_nice_json
       }}
     dest: "{{ __windows_server_backup_latest_manual_manifest_path }}"
+
+- name: Record manual backup action result for this run
+  ansible.builtin.set_fact:
+    windows_server_backup_runtime_manual_action: "started"
+    windows_server_backup_runtime_manual_action_result: >-
+      manual backup started with name {{ windows_server_backup_manual_name_effective }}
+    windows_server_backup_runtime_manual_action_name: "{{ windows_server_backup_manual_name_effective }}"

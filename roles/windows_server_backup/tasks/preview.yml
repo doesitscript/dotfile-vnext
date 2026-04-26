@@ -31,16 +31,88 @@
         }}
       - >-
         Last successful backup: {{
-          windows_server_backup_discovery["summary"]["LastSuccessfulBackupTime"]
-          if (windows_server_backup_discovery["summary"] is mapping and windows_server_backup_discovery["summary"]["LastSuccessfulBackupTime"] is defined)
-          else 'unknown'
+          windows_server_backup_discovery["last_successful_backup_text"]
         }}
       - >-
-        Backup running now: {{ windows_server_backup_discovery["current_job_running"] }}
+        Backup job state: {{
+          windows_server_backup_discovery["current_job_state_label"]
+        }}
+      - >-
+        |--Checked Get-WBJob.JobState: {{
+          windows_server_backup_discovery["current_job_state_code"]
+        }}
+      - >-
+        |--Checked Get-WBJob.StartTime: {{
+          windows_server_backup_discovery["current_job_start_time_value"]
+        }}
+      - >-
+        |__Checked Get-WBJob.CurrentOperation: {{
+          windows_server_backup_discovery["current_job_operation_value"]
+        }}
+      - >-
+        Backup job progress: {{
+          windows_server_backup_discovery["current_job_percent_text"]
+        }}
+      - >-
+        |--Checked Get-WBJob.PercentComplete: {{
+          windows_server_backup_discovery["current_job_percent_value"]
+        }}
+      - >-
+        |__Checked JobItems bytes processed / total: {{
+          windows_server_backup_discovery["current_job_payload_progress_text"]
+        }}
       - >-
         Scheduled WB policy present: {{ windows_server_backup_discovery["scheduled_policy"] is not none }}
       - >-
         Automatic task present: {{ windows_server_backup_discovery["automatic_task"] is not none }}
+      - >-
+        Automatic reconcile legend: healthy -> noop | missing -> seed | drifted -> reconcile | running -> defer
+      - >-
+        Automatic reconcile state: {{
+          windows_server_backup_discovery["automatic_state"]
+        }}
+      - >-
+        |--Checked automatic manifest version recorded: {{
+          windows_server_backup_discovery["automatic_manifest_version_id"]
+          if (windows_server_backup_discovery["automatic_manifest_version_id"] | length > 0)
+          else 'none'
+        }}
+      - >-
+        |__Checked native backup version matched: {{
+          windows_server_backup_discovery["automatic_native_version_id"]
+          if (windows_server_backup_discovery["automatic_native_version_id"] | length > 0)
+          else 'none'
+        }}
+      - >-
+        If apply ran now automatic reconcile decision: {{
+          windows_server_backup_discovery["automatic_state"]
+        }} -> {{ windows_server_backup_discovery["automatic_apply_behavior"] }}
+      - >-
+        |--Checked reconcile state input: {{
+          windows_server_backup_discovery["automatic_state"]
+        }}
+      - >-
+        |--Checked backup job state input: {{
+          windows_server_backup_discovery["current_job_state_label"]
+        }}
+      - >-
+        |--Checked automatic seed-if-missing setting: {{
+          windows_server_backup_automatic_seed_if_missing | bool
+        }}
+      - >-
+        |__Checked automatic task present: {{
+          windows_server_backup_discovery["automatic_task"] is not none
+        }}
+      - >-
+        Manual reconcile legend: requested -> run | not-requested -> skip
+      - >-
+        If apply ran now manual backup action: {{
+          'requested' if (__windows_server_backup_effective_manual_run_now | bool) else 'not-requested'
+        }}
+      - >-
+        |__Checked windows_server_backup_manual_run_now: {{
+          __windows_server_backup_effective_manual_run_now | bool
+        }}
       - >-
         Automatic interval days: {{ windows_server_backup_automatic_interval_days }}
       - >-
@@ -67,3 +139,13 @@
         Intended runtime mode: {{
           windows_server_backup_discovery["runtime_mode"]
         }} (VSS {{ windows_server_backup_discovery["vss_mode"] }})
+      - >-
+        Backup target capacity: {{
+          windows_server_backup_discovery["target_free_human"]
+          if (windows_server_backup_discovery["target_free_human"] | length > 0)
+          else 'unknown'
+        }} free / {{
+          windows_server_backup_discovery["target_size_human"]
+          if (windows_server_backup_discovery["target_size_human"] | length > 0)
+          else 'unknown'
+        }} total

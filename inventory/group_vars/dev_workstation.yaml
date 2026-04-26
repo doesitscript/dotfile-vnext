@@ -6,12 +6,21 @@ host_name: dev-workstation
 physical_node: dev-workstation
 lan_ip: "192.168.50.70"
 
-node_role: dev-gpu-node
-node_purpose: development  # drives deploy_development_nodes.yaml targeting — see group_vars/all.yaml
+node_role: gaming-desktop
+# Traditional family gaming desktop. This is an interactive end-user machine,
+# not a repo-managed service node or shared development control surface.
+node_purpose: interactive_desktop  # excluded from deploy_development_nodes.yaml targeting
 os: windows-10-pro
 authority_level: execution
-system_usage_class: interactive_family_workstation
+# High-level usage profile for targeting and exclusion decisions.
+host_usage_profile: interactive_family_workstation
+# Second-order capability descriptors for dynamic grouping.
+interaction_model: interactive
+operation_model: user_endpoint
+management_boundary: user_managed
+# Expected uptime posture for this machine in normal life.
 availability_expectation: planned_optional
+# How aggressively repo automation is allowed to manage this machine.
 automation_management_model: opt_in_special_projects
 
 # --- Hardware (from fact collection) ---
@@ -27,7 +36,7 @@ architecture: "x86_64"
 gpu: "AMD Radeon RX 9060 XT"
 gpu_vram_bytes: 4293918720
 gpu_driver_version: "32.0.23017.1001"
-persistent_data_allowed: true
+persistent_data_allowed: user_managed
 
 # --- OS details ---
 os_name: "Microsoft Windows 10 Pro"

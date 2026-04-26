@@ -5,10 +5,9 @@
       $ErrorActionPreference = 'Stop'
       $Ansible.Changed = $false
 
-      $expectedSurfaceType = '{{ __windows_driver_backup_required_surface_type }}'
-      $expectedSystemUsageClass = '{{ __windows_driver_backup_required_system_usage_class }}'
+      $expectedOperationModel = '{{ __windows_driver_backup_required_operation_model }}'
+      $expectedManagementBoundary = '{{ __windows_driver_backup_required_management_boundary }}'
       $expectedAvailability = '{{ __windows_driver_backup_required_availability_expectation }}'
-      $expectedAutomation = '{{ __windows_driver_backup_required_automation_management_model }}'
       $targetDrive = '{{ windows_driver_backup_target_drive | default("") }}'
       $expectedTargetLabel = '{{ windows_driver_backup_target_label | default("") }}'
       $currentExportRoot = '{{ windows_driver_backup_current_export_root }}'
@@ -16,10 +15,9 @@
       $latestRunManifestPath = '{{ __windows_driver_backup_latest_run_manifest_path }}'
 
       $metadataEligible =
-        ('{{ surface_type | default("") }}' -eq $expectedSurfaceType) -and
-        ('{{ system_usage_class | default("") }}' -eq $expectedSystemUsageClass) -and
-        ('{{ availability_expectation | default("") }}' -eq $expectedAvailability) -and
-        ('{{ automation_management_model | default("") }}' -eq $expectedAutomation)
+        ('{{ operation_model | default("") }}' -eq $expectedOperationModel) -and
+        ('{{ management_boundary | default("") }}' -eq $expectedManagementBoundary) -and
+        ('{{ availability_expectation | default("") }}' -eq $expectedAvailability)
 
       $targetVolume = $null
       if ($targetDrive) {

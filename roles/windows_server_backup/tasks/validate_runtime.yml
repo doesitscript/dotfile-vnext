@@ -1,0 +1,120 @@
+---
+- name: Summarize Windows backup runtime validation
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - >-
+        Automatic reconcile legend: healthy -> noop | missing -> seed | drifted -> reconcile | running -> defer
+      - >-
+        Automatic reconcile state: {{
+          windows_server_backup_discovery["automatic_state"]
+        }}
+      - >-
+        |--Checked automatic manifest version recorded: {{
+          windows_server_backup_discovery["automatic_manifest_version_id"]
+          if (windows_server_backup_discovery["automatic_manifest_version_id"] | length > 0)
+          else 'none'
+        }}
+      - >-
+        |__Checked native backup version matched: {{
+          windows_server_backup_discovery["automatic_native_version_id"]
+          if (windows_server_backup_discovery["automatic_native_version_id"] | length > 0)
+          else 'none'
+        }}
+      - >-
+        This run automatic reconcile decision: {{
+          windows_server_backup_runtime_automatic_action_basis_state
+        }} -> {{ windows_server_backup_runtime_automatic_action }}
+      - >-
+        |--Checked reconcile state at decision time: {{
+          windows_server_backup_runtime_automatic_action_basis_state
+        }}
+      - >-
+        |--Checked backup job state at decision time: {{
+          windows_server_backup_runtime_automatic_action_basis_job_state
+        }}
+      - >-
+        |--Checked automatic seed-if-missing setting: {{
+          windows_server_backup_runtime_automatic_action_basis_seed_if_missing
+        }}
+      - >-
+        |--Checked automatic task present: {{
+          windows_server_backup_runtime_automatic_action_basis_task_present
+        }}
+      - >-
+        |__Checked action result for this run: {{
+          windows_server_backup_runtime_automatic_action_result
+        }}
+      - >-
+        Manual reconcile legend: requested -> run | not-requested -> skip
+      - >-
+        This run manual backup action: {{
+          windows_server_backup_runtime_manual_action
+        }}
+      - >-
+        |--Checked windows_server_backup_manual_run_now: {{
+          windows_server_backup_runtime_manual_action_flag
+        }}
+      - >-
+        |__Checked manual action result for this run: {{
+          windows_server_backup_runtime_manual_action_result
+        }}
+      - >-
+        Backup job state now: {{
+          windows_server_backup_discovery["current_job_state_label"]
+        }}
+      - >-
+        |--Checked Get-WBJob.JobState: {{
+          windows_server_backup_discovery["current_job_state_code"]
+        }}
+      - >-
+        |--Checked Get-WBJob.StartTime: {{
+          windows_server_backup_discovery["current_job_start_time_value"]
+        }}
+      - >-
+        |__Checked Get-WBJob.CurrentOperation: {{
+          windows_server_backup_discovery["current_job_operation_value"]
+        }}
+      - >-
+        Backup job progress now: {{
+          windows_server_backup_discovery["current_job_percent_text"]
+        }}
+      - >-
+        |--Checked Get-WBJob.PercentComplete: {{
+          windows_server_backup_discovery["current_job_percent_value"]
+        }}
+      - >-
+        |__Checked JobItems bytes processed / total: {{
+          windows_server_backup_discovery["current_job_payload_progress_text"]
+        }}
+      - >-
+        Native backup version count: {{
+          windows_server_backup_discovery["summary"]["NumberOfVersions"]
+          if (
+            windows_server_backup_discovery["summary"] is mapping
+            and windows_server_backup_discovery["summary"]["NumberOfVersions"] is defined
+          )
+          else 'unknown'
+        }}
+      - >-
+        Last successful backup: {{
+          windows_server_backup_discovery["last_successful_backup_text"]
+        }}
+      - >-
+        Recent native backup versions: {{
+          (
+            windows_server_backup_discovery["backup_set_version_ids"][:5] | join(', ')
+          )
+          if (windows_server_backup_discovery["backup_set_version_ids"] | length > 0)
+          else 'none'
+        }}
+      - >-
+        Backup target capacity: {{
+          windows_server_backup_discovery["target_free_human"]
+          if (windows_server_backup_discovery["target_free_human"] | length > 0)
+          else 'unknown'
+        }} free / {{
+          windows_server_backup_discovery["target_size_human"]
+          if (windows_server_backup_discovery["target_size_human"] | length > 0)
+          else 'unknown'
+        }} total

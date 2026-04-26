@@ -7,14 +7,13 @@
 - name: Validate Windows backup baseline metadata eligibility
   ansible.builtin.assert:
     that:
-      - surface_type | default("") == __windows_server_backup_required_surface_type
-      - system_usage_class | default("") == __windows_server_backup_required_system_usage_class
+      - operation_model | default("") == __windows_server_backup_required_operation_model
+      - management_boundary | default("") == __windows_server_backup_required_management_boundary
       - availability_expectation | default("") == __windows_server_backup_required_availability_expectation
-      - automation_management_model | default("") == __windows_server_backup_required_automation_management_model
     fail_msg: >-
       {{ inventory_hostname }} is not eligible for the managed Windows backup
       baseline. This role is restricted to infrastructure-managed,
-      continuously available Windows service nodes.
+      continuously available Windows service nodes derived from host metadata.
 
 - name: Validate Windows backup baseline inputs
   ansible.builtin.assert:
@@ -174,6 +173,7 @@
       - Native host-recovery path: {{ windows_server_backup_target_path | default("not set") }}
       - Automatic interval days: {{ windows_server_backup_automatic_interval_days }}
       - Automatic start time: {{ windows_server_backup_automatic_start_time }}
+      - Automatic seed if missing: {{ windows_server_backup_automatic_seed_if_missing }}
       - Automatic retention: keep latest {{ __windows_server_backup_automatic_total_versions_to_keep }} automatic version(s) total
 
       ## Naming
@@ -205,6 +205,7 @@
       - "Backup target label: {{ windows_server_backup_target_volume['FileSystemLabel'] | default('unknown') }}"
       - "Native host-recovery path: {{ windows_server_backup_target_path | default('not set') }}"
       - "Automatic cadence: every {{ windows_server_backup_automatic_interval_days }} day(s) at {{ windows_server_backup_automatic_start_time }}"
+      - "Automatic seed if missing: {{ windows_server_backup_automatic_seed_if_missing }}"
       - "Manual run requested now: {{ __windows_server_backup_effective_manual_run_now }}"
 
 - name: Write automatic Windows backup runner script
@@ -234,15 +235,177 @@
     triggers:
       - type: daily
         start_boundary: >-
-          {{ now(fmt='%Y-%m-%d') }}T{{ windows_server_backup_automatic_start_time }}:00
+          {{ __windows_server_backup_automatic_task_anchor_date }}T{{ windows_server_backup_automatic_start_time }}:00
     state: present
 
 - name: Refresh Windows backup discovery after baseline apply
   ansible.builtin.include_tasks: discover.yml
 
+- name: Initialize Windows backup runtime action summary
+  ansible.builtin.set_fact:
+    windows_server_backup_runtime_automatic_action: >-
+      {{
+        'deferred-running-job'
+        if (windows_server_backup_discovery["current_job_running"] | bool)
+        else (
+          'not-needed'
+          if windows_server_backup_discovery["automatic_state"] == "healthy"
+          else (
+            'skipped-seed-disabled'
+            if not (windows_server_backup_automatic_seed_if_missing | bool)
+            else (
+              'planned-reconcile'
+              if windows_server_backup_discovery["automatic_state"] == "drifted"
+              else 'planned-seed'
+            )
+          )
+        )
+      }}
+    windows_server_backup_runtime_automatic_action_basis_state: "{{ windows_server_backup_discovery['automatic_state'] }}"
+    windows_server_backup_runtime_automatic_action_basis_job_state: "{{ windows_server_backup_discovery['current_job_state_label'] }}"
+    windows_server_backup_runtime_automatic_action_basis_seed_if_missing: "{{ windows_server_backup_automatic_seed_if_missing | bool }}"
+    windows_server_backup_runtime_automatic_action_basis_task_present: "{{ windows_server_backup_discovery['automatic_task'] is not none }}"
+    windows_server_backup_runtime_automatic_action_result: >-
+      {{
+        'existing job deferred'
+        if (windows_server_backup_discovery["current_job_running"] | bool)
+        else (
+          'automatic backup already healthy'
+          if windows_server_backup_discovery["automatic_state"] == "healthy"
+          else (
+            'automatic seeding disabled'
+            if not (windows_server_backup_automatic_seed_if_missing | bool)
+            else (
+              'automatic reconcile will rebuild managed state'
+              if windows_server_backup_discovery["automatic_state"] == "drifted"
+              else 'automatic seed will create first managed backup'
+            )
+          )
+        )
+      }}
+    windows_server_backup_runtime_automatic_action_process_id: ""
+    windows_server_backup_runtime_manual_action: >-
+      {{ 'requested' if (__windows_server_backup_effective_manual_run_now | bool) else 'not-requested' }}
+    windows_server_backup_runtime_manual_action_flag: "{{ __windows_server_backup_effective_manual_run_now | bool }}"
+    windows_server_backup_runtime_manual_action_result: >-
+      {{
+        'manual backup requested by command line'
+        if (__windows_server_backup_effective_manual_run_now | bool)
+        else 'manual backup not requested by command line'
+      }}
+    windows_server_backup_runtime_manual_action_name: ""
+
+- name: Clear managed automatic backup manifests when automatic state drifted
+  ansible.windows.win_file:
+    path: "{{ windows_server_backup_automatic_runs_dir }}"
+    state: absent
+  when:
+    - windows_server_backup_discovery["automatic_state"] == "drifted"
+    - not (windows_server_backup_discovery["current_job_running"] | bool)
+
+- name: Recreate managed automatic backup manifest directory after drift cleanup
+  ansible.windows.win_file:
+    path: "{{ windows_server_backup_automatic_runs_dir }}"
+    state: directory
+  when:
+    - windows_server_backup_discovery["automatic_state"] == "drifted"
+    - not (windows_server_backup_discovery["current_job_running"] | bool)
+
 - name: Configure automatic backup workflow
   ansible.builtin.include_tasks: configure_automatic.yml
+
+- name: Seed or rebuild managed automatic backup when state is not healthy
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $runnerPath = '{{ windows_server_backup_automatic_runner_path }}'
+
+      $process = Start-Process `
+        -FilePath 'powershell.exe' `
+        -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $runnerPath) `
+        -WindowStyle Hidden `
+        -PassThru
+
+      Start-Sleep -Seconds 8
+
+      $job = $null
+      try {
+        $job = Get-WBJob | Select-Object JobState, StartTime, EndTime, CurrentOperation, PercentComplete, ErrorDescription
+      } catch {
+        $job = $null
+      }
+
+      $started = $false
+      if ($job -and (([int]$job.JobState) -ne 0 -or $job.StartTime -or $job.CurrentOperation)) {
+        $started = $true
+      }
+
+      $Ansible.Result = [pscustomobject]@{
+        started = $started
+        process_id = $process.Id
+        runner_path = $runnerPath
+        job = $job
+      }
+  register: windows_server_backup_automatic_seed_result
+  when:
+    - windows_server_backup_automatic_seed_if_missing | bool
+    - windows_server_backup_discovery["automatic_task"] is not none
+    - not (windows_server_backup_discovery["current_job_running"] | bool)
+    - windows_server_backup_discovery["automatic_state"] in ["missing", "drifted"]
+
+- name: Assert automatic seed or reconcile start was observed
+  ansible.builtin.assert:
+    that:
+      - windows_server_backup_automatic_seed_result.result["started"] | default(false)
+    fail_msg: >-
+      Automatic backup reconcile did not report an active Windows backup job
+      after launching the managed runner on {{ inventory_hostname }}.
+  when:
+    - windows_server_backup_automatic_seed_if_missing | bool
+    - windows_server_backup_discovery["automatic_task"] is not none
+    - not (windows_server_backup_discovery["current_job_running"] | bool)
+    - windows_server_backup_discovery["automatic_state"] in ["missing", "drifted"]
+
+- name: Record automatic reconcile action result for this run
+  ansible.builtin.set_fact:
+    windows_server_backup_runtime_automatic_action: >-
+      {{
+        'reconcile-started'
+        if windows_server_backup_runtime_automatic_action_basis_state == 'drifted'
+        else 'seed-started'
+      }}
+    windows_server_backup_runtime_automatic_action_result: >-
+      {{
+        (
+          'automatic reconcile runner started'
+          if windows_server_backup_runtime_automatic_action_basis_state == 'drifted'
+          else 'automatic backup seed runner started'
+        )
+        ~ ' (process id '
+        ~ (windows_server_backup_automatic_seed_result.result["process_id"] | string)
+        ~ ')'
+      }}
+    windows_server_backup_runtime_automatic_action_process_id: "{{ windows_server_backup_automatic_seed_result.result['process_id'] | string }}"
+  when:
+    - windows_server_backup_automatic_seed_result is defined
+    - windows_server_backup_automatic_seed_result.result is defined
+    - windows_server_backup_automatic_seed_result.result["started"] | default(false)
+
+- name: Refresh Windows backup discovery after automatic reconcile run
+  ansible.builtin.include_tasks: discover.yml
+  when:
+    - windows_server_backup_automatic_seed_if_missing | bool
+    - windows_server_backup_discovery["automatic_task"] is not none
+    - not (windows_server_backup_discovery["current_job_running"] | bool)
+    - windows_server_backup_discovery["automatic_state"] in ["missing", "drifted"]
 
 - name: Run manual backup workflow when requested
   ansible.builtin.include_tasks: manual_run.yml
   when: __windows_server_backup_effective_manual_run_now | bool
+
+- name: Refresh Windows backup discovery after manual trigger
+  ansible.builtin.include_tasks: discover.yml
+  when: __windows_server_backup_effective_manual_run_now | bool
+
+- name: Validate Windows backup runtime state after apply
+  ansible.builtin.include_tasks: validate_runtime.yml

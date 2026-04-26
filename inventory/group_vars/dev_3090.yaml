@@ -5,16 +5,25 @@ host_name: dev-3090
 physical_node: dev-3090
 lan_ip: "192.168.50.191"
 
-node_role: dev-gpu-node
-node_purpose: development  # drives deploy_development_nodes.yaml targeting — see group_vars/all.yaml
+node_role: developer-desktop
+# Traditional end-user workstation for interactive web/application development,
+# not a repo-managed service or shared infrastructure node.
+node_purpose: interactive_desktop  # excluded from deploy_development_nodes.yaml targeting
 os: windows-11
 authority_level: execution
-system_usage_class: interactive_family_workstation
+# High-level usage profile for targeting and exclusion decisions.
+host_usage_profile: interactive_family_workstation
+# Second-order capability descriptors for dynamic grouping.
+interaction_model: interactive
+operation_model: user_endpoint
+management_boundary: user_managed
+# Expected uptime posture for this machine in normal life.
 availability_expectation: planned_optional
+# How aggressively repo automation is allowed to manage this machine.
 automation_management_model: opt_in_special_projects
 docker_runtime: hyperv-ubuntu-docker-engine
 gpu: rtx-3090
-persistent_data_allowed: limited
+persistent_data_allowed: user_managed
 
 # Storage paths
 windows_data_root: "D:\\ai"

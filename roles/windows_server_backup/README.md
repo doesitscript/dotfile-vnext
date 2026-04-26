@@ -29,14 +29,14 @@ Current active scope:
 
 - Apply
   Run the dedicated playbook [windows_server_backup.yml](/Users/joshc/develop/dotfile-vnext/playbooks/windows_server_backup.yml)
-  with `--tags backup_apply`.
+  directly. `backup_apply` is now an optional explicit tag, not a required gate.
 - Verify
   Use `--tags backup_preview`, inspect the scheduled task, inspect the run
   manifests under the backup catalog, and check `Get-WBJob` / `Get-WBSummary`
   on the host.
 - Undo
   Set `windows_server_backup_state: absent` for the host and re-run the
-  dedicated playbook with `--tags backup_apply`.
+  dedicated playbook.
 - Change class
   Steady-state configuration with an explicitly triggered destructive/expensive
   side path only when a manual backup run is requested.
@@ -84,6 +84,43 @@ lifecycle surface for Windows backup capability on a host.
   removes the owned baseline work and host-recovery payload created by this
   capability on that host
 
+## Preview vs apply
+
+Use these as two different operating modes of the same playbook:
+
+- `preview`
+  Read-only inspection. This shows whether a host is in scope, what state the
+  backup capability is in, whether an automatic backup is healthy or missing,
+  whether a backup job is currently running, and what apply would do next. It
+  does not create, remove, seed, reconcile, or trigger backups.
+- `apply`
+  Real lifecycle execution. This enforces the host's desired
+  `windows_server_backup_state`, ensures the scheduled task and managed
+  structure exist, seeds missing automatic backup state when configured to do
+  so, reconciles managed automatic state when needed, and can trigger a manual
+  backup only when explicitly requested.
+
+In practice:
+
+- use preview when you want to inspect safely before touching anything
+- use apply when you want the host to converge to its desired backup state
+
+Technical note:
+
+- `--tags backup_preview`
+  selects the preview-only tasks. Those tasks are tagged `never` plus
+  `backup_preview`, so they run only when that tag is requested.
+- plain playbook run
+  uses Ansible's default task selection, so the normal apply path runs and the
+  preview-only tasks stay skipped.
+
+Commands:
+
+```bash
+ansible-playbook playbooks/windows_server_backup.yml --tags backup_preview --limit network-server-win
+ansible-playbook playbooks/windows_server_backup.yml --limit network-server-win
+```
+
 ## Manual vs automatic runs
 
 Windows Server Backup does not expose a strong native custom label field for
@@ -96,6 +133,7 @@ and description in repo-managed run manifests.
   - `windows_server_backup_manual_description`
 - automatic cadence control:
   - `windows_server_backup_automatic_interval_days`
+  - `windows_server_backup_automatic_seed_if_missing`
 
 The automatic cadence ignores manual backups when deciding whether a new
 automatic run is due. Automatic retention keeps the newest automatic backup
@@ -107,6 +145,16 @@ Automatic backups are intentionally managed separately from the manual
 playbook-trigger path.
 
 - the playbook ensures the automatic scheduled task exists
+- by default, the apply path also seeds the first automatic backup immediately
+  if the automatic task is managed but no automatic backup manifest exists yet
+- that seed/reconcile start is launched in the background so apply can return
+  with runtime status instead of waiting for the full backup to finish
+- the scheduled task uses a stable anchor date plus the configured start time,
+  so normal reruns do not report false changes just because the calendar date
+  moved forward
+- if the managed automatic manifest drifts from native backup reality, the
+  playbook clears the managed automatic manifest state it owns and reseeds a
+  clean automatic baseline instead of trying to repair a half-broken state
 - that scheduled task wakes up daily at the configured start time
 - the runner script then checks whether the configured number of days has
   elapsed since the last automatic backup
@@ -119,6 +167,49 @@ playbook-trigger path.
 So the scheduled task is the controller, while
 `windows_server_backup_automatic_interval_days` is what actually determines how
 often an automatic backup occurs.
+
+`windows_server_backup_automatic_seed_if_missing: true` closes the common
+first-run gap by starting the first automatic backup during apply when the
+managed automatic task exists but no automatic backup manifest has been created
+yet.
+
+The automatic reconcile logic now treats the automatic backup as healthy only
+when the managed automatic manifest and an actual native backup version agree.
+If that managed state is missing, incomplete, invalid, or drifted, the role
+clears only the repo-managed automatic manifest state it owns and recreates a
+clean automatic baseline. It does not try to partially repair the automatic
+state in place.
+
+This is normal rerun behavior, not a special recovery mode. Re-running the
+playbook is expected to be safe:
+
+- healthy state -> no-op
+- missing automatic state -> seed the first automatic backup
+- drifted managed automatic state -> clear the managed automatic catalog state
+  and recreate a clean automatic baseline
+- backup already running -> defer automatic reconciliation for that run
+
+The preview and post-apply runtime summaries now report this as an explicit
+decision map:
+
+- automatic reconcile legend:
+  - `healthy -> noop`
+  - `missing -> seed`
+  - `drifted -> reconcile`
+  - `running -> defer`
+- current automatic decision line:
+  - preview: `If apply ran now automatic reconcile decision: <state> -> <action>`
+  - apply: `This run automatic reconcile decision: <state> -> <action>`
+
+That means the left side is the evaluated automatic state and the right side is
+the resulting reconcile action the capability would take or did take.
+
+After apply, the role also emits a runtime validation summary so the operator
+can immediately see whether a backup job is running, how long it has been
+running, current operation and progress, recent native backup versions, and
+target-volume capacity posture. The preview path now surfaces the same core
+runtime details before apply, including current job timing, percent complete,
+payload bytes processed, and backup-target free space.
 
 ### Current default cadence
 
@@ -152,7 +243,6 @@ Apply the managed Windows backup baseline without triggering a manual backup:
 
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
-  --tags backup_apply \
   --limit network-server-win
 ```
 
@@ -162,7 +252,6 @@ Manual backup with generated name and generated description:
 
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
-  --tags backup_apply \
   --limit network-server-win \
   -e windows_server_backup_manual_run_now=true
 ```
@@ -171,7 +260,6 @@ Manual backup with generated name and custom description:
 
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
-  --tags backup_apply \
   --limit network-server-win \
   -e windows_server_backup_manual_run_now=true \
   -e 'windows_server_backup_manual_description=Before storage stack refactor'
@@ -181,7 +269,6 @@ Manual backup with custom name and custom description:
 
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
-  --tags backup_apply \
   --limit network-server-win \
   -e windows_server_backup_manual_run_now=true \
   -e 'windows_server_backup_manual_name=pre-refactor-checkpoint' \
@@ -192,7 +279,6 @@ Manual backup with custom name only:
 
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
-  --tags backup_apply \
   --limit network-server-win \
   -e windows_server_backup_manual_run_now=true \
   -e 'windows_server_backup_manual_name=pre-refactor-checkpoint'
@@ -204,15 +290,23 @@ Keep the normal one-week cadence from inventory:
 
 ```yaml
 windows_server_backup_automatic_interval_days: 7
+windows_server_backup_automatic_seed_if_missing: true
 ```
 
 Temporarily test a three-week cadence without editing inventory:
 
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
-  --tags backup_apply \
   --limit network-server-win \
   -e windows_server_backup_automatic_interval_days=21
+```
+
+Disable first-run automatic seeding for a run:
+
+```bash
+ansible-playbook playbooks/windows_server_backup.yml \
+  --limit network-server-win \
+  -e windows_server_backup_automatic_seed_if_missing=false
 ```
 
 ### Removal
@@ -229,7 +323,6 @@ Apply:
 
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
-  --tags backup_apply \
   --limit network-server-win
 ```
 

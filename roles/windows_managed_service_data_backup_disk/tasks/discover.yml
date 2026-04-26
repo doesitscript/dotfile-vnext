@@ -5,10 +5,11 @@
       $ProgressPreference = 'SilentlyContinue'
       $Ansible.Changed = $false
 
-      $expectedSurfaceType = '{{ __windows_managed_service_data_backup_disk_required_surface_type }}'
-      $expectedSystemUsageClass = '{{ __windows_managed_service_data_backup_disk_required_system_usage_class }}'
+      $expectedOperationModel = '{{ __windows_managed_service_data_backup_disk_required_operation_model }}'
+      $expectedManagementBoundary = '{{ __windows_managed_service_data_backup_disk_required_management_boundary }}'
       $expectedAvailability = '{{ __windows_managed_service_data_backup_disk_required_availability_expectation }}'
-      $expectedAutomation = '{{ __windows_managed_service_data_backup_disk_required_automation_management_model }}'
+      $expectedNodeRole = '{{ __windows_managed_service_data_backup_disk_required_node_role }}'
+      $expectedAuthorityLevel = '{{ __windows_managed_service_data_backup_disk_required_authority_level }}'
       $expectedBackupDriveLetter = '{{ __windows_managed_service_data_backup_disk_backup_drive_letter }}'
       $expectedBackupLabel = '{{ __windows_managed_service_data_backup_disk_backup_label }}'
       $expectedDataDriveLetter = '{{ __windows_managed_service_data_backup_disk_data_drive_letter }}'
@@ -23,10 +24,11 @@
       $targetSerial = '{{ windows_managed_service_data_backup_disk_target_serial_number | default("") }}'.Trim()
 
       $metadataEligible =
-        ('{{ surface_type | default("") }}' -eq $expectedSurfaceType) -and
-        ('{{ system_usage_class | default("") }}' -eq $expectedSystemUsageClass) -and
+        ('{{ operation_model | default("") }}' -eq $expectedOperationModel) -and
+        ('{{ management_boundary | default("") }}' -eq $expectedManagementBoundary) -and
         ('{{ availability_expectation | default("") }}' -eq $expectedAvailability) -and
-        ('{{ automation_management_model | default("") }}' -eq $expectedAutomation)
+        ('{{ node_role | default("") }}' -eq $expectedNodeRole) -and
+        ('{{ authority_level | default("") }}' -eq $expectedAuthorityLevel)
 
       $disks = Get-Disk | Sort-Object Number
       $diskInfos = @()

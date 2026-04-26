@@ -1,11 +1,76 @@
 ---
+- name: Classify managed service disk policy scope
+  hosts: all
+  gather_facts: false
+
+  tasks:
+    - name: Derive managed service disk policy inputs
+      ansible.builtin.set_fact:
+        windows_managed_service_data_backup_disk_candidate: >-
+          {{ (surface_type | default('')) == 'windows_host' }}
+        windows_managed_service_data_backup_disk_metadata_eligible: >-
+          {{
+            (operation_model | default('')) == 'service'
+            and (management_boundary | default('')) == 'infra_managed'
+            and (availability_expectation | default('')) == 'expected_continuous'
+            and (node_role | default('')) == 'storage-observability-node'
+            and (authority_level | default('')) == 'authoritative'
+          }}
+        windows_managed_service_data_backup_disk_should_manage: >-
+          {{
+            (surface_type | default('')) == 'windows_host'
+            and (operation_model | default('')) == 'service'
+            and (management_boundary | default('')) == 'infra_managed'
+            and (availability_expectation | default('')) == 'expected_continuous'
+            and (node_role | default('')) == 'storage-observability-node'
+            and (authority_level | default('')) == 'authoritative'
+          }}
+        windows_managed_service_data_backup_disk_lifecycle_ready: >-
+          {{
+            (windows_managed_service_data_backup_disk_state | default('unset'))
+            in ['present', 'absent']
+          }}
+      changed_when: false
+      tags:
+        - always
+
+    - name: Group managed service disk candidate hosts
+      ansible.builtin.group_by:
+        key: >-
+          windows_managed_service_data_backup_disk_candidate_{{
+            windows_managed_service_data_backup_disk_candidate | ternary('true', 'false')
+          }}
+      changed_when: false
+      tags:
+        - always
+
+    - name: Group managed service disk metadata-eligible hosts
+      ansible.builtin.group_by:
+        key: >-
+          windows_managed_service_data_backup_disk_metadata_eligible_{{
+            windows_managed_service_data_backup_disk_metadata_eligible | ternary('true', 'false')
+          }}
+      changed_when: false
+      tags:
+        - always
+
+    - name: Group managed service disk policy-managed hosts
+      ansible.builtin.group_by:
+        key: >-
+          windows_managed_service_data_backup_disk_should_manage_{{
+            windows_managed_service_data_backup_disk_should_manage | ternary('true', 'false')
+          }}
+      changed_when: false
+      tags:
+        - always
+
 - name: Preview managed service disk eligibility from inventory metadata
   hosts: localhost
   gather_facts: false
   vars:
     windows_managed_service_data_backup_disk_preview_hosts: >-
       {{
-        query('inventory_hostnames', 'windows_hosts:dev_3090:dev_workstation')
+        query('inventory_hostnames', 'windows_managed_service_data_backup_disk_candidate_true')
       }}
 
   tasks:
@@ -14,32 +79,33 @@
         msg:
           - "Host: {{ item }}"
           - "Surface type: {{ hostvars[item]['surface_type'] | default('unset') }}"
-          - "System usage class: {{ hostvars[item]['system_usage_class'] | default('unset') }}"
+          - "Operation model: {{ hostvars[item]['operation_model'] | default('unset') }}"
+          - "Management boundary: {{ hostvars[item]['management_boundary'] | default('unset') }}"
           - "Availability expectation: {{ hostvars[item]['availability_expectation'] | default('unset') }}"
-          - "Automation management model: {{ hostvars[item]['automation_management_model'] | default('unset') }}"
+          - "Node role: {{ hostvars[item]['node_role'] | default('unset') }}"
+          - "Authority level: {{ hostvars[item]['authority_level'] | default('unset') }}"
+          - "Windows candidate: {{ hostvars[item]['windows_managed_service_data_backup_disk_candidate'] | default(false) }}"
+          - "Metadata eligible: {{ hostvars[item]['windows_managed_service_data_backup_disk_metadata_eligible'] | default(false) }}"
+          - "Derived policy should manage: {{ hostvars[item]['windows_managed_service_data_backup_disk_should_manage'] | default(false) }}"
           - >-
-            Metadata eligible: {{
-              (hostvars[item]['surface_type'] | default('')) == 'windows_host'
-              and (hostvars[item]['system_usage_class'] | default('')) == 'managed_service_node'
-              and (hostvars[item]['availability_expectation'] | default('')) == 'expected_continuous'
-              and (hostvars[item]['automation_management_model'] | default('')) == 'infrastructure_managed'
+            Requested state: {{
+              hostvars[item]['windows_managed_service_data_backup_disk_state'] | default('unset')
             }}
           - >-
-            Scheduled for apply: {{
-              (
-                (hostvars[item]['surface_type'] | default('')) == 'windows_host'
-                and (hostvars[item]['system_usage_class'] | default('')) == 'managed_service_node'
-                and (hostvars[item]['availability_expectation'] | default('')) == 'expected_continuous'
-                and (hostvars[item]['automation_management_model'] | default('')) == 'infrastructure_managed'
-                and (hostvars[item]['windows_managed_service_data_backup_disk_state'] | default('absent')) == 'present'
-              )
+            Lifecycle state ready: {{
+              hostvars[item]['windows_managed_service_data_backup_disk_lifecycle_ready'] | default(false)
+            }}
+          - >-
+            Will apply on normal run: {{
+              (hostvars[item]['windows_managed_service_data_backup_disk_should_manage'] | default(false))
+              and (hostvars[item]['windows_managed_service_data_backup_disk_state'] | default('unset')) == 'present'
             }}
       loop: "{{ windows_managed_service_data_backup_disk_preview_hosts }}"
       tags:
         - disk_preview
 
 - name: Preview and apply managed service data/backup disk layout
-  hosts: windows_hosts
+  hosts: windows_managed_service_data_backup_disk_should_manage_true
   gather_facts: false
 
   tasks:
@@ -59,7 +125,6 @@
         apply:
           tags:
             - disk_apply
-      when: windows_managed_service_data_backup_disk_state == "present"
       tags:
         - never
         - disk_apply

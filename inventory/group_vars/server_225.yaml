@@ -9,8 +9,15 @@ node_role: primary-gpu-node
 node_purpose: development  # drives deploy_development_nodes.yaml targeting — see group_vars/all.yaml
 os: windows-server-2025
 authority_level: execution
-system_usage_class: managed_service_node
+# High-level usage profile for targeting and exclusion decisions.
+host_usage_profile: managed_service_node
+# Second-order capability descriptors for dynamic grouping.
+interaction_model: unattended
+operation_model: service
+management_boundary: infra_managed
+# Expected uptime posture for this machine in normal life.
 availability_expectation: expected_continuous
+# How aggressively repo automation is allowed to manage this machine.
 automation_management_model: infrastructure_managed
 docker_runtime: hyperv-ubuntu-docker-engine
 gpu: rtx-5090
@@ -23,3 +30,11 @@ data_root: "D:\\ai\\data"
 linux_stacks_root: "/srv/stacks"
 linux_data_root: "/srv/data"
 docker_engine_host: "server-225-ubuntu"
+
+# Windows Server Backup baseline
+# Opt this host into the same managed backup lifecycle surface as
+# network-server-win so a plain windows_hosts run evaluates and applies here.
+windows_server_backup_state: present
+windows_server_backup_target_drive: "E"
+windows_server_backup_target_label: "backups"
+windows_server_backup_automatic_interval_days: 7

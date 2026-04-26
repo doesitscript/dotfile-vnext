@@ -2,14 +2,16 @@
 - name: Validate managed service data/backup disk metadata
   ansible.builtin.assert:
     that:
-      - surface_type | default("") == __windows_managed_service_data_backup_disk_required_surface_type
-      - system_usage_class | default("") == __windows_managed_service_data_backup_disk_required_system_usage_class
+      - operation_model | default("") == __windows_managed_service_data_backup_disk_required_operation_model
+      - management_boundary | default("") == __windows_managed_service_data_backup_disk_required_management_boundary
       - availability_expectation | default("") == __windows_managed_service_data_backup_disk_required_availability_expectation
-      - automation_management_model | default("") == __windows_managed_service_data_backup_disk_required_automation_management_model
+      - node_role | default("") == __windows_managed_service_data_backup_disk_required_node_role
+      - authority_level | default("") == __windows_managed_service_data_backup_disk_required_authority_level
     fail_msg: >-
       {{ inventory_hostname }} is not eligible for the managed service
       data/backup disk role. This role is restricted to infrastructure-managed,
-      continuously available Windows service nodes.
+      continuously available authoritative storage-observability Windows
+      service nodes.
 
 - name: Discover managed service data/backup disk apply facts
   ansible.builtin.include_tasks: discover.yml
