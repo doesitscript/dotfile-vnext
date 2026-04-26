@@ -4,6 +4,18 @@
 # target validation, and repo-managed structure. It intentionally does not yet
 # implement the full Windows Server Backup policy/schedule workflow or
 # service-specific backup payloads.
+- name: Validate Windows backup baseline metadata eligibility
+  ansible.builtin.assert:
+    that:
+      - surface_type | default("") == __windows_server_backup_required_surface_type
+      - system_usage_class | default("") == __windows_server_backup_required_system_usage_class
+      - availability_expectation | default("") == __windows_server_backup_required_availability_expectation
+      - automation_management_model | default("") == __windows_server_backup_required_automation_management_model
+    fail_msg: >-
+      {{ inventory_hostname }} is not eligible for the managed Windows backup
+      baseline. This role is restricted to infrastructure-managed,
+      continuously available Windows service nodes.
+
 - name: Validate Windows backup baseline inputs
   ansible.builtin.assert:
     that:
@@ -11,6 +23,8 @@
       - windows_data_root | length > 0
       - windows_server_backup_work_root | length > 0
       - windows_server_backup_target_drive | default("") | length > 0
+      - windows_server_backup_automatic_interval_days | int > 0
+      - windows_server_backup_automatic_keep_previous_count | int >= 0
     fail_msg: >-
       windows_server_backup requires windows_data_root and an explicit
       windows_server_backup_target_drive for the first milestone.
@@ -19,6 +33,9 @@
   ansible.builtin.set_fact:
     windows_server_backup_work_drive: "{{ windows_server_backup_work_root[0:2] }}"
     windows_server_backup_staging_drive_root: "{{ windows_server_backup_staging_root[0:2] }}"
+
+- name: Discover Windows backup baseline facts before apply
+  ansible.builtin.include_tasks: discover.yml
 
 - name: Install Windows Server Backup feature
   ansible.windows.win_feature:
@@ -102,6 +119,9 @@
     - "{{ windows_server_backup_targets_dir }}"
     - "{{ windows_server_backup_logs_dir }}"
     - "{{ windows_server_backup_manifests_dir }}"
+    - "{{ windows_server_backup_runs_root }}"
+    - "{{ windows_server_backup_manual_runs_dir }}"
+    - "{{ windows_server_backup_automatic_runs_dir }}"
 
 - name: Write Windows backup baseline README
   ansible.windows.win_copy:
@@ -120,6 +140,8 @@
       - install the Windows Server Backup feature
       - validate the intended target drive
       - create the repo-managed backup working structure
+      - support named manual native host-recovery backup requests
+      - support an automatic native host-recovery backup task with day-based cadence
       - preserve future service-target ideas outside active execution
 
       ## Baseline Source
@@ -141,18 +163,29 @@
       - Future targets: {{ windows_server_backup_targets_dir }}
       - Logs: {{ windows_server_backup_logs_dir }}
       - Manifests: {{ windows_server_backup_manifests_dir }}
+      - Run catalog root: {{ windows_server_backup_runs_root }}
+      - Manual run manifests: {{ windows_server_backup_manual_runs_dir }}
+      - Automatic run manifests: {{ windows_server_backup_automatic_runs_dir }}
 
       ## Backup Target
 
       - Target drive: {{ windows_server_backup_target_drive }}:
       - Target label: {{ windows_server_backup_target_volume["FileSystemLabel"] | default("unknown") }}
       - Native host-recovery path: {{ windows_server_backup_target_path | default("not set") }}
+      - Automatic interval days: {{ windows_server_backup_automatic_interval_days }}
+      - Automatic start time: {{ windows_server_backup_automatic_start_time }}
+      - Automatic retention: keep latest {{ __windows_server_backup_automatic_total_versions_to_keep }} automatic version(s) total
+
+      ## Naming
+
+      Windows Server Backup does not provide a strong native custom label field
+      for each backup version, so this role records the human-facing backup name
+      and description in the repo-managed run manifests under the catalog zone.
 
       ## First-Milestone Boundary
 
       This milestone does not yet manage:
 
-      - Windows Server Backup policy/schedule creation
       - service-specific backups for Postgres, ClickHouse, Redis, or MinIO
 
       Those future service-target ideas are preserved in:
@@ -171,3 +204,45 @@
       - "Backup target: {{ windows_server_backup_target_drive }}:"
       - "Backup target label: {{ windows_server_backup_target_volume['FileSystemLabel'] | default('unknown') }}"
       - "Native host-recovery path: {{ windows_server_backup_target_path | default('not set') }}"
+      - "Automatic cadence: every {{ windows_server_backup_automatic_interval_days }} day(s) at {{ windows_server_backup_automatic_start_time }}"
+      - "Manual run requested now: {{ __windows_server_backup_effective_manual_run_now }}"
+
+- name: Write automatic Windows backup runner script
+  ansible.windows.win_template:
+    src: "automatic_native_host_recovery.ps1.j2"
+    dest: "{{ windows_server_backup_automatic_runner_path }}"
+
+- name: Configure automatic native host-recovery scheduled task
+  community.windows.win_scheduled_task:
+    name: "{{ __windows_server_backup_automatic_task_name }}"
+    path: "{{ __windows_server_backup_automatic_task_path }}"
+    description: "{{ __windows_server_backup_automatic_task_description }}"
+    enabled: true
+    hidden: false
+    allow_demand_start: true
+    allow_hard_terminate: true
+    multiple_instances: 2
+    execution_time_limit: "PT0S"
+    run_level: highest
+    logon_type: service_account
+    username: SYSTEM
+    actions:
+      - path: "powershell.exe"
+        arguments: >-
+          -NoProfile -ExecutionPolicy Bypass
+          -File "{{ windows_server_backup_automatic_runner_path }}"
+    triggers:
+      - type: daily
+        start_boundary: >-
+          {{ now(fmt='%Y-%m-%d') }}T{{ windows_server_backup_automatic_start_time }}:00
+    state: present
+
+- name: Refresh Windows backup discovery after baseline apply
+  ansible.builtin.include_tasks: discover.yml
+
+- name: Configure automatic backup workflow
+  ansible.builtin.include_tasks: configure_automatic.yml
+
+- name: Run manual backup workflow when requested
+  ansible.builtin.include_tasks: manual_run.yml
+  when: __windows_server_backup_effective_manual_run_now | bool

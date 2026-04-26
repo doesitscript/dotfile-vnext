@@ -1,0 +1,119 @@
+---
+- name: Assert no Windows backup job is already running before manual trigger
+  ansible.builtin.assert:
+    that:
+      - not (windows_server_backup_discovery["current_job_running"] | bool)
+    fail_msg: >-
+      A Windows backup job is already running on {{ inventory_hostname }}.
+      Wait for that job to finish before requesting another manual run.
+
+- name: Resolve manual Windows backup metadata
+  ansible.builtin.set_fact:
+    windows_server_backup_manual_name_effective: >-
+      {{
+        (
+          windows_server_backup_manual_name
+          if (windows_server_backup_manual_name | default('') | length > 0)
+          else 'native-host-recovery-manual-' ~ windows_server_backup_node_name ~ '-' ~ now(utc=true, fmt='%Y%m%dT%H%M%SZ')
+        ) | regex_replace('[^A-Za-z0-9._-]+', '-')
+      }}
+    windows_server_backup_manual_description_effective: >-
+      {{
+        windows_server_backup_manual_description
+        if (windows_server_backup_manual_description | default('') | length > 0)
+        else 'Manual native-host-recovery backup for ' ~ windows_server_backup_node_name ~ ' requested by Ansible at ' ~ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')
+      }}
+
+- name: Trigger one-time async manual native host-recovery backup
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      Import-Module WindowsServerBackup
+
+      $targetPath = '{{ windows_server_backup_target_drive }}:'
+      $policy = New-WBPolicy
+      Add-WBBareMetalRecovery -Policy $policy | Out-Null
+      $backupTarget = New-WBBackupTarget -VolumePath $targetPath
+      Add-WBBackupTarget -Policy $policy -Target $backupTarget | Out-Null
+      Set-WBVssBackupOption -Policy $policy -VssCopyBackup | Out-Null
+      Start-WBBackup -Policy $policy -Async -Force | Out-Null
+      Start-Sleep -Seconds 5
+
+      $job = $null
+      try {
+        $job = Get-WBJob | Select-Object JobState, StartTime, EndTime, CurrentOperation, PercentComplete, ErrorDescription
+      } catch {
+        $job = $null
+      }
+
+      $summary = Get-WBSummary | Select-Object LastBackupTime, LastSuccessfulBackupTime, NextBackupTime, NumberOfVersions, DetailedMessage
+
+      $Ansible.Result = [pscustomobject]@{
+        started = ($null -ne $job)
+        target_path = $targetPath
+        runtime_mode = '{{ __windows_server_backup_runtime_mode }}'
+        vss_mode = '{{ __windows_server_backup_vss_mode }}'
+        job = $job
+        summary = $summary
+      }
+  register: windows_server_backup_manual_run_result
+
+- name: Assert manual Windows backup run started
+  ansible.builtin.assert:
+    that:
+      - windows_server_backup_manual_run_result.result["started"] | default(false)
+    fail_msg: >-
+      Windows backup did not report an active async job after the manual trigger
+      on {{ inventory_hostname }}. Result: {{
+        windows_server_backup_manual_run_result.result | default({})
+      }}
+
+- name: Write manual Windows backup run manifest
+  ansible.windows.win_copy:
+    content: |
+      {{
+        {
+          "schema": "castle.backup.native-host-recovery.v1",
+          "mode": "manual",
+          "backup_name": windows_server_backup_manual_name_effective,
+          "description": windows_server_backup_manual_description_effective,
+          "requested_at_utc": now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ'),
+          "runtime_mode": __windows_server_backup_runtime_mode,
+          "vss_mode": __windows_server_backup_vss_mode,
+          "target_drive": windows_server_backup_target_drive,
+          "target_label": windows_server_backup_target_volume["FileSystemLabel"] | default(""),
+          "node_name": windows_server_backup_node_name,
+          "namespace": windows_server_backup_namespace,
+          "site": windows_server_backup_site,
+          "environment": windows_server_backup_environment,
+          "stage": windows_server_backup_stage,
+          "job": windows_server_backup_manual_run_result.result["job"] | default({}),
+          "summary": windows_server_backup_manual_run_result.result["summary"] | default({})
+        } | to_nice_json
+      }}
+    dest: "{{ windows_server_backup_manual_runs_dir }}\\{{ windows_server_backup_manual_name_effective }}.json"
+
+- name: Update latest manual Windows backup manifest pointer
+  ansible.windows.win_copy:
+    content: |
+      {{
+        {
+          "schema": "castle.backup.native-host-recovery.v1",
+          "mode": "manual",
+          "backup_name": windows_server_backup_manual_name_effective,
+          "description": windows_server_backup_manual_description_effective,
+          "requested_at_utc": now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ'),
+          "runtime_mode": __windows_server_backup_runtime_mode,
+          "vss_mode": __windows_server_backup_vss_mode,
+          "target_drive": windows_server_backup_target_drive,
+          "target_label": windows_server_backup_target_volume["FileSystemLabel"] | default(""),
+          "node_name": windows_server_backup_node_name,
+          "namespace": windows_server_backup_namespace,
+          "site": windows_server_backup_site,
+          "environment": windows_server_backup_environment,
+          "stage": windows_server_backup_stage,
+          "job": windows_server_backup_manual_run_result.result["job"] | default({}),
+          "summary": windows_server_backup_manual_run_result.result["summary"] | default({})
+        } | to_nice_json
+      }}
+    dest: "{{ __windows_server_backup_latest_manual_manifest_path }}"

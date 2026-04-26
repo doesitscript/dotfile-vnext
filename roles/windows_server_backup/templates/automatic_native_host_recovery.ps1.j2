@@ -1,0 +1,159 @@
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+Import-Module WindowsServerBackup
+
+$targetDrive = '{{ windows_server_backup_target_drive }}'
+$targetPath = '{{ windows_server_backup_target_drive }}:'
+$targetLabel = '{{ windows_server_backup_target_label }}'
+$intervalDays = {{ windows_server_backup_automatic_interval_days | int }}
+$keepTotalAutomaticVersions = {{ __windows_server_backup_automatic_total_versions_to_keep | int }}
+$automaticRunsDir = '{{ windows_server_backup_automatic_runs_dir }}'
+$latestAutomaticManifestPath = '{{ __windows_server_backup_latest_automatic_manifest_path }}'
+$logsDir = '{{ windows_server_backup_logs_dir }}'
+$nodeName = '{{ windows_server_backup_node_name }}'
+$namespace = '{{ windows_server_backup_namespace }}'
+$site = '{{ windows_server_backup_site }}'
+$environment = '{{ windows_server_backup_environment }}'
+$stage = '{{ windows_server_backup_stage }}'
+$runtimeMode = '{{ __windows_server_backup_runtime_mode }}'
+$vssMode = '{{ __windows_server_backup_vss_mode }}'
+$timestampUtc = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
+$requestedAtUtc = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+$backupName = "native-host-recovery-automatic-$nodeName-$timestampUtc"
+$description = "Automatic native-host-recovery backup for $nodeName on a $intervalDays-day cadence."
+$logPath = Join-Path -Path $logsDir -ChildPath "automatic-native-host-recovery-$timestampUtc.log"
+
+New-Item -Path $automaticRunsDir -ItemType Directory -Force | Out-Null
+New-Item -Path $logsDir -ItemType Directory -Force | Out-Null
+
+function Write-Log {
+  param([string]$Message)
+  $line = "[{0}] {1}" -f ((Get-Date).ToString('s')), $Message
+  Add-Content -LiteralPath $logPath -Value $line
+}
+
+function Test-BackupJobRunning {
+  try {
+    $job = Get-WBJob
+    if ($job -and (([int]$job.JobState) -ne 0 -or $job.StartTime -or $job.CurrentOperation)) {
+      return $true
+    }
+  } catch {}
+  return $false
+}
+
+function Get-LatestAutomaticManifest {
+  if (-not (Test-Path -LiteralPath $automaticRunsDir)) {
+    return $null
+  }
+
+  $latest = Get-ChildItem -LiteralPath $automaticRunsDir -Filter '*.json' -File |
+    Where-Object { $_.Name -ne 'latest.json' } |
+    Sort-Object LastWriteTimeUtc -Descending |
+    Select-Object -First 1
+
+  if (-not $latest) {
+    return $null
+  }
+
+  try {
+    return Get-Content -LiteralPath $latest.FullName -Raw | ConvertFrom-Json
+  } catch {
+    Write-Log "Unable to parse latest automatic manifest at $($latest.FullName): $($_.Exception.Message)"
+    return $null
+  }
+}
+
+if (Test-BackupJobRunning) {
+  Write-Log "Backup job already running; skipping automatic run."
+  exit 0
+}
+
+$latestAutomaticManifest = Get-LatestAutomaticManifest
+if ($latestAutomaticManifest -and $latestAutomaticManifest.completed_at_utc) {
+  $lastCompleted = [datetime]::Parse($latestAutomaticManifest.completed_at_utc).ToUniversalTime()
+  $elapsedDays = ((Get-Date).ToUniversalTime() - $lastCompleted).TotalDays
+  if ($elapsedDays -lt $intervalDays) {
+    Write-Log "Skipping automatic run because only $elapsedDays day(s) have elapsed since the last automatic backup."
+    exit 0
+  }
+}
+
+Write-Log "Starting automatic backup $backupName."
+
+$policy = New-WBPolicy
+Add-WBBareMetalRecovery -Policy $policy | Out-Null
+$backupTarget = New-WBBackupTarget -VolumePath $targetPath
+Add-WBBackupTarget -Policy $policy -Target $backupTarget | Out-Null
+Set-WBVssBackupOption -Policy $policy -VssCopyBackup | Out-Null
+Start-WBBackup -Policy $policy -Force | Out-Null
+
+$summary = Get-WBSummary | Select-Object LastBackupTime, LastSuccessfulBackupTime, NextBackupTime, NumberOfVersions, DetailedMessage
+$backupSet = Get-WBBackupSet | Sort-Object BackupTime -Descending | Select-Object -First 1
+$completedAtUtc = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+
+if (-not $backupSet) {
+  throw "Automatic backup completed without a discoverable backup set."
+}
+
+$manifest = [ordered]@{
+  schema = 'castle.backup.native-host-recovery.v1'
+  mode = 'automatic'
+  backup_name = $backupName
+  description = $description
+  requested_at_utc = $requestedAtUtc
+  completed_at_utc = $completedAtUtc
+  runtime_mode = $runtimeMode
+  vss_mode = $vssMode
+  target_drive = $targetDrive
+  target_label = $targetLabel
+  node_name = $nodeName
+  namespace = $namespace
+  site = $site
+  environment = $environment
+  stage = $stage
+  automatic_interval_days = $intervalDays
+  backup_set_version_id = $backupSet.VersionId
+  backup_set_id = $backupSet.BackupSetId
+  snapshot_id = $backupSet.SnapshotId
+  summary = $summary
+}
+
+$manifestPath = Join-Path -Path $automaticRunsDir -ChildPath ($backupName + '.json')
+$manifestJson = $manifest | ConvertTo-Json -Depth 6
+$manifestJson | Set-Content -LiteralPath $manifestPath -Encoding UTF8
+$manifestJson | Set-Content -LiteralPath $latestAutomaticManifestPath -Encoding UTF8
+
+Write-Log "Completed automatic backup $backupName with version $($backupSet.VersionId)."
+
+$automaticManifests = Get-ChildItem -LiteralPath $automaticRunsDir -Filter '*.json' -File |
+  Where-Object { $_.Name -ne 'latest.json' } |
+  ForEach-Object {
+    try {
+      $content = Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json
+      [pscustomobject]@{
+        Path = $_.FullName
+        CompletedAt = if ($content.completed_at_utc) { [datetime]::Parse($content.completed_at_utc).ToUniversalTime() } else { [datetime]::MinValue }
+        VersionId = $content.backup_set_version_id
+        BackupName = $content.backup_name
+      }
+    } catch {
+      Write-Log "Skipping unreadable manifest $($_.FullName): $($_.Exception.Message)"
+      $null
+    }
+  } |
+  Where-Object { $null -ne $_ } |
+  Sort-Object CompletedAt -Descending
+
+$manifestsToDelete = @($automaticManifests | Select-Object -Skip $keepTotalAutomaticVersions)
+foreach ($oldManifest in $manifestsToDelete) {
+  if ($oldManifest.VersionId) {
+    Write-Log "Deleting old automatic backup version $($oldManifest.VersionId) for $($oldManifest.BackupName)."
+    & wbadmin.exe delete backup "-version:$($oldManifest.VersionId)" "-backupTarget:$targetPath" -quiet | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+      throw "wbadmin delete backup failed for version $($oldManifest.VersionId) with exit code $LASTEXITCODE."
+    }
+  }
+
+  Remove-Item -LiteralPath $oldManifest.Path -Force -ErrorAction SilentlyContinue
+}

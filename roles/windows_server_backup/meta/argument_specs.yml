@@ -26,6 +26,26 @@ argument_specs:
         type: bool
         required: false
         description: Remove the Windows backup feature when state=absent.
+      windows_server_backup_run_now:
+        type: bool
+        required: false
+        description: >-
+          Legacy transient flag to trigger a one-time async native
+          host-recovery backup run. Keep false in steady-state inventory.
+      windows_server_backup_manual_run_now:
+        type: bool
+        required: false
+        description: >-
+          Transient flag to trigger a one-time async manual native
+          host-recovery backup run. Keep false in steady-state inventory.
+      windows_server_backup_manual_name:
+        type: str
+        required: false
+        description: Optional human-friendly name for the next manual backup run.
+      windows_server_backup_manual_description:
+        type: str
+        required: false
+        description: Optional description for the next manual backup run.
       windows_server_backup_work_root:
         type: str
         required: false
@@ -46,10 +66,26 @@ argument_specs:
         type: str
         required: false
         description: Directory for backup-related logs collected by this repo.
+      windows_server_backup_runs_root:
+        type: str
+        required: false
+        description: Catalog root for per-run backup manifests.
+      windows_server_backup_manual_runs_dir:
+        type: str
+        required: false
+        description: Catalog directory for manual backup run manifests.
+      windows_server_backup_automatic_runs_dir:
+        type: str
+        required: false
+        description: Catalog directory for automatic backup run manifests.
       windows_server_backup_readme_path:
         type: str
         required: false
         description: Host-local README path describing the managed baseline.
+      windows_server_backup_automatic_runner_path:
+        type: str
+        required: false
+        description: Host-local PowerShell runner used by the automatic backup task.
       windows_server_backup_target_drive:
         type: str
         required: false
@@ -62,6 +98,22 @@ argument_specs:
         type: str
         required: false
         description: Expected filesystem label for the backup target drive.
+      windows_server_backup_automatic_interval_days:
+        type: int
+        required: false
+        description: >-
+          Number of days between automatic backups. Manual backups do not count
+          toward this interval gate.
+      windows_server_backup_automatic_start_time:
+        type: str
+        required: false
+        description: Local wall-clock start time for the automatic backup task.
+      windows_server_backup_automatic_keep_previous_count:
+        type: int
+        required: false
+        description: >-
+          Number of previous automatic backups to retain in addition to the
+          latest automatic backup.
       windows_server_backup_namespace:
         type: str
         required: false

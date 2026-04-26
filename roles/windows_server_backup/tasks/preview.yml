@@ -1,0 +1,69 @@
+---
+- name: Discover Windows backup baseline preview facts
+  ansible.builtin.include_tasks: discover.yml
+
+- name: Preview Windows backup baseline status
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "Requested state: {{ windows_server_backup_state | default('absent') }}"
+      - "Metadata eligible: {{ windows_server_backup_discovery['metadata_eligible'] }}"
+      - "Feature installed: {{ windows_server_backup_discovery['feature_installed'] }}"
+      - >-
+        Target drive: {{
+          (
+            windows_server_backup_discovery["target_volume"]["DriveLetter"]
+            ~ ': label='
+            ~ (windows_server_backup_discovery["target_volume"]["FileSystemLabel"] | default(''))
+          )
+          if (windows_server_backup_discovery["target_volume"] is mapping and windows_server_backup_discovery["target_volume"]["DriveLetter"] is defined)
+          else 'unavailable'
+        }}
+      - >-
+        Target ready: {{ windows_server_backup_discovery["target_ready"] }}
+      - >-
+        Target mismatches: {{
+          (
+            windows_server_backup_discovery["target_mismatches"] | join('; ')
+          )
+          if (windows_server_backup_discovery["target_mismatches"] | length > 0)
+          else 'none'
+        }}
+      - >-
+        Last successful backup: {{
+          windows_server_backup_discovery["summary"]["LastSuccessfulBackupTime"]
+          if (windows_server_backup_discovery["summary"] is mapping and windows_server_backup_discovery["summary"]["LastSuccessfulBackupTime"] is defined)
+          else 'unknown'
+        }}
+      - >-
+        Backup running now: {{ windows_server_backup_discovery["current_job_running"] }}
+      - >-
+        Scheduled WB policy present: {{ windows_server_backup_discovery["scheduled_policy"] is not none }}
+      - >-
+        Automatic task present: {{ windows_server_backup_discovery["automatic_task"] is not none }}
+      - >-
+        Automatic interval days: {{ windows_server_backup_automatic_interval_days }}
+      - >-
+        Automatic start time: {{ windows_server_backup_automatic_start_time }}
+      - >-
+        Latest manual backup label: {{
+          windows_server_backup_discovery["latest_manual_manifest"]["backup_name"]
+          if (
+            windows_server_backup_discovery["latest_manual_manifest"] is mapping
+            and windows_server_backup_discovery["latest_manual_manifest"]["backup_name"] is defined
+          )
+          else 'none'
+        }}
+      - >-
+        Latest automatic backup label: {{
+          windows_server_backup_discovery["latest_automatic_manifest"]["backup_name"]
+          if (
+            windows_server_backup_discovery["latest_automatic_manifest"] is mapping
+            and windows_server_backup_discovery["latest_automatic_manifest"]["backup_name"] is defined
+          )
+          else 'none'
+        }}
+      - >-
+        Intended runtime mode: {{
+          windows_server_backup_discovery["runtime_mode"]
+        }} (VSS {{ windows_server_backup_discovery["vss_mode"] }})

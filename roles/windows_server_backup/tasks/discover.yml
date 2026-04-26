@@ -1,0 +1,175 @@
+---
+- name: Collect Windows backup baseline discovery facts
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $Ansible.Changed = $false
+
+      $expectedSurfaceType = '{{ __windows_server_backup_required_surface_type }}'
+      $expectedSystemUsageClass = '{{ __windows_server_backup_required_system_usage_class }}'
+      $expectedAvailability = '{{ __windows_server_backup_required_availability_expectation }}'
+      $expectedAutomation = '{{ __windows_server_backup_required_automation_management_model }}'
+      $targetDrive = '{{ windows_server_backup_target_drive | default("") }}'
+      $expectedTargetLabel = '{{ windows_server_backup_target_label | default("") }}'
+
+      $metadataEligible =
+        ('{{ surface_type | default("") }}' -eq $expectedSurfaceType) -and
+        ('{{ system_usage_class | default("") }}' -eq $expectedSystemUsageClass) -and
+        ('{{ availability_expectation | default("") }}' -eq $expectedAvailability) -and
+        ('{{ automation_management_model | default("") }}' -eq $expectedAutomation)
+
+      $feature = $null
+      $featureInstalled = $false
+      try {
+        $feature = Get-WindowsFeature -Name '{{ windows_server_backup_feature_name }}' |
+          Select-Object Name, InstallState
+        if ($feature -and (($feature.InstallState -as [int]) -eq 1 -or $feature.InstallState -eq 'Installed')) {
+          $featureInstalled = $true
+        }
+      } catch {
+        $feature = [pscustomobject]@{ error = $_.Exception.Message }
+        $featureInstalled = $false
+      }
+
+      $targetVolume = $null
+      if ($targetDrive) {
+        try {
+          $targetVolume = Get-Volume -DriveLetter $targetDrive -ErrorAction Stop |
+            Select-Object DriveLetter, FileSystemLabel, FileSystem, Size, SizeRemaining, Path
+        } catch {
+          $targetVolume = [pscustomobject]@{ error = $_.Exception.Message }
+        }
+      }
+
+      $stagingRootExists = $false
+      try {
+        $stagingRootExists = Test-Path -LiteralPath '{{ windows_server_backup_staging_root }}'
+      } catch {}
+
+      $nativeRootExists = $false
+      if ('{{ windows_server_backup_native_host_recovery_root | default("") }}') {
+        try {
+          $nativeRootExists = Test-Path -LiteralPath '{{ windows_server_backup_native_host_recovery_root }}'
+        } catch {}
+      }
+
+      $summary = $null
+      try {
+        $summary = Get-WBSummary |
+          Select-Object LastBackupTime, LastSuccessfulBackupTime, NextBackupTime, NumberOfVersions, DetailedMessage
+      } catch {
+        $summary = [pscustomobject]@{ error = $_.Exception.Message }
+      }
+
+      $job = $null
+      $jobRunning = $false
+      try {
+        $jobObj = Get-WBJob
+        if ($jobObj) {
+          $job = $jobObj | Select-Object JobState, StartTime, EndTime, CurrentOperation, PercentComplete, ErrorDescription
+          if (($job.JobState -as [int]) -ne 0 -or $job.StartTime -or $job.CurrentOperation) {
+            $jobRunning = $true
+          }
+        }
+      } catch {
+        $job = $null
+        $jobRunning = $false
+      }
+
+      $scheduledPolicy = $null
+      try {
+        $policyObj = Get-WBPolicy
+        if ($policyObj) {
+          $scheduledPolicy = [pscustomobject]@{
+            Schedule = @($policyObj.Schedule)
+            BackupTargets = @($policyObj.BackupTargets | ForEach-Object {
+              [pscustomobject]@{
+                TargetPath = $_.TargetPath
+                Label = $_.Label
+              }
+            })
+          }
+        }
+      } catch {
+        $scheduledPolicy = $null
+      }
+
+      $automaticTask = $null
+      try {
+        $task = Get-ScheduledTask `
+          -TaskPath '{{ __windows_server_backup_automatic_task_path }}' `
+          -TaskName '{{ __windows_server_backup_automatic_task_name }}' `
+          -ErrorAction Stop
+        $automaticTask = [pscustomobject]@{
+          TaskName = $task.TaskName
+          TaskPath = $task.TaskPath
+          State = $task.State.ToString()
+        }
+      } catch {
+        $automaticTask = $null
+      }
+
+      function Get-LatestManifest {
+        param([string]$Path)
+
+        if (-not (Test-Path -LiteralPath $Path)) {
+          return $null
+        }
+
+        $file = Get-ChildItem -LiteralPath $Path -Filter '*.json' -File |
+          Sort-Object LastWriteTimeUtc -Descending |
+          Select-Object -First 1
+
+        if (-not $file) {
+          return $null
+        }
+
+        try {
+          return Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json
+        } catch {
+          return [pscustomobject]@{
+            error = $_.Exception.Message
+            path = $file.FullName
+          }
+        }
+      }
+
+      $latestManualManifest = Get-LatestManifest -Path '{{ windows_server_backup_manual_runs_dir }}'
+      $latestAutomaticManifest = Get-LatestManifest -Path '{{ windows_server_backup_automatic_runs_dir }}'
+
+      $targetReady = $false
+      $targetMismatches = @()
+      if ($targetVolume -and -not $targetVolume.error) {
+        $targetReady = $true
+        if ($expectedTargetLabel -and $targetVolume.FileSystemLabel -ne $expectedTargetLabel) {
+          $targetReady = $false
+          $targetMismatches += 'target drive label does not match expected label'
+        }
+      } else {
+        $targetMismatches += 'target drive is not accessible'
+      }
+
+      $Ansible.Result = [pscustomobject]@{
+        metadata_eligible = $metadataEligible
+        feature = $feature
+        feature_installed = $featureInstalled
+        target_volume = $targetVolume
+        target_ready = $targetReady
+        target_mismatches = $targetMismatches
+        staging_root_exists = $stagingRootExists
+        native_root_exists = $nativeRootExists
+        summary = $summary
+        current_job = $job
+        current_job_running = $jobRunning
+        scheduled_policy = $scheduledPolicy
+        automatic_task = $automaticTask
+        latest_manual_manifest = $latestManualManifest
+        latest_automatic_manifest = $latestAutomaticManifest
+        runtime_mode = '{{ __windows_server_backup_runtime_mode }}'
+        vss_mode = '{{ __windows_server_backup_vss_mode }}'
+      }
+  register: windows_server_backup_discovery_raw
+
+- name: Parse Windows backup baseline discovery facts
+  ansible.builtin.set_fact:
+    windows_server_backup_discovery: "{{ windows_server_backup_discovery_raw.result }}"

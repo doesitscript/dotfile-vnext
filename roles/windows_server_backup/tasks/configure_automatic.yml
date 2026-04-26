@@ -1,0 +1,15 @@
+---
+- name: Ensure automatic cadence uses a sane day interval
+  ansible.builtin.assert:
+    that:
+      - windows_server_backup_automatic_interval_days | int > 0
+    fail_msg: >-
+      windows_server_backup_automatic_interval_days must be a positive integer.
+
+- name: Summarize automatic Windows backup task configuration
+  ansible.builtin.debug:
+    msg:
+      - "Automatic backup task: {{ __windows_server_backup_automatic_task_path }}{{ __windows_server_backup_automatic_task_name }}"
+      - "Automatic cadence: every {{ windows_server_backup_automatic_interval_days }} day(s)"
+      - "Automatic start time: {{ windows_server_backup_automatic_start_time }}"
+      - "Automatic retention: keep latest {{ __windows_server_backup_automatic_total_versions_to_keep }} automatic version(s) total"

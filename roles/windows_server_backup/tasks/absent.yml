@@ -1,14 +1,70 @@
 ---
 # Provisional lifecycle cleanup path for the first-milestone baseline.
-# This path removes repo-managed baseline structure and can optionally remove
-# the Windows backup feature, but it should not be treated as a fully matured
-# teardown workflow for the eventual backup program.
+# This path removes the baseline work owned by this capability:
+# - native host-recovery payload path
+# - repo-managed backup context and manifests
+# - Windows backup feature (by default)
+# Shared top-level zone roots remain in place so future backup capabilities do
+# not depend on recreating the entire zone tree.
+- name: Validate Windows backup baseline metadata eligibility for removal
+  ansible.builtin.assert:
+    that:
+      - surface_type | default("") == __windows_server_backup_required_surface_type
+      - system_usage_class | default("") == __windows_server_backup_required_system_usage_class
+      - availability_expectation | default("") == __windows_server_backup_required_availability_expectation
+      - automation_management_model | default("") == __windows_server_backup_required_automation_management_model
+    fail_msg: >-
+      {{ inventory_hostname }} is not eligible for the managed Windows backup
+      baseline removal path.
+
+- name: Discover Windows backup baseline facts before removal
+  ansible.builtin.include_tasks: discover.yml
+
+- name: Assert no Windows backup job is running before removal
+  ansible.builtin.assert:
+    that:
+      - not (windows_server_backup_discovery["current_job_running"] | bool)
+    fail_msg: >-
+      A Windows backup job is currently running on {{ inventory_hostname }}.
+      Wait for that job to finish before running the absent path.
+
+- name: Remove automatic native host-recovery scheduled task
+  community.windows.win_scheduled_task:
+    name: "{{ __windows_server_backup_automatic_task_name }}"
+    path: "{{ __windows_server_backup_automatic_task_path }}"
+    state: absent
+
+- name: Remove Windows backup run manifest
+  ansible.windows.win_file:
+    path: "{{ __windows_server_backup_run_manifest_path }}"
+    state: absent
+
+- name: Remove latest automatic Windows backup manifest
+  ansible.windows.win_file:
+    path: "{{ __windows_server_backup_latest_automatic_manifest_path }}"
+    state: absent
+
+- name: Remove automatic runner script
+  ansible.windows.win_file:
+    path: "{{ windows_server_backup_automatic_runner_path }}"
+    state: absent
+
+- name: Remove Windows backup catalog README
+  ansible.windows.win_file:
+    path: "{{ windows_server_backup_readme_path }}"
+    state: absent
+
+- name: Remove Windows native host-recovery root
+  ansible.windows.win_file:
+    path: "{{ windows_server_backup_native_host_recovery_root }}"
+    state: absent
+
 - name: Remove Windows backup catalog context root
   ansible.windows.win_file:
     path: "{{ windows_server_backup_catalog_context_root }}"
     state: absent
 
-- name: Remove Windows backup working root
+- name: Remove Windows backup working context root
   ansible.windows.win_file:
     path: "{{ windows_server_backup_context_root }}"
     state: absent
