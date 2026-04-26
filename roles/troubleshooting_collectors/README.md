@@ -11,7 +11,7 @@ collector that mirrors its structure:
 ```
 Original playbook                        Troubleshooting mirror
 ─────────────────────────────────────    ────────────────────────────────────────────────────
-playbooks/server_225_hyperv_ubuntu_vm    playbooks/troubleshoot/collect_hyperv_ubuntu_vm_artifacts.yaml
+playbooks/hyperv_ubuntu_vm               playbooks/troubleshoot/collect_hyperv_ubuntu_vm_artifacts.yaml
   └─ role: hyperv_ubuntu_vm               └─ role: troubleshooting_collectors
                                                tasks_from: hyperv_ubuntu_vm.yml
 ```
@@ -23,7 +23,7 @@ re-running the broken playbook. First.
 
 **1. In-playbook tag** (run alongside the normal lifecycle):
 ```bash
-ansible-playbook playbooks/server_225_hyperv_ubuntu_vm.yaml \
+ansible-playbook playbooks/hyperv_ubuntu_vm.yaml \
   -i inventory/inventory.yaml \
   --tags collect_hyperv
 ```

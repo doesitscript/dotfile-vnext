@@ -1,19 +1,19 @@
 ---
-# Canonical full-stack entrypoint for the active server-225 stack.
+# Canonical full-stack entrypoint for the active lab stack.
 #
 # This playbook is the top-level desired-state path:
 #   1. Windows base
 #   2. Hyper-V networking
 #   3. Access / identity surfaces
 #   4. Controller route to the guest subnet
-#   5. Hyper-V Ubuntu guest lifecycle
+#   5. Hyper-V Ubuntu guest lifecycle for opted-in Windows hosts
 #   6. Controller SSH config refresh after guest lifecycle
 #   7. Docker engine / client verification
 #
 # Narrower playbooks remain available for faster loops and troubleshooting:
 #   - playbooks/provision_windows_host.yml              — Windows baseline only
-#   - playbooks/server_225_hyperv_ubuntu_vm.yaml        — guest-oriented orchestration
-#   - playbooks/server_225_hyperv_ubuntu_vm_lifecycle_only.yaml
+#   - playbooks/hyperv_ubuntu_vm.yaml                   — guest-oriented orchestration
+#   - playbooks/hyperv_ubuntu_vm_lifecycle_only.yaml
 #                                                     — fast VM reinstall loop
 #   - playbooks/access.yaml                             — identity/access only
 #   - playbooks/docker.yaml                             — Docker only
@@ -22,13 +22,18 @@
 #   Full active-stack converge:
 #     ansible-playbook playbooks/site.yaml -i inventory/inventory.yaml
 #
-#   Limit to the current server-225 stack:
+#   Limit to one physical node stack:
 #     ansible-playbook playbooks/site.yaml -i inventory/inventory.yaml \
-#       --limit 'execution_nodes,server-225-win,server-225-ubuntu,mac-dev'
+#       --limit 'execution_nodes,network-server-win,network-server-ubuntu,mac-dev'
 #
-- import_playbook: windows_base.yml
-- import_playbook: hyperv_networking.yaml
-- import_playbook: access.yaml
+- name: Site - Windows base
+  import_playbook: windows_base.yml
+
+- name: Site - Hyper-V networking
+  import_playbook: hyperv_networking.yaml
+
+- name: Site - access surfaces
+  import_playbook: access.yaml
 
 - name: Site - route guest private subnet from the controller
   hosts: execution_nodes
@@ -41,7 +46,8 @@
         name: hyperv_guest_route_mac
       when: (hyperv_guest_route_mac_state | default('absent')) == 'present'
 
-- import_playbook: server_225_hyperv_ubuntu_vm_lifecycle_only.yaml
+- name: Site - Hyper-V Ubuntu guest lifecycle
+  import_playbook: hyperv_ubuntu_vm_lifecycle_only.yaml
 
 - name: Site - refresh controller SSH client config after guest lifecycle
   hosts: execution_nodes
@@ -54,4 +60,5 @@
         name: access_identity_controller
         tasks_from: ssh_config.yml
 
-- import_playbook: docker.yaml
+- name: Site - Docker surfaces
+  import_playbook: docker.yaml

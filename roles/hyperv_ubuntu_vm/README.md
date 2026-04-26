@@ -15,15 +15,14 @@ Stateful role for a Hyper-V-native Ubuntu VM on a Windows host.
   `azure_cloud_image` path
 - download Canonical's published source artifact and reconcile it into a
   role-owned VHDX on the Windows host
-- publish the guest back into the reserved inventory identity `server-225-ubuntu`
+- publish the guest back into the configured Ubuntu inventory identity
 
 ## Status
 
 New replacement role for the retired Multipass path.
 
-This role is intended to become the supported provisioning direction for
-`server-225-ubuntu`, but the broad cutover should happen only after runtime
-verification through the dedicated playbook.
+This role is the supported provisioning direction for Hyper-V Ubuntu companion
+VMs created through their Windows `*-win` control surface.
 
 Current active direction:
 
@@ -51,8 +50,8 @@ The role treats the VM as one capability:
 
 ## Apply / Verify / Undo / Change Class
 
-- Apply: run [server_225_hyperv_ubuntu_vm.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/server_225_hyperv_ubuntu_vm.yaml) against `execution_nodes,server-225-win`
-- Faster iterative apply: run [server_225_hyperv_ubuntu_vm_lifecycle_only.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/server_225_hyperv_ubuntu_vm_lifecycle_only.yaml) when controller identity, host networking, and controller routing are already converged
+- Apply: run [hyperv_ubuntu_vm.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/hyperv_ubuntu_vm.yaml)
+- Faster iterative apply: run [hyperv_ubuntu_vm_lifecycle_only.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/hyperv_ubuntu_vm_lifecycle_only.yaml) when controller identity, host networking, and controller routing are already converged
 - Verify: confirm the VM exists in Hyper-V, gets an IPv4 address, and accepts
   the verification expected by the selected source mode
 - Undo: rerun with `hyperv_ubuntu_vm_state=absent`
@@ -103,7 +102,7 @@ Dedicated saved-artifact playbook:
 - In routed-private-subnet mode, this role expects:
   - the Windows host to prove it can reach guest SSH first
   - the controller-side route role to make the guest private subnet reachable
-    from `mac-dev` before the guest IP is published as `ansible_host`
+    from `mac-dev` before direct guest routing is expected
 - The default first-boot payload is intentionally minimal:
   - reuse the image's built-in cloud-init, Python, and OpenSSH baseline
   - inject the controller key
@@ -130,13 +129,11 @@ Dedicated saved-artifact playbook:
     - create a blank role-owned VM disk, attach the installer ISO, and boot the
       VM into the installer
     - remaster the installer path for autoinstall and attach a `cidata` seed
-    - current routed-subnet guest target:
-      - `192.168.137.10/24`
-      - gateway `192.168.137.1`
+    - routed-subnet guest target comes from inventory host variables
     - current milestone:
       - guest static IP `192.168.137.10/24` is proven
       - host/controller SSH reachability is proven
-      - the generated `server-225-ubuntu` SSH surface is active
+      - the configured Ubuntu guest SSH surface is active
       - package update behavior is now part of the autoinstall bootstrap path
 
 Current verification commands:

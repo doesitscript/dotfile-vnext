@@ -1,7 +1,8 @@
 ---
 hyperv_ubuntu_vm_state: present
-hyperv_ubuntu_vm_name: server-225-ubuntu
-hyperv_ubuntu_vm_inventory_host: server-225-ubuntu
+hyperv_ubuntu_vm_name: >-
+  {{ (physical_node | default(inventory_hostname | regex_replace('-win$', ''))) ~ '-ubuntu' }}
+hyperv_ubuntu_vm_inventory_host: "{{ hyperv_ubuntu_vm_name }}"
 hyperv_ubuntu_vm_generation: 2
 hyperv_ubuntu_vm_cpus: 4
 hyperv_ubuntu_vm_memory: "8G"

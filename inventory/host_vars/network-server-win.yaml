@@ -40,11 +40,46 @@ hyperv_config:
   adapter_interface_description: "TP-Link Wi-Fi 6 PCIe Adapter"
   adapter_name: "Wi-Fi"
   allow_management_os: true
+  management_os_boot_recovery_state: present
+  internal_ics_switch_enabled: true
+  # Keep the Guest switch but manage routing explicitly instead of relying on
+  # Windows ICS/NAT behavior.
+  internal_ics_sharing_enabled: false
+  internal_ics_switch_name: "Guest"
+  guest_network_mode: "routed_private_subnet"
+  guest_switch_name: "Guest"
+  guest_subnet_ipv4: "192.168.138.0/24"
+  guest_gateway_ipv4: "192.168.138.1"
+  guest_outbound_nat_enabled: false
+  internal_ics_public_adapter_name: "vEthernet (External)"
 
 # Docker client — reaches the central Hyper-V Ubuntu Docker engine via SSH.
 docker_engine_ssh_host: "network-server-ubuntu"
 docker_engine_ssh_port: 22
 docker_engine_ssh_user: "joshc"
+
+# Hyper-V-native Ubuntu VM companion for the network-server physical node.
+hyperv_ubuntu_vm_state: present
+hyperv_ubuntu_vm_name: "network-server-ubuntu"
+hyperv_ubuntu_vm_inventory_host: "network-server-ubuntu"
+hyperv_ubuntu_vm_cpus: 4
+hyperv_ubuntu_vm_memory: "8G"
+hyperv_ubuntu_vm_disk: "40G"
+hyperv_ubuntu_vm_bootstrap_user: "joshc"
+hyperv_ubuntu_vm_hostname: "network-server-ubuntu"
+hyperv_ubuntu_vm_ssh_port: 22
+hyperv_ubuntu_vm_source_mode: "server_iso_installer"
+hyperv_ubuntu_vm_secure_boot_enabled: false
+hyperv_ubuntu_vm_publish_connection_facts: false
+hyperv_ubuntu_vm_autoinstall_network_method: "static"
+hyperv_ubuntu_vm_autoinstall_network_ipv4: "192.168.138.10"
+hyperv_ubuntu_vm_autoinstall_network_prefix_length: 24
+hyperv_ubuntu_vm_autoinstall_network_gateway4: "192.168.138.1"
+hyperv_ubuntu_vm_autoinstall_network_dns_servers:
+  - "1.1.1.1"
+  - "8.8.8.8"
+hyperv_ubuntu_vm_quick_create_image_url: "https://partner-images.canonical.com/hyper-v/desktop/noble/release/current/ubuntu-noble-hyperv-amd64-ubuntu-desktop-hyperv.vhdx.zip"
+hyperv_ubuntu_vm_server_iso_url: "https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso"
 
 # OpenSSH Server: base feature on Windows hosts unless explicitly set absent.
 openssh_server_state: present

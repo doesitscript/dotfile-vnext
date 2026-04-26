@@ -15,8 +15,11 @@
 # Limit to one client:
 #   ansible-playbook playbooks/docker.yaml -i inventory/inventory.yaml --limit 'linux_vm_hosts,mac-dev'
 
-- import_playbook: docker_engine.yaml
-- import_playbook: docker_client.yaml
+- name: Docker - engine
+  import_playbook: docker_engine.yaml
+
+- name: Docker - client
+  import_playbook: docker_client.yaml
 
 - name: Docker - verify client connectivity
   hosts: docker_clients
@@ -28,4 +31,3 @@
       ansible.builtin.include_role:
         name: verify_docker
         tasks_from: client.yml
-      ignore_errors: true

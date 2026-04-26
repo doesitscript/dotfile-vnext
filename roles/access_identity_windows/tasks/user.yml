@@ -6,77 +6,77 @@
 # Paths come from group_vars/host_vars: ansible_ssh_dir_path, ansible_authorized_keys_path.
 # controller_pub_key_content is set by main.yml before this file is included.
 #
-- block:
-  # 1) User .ssh directory
-  - name: Ensure ansible_ssh_dir_path directory exists
-    ansible.windows.win_file:
-      path: "{{ ansible_ssh_dir_path }}"
-      state: directory
-
-  - name: Disable ACL inheritance on ansible_ssh_dir_path
-    ansible.windows.win_acl_inheritance:
-      path: "{{ ansible_ssh_dir_path }}"
-      state: absent
-      reorganize: false
-
-  - name: Grant run user FullControl on ansible_ssh_dir_path
-    ansible.windows.win_acl:
-      path: "{{ ansible_ssh_dir_path }}"
-      user: "{{ win_ssh_user | default(ansible_user) }}"
-      type: allow
-      rights: FullControl
-      state: present
-
-  - name: Grant SYSTEM FullControl on ansible_ssh_dir_path
-    ansible.windows.win_acl:
-      path: "{{ ansible_ssh_dir_path }}"
-      user: SYSTEM
-      type: allow
-      rights: FullControl
-      state: present
-
-  # 2) User authorized_keys file
-  - name: Ensure ansible_authorized_keys_path exists
-    ansible.windows.win_file:
-      path: "{{ ansible_authorized_keys_path }}"
-      state: touch
-
-  - name: Disable ACL inheritance on ansible_authorized_keys_path
-    ansible.windows.win_acl_inheritance:
-      path: "{{ ansible_authorized_keys_path }}"
-      state: absent
-      reorganize: false
-
-  - name: Grant run user FullControl on ansible_authorized_keys_path
-    ansible.windows.win_acl:
-      path: "{{ ansible_authorized_keys_path }}"
-      user: "{{ win_ssh_user | default(ansible_user) }}"
-      type: allow
-      rights: FullControl
-      state: present
-
-  - name: Grant SYSTEM FullControl on ansible_authorized_keys_path
-    ansible.windows.win_acl:
-      path: "{{ ansible_authorized_keys_path }}"
-      user: SYSTEM
-      type: allow
-      rights: FullControl
-      state: present
-
-  # 3) Install controller public key into user authorized_keys
-  - name: Install controller public key in ansible_authorized_keys_path
-    community.windows.win_lineinfile:
-      path: "{{ ansible_authorized_keys_path }}"
-      line: "{{ controller_pub_key_content }}"
-      create: true
-      state: present
-    register: install_user_pub_key_result
-
-  # 4) Restart sshd if user key was updated
-  - name: Restart sshd when user authorized key updated
-    ansible.windows.win_service:
-      name: sshd
-      state: restarted
-    when: install_user_pub_key_result is changed
-
+- name: Manage user OpenSSH authorized key
   tags: [user]
+  block:
+    # 1) User .ssh directory
+    - name: Ensure ansible_ssh_dir_path directory exists
+      ansible.windows.win_file:
+        path: "{{ ansible_ssh_dir_path }}"
+        state: directory
+
+    - name: Disable ACL inheritance on ansible_ssh_dir_path
+      ansible.windows.win_acl_inheritance:
+        path: "{{ ansible_ssh_dir_path }}"
+        state: absent
+        reorganize: false
+
+    - name: Grant run user FullControl on ansible_ssh_dir_path
+      ansible.windows.win_acl:
+        path: "{{ ansible_ssh_dir_path }}"
+        user: "{{ win_ssh_user | default(ansible_user) }}"
+        type: allow
+        rights: FullControl
+        state: present
+
+    - name: Grant SYSTEM FullControl on ansible_ssh_dir_path
+      ansible.windows.win_acl:
+        path: "{{ ansible_ssh_dir_path }}"
+        user: SYSTEM
+        type: allow
+        rights: FullControl
+        state: present
+
+    # 2) User authorized_keys file
+    - name: Ensure ansible_authorized_keys_path exists
+      ansible.windows.win_file:
+        path: "{{ ansible_authorized_keys_path }}"
+        state: touch
+
+    - name: Disable ACL inheritance on ansible_authorized_keys_path
+      ansible.windows.win_acl_inheritance:
+        path: "{{ ansible_authorized_keys_path }}"
+        state: absent
+        reorganize: false
+
+    - name: Grant run user FullControl on ansible_authorized_keys_path
+      ansible.windows.win_acl:
+        path: "{{ ansible_authorized_keys_path }}"
+        user: "{{ win_ssh_user | default(ansible_user) }}"
+        type: allow
+        rights: FullControl
+        state: present
+
+    - name: Grant SYSTEM FullControl on ansible_authorized_keys_path
+      ansible.windows.win_acl:
+        path: "{{ ansible_authorized_keys_path }}"
+        user: SYSTEM
+        type: allow
+        rights: FullControl
+        state: present
+
+    # 3) Install controller public key into user authorized_keys
+    - name: Install controller public key in ansible_authorized_keys_path
+      community.windows.win_lineinfile:
+        path: "{{ ansible_authorized_keys_path }}"
+        line: "{{ controller_pub_key_content }}"
+        create: true
+        state: present
+      register: install_user_pub_key_result
+
+    # 4) Restart sshd if user key was updated
+    - name: Restart sshd when user authorized key updated
+      ansible.windows.win_service:
+        name: sshd
+        state: restarted
+      when: install_user_pub_key_result is changed

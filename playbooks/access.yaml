@@ -19,8 +19,11 @@
 # Limit by group (underscore, not dash — matches inventory group name):
 #   ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit 'execution_nodes,network_server'
 #
-- import_playbook: access_controller.yaml
-- import_playbook: access_windows.yaml
+- name: Access - controller identity
+  import_playbook: access_controller.yaml
+
+- name: Access - Windows identity surfaces
+  import_playbook: access_windows.yaml
 
 # Re-run controller (ssh_config entry point only) after Windows access work so
 # ~/.ssh/config reflects the latest desired SSH surfaces.
