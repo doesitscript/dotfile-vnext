@@ -1,6 +1,8 @@
 ---
 # Node-specific provisioning for network-server Windows host.
-# Applies roles that are only valid for this node.
+# This is the canonical entry point for host-specific provisioning on
+# network-server-win. Shared low-level role playbooks may still exist for focused
+# validation, but normal host setup should come through this playbook.
 #
 # Run AFTER windows_base.yml (which handles shared base setup for all Windows hosts):
 #   ansible-playbook playbooks/windows_base.yml --limit network-server-win
@@ -15,12 +17,19 @@
       ansible.windows.win_shell: Enable-PSRemoting -Force
 
   tasks:
-    - name: No node-specific roles yet
-      ansible.builtin.debug:
-        msg: >-
-          network-server node-specific provisioning has no active roles.
-          Add to roles section when network_server/docker_runtime etc. are ready.
-      # TODO: add roles section when node-specific roles are ready:
-      # - network_server/docker_runtime
-      # - network_server/storage_layout
-      # - windows_server_backup (via playbooks/windows_server_backup.yml)
+    - name: Configure Hyper-V host networking
+      ansible.builtin.include_role:
+        name: hyperv_networking
+        apply:
+          tags:
+            - hyperv
+            - hyperv_networking
+      when: >-
+        (
+          (hyperv_config | default({})).external_switch_enabled | default(false) | bool
+        ) or (
+          (hyperv_config | default({})).internal_ics_switch_enabled | default(false) | bool
+        )
+      tags:
+        - hyperv
+        - hyperv_networking

@@ -1,6 +1,8 @@
 ---
 # Node-specific provisioning for server-225 Windows host.
-# Applies roles that are only valid for this node.
+# This is the canonical entry point for host-specific provisioning on
+# server-225-win. Shared low-level role playbooks may still exist for focused
+# validation, but normal host setup should come through this playbook.
 #
 # Run AFTER windows_base.yml (which handles shared base setup for all Windows hosts):
 #   ansible-playbook playbooks/windows_base.yml --limit server-225-win
@@ -17,6 +19,26 @@
     - name: Enable PowerShell remoting
       ansible.windows.win_shell: Enable-PSRemoting -Force
 
-  roles:
-    - role: server_225/gpu_driver_validation
-      tags: [gpu_driver_validation]
+  tasks:
+    - name: Configure Hyper-V host networking
+      ansible.builtin.include_role:
+        name: hyperv_networking
+        apply:
+          tags:
+            - hyperv
+            - hyperv_networking
+      when: >-
+        (
+          (hyperv_config | default({})).external_switch_enabled | default(false) | bool
+        ) or (
+          (hyperv_config | default({})).internal_ics_switch_enabled | default(false) | bool
+        )
+      tags:
+        - hyperv
+        - hyperv_networking
+
+    - name: Validate GPU driver state
+      ansible.builtin.include_role:
+        name: server_225/gpu_driver_validation
+      tags:
+        - gpu_driver_validation
