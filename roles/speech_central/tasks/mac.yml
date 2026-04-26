@@ -1,4 +1,7 @@
 ---
+# Kept primarily as a reference model for using `mas` as a package-manager-like
+# surface for Mac App Store automation. This task file is not treated as a
+# fully applied or completed repo capability yet.
 - name: Check Speech Central app bundle candidate paths
   ansible.builtin.stat:
     path: "{{ item }}"
@@ -38,6 +41,9 @@
     - not __speech_central_installed
 
 - name: Install Speech Central from the Mac App Store
+  when:
+    - speech_central_state == "present"
+    - not __speech_central_installed
   block:
     - name: Run mas install for Speech Central
       ansible.builtin.command:
@@ -46,7 +52,7 @@
           - install
           - "{{ speech_central_app_id }}"
       register: speech_central_install
-      changed_when: speech_central_install.rc == 0
+      changed_when: (speech_central_install.rc | default(1)) == 0
       become: true
       environment: "{{ mac_environment | default({}) }}"
       async: "{{ speech_central_install_timeout_seconds }}"
@@ -55,14 +61,23 @@
     - name: Explain Speech Central App Store ownership or auth blocker
       ansible.builtin.fail:
         msg: >-
-          Speech Central install did not complete through mas within
-          {{ speech_central_install_timeout_seconds }} seconds. This usually
-          means the signed-in Apple account still needs a direct App Store
-          purchase/authentication step, because mas cannot purchase paid apps
-          on your behalf.
-  when:
-    - speech_central_state == "present"
-    - not __speech_central_installed
+          Speech Central install through mas failed.
+          {{
+            (
+              ansible_failed_result.stderr
+              | default("", true)
+              | trim
+            )
+            or (
+              ansible_failed_result.msg
+              | default("", true)
+              | trim
+            )
+            or "No additional stderr reported by mas."
+          }}
+          This usually means the signed-in Apple account still needs a direct
+          App Store purchase/authentication step, because mas cannot purchase
+          paid apps on your behalf.
 
 - name: Remove Speech Central from the Mac App Store
   ansible.builtin.command:

@@ -5,6 +5,10 @@ Installs `Speech Central` on macOS through the Mac App Store CLI.
 > Speechify is the next paid App Store option planned for evaluation if Speech
 > Central does not meet the read-aloud goal.
 
+> Status: incomplete. This role is currently kept in the repo as a reference
+> model for using `mas` to interact with the Mac App Store, but it is not yet
+> considered a fully applied or fully proven capability in this project.
+
 ## What this role does
 
 1. Checks whether `Speech Central` is already installed.
@@ -20,6 +24,10 @@ speech_central_state: present | absent
 The role name stays capability-focused. OS handling lives inside
 `tasks/main.yml`, which currently dispatches only to macOS because that is the
 only platform Speech Central targets in this repo.
+
+At the moment, the most important repo value of this role is that it models a
+new package-manager-like interaction pattern for Apple App Store automation via
+`mas`.
 
 ## Important constraints
 
