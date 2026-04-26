@@ -7,6 +7,7 @@
 #          speech_central (Speech Central install on mac-dev via mas_cli dependency)
 #          remote_desktop_mac (macOS-only Microsoft Remote Desktop install)
 #          tunnelblick_mac (macOS-only deprecated Tunnelblick install for Monterey)
+#          mac_user_niceties (macOS notification + widget quality-of-life defaults)
 #
 # A node is a development node when node_purpose: development is set in its
 # group_vars file. This uses Ansible's group_by module to dynamically classify
@@ -33,6 +34,7 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags remote_desktop_mac --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags tunnelblick_mac --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags tunnelblick_mac --limit mac-dev -e tunnelblick_mac_state=absent
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags mac_user_niceties --limit mac-dev
 #
 #   # Windows surface only
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_windows --limit server-225-win
@@ -86,4 +88,6 @@
       tags: [remote_desktop_mac]
     - role: tunnelblick_mac
       tags: [tunnelblick_mac]
+    - role: mac_user_niceties
+      tags: [mac_user_niceties]
     - role: common/vscode

@@ -1,0 +1,75 @@
+---
+- name: Enforce mac_user_niceties only on macOS
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['system'] == "Darwin"
+    fail_msg: "mac_user_niceties must run on macOS."
+
+- name: Disable selected notification bundles
+  ansible.builtin.shell: |
+    set -euo pipefail
+    plist="$HOME/Library/Preferences/com.apple.ncprefs.plist"
+    target="{{ item }}"
+    changed=0
+    i=0
+
+    while true; do
+      if ! /usr/libexec/PlistBuddy -c "Print :apps:$i:bundle-id" "$plist" >/tmp/mac_user_niceties_bid.txt 2>/dev/null; then
+        break
+      fi
+
+      bid="$(< /tmp/mac_user_niceties_bid.txt)"
+      if [ "$bid" = "$target" ]; then
+        current_auth="$(/usr/libexec/PlistBuddy -c "Print :apps:$i:auth" "$plist" 2>/dev/null || echo "__missing__")"
+        if [ "$current_auth" != "0" ]; then
+          /usr/libexec/PlistBuddy -c "Set :apps:$i:auth 0" "$plist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :apps:$i:auth integer 0" "$plist"
+          changed=1
+        fi
+
+        current_flags="$(/usr/libexec/PlistBuddy -c "Print :apps:$i:flags" "$plist" 2>/dev/null || echo "__missing__")"
+        if [ "$current_flags" != "0" ]; then
+          /usr/libexec/PlistBuddy -c "Set :apps:$i:flags 0" "$plist" 2>/dev/null || true
+          changed=1
+        fi
+      fi
+
+      i=$((i + 1))
+    done
+
+    rm -f /tmp/mac_user_niceties_bid.txt
+    echo "changed=$changed"
+  args:
+    executable: /bin/bash
+  register: _mac_user_niceties_notification
+  changed_when: "'changed=1' in _mac_user_niceties_notification.stdout"
+  when:
+    - mac_user_niceties_state == "present"
+    - mac_user_niceties_disable_notification_bundle_ids | length > 0
+  loop: "{{ mac_user_niceties_disable_notification_bundle_ids }}"
+  notify: Restart macOS notification services
+  tags:
+    - mac_user_niceties
+    - mac_user_niceties_notifications
+
+- name: Clear Notification Center widget configuration
+  ansible.builtin.shell: |
+    set -euo pipefail
+    plist="$HOME/Library/Preferences/com.apple.notificationcenterui.plist"
+
+    if /usr/libexec/PlistBuddy -c "Print :widgets" "$plist" >/dev/null 2>&1; then
+      /usr/libexec/PlistBuddy -c "Delete :widgets" "$plist"
+      echo "changed=1"
+    else
+      echo "changed=0"
+    fi
+  args:
+    executable: /bin/bash
+  register: _mac_user_niceties_widgets
+  changed_when: "'changed=1' in _mac_user_niceties_widgets.stdout"
+  when:
+    - mac_user_niceties_state == "present"
+    - mac_user_niceties_clear_widgets | bool
+  notify: Restart macOS notification services
+  tags:
+    - mac_user_niceties
+    - mac_user_niceties_widgets
