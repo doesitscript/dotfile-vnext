@@ -1,5 +1,9 @@
 ---
 # Windows surface: WinRM for bootstrap; OpenSSH should land directly on Windows.
+# For manual SSH from the controller, prefer the repo-managed alias
+# `server-225-win` from ~/.ssh/config rather than using ansible_host directly.
+# ansible_host here is the WinRM/control-plane target and may not be the most
+# resilient manual SSH spelling.
 ansible_host: "DESKTOP-VLLM"
 ansible_password: "{{ vault_server_225_win_password }}"
 surface_type: "windows_host"
@@ -29,6 +33,7 @@ ansible_winrm_transport: "ntlm"
 hyperv_config:
   external_switch_enabled: true
   switch_name: "External"
+  adapter_interface_description: "RZ608 Wi-Fi 6E 80MHz"
   adapter_name: "Wi-Fi"
   allow_management_os: true
   management_os_boot_recovery_state: present

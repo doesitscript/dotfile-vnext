@@ -5,28 +5,190 @@
 # Windows bridge artifacts without having a real Hyper-V VMSwitch. For this
 # project, the actual source of truth is `Get-VMSwitch`.
 
-- name: Probe External VMSwitch state
+- name: Probe External VMSwitch state and resolve external adapter selection
   ansible.windows.win_powershell:
     error_action: stop
     script: |
       $Ansible.Changed = $false
-      $switch = Get-VMSwitch -Name '{{ _hyperv.switch_name | default("External") }}' -ErrorAction SilentlyContinue
-      if (-not $switch) {
+
+      $switchName = {{ (_hyperv.switch_name | default("External")) | to_json }}
+      $selectorName = {{ (_hyperv.adapter_name | default("")) | to_json }}
+      $selectorNameContains = {{ (_hyperv.adapter_name_contains | default("")) | to_json }}
+      $selectorInterfaceDescription = {{ (_hyperv.adapter_interface_description | default("")) | to_json }}
+      $selectorMac = {{ (_hyperv.adapter_mac_address | default("")) | to_json }}
+
+      function Normalize-Mac([string]$value) {
+        if (-not $value) {
+          return ""
+        }
+
+        return (($value -replace '[-:\.]', '')).ToUpperInvariant()
+      }
+
+      $adapters = @(
+        Get-NetAdapter -IncludeHidden -ErrorAction SilentlyContinue |
+          ForEach-Object {
+            [PSCustomObject]@{
+              name = $_.Name
+              interface_description = $_.InterfaceDescription
+              status = if ($_.Status) { $_.Status.ToString() } else { $null }
+              mac_address = if ($_.MacAddress) { $_.MacAddress.ToUpperInvariant() } else { $null }
+              hardware_interface = [bool]$_.HardwareInterface
+            }
+          }
+      )
+
+      $candidatePool = @($adapters | Where-Object { $_.hardware_interface -eq $true })
+      if ($candidatePool.Count -eq 0) {
+        $candidatePool = @($adapters | Where-Object { $_.interface_description })
+      }
+
+      $switch = Get-VMSwitch -Name $switchName -ErrorAction SilentlyContinue
+      if ($switch) {
+        $selected = @(
+          $candidatePool |
+            Where-Object { $_.interface_description -eq $switch.NetAdapterInterfaceDescription } |
+            Select-Object -First 1
+        )
+
         $Ansible.Result = @{
-          exists = $false
-          name = '{{ _hyperv.switch_name | default("External") }}'
+          switch = @{
+            exists = $true
+            name = $switch.Name
+            switch_type = $switch.SwitchType.ToString()
+            adapter_interface_description = $switch.NetAdapterInterfaceDescription
+          }
+          selectors = @{
+            adapter_name = $selectorName
+            adapter_name_contains = $selectorNameContains
+            adapter_interface_description = $selectorInterfaceDescription
+            adapter_mac_address = $selectorMac
+          }
+          resolution_status = "existing_switch"
+          resolution_reason = "External switch already exists; current binding is the authoritative source."
+          selected = if ($selected) {
+            @{
+              name = $selected.name
+              interface_description = $selected.interface_description
+              status = $selected.status
+              mac_address = $selected.mac_address
+              match_basis = "existing_switch_binding"
+            }
+          } else {
+            @{
+              name = $null
+              interface_description = $switch.NetAdapterInterfaceDescription
+              status = $null
+              mac_address = $null
+              match_basis = "existing_switch_binding"
+            }
+          }
+          candidate_pool = @($candidatePool)
         }
         Exit 0
       }
 
-      $Ansible.Result = @{
-        exists = $true
-        name = $switch.Name
-        switch_type = $switch.SwitchType.ToString()
-        adapter_interface_description = $switch.NetAdapterInterfaceDescription
+      $selection = $null
+      $resolutionStatus = "selector_missing"
+      $resolutionReason = "No external switch is present and no adapter selector is configured."
+      $matchedCandidates = @()
+
+      $attempts = New-Object System.Collections.Generic.List[object]
+      if ($selectorMac) {
+        $matches = @($candidatePool | Where-Object { (Normalize-Mac $_.mac_address) -eq (Normalize-Mac $selectorMac) })
+        $attempts.Add([PSCustomObject]@{ basis = "adapter_mac_address"; value = $selectorMac; matches = $matches })
       }
-  register: _vmswitch_probe
+      if ($selectorInterfaceDescription) {
+        $matches = @($candidatePool | Where-Object { $_.interface_description -eq $selectorInterfaceDescription })
+        $attempts.Add([PSCustomObject]@{ basis = "adapter_interface_description"; value = $selectorInterfaceDescription; matches = $matches })
+      }
+      if ($selectorName) {
+        $matches = @($candidatePool | Where-Object { $_.name -eq $selectorName })
+        $attempts.Add([PSCustomObject]@{ basis = "adapter_name"; value = $selectorName; matches = $matches })
+      }
+      if ($selectorNameContains) {
+        $matches = @($candidatePool | Where-Object { $_.name -like "*$selectorNameContains*" })
+        $attempts.Add([PSCustomObject]@{ basis = "adapter_name_contains"; value = $selectorNameContains; matches = $matches })
+      }
+
+      foreach ($attempt in $attempts) {
+        if ($attempt.matches.Count -eq 1) {
+          $selection = $attempt.matches[0]
+          $resolutionStatus = "selected"
+          $resolutionReason = "Selected one adapter using $($attempt.basis)."
+          $matchedCandidates = @($attempt.matches)
+          break
+        }
+
+        if ($attempt.matches.Count -gt 1) {
+          $resolutionStatus = "ambiguous"
+          $resolutionReason = "Selector $($attempt.basis) matched more than one adapter."
+          $matchedCandidates = @($attempt.matches)
+          break
+        }
+      }
+
+      if (-not $selection -and $resolutionStatus -eq "selector_missing" -and $attempts.Count -gt 0) {
+        $resolutionStatus = "not_found"
+        $resolutionReason = "No configured adapter selector matched a unique candidate."
+      }
+
+      $Ansible.Result = @{
+        switch = @{
+          exists = $false
+          name = $switchName
+          switch_type = $null
+          adapter_interface_description = $null
+        }
+        selectors = @{
+          adapter_name = $selectorName
+          adapter_name_contains = $selectorNameContains
+          adapter_interface_description = $selectorInterfaceDescription
+          adapter_mac_address = $selectorMac
+        }
+        resolution_status = $resolutionStatus
+        resolution_reason = $resolutionReason
+        selected = if ($selection) {
+          @{
+            name = $selection.name
+            interface_description = $selection.interface_description
+            status = $selection.status
+            mac_address = $selection.mac_address
+            match_basis = ($attempts | Where-Object { $_.matches.Count -eq 1 -and $_.matches[0].name -eq $selection.name } | Select-Object -First 1).basis
+          }
+        } else {
+          $null
+        }
+        matched_candidates = @($matchedCandidates)
+        candidate_pool = @($candidatePool)
+      }
+  register: _hyperv_external_adapter_resolution
   changed_when: false
+  check_mode: false
+
+- name: Preview Hyper-V external adapter resolution
+  ansible.builtin.debug:
+    var: _hyperv_external_adapter_resolution.result
+  when:
+    - ansible_check_mode | bool or
+      (ansible_troubleshooting_mode | default(false) | bool) or
+      (debug_remote_output | default(false) | bool) or
+      (debug_collect_component_evidence | default(false) | bool)
+  tags:
+    - preview
+    - evidence
+    - debug_resources
+
+- name: Require unique external adapter selection before create path
+  ansible.builtin.assert:
+    that:
+      - _hyperv_external_adapter_resolution.result.resolution_status == 'selected'
+      - (_hyperv_external_adapter_resolution.result.selected.name | default('')) | length > 0
+    fail_msg: >-
+      Hyper-V external adapter selection failed for switch
+      '{{ _hyperv.switch_name | default("External") }}':
+      {{ _hyperv_external_adapter_resolution.result.resolution_reason | default('unknown reason') }}
+  when: not (_hyperv_external_adapter_resolution.result.switch.exists | default(false))
 
 - name: Create External VMSwitch with PowerShell when absent
   ansible.windows.win_powershell:
@@ -35,7 +197,7 @@
       $Ansible.Changed = $false
       $result = New-VMSwitch `
         -Name '{{ _hyperv.switch_name | default("External") }}' `
-        -NetAdapterName '{{ _hyperv.adapter_name }}' `
+        -NetAdapterName '{{ _hyperv_external_adapter_resolution.result.selected.name }}' `
         -AllowManagementOS:{{ (_hyperv.allow_management_os | default(true) | bool) | ternary('$true', '$false') }} `
         2>&1 | Out-String
       if ($LASTEXITCODE -ne 0) {
@@ -46,7 +208,7 @@
       $Ansible.Changed = $true
       $Ansible.Result = $result.Trim()
   register: _vmswitch_create
-  when: not (_vmswitch_probe.result.exists | default(false))
+  when: not (_hyperv_external_adapter_resolution.result.switch.exists | default(false))
   vars:
     ansible_winrm_connection_timeout: "{{ hyperv_networking_switch_create_winrm_timeout }}"
 
@@ -72,6 +234,7 @@
       }
   register: _vmswitch_verify
   changed_when: false
+  check_mode: false
 
 - name: Require External VMSwitch to exist after Hyper-V networking
   ansible.builtin.assert:

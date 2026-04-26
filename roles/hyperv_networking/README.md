@@ -23,7 +23,10 @@ The role receives a single dictionary variable `hyperv_config`:
 hyperv_config:
   external_switch_enabled: true    # create/verify the Hyper-V External VMSwitch
   switch_name: "External"          # name of the Hyper-V External VMSwitch
-  adapter_name: "Wi-Fi"            # public adapter for the external-switch path
+  adapter_interface_description: "RZ608 Wi-Fi 6E 80MHz"  # preferred exact physical NIC selector
+  adapter_mac_address: ""          # optional exact physical NIC selector
+  adapter_name: "Wi-Fi"            # fallback exact adapter alias for the external-switch path
+  adapter_name_contains: ""        # optional unique substring selector; fails if ambiguous
   allow_management_os: true        # keep Windows host connected through the bridge
   internal_ics_switch_enabled: true
   internal_ics_switch_name: "Guest"
@@ -40,6 +43,17 @@ hyperv_config:
 
 Set in `host_vars` or `group_vars`. The role provides safe defaults in
 `defaults/main.yml`.
+
+Selector precedence for the external-switch create path is:
+
+1. `adapter_mac_address`
+2. `adapter_interface_description`
+3. `adapter_name`
+4. `adapter_name_contains`
+
+The role never picks the "first" substring match. If a substring selector
+matches more than one physical adapter, the role fails and shows the candidate
+pool in preview/debug output.
 
 The Hyper-V prerequisite features are also lifecycle-driven:
 

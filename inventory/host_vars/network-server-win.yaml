@@ -7,9 +7,9 @@
 # Router DHCP reservations: bind each adapter MAC to its own IP.
 # Router hostname: ai-net-server-mgmt → 192.168.50.234 (current adapter).
 # Revisit: when original adapter restored, decide final hostname strategy for both adapters.
-# IMPORTANT: Hyper-V External Switch adapter_name must be verified below — Windows names
-# dual Wi-Fi adapters "Wi-Fi" and "Wi-Fi 2"; lock the adapter_name to the exact string
-# shown in Device Manager before both adapters are online simultaneously.
+# IMPORTANT: dual Wi-Fi naming is ambiguous here. Keep the live external-switch
+# binding description pinned so preview/verification can prove the intended
+# uplink before any recreate path.
 ansible_host: "192.168.50.234"
 ansible_password: "Pass@w0rd1"
 surface_type: "windows_host"
@@ -37,6 +37,7 @@ ansible_winrm_transport: "ntlm"
 hyperv_config:
   external_switch_enabled: true
   switch_name: "External"
+  adapter_interface_description: "TP-Link Wi-Fi 6 PCIe Adapter"
   adapter_name: "Wi-Fi"
   allow_management_os: true
 
