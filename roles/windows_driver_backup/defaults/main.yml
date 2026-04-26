@@ -1,0 +1,68 @@
+---
+# windows_driver_backup — managed Windows driver export capability.
+#
+# This role keeps driver-store backups separate from Windows Server Backup
+# host-recovery payloads while still using the accepted backup naming contract
+# and zones.
+windows_driver_backup_state: absent
+windows_driver_backup_run_mode: "auto"
+
+windows_driver_backup_target_drive: >-
+  {{ windows_server_backup_target_drive | default('') }}
+windows_driver_backup_target_label: >-
+  {{ windows_server_backup_target_label | default('') }}
+
+windows_driver_backup_namespace: >-
+  {{ windows_server_backup_namespace | default('castle') }}
+windows_driver_backup_site: >-
+  {{ windows_server_backup_site | default('home') }}
+windows_driver_backup_environment: >-
+  {{ windows_server_backup_environment | default('lab') }}
+windows_driver_backup_stage: >-
+  {{ windows_server_backup_stage | default('authoritative') }}
+windows_driver_backup_node_name: >-
+  {{ physical_node | default(host_name | default(inventory_hostname)) | lower }}
+
+windows_driver_backup_repository_root: >-
+  {{
+    (windows_driver_backup_target_drive ~ ':\\backupsets')
+    if (windows_driver_backup_target_drive | default('') | length > 0)
+    else ''
+  }}
+windows_driver_backup_catalog_root: >-
+  {{
+    (windows_driver_backup_target_drive ~ ':\\backup-catalog')
+    if (windows_driver_backup_target_drive | default('') | length > 0)
+    else ''
+  }}
+
+windows_driver_backup_context_path_suffix: >-
+  {{
+    '\\' ~ windows_driver_backup_namespace
+    ~ '\\' ~ windows_driver_backup_site
+    ~ '\\' ~ windows_driver_backup_environment
+    ~ '\\' ~ windows_driver_backup_stage
+    ~ '\\' ~ windows_driver_backup_node_name
+  }}
+windows_driver_backup_context_root: >-
+  {{ windows_driver_backup_repository_root }}{{ windows_driver_backup_context_path_suffix }}
+windows_driver_backup_catalog_context_root: >-
+  {{ windows_driver_backup_catalog_root }}{{ windows_driver_backup_context_path_suffix }}
+
+windows_driver_backup_system_name: "windows-drivers"
+windows_driver_backup_artifact_name: "driver-export"
+
+windows_driver_backup_artifact_root: >-
+  {{ windows_driver_backup_context_root }}\{{ windows_driver_backup_system_name }}\{{ windows_driver_backup_artifact_name }}
+windows_driver_backup_current_export_root: >-
+  {{ windows_driver_backup_artifact_root }}\current
+windows_driver_backup_catalog_artifact_root: >-
+  {{ windows_driver_backup_catalog_context_root }}\{{ windows_driver_backup_system_name }}\{{ windows_driver_backup_artifact_name }}
+windows_driver_backup_logs_dir: >-
+  {{ windows_driver_backup_catalog_artifact_root }}\logs
+windows_driver_backup_manifests_dir: >-
+  {{ windows_driver_backup_catalog_artifact_root }}\manifests
+windows_driver_backup_runs_dir: >-
+  {{ windows_driver_backup_catalog_artifact_root }}\runs
+windows_driver_backup_readme_path: >-
+  {{ windows_driver_backup_catalog_artifact_root }}\README.md

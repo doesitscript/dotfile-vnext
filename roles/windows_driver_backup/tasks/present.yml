@@ -1,0 +1,255 @@
+---
+- name: Validate Windows driver backup metadata eligibility
+  ansible.builtin.assert:
+    that:
+      - surface_type | default("") == __windows_driver_backup_required_surface_type
+      - system_usage_class | default("") == __windows_driver_backup_required_system_usage_class
+      - availability_expectation | default("") == __windows_driver_backup_required_availability_expectation
+      - automation_management_model | default("") == __windows_driver_backup_required_automation_management_model
+    fail_msg: >-
+      {{ inventory_hostname }} is not eligible for the managed Windows driver
+      backup capability. This role is restricted to infrastructure-managed,
+      continuously available Windows service nodes.
+
+- name: Validate Windows driver backup inputs
+  ansible.builtin.assert:
+    that:
+      - windows_driver_backup_target_drive | default("") | length > 0
+      - windows_driver_backup_run_mode in ["auto", "incremental", "force"]
+      - windows_driver_backup_artifact_root | length > 0
+      - windows_driver_backup_catalog_artifact_root | length > 0
+    fail_msg: >-
+      windows_driver_backup requires an explicit target drive and a run mode of
+      auto, incremental, or force.
+
+- name: Discover Windows driver backup facts before apply
+  ansible.builtin.include_tasks: discover.yml
+
+- name: Plan Windows driver backup action
+  ansible.builtin.include_tasks: plan.yml
+
+- name: Assert Windows driver backup target is ready
+  ansible.builtin.assert:
+    that:
+      - windows_driver_backup_discovery["target_ready"] | bool
+    fail_msg: >-
+      Windows driver backup target drive {{ windows_driver_backup_target_drive }}:
+      is not ready: {{
+        windows_driver_backup_discovery["target_mismatches"] | join('; ')
+      }}
+
+- name: Fail on unexpected existing Windows driver backup layout
+  ansible.builtin.assert:
+    that:
+      - windows_driver_backup_planned_action != "fail"
+    fail_msg: >-
+      Windows driver backup found an unexpected existing layout at
+      {{ windows_driver_backup_current_export_root }}. Use
+      windows_driver_backup_run_mode=force only after confirming the managed
+      export tree can be rebuilt safely.
+
+- name: Create Windows driver backup directories
+  ansible.windows.win_file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ windows_driver_backup_repository_root }}"
+    - "{{ windows_driver_backup_catalog_root }}"
+    - "{{ windows_driver_backup_context_root }}"
+    - "{{ windows_driver_backup_catalog_context_root }}"
+    - "{{ windows_driver_backup_artifact_root }}"
+    - "{{ windows_driver_backup_current_export_root }}"
+    - "{{ windows_driver_backup_catalog_artifact_root }}"
+    - "{{ windows_driver_backup_logs_dir }}"
+    - "{{ windows_driver_backup_manifests_dir }}"
+    - "{{ windows_driver_backup_runs_dir }}"
+
+- name: Write Windows driver backup README
+  ansible.windows.win_copy:
+    content: |
+      # Windows Driver Backup
+
+      > Status: active managed capability. This host exports third-party
+      > Windows drivers into the repo-managed backup schema.
+
+      ## Scope
+
+      This capability:
+
+      - exports third-party drivers from the online Windows driver store
+      - keeps driver backup artifacts separate from Windows host-recovery backups
+      - uses a cumulative `current` export tree plus run manifests
+      - supports three run modes:
+        - `auto`
+        - `incremental`
+        - `force`
+
+      ## Managed Paths
+
+      - Backupsets root: {{ windows_driver_backup_repository_root }}
+      - Backup-catalog root: {{ windows_driver_backup_catalog_root }}
+      - Contract context root: {{ windows_driver_backup_context_root }}
+      - Catalog context root: {{ windows_driver_backup_catalog_context_root }}
+      - Artifact root: {{ windows_driver_backup_artifact_root }}
+      - Current export root: {{ windows_driver_backup_current_export_root }}
+      - Logs: {{ windows_driver_backup_logs_dir }}
+      - Manifests: {{ windows_driver_backup_manifests_dir }}
+      - Runs: {{ windows_driver_backup_runs_dir }}
+
+      ## Run Modes
+
+      - `auto`
+        First run exports all currently installed third-party drivers. Later
+        reruns no-op unless the export tree is absent.
+      - `incremental`
+        Export only newly discovered third-party drivers that were not already
+        backed up into the managed export tree.
+      - `force`
+        Rebuild the managed export tree from the currently installed
+        third-party driver set.
+
+      ## Naming Contract
+
+      - Namespace: {{ windows_driver_backup_namespace }}
+      - Site: {{ windows_driver_backup_site }}
+      - Environment: {{ windows_driver_backup_environment }}
+      - Stage: {{ windows_driver_backup_stage }}
+      - Node: {{ windows_driver_backup_node_name }}
+      - System: {{ windows_driver_backup_system_name }}
+      - Artifact: {{ windows_driver_backup_artifact_name }}
+    dest: "{{ windows_driver_backup_readme_path }}"
+
+- name: Remove current export root before force rebuild
+  ansible.windows.win_file:
+    path: "{{ windows_driver_backup_current_export_root }}"
+    state: absent
+  when: windows_driver_backup_planned_action == "force"
+
+- name: Recreate current export root after force rebuild cleanup
+  ansible.windows.win_file:
+    path: "{{ windows_driver_backup_current_export_root }}"
+    state: directory
+  when: windows_driver_backup_planned_action == "force"
+
+- name: Export managed Windows drivers when needed
+  ansible.builtin.include_tasks: run_export.yml
+  when: windows_driver_backup_planned_action in ["bootstrap", "incremental", "force"]
+
+- name: Compute Windows driver backup manifest facts after export
+  ansible.builtin.set_fact:
+    windows_driver_backup_run_manifest_path: >-
+      {{
+        windows_driver_backup_runs_dir
+        ~ '\\driver-export-'
+        ~ windows_driver_backup_export_result["effective_action"]
+        ~ '-'
+        ~ windows_driver_backup_export_result["generated_at_utc"]
+        ~ '.json'
+      }}
+    windows_driver_backup_cumulative_driver_names: >-
+      {%- if windows_driver_backup_planned_action == 'incremental' -%}
+      {{
+        (
+          windows_driver_backup_discovery["backed_up_driver_names"]
+          | union(windows_driver_backup_export_result["exported_driver_names"])
+        ) | sort
+      }}
+      {%- else -%}
+      {{ windows_driver_backup_discovery["installed_driver_names"] | sort }}
+      {%- endif -%}
+  when: windows_driver_backup_planned_action in ["bootstrap", "incremental", "force"]
+
+- name: Write Windows driver backup current manifest
+  ansible.windows.win_copy:
+    content: "{{ windows_driver_backup_current_manifest_content | to_nice_json }}"
+    dest: "{{ __windows_driver_backup_current_manifest_path }}"
+  vars:
+    windows_driver_backup_current_manifest_content:
+      schema: "{{ __windows_driver_backup_manifest_schema }}"
+      manifest_type: "current"
+      generated_at_utc: "{{ windows_driver_backup_export_result['generated_at_utc'] }}"
+      node_name: "{{ windows_driver_backup_node_name }}"
+      system: "{{ windows_driver_backup_system_name }}"
+      artifact: "{{ windows_driver_backup_artifact_name }}"
+      export_tool: "{{ windows_driver_backup_export_result['export_tool'] }}"
+      target_drive: "{{ windows_driver_backup_target_drive }}"
+      target_label: "{{ windows_driver_backup_target_label }}"
+      export_root: "{{ windows_driver_backup_current_export_root }}"
+      cumulative_backed_up_driver_published_names: "{{ windows_driver_backup_cumulative_driver_names }}"
+      current_installed_driver_published_names: "{{ windows_driver_backup_discovery['installed_driver_names'] }}"
+      current_installed_driver_count: "{{ windows_driver_backup_discovery['installed_driver_count'] }}"
+      current_installed_drivers: "{{ windows_driver_backup_discovery['installed_drivers'] }}"
+      last_requested_run_mode: "{{ windows_driver_backup_run_mode }}"
+      last_effective_action: "{{ windows_driver_backup_export_result['effective_action'] }}"
+      last_exported_driver_published_names: "{{ windows_driver_backup_export_result['exported_driver_names'] }}"
+      last_exported_driver_count: "{{ windows_driver_backup_export_result['exported_driver_count'] }}"
+  when: windows_driver_backup_planned_action in ["bootstrap", "incremental", "force"]
+
+- name: Write Windows driver backup run manifest
+  ansible.windows.win_copy:
+    content: "{{ windows_driver_backup_run_manifest_content | to_nice_json }}"
+    dest: "{{ windows_driver_backup_run_manifest_path }}"
+  vars:
+    windows_driver_backup_run_manifest_content:
+      schema: "{{ __windows_driver_backup_manifest_schema }}"
+      manifest_type: "run"
+      generated_at_utc: "{{ windows_driver_backup_export_result['generated_at_utc'] }}"
+      requested_run_mode: "{{ windows_driver_backup_run_mode }}"
+      effective_action: "{{ windows_driver_backup_export_result['effective_action'] }}"
+      node_name: "{{ windows_driver_backup_node_name }}"
+      system: "{{ windows_driver_backup_system_name }}"
+      artifact: "{{ windows_driver_backup_artifact_name }}"
+      export_tool: "{{ windows_driver_backup_export_result['export_tool'] }}"
+      target_drive: "{{ windows_driver_backup_target_drive }}"
+      target_label: "{{ windows_driver_backup_target_label }}"
+      export_root: "{{ windows_driver_backup_current_export_root }}"
+      installed_driver_count: "{{ windows_driver_backup_discovery['installed_driver_count'] }}"
+      missing_driver_count_before_run: "{{ windows_driver_backup_discovery['missing_driver_count'] }}"
+      exported_driver_count: "{{ windows_driver_backup_export_result['exported_driver_count'] }}"
+      exported_driver_published_names: "{{ windows_driver_backup_export_result['exported_driver_names'] }}"
+      exported_drivers: "{{ windows_driver_backup_export_result['exported_drivers'] }}"
+  when: windows_driver_backup_planned_action in ["bootstrap", "incremental", "force"]
+
+- name: Update Windows driver backup latest run pointer
+  ansible.windows.win_copy:
+    content: "{{ windows_driver_backup_run_manifest_content | to_nice_json }}"
+    dest: "{{ __windows_driver_backup_latest_run_manifest_path }}"
+  vars:
+    windows_driver_backup_run_manifest_content:
+      schema: "{{ __windows_driver_backup_manifest_schema }}"
+      manifest_type: "run"
+      generated_at_utc: "{{ windows_driver_backup_export_result['generated_at_utc'] }}"
+      requested_run_mode: "{{ windows_driver_backup_run_mode }}"
+      effective_action: "{{ windows_driver_backup_export_result['effective_action'] }}"
+      node_name: "{{ windows_driver_backup_node_name }}"
+      system: "{{ windows_driver_backup_system_name }}"
+      artifact: "{{ windows_driver_backup_artifact_name }}"
+      export_tool: "{{ windows_driver_backup_export_result['export_tool'] }}"
+      target_drive: "{{ windows_driver_backup_target_drive }}"
+      target_label: "{{ windows_driver_backup_target_label }}"
+      export_root: "{{ windows_driver_backup_current_export_root }}"
+      installed_driver_count: "{{ windows_driver_backup_discovery['installed_driver_count'] }}"
+      missing_driver_count_before_run: "{{ windows_driver_backup_discovery['missing_driver_count'] }}"
+      exported_driver_count: "{{ windows_driver_backup_export_result['exported_driver_count'] }}"
+      exported_driver_published_names: "{{ windows_driver_backup_export_result['exported_driver_names'] }}"
+      exported_drivers: "{{ windows_driver_backup_export_result['exported_drivers'] }}"
+  when: windows_driver_backup_planned_action in ["bootstrap", "incremental", "force"]
+
+- name: Summarize Windows driver backup apply
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "Driver backup target: {{ windows_driver_backup_target_drive }}:"
+      - "Requested run mode: {{ windows_driver_backup_run_mode }}"
+      - "Planned action: {{ windows_driver_backup_planned_action }}"
+      - "Current export root: {{ windows_driver_backup_current_export_root }}"
+      - >-
+        Exported this run: {{
+          windows_driver_backup_export_result["exported_driver_count"]
+          if (windows_driver_backup_planned_action in ["bootstrap", "incremental", "force"])
+          else 0
+        }}
+      - >-
+        Current installed driver count: {{
+          windows_driver_backup_discovery["installed_driver_count"]
+        }}

@@ -1,0 +1,91 @@
+---
+# Apply the managed Windows driver backup capability to Windows service hosts.
+#
+# Commands:
+#   Preview first:
+#     ansible-playbook playbooks/windows_driver_backup.yml --tags driver_backup_preview
+#
+#   Apply the managed driver backup capability:
+#     ansible-playbook playbooks/windows_driver_backup.yml --tags driver_backup_apply
+#
+#   Explicit incremental driver backup:
+#     ansible-playbook playbooks/windows_driver_backup.yml \
+#       --tags driver_backup_apply \
+#       -e windows_driver_backup_run_mode=incremental
+#
+#   Explicit force rebuild of the managed driver backup tree:
+#     ansible-playbook playbooks/windows_driver_backup.yml \
+#       --tags driver_backup_apply \
+#       -e windows_driver_backup_run_mode=force
+#
+#   Remove the capability from the managed Windows service hosts after setting
+#   windows_driver_backup_state=absent in inventory:
+#     ansible-playbook playbooks/windows_driver_backup.yml \
+#       --tags driver_backup_apply
+#
+- name: Preview Windows driver backup eligibility from inventory metadata
+  hosts: localhost
+  gather_facts: false
+  vars:
+    windows_driver_backup_preview_hosts: >-
+      {{ query('inventory_hostnames', 'windows_hosts:dev_3090:dev_workstation') }}
+
+  tasks:
+    - name: Summarize Windows driver backup eligibility
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ item }}"
+          - "Surface type: {{ hostvars[item]['surface_type'] | default('unset') }}"
+          - "System usage class: {{ hostvars[item]['system_usage_class'] | default('unset') }}"
+          - "Availability expectation: {{ hostvars[item]['availability_expectation'] | default('unset') }}"
+          - "Automation management model: {{ hostvars[item]['automation_management_model'] | default('unset') }}"
+          - >-
+            Metadata eligible: {{
+              (hostvars[item]['surface_type'] | default('')) == 'windows_host'
+              and (hostvars[item]['system_usage_class'] | default('')) == 'managed_service_node'
+              and (hostvars[item]['availability_expectation'] | default('')) == 'expected_continuous'
+              and (hostvars[item]['automation_management_model'] | default('')) == 'infrastructure_managed'
+            }}
+          - >-
+            Requested state: {{
+              hostvars[item]['windows_driver_backup_state'] | default('absent')
+            }}
+          - >-
+            Scheduled for role run: {{
+              (
+                (hostvars[item]['surface_type'] | default('')) == 'windows_host'
+                and (hostvars[item]['system_usage_class'] | default('')) == 'managed_service_node'
+                and (hostvars[item]['availability_expectation'] | default('')) == 'expected_continuous'
+                and (hostvars[item]['automation_management_model'] | default('')) == 'infrastructure_managed'
+                and ('windows_driver_backup_state' in hostvars[item])
+              )
+            }}
+      loop: "{{ windows_driver_backup_preview_hosts }}"
+      tags:
+        - driver_backup_preview
+
+- name: Preview and apply Windows driver backup capability
+  hosts: windows_hosts
+  gather_facts: false
+
+  tasks:
+    - name: Preview Windows driver backup capability
+      ansible.builtin.include_role:
+        name: windows_driver_backup
+        tasks_from: preview.yml
+        apply:
+          tags:
+            - driver_backup_preview
+      tags:
+        - driver_backup_preview
+
+    - name: Apply Windows driver backup capability
+      ansible.builtin.include_role:
+        name: windows_driver_backup
+        apply:
+          tags:
+            - driver_backup_apply
+      when: "'windows_driver_backup_state' in hostvars[inventory_hostname]"
+      tags:
+        - never
+        - driver_backup_apply

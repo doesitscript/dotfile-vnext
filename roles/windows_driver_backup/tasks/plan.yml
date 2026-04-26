@@ -1,0 +1,26 @@
+---
+- name: Plan Windows driver backup action
+  ansible.builtin.set_fact:
+    windows_driver_backup_planned_action: >-
+      {%- if windows_driver_backup_run_mode == 'force' -%}
+      force
+      {%- elif windows_driver_backup_discovery["status"] == 'unexpected_existing_layout' -%}
+      fail
+      {%- elif windows_driver_backup_discovery["status"] == 'not_initialized' -%}
+      bootstrap
+      {%- elif windows_driver_backup_run_mode == 'incremental'
+          and (windows_driver_backup_discovery["missing_driver_count"] | int) > 0 -%}
+      incremental
+      {%- else -%}
+      noop
+      {%- endif -%}
+    windows_driver_backup_export_driver_names: >-
+      {%- if windows_driver_backup_run_mode == 'incremental'
+          and (windows_driver_backup_discovery["missing_driver_count"] | int) > 0 -%}
+      {{ windows_driver_backup_discovery["missing_driver_names"] }}
+      {%- elif windows_driver_backup_run_mode == 'force'
+          or windows_driver_backup_discovery["status"] == 'not_initialized' -%}
+      {{ windows_driver_backup_discovery["installed_driver_names"] }}
+      {%- else -%}
+      []
+      {%- endif -%}

@@ -1,0 +1,15 @@
+---
+- name: Validate windows_driver_backup_state
+  ansible.builtin.assert:
+    that:
+      - windows_driver_backup_state in ["present", "absent"]
+    fail_msg: >-
+      windows_driver_backup_state must be "present" or "absent".
+
+- name: Apply Windows driver backup capability
+  ansible.builtin.include_tasks: present.yml
+  when: windows_driver_backup_state == "present"
+
+- name: Remove Windows driver backup capability
+  ansible.builtin.include_tasks: absent.yml
+  when: windows_driver_backup_state == "absent"

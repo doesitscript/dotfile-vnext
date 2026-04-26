@@ -1,0 +1,21 @@
+---
+- name: Validate Windows driver backup metadata eligibility for removal
+  ansible.builtin.assert:
+    that:
+      - surface_type | default("") == __windows_driver_backup_required_surface_type
+      - system_usage_class | default("") == __windows_driver_backup_required_system_usage_class
+      - availability_expectation | default("") == __windows_driver_backup_required_availability_expectation
+      - automation_management_model | default("") == __windows_driver_backup_required_automation_management_model
+    fail_msg: >-
+      {{ inventory_hostname }} is not eligible for managed Windows driver
+      backup removal.
+
+- name: Remove Windows driver backup artifact root
+  ansible.windows.win_file:
+    path: "{{ windows_driver_backup_artifact_root }}"
+    state: absent
+
+- name: Remove Windows driver backup catalog artifact root
+  ansible.windows.win_file:
+    path: "{{ windows_driver_backup_catalog_artifact_root }}"
+    state: absent

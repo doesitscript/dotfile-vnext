@@ -1,0 +1,58 @@
+---
+- name: Discover Windows driver backup preview facts
+  ansible.builtin.include_tasks: discover.yml
+
+- name: Plan Windows driver backup preview action
+  ansible.builtin.include_tasks: plan.yml
+
+- name: Preview Windows driver backup status
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "Requested state: {{ windows_driver_backup_state | default('absent') }}"
+      - "Metadata eligible: {{ windows_driver_backup_discovery['metadata_eligible'] }}"
+      - >-
+        Target drive: {{
+          (
+            windows_driver_backup_discovery["target_volume"]["DriveLetter"]
+            ~ ': label='
+            ~ (windows_driver_backup_discovery["target_volume"]["FileSystemLabel"] | default(''))
+          )
+          if (windows_driver_backup_discovery["target_volume"] is mapping and windows_driver_backup_discovery["target_volume"]["DriveLetter"] is defined)
+          else 'unavailable'
+        }}
+      - "Target ready: {{ windows_driver_backup_discovery['target_ready'] }}"
+      - >-
+        Target mismatches: {{
+          (
+            windows_driver_backup_discovery["target_mismatches"] | join('; ')
+          )
+          if (windows_driver_backup_discovery["target_mismatches"] | length > 0)
+          else 'none'
+        }}
+      - "Third-party installed driver count: {{ windows_driver_backup_discovery['installed_driver_count'] }}"
+      - "Currently backed up driver count: {{ windows_driver_backup_discovery['backed_up_driver_count'] }}"
+      - "Missing driver count: {{ windows_driver_backup_discovery['missing_driver_count'] }}"
+      - "Discovery status: {{ windows_driver_backup_discovery['status'] }}"
+      - "Requested run mode: {{ windows_driver_backup_run_mode }}"
+      - "Planned action if applied now: {{ windows_driver_backup_planned_action }}"
+      - >-
+        Latest run action: {{
+          windows_driver_backup_discovery["latest_run_manifest"]["effective_action"]
+          if (
+            windows_driver_backup_discovery["latest_run_manifest"] is mapping
+            and windows_driver_backup_discovery["latest_run_manifest"]["effective_action"] is defined
+          )
+          else 'none'
+        }}
+      - >-
+        Latest run timestamp: {{
+          windows_driver_backup_discovery["latest_run_manifest"]["generated_at_utc"]
+          if (
+            windows_driver_backup_discovery["latest_run_manifest"] is mapping
+            and windows_driver_backup_discovery["latest_run_manifest"]["generated_at_utc"] is defined
+          )
+          else 'none'
+        }}
+      - "Current export root: {{ windows_driver_backup_current_export_root }}"
+      - "Current manifest path: {{ __windows_driver_backup_current_manifest_path }}"

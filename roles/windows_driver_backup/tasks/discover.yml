@@ -1,0 +1,177 @@
+---
+- name: Collect Windows driver backup discovery facts
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $Ansible.Changed = $false
+
+      $expectedSurfaceType = '{{ __windows_driver_backup_required_surface_type }}'
+      $expectedSystemUsageClass = '{{ __windows_driver_backup_required_system_usage_class }}'
+      $expectedAvailability = '{{ __windows_driver_backup_required_availability_expectation }}'
+      $expectedAutomation = '{{ __windows_driver_backup_required_automation_management_model }}'
+      $targetDrive = '{{ windows_driver_backup_target_drive | default("") }}'
+      $expectedTargetLabel = '{{ windows_driver_backup_target_label | default("") }}'
+      $currentExportRoot = '{{ windows_driver_backup_current_export_root }}'
+      $currentManifestPath = '{{ __windows_driver_backup_current_manifest_path }}'
+      $latestRunManifestPath = '{{ __windows_driver_backup_latest_run_manifest_path }}'
+
+      $metadataEligible =
+        ('{{ surface_type | default("") }}' -eq $expectedSurfaceType) -and
+        ('{{ system_usage_class | default("") }}' -eq $expectedSystemUsageClass) -and
+        ('{{ availability_expectation | default("") }}' -eq $expectedAvailability) -and
+        ('{{ automation_management_model | default("") }}' -eq $expectedAutomation)
+
+      $targetVolume = $null
+      if ($targetDrive) {
+        try {
+          $targetVolume = Get-Volume -DriveLetter $targetDrive -ErrorAction Stop |
+            Select-Object DriveLetter, FileSystemLabel, FileSystem, Size, SizeRemaining, Path
+        } catch {
+          $targetVolume = [pscustomobject]@{ error = $_.Exception.Message }
+        }
+      }
+
+      $thirdPartyDrivers = @()
+      try {
+        $thirdPartyDrivers = @(
+          Get-WindowsDriver -Online -All |
+            Where-Object { -not $_.Inbox } |
+            Sort-Object Driver |
+            ForEach-Object {
+              [pscustomobject]@{
+                PublishedName = $_.Driver
+                OriginalFileName = $_.OriginalFileName
+                ProviderName = $_.ProviderName
+                ClassName = $_.ClassName
+                Version = $_.Version
+              }
+            }
+        )
+      } catch {
+        $thirdPartyDrivers = @(
+          [pscustomobject]@{
+            error = $_.Exception.Message
+          }
+        )
+      }
+
+      $installedDriverNames = @(
+        $thirdPartyDrivers |
+          Where-Object { $_.PublishedName } |
+          ForEach-Object { $_.PublishedName }
+      )
+
+      $currentExportRootExists = Test-Path -LiteralPath $currentExportRoot
+      $currentExportDirectoryNames = @()
+      $currentExportFileCount = 0
+      if ($currentExportRootExists) {
+        $currentExportEntries = @(Get-ChildItem -LiteralPath $currentExportRoot -Force -ErrorAction SilentlyContinue)
+        $currentExportDirectoryNames = @(
+          $currentExportEntries |
+            Where-Object { $_.PSIsContainer } |
+            Select-Object -ExpandProperty Name
+        )
+        $currentExportFileCount = @(
+          $currentExportEntries |
+            Where-Object { -not $_.PSIsContainer }
+        ).Count
+      }
+
+      $currentManifest = $null
+      $currentManifestState = 'missing'
+      if (Test-Path -LiteralPath $currentManifestPath) {
+        try {
+          $currentManifest = Get-Content -LiteralPath $currentManifestPath -Raw | ConvertFrom-Json
+          $currentManifestState = 'present'
+        } catch {
+          $currentManifest = [pscustomobject]@{
+            error = $_.Exception.Message
+            path = $currentManifestPath
+          }
+          $currentManifestState = 'invalid'
+        }
+      }
+
+      $latestRunManifest = $null
+      if (Test-Path -LiteralPath $latestRunManifestPath) {
+        try {
+          $latestRunManifest = Get-Content -LiteralPath $latestRunManifestPath -Raw | ConvertFrom-Json
+        } catch {
+          $latestRunManifest = [pscustomobject]@{
+            error = $_.Exception.Message
+            path = $latestRunManifestPath
+          }
+        }
+      }
+
+      $backedUpDriverNames = @()
+      if ($currentManifest -and -not $currentManifest.error) {
+        if ($currentManifest.cumulative_backed_up_driver_published_names) {
+          $backedUpDriverNames = @($currentManifest.cumulative_backed_up_driver_published_names)
+        } elseif ($currentManifest.driver_published_names) {
+          $backedUpDriverNames = @($currentManifest.driver_published_names)
+        }
+      }
+
+      $missingDriverNames = @(
+        $installedDriverNames |
+          Where-Object { $_ -notin $backedUpDriverNames }
+      )
+
+      $targetReady = $false
+      $targetMismatches = @()
+      if ($targetVolume -and -not $targetVolume.error) {
+        $targetReady = $true
+        if ($expectedTargetLabel -and $targetVolume.FileSystemLabel -ne $expectedTargetLabel) {
+          $targetReady = $false
+          $targetMismatches += 'target drive label does not match expected label'
+        }
+      } else {
+        $targetMismatches += 'target drive is not accessible'
+      }
+
+      $status = 'not_initialized'
+      if ($currentManifestState -eq 'invalid') {
+        $status = 'unexpected_existing_layout'
+      } elseif ($currentManifestState -eq 'missing' -and ($currentExportDirectoryNames.Count -gt 0 -or $currentExportFileCount -gt 0)) {
+        $status = 'unexpected_existing_layout'
+      } elseif ($currentManifestState -eq 'present' -and -not $currentExportRootExists) {
+        $status = 'unexpected_existing_layout'
+      } elseif ($currentExportFileCount -gt 0) {
+        $status = 'unexpected_existing_layout'
+      } elseif ($currentManifestState -eq 'present') {
+        if ($missingDriverNames.Count -gt 0) {
+          $status = 'incremental_available'
+        } else {
+          $status = 'already_current'
+        }
+      }
+
+      $Ansible.Result = [pscustomobject]@{
+        metadata_eligible = $metadataEligible
+        target_volume = $targetVolume
+        target_ready = $targetReady
+        target_mismatches = $targetMismatches
+        installed_drivers = $thirdPartyDrivers
+        installed_driver_names = $installedDriverNames
+        installed_driver_count = $installedDriverNames.Count
+        backed_up_driver_names = $backedUpDriverNames
+        backed_up_driver_count = $backedUpDriverNames.Count
+        missing_driver_names = $missingDriverNames
+        missing_driver_count = $missingDriverNames.Count
+        current_export_root_exists = $currentExportRootExists
+        current_export_directory_names = $currentExportDirectoryNames
+        current_export_directory_count = $currentExportDirectoryNames.Count
+        current_export_file_count = $currentExportFileCount
+        current_manifest_state = $currentManifestState
+        current_manifest = $currentManifest
+        latest_run_manifest = $latestRunManifest
+        status = $status
+        runtime_mode = '{{ __windows_driver_backup_runtime_mode }}'
+        export_tool = '{{ __windows_driver_backup_export_tool }}'
+      }
+  register: windows_driver_backup_discovery_raw
+
+- name: Parse Windows driver backup discovery facts
+  ansible.builtin.set_fact:
+    windows_driver_backup_discovery: "{{ windows_driver_backup_discovery_raw.result }}"

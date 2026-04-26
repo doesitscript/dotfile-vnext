@@ -1,0 +1,60 @@
+---
+- name: Export Windows drivers for managed driver backup
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+
+      $installedDriversObject = @'
+      {{ windows_driver_backup_discovery["installed_drivers"] | to_json }}
+      '@ | ConvertFrom-Json
+      $installedDrivers = @($installedDriversObject)
+
+      $driverNamesToExportObject = @'
+      {{ windows_driver_backup_export_driver_names | to_json }}
+      '@ | ConvertFrom-Json
+      $driverNamesToExport = @($driverNamesToExportObject)
+
+      $driverNameLookup = @{}
+      foreach ($name in $driverNamesToExport) {
+        $driverNameLookup[$name] = $true
+      }
+
+      $driversToExport = @(
+        $installedDrivers |
+          Where-Object { $_.PublishedName -and $driverNameLookup.ContainsKey($_.PublishedName) }
+      )
+
+      $exportedDrivers = @()
+      foreach ($driver in $driversToExport) {
+        $driverDestination = Join-Path '{{ windows_driver_backup_current_export_root }}' $driver.PublishedName
+        New-Item -Path $driverDestination -ItemType Directory -Force | Out-Null
+
+        $null = & pnputil.exe /export-driver $driver.PublishedName $driverDestination 2>&1
+        if ($LASTEXITCODE -ne 0) {
+          throw "pnputil export failed for $($driver.PublishedName) with exit code $LASTEXITCODE."
+        }
+
+        $exportedDrivers += [pscustomobject]@{
+          PublishedName = $driver.PublishedName
+          Destination = $driverDestination
+          ProviderName = $driver.ProviderName
+          ClassName = $driver.ClassName
+          OriginalFileName = $driver.OriginalFileName
+          Version = $driver.Version
+        }
+      }
+
+      $timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHHmmssZ')
+      $Ansible.Result = [pscustomobject]@{
+        generated_at_utc = $timestamp
+        export_tool = '{{ __windows_driver_backup_export_tool }}'
+        effective_action = '{{ windows_driver_backup_planned_action }}'
+        exported_driver_count = $exportedDrivers.Count
+        exported_driver_names = @($exportedDrivers | ForEach-Object { $_.PublishedName })
+        exported_drivers = $exportedDrivers
+      }
+  register: windows_driver_backup_export_raw
+
+- name: Parse Windows driver backup export result
+  ansible.builtin.set_fact:
+    windows_driver_backup_export_result: "{{ windows_driver_backup_export_raw.result }}"
