@@ -23,12 +23,35 @@ Expected flow:
 2. fetch the relevant official page
 3. answer from that source and cite it
 
+## Repo-Local Runtime Safety Override
+
+For this repo on macOS, do not treat a separate MCP-owned Python runtime as the
+default path for repo-local Python-, Ansible-, or WinRM-sensitive work.
+
+If a question can be answered by either:
+- an Ansible/Python MCP tool, or
+- a repo-local shell command wrapped with `bin/codex-env`
+
+prefer the wrapped shell command unless the MCP server itself is what you are
+researching.
+
+Reason:
+- `bin/codex-env` loads `.envrc` and the project `.venv`
+- separate MCP Python runtimes may bypass that environment
+- bypassing that environment can cause `A worker was found in a dead state`
+  failures or Python fork crashes on macOS
+
 ## Ansible MCP Tool Priority
 
 When multiple servers overlap, use them in this order:
 1. `ansible-mcp` — project-aware inventory, validation, execution, and diagnostics
 2. `ansible` — design philosophy, best practices, linting, and environment management
 3. `sysoperator` — unique helpers such as `list_tasks`, Terraform, AWS, and string-level vault utilities
+
+Exception:
+- when `ansible-mcp` would start or rely on a separate Python runtime for a
+  repo-local macOS/WinRM-sensitive check that could instead be answered through
+  `bin/codex-env`, the wrapper path outranks `ansible-mcp`
 
 ## Planner / Steward Gates
 

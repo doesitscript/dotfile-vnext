@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+if [ "$#" -eq 0 ]; then
+  echo "Usage: bin/codex-env <command> [args...]" >&2
+  exit 2
+fi
+
+# Some parent runtimes inject C.UTF-8, but macOS may not have that locale
+# available. Normalize early so child shells do not emit setlocale warnings.
+if [ "$(uname -s)" = "Darwin" ]; then
+  if [ "${LANG:-}" = "C.UTF-8" ]; then
+    export LANG="en_US.UTF-8"
+  fi
+  if [ "${LC_CTYPE:-}" = "C.UTF-8" ]; then
+    export LC_CTYPE="en_US.UTF-8"
+  fi
+  if [ "${LC_ALL:-}" = "C.UTF-8" ]; then
+    export LC_ALL="en_US.UTF-8"
+  fi
+fi
+
+cd "${REPO_ROOT}"
+
+if [ -f "${REPO_ROOT}/.envrc" ]; then
+  set +u
+  # shellcheck source=/dev/null
+  source "${REPO_ROOT}/.envrc"
+  set -u
+fi
+
+if [ -f "${REPO_ROOT}/.venv/bin/activate" ]; then
+  set +u
+  # shellcheck source=/dev/null
+  source "${REPO_ROOT}/.venv/bin/activate"
+  set -u
+fi
+
+exec "$@"

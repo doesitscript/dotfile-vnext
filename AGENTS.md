@@ -73,6 +73,9 @@ Include:
 4. `wsl_hosts` should mean SSH-ready Linux companion surfaces.
 5. Existing scripts in `bin/` are bootstrap helpers unless explicitly replaced by repeatable Ansible automation.
 6. Older brainstorming or history docs are background context unless explicitly referenced or promoted into the active rule/process layer.
+7. Bootstrap docs, bootstrap playbooks, and bootstrap helper scripts are first-touch machine-setup material by default. Do not treat them as the default source for steady-state operation, troubleshooting, or day-2 implementation unless the task is explicitly about initial setup, rebuild, or bootstrap-path changes.
+8. For repo-local Python, Ansible, and WinRM-sensitive shell work, use `bin/codex-env <command> ...` or another repo-owned wrapper that explicitly loads the same environment. Do not invoke those commands through raw shell, raw Python, or ambient PATH assumptions.
+9. On macOS, if a repo-local query would launch Python or Ansible in a separate MCP/runtime path that does not provably load the repo `.envrc` and project `.venv`, treat that path as unsafe by default. Prefer a `bin/codex-env` shell command or another repo-owned wrapper instead. This guard exists to avoid WinRM worker-dead failures and Python fork crashes from missing environment variables.
 
 ## Research Expectations
 
@@ -90,6 +93,8 @@ Include:
 7. Keep research in the conversation by default unless the user explicitly wants a durable artifact or the result is itself a durable process change.
 8. When repeated implementation attempts stop producing new evidence, stop iterating blindly and switch to documentation/source-backed research before changing strategy.
 9. When password passing, privilege escalation, or installer flow behaves unexpectedly, inspect the actual module/tool documentation or source before changing escalation strategy.
+10. When gathering repo context for a non-bootstrap task, prefer steady-state roles, deploy/verify playbooks, diagnostics notes, and active framework guidance before bootstrap docs or first-touch setup paths. Pull bootstrap material only when the task is explicitly about initial machine setup, bootstrap recovery, or replacing a bootstrap path.
+11. When the repo already documents a required runtime wrapper or environment-loading path for Python, Ansible, WinRM, or MCP-adjacent work, follow that documented path instead of calling the underlying interpreter directly.
 
 ## Framework Rule Adherence
 
@@ -139,6 +144,13 @@ capability, prefer these MCP checks instead of reasoning from memory:
    - `ansible-mcp.ansible_diagnose_host`
 4. OpenAI/Codex/MCP/config questions:
    - `openaiDeveloperDocs`
+
+Repo-local macOS exception:
+- if the question can be answered either by an Ansible/Python MCP tool or by a
+  repo-local shell command wrapped with `bin/codex-env`, prefer the wrapped
+  shell command for Python-, Ansible-, and WinRM-sensitive checks
+- use the MCP path only when the MCP server itself is the subject of the
+  question or when there is no equivalent wrapped repo command
 
 These MCP checkpoints are not optional when they directly answer the current
 planning or research question. If they are skipped, say why.
