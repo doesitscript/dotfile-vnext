@@ -1,0 +1,148 @@
+---
+- name: Validate managed service data/backup disk metadata
+  ansible.builtin.assert:
+    that:
+      - surface_type | default("") == __windows_managed_service_data_backup_disk_required_surface_type
+      - system_usage_class | default("") == __windows_managed_service_data_backup_disk_required_system_usage_class
+      - availability_expectation | default("") == __windows_managed_service_data_backup_disk_required_availability_expectation
+      - automation_management_model | default("") == __windows_managed_service_data_backup_disk_required_automation_management_model
+    fail_msg: >-
+      {{ inventory_hostname }} is not eligible for the managed service
+      data/backup disk role. This role is restricted to infrastructure-managed,
+      continuously available Windows service nodes.
+
+- name: Discover managed service data/backup disk apply facts
+  ansible.builtin.include_tasks: discover.yml
+
+- name: Assert exactly one managed service disk candidate exists
+  ansible.builtin.assert:
+    that:
+      - windows_managed_service_data_backup_disk_discovery["candidate_count"] | int == 1
+      - windows_managed_service_data_backup_disk_discovery["candidate"] is not none
+    fail_msg: >-
+      Expected exactly one non-OS/non-C:/D: candidate disk for
+      {{ inventory_hostname }}, found
+      {{ windows_managed_service_data_backup_disk_discovery['candidate_count'] }}.
+      Candidate evidence: {{
+        windows_managed_service_data_backup_disk_discovery["candidate_disks"]
+        | to_nice_json
+      }}
+
+- name: Stop when candidate disk already matches expected layout
+  ansible.builtin.meta: end_host
+  when: >-
+    windows_managed_service_data_backup_disk_discovery["candidate_classification"]
+    == "already_matches_expected_layout"
+
+- name: Assert rebuild approval for existing non-matching disk layout
+  ansible.builtin.assert:
+    that:
+      - windows_managed_service_data_backup_disk_rebuild_approved | bool
+    fail_msg: >-
+      Candidate disk already has a non-matching layout on {{ inventory_hostname }}.
+      Rerun with an explicit transient rebuild approval to wipe and reprovision
+      only the selected candidate disk. Candidate evidence: {{
+        windows_managed_service_data_backup_disk_discovery["candidate"]
+        | to_nice_json
+      }}
+  when: >-
+    windows_managed_service_data_backup_disk_discovery["candidate_classification"]
+    == "unexpected_existing_layout"
+
+- name: Clear selected managed service candidate disk for rebuild
+  ansible.windows.win_powershell:
+    script: |
+      $ProgressPreference = 'SilentlyContinue'
+      $diskNumber = [int]{{ windows_managed_service_data_backup_disk_discovery["candidate"]["number"] | int }}
+      Set-Disk -Number $diskNumber -IsReadOnly $false -IsOffline $false -ErrorAction Stop
+      Clear-Disk -Number $diskNumber -RemoveData -RemoveOEM -Confirm:$false -ErrorAction Stop
+  when: >-
+    windows_managed_service_data_backup_disk_discovery["candidate_classification"]
+    == "unexpected_existing_layout"
+
+- name: Initialize selected managed service candidate disk
+  community.windows.win_initialize_disk:
+    disk_number: "{{ windows_managed_service_data_backup_disk_discovery['candidate']['number'] | int }}"
+    style: "{{ __windows_managed_service_data_backup_disk_partition_style }}"
+    online: true
+
+- name: Create managed service backup partition
+  community.windows.win_partition:
+    disk_number: "{{ windows_managed_service_data_backup_disk_discovery['candidate']['number'] | int }}"
+    drive_letter: "{{ __windows_managed_service_data_backup_disk_backup_drive_letter }}"
+    partition_size: "{{ __windows_managed_service_data_backup_disk_backup_size_mib }} MiB"
+    gpt_type: basic_data
+    state: present
+
+- name: Format managed service backup partition
+  community.windows.win_format:
+    drive_letter: "{{ __windows_managed_service_data_backup_disk_backup_drive_letter }}"
+    file_system: "{{ __windows_managed_service_data_backup_disk_filesystem }}"
+    allocation_unit_size: "{{ __windows_managed_service_data_backup_disk_allocation_unit_size }}"
+    new_label: "{{ __windows_managed_service_data_backup_disk_backup_label }}"
+
+- name: Create managed service data partition
+  community.windows.win_partition:
+    disk_number: "{{ windows_managed_service_data_backup_disk_discovery['candidate']['number'] | int }}"
+    drive_letter: "{{ __windows_managed_service_data_backup_disk_data_drive_letter }}"
+    partition_size: -1
+    gpt_type: basic_data
+    state: present
+
+- name: Format managed service data partition
+  community.windows.win_format:
+    drive_letter: "{{ __windows_managed_service_data_backup_disk_data_drive_letter }}"
+    file_system: "{{ __windows_managed_service_data_backup_disk_filesystem }}"
+    allocation_unit_size: "{{ __windows_managed_service_data_backup_disk_allocation_unit_size }}"
+    new_label: "{{ __windows_managed_service_data_backup_disk_data_label }}"
+
+- name: Refresh managed service data/backup disk facts after apply
+  ansible.builtin.include_tasks: discover.yml
+
+- name: Assert managed service data/backup disk now matches expected layout
+  ansible.builtin.assert:
+    that:
+      - windows_managed_service_data_backup_disk_discovery["candidate_classification"] == "already_matches_expected_layout"
+    fail_msg: >-
+      Managed service data/backup disk did not converge to the expected layout.
+      Discovery evidence: {{
+        windows_managed_service_data_backup_disk_discovery | to_nice_json
+      }}
+
+- name: Ensure managed service data/backup disk marker directory exists
+  ansible.windows.win_file:
+    path: "{{ __windows_managed_service_data_backup_disk_marker_dir }}"
+    state: directory
+
+- name: Write managed service data/backup disk marker
+  ansible.windows.win_copy:
+    content: |
+      {{
+        {
+          "schema": __windows_managed_service_data_backup_disk_marker_schema,
+          "role": "windows_managed_service_data_backup_disk",
+          "disk_number": windows_managed_service_data_backup_disk_discovery["candidate"]["number"],
+          "disk_friendly_name": windows_managed_service_data_backup_disk_discovery["candidate"]["friendly_name"],
+          "disk_serial_number": windows_managed_service_data_backup_disk_discovery["candidate"]["serial_number"],
+          "disk_unique_id": windows_managed_service_data_backup_disk_discovery["candidate"]["unique_id"],
+          "backup_drive_letter": __windows_managed_service_data_backup_disk_backup_drive_letter,
+          "backup_label": __windows_managed_service_data_backup_disk_backup_label,
+          "data_drive_letter": __windows_managed_service_data_backup_disk_data_drive_letter,
+          "data_label": __windows_managed_service_data_backup_disk_data_label,
+          "filesystem": __windows_managed_service_data_backup_disk_filesystem | upper,
+          "allocation_unit_size": __windows_managed_service_data_backup_disk_allocation_unit_size,
+          "backup_percent": windows_managed_service_data_backup_disk_backup_percent,
+          "data_percent": windows_managed_service_data_backup_disk_data_percent
+        } | to_nice_json
+      }}
+    dest: "{{ __windows_managed_service_data_backup_disk_marker_path }}"
+
+- name: Summarize managed service data/backup disk apply
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "Managed disk: {{ windows_managed_service_data_backup_disk_discovery['candidate']['friendly_name'] }}"
+      - "Backup volume: {{ __windows_managed_service_data_backup_disk_backup_drive_letter }}: {{ __windows_managed_service_data_backup_disk_backup_label }}"
+      - "Data volume: {{ __windows_managed_service_data_backup_disk_data_drive_letter }}: {{ __windows_managed_service_data_backup_disk_data_label }}"
+      - "Backup percent: {{ windows_managed_service_data_backup_disk_backup_percent }}"
+      - "Data percent: {{ windows_managed_service_data_backup_disk_data_percent }}"

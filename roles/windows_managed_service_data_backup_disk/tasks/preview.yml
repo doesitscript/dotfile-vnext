@@ -1,0 +1,54 @@
+---
+- name: Discover managed service data/backup disk preview facts
+  ansible.builtin.include_tasks: discover.yml
+
+- name: Preview managed service data/backup disk status
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "Requested state: {{ windows_managed_service_data_backup_disk_state }}"
+      - "Metadata eligible: {{ windows_managed_service_data_backup_disk_discovery['metadata_eligible'] }}"
+      - "Candidate count: {{ windows_managed_service_data_backup_disk_discovery['candidate_count'] }}"
+      - "Candidate classification: {{ windows_managed_service_data_backup_disk_discovery['candidate_classification'] }}"
+      - >-
+        Candidate disk: {{
+          (
+            windows_managed_service_data_backup_disk_discovery["candidate"]["friendly_name"]
+            ~ ' (disk '
+            ~ (windows_managed_service_data_backup_disk_discovery["candidate"]["number"] | string)
+            ~ ')'
+          )
+          if windows_managed_service_data_backup_disk_discovery["candidate"] is not none
+          else 'none'
+        }}
+      - >-
+        Candidate drive letters: {{
+          (
+            windows_managed_service_data_backup_disk_discovery["candidate"]["drive_letters"]
+            | join(', ')
+          )
+          if windows_managed_service_data_backup_disk_discovery["candidate"] is not none
+          else 'n/a'
+        }}
+      - >-
+        Candidate mismatches: {{
+          (
+            windows_managed_service_data_backup_disk_discovery["candidate_mismatches"]
+            | join('; ')
+          )
+          if (windows_managed_service_data_backup_disk_discovery["candidate_mismatches"] | length > 0)
+          else 'none'
+        }}
+      - >-
+        Intended layout: {{
+          __windows_managed_service_data_backup_disk_backup_drive_letter
+        }}: {{ __windows_managed_service_data_backup_disk_backup_label }}
+        {{ windows_managed_service_data_backup_disk_backup_percent }}%,
+        {{
+          __windows_managed_service_data_backup_disk_data_drive_letter
+        }}: {{ __windows_managed_service_data_backup_disk_data_label }}
+        {{ windows_managed_service_data_backup_disk_data_percent }}%
+      - >-
+        Marker present: {{
+          windows_managed_service_data_backup_disk_discovery["marker"] is not none
+        }}

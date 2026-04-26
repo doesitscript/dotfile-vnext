@@ -1,0 +1,65 @@
+---
+- name: Preview managed service disk eligibility from inventory metadata
+  hosts: localhost
+  gather_facts: false
+  vars:
+    windows_managed_service_data_backup_disk_preview_hosts: >-
+      {{
+        query('inventory_hostnames', 'windows_hosts:dev_3090:dev_workstation')
+      }}
+
+  tasks:
+    - name: Summarize managed service disk eligibility
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ item }}"
+          - "Surface type: {{ hostvars[item]['surface_type'] | default('unset') }}"
+          - "System usage class: {{ hostvars[item]['system_usage_class'] | default('unset') }}"
+          - "Availability expectation: {{ hostvars[item]['availability_expectation'] | default('unset') }}"
+          - "Automation management model: {{ hostvars[item]['automation_management_model'] | default('unset') }}"
+          - >-
+            Metadata eligible: {{
+              (hostvars[item]['surface_type'] | default('')) == 'windows_host'
+              and (hostvars[item]['system_usage_class'] | default('')) == 'managed_service_node'
+              and (hostvars[item]['availability_expectation'] | default('')) == 'expected_continuous'
+              and (hostvars[item]['automation_management_model'] | default('')) == 'infrastructure_managed'
+            }}
+          - >-
+            Scheduled for apply: {{
+              (
+                (hostvars[item]['surface_type'] | default('')) == 'windows_host'
+                and (hostvars[item]['system_usage_class'] | default('')) == 'managed_service_node'
+                and (hostvars[item]['availability_expectation'] | default('')) == 'expected_continuous'
+                and (hostvars[item]['automation_management_model'] | default('')) == 'infrastructure_managed'
+                and (hostvars[item]['windows_managed_service_data_backup_disk_state'] | default('absent')) == 'present'
+              )
+            }}
+      loop: "{{ windows_managed_service_data_backup_disk_preview_hosts }}"
+      tags:
+        - disk_preview
+
+- name: Preview and apply managed service data/backup disk layout
+  hosts: windows_hosts
+  gather_facts: false
+
+  tasks:
+    - name: Preview managed service data/backup disk
+      ansible.builtin.include_role:
+        name: windows_managed_service_data_backup_disk
+        tasks_from: preview.yml
+        apply:
+          tags:
+            - disk_preview
+      tags:
+        - disk_preview
+
+    - name: Apply managed service data/backup disk
+      ansible.builtin.include_role:
+        name: windows_managed_service_data_backup_disk
+        apply:
+          tags:
+            - disk_apply
+      when: windows_managed_service_data_backup_disk_state == "present"
+      tags:
+        - never
+        - disk_apply

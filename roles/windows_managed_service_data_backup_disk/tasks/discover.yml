@@ -1,0 +1,235 @@
+---
+- name: Collect managed service data/backup disk facts
+  ansible.windows.win_powershell:
+    script: |
+      $ProgressPreference = 'SilentlyContinue'
+      $Ansible.Changed = $false
+
+      $expectedSurfaceType = '{{ __windows_managed_service_data_backup_disk_required_surface_type }}'
+      $expectedSystemUsageClass = '{{ __windows_managed_service_data_backup_disk_required_system_usage_class }}'
+      $expectedAvailability = '{{ __windows_managed_service_data_backup_disk_required_availability_expectation }}'
+      $expectedAutomation = '{{ __windows_managed_service_data_backup_disk_required_automation_management_model }}'
+      $expectedBackupDriveLetter = '{{ __windows_managed_service_data_backup_disk_backup_drive_letter }}'
+      $expectedBackupLabel = '{{ __windows_managed_service_data_backup_disk_backup_label }}'
+      $expectedDataDriveLetter = '{{ __windows_managed_service_data_backup_disk_data_drive_letter }}'
+      $expectedDataLabel = '{{ __windows_managed_service_data_backup_disk_data_label }}'
+      $expectedFileSystem = '{{ __windows_managed_service_data_backup_disk_filesystem | upper }}'
+      $expectedAllocationUnitSize = [int]{{ __windows_managed_service_data_backup_disk_allocation_unit_size }}
+      $expectedPartitionStyle = '{{ __windows_managed_service_data_backup_disk_partition_style | upper }}'
+      $backupPercent = [double]{{ windows_managed_service_data_backup_disk_backup_percent | float }}
+      $dataPercent = [double]{{ windows_managed_service_data_backup_disk_data_percent | float }}
+      $percentTolerance = [double]{{ __windows_managed_service_data_backup_disk_percent_tolerance | float }}
+      $targetModel = '{{ windows_managed_service_data_backup_disk_target_model | default("") }}'.Trim()
+      $targetSerial = '{{ windows_managed_service_data_backup_disk_target_serial_number | default("") }}'.Trim()
+
+      $metadataEligible =
+        ('{{ surface_type | default("") }}' -eq $expectedSurfaceType) -and
+        ('{{ system_usage_class | default("") }}' -eq $expectedSystemUsageClass) -and
+        ('{{ availability_expectation | default("") }}' -eq $expectedAvailability) -and
+        ('{{ automation_management_model | default("") }}' -eq $expectedAutomation)
+
+      $disks = Get-Disk | Sort-Object Number
+      $diskInfos = @()
+
+      foreach ($disk in $disks) {
+        $partitions = @(Get-Partition -DiskNumber $disk.Number -ErrorAction SilentlyContinue | Sort-Object PartitionNumber)
+        $partitionInfos = @()
+        $driveLetters = @()
+
+        foreach ($partition in $partitions) {
+          $volume = $null
+          if ($partition.DriveLetter) {
+            try {
+              $volume = Get-Volume -DriveLetter $partition.DriveLetter -ErrorAction Stop
+              $driveLetters += $partition.DriveLetter
+            } catch {
+              $volume = $null
+            }
+          }
+
+          $partitionInfos += [pscustomobject]@{
+            number = $partition.PartitionNumber
+            drive_letter = $partition.DriveLetter
+            size_bytes = [int64]$partition.Size
+            type = $partition.Type
+            volume = if ($volume) {
+              [pscustomobject]@{
+                label = $volume.FileSystemLabel
+                filesystem = $volume.FileSystem
+                allocation_unit_size = $volume.AllocationUnitSize
+                size_bytes = [int64]$volume.Size
+                size_remaining_bytes = [int64]$volume.SizeRemaining
+                health_status = $volume.HealthStatus
+              }
+            } else {
+              $null
+            }
+          }
+        }
+
+        $diskInfos += [pscustomobject]@{
+          number = $disk.Number
+          friendly_name = $disk.FriendlyName
+          serial_number = ($disk.SerialNumber | ForEach-Object { $_.ToString().Trim() })
+          unique_id = ($disk.UniqueId | ForEach-Object { $_.ToString().Trim() })
+          partition_style = $disk.PartitionStyle.ToString()
+          size_bytes = [int64]$disk.Size
+          is_system = [bool]$disk.IsSystem
+          is_boot = [bool]$disk.IsBoot
+          drive_letters = @($driveLetters | Sort-Object)
+          partitions = $partitionInfos
+        }
+      }
+
+      $cDiskNumber = $null
+      $dDiskNumber = $null
+
+      foreach ($diskInfo in $diskInfos) {
+        if ($diskInfo.drive_letters -contains 'C') { $cDiskNumber = $diskInfo.number }
+        if ($diskInfo.drive_letters -contains 'D') { $dDiskNumber = $diskInfo.number }
+      }
+
+      $candidateDisks = @(
+        $diskInfos | Where-Object {
+          -not $_.is_system -and
+          -not $_.is_boot -and
+          $_.number -ne $cDiskNumber -and
+          $_.number -ne $dDiskNumber
+        }
+      )
+
+      if ($targetModel) {
+        $candidateDisks = @($candidateDisks | Where-Object { $_.friendly_name -eq $targetModel })
+      }
+
+      if ($targetSerial) {
+        $candidateDisks = @($candidateDisks | Where-Object { $_.serial_number -eq $targetSerial })
+      }
+
+      $candidate = $null
+      $candidateClassification = 'no_candidate'
+      $candidateMismatches = @()
+
+      if ($candidateDisks.Count -gt 1) {
+        $candidateClassification = 'multiple_candidates'
+      } elseif ($candidateDisks.Count -eq 1) {
+        $candidate = $candidateDisks[0]
+
+        $candidateDriveLetters = @($candidate.drive_letters)
+        $backupPartition = $candidate.partitions | Where-Object { $_.drive_letter -eq $expectedBackupDriveLetter } | Select-Object -First 1
+        $dataPartition = $candidate.partitions | Where-Object { $_.drive_letter -eq $expectedDataDriveLetter } | Select-Object -First 1
+
+        $backupActualPercent = $null
+        if ($backupPartition -and $candidate.size_bytes -gt 0) {
+          $backupActualPercent = (([double]$backupPartition.size_bytes / [double]$candidate.size_bytes) * 100)
+        }
+
+        $dataActualPercent = $null
+        if ($dataPartition -and $candidate.size_bytes -gt 0) {
+          $dataActualPercent = (([double]$dataPartition.size_bytes / [double]$candidate.size_bytes) * 100)
+        }
+
+        $hasNoDriveLetters = ($candidateDriveLetters.Count -eq 0)
+        $driveLettersMatch = (($candidateDriveLetters.Count -eq 2) -and
+          ($candidateDriveLetters[0] -eq $expectedBackupDriveLetter) -and
+          ($candidateDriveLetters[1] -eq $expectedDataDriveLetter))
+
+        if (-not $hasNoDriveLetters -and -not $driveLettersMatch) {
+          $candidateMismatches += 'candidate disk has unexpected drive letters'
+        }
+        if ($candidate.partition_style -ne $expectedPartitionStyle -and -not $hasNoDriveLetters) {
+          $candidateMismatches += 'candidate disk partition style does not match expected GPT'
+        }
+        if ($backupPartition -and $backupPartition.volume -and $backupPartition.volume.label -ne $expectedBackupLabel) {
+          $candidateMismatches += 'backup volume label does not match expected label'
+        }
+        if ($dataPartition -and $dataPartition.volume -and $dataPartition.volume.label -ne $expectedDataLabel) {
+          $candidateMismatches += 'data volume label does not match expected label'
+        }
+        if ($backupPartition -and $backupPartition.volume -and $backupPartition.volume.filesystem -ne $expectedFileSystem) {
+          $candidateMismatches += 'backup volume filesystem does not match expected filesystem'
+        }
+        if ($dataPartition -and $dataPartition.volume -and $dataPartition.volume.filesystem -ne $expectedFileSystem) {
+          $candidateMismatches += 'data volume filesystem does not match expected filesystem'
+        }
+        if ($backupPartition -and $backupPartition.volume -and $backupPartition.volume.allocation_unit_size -ne $expectedAllocationUnitSize) {
+          $candidateMismatches += 'backup volume allocation unit size does not match expected value'
+        }
+        if ($dataPartition -and $dataPartition.volume -and $dataPartition.volume.allocation_unit_size -ne $expectedAllocationUnitSize) {
+          $candidateMismatches += 'data volume allocation unit size does not match expected value'
+        }
+        if ($backupActualPercent -ne $null -and ([math]::Abs($backupActualPercent - $backupPercent) -gt $percentTolerance)) {
+          $candidateMismatches += 'backup volume percentage does not match expected ratio'
+        }
+        if ($dataActualPercent -ne $null -and ([math]::Abs($dataActualPercent - $dataPercent) -gt $percentTolerance)) {
+          $candidateMismatches += 'data volume percentage does not match expected ratio'
+        }
+
+        if ($hasNoDriveLetters) {
+          $candidateClassification = 'raw_or_unassigned'
+        } elseif ($candidateMismatches.Count -eq 0) {
+          $candidateClassification = 'already_matches_expected_layout'
+        } else {
+          $candidateClassification = 'unexpected_existing_layout'
+        }
+
+        $candidate | Add-Member -NotePropertyName backup_actual_percent -NotePropertyValue $backupActualPercent -Force
+        $candidate | Add-Member -NotePropertyName data_actual_percent -NotePropertyValue $dataActualPercent -Force
+      }
+
+      $markerPath = '{{ __windows_managed_service_data_backup_disk_marker_path }}'
+      $marker = $null
+      if (Test-Path -LiteralPath $markerPath) {
+        try {
+          $marker = Get-Content -LiteralPath $markerPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        } catch {
+          $marker = [pscustomobject]@{
+            parse_error = $_.Exception.Message
+          }
+        }
+      }
+
+      $Ansible.Result = [pscustomobject]@{
+        metadata_eligible = $metadataEligible
+        expected = [pscustomobject]@{
+          backup_drive_letter = $expectedBackupDriveLetter
+          backup_label = $expectedBackupLabel
+          data_drive_letter = $expectedDataDriveLetter
+          data_label = $expectedDataLabel
+          filesystem = $expectedFileSystem
+          allocation_unit_size = $expectedAllocationUnitSize
+          partition_style = $expectedPartitionStyle
+          backup_percent = $backupPercent
+          data_percent = $dataPercent
+        }
+        c_disk_number = $cDiskNumber
+        d_disk_number = $dDiskNumber
+        candidate_count = $candidateDisks.Count
+        candidate_disks = $candidateDisks
+        candidate = $candidate
+        candidate_classification = $candidateClassification
+        candidate_mismatches = $candidateMismatches
+        marker = $marker
+      }
+  register: windows_managed_service_data_backup_disk_discovery_raw
+
+- name: Parse managed service data/backup disk facts
+  ansible.builtin.set_fact:
+    windows_managed_service_data_backup_disk_discovery: "{{ windows_managed_service_data_backup_disk_discovery_raw.result }}"
+
+- name: Compute desired managed service backup partition size
+  ansible.builtin.set_fact:
+    __windows_managed_service_data_backup_disk_backup_size_mib: >-
+      {{
+        (
+          (
+            windows_managed_service_data_backup_disk_discovery["candidate"]["size_bytes"] | int
+          ) *
+          (
+            windows_managed_service_data_backup_disk_backup_percent | float
+          ) / 100 / 1048576
+        ) | int
+      }}
+  when:
+    - windows_managed_service_data_backup_disk_discovery["candidate_count"] | int == 1
+    - windows_managed_service_data_backup_disk_discovery["candidate"] is not none

@@ -1,0 +1,16 @@
+---
+- name: Validate windows_managed_service_data_backup_disk_state
+  ansible.builtin.assert:
+    that:
+      - windows_managed_service_data_backup_disk_state in ["present", "absent"]
+    fail_msg: >-
+      windows_managed_service_data_backup_disk_state must be "present" or
+      "absent".
+
+- name: Apply managed service data/backup disk layout
+  ansible.builtin.include_tasks: present.yml
+  when: windows_managed_service_data_backup_disk_state == "present"
+
+- name: Remove managed service data/backup disk layout
+  ansible.builtin.include_tasks: absent.yml
+  when: windows_managed_service_data_backup_disk_state == "absent"
