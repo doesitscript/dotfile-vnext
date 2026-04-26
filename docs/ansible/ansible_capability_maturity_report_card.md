@@ -49,6 +49,8 @@ Meaning:
 Current project strengths:
 
 - metadata-based host classification is real and already in use
+- capability-oriented playbooks are becoming the preferred direction over
+  server-named playbooks
 - `present|absent` lifecycle design is established
 - preview-first validation exists for sensitive capabilities
 - resource-level safety checks are real for high-risk work like storage and
@@ -58,8 +60,12 @@ Current project strengths:
 
 Current project gaps:
 
+- some playbook names and examples still imply one-server-at-a-time operation
+  even when the implementation should scale across all opted-in hosts
 - some playbooks still rely too much on narrow inventory groups or transitional
   enrollment gates
+- some runtime targeting is still represented as hand-maintained groups instead
+  of derived groups from host intent
 - lifecycle state sometimes still doubles as enrollment instead of being pure
   intent
 - not every capability yet uses the same maturity model consistently
@@ -70,7 +76,32 @@ Current project gaps:
 
 The mature model we want is:
 
-### 1. Broad execution surface
+### 1. Phase/capability-oriented playbooks
+
+Playbooks should describe a phase or capability, not the special server that
+first needed it.
+
+Good:
+
+- `provision_hyperv_guests.yml`
+- `configure_linux_runtimes.yml`
+- `deploy_container_workloads.yml`
+- `deploy_k3s.yml`
+- `deploy_observability.yml`
+
+Less mature:
+
+- playbooks named after a single server when the capability applies to more
+  than one host
+- playbooks whose primary selection mechanism is a static hostname
+- examples that make `--limit one-host` look like the normal path when the
+  playbook is designed to apply to all declared targets
+
+Server-specific wrappers can exist as temporary bootstrap or recovery surfaces,
+but they should not become the mature steady-state shape for a reusable
+capability.
+
+### 2. Broad execution surface
 
 Target a broad, meaningful execution surface such as a Windows or Linux control
 plane set, not just “the two hosts we currently care about.”
@@ -86,7 +117,57 @@ Less mature:
 - host-specific targeting baked into the playbook
 - playbooks that only make sense because the inventory group is currently tiny
 
-### 2. Metadata describes the host; derived policy decides eligibility
+### 3. Host intent is source of truth; derived groups are execution detail
+
+Static runtime groups should not be the durable source of truth for capability
+placement.
+
+Preferred source of truth:
+
+- `host_vars` or inventory data declares intent
+- examples: `runtime_planes`, `node_classes`, `workloads`, and policy classes
+- NetBox can later own durable facts such as device, VM, site, platform, role,
+  tags, parent host, and IP addresses
+
+Preferred execution bridge:
+
+- playbooks use `group_by` or constructed inventory to derive runtime groups
+- derived groups are named for execution convenience, not hand-maintained as
+  primary data
+
+Example source intent:
+
+```yaml
+runtime_planes:
+  docker_engine:
+    enabled: true
+    purpose: storage_observability
+
+node_classes:
+  - storage_observability
+  - docker_runtime
+
+policy_classes:
+  - authoritative_data
+```
+
+Example derived group:
+
+```yaml
+- name: Group Docker Engine hosts from declared runtime intent
+  ansible.builtin.group_by:
+    key: runtime_docker_engine
+  when: runtime_planes.docker_engine.enabled | default(false) | bool
+```
+
+What to avoid:
+
+- treating `runtime_docker_engine` as a manually maintained inventory group
+- putting server identity into the playbook name when host intent can declare
+  the same thing
+- using static groups as a stand-in for missing host intent
+
+### 4. Metadata describes the host; derived policy decides eligibility
 
 Host metadata should describe what the host is.
 A derived capability policy should decide whether a capability applies.
@@ -162,7 +243,7 @@ What to avoid:
 - static host-name allowlists as the real targeting model
 - capability eligibility inferred primarily from transport details
 
-### 3. Lifecycle state decides intent
+### 5. Lifecycle state decides intent
 
 Lifecycle state is the desired outcome for an eligible host.
 
@@ -183,7 +264,7 @@ Less mature meaning:
 - “if the variable exists, the host is enrolled”
 - “if the variable is missing, skip the host and hope that is good enough”
 
-### 4. Resource-level checks prevent bad mutation
+### 6. Resource-level checks prevent bad mutation
 
 High-risk capabilities must have resource-level safety checks.
 
@@ -202,7 +283,7 @@ Examples:
 
 The playbook should not rely only on broad targeting to stay safe.
 
-### 5. Preview-first validation for new or risky targeting logic
+### 7. Preview-first validation for new or risky targeting logic
 
 When we first introduce or significantly change targeting or exclusion logic,
 the capability should have a read-only preview path.
@@ -216,7 +297,7 @@ The preview should show:
 
 This is different from generic Ansible check mode.
 
-### 6. Apply is normal; reruns are expected
+### 8. Apply is normal; reruns are expected
 
 A mature playbook must assume reruns are normal.
 
@@ -227,7 +308,7 @@ That means:
 - in-progress work should be recognized and reported clearly
 - the playbook should not feel fragile or “one-shot”
 
-### 7. Operator output should explain decisions
+### 9. Operator output should explain decisions
 
 Status lines should not be black boxes.
 
@@ -244,7 +325,7 @@ This is especially important for:
 - backup health
 - storage candidate selection
 
-### 8. Transitional safety rails are acceptable, but must be labeled as such
+### 10. Transitional safety rails are acceptable, but must be labeled as such
 
 Sometimes we use temporary constraints during early rollout:
 
@@ -258,6 +339,23 @@ These are acceptable only when:
 - they are not mistaken for the mature end-state design
 - they are later replaced with metadata-driven targeting and durable lifecycle
   intent
+
+### 11. Improve the current milestone incrementally
+
+Maturity work should happen where the project is already touching a capability.
+The expected pattern is not to stop all work for a giant taxonomy rewrite.
+
+When a milestone focuses on a concrete outcome, such as bringing
+`network-server` up to the current `server-225` standard:
+
+- improve the resources that are directly involved in that milestone
+- rename or reshape playbooks only when the current capability needs it
+- move static or server-specific patterns toward host intent and derived groups
+- leave unrelated playbooks for later passes unless they block the milestone
+- make the improved pattern easy to copy during the next milestone
+
+This keeps the work within reach while still moving away from early static and
+server-specific implementation patterns.
 
 ## Maturity Scale
 
@@ -286,7 +384,9 @@ Use this five-level scale when grading a capability:
 ### Level 3: Mature project-standard capability
 
 - broad execution surface
+- phase/capability-oriented playbook shape
 - metadata-driven eligibility
+- host intent drives derived execution groups
 - lifecycle state is intent, not enrollment
 - resource-level safety checks are strong
 - reruns are normal and understandable
@@ -309,16 +409,19 @@ An AI evaluating a playbook or role against this document should answer these
 questions explicitly:
 
 1. What is the execution surface?
-2. What inventory metadata determines eligibility?
-3. What derived policy decides whether the capability should manage the host?
-4. What lifecycle variable expresses intent?
-5. Is lifecycle state being used as intent or as hidden enrollment?
-6. What resource-level safety checks exist?
-7. Is there a preview-first validation path?
-8. Are reruns safe and understandable?
-9. Does the operator output explain decisions with checked values?
-10. Which safety rails are transitional versus durable?
-11. What maturity level from 0 to 5 best fits this capability?
+2. Is the playbook phase/capability-oriented or server-named?
+3. What host intent is the source of truth?
+4. Which execution groups are derived from host intent?
+5. What inventory metadata determines eligibility?
+6. What derived policy decides whether the capability should manage the host?
+7. What lifecycle variable expresses intent?
+8. Is lifecycle state being used as intent or as hidden enrollment?
+9. What resource-level safety checks exist?
+10. Is there a preview-first validation path?
+11. Are reruns safe and understandable?
+12. Does the operator output explain decisions with checked values?
+13. Which safety rails are transitional versus durable?
+14. What maturity level from 0 to 5 best fits this capability?
 
 ## AI Output Template
 
@@ -357,6 +460,9 @@ When grading a capability, prefer this output shape:
 Use this as a fast pass before deeper grading:
 
 - broad execution surface exists
+- playbook is phase/capability-oriented rather than server-named
+- host intent is declared in host_vars or inventory data
+- execution groups are derived with `group_by` or equivalent
 - eligibility is metadata-driven
 - derived capability policy exists
 - lifecycle state exists
@@ -372,6 +478,11 @@ Use this as a fast pass before deeper grading:
 These are the main project-standard patterns currently being pushed forward:
 
 - broad capability surfaces such as `windows_hosts`
+- phase/capability-oriented playbooks instead of server-named playbooks
+- host intent in `host_vars`, such as `runtime_planes`, `node_classes`,
+  `workloads`, and policy classes
+- derived execution groups using `group_by` as the bridge toward NetBox or
+  constructed inventory
 - metadata-based host classification
 - derived capability policy such as `*_should_manage`
 - `present|absent` lifecycle state
@@ -382,10 +493,15 @@ These are the main project-standard patterns currently being pushed forward:
 These are the main refactors still expected:
 
 - reduce dependence on narrow inventory groups as the real targeting model
+- stop hand-maintaining runtime groups that can be derived from host intent
+- rename server-specific playbooks when the touched capability already applies
+  to more than one host
 - stop using lifecycle-state existence as a hidden enrollment switch
 - derive capability-targeting policy from mature metadata rather than transport
   cues or host-name-specific enrollment
 - align newer and older capabilities to the same maturity standard
+- make incremental improvements inside the current milestone rather than
+  forcing an unrelated whole-project rewrite
 
 ## Update Rule
 
