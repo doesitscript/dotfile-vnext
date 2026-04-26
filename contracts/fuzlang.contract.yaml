@@ -1,5 +1,16 @@
 ---
-# FUZLANG Cross-Node Contract (Canonical Spec)
+# DEPRECATED SCAFFOLD
+# This file is a legacy planning scaffold from the beginning of the project.
+# It is retained for historical structure and migration context, but it is NOT
+# the authoritative runtime source for current inventory truth, targeting, or
+# capability policy. Current truth lives primarily in inventory/group_vars,
+# active playbooks/roles, and promoted project docs.
+#
+# FIXME: This file needs a future rewrite into a mature, scalable schema before
+# it should be treated as authoritative again. Until then, treat placeholders,
+# role names, addressing notes, and runtime notes here as legacy scaffolding.
+#
+# FUZLANG Cross-Node Contract (Legacy Scaffold)
 # Version: 1.0
 # Contract Name: fuzlang-lan-contract
 # Timezone: America/Chicago
@@ -27,39 +38,54 @@ nodes:
 
   main_node:
     name: Server-225
+    # FIXME: Role naming here is still legacy scaffolding. Replace with a
+    # properly designed scalable naming pattern aligned with NetBox/geodesic or
+    # the repo's mature host classification schema.
     role: primary-gpu-node
     os: windows-server-2025
     authority_level: execution
-    docker_runtime: wsl2-ubuntu-docker-engine
+    # WSL-based runtime guidance is deprecated. Current runtime direction for
+    # this node is the Hyper-V Ubuntu companion VM model.
+    docker_runtime: hyperv-ubuntu-docker-engine
     gpu: rtx-5090
     persistent_data_allowed: limited_non_authoritative
     outbound_and_inbound: true
     preferred_address: hostname  # or ip
     hostname_fqdn: null  # optional if local DNS added later
-    lan_ip: "192.168.50.158"
+    lan_ip: "192.168.50.158"  # legacy snapshot, not a dynamic source of truth
 
   network_node:
     name: network-server
+    # FIXME: Role naming here is still legacy scaffolding. Replace with a
+    # properly designed scalable naming pattern aligned with NetBox/geodesic or
+    # the repo's mature host classification schema.
     role: storage-observability-node
     os: windows-server-2025
     authority_level: authoritative
-    docker_runtime: windows-docker-engine  # or wsl2 if chosen later
+    # Older Windows/WSL runtime notes are deprecated. Current runtime direction
+    # is the Hyper-V Ubuntu companion VM model.
+    docker_runtime: hyperv-ubuntu-docker-engine
     persistent_data_allowed: true
     outbound_and_inbound: true
     preferred_address: hostname  # or ip
-    lan_ip: "<to_be_filled>"
+    lan_ip: "<to_be_filled>"  # FIXME: legacy placeholder; inventory is current truth
 
   dev_node:
     name: dev-3090
-    role: dev-gpu-node
+    # FIXME: This node descriptor remains too generic for long-term scalable
+    # classification. Keep using inventory metadata as current truth until this
+    # scaffold is redesigned with mature endpoint/workstation naming.
+    role: developer-desktop
     os: windows-11
     authority_level: execution
-    docker_runtime: wsl2-ubuntu-docker-engine  # recommended
+    # WSL-based runtime guidance is deprecated. Current runtime direction for
+    # this workstation is the Hyper-V Ubuntu companion VM model.
+    docker_runtime: hyperv-ubuntu-docker-engine
     gpu: rtx-3090
-    persistent_data_allowed: limited
+    persistent_data_allowed: user_managed
     inbound_allowed: true
     preferred_address: hostname  # or ip
-    lan_ip: "<to_be_filled>"
+    lan_ip: "<to_be_filled>"  # FIXME: legacy placeholder; inventory is current truth
 
 addressing_rule:
   preferred_addressing: hostname  # fallback: ip
@@ -68,6 +94,10 @@ addressing_rule:
 # ============================================================================
 # 2. ROLE MAP (SERVICE PLACEMENT)
 # ============================================================================
+# FIXME: These placement keys and names are deprecated placeholders from early
+# project scaffolding. Replace them with a properly designed scalable naming
+# pattern, such as one aligned with NetBox or geodesic-style topology/service
+# naming. Until then, keep this map only as a rough historical scaffold.
 service_placement:
   ollama: main_node
   litellm_gateway: main_node  # migration_candidate: true
@@ -377,7 +407,9 @@ task_scheduler_autostart:
 # 10. NETWORK NODE RUNTIME SPECIFICS
 # ============================================================================
 network_node_runtime:
-  docker_runtime: windows-docker-engine  # or wsl2 if chosen later
+  # Legacy runtime notes retained only as scaffold. Current runtime direction
+  # is the Hyper-V Ubuntu companion VM model, not direct Windows Docker or WSL.
+  docker_runtime: hyperv-ubuntu-docker-engine
   docker_data_root: "<disk>:\\docker-data"  # non-OS disk
   compose_execution_location: "<disk>:\\ai\\stacks"
 
@@ -385,12 +417,13 @@ network_node_runtime:
 # 11. DEV NODE RUNTIME SPECIFICS
 # ============================================================================
 dev_node_runtime:
-  docker_runs_in_wsl2: true  # recommended
-  distro: "<to_be_filled>"  # WSL distro name (e.g., Ubuntu)
-  systemd_in_wsl: true
-  docker_engine_in_wsl: true
+  # FIXME: This entire WSL-specific runtime block is deprecated scaffolding.
+  # The current runtime direction is the Hyper-V Ubuntu companion VM model.
+  docker_runtime: hyperv-ubuntu-docker-engine
+  guest_name: "<to_be_filled>"
+  docker_engine_in_guest: true
   docker_engine_on_windows: disabled
-  compose_execution_location: "inside wsl2, from /mnt/<drive>/ai/stacks/<stack>"
+  compose_execution_location: "<guest>:/srv/stacks/<stack>"
 
 # ============================================================================
 # 12. MANAGEMENT SURFACES (WINRM vs SSH)
@@ -411,6 +444,9 @@ management_surfaces:
       - OS-level hardening
 
   wsl_surface:
+    # FIXME: Deprecated legacy management surface retained as historical
+    # scaffold. Current direction is to manage Linux companion surfaces through
+    # SSH-ready VM guests rather than WSL-specific host suffix assumptions.
     connection: ssh
     used_for:
       - Docker commands
@@ -422,7 +458,10 @@ management_surfaces:
       - Anything under /mnt/<drive>/...
 
   dual_surface_model:
-    description: "Each physical Windows machine has two management surfaces"
+    # FIXME: This naming model is deprecated. Current repo direction is
+    # Windows bootstrap/control surfaces plus SSH-ready Linux companion
+    # surfaces, not a hardcoded -wsl suffix model.
+    description: "Legacy dual-surface model retained as scaffold only"
     pattern:
       - "<hostname>-win"  # WinRM surface
       - "<hostname>-wsl"  # SSH surface
@@ -471,15 +510,15 @@ verification_outputs:
 
   gpu_checks:
     - nvidia-smi works on main windows
-    - nvidia-smi works inside wsl2 (main)
+    - nvidia-smi works inside Linux companion runtime (main)
     - docker gpu test container works (if gpu used in containers)
     - nvidia-smi works on dev windows
-    - nvidia-smi works inside wsl2 (dev)
+    - nvidia-smi works inside Linux companion runtime (dev)
 
   drift_checks:
-    - docker engine running in wsl2 (main)
+    - docker engine running in Linux companion runtime (main)
     - docker engine not running on windows (main) if rule chosen
-    - docker engine running in wsl2 (dev)
+    - docker engine running in Linux companion runtime (dev)
     - docker engine not running on windows (dev) if rule chosen
 
 # ============================================================================
@@ -510,5 +549,4 @@ missing_inputs:
   - exact disk letters for network_node (stacks/data)
   - exact disk letters for dev_node (stacks/data)
   - final exposure choice for litellm and ollama (localhost vs lan vs allowlist)
-  - network_node docker runtime choice (windows-docker-engine vs wsl2)
-
+  - network_node docker runtime choice (current direction: Hyper-V Ubuntu companion VM)
