@@ -21,8 +21,9 @@ Stateful role for a Hyper-V-native Ubuntu VM on a Windows host.
 
 New replacement role for the retired Multipass path.
 
-This role is the supported provisioning direction for Hyper-V Ubuntu companion
-VMs created through their Windows `*-win` control surface.
+This role is the reusable Hyper-V Ubuntu VM primitive. Capability-specific
+playbooks such as Docker or future k3s VM orchestration map their public
+variables into this role.
 
 Current active direction:
 
@@ -50,8 +51,9 @@ The role treats the VM as one capability:
 
 ## Apply / Verify / Undo / Change Class
 
-- Apply: run [hyperv_ubuntu_vm.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/hyperv_ubuntu_vm.yaml)
-- Faster iterative apply: run [hyperv_ubuntu_vm_lifecycle_only.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/hyperv_ubuntu_vm_lifecycle_only.yaml) when controller identity, host networking, and controller routing are already converged
+- Apply Docker VM orchestration through [hyperv_ubuntu_docker_vm.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/hyperv_ubuntu_docker_vm.yaml)
+- Future VM classes should add their own playbook-level lifecycle contract and
+  map into this generic role at include time
 - Verify: confirm the VM exists in Hyper-V, gets an IPv4 address, and accepts
   the verification expected by the selected source mode
 - Undo: rerun with `hyperv_ubuntu_vm_state=absent`

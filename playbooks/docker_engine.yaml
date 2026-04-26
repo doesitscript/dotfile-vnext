@@ -1,18 +1,107 @@
 ---
-# Docker Engine — install Docker Engine on Linux VM hosts.
+# Docker Engine lifecycle for opted-in Ubuntu VM hosts.
+#
+# Public lifecycle interface:
+#   docker_engine_state: present | absent
 #
 # Commands:
-#   ansible-playbook playbooks/docker_engine.yaml -i inventory/inventory.yaml
-#   ansible-playbook playbooks/docker_engine.yaml -i inventory/inventory.yaml --limit server-225-ubuntu
+#   Preview target selection:
+#     ansible-playbook playbooks/docker_engine.yaml -i inventory/inventory.yaml \
+#       --check --tags docker_engine_preview
+#
+#   Apply to opted-in Docker engine hosts:
+#     ansible-playbook playbooks/docker_engine.yaml -i inventory/inventory.yaml
+#
+- name: Docker Engine - classify target hosts
+  hosts: linux_vm_hosts
+  gather_facts: false
 
-- name: Docker Engine - install on Linux VM hosts
+  tasks:
+    - name: Classify Docker Engine lifecycle eligibility
+      ansible.builtin.set_fact:
+        docker_engine_candidate: >-
+          {{ (surface_type | default('')) == 'ubuntu_vm' }}
+        docker_engine_lifecycle_ready: >-
+          {{ (docker_engine_state | default('unset')) in ['present', 'absent'] }}
+        docker_engine_should_manage: >-
+          {{
+            (surface_type | default('')) == 'ubuntu_vm'
+            and (docker_engine_state | default('unset')) in ['present', 'absent']
+          }}
+      changed_when: false
+      tags: [always]
+
+- name: Docker Engine - preview target selection
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: [docker_engine_preview, always]
+
+  tasks:
+    - name: Preview Docker Engine host selection
+      ansible.builtin.debug:
+        msg: >-
+          {{
+            {
+              'host': item,
+              'selected': hostvars[item].docker_engine_should_manage | default(false),
+              'candidate': hostvars[item].docker_engine_candidate | default(false),
+              'state': hostvars[item].docker_engine_state | default('unset'),
+              'surface_type': hostvars[item].surface_type | default('unset'),
+              'reason': (
+                'eligible'
+                if (hostvars[item].docker_engine_should_manage | default(false))
+                else 'not selected: missing Docker Engine lifecycle state'
+              )
+            }
+          }}
+      loop: "{{ query('inventory_hostnames', 'linux_vm_hosts') }}"
+
+- name: Docker Engine - lifecycle
   hosts: linux_vm_hosts
   gather_facts: true
   become: true
+  tags: [docker_engine_apply]
 
-  roles:
-    - role: geerlingguy.docker
+  tasks:
+    - name: Ensure Docker Engine is present
+      ansible.builtin.include_role:
+        name: geerlingguy.docker
       vars:
         docker_users:
           - "{{ ansible_user }}"
         docker_install_compose: true
+      when:
+        - docker_engine_should_manage | default(false) | bool
+        - docker_engine_state == 'present'
+
+    - name: Ensure Docker Engine is absent
+      when:
+        - docker_engine_should_manage | default(false) | bool
+        - docker_engine_state == 'absent'
+      block:
+        - name: Stop Docker service before package removal
+          ansible.builtin.service:
+            name: docker
+            state: stopped
+            enabled: false
+          failed_when: false
+
+        - name: Remove Docker Engine packages
+          ansible.builtin.apt:
+            name:
+              - containerd
+              - containerd.io
+              - docker-buildx-plugin
+              - docker-ce
+              - docker-ce-cli
+              - docker-compose
+              - docker-compose-plugin
+              - docker-compose-v2
+              - docker-doc
+              - docker.io
+              - podman-docker
+              - runc
+            state: absent
+            autoremove: true
+            purge: false
