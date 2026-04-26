@@ -77,6 +77,11 @@ Include:
 8. For repo-local Python, Ansible, and WinRM-sensitive shell work, use `bin/codex-env <command> ...` or another repo-owned wrapper that explicitly loads the same environment. Do not invoke those commands through raw shell, raw Python, or ambient PATH assumptions.
 9. On macOS, if a repo-local query would launch Python or Ansible in a separate MCP/runtime path that does not provably load the repo `.envrc` and project `.venv`, treat that path as unsafe by default. Prefer a `bin/codex-env` shell command or another repo-owned wrapper instead. This guard exists to avoid WinRM worker-dead failures and Python fork crashes from missing environment variables.
 10. For controller-side manual SSH to managed hosts, prefer the repo-managed SSH alias that matches the inventory host name, such as `server-225-win`, instead of jumping straight to raw `ansible_host`, physical hostname, or machine NetBIOS name. In this repo, `ansible_host` may be a WinRM/control-plane target while the SSH alias carries the intended OpenSSH path and client options.
+11. When showing commands for the user/operator to run, present the canonical
+    project command form such as `ansible-playbook ...`. Keep Codex-specific
+    wrappers, sandbox temp vars, or local runtime workarounds out of
+    user-facing commands unless the user explicitly asks for the exact command
+    Codex must use from inside its sandbox.
 
 ## Research Expectations
 
