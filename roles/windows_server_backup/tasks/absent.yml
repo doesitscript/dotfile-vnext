@@ -1,7 +1,16 @@
 ---
+# Provisional lifecycle cleanup path for the first-milestone baseline.
+# This path removes repo-managed baseline structure and can optionally remove
+# the Windows backup feature, but it should not be treated as a fully matured
+# teardown workflow for the eventual backup program.
+- name: Remove Windows backup catalog context root
+  ansible.windows.win_file:
+    path: "{{ windows_server_backup_catalog_context_root }}"
+    state: absent
+
 - name: Remove Windows backup working root
   ansible.windows.win_file:
-    path: "{{ windows_server_backup_work_root }}"
+    path: "{{ windows_server_backup_context_root }}"
     state: absent
 
 - name: Remove Windows Server Backup feature

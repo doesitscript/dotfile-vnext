@@ -1,4 +1,9 @@
 ---
+# Active milestone-one implementation path.
+# This task file manages the Windows backup baseline only: feature install,
+# target validation, and repo-managed structure. It intentionally does not yet
+# implement the full Windows Server Backup policy/schedule workflow or
+# service-specific backup payloads.
 - name: Validate Windows backup baseline inputs
   ansible.builtin.assert:
     that:
@@ -13,6 +18,7 @@
 - name: Resolve Windows backup working drive
   ansible.builtin.set_fact:
     windows_server_backup_work_drive: "{{ windows_server_backup_work_root[0:2] }}"
+    windows_server_backup_staging_drive_root: "{{ windows_server_backup_staging_root[0:2] }}"
 
 - name: Install Windows Server Backup feature
   ansible.windows.win_feature:
@@ -49,6 +55,12 @@
   register: windows_server_backup_target_drive_stat
   failed_when: not windows_server_backup_target_drive_stat.stat.exists
 
+- name: Verify backup staging drive exists
+  ansible.windows.win_stat:
+    path: "{{ windows_server_backup_staging_drive_root }}\\"
+  register: windows_server_backup_staging_drive_stat
+  failed_when: not windows_server_backup_staging_drive_stat.stat.exists
+
 - name: Collect backup target volume details
   ansible.windows.win_shell: |
     $ProgressPreference = 'SilentlyContinue'
@@ -79,16 +91,26 @@
     path: "{{ item }}"
     state: directory
   loop:
+    - "{{ windows_server_backup_repository_root }}"
+    - "{{ windows_server_backup_catalog_root }}"
+    - "{{ windows_server_backup_staging_root }}"
+    - "{{ windows_server_backup_context_root }}"
+    - "{{ windows_server_backup_catalog_context_root }}"
     - "{{ windows_server_backup_work_root }}"
     - "{{ windows_server_backup_scripts_dir }}"
     - "{{ windows_server_backup_data_dir }}"
     - "{{ windows_server_backup_targets_dir }}"
     - "{{ windows_server_backup_logs_dir }}"
+    - "{{ windows_server_backup_manifests_dir }}"
 
 - name: Write Windows backup baseline README
   ansible.windows.win_copy:
     content: |
       # Windows Server Backup Baseline
+
+      > Status: active first-milestone baseline. This host is prepared for the
+      > repo's Windows backup foundation, but the full backup program is not
+      > yet fully implemented here.
 
       ## Scope
 
@@ -107,17 +129,24 @@
 
       ## Managed Paths
 
+      - Native host-recovery root: {{ windows_server_backup_native_host_recovery_root }}
+      - Backupsets root: {{ windows_server_backup_repository_root }}
+      - Backup-catalog root: {{ windows_server_backup_catalog_root }}
+      - Staging root: {{ windows_server_backup_staging_root }}
+      - Contract context root: {{ windows_server_backup_context_root }}
+      - Catalog context root: {{ windows_server_backup_catalog_context_root }}
       - Work root: {{ windows_server_backup_work_root }}
       - Scripts: {{ windows_server_backup_scripts_dir }}
       - Data: {{ windows_server_backup_data_dir }}
-      - Targets: {{ windows_server_backup_targets_dir }}
+      - Future targets: {{ windows_server_backup_targets_dir }}
       - Logs: {{ windows_server_backup_logs_dir }}
+      - Manifests: {{ windows_server_backup_manifests_dir }}
 
       ## Backup Target
 
       - Target drive: {{ windows_server_backup_target_drive }}:
       - Target label: {{ windows_server_backup_target_volume["FileSystemLabel"] | default("unknown") }}
-      - Expected artifact path: {{ windows_server_backup_target_path | default("not set") }}
+      - Native host-recovery path: {{ windows_server_backup_target_path | default("not set") }}
 
       ## First-Milestone Boundary
 
@@ -134,7 +163,11 @@
   ansible.builtin.debug:
     msg:
       - "Windows backup feature: {{ windows_server_backup_feature_name }}"
+      - "Native host-recovery root: {{ windows_server_backup_native_host_recovery_root }}"
+      - "Backupsets root: {{ windows_server_backup_repository_root }}"
+      - "Backup-catalog root: {{ windows_server_backup_catalog_root }}"
+      - "Staging root: {{ windows_server_backup_staging_root }}"
       - "Backup work root: {{ windows_server_backup_work_root }}"
       - "Backup target: {{ windows_server_backup_target_drive }}:"
       - "Backup target label: {{ windows_server_backup_target_volume['FileSystemLabel'] | default('unknown') }}"
-      - "Expected artifact path: {{ windows_server_backup_target_path | default('not set') }}"
+      - "Native host-recovery path: {{ windows_server_backup_target_path | default('not set') }}"

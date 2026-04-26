@@ -9,24 +9,74 @@
 #
 # Later service-specific payload backups stay cordoned off in
 # tasks/future_service_targets.yml until they are refined.
+#
+# This defaults file is active repo configuration, but it intentionally models
+# only the first milestone of the backup program. It should not be read as
+# proof that Windows backup policy/schedule automation or service-specific
+# backups are complete.
 windows_server_backup_feature_name: "Windows-Server-Backup"
 windows_server_backup_manage_feature: true
 windows_server_backup_remove_feature_on_absent: false
 
-windows_server_backup_work_root: "{{ windows_data_root }}\\backups"
-windows_server_backup_scripts_dir: "{{ windows_server_backup_work_root }}\\scripts"
-windows_server_backup_data_dir: "{{ windows_server_backup_work_root }}\\data"
-windows_server_backup_targets_dir: "{{ windows_server_backup_work_root }}\\targets"
-windows_server_backup_logs_dir: "{{ windows_server_backup_work_root }}\\logs"
-windows_server_backup_readme_path: "{{ windows_server_backup_work_root }}\\README.md"
-
 windows_server_backup_target_drive: ""
 windows_server_backup_target_label: ""
-windows_server_backup_target_path: >-
+windows_server_backup_staging_drive: "F"
+
+# Accepted contract defaults for the current project.
+windows_server_backup_namespace: "castle"
+windows_server_backup_site: "home"
+windows_server_backup_environment: "lab"
+windows_server_backup_stage: "authoritative"
+windows_server_backup_node_name: >-
+  {{ physical_node | default(host_name | default(inventory_hostname)) | lower }}
+
+# Logical zones mapped to their physical Windows paths.
+windows_server_backup_native_host_recovery_root: >-
   {{
     (windows_server_backup_target_drive ~ ':\\WindowsImageBackup')
     if (windows_server_backup_target_drive | default('') | length > 0)
     else ''
   }}
+windows_server_backup_repository_root: >-
+  {{
+    (windows_server_backup_target_drive ~ ':\\backupsets')
+    if (windows_server_backup_target_drive | default('') | length > 0)
+    else ''
+  }}
+windows_server_backup_catalog_root: >-
+  {{
+    (windows_server_backup_target_drive ~ ':\\backup-catalog')
+    if (windows_server_backup_target_drive | default('') | length > 0)
+    else ''
+  }}
+windows_server_backup_staging_root: "{{ windows_server_backup_staging_drive }}:\\staging"
 
+windows_server_backup_context_path_suffix: >-
+  {{
+    '\\' ~ windows_server_backup_namespace
+    ~ '\\' ~ windows_server_backup_site
+    ~ '\\' ~ windows_server_backup_environment
+    ~ '\\' ~ windows_server_backup_stage
+    ~ '\\' ~ windows_server_backup_node_name
+  }}
+windows_server_backup_context_root: >-
+  {{ windows_server_backup_repository_root }}{{ windows_server_backup_context_path_suffix }}
+windows_server_backup_catalog_context_root: >-
+  {{ windows_server_backup_catalog_root }}{{ windows_server_backup_context_path_suffix }}
+
+# Milestone-one baseline implementation path. This is repo-managed metadata and
+# helper structure, not the Windows-native host-recovery path.
+windows_server_backup_work_root: "{{ windows_server_backup_context_root }}\\control-plane\\windows-server-backup-baseline"
+windows_server_backup_scripts_dir: "{{ windows_server_backup_work_root }}\\scripts"
+windows_server_backup_data_dir: "{{ windows_server_backup_work_root }}\\data"
+windows_server_backup_targets_dir: "{{ windows_server_backup_work_root }}\\future-targets"
+windows_server_backup_logs_dir: "{{ windows_server_backup_catalog_context_root }}\\logs"
+windows_server_backup_manifests_dir: "{{ windows_server_backup_catalog_context_root }}\\manifests"
+windows_server_backup_readme_path: "{{ windows_server_backup_catalog_context_root }}\\README.md"
+
+windows_server_backup_target_path: "{{ windows_server_backup_native_host_recovery_root }}"
+
+# One-time source used to derive the initial baseline shape and naming
+# direction. This is documentation/traceability metadata for milestone one, not
+# a steady-state runtime dependency.
 windows_server_backup_baseline_source_host: "server-225-win"
