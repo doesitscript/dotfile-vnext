@@ -116,6 +116,9 @@ Dedicated saved-artifact playbook:
 - Current source-mode intent:
   - `azure_cloud_image`
     - keep as the cloud-image/bootstrap research path
+    - now supports the same static guest-network contract used by the
+      installer path, rendered through cloud-init when
+      `hyperv_ubuntu_vm_autoinstall_network_method: static`
     - still expects seed media and SSH publication
   - `quick_create_desktop`
     - keep as a validated Hyper-V-native bootability checkpoint
