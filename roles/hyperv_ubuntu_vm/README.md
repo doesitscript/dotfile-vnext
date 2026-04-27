@@ -132,8 +132,9 @@ Dedicated saved-artifact playbook:
       VM into the installer
     - remaster the installer path for autoinstall and attach a `cidata` seed
     - keep the ISO-root `autoinstall.yaml` handoff aligned with Ubuntu
-      installer docs by using the `autoinstall` kernel argument without forcing
-      a leading-slash `subiquity.autoinstallpath`
+      installer docs by using the `autoinstall` kernel argument and an explicit
+      installation-system-relative `subiquity.autoinstallpath=cdrom/autoinstall.yaml`
+      pointer
     - render the ISO-root `autoinstall.yaml` in direct installation-media
       format while keeping the attached `cidata` seed in cloud-config format
     - patch the Hyper-V UEFI boot image to source an ESP-local GRUB config that
