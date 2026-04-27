@@ -213,7 +213,7 @@
 - name: Hyper-V Docker Ubuntu VM - lifecycle
   hosts: windows_hosts
   gather_facts: false
-  tags: [docker_vm_lifecycle, collect_hyperv]
+  tags: [docker_vm_lifecycle]
 
   tasks:
     - name: Ensure Docker Ubuntu VM is in the requested lifecycle state
@@ -234,6 +234,12 @@
           }}
       when: hyperv_ubuntu_docker_vm_should_manage | default(false) | bool
 
+- name: Hyper-V Docker Ubuntu VM - troubleshooting collection
+  hosts: windows_hosts
+  gather_facts: false
+  tags: [never, collect_hyperv]
+
+  tasks:
     - name: Collect Hyper-V Ubuntu VM troubleshooting artifacts
       ansible.builtin.include_role:
         name: troubleshooting_collectors
@@ -245,9 +251,6 @@
             | default(hyperv_ubuntu_docker_vm_hostname)
           }}
       when: hyperv_ubuntu_docker_vm_should_manage | default(false) | bool
-      tags:
-        - never
-        - collect_hyperv
 
 - name: Access - update controller SSH client config
   hosts: execution_nodes

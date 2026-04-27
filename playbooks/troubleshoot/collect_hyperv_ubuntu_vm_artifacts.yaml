@@ -1,9 +1,45 @@
 ---
-- name: Collect Hyper-V Ubuntu VM troubleshooting artifacts
-  hosts: server-225-win
+- name: Hyper-V Docker Ubuntu VM collector - classify target hosts
+  hosts: windows_hosts
   gather_facts: false
+
+  tasks:
+    - name: Classify Docker Ubuntu VM troubleshooting eligibility
+      ansible.builtin.set_fact:
+        hyperv_ubuntu_docker_vm_should_collect: >-
+          {{
+            (surface_type | default('')) == 'windows_host'
+            and (
+              ((runtime_planes | default({})).get('hyperv_docker_vm', {})).get('enabled', false)
+              | bool
+            )
+            and (hyperv_ubuntu_docker_vm_state | default('unset')) in ['present', 'absent']
+            and (hyperv_ubuntu_docker_vm_hostname | default('') | length) > 0
+          }}
+      changed_when: false
+
+    - name: Derive runtime group for Docker Ubuntu VM troubleshooting hosts
+      ansible.builtin.group_by:
+        key: >-
+          {{
+            'runtime_hyperv_ubuntu_docker_vm_troubleshoot'
+            if (hyperv_ubuntu_docker_vm_should_collect | default(false) | bool)
+            else 'runtime_hyperv_ubuntu_docker_vm_troubleshoot_excluded'
+          }}
+      changed_when: false
+
+- name: Collect Hyper-V Ubuntu VM troubleshooting artifacts
+  hosts: runtime_hyperv_ubuntu_docker_vm_troubleshoot
+  gather_facts: false
+
   tasks:
     - name: Collect Hyper-V Ubuntu VM troubleshooting artifacts
       ansible.builtin.include_role:
         name: troubleshooting_collectors
         tasks_from: hyperv_ubuntu_vm.yml
+      vars:
+        hyperv_ubuntu_vm_name: >-
+          {{
+            hyperv_ubuntu_docker_vm_name
+            | default(hyperv_ubuntu_docker_vm_hostname)
+          }}

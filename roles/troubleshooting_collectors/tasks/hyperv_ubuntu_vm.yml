@@ -6,6 +6,11 @@
 
 - name: Define Hyper-V Ubuntu VM troubleshooting artifact paths
   ansible.builtin.set_fact:
+    _hyperv_ubuntu_vm_collector_vm_name: >-
+      {{
+        hyperv_ubuntu_vm_name
+        | default((physical_node | default(inventory_hostname | regex_replace('-win$', ''))) ~ '-ubuntu')
+      }}
     _hyperv_ubuntu_vm_artifact_dir: >-
       {{ troubleshooting_artifact_root }}/hyperv_ubuntu_vm/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}
     _hyperv_ubuntu_vm_command_dir: >-
@@ -14,6 +19,54 @@
       {{ troubleshooting_artifact_root }}/hyperv_ubuntu_vm/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}/event_logs
     _hyperv_ubuntu_vm_notes_dir: >-
       {{ troubleshooting_artifact_root }}/hyperv_ubuntu_vm/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}/notes
+
+- name: Define Hyper-V Ubuntu VM troubleshooting target paths
+  ansible.builtin.set_fact:
+    _hyperv_ubuntu_vm_collector_root_dir: >-
+      {{
+        hyperv_ubuntu_vm_host_root_dir
+        | default('C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\' ~ _hyperv_ubuntu_vm_collector_vm_name)
+      }}
+    _hyperv_ubuntu_vm_collector_archive_path: >-
+      {{
+        hyperv_ubuntu_vm_host_archive_path
+        | default(
+          'C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\'
+          ~ _hyperv_ubuntu_vm_collector_vm_name
+          ~ '\\ubuntu-24.04-server-cloudimg-amd64-azure.vhd.tar.gz'
+        )
+      }}
+    _hyperv_ubuntu_vm_collector_source_vhd_path: >-
+      {{
+        hyperv_ubuntu_vm_host_source_vhd_path
+        | default(
+          'C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\'
+          ~ _hyperv_ubuntu_vm_collector_vm_name
+          ~ '\\livecd.ubuntu-cpc.azure.vhd'
+        )
+      }}
+    _hyperv_ubuntu_vm_collector_disk_path: >-
+      {{
+        hyperv_ubuntu_vm_host_vhdx_path
+        | default(
+          'C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\'
+          ~ _hyperv_ubuntu_vm_collector_vm_name
+          ~ '\\'
+          ~ _hyperv_ubuntu_vm_collector_vm_name
+          ~ '.vhdx'
+        )
+      }}
+    _hyperv_ubuntu_vm_collector_seed_path: >-
+      {{
+        hyperv_ubuntu_vm_host_seed_iso_path
+        | default(
+          'C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\'
+          ~ _hyperv_ubuntu_vm_collector_vm_name
+          ~ '\\'
+          ~ _hyperv_ubuntu_vm_collector_vm_name
+          ~ '-cidata.iso'
+        )
+      }}
 
 - name: Ensure Hyper-V Ubuntu VM troubleshooting artifact directories exist
   ansible.builtin.file:
@@ -31,18 +84,12 @@
   ansible.windows.win_powershell:
     error_action: stop
     script: |
-      $vmName = '{{ hyperv_ubuntu_vm_name | default("server-225-ubuntu") }}'
-      $rootDir = '{{ hyperv_ubuntu_vm_host_root_dir | default("C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\server-225-ubuntu") }}'
-      $archivePath = '{{ hyperv_ubuntu_vm_host_archive_path | default(
-        "C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\server-225-ubuntu\\ubuntu-24.04-server-cloudimg-amd64-azure.vhd.tar.gz"
-      ) }}'
-      $sourceVhdPath = '{{ hyperv_ubuntu_vm_host_source_vhd_path | default(
-        "C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\server-225-ubuntu\\livecd.ubuntu-cpc.azure.vhd"
-      ) }}'
-      $diskPath = '{{ hyperv_ubuntu_vm_host_vhdx_path | default("C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\server-225-ubuntu\\server-225-ubuntu.vhdx") }}'
-      $seedPath = '{{ hyperv_ubuntu_vm_host_seed_iso_path | default(
-        "C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\server-225-ubuntu\\server-225-ubuntu-cidata.iso"
-      ) }}'
+      $vmName = '{{ _hyperv_ubuntu_vm_collector_vm_name }}'
+      $rootDir = '{{ _hyperv_ubuntu_vm_collector_root_dir }}'
+      $archivePath = '{{ _hyperv_ubuntu_vm_collector_archive_path }}'
+      $sourceVhdPath = '{{ _hyperv_ubuntu_vm_collector_source_vhd_path }}'
+      $diskPath = '{{ _hyperv_ubuntu_vm_collector_disk_path }}'
+      $seedPath = '{{ _hyperv_ubuntu_vm_collector_seed_path }}'
 
       $result = [ordered]@{
         vm_name = $vmName
