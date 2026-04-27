@@ -290,6 +290,11 @@
           awk '/\/Volumes\// {print $NF; exit}'
         )"
         test -n "$EFI_MOUNT"
+        mkdir -p "$EFI_MOUNT/EFI/boot"
+        {
+          echo 'search --set=root --file /casper/vmlinuz'
+          cat '{{ hyperv_ubuntu_vm_controller_server_iso_custom_dir }}/grub.cfg'
+        } > "$EFI_MOUNT/EFI/boot/grub.cfg"
         export EFI_MOUNT
         python3 - <<'PY'
         import os
@@ -297,7 +302,7 @@
 
         p = Path(os.environ["EFI_MOUNT"]) / "EFI" / "boot" / "grubx64.efi"
         old = b"normal (memdisk)/grub.cfg\n"
-        new = b"source /boot/grub/grub.cf\n"
+        new = b"source /EFI/boot/grub.cfg\n"
         blob = p.read_bytes()
         if old not in blob:
             raise SystemExit("Expected EFI startup string not found in grubx64.efi")
