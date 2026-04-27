@@ -1,6 +1,6 @@
 ---
 # debug_output.yml — Collect diagnostic output from Windows host services.
-# Tag: debug — run with --tags debug, or included automatically at end of role.
+# Tag: debug — run with --tags debug or explicit troubleshooting vars.
 # Collects: WinRM state, Windows OpenSSH events/config, network adapters/IPs,
 #           and Hyper-V firewall state on the Windows host.
 
@@ -47,6 +47,7 @@
 
       $Ansible.Result = $out
   register: _debug_win_ssh
+  changed_when: false
   tags: [debug]
 
 - name: "DEBUG: Collect Windows OpenSSH event log entries"
@@ -74,6 +75,7 @@
 
       $Ansible.Result = $out
   register: _debug_win_ssh_events
+  changed_when: false
   tags: [debug]
 
 - name: "DEBUG: Collect WinRM state and stale sessions"
@@ -122,6 +124,7 @@
 
       $Ansible.Result = $out
   register: _debug_winrm
+  changed_when: false
   tags: [debug]
 
 - name: "DEBUG: Collect Windows network state"
@@ -169,6 +172,7 @@
 
       $Ansible.Result = $out
   register: _debug_network
+  changed_when: false
   tags: [debug]
 
 # ============================================================================

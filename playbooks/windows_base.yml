@@ -19,12 +19,19 @@
 #
 - name: Apply Windows base configuration
   hosts: windows_hosts
-  gather_facts: true
+  gather_facts: false
 
   pre_tasks:
     - name: Skip hosts without WinRM connection configuration
       ansible.builtin.meta: end_host
       when: (ansible_connection | default('ssh')) != 'winrm'
+      tags: [always]
+
+    - name: Set Windows OS identity facts without SMBIOS collection
+      ansible.builtin.set_fact:
+        ansible_os_family: "Windows"
+        ansible_system: "Win32NT"
+        ansible_distribution: "Windows"
       tags: [always]
 
   tasks:

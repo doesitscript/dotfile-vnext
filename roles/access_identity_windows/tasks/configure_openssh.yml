@@ -25,15 +25,6 @@
     start_mode: auto
   tags: [admin]
 
-# 3) Primary SSH port (Windows DefaultShell) — sshd_config + firewall
-- name: Remove active SSH listener ports before inserting the desired one
-  community.windows.win_lineinfile:
-    path: "{{ sshd_config_path }}"
-    regexp: '^Port\s+\d+\s*$'
-    state: absent
-  register: sshd_existing_port_cleanup
-  tags: [admin]
-
 - name: Ensure sshd listens on the configured port before any Match block
   ansible.windows.win_powershell:
     error_action: stop

@@ -54,7 +54,12 @@
   tags: [user]
 
 # --- Debug output: collect logs and diagnostics from all systems ---
-# Run with --tags debug to collect only diagnostics, or automatically at end of full run.
+# Run with --tags debug, -e debug_remote_output=true, or
+# -e ansible_troubleshooting_mode=true. Keep the default access/site path quiet.
 - name: Collect debug diagnostics from all systems
   ansible.builtin.import_tasks: debug_output.yml
+  when: >-
+    ('debug' in ansible_run_tags) or
+    (debug_remote_output | default(false) | bool) or
+    (ansible_troubleshooting_mode | default(false) | bool)
   tags: [debug]

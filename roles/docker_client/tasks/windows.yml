@@ -69,6 +69,14 @@
       if (Test-Path $configPath) {
         $current = Get-Content -LiteralPath $configPath -Raw -ErrorAction Stop
       }
+      $hasBom = $false
+      if (Test-Path $configPath) {
+        $bytes = [System.IO.File]::ReadAllBytes($configPath)
+        $hasBom = $bytes.Length -ge 3 -and
+          $bytes[0] -eq 0xEF -and
+          $bytes[1] -eq 0xBB -and
+          $bytes[2] -eq 0xBF
+      }
 
       $pattern = "(?ms)^" + [regex]::Escape($begin) + ".*?^" + [regex]::Escape($end) + "\r?\n?"
       if ($current -match $pattern) {
@@ -79,13 +87,15 @@
         $updated = $current.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + $block + [Environment]::NewLine
       }
 
-      if ($updated -ne $current) {
-        Set-Content -LiteralPath $configPath -Value $updated -Encoding UTF8
+      if ($updated -ne $current -or $hasBom) {
+        $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+        [System.IO.File]::WriteAllText($configPath, $updated, $utf8NoBom)
         $Ansible.Changed = $true
       }
       $Ansible.Result = @{
         config_path = $configPath
         context_host = $contextHost
+        rewritten_for_bom = $hasBom
       }
   tags: [docker, docker-client]
 

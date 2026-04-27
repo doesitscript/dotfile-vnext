@@ -2,11 +2,12 @@
 # Canonical full-stack entrypoint for the active lab stack.
 #
 # This playbook is the top-level desired-state path:
-#   1. Windows base
-#   2. Access / identity surfaces
-#   3. Hyper-V Windows host infrastructure
-#   4. Docker Ubuntu VM lifecycle for opted-in Windows hosts
-#   5. Docker engine / client verification
+#   1. Preview active inventory surfaces and phase intent
+#   2. Windows base
+#   3. Access / identity surfaces
+#   4. Hyper-V Windows host infrastructure
+#   5. Docker Ubuntu VM lifecycle for opted-in Windows hosts
+#   6. Docker engine / client verification
 #
 # Narrower playbooks remain available for faster loops and troubleshooting:
 #   - playbooks/provision_windows_host.yml              — Windows baseline only
@@ -17,27 +18,68 @@
 #
 # Commands:
 #   Full active-stack converge:
-#     ansible-playbook playbooks/site.yaml -i inventory/inventory.yaml
+#     ./bin/codex-env ansible-playbook playbooks/site.yaml -i inventory/inventory.yaml
+#
+#   Read-only entrypoint and capability-target preview:
+#     ./bin/codex-env ansible-playbook playbooks/site.yaml -i inventory/inventory.yaml \
+#       --check --tags site_preview,hyperv_windows_host_preview,docker_vm_preview,docker_engine_preview
 #
 #   Staged rollout / troubleshooting limit:
 #     Only use --limit when intentionally narrowing the otherwise scalable
-#     full active-stack converge.
-#     ansible-playbook playbooks/site.yaml -i inventory/inventory.yaml \
-#       --limit 'network-server-win,nsrv-dkr-01'
+#     full active-stack converge. Include the execution node and any companion
+#     guest/client surfaces needed by the selected physical node.
+#     ./bin/codex-env ansible-playbook playbooks/site.yaml -i inventory/inventory.yaml \
+#       --limit 'mac-dev,server-225-win,server-225-ubuntu,network-server-win,nsrv-dkr-01'
 #
+- name: Site - active lab entrypoint preview
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: [site_preview, always]
+
+  tasks:
+    - name: Preview site entrypoint inventory surfaces and phase order
+      ansible.builtin.debug:
+        msg:
+          entrypoint: playbooks/site.yaml
+          change_class: idempotent active lab convergence
+          apply: "./bin/codex-env ansible-playbook playbooks/site.yaml -i inventory/inventory.yaml"
+          verify: "syntax, ansible-lint, capability previews, and Docker client connectivity verification"
+          undo: "state-based role variables such as hyperv_ubuntu_docker_vm_state and docker_engine_state set to absent"
+          phase_order:
+            - windows_base
+            - access
+            - hyperv_windows_host
+            - hyperv_ubuntu_docker_vm
+            - docker_engine_client_verify
+          active_inventory_surfaces:
+            execution_nodes: "{{ query('inventory_hostnames', 'execution_nodes') }}"
+            windows_hosts: "{{ query('inventory_hostnames', 'windows_hosts') }}"
+            linux_vm_hosts: "{{ query('inventory_hostnames', 'linux_vm_hosts') }}"
+            docker_clients: "{{ query('inventory_hostnames', 'docker_clients') }}"
+          selection_model: >-
+            This entrypoint runs active inventory groups, while capability
+            playbooks derive runtime groups from host intent such as
+            runtime_planes and lifecycle state variables.
+
 - name: Site - Windows base
   import_playbook: windows_base.yml
+  tags: [site_windows_base, windows_base]
 
 - name: Site - access surfaces
   import_playbook: access.yaml
+  tags: [site_access, access]
 
 - name: Site - Hyper-V Windows host infrastructure
   import_playbook: configure_hyperv_windows_hosts.yaml
+  tags: [site_hyperv_windows_host, hyperv_windows_host]
 
 - name: Site - Hyper-V Docker Ubuntu guest lifecycle
   import_playbook: hyperv_ubuntu_docker_vm.yaml
+  tags: [site_hyperv_ubuntu_docker_vm, hyperv_ubuntu_docker_vm]
   vars:
     hyperv_ubuntu_docker_vm_manage_networking_prereqs: false
 
 - name: Site - Docker surfaces
   import_playbook: docker.yaml
+  tags: [site_docker, docker]

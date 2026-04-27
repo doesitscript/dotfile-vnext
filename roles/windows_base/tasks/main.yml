@@ -75,18 +75,38 @@
   ansible.windows.win_powershell:
     error_action: silently_continue
     script: |
+      $Ansible.Changed = $false
+      function Get-AcPowerIndex([string]$Subgroup, [string]$Setting) {
+        $output = powercfg /query SCHEME_CURRENT $Subgroup $Setting
+        $match = $output | Select-String -Pattern 'Current AC Power Setting Index:\s+(0x[0-9a-fA-F]+)'
+        if ($match) { return $match.Matches[0].Groups[1].Value }
+        return $null
+      }
+
+      $standbyBefore = Get-AcPowerIndex 'SUB_SLEEP' 'STANDBYIDLE'
+      $hibernateBefore = Get-AcPowerIndex 'SUB_SLEEP' 'HIBERNATEIDLE'
       powercfg -change -standby-timeout-ac 0
       powercfg -change -hibernate-timeout-ac 0
-      $Ansible.Changed = $true
+      if ($standbyBefore -ne '0x00000000' -or $hibernateBefore -ne '0x00000000') {
+        $Ansible.Changed = $true
+      }
   when: windows_base_cfg.disable_sleep | default(true) | bool
 
 - name: Disable USB selective suspend
   ansible.windows.win_powershell:
     error_action: silently_continue
     script: |
-      powercfg -setacvalueindex SCHEME_CURRENT 2a737441-1930-4402-8d77-b2bebba308a3 48e6b7a6-50f5-4782-a5d4-53bb8f07e226 0
-      powercfg -setactive SCHEME_CURRENT
-      $Ansible.Changed = $true
+      $Ansible.Changed = $false
+      $subgroup = '2a737441-1930-4402-8d77-b2bebba308a3'
+      $setting = '48e6b7a6-50f5-4782-a5d4-53bb8f07e226'
+      $output = powercfg /query SCHEME_CURRENT $subgroup $setting
+      $match = $output | Select-String -Pattern 'Current AC Power Setting Index:\s+(0x[0-9a-fA-F]+)'
+      $current = if ($match) { $match.Matches[0].Groups[1].Value } else { $null }
+      if ($current -ne '0x00000000') {
+        powercfg -setacvalueindex SCHEME_CURRENT $subgroup $setting 0
+        powercfg -setactive SCHEME_CURRENT
+        $Ansible.Changed = $true
+      }
   when: windows_base_cfg.disable_usb_suspend | default(true) | bool
 
 # --- Data Directories ---
@@ -123,21 +143,47 @@
       $paths = @('{{ windows_data_root }}', '{{ stacks_root }}', '{{ data_root }}')
       foreach ($path in $paths) {
         if (Test-Path $path) {
-          attrib.exe +s $path
-          $Ansible.Changed = $true
+          $item = Get-Item -LiteralPath $path -Force
+          if (($item.Attributes -band [IO.FileAttributes]::System) -eq 0) {
+            attrib.exe +s $path
+            $Ansible.Changed = $true
+          }
         }
       }
   when: windows_base_cfg.defender_exclusions | default(true) | bool
 
 - name: Add Windows Defender exclusions for data directories
   ansible.windows.win_powershell:
-    error_action: silently_continue
+    error_action: stop
     script: |
       $Ansible.Changed = $false
       $paths = @('{{ windows_data_root }}', '{{ stacks_root }}', '{{ data_root }}')
+
+      if (-not (Get-Command Get-MpPreference -ErrorAction SilentlyContinue) -or
+          -not (Get-Command Add-MpPreference -ErrorAction SilentlyContinue)) {
+        $Ansible.Result = @{ skipped = $true; reason = 'defender_cmdlets_unavailable' }
+        Exit 0
+      }
+
+      try {
+        $preference = Get-MpPreference -ErrorAction Stop
+      } catch {
+        $Ansible.Result = @{
+          skipped = $true
+          reason = 'defender_preferences_unavailable'
+          error = $_.Exception.Message
+        }
+        Exit 0
+      }
+
+      $existing = @(
+        $preference.ExclusionPath |
+          ForEach-Object { [IO.Path]::GetFullPath($_).TrimEnd('\').ToLowerInvariant() }
+      )
       foreach ($path in $paths) {
-        if (Test-Path $path) {
-          Add-MpPreference -ExclusionPath $path -ErrorAction SilentlyContinue
+        $normalizedPath = [IO.Path]::GetFullPath($path).TrimEnd('\').ToLowerInvariant()
+        if ((Test-Path $path) -and ($existing -notcontains $normalizedPath)) {
+          Add-MpPreference -ExclusionPath $path -ErrorAction Stop
           $Ansible.Changed = $true
         }
       }

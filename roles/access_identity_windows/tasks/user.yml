@@ -39,9 +39,15 @@
 
     # 2) User authorized_keys file
     - name: Ensure ansible_authorized_keys_path exists
-      ansible.windows.win_file:
-        path: "{{ ansible_authorized_keys_path }}"
-        state: touch
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $Ansible.Changed = $false
+          $path = '{{ ansible_authorized_keys_path }}'
+          if (-not (Test-Path -LiteralPath $path)) {
+            New-Item -ItemType File -Path $path -Force | Out-Null
+            $Ansible.Changed = $true
+          }
 
     - name: Disable ACL inheritance on ansible_authorized_keys_path
       ansible.windows.win_acl_inheritance:

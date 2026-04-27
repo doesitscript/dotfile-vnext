@@ -16,16 +16,19 @@
 
 - name: Validate Docker CLI is installed (Windows)
   ansible.windows.win_powershell:
-    error_action: silently_continue
+    error_action: continue
     script: |
       $Ansible.Changed = $false
-      $ver = (docker --version 2>&1)
-      if ($LASTEXITCODE -ne 0) {
-        $Ansible.Result = @{ version = "$ver" }
+      $output = @(docker --version 2>&1)
+      $rc = $LASTEXITCODE
+      $Ansible.Result = @{
+        version = ($output -join [Environment]::NewLine)
+        rc = $rc
+      }
+      if ($rc -ne 0) {
         $Ansible.Failed = $true
         Exit 1
       }
-      $Ansible.Result = @{ version = "$ver" }
   register: _docker_cli_win
   when: ansible_facts['os_family'] | default('') == "Windows"
   tags: [verify]
@@ -44,16 +47,20 @@
 
 - name: Check Docker engine connectivity via context (Windows)
   ansible.windows.win_powershell:
-    error_action: silently_continue
+    error_action: continue
     script: |
       $Ansible.Changed = $false
-      $ver = (docker info --format '{% raw %}{{.ServerVersion}}{% endraw %}' 2>&1)
-      if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace("$ver")) {
-        $Ansible.Result = @{ version = "$ver" }
+      $output = @(docker info --format '{% raw %}{{.ServerVersion}}{% endraw %}' 2>&1)
+      $rc = $LASTEXITCODE
+      $version = ($output -join [Environment]::NewLine)
+      $Ansible.Result = @{
+        version = $version
+        rc = $rc
+      }
+      if ($rc -ne 0 -or [string]::IsNullOrWhiteSpace($version)) {
         $Ansible.Failed = $true
         Exit 1
       }
-      $Ansible.Result = @{ version = "$ver" }
   register: _docker_engine_win
   when: ansible_facts['os_family'] | default('') == "Windows"
   tags: [verify]

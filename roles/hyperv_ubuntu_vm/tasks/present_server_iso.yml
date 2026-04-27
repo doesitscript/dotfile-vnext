@@ -5,7 +5,9 @@
     state: directory
     mode: "0755"
   delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
-  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | default(true) | bool
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
 
 - name: Ensure controller cache directory exists for Hyper-V Ubuntu VM
   ansible.builtin.file:
@@ -13,7 +15,9 @@
     state: directory
     mode: "0755"
   delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
-  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | default(true) | bool
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
 
 - name: Ensure controller custom ISO directory exists for Hyper-V Ubuntu VM
   ansible.builtin.file:
@@ -21,7 +25,9 @@
     state: directory
     mode: "0755"
   delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
-  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | default(true) | bool
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
 
 - name: Set effective Ubuntu Server installer ISO path for Hyper-V Ubuntu VM
   ansible.builtin.set_fact:
@@ -33,13 +39,130 @@
       }}
     _hyperv_ubuntu_vm_server_iso_custom_upload_name: "{{ hyperv_ubuntu_vm_name }}-autoinstall.iso.upload"
 
+- name: Validate Ubuntu Server ISO installer media lifecycle state
+  ansible.builtin.assert:
+    that:
+      - hyperv_ubuntu_vm_server_iso_installer_media_state in ['auto', 'attached', 'detached']
+    fail_msg: >-
+      hyperv_ubuntu_vm_server_iso_installer_media_state must be one of
+      auto, attached, or detached.
+
+- name: Probe existing Ubuntu Server ISO VM media attachment state
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
+      if (-not $vm) {
+        $Ansible.Result = @{
+          exists = $false
+          installer_media_attached = $false
+          seed_media_attached = $false
+        }
+        Exit 0
+      }
+
+      $dvds = @(Get-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue)
+      $installerDvds = @($dvds | Where-Object { $_.Path -eq '{{ _hyperv_ubuntu_vm_server_iso_effective_host_path }}' })
+      $seedDvds = @($dvds | Where-Object { $_.Path -eq '{{ hyperv_ubuntu_vm_host_seed_iso_path }}' })
+      $Ansible.Result = @{
+        exists = $true
+        state = $vm.State.ToString()
+        installer_media_attached = ($installerDvds.Count -gt 0)
+        seed_media_attached = ($seedDvds.Count -gt 0)
+        installer_media_count = $installerDvds.Count
+        seed_media_count = $seedDvds.Count
+      }
+  register: _hyperv_ubuntu_vm_server_iso_media_probe
+  changed_when: false
+
+- name: Set Ubuntu Server ISO installer media attachment intent
+  ansible.builtin.set_fact:
+    _hyperv_ubuntu_vm_server_iso_attach_installer: >-
+      {{
+        hyperv_ubuntu_vm_server_iso_installer_media_state == 'attached'
+        or
+        (
+          hyperv_ubuntu_vm_server_iso_installer_media_state == 'auto'
+          and
+          (
+            not (_hyperv_ubuntu_vm_server_iso_media_probe.result.exists | default(false))
+            or (_hyperv_ubuntu_vm_server_iso_media_probe.result.installer_media_attached | default(false))
+            or (_hyperv_ubuntu_vm_server_iso_media_probe.result.seed_media_attached | default(false))
+          )
+        )
+      }}
+
+- name: Validate detached installer media state is not used for a missing VM
+  ansible.builtin.assert:
+    that:
+      - >-
+        hyperv_ubuntu_vm_server_iso_installer_media_state != 'detached'
+        or (_hyperv_ubuntu_vm_server_iso_media_probe.result.exists | default(false))
+    fail_msg: >-
+      hyperv_ubuntu_vm_server_iso_installer_media_state=detached can only manage
+      an existing installed VM. Use auto or attached when the VM still needs to
+      be created from installer media.
+
+- name: Detach Ubuntu Server installer media when requested
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop
+      $targetPaths = @(
+        '{{ _hyperv_ubuntu_vm_server_iso_effective_host_path }}',
+        '{{ hyperv_ubuntu_vm_host_seed_iso_path }}'
+      ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+      $dvds = @(Get-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue |
+        Where-Object { $targetPaths -contains $_.Path })
+
+      if (-not $dvds) {
+        $Ansible.Result = @{
+          detached = $false
+          restarted = $false
+          state = $vm.State.ToString()
+        }
+        Exit 0
+      }
+
+      $wasRunning = $vm.State.ToString() -eq 'Running'
+      if ($wasRunning) {
+        Stop-VM -Name '{{ hyperv_ubuntu_vm_name }}' -Force -TurnOff -Confirm:$false | Out-Null
+      }
+
+      foreach ($dvd in $dvds) {
+        Remove-VMDvdDrive `
+          -VMName '{{ hyperv_ubuntu_vm_name }}' `
+          -ControllerNumber $dvd.ControllerNumber `
+          -ControllerLocation $dvd.ControllerLocation `
+          -Confirm:$false
+      }
+
+      if ($wasRunning) {
+        Start-VM -Name '{{ hyperv_ubuntu_vm_name }}' | Out-Null
+      }
+
+      $Ansible.Changed = $true
+      $Ansible.Result = @{
+        detached = $true
+        restarted = $wasRunning
+        removed = $dvds.Count
+        state = (Get-VM -Name '{{ hyperv_ubuntu_vm_name }}').State.ToString()
+      }
+  when:
+    - hyperv_ubuntu_vm_server_iso_installer_media_state == 'detached'
+    - _hyperv_ubuntu_vm_server_iso_media_probe.result.exists | default(false)
+
 - name: Ensure controller seed directory exists for Hyper-V Ubuntu VM
   ansible.builtin.file:
     path: "{{ hyperv_ubuntu_vm_controller_seed_dir }}"
     state: directory
     mode: "0755"
   delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
-  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | bool
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
 
 - name: Render Ubuntu Server installer-media autoinstall config on controller
   ansible.builtin.template:
@@ -47,7 +170,9 @@
     dest: "{{ hyperv_ubuntu_vm_controller_server_iso_custom_dir }}/autoinstall.yaml"
     mode: "0644"
   delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
-  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | bool
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
 
 - name: Render Hyper-V Ubuntu VM autoinstall user-data on controller
   ansible.builtin.template:
@@ -55,7 +180,9 @@
     dest: "{{ hyperv_ubuntu_vm_controller_user_data_path }}"
     mode: "0644"
   delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
-  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | bool
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
 
 - name: Render Hyper-V Ubuntu VM autoinstall meta-data on controller
   ansible.builtin.template:
@@ -63,10 +190,14 @@
     dest: "{{ hyperv_ubuntu_vm_controller_meta_data_path }}"
     mode: "0644"
   delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
-  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | bool
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
 
 - name: Build autoinstall NoCloud seed image for Ubuntu Server ISO on controller
-  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | bool
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
   block:
     - name: Read controller autoinstall user-data checksum
       ansible.builtin.stat:
@@ -138,7 +269,9 @@
       delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
 
 - name: Build remastered Ubuntu Server autoinstall ISO on controller
-  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | bool
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
   block:
     - name: Download Ubuntu Server ISO to controller cache
       ansible.builtin.get_url:
@@ -304,6 +437,8 @@
         old = b"normal (memdisk)/grub.cfg\n"
         new = b"source /EFI/boot/grub.cfg\n"
         blob = p.read_bytes()
+        if new in blob:
+            raise SystemExit(0)
         if old not in blob:
             raise SystemExit("Expected EFI startup string not found in grubx64.efi")
         p.write_bytes(blob.replace(old, new, 1))
@@ -363,7 +498,9 @@
       }
   register: _hyperv_ubuntu_vm_host_custom_signature_probe
   changed_when: false
-  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | bool
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
 
 - name: Detach mounted remastered Ubuntu Server ISO before replacing it
   ansible.windows.win_powershell:
@@ -402,11 +539,15 @@
         detached = $true
       }
   when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | bool
     - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
-    - _hyperv_ubuntu_vm_host_custom_signature_probe.result.exists | default(false)
     - >-
-      (_hyperv_ubuntu_vm_host_custom_signature_probe.result.signature | default('') | trim)
-      != (_hyperv_ubuntu_vm_server_iso_custom_signature | trim)
+      not (_hyperv_ubuntu_vm_host_custom_signature_probe.result.exists | default(false))
+      or
+      (
+        (_hyperv_ubuntu_vm_host_custom_signature_probe.result.signature | default('') | trim)
+        != (_hyperv_ubuntu_vm_server_iso_custom_signature | trim)
+      )
 
 - name: Remove stale remastered Ubuntu Server ISO from Windows host when signature mismatches
   ansible.windows.win_file:
@@ -416,11 +557,15 @@
     - "{{ hyperv_ubuntu_vm_host_server_iso_custom_path }}"
     - "{{ hyperv_ubuntu_vm_host_server_iso_custom_signature_path }}"
   when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | bool
     - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
-    - _hyperv_ubuntu_vm_host_custom_signature_probe.result.exists | default(false)
     - >-
-      (_hyperv_ubuntu_vm_host_custom_signature_probe.result.signature | default('') | trim)
-      != (_hyperv_ubuntu_vm_server_iso_custom_signature | trim)
+      not (_hyperv_ubuntu_vm_host_custom_signature_probe.result.exists | default(false))
+      or
+      (
+        (_hyperv_ubuntu_vm_host_custom_signature_probe.result.signature | default('') | trim)
+        != (_hyperv_ubuntu_vm_server_iso_custom_signature | trim)
+      )
 
 - name: Remove stale remastered Ubuntu Server autoinstall ISO upload from Windows SSH home
   ansible.builtin.command:
@@ -439,6 +584,8 @@
   changed_when: false
   failed_when: false
   when: >-
+    (_hyperv_ubuntu_vm_server_iso_attach_installer | bool)
+    and
     (hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool)
     and
     (
@@ -460,6 +607,8 @@
   delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
   changed_when: true
   when: >-
+    (_hyperv_ubuntu_vm_server_iso_attach_installer | bool)
+    and
     (hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool)
     and
     (
@@ -472,25 +621,35 @@
     )
 
 - name: Move remastered Ubuntu Server autoinstall ISO into Windows host artifact directory when needed
-  ansible.builtin.command:
-    argv:
-      - ssh
-      - -o
-      - BatchMode=yes
-      - "{{ inventory_hostname }}"
-      - powershell
-      - -NoProfile
-      - -Command
-      - >-
-        $source = "$env:USERPROFILE\{{ _hyperv_ubuntu_vm_server_iso_custom_upload_name }}";
-        $destination = '{{ hyperv_ubuntu_vm_host_server_iso_custom_path }}';
-        if (Test-Path -LiteralPath $destination) {
-          Remove-Item -LiteralPath $destination -Force -ErrorAction Stop;
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $source = Join-Path $env:USERPROFILE '{{ _hyperv_ubuntu_vm_server_iso_custom_upload_name }}'
+      $destination = '{{ hyperv_ubuntu_vm_host_server_iso_custom_path }}'
+
+      if (-not (Test-Path -LiteralPath $source)) {
+        $Ansible.Result = @{
+          reason = 'missing_uploaded_iso'
+          source = $source
+          destination = $destination
         }
-        Move-Item -Force -Path $source -Destination $destination;
-  delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
-  changed_when: true
+        $Ansible.Failed = $true
+        Exit 1
+      }
+
+      if (Test-Path -LiteralPath $destination) {
+        Remove-Item -LiteralPath $destination -Force -ErrorAction Stop
+      }
+      Move-Item -Force -Path $source -Destination $destination
+      $Ansible.Changed = $true
+      $Ansible.Result = @{
+        source = $source
+        destination = $destination
+      }
   when: >-
+    (_hyperv_ubuntu_vm_server_iso_attach_installer | bool)
+    and
     (hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool)
     and
     (
@@ -506,7 +665,9 @@
   ansible.windows.win_copy:
     dest: "{{ hyperv_ubuntu_vm_host_server_iso_custom_signature_path }}"
     content: "{{ _hyperv_ubuntu_vm_server_iso_custom_signature }}"
-  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | bool
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
 
 - name: Detach mounted autoinstall seed ISO before replacing it
   ansible.windows.win_powershell:
@@ -544,14 +705,18 @@
         vm_exists = $true
         detached = $true
       }
-  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | bool
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
 
 - name: Copy autoinstall seed image to Windows host
   ansible.windows.win_copy:
     src: "{{ hyperv_ubuntu_vm_controller_seed_iso_path }}"
     dest: "{{ hyperv_ubuntu_vm_host_seed_iso_path }}"
     force: true
-  when: hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | bool
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
 
 - name: Probe Ubuntu Server ISO URL from Windows host
   ansible.windows.win_uri:
@@ -561,6 +726,7 @@
     url_timeout: 30
     return_content: false
   register: _hyperv_ubuntu_vm_server_iso_head
+  when: _hyperv_ubuntu_vm_server_iso_attach_installer | bool
 
 - name: Report Ubuntu Server ISO metadata
   ansible.builtin.debug:
@@ -571,9 +737,12 @@
       checksum_url: "{{ hyperv_ubuntu_vm_server_iso_checksum_url }}"
       effective_installer_path: "{{ _hyperv_ubuntu_vm_server_iso_effective_host_path }}"
       content_length: "{{ _hyperv_ubuntu_vm_server_iso_head.content_length | default('unknown') }}"
+  when: _hyperv_ubuntu_vm_server_iso_attach_installer | bool
 
 - name: Ensure Ubuntu Server ISO is downloaded with BITS
-  when: not (hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool)
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | bool
+    - not (hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool)
   block:
     - name: Probe current Ubuntu Server ISO archive state
       ansible.windows.win_powershell:
@@ -836,8 +1005,26 @@
             }
           }
 
+          function Test-VhdChainContainsPath([string]$ActualPath, [string]$DesiredPath) {
+            $desired = [IO.Path]::GetFullPath($DesiredPath)
+            $current = [IO.Path]::GetFullPath($ActualPath)
+            while (-not [string]::IsNullOrWhiteSpace($current)) {
+              if ([string]::Equals($current, $desired, [StringComparison]::OrdinalIgnoreCase)) {
+                return $true
+              }
+              try {
+                $vhd = Get-VHD -Path $current -ErrorAction Stop
+              } catch {
+                return $false
+              }
+              $current = $vhd.ParentPath
+            }
+            return $false
+          }
+
           $Ansible.Changed = $false
           $desiredMemory = Convert-ToBytes '{{ hyperv_ubuntu_vm_memory }}'
+          $desiredDiskPath = [IO.Path]::GetFullPath('{{ hyperv_ubuntu_vm_host_vhdx_path }}')
           $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop
 
           if ($vm.ProcessorCount -ne {{ hyperv_ubuntu_vm_cpus }}) {
@@ -858,18 +1045,26 @@
 
           $disk = Get-VMHardDiskDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $disk) {
-            Add-VMHardDiskDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -Path '{{ hyperv_ubuntu_vm_host_vhdx_path }}' | Out-Null
+            Add-VMHardDiskDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -Path $desiredDiskPath | Out-Null
             $Ansible.Changed = $true
-          } elseif ($disk.Path -ne '{{ hyperv_ubuntu_vm_host_vhdx_path }}') {
+          } else {
+            $actualDiskPath = [IO.Path]::GetFullPath($disk.Path)
+          }
+
+          if ($disk -and -not (Test-VhdChainContainsPath $actualDiskPath $desiredDiskPath)) {
+            if ($vm.State.ToString() -eq 'Running') {
+              throw "Refusing to change OS disk for running VM {{ hyperv_ubuntu_vm_name }} from '$actualDiskPath' to '$desiredDiskPath'."
+            }
             Set-VMHardDiskDrive `
               -VMName '{{ hyperv_ubuntu_vm_name }}' `
               -ControllerType $disk.ControllerType.ToString() `
               -ControllerNumber $disk.ControllerNumber `
               -ControllerLocation $disk.ControllerLocation `
-              -Path '{{ hyperv_ubuntu_vm_host_vhdx_path }}'
+              -Path $desiredDiskPath
             $Ansible.Changed = $true
           }
 
+          {% if _hyperv_ubuntu_vm_server_iso_attach_installer | bool %}
           $dvds = @(Get-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue)
           $dvd = $dvds | Where-Object { $_.Path -eq '{{ _hyperv_ubuntu_vm_server_iso_effective_host_path }}' } | Select-Object -First 1
           if (-not $dvd) {
@@ -904,7 +1099,12 @@
             -EnableSecureBoot Off `
             -FirstBootDevice $dvd
           {% endif %}
-          $Ansible.Result = @{ reconciled = $true }
+          {% endif %}
+          $Ansible.Result = @{
+            reconciled = $true
+            installer_media_state = '{{ hyperv_ubuntu_vm_server_iso_installer_media_state }}'
+            installer_media_attached = {{ (_hyperv_ubuntu_vm_server_iso_attach_installer | bool) | ternary('$true', '$false') }}
+          }
       when: _hyperv_ubuntu_vm_probe.result.exists | default(false)
 
     - name: Start Hyper-V Ubuntu VM when not running
@@ -931,10 +1131,17 @@
             "source_mode": "{{ hyperv_ubuntu_vm_source_mode }}",
             "source_url": "{{ hyperv_ubuntu_vm_server_iso_url }}",
             "installer_iso_path": "{{ _hyperv_ubuntu_vm_server_iso_effective_host_path }}",
-            "autoinstall_seed_attached": {{ hyperv_ubuntu_vm_server_iso_autoinstall_enabled | to_json }},
-            "installer_requires_console": true,
+            "installer_media_state": "{{ hyperv_ubuntu_vm_server_iso_installer_media_state }}",
+            "installer_media_attached": {{ (_hyperv_ubuntu_vm_server_iso_attach_installer | bool) | to_json }},
+            "autoinstall_seed_attached": {{
+              (
+                (hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool)
+                and (_hyperv_ubuntu_vm_server_iso_attach_installer | bool)
+              ) | to_json
+            }},
+            "installer_requires_console": {{ (_hyperv_ubuntu_vm_server_iso_attach_installer | bool) | to_json }},
             "ssh_ready": false,
-            "notes": "Ubuntu Server ISO installer mode is a server-aligned checkpoint. Complete installer/autoinstall work before publishing connection facts."
+            "notes": "Ubuntu Server ISO media can be attached for installation or detached for an already-installed day-2 VM."
           }
 
     - name: Report Hyper-V Ubuntu VM server ISO installer summary
@@ -946,6 +1153,12 @@
           source_url: "{{ hyperv_ubuntu_vm_server_iso_url }}"
           installer_iso_path: "{{ _hyperv_ubuntu_vm_server_iso_effective_host_path }}"
           switch_name: "{{ hyperv_ubuntu_vm_switch_name }}"
-          autoinstall_seed_attached: "{{ hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool }}"
-          installer_requires_console: true
+          installer_media_state: "{{ hyperv_ubuntu_vm_server_iso_installer_media_state }}"
+          installer_media_attached: "{{ _hyperv_ubuntu_vm_server_iso_attach_installer | bool }}"
+          autoinstall_seed_attached: >-
+            {{
+              (hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool)
+              and (_hyperv_ubuntu_vm_server_iso_attach_installer | bool)
+            }}
+          installer_requires_console: "{{ _hyperv_ubuntu_vm_server_iso_attach_installer | bool }}"
           connection_facts_published: false

@@ -30,6 +30,19 @@
       }}
       {%- endif -%}
 
+- name: Normalize managed Hyper-V guest route keys
+  ansible.builtin.set_fact:
+    _hyperv_guest_route_mac_managed_route_keys: >-
+      {%- set ns = namespace(routes=[]) -%}
+      {%- for route in _hyperv_guest_route_mac_managed_routes -%}
+      {%- set ns.routes = ns.routes + [{
+        'destination': route.destination,
+        'mask': route.mask,
+        'gateway': route.gateway
+      }] -%}
+      {%- endfor -%}
+      {{ ns.routes }}
+
 - name: Normalize current additional routes for Hyper-V guest route management
   ansible.builtin.set_fact:
     _hyperv_guest_route_mac_existing_routes: >-
@@ -50,7 +63,7 @@
       {%- set ns = namespace(routes=[]) -%}
       {%- for route in _hyperv_guest_route_mac_existing_routes -%}
       {%- set matches_managed = namespace(value=false) -%}
-      {%- for managed_route in _hyperv_guest_route_mac_managed_routes -%}
+      {%- for managed_route in _hyperv_guest_route_mac_managed_route_keys -%}
       {%- if route.destination == managed_route.destination and route.mask == managed_route.mask -%}
       {%- set matches_managed.value = true -%}
       {%- endif -%}
@@ -66,7 +79,7 @@
     _hyperv_guest_route_mac_desired_routes: >-
       {%- set ns = namespace(routes=_hyperv_guest_route_mac_filtered_routes) -%}
       {%- if hyperv_guest_route_mac_state == 'present' -%}
-      {%- set ns.routes = ns.routes + _hyperv_guest_route_mac_managed_routes -%}
+      {%- set ns.routes = ns.routes + _hyperv_guest_route_mac_managed_route_keys -%}
       {%- endif -%}
       {{ ns.routes }}
 
