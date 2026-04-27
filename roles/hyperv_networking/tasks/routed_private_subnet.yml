@@ -15,6 +15,7 @@
     name: Routing
     include_management_tools: true
     state: present
+  when: _hyperv.guest_remote_access_routing_enabled | default(false) | bool
 
 - name: Ensure Remote Access is configured for routing-only mode
   ansible.windows.win_powershell:
@@ -34,12 +35,14 @@
         routing_status = $current.RoutingStatus
       }
   register: _hyperv_routed_remote_access_role
+  when: _hyperv.guest_remote_access_routing_enabled | default(false) | bool
 
 - name: Ensure RemoteAccess service is running for routed guest subnet mode
   ansible.windows.win_service:
     name: RemoteAccess
     start_mode: manual
     state: started
+  when: _hyperv.guest_remote_access_routing_enabled | default(false) | bool
 
 - name: Ensure guest gateway IP and IPv4 forwarding are enabled for routed guest subnet mode
   ansible.windows.win_powershell:

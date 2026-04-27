@@ -34,6 +34,7 @@ hyperv_config:
   guest_switch_name: "Guest"
   guest_subnet_ipv4: "192.168.137.0/24"
   guest_gateway_ipv4: "192.168.137.1"
+  guest_remote_access_routing_enabled: false
   internal_ics_public_adapter_name: "vEthernet (External)"
   internal_ics_private_adapter_alias: "vEthernet (Guest)"
   internal_ics_psmodule_state: present
@@ -157,6 +158,16 @@ the role adds the next access layer on top of that existing guest network:
    adapters involved in guest access
 3. persists `IpEnableRouter=1` so the host remains a valid forwarding point
    across reboots
+
+The heavier Windows RemoteAccess/Routing role is optional and remains disabled
+by default because `Get-WindowsFeature Routing` can block host convergence on
+some lab Windows Server installs. Enable it only when the host specifically
+needs RRAS-managed routing:
+
+```yaml
+hyperv_config:
+  guest_remote_access_routing_enabled: true
+```
 
 This does not remove the value of the current ICS checkpoint. It builds from
 it:
