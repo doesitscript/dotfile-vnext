@@ -164,10 +164,51 @@
   tags: [guest_route]
 
   tasks:
+    - name: Initialize Docker VM guest route list for the controller
+      ansible.builtin.set_fact:
+        _hyperv_guest_route_mac_docker_routes: []
+      when: (hyperv_guest_route_mac_state | default('absent')) == 'present'
+
+    - name: Build Docker VM guest routes from selected Hyper-V hosts
+      ansible.builtin.set_fact:
+        _hyperv_guest_route_mac_docker_routes: >-
+          {{
+            _hyperv_guest_route_mac_docker_routes
+            + [{
+              'source_host': item,
+              'destination': _guest_subnet_cidr | regex_replace('/.*$', ''),
+              'mask': _guest_subnet_masks[_guest_subnet_prefix],
+              'gateway': hostvars[item].host_ip | default(hostvars[item].ansible_host)
+            }]
+          }}
+      vars:
+        _guest_subnet_cidr: "{{ (hostvars[item].hyperv_config | default({})).guest_subnet_ipv4 | default('') }}"
+        _guest_subnet_prefix: "{{ (_guest_subnet_cidr.split('/') | last) | string }}"
+        _guest_subnet_masks:
+          "16": "255.255.0.0"
+          "20": "255.255.240.0"
+          "24": "255.255.255.0"
+      loop: "{{ groups.runtime_hyperv_ubuntu_docker_vm | default([]) | sort }}"
+      when:
+        - (hyperv_guest_route_mac_state | default('absent')) == 'present'
+        - _guest_subnet_cidr | length > 0
+        - _guest_subnet_prefix in _guest_subnet_masks
+
+    - name: Preview Docker VM guest routes for the controller
+      ansible.builtin.debug:
+        msg:
+          network_service: "{{ hyperv_guest_route_mac_network_service }}"
+          selected_routes: "{{ _hyperv_guest_route_mac_docker_routes | default([]) }}"
+      when: (hyperv_guest_route_mac_state | default('absent')) == 'present'
+
     - name: Ensure the controller can route to configured Hyper-V guest subnets
       ansible.builtin.include_role:
         name: hyperv_guest_route_mac
-      when: (hyperv_guest_route_mac_state | default('absent')) == 'present'
+      vars:
+        hyperv_guest_route_mac_routes: "{{ _hyperv_guest_route_mac_docker_routes }}"
+      when:
+        - (hyperv_guest_route_mac_state | default('absent')) == 'present'
+        - (_hyperv_guest_route_mac_docker_routes | default([]) | length) > 0
 
 - name: Hyper-V Docker Ubuntu VM - lifecycle
   hosts: windows_hosts

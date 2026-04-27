@@ -14,6 +14,22 @@
   register: _hyperv_guest_route_mac_current
   changed_when: false
 
+- name: Normalize managed Hyper-V guest routes
+  ansible.builtin.set_fact:
+    _hyperv_guest_route_mac_managed_routes: >-
+      {%- set configured_routes = hyperv_guest_route_mac_routes | default([]) -%}
+      {%- if configured_routes | length > 0 -%}
+      {{ configured_routes }}
+      {%- else -%}
+      {{
+        [{
+          'destination': hyperv_guest_route_target_subnet,
+          'mask': hyperv_guest_route_target_mask,
+          'gateway': hyperv_guest_route_gateway
+        }]
+      }}
+      {%- endif -%}
+
 - name: Normalize current additional routes for Hyper-V guest route management
   ansible.builtin.set_fact:
     _hyperv_guest_route_mac_existing_routes: >-
@@ -33,25 +49,24 @@
     _hyperv_guest_route_mac_filtered_routes: >-
       {%- set ns = namespace(routes=[]) -%}
       {%- for route in _hyperv_guest_route_mac_existing_routes -%}
-      {%- if not (
-        route.destination == hyperv_guest_route_target_subnet and
-        route.mask == hyperv_guest_route_target_mask
-      ) -%}
+      {%- set matches_managed = namespace(value=false) -%}
+      {%- for managed_route in _hyperv_guest_route_mac_managed_routes -%}
+      {%- if route.destination == managed_route.destination and route.mask == managed_route.mask -%}
+      {%- set matches_managed.value = true -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {%- if not matches_managed.value -%}
       {%- set ns.routes = ns.routes + [route] -%}
       {%- endif -%}
       {%- endfor -%}
       {{ ns.routes }}
 
-- name: Build desired additional-route list for Hyper-V guest subnet
+- name: Build desired additional-route list for Hyper-V guest subnets
   ansible.builtin.set_fact:
     _hyperv_guest_route_mac_desired_routes: >-
       {%- set ns = namespace(routes=_hyperv_guest_route_mac_filtered_routes) -%}
       {%- if hyperv_guest_route_mac_state == 'present' -%}
-      {%- set ns.routes = ns.routes + [{
-        'destination': hyperv_guest_route_target_subnet,
-        'mask': hyperv_guest_route_target_mask,
-        'gateway': hyperv_guest_route_gateway
-      }] -%}
+      {%- set ns.routes = ns.routes + _hyperv_guest_route_mac_managed_routes -%}
       {%- endif -%}
       {{ ns.routes }}
 
@@ -84,6 +99,5 @@
     msg:
       network_service: "{{ hyperv_guest_route_mac_network_service }}"
       desired_state: "{{ hyperv_guest_route_mac_state }}"
-      target_subnet: "{{ hyperv_guest_route_target_subnet }}"
-      target_mask: "{{ hyperv_guest_route_target_mask }}"
-      gateway: "{{ hyperv_guest_route_gateway }}"
+      managed_routes: "{{ _hyperv_guest_route_mac_managed_routes }}"
+      desired_routes: "{{ _hyperv_guest_route_mac_desired_routes }}"
