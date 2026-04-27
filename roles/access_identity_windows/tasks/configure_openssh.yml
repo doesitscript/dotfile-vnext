@@ -35,12 +35,48 @@
   tags: [admin]
 
 - name: Ensure sshd listens on the configured port before any Match block
-  community.windows.win_lineinfile:
-    path: "{{ sshd_config_path }}"
-    regexp: '^Port\s+{{ win_ssh_port }}\s*$'
-    line: "Port {{ win_ssh_port }}"
-    insertbefore: '^Match\s'
-    state: present
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $path = '{{ sshd_config_path }}'
+      $desired = 'Port {{ win_ssh_port }}'
+      $lines = @(Get-Content -Path $path -ErrorAction Stop)
+
+      $withoutPorts = @(
+        $lines | Where-Object { $_ -notmatch '^\s*Port\s+\d+\s*$' }
+      )
+
+      $matchIndex = -1
+      for ($i = 0; $i -lt $withoutPorts.Count; $i++) {
+        if ($withoutPorts[$i] -match '^\s*Match\s+') {
+          $matchIndex = $i
+          break
+        }
+      }
+
+      if ($matchIndex -ge 0) {
+        $newLines = @()
+        if ($matchIndex -gt 0) {
+          $newLines += $withoutPorts[0..($matchIndex - 1)]
+        }
+        $newLines += $desired
+        $newLines += $withoutPorts[$matchIndex..($withoutPorts.Count - 1)]
+      } else {
+        $newLines = @($withoutPorts + $desired)
+      }
+
+      $currentText = ($lines -join "`n")
+      $newText = ($newLines -join "`n")
+      if ($currentText -ne $newText) {
+        Set-Content -Path $path -Value $newLines -Encoding ascii
+        $Ansible.Changed = $true
+      }
+
+      $Ansible.Result = @{
+        port = '{{ win_ssh_port }}'
+        inserted_before_match = [bool]($matchIndex -ge 0)
+      }
   register: sshd_port_result
   tags: [admin]
 
