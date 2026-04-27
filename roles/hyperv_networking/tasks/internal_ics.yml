@@ -87,6 +87,25 @@
     - _hyperv.internal_ics_sharing_enabled | default(true) | bool
     - (_hyperv.internal_ics_psmodule_state | default('present')) == 'present'
 
+- name: Probe PSInternetConnectionSharing module before disabling ICS
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $module = Get-Module -ListAvailable -Name PSInternetConnectionSharing |
+        Select-Object -First 1
+
+      $Ansible.Result = @{
+        present = [bool]$module
+        path = if ($module) { $module.Path } else { $null }
+      }
+  register: _hyperv_internal_ics_module_probe
+  changed_when: false
+  check_mode: false
+  when:
+    - not (_hyperv.internal_ics_sharing_enabled | default(true) | bool)
+    - (_hyperv.internal_ics_psmodule_state | default('present')) == 'present'
+
 - name: Disable Internet Connection Sharing when routed guest access should stay direct
   ansible.windows.win_powershell:
     error_action: stop
@@ -108,6 +127,7 @@
   when:
     - not (_hyperv.internal_ics_sharing_enabled | default(true) | bool)
     - (_hyperv.internal_ics_psmodule_state | default('present')) == 'present'
+    - _hyperv_internal_ics_module_probe.result.present | default(false)
 
 - name: Configure Internet Connection Sharing for Hyper-V internal guest switch
   ansible.windows.win_powershell:

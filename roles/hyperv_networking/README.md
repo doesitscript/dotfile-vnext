@@ -111,6 +111,9 @@ DHCP unreliable. The safer first path for Hyper-V Ubuntu guests is:
 
 The role uses the `PSInternetConnectionSharing` PowerShell module as the
 building block for the ICS pairing instead of hand-rolled COM calls.
+When `internal_ics_sharing_enabled: false`, routed/direct guest networking does
+not require that optional module unless it is already present and available for
+cleanly disabling an existing ICS pair.
 
 Important nuance:
 
