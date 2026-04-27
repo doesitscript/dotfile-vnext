@@ -782,10 +782,16 @@
             -SwitchName '{{ hyperv_ubuntu_vm_switch_name }}' | Out-Null
 
           Add-VMHardDiskDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -Path '{{ hyperv_ubuntu_vm_host_vhdx_path }}' | Out-Null
-          $dvd = Add-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -Path '{{ _hyperv_ubuntu_vm_server_iso_effective_host_path }}'
+          Add-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -Path '{{ _hyperv_ubuntu_vm_server_iso_effective_host_path }}' | Out-Null
           {% if hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool %}
           Add-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -Path '{{ hyperv_ubuntu_vm_host_seed_iso_path }}' | Out-Null
           {% endif %}
+          $dvd = Get-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' |
+            Where-Object { $_.Path -eq '{{ _hyperv_ubuntu_vm_server_iso_effective_host_path }}' } |
+            Select-Object -First 1
+          if (-not $dvd) {
+            throw "Unable to resolve installer DVD drive for {{ hyperv_ubuntu_vm_name }}"
+          }
           Set-VMProcessor -VMName '{{ hyperv_ubuntu_vm_name }}' -Count {{ hyperv_ubuntu_vm_cpus }}
           Set-VMMemory -VMName '{{ hyperv_ubuntu_vm_name }}' -DynamicMemoryEnabled $false -StartupBytes $memory
           {% if hyperv_ubuntu_vm_secure_boot_enabled | bool %}
@@ -859,7 +865,7 @@
           $dvds = @(Get-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue)
           $dvd = $dvds | Where-Object { $_.Path -eq '{{ _hyperv_ubuntu_vm_server_iso_effective_host_path }}' } | Select-Object -First 1
           if (-not $dvd) {
-            $dvd = Add-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -Path '{{ _hyperv_ubuntu_vm_server_iso_effective_host_path }}'
+            Add-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -Path '{{ _hyperv_ubuntu_vm_server_iso_effective_host_path }}' | Out-Null
             $Ansible.Changed = $true
           }
 
@@ -870,6 +876,13 @@
             $Ansible.Changed = $true
           }
           {% endif %}
+
+          $dvd = Get-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' |
+            Where-Object { $_.Path -eq '{{ _hyperv_ubuntu_vm_server_iso_effective_host_path }}' } |
+            Select-Object -First 1
+          if (-not $dvd) {
+            throw "Unable to resolve installer DVD drive for {{ hyperv_ubuntu_vm_name }}"
+          }
 
           {% if hyperv_ubuntu_vm_secure_boot_enabled | bool %}
           Set-VMFirmware `
