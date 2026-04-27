@@ -259,6 +259,19 @@
       }
 
       $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
+      if ($current -lt $desired -and $currentType -eq 'Fixed' -and -not $currentSparse -and $compressedCount -eq 0) {
+        if ($vm -and $vm.State.ToString() -ne 'Off') {
+          Stop-VM -Name '{{ hyperv_ubuntu_vm_name }}' -TurnOff -Force -ErrorAction Stop | Out-Null
+        }
+        Resize-VHD -Path '{{ hyperv_ubuntu_vm_host_vhdx_path }}' -SizeBytes $desired -ErrorAction Stop
+        $Ansible.Changed = $true
+        $vhd = Get-VHD -Path '{{ hyperv_ubuntu_vm_host_vhdx_path }}'
+        $current = $vhd.Size
+        $currentType = $vhd.VhdType.ToString()
+        $currentSparse = Test-IsSparse '{{ hyperv_ubuntu_vm_host_vhdx_path }}'
+        $compressedCount = Get-CompressedCount '{{ hyperv_ubuntu_vm_host_vhdx_path }}'
+      }
+
       $bootstrapRebuildAllowed = (-not $inventoryHostPublished) -or (-not $vm) -or ($currentType -eq 'missing')
       if ($current -lt $desired -or $currentType -ne 'Fixed' -or $currentSparse -or $compressedCount -gt 0) {
         if (-not $bootstrapRebuildAllowed) {
@@ -318,6 +331,152 @@
         vm_exists = [bool](Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue)
         inventory_host_published = $inventoryHostPublished
       }
+
+- name: Set desired Azure cloud image offline seed signature
+  ansible.builtin.set_fact:
+    _hyperv_ubuntu_vm_offline_seed_signature: |
+      version={{ hyperv_ubuntu_vm_cloud_image_offline_seed_version }}
+      vm_name={{ hyperv_ubuntu_vm_name }}
+      hostname={{ hyperv_ubuntu_vm_hostname }}
+      inventory_host={{ hyperv_ubuntu_vm_inventory_host }}
+      bootstrap_user={{ hyperv_ubuntu_vm_bootstrap_user }}
+      bootstrap_uid={{ hyperv_ubuntu_vm_bootstrap_uid }}
+      bootstrap_gid={{ hyperv_ubuntu_vm_bootstrap_gid }}
+      network_method={{ hyperv_ubuntu_vm_autoinstall_network_method }}
+      network_interface={{ hyperv_ubuntu_vm_autoinstall_network_interface_name }}
+      ipv4={{ hyperv_ubuntu_vm_autoinstall_network_ipv4 }}
+      prefix={{ hyperv_ubuntu_vm_autoinstall_network_prefix_length }}
+      gateway={{ hyperv_ubuntu_vm_autoinstall_network_gateway4 }}
+      dns={{ hyperv_ubuntu_vm_autoinstall_network_dns_servers | join(',') }}
+      controller_pubkey_sha256={{ controller_pub_key_content | hash('sha256') }}
+  when: hyperv_ubuntu_vm_cloud_image_offline_seed_enabled | bool
+
+- name: Render Azure cloud image offline seed script on Windows host
+  ansible.windows.win_template:
+    src: azure-offline-seed.sh.j2
+    dest: "{{ hyperv_ubuntu_vm_host_offline_seed_script_path }}"
+  when:
+    - hyperv_ubuntu_vm_cloud_image_offline_seed_enabled | bool
+    - not ansible_check_mode
+
+- name: Apply Azure cloud image offline seed to boot disk
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+
+      function Fail-WithResult($Result) {
+        $Ansible.Result = $Result
+        $Ansible.Failed = $true
+        Exit 1
+      }
+
+      function ConvertTo-WslPath([string]$Path) {
+        $resolved = (Resolve-Path -LiteralPath $Path -ErrorAction Stop).Path
+        $drive = $resolved.Substring(0, 1).ToLowerInvariant()
+        $tail = $resolved.Substring(2).Replace('\', '/')
+        return "/mnt/$drive$tail"
+      }
+
+      $desiredSignature = @'
+      {{ _hyperv_ubuntu_vm_offline_seed_signature | trim }}
+      '@.Trim()
+      $signaturePath = '{{ hyperv_ubuntu_vm_host_offline_seed_signature_path }}'
+      $vhdxPath = '{{ hyperv_ubuntu_vm_host_vhdx_path }}'
+      $scriptPath = '{{ hyperv_ubuntu_vm_host_offline_seed_script_path }}'
+      $mountName = '{{ hyperv_ubuntu_vm_cloud_image_offline_mount_name }}'
+      $partition = {{ hyperv_ubuntu_vm_cloud_image_offline_mount_partition | int }}
+
+      if (-not (Test-Path $vhdxPath)) {
+        Fail-WithResult @{
+          reason = 'missing_vhdx'
+          vhdx_path = $vhdxPath
+        }
+      }
+      if (-not (Test-Path $scriptPath)) {
+        Fail-WithResult @{
+          reason = 'missing_offline_seed_script'
+          script_path = $scriptPath
+        }
+      }
+
+      $currentSignature = ''
+      if (Test-Path $signaturePath) {
+        $currentSignature = (Get-Content -LiteralPath $signaturePath -Raw -ErrorAction Stop).Trim()
+      }
+      if ($currentSignature -eq $desiredSignature) {
+        $Ansible.Result = @{
+          seeded = $false
+          reason = 'signature_current'
+          signature_path = $signaturePath
+        }
+        Exit 0
+      }
+
+      $wsl = Get-Command wsl.exe -ErrorAction SilentlyContinue
+      if (-not $wsl) {
+        Fail-WithResult @{
+          reason = 'wsl_missing'
+          vhdx_path = $vhdxPath
+        }
+      }
+
+      $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
+      $stoppedVm = $false
+      if ($vm -and $vm.State.ToString() -ne 'Off') {
+        Stop-VM -Name '{{ hyperv_ubuntu_vm_name }}' -TurnOff -Force -ErrorAction Stop
+        $stoppedVm = $true
+      }
+
+      $wslScriptPath = ConvertTo-WslPath $scriptPath
+      $mountOutput = ''
+      $seedOutput = ''
+      $unmountOutput = ''
+
+      wsl.exe --unmount $vhdxPath 2>$null | Out-Null
+      try {
+        $mountOutput = (wsl.exe --mount $vhdxPath --vhd --partition $partition --name $mountName 2>&1 | Out-String)
+        if ($LASTEXITCODE -ne 0) {
+          Fail-WithResult @{
+            reason = 'wsl_mount_failed'
+            exit_code = $LASTEXITCODE
+            mount_output = $mountOutput
+            vhdx_path = $vhdxPath
+            partition = $partition
+            mount_name = $mountName
+          }
+        }
+
+        $seedCommand = "tr -d '\r' < '$wslScriptPath' | sh"
+        $seedOutput = (wsl.exe --user root -e sh -lc $seedCommand 2>&1 | Out-String)
+        if ($LASTEXITCODE -ne 0) {
+          Fail-WithResult @{
+            reason = 'offline_seed_failed'
+            exit_code = $LASTEXITCODE
+            seed_output = $seedOutput
+            mount_output = $mountOutput
+            vhdx_path = $vhdxPath
+          }
+        }
+      } finally {
+        $unmountOutput = (wsl.exe --unmount $vhdxPath 2>&1 | Out-String)
+      }
+
+      Set-Content -LiteralPath $signaturePath -Value $desiredSignature -Encoding UTF8
+      $Ansible.Changed = $true
+      $Ansible.Result = @{
+        seeded = $true
+        stopped_vm = $stoppedVm
+        signature_path = $signaturePath
+        vhdx_path = $vhdxPath
+        mount_name = $mountName
+        mount_partition = $partition
+        seed_output = $seedOutput
+        unmount_output = $unmountOutput
+      }
+  when:
+    - hyperv_ubuntu_vm_cloud_image_offline_seed_enabled | bool
+    - not ansible_check_mode
 
 - name: Copy NoCloud seed image to Windows host
   ansible.windows.win_copy:
@@ -483,7 +642,11 @@
 
           Set-VMProcessor -VMName '{{ hyperv_ubuntu_vm_name }}' -Count {{ hyperv_ubuntu_vm_cpus }}
           Set-VMMemory -VMName '{{ hyperv_ubuntu_vm_name }}' -DynamicMemoryEnabled $false -StartupBytes $memory
+          {% if hyperv_ubuntu_vm_secure_boot_enabled | bool %}
           Set-VMFirmware -VMName '{{ hyperv_ubuntu_vm_name }}' -EnableSecureBoot On -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}'
+          {% else %}
+          Set-VMFirmware -VMName '{{ hyperv_ubuntu_vm_name }}' -EnableSecureBoot Off
+          {% endif %}
 
           $dvd = Get-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($dvd) {
@@ -558,7 +721,21 @@
             $Ansible.Changed = $true
           }
 
-          Set-VMFirmware -VMName '{{ hyperv_ubuntu_vm_name }}' -EnableSecureBoot On -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}'
+          $firmware = Get-VMFirmware -VMName '{{ hyperv_ubuntu_vm_name }}'
+          $desiredSecureBoot = {{ (hyperv_ubuntu_vm_secure_boot_enabled | bool) | ternary('$true', '$false') }}
+          $firmwareNeedsUpdate = $firmware.SecureBoot -ne $desiredSecureBoot
+          if ($firmwareNeedsUpdate) {
+            if ($vm.State.ToString() -ne 'Off') {
+              Stop-VM -Name '{{ hyperv_ubuntu_vm_name }}' -TurnOff -Force -ErrorAction Stop | Out-Null
+              $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop
+            }
+            {% if hyperv_ubuntu_vm_secure_boot_enabled | bool %}
+            Set-VMFirmware -VMName '{{ hyperv_ubuntu_vm_name }}' -EnableSecureBoot On -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}'
+            {% else %}
+            Set-VMFirmware -VMName '{{ hyperv_ubuntu_vm_name }}' -EnableSecureBoot Off
+            {% endif %}
+            $Ansible.Changed = $true
+          }
           $Ansible.Result = @{ reconciled = $true }
       when: _hyperv_ubuntu_vm_probe.result.exists | default(false)
 
@@ -669,13 +846,65 @@
       delay: 5
       until: _hyperv_ubuntu_vm_windows_ssh.result.tcp_test_succeeded | default(false)
 
-    - name: Wait for SSH on Hyper-V Ubuntu VM from controller
+    - name: Wait for SSH on Hyper-V Ubuntu VM from controller through inventory
+      ansible.builtin.wait_for_connection:
+        timeout: "{{ hyperv_ubuntu_vm_wait_for_ssh_timeout }}"
+        connect_timeout: 5
+        sleep: 5
+      when:
+        - hyperv_ubuntu_vm_verify_ssh | bool
+        - hyperv_ubuntu_vm_controller_ssh_verify_mode == 'inventory'
+      delegate_to: "{{ hyperv_ubuntu_vm_inventory_host }}"
+
+    - name: Wait for SSH on Hyper-V Ubuntu VM from controller by direct IP
       ansible.builtin.wait_for:
         host: "{{ _hyperv_ubuntu_vm_ip.result.ipv4 }}"
         port: "{{ hyperv_ubuntu_vm_ssh_port }}"
         timeout: "{{ hyperv_ubuntu_vm_wait_for_ssh_timeout }}"
-      when: hyperv_ubuntu_vm_verify_ssh | bool
+      when:
+        - hyperv_ubuntu_vm_verify_ssh | bool
+        - hyperv_ubuntu_vm_controller_ssh_verify_mode == 'direct'
       delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
+
+    - name: Grow Hyper-V Ubuntu VM root filesystem to the expanded boot disk
+      ansible.builtin.shell: |
+        set -euo pipefail
+
+        root_source="$(findmnt -n -o SOURCE /)"
+        root_parent="$(lsblk -no PKNAME "${root_source}" | tr -d '[:space:]')"
+        root_partition="$(lsblk -no PARTN "${root_source}" | tr -d '[:space:]')"
+        before_size="$(df -B1 --output=size / | tail -n 1 | tr -d '[:space:]')"
+
+        if [[ -z "${root_parent}" || -z "${root_partition}" ]]; then
+          echo "changed=false"
+          echo "reason=unsupported-root-source"
+          echo "root_source=${root_source}"
+          exit 0
+        fi
+
+        growpart_output="$(growpart "/dev/${root_parent}" "${root_partition}" 2>&1 || true)"
+        resize_output="$(resize2fs "${root_source}" 2>&1)"
+        after_size="$(df -B1 --output=size / | tail -n 1 | tr -d '[:space:]')"
+
+        printf '%s\n' "${growpart_output}"
+        printf '%s\n' "${resize_output}"
+        echo "root_source=${root_source}"
+        echo "disk=/dev/${root_parent}"
+        echo "partition=${root_partition}"
+        echo "before_size=${before_size}"
+        echo "after_size=${after_size}"
+        if [[ "${before_size}" != "${after_size}" ]]; then
+          echo "changed=true"
+        else
+          echo "changed=false"
+        fi
+      args:
+        executable: /bin/bash
+      become: true
+      register: _hyperv_ubuntu_vm_grow_root
+      changed_when: "'changed=true' in _hyperv_ubuntu_vm_grow_root.stdout"
+      when: hyperv_ubuntu_vm_grow_root_filesystem_enabled | bool
+      delegate_to: "{{ hyperv_ubuntu_vm_inventory_host }}"
 
     - name: Publish Hyper-V Ubuntu VM metadata on Windows host
       ansible.windows.win_copy:
@@ -700,6 +929,7 @@
         cacheable: true
       delegate_to: "{{ hyperv_ubuntu_vm_inventory_host }}"
       delegate_facts: true
+      when: hyperv_ubuntu_vm_publish_connection_facts | bool
 
     - name: Report Hyper-V Ubuntu VM summary
       ansible.builtin.debug:

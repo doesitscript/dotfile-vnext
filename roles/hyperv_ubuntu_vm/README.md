@@ -13,6 +13,8 @@ Stateful role for a Hyper-V-native Ubuntu VM on a Windows host.
   - `server_iso_installer`
 - build a NoCloud `CIDATA` seed image from the controller only for the
   `azure_cloud_image` path
+- optionally seed Azure cloud-image root filesystems offline through WSL before
+  first Hyper-V boot when NoCloud handoff is not enough for a lab host
 - download Canonical's published source artifact and reconcile it into a
   role-owned VHDX on the Windows host
 - publish the guest back into the configured Ubuntu inventory identity
@@ -101,6 +103,9 @@ Dedicated saved-artifact playbook:
   redownload large files unnecessarily
 - When `hyperv_config.internal_ics_switch_enabled: true`, this role prefers the
   configured guest switch over the older Wi-Fi-backed External switch path
+- Linux guests default to Secure Boot disabled unless inventory opts in. That
+  matches the current lab evidence and avoids restarting a healthy VM to chase
+  a Hyper-V firmware state that does not persist on the Azure image path.
 - In routed-private-subnet mode, this role expects:
   - the Windows host to prove it can reach guest SSH first
   - the controller-side route role to make the guest private subnet reachable
@@ -119,7 +124,15 @@ Dedicated saved-artifact playbook:
     - now supports the same static guest-network contract used by the
       installer path, rendered through cloud-init when
       `hyperv_ubuntu_vm_autoinstall_network_method: static`
-    - still expects seed media and SSH publication
+    - can apply an idempotent offline seed to the VHDX rootfs through WSL when
+      `hyperv_ubuntu_vm_cloud_image_offline_seed_enabled: true`
+    - the offline seed writes the bootstrap user, controller SSH key, static
+      netplan config, hostname, passwordless sudo for automation, and SSH
+      service enablement directly into the image
+    - the offline seed uses a Windows-side signature file and only stops/mounts
+      the VM when those seed inputs change
+    - still publishes the seed media for compatibility, but the offline seed is
+      the deterministic bootstrap source for Azure images in this lab
   - `quick_create_desktop`
     - keep as a validated Hyper-V-native bootability checkpoint
     - validate the archive with a HEAD probe plus `SHA256SUMS` and download it

@@ -35,6 +35,60 @@
   delegate_to: "{{ docker_engine_ssh_host }}"
   tags: [docker, docker-client]
 
+- name: Ensure Windows SSH client config can reach Docker engine context host
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $sshDir = "$env:USERPROFILE\.ssh"
+      $configPath = "$sshDir\config"
+      $keyPath = "$sshDir\id_ed25519"
+      $contextName = '{{ docker_context_name }}'
+      $contextHost = '{{ docker_engine_ssh_context_host }}'
+      $begin = "# BEGIN ANSIBLE docker context $contextName"
+      $end = "# END ANSIBLE docker context $contextName"
+
+      New-Item -ItemType Directory -Path $sshDir -Force | Out-Null
+
+      $block = @"
+      $begin
+      Host $contextHost
+          HostName $contextHost
+          User {{ docker_engine_ssh_user }}
+          Port {{ docker_engine_ssh_port }}
+          IdentityFile $keyPath
+          IdentitiesOnly yes
+          BatchMode yes
+          StrictHostKeyChecking no
+          UserKnownHostsFile NUL
+          ConnectTimeout 10
+      $end
+      "@.Trim()
+
+      $current = ''
+      if (Test-Path $configPath) {
+        $current = Get-Content -LiteralPath $configPath -Raw -ErrorAction Stop
+      }
+
+      $pattern = "(?ms)^" + [regex]::Escape($begin) + ".*?^" + [regex]::Escape($end) + "\r?\n?"
+      if ($current -match $pattern) {
+        $updated = [regex]::Replace($current, $pattern, $block + [Environment]::NewLine)
+      } elseif ([string]::IsNullOrWhiteSpace($current)) {
+        $updated = $block + [Environment]::NewLine
+      } else {
+        $updated = $current.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + $block + [Environment]::NewLine
+      }
+
+      if ($updated -ne $current) {
+        Set-Content -LiteralPath $configPath -Value $updated -Encoding UTF8
+        $Ansible.Changed = $true
+      }
+      $Ansible.Result = @{
+        config_path = $configPath
+        context_host = $contextHost
+      }
+  tags: [docker, docker-client]
+
 - name: Install Docker CLI via Chocolatey
   chocolatey.chocolatey.win_chocolatey:
     name: docker-cli
@@ -51,7 +105,7 @@
     script: |
       $Ansible.Changed = $false
       $contextName = '{{ docker_context_name }}'
-      $sshUri = 'ssh://{{ docker_engine_ssh_user }}@{{ docker_engine_ssh_host }}:{{ docker_engine_ssh_port }}'
+      $sshUri = 'ssh://{{ docker_engine_ssh_user }}@{{ docker_engine_ssh_context_host }}:{{ docker_engine_ssh_port }}'
 
       $existing = (docker context inspect $contextName 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue)
       $currentHost = ''
@@ -76,4 +130,4 @@
   ansible.builtin.debug:
     msg: >-
       Context: {{ docker_context_name }}
-      | Engine: ssh://{{ docker_engine_ssh_user }}@{{ docker_engine_ssh_host }}:{{ docker_engine_ssh_port }}
+      | Engine: ssh://{{ docker_engine_ssh_user }}@{{ docker_engine_ssh_context_host }}:{{ docker_engine_ssh_port }}

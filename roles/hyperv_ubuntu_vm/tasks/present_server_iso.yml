@@ -482,9 +482,12 @@
       - -NoProfile
       - -Command
       - >-
-        Move-Item -Force
-        -Path "$env:USERPROFILE\{{ _hyperv_ubuntu_vm_server_iso_custom_upload_name }}"
-        -Destination '{{ hyperv_ubuntu_vm_host_server_iso_custom_path }}'
+        $source = "$env:USERPROFILE\{{ _hyperv_ubuntu_vm_server_iso_custom_upload_name }}";
+        $destination = '{{ hyperv_ubuntu_vm_host_server_iso_custom_path }}';
+        if (Test-Path -LiteralPath $destination) {
+          Remove-Item -LiteralPath $destination -Force -ErrorAction Stop;
+        }
+        Move-Item -Force -Path $source -Destination $destination;
   delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
   changed_when: true
   when: >-

@@ -33,7 +33,8 @@ This role targets the `docker_clients` group defined in `inventory/inventory.yam
 |----------|---------|-------------|
 | `docker_context_name` | `{{ physical_node \| default('linux-docker') }}` | Name of the Docker context |
 | `docker_engine_ssh_user` | `{{ ansible_user }}` | SSH user for the engine connection |
-| `docker_engine_ssh_host` | `{{ ansible_host \| default('localhost') }}` | Hostname of the Docker engine |
+| `docker_engine_ssh_host` | `{{ ansible_host \| default('localhost') }}` | Inventory/delegation identity of the Docker engine |
+| `docker_engine_ssh_context_host` | `{{ docker_engine_ssh_host }}` | Reachable hostname or IP written into the Docker SSH context |
 | `docker_engine_ssh_port` | `22` | SSH port for the engine connection |
 
 Override these in `host_vars/` per client. See `host_vars/mac-dev.yaml` and `host_vars/server-225-win.yaml` for examples.

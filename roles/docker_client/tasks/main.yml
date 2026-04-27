@@ -34,7 +34,7 @@
 
 - name: Set expected Docker engine endpoint
   ansible.builtin.set_fact:
-    _docker_expected_host: "ssh://{{ docker_engine_ssh_user }}@{{ docker_engine_ssh_host }}:{{ docker_engine_ssh_port }}"
+    _docker_expected_host: "ssh://{{ docker_engine_ssh_user }}@{{ docker_engine_ssh_context_host }}:{{ docker_engine_ssh_port }}"
   when: ansible_os_family != "Windows"
 
 - name: Remove stale Docker context if endpoint changed
@@ -74,4 +74,4 @@
     msg: >-
       Docker client on {{ inventory_hostname }}:
       context={{ docker_context_name }},
-      engine=ssh://{{ docker_engine_ssh_user }}@{{ docker_engine_ssh_host }}:{{ docker_engine_ssh_port }}
+      engine=ssh://{{ docker_engine_ssh_user }}@{{ docker_engine_ssh_context_host }}:{{ docker_engine_ssh_port }}

@@ -10,7 +10,7 @@
   ansible.builtin.command: docker --version
   register: _docker_cli_version
   changed_when: false
-  failed_when: false
+  failed_when: _docker_cli_version.rc != 0
   when: ansible_facts['os_family'] | default('') != "Windows"
   tags: [verify]
 
@@ -20,6 +20,11 @@
     script: |
       $Ansible.Changed = $false
       $ver = (docker --version 2>&1)
+      if ($LASTEXITCODE -ne 0) {
+        $Ansible.Result = @{ version = "$ver" }
+        $Ansible.Failed = $true
+        Exit 1
+      }
       $Ansible.Result = @{ version = "$ver" }
   register: _docker_cli_win
   when: ansible_facts['os_family'] | default('') == "Windows"
@@ -31,7 +36,9 @@
   ansible.builtin.command: docker info --format '{% raw %}{{.ServerVersion}}{% endraw %}'
   register: _docker_engine_version
   changed_when: false
-  failed_when: false
+  failed_when:
+    - _docker_engine_version.rc != 0
+      or (_docker_engine_version.stdout | trim | length) == 0
   when: ansible_facts['os_family'] | default('') != "Windows"
   tags: [verify]
 
@@ -41,6 +48,11 @@
     script: |
       $Ansible.Changed = $false
       $ver = (docker info --format '{% raw %}{{.ServerVersion}}{% endraw %}' 2>&1)
+      if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace("$ver")) {
+        $Ansible.Result = @{ version = "$ver" }
+        $Ansible.Failed = $true
+        Exit 1
+      }
       $Ansible.Result = @{ version = "$ver" }
   register: _docker_engine_win
   when: ansible_facts['os_family'] | default('') == "Windows"

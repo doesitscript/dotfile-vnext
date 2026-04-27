@@ -24,8 +24,9 @@ hyperv_ubuntu_vm_hostname: "{{ hyperv_ubuntu_vm_name }}"
 hyperv_ubuntu_vm_ssh_port: 22
 hyperv_ubuntu_vm_python_interpreter: /usr/bin/python3
 hyperv_ubuntu_vm_secure_boot_template: "MicrosoftUEFICertificateAuthority"
-hyperv_ubuntu_vm_secure_boot_enabled: "{{ (hyperv_ubuntu_vm_source_mode != 'server_iso_installer') | bool }}"
+hyperv_ubuntu_vm_secure_boot_enabled: false
 hyperv_ubuntu_vm_verify_ssh: true
+hyperv_ubuntu_vm_controller_ssh_verify_mode: inventory
 hyperv_ubuntu_vm_wait_for_ip_retries: 60
 hyperv_ubuntu_vm_wait_for_ip_delay: 10
 hyperv_ubuntu_vm_wait_for_ssh_timeout: 300
@@ -34,6 +35,15 @@ hyperv_ubuntu_vm_cloud_init_install_packages: false
 hyperv_ubuntu_vm_cloud_init_refresh_dhcp: false
 hyperv_ubuntu_vm_source_mode: azure_cloud_image
 hyperv_ubuntu_vm_publish_connection_facts: true
+hyperv_ubuntu_vm_cloud_image_offline_seed_enabled: true
+hyperv_ubuntu_vm_cloud_image_offline_seed_version: offline-seed-v2
+hyperv_ubuntu_vm_cloud_image_offline_mount_partition: 1
+hyperv_ubuntu_vm_cloud_image_offline_mount_name: "{{ hyperv_ubuntu_vm_name }}-root"
+hyperv_ubuntu_vm_cloud_image_offline_root_mount: >-
+  /mnt/wsl/{{ hyperv_ubuntu_vm_cloud_image_offline_mount_name }}
+hyperv_ubuntu_vm_bootstrap_uid: 1000
+hyperv_ubuntu_vm_bootstrap_gid: "{{ hyperv_ubuntu_vm_bootstrap_uid }}"
+hyperv_ubuntu_vm_grow_root_filesystem_enabled: true
 ansible_troubleshooting_mode: false
 debug_remote_output: false
 debug_collect_component_evidence: false
@@ -91,6 +101,8 @@ hyperv_ubuntu_vm_host_server_iso_custom_signature_path: "{{ hyperv_ubuntu_vm_hos
 hyperv_ubuntu_vm_host_vhdx_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_name }}.vhdx"
 hyperv_ubuntu_vm_host_seed_iso_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_name }}-cidata.iso"
 hyperv_ubuntu_vm_host_metadata_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_name }}-state.json"
+hyperv_ubuntu_vm_host_offline_seed_script_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\azure-offline-seed.sh"
+hyperv_ubuntu_vm_host_offline_seed_signature_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\azure-offline-seed.signature"
 
 hyperv_ubuntu_vm_controller_host: "{{ groups['execution_nodes'][0] }}"
 hyperv_ubuntu_vm_controller_cache_dir: >-

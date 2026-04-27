@@ -67,11 +67,14 @@ hyperv_config:
   guest_switch_name: "Guest"
   guest_subnet_ipv4: "192.168.138.0/24"
   guest_gateway_ipv4: "192.168.138.1"
-  guest_outbound_nat_enabled: false
+  # Host-side outbound NAT gives routed lab guests internet/package access
+  # without requiring the upstream LAN router to know this private subnet.
+  guest_outbound_nat_enabled: true
   internal_ics_public_adapter_name: "vEthernet (External)"
 
 # Docker client — reaches the central Hyper-V Ubuntu Docker engine via SSH.
 docker_engine_ssh_host: "nsrv-dkr-01"
+docker_engine_ssh_context_host: "{{ hyperv_ubuntu_vm_autoinstall_network_ipv4 }}"
 docker_engine_ssh_port: 22
 docker_engine_ssh_user: "joshc"
 
@@ -88,7 +91,7 @@ hyperv_ubuntu_vm_ssh_port: 22
 # autoinstall path remains in the role, but is still an installer-handoff
 # research path until guest-side evidence collection is wired.
 hyperv_ubuntu_vm_source_mode: "azure_cloud_image"
-hyperv_ubuntu_vm_secure_boot_enabled: true
+hyperv_ubuntu_vm_secure_boot_enabled: false
 hyperv_ubuntu_vm_publish_connection_facts: false
 hyperv_ubuntu_vm_autoinstall_network_method: "static"
 hyperv_ubuntu_vm_autoinstall_network_ipv4: "192.168.138.10"

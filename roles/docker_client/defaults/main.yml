@@ -10,8 +10,11 @@
 # Name for the docker context on this client (e.g. "server-225")
 docker_context_name: "{{ physical_node | default('linux-docker') }}"
 
-# SSH URI the Docker CLI uses to reach the engine (docker -H ssh://...)
-# Override per host_vars (see mac-dev.yaml, server-225-win.yaml).
+# SSH URI the Docker CLI uses to reach the engine (docker -H ssh://...).
+# docker_engine_ssh_host is the inventory/delegation identity; override
+# docker_engine_ssh_context_host when a client must use a reachable IP/hostname
+# instead of the controller-only inventory alias.
 docker_engine_ssh_user: "{{ ansible_user }}"
 docker_engine_ssh_host: "{{ ansible_host | default('localhost') }}"
+docker_engine_ssh_context_host: "{{ docker_engine_ssh_host }}"
 docker_engine_ssh_port: 22

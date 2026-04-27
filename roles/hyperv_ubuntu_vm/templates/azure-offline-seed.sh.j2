@@ -1,0 +1,93 @@
+#!/bin/sh
+set -eu
+
+root="{{ hyperv_ubuntu_vm_cloud_image_offline_root_mount }}"
+user="{{ hyperv_ubuntu_vm_bootstrap_user }}"
+uid="{{ hyperv_ubuntu_vm_bootstrap_uid }}"
+gid="{{ hyperv_ubuntu_vm_bootstrap_gid }}"
+hostname="{{ hyperv_ubuntu_vm_hostname }}"
+pubkey='{{ controller_pub_key_content | replace("'", "'\"'\"'") }}'
+
+if [ ! -d "$root/etc" ]; then
+  echo "Mounted rootfs not found at $root" >&2
+  exit 1
+fi
+
+if ! chroot "$root" getent group "$user" >/dev/null 2>&1; then
+  chroot "$root" groupadd -g "$gid" "$user"
+fi
+
+if ! chroot "$root" id "$user" >/dev/null 2>&1; then
+  chroot "$root" useradd -m -u "$uid" -g "$gid" -s /bin/bash "$user"
+fi
+
+chroot "$root" usermod -aG adm,sudo "$user"
+
+mkdir -p "$root/home/$user/.ssh"
+printf '%s\n' "$pubkey" > "$root/home/$user/.ssh/authorized_keys"
+chmod 0700 "$root/home/$user/.ssh"
+chmod 0600 "$root/home/$user/.ssh/authorized_keys"
+chroot "$root" chown -R "$user:$user" "/home/$user/.ssh"
+
+mkdir -p "$root/etc/sudoers.d"
+printf '%s ALL=(ALL) NOPASSWD:ALL\n' "$user" > "$root/etc/sudoers.d/90-$user-nopasswd"
+chmod 0440 "$root/etc/sudoers.d/90-$user-nopasswd"
+
+printf '%s\n' "$hostname" > "$root/etc/hostname"
+if grep -q '^127\.0\.1\.1[[:space:]]' "$root/etc/hosts"; then
+  sed -i "s/^127\\.0\\.1\\.1[[:space:]].*/127.0.1.1 $hostname/" "$root/etc/hosts"
+else
+  printf '127.0.1.1 %s\n' "$hostname" >> "$root/etc/hosts"
+fi
+
+mkdir -p "$root/etc/netplan"
+if [ -f "$root/etc/netplan/90-hotplug-azure.yaml" ]; then
+  mv -f \
+    "$root/etc/netplan/90-hotplug-azure.yaml" \
+    "$root/etc/netplan/90-hotplug-azure.yaml.hyperv-disabled"
+fi
+cat > "$root/etc/netplan/99-hyperv-static.yaml" <<'NETPLAN'
+network:
+  version: 2
+  ethernets:
+    {{ hyperv_ubuntu_vm_autoinstall_network_interface_name }}:
+      match:
+        driver: hv_netvsc
+      set-name: {{ hyperv_ubuntu_vm_autoinstall_network_interface_name }}
+      dhcp4: false
+      addresses:
+        - {{ hyperv_ubuntu_vm_autoinstall_network_ipv4 }}/{{ hyperv_ubuntu_vm_autoinstall_network_prefix_length }}
+      routes:
+        - to: default
+          via: {{ hyperv_ubuntu_vm_autoinstall_network_gateway4 }}
+      nameservers:
+        addresses:
+{% for dns_server in hyperv_ubuntu_vm_autoinstall_network_dns_servers %}
+          - {{ dns_server }}
+{% endfor %}
+NETPLAN
+chmod 0600 "$root/etc/netplan/99-hyperv-static.yaml"
+
+mkdir -p "$root/etc/cloud"
+cat > "$root/etc/cloud/cloud-init.disabled" <<'CLOUDINIT'
+Disabled by the hyperv_ubuntu_vm Azure offline seed path.
+The Hyper-V lab bootstrap writes hostname, user, SSH, and static networking directly.
+CLOUDINIT
+
+if [ -f "$root/lib/systemd/system/ssh.service" ]; then
+  if [ -x "$root/usr/bin/ssh-keygen" ]; then
+    chroot "$root" /usr/bin/ssh-keygen -A
+  fi
+
+  mkdir -p "$root/etc/systemd/system/multi-user.target.wants"
+  ln -sf \
+    /lib/systemd/system/ssh.service \
+    "$root/etc/systemd/system/multi-user.target.wants/ssh.service"
+fi
+
+mkdir -p "$root/etc/hyperv_ubuntu_vm"
+cat > "$root/etc/hyperv_ubuntu_vm/offline-seed.signature" <<'SIGNATURE'
+{{ _hyperv_ubuntu_vm_offline_seed_signature | trim }}
+SIGNATURE
+
+echo "offline seed applied for $hostname at $root"
