@@ -1,0 +1,17 @@
+---
+# This playbook deploys NetBox, our source of truth for infrastructure data.
+# It targets the primary Ubuntu Docker host, `server-225-ubuntu`.
+#
+# The deployment is managed by the `ipam_netbox` role, which uses
+# Docker Compose to stand up the entire NetBox stack. All configuration,
+# including secrets, is managed by Ansible, ensuring a repeatable and
+# version-controlled deployment.
+#
+# To run this playbook:
+# ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass
+
+- name: Deploy Source of Truth (NetBox)
+  hosts: server-225-ubuntu
+  become: true
+  roles:
+    - role: ipam_netbox

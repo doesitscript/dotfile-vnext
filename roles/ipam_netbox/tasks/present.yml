@@ -1,0 +1,49 @@
+---
+- name: Ensure NetBox data directories exist
+  ansible.builtin.file:
+    path: "{{ ipam_netbox_data_path }}/{{ item }}"
+    state: directory
+    owner: "{{ ipam_netbox_user }}"
+    group: "{{ ipam_netbox_group }}"
+    mode: '0755'
+  loop:
+    - netbox-media-files
+    - netbox-postgres
+    - netbox-redis-cache-data
+    - netbox-redis-data
+    - netbox-reports-files
+    - netbox-scripts-files
+    - configuration
+
+- name: Render .env file from template
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ ipam_netbox_data_path }}/.env"
+    owner: "{{ ipam_netbox_user }}"
+    group: "{{ ipam_netbox_group }}"
+    mode: '0600'
+  no_log: true
+
+- name: Render docker-compose.yml from template
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ ipam_netbox_data_path }}/docker-compose.yml"
+    owner: "{{ ipam_netbox_user }}"
+    group: "{{ ipam_netbox_group }}"
+    mode: '0644'
+
+- name: Deploy NetBox stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ ipam_netbox_data_path }}"
+    state: present
+  register: compose_result
+
+- name: Smoke test NetBox
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ ipam_netbox_http_port.split(':')[0] }}/login/"
+    method: GET
+    status_code: 200
+  register: smoke_test_result
+  until: smoke_test_result.status == 200
+  retries: 10
+  delay: 10
