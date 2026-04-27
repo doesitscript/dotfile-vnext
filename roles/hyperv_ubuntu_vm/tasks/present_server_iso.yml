@@ -219,28 +219,28 @@
       ansible.builtin.replace:
         path: "{{ hyperv_ubuntu_vm_controller_server_iso_custom_dir }}/grub.cfg"
         regexp: 'linux\s+/casper/vmlinuz\s+---'
-        replace: 'linux\t/casper/vmlinuz autoinstall subiquity.autoinstallpath=/autoinstall.yaml ---'
+        replace: "linux\t/casper/vmlinuz {{ hyperv_ubuntu_vm_server_iso_kernel_args }} ---"
       delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
 
     - name: Inject autoinstall into remastered Ubuntu Server HWE grub.cfg entry
       ansible.builtin.replace:
         path: "{{ hyperv_ubuntu_vm_controller_server_iso_custom_dir }}/grub.cfg"
         regexp: 'linux\s+/casper/hwe-vmlinuz\s+---'
-        replace: 'linux\t/casper/hwe-vmlinuz autoinstall subiquity.autoinstallpath=/autoinstall.yaml ---'
+        replace: "linux\t/casper/hwe-vmlinuz {{ hyperv_ubuntu_vm_server_iso_kernel_args }} ---"
       delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
 
     - name: Inject autoinstall into remastered Ubuntu Server loopback.cfg
       ansible.builtin.replace:
         path: "{{ hyperv_ubuntu_vm_controller_server_iso_custom_dir }}/loopback.cfg"
         regexp: 'linux\s+/casper/vmlinuz\s+iso-scan/filename=\$\{iso_path\}\s+---'
-        replace: 'linux\t/casper/vmlinuz iso-scan/filename=${iso_path} autoinstall subiquity.autoinstallpath=/autoinstall.yaml ---'
+        replace: "linux\t/casper/vmlinuz iso-scan/filename=${iso_path} {{ hyperv_ubuntu_vm_server_iso_kernel_args }} ---"
       delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
 
     - name: Inject autoinstall into remastered Ubuntu Server HWE loopback.cfg entry
       ansible.builtin.replace:
         path: "{{ hyperv_ubuntu_vm_controller_server_iso_custom_dir }}/loopback.cfg"
         regexp: 'linux\s+/casper/hwe-vmlinuz\s+iso-scan/filename=\$\{iso_path\}\s+---'
-        replace: 'linux\t/casper/hwe-vmlinuz iso-scan/filename=${iso_path} autoinstall subiquity.autoinstallpath=/autoinstall.yaml ---'
+        replace: "linux\t/casper/hwe-vmlinuz iso-scan/filename=${iso_path} {{ hyperv_ubuntu_vm_server_iso_kernel_args }} ---"
       delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
 
     - name: Rebuild remastered Ubuntu Server autoinstall ISO when absent

@@ -131,6 +131,9 @@ Dedicated saved-artifact playbook:
     - create a blank role-owned VM disk, attach the installer ISO, and boot the
       VM into the installer
     - remaster the installer path for autoinstall and attach a `cidata` seed
+    - keep the ISO-root `autoinstall.yaml` handoff aligned with Ubuntu
+      installer docs by using the `autoinstall` kernel argument without forcing
+      a leading-slash `subiquity.autoinstallpath`
     - routed-subnet guest target comes from inventory host variables
     - current milestone:
       - guest static IP `192.168.137.10/24` is proven
