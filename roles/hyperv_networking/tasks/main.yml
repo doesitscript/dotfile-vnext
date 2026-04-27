@@ -44,6 +44,9 @@
       ansible.builtin.include_tasks: hyperv_feature.yml
       when:
         - _hyperv_networking_requested | bool
+        - >-
+          hyperv_feature_state == 'absent' or
+          (hyperv_networking_feature_prereqs_enabled | default(true) | bool)
 
     # --- Phase 2: Create or verify the External Virtual Switch ---
     - name: Create External Virtual Switch

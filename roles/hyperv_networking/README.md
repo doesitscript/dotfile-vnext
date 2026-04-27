@@ -60,12 +60,23 @@ The Hyper-V prerequisite features are also lifecycle-driven:
 
 ```yaml
 hyperv_feature_state: present | absent
+hyperv_networking_feature_prereqs_enabled: true
 ```
 
 Use `present` for the normal path. Use `absent` when you need to intentionally
 tear down the Hyper-V prerequisite stack before rebuilding it. The feature
 taskfile removes and reinstalls the same role-owned prerequisites so cleanup
 does not drift into one-off host surgery.
+
+For day-2 hosts where Hyper-V is already installed and verified, set:
+
+```yaml
+hyperv_networking_feature_prereqs_enabled: false
+```
+
+That keeps steady-state switch and routed-subnet convergence away from slow or
+blocked ServerManager feature checks. The `absent` lifecycle still runs the
+feature taskfile so teardown remains explicit.
 
 ## Management OS Boot Recovery
 
