@@ -210,7 +210,8 @@
 
 - name: Ensure Azure-derived VHDX artifact is bootable and sized before VM creation
   vars:
-    hyperv_ubuntu_vm_bootstrap_rebuild_allowed: "{{ not (hostvars[hyperv_ubuntu_vm_inventory_host].ansible_host | default('') | string | length > 0) }}"
+    _hyperv_ubuntu_vm_inventory_host_published: >-
+      {{ (hostvars[hyperv_ubuntu_vm_inventory_host].ansible_host | default('') | string | length) > 0 }}
   ansible.windows.win_powershell:
     error_action: stop
     script: |
@@ -244,7 +245,7 @@
 
       $Ansible.Changed = $false
       $desired = Convert-ToBytes '{{ hyperv_ubuntu_vm_disk }}'
-      $bootstrapRebuildAllowed = {{ hyperv_ubuntu_vm_bootstrap_rebuild_allowed | ternary('$true', '$false') }}
+      $inventoryHostPublished = {{ _hyperv_ubuntu_vm_inventory_host_published | ternary('$true', '$false') }}
       $current = 0
       $currentType = 'missing'
       $currentSparse = $false
@@ -257,6 +258,8 @@
         $compressedCount = Get-CompressedCount '{{ hyperv_ubuntu_vm_host_vhdx_path }}'
       }
 
+      $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
+      $bootstrapRebuildAllowed = (-not $inventoryHostPublished) -or (-not $vm) -or ($currentType -eq 'missing')
       if ($current -lt $desired -or $currentType -ne 'Fixed' -or $currentSparse -or $compressedCount -gt 0) {
         if (-not $bootstrapRebuildAllowed) {
           $Ansible.Result = @{
@@ -265,13 +268,14 @@
             current_type = $currentType
             current_sparse = $currentSparse
             current_compressed_count = $compressedCount
+            vm_exists = [bool]$vm
+            inventory_host_published = $inventoryHostPublished
             reason = 'existing_vhdx_requires_rebuild_after_bootstrap'
           }
           $Ansible.Failed = $true
           Exit 1
         }
 
-        $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
         if ($vm) {
           if ($vm.State.ToString() -ne 'Off') {
             Stop-VM -Name '{{ hyperv_ubuntu_vm_name }}' -TurnOff -Force -ErrorAction Stop | Out-Null
@@ -311,6 +315,8 @@
         current_type = $currentType
         current_sparse = $currentSparse
         current_compressed_count = $compressedCount
+        vm_exists = [bool](Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue)
+        inventory_host_published = $inventoryHostPublished
       }
 
 - name: Copy NoCloud seed image to Windows host
