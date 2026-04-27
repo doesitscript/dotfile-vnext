@@ -2,6 +2,7 @@
 # Docker Engine lifecycle for opted-in Ubuntu VM hosts.
 #
 # Public lifecycle interface:
+#   runtime_planes.docker_engine.enabled: true | false
 #   docker_engine_state: present | absent
 #
 # Commands:
@@ -27,12 +28,42 @@
       ansible.builtin.set_fact:
         docker_engine_candidate: >-
           {{ (surface_type | default('')) == 'ubuntu_vm' }}
+        docker_engine_runtime_requested: >-
+          {{
+            ((runtime_planes | default({})).get('docker_engine', {})).get('enabled', false)
+            | bool
+          }}
         docker_engine_lifecycle_ready: >-
           {{ (docker_engine_state | default('unset')) in ['present', 'absent'] }}
         docker_engine_should_manage: >-
           {{
             (surface_type | default('')) == 'ubuntu_vm'
+            and (
+              ((runtime_planes | default({})).get('docker_engine', {})).get('enabled', false)
+              | bool
+            )
             and (docker_engine_state | default('unset')) in ['present', 'absent']
+          }}
+        docker_engine_selection_reason: >-
+          {% if (surface_type | default('')) != 'ubuntu_vm' %}
+          not selected: not an Ubuntu VM surface
+          {% elif not (((runtime_planes | default({})).get('docker_engine', {})).get('enabled', false) | bool) %}
+          not selected: runtime_planes.docker_engine.enabled is not true
+          {% elif (docker_engine_state | default('unset')) not in ['present', 'absent'] %}
+          not selected: missing Docker Engine lifecycle state
+          {% else %}
+          eligible
+          {% endif %}
+      changed_when: false
+      tags: [always]
+
+    - name: Derive runtime group for Docker Engine hosts
+      ansible.builtin.group_by:
+        key: >-
+          {{
+            'runtime_docker_engine'
+            if (docker_engine_should_manage | default(false) | bool)
+            else 'runtime_docker_engine_excluded'
           }}
       changed_when: false
       tags: [always]
@@ -52,13 +83,10 @@
               'host': item,
               'selected': hostvars[item].docker_engine_should_manage | default(false),
               'candidate': hostvars[item].docker_engine_candidate | default(false),
+              'runtime_requested': hostvars[item].docker_engine_runtime_requested | default(false),
               'state': hostvars[item].docker_engine_state | default('unset'),
               'surface_type': hostvars[item].surface_type | default('unset'),
-              'reason': (
-                'eligible'
-                if (hostvars[item].docker_engine_should_manage | default(false))
-                else 'not selected: missing Docker Engine lifecycle state'
-              )
+              'reason': hostvars[item].docker_engine_selection_reason | default('not classified')
             }
           }}
       loop: "{{ query('inventory_hostnames', 'linux_vm_hosts') }}"

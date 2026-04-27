@@ -170,6 +170,12 @@ Current milestone:
 
 ## Playbook Integration
 
+Canonical capability playbook:
+
+```bash
+ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml -i inventory/inventory.yaml
+```
+
 Use `include_role` to prevent variable bleed:
 
 ```yaml
@@ -185,7 +191,7 @@ tasks:
       )
 ```
 
-Standalone:
+Low-level standalone validation surface:
 
 ```bash
 ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit server-225-win

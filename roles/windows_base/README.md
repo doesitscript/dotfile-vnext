@@ -12,8 +12,8 @@ Windows host. All behavior is controlled via the `windows_base_config` dictionar
 
 ## Usage
 
-Called via `playbooks/windows_base.yml` (all Windows hosts) or via node-specific site
-playbooks (`site_server_225.yaml`, `site_dev_3090.yaml`, `site_network_server.yaml`).
+Called via `playbooks/windows_base.yml` for all Windows hosts, or through the
+canonical full-stack entry point `playbooks/site.yaml`.
 
 ```yaml
 - name: Apply shared Windows base configuration

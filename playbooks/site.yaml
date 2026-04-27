@@ -4,11 +4,13 @@
 # This playbook is the top-level desired-state path:
 #   1. Windows base
 #   2. Access / identity surfaces
-#   3. Docker Ubuntu VM lifecycle for opted-in Windows hosts
-#   4. Docker engine / client verification
+#   3. Hyper-V Windows host infrastructure
+#   4. Docker Ubuntu VM lifecycle for opted-in Windows hosts
+#   5. Docker engine / client verification
 #
 # Narrower playbooks remain available for faster loops and troubleshooting:
 #   - playbooks/provision_windows_host.yml              — Windows baseline only
+#   - playbooks/configure_hyperv_windows_hosts.yaml     — Hyper-V host infrastructure
 #   - playbooks/hyperv_ubuntu_docker_vm.yaml            — Docker VM orchestration
 #   - playbooks/access.yaml                             — identity/access only
 #   - playbooks/docker.yaml                             — Docker only
@@ -29,8 +31,13 @@
 - name: Site - access surfaces
   import_playbook: access.yaml
 
+- name: Site - Hyper-V Windows host infrastructure
+  import_playbook: configure_hyperv_windows_hosts.yaml
+
 - name: Site - Hyper-V Docker Ubuntu guest lifecycle
   import_playbook: hyperv_ubuntu_docker_vm.yaml
+  vars:
+    hyperv_ubuntu_docker_vm_manage_networking_prereqs: false
 
 - name: Site - Docker surfaces
   import_playbook: docker.yaml

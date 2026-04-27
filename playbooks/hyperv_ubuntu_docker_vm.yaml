@@ -6,14 +6,17 @@
 # such as k3s can compose it through their own playbooks and targeting rules.
 #
 # Public Docker VM lifecycle interface:
+#   runtime_planes.hyperv_docker_vm.enabled: true | false
 #   hyperv_ubuntu_docker_vm_state: present | absent
 #   hyperv_ubuntu_docker_vm_hostname: <vm-name-and-guest-hostname>
 #   hyperv_ubuntu_docker_vm_inventory_host: <inventory-host>
 #
 # Selection model:
 #   - scan windows_hosts
-#   - opt in hosts with hyperv_ubuntu_docker_vm_state: present|absent
+#   - opt in hosts with runtime_planes.hyperv_docker_vm.enabled: true
+#   - preserve lifecycle through hyperv_ubuntu_docker_vm_state: present|absent
 #   - require hyperv_ubuntu_docker_vm_hostname
+#   - derive runtime_hyperv_ubuntu_docker_vm as the near-term group_by bridge
 #   - preview selected and excluded Windows hosts before mutating roles run
 #
 # Commands:
@@ -48,6 +51,11 @@
       ansible.builtin.set_fact:
         hyperv_ubuntu_docker_vm_candidate: >-
           {{ (surface_type | default('')) == 'windows_host' }}
+        hyperv_ubuntu_docker_vm_runtime_requested: >-
+          {{
+            ((runtime_planes | default({})).get('hyperv_docker_vm', {})).get('enabled', false)
+            | bool
+          }}
         hyperv_ubuntu_docker_vm_lifecycle_requested: >-
           {{ (hyperv_ubuntu_docker_vm_state | default('unset')) in ['present', 'absent'] }}
         hyperv_ubuntu_docker_vm_hostname_declared: >-
@@ -60,8 +68,35 @@
         hyperv_ubuntu_docker_vm_should_manage: >-
           {{
             (surface_type | default('')) == 'windows_host'
+            and (
+              ((runtime_planes | default({})).get('hyperv_docker_vm', {})).get('enabled', false)
+              | bool
+            )
             and (hyperv_ubuntu_docker_vm_state | default('unset')) in ['present', 'absent']
             and (hyperv_ubuntu_docker_vm_hostname | default('') | length) > 0
+          }}
+        hyperv_ubuntu_docker_vm_selection_reason: >-
+          {% if (surface_type | default('')) != 'windows_host' %}
+          not selected: not a Windows host surface
+          {% elif not (((runtime_planes | default({})).get('hyperv_docker_vm', {})).get('enabled', false) | bool) %}
+          not selected: runtime_planes.hyperv_docker_vm.enabled is not true
+          {% elif (hyperv_ubuntu_docker_vm_state | default('unset')) not in ['present', 'absent'] %}
+          not selected: missing Docker VM lifecycle state
+          {% elif (hyperv_ubuntu_docker_vm_hostname | default('') | length) == 0 %}
+          not selected: missing Docker VM hostname
+          {% else %}
+          eligible
+          {% endif %}
+      changed_when: false
+      tags: [always]
+
+    - name: Derive runtime group for Docker Ubuntu VM hosts
+      ansible.builtin.group_by:
+        key: >-
+          {{
+            'runtime_hyperv_ubuntu_docker_vm'
+            if (hyperv_ubuntu_docker_vm_should_manage | default(false) | bool)
+            else 'runtime_hyperv_ubuntu_docker_vm_excluded'
           }}
       changed_when: false
       tags: [always]
@@ -81,6 +116,7 @@
               'host': item,
               'selected': hostvars[item].hyperv_ubuntu_docker_vm_should_manage | default(false),
               'candidate': hostvars[item].hyperv_ubuntu_docker_vm_candidate | default(false),
+              'runtime_requested': hostvars[item].hyperv_ubuntu_docker_vm_runtime_requested | default(false),
               'state': hostvars[item].hyperv_ubuntu_docker_vm_state | default('unset'),
               'vm_name': (
                 hostvars[item].hyperv_ubuntu_docker_vm_name
@@ -94,11 +130,7 @@
               'guest_ipv4': hostvars[item].hyperv_ubuntu_vm_autoinstall_network_ipv4 | default('unset'),
               'guest_subnet': (hostvars[item].hyperv_config | default({})).guest_subnet_ipv4 | default('unset'),
               'guest_switch': (hostvars[item].hyperv_config | default({})).guest_switch_name | default('unset'),
-              'reason': (
-                'eligible'
-                if (hostvars[item].hyperv_ubuntu_docker_vm_should_manage | default(false))
-                else 'not selected: missing Docker VM lifecycle state or hostname'
-              )
+              'reason': hostvars[item].hyperv_ubuntu_docker_vm_selection_reason | default('not classified')
             }
           }}
       loop: "{{ query('inventory_hostnames', 'windows_hosts') }}"
@@ -121,7 +153,9 @@
     - name: Ensure Hyper-V host networking prerequisites are ready
       ansible.builtin.include_role:
         name: hyperv_networking
-      when: hyperv_ubuntu_docker_vm_should_manage | default(false) | bool
+      when:
+        - hyperv_ubuntu_docker_vm_should_manage | default(false) | bool
+        - hyperv_ubuntu_docker_vm_manage_networking_prereqs | default(true) | bool
 
 - name: Access - route configured guest private subnet from the controller
   hosts: execution_nodes

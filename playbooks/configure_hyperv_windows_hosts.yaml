@@ -1,0 +1,137 @@
+---
+# Hyper-V Windows host infrastructure for opted-in Windows control surfaces.
+#
+# This is the capability-oriented replacement for node-named provisioning
+# wrappers. Host intent lives in inventory; this playbook derives the runtime
+# group for the current static-inventory phase before NetBox/dynamic inventory.
+#
+# Public lifecycle interface:
+#   runtime_planes.hyperv_host.enabled: true | false
+#   hyperv_feature_state: present | absent
+#   hyperv_config: Hyper-V switch and guest-network desired state
+#
+# Commands:
+#   Preview target selection:
+#     ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml \
+#       -i inventory/inventory.yaml --check --tags hyperv_windows_host_preview
+#
+#   Apply to all opted-in Hyper-V Windows hosts:
+#     ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml \
+#       -i inventory/inventory.yaml
+#
+#   Staged rollout / troubleshooting limit:
+#     Only use --limit when intentionally narrowing the otherwise scalable
+#     all-opted-in run.
+#     ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml \
+#       -i inventory/inventory.yaml --limit network-server-win
+#
+- name: Hyper-V Windows hosts - classify target hosts
+  hosts: windows_hosts
+  gather_facts: false
+
+  tasks:
+    - name: Classify Hyper-V Windows host lifecycle eligibility
+      ansible.builtin.set_fact:
+        hyperv_windows_host_candidate: >-
+          {{ (surface_type | default('')) == 'windows_host' }}
+        hyperv_windows_host_runtime_requested: >-
+          {{
+            ((runtime_planes | default({})).get('hyperv_host', {})).get('enabled', false)
+            | bool
+          }}
+        hyperv_windows_host_config_declared: >-
+          {{
+            ((hyperv_config | default({})).external_switch_enabled | default(false) | bool)
+            or
+            ((hyperv_config | default({})).internal_ics_switch_enabled | default(false) | bool)
+          }}
+        hyperv_windows_host_lifecycle_ready: >-
+          {{ (hyperv_feature_state | default('present')) in ['present', 'absent'] }}
+        hyperv_windows_host_should_manage: >-
+          {{
+            (surface_type | default('')) == 'windows_host'
+            and (
+              ((runtime_planes | default({})).get('hyperv_host', {})).get('enabled', false)
+              | bool
+            )
+            and (
+              ((hyperv_config | default({})).external_switch_enabled | default(false) | bool)
+              or
+              ((hyperv_config | default({})).internal_ics_switch_enabled | default(false) | bool)
+            )
+            and (hyperv_feature_state | default('present')) in ['present', 'absent']
+          }}
+        hyperv_windows_host_selection_reason: >-
+          {% if (surface_type | default('')) != 'windows_host' %}
+          not selected: not a Windows host surface
+          {% elif not (((runtime_planes | default({})).get('hyperv_host', {})).get('enabled', false) | bool) %}
+          not selected: runtime_planes.hyperv_host.enabled is not true
+          {% elif not (
+            ((hyperv_config | default({})).external_switch_enabled | default(false) | bool)
+            or
+            ((hyperv_config | default({})).internal_ics_switch_enabled | default(false) | bool)
+          ) %}
+          not selected: no Hyper-V networking config requested
+          {% elif (hyperv_feature_state | default('present')) not in ['present', 'absent'] %}
+          not selected: hyperv_feature_state must be present or absent
+          {% else %}
+          eligible
+          {% endif %}
+      changed_when: false
+      tags: [always]
+
+    - name: Derive runtime group for Hyper-V Windows hosts
+      ansible.builtin.group_by:
+        key: >-
+          {{
+            'runtime_hyperv_windows_hosts'
+            if (hyperv_windows_host_should_manage | default(false) | bool)
+            else 'runtime_hyperv_windows_hosts_excluded'
+          }}
+      changed_when: false
+      tags: [always]
+
+- name: Hyper-V Windows hosts - preview target selection
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: [hyperv_windows_host_preview, always]
+
+  tasks:
+    - name: Preview Hyper-V Windows host selection
+      ansible.builtin.debug:
+        msg: >-
+          {{
+            {
+              'host': item,
+              'selected': hostvars[item].hyperv_windows_host_should_manage | default(false),
+              'candidate': hostvars[item].hyperv_windows_host_candidate | default(false),
+              'runtime_requested': hostvars[item].hyperv_windows_host_runtime_requested | default(false),
+              'state': hostvars[item].hyperv_feature_state | default('present'),
+              'switch_name': (hostvars[item].hyperv_config | default({})).switch_name | default('unset'),
+              'external_switch_enabled': (
+                (hostvars[item].hyperv_config | default({})).external_switch_enabled | default(false)
+              ),
+              'internal_switch_enabled': (
+                (hostvars[item].hyperv_config | default({})).internal_ics_switch_enabled | default(false)
+              ),
+              'adapter_description': (
+                (hostvars[item].hyperv_config | default({})).adapter_interface_description | default('unset')
+              ),
+              'adapter_name': (hostvars[item].hyperv_config | default({})).adapter_name | default('unset'),
+              'guest_subnet': (hostvars[item].hyperv_config | default({})).guest_subnet_ipv4 | default('unset'),
+              'reason': hostvars[item].hyperv_windows_host_selection_reason | default('not classified')
+            }
+          }}
+      loop: "{{ query('inventory_hostnames', 'windows_hosts') }}"
+
+- name: Hyper-V Windows hosts - lifecycle
+  hosts: windows_hosts
+  gather_facts: false
+  tags: [hyperv_windows_host_apply, hyperv_networking]
+
+  tasks:
+    - name: Ensure Hyper-V Windows host infrastructure is in the requested lifecycle state
+      ansible.builtin.include_role:
+        name: hyperv_networking
+      when: hyperv_windows_host_should_manage | default(false) | bool

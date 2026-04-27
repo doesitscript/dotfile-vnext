@@ -3,9 +3,9 @@
 # prerequisites, including the existing External switch path and the Internal
 # guest-switch + ICS path.
 #
-# Low-level shared validation/apply surface. The canonical host entry points are
-# the node playbooks such as playbooks/provision_network_server.yaml and
-# playbooks/provision_server_225.yaml.
+# Low-level shared validation/apply surface. The canonical capability entry
+# point is playbooks/configure_hyperv_windows_hosts.yaml, which derives the
+# target set from host intent instead of server-named wrappers.
 #
 # TODO:
 # - tighten external-adapter verification to prefer and confirm MAC identity
@@ -15,10 +15,11 @@
 #
 # Commands:
 #   Full run:
-#     ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit server-225-win
+#     ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml -i inventory/inventory.yaml
 #
 #   Dry run (check mode):
-#     ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit server-225-win --check
+#     ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml \
+#       -i inventory/inventory.yaml --check --tags hyperv_windows_host_preview
 #
 - name: Hyper-V networking infrastructure
   hosts: windows_hosts

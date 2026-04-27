@@ -3,7 +3,7 @@
 #
 # This playbook owns only the Windows-side baseline stack:
 #   1. windows_base        — features, power, registry, firewall baseline
-#   2. hyperv_networking   — Hyper-V features + Windows/guest networking
+#   2. configure_hyperv_windows_hosts — Hyper-V features + Windows/guest networking
 #   3. access              — controller keys + Windows OpenSSH surfaces
 #
 # The canonical full-stack entrypoint is playbooks/site.yaml.
@@ -11,14 +11,17 @@
 #
 # Usage:
 #   Windows baseline for all Windows hosts:
-#     ansible-playbook playbooks/provision_windows_host.yml
+#     ansible-playbook playbooks/provision_windows_host.yml -i inventory/inventory.yaml
 #
-#   Single Windows host:
-#     ansible-playbook playbooks/provision_windows_host.yml --limit server-225-win
+#   Staged rollout / troubleshooting limit:
+#     Only use --limit when intentionally narrowing the otherwise scalable
+#     all-Windows-host baseline run.
+#     ansible-playbook playbooks/provision_windows_host.yml \
+#       -i inventory/inventory.yaml --limit server-225-win
 #
 - name: Step 1 - Windows base configuration
   import_playbook: windows_base.yml
 - name: Step 2 - Hyper-V networking
-  import_playbook: hyperv_networking.yaml
+  import_playbook: configure_hyperv_windows_hosts.yaml
 - name: Step 3 - SSH identity and access provisioning
   import_playbook: access.yaml

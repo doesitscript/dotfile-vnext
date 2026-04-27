@@ -1,9 +1,15 @@
 # server_225/gpu_driver_validation
 
-Node-specific GPU driver validation for Server-225.
+Legacy compatibility wrapper for Server-225 GPU driver validation.
 
 This role delegates to `common/gpu_driver_validation` and uses the `gpu`
-value from `inventory/group_vars/server_225.yaml` for expected model reporting.
+value from `inventory/group_vars/server_225/main.yml` for expected model reporting.
+
+The capability-oriented entry point is now:
+
+```bash
+ansible-playbook playbooks/validate_windows_gpu_hosts.yaml -i inventory/inventory.yaml
+```
 
 Purpose:
 - validate that NVIDIA driver tooling is present

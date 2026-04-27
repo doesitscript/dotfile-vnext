@@ -1,0 +1,95 @@
+---
+# NVIDIA GPU driver validation for Windows hosts that declare GPU hardware.
+#
+# This replaces node-named GPU validation entry points. The host remains
+# special through inventory metadata, not through a server-specific playbook.
+#
+# Commands:
+#   Preview target selection:
+#     ansible-playbook playbooks/validate_windows_gpu_hosts.yaml \
+#       -i inventory/inventory.yaml --check --tags gpu_driver_validation_preview
+#
+#   Validate all GPU-classed Windows hosts:
+#     ansible-playbook playbooks/validate_windows_gpu_hosts.yaml \
+#       -i inventory/inventory.yaml
+#
+- name: Windows GPU hosts - classify target hosts
+  hosts: windows_hosts
+  gather_facts: false
+
+  tasks:
+    - name: Classify Windows GPU validation eligibility
+      ansible.builtin.set_fact:
+        windows_gpu_host_candidate: >-
+          {{ (surface_type | default('')) == 'windows_host' }}
+        windows_gpu_host_hardware_requested: >-
+          {{
+            ('nvidia_gpu' in (hardware_classes | default([])))
+            or ((gpu | default('') | length) > 0)
+          }}
+        windows_gpu_host_should_validate: >-
+          {{
+            (surface_type | default('')) == 'windows_host'
+            and (
+              ('nvidia_gpu' in (hardware_classes | default([])))
+              or ((gpu | default('') | length) > 0)
+            )
+          }}
+        windows_gpu_host_selection_reason: >-
+          {% if (surface_type | default('')) != 'windows_host' %}
+          not selected: not a Windows host surface
+          {% elif not (
+            ('nvidia_gpu' in (hardware_classes | default([])))
+            or ((gpu | default('') | length) > 0)
+          ) %}
+          not selected: no NVIDIA GPU hardware class or expected GPU model
+          {% else %}
+          eligible
+          {% endif %}
+      changed_when: false
+      tags: [always]
+
+    - name: Derive runtime group for Windows GPU hosts
+      ansible.builtin.group_by:
+        key: >-
+          {{
+            'hardware_windows_nvidia_gpu_hosts'
+            if (windows_gpu_host_should_validate | default(false) | bool)
+            else 'hardware_windows_nvidia_gpu_hosts_excluded'
+          }}
+      changed_when: false
+      tags: [always]
+
+- name: Windows GPU hosts - preview target selection
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: [gpu_driver_validation_preview, always]
+
+  tasks:
+    - name: Preview Windows GPU validation host selection
+      ansible.builtin.debug:
+        msg: >-
+          {{
+            {
+              'host': item,
+              'selected': hostvars[item].windows_gpu_host_should_validate | default(false),
+              'candidate': hostvars[item].windows_gpu_host_candidate | default(false),
+              'hardware_requested': hostvars[item].windows_gpu_host_hardware_requested | default(false),
+              'gpu': hostvars[item].gpu | default('unset'),
+              'hardware_classes': hostvars[item].hardware_classes | default([]),
+              'reason': hostvars[item].windows_gpu_host_selection_reason | default('not classified')
+            }
+          }}
+      loop: "{{ query('inventory_hostnames', 'windows_hosts') }}"
+
+- name: Windows GPU hosts - validation
+  hosts: windows_hosts
+  gather_facts: false
+  tags: [gpu_driver_validation]
+
+  tasks:
+    - name: Validate NVIDIA GPU driver state
+      ansible.builtin.include_role:
+        name: common/gpu_driver_validation
+      when: windows_gpu_host_should_validate | default(false) | bool
