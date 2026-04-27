@@ -1,41 +1,40 @@
-autoinstall:
-  version: 1
-  locale: "{{ hyperv_ubuntu_vm_autoinstall_locale }}"
-  keyboard:
-    layout: "{{ hyperv_ubuntu_vm_autoinstall_keyboard_layout }}"
-  identity:
-    hostname: "{{ hyperv_ubuntu_vm_hostname }}"
-    username: "{{ hyperv_ubuntu_vm_bootstrap_user }}"
-    password: "{{ hyperv_ubuntu_vm_autoinstall_password | password_hash('sha512') }}"
-  ssh:
-    install-server: true
-    allow-pw: false
-    authorized-keys:
-      - "{{ controller_pub_key_content }}"
-  network:
-    version: 2
-    ethernets:
-      {{ hyperv_ubuntu_vm_autoinstall_network_interface_name }}:
+version: 1
+locale: "{{ hyperv_ubuntu_vm_autoinstall_locale }}"
+keyboard:
+  layout: "{{ hyperv_ubuntu_vm_autoinstall_keyboard_layout }}"
+identity:
+  hostname: "{{ hyperv_ubuntu_vm_hostname }}"
+  username: "{{ hyperv_ubuntu_vm_bootstrap_user }}"
+  password: "{{ hyperv_ubuntu_vm_autoinstall_password | password_hash('sha512', hyperv_ubuntu_vm_autoinstall_password_hash_salt) }}"
+ssh:
+  install-server: true
+  allow-pw: false
+  authorized-keys:
+    - "{{ controller_pub_key_content }}"
+network:
+  version: 2
+  ethernets:
+    {{ hyperv_ubuntu_vm_autoinstall_network_interface_name }}:
 {% if hyperv_ubuntu_vm_autoinstall_network_method == 'static' %}
-        dhcp4: false
+      dhcp4: false
+      addresses:
+        - "{{ hyperv_ubuntu_vm_autoinstall_network_ipv4 }}/{{ hyperv_ubuntu_vm_autoinstall_network_prefix_length }}"
+      routes:
+        - to: default
+          via: "{{ hyperv_ubuntu_vm_autoinstall_network_gateway4 }}"
+      nameservers:
         addresses:
-          - "{{ hyperv_ubuntu_vm_autoinstall_network_ipv4 }}/{{ hyperv_ubuntu_vm_autoinstall_network_prefix_length }}"
-        routes:
-          - to: default
-            via: "{{ hyperv_ubuntu_vm_autoinstall_network_gateway4 }}"
-        nameservers:
-          addresses:
 {% for dns_server in hyperv_ubuntu_vm_autoinstall_network_dns_servers %}
-            - "{{ dns_server }}"
+          - "{{ dns_server }}"
 {% endfor %}
 {% else %}
-        dhcp4: true
+      dhcp4: true
 {% endif %}
-  storage:
-    layout:
-      name: direct
-  updates: "{{ hyperv_ubuntu_vm_autoinstall_updates }}"
-  packages:
-    - python3
-  late-commands:
-    - curtin in-target --target=/target -- systemctl enable ssh
+storage:
+  layout:
+    name: direct
+updates: "{{ hyperv_ubuntu_vm_autoinstall_updates }}"
+packages:
+  - python3
+late-commands:
+  - curtin in-target --target=/target -- systemctl enable ssh

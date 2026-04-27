@@ -134,6 +134,8 @@ Dedicated saved-artifact playbook:
     - keep the ISO-root `autoinstall.yaml` handoff aligned with Ubuntu
       installer docs by using the `autoinstall` kernel argument without forcing
       a leading-slash `subiquity.autoinstallpath`
+    - render the ISO-root `autoinstall.yaml` in direct installation-media
+      format while keeping the attached `cidata` seed in cloud-config format
     - patch the Hyper-V UEFI boot image to source an ESP-local GRUB config that
       searches for the ISO root before loading the autoinstall menu
     - routed-subnet guest target comes from inventory host variables
