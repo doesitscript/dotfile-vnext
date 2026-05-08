@@ -196,9 +196,13 @@ When a naming or modeling question arises, consult NetBox first:
 - If NetBox has a documented naming convention, follow it. Do not force an
   existing repo naming pattern into NetBox when doing so conflicts with what
   NetBox expects.
-- Display names should be lowercase unless a value is a proper product name
-  (e.g. `Windows Server 2025`, `Ubuntu 24.04`). Slugs are always lowercase
-  and kebab-case.
+- For objects this repo controls, **display name equals the slug** — lowercase
+  kebab-case with no spaces (e.g. `hyperv-host`, `docker-engine`, `homelab`).
+  This is not NetBox's default convention (it generates slugs from readable
+  names), but it is the right choice for a programmatic homelab where names
+  are references, not prose. The one exception is proper product names:
+  `Windows Server 2025` and `Ubuntu 24.04` keep their canonical casing
+  because deviating from the vendor name creates confusion.
 - If NetBox's native model does not cleanly fit a concept, document the gap
   here before deciding to use a custom field or workaround.
 
