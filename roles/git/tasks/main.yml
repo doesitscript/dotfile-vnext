@@ -21,7 +21,10 @@
 
 - name: Show global gitignore link location (Unix)
   ansible.builtin.debug:
-    msg: "Global gitignore linked: {{ dotfiles_user_home }}/.gitignore_global -> {{ dotfiles_home }}/roles/git/files/gitignore_global.link ({{ 'created' if gitignore_link_result is changed else 'already present' }})"
+    msg: >-
+      Global gitignore linked: {{ dotfiles_user_home }}/.gitignore_global ->
+      {{ dotfiles_home }}/roles/git/files/gitignore_global.link
+      ({{ 'created' if gitignore_link_result is changed else 'already present' }})
   when: ansible_facts['system'] != "Windows"
 
 - name: Check whether gitconfig already exists
@@ -35,14 +38,17 @@
     dest: "{{ dotfiles_user_home }}/.gitconfig.bak"
     remote_src: true
     force: false
+    mode: "0644"
   when: gitconfig_stat.stat.exists
 
 - name: Ensure gitconfig matches template
   ansible.builtin.template:
     src: gitconfig.j2
     dest: "{{ dotfiles_user_home }}/.gitconfig"
+    mode: "0644"
 
 - name: Ensure gitattributes matches template
   ansible.builtin.template:
     src: gitattributes.j2
     dest: "{{ dotfiles_user_home }}/.gitattributes"
+    mode: "0644"
