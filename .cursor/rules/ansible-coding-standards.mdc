@@ -266,6 +266,15 @@ A playbook project orchestrates landscapes and types via one or more playbooks, 
 - [ ] Variables names must not contain jinja2 templating
 - [ ] Variables names from roles should use `role_name_` as prefix
 
+##### Vault Variable Naming
+
+- [ ] All vault variables must use the prefix `vault_` to distinguish them from plain role variables
+- [ ] Vault variables that belong to a role must follow the pattern `vault_<role_name>_<field>` — for example, `vault_ipam_netbox_db_password` or `vault_ansible_ui_semaphore_admin_password`
+- [ ] Host-level credentials (WinRM, SSH passwords) belong in the nearest inventory vault file (`inventory/group_vars/<group>/vault.yml` or `inventory/host_vars/<host>/vault.yml`), not in the project-root `vault.yml`
+- [ ] App-level secrets (service passwords, API keys, encryption keys, superuser credentials) belong in the project-root `vault.yml`, organized by role in labeled sections
+- [ ] Each section in `vault.yml` must include a comment header identifying the owning role and playbook
+- [ ] When a role reads vault variables, it must load them via `ansible.builtin.include_vars` with `name: vault_vars` so secrets stay namespaced and do not pollute the play variable scope
+
 ##### Task Naming
 
 - [ ] All tasks must have descriptive names using `name` parameter
@@ -630,6 +639,49 @@ A playbook project orchestrates landscapes and types via one or more playbooks, 
 These are project-level design decisions that must be followed by every agent and every
 new role. They are not suggestions. Violating them introduces the exact class of bug they
 were written to prevent.
+
+### Vault Variable Naming — `vault_<role>_<field>`
+
+**Rule:** Every vault variable must be prefixed with `vault_`. Variables owned by a role
+must follow `vault_<role_name>_<field>`. No role may use a vault variable that does not
+carry the owning role's name as the second segment.
+
+**Prohibited:**
+- Bare names without `vault_` prefix (e.g. `db_password`, `admin_pass`)
+- Vault variables that mix role ownership (e.g. a netbox variable prefixed `vault_semaphore_`)
+- Roles that reference vault variables directly by name in templates or tasks without loading
+  them through `ansible.builtin.include_vars` with `name: vault_vars`
+
+**Storage placement:**
+- Host credentials → `inventory/group_vars/<group>/vault.yml` or `inventory/host_vars/<host>/vault.yml`
+- App/service secrets → project-root `vault.yml`, one labeled section per role
+
+**Correct pattern:**
+```yaml
+# In vault.yml:
+# =============================================================================
+# ipam_netbox — NetBox IPAM/DCIM
+# roles/ipam_netbox | playbooks/deploy_ipam_netbox.yaml
+# =============================================================================
+vault_ipam_netbox_db_password: "..."
+vault_ipam_netbox_superuser_password: "..."
+
+# In roles/ipam_netbox/tasks/present.yml:
+- name: Include vault variables
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault.yml"
+    name: vault_vars
+
+# In templates — always via vault_vars dict:
+# DB_PASSWORD={{ vault_vars.vault_ipam_netbox_db_password }}
+```
+
+**Why:** The `vault_` prefix makes secrets immediately distinguishable from plain role
+variables. The `<role_name>` segment ties every secret to its owner without needing a
+separate lookup. The `include_vars` + `name: vault_vars` pattern scopes secrets to the
+task file and prevents vault keys from leaking into the broader play variable space.
+
+---
 
 ### npm / nvm — `node_npm_executable`
 
