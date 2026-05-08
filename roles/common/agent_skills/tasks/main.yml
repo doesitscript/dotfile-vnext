@@ -1,0 +1,116 @@
+---
+- name: Validate agent skills state
+  ansible.builtin.assert:
+    that:
+      - agent_skills_state in ["present", "absent"]
+    fail_msg: "agent_skills_state must be present or absent."
+
+- name: Manage agent skills on enabled Unix-like systems
+  when:
+    - agent_skills_manage | bool
+    - ansible_facts['system'] != "Windows"
+  block:
+    - name: Ensure agent skill parent directories exist
+      ansible.builtin.file:
+        path: "{{ item.dest | dirname }}"
+        state: directory
+        mode: "0755"
+      loop: "{{ agent_skills_links }}"
+      loop_control:
+        label: "{{ item.dest }}"
+      when: agent_skills_state == "present"
+
+    - name: Check repo-owned agent skill sources
+      ansible.builtin.stat:
+        path: "{{ item.src }}"
+      register: agent_skills_source_stats
+      loop: "{{ agent_skills_links }}"
+      loop_control:
+        label: "{{ item.src }}"
+      when: agent_skills_state == "present"
+
+    - name: Require repo-owned agent skill sources to exist
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+          - item.stat.isdir
+        fail_msg: "Missing repo-owned agent skill source: {{ item.item.src }}"
+      loop: "{{ agent_skills_source_stats.results }}"
+      loop_control:
+        label: "{{ item.item.src }}"
+      when: agent_skills_state == "present"
+
+    - name: Check current agent skill destinations
+      ansible.builtin.stat:
+        path: "{{ item.dest }}"
+        follow: false
+      register: agent_skills_destination_stats
+      loop: "{{ agent_skills_links }}"
+      loop_control:
+        label: "{{ item.dest }}"
+
+    - name: Move unmanaged agent skill destinations aside before linking
+      ansible.builtin.command:
+        argv:
+          - mv
+          - "{{ item.item.dest }}"
+          - "{{ item.item.dest }}.before-agent-skills-link-{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+      when:
+        - agent_skills_state == "present"
+        - item.stat.exists
+        - not item.stat.islnk
+      changed_when: true
+      loop: "{{ agent_skills_destination_stats.results }}"
+      loop_control:
+        label: "{{ item.item.dest }}"
+
+    - name: Preview unmanaged agent skill destinations that would be moved
+      ansible.builtin.debug:
+        msg: >-
+          Would move unmanaged destination {{ item.item.dest }} aside before
+          linking it to {{ item.item.src }}.
+      when:
+        - agent_skills_state == "present"
+        - ansible_check_mode
+        - item.stat.exists
+        - not item.stat.islnk
+      loop: "{{ agent_skills_destination_stats.results }}"
+      loop_control:
+        label: "{{ item.item.dest }}"
+
+    - name: Link agent skill destinations to repo-owned sources
+      ansible.builtin.file:
+        src: "{{ item.item.src }}"
+        dest: "{{ item.item.dest }}"
+        state: link
+        force: true
+      loop: "{{ agent_skills_destination_stats.results }}"
+      loop_control:
+        label: "{{ item.item.dest }}"
+      when:
+        - agent_skills_state == "present"
+        - not (ansible_check_mode and item.stat.exists and not item.stat.islnk)
+
+    - name: Remove managed agent skill links
+      ansible.builtin.file:
+        path: "{{ item.item.dest }}"
+        state: absent
+      when:
+        - agent_skills_state == "absent"
+        - item.stat.islnk | default(false)
+      loop: "{{ agent_skills_destination_stats.results }}"
+      loop_control:
+        label: "{{ item.item.dest }}"
+
+    - name: Show agent skill link ownership
+      ansible.builtin.debug:
+        msg: "{{ item.dest }} -> {{ item.src }}"
+      loop: "{{ agent_skills_links }}"
+      loop_control:
+        label: "{{ item.dest }}"
+      when: agent_skills_state == "present"
+
+- name: Skip agent skills on unmanaged hosts
+  ansible.builtin.debug:
+    msg: "agent_skills not enabled for this host."
+  when: not (agent_skills_manage | bool) or ansible_facts['system'] == "Windows"

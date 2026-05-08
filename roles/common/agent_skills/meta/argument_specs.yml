@@ -1,0 +1,48 @@
+---
+argument_specs:
+  main:
+    short_description: Link repo-owned Cursor and Codex skills into home paths.
+    description: >-
+      Manages selected personal-portable Cursor and Codex skills by keeping the
+      source content in this repo and linking runtime home-directory discovery
+      paths back to those tracked files. Vendor and system-managed skill trees
+      are intentionally excluded.
+    options:
+      agent_skills_state:
+        type: str
+        required: false
+        default: present
+        choices:
+          - present
+          - absent
+        description: >-
+          Desired lifecycle state for the managed skill links. `present` creates
+          or updates links after moving existing unmanaged destinations aside.
+          `absent` removes only symlinks managed by this role.
+      agent_skills_manage:
+        type: bool
+        required: false
+        default: true
+        description: >-
+          Whether this host should manage global agent skill links. Defaults to
+          true on macOS and false elsewhere so the development-node playbook does
+          not create personal Cursor/Codex home links on Linux companions unless
+          explicitly enabled.
+      agent_skills_links:
+        type: list
+        elements: dict
+        required: false
+        description: List of repo-owned skill source paths and home destinations.
+        options:
+          name:
+            type: str
+            required: true
+            description: Human-readable link name.
+          src:
+            type: str
+            required: true
+            description: Repo-owned source path for the skill tree.
+          dest:
+            type: str
+            required: true
+            description: Runtime home-directory path to link.

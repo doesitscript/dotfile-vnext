@@ -2,6 +2,11 @@
 
 This folder holds repo-local Codex/Cursor skills.
 
+Global personal-portable skills that should survive workstation rebuilds but
+are not project behavior live under `roles/common/agent_skills/` and are linked
+into the home directory by that role. Vendor/system-managed skills, such as
+Codex `.system` skills, stay outside repo ownership.
+
 Use this structure for new or meaningfully updated skills:
 
 - `SKILL.md`
