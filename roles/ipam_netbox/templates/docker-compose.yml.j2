@@ -6,16 +6,15 @@ services:
       - redis
       - redis-cache
     env_file: .env
-    user: "netbox:root"
     healthcheck:
       test: curl -f http://localhost:8080/login/ || exit 1
-      start_period: 90s
-      timeout: 3s
+      start_period: 120s
+      timeout: 5s
       interval: 15s
+      retries: 5
     ports:
-      - "{{ ipam_netbox_http_port }}:8080"
+      - "{{ ipam_netbox_http_port }}"
     volumes:
-      - ./configuration:/etc/netbox/config:z,ro
       - netbox-media-files:/opt/netbox/netbox/media:rw
       - netbox-reports-files:/opt/netbox/netbox/reports:rw
       - netbox-scripts-files:/opt/netbox/netbox/scripts:rw
@@ -23,7 +22,14 @@ services:
     <<: *netbox
     depends_on:
       netbox:
+        condition: service_started
+      postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    ports: []
     command:
       - /opt/netbox/venv/bin/python
       - /opt/netbox/netbox/manage.py

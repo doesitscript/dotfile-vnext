@@ -1,0 +1,44 @@
+---
+# Seed canonical NetBox object tags via the NetBox API.
+#
+# These tags are applied to objects WITHIN NetBox (devices, prefixes, IPs, VMs, etc.)
+# to identify resources by ownership, environment, and managing role.
+# This is separate from Ansible play tags (--tags on the CLI).
+#
+# Requirements:
+#   - netbox.netbox collection: ansible-galaxy collection install netbox.netbox
+#   - vault_netbox_api_token must be defined in Ansible Vault
+#   - connection: local / delegate_to: localhost — the API call runs from the control node
+#
+# Run standalone:
+#   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+#     --tags ipam_netbox_seed_tags
+#
+- name: Seed canonical NetBox object tags
+  netbox.netbox.netbox_tag:
+    netbox_url: "http://{{ ansible_host }}:{{ ipam_netbox_http_port.split(':')[0] }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      description: "{{ item.description }}"
+      color: "{{ item.color }}"
+    state: present
+  loop:
+    - name: "ansible-managed"
+      slug: "ansible-managed"
+      description: "Object state owned by the dotfile-vnext Ansible repo"
+      color: "0d6efd"
+    - name: "homelab"
+      slug: "homelab"
+      description: "Scoped to this homelab environment"
+      color: "198754"
+    - name: "ipam-netbox-role"
+      slug: "ipam-netbox-role"
+      description: "Provisioned by the ipam_netbox Ansible role"
+      color: "6f42c1"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_tags

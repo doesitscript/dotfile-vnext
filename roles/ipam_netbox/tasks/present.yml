@@ -1,4 +1,12 @@
 ---
+- name: Include vault variables
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault.yml"
+    name: vault_vars
+  tags:
+    - ipam_netbox
+    - ipam_netbox_present
+
 - name: Ensure NetBox data directories exist
   ansible.builtin.file:
     path: "{{ ipam_netbox_data_path }}/{{ item }}"
@@ -13,7 +21,9 @@
     - netbox-redis-data
     - netbox-reports-files
     - netbox-scripts-files
-    - configuration
+  tags:
+    - ipam_netbox
+    - ipam_netbox_present
 
 - name: Render .env file from template
   ansible.builtin.template:
@@ -23,6 +33,9 @@
     group: "{{ ipam_netbox_group }}"
     mode: '0600'
   no_log: true
+  tags:
+    - ipam_netbox
+    - ipam_netbox_present
 
 - name: Render docker-compose.yml from template
   ansible.builtin.template:
@@ -31,12 +44,30 @@
     owner: "{{ ipam_netbox_user }}"
     group: "{{ ipam_netbox_group }}"
     mode: '0644'
+  tags:
+    - ipam_netbox
+    - ipam_netbox_present
+
+- name: Pre-pull NetBox Docker images
+  community.docker.docker_image:
+    name: "{{ item }}"
+    source: pull
+  loop:
+    - "docker.io/netboxcommunity/netbox:{{ ipam_netbox_version }}"
+    - "docker.io/postgres:16-alpine"
+    - "docker.io/valkey/valkey:7-alpine"
+  tags:
+    - ipam_netbox
+    - ipam_netbox_present
 
 - name: Deploy NetBox stack
   community.docker.docker_compose_v2:
     project_src: "{{ ipam_netbox_data_path }}"
     state: present
   register: compose_result
+  tags:
+    - ipam_netbox
+    - ipam_netbox_present
 
 - name: Smoke test NetBox
   ansible.builtin.uri:
@@ -47,3 +78,7 @@
   until: smoke_test_result.status == 200
   retries: 10
   delay: 10
+  tags:
+    - ipam_netbox
+    - ipam_netbox_present
+    - ipam_netbox_smoke_test
