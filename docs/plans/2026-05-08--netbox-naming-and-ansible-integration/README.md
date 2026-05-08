@@ -226,6 +226,10 @@ belongs in a tag or custom field — rarely in the display name itself.
 - Which object should own the LAN published service endpoints: the Windows
   host device, the Ubuntu VM, or service records associated with the VM?
 
+## Tracked In GitHub
+
+- [#12 — validate framework-netbox-modeling rules are enforced in Codex sessions](https://github.com/doesitscript/dotfile-vnext/issues/12)
+
 ## Execution Status
 
 - Option 1 mapping artifact created in `naming-fit.md`.
