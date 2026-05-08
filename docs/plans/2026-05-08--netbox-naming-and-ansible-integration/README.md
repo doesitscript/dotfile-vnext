@@ -184,6 +184,33 @@ Planning and idempotent NetBox source-of-truth modeling. The current committed
 slice does not mutate NetBox until an API token is added and the apply tag is
 run.
 
+## Design Principle: NetBox Naming Flows Into The Repo
+
+**Scope:** This principle applies to the NetBox integration in this plan, not
+the whole project. Extend it deliberately when new areas are ready.
+
+When a naming or modeling question arises, consult NetBox first:
+- If NetBox has a native field for the concept (site, platform, role, tag,
+  cluster type, etc.), use that field — do not invent a custom field or encode
+  it in the object name.
+- If NetBox has a documented naming convention, follow it. Do not force an
+  existing repo naming pattern into NetBox when doing so conflicts with what
+  NetBox expects.
+- Display names should be lowercase unless a value is a proper product name
+  (e.g. `Windows Server 2025`, `Ubuntu 24.04`). Slugs are always lowercase
+  and kebab-case.
+- If NetBox's native model does not cleanly fit a concept, document the gap
+  here before deciding to use a custom field or workaround.
+
+**Why:** NetBox's data model is designed for IPAM and DCIM at scale. Designing
+into it — rather than mapping existing repo conventions onto it — opens up
+`nb_inventory` group-by behavior, API query patterns, and future integrations
+that assume standard NetBox object shapes.
+
+**Practical rule:** When unsure, look up the NetBox object type in the docs
+before writing the Ansible seed task. The field exists in NetBox, or it
+belongs in a tag or custom field — rarely in the display name itself.
+
 ## Open Questions
 
 - Should `s225` represent the physical host, a site/location scope, or an
@@ -204,9 +231,10 @@ run.
 - Live inspection found an existing write-enabled admin API token, but it is
   not vault-backed for this project and should be treated as a bootstrap or
   throwaway token until rotated or replaced.
-- A dedicated repo-owned NetBox API token is now stored in local encrypted
-  `vault.yml` as `vault_netbox_api_token`. That file is intentionally ignored
-  by Git in this repo.
+- A dedicated repo-owned NetBox API token is now stored in encrypted
+  `vault.yml` as `vault_netbox_api_token`. That file is ansible-vault
+  encrypted and committed to git. The vault password (`.vault_pass`) is
+  git-ignored, not the vault file itself.
 - The first `server-225` model has been applied to NetBox and verified
   idempotent.
 - Shadow dynamic inventory is staged at `inventory/netbox.yml`. It reads its

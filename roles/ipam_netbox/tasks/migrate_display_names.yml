@@ -1,0 +1,83 @@
+---
+# One-time migration: rename mixed-case NetBox display names to lowercase.
+# Run with: --tags ipam_netbox_migrate_display_names
+# Safe to re-run — skips objects that are already at the target name.
+# After running, the regular seed tag is idempotent with the new names.
+
+- name: Include vault variables for NetBox API token
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault.yml"
+    name: vault_vars
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_display_names
+
+- name: Define display name migrations
+  ansible.builtin.set_fact:
+    _ipam_netbox_name_migrations:
+      - endpoint: dcim/sites
+        old_name: "Homelab"
+        new_name: "homelab"
+      - endpoint: dcim/manufacturers
+        old_name: "Custom"
+        new_name: "custom"
+      - endpoint: dcim/device-roles
+        old_name: "Hyper-V host"
+        new_name: "hyperv host"
+      - endpoint: dcim/device-roles
+        old_name: "Docker engine"
+        new_name: "docker engine"
+      - endpoint: virtualization/cluster-types
+        old_name: "Hyper-V"
+        new_name: "hyperv"
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_display_names
+
+- name: Query existing object for each name migration
+  ansible.builtin.uri:
+    url: "{{ ipam_netbox_api_url }}/api/{{ item.endpoint }}/?name={{ item.old_name | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+    status_code: 200
+    validate_certs: false
+  loop: "{{ _ipam_netbox_name_migrations }}"
+  loop_control:
+    label: "{{ item.endpoint }}: {{ item.old_name }} -> {{ item.new_name }}"
+  register: _migration_queries
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_display_names
+
+- name: Patch object display name to lowercase
+  ansible.builtin.uri:
+    url: "{{ ipam_netbox_api_url }}/api/{{ item.item.endpoint }}/{{ item.json.results[0].id }}/"
+    method: PATCH
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Content-Type: application/json
+    body_format: json
+    body:
+      name: "{{ item.item.new_name }}"
+    status_code: 200
+    validate_certs: false
+  loop: "{{ _migration_queries.results }}"
+  loop_control:
+    label: "{{ item.item.endpoint }}: {{ item.item.old_name }} -> {{ item.item.new_name }}"
+  when: item.json.results | length > 0
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_display_names
+
+- name: Report migration results
+  ansible.builtin.debug:
+    msg: >-
+      Migration complete.
+      Objects patched to lowercase display names.
+      Re-run seed tag to verify idempotency.
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_display_names

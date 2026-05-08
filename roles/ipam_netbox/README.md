@@ -2,6 +2,83 @@
 
 Deploys NetBox, the leading open-source IPAM and DCIM tool, using Docker Compose. This role is designed to be idempotent and provides a simple, state-based interface for managing the NetBox stack.
 
+## First-Run Prerequisites
+
+Follow these steps in order when setting up a fresh clone of this repo or when
+rebuilding the NetBox integration from scratch.
+
+### 1. Install Ansible collections
+
+```bash
+ansible-galaxy collection install -r requirements.yml
+```
+
+This installs `netbox.netbox` (required for API seeding and later dynamic
+inventory).
+
+### 2. Install Python dependencies
+
+The `netbox.netbox` collection requires `pynetbox` and `pytz` on the Ansible
+controller. Run the dev-tools role or install manually:
+
+```bash
+# Via Ansible (preferred — keeps the repo venv consistent)
+ansible-playbook playbooks/deploy_development_nodes.yaml \
+  --tags ansible_dev_tools --limit localhost
+
+# Or directly in the repo venv
+.venv/bin/pip install pynetbox pytz
+```
+
+### 3. Deploy NetBox
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass
+```
+
+This runs the full Docker Compose stack on `server-225-ubuntu`. Confirm the
+web UI is reachable at `http://192.168.50.158:8000/` before proceeding.
+
+### 4. Create a dedicated NetBox API token
+
+In the NetBox UI: **Admin → API Tokens → Add**. Name it something like
+`dotfile-vnext Ansible automation`. Copy the token value.
+
+Do not reuse the superuser/admin token. A dedicated token scoped for this
+repo keeps credentials compartmentalized and makes rotation easier.
+
+### 5. Encrypt the token into vault.yml
+
+```bash
+ansible-vault encrypt_string 'YOUR_TOKEN_HERE' \
+  --name 'vault_netbox_api_token' >> vault.yml
+```
+
+`vault.yml` is ansible-vault encrypted and committed to git. The vault
+password lives in `.vault_pass` (git-ignored).
+
+### 6. Seed the first source-of-truth model
+
+Preview first (no NetBox mutation):
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_seed_server_225_model_preview
+```
+
+Then apply:
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_seed_server_225_model
+```
+
+Verify in the NetBox UI: you should see site `homelab`, device `server-225`,
+cluster `server-225-hyperv`, VM `server-225-ubuntu` with primary IP, and
+tags `ansible-managed`, `homelab`, `hyperv`, `docker`, `infra`.
+
+---
+
 ## Role Variables
 
 | Variable                                        | Default         | Description                                                                 |
@@ -30,9 +107,10 @@ This role uses Ansible Vault to manage secrets. You must provide a vault file wi
 These variables are used to render an `.env` file, which is then used by Docker Compose.
 
 API-driven seed tasks also require `vault_netbox_api_token`. Use a dedicated
-NetBox token for this repo, not the initial admin/bootstrap token, and keep it
-encrypted in the local root `vault.yml`. That file is intentionally ignored by
-Git in this repo.
+NetBox token for this repo, not the initial admin/bootstrap token. Encrypt
+it with `ansible-vault encrypt_string` and store it in the root `vault.yml`.
+That file is ansible-vault encrypted and committed to git — the vault password
+(`.vault_pass`) is what stays out of version control.
 
 ## Tags
 
