@@ -503,6 +503,110 @@ These are the main refactors still expected:
 - make incremental improvements inside the current milestone rather than
   forcing an unrelated whole-project rewrite
 
+## Tagging Standards
+
+> Added after the `ipam_netbox` capability implementation, where tags were
+> researched and applied for the first time in a structured way.
+
+### Source Authority
+
+Findings come from two authoritative sources consulted together:
+
+- `ansible-content-best-practices` resource (via `project-0-dotfile-vnext-ansible` MCP)
+- NetBox Tag documentation — `extras/tag` model and `netbox.netbox.netbox_tag` module
+
+### Ansible Play Tag Standards
+
+**What the official guidance says:**
+
+> "Limit tags to two types: role names and specific meaningful purposes.
+> Prefix tags in roles with role name. Ensure each tag achieves meaningful
+> result when used alone. Do not create tags that cannot be used standalone.
+> Do not create destructive tags that could damage systems."
+
+**Project interpretation and decisions:**
+
+1. **Two tag types only** — the full role name tag, plus role-prefixed sub-operation tags. Nothing else.
+2. **Role name is always the primary tag** — `--tags <role_name>` must select the entire capability.
+3. **Sub-operation tags use the same prefix** — `<role_name>_<sub>`. Examples: `ipam_netbox_present`, `ipam_netbox_smoke_test`.
+4. **Destructive sub-paths get their own tag but must never stand alone safely** — the `absent` path always requires both `--tags <role>_absent` *and* `-e <role>_state=absent` to prevent accidental removal on a bare `--tags` run.
+5. **Document all tags** — every role README must have a Tags table. No undocumented tags.
+
+**Current project gap:**
+
+Most existing roles have no tags at all. Only `ipam_netbox` is fully tagged as of this writing.
+The project should add tags as each capability is touched, not in a big-bang pass.
+
+**Standard tag set shape for any role:**
+
+| Tag | Purpose |
+| --- | ------- |
+| `<role_name>` | Entire capability |
+| `<role_name>_present` | Deploy path only |
+| `<role_name>_absent` | Remove path only |
+| `<role_name>_smoke_test` | Verification only (where applicable) |
+
+### NetBox Object Tag Standards
+
+NetBox has a first-class `extras/tag` model — user-defined labels applicable across
+all NetBox object types (devices, VMs, prefixes, IPs, clusters, etc.).
+
+**Why this matters to the project:**
+
+The report card's mature capability model (section 3 and 4) calls for:
+
+- metadata-based host classification as the source of truth
+- derived groups from host intent, not hand-maintained static groups
+- NetBox as the future owner of durable facts (device, VM, site, platform, role, tags, IPs)
+
+NetBox object tags are **the bridge** between NetBox-as-SSOT and Ansible-as-executor.
+When NetBox dynamic inventory is active (`nb_inventory` plugin), tags become inventory groups automatically:
+
+```yaml
+group_by:
+  - tags
+# → tag 'ansible-managed' becomes inventory group: tag_ansible_managed
+```
+
+**Canonical project tags (seeded via Ansible, not created by hand):**
+
+| Tag | Slug | Purpose |
+| --- | ---- | ------- |
+| `ansible-managed` | `ansible-managed` | Object state owned by this repo |
+| `homelab` | `homelab` | Environment scope |
+| `ipam-netbox-role` | `ipam-netbox-role` | Provenance: created by `ipam_netbox` role |
+| `hyperv`, `k3s`, `docker`, `traefik`, `llm` | same | Technology layer |
+| `control-plane`, `worker` | same | Cluster role |
+| `infra` | `infra` | Infrastructure vs workload classification |
+
+**Seeding procedure:**
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_seed_tags
+```
+
+Task source: `roles/ipam_netbox/tasks/seed_tags.yml`
+
+Requires: `netbox.netbox` collection installed and `vault_netbox_api_token` in vault.
+
+**Convention note:**
+
+- Ansible play tags use underscores (`ipam_netbox_present`) — Python identifier convention
+- NetBox object tags use hyphens (`ansible-managed`) — URL slug convention
+- These naming conventions make the two layers visually distinct and should be preserved
+
+### Tagging Maturity Checklist
+
+When grading a role for tagging maturity:
+
+- [ ] Primary role-name tag exists (`<role_name>`)
+- [ ] Present and absent sub-operation tags exist where the role has lifecycle state
+- [ ] Each tag is usable standalone without causing accidental destructive action
+- [ ] All tags are documented in the role README with a table
+- [ ] NetBox object tags are seeded via Ansible (not by hand) when the capability populates NetBox
+- [ ] Ansible play tags use underscores; NetBox slugs use hyphens
+
 ## Update Rule
 
 Whenever we learn something better than what is written here:

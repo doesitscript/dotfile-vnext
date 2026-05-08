@@ -38,5 +38,4 @@ lab-hv-k3s-master-01
 lab-hv-k3s-worker-01
 lab-hv-traefik-01
 lab-hv-llm-01
-AIzaSyB-937F5kOrpXAdr8CkP_URrH3avAYNa1c
-AIzaSyB-937F5kOrpXAdr8CkP_URrH3avAYNa1c
+<redacted — API key removed from repo>

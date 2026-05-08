@@ -63,6 +63,128 @@ llm
 control-plane
 worker
 infra
+
+---
+
+## Tagging Schema
+
+There are two distinct tagging layers in this project. Do not conflate them.
+
+### Layer 1 — Ansible Play Tags (CLI `--tags`)
+
+These control which tasks execute when `ansible-playbook --tags` is passed.
+They live inside the Ansible role and playbook YAML files.
+
+**Rules (from project standards and Ansible content best practices):**
+
+- Use exactly two tag types: **role name** and **specific meaningful sub-operation**
+- Every tag must be prefixed with the role name
+- Every tag must be usable standalone (`--tags <tag>` must produce a meaningful, safe result)
+- Do not create tags that cannot stand alone
+- Do not create destructive tags (tags that delete data, tear down infra, or are irreversible
+  if run accidentally)
+- Document all tags in the role's README under a Tags section
+
+**Naming pattern:**
+
+```
+<role_name>                         # selects the entire role capability
+<role_name>_<sub_operation>         # selects a specific sub-path
+```
+
+**Examples from this project:**
+
+| Tag | Role | Selects |
+| --- | ---- | ------- |
+| `ipam_netbox` | `ipam_netbox` | Entire NetBox capability |
+| `ipam_netbox_present` | `ipam_netbox` | Deploy path only |
+| `ipam_netbox_absent` | `ipam_netbox` | Remove path only |
+| `ipam_netbox_smoke_test` | `ipam_netbox` | Health check only |
+| `ipam_netbox_seed_tags` | `ipam_netbox` | Seed NetBox API tags only |
+| `hyperv_networking` | `hyperv_networking` | Networking role capability |
+| `docker` | `docker` | Docker capability |
+
+**Usage:**
+
+```bash
+# Run only a specific capability in a large site playbook
+ansible-playbook playbooks/site.yaml --tags ipam_netbox
+
+# Skip a capability
+ansible-playbook playbooks/site.yaml --skip-tags ipam_netbox
+
+# Run a single sub-operation
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass --tags ipam_netbox_smoke_test
+```
+
+---
+
+### Layer 2 — NetBox Object Tags (Labels Inside NetBox)
+
+These are labels applied to **objects within the NetBox application** — devices,
+virtual machines, IP prefixes, IP addresses, etc. They are managed via the
+NetBox API and the `netbox.netbox` Ansible collection.
+
+**Purpose:** create queryable dimensions for grouping objects across types.
+For example: all objects tagged `ansible-managed` can be retrieved in one
+API call regardless of whether they are devices, VMs, or prefixes.
+
+**Rules:**
+
+- Tags are lowercase, hyphen-separated slugs (NetBox convention, not underscore)
+- Tag names should reflect **dimension**, not state or lifecycle
+- Tags should be seeded via Ansible (`netbox.netbox.netbox_tag`) so they are
+  version-controlled and reproducible, not created by hand in the UI
+- Scope tags to specific object types when they only apply to a subset
+  (the `object_types` parameter on `netbox_tag`)
+- Use `ansible-managed` on every object whose state is owned by an Ansible role
+
+**Canonical project tags:**
+
+| Tag name | Slug | Dimension | Scope |
+| --- | --- | --- | --- |
+| `ansible-managed` | `ansible-managed` | Ownership — repo automation owns this object | any |
+| `homelab` | `homelab` | Environment — this environment vs future envs | any |
+| `ipam-netbox-role` | `ipam-netbox-role` | Role provenance — created by `ipam_netbox` role | any |
+| `hyperv` | `hyperv` | Technology layer | devices, VMs |
+| `k3s` | `k3s` | Technology layer | devices, VMs, clusters |
+| `docker` | `docker` | Technology layer | devices, VMs |
+| `traefik` | `traefik` | Technology layer | devices, VMs |
+| `llm` | `llm` | Technology layer | devices, VMs |
+| `control-plane` | `control-plane` | Role within a cluster | VMs |
+| `worker` | `worker` | Role within a cluster | VMs |
+| `infra` | `infra` | Classification — infrastructure service vs workload | devices, VMs |
+
+**Querying tagged objects via API:**
+
+```bash
+# All objects tagged ansible-managed (requires NetBox v4.3+)
+GET /api/extras/tags/ansible-managed/tagged-objects/
+
+# Filter inventory by tag in Ansible dynamic inventory plugin
+group_by:
+  - tags
+# → produces inventory group: tag_ansible_managed
+```
+
+**Seeding tags via Ansible (run once after deploy):**
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_seed_tags
+```
+
+The seed task lives at `roles/ipam_netbox/tasks/seed_tags.yml`.
+
+---
+
+### Tag Hygiene Rules
+
+1. **Ansible play tags use underscores** — they are Python identifiers (`ipam_netbox_present`)
+2. **NetBox object tags use hyphens** — they are URL slugs (`ansible-managed`)
+3. Never reuse the same string as both a play tag and a NetBox slug — they live in different systems and the naming convention difference makes that separation visible
+4. Destructive operations (absent, remove, wipe) should never be reachable via a single `--tags` run without also passing an explicit state variable
+5. Every role that has play tags must document them in its `README.md`
 🟩 Clusters
 You’ll want a K3s cluster object.
 
