@@ -3,6 +3,7 @@
 #
 # Deploys: common/shell_config (.bashrc.d pattern, PATH, aliases)
 #          direnv (installation + bash hook)
+#          git (global gitconfig, gitattributes, gitignore_global symlink)
 #          cursor (editor config, extensions, LF/UTF-8 settings)
 #          speech_central (Speech Central install on mac-dev via mas_cli dependency)
 #          remote_desktop_mac (macOS-only Microsoft Remote Desktop install)
@@ -27,6 +28,7 @@
 #   # Targeted role runs (no reinstall)
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags shell_config
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags direnv
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags git
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_settings
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_extensions
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags vscode_extensions
@@ -81,6 +83,8 @@
   roles:
     - role: common/shell_config
     - role: direnv
+    - role: git
+      tags: [git]
     - role: cursor
     - role: speech_central
       tags: [speech_central]
