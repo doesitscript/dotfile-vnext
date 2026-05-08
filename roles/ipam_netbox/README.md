@@ -29,6 +29,10 @@ This role uses Ansible Vault to manage secrets. You must provide a vault file wi
 
 These variables are used to render an `.env` file, which is then used by Docker Compose.
 
+API-driven seed tasks also require `vault_netbox_api_token`. Use a dedicated
+NetBox token for this repo, not the initial admin/bootstrap token, and keep it
+encrypted in the same vault path as the other NetBox secrets.
+
 ## Tags
 
 ### Ansible Play Tags
@@ -115,6 +119,11 @@ Apply the slice after `vault_netbox_api_token` exists in `vault.yml`:
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
   --tags ipam_netbox_seed_server_225_model
 ```
+
+Do not wire the seed path to an ad hoc or placeholder-looking admin token. The
+apply tag is the point where NetBox starts becoming a source of truth for this
+repo, so the token should be intentionally named, write-scoped for automation,
+and stored as `vault_netbox_api_token`.
 
 ## Example Playbook
 

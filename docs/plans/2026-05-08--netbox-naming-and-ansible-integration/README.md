@@ -111,6 +111,10 @@ Current implementation note:
 - The apply path requires `vault_netbox_api_token` in `vault.yml`.
 - The current vault contains NetBox database/superuser secrets but not the API
   token yet.
+- NetBox currently has an existing write-enabled admin token in the database,
+  but it should not be adopted as the repo integration token. Create a
+  dedicated Ansible/API token and store that encrypted as
+  `vault_netbox_api_token` before running the apply tag.
 
 ## Option 3: Controlled Vocabulary First
 
@@ -197,6 +201,9 @@ run.
 - Option 2 seed path staged in `roles/ipam_netbox/tasks/seed_server_225_model.yml`.
 - No NetBox object mutation has been performed yet because the repo does not
   currently contain `vault_netbox_api_token`.
+- Live inspection found an existing write-enabled admin API token, but it is
+  not vault-backed for this project and should be treated as a bootstrap or
+  throwaway token until rotated or replaced.
 
 ## Guardrails
 
