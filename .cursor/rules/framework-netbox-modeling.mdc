@@ -152,6 +152,32 @@ Decisions already made for this repo. Do not revisit without updating this log.
 
 ---
 
+## Gate 7 — Code-First: Ansible Before UI (Mandatory)
+
+**Never create or modify a NetBox object in the UI without first writing the
+Ansible seed task.**
+
+This is the primary reproducibility protection. When the code is correct and
+complete, `deploy_ipam_netbox.yaml` + the seed tag is the full recovery path
+for a lost NetBox instance.
+
+When code-first is violated:
+- the UI object is unprotected — it disappears if the volume is lost
+- the Ansible code and live NetBox diverge silently
+- the next seed run may create a duplicate or fail with a slug collision
+
+**Required behavior when proposing any NetBox object addition:**
+1. Write the seed task in `roles/ipam_netbox/tasks/` first
+2. Preview with the preview tag
+3. Apply with the apply tag
+4. Never skip to the UI as a shortcut
+
+The only exception is exploratory investigation — checking what a field looks
+like before committing to it. Anything kept must be in Ansible before the
+session ends.
+
+---
+
 ## Required Behavior
 
 - Do not propose embedding metadata in an object name when a native field exists.

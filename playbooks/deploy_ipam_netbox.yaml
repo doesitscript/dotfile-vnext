@@ -17,6 +17,7 @@
 #   ipam_netbox_seed_server_225_model_preview — preview first NetBox object model
 #   ipam_netbox_seed_server_225_model — seed first server-225 NetBox object model
 #   ipam_netbox_migrate_display_names — one-time rename mixed-case display names to lowercase
+#   ipam_netbox_backup_db — pg_dump NetBox postgres to artifacts/netbox-backups/
 #
 # Examples:
 #   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass
@@ -66,3 +67,15 @@
         tasks_from: migrate_display_names
       tags:
         - ipam_netbox_migrate_display_names
+
+- name: Backup NetBox database
+  hosts: server-225-ubuntu
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Run pg_dump and fetch to controller
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: backup_db
+      tags:
+        - ipam_netbox_backup_db

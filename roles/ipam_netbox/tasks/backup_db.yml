@@ -1,0 +1,94 @@
+---
+# On-demand database backup for NetBox.
+# Runs pg_dump inside the running postgres container, saves to the host, then
+# fetches to a local artifacts directory.
+#
+# Usage:
+#   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+#     --tags ipam_netbox_backup_db
+#
+# Output: artifacts/netbox-backups/netbox-<timestamp>.sql.gz (on controller)
+# Also kept on host at: {{ ipam_netbox_data_path }}/backups/
+
+- name: Include vault variables for NetBox backup
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault.yml"
+    name: vault_vars
+  tags:
+    - ipam_netbox
+    - ipam_netbox_backup_db
+
+- name: Set backup timestamp
+  ansible.builtin.set_fact:
+    _ipam_netbox_backup_ts: "{{ ansible_date_time.iso8601_basic_short }}"
+  tags:
+    - ipam_netbox
+    - ipam_netbox_backup_db
+
+- name: Ensure backup directory exists on host
+  ansible.builtin.file:
+    path: "{{ ipam_netbox_data_path }}/backups"
+    state: directory
+    mode: "0750"
+  tags:
+    - ipam_netbox
+    - ipam_netbox_backup_db
+
+- name: Run pg_dump inside postgres container
+  community.docker.docker_container_exec:
+    container: netbox-postgres-1
+    command: >-
+      pg_dump
+      -U {{ vault_vars.vault_netbox_db_user }}
+      -d {{ vault_vars.vault_netbox_db_name }}
+      --format=custom
+      --file=/tmp/netbox-{{ _ipam_netbox_backup_ts }}.dump
+    env:
+      PGPASSWORD: "{{ vault_vars.vault_netbox_db_password }}"
+  register: _pg_dump_result
+  tags:
+    - ipam_netbox
+    - ipam_netbox_backup_db
+
+- name: Copy dump from container to host
+  ansible.builtin.command:
+    cmd: >-
+      docker cp
+      netbox-postgres-1:/tmp/netbox-{{ _ipam_netbox_backup_ts }}.dump
+      {{ ipam_netbox_data_path }}/backups/netbox-{{ _ipam_netbox_backup_ts }}.dump
+  changed_when: true
+  tags:
+    - ipam_netbox
+    - ipam_netbox_backup_db
+
+- name: Ensure local backup artifacts directory exists
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/../artifacts/netbox-backups"
+    state: directory
+    mode: "0750"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_backup_db
+
+- name: Fetch backup to controller
+  ansible.builtin.fetch:
+    src: "{{ ipam_netbox_data_path }}/backups/netbox-{{ _ipam_netbox_backup_ts }}.dump"
+    dest: "{{ playbook_dir }}/../artifacts/netbox-backups/netbox-{{ _ipam_netbox_backup_ts }}.dump"
+    flat: true
+  tags:
+    - ipam_netbox
+    - ipam_netbox_backup_db
+
+- name: Report backup location
+  ansible.builtin.debug:
+    msg:
+      host_path: "{{ ipam_netbox_data_path }}/backups/netbox-{{ _ipam_netbox_backup_ts }}.dump"
+      controller_path: "artifacts/netbox-backups/netbox-{{ _ipam_netbox_backup_ts }}.dump"
+      format: "pg_dump custom format — restore with: pg_restore -U <user> -d <db> <file>"
+      recovery_note: >-
+        To restore: deploy fresh NetBox, then run pg_restore inside the
+        postgres container. See roles/ipam_netbox/README.md recovery section.
+  tags:
+    - ipam_netbox
+    - ipam_netbox_backup_db

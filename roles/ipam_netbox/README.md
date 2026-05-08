@@ -209,6 +209,75 @@ apply tag is the point where NetBox starts becoming a source of truth for this
 repo, so the token should be intentionally named, write-scoped for automation,
 and stored as `vault_netbox_api_token`.
 
+## Reproducibility and Recovery
+
+### The Code-First Rule
+
+**Never create or modify a NetBox object in the UI without first writing the
+Ansible seed task.**
+
+When this rule is followed, the Ansible code in this repo is the full recovery
+path for a lost NetBox instance. No separate backup is needed to recreate the
+source-of-truth model.
+
+### Full Recovery From Code (preferred path)
+
+If NetBox is lost and the code-first rule was followed:
+
+```bash
+# Step 1: redeploy the NetBox stack
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass
+
+# Step 2: re-seed the source-of-truth model
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_seed_server_225_model
+```
+
+Verify at `http://192.168.50.158:8000/` — objects should be back.
+
+### Database Backup (safety net)
+
+Take an on-demand `pg_dump` backup to `artifacts/netbox-backups/`:
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_backup_db
+```
+
+The dump lands at `artifacts/netbox-backups/netbox-<timestamp>.dump` on the
+controller (custom pg_dump format). The same dump is kept at
+`/opt/netbox/backups/` on `server-225-ubuntu`.
+
+Backups are git-ignored — they are binary artifacts, not source files.
+
+### Restoring From a Database Backup
+
+```bash
+# Step 1: deploy a fresh NetBox stack (creates empty database)
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass
+
+# Step 2: copy the backup file to the host
+ansible server-225-ubuntu -m ansible.builtin.copy \
+  -a "src=artifacts/netbox-backups/<file>.dump dest=/tmp/<file>.dump"
+
+# Step 3: restore into the running postgres container
+# (ssh to server-225-ubuntu as root/sudo)
+docker cp /tmp/<file>.dump netbox-postgres-1:/tmp/<file>.dump
+docker exec -e PGPASSWORD=<db-password> netbox-postgres-1 \
+  pg_restore -U netbox -d netbox --clean /tmp/<file>.dump
+
+# Step 4: restart NetBox to pick up restored data
+docker compose -f /opt/netbox/docker-compose.yml restart netbox netbox-worker
+```
+
+The DB password is in `vault.yml` under `vault_netbox_db_password`.
+
+### When to Back Up
+
+- Before any significant NetBox schema or data migration
+- Before upgrading the NetBox version (`ipam_netbox_version`)
+- Periodically as part of homelab maintenance
+
 ## Shadow Dynamic Inventory
 
 `inventory/netbox.yml` is a shadow inventory source for comparison only. It
