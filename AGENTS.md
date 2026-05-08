@@ -82,6 +82,14 @@ Include:
     wrappers, sandbox temp vars, or local runtime workarounds out of
     user-facing commands unless the user explicitly asks for the exact command
     Codex must use from inside its sandbox.
+12. NetBox is the source of truth for host, VM, IP, platform, role, and site
+    facts. Before naming an object, embedding metadata in a name, or adding a
+    custom field, apply the gates in `framework-netbox-modeling.mdc`:
+    - native field before custom field
+    - tag before custom field
+    - name equals slug (lowercase-kebab) except proper product names
+    - object hierarchy: Site → Cluster → VM; Site → Device
+    - IPs belong to interfaces, not directly to objects
 
 ## Research Expectations
 

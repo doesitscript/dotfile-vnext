@@ -1,0 +1,163 @@
+---
+description: NetBox modeling conventions and gates for this repo. Applies to any work that touches NetBox objects, Ansible NetBox modules, nb_inventory, or naming decisions for hosts, VMs, sites, roles, platforms, or tags.
+alwaysApply: true
+---
+
+# NetBox Modeling — Conventions and Gates
+
+This rule applies to any work that:
+- adds or modifies NetBox objects (via Ansible modules or direct API)
+- proposes names for hosts, VMs, sites, roles, platforms, tags, or clusters
+- touches `inventory/netbox.yml`, `roles/ipam_netbox/`, or `nb_inventory` configuration
+- makes a decision about where to put metadata (name vs field vs tag vs custom field)
+
+The canonical planning artifact for this integration is:
+`docs/plans/2026-05-08--netbox-naming-and-ansible-integration/`
+
+---
+
+## Gate 1 — Native Field Before Custom Field (Mandatory)
+
+Before proposing a new custom field or embedding a concept in an object name:
+
+1. Check whether NetBox has a native field that already carries this meaning.
+2. If yes, use the native field. Do not duplicate it in a custom field or in the
+   name.
+3. Only reach for a custom field after confirming no native field fits.
+
+| Concept | NetBox native field |
+|---|---|
+| OS or software stack | `platform` |
+| Host function | `device_role` or `virtual_machine_role` |
+| Physical hardware model | `device_type` (manufacturer + model) |
+| Environment / location | `site` |
+| Virtualization layer | `cluster_type` + `cluster` |
+| VM placement | `cluster` (assigns VM to a Hyper-V cluster, etc.) |
+| Automation ownership | `tag: ansible-managed` |
+| Network address | `ip_address` assigned to interface |
+| Ownership or scoping labels | `tag` (seed it first) |
+
+If none of the above fit and a custom field is genuinely needed, document the
+decision with a note in `docs/plans/2026-05-08--netbox-naming-and-ansible-integration/README.md`
+before writing the Ansible task.
+
+---
+
+## Gate 2 — Object Hierarchy (Required Before Placing Any Object)
+
+NetBox's physical and virtual hierarchies are:
+
+```
+Physical:      Site → (optional Location) → Device
+Virtual:       Site → Cluster Type → Cluster → Virtual Machine → Interface → IP
+Networking:    Site → Prefix → IP Address
+```
+
+Before adding a new object, state explicitly:
+- Where it sits in the hierarchy above
+- What parent object it belongs to
+- Whether a site, cluster, or device already exists to receive it
+
+Do not create a VM without a cluster. Do not assign IPs without creating the
+interface first. Do not add a device without a site.
+
+---
+
+## Gate 3 — Tags Before Custom Fields (Controlled Vocabulary)
+
+Tags are NetBox's first-class controlled-vocabulary layer.
+
+Before adding a custom field to express a boolean, category, or ownership
+label: check whether a tag already expresses it or can be seeded to express it.
+
+Current repo-seeded tags (source of truth: `roles/ipam_netbox/defaults/main.yml`):
+
+| Tag slug | Meaning |
+|---|---|
+| `ansible-managed` | Object state owned by this repo |
+| `homelab` | Scoped to this homelab environment |
+| `hyperv` | Hyper-V virtualization layer |
+| `docker` | Docker runtime layer |
+| `infra` | Infrastructure service or host |
+
+New tags should be seeded in `roles/ipam_netbox/tasks/seed_tags.yml` before
+being referenced in any seed or inventory task.
+
+---
+
+## Gate 4 — Naming Convention (Required Before Writing Any Object Name)
+
+**Rule: name equals slug for objects this repo controls.**
+
+- Use lowercase-kebab format: `hyperv-host`, `docker-engine`, `homelab`
+- No spaces in display names
+- No mixed case unless the value is a proper product name
+- Slugs are always lowercase-kebab — enforced by the NetBox API
+
+**Exception — proper product names:**
+Keep vendor/product canonical casing. Do not invent lowercase variants.
+
+| Correct | Wrong |
+|---|---|
+| `Windows Server 2025` | `windows server 2025` |
+| `Ubuntu 24.04` | `ubuntu 24.04` |
+
+**Why name == slug for everything else:**
+`nb_inventory` groups hosts by slug. When display name and slug diverge, reading
+`defaults/main.yml` requires knowing which vocabulary is "real." Aligning them
+removes that ambiguity entirely for objects this repo controls.
+
+---
+
+## Gate 5 — IP and Interface Modeling
+
+IPs belong to interfaces, not to devices or VMs directly.
+
+Required order when adding an IP:
+1. Ensure the VM or device exists
+2. Create or confirm the interface (`netbox_vm_interface` or `netbox_interface`)
+3. Create the IP address assigned to that interface (`netbox_ip_address`)
+4. Set the primary IP on the VM or device as a final step
+
+Never assign an IP without an interface. Never skip the primary-IP step if this
+is the management address.
+
+---
+
+## Gate 6 — nb_inventory Design Check
+
+Before adding a new NetBox object type or field, ask:
+> "Will `nb_inventory` be able to group by this naturally?"
+
+`nb_inventory` groups by: `device_roles`, `platforms`, `sites`, `clusters`,
+`cluster_types`, `cluster_groups`, `tags`, and `tenants`.
+
+Design objects to land in natural `nb_inventory` groups. If a group cannot be
+derived from native fields + tags, that is a signal to add a tag or use a
+native field more precisely — not a signal to add a custom field.
+
+---
+
+## Naming Decision Log
+
+Decisions already made for this repo. Do not revisit without updating this log.
+
+| Decision | Rationale |
+|---|---|
+| VM name stays as `server-225-ubuntu` until rebuild | Rename at rebuild; do not rename live infra in IPAM |
+| Compact names (`s225-dkr-01`) are the target VM naming shape | Scope code + function code + sequence; details in NetBox fields |
+| `s225` scope code deferred — not yet in NetBox | Needs a decision: custom field, cluster-derived, or naming-only |
+| Service endpoints (port-proxies) not yet in NetBox | Keep in Ansible inventory until service modeling is decided |
+| Device type `custom-server` used for homelab physical hardware | No vendor model exists; placeholder until real hardware is modeled |
+
+---
+
+## Required Behavior
+
+- Do not propose embedding metadata in an object name when a native field exists.
+- Do not propose a custom field when a tag or native field fits.
+- Do not write a seed task without checking the object hierarchy first.
+- Do not introduce a new display name without checking Gate 4.
+- Do not create an IP without an interface (Gate 5).
+- When adding a new object type that is not in the current seeded model, state
+  where it fits in the hierarchy and which gates were checked.
