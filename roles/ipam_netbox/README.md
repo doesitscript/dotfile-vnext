@@ -31,7 +31,8 @@ These variables are used to render an `.env` file, which is then used by Docker 
 
 API-driven seed tasks also require `vault_netbox_api_token`. Use a dedicated
 NetBox token for this repo, not the initial admin/bootstrap token, and keep it
-encrypted in the same vault path as the other NetBox secrets.
+encrypted in the local root `vault.yml`. That file is intentionally ignored by
+Git in this repo.
 
 ## Tags
 
@@ -45,6 +46,7 @@ These control which tasks run when `--tags` is passed to `ansible-playbook`.
 | `ipam_netbox_present` | Deploy path only (directories, config, images, compose up) |
 | `ipam_netbox_absent` | Remove path only (compose down) |
 | `ipam_netbox_smoke_test` | Health check only — confirms the web UI is responding |
+| `ipam_netbox_api_token` | Ensures the dedicated repo NetBox API token exists from vault |
 | `ipam_netbox_seed_tags` | Seeds canonical object tags into NetBox via the API (requires `netbox.netbox` collection) |
 | `ipam_netbox_seed_server_225_model_preview` | Preview the first Server-225 NetBox object model without API mutation |
 | `ipam_netbox_seed_server_225_model` | Seed the first Server-225 NetBox object model via the API |
@@ -61,6 +63,10 @@ ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass --tags ipam_
 # Preview the first NetBox source-of-truth modeling slice
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
   --tags ipam_netbox_seed_server_225_model_preview
+
+# Ensure the dedicated repo API token exists from encrypted vault data
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_api_token
 
 # Remove NetBox (combine with the absent state variable)
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
@@ -124,6 +130,13 @@ Do not wire the seed path to an ad hoc or placeholder-looking admin token. The
 apply tag is the point where NetBox starts becoming a source of truth for this
 repo, so the token should be intentionally named, write-scoped for automation,
 and stored as `vault_netbox_api_token`.
+
+## Shadow Dynamic Inventory
+
+`inventory/netbox.yml` is a shadow inventory source for comparison only. It
+uses the NetBox inventory plugin and reads the API token from `NETBOX_TOKEN`.
+Do not switch playbooks to this inventory until its generated groups and host
+vars have been compared against `inventory/inventory.yaml`.
 
 ## Example Playbook
 

@@ -1,0 +1,65 @@
+---
+- name: Require NetBox API token value for API token bootstrap
+  ansible.builtin.assert:
+    that:
+      - vault_vars.vault_netbox_api_token is defined
+      - vault_vars.vault_netbox_api_token | length > 0
+      - vault_vars.vault_netbox_superuser_name is defined
+      - vault_vars.vault_netbox_superuser_name | length > 0
+    fail_msg: >-
+      vault_netbox_api_token and vault_netbox_superuser_name are required in
+      vault.yml before NetBox API token bootstrap can run.
+  tags:
+    - ipam_netbox
+    - ipam_netbox_api_token
+    - ipam_netbox_seed_tags
+    - ipam_netbox_seed_server_225_model
+
+- name: Ensure dedicated NetBox API token exists
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - exec
+      - -T
+      - -e
+      - DOTFILE_VNEXT_NETBOX_API_TOKEN
+      - -e
+      - DOTFILE_VNEXT_NETBOX_API_TOKEN_USER
+      - -e
+      - DOTFILE_VNEXT_NETBOX_API_TOKEN_DESCRIPTION
+      - netbox
+      - /opt/netbox/venv/bin/python
+      - /opt/netbox/netbox/manage.py
+      - shell
+      - -c
+      - >-
+        from django.contrib.auth import get_user_model;
+        from users.models import Token;
+        import os;
+        user = get_user_model().objects.get(username=os.environ["DOTFILE_VNEXT_NETBOX_API_TOKEN_USER"]);
+        description = os.environ["DOTFILE_VNEXT_NETBOX_API_TOKEN_DESCRIPTION"];
+        key = os.environ["DOTFILE_VNEXT_NETBOX_API_TOKEN"];
+        token = Token.objects.filter(user=user, description=description).first();
+        created = token is None;
+        token = token or Token(user=user, description=description);
+        token.key = key;
+        token.write_enabled = True;
+        token.save();
+        Token.objects.filter(user=user, description=description).exclude(pk=token.pk).delete();
+        print("created" if created else "updated")
+  args:
+    chdir: "{{ ipam_netbox_data_path }}"
+  environment:
+    DOTFILE_VNEXT_NETBOX_API_TOKEN: "{{ vault_vars.vault_netbox_api_token }}"
+    DOTFILE_VNEXT_NETBOX_API_TOKEN_USER: "{{ vault_vars.vault_netbox_superuser_name }}"
+    DOTFILE_VNEXT_NETBOX_API_TOKEN_DESCRIPTION: "{{ ipam_netbox_api_token_description }}"
+  become: true
+  changed_when: "'created' in netbox_api_token_bootstrap.stdout"
+  register: netbox_api_token_bootstrap
+  no_log: true
+  tags:
+    - ipam_netbox
+    - ipam_netbox_api_token
+    - ipam_netbox_seed_tags
+    - ipam_netbox_seed_server_225_model

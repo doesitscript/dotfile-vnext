@@ -19,6 +19,19 @@
     - ipam_netbox
     - ipam_netbox_seed_tags
 
+- name: Ensure dedicated NetBox API token before tag seeding
+  ansible.builtin.include_tasks:
+    file: ensure_api_token.yml
+    apply:
+      tags:
+        - ipam_netbox
+        - ipam_netbox_api_token
+        - ipam_netbox_seed_tags
+  tags:
+    - ipam_netbox
+    - ipam_netbox_api_token
+    - ipam_netbox_seed_tags
+
 # Seed canonical NetBox object tags via the NetBox API.
 #
 # These tags are applied to objects WITHIN NetBox (devices, prefixes, IPs, VMs, etc.)

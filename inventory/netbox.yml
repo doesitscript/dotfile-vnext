@@ -1,0 +1,22 @@
+---
+plugin: netbox.netbox.nb_inventory
+api_endpoint: http://192.168.50.158:8000
+token: "{{ lookup('env', 'NETBOX_TOKEN') }}"
+validate_certs: false
+config_context: false
+interfaces: true
+group_by:
+  - sites
+  - tags
+  - device_roles
+  - platforms
+  - cluster
+  - is_virtual
+query_filters:
+  - tag: ansible-managed
+device_query_filters:
+  - tag: ansible-managed
+vm_query_filters:
+  - tag: ansible-managed
+compose:
+  ansible_host: primary_ip4

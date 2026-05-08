@@ -44,6 +44,19 @@
     - ipam_netbox
     - ipam_netbox_seed_server_225_model
 
+- name: Ensure dedicated NetBox API token before server-225 model seeding
+  ansible.builtin.include_tasks:
+    file: ensure_api_token.yml
+    apply:
+      tags:
+        - ipam_netbox
+        - ipam_netbox_api_token
+        - ipam_netbox_seed_server_225_model
+  tags:
+    - ipam_netbox
+    - ipam_netbox_api_token
+    - ipam_netbox_seed_server_225_model
+
 - name: Seed server-225 NetBox tags
   netbox.netbox.netbox_tag:
     netbox_url: "{{ ipam_netbox_api_url }}"
@@ -221,7 +234,7 @@
       name: "{{ ipam_netbox_server_225_model.virtual_machine.name }}"
       cluster: "{{ ipam_netbox_server_225_model.virtual_machine.cluster }}"
       site: "{{ ipam_netbox_server_225_model.virtual_machine.site }}"
-      role: "{{ ipam_netbox_server_225_model.virtual_machine.role }}"
+      virtual_machine_role: "{{ ipam_netbox_server_225_model.virtual_machine.role }}"
       platform: "{{ ipam_netbox_server_225_model.virtual_machine.platform }}"
       status: "{{ ipam_netbox_server_225_model.virtual_machine.status }}"
       vcpus: "{{ ipam_netbox_server_225_model.virtual_machine.vcpus }}"

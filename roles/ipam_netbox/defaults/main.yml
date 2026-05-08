@@ -12,6 +12,7 @@ ipam_netbox_remove_volumes_on_absent: false
 # The LAN portproxy path is reachable from mac-dev even when the routed guest
 # subnet is not reachable from every controller process.
 ipam_netbox_api_url: "http://{{ hostvars['server-225-win'].host_ip | default(ansible_host) }}:{{ ipam_netbox_http_port.split(':')[0] }}"
+ipam_netbox_api_token_description: dotfile-vnext Ansible automation
 
 ipam_netbox_server_225_model:
   site:
@@ -66,22 +67,22 @@ ipam_netbox_server_225_model:
       slug: hyperv
   cluster:
     name: server-225-hyperv
-    cluster_type: Hyper-V
-    site: Homelab
+    cluster_type: hyperv
+    site: homelab
     status: active
   device:
     name: server-225
-    device_type: Custom Server
-    device_role: Hyper-V host
-    platform: Windows Server 2025
-    site: Homelab
+    device_type: custom-server
+    device_role: hyperv-host
+    platform: windows-server-2025
+    site: homelab
     status: active
   virtual_machine:
     name: server-225-ubuntu
     cluster: server-225-hyperv
-    site: Homelab
-    role: Docker engine
-    platform: Ubuntu 24.04
+    site: homelab
+    role: docker-engine
+    platform: ubuntu-24-04
     status: active
     vcpus: 4
     memory: 8192

@@ -204,6 +204,14 @@ run.
 - Live inspection found an existing write-enabled admin API token, but it is
   not vault-backed for this project and should be treated as a bootstrap or
   throwaway token until rotated or replaced.
+- A dedicated repo-owned NetBox API token is now stored in local encrypted
+  `vault.yml` as `vault_netbox_api_token`. That file is intentionally ignored
+  by Git in this repo.
+- The first `server-225` model has been applied to NetBox and verified
+  idempotent.
+- Shadow dynamic inventory is staged at `inventory/netbox.yml`. It reads its
+  token from `NETBOX_TOKEN` and should be used for comparison only until its
+  groups and host vars are reviewed.
 
 ## Guardrails
 
