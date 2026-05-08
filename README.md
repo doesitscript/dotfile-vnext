@@ -2,6 +2,14 @@
 
 Multi-node AI infrastructure automation using Ansible.
 
+## Current Transition: NetBox Source Of Truth
+
+This repo is now moving into a NetBox integration phase. NetBox should become
+the preferred source of truth for durable infrastructure facts, while Ansible
+remains the execution layer.
+
+See [docs/plans/2026-05-08--netbox-transition.md](docs/plans/2026-05-08--netbox-transition.md).
+
 ## Execution Preference
 
 Prefer native `ansible-playbook` commands and focused playbooks over custom CLI
