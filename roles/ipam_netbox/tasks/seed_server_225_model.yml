@@ -1,0 +1,289 @@
+---
+- name: Include vault variables for NetBox API token
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault.yml"
+    name: vault_vars
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+    - ipam_netbox_seed_server_225_model_preview
+
+- name: Preview server-225 NetBox model seed
+  ansible.builtin.debug:
+    msg:
+      api_url: "{{ ipam_netbox_api_url }}"
+      change_class: "idempotent NetBox source-of-truth modeling"
+      apply: "ansible-playbook playbooks/deploy_ipam_netbox.yaml --tags ipam_netbox_seed_server_225_model"
+      verify:
+        - "NetBox UI/API contains the server-225 site/device/cluster/VM objects"
+        - "NetBox VM server-225-ubuntu has primary IP 192.168.137.10/24"
+      undo: "manual NetBox object cleanup for this first modeling slice"
+      model:
+        site: "{{ ipam_netbox_server_225_model.site }}"
+        tags: "{{ ipam_netbox_server_225_model.tags | map(attribute='slug') | list }}"
+        platforms: "{{ ipam_netbox_server_225_model.platforms | map(attribute='slug') | list }}"
+        device_roles: "{{ ipam_netbox_server_225_model.device_roles | map(attribute='slug') | list }}"
+        cluster: "{{ ipam_netbox_server_225_model.cluster.name }}"
+        device: "{{ ipam_netbox_server_225_model.device.name }}"
+        virtual_machine: "{{ ipam_netbox_server_225_model.virtual_machine.name }}"
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+    - ipam_netbox_seed_server_225_model_preview
+
+- name: Require NetBox API token for server-225 model seeding
+  ansible.builtin.assert:
+    that:
+      - vault_vars.vault_netbox_api_token is defined
+      - vault_vars.vault_netbox_api_token | length > 0
+    fail_msg: >-
+      vault_netbox_api_token is required in vault.yml before NetBox API seeding
+      can run. Run the preview tag to inspect the intended model without the
+      token.
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 NetBox tags
+  netbox.netbox.netbox_tag:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      description: "{{ item.description }}"
+      color: "{{ item.color }}"
+    state: present
+  loop: "{{ ipam_netbox_server_225_model.tags }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 NetBox site
+  netbox.netbox.netbox_site:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_server_225_model.site.name }}"
+      slug: "{{ ipam_netbox_server_225_model.site.slug }}"
+      status: "{{ ipam_netbox_server_225_model.site.status }}"
+      time_zone: "{{ ipam_netbox_server_225_model.site.time_zone }}"
+      tags:
+        - homelab
+        - ansible-managed
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 NetBox manufacturers
+  netbox.netbox.netbox_manufacturer:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_server_225_model.manufacturers }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 NetBox device types
+  netbox.netbox.netbox_device_type:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      model: "{{ item.model }}"
+      slug: "{{ item.slug }}"
+      manufacturer: "{{ item.manufacturer }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_server_225_model.device_types }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 NetBox platforms
+  netbox.netbox.netbox_platform:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_server_225_model.platforms }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 NetBox device and VM roles
+  netbox.netbox.netbox_device_role:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      color: "{{ item.color }}"
+      vm_role: "{{ item.vm_role }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_server_225_model.device_roles }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 NetBox cluster types
+  netbox.netbox.netbox_cluster_type:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_server_225_model.cluster_types }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 NetBox cluster
+  netbox.netbox.netbox_cluster:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_server_225_model.cluster.name }}"
+      cluster_type: "{{ ipam_netbox_server_225_model.cluster.cluster_type }}"
+      site: "{{ ipam_netbox_server_225_model.cluster.site }}"
+      status: "{{ ipam_netbox_server_225_model.cluster.status }}"
+      tags:
+        - ansible-managed
+        - homelab
+        - hyperv
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 NetBox device
+  netbox.netbox.netbox_device:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_server_225_model.device.name }}"
+      device_type: "{{ ipam_netbox_server_225_model.device.device_type }}"
+      device_role: "{{ ipam_netbox_server_225_model.device.device_role }}"
+      platform: "{{ ipam_netbox_server_225_model.device.platform }}"
+      site: "{{ ipam_netbox_server_225_model.device.site }}"
+      cluster: "{{ ipam_netbox_server_225_model.cluster.name }}"
+      status: "{{ ipam_netbox_server_225_model.device.status }}"
+      tags:
+        - ansible-managed
+        - homelab
+        - hyperv
+        - infra
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 Ubuntu VM
+  netbox.netbox.netbox_virtual_machine:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_server_225_model.virtual_machine.name }}"
+      cluster: "{{ ipam_netbox_server_225_model.virtual_machine.cluster }}"
+      site: "{{ ipam_netbox_server_225_model.virtual_machine.site }}"
+      role: "{{ ipam_netbox_server_225_model.virtual_machine.role }}"
+      platform: "{{ ipam_netbox_server_225_model.virtual_machine.platform }}"
+      status: "{{ ipam_netbox_server_225_model.virtual_machine.status }}"
+      vcpus: "{{ ipam_netbox_server_225_model.virtual_machine.vcpus }}"
+      memory: "{{ ipam_netbox_server_225_model.virtual_machine.memory }}"
+      tags:
+        - ansible-managed
+        - homelab
+        - hyperv
+        - docker
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 Ubuntu VM interface
+  netbox.netbox.netbox_vm_interface:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      virtual_machine: "{{ ipam_netbox_server_225_model.vm_interface.virtual_machine }}"
+      name: "{{ ipam_netbox_server_225_model.vm_interface.name }}"
+      tags:
+        - ansible-managed
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 Ubuntu VM IP address
+  netbox.netbox.netbox_ip_address:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      address: "{{ ipam_netbox_server_225_model.vm_ip.address }}"
+      description: "{{ ipam_netbox_server_225_model.vm_ip.description }}"
+      assigned_object:
+        virtual_machine: "{{ ipam_netbox_server_225_model.vm_interface.virtual_machine }}"
+        name: "{{ ipam_netbox_server_225_model.vm_interface.name }}"
+      tags:
+        - ansible-managed
+        - homelab
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Set server-225 Ubuntu VM primary IPv4
+  netbox.netbox.netbox_virtual_machine:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_server_225_model.virtual_machine.name }}"
+      cluster: "{{ ipam_netbox_server_225_model.virtual_machine.cluster }}"
+      primary_ip4: "{{ ipam_netbox_server_225_model.vm_ip.address }}"
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model

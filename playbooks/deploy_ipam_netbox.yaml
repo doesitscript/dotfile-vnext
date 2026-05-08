@@ -13,11 +13,14 @@
 #   ipam_netbox_absent   — remove path only
 #   ipam_netbox_smoke_test — health check only
 #   ipam_netbox_seed_tags  — seed canonical object tags into NetBox via API
+#   ipam_netbox_seed_server_225_model_preview — preview first NetBox object model
+#   ipam_netbox_seed_server_225_model — seed first server-225 NetBox object model
 #
 # Examples:
 #   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass
 #   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass --tags ipam_netbox_smoke_test
 #   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass --tags ipam_netbox_seed_tags
+#   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass --tags ipam_netbox_seed_server_225_model_preview
 #   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass -e ipam_netbox_state=absent
 
 - name: Deploy Source of Truth (NetBox)
@@ -38,3 +41,15 @@
         tasks_from: seed_tags
       tags:
         - ipam_netbox_seed_tags
+
+- name: Seed server-225 NetBox model
+  hosts: server-225-ubuntu
+  gather_facts: false
+  tasks:
+    - name: Seed server-225 NetBox model via API
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: seed_server_225_model
+      tags:
+        - ipam_netbox_seed_server_225_model
+        - ipam_netbox_seed_server_225_model_preview

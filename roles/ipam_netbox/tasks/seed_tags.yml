@@ -1,4 +1,24 @@
 ---
+- name: Include vault variables for NetBox API token
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault.yml"
+    name: vault_vars
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_tags
+
+- name: Require NetBox API token for tag seeding
+  ansible.builtin.assert:
+    that:
+      - vault_vars.vault_netbox_api_token is defined
+      - vault_vars.vault_netbox_api_token | length > 0
+    fail_msg: >-
+      vault_netbox_api_token is required in vault.yml before NetBox API seeding
+      can run.
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_tags
+
 # Seed canonical NetBox object tags via the NetBox API.
 #
 # These tags are applied to objects WITHIN NetBox (devices, prefixes, IPs, VMs, etc.)
@@ -16,7 +36,7 @@
 #
 - name: Seed canonical NetBox object tags
   netbox.netbox.netbox_tag:
-    netbox_url: "http://{{ ansible_host }}:{{ ipam_netbox_http_port.split(':')[0] }}"
+    netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
     validate_certs: false
     data:

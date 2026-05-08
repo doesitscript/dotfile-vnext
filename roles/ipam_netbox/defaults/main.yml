@@ -7,3 +7,87 @@ ipam_netbox_user: root
 ipam_netbox_group: root
 ipam_netbox_http_port: "8000:8080"
 ipam_netbox_remove_volumes_on_absent: false
+
+# API endpoint used by controller-side NetBox modules.
+# The LAN portproxy path is reachable from mac-dev even when the routed guest
+# subnet is not reachable from every controller process.
+ipam_netbox_api_url: "http://{{ hostvars['server-225-win'].host_ip | default(ansible_host) }}:{{ ipam_netbox_http_port.split(':')[0] }}"
+
+ipam_netbox_server_225_model:
+  site:
+    name: Homelab
+    slug: homelab
+    status: active
+    time_zone: America/Chicago
+  tags:
+    - name: ansible-managed
+      slug: ansible-managed
+      description: Object state owned by the dotfile-vnext Ansible repo
+      color: "0d6efd"
+    - name: homelab
+      slug: homelab
+      description: Scoped to this homelab environment
+      color: "198754"
+    - name: hyperv
+      slug: hyperv
+      description: Hyper-V virtualization layer
+      color: "6c757d"
+    - name: docker
+      slug: docker
+      description: Docker runtime layer
+      color: "0dcaf0"
+    - name: infra
+      slug: infra
+      description: Infrastructure service or host
+      color: "6610f2"
+  manufacturers:
+    - name: Custom
+      slug: custom
+  device_types:
+    - model: Custom Server
+      slug: custom-server
+      manufacturer: Custom
+  platforms:
+    - name: Windows Server 2025
+      slug: windows-server-2025
+    - name: Ubuntu 24.04
+      slug: ubuntu-24-04
+  device_roles:
+    - name: Hyper-V host
+      slug: hyperv-host
+      color: "6c757d"
+      vm_role: false
+    - name: Docker engine
+      slug: docker-engine
+      color: "0dcaf0"
+      vm_role: true
+  cluster_types:
+    - name: Hyper-V
+      slug: hyperv
+  cluster:
+    name: server-225-hyperv
+    cluster_type: Hyper-V
+    site: Homelab
+    status: active
+  device:
+    name: server-225
+    device_type: Custom Server
+    device_role: Hyper-V host
+    platform: Windows Server 2025
+    site: Homelab
+    status: active
+  virtual_machine:
+    name: server-225-ubuntu
+    cluster: server-225-hyperv
+    site: Homelab
+    role: Docker engine
+    platform: Ubuntu 24.04
+    status: active
+    vcpus: 4
+    memory: 8192
+  vm_interface:
+    virtual_machine: server-225-ubuntu
+    name: eth0
+  vm_ip:
+    address: 192.168.137.10/24
+    description: server-225 Ubuntu VM routed private subnet interface

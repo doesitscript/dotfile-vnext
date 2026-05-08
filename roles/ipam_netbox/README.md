@@ -42,6 +42,8 @@ These control which tasks run when `--tags` is passed to `ansible-playbook`.
 | `ipam_netbox_absent` | Remove path only (compose down) |
 | `ipam_netbox_smoke_test` | Health check only — confirms the web UI is responding |
 | `ipam_netbox_seed_tags` | Seeds canonical object tags into NetBox via the API (requires `netbox.netbox` collection) |
+| `ipam_netbox_seed_server_225_model_preview` | Preview the first Server-225 NetBox object model without API mutation |
+| `ipam_netbox_seed_server_225_model` | Seed the first Server-225 NetBox object model via the API |
 
 Examples:
 
@@ -51,6 +53,10 @@ ansible-playbook playbooks/site.yaml --tags ipam_netbox
 
 # Re-run the smoke test without re-deploying
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass --tags ipam_netbox_smoke_test
+
+# Preview the first NetBox source-of-truth modeling slice
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_seed_server_225_model_preview
 
 # Remove NetBox (combine with the absent state variable)
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
@@ -83,6 +89,32 @@ GET /api/extras/tags/ansible-managed/tagged-objects/
 The `netbox.netbox` collection (`ansible-galaxy collection install netbox.netbox`)
 and a NetBox API token are required. The token should be stored in Ansible Vault
 under `vault_netbox_api_token` when this layer is wired.
+
+## First Server-225 Model Slice
+
+The first NetBox modeling slice is intentionally small. It seeds only enough
+objects to represent the current Server-225 world:
+
+- site: `Homelab`
+- device: `server-225`
+- cluster: `server-225-hyperv`
+- VM: `server-225-ubuntu`
+- platforms: Windows Server 2025 and Ubuntu 24.04
+- tags: `ansible-managed`, `homelab`, `hyperv`, `docker`, `infra`
+
+Preview the slice before mutation:
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_seed_server_225_model_preview
+```
+
+Apply the slice after `vault_netbox_api_token` exists in `vault.yml`:
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_seed_server_225_model
+```
 
 ## Example Playbook
 
