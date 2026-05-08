@@ -1,0 +1,22 @@
+services:
+  semaphore:
+    image: docker.io/semaphoreui/semaphore:{{ ansible_ui_semaphore_version }}
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "{{ ansible_ui_semaphore_http_port }}"
+    volumes:
+      - semaphore-data:/etc/semaphore
+      - semaphore-tmp:/tmp/semaphore
+    healthcheck:
+      test: curl -f http://localhost:3000/ || exit 1
+      start_period: 30s
+      timeout: 5s
+      interval: 15s
+      retries: 5
+
+volumes:
+  semaphore-data:
+    driver: local
+  semaphore-tmp:
+    driver: local

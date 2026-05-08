@@ -1,0 +1,51 @@
+---
+- name: Include vault variables
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault.yml"
+    name: vault_vars
+
+- name: Ensure Semaphore data directories exist
+  ansible.builtin.file:
+    path: "{{ ansible_ui_semaphore_data_path }}/{{ item }}"
+    state: directory
+    owner: "{{ ansible_ui_semaphore_user }}"
+    group: "{{ ansible_ui_semaphore_group }}"
+    mode: '0755'
+  loop:
+    - semaphore-data
+    - semaphore-tmp
+
+- name: Render .env file from template
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ ansible_ui_semaphore_data_path }}/.env"
+    owner: "{{ ansible_ui_semaphore_user }}"
+    group: "{{ ansible_ui_semaphore_group }}"
+    mode: '0600'
+    newline_sequence: '\n'
+  no_log: true
+
+- name: Render docker-compose.yml from template
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ ansible_ui_semaphore_data_path }}/docker-compose.yml"
+    owner: "{{ ansible_ui_semaphore_user }}"
+    group: "{{ ansible_ui_semaphore_group }}"
+    mode: '0644'
+    newline_sequence: '\n'
+
+- name: Deploy Semaphore stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ ansible_ui_semaphore_data_path }}"
+    state: present
+  register: semaphore_compose_result
+
+- name: Smoke test Semaphore
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ ansible_ui_semaphore_http_port.split(':')[0] }}/"
+    method: GET
+    status_code: 200
+  register: semaphore_smoke_result
+  until: semaphore_smoke_result.status == 200
+  retries: 10
+  delay: 5

@@ -1,0 +1,39 @@
+---
+argument_specs:
+  main:
+    short_description: Deploy Semaphore Ansible UI using Docker Compose
+    options:
+      ansible_ui_semaphore_state:
+        type: str
+        description: The desired state of the Semaphore stack.
+        choices:
+          - present
+          - absent
+        default: present
+      ansible_ui_semaphore_version:
+        type: str
+        description: The Semaphore image tag to deploy.
+        default: "v2.17.38"
+      ansible_ui_semaphore_data_path:
+        type: str
+        description: The path on the host to store Semaphore data and compose files.
+        default: /opt/semaphore
+      ansible_ui_semaphore_user:
+        type: str
+        description: The user that should own the data directories.
+        default: root
+      ansible_ui_semaphore_group:
+        type: str
+        description: The group that should own the data directories.
+        default: root
+      ansible_ui_semaphore_http_port:
+        type: str
+        description: >-
+          Docker port mapping for the Semaphore web interface.
+          Host port 3001 maps to container port 3000.
+          Port 3000 on the host is reserved for Grafana.
+        default: "3001:3000"
+      ansible_ui_semaphore_remove_volumes_on_absent:
+        type: bool
+        description: Whether to remove Docker volumes when the stack is removed.
+        default: false
