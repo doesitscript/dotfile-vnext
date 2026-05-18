@@ -756,6 +756,51 @@ default in `defaults/main.yml`, even if the initial value is empty:
 # Package version — pin via version contract in inventory/group_vars/all.yaml
 my_role_package_version: ""   # set in version contract, not here
 my_role_package_state: present
+```
+
+---
+
+### NPM CLI Tool Installation Pattern
+
+When adding npm-based CLI tools that should be available system-wide, choose between two patterns based on the tool's purpose and requirements.
+
+**Use Pattern A (npm_global_packages list) when**:
+- Pure convenience utility (man pages, formatters, simple scripts)
+- No version control needed
+- No custom configuration needed
+- Example: `tldr`
+
+**Use Pattern B (dedicated role) when**:
+- AI/LLM infrastructure tool
+- MCP server or infrastructure component
+- Version pinning required
+- Custom configuration needed (e.g., quarantine removal, environment setup)
+- Examples: `codex`, `langfuse-cli`, `supergateway`, `drawio-mcp-server`
+
+**Pattern B canonical implementation**:
+```yaml
+- name: Install tool at pinned version
+  community.general.npm:
+    name: "{{ tool_package_name }}"
+    global: true
+    state: "{{ tool_state }}"
+    executable: "{{ node_npm_executable }}"
+  when: tool_version | default('') | length > 0
+```
+
+**Optional environment.PATH fix**: If a tool installs to the wrong location (e.g., Cursor's node_modules instead of nvm's), add:
+
+```yaml
+  environment:
+    PATH: "{{ (node_npm_executable | dirname) ~ ':' ~ ansible_facts['env']['PATH'] }}"
+```
+
+Only add this when you observe the failure - most packages work fine with just `executable: "{{ node_npm_executable }}"`.
+
+**Decision criteria**: See `roles/common/node/README.md` for full decision tree.
+
+---
+
 ### Vault Variable Naming — `vault_<role>_<field>`
 
 **Rule:** Every vault variable must be prefixed with `vault_`. Variables owned by a role

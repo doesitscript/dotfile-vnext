@@ -41,6 +41,71 @@ assembles a path from `node_default_version` directly will produce a path that d
 not exist. `nvm which {{ node_default_version }}` resolves the alias to the real
 installed version and returns the authoritative path.
 
+## NPM CLI Tool Installation Patterns
+
+This project has two patterns for installing npm-based CLI tools that should be available system-wide (not project-local).
+
+### Pattern A: npm_global_packages List
+
+**When to use**: Pure convenience utilities that don't require version pinning or custom configuration.
+
+**Characteristics**:
+- Listed in `npm_global_packages` in this role's `defaults/main.yml`
+- Installed via shell commands during node setup
+- No version control - gets whatever `npm install -g` provides
+- No lifecycle management (always present)
+- Examples: `tldr`, convenience scripts
+
+**Add a tool here when ALL of these are true**:
+- It's a convenience utility, not infrastructure
+- Breaking changes won't affect project work
+- You don't care what version runs
+- No custom post-install configuration needed
+
+### Pattern B: Dedicated Role
+
+**When to use**: Infrastructure tooling, AI/LLM tools, or anything requiring version control.
+
+**Characteristics**:
+- Own role under `roles/` with defaults, tasks, meta, README
+- Version pinning via `*_tooling_version_contract` in inventory
+- Installed via `community.general.npm` module
+- Full lifecycle control (`present`/`absent`)
+- Custom configuration possible (quarantine removal, etc.)
+- Examples: `codex`, `langfuse-cli`, `supergateway`, `drawio-mcp-server`
+
+**Use this pattern when ANY of these are true**:
+- Tool is part of AI/LLM infrastructure
+- Tool is an MCP server or infrastructure component
+- Version stability is important
+- Tool requires custom configuration
+- User explicitly requests version pinning
+
+### Canonical Installation Pattern (Pattern B)
+
+Most Pattern B roles use this pattern:
+
+```yaml
+- name: Install <tool> at pinned version
+  community.general.npm:
+    name: "{{ tool_package_name }}"
+    global: true
+    state: "{{ tool_state }}"
+    executable: "{{ node_npm_executable }}"
+  when: tool_version | default('') | length > 0
+```
+
+**Optional environment.PATH fix**: If a tool installs to the wrong location (e.g., Cursor's node_modules instead of nvm's), add:
+
+```yaml
+  environment:
+    PATH: "{{ (node_npm_executable | dirname) ~ ':' ~ ansible_facts['env']['PATH'] }}"
+```
+
+Only add this when you observe the failure - most packages work fine without it.
+
+**Troubleshooting**: If a tool installs but isn't available in shell, or you see it in `/Applications/Cursor.app/.../node_modules/` instead of `~/.nvm/versions/node/v20.20.0/lib/node_modules/`, add the environment.PATH block.
+
 ## Variables
 
 | Variable | Default | Description |
