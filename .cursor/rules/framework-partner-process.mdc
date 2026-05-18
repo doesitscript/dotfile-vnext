@@ -138,24 +138,136 @@ If the topic is too novel or under-researched, the agent may summarize current d
 
 ### Mandatory Diagram Requirements
 
-All plans stored under `docs/plans/` MUST include Mermaid diagrams that visualize:
+All plans stored under `docs/plans/` MUST include the following diagram structure:
 
-1. **Architecture / Component Relationships**
-   - Repository structure being modified
-   - External resources and their integration points
-   - Data/control flow between components
+#### 1. Architecture/Structure Diagram (ALWAYS REQUIRED)
 
-2. **Implementation Flow**
-   - Sequential steps or parallel operations
-   - Decision points and conditional paths
-   - Before/after states
+Every plan MUST include an Architecture/Structure diagram showing:
 
-3. **Naming Standards**
-   - File paths, directory structures
-   - Variable names and their sources
-   - Tag hierarchies and relationships
+**Required Elements:**
+- Repository structure being modified (inventory, roles, playbooks, docs)
+- External resources and their integration points
+- Data/control flow between components
+- **Naming schemes** based on NetBox and Ansible best practices
+- Variable names and their sources (version contracts, defaults, vault)
+- Tag hierarchies and playbook wiring
+- File paths and directory organization
 
-**Quality Standards**:
+**Naming Standards Baseline:**
+- Follow NetBox naming conventions (see `framework-netbox-modeling.mdc`)
+  - Use lowercase-kebab for objects: `hyperv-host`, `docker-engine`
+  - Align display name with slug for repo-controlled objects
+  - Native fields before custom fields
+  - Tags before custom fields for controlled vocabulary
+- Follow Ansible naming conventions (see `ansible-coding-standards.mdc`)
+  - Role names: capability-focused, not OS-specific (`speech_central` not `speech_central_mac`)
+  - Variables: `role_name_` prefix for all role variables
+  - Tags: role name prefix for role-specific tags
+  - Use `snake_case` for all YAML/Python naming
+
+**Project Maturity Suggestions:**
+When proposing new components, evaluate against existing patterns and suggest improvements:
+- If current naming is inconsistent, propose alignment
+- If structure violates NetBox/Ansible best practices, suggest refactor
+- If organization creates technical debt, surface the gap
+- Balance "works now" vs "scales to 100 nodes"
+
+**Example Pattern:**
+
+```mermaid
+graph TB
+    subgraph dotfile_vnext [dotfile-vnext Repository]
+        subgraph inventory [Inventory Layer]
+            version_contract[inventory/group_vars/all.yaml<br/>langfuse_tooling_version_contract]
+        end
+        
+        subgraph roles [Role Layer]
+            langfuse_cli[roles/langfuse_cli/<br/>Pattern B: dedicated role]
+            langfuse_defaults[defaults/main.yml<br/>langfuse_cli_version]
+        end
+        
+        subgraph playbooks [Playbook Layer]
+            deploy_dev[playbooks/deploy_development_nodes.yaml<br/>tags: langfuse, langfuse_cli]
+        end
+        
+        subgraph agent_skills [Agent Skills Layer]
+            catalog[roles/common/agent_skills/catalog.yml]
+            langfuse_skill[files/cursor/skills-cursor/langfuse/<br/>symlink via ansible.builtin.git]
+        end
+    end
+    
+    subgraph external [External Resources]
+        langfuse_upstream["langfuse/skills repo<br/>(GitHub)"]
+        npm_registry["langfuse-cli@0.0.10<br/>(npm registry)"]
+    end
+    
+    version_contract -->|"provides version"| langfuse_cli
+    deploy_dev -->|"applies"| langfuse_cli
+    langfuse_cli -->|"installs from"| npm_registry
+    catalog -->|"tracks upstream"| langfuse_upstream
+    langfuse_skill -.->|"cloned via git"| langfuse_upstream
+    
+    style version_contract fill:#2a2a2a
+    style npm_registry fill:#1e3a5f
+    style langfuse_upstream fill:#1e3a5f
+```
+
+#### 2. Capability Routing Diagram (CONDITIONAL)
+
+Include a Capability Routing diagram when the work involves:
+- Runtime decision logic or conditional behavior
+- Multiple execution paths based on state/variables
+- Workflow orchestration across multiple capabilities
+- Gate patterns or capability maturity routing
+
+**Shows:**
+- Decision points and conditional paths
+- Runtime flow through capability gates
+- Dynamic routing based on state or variables
+- Before/after states in workflow
+
+**Example:**
+
+```mermaid
+graph TB
+    user_request[User Request]
+    
+    user_request -->|"evaluate"| pattern_extraction
+    
+    pattern_extraction -->|"adapts into"| capability_gate_a
+    pattern_extraction -->|"adapts into"| capability_gate_b
+    
+    capability_gate_a -->|"implemented by"| ansible_task
+    capability_gate_b -->|"implemented by"| netbox_task
+    
+    ansible_task --> outcome
+    netbox_task --> outcome
+    
+    style user_request fill:#1e3a5f
+    style outcome fill:#2d4a2d
+```
+
+#### 3. Diagram Inventory (ALWAYS REQUIRED AT END)
+
+Every plan MUST end with a "Diagram Inventory" section listing:
+
+**Template:**
+
+```markdown
+## Diagram Inventory
+
+### Diagrams Included
+- **Architecture/Structure Diagram**: Shows repository organization, naming schemes, and integration points
+- **Capability Routing Diagram**: *(if included)* Shows runtime decision flow and conditional paths
+
+### Additional Diagrams Available On Request
+- **Deployment Flow**: Sequential deployment steps across environments
+- **State Transition Diagram**: Object lifecycle and state changes
+- **Integration Sequence**: Detailed API/service interaction timeline
+- **Network Topology**: Host/cluster/network relationships (when infrastructure is in scope)
+```
+
+#### Quality Standards
 
 - **Node Naming**: Use PascalCase, camelCase, or underscores (NO SPACES)
   - Good: `langfuse_role`, `VersionContract`, `externalManaged`
@@ -174,45 +286,13 @@ All plans stored under `docs/plans/` MUST include Mermaid diagrams that visualiz
   - Group related nodes logically
   - Nest when hierarchy is meaningful
 
-**Example Pattern**:
-
-```mermaid
-graph TB
-    subgraph dotfile_vnext [dotfile-vnext Repository]
-        subgraph inventory [Inventory Layer]
-            version_contract[inventory/group_vars/all.yaml<br/>netbox_version_contract]
-        end
-        
-        subgraph roles [Role Layer]
-            ipam_netbox[roles/ipam_netbox/]
-            seed_tasks[tasks/seed_*.yml]
-        end
-        
-        subgraph playbooks [Playbook Layer]
-            deploy_netbox[playbooks/deploy_ipam_netbox.yaml]
-        end
-    end
-    
-    subgraph external [External Resources]
-        netbox_container["netbox:latest-ldap<br/>(Docker Hub)"]
-        netbox_api["NetBox API<br/>(http://localhost:8000)"]
-    end
-    
-    version_contract -->|"provides version"| ipam_netbox
-    deploy_netbox -->|"applies"| ipam_netbox
-    ipam_netbox -->|"pulls image"| netbox_container
-    netbox_container -->|"exposes"| netbox_api
-    seed_tasks -.->|"seeds via"| netbox_api
-    
-    style version_contract fill:#2a2a2a
-    style netbox_container fill:#1e3a5f
-```
-
 This standard ensures:
 - Clear visual communication of complex changes
-- Consistent documentation across all plans
+- Consistent naming aligned with NetBox and Ansible best practices
+- Proactive identification of technical debt and maturity improvements
 - Easier review and understanding for both humans and AI agents
 - Reduced ambiguity in implementation steps
+- Clear inventory of available visualization options
 
 ## Role Transition Signals
 
