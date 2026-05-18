@@ -1,0 +1,13 @@
+---
+- name: Validate langfuse_cli state
+  ansible.builtin.assert:
+    that:
+      - langfuse_cli_state in ["present", "absent"]
+    fail_msg: "langfuse_cli_state must be present or absent."
+
+- name: Include macOS tasks
+  ansible.builtin.include_tasks: mac.yml
+  when: ansible_facts['system'] == "Darwin"
+  tags:
+    - langfuse
+    - langfuse_cli

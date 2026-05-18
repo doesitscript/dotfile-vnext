@@ -48,6 +48,7 @@ Current imported personal-portable skills:
   - `create-rule`
   - `create-skill`
   - `create-subagent`
+  - `langfuse` (marketplace skill - tracing, prompting, and evaluation)
   - `migrate-to-skills`
   - `sdk`
   - `shell`

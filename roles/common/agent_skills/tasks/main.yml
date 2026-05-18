@@ -5,6 +5,13 @@
       - agent_skills_state in ["present", "absent"]
     fail_msg: "agent_skills_state must be present or absent."
 
+- name: Fetch external marketplace skills
+  ansible.builtin.include_tasks: fetch_langfuse.yml
+  when: agent_skills_state == "present"
+  tags:
+    - agent_skills
+    - langfuse
+
 - name: Manage agent skills on enabled Unix-like systems
   when:
     - agent_skills_manage | bool

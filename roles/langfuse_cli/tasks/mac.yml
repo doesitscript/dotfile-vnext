@@ -1,0 +1,13 @@
+---
+- name: Install langfuse-cli at pinned version (macOS)
+  community.general.npm:
+    name: "{{ langfuse_cli_package_name }}"
+    global: true
+    state: "{{ langfuse_cli_state }}"
+    executable: "{{ node_npm_executable }}"
+  environment:
+    PATH: "{{ (node_npm_executable | dirname) ~ ':' ~ ansible_facts['env']['PATH'] }}"
+  when: langfuse_cli_version | default('') | length > 0
+  tags:
+    - langfuse
+    - langfuse_cli

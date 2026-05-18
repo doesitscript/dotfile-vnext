@@ -1,0 +1,29 @@
+---
+- name: Clone langfuse-skills repository to managed cache
+  ansible.builtin.git:
+    repo: https://github.com/langfuse/skills.git
+    dest: "{{ dotfiles_user_home }}/.local/lib/langfuse-skills"
+    version: main
+    update: true
+  tags:
+    - agent_skills
+    - langfuse
+
+- name: Ensure langfuse skill target directory exists
+  ansible.builtin.file:
+    path: "{{ dotfiles_home }}/roles/common/agent_skills/files/cursor/skills-cursor/langfuse"
+    state: directory
+    mode: "0755"
+  tags:
+    - agent_skills
+    - langfuse
+
+- name: Link langfuse skill from managed cache
+  ansible.builtin.file:
+    src: "{{ dotfiles_user_home }}/.local/lib/langfuse-skills/skills/langfuse"
+    dest: "{{ dotfiles_home }}/roles/common/agent_skills/files/cursor/skills-cursor/langfuse"
+    state: link
+    force: true
+  tags:
+    - agent_skills
+    - langfuse
