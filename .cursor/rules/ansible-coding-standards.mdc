@@ -640,6 +640,122 @@ These are project-level design decisions that must be followed by every agent an
 new role. They are not suggestions. Violating them introduces the exact class of bug they
 were written to prevent.
 
+
+### Package Version Pinning — `state: present` + version contract, not `state: latest`
+
+**Rule:** Capability-managed packages must never use `state: latest`, `state: newest`,
+or unversioned upgrade paths as the default install posture. The desired version must
+be tracked in a version contract variable and the install task must pin to that version
+explicitly.
+
+**Why:** `state: latest` resolves the version at Ansible run time, not at planning time.
+This means the same playbook run produces different results depending on when it runs.
+Version contracts make upgrades a deliberate code change (bump the variable, commit,
+apply) rather than a side effect of re-running automation.
+
+**Exception — `package_manager` role:** `upgrade_all: true` in `roles/package_manager`
+is intentional system-maintenance behavior and is not covered by this rule. It is
+explicitly NOT the model for capability-managed packages.
+
+#### Pattern by package manager
+
+**npm (nvm-managed globals):**
+```yaml
+# In inventory/group_vars/all.yaml — version contract
+my_tooling_version_contract:
+  cli: "1.2.3"
+
+# In role defaults/main.yml
+my_role_package_version: "{{ my_tooling_version_contract.cli | default('') }}"
+my_role_package_name: "my-package@{{ my_role_package_version }}"
+
+# In tasks
+- name: Install my-package at pinned version
+  community.general.npm:
+    name: "{{ my_role_package_name }}"
+    global: true
+    state: present
+    executable: "{{ node_npm_executable }}"
+```
+
+**Homebrew cask:**
+Homebrew casks do not support `name: cask=version` syntax natively. The pinning
+pattern for this repo is:
+1. Track the desired version in the version contract (`inventory/group_vars/all.yaml`)
+2. Use `state: present` for initial install (does not upgrade if already installed)
+3. Add a version-comparison task: if installed version != contract version, run `state: latest` to upgrade
+4. Run `brew pin <cask>` after install to prevent `brew upgrade --all` from bumping it
+5. To upgrade: bump the version in the contract and re-run the playbook
+
+```yaml
+# In inventory/group_vars/all.yaml
+my_tooling_version_contract:
+  my_cask: "1.2.3"
+
+# In role defaults/main.yml
+my_role_cask_version: "{{ my_tooling_version_contract.my_cask | default('') }}"
+my_role_cask_state: present
+
+# In tasks/mac.yml
+- name: Get currently installed version
+  ansible.builtin.command:
+    argv: [brew, info, --cask, --json=v2, my-cask]
+  register: my_role_cask_info
+  changed_when: false
+  failed_when: false
+
+- name: Install cask if absent
+  community.general.homebrew_cask:
+    name: my-cask
+    state: present
+  when: my_role_cask_info.rc != 0 or (my_role_cask_info.stdout | from_json).casks[0].installed is none
+
+- name: Upgrade cask when version contract is bumped
+  community.general.homebrew_cask:
+    name: my-cask
+    state: latest
+  when:
+    - my_role_cask_version | default('') | length > 0
+    - my_role_cask_info.rc == 0
+    - (my_role_cask_info.stdout | from_json).casks[0].installed is not none
+    - (my_role_cask_info.stdout | from_json).casks[0].installed != my_role_cask_version
+
+- name: Pin cask to prevent unintended brew upgrade --all bumps
+  ansible.builtin.command:
+    argv: [brew, pin, my-cask]
+  changed_when: false
+  failed_when: false
+```
+
+**apt (Debian/Ubuntu):**
+```yaml
+# In role defaults/main.yml
+my_role_package_version: "1.2.3"
+
+# In tasks/ubuntu.yml
+- name: Install pinned package version
+  ansible.builtin.apt:
+    name: "my-package={{ my_role_package_version }}"
+    state: present
+```
+
+**yum/dnf (RHEL/CentOS):**
+```yaml
+- name: Install pinned package version
+  ansible.builtin.dnf:
+    name: "my-package-1.2.3-1.el9"
+    state: present
+```
+
+#### Role template default shape
+
+Every role that installs a package must include a `_version` default and a `_state`
+default in `defaults/main.yml`, even if the initial value is empty:
+
+```yaml
+# Package version — pin via version contract in inventory/group_vars/all.yaml
+my_role_package_version: ""   # set in version contract, not here
+my_role_package_state: present
 ### Vault Variable Naming — `vault_<role>_<field>`
 
 **Rule:** Every vault variable must be prefixed with `vault_`. Variables owned by a role

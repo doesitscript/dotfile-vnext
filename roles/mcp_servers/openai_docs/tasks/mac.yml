@@ -29,3 +29,21 @@
     - openai
     - development
     - research
+
+- name: Remove quarantine attribute from Codex npm module (macOS Gatekeeper)
+  ansible.builtin.command:
+    argv:
+      - xattr
+      - -dr
+      - com.apple.quarantine
+      - "{{ node_npm_executable | dirname | dirname }}/lib/node_modules/@openai/codex"
+  register: openai_docs_codex_quarantine_remove
+  changed_when: openai_docs_codex_quarantine_remove.rc == 0
+  failed_when: false
+  tags:
+    - mcp
+    - openai-docs
+    - codex
+    - openai
+    - development
+    - research

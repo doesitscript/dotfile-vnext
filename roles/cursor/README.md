@@ -8,6 +8,10 @@ Configures Cursor editor settings, Remote-SSH connectivity, and idempotently mer
 - **Merges LF + UTF-8 settings** into `settings.json` — prevents BOM and CRLF contamination in all files edited with Cursor (see [Settings](#settings) below)
 - **Installs Cursor extensions** via CLI
 
+### macOS Hosts
+- **Installs or upgrades Cursor IDE** via Homebrew cask `cursor`
+- **Installs Cursor CLI** (`cursor-cli` cask; binary is **`cursor-agent`** at `/usr/local/bin/cursor-agent`, not `cursor-cli`) with version contract pinning and `brew pin`
+
 ### macOS and Ubuntu Hosts
 1. **Sets EDITOR environment variable** to `cursor --wait` for use with git and other tools
 2. **Deploys SSH config entries** to `~/.ssh/config.d/cursor_remote_hosts` for Cursor Remote-SSH connections
@@ -74,6 +78,9 @@ This role handles the infrastructure side:
 | `cursor_settings_lf_utf8` | *(see defaults)* | Settings dict merged idempotently into settings.json |
 | `cursor_extensions` | *(see defaults)* | List of extension IDs to install via CLI |
 | `cursor_remote_ssh_hosts` | *(see defaults)* | List of SSH Host entries for Remote-SSH config |
+| `cursor_cli_enabled` | `true` | Set to `false` to skip Cursor CLI (Homebrew `cursor-cli`) install |
+| `cursor_cli_version` | `{{ codex_tooling_version_contract.cursor_cli }}` | Pinned CLI version; bump in inventory to trigger upgrade |
+| `cursor_cli_cask_state` | `present` | `present` or `absent` (remove CLI) |
 
 The default Codex/OpenAI extension entry is assembled as
 `{{ cursor_openai_extension_id }}@{{ cursor_openai_extension_version }}` when a
@@ -100,6 +107,8 @@ cursor_remote_ssh_hosts:
 | `cursor` | Everything in this role |
 | `cursor_unix` | macOS + Ubuntu tasks only |
 | `cursor_windows` | Windows tasks only |
+| `cursor_install` | Cursor IDE Homebrew cask (macOS only) |
+| `cursor_cli` | Cursor CLI Homebrew cask `cursor-cli` (macOS only) |
 | `cursor_extensions` | Extension installation only |
 | `cursor_settings` | settings.json LF/UTF-8 merge only |
 
@@ -121,6 +130,9 @@ ansible-playbook playbooks/deploy_shell_config.yaml --tags cursor_settings
 
 # Extensions update only
 ansible-playbook playbooks/deploy_shell_config.yaml --tags cursor_extensions
+
+# Cursor CLI only (mac-dev)
+ansible-playbook playbooks/deploy_development_nodes.yaml -i inventory/inventory.yaml --limit mac-dev --tags cursor_cli
 
 # Windows tasks only
 ansible-playbook playbooks/deploy_shell_config.yaml --tags cursor_windows --limit server-225-win

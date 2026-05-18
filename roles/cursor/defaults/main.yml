@@ -42,3 +42,11 @@ cursor_settings_lf_utf8:
   files.encoding: "utf8"
   files.insertFinalNewline: true
   files.trimFinalNewlines: true
+
+# Cursor CLI (agent binary) — separate Homebrew cask from the IDE.
+# cursor_cli_version pins the cask to the version tracked in the version contract.
+# state: present = install if absent, do not auto-upgrade (version-contract-driven upgrades only).
+# Set cursor_cli_enabled: false in host/group vars to skip install entirely.
+cursor_cli_enabled: true
+cursor_cli_version: "{{ codex_tooling_version_contract.cursor_cli | default('') }}"
+cursor_cli_cask_state: present

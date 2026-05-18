@@ -1,3 +1,116 @@
 ---
 - name: Include common Unix tasks for macOS
   ansible.builtin.include_tasks: unix_common.yml
+
+- name: Install or upgrade Cursor IDE via Homebrew cask
+  community.general.homebrew_cask:
+    name: cursor
+    state: latest
+  tags:
+    - cursor
+    - cursor_install
+
+- name: Get currently installed cursor-cli version
+  ansible.builtin.command:
+    argv: [brew, info, --cask, --json=v2, cursor-cli]
+  register: cursor_cli_brew_info
+  changed_when: false
+  failed_when: false
+  when: cursor_cli_enabled | bool
+  tags:
+    - cursor
+    - cursor_cli
+
+- name: Install Cursor CLI via Homebrew cask (version-contract-pinned)
+  community.general.homebrew_cask:
+    name: cursor-cli
+    state: "{{ cursor_cli_cask_state }}"
+  when:
+    - cursor_cli_enabled | bool
+    - cursor_cli_cask_state != 'absent'
+    - >-
+      cursor_cli_brew_info.rc != 0
+      or (cursor_cli_brew_info.stdout | from_json).casks[0].installed is none
+  tags:
+    - cursor
+    - cursor_cli
+
+- name: Upgrade cursor-cli when version contract bumped
+  community.general.homebrew_cask:
+    name: cursor-cli
+    state: latest
+  when:
+    - cursor_cli_enabled | bool
+    - cursor_cli_cask_state != 'absent'
+    - cursor_cli_version | default('') | length > 0
+    - cursor_cli_brew_info.rc == 0
+    - (cursor_cli_brew_info.stdout | from_json).casks[0].installed is not none
+    - (cursor_cli_brew_info.stdout | from_json).casks[0].installed != cursor_cli_version
+  tags:
+    - cursor
+    - cursor_cli
+
+- name: Remove Cursor CLI via Homebrew cask
+  community.general.homebrew_cask:
+    name: cursor-cli
+    state: absent
+  when:
+    - cursor_cli_enabled | bool
+    - cursor_cli_cask_state == 'absent'
+  tags:
+    - cursor
+    - cursor_cli
+
+- name: Remove quarantine from cursor-cli cask directory (includes bundled node)
+  ansible.builtin.command:
+    argv:
+      - xattr
+      - -dr
+      - com.apple.quarantine
+      - /usr/local/Caskroom/cursor-cli
+  register: cursor_cli_quarantine_remove
+  changed_when: cursor_cli_quarantine_remove.rc == 0
+  failed_when: false
+  when:
+    - cursor_cli_enabled | bool
+    - cursor_cli_cask_state != 'absent'
+  tags:
+    - cursor
+    - cursor_cli
+
+- name: Pin cursor-cli in Homebrew to prevent unintended brew upgrade --all bumps
+  ansible.builtin.command:
+    argv: [brew, pin, cursor-cli]
+  changed_when: false
+  failed_when: false
+  when:
+    - cursor_cli_enabled | bool
+    - cursor_cli_cask_state != 'absent'
+  tags:
+    - cursor
+    - cursor_cli
+
+- name: Find python-env-tools directories in Cursor extensions
+  ansible.builtin.find:
+    paths: "{{ ansible_env.HOME }}/.cursor/extensions"
+    patterns: "python-env-tools"
+    file_type: directory
+    recurse: true
+  register: cursor_pet_dirs
+  tags:
+    - cursor
+    - cursor_pet
+
+- name: Remove quarantine attribute from Cursor Python extension PET directories
+  ansible.builtin.command:
+    argv:
+      - xattr
+      - -dr
+      - com.apple.quarantine
+      - "{{ item.path }}"
+  loop: "{{ cursor_pet_dirs.files | default([]) }}"
+  changed_when: true
+  failed_when: false
+  tags:
+    - cursor
+    - cursor_pet
