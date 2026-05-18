@@ -136,6 +136,84 @@ GitHub issue as a higher-level roadmap when GitHub is available.
 
 If the topic is too novel or under-researched, the agent may summarize current direction but must escalate to research before producing a decision-complete plan.
 
+### Mandatory Diagram Requirements
+
+All plans stored under `docs/plans/` MUST include Mermaid diagrams that visualize:
+
+1. **Architecture / Component Relationships**
+   - Repository structure being modified
+   - External resources and their integration points
+   - Data/control flow between components
+
+2. **Implementation Flow**
+   - Sequential steps or parallel operations
+   - Decision points and conditional paths
+   - Before/after states
+
+3. **Naming Standards**
+   - File paths, directory structures
+   - Variable names and their sources
+   - Tag hierarchies and relationships
+
+**Quality Standards**:
+
+- **Node Naming**: Use PascalCase, camelCase, or underscores (NO SPACES)
+  - Good: `langfuse_role`, `VersionContract`, `externalManaged`
+  - Bad: `langfuse role`, `Version Contract`
+
+- **Relationship Arrows**: Use clear, specific labels in quotes when they contain special characters
+  - `-->|"ansible.builtin.git"| target`
+  - `-.->|"optional dependency"| component`
+
+- **Color Coding**: Use dark mode-friendly colors for emphasis
+  - Suggested palette: `#1e3a5f` (dark blue), `#2a2a2a` (dark gray), `#4a3f2e` (dark brown), `#5a4a1a` (dark gold), `#2d4a2d` (dark green)
+  - Use subgraphs for logical grouping
+  - Reserve explicit styling for emphasis only when needed to clarify meaning
+
+- **Subgraphs**: Use explicit IDs: `subgraph playbook_tags [Playbook Tags]`
+  - Group related nodes logically
+  - Nest when hierarchy is meaningful
+
+**Example Pattern**:
+
+```mermaid
+graph TB
+    subgraph dotfile_vnext [dotfile-vnext Repository]
+        subgraph inventory [Inventory Layer]
+            version_contract[inventory/group_vars/all.yaml<br/>netbox_version_contract]
+        end
+        
+        subgraph roles [Role Layer]
+            ipam_netbox[roles/ipam_netbox/]
+            seed_tasks[tasks/seed_*.yml]
+        end
+        
+        subgraph playbooks [Playbook Layer]
+            deploy_netbox[playbooks/deploy_ipam_netbox.yaml]
+        end
+    end
+    
+    subgraph external [External Resources]
+        netbox_container["netbox:latest-ldap<br/>(Docker Hub)"]
+        netbox_api["NetBox API<br/>(http://localhost:8000)"]
+    end
+    
+    version_contract -->|"provides version"| ipam_netbox
+    deploy_netbox -->|"applies"| ipam_netbox
+    ipam_netbox -->|"pulls image"| netbox_container
+    netbox_container -->|"exposes"| netbox_api
+    seed_tasks -.->|"seeds via"| netbox_api
+    
+    style version_contract fill:#2a2a2a
+    style netbox_container fill:#1e3a5f
+```
+
+This standard ensures:
+- Clear visual communication of complex changes
+- Consistent documentation across all plans
+- Easier review and understanding for both humans and AI agents
+- Reduced ambiguity in implementation steps
+
 ## Role Transition Signals
 
 At meaningful transition points, the agent should briefly label the active framework surface when it improves visibility.

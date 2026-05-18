@@ -8,6 +8,7 @@ Approved plans belong here.
 - Treat the repo plan as the canonical durable artifact.
 - Mirror the work into a GitHub issue as a higher-level roadmap when GitHub is available.
 - Keep the GitHub issue shorter than the repo plan and link the two when that improves pickup.
+- **Include Mermaid diagrams** visualizing architecture, implementation flow, and naming standards (see `.cursor/rules/framework-partner-process.mdc` for full requirements).
 
 ## Naming
 
