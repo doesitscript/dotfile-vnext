@@ -44,6 +44,30 @@
     success_msg: "{{ item }} is absent on {{ inventory_hostname }}"
   loop: "{{ k3s_readiness_stub_required_services_absent }}"
 
+- name: Verify swap is disabled for the future K3s node
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['swaptotal_mb'] | int == 0
+    fail_msg: >-
+      {{ inventory_hostname }} has swap enabled
+      ({{ ansible_facts['swaptotal_mb'] | default('unknown') }} MB). K3s
+      managed nodes should have swap disabled before installation.
+    success_msg: "Swap is disabled on {{ inventory_hostname }}"
+  when: k3s_readiness_stub_require_swap_disabled | bool
+
+- name: Verify Linux firewall services are not active
+  ansible.builtin.assert:
+    that:
+      - >-
+        item not in ansible_facts['services']
+        or ansible_facts['services'][item]['state'] != 'running'
+    fail_msg: >-
+      {{ item }} is running on {{ inventory_hostname }}. The future K3s install
+      should either disable it intentionally or manage the required K3s ports.
+    success_msg: >-
+      {{ item }} is not active on {{ inventory_hostname }}
+  loop: "{{ k3s_readiness_stub_forbidden_active_services }}"
+
 - name: Report K3s VM readiness stub result
   ansible.builtin.debug:
     msg:
@@ -52,4 +76,6 @@
       distribution: "{{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"
       memory_mb: "{{ ansible_facts['memtotal_mb'] }}"
       root_disk_gb: "{{ k3s_readiness_stub_root_disk_gb }}"
+      swap_total_mb: "{{ ansible_facts['swaptotal_mb'] }}"
       k3s_services_absent: "{{ k3s_readiness_stub_required_services_absent }}"
+      firewall_services_checked: "{{ k3s_readiness_stub_forbidden_active_services }}"

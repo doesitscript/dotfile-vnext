@@ -8,11 +8,12 @@ alwaysApply: true
 
 ## Cluster Architecture
 
-- 2-3 nodes max. Future single control plane on `s225-k3s-01`. Embedded SQLite datastore.
+- Current bootstrap is a single-node K3s server on `nsrv-k3s-01`. Embedded SQLite datastore.
+- Future expansion remains 2-3 nodes max and requires an explicit plan before adding agents.
 - No HA, no etcd cluster, no service mesh, no autoscaler, no multi-replica defaults.
 - No ingress controller unless explicitly needed. No monitoring stack during bootstrap.
-- GPU nodes are compute-only: no control-plane workloads, no databases.
-- Control-plane services live on `s225-k3s-01` only after that VM exists.
+- No GPU setup in the initial `nsrv-k3s-01` bootstrap.
+- Control-plane services live on `nsrv-k3s-01`.
 - Docker Engine VMs such as `server-225-ubuntu` and `nsrv-dkr-01` are not k3s
   targets unless a future k3s playbook explicitly opts them in.
 - k3s installed via official `k3s-io/k3s-ansible` collection (`k3s.orchestration`).
@@ -34,9 +35,8 @@ alwaysApply: true
 
 ## Storage
 
-- All k3s data on D: drive. Never store images, logs, or pod volumes on C: (OS drive).
-- `data-dir: /mnt/d/k3s/rancher` in k3s config.
-- Symlink `/var/lib/rancher` -> `/mnt/d/k3s/rancher` and `/var/lib/kubelet` -> `/mnt/d/k3s/kubelet`.
+- Current `nsrv-k3s-01` bootstrap stores k3s data on the VM root disk at `/var/lib/rancher/k3s`.
+- Do not use the old `/mnt/d` storage-prep path for `nsrv-k3s-01`; this VM has no `/mnt/d` mount.
 - Do NOT symlink `/run/k3s` -- `/run` is tmpfs, k3s manages it as ephemeral runtime state.
 
 ## GPU Boundary
@@ -45,26 +45,23 @@ alwaysApply: true
 - Ansible inventories the Windows driver version and validates GPU visibility. It does NOT install, upgrade, or manage the driver.
 - Do NOT use the `nvidia.nvidia_driver` Ansible role.
 - Do NOT install Linux GPU drivers, DKMS modules, or kernel modules.
-- NVIDIA Container Toolkit installed inside Ubuntu via `apt` module (no curl pipelines, no shell scripts).
-- k3s embeds containerd. Configure runtime via k3s config template, NOT `nvidia-ctk runtime configure --runtime=containerd`.
-- Device plugin manifest vendored into role `files/` directory at a pinned version. Do NOT pull from live GitHub URLs.
+- NVIDIA Container Toolkit and device plugin work are future agent-only work, not part of the `nsrv-k3s-01` bootstrap.
+- k3s embeds containerd. Any future runtime customization must use k3s config templates, not `nvidia-ctk runtime configure --runtime=containerd`.
 - Do NOT use shell where a module exists.
 - Do NOT use GPU Operator.
 
 ## Inventory Groups
 
-- `k3s_agents_active`: nodes deployed now (server-225-ubuntu).
-- `k3s_agents_deferred`: nodes for future inclusion (dev-workstation-ubuntu). Never targeted unless user explicitly uses `--limit`.
-- Playbooks target `k3s_cluster:!k3s_agents_deferred` or use explicit `--limit`.
+- `k3s_cluster.children.server` contains only `nsrv-k3s-01` for the initial bootstrap.
+- `k3s_cluster.children.agent` remains empty until a future plan explicitly adds agents.
+- `k3s_vm_stub_hosts` can continue to target `nsrv-k3s-01` for pre-install readiness validation.
 
 ## Resource Reserves
 
-- Control plane (`s225-k3s-01`): `system-reserved=cpu=1,memory=1Gi`, `kube-reserved=cpu=1,memory=1Gi`
+- Control plane (`nsrv-k3s-01`): `system-reserved=cpu=1,memory=1Gi`, `kube-reserved=cpu=1,memory=1Gi`
 - Agents: `system-reserved=cpu=500m,memory=512Mi`, `kube-reserved=cpu=500m,memory=512Mi`
 - Eviction: `eviction-hard=memory.available<256Mi,nodefs.available<10%`
 
 ## Node Labels
 
-- s225-k3s-01: `role=control`
-- server-225-ubuntu: `role=gpu`
-- dev-workstation-ubuntu (future): `role=gpu`
+- nsrv-k3s-01: `role=control`

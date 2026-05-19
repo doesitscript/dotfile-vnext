@@ -1,63 +1,64 @@
 ---
 # k3s_node_config — Label and taint nodes after k3s cluster is up.
-# Runs on the control plane node (server group) with kubectl access.
+# Runs on the control plane node (server group) with local kubectl access.
 
 - name: All k3s nodes are Ready
-  kubernetes.core.k8s_info:
-    kind: Node
-    kubeconfig: /etc/rancher/k3s/k3s.yaml
-  register: k3s_node_config_node_info
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/kubectl
+      - --kubeconfig
+      - /etc/rancher/k3s/k3s.yaml
+      - wait
+      - --for=condition=Ready
+      - node
+      - --all
+      - --timeout=10s
+  register: k3s_node_config_ready
+  changed_when: false
   retries: 12
   delay: 10
-  until: >-
-    k3s_node_config_node_info.resources | length > 0
-    and k3s_node_config_node_info.resources
-      | selectattr('status.conditions', 'defined')
-      | map(attribute='status.conditions')
-      | flatten
-      | selectattr('type', 'equalto', 'Ready')
-      | selectattr('status', 'equalto', 'True')
-      | list | length == k3s_node_config_node_info.resources | length
+  until: k3s_node_config_ready.rc == 0
 
 - name: Node labels match declared state
-  kubernetes.core.k8s:
-    kind: Node
-    name: "{{ item.key }}"
-    kubeconfig: /etc/rancher/k3s/k3s.yaml
-    apply: true
-    definition:
-      apiVersion: v1
-      kind: Node
-      metadata:
-        name: "{{ item.key }}"
-        labels: "{{ item.value }}"
+  ansible.builtin.command: >-
+    /usr/local/bin/kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml
+    label node {{ item.key }}
+    {% for label in item.value | dict2items %}{{ label.key }}={{ label.value }} {% endfor %}
+    --overwrite
   loop: "{{ k3s_node_config_labels | dict2items }}"
   loop_control:
     label: "{{ item.key }}"
+  register: k3s_node_config_label
+  changed_when:
+    - "'labeled' in k3s_node_config_label.stdout"
+    - "'not labeled' not in k3s_node_config_label.stdout"
 
 - name: Node taints are present
-  kubernetes.core.k8s_taint:
-    name: "{{ item.key }}"
-    kubeconfig: /etc/rancher/k3s/k3s.yaml
-    taints: "{{ item.value }}"
-    state: present
-  loop: "{{ k3s_node_config_taints | default({}) | dict2items }}"
+  ansible.builtin.command: >-
+    /usr/local/bin/kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml
+    taint node {{ item.0.key }}
+    {{ item.1.key }}={{ item.1.value }}:{{ item.1.effect }}
+    --overwrite
+  loop: "{{ k3s_node_config_taints | default({}) | dict2items | subelements('value') }}"
   loop_control:
-    label: "{{ item.key }}"
-  when: k3s_node_config_taints is defined
+    label: "{{ item.0.key }} {{ item.1.key }}"
+  register: k3s_node_config_taint
+  changed_when: "'tainted' in k3s_node_config_taint.stdout"
+  when: (k3s_node_config_taints | default({}) | length) > 0
 
 - name: Report current node labels and taints
-  kubernetes.core.k8s_info:
-    kind: Node
-    kubeconfig: /etc/rancher/k3s/k3s.yaml
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/kubectl
+      - --kubeconfig
+      - /etc/rancher/k3s/k3s.yaml
+      - get
+      - nodes
+      - -o
+      - wide
   register: k3s_node_config_report
+  changed_when: false
 
 - name: Node configuration summary
   ansible.builtin.debug:
-    msg: >-
-      {{ item.metadata.name }}
-      labels={{ item.metadata.labels | default({}) | dict2items | map(attribute='key') | list }}
-      taints={{ item.spec.taints | default([]) | map(attribute='key') | list }}
-  loop: "{{ k3s_node_config_report.resources }}"
-  loop_control:
-    label: "{{ item.metadata.name }}"
+    msg: "{{ k3s_node_config_report.stdout_lines }}"

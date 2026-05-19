@@ -1,57 +1,71 @@
 ---
 # k3s_bootstrap.yaml — Full k3s cluster bootstrap.
 #
-# This is not part of the current nsrv-k3s-01 VM/stub slice. The current
-# preparatory path is:
+# This promotes the prepared nsrv-k3s-01 VM/stub lane into a functional
+# single-node k3s server. The preparatory path remains:
 #   1. playbooks/hyperv_ubuntu_k3s_vm.yaml
 #   2. playbooks/k3s_vm_stub.yaml
 #
 # Play order:
-#   1. Guard that k3s_cluster is intentionally populated
-#   2. Open firewall ports on Windows hosts (WinRM)
-#   3. Prepare storage directories on direct Linux companion surfaces (SSH)
+#   1. Load the vault-backed k3s token for cluster hosts
+#   2. Guard that k3s_cluster contains only the approved single-node server
+#   3. Open k3s firewall ports on the owning Hyper-V host (WinRM)
 #   4. Deploy k3s cluster via official collection
 #   5. Label and taint nodes from control plane
 #
 # Usage:
 #   source .envrc
-#   export K3S_TOKEN=$(openssl rand -base64 32 | tr '/' '_')
 #   ansible-playbook playbooks/k3s_bootstrap.yaml -i inventory/inventory.yaml
 #
 # GPU plays are added separately after NVIDIA driver setup is confirmed.
 
-# --- Play 0: Current-slice guard ---
-- name: Guard real k3s bootstrap until k3s_cluster is populated
-  hosts: localhost
+# --- Play 0: Cluster secrets ---
+- name: Load vault-backed k3s bootstrap token
+  hosts: k3s_cluster
   gather_facts: false
+  vars_files:
+    - ../vault.yml
   tasks:
-    - name: Refuse real k3s bootstrap when only the VM stub lane exists
-      ansible.builtin.assert:
-        that:
-          - query('ansible.builtin.inventory_hostnames', 'k3s_cluster') | length > 0
-          - query('ansible.builtin.inventory_hostnames', 'server') | length > 0
-        fail_msg: >-
-          Real K3s bootstrap is intentionally disabled for the current
-          nsrv-k3s-01 VM/stub slice. Use playbooks/hyperv_ubuntu_k3s_vm.yaml
-          and playbooks/k3s_vm_stub.yaml until nsrv-k3s-01 is explicitly
-          promoted into k3s_cluster.children.server.
-        success_msg: "k3s_cluster has server membership; continuing real bootstrap."
+    - name: Publish k3s token for the official k3s collection
+      ansible.builtin.set_fact:
+        token: "{{ k3s_token }}"
+      no_log: true
       tags:
         - always
 
-# --- Play 1: Windows Firewall ---
-- name: Open k3s firewall ports on Windows hosts
-  hosts: server-225-win,home-lab-auth-hvh-01
+# --- Play 1: Single-node guard ---
+- name: Guard real k3s bootstrap target selection
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Refuse real k3s bootstrap unless only nsrv-k3s-01 is selected
+      ansible.builtin.assert:
+        that:
+          - query('ansible.builtin.inventory_hostnames', 'server') == ['nsrv-k3s-01']
+          - query('ansible.builtin.inventory_hostnames', 'agent') | length == 0
+          - "'nsrv-dkr-01' not in query('ansible.builtin.inventory_hostnames', 'k3s_cluster')"
+          - "'nsrv-dkr-01' not in query('ansible.builtin.inventory_hostnames', 'server')"
+          - "'nsrv-dkr-01' not in query('ansible.builtin.inventory_hostnames', 'agent')"
+          - hostvars['nsrv-k3s-01'].ansible_host is defined
+          - hostvars['nsrv-k3s-01'].api_endpoint == hostvars['nsrv-k3s-01'].ansible_host
+          - hostvars['nsrv-k3s-01'].token is defined
+          - hostvars['nsrv-k3s-01'].token | length > 0
+          - hostvars['nsrv-k3s-01'].k3s_server_location == '/var/lib/rancher/k3s'
+        fail_msg: >-
+          Real K3s bootstrap is allowed only for the single-node nsrv-k3s-01
+          server lane. Keep nsrv-dkr-01 Docker-only, keep agent empty, and keep
+          data-dir on /var/lib/rancher/k3s until a real secondary Linux data
+          mount is added.
+        success_msg: "k3s_cluster targets only nsrv-k3s-01; continuing real bootstrap."
+      tags:
+        - always
+
+# --- Play 2: Windows Firewall ---
+- name: Open k3s firewall ports on the owning Hyper-V host
+  hosts: home-lab-auth-hvh-01
   gather_facts: false
   roles:
     - k3s_firewall
-
-# --- Play 2: Storage Prep (before k3s install) ---
-- name: Prepare k3s storage directories on D drive
-  hosts: k3s_cluster
-  become: true
-  roles:
-    - k3s_storage_prep
 
 # --- Play 3: Deploy k3s (official collection) ---
 - name: Deploy k3s cluster
