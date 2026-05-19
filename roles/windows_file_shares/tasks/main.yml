@@ -1,0 +1,9 @@
+---
+- name: Validate Windows file share lifecycle state
+  ansible.builtin.assert:
+    that:
+      - windows_file_shares_state in ['present', 'absent']
+    fail_msg: "windows_file_shares_state must be present or absent"
+
+- name: Apply Windows file share lifecycle
+  ansible.builtin.include_tasks: "{{ windows_file_shares_state }}.yml"

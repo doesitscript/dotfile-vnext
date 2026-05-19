@@ -1,0 +1,37 @@
+---
+# Shared Windows SMB share capability inputs.
+# Sensitive values live in vault.yml beside this file.
+windows_file_shares_state: present
+
+windows_file_shares_expected_volumes:
+  - drive_letter: F
+    label: data
+
+windows_file_shares_groups:
+  - name: share_users
+    description: Local users allowed to modify repo-managed SMB shares
+
+windows_file_shares_users:
+  - name: mikec
+    fullname: Mike C
+    description: Local SMB public share user
+    password: "{{ vault_windows_file_shares_mikec_password }}"
+    password_never_expires: true
+    user_cannot_change_password: true
+    groups:
+      - share_users
+
+windows_file_shares:
+  - name: public
+    path: 'F:\shares\public'
+    description: Public Share
+    list: false
+    full: Administrators
+    change: share_users
+    ntfs_permissions:
+      - identity: share_users
+        rights: Modify
+        type: allow
+
+windows_file_shares_unc_validation_user: mikec
+windows_file_shares_unc_validation_password: "{{ vault_windows_file_shares_mikec_password }}"

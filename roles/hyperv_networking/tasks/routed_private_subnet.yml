@@ -290,6 +290,13 @@
   vars:
     _hyperv_guest_published_tcp_ports: "{{ _hyperv.guest_published_tcp_ports | default([]) }}"
 
+- name: Restart IP Helper when guest published TCP ports change
+  ansible.windows.win_service:
+    name: iphlpsvc
+    state: restarted
+  when:
+    - _hyperv_routed_private_subnet_published_ports is changed
+
 - name: Ensure guest published TCP ports are absent on the Windows host
   ansible.windows.win_powershell:
     error_action: stop

@@ -1,0 +1,23 @@
+---
+- name: Remove managed SMB shares
+  ansible.windows.win_share:
+    name: "{{ item.name }}"
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ windows_file_shares }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Remove managed NTFS permissions
+  ansible.windows.win_acl:
+    path: "{{ item.0.path }}"
+    user: "{{ item.1.identity }}"
+    rights: "{{ item.1.rights }}"
+    type: "{{ item.1.type | default('allow') }}"
+    state: absent
+    inherit: ContainerInherit, ObjectInherit
+    propagation: None
+  loop: "{{ windows_file_shares | subelements('ntfs_permissions', skip_missing=True) }}"
+  loop_control:
+    label: "{{ item.0.path }} -> {{ item.1.identity }} {{ item.1.rights }}"
+  when: item.0.path is defined

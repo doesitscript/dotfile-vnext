@@ -1,0 +1,110 @@
+---
+- name: Verify Windows file share state and credentialed UNC access
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $Ansible.Changed = $false
+
+      $volumeRequests = ConvertFrom-Json -InputObject @'
+      {{ windows_file_shares_expected_volumes | to_json }}
+      '@
+      $shareRequests = ConvertFrom-Json -InputObject @'
+      {{ windows_file_shares | to_json }}
+      '@
+      $groupRequests = ConvertFrom-Json -InputObject @'
+      {{ windows_file_shares_groups | to_json }}
+      '@
+      $userRequests = ConvertFrom-Json -InputObject @'
+      {{ windows_file_shares_users | map(attribute='name') | list | to_json }}
+      '@
+
+      $errors = [System.Collections.Generic.List[string]]::new()
+
+      foreach ($request in @($volumeRequests)) {
+        $driveLetter = ([string]$request.drive_letter).TrimEnd(':')
+        $volume = Get-Volume -DriveLetter $driveLetter -ErrorAction SilentlyContinue
+        if (-not $volume) {
+          $errors.Add("Missing volume $driveLetter")
+        }
+        elseif ($volume.FileSystemLabel -ne [string]$request.label) {
+          $errors.Add("Volume $driveLetter label '$($volume.FileSystemLabel)' does not match '$($request.label)'")
+        }
+      }
+
+      foreach ($request in @($groupRequests)) {
+        if (-not (Get-LocalGroup -Name ([string]$request.name) -ErrorAction SilentlyContinue)) {
+          $errors.Add("Missing local group $($request.name)")
+        }
+      }
+
+      foreach ($name in @($userRequests)) {
+        $user = Get-LocalUser -Name ([string]$name) -ErrorAction SilentlyContinue
+        if (-not $user) {
+          $errors.Add("Missing local user $name")
+        }
+        elseif (-not $user.Enabled) {
+          $errors.Add("Local user $name is disabled")
+        }
+      }
+
+      foreach ($request in @($shareRequests)) {
+        $path = [string]$request.path
+        $name = [string]$request.name
+        if (-not (Test-Path -LiteralPath $path)) {
+          $errors.Add("Missing folder $path")
+        }
+
+        $share = Get-SmbShare -Name $name -ErrorAction SilentlyContinue
+        if (-not $share) {
+          $errors.Add("Missing SMB share $name")
+          continue
+        }
+        if ($share.Path -ne $path) {
+          $errors.Add("Share $name path '$($share.Path)' does not match '$path'")
+        }
+
+        $shareAccess = Get-SmbShareAccess -Name $name
+        $shareUsersChange = $shareAccess | Where-Object {
+          $_.AccountName -match 'share_users$' -and
+          $_.AccessControlType -eq 'Allow' -and
+          $_.AccessRight -eq 'Change'
+        }
+        if (-not $shareUsersChange) {
+          $errors.Add("Share $name is missing share_users Change permission")
+        }
+      }
+
+      if ('{{ windows_file_shares_unc_validation_user }}' -and '{{ windows_file_shares_unc_validation_password }}') {
+        foreach ($request in @($shareRequests)) {
+          $name = [string]$request.name
+          $driveName = "AnsibleShareVerify"
+          if (Get-PSDrive -Name $driveName -ErrorAction SilentlyContinue) {
+            Remove-PSDrive -Name $driveName -Force -ErrorAction SilentlyContinue
+          }
+
+          $passwordPlain = {{ windows_file_shares_unc_validation_password | to_json }}
+          $securePassword = ConvertTo-SecureString -String $passwordPlain -AsPlainText -Force
+          $credential = [pscredential]::new(".\{{ windows_file_shares_unc_validation_user }}", $securePassword)
+
+          try {
+            New-PSDrive -Name $driveName -PSProvider FileSystem -Root "\\localhost\$name" -Credential $credential -ErrorAction Stop | Out-Null
+            if (-not (Test-Path "${driveName}:\")) {
+              $errors.Add("UNC validation failed for \\localhost\$name")
+            }
+          }
+          finally {
+            Remove-PSDrive -Name $driveName -Force -ErrorAction SilentlyContinue
+          }
+        }
+      }
+
+      if ($errors.Count -gt 0) {
+        throw ($errors -join '; ')
+      }
+
+      [pscustomobject]@{
+        ok = $true
+        host = $env:COMPUTERNAME
+        checked_shares = @($shareRequests).Name
+      }
+  no_log: true

@@ -1,0 +1,73 @@
+---
+- name: Preview Windows file share target state
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $Ansible.Changed = $false
+
+      $volumeRequests = ConvertFrom-Json -InputObject @'
+      {{ windows_file_shares_expected_volumes | to_json }}
+      '@
+      $shareRequests = ConvertFrom-Json -InputObject @'
+      {{ windows_file_shares | to_json }}
+      '@
+      $groupRequests = ConvertFrom-Json -InputObject @'
+      {{ windows_file_shares_groups | to_json }}
+      '@
+      $userRequests = ConvertFrom-Json -InputObject @'
+      {{ windows_file_shares_users | map(attribute='name') | list | to_json }}
+      '@
+
+      $volumes = foreach ($request in @($volumeRequests)) {
+        $driveLetter = [string]$request.drive_letter
+        $volume = Get-Volume -DriveLetter $driveLetter.TrimEnd(':') -ErrorAction SilentlyContinue
+        [pscustomobject]@{
+          drive_letter = $driveLetter.TrimEnd(':')
+          desired_label = [string]$request.label
+          current_label = if ($volume) { $volume.FileSystemLabel } else { $null }
+          exists = [bool]$volume
+        }
+      }
+
+      $groups = foreach ($request in @($groupRequests)) {
+        $group = Get-LocalGroup -Name ([string]$request.name) -ErrorAction SilentlyContinue
+        [pscustomobject]@{
+          name = [string]$request.name
+          exists = [bool]$group
+        }
+      }
+
+      $users = foreach ($name in @($userRequests)) {
+        $user = Get-LocalUser -Name ([string]$name) -ErrorAction SilentlyContinue
+        [pscustomobject]@{
+          name = [string]$name
+          exists = [bool]$user
+          enabled = if ($user) { [bool]$user.Enabled } else { $null }
+        }
+      }
+
+      $shares = foreach ($request in @($shareRequests)) {
+        $share = Get-SmbShare -Name ([string]$request.name) -ErrorAction SilentlyContinue
+        [pscustomobject]@{
+          name = [string]$request.name
+          path = [string]$request.path
+          folder_exists = Test-Path -LiteralPath ([string]$request.path)
+          share_exists = [bool]$share
+          current_path = if ($share) { $share.Path } else { $null }
+        }
+      }
+
+      [pscustomobject]@{
+        host = $env:COMPUTERNAME
+        change_class = 'preview only; no mutation'
+        state = '{{ windows_file_shares_state }}'
+        volumes = $volumes
+        groups = $groups
+        users = $users
+        shares = $shares
+      }
+  register: windows_file_shares_preview_result
+
+- name: Report Windows file share preview
+  ansible.builtin.debug:
+    var: windows_file_shares_preview_result.output

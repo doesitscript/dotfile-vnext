@@ -1,0 +1,101 @@
+---
+- name: Ensure expected Windows volume labels
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $driveLetter = '{{ item.drive_letter }}'.TrimEnd(':')
+      $desiredLabel = '{{ item.label }}'
+      $volume = Get-Volume -DriveLetter $driveLetter -ErrorAction Stop
+
+      if ($volume.FileSystemLabel -ne $desiredLabel) {
+        Set-Volume -DriveLetter $driveLetter -NewFileSystemLabel $desiredLabel
+        $Ansible.Changed = $true
+      }
+      else {
+        $Ansible.Changed = $false
+      }
+
+      [pscustomobject]@{
+        drive_letter = $driveLetter
+        label = $desiredLabel
+      }
+  loop: "{{ windows_file_shares_expected_volumes }}"
+  loop_control:
+    label: "{{ item.drive_letter }}: -> {{ item.label }}"
+
+- name: Ensure local share groups
+  ansible.windows.win_group:
+    name: "{{ item.name }}"
+    description: "{{ item.description | default(omit) }}"
+    state: present
+  loop: "{{ windows_file_shares_groups }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Ensure local share users
+  ansible.windows.win_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    update_password: always
+    fullname: "{{ item.fullname | default(omit) }}"
+    description: "{{ item.description | default(omit) }}"
+    account_disabled: false
+    password_expired: false
+    password_never_expires: "{{ item.password_never_expires | default(true) }}"
+    user_cannot_change_password: "{{ item.user_cannot_change_password | default(true) }}"
+    groups: "{{ item.groups | default(omit) }}"
+    groups_action: add
+    state: present
+  loop: "{{ windows_file_shares_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: true
+
+- name: Ensure managed share folders exist
+  ansible.windows.win_file:
+    path: "{{ item.path }}"
+    state: directory
+  loop: "{{ windows_file_shares }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: Ensure managed NTFS permissions
+  ansible.windows.win_acl:
+    path: "{{ item.0.path }}"
+    user: "{{ item.1.identity }}"
+    rights: "{{ item.1.rights }}"
+    type: "{{ item.1.type | default('allow') }}"
+    state: present
+    inherit: ContainerInherit, ObjectInherit
+    propagation: None
+  loop: "{{ windows_file_shares | subelements('ntfs_permissions', skip_missing=True) }}"
+  loop_control:
+    label: "{{ item.0.path }} -> {{ item.1.identity }} {{ item.1.rights }}"
+
+- name: Ensure SMB shares
+  ansible.windows.win_share:
+    name: "{{ item.name }}"
+    path: "{{ item.path }}"
+    description: "{{ item.description | default(omit) }}"
+    list: "{{ item.list | default(false) }}"
+    full: "{{ item.full | default(omit) }}"
+    change: "{{ item.change | default(omit) }}"
+    read: "{{ item.read | default(omit) }}"
+    rule_action: set
+    state: present
+  loop: "{{ windows_file_shares }}"
+  loop_control:
+    label: "{{ item.name }} -> {{ item.path }}"
+
+- name: Ensure SMB server service is running
+  ansible.windows.win_service:
+    name: "{{ windows_file_shares_service_name }}"
+    start_mode: auto
+    state: started
+
+- name: Enable Windows File and Printer Sharing firewall group
+  community.windows.win_firewall_rule:
+    group: "{{ windows_file_shares_firewall_group }}"
+    enabled: true
+    state: present
+  when: windows_file_shares_firewall_enabled | bool

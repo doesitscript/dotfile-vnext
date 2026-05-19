@@ -1,0 +1,47 @@
+---
+- name: Windows file shares - target preview
+  hosts: windows_file_share_hosts
+  gather_facts: false
+  tags:
+    - windows_file_shares
+    - windows_file_shares_preview
+
+  tasks:
+    - name: Preview selected Windows file share hosts
+      ansible.builtin.debug:
+        msg:
+          change_class: idempotent Windows SMB share configuration
+          selected_hosts: "{{ ansible_play_hosts_all }}"
+          apply: "ansible-playbook playbooks/windows_file_shares.yml -i inventory/inventory.yaml"
+          verify: "ansible-playbook playbooks/windows_file_shares.yml -i inventory/inventory.yaml --tags windows_file_shares_verify"
+          undo: "Set windows_file_shares_state=absent for the intended scope and re-run this playbook."
+          volume_labels: "{{ windows_file_shares_expected_volumes }}"
+          shares: "{{ windows_file_shares | map(attribute='name') | list }}"
+
+    - name: Preview host-local Windows file share state
+      ansible.builtin.include_role:
+        name: windows_file_shares
+        tasks_from: preview
+
+- name: Windows file shares - apply desired state
+  hosts: windows_file_share_hosts
+  gather_facts: false
+  tags:
+    - windows_file_shares
+    - windows_file_shares_apply
+
+  roles:
+    - role: windows_file_shares
+
+- name: Windows file shares - verify desired state
+  hosts: windows_file_share_hosts
+  gather_facts: false
+  tags:
+    - windows_file_shares
+    - windows_file_shares_verify
+
+  tasks:
+    - name: Verify host-local Windows file share state
+      ansible.builtin.include_role:
+        name: windows_file_shares
+        tasks_from: verify

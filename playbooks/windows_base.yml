@@ -17,6 +17,9 @@
 #   Firewall only (targeted):
 #     ansible-playbook playbooks/windows_base.yml --tags firewall_icmp
 #
+#   Disk usage tools only:
+#     ansible-playbook playbooks/windows_base.yml --tags disk_usage_tools
+#
 - name: Apply Windows base configuration
   hosts: windows_hosts
   gather_facts: false
@@ -43,6 +46,15 @@
       ansible.builtin.include_role:
         name: pwsh
       when: pwsh_global_encoding_enabled | default(true) | bool
+
+    - name: Apply disk usage tools
+      ansible.builtin.include_role:
+        name: disk_usage_tools
+        apply:
+          tags:
+            - disk_usage_tools
+            - windirstat
+      tags: [disk_usage_tools, windirstat]
 
     - name: Apply base Windows firewall rules
       ansible.builtin.include_role:
