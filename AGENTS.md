@@ -95,6 +95,15 @@ Include:
     - NetBox source-of-truth modeling uses `netbox-knowledge-gate`
     - broad project improvement uses `project-maturity-router` to activate one
       or both gates without merging them into one capability
+14. The former network-server Windows control alias is retired. The host is now
+    modeled and targeted as `home-lab-auth-hvh-01`. Do not introduce new active
+    inventory, playbook, or plan references to the retired alias. NetBox remains
+    the source of truth for this identity.
+15. NetBox identity/modeling changes are not complete until the repo is updated
+    and `scripts/validate_netbox_repo_consistency.sh` passes. Run the gate
+    directly or through `ansible-playbook playbooks/deploy_ipam_netbox.yaml
+    --tags ipam_netbox_repo_consistency`. Do not leave NetBox live state ahead
+    of inventory, playbooks, active docs, or repo guidance.
 
 ## Research Expectations
 
@@ -186,16 +195,28 @@ planning or research question. If they are skipped, say why.
    - an `Architecture/Structure Diagram` in Mermaid
    - any conditional diagrams required by the active framework rule
    - an end section listing other available diagram types that could be made
-4. Refine the draft until agreement instead of treating planning as one-shot.
-5. Keep draft plans in the conversation until they are accepted. Store approved plans under `docs/plans/` as the canonical durable artifact and mirror them to a GitHub issue as a higher-level roadmap when GitHub is available.
-6. At meaningful role transitions, briefly label the active framework surface when it helps the user track the work:
+4. Before emitting a conversational `<proposed_plan>` or saving a plan under
+   `docs/plans/`, run the plan diagram gate:
+   - the plan contains a fenced Mermaid `Architecture/Structure Diagram`
+   - the diagram shows repo structure, external resources, data/control flow,
+     naming schemes, variable sources, tags, and playbook/file organization
+     relevant to the plan
+   - any conditional diagrams required by the active framework rule are present
+   - the final section is `Diagram Inventory` or `Other Available Diagram
+     Types`
+   - that final section lists diagrams included and other diagrams that could
+     be created
+   If this gate fails, do not emit or save the plan. Fix the plan first.
+5. Refine the draft until agreement instead of treating planning as one-shot.
+6. Keep draft plans in the conversation until they are accepted. Store approved plans under `docs/plans/` as the canonical durable artifact and mirror them to a GitHub issue as a higher-level roadmap when GitHub is available.
+7. At meaningful role transitions, briefly label the active framework surface when it helps the user track the work:
    - `Planner/Steward view:`
    - `Researcher view:`
    - `Executor view:`
    - `Outcomes:`
-7. Reserve `Evidence:` for collected outputs, saved artifacts, and source-backed findings. Use `Outcomes:` or plain implementation prose for change summaries, recaps, or results that are not proof artifacts.
-8. Treat Ansible task states such as `changed`, `ok`, and play recap counts as outcomes, not evidence, unless the underlying output, exception text, registered result, log/event entry, or saved artifact is also shown.
-9. Use those labels at transition points and decision points, not on every message.
+8. Reserve `Evidence:` for collected outputs, saved artifacts, and source-backed findings. Use `Outcomes:` or plain implementation prose for change summaries, recaps, or results that are not proof artifacts.
+9. Treat Ansible task states such as `changed`, `ok`, and play recap counts as outcomes, not evidence, unless the underlying output, exception text, registered result, log/event entry, or saved artifact is also shown.
+10. Use those labels at transition points and decision points, not on every message.
 
 ## Implementation Shape
 

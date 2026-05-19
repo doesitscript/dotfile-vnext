@@ -505,6 +505,21 @@ required by the active framework rule, and an ending list of other available
 diagram types that could be made. If the baseline diagram is missing, that is a
 planning defect to correct before implementation.
 
+Before emitting or saving an official plan, perform the plan diagram gate:
+
+1. Confirm a fenced Mermaid `Architecture/Structure Diagram` is present.
+2. Confirm the diagram shows the repository surfaces being changed, external
+   integrations, data/control flow, naming schemes, variable sources, tag
+   hierarchy, and playbook/file organization relevant to the plan.
+3. Confirm conditional diagrams required by active framework rules are present.
+4. Confirm the plan ends with `Diagram Inventory` or `Other Available Diagram
+   Types`.
+5. Confirm that final section lists both diagrams included and additional
+   diagrams that could be created.
+
+If any item fails, the planner must revise the plan before presenting it to the
+user or writing it to `docs/plans/`.
+
 ### Role Transition Visibility
 
 The framework should be visible at meaningful transition points, but not noisy.
