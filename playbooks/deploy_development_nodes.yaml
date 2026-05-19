@@ -11,6 +11,7 @@
 #          remote_desktop_mac (macOS-only Microsoft Remote Desktop install)
 #          tunnelblick_mac (macOS-only deprecated Tunnelblick install for Monterey)
 #          mac_user_niceties (macOS notification + widget quality-of-life defaults)
+#          k3s_mac_client (macOS kubectl + kubeconfig for the homelab K3s cluster)
 #
 # A node is a development node when node_purpose: development is set in its
 # group_vars file. This uses Ansible's group_by module to dynamically classify
@@ -42,6 +43,7 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags tunnelblick_mac --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags tunnelblick_mac --limit mac-dev -e tunnelblick_mac_state=absent
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags mac_user_niceties --limit mac-dev
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags k3s_mac_client --limit mac-dev
 #
 #   # Windows surface only
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_windows --limit server-225-win
@@ -103,4 +105,10 @@
       tags: [tunnelblick_mac]
     - role: mac_user_niceties
       tags: [mac_user_niceties]
+    - role: hyperv_guest_route_mac
+      when: ansible_system == "Darwin"
+      tags: [hyperv_guest_route_mac, k3s_mac_client]
+    - role: k3s_mac_client
+      when: ansible_system == "Darwin"
+      tags: [k3s_mac_client]
     - role: common/vscode
