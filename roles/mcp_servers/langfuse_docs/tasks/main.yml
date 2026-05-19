@@ -1,0 +1,115 @@
+---
+- name: Capture requested Langfuse Docs MCP target tags
+  ansible.builtin.set_fact:
+    _langfuse_docs_requested_target_tags: >-
+      {{
+        (ansible_run_tags | default([]))
+        | intersect(['mcp_target_cursor', 'mcp_target_codex', 'mcp_target_openapi'])
+      }}
+  tags:
+    - mcp
+    - langfuse
+    - langfuse-docs
+    - development
+    - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Validate configured Langfuse Docs MCP targets
+  ansible.builtin.assert:
+    that:
+      - (langfuse_docs_mcp_targets | difference(langfuse_docs_mcp_supported_targets)) | length == 0
+      - langfuse_docs_mcp_state in ["present", "absent"]
+    fail_msg: >-
+      langfuse_docs_mcp_targets contains unsupported values or
+      langfuse_docs_mcp_state is not present/absent.
+  tags:
+    - mcp
+    - langfuse
+    - langfuse-docs
+    - development
+    - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Determine active Langfuse Docs MCP client targets
+  ansible.builtin.set_fact:
+    _langfuse_docs_target_cursor_selected: >-
+      {{
+        ('mcp_target_cursor' in _langfuse_docs_requested_target_tags)
+        or
+        (
+          (_langfuse_docs_requested_target_tags | length) == 0
+          and ('cursor' in langfuse_docs_mcp_targets)
+        )
+      }}
+    _langfuse_docs_target_codex_selected: >-
+      {{
+        ('mcp_target_codex' in _langfuse_docs_requested_target_tags)
+        or
+        (
+          (_langfuse_docs_requested_target_tags | length) == 0
+          and ('codex' in langfuse_docs_mcp_targets)
+        )
+      }}
+    _langfuse_docs_target_openapi_selected: >-
+      {{
+        ('mcp_target_openapi' in _langfuse_docs_requested_target_tags)
+        or
+        (
+          (_langfuse_docs_requested_target_tags | length) == 0
+          and ('openapi' in langfuse_docs_mcp_targets)
+        )
+      }}
+  tags:
+    - mcp
+    - langfuse
+    - langfuse-docs
+    - development
+    - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Fail fast for the Langfuse Docs OpenAPI target stub
+  ansible.builtin.import_tasks: openapi_stub.yml
+  when: _langfuse_docs_target_openapi_selected | bool
+  tags:
+    - mcp
+    - langfuse
+    - langfuse-docs
+    - development
+    - research
+    - mcp_target_openapi
+
+- name: Ensure Langfuse Docs MCP role is present
+  ansible.builtin.import_tasks: present.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - langfuse_docs_mcp_state == "present"
+  tags:
+    - mcp
+    - langfuse
+    - langfuse-docs
+    - development
+    - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Ensure Langfuse Docs MCP role is absent
+  ansible.builtin.import_tasks: absent.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - langfuse_docs_mcp_state == "absent"
+  tags:
+    - mcp
+    - langfuse
+    - langfuse-docs
+    - development
+    - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi

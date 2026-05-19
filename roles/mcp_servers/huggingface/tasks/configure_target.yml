@@ -1,0 +1,44 @@
+---
+- name: Ensure target directory exists for {{ _huggingface_target_name }}
+  ansible.builtin.file:
+    path: "{{ _huggingface_target_config_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Check whether mcp.json exists for {{ _huggingface_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _huggingface_target_config_path }}"
+  register: _huggingface_target_mcp_json_stat
+
+- name: Create mcp.json with Hugging Face entry for {{ _huggingface_target_name }}
+  ansible.builtin.copy:
+    dest: "{{ _huggingface_target_config_path }}"
+    mode: "0644"
+    content: "{{ {'mcpServers': {(huggingface_mcp_server_key): _huggingface_target_entry}} | to_nice_json }}\n"
+  when: not _huggingface_target_mcp_json_stat.stat.exists
+
+- name: Merge Hugging Face entry into existing mcp.json for {{ _huggingface_target_name }}
+  when: _huggingface_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _huggingface_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _huggingface_target_config_path }}"
+      register: _huggingface_target_mcp_json_raw
+
+    - name: Write merged mcp.json for {{ _huggingface_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _huggingface_target_config_path }}"
+        content: "{{ _huggingface_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _huggingface_target_existing: "{{ _huggingface_target_mcp_json_raw.content | b64decode | from_json }}"
+        _huggingface_target_servers: >-
+          {{
+            (_huggingface_target_existing.mcpServers | default({}))
+            | combine({(huggingface_mcp_server_key): _huggingface_target_entry})
+          }}
+        _huggingface_target_merged: >-
+          {{
+            _huggingface_target_existing
+            | combine({'mcpServers': _huggingface_target_servers})
+          }}

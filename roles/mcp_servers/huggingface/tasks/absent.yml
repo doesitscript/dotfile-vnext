@@ -1,0 +1,14 @@
+---
+- name: Remove Hugging Face entry from Cursor mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _huggingface_target_name: "cursor"
+    _huggingface_target_config_path: "{{ huggingface_mcp_cursor_config_path }}"
+  when: _huggingface_target_cursor_selected | bool
+
+- name: Remove Hugging Face entry from Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ huggingface_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ huggingface_mcp_server_key }}"
+  when: _huggingface_target_codex_selected | bool

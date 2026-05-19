@@ -1,0 +1,33 @@
+---
+- name: Check whether mcp.json exists for {{ _langfuse_docs_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _langfuse_docs_target_config_path }}"
+  register: _langfuse_docs_remove_target_mcp_json_stat
+
+- name: Remove Langfuse Docs entry from mcp.json for {{ _langfuse_docs_target_name }}
+  when: _langfuse_docs_remove_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _langfuse_docs_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _langfuse_docs_target_config_path }}"
+      register: _langfuse_docs_remove_target_mcp_json_raw
+
+    - name: Write mcp.json without the Langfuse Docs entry for {{ _langfuse_docs_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _langfuse_docs_target_config_path }}"
+        content: "{{ _langfuse_docs_remove_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _langfuse_docs_remove_target_existing: "{{ _langfuse_docs_remove_target_mcp_json_raw.content | b64decode | from_json }}"
+        _langfuse_docs_remove_target_filtered_servers: >-
+          {{
+            (_langfuse_docs_remove_target_existing.mcpServers | default({}))
+            | dict2items
+            | rejectattr('key', 'equalto', langfuse_docs_mcp_server_key)
+            | items2dict
+          }}
+        _langfuse_docs_remove_target_merged: >-
+          {{
+            _langfuse_docs_remove_target_existing
+            | combine({'mcpServers': _langfuse_docs_remove_target_filtered_servers})
+          }}

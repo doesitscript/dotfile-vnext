@@ -1,0 +1,33 @@
+---
+- name: Check whether mcp.json exists for {{ _huggingface_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _huggingface_target_config_path }}"
+  register: _huggingface_remove_target_mcp_json_stat
+
+- name: Remove Hugging Face entry from mcp.json for {{ _huggingface_target_name }}
+  when: _huggingface_remove_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _huggingface_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _huggingface_target_config_path }}"
+      register: _huggingface_remove_target_mcp_json_raw
+
+    - name: Write mcp.json without the Hugging Face entry for {{ _huggingface_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _huggingface_target_config_path }}"
+        content: "{{ _huggingface_remove_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _huggingface_remove_target_existing: "{{ _huggingface_remove_target_mcp_json_raw.content | b64decode | from_json }}"
+        _huggingface_remove_target_filtered_servers: >-
+          {{
+            (_huggingface_remove_target_existing.mcpServers | default({}))
+            | dict2items
+            | rejectattr('key', 'equalto', huggingface_mcp_server_key)
+            | items2dict
+          }}
+        _huggingface_remove_target_merged: >-
+          {{
+            _huggingface_remove_target_existing
+            | combine({'mcpServers': _huggingface_remove_target_filtered_servers})
+          }}

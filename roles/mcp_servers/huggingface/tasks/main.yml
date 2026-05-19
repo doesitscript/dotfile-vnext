@@ -1,0 +1,115 @@
+---
+- name: Capture requested Hugging Face MCP target tags
+  ansible.builtin.set_fact:
+    _huggingface_requested_target_tags: >-
+      {{
+        (ansible_run_tags | default([]))
+        | intersect(['mcp_target_cursor', 'mcp_target_codex', 'mcp_target_openapi'])
+      }}
+  tags:
+    - mcp
+    - huggingface
+    - huggingface-mcp
+    - development
+    - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Validate configured Hugging Face MCP targets
+  ansible.builtin.assert:
+    that:
+      - (huggingface_mcp_targets | difference(huggingface_mcp_supported_targets)) | length == 0
+      - huggingface_mcp_state in ["present", "absent"]
+    fail_msg: >-
+      huggingface_mcp_targets contains unsupported values or
+      huggingface_mcp_state is not present/absent.
+  tags:
+    - mcp
+    - huggingface
+    - huggingface-mcp
+    - development
+    - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Determine active Hugging Face MCP client targets
+  ansible.builtin.set_fact:
+    _huggingface_target_cursor_selected: >-
+      {{
+        ('mcp_target_cursor' in _huggingface_requested_target_tags)
+        or
+        (
+          (_huggingface_requested_target_tags | length) == 0
+          and ('cursor' in huggingface_mcp_targets)
+        )
+      }}
+    _huggingface_target_codex_selected: >-
+      {{
+        ('mcp_target_codex' in _huggingface_requested_target_tags)
+        or
+        (
+          (_huggingface_requested_target_tags | length) == 0
+          and ('codex' in huggingface_mcp_targets)
+        )
+      }}
+    _huggingface_target_openapi_selected: >-
+      {{
+        ('mcp_target_openapi' in _huggingface_requested_target_tags)
+        or
+        (
+          (_huggingface_requested_target_tags | length) == 0
+          and ('openapi' in huggingface_mcp_targets)
+        )
+      }}
+  tags:
+    - mcp
+    - huggingface
+    - huggingface-mcp
+    - development
+    - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Fail fast for the Hugging Face OpenAPI target stub
+  ansible.builtin.import_tasks: openapi_stub.yml
+  when: _huggingface_target_openapi_selected | bool
+  tags:
+    - mcp
+    - huggingface
+    - huggingface-mcp
+    - development
+    - research
+    - mcp_target_openapi
+
+- name: Ensure Hugging Face MCP role is present
+  ansible.builtin.import_tasks: present.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - huggingface_mcp_state == "present"
+  tags:
+    - mcp
+    - huggingface
+    - huggingface-mcp
+    - development
+    - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Ensure Hugging Face MCP role is absent
+  ansible.builtin.import_tasks: absent.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - huggingface_mcp_state == "absent"
+  tags:
+    - mcp
+    - huggingface
+    - huggingface-mcp
+    - development
+    - research
+    - mcp_target_cursor
+    - mcp_target_codex
+    - mcp_target_openapi

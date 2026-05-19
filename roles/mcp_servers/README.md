@@ -11,6 +11,8 @@ Each subdirectory is an Ansible role that installs and configures one MCP
 | `mcp-sysoperator` | Infrastructure ops (file, shell, Terraform) | Node.js (npm) | launcher | Cursor | [tarnover/mcp-sysoperator](https://github.com/tarnover/mcp-sysoperator) |
 | `ansible-mcp` | Ansible playbook/inventory intelligence | Python (pip + venv) | launcher | Cursor | [bsahane/mcp-ansible](https://github.com/bsahane/mcp-ansible) |
 | `openai_docs` | OpenAI developer docs (search + read) | HTTP + local Codex | launcher | Cursor, Codex | [Docs MCP](https://developers.openai.com/resources/docs-mcp) |
+| `langfuse_docs` | Langfuse developer docs (search + read) | HTTP | launcher | Cursor, Codex | [Docs MCP](https://langfuse.com/docs/docs-mcp) |
+| `huggingface` | Hugging Face Hub, docs, papers, datasets, models, and Spaces tools | HTTP | launcher | Cursor, Codex | [Hugging Face MCP Server](https://huggingface.co/docs/hub/hf-mcp-server) |
 | `drawio` | draw.io MCP tool server | Node.js (npm) | interactive/editor | Cursor, Codex, VS Code, OpenAPI stub | [lgazo/drawio-mcp-server](https://github.com/lgazo/drawio-mcp-server) |
 | `netbox` | NetBox MCP query server | Python (uv) | launcher | Cursor, Codex | [netboxlabs/netbox-mcp-server](https://github.com/netboxlabs/netbox-mcp-server) |
 
@@ -19,6 +21,8 @@ Each subdirectory is an Ansible role that installs and configures one MCP
 - `roles/mcp_servers/_template/` is the MCP role scaffold.
 - `roles/mcp_servers/drawio/` is the first canonical JSON-target example.
 - `roles/mcp_servers/openai_docs/` is the first Codex-target example.
+- `roles/mcp_servers/langfuse_docs/` is a simple public HTTP docs MCP example.
+- `roles/mcp_servers/huggingface/` is the official Hugging Face Hub HTTP MCP example.
 - `playbooks/mac/mcp_servers.yaml` is the focused controller-side control surface for local MCP convergence on the Mac.
 
 ## Target Model
@@ -47,6 +51,8 @@ Install only one server:
 
 ```bash
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags drawio
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags langfuse-docs
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags huggingface
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags ansible-mcp
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags mcp-sysoperator
 ```
@@ -71,6 +77,7 @@ roles/mcp_servers/
   mcp-sysoperator/
   ansible-mcp/
   openai_docs/
+  huggingface/
   drawio/
   _legacy_builder/
 ```

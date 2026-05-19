@@ -1,0 +1,14 @@
+---
+- name: Remove Langfuse Docs entry from Cursor mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _langfuse_docs_target_name: "cursor"
+    _langfuse_docs_target_config_path: "{{ langfuse_docs_mcp_cursor_config_path }}"
+  when: _langfuse_docs_target_cursor_selected | bool
+
+- name: Remove Langfuse Docs entry from Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ langfuse_docs_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ langfuse_docs_mcp_server_key }}"
+  when: _langfuse_docs_target_codex_selected | bool

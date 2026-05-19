@@ -1,0 +1,28 @@
+---
+- name: Verify Hugging Face MCP endpoint is reachable
+  ansible.builtin.uri:
+    url: "{{ huggingface_mcp_url }}"
+    method: GET
+    status_code:
+      - 200
+      - 405
+    return_content: false
+  register: _huggingface_mcp_endpoint_probe
+  changed_when: false
+
+- name: Ensure Hugging Face entry exists in Cursor mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _huggingface_target_name: "cursor"
+    _huggingface_target_config_path: "{{ huggingface_mcp_cursor_config_path }}"
+    _huggingface_target_entry:
+      url: "{{ huggingface_mcp_url }}"
+  when: _huggingface_target_cursor_selected | bool
+
+- name: Ensure Hugging Face entry exists in Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ huggingface_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ huggingface_mcp_server_key }}"
+    _mcp_codex_entry: "{{ huggingface_mcp_codex_entry }}"
+  when: _huggingface_target_codex_selected | bool

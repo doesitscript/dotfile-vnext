@@ -1,0 +1,28 @@
+---
+- name: Verify Langfuse Docs MCP endpoint is reachable
+  ansible.builtin.uri:
+    url: "{{ langfuse_docs_mcp_url }}"
+    method: GET
+    status_code:
+      - 200
+      - 405
+    return_content: false
+  register: _langfuse_docs_mcp_endpoint_probe
+  changed_when: false
+
+- name: Ensure Langfuse Docs entry exists in Cursor mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _langfuse_docs_target_name: "cursor"
+    _langfuse_docs_target_config_path: "{{ langfuse_docs_mcp_cursor_config_path }}"
+    _langfuse_docs_target_entry:
+      url: "{{ langfuse_docs_mcp_url }}"
+  when: _langfuse_docs_target_cursor_selected | bool
+
+- name: Ensure Langfuse Docs entry exists in Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ langfuse_docs_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ langfuse_docs_mcp_server_key }}"
+    _mcp_codex_entry: "{{ langfuse_docs_mcp_codex_entry }}"
+  when: _langfuse_docs_target_codex_selected | bool

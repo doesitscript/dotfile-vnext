@@ -1,0 +1,44 @@
+---
+- name: Ensure target directory exists for {{ _langfuse_docs_target_name }}
+  ansible.builtin.file:
+    path: "{{ _langfuse_docs_target_config_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Check whether mcp.json exists for {{ _langfuse_docs_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _langfuse_docs_target_config_path }}"
+  register: _langfuse_docs_target_mcp_json_stat
+
+- name: Create mcp.json with Langfuse Docs entry for {{ _langfuse_docs_target_name }}
+  ansible.builtin.copy:
+    dest: "{{ _langfuse_docs_target_config_path }}"
+    mode: "0644"
+    content: "{{ {'mcpServers': {(langfuse_docs_mcp_server_key): _langfuse_docs_target_entry}} | to_nice_json }}\n"
+  when: not _langfuse_docs_target_mcp_json_stat.stat.exists
+
+- name: Merge Langfuse Docs entry into existing mcp.json for {{ _langfuse_docs_target_name }}
+  when: _langfuse_docs_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _langfuse_docs_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _langfuse_docs_target_config_path }}"
+      register: _langfuse_docs_target_mcp_json_raw
+
+    - name: Write merged mcp.json for {{ _langfuse_docs_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _langfuse_docs_target_config_path }}"
+        content: "{{ _langfuse_docs_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _langfuse_docs_target_existing: "{{ _langfuse_docs_target_mcp_json_raw.content | b64decode | from_json }}"
+        _langfuse_docs_target_servers: >-
+          {{
+            (_langfuse_docs_target_existing.mcpServers | default({}))
+            | combine({(langfuse_docs_mcp_server_key): _langfuse_docs_target_entry})
+          }}
+        _langfuse_docs_target_merged: >-
+          {{
+            _langfuse_docs_target_existing
+            | combine({'mcpServers': _langfuse_docs_target_servers})
+          }}
