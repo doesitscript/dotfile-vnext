@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ k3s_hello_world_namespace }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ k3s_hello_world_name }}
+  namespace: {{ k3s_hello_world_namespace }}
+  labels:
+    app: {{ k3s_hello_world_name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ k3s_hello_world_name }}
+  template:
+    metadata:
+      labels:
+        app: {{ k3s_hello_world_name }}
+    spec:
+      containers:
+        - name: {{ k3s_hello_world_name }}
+          image: {{ k3s_hello_world_image }}
+          args:
+            - "-text={{ k3s_hello_world_text }}"
+          ports:
+            - name: http
+              containerPort: {{ k3s_hello_world_port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ k3s_hello_world_name }}
+  namespace: {{ k3s_hello_world_namespace }}
+spec:
+  selector:
+    app: {{ k3s_hello_world_name }}
+  ports:
+    - name: http
+      port: {{ k3s_hello_world_port }}
+      targetPort: http

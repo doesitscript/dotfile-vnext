@@ -1,0 +1,79 @@
+---
+- name: Render K3s hello-world manifest locally
+  ansible.builtin.template:
+    src: hello-world.yaml.j2
+    dest: "/tmp/{{ k3s_hello_world_namespace }}-{{ k3s_hello_world_name }}.yaml"
+    mode: "0600"
+  when: k3s_hello_world_state == "present"
+
+- name: Apply K3s hello-world manifest from macOS
+  ansible.builtin.command:
+    argv:
+      - "{{ k3s_hello_world_kubectl }}"
+      - --kubeconfig
+      - "{{ k3s_hello_world_kubeconfig }}"
+      - apply
+      - -f
+      - "/tmp/{{ k3s_hello_world_namespace }}-{{ k3s_hello_world_name }}.yaml"
+  register: k3s_hello_world_apply
+  changed_when: k3s_hello_world_apply.stdout is search("created|configured")
+  when: k3s_hello_world_state == "present"
+
+- name: Wait for K3s hello-world rollout
+  ansible.builtin.command:
+    argv:
+      - "{{ k3s_hello_world_kubectl }}"
+      - --kubeconfig
+      - "{{ k3s_hello_world_kubeconfig }}"
+      - -n
+      - "{{ k3s_hello_world_namespace }}"
+      - rollout
+      - status
+      - "deployment/{{ k3s_hello_world_name }}"
+      - "--timeout={{ k3s_hello_world_wait_timeout }}"
+  changed_when: false
+  when: k3s_hello_world_state == "present"
+
+- name: Validate K3s hello-world service response from inside the cluster
+  ansible.builtin.command:
+    argv:
+      - "{{ k3s_hello_world_kubectl }}"
+      - --kubeconfig
+      - "{{ k3s_hello_world_kubeconfig }}"
+      - -n
+      - "{{ k3s_hello_world_namespace }}"
+      - run
+      - "{{ k3s_hello_world_name }}-curl"
+      - --rm
+      - -i
+      - "--restart=Never"
+      - "--image={{ k3s_hello_world_curl_image }}"
+      - --
+      - curl
+      - -fsS
+      - "http://{{ k3s_hello_world_name }}:{{ k3s_hello_world_port }}"
+  register: k3s_hello_world_response
+  changed_when: false
+  when: k3s_hello_world_state == "present"
+
+- name: Remove K3s hello-world resources
+  ansible.builtin.command:
+    argv:
+      - "{{ k3s_hello_world_kubectl }}"
+      - --kubeconfig
+      - "{{ k3s_hello_world_kubeconfig }}"
+      - delete
+      - namespace
+      - "{{ k3s_hello_world_namespace }}"
+      - --ignore-not-found=true
+  register: k3s_hello_world_delete
+  changed_when: k3s_hello_world_delete.stdout is search("deleted")
+  when: k3s_hello_world_state == "absent"
+
+- name: Report K3s hello-world result
+  ansible.builtin.debug:
+    msg:
+      namespace: "{{ k3s_hello_world_namespace }}"
+      deployment: "{{ k3s_hello_world_name }}"
+      response: "{{ k3s_hello_world_response.stdout_lines | default([]) }}"
+  when: k3s_hello_world_state == "present"
