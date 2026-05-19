@@ -1,0 +1,32 @@
+---
+- name: Validate archive tools lifecycle state
+  ansible.builtin.assert:
+    that:
+      - archive_tools_windows_state in ["absent", "latest", "present", "upgrade"]
+    fail_msg: >-
+      archive_tools_windows_state must be one of absent, latest, present, or
+      upgrade.
+
+- name: Ensure Windows archive tools are managed with Chocolatey
+  chocolatey.chocolatey.win_chocolatey:
+    name: "{{ archive_tools_windows_chocolatey_packages }}"
+    state: "{{ archive_tools_windows_state }}"
+
+- name: Verify 7-Zip command is available
+  ansible.windows.win_command:
+    cmd: "where.exe {{ archive_tools_windows_verify_command }}"
+  register: archive_tools_windows_verify_command_result
+  changed_when: false
+  when:
+    - archive_tools_windows_state in ["latest", "present", "upgrade"]
+    - not ansible_check_mode
+
+- name: Verify 7-Zip command is absent
+  ansible.windows.win_command:
+    cmd: "where.exe {{ archive_tools_windows_verify_command }}"
+  register: archive_tools_windows_absent_verify_command_result
+  changed_when: false
+  failed_when: archive_tools_windows_absent_verify_command_result.rc == 0
+  when:
+    - archive_tools_windows_state == "absent"
+    - not ansible_check_mode

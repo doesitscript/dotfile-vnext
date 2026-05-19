@@ -1,0 +1,47 @@
+---
+- name: Preview Windows archive tool target scope
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Show Windows archive tool target scope
+      ansible.builtin.debug:
+        msg:
+          active_target_group: windows_hosts
+          active_targets: "{{ query('ansible.builtin.inventory_hostnames', 'windows_hosts') }}"
+          excluded_offline_group: windows_hosts_offline
+          excluded_offline_hosts: "{{ query('ansible.builtin.inventory_hostnames', 'windows_hosts_offline') }}"
+          excluded_deferred_group: windows_hosts_deferred
+          excluded_deferred_hosts: "{{ query('ansible.builtin.inventory_hostnames', 'windows_hosts_deferred') }}"
+          selection_reason: >-
+            windows_hosts is the repo's normal online Windows desired-state
+            target group; offline and deferred Windows hosts stay outside this
+            mutation path.
+      tags:
+        - always
+        - preview
+
+- name: Manage Windows archive tools
+  hosts: windows_hosts
+  gather_facts: false
+
+  pre_tasks:
+    - name: Skip hosts without WinRM connection configuration
+      ansible.builtin.meta: end_host
+      when: (ansible_connection | default('ssh')) != 'winrm'
+      tags:
+        - always
+
+    - name: Set Windows OS identity facts without SMBIOS collection
+      ansible.builtin.set_fact:
+        ansible_os_family: "Windows"
+        ansible_system: "Win32NT"
+        ansible_distribution: "Windows"
+      tags:
+        - always
+
+  roles:
+    - role: archive_tools_windows
+      tags:
+        - archive_tools_windows
+        - 7zip
