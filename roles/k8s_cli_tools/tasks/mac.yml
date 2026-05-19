@@ -1,0 +1,116 @@
+---
+# Install Kubernetes CLI tools on macOS via Homebrew
+
+# ─── Core K8s Management Tools ─────────────────────────────────────────────
+
+- name: Install K9s via Homebrew
+  community.general.homebrew:
+    name: k9s
+    state: "{{ k8s_cli_tools_state }}"
+  tags:
+    - k9s
+
+- name: Install kubecolor via Homebrew
+  community.general.homebrew:
+    name: kubecolor
+    state: "{{ k8s_cli_tools_state }}"
+  tags:
+    - kubecolor
+
+- name: Install Stern via Homebrew
+  community.general.homebrew:
+    name: stern
+    state: "{{ k8s_cli_tools_state }}"
+  tags:
+    - stern
+
+- name: Install kubectx and kubens via Homebrew
+  community.general.homebrew:
+    name: kubectx
+    state: "{{ k8s_cli_tools_state }}"
+  tags:
+    - kubectx
+    - kubens
+
+- name: Install Helm via Homebrew
+  community.general.homebrew:
+    name: helm
+    state: "{{ k8s_cli_tools_state }}"
+  tags:
+    - helm
+
+# ─── Plugin Manager and Extensions ─────────────────────────────────────────
+
+- name: Install Krew plugin manager via Homebrew
+  community.general.homebrew:
+    name: krew
+    state: "{{ k8s_cli_tools_state }}"
+  tags:
+    - krew
+
+- name: Ensure KREW_ROOT is set for plugin installation
+  ansible.builtin.set_fact:
+    k8s_cli_tools_krew_root: "{{ ansible_env.HOME }}/.krew"
+  when: k8s_cli_tools_state == "present"
+  tags:
+    - krew
+
+- name: Install Krew plugins
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - krew
+      - install
+      - "{{ item.name }}"
+  environment:
+    PATH: "{{ k8s_cli_tools_krew_root }}/bin:{{ ansible_env.PATH }}"
+  loop: "{{ k8s_cli_tools_krew_plugins }}"
+  when:
+    - k8s_cli_tools_state == "present"
+    - item.enabled | bool
+  register: k8s_cli_tools_krew_install
+  changed_when: "'Already installed' not in k8s_cli_tools_krew_install.stderr"
+  failed_when:
+    - k8s_cli_tools_krew_install.rc != 0
+    - "'Already installed' not in k8s_cli_tools_krew_install.stderr"
+  tags:
+    - krew
+    - krew_plugins
+
+# ─── GitOps and Configuration Management ───────────────────────────────────
+
+- name: Install kubeseal via Homebrew
+  community.general.homebrew:
+    name: kubeseal
+    state: "{{ k8s_cli_tools_state }}"
+  tags:
+    - kubeseal
+
+- name: Install Kustomize via Homebrew
+  community.general.homebrew:
+    name: kustomize
+    state: "{{ k8s_cli_tools_state }}"
+  tags:
+    - kustomize
+
+# ─── AI-Powered Diagnostics ───────────────────────────────────────────────
+
+- name: Install K8sGPT via Homebrew
+  community.general.homebrew:
+    name: k8sgpt
+    state: "{{ k8s_cli_tools_state }}"
+  tags:
+    - k8sgpt
+
+# ─── Installation Summary ─────────────────────────────────────────────────
+
+- name: Report K8s CLI tools installation status
+  ansible.builtin.debug:
+    msg:
+      - "K8s CLI Tools State: {{ k8s_cli_tools_state }}"
+      - "Core Tools: k9s, kubecolor, stern, kubectx/kubens, helm"
+      - "Plugin Manager: krew"
+      - "Krew Plugins: {{ k8s_cli_tools_krew_plugins | selectattr('enabled') | map(attribute='name') | list | join(', ') }}"
+      - "GitOps Tools: kubeseal, kustomize"
+      - "AI Tools: k8sgpt"
+  when: k8s_cli_tools_state == "present"

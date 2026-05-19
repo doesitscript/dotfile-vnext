@@ -1,0 +1,14 @@
+---
+- name: Validate k8s_cli_tools state
+  ansible.builtin.assert:
+    that:
+      - k8s_cli_tools_state in ["present", "absent"]
+    fail_msg: "k8s_cli_tools_state must be present or absent."
+
+- name: Include macOS tasks
+  ansible.builtin.include_tasks: mac.yml
+  when: ansible_facts['system'] == "Darwin"
+  tags:
+    - k8s_cli_tools
+    - k8s
+    - kubernetes
