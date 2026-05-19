@@ -24,10 +24,12 @@ physical_nodes:
     # Router hostname: Set in router's "Manually Assigned IP" section
     # Use hostname if router provides DNS resolution, otherwise use IP
 
-  network-server:
+  home-lab-auth-hvh-01:
     hostname: "ai-net-server-mgmt"  # Current active adapter — revisit naming when original adapter restored
     ip_address: "192.168.50.234"  # Primary surface for Ansible (backup Wi-Fi adapter, currently active)
     ip_address_original: "192.168.50.233"  # Original Wi-Fi adapter (MAC 9c:c7:d3:10:68:5a — temporarily down)
+    legacy_aliases:
+      - network-server
     # Router DHCP reservation: ai-net-server-mgmt → current adapter MAC → 192.168.50.234
     # When original adapter restored: revisit hostname strategy and whether both need separate reservations
 
@@ -55,10 +57,10 @@ ansible_surfaces:
     connection_type: winrm
     # Explicit IPv6 fallback/control-plane surface for manual or troubleshooting use
 
-  network-server-win:
-    physical_node: network-server
+  home-lab-auth-hvh-01:
+    physical_node: home-lab-auth-hvh-01
     connection_type: winrm
-    # Use either hostname or IP from physical_nodes.network-server above
+    # Use either hostname or IP from physical_nodes.home-lab-auth-hvh-01 above
 
   dev-3090-win:
     physical_node: dev-3090
@@ -72,9 +74,9 @@ ansible_surfaces:
     # Routed/private-subnet Hyper-V Ubuntu guest on server-225-win
 
   nsrv-dkr-01:
-    physical_node: network-server
+    physical_node: home-lab-auth-hvh-01
     connection_type: ssh
-    # Routed/private-subnet Docker Ubuntu guest on network-server-win
+    # Routed/private-subnet Docker Ubuntu guest on home-lab-auth-hvh-01
 
   # macOS surface
   mac-dev:

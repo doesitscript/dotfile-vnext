@@ -1,5 +1,7 @@
 ---
 # Windows surface: WinRM for bootstrap; OpenSSH should land directly on Windows.
+# NetBox/source-of-truth name: home-lab-auth-hvh-01.
+# Legacy inventory/control alias: network-server.
 # ai-net-server-mgmt resolves via LAN mDNS but not from Mac controller — use IP directly.
 # Two Wi-Fi adapters will be active simultaneously once original adapter is restored.
 # Primary adapter (ansible_host): 192.168.50.234 — secondary Wi-Fi, currently active.
@@ -22,7 +24,9 @@ winrm_port: 5985
 ansible_port: 5985
 win_user: "joshc"
 ansible_user: "joshc"
-physical_node: "network-server"
+physical_node: "home-lab-auth-hvh-01"
+legacy_aliases:
+  - network-server
 win_password: "Pass@w0rd1"
 ansible_winrm_password: "Pass@w0rd1"
 ansible_winrm_scheme: "http"
@@ -44,6 +48,8 @@ runtime_planes:
   hyperv_host:
     enabled: true
   hyperv_docker_vm:
+    enabled: true
+  hyperv_k3s_vm:
     enabled: true
 policy_classes:
   - authoritative_data
@@ -78,7 +84,7 @@ docker_engine_ssh_context_host: "{{ hyperv_ubuntu_vm_autoinstall_network_ipv4 }}
 docker_engine_ssh_port: 22
 docker_engine_ssh_user: "joshc"
 
-# Hyper-V-native Docker Ubuntu VM companion for the network-server physical node.
+# Hyper-V-native Docker Ubuntu VM companion for the home-lab-auth-hvh-01 physical node.
 hyperv_ubuntu_docker_vm_state: present
 hyperv_ubuntu_docker_vm_hostname: "nsrv-dkr-01"
 hyperv_ubuntu_docker_vm_inventory_host: "nsrv-dkr-01"
@@ -103,6 +109,28 @@ hyperv_ubuntu_vm_autoinstall_network_dns_servers:
 hyperv_ubuntu_vm_quick_create_image_url: >-
   https://partner-images.canonical.com/hyper-v/desktop/noble/release/current/ubuntu-noble-hyperv-amd64-ubuntu-desktop-hyperv.vhdx.zip
 hyperv_ubuntu_vm_server_iso_url: "https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso"
+
+# Hyper-V-native K3s Ubuntu VM companion for the home-lab-auth-hvh-01 physical node.
+# This prepares the VM only. Real k3s installation remains out of scope for the
+# stub lane and is gated by k3s_cluster membership later.
+hyperv_ubuntu_k3s_vm_state: present
+hyperv_ubuntu_k3s_vm_hostname: "nsrv-k3s-01"
+hyperv_ubuntu_k3s_vm_inventory_host: "nsrv-k3s-01"
+hyperv_ubuntu_k3s_vm_cpus: 4
+hyperv_ubuntu_k3s_vm_memory: "8G"
+hyperv_ubuntu_k3s_vm_disk: "60G"
+hyperv_ubuntu_k3s_vm_bootstrap_user: "joshc"
+hyperv_ubuntu_k3s_vm_ssh_port: 22
+hyperv_ubuntu_k3s_vm_source_mode: "azure_cloud_image"
+hyperv_ubuntu_k3s_vm_secure_boot_enabled: false
+hyperv_ubuntu_k3s_vm_publish_connection_facts: false
+hyperv_ubuntu_k3s_vm_autoinstall_network_method: "static"
+hyperv_ubuntu_k3s_vm_autoinstall_network_ipv4: "192.168.138.11"
+hyperv_ubuntu_k3s_vm_autoinstall_network_prefix_length: 24
+hyperv_ubuntu_k3s_vm_autoinstall_network_gateway4: "192.168.138.1"
+hyperv_ubuntu_k3s_vm_autoinstall_network_dns_servers:
+  - "1.1.1.1"
+  - "8.8.8.8"
 
 # OpenSSH Server: base feature on Windows hosts unless explicitly set absent.
 openssh_server_state: present

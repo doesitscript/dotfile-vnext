@@ -874,8 +874,8 @@ Examples:
   fz bootstrap-openssh-host-keys            Generate host keys on Mac (for Windows OpenSSH)
   fz bootstrap --limit server-225-wsl      Run full bootstrap flow for one WSL target
   fz bootstrap --all                        Run full bootstrap flow across all target groups
-  fz deploy network --limit network-server-win  Deploy network stacks with confirmation prompt
-  fz deploy network --limit network-server-win --yes  Deploy network stacks without prompt
+  fz deploy network --limit home-lab-auth-hvh-01  Deploy network stacks with confirmation prompt
+  fz deploy network --limit home-lab-auth-hvh-01 --yes  Deploy network stacks without prompt
   fz deploy main --limit server-225-wsl    Deploy main stacks to a specific host
   fz gather-facts --all                      Gather facts from all reachable hosts
   fz gather-facts --limit windows_hosts      Gather facts from Windows hosts only

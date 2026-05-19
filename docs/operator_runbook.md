@@ -107,7 +107,7 @@ Run on the Windows node in an elevated terminal:
 2. **Check specific nodes**:
    ```bash
    ./bin/fz verify --limit server-225-win
-   ./bin/fz verify --limit network-server-win
+   ./bin/fz verify --limit home-lab-auth-hvh-01
    ```
 
 **What gets verified**:
@@ -182,7 +182,7 @@ Run on the Windows node in an elevated terminal:
 ./bin/fz bootstrap --skip-tags firewall
 
 # Limit to specific hosts
-./bin/fz verify --limit "server-225-win:network-server-win"
+./bin/fz verify --limit "server-225-win:home-lab-auth-hvh-01"
 ```
 
 ## Connection Methods
@@ -311,7 +311,7 @@ Test changes without applying:
 
 3. **Limit scope when testing**:
    ```bash
-   ./bin/fz deploy network --limit network-server-win --tags stacks_network
+   ./bin/fz deploy network --limit home-lab-auth-hvh-01 --tags stacks_network
    ```
 
 4. **Keep vault files encrypted**:

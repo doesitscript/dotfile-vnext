@@ -72,7 +72,7 @@ From the Mac (repo root), with env loaded (e.g. `source .envrc` or direnv):
 ```
 
 - Use `--ask-vault-pass` or `.vault_pass` if the playbook needs to read `vault/openssh_host_keys.vault.yml`.
-- For multiple Windows hosts: `--limit server-225-win,network-server-win` or run once per host.
+- For multiple Windows hosts: `--limit server-225-win,home-lab-auth-hvh-01` or run once per host.
 
 ### Windows capabilities (lookup / install / remove)
 

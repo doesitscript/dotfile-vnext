@@ -2,7 +2,7 @@
 
 Canonical approved plan for introducing a reusable Windows storage-layout
 capability while keeping the first executable scope restricted to
-`network-server-win`.
+`home-lab-auth-hvh-01`.
 
 ## Summary
 
@@ -16,7 +16,7 @@ Implement a new Windows storage-layout capability that can:
 
 Milestone one uses `server-225-win` only as the layout reference source.
 Milestone one execution is intentionally guarded so it can run only for
-`network-server-win` until the layout has been validated there.
+`home-lab-auth-hvh-01` until the layout has been validated there.
 
 This work is explicitly for the non-OS data/backup disk layout and does not
 apply to the system disk or the existing `C:` / `D:` boot-and-primary-data
@@ -26,8 +26,8 @@ layout.
 
 Checked and confirmed:
 
-- inventory truth shows both `server-225-win` and `network-server-win` are in
-  `windows_hosts`, while `network-server-win` is uniquely in `network_server`
+- inventory truth shows both `server-225-win` and `home-lab-auth-hvh-01` are in
+  `windows_hosts`, while `home-lab-auth-hvh-01` is uniquely in `network_server`
 - the repo does not already contain a dedicated Windows disk-partitioning role
 - Ansible has native collection support for this workflow through:
   - `community.windows.win_disk_facts`
@@ -65,7 +65,7 @@ backup playbook:
 
 Milestone-one execution path should be intentionally narrow:
 
-- first-target play runs only against `network-server-win`
+- first-target play runs only against `home-lab-auth-hvh-01`
 - the role remains reusable, but the first playbook entrypoint should not
   casually target `server-225-win`
 
@@ -130,7 +130,7 @@ Reference work should:
   for data and backups
 - capture the sizes of those two partitions
 - derive the percentage split of the whole physical disk
-- apply that percentage split to the new 1 TB disk on `network-server-win`
+- apply that percentage split to the new 1 TB disk on `home-lab-auth-hvh-01`
 
 The final partition should typically consume the remaining space after rounding
 to avoid leaving unallocated fragments.
@@ -163,7 +163,7 @@ done:
 ```yaml
 windows_storage_layout_state: present
 windows_storage_layout_allowed_hosts:
-  - network-server-win
+  - home-lab-auth-hvh-01
 windows_storage_layout_reference_host: server-225-win
 windows_storage_layout_partition_style: gpt
 
@@ -196,7 +196,7 @@ live apply phase, not in this plan.
 1. Create the new role with defaults, argument specs, README, and `present` /
    `absent` task split
 2. Add a milestone-one playbook scoped to `network_server`
-3. Add placeholder inventory variables for `network-server-win`
+3. Add placeholder inventory variables for `home-lab-auth-hvh-01`
 4. Add safe assertions for host and disk targeting
 5. Add logic to compute and apply the two-partition proportional layout
 6. Add static validation
@@ -205,7 +205,7 @@ live apply phase, not in this plan.
 ## Apply / Verify / Undo / Change Class
 
 - Apply:
-  - `ansible-playbook playbooks/windows_storage_layout.yml --limit network-server-win`
+  - `ansible-playbook playbooks/windows_storage_layout.yml --limit home-lab-auth-hvh-01`
 - Verify:
   - syntax and lint locally
   - inspect disk facts on the target
@@ -236,9 +236,9 @@ live apply phase, not in this plan.
 
 ### Phase C — first target apply
 
-- gather live disk facts from `network-server-win`
+- gather live disk facts from `home-lab-auth-hvh-01`
 - populate the target-disk identifiers
-- run the milestone-one playbook against `network-server-win`
+- run the milestone-one playbook against `home-lab-auth-hvh-01`
 - verify partition outcomes
 
 ### Phase D — wider rollout later

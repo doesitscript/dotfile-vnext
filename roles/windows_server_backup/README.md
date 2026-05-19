@@ -117,8 +117,8 @@ Technical note:
 Commands:
 
 ```bash
-ansible-playbook playbooks/windows_server_backup.yml --tags backup_preview --limit network-server-win
-ansible-playbook playbooks/windows_server_backup.yml --limit network-server-win
+ansible-playbook playbooks/windows_server_backup.yml --tags backup_preview --limit home-lab-auth-hvh-01
+ansible-playbook playbooks/windows_server_backup.yml --limit home-lab-auth-hvh-01
 ```
 
 ## Manual vs automatic runs
@@ -213,7 +213,7 @@ payload bytes processed, and backup-target free space.
 
 ### Current default cadence
 
-Current inventory default on `network-server-win`:
+Current inventory default on `home-lab-auth-hvh-01`:
 
 - `windows_server_backup_automatic_interval_days: 7`
 
@@ -234,7 +234,7 @@ Preview only the first target host:
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
   --tags backup_preview \
-  --limit network-server-win
+  --limit home-lab-auth-hvh-01
 ```
 
 ### Baseline apply
@@ -243,7 +243,7 @@ Apply the managed Windows backup baseline without triggering a manual backup:
 
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
-  --limit network-server-win
+  --limit home-lab-auth-hvh-01
 ```
 
 ### Manual backup examples
@@ -252,7 +252,7 @@ Manual backup with generated name and generated description:
 
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
-  --limit network-server-win \
+  --limit home-lab-auth-hvh-01 \
   -e windows_server_backup_manual_run_now=true
 ```
 
@@ -260,7 +260,7 @@ Manual backup with generated name and custom description:
 
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
-  --limit network-server-win \
+  --limit home-lab-auth-hvh-01 \
   -e windows_server_backup_manual_run_now=true \
   -e 'windows_server_backup_manual_description=Before storage stack refactor'
 ```
@@ -269,7 +269,7 @@ Manual backup with custom name and custom description:
 
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
-  --limit network-server-win \
+  --limit home-lab-auth-hvh-01 \
   -e windows_server_backup_manual_run_now=true \
   -e 'windows_server_backup_manual_name=pre-refactor-checkpoint' \
   -e 'windows_server_backup_manual_description=Before storage stack refactor'
@@ -279,7 +279,7 @@ Manual backup with custom name only:
 
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
-  --limit network-server-win \
+  --limit home-lab-auth-hvh-01 \
   -e windows_server_backup_manual_run_now=true \
   -e 'windows_server_backup_manual_name=pre-refactor-checkpoint'
 ```
@@ -297,7 +297,7 @@ Temporarily test a three-week cadence without editing inventory:
 
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
-  --limit network-server-win \
+  --limit home-lab-auth-hvh-01 \
   -e windows_server_backup_automatic_interval_days=21
 ```
 
@@ -305,7 +305,7 @@ Disable first-run automatic seeding for a run:
 
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
-  --limit network-server-win \
+  --limit home-lab-auth-hvh-01 \
   -e windows_server_backup_automatic_seed_if_missing=false
 ```
 
@@ -323,7 +323,7 @@ Apply:
 
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
-  --limit network-server-win
+  --limit home-lab-auth-hvh-01
 ```
 
 ## Managed outputs
@@ -371,7 +371,7 @@ Read-only preview:
 ```bash
 ansible-playbook playbooks/windows_server_backup.yml \
   --tags backup_preview \
-  --limit network-server-win
+  --limit home-lab-auth-hvh-01
 ```
 
 Live job status:

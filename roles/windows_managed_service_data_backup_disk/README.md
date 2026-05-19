@@ -1,7 +1,7 @@
 # windows_managed_service_data_backup_disk
 
 Opinionated Windows role for the rebuildable non-OS managed service disk on
-infrastructure nodes such as `network-server-win` and `server-225-win`.
+infrastructure nodes such as `home-lab-auth-hvh-01` and `server-225-win`.
 
 ## Public contract
 
@@ -54,7 +54,7 @@ ansible-playbook playbooks/windows_managed_service_data_backup_disk.yml --tags d
 Apply only with the explicit apply tag:
 
 ```bash
-ansible-playbook playbooks/windows_managed_service_data_backup_disk.yml --tags disk_apply --limit network-server-win
+ansible-playbook playbooks/windows_managed_service_data_backup_disk.yml --tags disk_apply --limit home-lab-auth-hvh-01
 ```
 
 First rebuild of an already-used target disk also needs the transient rebuild
@@ -63,6 +63,6 @@ approval, for example:
 ```bash
 ansible-playbook playbooks/windows_managed_service_data_backup_disk.yml \
   --tags disk_apply \
-  --limit network-server-win \
+  --limit home-lab-auth-hvh-01 \
   -e windows_managed_service_data_backup_disk_rebuild_approved=true
 ```
