@@ -8,9 +8,13 @@ winrm/cred helpers (credential-manager integrations) and small action plugin to 
 Logging, callbacks, and redaction
 callback plugin to centralize run logs into run directories (you asked for run wrapper). Implement a simple callback plugin that writes logs to logs/runs//ansible.log.
 redact filter/callback (you have lib/redact.sh) — implement a callback that pipes write-out through a redaction function or use a custom callback that masks vault patterns.
+```
+***
 Inventory & discovery
 inventory_plugins: use a simple dynamic inventory plugin if you ever move to NetBox or cloud inventories. For local labs, maintain static structured inventories and provide an inv_create.py (you already have one).
 CI / automation integrations
+***
+```
 GitHub Actions / GitLab CI steps using ansible-lint, molecule test matrix, and a playbook validate step (validate-playbook).
 Use galaxy-lock to produce a reproducible collection lockfile in CI.
 Small custom extensions that fit your work style
