@@ -1,0 +1,185 @@
+---
+# K3s Ubuntu VM control surface for Hyper-V Windows hosts.
+#
+# This playbook prepares Ubuntu VMs whose purpose is to become K3s nodes later.
+# It intentionally does not install K3s. The underlying hyperv_ubuntu_vm role
+# remains the generic VM primitive shared with the Docker VM wrapper.
+#
+# Public K3s VM lifecycle interface:
+#   runtime_planes.hyperv_k3s_vm.enabled: true | false
+#   hyperv_ubuntu_k3s_vm_state: present | absent
+#   hyperv_ubuntu_k3s_vm_hostname: <vm-name-and-guest-hostname>
+#   hyperv_ubuntu_k3s_vm_inventory_host: <inventory-host>
+#
+# Commands:
+#   Preview target selection:
+#     ansible-playbook playbooks/hyperv_ubuntu_k3s_vm.yaml \
+#       -i inventory/inventory.yaml --check --tags k3s_vm_preview
+#
+#   Prepare opted-in K3s VM hosts:
+#     ansible-playbook playbooks/hyperv_ubuntu_k3s_vm.yaml \
+#       -i inventory/inventory.yaml
+#
+- name: Hyper-V K3s Ubuntu VM - classify target hosts
+  hosts: windows_hosts
+  gather_facts: false
+
+  tasks:
+    - name: Classify K3s Ubuntu VM lifecycle eligibility
+      ansible.builtin.set_fact:
+        hyperv_ubuntu_k3s_vm_candidate: >-
+          {{ (surface_type | default('')) == 'windows_host' }}
+        hyperv_ubuntu_k3s_vm_runtime_requested: >-
+          {{
+            ((runtime_planes | default({})).get('hyperv_k3s_vm', {})).get('enabled', false)
+            | bool
+          }}
+        hyperv_ubuntu_k3s_vm_lifecycle_requested: >-
+          {{ (hyperv_ubuntu_k3s_vm_state | default('unset')) in ['present', 'absent'] }}
+        hyperv_ubuntu_k3s_vm_hostname_declared: >-
+          {{ (hyperv_ubuntu_k3s_vm_hostname | default('') | length) > 0 }}
+        hyperv_ubuntu_k3s_vm_effective_inventory_host: >-
+          {{
+            hyperv_ubuntu_k3s_vm_inventory_host
+            | default(hyperv_ubuntu_k3s_vm_hostname | default(''))
+          }}
+        hyperv_ubuntu_k3s_vm_should_manage: >-
+          {{
+            (surface_type | default('')) == 'windows_host'
+            and (
+              ((runtime_planes | default({})).get('hyperv_k3s_vm', {})).get('enabled', false)
+              | bool
+            )
+            and (hyperv_ubuntu_k3s_vm_state | default('unset')) in ['present', 'absent']
+            and (hyperv_ubuntu_k3s_vm_hostname | default('') | length) > 0
+          }}
+        hyperv_ubuntu_k3s_vm_selection_reason: >-
+          {% if (surface_type | default('')) != 'windows_host' %}
+          not selected: not a Windows host surface
+          {% elif not (((runtime_planes | default({})).get('hyperv_k3s_vm', {})).get('enabled', false) | bool) %}
+          not selected: runtime_planes.hyperv_k3s_vm.enabled is not true
+          {% elif (hyperv_ubuntu_k3s_vm_state | default('unset')) not in ['present', 'absent'] %}
+          not selected: missing K3s VM lifecycle state
+          {% elif (hyperv_ubuntu_k3s_vm_hostname | default('') | length) == 0 %}
+          not selected: missing K3s VM hostname
+          {% else %}
+          eligible
+          {% endif %}
+      changed_when: false
+      tags: [always]
+
+    - name: Derive runtime group for K3s Ubuntu VM hosts
+      ansible.builtin.group_by:
+        key: >-
+          {{
+            'runtime_hyperv_ubuntu_k3s_vm'
+            if (hyperv_ubuntu_k3s_vm_should_manage | default(false) | bool)
+            else 'runtime_hyperv_ubuntu_k3s_vm_excluded'
+          }}
+      changed_when: false
+      tags: [always]
+
+- name: Hyper-V K3s Ubuntu VM - preview target selection
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: [k3s_vm_preview, always]
+
+  tasks:
+    - name: Preview K3s Ubuntu VM host selection
+      ansible.builtin.debug:
+        msg: >-
+          {{
+            {
+              'host': item,
+              'selected': hostvars[item].hyperv_ubuntu_k3s_vm_should_manage | default(false),
+              'candidate': hostvars[item].hyperv_ubuntu_k3s_vm_candidate | default(false),
+              'runtime_requested': hostvars[item].hyperv_ubuntu_k3s_vm_runtime_requested | default(false),
+              'state': hostvars[item].hyperv_ubuntu_k3s_vm_state | default('unset'),
+              'vm_name': (
+                hostvars[item].hyperv_ubuntu_k3s_vm_name
+                | default(hostvars[item].hyperv_ubuntu_k3s_vm_hostname | default('unset'))
+              ),
+              'vm_hostname': hostvars[item].hyperv_ubuntu_k3s_vm_hostname | default('unset'),
+              'guest_inventory_host': (
+                hostvars[item].hyperv_ubuntu_k3s_vm_inventory_host
+                | default(hostvars[item].hyperv_ubuntu_k3s_vm_hostname | default('unset'))
+              ),
+              'guest_ipv4': hostvars[item].hyperv_ubuntu_k3s_vm_autoinstall_network_ipv4 | default('unset'),
+              'guest_subnet': (hostvars[item].hyperv_config | default({})).guest_subnet_ipv4 | default('unset'),
+              'guest_switch': (hostvars[item].hyperv_config | default({})).guest_switch_name | default('unset'),
+              'reason': hostvars[item].hyperv_ubuntu_k3s_vm_selection_reason | default('not classified')
+            }
+          }}
+      loop: "{{ query('inventory_hostnames', 'windows_hosts') }}"
+
+- name: Access - controller identity
+  hosts: execution_nodes
+  connection: local
+  gather_facts: true
+  tags: [controller_identity]
+
+  roles:
+    - access_identity_controller
+
+- name: Hyper-V K3s Ubuntu VM - host networking prerequisites
+  hosts: windows_hosts
+  gather_facts: false
+  tags: [hyperv_networking, k3s_vm_networking]
+
+  tasks:
+    - name: Ensure Hyper-V host networking prerequisites are ready
+      ansible.builtin.include_role:
+        name: hyperv_networking
+      when:
+        - hyperv_ubuntu_k3s_vm_should_manage | default(false) | bool
+        - hyperv_ubuntu_k3s_vm_manage_networking_prereqs | default(true) | bool
+
+- name: Hyper-V K3s Ubuntu VM - lifecycle
+  hosts: windows_hosts
+  gather_facts: false
+  tags: [k3s_vm_lifecycle]
+
+  tasks:
+    - name: Ensure K3s Ubuntu VM is in the requested lifecycle state
+      ansible.builtin.include_role:
+        name: hyperv_ubuntu_vm
+      vars:
+        hyperv_ubuntu_vm_state: "{{ hyperv_ubuntu_k3s_vm_state }}"
+        hyperv_ubuntu_vm_name: >-
+          {{
+            hyperv_ubuntu_k3s_vm_name
+            | default(hyperv_ubuntu_k3s_vm_hostname)
+          }}
+        hyperv_ubuntu_vm_hostname: "{{ hyperv_ubuntu_k3s_vm_hostname }}"
+        hyperv_ubuntu_vm_inventory_host: >-
+          {{
+            hyperv_ubuntu_k3s_vm_inventory_host
+            | default(hyperv_ubuntu_k3s_vm_hostname)
+          }}
+        hyperv_ubuntu_vm_cpus: "{{ hyperv_ubuntu_k3s_vm_cpus }}"
+        hyperv_ubuntu_vm_memory: "{{ hyperv_ubuntu_k3s_vm_memory }}"
+        hyperv_ubuntu_vm_disk: "{{ hyperv_ubuntu_k3s_vm_disk }}"
+        hyperv_ubuntu_vm_bootstrap_user: "{{ hyperv_ubuntu_k3s_vm_bootstrap_user }}"
+        hyperv_ubuntu_vm_ssh_port: "{{ hyperv_ubuntu_k3s_vm_ssh_port }}"
+        hyperv_ubuntu_vm_source_mode: "{{ hyperv_ubuntu_k3s_vm_source_mode }}"
+        hyperv_ubuntu_vm_secure_boot_enabled: "{{ hyperv_ubuntu_k3s_vm_secure_boot_enabled }}"
+        hyperv_ubuntu_vm_publish_connection_facts: "{{ hyperv_ubuntu_k3s_vm_publish_connection_facts }}"
+        hyperv_ubuntu_vm_autoinstall_network_method: "{{ hyperv_ubuntu_k3s_vm_autoinstall_network_method }}"
+        hyperv_ubuntu_vm_autoinstall_network_ipv4: "{{ hyperv_ubuntu_k3s_vm_autoinstall_network_ipv4 }}"
+        hyperv_ubuntu_vm_autoinstall_network_prefix_length: "{{ hyperv_ubuntu_k3s_vm_autoinstall_network_prefix_length }}"
+        hyperv_ubuntu_vm_autoinstall_network_gateway4: "{{ hyperv_ubuntu_k3s_vm_autoinstall_network_gateway4 }}"
+        hyperv_ubuntu_vm_autoinstall_network_dns_servers: "{{ hyperv_ubuntu_k3s_vm_autoinstall_network_dns_servers }}"
+      when: hyperv_ubuntu_k3s_vm_should_manage | default(false) | bool
+
+- name: Access - update controller SSH client config
+  hosts: execution_nodes
+  connection: local
+  gather_facts: true
+  tags: [controller_ssh_config]
+
+  tasks:
+    - name: Generate SSH client config from deployed targets
+      ansible.builtin.include_role:
+        name: access_identity_controller
+        tasks_from: ssh_config.yml

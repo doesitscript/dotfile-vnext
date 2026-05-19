@@ -2,18 +2,24 @@
 
 **Date:** 2026-03-26
 **Source:** ChatGPT conversation (docs/brainstorming_designs/hyper-v-full-vm-calassical-implementation.md)
-**Repo target:** `k3s_cluster` group — server: `network-server-wsl` / agent: `server-225-wsl`
-**Direction:** Migrate K3s off WSL-backed surfaces to dedicated Hyper-V VMs with External Switch
+**Repo target:** `k3s_vm_stub_hosts` for the current VM/readiness slice; `k3s_cluster` remains empty until the real K3s install is approved
+**Current host identity:** the former network-server Windows control host is now modeled
+as `home-lab-auth-hvh-01`; use `network-server-*` names only when describing
+legacy WSL/intake state or the Ansible control alias.
+**Direction:** Prepare a dedicated Hyper-V Ubuntu VM lane for K3s without installing K3s yet
 
 ---
 
 ## Decision
 
-Move K3s cluster nodes from WSL-backed inventory surfaces to proper Hyper-V VMs.
+Move K3s cluster nodes away from WSL-backed inventory surfaces and toward
+proper Hyper-V VMs. The current repository implementation stops at VM
+preparation and readiness validation for `nsrv-k3s-01`; it does not install
+K3s, start `k3s`/`k3s-agent`, or import `k3s.orchestration.site`.
 
 ### Why not keep K3s on WSL
 
-The current `k3s_cluster` uses `network-server-wsl` (server) and `server-225-wsl`
+The legacy `k3s_cluster` design used `network-server-wsl` (server) and `server-225-wsl`
 (agent). WSL surfaces introduce a networking abstraction layer between the Windows
 host and the Linux environment. K3s networking relies on stable L2/L3 behavior
 between nodes — service IPs, DNS, Flannel VXLAN, and the API endpoint on port 6443
@@ -87,12 +93,50 @@ K3s documented requirements: https://docs.k3s.io/installation/requirements
 
 ---
 
-## Implementation sequence
+## Current implementation sequence
 
-The correct engineering order is: manual proof first, then automation.
-Building Ansible automation before the manual path works creates fake progress.
+The current engineering order is: reusable VM primitive first, prove separate
+Docker and K3s VM lanes second, then install K3s in a later slice.
 
-### Phase 1 — Manual single-node (win condition: `kubectl get nodes` shows Ready)
+### Phase 0 — Repo preparation and stub lane
+
+1. Keep `roles/hyperv_ubuntu_vm` as the generic Ubuntu VM primitive.
+2. Keep Docker-specific language in Docker wrapper playbooks/vars only.
+3. Use `playbooks/hyperv_ubuntu_docker_vm.yaml` for the existing Docker VM
+   `nsrv-dkr-01`.
+4. Use `playbooks/hyperv_ubuntu_k3s_vm.yaml` for the K3s placeholder VM
+   `nsrv-k3s-01`.
+5. Use `playbooks/k3s_vm_stub.yaml` to validate the K3s lane after the VM is
+   reachable by SSH. The stub asserts Ubuntu, expected memory/disk facts, and
+   absence of `k3s` and `k3s-agent` services.
+6. Keep `nsrv-k3s-01` in `k3s_vm_stub_hosts`, not in the live `k3s_cluster`
+   `server` group.
+
+Preview commands:
+
+```bash
+ansible-playbook playbooks/hyperv_ubuntu_docker_vm.yaml -i inventory/inventory.yaml \
+  --check --tags docker_vm_preview
+
+ansible-playbook playbooks/hyperv_ubuntu_k3s_vm.yaml -i inventory/inventory.yaml \
+  --check --tags k3s_vm_preview
+
+ansible-playbook playbooks/k3s_vm_stub.yaml -i inventory/inventory.yaml \
+  --check --tags k3s_stub_preview
+```
+
+NetBox seed preparation models:
+- device: `home-lab-auth-hvh-01`
+- cluster: `home-lab-auth-hvh-01-hyperv`
+- Docker VM: `nsrv-dkr-01`
+- K3s VM placeholder: `nsrv-k3s-01`
+- K3s VM role/tag: `k3s-node` / `k3s`
+
+### Later Phase 1 — Manual single-node (win condition: `kubectl get nodes` shows Ready)
+
+This phase is out of scope for the current repo change. Once the VM lane is
+proven and `nsrv-k3s-01` is reachable by SSH, the future K3s implementation can
+use the following manual proof sequence before automation.
 
 1. Create one Ubuntu VM on Hyper-V (External Switch) — see `hyperv-ubuntu-docker-vm--replacing-multipass.md` for the VM creation approach
 2. SSH into the VM from the controller
@@ -127,7 +171,7 @@ Building Ansible automation before the manual path works creates fake progress.
 **Stop here.** Do not add agents, MetalLB, Helm, custom CNI, or Ansible until
 this checkpoint is clean.
 
-### Phase 2 — Add one agent node (win condition: `kubectl get nodes` shows 2 Ready)
+### Later Phase 2 — Add one agent node (win condition: `kubectl get nodes` shows 2 Ready)
 
 Once the server node is stable:
 
@@ -147,9 +191,9 @@ Port requirements between nodes (must be open):
 
 Reference: https://docs.k3s.io/installation/requirements
 
-### Phase 3 — Ansible automation via k3s-ansible
+### Later Phase 3 — Ansible automation via k3s-ansible
 
-Once Phase 1 and Phase 2 work manually, encode the process using the official
+Once the manual phases work, encode the process using the official
 k3s-ansible project: `https://github.com/k3s-io/k3s-ansible`
 
 k3s-ansible requirements (from its README):
@@ -159,8 +203,9 @@ k3s-ansible requirements (from its README):
   present in this repo's `inventory/inventory.yaml`
 
 The existing `k3s_cluster` group structure in this repo matches what k3s-ansible
-expects. Once VMs are promoted to direct SSH access, they slot into `server`
-and `agent` child groups with no inventory restructuring.
+expects, but it is intentionally empty during the VM/stub slice. Once the real
+K3s install is approved, `nsrv-k3s-01` can be promoted from
+`k3s_vm_stub_hosts` into `k3s_cluster.children.server`.
 
 ---
 
@@ -178,23 +223,44 @@ k3s_cluster:
         server-225-wsl:
 ```
 
-Target state (Hyper-V VM surfaces):
+Current prepared state (Hyper-V VM surface, no K3s install):
+```yaml
+linux_vm_hosts:
+  hosts:
+    nsrv-k3s-01:
+
+k3s_vm_stub_hosts:
+  hosts:
+    nsrv-k3s-01:
+
+k3s_cluster:
+  children:
+    server:
+      hosts: {}
+    agent:
+      hosts: {}
+```
+
+Future target state after K3s implementation is approved:
 ```yaml
 k3s_cluster:
   children:
     server:
       hosts:
-        network-server-ubuntu:   # new Hyper-V VM on network-server
+        nsrv-k3s-01:             # Hyper-V VM on home-lab-auth-hvh-01
     agent:
       hosts:
-        server-225-ubuntu:       # Hyper-V VM on server-225 (same host, different VM than Docker VM)
+        <future-agent-vm>:        # dedicated K3s agent VM, not the Docker VM
 ```
 
 Notes:
-- `network-server-ubuntu` is a new inventory entry (new Hyper-V VM on network-server host)
-- `server-225-ubuntu` is an existing `linux_vm_hosts` entry (the Docker VM) — OR a
-  dedicated K3s agent VM named differently. Decide whether to share the Ubuntu VM
-  (Docker + K3s agent co-located) or use separate VMs.
+- `nsrv-k3s-01` is the approved durable inventory entry for the prepared K3s VM
+  on `home-lab-auth-hvh-01`; `network-server-ubuntu` is a legacy placeholder
+  name and should not be used for new implementation.
+- `nsrv-dkr-01` is the existing Docker VM and must stay separate from the K3s
+  stub lane.
+- `server-225-ubuntu` is not a K3s agent by default. Use a dedicated future
+  K3s agent VM if a second node is needed.
 - WSL-backed hosts (`server-225-wsl`, `network-server-wsl`) are not removed from
   inventory — they serve other purposes. They are removed from `k3s_cluster` only.
 - `linux_vm_hosts` group is the correct category for the new VMs. Move them from
@@ -249,8 +315,8 @@ cluster. The two are not interchangeable for the workloads this repo manages.
 
 | Field | Value |
 |---|---|
-| Apply | Phase 1: manual VM + K3s install. Phase 3: k3s-ansible playbook run against `k3s_cluster` inventory group |
-| Verify | `kubectl get nodes` (all Ready), `kubectl get pods -A` (system pods healthy), deploy nginx and confirm pod scheduling |
-| Undo | Delete VMs from Hyper-V; remove hosts from `k3s_cluster` inventory group; revert to `k3s_agents_deferred` or `wsl_hosts` |
-| Change class | Phase 1-2: bootstrap/semi-manual. Phase 3: idempotent Ansible (k3s-ansible role) |
-| Lifecycle control | k3s-ansible `state` variable (present/absent per node); inventory group membership gates whether a node is targeted |
+| Apply | Current slice: `hyperv_ubuntu_k3s_vm.yaml` creates/prepares `nsrv-k3s-01`; `k3s_vm_stub.yaml` validates readiness only |
+| Verify | Inventory graph shows `nsrv-dkr-01` and `nsrv-k3s-01` as separate Linux VM surfaces; previews select only their own VM; stub confirms Ubuntu facts and no K3s services |
+| Undo | Set `hyperv_ubuntu_k3s_vm_state: absent`; remove `nsrv-k3s-01` from active static inventory groups if the lane is backed out |
+| Change class | VM base refactor: idempotent Ansible orchestration; K3s stub: idempotent readiness validation; real K3s install: out of scope |
+| Lifecycle control | VM lane: `hyperv_ubuntu_k3s_vm_state` (`present`/`absent`); future K3s install: `k3s_cluster` group membership plus k3s-ansible lifecycle controls |

@@ -1,0 +1,55 @@
+---
+- name: Gather installed service facts
+  ansible.builtin.service_facts:
+
+- name: Calculate root filesystem size in GB
+  ansible.builtin.set_fact:
+    k3s_readiness_stub_root_disk_gb: >-
+      {{
+        (
+          ansible_mounts
+          | selectattr('mount', 'equalto', '/')
+          | map(attribute='size_total')
+          | first
+          | default(0)
+          | int
+        ) // 1073741824
+      }}
+  changed_when: false
+
+- name: Verify K3s VM base facts
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['distribution'] == 'Ubuntu'
+      - ansible_facts['distribution_version'] is version('24.04', '>=')
+      - ansible_facts['memtotal_mb'] | int >= k3s_readiness_stub_min_memory_mb | int
+      - k3s_readiness_stub_root_disk_gb | int >= k3s_readiness_stub_min_root_disk_gb | int
+    fail_msg: >-
+      {{ inventory_hostname }} is not ready as a K3s VM stub target.
+      distribution={{ ansible_facts['distribution'] | default('unknown') }}
+      version={{ ansible_facts['distribution_version'] | default('unknown') }}
+      memory_mb={{ ansible_facts['memtotal_mb'] | default('unknown') }}
+      root_disk_gb={{ k3s_readiness_stub_root_disk_gb | default('unknown') }}
+    success_msg: >-
+      {{ inventory_hostname }} is an Ubuntu VM with enough base memory and disk
+      for the K3s readiness lane.
+
+- name: Verify K3s services are not installed
+  ansible.builtin.assert:
+    that:
+      - item not in ansible_facts['services']
+    fail_msg: >-
+      {{ item }} is already installed on {{ inventory_hostname }}. The current
+      K3s lane must stop before implementation.
+    success_msg: "{{ item }} is absent on {{ inventory_hostname }}"
+  loop: "{{ k3s_readiness_stub_required_services_absent }}"
+
+- name: Report K3s VM readiness stub result
+  ansible.builtin.debug:
+    msg:
+      host: "{{ inventory_hostname }}"
+      ansible_host: "{{ ansible_host }}"
+      distribution: "{{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"
+      memory_mb: "{{ ansible_facts['memtotal_mb'] }}"
+      root_disk_gb: "{{ k3s_readiness_stub_root_disk_gb }}"
+      k3s_services_absent: "{{ k3s_readiness_stub_required_services_absent }}"

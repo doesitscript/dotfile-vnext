@@ -1,0 +1,43 @@
+---
+# K3s VM readiness stub.
+#
+# This playbook proves the K3s VM lane can target the prepared Ubuntu VM without
+# installing K3s. Real cluster installation remains in playbooks/k3s_bootstrap.yaml.
+#
+# Commands:
+#   ansible-playbook playbooks/k3s_vm_stub.yaml -i inventory/inventory.yaml
+#
+- name: K3s VM stub - preview target selection
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: [k3s_stub_preview, always]
+
+  tasks:
+    - name: Preview K3s stub targets
+      ansible.builtin.debug:
+        msg: >-
+          {{
+            {
+              'host': item,
+              'selected': item in query('inventory_hostnames', 'k3s_vm_stub_hosts'),
+              'surface_type': hostvars[item].surface_type | default('unset'),
+              'runtime_planes': hostvars[item].runtime_planes | default({}),
+              'ansible_host': hostvars[item].ansible_host | default('unset'),
+              'reason': (
+                'selected: k3s_vm_stub_hosts member'
+                if item in query('inventory_hostnames', 'k3s_vm_stub_hosts')
+                else 'not selected: not in k3s_vm_stub_hosts'
+              )
+            }
+          }}
+      loop: "{{ query('inventory_hostnames', 'linux_vm_hosts') }}"
+
+- name: K3s VM stub - readiness checks
+  hosts: k3s_vm_stub_hosts
+  gather_facts: true
+  become: true
+  tags: [k3s_stub]
+
+  roles:
+    - k3s_readiness_stub
