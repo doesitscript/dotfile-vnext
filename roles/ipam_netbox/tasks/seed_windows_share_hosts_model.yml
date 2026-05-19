@@ -1,0 +1,259 @@
+---
+- name: Include vault variables for NetBox API token
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault.yml"
+    name: vault_vars
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_windows_share_hosts_model
+    - ipam_netbox_seed_windows_share_hosts_model_preview
+
+- name: Preview Windows share-host NetBox model seed
+  ansible.builtin.debug:
+    msg:
+      api_url: "{{ ipam_netbox_api_url }}"
+      change_class: "idempotent NetBox source-of-truth modeling"
+      apply: "ansible-playbook playbooks/deploy_ipam_netbox.yaml --tags ipam_netbox_seed_windows_share_hosts_model"
+      verify:
+        - "NetBox contains primary-hvh-01 and exec-hvh-01 as Windows Server 2025 hyperv-host devices"
+        - "Each device has mgmt0 with the management IP from inventory"
+      undo: "manual NetBox object cleanup unless an absent seed path is added"
+      naming_context:
+        namespace: castle
+        site: homelab
+        tenant: omitted
+        role_segment: hvh
+        role_name: hyperv-host
+      migrations: "{{ ipam_netbox_windows_share_hosts_model.device_name_migrations }}"
+      devices: "{{ ipam_netbox_windows_share_hosts_model.devices | map(attribute='name') | list }}"
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_windows_share_hosts_model
+    - ipam_netbox_seed_windows_share_hosts_model_preview
+
+- name: Require NetBox API token for Windows share-host model seeding
+  ansible.builtin.assert:
+    that:
+      - vault_vars.vault_netbox_api_token is defined
+      - vault_vars.vault_netbox_api_token | length > 0
+    fail_msg: >-
+      vault_netbox_api_token is required in vault.yml before NetBox API seeding
+      can run. Run the preview tag to inspect the intended model without the
+      token.
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_windows_share_hosts_model
+
+- name: Ensure dedicated NetBox API token before Windows share-host model seeding
+  ansible.builtin.include_tasks:
+    file: ensure_api_token.yml
+    apply:
+      tags:
+        - ipam_netbox
+        - ipam_netbox_api_token
+        - ipam_netbox_seed_windows_share_hosts_model
+  tags:
+    - ipam_netbox
+    - ipam_netbox_api_token
+    - ipam_netbox_seed_windows_share_hosts_model
+
+- name: Seed Windows share-host NetBox tags
+  netbox.netbox.netbox_tag:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      description: "{{ item.description }}"
+      color: "{{ item.color }}"
+    state: present
+  loop: "{{ ipam_netbox_windows_share_hosts_model.tags }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_windows_share_hosts_model
+
+- name: Seed Windows share-host NetBox site
+  netbox.netbox.netbox_site:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_windows_share_hosts_model.site.name }}"
+      slug: "{{ ipam_netbox_windows_share_hosts_model.site.slug }}"
+      status: "{{ ipam_netbox_windows_share_hosts_model.site.status }}"
+      time_zone: "{{ ipam_netbox_windows_share_hosts_model.site.time_zone }}"
+      tags:
+        - homelab
+        - ansible-managed
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_windows_share_hosts_model
+
+- name: Seed Windows share-host NetBox manufacturers
+  netbox.netbox.netbox_manufacturer:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_windows_share_hosts_model.manufacturers }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_windows_share_hosts_model
+
+- name: Seed Windows share-host NetBox device types
+  netbox.netbox.netbox_device_type:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      model: "{{ item.model }}"
+      slug: "{{ item.slug }}"
+      manufacturer: "{{ item.manufacturer }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_windows_share_hosts_model.device_types }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_windows_share_hosts_model
+
+- name: Seed Windows share-host NetBox platforms
+  netbox.netbox.netbox_platform:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_windows_share_hosts_model.platforms }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_windows_share_hosts_model
+
+- name: Seed Windows share-host NetBox device roles
+  netbox.netbox.netbox_device_role:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      color: "{{ item.color }}"
+      vm_role: "{{ item.vm_role }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_windows_share_hosts_model.device_roles }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_windows_share_hosts_model
+
+- name: Migrate legacy Windows share-host NetBox device names
+  ansible.builtin.include_tasks:
+    file: migrate_windows_share_host_device_names.yml
+    apply:
+      tags:
+        - ipam_netbox
+        - ipam_netbox_seed_windows_share_hosts_model
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_windows_share_hosts_model
+
+- name: Seed Windows share-host NetBox devices
+  netbox.netbox.netbox_device:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      device_type: "{{ item.device_type }}"
+      device_role: "{{ item.device_role }}"
+      platform: "{{ item.platform }}"
+      site: "{{ item.site }}"
+      status: "{{ item.status }}"
+      tags: "{{ item.tags }}"
+    state: present
+  loop: "{{ ipam_netbox_windows_share_hosts_model.devices }}"
+  loop_control:
+    label: "{{ item.inventory_host }} -> {{ item.name }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_windows_share_hosts_model
+
+- name: Seed Windows share-host NetBox device interfaces
+  netbox.netbox.netbox_device_interface:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      device: "{{ item.0.name }}"
+      name: "{{ item.1.name }}"
+      type: "{{ item.1.type }}"
+      enabled: "{{ item.1.enabled }}"
+      mgmt_only: "{{ item.1.mgmt_only }}"
+      description: "{{ item.1.description }}"
+      tags: "{{ item.0.tags }}"
+    state: present
+  loop: "{{ ipam_netbox_windows_share_hosts_model.devices | subelements('interfaces') }}"
+  loop_control:
+    label: "{{ item.0.name }} {{ item.1.name }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_windows_share_hosts_model
+
+- name: Seed Windows share-host NetBox management IPs
+  netbox.netbox.netbox_ip_address:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      address: "{{ item.1.address }}"
+      description: "{{ item.1.description }}"
+      assigned_object:
+        device: "{{ item.0.name }}"
+        name: "{{ item.1.name }}"
+      tags: "{{ item.0.tags }}"
+    state: present
+  loop: "{{ ipam_netbox_windows_share_hosts_model.devices | subelements('interfaces') }}"
+  loop_control:
+    label: "{{ item.0.name }} {{ item.1.address }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_windows_share_hosts_model
+
+- name: Set Windows share-host NetBox primary IPv4
+  netbox.netbox.netbox_device:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.0.name }}"
+      site: "{{ item.0.site }}"
+      primary_ip4: "{{ item.1.address }}"
+    state: present
+  loop: "{{ ipam_netbox_windows_share_hosts_model.devices | subelements('interfaces') }}"
+  loop_control:
+    label: "{{ item.0.name }} primary {{ item.1.address }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_windows_share_hosts_model

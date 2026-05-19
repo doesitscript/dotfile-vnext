@@ -52,6 +52,14 @@ ipam_netbox_server_225_model:
       slug: infra
       description: Infrastructure service or host
       color: "6610f2"
+    - name: primary
+      slug: primary
+      description: Primary host or service instance for a capability
+      color: "fd7e14"
+    - name: execution
+      slug: execution
+      description: Execution-oriented host or service instance
+      color: "d63384"
   manufacturers:
     - name: custom
       slug: custom
@@ -82,12 +90,18 @@ ipam_netbox_server_225_model:
     site: homelab
     status: active
   device:
-    name: server-225
+    name: exec-hvh-01
     device_type: custom-server
     device_role: hyperv-host
     platform: windows-server-2025
     site: homelab
     status: active
+    tags:
+      - ansible-managed
+      - homelab
+      - hyperv
+      - infra
+      - execution
   virtual_machine:
     name: server-225-ubuntu
     cluster: server-225-hyperv
@@ -103,3 +117,69 @@ ipam_netbox_server_225_model:
   vm_ip:
     address: 192.168.137.10/24
     description: server-225 Ubuntu VM routed private subnet interface
+
+ipam_netbox_windows_share_hosts_model:
+  site: "{{ ipam_netbox_server_225_model.site }}"
+  tags: "{{ ipam_netbox_server_225_model.tags }}"
+  manufacturers: "{{ ipam_netbox_server_225_model.manufacturers }}"
+  device_types: "{{ ipam_netbox_server_225_model.device_types }}"
+  platforms: "{{ ipam_netbox_server_225_model.platforms }}"
+  device_roles:
+    - name: hyperv-host
+      slug: hyperv-host
+      color: "6c757d"
+      vm_role: false
+  device_name_migrations:
+    - old_name: server-225
+      new_name: exec-hvh-01
+    - old_name: network-server-win
+      new_name: primary-hvh-01
+    - old_name: network-server
+      new_name: primary-hvh-01
+  devices:
+    - inventory_host: network-server-win
+      name: primary-hvh-01
+      legacy_aliases:
+        - network-server-win
+        - network-server
+      device_type: custom-server
+      device_role: hyperv-host
+      platform: windows-server-2025
+      site: homelab
+      status: active
+      tags:
+        - ansible-managed
+        - homelab
+        - hyperv
+        - infra
+        - primary
+      interfaces:
+        - name: mgmt0
+          type: Virtual
+          enabled: true
+          mgmt_only: true
+          address: "{{ hostvars['network-server-win'].host_ip | default(hostvars['network-server-win'].ansible_host) }}/24"
+          description: network-server-win management address from Ansible inventory
+    - inventory_host: server-225-win
+      name: exec-hvh-01
+      legacy_aliases:
+        - server-225-win
+        - server-225
+      device_type: custom-server
+      device_role: hyperv-host
+      platform: windows-server-2025
+      site: homelab
+      status: active
+      tags:
+        - ansible-managed
+        - homelab
+        - hyperv
+        - infra
+        - execution
+      interfaces:
+        - name: mgmt0
+          type: Virtual
+          enabled: true
+          mgmt_only: true
+          address: "{{ hostvars['server-225-win'].host_ip | default(hostvars['server-225-win'].ansible_host) }}/24"
+          description: server-225-win management address from Ansible inventory

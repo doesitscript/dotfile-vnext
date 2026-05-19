@@ -25,6 +25,7 @@
         device_roles: "{{ ipam_netbox_server_225_model.device_roles | map(attribute='slug') | list }}"
         cluster: "{{ ipam_netbox_server_225_model.cluster.name }}"
         device: "{{ ipam_netbox_server_225_model.device.name }}"
+        legacy_device_name: server-225
         virtual_machine: "{{ ipam_netbox_server_225_model.virtual_machine.name }}"
   tags:
     - ipam_netbox
@@ -214,11 +215,7 @@
       site: "{{ ipam_netbox_server_225_model.device.site }}"
       cluster: "{{ ipam_netbox_server_225_model.cluster.name }}"
       status: "{{ ipam_netbox_server_225_model.device.status }}"
-      tags:
-        - ansible-managed
-        - homelab
-        - hyperv
-        - infra
+      tags: "{{ ipam_netbox_server_225_model.device.tags | default(['ansible-managed', 'homelab', 'hyperv', 'infra']) }}"
     state: present
   delegate_to: localhost
   tags:
