@@ -1,0 +1,126 @@
+---
+- name: Preview AWX target before apply
+  ansible.builtin.include_tasks:
+    file: preview.yml
+    apply:
+      tags:
+        - automation_awx
+        - automation_awx_present
+        - automation_awx_preview
+  tags:
+    - automation_awx
+    - automation_awx_present
+    - automation_awx_preview
+
+- name: Require k3s before applying AWX
+  ansible.builtin.assert:
+    that:
+      - automation_awx_kubectl_client.rc == 0
+      - automation_awx_kubeconfig_file.stat.exists | bool
+      - automation_awx_k3s_nodes.rc == 0
+    fail_msg: >-
+      AWX requires a working Kubernetes cluster. Run
+      ansible-playbook playbooks/k3s_bootstrap.yaml -i inventory/inventory.yaml
+      first, then rerun the automation_awx_preview tag.
+  tags:
+    - automation_awx
+    - automation_awx_present
+
+- name: Ensure AWX manifest directory exists
+  ansible.builtin.file:
+    path: "{{ automation_awx_manifest_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags:
+    - automation_awx
+    - automation_awx_present
+
+- name: Render AWX kustomization
+  ansible.builtin.template:
+    src: kustomization.yml.j2
+    dest: "{{ automation_awx_manifest_path }}/kustomization.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - automation_awx
+    - automation_awx_present
+
+- name: Render AWX custom resource
+  ansible.builtin.template:
+    src: awx.yml.j2
+    dest: "{{ automation_awx_manifest_path }}/awx.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - automation_awx
+    - automation_awx_present
+
+- name: Apply AWX Operator and custom resource
+  ansible.builtin.command:
+    cmd: "kubectl apply -k {{ automation_awx_manifest_path }}"
+  environment:
+    KUBECONFIG: "{{ automation_awx_kubeconfig }}"
+  register: automation_awx_apply
+  changed_when: automation_awx_apply.stdout is search('created|configured|deleted')
+  tags:
+    - automation_awx
+    - automation_awx_present
+
+- name: Wait for AWX Operator deployment
+  ansible.builtin.command:
+    cmd: >-
+      kubectl -n {{ automation_awx_namespace }}
+      rollout status deployment/awx-operator-controller-manager
+      --timeout={{ automation_awx_wait_timeout }}
+  environment:
+    KUBECONFIG: "{{ automation_awx_kubeconfig }}"
+  changed_when: false
+  tags:
+    - automation_awx
+    - automation_awx_present
+    - automation_awx_smoke_test
+
+- name: Wait for AWX managed pods
+  ansible.builtin.command:
+    cmd: >-
+      kubectl -n {{ automation_awx_namespace }}
+      wait --for=condition=Ready pods
+      -l app.kubernetes.io/managed-by=awx-operator
+      --timeout={{ automation_awx_wait_timeout }}
+  environment:
+    KUBECONFIG: "{{ automation_awx_kubeconfig }}"
+  changed_when: false
+  tags:
+    - automation_awx
+    - automation_awx_present
+    - automation_awx_smoke_test
+
+- name: Report AWX service endpoint
+  ansible.builtin.command:
+    cmd: >-
+      kubectl -n {{ automation_awx_namespace }}
+      get svc {{ automation_awx_name }}-service
+      -o jsonpath='{.spec.type} {.spec.ports[0].nodePort}'
+  environment:
+    KUBECONFIG: "{{ automation_awx_kubeconfig }}"
+  register: automation_awx_service
+  changed_when: false
+  tags:
+    - automation_awx
+    - automation_awx_present
+    - automation_awx_smoke_test
+
+- name: Show AWX endpoint
+  ansible.builtin.debug:
+    msg:
+      service: "{{ automation_awx_service.stdout }}"
+      url: "{{ automation_awx_controller_host }}"
+      admin_password_secret: "{{ automation_awx_name }}-admin-password"
+  tags:
+    - automation_awx
+    - automation_awx_present
+    - automation_awx_smoke_test

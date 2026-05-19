@@ -1,0 +1,42 @@
+---
+- name: Validate AWX job history connection inputs
+  ansible.builtin.assert:
+    that:
+      - automation_awx_controller_host | length > 0
+      - automation_awx_controller_oauthtoken | length > 0 or automation_awx_controller_password | length > 0
+    fail_msg: >-
+      Set CONTROLLER_HOST plus CONTROLLER_OAUTH_TOKEN, or set CONTROLLER_HOST,
+      CONTROLLER_USERNAME, and CONTROLLER_PASSWORD before querying AWX history.
+  no_log: true
+  tags:
+    - automation_awx_job_history
+
+- name: Query AWX job history
+  awx.awx.job_list:
+    controller_host: "{{ automation_awx_controller_host }}"
+    controller_username: "{{ automation_awx_controller_username }}"
+    controller_password: "{{ automation_awx_controller_password | default(omit, true) }}"
+    controller_oauthtoken: "{{ automation_awx_controller_oauthtoken | default(omit, true) }}"
+    validate_certs: "{{ automation_awx_validate_certs }}"
+    all_pages: "{{ automation_awx_job_history_all_pages }}"
+    query: "{{ automation_awx_job_history_query }}"
+    status: "{{ automation_awx_job_history_status | default(omit, true) }}"
+  register: automation_awx_jobs
+  no_log: true
+  tags:
+    - automation_awx_job_history
+
+- name: Report AWX playbook execution history
+  ansible.builtin.debug:
+    msg: |
+      AWX jobs returned: {{ automation_awx_jobs.count | default(0) }}
+      {% for job in automation_awx_jobs.results | default([]) %}
+      - id={{ job.id }} name={{ job.name | default('') }}
+        status={{ job.status | default('') }}
+        playbook={{ job.playbook | default('') }}
+        started={{ job.started | default('') }}
+        finished={{ job.finished | default('') }}
+        elapsed={{ job.elapsed | default('') }}
+      {% endfor %}
+  tags:
+    - automation_awx_job_history

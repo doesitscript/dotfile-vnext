@@ -1,0 +1,11 @@
+---
+- name: Remove AWX resources from k3s
+  ansible.builtin.command:
+    cmd: "kubectl delete -k {{ automation_awx_manifest_path }} --ignore-not-found=true"
+  environment:
+    KUBECONFIG: "{{ automation_awx_kubeconfig }}"
+  register: automation_awx_delete
+  changed_when: automation_awx_delete.stdout is search('deleted')
+  tags:
+    - automation_awx
+    - automation_awx_absent

@@ -1,0 +1,73 @@
+---
+- name: Preview AWX target contract
+  ansible.builtin.debug:
+    msg:
+      target_host: "{{ inventory_hostname }}"
+      namespace: "{{ automation_awx_namespace }}"
+      awx_name: "{{ automation_awx_name }}"
+      operator_version: "{{ automation_awx_operator_version }}"
+      service_type: "{{ automation_awx_service_type }}"
+      nodeport_port: "{{ automation_awx_nodeport_port }}"
+      kubeconfig: "{{ automation_awx_kubeconfig }}"
+      manifest_path: "{{ automation_awx_manifest_path }}"
+      state: "{{ automation_awx_state }}"
+      prerequisite: "Run playbooks/k3s_bootstrap.yaml before applying AWX."
+  tags:
+    - automation_awx_preview
+
+- name: Preview kubectl client availability
+  ansible.builtin.shell:
+    cmd: |
+      if command -v kubectl >/dev/null 2>&1; then
+        command -v kubectl
+        kubectl version --client=true
+      else
+        echo "kubectl not found"
+        exit 2
+      fi
+  environment:
+    KUBECONFIG: "{{ automation_awx_kubeconfig }}"
+  check_mode: false
+  register: automation_awx_kubectl_client
+  changed_when: false
+  failed_when: false
+  tags:
+    - automation_awx_preview
+
+- name: Preview k3s kubeconfig file
+  ansible.builtin.stat:
+    path: "{{ automation_awx_kubeconfig }}"
+  register: automation_awx_kubeconfig_file
+  tags:
+    - automation_awx_preview
+
+- name: Preview k3s cluster nodes
+  ansible.builtin.shell:
+    cmd: |
+      if command -v kubectl >/dev/null 2>&1; then
+        kubectl get nodes -o wide
+      else
+        echo "kubectl not found"
+        exit 2
+      fi
+  environment:
+    KUBECONFIG: "{{ automation_awx_kubeconfig }}"
+  check_mode: false
+  register: automation_awx_k3s_nodes
+  changed_when: false
+  failed_when: false
+  tags:
+    - automation_awx_preview
+
+- name: Report AWX prerequisite preview
+  ansible.builtin.debug:
+    msg:
+      kubectl_client_rc: "{{ automation_awx_kubectl_client.rc | default('unknown') }}"
+      kubectl_client_stdout: "{{ automation_awx_kubectl_client.stdout | default('') }}"
+      kubectl_client_stderr: "{{ automation_awx_kubectl_client.stderr | default('') }}"
+      kubeconfig_exists: "{{ automation_awx_kubeconfig_file.stat.exists | default(false) }}"
+      cluster_nodes_rc: "{{ automation_awx_k3s_nodes.rc | default('unknown') }}"
+      cluster_nodes: "{{ automation_awx_k3s_nodes.stdout_lines | default([]) }}"
+      cluster_query_error: "{{ automation_awx_k3s_nodes.stderr | default('') }}"
+  tags:
+    - automation_awx_preview

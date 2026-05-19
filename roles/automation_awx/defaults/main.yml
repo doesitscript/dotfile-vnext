@@ -1,0 +1,23 @@
+---
+automation_awx_state: present
+
+automation_awx_operator_version: "2.19.1"
+automation_awx_namespace: awx
+automation_awx_name: homelab-awx
+automation_awx_manifest_path: /opt/automation-awx
+automation_awx_kubeconfig: /etc/rancher/k3s/k3s.yaml
+
+automation_awx_service_type: NodePort
+automation_awx_nodeport_port: 30080
+automation_awx_wait_timeout: 600s
+
+automation_awx_controller_host: "http://{{ hostvars['server-225-ubuntu']['ansible_host'] }}:{{ automation_awx_nodeport_port }}"
+automation_awx_controller_username: "{{ lookup('ansible.builtin.env', 'CONTROLLER_USERNAME') | default('admin', true) }}"
+automation_awx_controller_password: "{{ lookup('ansible.builtin.env', 'CONTROLLER_PASSWORD') | default('', true) }}"
+automation_awx_controller_oauthtoken: "{{ lookup('ansible.builtin.env', 'CONTROLLER_OAUTH_TOKEN') | default('', true) }}"
+automation_awx_validate_certs: false
+automation_awx_job_history_all_pages: false
+automation_awx_job_history_query:
+  order_by: "-created"
+  page_size: 10
+automation_awx_job_history_status: ""

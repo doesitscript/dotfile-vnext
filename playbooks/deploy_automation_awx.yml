@@ -1,0 +1,51 @@
+---
+# Deploy AWX on the homelab k3s cluster.
+#
+# Prerequisite:
+#   ansible-playbook playbooks/k3s_bootstrap.yaml -i inventory/inventory.yaml
+#
+# Tags:
+#   automation_awx         — full deploy or remove, depending on automation_awx_state
+#   automation_awx_preview — read-only target and prerequisite preview
+#   automation_awx_present — AWX Operator and AWX custom resource apply path
+#   automation_awx_absent  — remove AWX resources from the cluster
+#   automation_awx_smoke_test — report service and pod readiness
+#   automation_awx_job_history — query AWX playbook execution history via API
+#
+# Examples:
+#   ansible-playbook playbooks/deploy_automation_awx.yml --tags automation_awx_preview
+#   ansible-playbook playbooks/deploy_automation_awx.yml
+#   ansible-playbook playbooks/deploy_automation_awx.yml --tags automation_awx_smoke_test
+#   ansible-playbook playbooks/deploy_automation_awx.yml --tags automation_awx_job_history
+#   ansible-playbook playbooks/deploy_automation_awx.yml -e automation_awx_state=absent
+
+- name: Deploy Automation Controller (AWX)
+  hosts: server-225-ubuntu
+  become: true
+  roles:
+    - role: automation_awx
+      tags:
+        - automation_awx
+
+- name: Preview AWX target and prerequisites
+  hosts: server-225-ubuntu
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Preview AWX deployment target
+      ansible.builtin.include_role:
+        name: automation_awx
+        tasks_from: preview
+      tags:
+        - automation_awx_preview
+
+- name: Report AWX playbook execution history
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Query AWX job history
+      ansible.builtin.include_role:
+        name: automation_awx
+        tasks_from: job_history
+      tags:
+        - automation_awx_job_history

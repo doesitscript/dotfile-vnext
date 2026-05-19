@@ -1,0 +1,48 @@
+---
+argument_specs:
+  main:
+    short_description: Deploy AWX on k3s using AWX Operator
+    options:
+      automation_awx_state:
+        type: str
+        description: Desired state of AWX resources.
+        choices:
+          - present
+          - absent
+        default: present
+      automation_awx_operator_version:
+        type: str
+        description: AWX Operator release tag to deploy.
+        default: "2.19.1"
+      automation_awx_namespace:
+        type: str
+        description: Kubernetes namespace for AWX Operator and AWX resources.
+        default: awx
+      automation_awx_name:
+        type: str
+        description: AWX custom resource name.
+        default: homelab-awx
+      automation_awx_manifest_path:
+        type: str
+        description: Directory on the k3s node where rendered kustomize manifests live.
+        default: /opt/automation-awx
+      automation_awx_kubeconfig:
+        type: str
+        description: Kubeconfig used by kubectl on the k3s node.
+        default: /etc/rancher/k3s/k3s.yaml
+      automation_awx_service_type:
+        type: str
+        description: Kubernetes service type for AWX.
+        choices:
+          - ClusterIP
+          - LoadBalancer
+          - NodePort
+        default: NodePort
+      automation_awx_nodeport_port:
+        type: int
+        description: NodePort used when automation_awx_service_type is NodePort.
+        default: 30080
+      automation_awx_wait_timeout:
+        type: str
+        description: Timeout passed to kubectl wait and rollout status.
+        default: 600s
