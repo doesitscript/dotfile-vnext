@@ -163,13 +163,20 @@ forward without evaluation is not senior behavior.
 
 ## Research Transparency — MANDATORY
 
-Every time the agent fetches a document or external resource, declare it before the answer:
+Every time the agent fetches a document, MCP result, repo source, or external
+resource, list it in the final answer.
 
-> **Researched:**
-> - `doc-name` — one-line summary of what it says about the topic
+Required final-answer shape:
 
-One line per item. This block appears before the answer, not after.
-The user must know what was consulted before reading the recommendation.
+```markdown
+Sources checked:
+- <source label>: <path, MCP/doc name, or URL>
+```
+
+One line per source. The list appears near the end of the final response so it
+serves as an audit trail without crowding out the answer. During long-running
+work, a short `Researched:` progress update is allowed, but it does not replace
+the final `Sources checked:` section.
 
 After fetching, the agent must explicitly state what the docs show that **differs from the current proposal**.
 If the docs show an alternative pattern, that alternative MUST be presented — not suppressed because the agent has already committed to a direction.

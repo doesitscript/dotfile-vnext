@@ -118,6 +118,10 @@ Include:
    - viable options
    - recommended path
    - key tradeoffs or risks
+   When sources are checked during a turn, include a compact final section named
+   `Sources checked:` listing each consulted repo file, MCP/doc source, or
+   external URL with a short label. This final section is required for both
+   research-only answers and implementation summaries that relied on sources.
 7. Keep research in the conversation by default unless the user explicitly wants a durable artifact or the result is itself a durable process change.
 8. When repeated implementation attempts stop producing new evidence, stop iterating blindly and switch to documentation/source-backed research before changing strategy.
 9. When password passing, privilege escalation, or installer flow behaves unexpectedly, inspect the actual module/tool documentation or source before changing escalation strategy.
