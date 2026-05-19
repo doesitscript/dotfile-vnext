@@ -51,37 +51,87 @@ This document captures naming decisions made for this dotfile-vnext project, inc
 - ✅ Display name: `Windows Server 2025`, Slug: `windows-server-2025` (proper name exception)
 - ❌ Display name: `Hyper-V Host`, Slug: `hyperv-host` (creates confusion)
 
-### 3. Compact VM Names With Details in Fields
+### 3. Cloud Posse / NetBox Context Names With Details In Fields
 
-**Decision:** VM names follow `<scope>-<role>-<nn>` pattern with details in NetBox fields.
+**Decision:** Infrastructure object names follow a Cloud Posse-inspired context
+pattern adapted for NetBox:
 
-**Target pattern:**
+```text
+<namespace?>-<tenant>-<environment>-<stage>-<role_code>-<nn>
 ```
-s225-dkr-01    # server-225 scope, docker role, instance 01
-s225-k3s-01    # server-225 scope, k3s role, instance 01
+
+The current baseline example is:
+
+```text
+home-lab-auth-hvh-01
 ```
 
 **Rationale:**
-- Short names are easier to type, read, and use in CLIs
-- Platform, IP, site, cluster details belong in structured fields
-- Name stays stable even if underlying details change
-- Follows industry patterns (AWS, GCP, enterprise naming)
+- Cloud Posse-style context gives a standard pattern instead of one-off names.
+- NetBox owns the rich source-of-truth fields behind the rendered name.
+- Platform, IP, site, cluster, role, tags, and legacy aliases remain structured and queryable.
+- Historical names do not drive the mature schema unless explicitly promoted into a controlled registry.
+- Name recommendations must show the data fields that produced the name.
 
 **Current state:**
-- Existing `server-225-ubuntu` VM name preserved until rebuild
-- New VMs follow compact pattern
-- Migration happens at natural rebuild/replacement points
+- Existing inventory aliases such as `server-225-win` and `network-server-win` remain control aliases.
+- Existing VM names can remain until rebuild or replacement points.
+- New NetBox-facing names should meet or exceed the baseline context pattern.
 
 **What belongs where:**
 
-| Concept | In Name? | In NetBox Field | Example |
+| Concept | In Name? | In NetBox Field / Context | Example |
 |---|---|---|---|
-| Host scope | Yes | Device or custom field | `s225` |
-| Role | Yes | VM role + tags | `dkr`, `k3s` |
+| Namespace | Optional | Config context or project context | `castle` |
+| Tenant | Yes when stable | NetBox tenant, tag, or config context | `home` |
+| Environment/site | Yes when name must stand alone | NetBox site | `lab` |
+| Stage | Yes when stable and useful | Tag, config context, or custom field | `auth` |
+| Role code | Yes | Device role / VM role | `hvh` -> `hyperv-host` |
 | Sequence | Yes | Part of name | `01`, `02` |
 | Platform | No | Platform | `Ubuntu 24.04` |
 | IP address | No | Interface + primary IP | `192.168.137.10` |
-| Host placement | No | Cluster | `server-225-hyperv` |
+| Host placement | No | Cluster / device relationship | `server-225-hyperv` |
+| Historical hostnames | No | Legacy alias, comments, config context | `server-225-win` |
+
+**Required candidate data shape:**
+
+```yaml
+candidate:
+  name: home-lab-auth-hvh-01
+  schema: "<tenant>-<environment>-<stage>-<role_code>-<nn>"
+  context:
+    namespace:
+      value: castle
+      include_in_name: false
+    tenant:
+      value: home
+    environment_or_site:
+      value: lab
+    stage:
+      value: auth
+    role_code:
+      value: hvh
+    sequence:
+      value: "01"
+  role:
+    slug: hyperv-host
+    name: hyperv-host
+  platform:
+    name: Windows Server 2025
+    slug: windows-server-2025
+```
+
+**Role code examples:**
+
+| Role code | NetBox role slug | Example name |
+|---|---|---|
+| `hvh` | `hyperv-host` | `home-lab-auth-hvh-01` |
+| `dkr` | `docker-engine` | `home-lab-app-dkr-01` |
+| `k3s` | `k3s-node` | `home-lab-cls-k3s-01` |
+| `nas` | `file-share` | `home-lab-data-nas-01` |
+
+The role-code registry is intentionally small. Add codes only when the NetBox
+role exists or is part of an accepted model.
 
 ### 4. Ansible Role Names Are Capability-Focused
 
@@ -174,7 +224,9 @@ langfuse_cli_package_name: "langfuse-cli@{{ langfuse_cli_version }}"
 
 **Assessment:** Legacy verbose name.
 
-**Future:** `s225-dkr-01` when VM is rebuilt.
+**Future:** Rename at rebuild using the current context pattern, for example
+`home-lab-app-dkr-01` if the accepted context is tenant `home`, environment/site
+`lab`, stage `app`, role code `dkr`, sequence `01`.
 
 **Reason:** Current name is stable and working. Rename at rebuild, not as in-place change.
 
@@ -182,9 +234,12 @@ langfuse_cli_package_name: "langfuse-cli@{{ langfuse_cli_version }}"
 
 **Assessment:** Windows host is `server-225-win`. `server-225-win-powershell` is SSH alias for OpenSSH access to PowerShell on Windows host.
 
-**Future:** Keep for now. Scope code `s225` adoption pending.
+**Future:** Keep as control aliases. Do not promote `server-225`/`s225` into the
+mature name schema unless a future decision explicitly makes it a controlled
+scope code.
 
-**Reason:** Host names are deeply embedded in inventory, SSH config, WinRM config. Stable until broader `s225` scope model finalizes.
+**Reason:** Host names are deeply embedded in inventory, SSH config, WinRM config.
+They are operational aliases, not source-of-truth naming standards.
 
 ### Current Roles: `ipam_netbox`, `hyperv_ubuntu_vm`, `speech_central`
 
@@ -202,17 +257,22 @@ langfuse_cli_package_name: "langfuse-cli@{{ langfuse_cli_version }}"
 
 ## Open Questions
 
-### Scope Code: `s225`
+### Historical Scope Codes
 
-**Question:** Should `s225` represent the physical host (`server-225`), a site/location scope, or just operator shorthand?
+**Question:** Should historical codes such as `s225` or `nsrv` represent durable
+scope identity?
 
-**Current thinking:** Physical host scope.
+**Current decision:** No, not by default. They remain aliases until explicitly
+promoted into a controlled scope-code registry.
 
-**Decision point:** When adding second physical host or modeling multi-site.
+**Decision point:** Only revisit if physical-node lineage becomes a first-class
+context dimension that NetBox cannot represent more cleanly with native fields,
+tags, or config context.
 
 ### Legacy Name Retirement
 
-**Question:** When should `server-225-ubuntu` be renamed to `s225-dkr-01`?
+**Question:** When should `server-225-ubuntu` be renamed to a context-standard
+name such as `home-lab-app-dkr-01`?
 
 **Current thinking:** At VM rebuild or major refactor.
 
@@ -233,11 +293,14 @@ langfuse_cli_package_name: "langfuse-cli@{{ langfuse_cli_version }}"
 
 ### Cluster Naming
 
-**Question:** Should Hyper-V cluster be named `server-225-hyperv` or `s225-hyperv`?
+**Question:** Should Hyper-V clusters follow the context pattern, such as
+`home-lab-auth-hvh-cls-01`, or stay closer to NetBox-native role/set naming?
 
-**Current thinking:** Follow same scope pattern as VMs when scope model finalizes.
+**Current thinking:** Follow the Cloud Posse / NetBox context standard when
+renaming or creating new cluster objects. Keep historical cluster names as
+aliases or migration notes unless actively migrating the NetBox object.
 
-**Decision point:** When scope code is finalized and second cluster is added.
+**Decision point:** When the cluster model is updated or a second cluster is added.
 
 ## Migration Strategy
 
@@ -275,9 +338,15 @@ langfuse_cli_package_name: "langfuse-cli@{{ langfuse_cli_version }}"
 
 ### VMs
 
-**Pattern:** `<scope>-<role>-<nn>`
+**Pattern:** `<namespace?>-<tenant>-<environment>-<stage>-<role_code>-<nn>`
 
-**Examples:** `s225-dkr-01`, `s225-k3s-01`
+**Examples:** `home-lab-app-dkr-01`, `home-lab-cls-k3s-01`
+
+### NetBox Devices
+
+**Pattern:** `<namespace?>-<tenant>-<environment>-<stage>-<role_code>-<nn>`
+
+**Examples:** `home-lab-auth-hvh-01`
 
 ### Ansible Roles
 

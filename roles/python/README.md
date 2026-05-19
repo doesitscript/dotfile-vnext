@@ -5,6 +5,31 @@ Installs pyenv, pyenv-virtualenv, pipx, python2, python3, and poetry. Also adds 
 
 Use the `mkvenv` script for bootstrapping new virtualenvs.
 
+## Python Tooling Patterns
+
+This role is authoritative for Python tooling decisions in this repository.
+
+### When to Use Each Tool
+
+| Tool | Use For | Managed By |
+|---|---|---|
+| **pip + venv** | Project-specific dependencies (MCP servers, local tools) | Individual roles |
+| **pipx** | Global CLI tools (poetry, virtualenv) | This role (`pipx_packages`) |
+| **poetry** | Python packaging projects (when needed) | Installed via pipx |
+
+### Tools Evaluated but NOT Adopted
+
+- **uv**: Evaluated for NetBox MCP server but rejected to maintain pattern consistency with existing `pip/venv` approach and avoid redundancy with `poetry`. See [`docs/python-dependency-patterns.md`](../../docs/python-dependency-patterns.md) for full rationale and decision framework.
+
+### Pattern Examples
+
+- **pip/venv pattern**: [`roles/mcp_servers/ansible-mcp/tasks/mac.yml`](../mcp_servers/ansible-mcp/tasks/mac.yml)
+- **pipx global tools**: [`roles/python/defaults/main.yml`](defaults/main.yml) - see `pipx_packages`
+
+### See Also
+
+For comprehensive Python dependency management guidance, decision framework, and historical context, see [`docs/python-dependency-patterns.md`](../../docs/python-dependency-patterns.md).
+
 ## Notes
 
 * Bash shell init should set up `pyenv` and `pyenv-virtualenv` in your profile.

@@ -8,7 +8,20 @@ Approved plans belong here.
 - Treat the repo plan as the canonical durable artifact.
 - Mirror the work into a GitHub issue as a higher-level roadmap when GitHub is available.
 - Keep the GitHub issue shorter than the repo plan and link the two when that improves pickup.
-- **Include Mermaid diagrams** visualizing architecture, implementation flow, and naming standards (see `.cursor/rules/framework-partner-process.mdc` for full requirements).
+- **Include Mermaid diagrams** visualizing architecture, implementation flow, and naming standards (see `.cursor/rules/framework-partner-process.mdc` for full requirements). The same baseline applies to official conversational `<proposed_plan>` plans.
+
+## Required Diagram Checklist
+
+Every stored plan must include these sections before it is considered complete:
+
+- `Architecture/Structure Diagram`: required for every stored plan. Show the repo files, roles, inventories, playbooks, external systems, and managed targets that the plan changes or depends on.
+- `Capability Routing Diagram`: required when the plan has runtime branching, multiple systems, preview/apply/verify paths, lifecycle state, conditional execution, or target selection.
+- `Naming/Modeling Diagram`: required when the plan changes names, aliases, object hierarchy, source-of-truth metadata, or naming standards.
+- `Other Available Diagram Types` or `Diagram Inventory`: required at the end
+  of every plan so reviewers can see which optional diagrams were considered.
+
+If a diagram is truly not applicable, include the section anyway with an explicit
+`N/A` reason. Do not omit the section silently.
 
 ## Naming
 
@@ -84,3 +97,86 @@ grep -l "archive_candidate: true" docs/plans/*.md
 - `docs/plans/` is the durable planning layer for approved work across the repo.
 - `docs/codex_framework/implemented_plans/` remains the framework-specific implemented-history layer.
 - Role READMEs, intake notes, and diagnostics docs should link to a plan only when that link materially helps future pickup.
+
+## Proactive Reinforcement During Planning
+
+**Core Principle:** When the user has to explain, correct, or clarify something during planning, that represents a gap in project documentation or standards. The AI should proactively add tasks to the current plan to strengthen those areas.
+
+### Pattern Recognition During Planning
+
+Watch for these signals that indicate missing project guidance:
+
+1. **User questions about tool choice**
+   - Example: "Why should I use uv? Is this redundant to poetry?"
+   - Signal: Python tooling authority unclear
+   - Response: Add task to update `python` role README with pattern guidance
+
+2. **User corrections about existing patterns**
+   - Example: "We use pip/venv for git-cloned projects, not uv"
+   - Signal: Pattern not documented or discoverable
+   - Response: Add task to strengthen template or role documentation
+
+3. **User requests for version pinning or stability**
+   - Example: "What about version pinning?"
+   - Signal: Template doesn't enforce or guide toward stability
+   - Response: Add task to update template with version pinning variables and guidance
+
+4. **User asks to document decisions**
+   - Example: "Capture this discussion so we don't lose the knowledge"
+   - Signal: Decision rationale not preserved for future reference
+   - Response: Evaluate if role README or central doc is warranted; add appropriate task
+
+### The Reinforcement Loop
+
+```
+User explains/corrects during planning
+    ↓
+AI identifies root cause (missing guidance, unclear authority, weak template)
+    ↓
+AI adds task to current plan to strengthen that area
+    ↓
+Future plans benefit from strengthened guidance
+    ↓
+Fewer explanations/corrections needed
+```
+
+### Required Step During Planning
+
+Before finalizing any plan, explicitly ask:
+
+> "What user explanations or corrections during this planning session reveal gaps in project documentation or standards? What tasks should I add to this plan to prevent needing those same explanations next time?"
+
+Then add those reinforcement tasks to the current plan, not as future follow-up work.
+
+### Real Example: NetBox MCP Server Plan (May 2026)
+
+**User corrections during planning:**
+- "Why should I use uv?" → Pattern authority unclear
+- "What about version pinning?" → Template enforcement weak
+- "Document this decision" → No preservation path
+
+**Tasks added to plan:**
+- Update `python` role README with pattern guidance and tool evaluation rationale
+- Update MCP template with version pinning variables and enforcement
+- Create central doc for cross-cutting Python tooling decisions
+- Update planning process itself with this reinforcement pattern
+
+**Result:** Next MCP server or Python tooling decision has stronger guidance available from the start.
+
+### Documentation Decision Tree (During Planning)
+
+When a decision needs documentation:
+
+1. **Single role affected?**
+   - YES → Add task to update that role's README
+   - NO → Continue to #2
+
+2. **Cross-cutting (affects multiple roles)?**
+   - Evaluate: Does it provide decision framework? Connect scattered decisions? Prevent repeated investigations?
+   - YES → Add task to create/update central doc + update affected role READMEs with pointers
+   - NO → Add task to update most relevant role README only
+
+3. **Template/standard gap revealed?**
+   - Add task to update template with stronger guidance or fail-fast validation
+
+**Goal:** Every plan should leave the project stronger than it found it, not just implement the immediate feature.

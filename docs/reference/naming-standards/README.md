@@ -28,14 +28,73 @@ This project does not force-fit new research into existing conventions. Instead:
 - **Consistency over snowflakes** — one good pattern beats ten custom solutions
 - **Forward-looking** — optimize for "100 nodes" not "works today"
 
+## Current Emerging Standard
+
+Prioritize Cloud Posse-style context assembly and NetBox-native source-of-truth
+fields when naming infrastructure objects.
+
+The current baseline pattern to meet or exceed is:
+
+```text
+<namespace?>-<tenant>-<environment>-<stage>-<role_code>-<nn>
+```
+
+For current NetBox-backed homelab device naming, the working baseline example is:
+
+```text
+home-lab-auth-hvh-01
+```
+
+The `namespace` segment is optional in the rendered name. Keep it out of the
+name when it would be redundant, but still track it as context.
+
+Every recommendation using this standard must show the data that produced it:
+
+```yaml
+context:
+  namespace:
+    value:
+    include_in_name:
+  tenant:
+    value:
+  environment_or_site:
+    value:
+  stage:
+    value:
+  role_code:
+    value:
+  sequence:
+    value:
+role:
+  slug:
+  name:
+platform:
+  name:
+  slug:
+netbox:
+  site:
+  tenant:
+  device_role:
+  platform:
+  tags: []
+  config_context: {}
+  custom_fields: {}
+```
+
+Historical inventory names such as `server-225-win` and `network-server-win`
+can remain as aliases and migration context. They do not define the mature
+schema unless a future decision explicitly promotes them into a controlled
+scope-code registry.
+
 ### How to Use This Folder
 
 When naming a new resource:
 
-1. Check the relevant ecosystem guide (NetBox, Ansible, Kubernetes, etc.)
-2. Review patterns and examples
-3. Apply the pattern consistently
-4. Document exceptions in project-specific notes
+1. Start with the current emerging standard above.
+2. Check the relevant ecosystem guide, with Cloud Posse context and NetBox modeling first for infrastructure identity.
+3. Review patterns and examples.
+4. Apply the pattern consistently.
+5. Document exceptions in project-specific notes.
 
 When existing names conflict with research:
 

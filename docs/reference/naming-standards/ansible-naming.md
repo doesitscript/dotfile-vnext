@@ -165,7 +165,11 @@ Examples:
 **Examples:**
 - `server-225-win`
 - `server-225-ubuntu`
-- `s225-dkr-01`
+- `home-lab-app-dkr-01`
+
+Historical inventory names may remain as control aliases. New NetBox-facing
+device or VM names should follow the current context standard in
+`project-decisions.md`, not historical shorthand.
 
 ### Tag Naming
 
