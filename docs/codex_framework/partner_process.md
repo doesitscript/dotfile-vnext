@@ -498,6 +498,13 @@ The draft remains in the conversation by default and is refined until the user a
 
 If the topic is novel or under-researched, the planner may summarize current direction but should escalate to the Researcher before presenting a decision-complete plan.
 
+Official plans are more than lightweight draft notes. Conversational
+`<proposed_plan>` plans and stored plans under `docs/plans/` must include the
+baseline Mermaid `Architecture/Structure Diagram`, any conditional diagrams
+required by the active framework rule, and an ending list of other available
+diagram types that could be made. If the baseline diagram is missing, that is a
+planning defect to correct before implementation.
+
 ### Role Transition Visibility
 
 The framework should be visible at meaningful transition points, but not noisy.

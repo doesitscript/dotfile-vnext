@@ -181,16 +181,21 @@ planning or research question. If they are skipped, say why.
    - a short recap
    - a short draft plan
    - `Apply / Verify / Undo / Change class`
-3. Refine the draft until agreement instead of treating planning as one-shot.
-4. Keep draft plans in the conversation until they are accepted. Store approved plans under `docs/plans/` as the canonical durable artifact and mirror them to a GitHub issue as a higher-level roadmap when GitHub is available.
-5. At meaningful role transitions, briefly label the active framework surface when it helps the user track the work:
+3. Official plans, including conversational `<proposed_plan>` plans and stored
+   plans under `docs/plans/`, must include:
+   - an `Architecture/Structure Diagram` in Mermaid
+   - any conditional diagrams required by the active framework rule
+   - an end section listing other available diagram types that could be made
+4. Refine the draft until agreement instead of treating planning as one-shot.
+5. Keep draft plans in the conversation until they are accepted. Store approved plans under `docs/plans/` as the canonical durable artifact and mirror them to a GitHub issue as a higher-level roadmap when GitHub is available.
+6. At meaningful role transitions, briefly label the active framework surface when it helps the user track the work:
    - `Planner/Steward view:`
    - `Researcher view:`
    - `Executor view:`
    - `Outcomes:`
-6. Reserve `Evidence:` for collected outputs, saved artifacts, and source-backed findings. Use `Outcomes:` or plain implementation prose for change summaries, recaps, or results that are not proof artifacts.
-7. Treat Ansible task states such as `changed`, `ok`, and play recap counts as outcomes, not evidence, unless the underlying output, exception text, registered result, log/event entry, or saved artifact is also shown.
-8. Use those labels at transition points and decision points, not on every message.
+7. Reserve `Evidence:` for collected outputs, saved artifacts, and source-backed findings. Use `Outcomes:` or plain implementation prose for change summaries, recaps, or results that are not proof artifacts.
+8. Treat Ansible task states such as `changed`, `ok`, and play recap counts as outcomes, not evidence, unless the underlying output, exception text, registered result, log/event entry, or saved artifact is also shown.
+9. Use those labels at transition points and decision points, not on every message.
 
 ## Implementation Shape
 
