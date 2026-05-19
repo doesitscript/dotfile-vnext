@@ -1,0 +1,40 @@
+---
+description: Route broad project-maturity requests to modular domain knowledge gates without merging them.
+alwaysApply: true
+---
+
+# Project Maturity Router
+
+This rule applies when the user asks to improve, mature, harden,
+professionalize, or align the project with best practices and the request is
+broader than a single implementation detail.
+
+## Required Behavior
+
+Do not collapse broad project improvement into one generic blob. Classify the
+domains involved, then use the relevant knowledge gates separately.
+
+## Routing
+
+- Use `ansible-knowledge-gate` when the work involves automation shape:
+  roles, playbooks, inventories, variables, modules, idempotence, lifecycle, or
+  validation.
+- Use `netbox-knowledge-gate` when the work involves infrastructure modeling:
+  source-of-truth, names, slugs, tags, object hierarchy, IPAM, or inventory
+  derived from NetBox.
+- Use both when both domains materially shape the project direction.
+
+## Required Output
+
+For broad project-maturity requests, state:
+
+- domains considered
+- gates activated
+- gates intentionally not activated and why
+- combined recommendation, keeping each domain's receipt separate when both
+  gates apply
+
+## Non-Goals
+
+The router owns composition only. It must not duplicate Ansible or NetBox
+domain rules.

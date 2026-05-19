@@ -1,0 +1,46 @@
+graph TB
+    subgraph plan_packet ["docs/plans/2026-05-18--knowledge-gate-pattern"]
+        product_eval["product_evaluation_langfuse_skill"]
+        pattern_extract["pattern_extraction"]
+        ansible_spec["capability_ansible_knowledge_gate"]
+        netbox_spec["capability_netbox_knowledge_gate"]
+        router_spec["capability_project_maturity_router"]
+    end
+
+    subgraph repo_skills [".cursor/skills"]
+        ansible_skill["ansible_knowledge_gate"]
+        netbox_skill["netbox_knowledge_gate"]
+        router_skill["project_maturity_router"]
+    end
+
+    subgraph rule_layer [".cursor/rules"]
+        ansible_rule["ansible_knowledge_gate_rule"]
+        netbox_rule["netbox_knowledge_gate_rule"]
+        router_rule["framework_project_maturity_router_rule"]
+    end
+
+    broad_request["Improve/mature project"] -->|"routes through"| router_skill
+    ansible_task["Ansible task"] -->|"triggers"| ansible_skill
+    netbox_task["NetBox task"] -->|"triggers"| netbox_skill
+
+    router_skill -->|"activates when applicable"| ansible_skill
+    router_skill -->|"activates when applicable"| netbox_skill
+
+    ansible_skill -->|"owns workflow"| ansible_rule
+    netbox_skill -->|"owns workflow"| netbox_rule
+    router_skill -->|"owns composition"| router_rule
+
+    product_eval -->|"informs"| pattern_extract
+    pattern_extract -->|"adapts into"| ansible_spec
+    pattern_extract -->|"adapts into"| netbox_spec
+    pattern_extract -->|"adapts into"| router_spec
+
+    ansible_spec -->|"implemented by"| ansible_skill
+    netbox_spec -->|"implemented by"| netbox_skill
+    router_spec -->|"implemented by"| router_skill
+
+    style product_eval fill:#1e3a5f
+    style pattern_extract fill:#2a2a2a
+    style router_skill fill:#5a4a1a
+    style ansible_skill fill:#2d4a2d
+    style netbox_skill fill:#4a3f2e

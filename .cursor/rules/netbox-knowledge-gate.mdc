@@ -1,0 +1,51 @@
+---
+description: NetBox knowledge gate for source-of-truth modeling, naming, nb_inventory, and netbox.netbox work.
+alwaysApply: true
+---
+
+# NetBox Knowledge Gate
+
+This rule applies when work touches NetBox objects, source-of-truth modeling,
+names, slugs, tags, custom fields, devices, VMs, interfaces, IPs, platforms,
+roles, sites, clusters, `nb_inventory`, or the `netbox.netbox` collection.
+
+## Required Behavior
+
+Do not design or implement NetBox modeling from memory alone.
+
+Before decision-complete planning or implementation:
+
+1. Inspect existing repo NetBox surfaces:
+   - `roles/ipam_netbox/`
+   - `inventory/netbox.yml`
+   - active NetBox plans and rules
+2. Check NetBox authority:
+   - official NetBox docs
+   - NetBox API/schema docs when object shape matters
+   - LLM-friendly NetBox docs indexes when useful
+   - `netbox.netbox` module docs when Ansible manages NetBox
+3. Apply the repo's NetBox modeling gates:
+   - native field before custom field
+   - tag before custom field
+   - object hierarchy before object creation
+   - IPs belong to interfaces
+   - `nb_inventory` grouping implications
+4. Produce a NetBox knowledge receipt.
+
+## Knowledge Receipt
+
+Required fields:
+
+- Repo NetBox surfaces checked
+- NetBox docs/API checked
+- Native field / tag / custom field decision
+- Hierarchy placement
+- `nb_inventory` implication
+- Open gaps
+- Apply / Verify / Undo / Change class
+
+## Boundaries
+
+- Generic Ansible role or playbook design belongs to `ansible-knowledge-gate`.
+- Broad project-maturity routing belongs to
+  `framework-project-maturity-router.mdc`.

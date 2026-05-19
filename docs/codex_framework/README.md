@@ -272,6 +272,15 @@ These are the current files actively shaping this capability.
 - [.cursor/rules/framework-troubleshooting-mode.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/framework-troubleshooting-mode.mdc)
   The dedicated rule surface that governs troubleshooting-mode triggers,
   evidence hierarchy, per-run reporting, and operator-facing evidence options.
+- [.cursor/rules/ansible-knowledge-gate.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/ansible-knowledge-gate.mdc)
+  The Ansible-specific knowledge gate for repo-grounded automation design,
+  module discovery, and validation planning.
+- [.cursor/rules/netbox-knowledge-gate.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/netbox-knowledge-gate.mdc)
+  The NetBox-specific knowledge gate for source-of-truth modeling, naming,
+  hierarchy, tags, fields, interfaces, IPs, and `nb_inventory`.
+- [.cursor/rules/framework-project-maturity-router.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/framework-project-maturity-router.mdc)
+  The router rule for broad project-maturity requests that should activate one
+  or more domain knowledge gates without merging them.
 
 ### Skill workflows
 
@@ -287,6 +296,15 @@ These are the current files actively shaping this capability.
   The current `Researcher` workflow. This now explicitly includes
   diagnostic-discovery research for questions like "where does this thing log"
   and "how do we surface more output for troubleshooting?"
+- [.cursor/skills/ansible-knowledge-gate/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/ansible-knowledge-gate/SKILL.md)
+  The modular Ansible knowledge gate. It requires repo and Ansible authority
+  checks before Ansible design or implementation.
+- [.cursor/skills/netbox-knowledge-gate/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/netbox-knowledge-gate/SKILL.md)
+  The modular NetBox knowledge gate. It requires repo and NetBox authority
+  checks before NetBox modeling or source-of-truth changes.
+- [.cursor/skills/project-maturity-router/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/project-maturity-router/SKILL.md)
+  The composition skill for broad project-improvement requests. It routes to
+  the Ansible gate, NetBox gate, or both while keeping the gates separate.
 - [.cursor/skills/github-issue-workflow/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/github-issue-workflow/SKILL.md)
   A small reusable workflow for turning concrete brainstorming or resumable work
   into GitHub issues when durable backlog tracking is better than local notes
@@ -351,6 +369,7 @@ If the framework later gains domain-specific extensions, the names should say so
 
 Examples:
 - `ansible-*` for Ansible-specific rules, workflows, or skills
+- `netbox-*` for NetBox-specific rules, workflows, or skills
 - `github-*` for GitHub issue workflow rules and related durable backlog behavior
 - project-qualified names when something is specific to this repo rather than reusable elsewhere
 
@@ -364,6 +383,10 @@ This is the naming logic Codex should treat as active in this repo:
   Use for active rules that define framework-owned behavior in an agent-agnostic way where practical.
 - `ansible-*`
   Use for active rules, workflows, or skills that are specifically about Ansible behavior, design, or execution.
+- `netbox-*`
+  Use for active rules, workflows, or skills that are specifically about
+  NetBox source-of-truth modeling, naming, inventory derivation, and API-backed
+  object management.
 - `github-*`
   Use for active rules and workflows that govern GitHub issue creation, staging, labeling, and pickup behavior.
 - project-qualified names

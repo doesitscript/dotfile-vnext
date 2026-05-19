@@ -1,0 +1,54 @@
+graph TB
+    subgraph top_contract ["Top Contract"]
+        agents_md["AGENTS.md<br/>modular_gate_contract"]
+    end
+
+    subgraph plan_packet ["Plan Packet"]
+        plan_readme["README.md<br/>diagrams_and_apply_contract"]
+        evaluation_doc["product-evaluation--langfuse-skill.md"]
+        extraction_doc["pattern-extraction.md"]
+        ansible_capability["capability--ansible-knowledge-gate.md"]
+        netbox_capability["capability--netbox-knowledge-gate.md"]
+        router_capability["capability--project-maturity-router.md"]
+    end
+
+    subgraph discovery_layer ["Skill Discovery"]
+        skills_catalog[".cursor/skills/catalog.yml"]
+        skills_readme[".cursor/skills/README.md"]
+        framework_map["docs/codex_framework/README.md"]
+    end
+
+    subgraph skill_layer ["Repo Local Skills"]
+        ansible_skill[".cursor/skills/ansible-knowledge-gate"]
+        netbox_skill[".cursor/skills/netbox-knowledge-gate"]
+        router_skill[".cursor/skills/project-maturity-router"]
+    end
+
+    subgraph rule_layer ["Companion Rules"]
+        ansible_rule[".cursor/rules/ansible-knowledge-gate.mdc"]
+        netbox_rule[".cursor/rules/netbox-knowledge-gate.mdc"]
+        router_rule[".cursor/rules/framework-project-maturity-router.mdc"]
+    end
+
+    agents_md -->|"bootstraps"| discovery_layer
+    plan_readme -->|"documents"| evaluation_doc
+    plan_readme -->|"documents"| extraction_doc
+    extraction_doc -->|"splits into"| ansible_capability
+    extraction_doc -->|"splits into"| netbox_capability
+    extraction_doc -->|"splits into"| router_capability
+
+    skills_catalog -->|"discovers"| ansible_skill
+    skills_catalog -->|"discovers"| netbox_skill
+    skills_catalog -->|"discovers"| router_skill
+    skills_readme -->|"explains pattern"| skill_layer
+    framework_map -->|"maps active surfaces"| rule_layer
+
+    ansible_skill -->|"paired with"| ansible_rule
+    netbox_skill -->|"paired with"| netbox_rule
+    router_skill -->|"paired with"| router_rule
+
+    style agents_md fill:#1e3a5f
+    style plan_readme fill:#2a2a2a
+    style ansible_skill fill:#2d4a2d
+    style netbox_skill fill:#4a3f2e
+    style router_skill fill:#5a4a1a

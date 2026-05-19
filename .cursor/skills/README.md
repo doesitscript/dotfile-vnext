@@ -37,6 +37,29 @@ The goal is:
 - repo-specific ambient behavior after that
 - longer explanation last
 
+## Domain Skills And Router Skills
+
+Keep domain expertise modular.
+
+- Domain skills own one capability area, such as Ansible automation design or
+  NetBox source-of-truth modeling.
+- Router skills own composition only. They decide which domain skills apply to
+  broad requests, but they do not duplicate the domain rules.
+
+For this repo, the current knowledge-gate family is:
+
+- `ansible-knowledge-gate`
+  Ansible roles, playbooks, modules, inventory, lifecycle, idempotence, and
+  validation.
+- `netbox-knowledge-gate`
+  NetBox object modeling, source-of-truth hierarchy, naming, tags, fields,
+  interfaces, IPs, and `nb_inventory`.
+- `project-maturity-router`
+  Broad project-improvement routing to one or both domain gates.
+
+Do not merge these into one combined "NetBox/Ansible" skill. The router may
+activate both, but each domain gate must remain independently serviceable.
+
 ## Update And Removal Pattern
 
 For manifest-backed skills, `capability.yml` is the source of truth for:

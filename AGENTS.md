@@ -90,6 +90,11 @@ Include:
     - name equals slug (lowercase-kebab) except proper product names
     - object hierarchy: Site → Cluster → VM; Site → Device
     - IPs belong to interfaces, not directly to objects
+13. For project-maturity work, keep the knowledge gates modular:
+    - Ansible automation design uses `ansible-knowledge-gate`
+    - NetBox source-of-truth modeling uses `netbox-knowledge-gate`
+    - broad project improvement uses `project-maturity-router` to activate one
+      or both gates without merging them into one capability
 
 ## Research Expectations
 
