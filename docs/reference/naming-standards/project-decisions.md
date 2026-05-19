@@ -28,6 +28,16 @@ This document captures naming decisions made for this dotfile-vnext project, inc
 - Platform information lives in NetBox `platform` field, not in names
 - IP addresses assigned via NetBox, not hardcoded
 
+**Project-safe update flow:**
+1. Update repo seed/config first: inventory, role defaults, seed tasks, docs,
+   aliases, and naming metadata.
+2. Run the repo consistency gate:
+   `ansible-playbook playbooks/deploy_ipam_netbox.yaml -i inventory/inventory.yaml --tags ipam_netbox_repo_consistency`
+3. Apply the NetBox seed/update only after the gate passes.
+
+Live NetBox changes that are not reproducible from the repo are treated as
+drift, not as completed source-of-truth work.
+
 **Migration:**
 - Existing static inventory becomes seed data for NetBox
 - `inventory/netbox.yml` in shadow mode until validated
@@ -74,8 +84,10 @@ home-lab-auth-hvh-01
 - Name recommendations must show the data fields that produced the name.
 
 **Current state:**
-- Existing inventory aliases such as `server-225-win` and `network-server-win` remain control aliases.
-- Existing VM names can remain until rebuild or replacement points.
+- Existing inventory aliases such as `server-225-win` and the retired
+  network-server Windows control alias remain legacy/control aliases.
+- Existing compact VM names such as `nsrv-dkr-01` and `nsrv-k3s-01` can remain
+  when they are already approved durable inventory names for a specific VM lane.
 - New NetBox-facing names should meet or exceed the baseline context pattern.
 
 **What belongs where:**
@@ -126,8 +138,8 @@ candidate:
 | Role code | NetBox role slug | Example name |
 |---|---|---|
 | `hvh` | `hyperv-host` | `home-lab-auth-hvh-01` |
-| `dkr` | `docker-engine` | `home-lab-app-dkr-01` |
-| `k3s` | `k3s-node` | `home-lab-cls-k3s-01` |
+| `dkr` | `docker-engine` | `nsrv-dkr-01` |
+| `k3s` | `k3s-node` | `nsrv-k3s-01` |
 | `nas` | `file-share` | `home-lab-data-nas-01` |
 
 The role-code registry is intentionally small. Add codes only when the NetBox
@@ -249,11 +261,20 @@ They are operational aliases, not source-of-truth naming standards.
 
 ### Current Service Endpoints
 
-**Current:** Port-proxies tracked in static inventory (e.g., NetBox on `192.168.50.158:8000`).
+**Current:** Port-proxies are declared in Ansible inventory and the application
+services are seeded into NetBox as application service records.
 
-**Future:** Model as NetBox service objects or service records.
+**Decision:** Model LAN-published applications as NetBox application services
+on the VM or device that actually runs the service. For the current
+server-225 stack, `netbox-web`, `semaphore-web`, and `loki-http` are services
+on `server-225-ubuntu`. `grafana-web` is also modeled there because it is
+Docker-published on the same VM, though it is not currently LAN-forwarded
+through the Windows portproxy.
 
-**Reason:** Service modeling pattern not yet decided. Keep in inventory until NetBox service model is designed.
+**Reason:** NetBox service records represent the running application endpoint.
+The Windows host remains modeled as the publishing/transport device through
+tags and service comments because NetBox does not natively model
+application-level port forwarding/PAT as a first-class relationship.
 
 ## Open Questions
 
@@ -282,14 +303,18 @@ name such as `home-lab-app-dkr-01`?
 
 **Question:** How should LAN-published services (NetBox, Semaphore, port-proxies) be modeled?
 
-**Options:**
-1. NetBox service records on the VM
-2. NetBox service records on the Windows host
-3. Keep in Ansible inventory as port-proxy config
+**Decision:** Use NetBox application service records on the service parent.
 
-**Current thinking:** Option 1 (service records on VM) makes most sense.
+**Current implementation:**
+- Service parent: `server-225-ubuntu`
+- Published by: `home-lab-auth-hvh-02` / legacy alias `server-225-win`
+- Services: `netbox-web`, `semaphore-web`, `loki-http`, `grafana-web`
+- Access URLs are stored in service comments until a stronger URL/service
+  catalog pattern is adopted.
 
-**Decision point:** When NetBox service modeling is implemented.
+**Remaining gap:** Automate service seed generation from role defaults and
+`guest_published_tcp_ports` so adding a published service in Ansible creates or
+updates the matching NetBox service automatically.
 
 ### Cluster Naming
 

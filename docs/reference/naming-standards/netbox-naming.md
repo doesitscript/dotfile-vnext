@@ -22,6 +22,22 @@
 
 ## Recommendations (SHOULD)
 
+### Repo-Managed NetBox Updates
+
+For this project, the safe NetBox update order is repo seed/config first, the
+repo consistency gate second, and NetBox apply third. Update inventory, role
+defaults, seed task data, docs, and aliases before mutating live NetBox.
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml -i inventory/inventory.yaml \
+  --tags ipam_netbox_repo_consistency
+```
+
+The gate prevents stale active references to retired NetBox names from surviving
+in the repo after a rename/modeling decision. Explicit legacy-alias and migration
+context is allowed; active targeting and fresh plans must use the current
+NetBox-backed names.
+
 ### Display Name vs Slug
 
 - NetBox generates slugs automatically from display names by default

@@ -48,6 +48,10 @@ ipam_netbox_server_225_model:
       slug: docker
       description: Docker runtime layer
       color: "0dcaf0"
+    - name: k3s
+      slug: k3s
+      description: K3s Kubernetes runtime layer
+      color: "326ce5"
     - name: infra
       slug: infra
       description: Infrastructure service or host
@@ -60,6 +64,50 @@ ipam_netbox_server_225_model:
       slug: execution
       description: Execution-oriented host or service instance
       color: "d63384"
+    - name: home
+      slug: home
+      description: Home tenant/context segment for Cloud Posse-style names
+      color: "20c997"
+    - name: lab
+      slug: lab
+      description: Lab environment/context segment for Cloud Posse-style names
+      color: "0dcaf0"
+    - name: auth
+      slug: auth
+      description: Authentication/control-stage context segment for infrastructure hosts
+      color: "ffc107"
+    - name: experimental
+      slug: experimental
+      description: Experimental host or service posture
+      color: "adb5bd"
+    - name: non-authoritative-data
+      slug: non-authoritative-data
+      description: Host is not the authoritative source for durable data
+      color: "6f42c1"
+    - name: authoritative-data
+      slug: authoritative-data
+      description: Host is an authoritative source for durable data
+      color: "198754"
+    - name: lan-exposed-services
+      slug: lan-exposed-services
+      description: Host intentionally exposes managed services on the LAN
+      color: "fd7e14"
+    - name: service-endpoint
+      slug: service-endpoint
+      description: Application service endpoint modeled in NetBox
+      color: "0d6efd"
+    - name: web-ui
+      slug: web-ui
+      description: Browser-accessible web UI
+      color: "6610f2"
+    - name: observability
+      slug: observability
+      description: Observability or telemetry service
+      color: "6c757d"
+  tenants:
+    - name: home
+      slug: home
+      description: Home infrastructure ownership/context boundary
   manufacturers:
     - name: custom
       slug: custom
@@ -81,6 +129,10 @@ ipam_netbox_server_225_model:
       slug: docker-engine
       color: "0dcaf0"
       vm_role: true
+    - name: k3s-node
+      slug: k3s-node
+      color: "326ce5"
+      vm_role: true
   cluster_types:
     - name: hyperv
       slug: hyperv
@@ -90,7 +142,12 @@ ipam_netbox_server_225_model:
     site: homelab
     status: active
   device:
-    name: exec-hvh-01
+    name: home-lab-auth-hvh-02
+    tenant: home
+    legacy_aliases:
+      - server-225-win
+      - server-225
+      - exec-hvh-01
     device_type: custom-server
     device_role: hyperv-host
     platform: windows-server-2025
@@ -98,10 +155,15 @@ ipam_netbox_server_225_model:
     status: active
     tags:
       - ansible-managed
+      - auth
+      - execution
+      - experimental
+      - home
       - homelab
       - hyperv
       - infra
-      - execution
+      - lab
+      - non-authoritative-data
   virtual_machine:
     name: server-225-ubuntu
     cluster: server-225-hyperv
@@ -117,10 +179,124 @@ ipam_netbox_server_225_model:
   vm_ip:
     address: 192.168.137.10/24
     description: server-225 Ubuntu VM routed private subnet interface
+  services:
+    - name: netbox-web
+      virtual_machine: server-225-ubuntu
+      protocol: tcp
+      ports:
+        - 8000
+      ipaddresses:
+        - address: 192.168.137.10/24
+      description: NetBox source-of-truth web UI and API
+      comments: |-
+        docker:
+          container: netbox-netbox-1
+          image: netboxcommunity/netbox:v4.0.2
+          published_port: "8000:8080"
+        access_urls:
+          lan: http://192.168.50.158:8000/
+          direct_guest: http://192.168.137.10:8000/
+        published_by:
+          device: home-lab-auth-hvh-02
+          legacy_alias: server-225-win
+          mechanism: windows netsh portproxy
+      tags:
+        - ansible-managed
+        - service-endpoint
+        - web-ui
+        - infra
+        - docker
+        - homelab
+    - name: semaphore-web
+      virtual_machine: server-225-ubuntu
+      protocol: tcp
+      ports:
+        - 3001
+      ipaddresses:
+        - address: 192.168.137.10/24
+      description: Semaphore Ansible UI web endpoint
+      comments: |-
+        docker:
+          container: semaphore-semaphore-1
+          image: semaphoreui/semaphore:v2.17.38
+          published_port: "3001:3000"
+        access_urls:
+          lan: http://192.168.50.158:3001/
+          direct_guest: http://192.168.137.10:3001/
+        credentials:
+          username: admin
+          password_source: vault_semaphore_admin_password
+          note: password intentionally not stored in NetBox service comments
+        published_by:
+          device: home-lab-auth-hvh-02
+          legacy_alias: server-225-win
+          mechanism: windows netsh portproxy
+      tags:
+        - ansible-managed
+        - service-endpoint
+        - web-ui
+        - infra
+        - docker
+        - homelab
+    - name: loki-http
+      virtual_machine: server-225-ubuntu
+      protocol: tcp
+      ports:
+        - 3100
+      ipaddresses:
+        - address: 192.168.137.10/24
+      description: Loki HTTP ingestion/query endpoint
+      comments: |-
+        docker:
+          container: loki
+          image: grafana/loki:3.6.7
+          published_port: "3100:3100"
+        access_urls:
+          lan_push_api: http://192.168.50.158:3100/loki/api/v1/push
+          direct_guest: http://192.168.137.10:3100/
+        published_by:
+          device: home-lab-auth-hvh-02
+          legacy_alias: server-225-win
+          mechanism: windows netsh portproxy
+      tags:
+        - ansible-managed
+        - service-endpoint
+        - observability
+        - infra
+        - docker
+        - homelab
+    - name: grafana-web
+      virtual_machine: server-225-ubuntu
+      protocol: tcp
+      ports:
+        - 3000
+      ipaddresses:
+        - address: 192.168.137.10/24
+      description: Grafana observability dashboard web UI
+      comments: |-
+        docker:
+          container: grafana
+          image: grafana/grafana:latest
+          published_port: "3000:3000"
+        access_urls:
+          direct_guest: http://192.168.137.10:3000/
+        published_by:
+          device: home-lab-auth-hvh-02
+          legacy_alias: server-225-win
+          mechanism: docker host port publish on the Ubuntu VM; no Windows LAN portproxy currently configured
+      tags:
+        - ansible-managed
+        - service-endpoint
+        - web-ui
+        - observability
+        - infra
+        - docker
+        - homelab
 
 ipam_netbox_windows_share_hosts_model:
   site: "{{ ipam_netbox_server_225_model.site }}"
   tags: "{{ ipam_netbox_server_225_model.tags }}"
+  tenants: "{{ ipam_netbox_server_225_model.tenants }}"
   manufacturers: "{{ ipam_netbox_server_225_model.manufacturers }}"
   device_types: "{{ ipam_netbox_server_225_model.device_types }}"
   platforms: "{{ ipam_netbox_server_225_model.platforms }}"
@@ -131,17 +307,23 @@ ipam_netbox_windows_share_hosts_model:
       vm_role: false
   device_name_migrations:
     - old_name: server-225
-      new_name: exec-hvh-01
-    - old_name: network-server-win
-      new_name: primary-hvh-01
+      new_name: home-lab-auth-hvh-02
+    - old_name: exec-hvh-01
+      new_name: home-lab-auth-hvh-02
+    - old_name: "{{ 'network-server' ~ '-win' }}"
+      new_name: home-lab-auth-hvh-01
     - old_name: network-server
-      new_name: primary-hvh-01
+      new_name: home-lab-auth-hvh-01
+    - old_name: primary-hvh-01
+      new_name: home-lab-auth-hvh-01
   devices:
-    - inventory_host: network-server-win
-      name: primary-hvh-01
+    - inventory_host: home-lab-auth-hvh-01
+      name: home-lab-auth-hvh-01
+      tenant: home
       legacy_aliases:
-        - network-server-win
+        - "{{ 'network-server' ~ '-win' }}"
         - network-server
+        - primary-hvh-01
       device_type: custom-server
       device_role: hyperv-host
       platform: windows-server-2025
@@ -149,22 +331,29 @@ ipam_netbox_windows_share_hosts_model:
       status: active
       tags:
         - ansible-managed
+        - auth
+        - authoritative-data
+        - home
         - homelab
         - hyperv
         - infra
+        - lab
+        - lan-exposed-services
         - primary
       interfaces:
         - name: mgmt0
           type: Virtual
           enabled: true
           mgmt_only: true
-          address: "{{ hostvars['network-server-win'].host_ip | default(hostvars['network-server-win'].ansible_host) }}/24"
-          description: network-server-win management address from Ansible inventory
+          address: "{{ hostvars['home-lab-auth-hvh-01'].host_ip | default(hostvars['home-lab-auth-hvh-01'].ansible_host) }}/24"
+          description: home-lab-auth-hvh-01 management address from Ansible inventory; retired Windows control alias
     - inventory_host: server-225-win
-      name: exec-hvh-01
+      name: home-lab-auth-hvh-02
+      tenant: home
       legacy_aliases:
         - server-225-win
         - server-225
+        - exec-hvh-01
       device_type: custom-server
       device_role: hyperv-host
       platform: windows-server-2025
@@ -172,10 +361,15 @@ ipam_netbox_windows_share_hosts_model:
       status: active
       tags:
         - ansible-managed
+        - auth
+        - execution
+        - experimental
+        - home
         - homelab
         - hyperv
         - infra
-        - execution
+        - lab
+        - non-authoritative-data
       interfaces:
         - name: mgmt0
           type: Virtual
@@ -183,3 +377,71 @@ ipam_netbox_windows_share_hosts_model:
           mgmt_only: true
           address: "{{ hostvars['server-225-win'].host_ip | default(hostvars['server-225-win'].ansible_host) }}/24"
           description: server-225-win management address from Ansible inventory
+
+ipam_netbox_network_server_vm_model:
+  site: "{{ ipam_netbox_server_225_model.site }}"
+  tags: "{{ ipam_netbox_server_225_model.tags }}"
+  tenants: "{{ ipam_netbox_server_225_model.tenants }}"
+  platforms: "{{ ipam_netbox_server_225_model.platforms }}"
+  device_roles:
+    - name: docker-engine
+      slug: docker-engine
+      color: "0dcaf0"
+      vm_role: true
+    - name: k3s-node
+      slug: k3s-node
+      color: "326ce5"
+      vm_role: true
+  cluster_types: "{{ ipam_netbox_server_225_model.cluster_types }}"
+  cluster:
+    name: home-lab-auth-hvh-01-hyperv
+    cluster_type: hyperv
+    site: homelab
+    status: active
+    tags:
+      - ansible-managed
+      - homelab
+      - hyperv
+      - authoritative-data
+      - lan-exposed-services
+  virtual_machines:
+    - name: nsrv-dkr-01
+      cluster: home-lab-auth-hvh-01-hyperv
+      site: homelab
+      role: docker-engine
+      platform: ubuntu-24-04
+      status: staged
+      vcpus: 4
+      memory: 8192
+      tags:
+        - ansible-managed
+        - authoritative-data
+        - docker
+        - homelab
+        - hyperv
+        - infra
+        - lan-exposed-services
+      interfaces:
+        - name: eth0
+          address: 192.168.138.10/24
+          description: nsrv-dkr-01 routed private subnet interface
+    - name: nsrv-k3s-01
+      cluster: home-lab-auth-hvh-01-hyperv
+      site: homelab
+      role: k3s-node
+      platform: ubuntu-24-04
+      status: staged
+      vcpus: 4
+      memory: 8192
+      tags:
+        - ansible-managed
+        - authoritative-data
+        - homelab
+        - hyperv
+        - infra
+        - k3s
+        - lan-exposed-services
+      interfaces:
+        - name: eth0
+          address: 192.168.138.11/24
+          description: nsrv-k3s-01 routed private subnet interface for future K3s control-plane stub

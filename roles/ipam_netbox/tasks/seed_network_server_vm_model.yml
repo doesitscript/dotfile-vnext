@@ -1,0 +1,266 @@
+---
+- name: Include vault variables for NetBox API token
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault.yml"
+    name: vault_vars
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_network_server_vm_model
+    - ipam_netbox_seed_network_server_vm_model_preview
+
+- name: Preview network-server VM NetBox model seed
+  ansible.builtin.debug:
+    msg:
+      api_url: "{{ ipam_netbox_api_url }}"
+      change_class: "idempotent NetBox source-of-truth modeling"
+      apply: "ansible-playbook playbooks/deploy_ipam_netbox.yaml --tags ipam_netbox_seed_network_server_vm_model"
+      verify:
+        - "NetBox contains cluster home-lab-auth-hvh-01-hyperv"
+        - "NetBox contains VMs nsrv-dkr-01 and nsrv-k3s-01"
+        - "NetBox VM nsrv-k3s-01 has role k3s-node and tag k3s"
+      undo: "manual NetBox object cleanup unless an absent seed path is added"
+      model:
+        site: "{{ ipam_netbox_network_server_vm_model.site }}"
+        tags: "{{ ipam_netbox_network_server_vm_model.tags | map(attribute='slug') | list }}"
+        platforms: "{{ ipam_netbox_network_server_vm_model.platforms | map(attribute='slug') | list }}"
+        device_roles: "{{ ipam_netbox_network_server_vm_model.device_roles | map(attribute='slug') | list }}"
+        cluster: "{{ ipam_netbox_network_server_vm_model.cluster.name }}"
+        virtual_machines: "{{ ipam_netbox_network_server_vm_model.virtual_machines | map(attribute='name') | list }}"
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_network_server_vm_model
+    - ipam_netbox_seed_network_server_vm_model_preview
+
+- name: Require NetBox API token for network-server VM model seeding
+  ansible.builtin.assert:
+    that:
+      - vault_vars.vault_netbox_api_token is defined
+      - vault_vars.vault_netbox_api_token | length > 0
+    fail_msg: >-
+      vault_netbox_api_token is required in vault.yml before NetBox API seeding
+      can run. Run the preview tag to inspect the intended model without the
+      token.
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_network_server_vm_model
+
+- name: Ensure dedicated NetBox API token before network-server VM model seeding
+  ansible.builtin.include_tasks:
+    file: ensure_api_token.yml
+    apply:
+      tags:
+        - ipam_netbox
+        - ipam_netbox_api_token
+        - ipam_netbox_seed_network_server_vm_model
+  tags:
+    - ipam_netbox
+    - ipam_netbox_api_token
+    - ipam_netbox_seed_network_server_vm_model
+
+- name: Seed network-server NetBox tags
+  netbox.netbox.netbox_tag:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      description: "{{ item.description }}"
+      color: "{{ item.color }}"
+    state: present
+  loop: "{{ ipam_netbox_network_server_vm_model.tags }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_network_server_vm_model
+
+- name: Seed network-server NetBox site
+  netbox.netbox.netbox_site:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_network_server_vm_model.site.name }}"
+      slug: "{{ ipam_netbox_network_server_vm_model.site.slug }}"
+      status: "{{ ipam_netbox_network_server_vm_model.site.status }}"
+      time_zone: "{{ ipam_netbox_network_server_vm_model.site.time_zone }}"
+      tags:
+        - homelab
+        - ansible-managed
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_network_server_vm_model
+
+- name: Seed network-server NetBox tenants
+  netbox.netbox.netbox_tenant:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      description: "{{ item.description }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_network_server_vm_model.tenants }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_network_server_vm_model
+
+- name: Seed network-server NetBox platforms
+  netbox.netbox.netbox_platform:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_network_server_vm_model.platforms }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_network_server_vm_model
+
+- name: Seed network-server NetBox VM roles
+  netbox.netbox.netbox_device_role:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      color: "{{ item.color }}"
+      vm_role: "{{ item.vm_role }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_network_server_vm_model.device_roles }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_network_server_vm_model
+
+- name: Seed network-server NetBox cluster types
+  netbox.netbox.netbox_cluster_type:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_network_server_vm_model.cluster_types }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_network_server_vm_model
+
+- name: Seed network-server NetBox cluster
+  netbox.netbox.netbox_cluster:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_network_server_vm_model.cluster.name }}"
+      cluster_type: "{{ ipam_netbox_network_server_vm_model.cluster.cluster_type }}"
+      site: "{{ ipam_netbox_network_server_vm_model.cluster.site }}"
+      status: "{{ ipam_netbox_network_server_vm_model.cluster.status }}"
+      tags: "{{ ipam_netbox_network_server_vm_model.cluster.tags }}"
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_network_server_vm_model
+
+- name: Seed network-server Ubuntu VMs
+  netbox.netbox.netbox_virtual_machine:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      cluster: "{{ item.cluster }}"
+      site: "{{ item.site }}"
+      virtual_machine_role: "{{ item.role }}"
+      platform: "{{ item.platform }}"
+      status: "{{ item.status }}"
+      vcpus: "{{ item.vcpus }}"
+      memory: "{{ item.memory }}"
+      tags: "{{ item.tags }}"
+    state: present
+  loop: "{{ ipam_netbox_network_server_vm_model.virtual_machines }}"
+  loop_control:
+    label: "{{ item.name }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_network_server_vm_model
+
+- name: Seed network-server Ubuntu VM interfaces
+  netbox.netbox.netbox_vm_interface:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      virtual_machine: "{{ item.0.name }}"
+      name: "{{ item.1.name }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_network_server_vm_model.virtual_machines | subelements('interfaces') }}"
+  loop_control:
+    label: "{{ item.0.name }} {{ item.1.name }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_network_server_vm_model
+
+- name: Seed network-server Ubuntu VM IP addresses
+  netbox.netbox.netbox_ip_address:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      address: "{{ item.1.address }}"
+      description: "{{ item.1.description }}"
+      assigned_object:
+        virtual_machine: "{{ item.0.name }}"
+        name: "{{ item.1.name }}"
+      tags:
+        - ansible-managed
+        - homelab
+    state: present
+  loop: "{{ ipam_netbox_network_server_vm_model.virtual_machines | subelements('interfaces') }}"
+  loop_control:
+    label: "{{ item.0.name }} {{ item.1.address }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_network_server_vm_model
+
+- name: Set network-server Ubuntu VM primary IPv4
+  netbox.netbox.netbox_virtual_machine:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.0.name }}"
+      cluster: "{{ item.0.cluster }}"
+      primary_ip4: "{{ item.1.address }}"
+    state: present
+  loop: "{{ ipam_netbox_network_server_vm_model.virtual_machines | subelements('interfaces') }}"
+  loop_control:
+    label: "{{ item.0.name }} primary {{ item.1.address }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_network_server_vm_model

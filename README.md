@@ -8,6 +8,15 @@ This repo is now moving into a NetBox integration phase. NetBox should become
 the preferred source of truth for durable infrastructure facts, while Ansible
 remains the execution layer.
 
+Project-safe NetBox changes follow this order: repo seed/config first, repo
+consistency gate second, NetBox apply third. Do not leave live NetBox state ahead
+of inventory, role defaults, seed tasks, docs, or aliases in this repo.
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml -i inventory/inventory.yaml \
+  --tags ipam_netbox_repo_consistency
+```
+
 See [docs/plans/2026-05-08--netbox-transition.md](docs/plans/2026-05-08--netbox-transition.md).
 
 ## Execution Preference

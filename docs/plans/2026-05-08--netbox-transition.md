@@ -10,6 +10,19 @@ prefixes, clusters, and object ownership metadata.
 The intent is not to replace Ansible with NetBox. The intent is to use NetBox
 for facts and classification, and use Ansible for execution.
 
+## Project-Safe NetBox Update Path
+
+The safe order for NetBox source-of-truth changes is:
+
+1. Update repo seed/config first: inventory, role defaults, seed tasks, docs,
+   aliases, and naming metadata.
+2. Run the repo consistency gate:
+   `ansible-playbook playbooks/deploy_ipam_netbox.yaml -i inventory/inventory.yaml --tags ipam_netbox_repo_consistency`
+3. Apply the NetBox seed/update only after the gate passes.
+
+NetBox UI/API changes that cannot be recreated from this repo are drift. The
+live system should not get ahead of the source that owns it.
+
 ## Current Repo State
 
 - NetBox deployment is represented by `roles/ipam_netbox`.

@@ -81,10 +81,26 @@ netbox:
   custom_fields: {}
 ```
 
-Historical inventory names such as `server-225-win` and `network-server-win`
+Historical inventory names such as `server-225-win` and the retired
+network-server Windows control alias
 can remain as aliases and migration context. They do not define the mature
 schema unless a future decision explicitly promotes them into a controlled
 scope-code registry.
+
+### NetBox Update Order
+
+NetBox-backed naming changes are not done when the UI or API has changed. The
+project-safe path is repo seed/config first, the repo consistency gate second,
+and NetBox apply third:
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml -i inventory/inventory.yaml \
+  --tags ipam_netbox_repo_consistency
+```
+
+That gate blocks stale active references to retired NetBox names in inventory,
+playbooks, scripts, and stored plans, while allowing explicit legacy-alias and
+migration context.
 
 ### How to Use This Folder
 

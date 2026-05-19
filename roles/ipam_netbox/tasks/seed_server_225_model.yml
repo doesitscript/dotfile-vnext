@@ -15,8 +15,9 @@
       change_class: "idempotent NetBox source-of-truth modeling"
       apply: "ansible-playbook playbooks/deploy_ipam_netbox.yaml --tags ipam_netbox_seed_server_225_model"
       verify:
-        - "NetBox UI/API contains the server-225 site/device/cluster/VM objects"
+        - "NetBox UI/API contains the home-lab-auth-hvh-02 device plus server-225 cluster/VM objects"
         - "NetBox VM server-225-ubuntu has primary IP 192.168.137.10/24"
+        - "NetBox application services exist for NetBox, Semaphore, Loki, and Grafana"
       undo: "manual NetBox object cleanup for this first modeling slice"
       model:
         site: "{{ ipam_netbox_server_225_model.site }}"
@@ -25,8 +26,9 @@
         device_roles: "{{ ipam_netbox_server_225_model.device_roles | map(attribute='slug') | list }}"
         cluster: "{{ ipam_netbox_server_225_model.cluster.name }}"
         device: "{{ ipam_netbox_server_225_model.device.name }}"
-        legacy_device_name: server-225
+        legacy_device_names: "{{ ipam_netbox_server_225_model.device.legacy_aliases | default(['server-225']) }}"
         virtual_machine: "{{ ipam_netbox_server_225_model.virtual_machine.name }}"
+        services: "{{ ipam_netbox_server_225_model.services | map(attribute='name') | list }}"
   tags:
     - ipam_netbox
     - ipam_netbox_seed_server_225_model
@@ -89,6 +91,24 @@
         - homelab
         - ansible-managed
     state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 NetBox tenants
+  netbox.netbox.netbox_tenant:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      description: "{{ item.description }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_server_225_model.tenants }}"
   delegate_to: localhost
   tags:
     - ipam_netbox
@@ -212,10 +232,12 @@
       device_type: "{{ ipam_netbox_server_225_model.device.device_type }}"
       device_role: "{{ ipam_netbox_server_225_model.device.device_role }}"
       platform: "{{ ipam_netbox_server_225_model.device.platform }}"
+      tenant: "{{ ipam_netbox_server_225_model.device.tenant | default(omit) }}"
       site: "{{ ipam_netbox_server_225_model.device.site }}"
       cluster: "{{ ipam_netbox_server_225_model.cluster.name }}"
       status: "{{ ipam_netbox_server_225_model.device.status }}"
       tags: "{{ ipam_netbox_server_225_model.device.tags | default(['ansible-managed', 'homelab', 'hyperv', 'infra']) }}"
+      comments: "{{ (['legacy_aliases:'] + ((ipam_netbox_server_225_model.device.legacy_aliases | default([])) | map('regex_replace', '^(.*)$', '  - \\1') | list)) | join('\n') }}"
     state: present
   delegate_to: localhost
   tags:
@@ -293,6 +315,29 @@
       cluster: "{{ ipam_netbox_server_225_model.virtual_machine.cluster }}"
       primary_ip4: "{{ ipam_netbox_server_225_model.vm_ip.address }}"
     state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 application services
+  netbox.netbox.netbox_service:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      virtual_machine: "{{ item.virtual_machine }}"
+      name: "{{ item.name }}"
+      protocol: "{{ item.protocol }}"
+      ports: "{{ item.ports }}"
+      ipaddresses: "{{ item.ipaddresses }}"
+      description: "{{ item.description }}"
+      comments: "{{ item.comments }}"
+      tags: "{{ item.tags }}"
+    state: present
+  loop: "{{ ipam_netbox_server_225_model.services }}"
+  loop_control:
+    label: "{{ item.virtual_machine }} {{ item.name }} {{ item.protocol }}/{{ item.ports | join(',') }}"
   delegate_to: localhost
   tags:
     - ipam_netbox

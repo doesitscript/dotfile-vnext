@@ -73,9 +73,32 @@ ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
   --tags ipam_netbox_seed_server_225_model
 ```
 
-Verify in the NetBox UI: you should see site `homelab`, device `server-225`,
-cluster `server-225-hyperv`, VM `server-225-ubuntu` with primary IP, and
-tags `ansible-managed`, `homelab`, `hyperv`, `docker`, `infra`.
+Verify in the NetBox UI: you should see site `homelab`, tenant `home`,
+device `home-lab-auth-hvh-02`, cluster `server-225-hyperv`, VM
+`server-225-ubuntu` with primary IP, and tags including `ansible-managed`,
+`home`, `lab`, `auth`, `homelab`, `hyperv`, `docker`, and `infra`. You should
+also see application services on `server-225-ubuntu` for `netbox-web`,
+`semaphore-web`, `loki-http`, and `grafana-web`.
+
+### Repo Consistency Gate
+
+Any NetBox identity/modeling update must update the repo in the same change.
+The project-safe path is:
+
+1. Update repo seed/config first.
+2. Run the repo consistency gate.
+3. Apply the NetBox seed/update third.
+
+Run this gate before or with NetBox seed work:
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_repo_consistency
+```
+
+The NetBox seed preview/apply tags also run this gate automatically. It fails
+when retired NetBox names remain in active inventory, playbooks, scripts, or
+planning docs outside explicit legacy-alias or migration contexts.
 
 ---
 
@@ -125,9 +148,12 @@ These control which tasks run when `--tags` is passed to `ansible-playbook`.
 | `ipam_netbox_absent` | Remove path only (compose down) |
 | `ipam_netbox_smoke_test` | Health check only — confirms the web UI is responding |
 | `ipam_netbox_api_token` | Ensures the dedicated repo NetBox API token exists from vault |
+| `ipam_netbox_repo_consistency` | Verifies repo references match NetBox naming/modeling decisions before seed work |
 | `ipam_netbox_seed_tags` | Seeds canonical object tags into NetBox via the API (requires `netbox.netbox` collection) |
 | `ipam_netbox_seed_server_225_model_preview` | Preview the first Server-225 NetBox object model without API mutation |
 | `ipam_netbox_seed_server_225_model` | Seed the first Server-225 NetBox object model via the API |
+| `ipam_netbox_seed_network_server_vm_model_preview` | Preview the network-server Hyper-V VM model without API mutation |
+| `ipam_netbox_seed_network_server_vm_model` | Seed the network-server Hyper-V VM model via the API |
 
 Examples:
 
@@ -141,6 +167,14 @@ ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass --tags ipam_
 # Preview the first NetBox source-of-truth modeling slice
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
   --tags ipam_netbox_seed_server_225_model_preview
+
+# Preview the network-server VM modeling slice
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_seed_network_server_vm_model_preview
+
+# Verify the repo is not carrying stale active NetBox names before apply
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_repo_consistency
 
 # Ensure the dedicated repo API token exists from encrypted vault data
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
@@ -183,12 +217,21 @@ under `vault_netbox_api_token` when this layer is wired.
 The first NetBox modeling slice is intentionally small. It seeds only enough
 objects to represent the current Server-225 world:
 
-- site: `Homelab`
-- device: `server-225`
+- site: `homelab`
+- tenant: `home`
+- device: `home-lab-auth-hvh-02`
+- legacy device aliases: `server-225-win`, `server-225`, `exec-hvh-01`
 - cluster: `server-225-hyperv`
 - VM: `server-225-ubuntu`
+- application services on `server-225-ubuntu`:
+  - `netbox-web` at `tcp/8000`
+  - `semaphore-web` at `tcp/3001`
+  - `loki-http` at `tcp/3100`
+  - `grafana-web` at `tcp/3000`
 - platforms: Windows Server 2025 and Ubuntu 24.04
-- tags: `ansible-managed`, `homelab`, `hyperv`, `docker`, `infra`
+- tags: `ansible-managed`, `home`, `lab`, `auth`, `homelab`, `hyperv`,
+  `docker`, `infra`, `execution`, `experimental`, `non-authoritative-data`,
+  `service-endpoint`, `web-ui`, `observability`
 
 Preview the slice before mutation:
 
@@ -209,12 +252,48 @@ apply tag is the point where NetBox starts becoming a source of truth for this
 repo, so the token should be intentionally named, write-scoped for automation,
 and stored as `vault_netbox_api_token`.
 
+## Network-Server VM Model Slice
+
+The network-server VM slice seeds the Hyper-V objects that live under
+`home-lab-auth-hvh-01` without installing K3s:
+
+- device: `home-lab-auth-hvh-01`
+- legacy/control aliases: `network-server`, `primary-hvh-01`, and the retired
+  network-server Windows control alias
+- cluster: `home-lab-auth-hvh-01-hyperv`
+- Docker VM: `nsrv-dkr-01`
+- K3s placeholder VM: `nsrv-k3s-01`
+- VM roles: `docker-engine`, `k3s-node`
+- tags: includes `docker`, `k3s`, `hyperv`, `authoritative-data`, and
+  `lan-exposed-services`
+
+Preview the slice before mutation:
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_seed_network_server_vm_model_preview
+```
+
+Apply after the preview and repo consistency gate are clean:
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_seed_network_server_vm_model
+```
+
+This slice models `nsrv-k3s-01` as a VM stub target only. It does not add the
+host to the live `k3s_cluster` server group and does not install K3s.
+
 ## Reproducibility and Recovery
 
 ### The Code-First Rule
 
 **Never create or modify a NetBox object in the UI without first writing the
 Ansible seed task.**
+
+For this repo, "code first" means repo seed/config first, the
+`ipam_netbox_repo_consistency` gate second, and NetBox apply third. A NetBox UI
+or API change is not complete until the repo can recreate it and the gate passes.
 
 When this rule is followed, the Ansible code in this repo is the full recovery
 path for a lost NetBox instance. No separate backup is needed to recreate the
@@ -333,6 +412,22 @@ This entry is applied by running:
 ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml \
   --limit server-225-win --tags hyperv_networking
 ```
+
+NetBox models these published endpoints as application services on the VM that
+runs them. For current access, use:
+
+| Service | LAN URL | Direct guest URL | NetBox parent |
+|---|---|---|---|
+| NetBox | `http://192.168.50.158:8000/` | `http://192.168.137.10:8000/` | `server-225-ubuntu` |
+| Semaphore | `http://192.168.50.158:3001/` | `http://192.168.137.10:3001/` | `server-225-ubuntu` |
+| Loki | `http://192.168.50.158:3100/loki/api/v1/push` | `http://192.168.137.10:3100/` | `server-225-ubuntu` |
+| Grafana | N/A | `http://192.168.137.10:3000/` | `server-225-ubuntu` |
+
+NetBox does not natively model application-level port forwarding/PAT as a
+first-class relationship, so the service comments record the Windows
+`netsh portproxy` publishing path through `home-lab-auth-hvh-02`.
+Grafana is Docker-published on the Ubuntu VM but is not currently published
+through the Windows LAN portproxy.
 
 That playbook creates the `netsh interface portproxy` rule and the
 `Hyper-V Guest Published TCP netbox` Windows Firewall rule on `server-225-win`.

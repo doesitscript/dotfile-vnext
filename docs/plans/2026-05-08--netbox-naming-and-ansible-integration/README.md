@@ -189,6 +189,16 @@ run.
 **Scope:** This principle applies to the NetBox integration in this plan, not
 the whole project. Extend it deliberately when new areas are ready.
 
+The operational order is repo seed/config first, repo consistency gate second,
+NetBox apply third. A NetBox-facing rename or metadata change is incomplete
+until inventory, role defaults, seed task data, docs, and aliases are aligned
+and this gate passes:
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml -i inventory/inventory.yaml \
+  --tags ipam_netbox_repo_consistency
+```
+
 When a naming or modeling question arises, consult NetBox first:
 - If NetBox has a native field for the concept (site, platform, role, tag,
   cluster type, etc.), use that field — do not invent a custom field or encode

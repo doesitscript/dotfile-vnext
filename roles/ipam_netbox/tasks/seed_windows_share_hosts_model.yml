@@ -15,13 +15,15 @@
       change_class: "idempotent NetBox source-of-truth modeling"
       apply: "ansible-playbook playbooks/deploy_ipam_netbox.yaml --tags ipam_netbox_seed_windows_share_hosts_model"
       verify:
-        - "NetBox contains primary-hvh-01 and exec-hvh-01 as Windows Server 2025 hyperv-host devices"
+        - "NetBox contains home-lab-auth-hvh-01 and home-lab-auth-hvh-02 as Windows Server 2025 hyperv-host devices"
         - "Each device has mgmt0 with the management IP from inventory"
       undo: "manual NetBox object cleanup unless an absent seed path is added"
       naming_context:
         namespace: castle
         site: homelab
-        tenant: omitted
+        tenant: home
+        environment: lab
+        stage: auth
         role_segment: hvh
         role_name: hyperv-host
       migrations: "{{ ipam_netbox_windows_share_hosts_model.device_name_migrations }}"
@@ -88,6 +90,24 @@
         - homelab
         - ansible-managed
     state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_windows_share_hosts_model
+
+- name: Seed Windows share-host NetBox tenants
+  netbox.netbox.netbox_tenant:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      description: "{{ item.description }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_windows_share_hosts_model.tenants }}"
   delegate_to: localhost
   tags:
     - ipam_netbox
@@ -185,9 +205,11 @@
       device_type: "{{ item.device_type }}"
       device_role: "{{ item.device_role }}"
       platform: "{{ item.platform }}"
+      tenant: "{{ item.tenant | default(omit) }}"
       site: "{{ item.site }}"
       status: "{{ item.status }}"
       tags: "{{ item.tags }}"
+      comments: "{{ (['legacy_aliases:'] + ((item.legacy_aliases | default([])) | map('regex_replace', '^(.*)$', '  - \\1') | list)) | join('\n') }}"
     state: present
   loop: "{{ ipam_netbox_windows_share_hosts_model.devices }}"
   loop_control:

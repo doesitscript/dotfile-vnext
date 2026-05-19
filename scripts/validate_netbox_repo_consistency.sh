@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+retired_base="network-server"
+retired_name="${retired_base}-win"
+retired_label="retired network-server Windows control alias"
+current_name="home-lab-auth-hvh-01"
+
+failures=()
+
+add_failure() {
+  failures+=("$1")
+}
+
+if [[ -e "inventory/host_vars/${retired_name}.yaml" || -e "inventory/host_vars/${retired_name}.yml" ]]; then
+  add_failure "Retired host_vars file still exists for ${retired_label}; use inventory/host_vars/${current_name}.yaml."
+fi
+
+if rg -n "^[[:space:]]*${retired_name}:" inventory/inventory.yaml >/tmp/netbox-repo-consistency-inventory.$$ 2>/dev/null; then
+  while IFS= read -r line; do
+    add_failure "Retired inventory host key remains active: inventory/inventory.yaml:${line}"
+  done < /tmp/netbox-repo-consistency-inventory.$$
+fi
+rm -f /tmp/netbox-repo-consistency-inventory.$$
+
+active_paths=(
+  AGENTS.md
+  bin
+  contracts
+  docs/brainstorming_designs
+  docs/intake/k3s-on-hyperv-vm.md
+  docs/operator_runbook.md
+  docs/plans
+  docs/reference/naming-standards
+  docs/setup_openssh_via_winrm_summary.md
+  inventory
+  playbooks
+  roles
+  scripts
+)
+
+if rg -n --fixed-strings "${retired_name}" "${active_paths[@]}" >/tmp/netbox-repo-consistency-rg.$$ 2>/dev/null; then
+  while IFS= read -r hit; do
+    case "$hit" in
+      *"legacy"*|*"Legacy"*|*"retired"*|*"Retired"*|*"former"*|*"Historical"*|*"historical"*|*"aliases"*|*"alias"*|*"old_name"*|*"migration"*|*"migrations"*|*"Do not introduce"*|*"keep it"*)
+        continue
+        ;;
+    esac
+
+    case "$hit" in
+      docs/reports/*|docs/lessons-learned/*|docs/diagrams/*|docs/non_binding_project_layout/*|docs/diagnostics/debug-ssh-vvv.md:*)
+        continue
+        ;;
+    esac
+
+    if [[ "$hit" == inventory/hosts_mapping.yaml:*"- ${retired_name}"* ]] ||
+       [[ "$hit" == "inventory/host_vars/${current_name}.yaml:"*"- ${retired_name}"* ]] ||
+       [[ "$hit" == inventory/group_vars/network_server.yaml:*"- ${retired_name}"* ]] ||
+       [[ "$hit" == roles/ipam_netbox/defaults/main.yml:*"- ${retired_name}"* ]]; then
+      continue
+    fi
+
+    add_failure "Retired alias appears outside an explicit legacy/migration context: ${hit}"
+  done < /tmp/netbox-repo-consistency-rg.$$
+fi
+rm -f /tmp/netbox-repo-consistency-rg.$$
+
+if ! rg -n "^[[:space:]]*${current_name}:" inventory/inventory.yaml >/dev/null; then
+  add_failure "Current NetBox host name ${current_name} is missing from inventory/inventory.yaml."
+fi
+
+if [[ ! -f "inventory/host_vars/${current_name}.yaml" ]]; then
+  add_failure "Current NetBox host vars file inventory/host_vars/${current_name}.yaml is missing."
+fi
+
+if ((${#failures[@]} > 0)); then
+  printf 'NetBox/repo consistency check failed.\n\n' >&2
+  printf 'Retired alias: %s\nCurrent name: %s\n\n' "$retired_label" "$current_name" >&2
+  printf '%s\n' "${failures[@]}" >&2
+  exit 1
+fi
+
+printf 'NetBox/repo consistency check passed: retired alias is inactive; active repo target is %s.\n' "$current_name"
