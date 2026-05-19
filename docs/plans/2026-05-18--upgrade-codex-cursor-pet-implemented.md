@@ -35,6 +35,12 @@ archive_candidate: true
 
 The Python "PET binary missing" warning is resolved. Both Codex and cursor-agent may show SIGKILL 9 on `--version` in non-interactive shells due to macOS sandboxing, but both binaries are functional.
 
+## Implementation Flow Diagram
+
+![Implementation Flow](2026-05-18--upgrade-codex-cursor-pet-implemented-diagrams/implementation-flow.svg)
+
+Source: [2026-05-18--upgrade-codex-cursor-pet-implemented-diagrams/implementation-flow.mmd](2026-05-18--upgrade-codex-cursor-pet-implemented-diagrams/implementation-flow.mmd)
+
 After code is in place, install with:
 
 ```bash

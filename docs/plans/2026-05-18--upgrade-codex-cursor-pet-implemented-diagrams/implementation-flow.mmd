@@ -1,0 +1,40 @@
+graph TB
+    subgraph version_contract ["Version Contract"]
+        all_yaml["inventory/group_vars/all.yaml"]
+        codex_pin["codex_cli_0_130_0"]
+        cursor_cli_pin["cursor_cli_2026_05_16"]
+    end
+
+    subgraph codex_path ["Codex CLI Path"]
+        mcp_playbook["playbooks/mac/mcp_servers.yaml"]
+        openai_docs_role["roles/mcp_servers/openai_docs"]
+        codex_quarantine["clear_codex_quarantine"]
+    end
+
+    subgraph cursor_path ["Cursor Path"]
+        dev_playbook["playbooks/deploy_development_nodes.yaml"]
+        cursor_role["roles/cursor"]
+        cursor_cli_install["install_cursor_cli"]
+        pet_quarantine["clear_python_pet_quarantine"]
+    end
+
+    subgraph standards ["Project Standards"]
+        ansible_rules[".cursor/rules/ansible-coding-standards.mdc"]
+        role_template["roles/common/role_template"]
+    end
+
+    all_yaml -->|"pins"| codex_pin
+    all_yaml -->|"pins"| cursor_cli_pin
+    codex_pin -->|"drives"| openai_docs_role
+    cursor_cli_pin -->|"drives"| cursor_role
+    mcp_playbook -->|"runs"| openai_docs_role
+    openai_docs_role -->|"installs and unquarantines"| codex_quarantine
+    dev_playbook -->|"runs"| cursor_role
+    cursor_role -->|"installs"| cursor_cli_install
+    cursor_role -->|"unquarantines"| pet_quarantine
+    ansible_rules -->|"documents"| role_template
+
+    style all_yaml fill:#1e3a5f
+    style openai_docs_role fill:#2d4a2d
+    style cursor_role fill:#5a4a1a
+    style ansible_rules fill:#2a2a2a
