@@ -1,14 +1,32 @@
 ---
-# On-demand database backup for NetBox.
-# Runs pg_dump inside the running postgres container, saves to the host, then
-# fetches to a local artifacts directory.
+# NetBox backup — database + media directory.
+#
+# Follows the project backup naming contract:
+#   docs/backup/backup-naming-contract.md
+#
+# Path shape (host and controller):
+#   <root>/castle/home/lab/authoritative/server-225-ubuntu/
+#     postgres/basebackup/<timestamp>/netbox.dump
+#     netbox/media-archive/<timestamp>/netbox-media.tar.gz
+#
+# Timestamp format: YYYY-MM-DDTHHMMSSZ  (e.g. 2026-05-08T110802Z)
+#
+# Source of truth:
+#   NetBox official: https://netboxlabs.com/docs/netbox/administration/replicating-netbox/
+#   Backup contract: docs/backup/backup-naming-contract.md
+#
+# Full replication requires both artifacts:
+#   1. postgres/basebackup  — the database (pg_dump custom format)
+#   2. netbox/media-archive — uploaded files not in the database
 #
 # Usage:
 #   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
 #     --tags ipam_netbox_backup_db
 #
-# Output: artifacts/netbox-backups/netbox-<timestamp>.sql.gz (on controller)
-# Also kept on host at: {{ ipam_netbox_data_path }}/backups/
+# Output (controller): artifacts/backupsets/castle/home/lab/authoritative/
+#                         server-225-ubuntu/postgres/basebackup/<ts>/netbox.dump
+#                         server-225-ubuntu/netbox/media-archive/<ts>/netbox-media.tar.gz
+# Also retained on host at: {{ ipam_netbox_backup_root }}/...
 
 - name: Include vault variables for NetBox backup
   ansible.builtin.include_vars:
@@ -18,23 +36,41 @@
     - ipam_netbox
     - ipam_netbox_backup_db
 
-- name: Set backup timestamp
+- name: Set contract-compliant backup timestamp (YYYY-MM-DDTHHMMSSZ)
   ansible.builtin.set_fact:
-    _ipam_netbox_backup_ts: "{{ ansible_date_time.iso8601_basic_short }}"
+    _ipam_netbox_backup_ts: >-
+      {{ ansible_date_time.date }}T{{
+         ansible_date_time.time | regex_replace(':', '') }}Z
   tags:
     - ipam_netbox
     - ipam_netbox_backup_db
 
-- name: Ensure backup directory exists on host
+- name: Resolve contract path prefix
+  ansible.builtin.set_fact:
+    _ipam_netbox_backup_contract: >-
+      {{ ipam_netbox_backup_namespace }}/{{ ipam_netbox_backup_site }}/{{
+         ipam_netbox_backup_environment }}/{{ ipam_netbox_backup_stage }}/{{
+         ipam_netbox_backup_node }}
+  tags:
+    - ipam_netbox
+    - ipam_netbox_backup_db
+
+# ── Database backup ─────────────────────────────────────────────────────────
+
+- name: Ensure postgres basebackup directory exists on host
   ansible.builtin.file:
-    path: "{{ ipam_netbox_data_path }}/backups"
+    path: >-
+      {{ ipam_netbox_backup_root }}/{{ _ipam_netbox_backup_contract }}/postgres/basebackup/{{
+         _ipam_netbox_backup_ts }}
     state: directory
     mode: "0750"
+  become: true
   tags:
     - ipam_netbox
     - ipam_netbox_backup_db
 
 - name: Run pg_dump inside postgres container
+  become: true
   community.docker.docker_container_exec:
     container: netbox-postgres-1
     command: >-
@@ -42,53 +78,148 @@
       -U {{ vault_vars.vault_netbox_db_user }}
       -d {{ vault_vars.vault_netbox_db_name }}
       --format=custom
-      --file=/tmp/netbox-{{ _ipam_netbox_backup_ts }}.dump
+      --exclude-table-data=core_objectchange
+      --file=/tmp/netbox.dump
     env:
       PGPASSWORD: "{{ vault_vars.vault_netbox_db_password }}"
-  register: _pg_dump_result
   tags:
     - ipam_netbox
     - ipam_netbox_backup_db
 
-- name: Copy dump from container to host
+- name: Copy database dump from container to host
+  become: true
   ansible.builtin.command:
     cmd: >-
       docker cp
-      netbox-postgres-1:/tmp/netbox-{{ _ipam_netbox_backup_ts }}.dump
-      {{ ipam_netbox_data_path }}/backups/netbox-{{ _ipam_netbox_backup_ts }}.dump
+      netbox-postgres-1:/tmp/netbox.dump
+      {{ ipam_netbox_backup_root }}/{{ _ipam_netbox_backup_contract }}/postgres/basebackup/{{
+         _ipam_netbox_backup_ts }}/netbox.dump
   changed_when: true
   tags:
     - ipam_netbox
     - ipam_netbox_backup_db
 
-- name: Ensure local backup artifacts directory exists
+# ── Media backup ─────────────────────────────────────────────────────────────
+
+- name: Ensure netbox media-archive directory exists on host
   ansible.builtin.file:
-    path: "{{ playbook_dir }}/../artifacts/netbox-backups"
+    path: >-
+      {{ ipam_netbox_backup_root }}/{{ _ipam_netbox_backup_contract }}/netbox/media-archive/{{
+         _ipam_netbox_backup_ts }}
     state: directory
     mode: "0750"
-  delegate_to: localhost
+  become: true
   tags:
     - ipam_netbox
     - ipam_netbox_backup_db
 
-- name: Fetch backup to controller
+- name: Archive NetBox media directory from container
+  become: true
+  community.docker.docker_container_exec:
+    container: netbox-netbox-1
+    command: >-
+      tar -czf /tmp/netbox-media.tar.gz -C /opt/netbox/netbox media/
+  tags:
+    - ipam_netbox
+    - ipam_netbox_backup_db
+
+- name: Copy media archive from container to host
+  become: true
+  ansible.builtin.command:
+    cmd: >-
+      docker cp
+      netbox-netbox-1:/tmp/netbox-media.tar.gz
+      {{ ipam_netbox_backup_root }}/{{ _ipam_netbox_backup_contract }}/netbox/media-archive/{{
+         _ipam_netbox_backup_ts }}/netbox-media.tar.gz
+  changed_when: true
+  tags:
+    - ipam_netbox
+    - ipam_netbox_backup_db
+
+# ── Fetch to controller ───────────────────────────────────────────────────────
+
+- name: Ensure controller backupsets directory exists
+  ansible.builtin.file:
+    path: >-
+      {{ playbook_dir }}/../artifacts/backupsets/{{ _ipam_netbox_backup_contract }}/postgres/basebackup/{{
+         _ipam_netbox_backup_ts }}
+    state: directory
+    mode: "0750"
+  delegate_to: localhost
+  become: false
+  tags:
+    - ipam_netbox
+    - ipam_netbox_backup_db
+
+- name: Fetch database dump to controller
+  become: true
   ansible.builtin.fetch:
-    src: "{{ ipam_netbox_data_path }}/backups/netbox-{{ _ipam_netbox_backup_ts }}.dump"
-    dest: "{{ playbook_dir }}/../artifacts/netbox-backups/netbox-{{ _ipam_netbox_backup_ts }}.dump"
+    src: >-
+      {{ ipam_netbox_backup_root }}/{{ _ipam_netbox_backup_contract }}/postgres/basebackup/{{
+         _ipam_netbox_backup_ts }}/netbox.dump
+    dest: >-
+      {{ playbook_dir }}/../artifacts/backupsets/{{ _ipam_netbox_backup_contract }}/postgres/basebackup/{{
+         _ipam_netbox_backup_ts }}/netbox.dump
     flat: true
   tags:
     - ipam_netbox
     - ipam_netbox_backup_db
 
-- name: Report backup location
+- name: Ensure controller media-archive directory exists
+  ansible.builtin.file:
+    path: >-
+      {{ playbook_dir }}/../artifacts/backupsets/{{ _ipam_netbox_backup_contract }}/netbox/media-archive/{{
+         _ipam_netbox_backup_ts }}
+    state: directory
+    mode: "0750"
+  delegate_to: localhost
+  become: false
+  tags:
+    - ipam_netbox
+    - ipam_netbox_backup_db
+
+- name: Fetch media archive to controller
+  become: true
+  ansible.builtin.fetch:
+    src: >-
+      {{ ipam_netbox_backup_root }}/{{ _ipam_netbox_backup_contract }}/netbox/media-archive/{{
+         _ipam_netbox_backup_ts }}/netbox-media.tar.gz
+    dest: >-
+      {{ playbook_dir }}/../artifacts/backupsets/{{ _ipam_netbox_backup_contract }}/netbox/media-archive/{{
+         _ipam_netbox_backup_ts }}/netbox-media.tar.gz
+    flat: true
+  tags:
+    - ipam_netbox
+    - ipam_netbox_backup_db
+
+# ── Report ────────────────────────────────────────────────────────────────────
+
+- name: Report backup locations
   ansible.builtin.debug:
     msg:
-      host_path: "{{ ipam_netbox_data_path }}/backups/netbox-{{ _ipam_netbox_backup_ts }}.dump"
-      controller_path: "artifacts/netbox-backups/netbox-{{ _ipam_netbox_backup_ts }}.dump"
-      format: "pg_dump custom format — restore with: pg_restore -U <user> -d <db> <file>"
-      recovery_note: >-
-        To restore: deploy fresh NetBox, then run pg_restore inside the
-        postgres container. See roles/ipam_netbox/README.md recovery section.
+      contract_path: "{{ _ipam_netbox_backup_contract }}"
+      timestamp: "{{ _ipam_netbox_backup_ts }}"
+      db_host: >-
+        {{ ipam_netbox_backup_root }}/{{ _ipam_netbox_backup_contract }}/postgres/basebackup/{{
+           _ipam_netbox_backup_ts }}/netbox.dump
+      db_controller: >-
+        artifacts/backupsets/{{ _ipam_netbox_backup_contract }}/postgres/basebackup/{{
+           _ipam_netbox_backup_ts }}/netbox.dump
+      media_host: >-
+        {{ ipam_netbox_backup_root }}/{{ _ipam_netbox_backup_contract }}/netbox/media-archive/{{
+           _ipam_netbox_backup_ts }}/netbox-media.tar.gz
+      media_controller: >-
+        artifacts/backupsets/{{ _ipam_netbox_backup_contract }}/netbox/media-archive/{{
+           _ipam_netbox_backup_ts }}/netbox-media.tar.gz
+      restore_db: >-
+        pg_restore -U {{ vault_vars.vault_netbox_db_user }}
+        -d {{ vault_vars.vault_netbox_db_name }} --clean netbox.dump
+      durable_destination: >-
+        E:\backupsets\{{ _ipam_netbox_backup_contract | replace('/', '\\') }}\
+        (move from controller artifacts/ — see backup-naming-contract.md)
+      reference:
+        - docs/backup/backup-naming-contract.md
+        - https://netboxlabs.com/docs/netbox/administration/replicating-netbox/
   tags:
     - ipam_netbox
     - ipam_netbox_backup_db
