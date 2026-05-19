@@ -346,7 +346,7 @@ ipam_netbox_windows_share_hosts_model:
           enabled: true
           mgmt_only: true
           address: "{{ hostvars['home-lab-auth-hvh-01'].host_ip | default(hostvars['home-lab-auth-hvh-01'].ansible_host) }}/24"
-          description: home-lab-auth-hvh-01 management address from Ansible inventory; retired Windows control alias
+          description: home-lab-auth-hvh-01 management address from Ansible inventory
     - inventory_host: server-225-win
       name: home-lab-auth-hvh-02
       tenant: home
@@ -379,6 +379,7 @@ ipam_netbox_windows_share_hosts_model:
           description: server-225-win management address from Ansible inventory
 
 ipam_netbox_network_server_vm_model:
+  hyperv_host_inventory_host: home-lab-auth-hvh-01
   site: "{{ ipam_netbox_server_225_model.site }}"
   tags: "{{ ipam_netbox_server_225_model.tags }}"
   tenants: "{{ ipam_netbox_server_225_model.tenants }}"
@@ -410,7 +411,7 @@ ipam_netbox_network_server_vm_model:
       site: homelab
       role: docker-engine
       platform: ubuntu-24-04
-      status: staged
+      status: active
       vcpus: 4
       memory: 8192
       tags:
@@ -430,7 +431,7 @@ ipam_netbox_network_server_vm_model:
       site: homelab
       role: k3s-node
       platform: ubuntu-24-04
-      status: staged
+      status: active
       vcpus: 4
       memory: 8192
       tags:
@@ -444,4 +445,4 @@ ipam_netbox_network_server_vm_model:
       interfaces:
         - name: eth0
           address: 192.168.138.11/24
-          description: nsrv-k3s-01 routed private subnet interface for future K3s control-plane stub
+          description: nsrv-k3s-01 routed private subnet interface for K3s control plane

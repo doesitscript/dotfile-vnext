@@ -508,6 +508,7 @@
       }
   register: _hyperv_ubuntu_vm_probe
   changed_when: false
+  check_mode: false
 
 - name: Collect Hyper-V Ubuntu VM boot-disk evidence before start path
   ansible.windows.win_powershell:
@@ -657,6 +658,7 @@
 
           $Ansible.Changed = $true
           $Ansible.Result = @{ created = $true }
+      register: _hyperv_ubuntu_vm_create
       when: not (_hyperv_ubuntu_vm_probe.result.exists | default(false))
 
     - name: Ensure Hyper-V Ubuntu VM CPU count, switch, firmware, and NoCloud seed image are aligned
@@ -737,6 +739,7 @@
             $Ansible.Changed = $true
           }
           $Ansible.Result = @{ reconciled = $true }
+      register: _hyperv_ubuntu_vm_reconcile
       when: _hyperv_ubuntu_vm_probe.result.exists | default(false)
 
     - name: Start Hyper-V Ubuntu VM when not running
@@ -751,6 +754,49 @@
           }
           $Ansible.Result = @{ state = (Get-VM -Name '{{ hyperv_ubuntu_vm_name }}').State.ToString() }
       register: _hyperv_ubuntu_vm_start
+
+    - name: Decide whether Hyper-V Ubuntu VM readiness checks can run
+      ansible.builtin.set_fact:
+        _hyperv_ubuntu_vm_check_mode_predicted_lifecycle_change: >-
+          {{
+            ansible_check_mode
+            and (
+              not (_hyperv_ubuntu_vm_probe.result.exists | default(false) | bool)
+              or (_hyperv_ubuntu_vm_create.changed | default(false) | bool)
+              or (_hyperv_ubuntu_vm_reconcile.changed | default(false) | bool)
+              or (_hyperv_ubuntu_vm_start.changed | default(false) | bool)
+            )
+          }}
+        _hyperv_ubuntu_vm_readiness_checks_enabled: >-
+          {{
+            not (
+              ansible_check_mode
+              and (
+                not (_hyperv_ubuntu_vm_probe.result.exists | default(false) | bool)
+                or (_hyperv_ubuntu_vm_create.changed | default(false) | bool)
+                or (_hyperv_ubuntu_vm_reconcile.changed | default(false) | bool)
+                or (_hyperv_ubuntu_vm_start.changed | default(false) | bool)
+              )
+            )
+          }}
+      changed_when: false
+
+    - name: Report skipped Hyper-V Ubuntu VM readiness checks in check mode
+      ansible.builtin.debug:
+        msg:
+          vm_name: "{{ hyperv_ubuntu_vm_name }}"
+          inventory_host: "{{ hyperv_ubuntu_vm_inventory_host }}"
+          skipped_readiness_checks: true
+          reason: >-
+            Check mode predicted VM lifecycle changes, so IP, SSH, guest
+            filesystem growth, metadata publish, and connection-fact publish
+            were skipped because they require live state that check mode did not
+            actually create or change.
+          existing_vm_before_run: "{{ _hyperv_ubuntu_vm_probe.result.exists | default(false) }}"
+          predicted_create: "{{ _hyperv_ubuntu_vm_create.changed | default(false) }}"
+          predicted_reconcile: "{{ _hyperv_ubuntu_vm_reconcile.changed | default(false) }}"
+          predicted_start: "{{ _hyperv_ubuntu_vm_start.changed | default(false) }}"
+      when: not (_hyperv_ubuntu_vm_readiness_checks_enabled | bool)
 
     - name: Wait for Hyper-V Ubuntu VM to report an IPv4 address
       ansible.windows.win_powershell:
@@ -817,9 +863,11 @@
           }
       register: _hyperv_ubuntu_vm_ip
       changed_when: false
+      check_mode: false
       retries: "{{ hyperv_ubuntu_vm_wait_for_ip_retries }}"
       delay: "{{ hyperv_ubuntu_vm_wait_for_ip_delay }}"
       until: (_hyperv_ubuntu_vm_ip.result.ipv4 | default('', true) | string) | length > 0
+      when: _hyperv_ubuntu_vm_readiness_checks_enabled | bool
 
     - name: Wait for SSH on Hyper-V Ubuntu VM from the Windows host
       ansible.windows.win_powershell:
@@ -842,9 +890,11 @@
           }
       register: _hyperv_ubuntu_vm_windows_ssh
       changed_when: false
+      check_mode: false
       retries: "{{ [((hyperv_ubuntu_vm_wait_for_ssh_timeout | int) // 5), 1] | max }}"
       delay: 5
       until: _hyperv_ubuntu_vm_windows_ssh.result.tcp_test_succeeded | default(false)
+      when: _hyperv_ubuntu_vm_readiness_checks_enabled | bool
 
     - name: Wait for SSH on Hyper-V Ubuntu VM from controller through inventory
       ansible.builtin.wait_for_connection:
@@ -852,6 +902,7 @@
         connect_timeout: 5
         sleep: 5
       when:
+        - _hyperv_ubuntu_vm_readiness_checks_enabled | bool
         - hyperv_ubuntu_vm_verify_ssh | bool
         - hyperv_ubuntu_vm_controller_ssh_verify_mode == 'inventory'
       delegate_to: "{{ hyperv_ubuntu_vm_inventory_host }}"
@@ -862,6 +913,7 @@
         port: "{{ hyperv_ubuntu_vm_ssh_port }}"
         timeout: "{{ hyperv_ubuntu_vm_wait_for_ssh_timeout }}"
       when:
+        - _hyperv_ubuntu_vm_readiness_checks_enabled | bool
         - hyperv_ubuntu_vm_verify_ssh | bool
         - hyperv_ubuntu_vm_controller_ssh_verify_mode == 'direct'
       delegate_to: "{{ hyperv_ubuntu_vm_controller_host }}"
@@ -903,7 +955,9 @@
       become: true
       register: _hyperv_ubuntu_vm_grow_root
       changed_when: "'changed=true' in _hyperv_ubuntu_vm_grow_root.stdout"
-      when: hyperv_ubuntu_vm_grow_root_filesystem_enabled | bool
+      when:
+        - _hyperv_ubuntu_vm_readiness_checks_enabled | bool
+        - hyperv_ubuntu_vm_grow_root_filesystem_enabled | bool
       delegate_to: "{{ hyperv_ubuntu_vm_inventory_host }}"
 
     - name: Publish Hyper-V Ubuntu VM metadata on Windows host
@@ -918,6 +972,7 @@
             "ssh_user": "{{ hyperv_ubuntu_vm_bootstrap_user }}",
             "ssh_port": {{ hyperv_ubuntu_vm_ssh_port }}
           }
+      when: _hyperv_ubuntu_vm_readiness_checks_enabled | bool
 
     - name: Publish Hyper-V Ubuntu VM connection facts for the inventory host
       ansible.builtin.set_fact:
@@ -929,7 +984,9 @@
         cacheable: true
       delegate_to: "{{ hyperv_ubuntu_vm_inventory_host }}"
       delegate_facts: true
-      when: hyperv_ubuntu_vm_publish_connection_facts | bool
+      when:
+        - _hyperv_ubuntu_vm_readiness_checks_enabled | bool
+        - hyperv_ubuntu_vm_publish_connection_facts | bool
 
     - name: Report Hyper-V Ubuntu VM summary
       ansible.builtin.debug:
@@ -939,6 +996,7 @@
           ip: "{{ _hyperv_ubuntu_vm_ip.result.ipv4 }}"
           ssh_user: "{{ hyperv_ubuntu_vm_bootstrap_user }}"
           switch_name: "{{ hyperv_ubuntu_vm_switch_name }}"
+      when: _hyperv_ubuntu_vm_readiness_checks_enabled | bool
   rescue:
     - name: Collect Hyper-V Ubuntu VM failure diagnostics
       ansible.windows.win_powershell:

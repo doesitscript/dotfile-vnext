@@ -66,7 +66,7 @@ all:
           # IPv6 WinRM fallback for server-225-win
 
     # Not-yet-deployed Windows hosts. Move to windows_hosts when ready to provision.
-    # Follows k3s_agents_deferred pattern — absent from active groups = never targeted.
+    # Deferred hosts stay absent from active groups so they are never targeted.
     windows_hosts_deferred:
       hosts:
         dev-3090-win:
@@ -127,13 +127,14 @@ all:
         dev-workstation-win:
 
     # -- k3s cluster groups (collection expects k3s_cluster > server + agent) ----------
-    # Keep this empty until the real K3s implementation is intentionally
-    # enabled. VM prep/stub work lives in k3s_vm_stub_hosts.
+    # Single-node K3s server lane on the dedicated Hyper-V Ubuntu VM. VM
+    # prep/stub work remains available through k3s_vm_stub_hosts as preflight.
     # k3s_version, token, api_endpoint live in group_vars/k3s_cluster.yaml -- do not duplicate here.
     k3s_cluster:
       children:
         server:
-          hosts: {}
+          hosts:
+            nsrv-k3s-01:
         agent:
           hosts: {}
 
