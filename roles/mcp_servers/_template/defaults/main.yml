@@ -1,6 +1,19 @@
 ---
 template_mcp_state: present
 template_mcp_server_key: "template-server"
+
+# Git repository version pinning (REQUIRED for git-cloned servers)
+# Pin to a release tag (e.g., "v1.0.0") when available.
+# Use "main" only when explicitly choosing to track HEAD.
+template_mcp_repo_url: ""
+template_mcp_repo_version: ""  # MUST be filled: release tag or "main"
+template_mcp_install_path: "{{ dotfiles_user_home }}/.local/lib/template-server"
+template_mcp_venv_dir: "{{ template_mcp_install_path }}/.venv"
+
+# Entry points for pip/venv-based servers
+template_mcp_entry_point: "{{ template_mcp_venv_dir }}/bin/python"
+template_mcp_server_script: ""  # Fill if server uses a script, leave empty if module-based
+
 template_mcp_project_root: "{{ dotfiles_home | default(playbook_dir | dirname | dirname) }}"
 template_mcp_targets:
   - cursor

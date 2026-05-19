@@ -36,3 +36,5 @@ the repo's WinRM safety vars instead of depending on interactive shell startup:
 3. Replace `mac.yml`, `ubuntu.yml`, and `uninstall.yml` stubs.
 4. Update README source links, tags, and validation notes.
 5. Add the role to `playbooks/mac/mcp_servers.yaml` only if it belongs on the controller.
+6. Pin to a release version in `<server>_repo_version` (check upstream tags with `git ls-remote --tags <repo>`)
+7. Choose install method: pip/venv (preferred for Python projects) or npm (if Node-based)

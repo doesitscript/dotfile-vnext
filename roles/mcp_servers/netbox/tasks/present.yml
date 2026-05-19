@@ -1,8 +1,12 @@
 ---
 - name: Include vault variables
   ansible.builtin.include_vars:
-    file: "{{ playbook_dir }}/../vault.yml"
+    file: "{{ netbox_mcp_project_root }}/vault.yml"
     name: vault_vars
+
+- name: Set NetBox API token from vault
+  ansible.builtin.set_fact:
+    netbox_mcp_token: "{{ vault_vars.vault_netbox_api_token }}"
 
 - name: Install NetBox MCP server on macOS
   ansible.builtin.import_tasks: mac.yml

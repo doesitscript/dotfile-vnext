@@ -9,8 +9,8 @@ Placeholder - validation pending first run
 ## Environment
 
 - **Platform:** macOS (Darwin)
-- **Runtime:** Python via uv
-- **Install Method:** git clone from GitHub
+- **Runtime:** Python (pip/venv)
+- **Install Method:** git clone + pip install
 - **NetBox Instance:** Local (HTTP, no SSL)
 - **Targets:** Cursor, Codex
 
@@ -18,14 +18,13 @@ Placeholder - validation pending first run
 
 ### 1. Installation Surface
 
-- [ ] Check `uv` is available: `which uv`
-- [ ] Clone repository: `git clone https://github.com/netboxlabs/netbox-mcp-server.git ~/.local/lib/netbox-mcp-server`
+- [ ] Clone repository: `git clone -b v1.1.0 https://github.com/netboxlabs/netbox-mcp-server.git ~/.local/lib/netbox-mcp-server`
 - [ ] Verify clone: `ls ~/.local/lib/netbox-mcp-server/`
-- [ ] Run `uv sync` in cloned directory
-- [ ] Verify dependencies: `ls ~/.local/lib/netbox-mcp-server/.venv/`
-- [ ] Smoke test: `cd ~/.local/lib/netbox-mcp-server && uv run netbox-mcp-server --help`
+- [ ] Create venv: `python3 -m venv ~/.local/lib/netbox-mcp-server/.venv`
+- [ ] Install package: `.venv/bin/pip install .`
+- [ ] Smoke test: `.venv/bin/python -m netbox_mcp --help`
 
-**Expected Result:** Help output showing available options
+**Expected Result:** Help output or immediate server start (depending on module behavior)
 
 ### 2. Config Merge Behavior
 
@@ -35,8 +34,8 @@ Placeholder - validation pending first run
 - [ ] Verify `.cursor/mcp.json` exists
 - [ ] Verify `netbox` entry in `mcpServers` section
 - [ ] Verify entry contains:
-  - `command: "uv"`
-  - `args: ["--directory", "/Users/joshc/.local/lib/netbox-mcp-server", "run", "netbox-mcp-server"]`
+  - `command: "/Users/joshc/.local/lib/netbox-mcp-server/.venv/bin/python"`
+  - `args: ["-m", "netbox_mcp"]`
   - `env.NETBOX_URL`
   - `env.NETBOX_TOKEN`
   - `env.VERIFY_SSL`
@@ -101,12 +100,11 @@ None identified at planning stage.
 
 ## Next Steps
 
-1. Ensure `uv` is installed on the controller
-2. Ensure NetBox instance is running
-3. Verify `vault_netbox_api_token` exists in `vault.yml`
-4. Run initial installation
-5. Execute validation checklist
-6. Update this report with actual results
+1. Ensure NetBox instance is running
+2. Verify `vault_netbox_api_token` exists in `vault.yml`
+3. Run initial installation
+4. Execute validation checklist
+5. Update this report with actual results
 
 ## References
 

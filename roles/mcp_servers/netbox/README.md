@@ -11,8 +11,8 @@ Read-only natural language query interface to NetBox infrastructure data.
 
 | Attribute | Value |
 |---|---|
-| Runtime | Python (uv) |
-| Install Method | git-clone |
+| Runtime | Python (pip/venv) |
+| Install Method | git-clone-pip |
 | Interaction Model | launcher |
 | Supported Targets | cursor, codex |
 | Default Targets | cursor, codex |
@@ -29,7 +29,7 @@ The NetBox MCP Server enables AI agents and LLMs to interact with NetBox infrast
 
 ## Requirements
 
-- **uv** must be installed on the controller: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- **Python 3** with venv support (standard on macOS/Ubuntu)
 - **NetBox instance** must be running and accessible from the controller
 - **Read-only API token** must exist in the project vault as `vault_netbox_api_token`
 
@@ -39,7 +39,10 @@ The NetBox MCP Server enables AI agents and LLMs to interact with NetBox infrast
 |---|---|---|
 | `netbox_mcp_state` | `present` | Lifecycle state: `present` or `absent` |
 | `netbox_mcp_targets` | `['cursor', 'codex']` | Target client configs to manage |
+| `netbox_mcp_repo_version` | `v1.1.0` | Git tag or branch to install |
 | `netbox_mcp_install_path` | `~/.local/lib/netbox-mcp-server` | Clone destination |
+| `netbox_mcp_venv_dir` | `~/.local/lib/netbox-mcp-server/.venv` | Python venv location |
+| `netbox_mcp_entry_point` | `<venv>/bin/python` | Python interpreter path |
 | `netbox_mcp_url` | `{{ ipam_netbox_api_url }}` | NetBox API URL |
 | `netbox_mcp_token` | `{{ vault_vars.vault_netbox_api_token }}` | NetBox API token (from vault) |
 | `netbox_mcp_verify_ssl` | `false` | SSL verification (false for local HTTP) |
