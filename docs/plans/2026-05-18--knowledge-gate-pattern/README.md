@@ -16,10 +16,6 @@ domain gates.
 
 ## Architecture / Structure
 
-![Architecture / Structure](diagrams/architecture-structure.svg)
-
-Source: [diagrams/architecture-structure.mmd](diagrams/architecture-structure.mmd)
-
 ```mermaid
 graph TB
     subgraph top_contract ["Top Contract"]
@@ -79,10 +75,6 @@ graph TB
 
 ## Capability Routing
 
-![Capability Routing](diagrams/capability-routing.svg)
-
-Source: [diagrams/capability-routing.mmd](diagrams/capability-routing.mmd)
-
 ```mermaid
 graph TB
     subgraph plan_packet ["docs/plans/2026-05-18--knowledge-gate-pattern"]
@@ -134,10 +126,6 @@ graph TB
 
 ## Implementation Flow
 
-![Implementation Flow](diagrams/implementation-flow.svg)
-
-Source: [diagrams/implementation-flow.mmd](diagrams/implementation-flow.mmd)
-
 ```mermaid
 graph TB
     start["Start"] --> preserve_eval["Preserve_Langfuse_evaluation"]
@@ -163,10 +151,6 @@ graph TB
 ```
 
 ## Naming And Ownership
-
-![Naming And Ownership](diagrams/naming-ownership.svg)
-
-Source: [diagrams/naming-ownership.mmd](diagrams/naming-ownership.mmd)
 
 ```mermaid
 graph TB
