@@ -1,0 +1,219 @@
+---
+- name: Require macOS for K3s client setup
+  ansible.builtin.assert:
+    that:
+      - ansible_system == "Darwin"
+      - k3s_mac_client_state in ["present", "absent"]
+    fail_msg: "k3s_mac_client must run on macOS with state present or absent."
+
+- name: Require configured K3s cluster host
+  ansible.builtin.assert:
+    that:
+      - k3s_mac_client_cluster_host in groups["k3s_cluster"]
+      - hostvars[k3s_mac_client_cluster_host].ansible_host is defined
+    fail_msg: "k3s_mac_client_cluster_host must be a reachable k3s_cluster host."
+
+- name: Map macOS architecture for kubectl download
+  ansible.builtin.set_fact:
+    k3s_mac_client_kubectl_arch: >-
+      {{
+        'arm64'
+        if ansible_architecture == 'arm64'
+        else 'amd64'
+      }}
+  changed_when: false
+  when: k3s_mac_client_state == "present"
+
+- name: Resolve K3s API server for macOS kubeconfig
+  ansible.builtin.set_fact:
+    k3s_mac_client_effective_api_server: >-
+      {%- if k3s_mac_client_connection_mode == 'ssh_tunnel' -%}
+      https://{{ k3s_mac_client_tunnel_bind_host }}:{{ k3s_mac_client_tunnel_local_port }}
+      {%- else -%}
+      https://{{
+        hostvars[k3s_mac_client_cluster_host].api_endpoint
+        | default(hostvars[k3s_mac_client_cluster_host].ansible_host)
+      }}:{{ k3s_mac_client_api_port }}
+      {%- endif -%}
+  changed_when: false
+  when: k3s_mac_client_state == "present"
+
+- name: Check for existing local K3s API tunnel
+  ansible.builtin.wait_for:
+    host: "{{ k3s_mac_client_tunnel_bind_host }}"
+    port: "{{ k3s_mac_client_tunnel_local_port }}"
+    timeout: 1
+    state: started
+  register: k3s_mac_client_tunnel_check
+  failed_when: false
+  changed_when: false
+  when:
+    - k3s_mac_client_state == "present"
+    - k3s_mac_client_connection_mode == "ssh_tunnel"
+
+- name: Resolve SSH tunnel forward specification
+  ansible.builtin.set_fact:
+    k3s_mac_client_tunnel_forward: >-
+      {{
+        [
+          k3s_mac_client_tunnel_bind_host,
+          k3s_mac_client_tunnel_local_port,
+          k3s_mac_client_tunnel_remote_host,
+          k3s_mac_client_tunnel_remote_port
+        ] | join(':')
+      }}
+  changed_when: false
+  when:
+    - k3s_mac_client_state == "present"
+    - k3s_mac_client_connection_mode == "ssh_tunnel"
+
+- name: Start local SSH tunnel to K3s API through the Hyper-V host
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -f
+      - -N
+      - -o
+      - BatchMode=yes
+      - -o
+      - ExitOnForwardFailure=yes
+      - -L
+      - "{{ k3s_mac_client_tunnel_forward }}"
+      - "{{ k3s_mac_client_tunnel_host }}"
+  changed_when: true
+  when:
+    - k3s_mac_client_state == "present"
+    - k3s_mac_client_connection_mode == "ssh_tunnel"
+    - k3s_mac_client_tunnel_check.state | default("") != "started"
+
+- name: Remove kubectl binary from macOS
+  ansible.builtin.file:
+    path: "{{ k3s_mac_client_kubectl_path }}"
+    state: absent
+  when: k3s_mac_client_state == "absent"
+
+- name: Remove K3s kubeconfig from macOS
+  ansible.builtin.file:
+    path: "{{ k3s_mac_client_kubeconfig }}"
+    state: absent
+  when: k3s_mac_client_state == "absent"
+
+- name: Remove default K3s kubeconfig from macOS
+  ansible.builtin.file:
+    path: "{{ k3s_mac_client_default_kubeconfig }}"
+    state: absent
+  when:
+    - k3s_mac_client_state == "absent"
+    - k3s_mac_client_manage_default_kubeconfig | bool
+
+- name: Wait for local K3s API tunnel
+  ansible.builtin.wait_for:
+    host: "{{ k3s_mac_client_tunnel_bind_host }}"
+    port: "{{ k3s_mac_client_tunnel_local_port }}"
+    timeout: 10
+    state: started
+  when:
+    - k3s_mac_client_state == "present"
+    - k3s_mac_client_connection_mode == "ssh_tunnel"
+
+- name: Ensure kubectl install directory exists on macOS
+  ansible.builtin.file:
+    path: "{{ k3s_mac_client_bin_dir }}"
+    state: directory
+    mode: "0755"
+  when: k3s_mac_client_state == "present"
+
+- name: Install kubectl official macOS binary
+  ansible.builtin.get_url:
+    url: "{{ k3s_mac_client_kubectl_base_url }}/{{ k3s_mac_client_kubectl_arch }}/kubectl"
+    dest: "{{ k3s_mac_client_kubectl_path }}"
+    mode: "0755"
+  when: k3s_mac_client_state == "present"
+
+- name: Ensure kubeconfig directory exists on macOS
+  ansible.builtin.file:
+    path: "{{ k3s_mac_client_kube_dir }}"
+    state: directory
+    mode: "0700"
+  when: k3s_mac_client_state == "present"
+
+- name: Read K3s admin kubeconfig from the cluster host
+  ansible.builtin.slurp:
+    src: "{{ k3s_mac_client_source_kubeconfig }}"
+  delegate_to: "{{ k3s_mac_client_cluster_host }}"
+  become: true
+  register: k3s_mac_client_remote_kubeconfig
+  no_log: true
+  when: k3s_mac_client_state == "present"
+
+- name: Install K3s kubeconfig for macOS kubectl
+  ansible.builtin.copy:
+    dest: "{{ k3s_mac_client_kubeconfig }}"
+    mode: "0600"
+    content: >-
+      {{
+        (k3s_mac_client_remote_kubeconfig.content | b64decode)
+        | replace('server: https://127.0.0.1:6443', 'server: ' ~ (k3s_mac_client_effective_api_server | trim))
+      }}
+  no_log: true
+  when: k3s_mac_client_state == "present"
+
+- name: Install default kubeconfig for bare kubectl on macOS
+  ansible.builtin.copy:
+    src: "{{ k3s_mac_client_kubeconfig }}"
+    dest: "{{ k3s_mac_client_default_kubeconfig }}"
+    mode: "0600"
+    remote_src: true
+  when:
+    - k3s_mac_client_state == "present"
+    - k3s_mac_client_manage_default_kubeconfig | bool
+
+- name: Verify kubectl client is available on macOS
+  ansible.builtin.command:
+    argv:
+      - "{{ k3s_mac_client_kubectl_path }}"
+      - version
+      - --client=true
+  register: k3s_mac_client_kubectl_version
+  changed_when: false
+  when: k3s_mac_client_state == "present"
+
+- name: Verify macOS kubectl can reach the K3s cluster
+  ansible.builtin.command:
+    argv:
+      - "{{ k3s_mac_client_kubectl_path }}"
+      - --kubeconfig
+      - "{{ k3s_mac_client_kubeconfig }}"
+      - get
+      - nodes
+      - -o
+      - wide
+  register: k3s_mac_client_nodes
+  changed_when: false
+  when: k3s_mac_client_state == "present"
+
+- name: Verify bare kubectl can reach the K3s cluster
+  ansible.builtin.command:
+    argv:
+      - "{{ k3s_mac_client_kubectl_path }}"
+      - get
+      - nodes
+      - -o
+      - wide
+  register: k3s_mac_client_default_nodes
+  changed_when: false
+  when:
+    - k3s_mac_client_state == "present"
+    - k3s_mac_client_manage_default_kubeconfig | bool
+
+- name: Report K3s client configuration
+  ansible.builtin.debug:
+    msg:
+      kubeconfig: "{{ k3s_mac_client_kubeconfig }}"
+      default_kubeconfig: "{{ k3s_mac_client_default_kubeconfig if k3s_mac_client_manage_default_kubeconfig else omit }}"
+      kubectl: "{{ k3s_mac_client_kubectl_path }}"
+      api_server: "{{ k3s_mac_client_effective_api_server | trim }}"
+      kubectl_client: "{{ k3s_mac_client_kubectl_version.stdout_lines }}"
+      nodes: "{{ k3s_mac_client_nodes.stdout_lines }}"
+      bare_kubectl_nodes: "{{ k3s_mac_client_default_nodes.stdout_lines | default([]) }}"
+  when: k3s_mac_client_state == "present"

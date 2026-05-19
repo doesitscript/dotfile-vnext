@@ -1,0 +1,25 @@
+---
+# Configure mac-dev as a kubectl client for the homelab K3s cluster and
+# optionally deploy a tiny smoke workload.
+#
+# Usage:
+#   ansible-playbook playbooks/k3s_mac_client.yaml -i inventory/inventory.yaml
+#   ansible-playbook playbooks/k3s_mac_client.yaml -i inventory/inventory.yaml --tags k3s_hello_world
+
+- name: Configure K3s client on mac-dev
+  hosts: mac-dev
+  gather_facts: true
+  become: false
+  roles:
+    - role: hyperv_guest_route_mac
+      tags: [hyperv_guest_route_mac, k3s_mac_client]
+    - role: k3s_mac_client
+      tags: [k3s_mac_client]
+
+- name: Deploy K3s hello-world smoke workload from mac-dev
+  hosts: mac-dev
+  gather_facts: false
+  become: false
+  roles:
+    - role: k3s_hello_world
+      tags: [k3s_hello_world]
