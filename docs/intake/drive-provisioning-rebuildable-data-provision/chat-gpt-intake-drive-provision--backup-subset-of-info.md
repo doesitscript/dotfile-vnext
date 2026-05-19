@@ -568,7 +568,7 @@ Put eligible machines in a group:
 ```ini id="vwc95l"
 [storage_backup_cattle]
 server-225-win
-network-server-win
+home-lab-auth-hvh-01
 ```
 
 This is your broad targeting control.
@@ -628,7 +628,7 @@ inventory/
   host_vars/
     server-225-win/
       storage.yaml
-    network-server-win/
+    home-lab-auth-hvh-01/
       storage.yaml
 ```
 
@@ -879,7 +879,7 @@ And use this group:
 ```ini id="insd6y"
 [storage_backup_landing]
 server-225-win
-network-server-win
+home-lab-auth-hvh-01
 ```
 
 Then run safely against the group:

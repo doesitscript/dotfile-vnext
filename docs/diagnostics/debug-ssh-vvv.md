@@ -1,9 +1,9 @@
 
 
-(.venv) Joshs-MBP:dotfile-vnext joshc$ ssh network-server-win-powershell -vvv
+(.venv) Joshs-MBP:dotfile-vnext joshc$ ssh home-lab-auth-hvh-01-powershell -vvv
 OpenSSH_8.6p1, LibreSSL 3.3.6
 debug1: Reading configuration data /Users/joshc/.ssh/config
-debug1: /Users/joshc/.ssh/config line 19: Applying options for network-server-win-powershell
+debug1: /Users/joshc/.ssh/config line 19: Applying options for home-lab-auth-hvh-01-powershell
 debug1: /Users/joshc/.ssh/config line 95: Applying options for *
 debug1: Reading configuration data /etc/ssh/ssh_config
 debug1: /etc/ssh/ssh_config line 21: include /etc/ssh/ssh_config.d/* matched no files

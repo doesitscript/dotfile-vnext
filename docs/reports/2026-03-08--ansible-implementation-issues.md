@@ -13,7 +13,7 @@ This report covers the specific issues encountered while implementing fixes thro
 ```
 Error while resolving value for 'dest': object of type 'dict' has no attribute 'HOME'
 fatal: [server-225-win]: FAILED!
-fatal: [network-server-win]: FAILED!
+fatal: [home-lab-auth-hvh-01]: FAILED!
 ```
 
 The Mac host passed; both Windows hosts failed.

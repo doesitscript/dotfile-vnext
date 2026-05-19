@@ -43,7 +43,7 @@ AI/development environment. The operator is "joshc" on a macOS controller managi
 - macOS controller (`mac-dev`, running locally, the Ansible execution node)
 - Windows Server 2025 GPU host (`server-225-win`, via WinRM)
 - Linux companion surfaces (`server-225-wsl` legacy naming, `server-225-ubuntu` Multipass VM)
-- Network server Windows host (`network-server-win`, via WinRM)
+- Network server Windows host (`home-lab-auth-hvh-01`, via WinRM)
 
 The repo also manages the operator's AI assistant tooling — MCP servers, Ansible dev
 tools, Cursor IDE configuration — making this as much an "AI-assisted ops platform"
@@ -59,13 +59,13 @@ The inventory model is well-designed and encodes durable truths:
 
 ```
 Execution surface:  mac-dev (macOS, ansible_connection=local)
-Windows hosts:      server-225-win, network-server-win (WinRM)
+Windows hosts:      server-225-win, home-lab-auth-hvh-01 (WinRM)
 Linux (WSL legacy): server-225-wsl, network-server-wsl (SSH)
 Linux VM (new):     server-225-ubuntu (Multipass VM, SSH)
 Deferred:           dev-3090-win/wsl, dev-workstation-win/wsl
 K3s cluster:        network-server-wsl (server), server-225-wsl (agent)
 Logging server:     network-server-wsl (Loki)
-Docker clients:     mac-dev, server-225-win, network-server-win
+Docker clients:     mac-dev, server-225-win, home-lab-auth-hvh-01
 ```
 
 The `-wsl` suffix is explicitly labeled as legacy in the inventory comments. The

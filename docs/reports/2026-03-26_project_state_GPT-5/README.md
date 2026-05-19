@@ -260,7 +260,7 @@ This matters because a new AI might start at `README.md` and immediately build o
 The repo clearly knows how to use vaults. There are vault templates, encrypted group vars, and README guidance. But current Windows host vars still contain plaintext credentials such as:
 
 - `inventory/host_vars/server-225-win.yaml`
-- `inventory/host_vars/network-server-win.yaml`
+- `inventory/host_vars/home-lab-auth-hvh-01.yaml`
 - `inventory/host_vars/dev-workstation-win.yaml`
 
 Even if these are placeholders, their presence is a maturity/security smell because they normalize plaintext host secrets in the main inventory layer.

@@ -71,7 +71,7 @@ Bootstrap nodes to prepare them for stack deployment.
 ./bin/fz bootstrap --limit server-225-win
 
 # Bootstrap network-server and dev-3090 (Windows nodes) - REQUIRES --limit or --all
-./bin/fz bootstrap-winrm --limit network-server-win
+./bin/fz bootstrap-winrm --limit home-lab-auth-hvh-01
 
 # Bootstrap all nodes
 ./bin/fz bootstrap-winrm --all
@@ -93,11 +93,11 @@ Deploy stacks to specific nodes.
 ./bin/fz deploy main --limit server-225-wsl
 
 # Deploy network stacks (network-server) - REQUIRES --limit or --all and confirmation
-./bin/fz deploy network --limit network-server-win
+./bin/fz deploy network --limit home-lab-auth-hvh-01
 # Will prompt: "Continue with network deployment? [y/N]:"
 
 # Skip confirmation for network deployment
-./bin/fz deploy network --limit network-server-win --yes
+./bin/fz deploy network --limit home-lab-auth-hvh-01 --yes
 
 # Deploy dev stacks (dev-3090) - REQUIRES --limit or --all
 ./bin/fz deploy dev --limit dev-3090-wsl
@@ -165,10 +165,10 @@ All commands forward these options to `ansible-playbook`:
 ```bash
 # Run only on specific hosts
 ./bin/fz verify --limit server-225-win
-./bin/fz deploy network --limit network-server-win
+./bin/fz deploy network --limit home-lab-auth-hvh-01
 
 # Run on multiple hosts
-./bin/fz verify --limit "server-225-win:network-server-win"
+./bin/fz verify --limit "server-225-win:home-lab-auth-hvh-01"
 ```
 
 ### Tags
@@ -291,7 +291,7 @@ The vault edit command:
 
 ```bash
 # Deploy only network stacks with specific tags
-./bin/fz deploy network --tags stacks_network --limit network-server-win
+./bin/fz deploy network --tags stacks_network --limit home-lab-auth-hvh-01
 
 # Check what would change
 ./bin/fz deploy network --check --diff
@@ -428,4 +428,3 @@ The scripts are designed to work in CI/CD pipelines:
 # Check mode for validation
 ./bin/fz verify --check
 ```
-
