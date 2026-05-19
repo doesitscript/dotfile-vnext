@@ -1,0 +1,113 @@
+---
+argument_specs:
+  main:
+    short_description: NetBox MCP server - read-only natural language query interface
+    description: >
+      Installs the NetBox MCP server from GitHub, configures MCP client entries
+      for Cursor and Codex, and provides read-only natural language query access
+      to NetBox infrastructure data.
+    options:
+      netbox_mcp_state:
+        type: str
+        default: present
+        choices:
+          - present
+          - absent
+        description: Ensure the NetBox MCP server install/config is present or absent.
+
+      netbox_mcp_server_key:
+        type: str
+        default: "netbox"
+        description: Key written under mcpServers in target mcp.json files.
+
+      netbox_mcp_project_root:
+        type: str
+        required: false
+        description: Repo root used to derive the default target config paths.
+
+      netbox_mcp_targets:
+        type: list
+        elements: str
+        default:
+          - cursor
+          - codex
+        description: >
+          Target client configs to manage. Supported values are cursor and codex.
+          openapi is a stub and will fail fast if selected.
+
+      netbox_mcp_supported_targets:
+        type: list
+        elements: str
+        default:
+          - cursor
+          - codex
+        description: Supported target names for validation and guardrails.
+
+      netbox_mcp_cursor_config_path:
+        type: str
+        required: false
+        description: Path to the Cursor mcp.json file.
+
+      netbox_mcp_codex_config_path:
+        type: str
+        required: false
+        description: Path to the project Codex config.toml file.
+
+      netbox_mcp_role_path:
+        type: str
+        default: "roles/mcp_servers/netbox"
+        description: Relative repo path for tracking/debugging.
+
+      netbox_mcp_install_path:
+        type: str
+        required: false
+        description: Path where the NetBox MCP server repository will be cloned.
+
+      netbox_mcp_repo_url:
+        type: str
+        default: "https://github.com/netboxlabs/netbox-mcp-server.git"
+        description: GitHub repository URL for the NetBox MCP server.
+
+      netbox_mcp_repo_version:
+        type: str
+        default: "main"
+        description: Git branch or tag to clone.
+
+      netbox_mcp_url:
+        type: str
+        required: false
+        description: NetBox API URL (sourced from ipam_netbox_api_url by default).
+
+      netbox_mcp_token:
+        type: str
+        required: false
+        description: NetBox API token (sourced from vault by default).
+
+      netbox_mcp_verify_ssl:
+        type: bool
+        default: false
+        description: Whether to verify SSL certificates when connecting to NetBox.
+
+      netbox_mcp_command:
+        type: str
+        default: "uv"
+        description: Command to run the NetBox MCP server (uv by default).
+
+      netbox_mcp_args:
+        type: list
+        elements: str
+        default: []
+        description: Runtime args passed to the MCP server.
+
+      netbox_mcp_env:
+        type: dict
+        default: {}
+        description: Environment variables for the MCP server runtime.
+
+      netbox_mcp_codex_entry:
+        type: dict
+        required: false
+        default: {}
+        description: >
+          Structured Codex MCP entry used when the codex target is selected.
+          Defines command, args, env, and other Codex MCP configuration.

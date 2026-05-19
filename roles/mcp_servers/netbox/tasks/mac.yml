@@ -1,0 +1,44 @@
+---
+- name: Check if uv is available on macOS
+  ansible.builtin.command:
+    cmd: which uv
+  register: _netbox_mcp_uv_check
+  changed_when: false
+  failed_when: false
+
+- name: Fail if uv is not installed
+  ansible.builtin.fail:
+    msg: >-
+      uv is required to install the NetBox MCP server but was not found in PATH.
+      Install uv first: curl -LsSf https://astral.sh/uv/install.sh | sh
+  when: _netbox_mcp_uv_check.rc != 0
+
+- name: Clone NetBox MCP server repository on macOS
+  ansible.builtin.git:
+    repo: "{{ netbox_mcp_repo_url }}"
+    dest: "{{ netbox_mcp_install_path }}"
+    version: "{{ netbox_mcp_repo_version }}"
+    update: true
+  register: _netbox_mcp_git_clone
+
+- name: Run uv sync to install dependencies on macOS
+  ansible.builtin.command:
+    cmd: uv sync
+    chdir: "{{ netbox_mcp_install_path }}"
+    creates: "{{ netbox_mcp_install_path }}/.venv"
+  register: _netbox_mcp_uv_sync
+
+- name: Verify NetBox MCP server installation on macOS
+  ansible.builtin.command:
+    cmd: uv run netbox-mcp-server --help
+    chdir: "{{ netbox_mcp_install_path }}"
+  register: _netbox_mcp_verify
+  changed_when: false
+  failed_when: _netbox_mcp_verify.rc != 0
+
+- name: Report NetBox MCP installation status on macOS
+  ansible.builtin.debug:
+    msg: >-
+      NetBox MCP server installed at {{ netbox_mcp_install_path }}.
+      Git clone: {{ 'updated' if _netbox_mcp_git_clone.changed else 'already present' }}.
+      Dependencies: {{ 'synced' if _netbox_mcp_uv_sync.changed else 'already synced' }}.

@@ -1,0 +1,43 @@
+---
+- name: Check whether mcp.json exists for {{ _netbox_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _netbox_target_config_path }}"
+  register: _netbox_remove_target_mcp_json_stat
+  when: _netbox_target_name in ['cursor', 'vscode']
+
+- name: Remove NetBox entry from mcp.json for {{ _netbox_target_name }}
+  when:
+    - _netbox_target_name in ['cursor', 'vscode']
+    - _netbox_remove_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _netbox_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _netbox_target_config_path }}"
+      register: _netbox_remove_target_mcp_json_raw
+
+    - name: Write mcp.json without the NetBox entry for {{ _netbox_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _netbox_target_config_path }}"
+        content: "{{ _netbox_remove_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _netbox_remove_target_existing: "{{ _netbox_remove_target_mcp_json_raw.content | b64decode | from_json }}"
+        _netbox_remove_target_filtered_servers: >-
+          {{
+            (_netbox_remove_target_existing.mcpServers | default({}))
+            | dict2items
+            | rejectattr('key', 'equalto', netbox_mcp_server_key)
+            | items2dict
+          }}
+        _netbox_remove_target_merged: >-
+          {{
+            _netbox_remove_target_existing
+            | combine({'mcpServers': _netbox_remove_target_filtered_servers})
+          }}
+
+- name: Remove NetBox entry from Codex config for {{ _netbox_target_name }}
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ _netbox_target_config_path }}"
+    _mcp_codex_server_key: "{{ netbox_mcp_server_key }}"
+  when: _netbox_target_name == 'codex'

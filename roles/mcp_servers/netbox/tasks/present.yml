@@ -1,0 +1,27 @@
+---
+- name: Include vault variables
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault.yml"
+    name: vault_vars
+
+- name: Install NetBox MCP server on macOS
+  ansible.builtin.import_tasks: mac.yml
+  when: ansible_facts['system'] == "Darwin"
+
+- name: Install NetBox MCP server on Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when: ansible_facts['distribution'] == "Ubuntu"
+
+- name: Ensure NetBox entry exists in Cursor mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _netbox_target_name: "cursor"
+    _netbox_target_config_path: "{{ netbox_mcp_cursor_config_path }}"
+  when: _netbox_target_cursor_selected | bool
+
+- name: Ensure NetBox entry exists in Codex config
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _netbox_target_name: "codex"
+    _netbox_target_config_path: "{{ netbox_mcp_codex_config_path }}"
+  when: _netbox_target_codex_selected | bool

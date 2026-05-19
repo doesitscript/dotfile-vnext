@@ -1,0 +1,45 @@
+---
+netbox_mcp_state: present
+netbox_mcp_server_key: netbox
+netbox_mcp_project_root: "{{ dotfiles_home | default(playbook_dir | dirname | dirname) }}"
+netbox_mcp_targets:
+  - cursor
+  - codex
+netbox_mcp_supported_targets:
+  - cursor
+  - codex
+netbox_mcp_cursor_config_path: "{{ netbox_mcp_project_root }}/.cursor/mcp.json"
+netbox_mcp_codex_config_path: "{{ netbox_mcp_project_root }}/.codex/config.toml"
+netbox_mcp_role_path: roles/mcp_servers/netbox
+
+# Installation
+netbox_mcp_install_path: "{{ ansible_env.HOME }}/.local/lib/netbox-mcp-server"
+netbox_mcp_repo_url: https://github.com/netboxlabs/netbox-mcp-server.git
+netbox_mcp_repo_version: main
+
+# NetBox connection (sourced from ipam_netbox role)
+netbox_mcp_url: "{{ ipam_netbox_api_url }}"
+netbox_mcp_token: "{{ vault_vars.vault_netbox_api_token }}"
+netbox_mcp_verify_ssl: false
+
+# MCP entry generation
+netbox_mcp_command: uv
+netbox_mcp_args:
+  - --directory
+  - "{{ netbox_mcp_install_path }}"
+  - run
+  - netbox-mcp-server
+netbox_mcp_env:
+  NETBOX_URL: "{{ netbox_mcp_url }}"
+  NETBOX_TOKEN: "{{ netbox_mcp_token }}"
+  VERIFY_SSL: "{{ netbox_mcp_verify_ssl | string | lower }}"
+  _MCP_ANSIBLE_ROLE_PATH: "{{ netbox_mcp_role_path }}"
+
+# Codex MCP entry
+netbox_mcp_codex_entry:
+  url: ""
+  command: "{{ netbox_mcp_command }}"
+  args: "{{ netbox_mcp_args }}"
+  env: "{{ netbox_mcp_env }}"
+  cwd: ""
+  required: false

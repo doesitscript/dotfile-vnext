@@ -1,0 +1,19 @@
+---
+- name: Remove NetBox MCP repository directory
+  ansible.builtin.file:
+    path: "{{ netbox_mcp_install_path }}"
+    state: absent
+
+- name: Remove NetBox entry from Cursor mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _netbox_target_name: "cursor"
+    _netbox_target_config_path: "{{ netbox_mcp_cursor_config_path }}"
+  when: _netbox_target_cursor_selected | bool
+
+- name: Remove NetBox entry from Codex config
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _netbox_target_name: "codex"
+    _netbox_target_config_path: "{{ netbox_mcp_codex_config_path }}"
+  when: _netbox_target_codex_selected | bool
