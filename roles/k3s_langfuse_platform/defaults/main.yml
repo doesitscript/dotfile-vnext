@@ -1,0 +1,60 @@
+---
+# Langfuse Platform on K3s configuration
+k3s_langfuse_platform_state: present
+k3s_langfuse_platform_namespace: langfuse
+k3s_langfuse_platform_release_name: langfuse
+k3s_langfuse_platform_chart_repo: https://langfuse.github.io/langfuse-k8s
+k3s_langfuse_platform_chart_name: langfuse-k8s
+k3s_langfuse_platform_chart_version: "" # Empty = latest
+
+# Helm installation
+k3s_langfuse_platform_install_helm: true
+k3s_langfuse_platform_helm_version: "3.16.3"
+
+# Langfuse configuration
+k3s_langfuse_platform_hostname: "langfuse.local"
+k3s_langfuse_platform_nextauth_url: "http://langfuse.local:3000"
+k3s_langfuse_platform_nextauth_secret: "changeme"  # Override in vault
+k3s_langfuse_platform_salt: "changeme"  # Override in vault
+k3s_langfuse_platform_encryption_key: "0000000000000000000000000000000000000000000000000000000000000000"  # Override in vault
+
+# Database configuration (PostgreSQL)
+k3s_langfuse_platform_postgres_enabled: true
+k3s_langfuse_platform_postgres_host: "langfuse-postgresql"
+k3s_langfuse_platform_postgres_port: 5432
+k3s_langfuse_platform_postgres_db: "langfuse"
+k3s_langfuse_platform_postgres_user: "langfuse"
+k3s_langfuse_platform_postgres_password: "changeme"  # Override in vault
+
+# ClickHouse configuration
+k3s_langfuse_platform_clickhouse_enabled: true
+k3s_langfuse_platform_clickhouse_host: "langfuse-clickhouse"
+k3s_langfuse_platform_clickhouse_port: 9000
+k3s_langfuse_platform_clickhouse_user: "default"
+k3s_langfuse_platform_clickhouse_password: ""
+
+# Redis configuration
+k3s_langfuse_platform_redis_enabled: true
+k3s_langfuse_platform_redis_host: "langfuse-redis-master"
+k3s_langfuse_platform_redis_port: 6379
+k3s_langfuse_platform_redis_auth_enabled: false
+
+# Storage configuration (MinIO/S3)
+k3s_langfuse_platform_s3_enabled: false  # Start without S3, can enable later
+k3s_langfuse_platform_s3_endpoint: ""
+k3s_langfuse_platform_s3_access_key: ""
+k3s_langfuse_platform_s3_secret_key: ""
+k3s_langfuse_platform_s3_bucket: "langfuse"
+
+# Resource limits
+k3s_langfuse_platform_web_replicas: 1
+k3s_langfuse_platform_worker_replicas: 1
+k3s_langfuse_platform_web_cpu_limit: "1000m"
+k3s_langfuse_platform_web_memory_limit: "2Gi"
+k3s_langfuse_platform_worker_cpu_limit: "500m"
+k3s_langfuse_platform_worker_memory_limit: "1Gi"
+
+# Service exposure
+k3s_langfuse_platform_service_type: "NodePort"
+k3s_langfuse_platform_service_port: 3000
+k3s_langfuse_platform_node_port: 30000

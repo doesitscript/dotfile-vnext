@@ -1,0 +1,141 @@
+---
+- name: Install Python Kubernetes library via apt
+  ansible.builtin.apt:
+    name:
+      - python3-kubernetes
+      - python3-yaml
+    state: present
+    update_cache: true
+  become: true
+
+- name: Install Helm
+  when: k3s_langfuse_platform_install_helm | bool
+  block:
+    - name: Download Helm install script
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        dest: /tmp/get_helm.sh
+        mode: "0700"
+
+    - name: Install Helm via script
+      ansible.builtin.command:
+        cmd: /tmp/get_helm.sh --version v{{ k3s_langfuse_platform_helm_version }}
+      args:
+        creates: /usr/local/bin/helm
+      become: true
+      environment:
+        DESIRED_VERSION: v{{ k3s_langfuse_platform_helm_version }}
+
+- name: Add Langfuse Helm repository
+  kubernetes.core.helm_repository:
+    name: langfuse
+    repo_url: "{{ k3s_langfuse_platform_chart_repo }}"
+    state: present
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Create Langfuse namespace
+  kubernetes.core.k8s:
+    name: "{{ k3s_langfuse_platform_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Deploy Langfuse platform with Helm
+  kubernetes.core.helm:
+    name: "{{ k3s_langfuse_platform_release_name }}"
+    chart_ref: "langfuse/{{ k3s_langfuse_platform_chart_name }}"
+    release_namespace: "{{ k3s_langfuse_platform_namespace }}"
+    chart_version: "{{ k3s_langfuse_platform_chart_version | default(omit) }}"
+    create_namespace: false
+    wait: true
+    wait_timeout: 10m
+    values:
+      langfuse:
+        nextauth:
+          url: "{{ k3s_langfuse_platform_nextauth_url }}"
+          secret: "{{ k3s_langfuse_platform_nextauth_secret }}"
+        salt: "{{ k3s_langfuse_platform_salt }}"
+        encryptionKey: "{{ k3s_langfuse_platform_encryption_key }}"
+      
+      postgresql:
+        enabled: "{{ k3s_langfuse_platform_postgres_enabled }}"
+        auth:
+          database: "{{ k3s_langfuse_platform_postgres_db }}"
+          username: "{{ k3s_langfuse_platform_postgres_user }}"
+          password: "{{ k3s_langfuse_platform_postgres_password }}"
+        primary:
+          persistence:
+            enabled: true
+            size: 10Gi
+      
+      clickhouse:
+        enabled: "{{ k3s_langfuse_platform_clickhouse_enabled }}"
+        auth:
+          username: "{{ k3s_langfuse_platform_clickhouse_user }}"
+          password: "{{ k3s_langfuse_platform_clickhouse_password }}"
+        persistence:
+          enabled: true
+          size: 20Gi
+      
+      redis:
+        enabled: "{{ k3s_langfuse_platform_redis_enabled }}"
+        auth:
+          enabled: "{{ k3s_langfuse_platform_redis_auth_enabled }}"
+        master:
+          persistence:
+            enabled: true
+            size: 8Gi
+      
+      web:
+        replicaCount: "{{ k3s_langfuse_platform_web_replicas }}"
+        resources:
+          limits:
+            cpu: "{{ k3s_langfuse_platform_web_cpu_limit }}"
+            memory: "{{ k3s_langfuse_platform_web_memory_limit }}"
+      
+      worker:
+        replicaCount: "{{ k3s_langfuse_platform_worker_replicas }}"
+        resources:
+          limits:
+            cpu: "{{ k3s_langfuse_platform_worker_cpu_limit }}"
+            memory: "{{ k3s_langfuse_platform_worker_memory_limit }}"
+      
+      service:
+        type: "{{ k3s_langfuse_platform_service_type }}"
+        port: "{{ k3s_langfuse_platform_service_port }}"
+        nodePort: "{{ k3s_langfuse_platform_node_port }}"
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Wait for Langfuse web deployment to be ready
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    namespace: "{{ k3s_langfuse_platform_namespace }}"
+    name: "{{ k3s_langfuse_platform_release_name }}-web"
+    wait: true
+    wait_timeout: 300
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: _k3s_langfuse_web_deployment
+
+- name: Display Langfuse access information
+  ansible.builtin.debug:
+    msg: |
+      Langfuse Platform deployed successfully!
+      
+      Namespace: {{ k3s_langfuse_platform_namespace }}
+      Release: {{ k3s_langfuse_platform_release_name }}
+      
+      Access URL: http://{{ ansible_default_ipv4.address }}:{{ k3s_langfuse_platform_node_port }}
+      
+      Components deployed:
+      - Langfuse Web ({{ k3s_langfuse_platform_web_replicas }} replicas)
+      - Langfuse Worker ({{ k3s_langfuse_platform_worker_replicas }} replicas)
+      - PostgreSQL (persistent storage: 10Gi)
+      - ClickHouse (persistent storage: 20Gi)
+      - Redis (persistent storage: 8Gi)
+      
+      Check status: kubectl get pods -n {{ k3s_langfuse_platform_namespace }}
