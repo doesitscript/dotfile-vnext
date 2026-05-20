@@ -1,8 +1,7 @@
 ---
+# Vault: use tasks/load_vault.yml — not playbook_dir/../vault.yml (see load_vault.yml).
 - name: Include vault variables for NetBox API token
-  ansible.builtin.include_vars:
-    file: "{{ playbook_dir }}/../vault.yml"
-    name: vault_vars
+  ansible.builtin.include_tasks: load_vault.yml
   tags:
     - ipam_netbox
     - ipam_netbox_seed_server_225_model
@@ -18,7 +17,7 @@
         - "NetBox UI/API contains the hom-lab-ctl-hvh-02 device plus server-225 cluster/VM objects"
         - "NetBox VM server-225-ubuntu has primary IP 192.168.137.10/24"
         - "NetBox VM hom-lab-ctl-k3s-02 is staged with role k3s and primary IP 192.168.137.11/24"
-        - "NetBox application services exist for NetBox, Semaphore, Loki, and Grafana"
+        - "NetBox application services exist for NetBox, Semaphore, Loki, Grafana, Langfuse, LiteLLM, Postgres, and MinIO"
       undo: "manual NetBox object cleanup for this first modeling slice"
       model:
         site: "{{ ipam_netbox_server_225_model.site }}"
@@ -415,7 +414,12 @@
       protocol: "{{ item.protocol }}"
       ports: "{{ item.ports }}"
       ipaddresses: "{{ item.ipaddresses }}"
-      description: "{{ item.description }}"
+      description: >-
+        {{ item.description }}{{
+          (' — ' ~ item.primary_access_point)
+          if (item.primary_access_point | default('') | length > 0)
+          else ''
+        }}
       comments: "{{ item.comments }}"
       tags: "{{ item.tags }}"
     state: present

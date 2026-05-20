@@ -3,11 +3,11 @@
 # Run with: --tags ipam_netbox_migrate_display_names
 # Safe to re-run — skips objects that are already at the target name.
 # After running, the regular seed tag is idempotent with the new names.
+#
+# Vault: use tasks/load_vault.yml — not playbook_dir/../vault.yml (see load_vault.yml).
 
 - name: Include vault variables for NetBox API token
-  ansible.builtin.include_vars:
-    file: "{{ playbook_dir }}/../vault.yml"
-    name: vault_vars
+  ansible.builtin.include_tasks: load_vault.yml
   tags:
     - ipam_netbox
     - ipam_netbox_migrate_display_names

@@ -1,0 +1,16 @@
+---
+# Vault loader for controller-side NetBox API tasks.
+#
+# Do not use playbook_dir/../vault.yml in this role. That path only works when
+# playbook_dir is playbooks/. Ad-hoc runs (ansible -m include_role) and some
+# wrapper entrypoints set playbook_dir to the repo root, which resolves to
+# <parent>/vault.yml — a nonsense path outside the project.
+#
+# ipam_netbox_vault_file in defaults/main.yml derives the repo root from
+# role_path instead, so playbooks, ad-hoc include_role, and delegate_to:
+# localhost all load the same vault.yml.
+
+- name: Include vault variables for NetBox role
+  ansible.builtin.include_vars:
+    file: "{{ ipam_netbox_vault_file }}"
+    name: vault_vars

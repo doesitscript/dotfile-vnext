@@ -27,11 +27,11 @@
 #                         server-225-ubuntu/postgres/basebackup/<ts>/netbox.dump
 #                         server-225-ubuntu/netbox/media-archive/<ts>/netbox-media.tar.gz
 # Also retained on host at: {{ ipam_netbox_backup_root }}/...
+#
+# Vault: use tasks/load_vault.yml — not playbook_dir/../vault.yml (see load_vault.yml).
 
 - name: Include vault variables for NetBox backup
-  ansible.builtin.include_vars:
-    file: "{{ playbook_dir }}/../vault.yml"
-    name: vault_vars
+  ansible.builtin.include_tasks: load_vault.yml
   tags:
     - ipam_netbox
     - ipam_netbox_backup_db
