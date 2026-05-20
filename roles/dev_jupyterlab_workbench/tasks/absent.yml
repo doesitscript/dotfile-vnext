@@ -1,0 +1,29 @@
+---
+- name: Stop and disable JupyterLab workbench service
+  ansible.builtin.systemd:
+    name: "{{ dev_jupyterlab_workbench_service_name }}"
+    enabled: false
+    state: stopped
+  become: true
+  ignore_errors: true
+
+- name: Remove systemd service file
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ dev_jupyterlab_workbench_service_name }}.service"
+    state: absent
+  become: true
+  notify: Reload systemd
+
+- name: Remove IPython kernel
+  ansible.builtin.command:
+    cmd: >-
+      {{ dev_jupyterlab_workbench_venv_path }}/bin/jupyter kernelspec uninstall
+      {{ dev_jupyterlab_workbench_kernel_name }} -y
+  ignore_errors: true
+  changed_when: true
+
+- name: Remove JupyterLab workbench installation directory
+  ansible.builtin.file:
+    path: "{{ dev_jupyterlab_workbench_install_dir }}"
+    state: absent
+  become: true

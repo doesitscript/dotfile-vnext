@@ -1,0 +1,123 @@
+---
+- name: Ensure Python 3 and venv are installed
+  ansible.builtin.apt:
+    name:
+      - python3
+      - python3-venv
+      - python3-pip
+      - git
+    state: present
+    update_cache: true
+  become: true
+
+- name: Ensure JupyterLab workbench installation directory exists
+  ansible.builtin.file:
+    path: "{{ dev_jupyterlab_workbench_install_dir }}"
+    state: directory
+    mode: "0755"
+    owner: "{{ dev_jupyterlab_workbench_user }}"
+    group: "{{ dev_jupyterlab_workbench_user }}"
+  become: true
+
+- name: Create Python virtual environment for JupyterLab workbench
+  ansible.builtin.command:
+    cmd: python3 -m venv {{ dev_jupyterlab_workbench_venv_path }}
+    creates: "{{ dev_jupyterlab_workbench_venv_path }}/bin/activate"
+
+- name: Upgrade pip in virtual environment
+  ansible.builtin.pip:
+    name: pip
+    state: latest
+    virtualenv: "{{ dev_jupyterlab_workbench_venv_path }}"
+    virtualenv_command: python3 -m venv
+
+- name: Install JupyterLab and required packages
+  ansible.builtin.pip:
+    name: "{{ dev_jupyterlab_workbench_packages }}"
+    state: present
+    virtualenv: "{{ dev_jupyterlab_workbench_venv_path }}"
+    virtualenv_command: python3 -m venv
+
+- name: Ensure notebooks directory exists
+  ansible.builtin.file:
+    path: "{{ dev_jupyterlab_workbench_notebooks_dir }}"
+    state: directory
+    mode: "0755"
+    owner: "{{ dev_jupyterlab_workbench_user }}"
+    group: "{{ dev_jupyterlab_workbench_user }}"
+  become: true
+
+- name: Clone Langfuse cookbooks repository
+  ansible.builtin.git:
+    repo: "{{ dev_jupyterlab_workbench_cookbooks_repo }}"
+    dest: "{{ dev_jupyterlab_workbench_cookbooks_dir }}"
+    version: "{{ dev_jupyterlab_workbench_cookbooks_version }}"
+    force: false
+    update: true
+  environment:
+    GIT_TERMINAL_PROMPT: "0"
+  ignore_errors: true
+  register: _dev_jupyterlab_workbench_cookbook_clone
+
+- name: Register IPython kernel for JupyterLab
+  ansible.builtin.command:
+    cmd: >-
+      {{ dev_jupyterlab_workbench_venv_path }}/bin/python -m ipykernel install
+      --user
+      --name {{ dev_jupyterlab_workbench_kernel_name }}
+      --display-name "{{ dev_jupyterlab_workbench_kernel_display_name }}"
+  args:
+    creates: "{{ dev_jupyterlab_workbench_home }}/.local/share/jupyter/kernels/{{ dev_jupyterlab_workbench_kernel_name }}/kernel.json"
+
+- name: Create systemd service for JupyterLab workbench
+  ansible.builtin.template:
+    src: jupyterlab-workbench.service.j2
+    dest: "/etc/systemd/system/{{ dev_jupyterlab_workbench_service_name }}.service"
+    mode: "0644"
+  become: true
+  when: dev_jupyterlab_workbench_service_enabled | bool
+  notify:
+    - Reload systemd
+    - Restart JupyterLab workbench service
+
+- name: Enable and start JupyterLab workbench service
+  ansible.builtin.systemd:
+    name: "{{ dev_jupyterlab_workbench_service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+  when: dev_jupyterlab_workbench_service_enabled | bool
+
+- name: Create sample .env file for notebooks
+  ansible.builtin.copy:
+    dest: "{{ dev_jupyterlab_workbench_notebooks_dir }}/.env.example"
+    content: |
+      # JupyterLab Workbench Environment Variables
+      # Copy to .env and fill in your API keys
+      
+      LANGFUSE_PUBLIC_KEY=your_public_key_here
+      LANGFUSE_SECRET_KEY=your_secret_key_here
+      LANGFUSE_HOST=https://cloud.langfuse.com
+      
+      OPENAI_API_KEY=your_openai_key_here
+      ANTHROPIC_API_KEY=your_anthropic_key_here
+    mode: "0644"
+    force: false
+
+- name: Display JupyterLab access information
+  ansible.builtin.debug:
+    msg: |
+      JupyterLab Workbench deployed successfully!
+      
+      Access URL: http://{{ ansible_default_ipv4.address }}:{{ dev_jupyterlab_workbench_port }}
+      
+      SSH Tunnel (from Mac):
+        ssh -L {{ dev_jupyterlab_workbench_port }}:localhost:{{ dev_jupyterlab_workbench_port }} {{ dev_jupyterlab_workbench_user }}@{{ ansible_host }}
+      
+      Then open: http://localhost:{{ dev_jupyterlab_workbench_port }}
+      
+      Notebooks directory: {{ dev_jupyterlab_workbench_notebooks_dir }}
+      Langfuse cookbooks: {{ dev_jupyterlab_workbench_cookbooks_dir }}
+      
+      Service status: systemctl status {{ dev_jupyterlab_workbench_service_name }}
