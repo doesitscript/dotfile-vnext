@@ -83,11 +83,14 @@ Include:
     user-facing commands unless the user explicitly asks for the exact command
     Codex must use from inside its sandbox.
 12. NetBox is the source of truth for host, VM, IP, platform, role, and site
-    facts. Before naming an object, embedding metadata in a name, or adding a
-    custom field, apply the gates in `framework-netbox-modeling.mdc`:
+    facts. The active naming schema under `docs/reference/naming-standards/`
+    is the source of truth for naming patterns, compact codes, and context
+    fields. Before naming an object, embedding metadata in a name, or adding a
+    custom field, apply the schema files and the gates in
+    `framework-netbox-modeling.mdc`:
     - native field before custom field
     - tag before custom field
-    - name equals slug (lowercase-kebab) except proper product names
+    - compact schema code equals slug for repo-controlled code objects
     - object hierarchy: Site → Cluster → VM; Site → Device
     - IPs belong to interfaces, not directly to objects
 13. For project-maturity work, keep the knowledge gates modular:
@@ -95,10 +98,12 @@ Include:
     - NetBox source-of-truth modeling uses `netbox-knowledge-gate`
     - broad project improvement uses `project-maturity-router` to activate one
       or both gates without merging them into one capability
-14. The former network-server Windows control alias is retired. The host is now
-    modeled and targeted as `home-lab-auth-hvh-01`. Do not introduce new active
-    inventory, playbook, or plan references to the retired alias. NetBox remains
-    the source of truth for this identity.
+14. The former network-server Windows control alias is retired. Do not
+    introduce new active inventory, playbook, or plan references to the retired
+    alias. The current reconciled naming target for that control-plane Hyper-V
+    host is the compact schema shape `hom-lab-ctl-hvh-01`; any live NetBox
+    object still using an older long form is transitional until the NetBox seed
+    reconciliation pass is complete.
 15. NetBox identity/modeling changes are not complete until the repo is updated
     and `scripts/validate_netbox_repo_consistency.sh` passes. Run the gate
     directly or through `ansible-playbook playbooks/deploy_ipam_netbox.yaml
@@ -212,7 +217,7 @@ planning or research question. If they are skipped, say why.
      be created
    If this gate fails, do not emit or save the plan. Fix the plan first.
 5. Refine the draft until agreement instead of treating planning as one-shot.
-6. Keep draft plans in the conversation until they are accepted. Store approved plans under `docs/plans/` as the canonical durable artifact and mirror them to a GitHub issue as a higher-level roadmap when GitHub is available.
+6. Keep draft plans in the conversation until they are accepted. Store approved plans under `docs/plans/` as the canonical durable artifact and mirror them to a GitHub issue as a higher-level roadmap when GitHub is available. New approved plans must be stored as folder packets: `docs/plans/YYYY-MM-DD--short-slug/README.md`. Do not create new single-file plan artifacts.
 7. At meaningful role transitions, briefly label the active framework surface when it helps the user track the work:
    - `Planner/Steward view:`
    - `Researcher view:`
