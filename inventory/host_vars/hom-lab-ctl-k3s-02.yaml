@@ -1,32 +1,31 @@
 ---
-# Active Hyper-V-native Ubuntu VM surface on the server-225 Hyper-V host.
-# This host now represents the routed-subnet guest directly rather than a
-# future placeholder identity.
+# Planned Hyper-V-native K3s Ubuntu VM surface on the RTX 5090 server-225 host.
+# This is a baseline/stub target only until the GPU-enabled K3s plan promotes
+# it into the real cluster.
 
 physical_node: "server-225"
 surface_type: "ubuntu_vm"
 node_classes:
-  - docker_runtime
+  - k3s_runtime
   - ai_worker
 hardware_classes:
   - nvidia_gpu
   - high_vram
 runtime_planes:
-  docker_engine:
+  k3s_node:
     enabled: true
-    purpose: ai_worker
+    purpose: gpu_worker_stub
 policy_classes:
   - experimental
   - non_authoritative_data
-ansible_host: "192.168.137.10"
-host_ip: "192.168.137.10"
+ansible_host: "192.168.137.11"
+host_ip: "192.168.137.11"
 ansible_user: "joshc"
 ansible_port: 22
 ansible_python_interpreter: "/usr/bin/python3"
 ssh_proxy_jump_host: "hom-lab-ctl-hvh-02"
-docker_engine_state: present
-logging_loki_public_endpoint: "http://192.168.50.158:3100/loki/api/v1/push"
 ansible_ssh_common_args: >-
   -o ProxyJump=hom-lab-ctl-hvh-02
   -o StrictHostKeyChecking=no
   -o UserKnownHostsFile=/dev/null
+k3s_readiness_stub_expected_runtime: absent

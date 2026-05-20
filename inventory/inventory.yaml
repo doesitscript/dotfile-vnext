@@ -10,7 +10,7 @@
 #   - group_vars/<group>.yaml or group_vars/<group>/  (so Ansible loads the right vars)
 #   - physical node / host_vars "base" naming (server-225 -> server_225, etc.)
 # host_vars files are only for inventory host names such as
-# hom-lab-ctl-hvh-01, server-225-win, server-225-ubuntu, mac-dev, etc.
+# hom-lab-ctl-hvh-01, hom-lab-ctl-hvh-02, server-225-ubuntu, mac-dev, etc.
 
 all:
   children:
@@ -27,8 +27,8 @@ all:
     # slow unreachable-host timeouts during routine runs.
     windows_hosts:
       hosts:
-        server-225-win:
-          # All connection details in host_vars/server-225-win.yaml
+        hom-lab-ctl-hvh-02:
+          # All connection details in host_vars/hom-lab-ctl-hvh-02.yaml
 
         hom-lab-ctl-hvh-01:
           # All connection details in host_vars/hom-lab-ctl-hvh-01.yaml
@@ -54,7 +54,7 @@ all:
     # scoped to hosts with explicit file-share intent.
     windows_file_share_hosts:
       hosts:
-        server-225-win:
+        hom-lab-ctl-hvh-02:
         hom-lab-ctl-hvh-01:
 
     # Additive IPv6 fallback/control-plane surfaces for Windows hosts.
@@ -62,8 +62,8 @@ all:
     # operator/troubleshooting entry points instead of changing the default path.
     windows_hosts_ipv6_fallback:
       hosts:
-        server-225-win-ipv6:
-          # IPv6 WinRM fallback for server-225-win
+        hom-lab-ctl-hvh-02-ipv6:
+          # IPv6 WinRM fallback for hom-lab-ctl-hvh-02
 
     # Not-yet-deployed Windows hosts. Move to windows_hosts when ready to provision.
     # Deferred hosts stay absent from active groups so they are never targeted.
@@ -76,7 +76,9 @@ all:
     linux_vm_hosts:
       hosts:
         server-225-ubuntu:
-          # Active Hyper-V Ubuntu guest on server-225-win.
+          # Active Hyper-V Ubuntu guest on hom-lab-ctl-hvh-02.
+        hom-lab-ctl-k3s-02:
+          # Planned K3s Ubuntu guest on the RTX 5090 server-225 host.
         hom-lab-ctl-dkr-01:
           # Planned Docker Ubuntu guest on hom-lab-ctl-hvh-01.
         hom-lab-ctl-k3s-01:
@@ -87,6 +89,7 @@ all:
     k3s_vm_stub_hosts:
       hosts:
         hom-lab-ctl-k3s-01:
+        hom-lab-ctl-k3s-02:
 
     # SSH targets: hosts that may need an entry in the controller's ~/.ssh/config.
     # Windows hosts render from OpenSSH desired state. Linux VMs render when
@@ -102,14 +105,14 @@ all:
       children:
         execution_nodes: {}
       hosts:
-        server-225-win:
+        hom-lab-ctl-hvh-02:
         hom-lab-ctl-hvh-01:
         # dev-workstation-win: # deferred — add back when provisioned
 
     # Physical-node groups (names match group_vars/<group>.yaml and host_vars base names)
     server_225:
       hosts:
-        server-225-win:
+        hom-lab-ctl-hvh-02:
         server-225-ubuntu:
 
     network_server:
