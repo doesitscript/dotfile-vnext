@@ -74,9 +74,9 @@ ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
 ```
 
 Verify in the NetBox UI: you should see site `homelab`, tenant `home`,
-device `home-lab-auth-hvh-02`, cluster `server-225-hyperv`, VM
+device `hom-lab-ctl-hvh-02`, cluster `server-225-hyperv`, VM
 `server-225-ubuntu` with primary IP, and tags including `ansible-managed`,
-`home`, `lab`, `auth`, `homelab`, `hyperv`, `docker`, and `infra`. You should
+`home`, `lab`, `ctl`, `homelab`, `hyperv`, `docker`, and `infra`. You should
 also see application services on `server-225-ubuntu` for `netbox-web`,
 `semaphore-web`, `loki-http`, and `grafana-web`.
 
@@ -219,7 +219,7 @@ objects to represent the current Server-225 world:
 
 - site: `homelab`
 - tenant: `home`
-- device: `home-lab-auth-hvh-02`
+- device: `hom-lab-ctl-hvh-02`
 - legacy device aliases: `server-225-win`, `server-225`, `exec-hvh-01`
 - cluster: `server-225-hyperv`
 - VM: `server-225-ubuntu`
@@ -229,7 +229,7 @@ objects to represent the current Server-225 world:
   - `loki-http` at `tcp/3100`
   - `grafana-web` at `tcp/3000`
 - platforms: Windows Server 2025 and Ubuntu 24.04
-- tags: `ansible-managed`, `home`, `lab`, `auth`, `homelab`, `hyperv`,
+- tags: `ansible-managed`, `home`, `lab`, `ctl`, `homelab`, `hyperv`,
   `docker`, `infra`, `execution`, `experimental`, `non-authoritative-data`,
   `service-endpoint`, `web-ui`, `observability`
 
@@ -255,15 +255,15 @@ and stored as `vault_netbox_api_token`.
 ## Network-Server VM Model Slice
 
 The network-server VM slice seeds the Hyper-V objects that live under
-`home-lab-auth-hvh-01` without installing K3s:
+`hom-lab-ctl-hvh-01` without installing K3s:
 
-- device: `home-lab-auth-hvh-01`
+- device: `hom-lab-ctl-hvh-01`
 - legacy/control aliases: `network-server`, `primary-hvh-01`, and the retired
   network-server Windows control alias
-- cluster: `home-lab-auth-hvh-01-hyperv`
-- Docker VM: `nsrv-dkr-01`
-- K3s placeholder VM: `nsrv-k3s-01`
-- VM roles: `docker-engine`, `k3s-node`
+- cluster: `hom-lab-ctl-hvh-01-hyv`
+- Docker VM: `hom-lab-ctl-dkr-01`
+- K3s placeholder VM: `hom-lab-ctl-k3s-01`
+- VM roles: `dkr`, `k3s`
 - tags: includes `docker`, `k3s`, `hyperv`, `authoritative-data`, and
   `lan-exposed-services`
 
@@ -281,7 +281,7 @@ ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
   --tags ipam_netbox_seed_network_server_vm_model
 ```
 
-This slice models `nsrv-k3s-01` as a VM stub target only. It does not add the
+This slice models `hom-lab-ctl-k3s-01` as a VM stub target only. It does not add the
 host to the live `k3s_cluster` server group and does not install K3s.
 
 ## Reproducibility and Recovery
@@ -425,7 +425,7 @@ runs them. For current access, use:
 
 NetBox does not natively model application-level port forwarding/PAT as a
 first-class relationship, so the service comments record the Windows
-`netsh portproxy` publishing path through `home-lab-auth-hvh-02`.
+`netsh portproxy` publishing path through `hom-lab-ctl-hvh-02`.
 Grafana is Docker-published on the Ubuntu VM but is not currently published
 through the Windows LAN portproxy.
 

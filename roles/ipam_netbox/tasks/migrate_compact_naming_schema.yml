@@ -1,0 +1,250 @@
+---
+# One-time migration: reconcile live NetBox object names and role slugs to the
+# active compact naming schema.
+# Run with: --tags ipam_netbox_migrate_compact_naming_schema
+
+- name: Include vault variables for NetBox API token
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault.yml"
+    name: vault_vars
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_compact_naming_schema
+
+- name: Require NetBox API token for compact naming migration
+  ansible.builtin.assert:
+    that:
+      - vault_vars.vault_netbox_api_token is defined
+      - vault_vars.vault_netbox_api_token | length > 0
+    fail_msg: >-
+      vault_netbox_api_token is required in vault.yml before NetBox naming
+      migration can run.
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_compact_naming_schema
+
+- name: Define compact slug migrations
+  ansible.builtin.set_fact:
+    _ipam_netbox_compact_slug_migrations:
+      - endpoint: dcim/device-roles
+        old_slug: hyperv-host
+        new_slug: hvh
+        body:
+          name: hvh
+          slug: hvh
+          description: hyperv-host
+      - endpoint: dcim/device-roles
+        old_slug: docker-engine
+        new_slug: dkr
+        body:
+          name: dkr
+          slug: dkr
+          description: docker-engine
+      - endpoint: dcim/device-roles
+        old_slug: k3s-node
+        new_slug: k3s
+        body:
+          name: k3s
+          slug: k3s
+          description: k3s-node
+      - endpoint: extras/tags
+        old_slug: auth
+        new_slug: ctl
+        body:
+          name: ctl
+          slug: ctl
+          description: Control-plane/context segment for infrastructure hosts
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_compact_naming_schema
+
+- name: Query legacy compact slug objects
+  ansible.builtin.uri:
+    url: "{{ ipam_netbox_api_url }}/api/{{ item.endpoint }}/?slug={{ item.old_slug | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+    status_code: 200
+    validate_certs: false
+  loop: "{{ _ipam_netbox_compact_slug_migrations }}"
+  loop_control:
+    label: "{{ item.endpoint }}: {{ item.old_slug }} -> {{ item.new_slug }}"
+  register: _ipam_netbox_compact_slug_legacy_queries
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_compact_naming_schema
+
+- name: Query target compact slug objects
+  ansible.builtin.uri:
+    url: "{{ ipam_netbox_api_url }}/api/{{ item.endpoint }}/?slug={{ item.new_slug | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+    status_code: 200
+    validate_certs: false
+  loop: "{{ _ipam_netbox_compact_slug_migrations }}"
+  loop_control:
+    label: "{{ item.endpoint }}: {{ item.old_slug }} -> {{ item.new_slug }}"
+  register: _ipam_netbox_compact_slug_target_queries
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_compact_naming_schema
+
+- name: Fail if compact slug source and target both exist
+  ansible.builtin.fail:
+    msg: >-
+      NetBox already has both legacy slug
+      {{ _ipam_netbox_compact_slug_migrations[item].old_slug }}
+      and target slug
+      {{ _ipam_netbox_compact_slug_migrations[item].new_slug }}
+      in {{ _ipam_netbox_compact_slug_migrations[item].endpoint }}.
+      Resolve the duplicate manually before running compact naming migration.
+  loop: "{{ range(0, _ipam_netbox_compact_slug_migrations | length) | list }}"
+  when:
+    - _ipam_netbox_compact_slug_legacy_queries.results[item].json.results | length > 0
+    - _ipam_netbox_compact_slug_target_queries.results[item].json.results | length > 0
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_compact_naming_schema
+
+- name: Patch legacy compact slug objects
+  ansible.builtin.uri:
+    url: >-
+      {{ ipam_netbox_api_url }}/api/{{ _ipam_netbox_compact_slug_migrations[item].endpoint }}/{{
+      _ipam_netbox_compact_slug_legacy_queries.results[item].json.results[0].id
+      }}/
+    method: PATCH
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Content-Type: application/json
+    body_format: json
+    body: "{{ _ipam_netbox_compact_slug_migrations[item].body }}"
+    status_code: 200
+    validate_certs: false
+  loop: "{{ range(0, _ipam_netbox_compact_slug_migrations | length) | list }}"
+  loop_control:
+    label: >-
+      {{ _ipam_netbox_compact_slug_migrations[item].endpoint }}:
+      {{ _ipam_netbox_compact_slug_migrations[item].old_slug }}
+      -> {{ _ipam_netbox_compact_slug_migrations[item].new_slug }}
+  when:
+    - _ipam_netbox_compact_slug_legacy_queries.results[item].json.results | length > 0
+    - _ipam_netbox_compact_slug_target_queries.results[item].json.results | length == 0
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_compact_naming_schema
+
+- name: Define compact object name migrations
+  ansible.builtin.set_fact:
+    _ipam_netbox_compact_name_migrations:
+      - endpoint: dcim/devices
+        old_name: home-lab-auth-hvh-01
+        new_name: hom-lab-ctl-hvh-01
+      - endpoint: dcim/devices
+        old_name: home-lab-auth-hvh-02
+        new_name: hom-lab-ctl-hvh-02
+      - endpoint: virtualization/clusters
+        old_name: home-lab-auth-hvh-01-hyperv
+        new_name: hom-lab-ctl-hvh-01-hyv
+      - endpoint: virtualization/virtual-machines
+        old_name: nsrv-dkr-01
+        new_name: hom-lab-ctl-dkr-01
+      - endpoint: virtualization/virtual-machines
+        old_name: nsrv-k3s-01
+        new_name: hom-lab-ctl-k3s-01
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_compact_naming_schema
+
+- name: Query legacy compact object names
+  ansible.builtin.uri:
+    url: "{{ ipam_netbox_api_url }}/api/{{ item.endpoint }}/?name={{ item.old_name | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+    status_code: 200
+    validate_certs: false
+  loop: "{{ _ipam_netbox_compact_name_migrations }}"
+  loop_control:
+    label: "{{ item.endpoint }}: {{ item.old_name }} -> {{ item.new_name }}"
+  register: _ipam_netbox_compact_name_legacy_queries
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_compact_naming_schema
+
+- name: Query target compact object names
+  ansible.builtin.uri:
+    url: "{{ ipam_netbox_api_url }}/api/{{ item.endpoint }}/?name={{ item.new_name | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+    status_code: 200
+    validate_certs: false
+  loop: "{{ _ipam_netbox_compact_name_migrations }}"
+  loop_control:
+    label: "{{ item.endpoint }}: {{ item.old_name }} -> {{ item.new_name }}"
+  register: _ipam_netbox_compact_name_target_queries
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_compact_naming_schema
+
+- name: Fail if compact name source and target both exist
+  ansible.builtin.fail:
+    msg: >-
+      NetBox already has both legacy object
+      {{ _ipam_netbox_compact_name_migrations[item].old_name }}
+      and target object
+      {{ _ipam_netbox_compact_name_migrations[item].new_name }}
+      in {{ _ipam_netbox_compact_name_migrations[item].endpoint }}.
+      Resolve the duplicate manually before running compact naming migration.
+  loop: "{{ range(0, _ipam_netbox_compact_name_migrations | length) | list }}"
+  when:
+    - _ipam_netbox_compact_name_legacy_queries.results[item].json.results | length > 0
+    - _ipam_netbox_compact_name_target_queries.results[item].json.results | length > 0
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_compact_naming_schema
+
+- name: Patch legacy compact object names
+  ansible.builtin.uri:
+    url: >-
+      {{ ipam_netbox_api_url }}/api/{{ _ipam_netbox_compact_name_migrations[item].endpoint }}/{{
+      _ipam_netbox_compact_name_legacy_queries.results[item].json.results[0].id
+      }}/
+    method: PATCH
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Content-Type: application/json
+    body_format: json
+    body:
+      name: "{{ _ipam_netbox_compact_name_migrations[item].new_name }}"
+    status_code: 200
+    validate_certs: false
+  loop: "{{ range(0, _ipam_netbox_compact_name_migrations | length) | list }}"
+  loop_control:
+    label: >-
+      {{ _ipam_netbox_compact_name_migrations[item].endpoint }}:
+      {{ _ipam_netbox_compact_name_migrations[item].old_name }}
+      -> {{ _ipam_netbox_compact_name_migrations[item].new_name }}
+  when:
+    - _ipam_netbox_compact_name_legacy_queries.results[item].json.results | length > 0
+    - _ipam_netbox_compact_name_target_queries.results[item].json.results | length == 0
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_compact_naming_schema
+
+- name: Report compact naming migration result
+  ansible.builtin.debug:
+    msg:
+      migrated_slugs: "{{ _ipam_netbox_compact_slug_migrations | map(attribute='new_slug') | list }}"
+      migrated_names: "{{ _ipam_netbox_compact_name_migrations | map(attribute='new_name') | list }}"
+      next_step: "Re-run the NetBox seed tags to refresh object fields and verify idempotency."
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_compact_naming_schema

@@ -15,7 +15,7 @@
       change_class: "idempotent NetBox source-of-truth modeling"
       apply: "ansible-playbook playbooks/deploy_ipam_netbox.yaml --tags ipam_netbox_seed_windows_share_hosts_model"
       verify:
-        - "NetBox contains home-lab-auth-hvh-01 and home-lab-auth-hvh-02 as Windows Server 2025 hyperv-host devices"
+        - "NetBox contains hom-lab-ctl-hvh-01 and hom-lab-ctl-hvh-02 as Windows Server 2025 hvh devices"
         - "Each device has mgmt0 with the management IP from inventory"
       undo: "manual NetBox object cleanup unless an absent seed path is added"
       naming_context:
@@ -23,9 +23,9 @@
         site: homelab
         tenant: home
         environment: lab
-        stage: auth
+        domain: ctl
         role_segment: hvh
-        role_name: hyperv-host
+        role_name: hvh
       migrations: "{{ ipam_netbox_windows_share_hosts_model.device_name_migrations }}"
       devices: "{{ ipam_netbox_windows_share_hosts_model.devices | map(attribute='name') | list }}"
   tags:

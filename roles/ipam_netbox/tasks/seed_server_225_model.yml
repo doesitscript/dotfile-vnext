@@ -15,7 +15,7 @@
       change_class: "idempotent NetBox source-of-truth modeling"
       apply: "ansible-playbook playbooks/deploy_ipam_netbox.yaml --tags ipam_netbox_seed_server_225_model"
       verify:
-        - "NetBox UI/API contains the home-lab-auth-hvh-02 device plus server-225 cluster/VM objects"
+        - "NetBox UI/API contains the hom-lab-ctl-hvh-02 device plus server-225 cluster/VM objects"
         - "NetBox VM server-225-ubuntu has primary IP 192.168.137.10/24"
         - "NetBox application services exist for NetBox, Semaphore, Loki, and Grafana"
       undo: "manual NetBox object cleanup for this first modeling slice"
@@ -237,7 +237,17 @@
       cluster: "{{ ipam_netbox_server_225_model.cluster.name }}"
       status: "{{ ipam_netbox_server_225_model.device.status }}"
       tags: "{{ ipam_netbox_server_225_model.device.tags | default(['ansible-managed', 'homelab', 'hyperv', 'infra']) }}"
-      comments: "{{ (['legacy_aliases:'] + ((ipam_netbox_server_225_model.device.legacy_aliases | default([])) | map('regex_replace', '^(.*)$', '  - \\1') | list)) | join('\n') }}"
+      comments: >-
+        {{
+          (
+            ['legacy_aliases:']
+            + (
+              (ipam_netbox_server_225_model.device.legacy_aliases | default([]))
+              | map('regex_replace', '^(.*)$', '  - \\1')
+              | list
+            )
+          ) | join('\n')
+        }}
     state: present
   delegate_to: localhost
   tags:

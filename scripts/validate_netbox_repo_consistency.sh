@@ -7,7 +7,7 @@ cd "$repo_root"
 retired_base="network-server"
 retired_name="${retired_base}-win"
 retired_label="retired network-server Windows control alias"
-current_name="home-lab-auth-hvh-01"
+current_name="hom-lab-ctl-hvh-01"
 
 failures=()
 
@@ -75,6 +75,48 @@ fi
 if [[ ! -f "inventory/host_vars/${current_name}.yaml" ]]; then
   add_failure "Current NetBox host vars file inventory/host_vars/${current_name}.yaml is missing."
 fi
+
+compact_active_paths=(
+  AGENTS.md
+  docs/intake/jupyter-devops-implementation-plans
+  docs/reference/naming-standards
+  inventory
+  playbooks
+  roles
+  scripts
+)
+
+retired_compact_name_patterns=(
+  "home-lab-auth-hvh-01"
+  "home-lab-auth-hvh-02"
+  "nsrv-dkr-01"
+  "nsrv-k3s-01"
+)
+
+for retired_compact_name in "${retired_compact_name_patterns[@]}"; do
+  if rg -n --fixed-strings -g '!docs/reference/naming-standards/archive/**' \
+    "$retired_compact_name" "${compact_active_paths[@]}" >/tmp/netbox-repo-compact-rg.$$ 2>/dev/null; then
+    while IFS= read -r hit; do
+      case "$hit" in
+        *"legacy"*|*"Legacy"*|*"retired"*|*"Retired"*|*"former"*|*"Historical"*|*"historical"*|*"aliases"*|*"alias"*|*"old_name"*|*"migration"*|*"migrations"*)
+          continue
+          ;;
+      esac
+
+      case "$hit" in
+        scripts/validate_netbox_repo_consistency.sh:*)
+          continue
+          ;;
+        docs/intake/jupyter-devops-implementation-plans/research/*)
+          continue
+          ;;
+      esac
+
+      add_failure "Retired compact-schema name appears outside an explicit legacy/migration context: ${hit}"
+    done < /tmp/netbox-repo-compact-rg.$$
+  fi
+  rm -f /tmp/netbox-repo-compact-rg.$$
+done
 
 if ((${#failures[@]} > 0)); then
   printf 'NetBox/repo consistency check failed.\n\n' >&2
