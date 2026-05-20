@@ -23,7 +23,7 @@
           {{
             (_huggingface_remove_target_existing.mcpServers | default({}))
             | dict2items
-            | rejectattr('key', 'equalto', huggingface_mcp_server_key)
+            | rejectattr('key', 'equalto', _huggingface_effective_server_key)
             | items2dict
           }}
         _huggingface_remove_target_merged: >-
@@ -31,3 +31,4 @@
             _huggingface_remove_target_existing
             | combine({'mcpServers': _huggingface_remove_target_filtered_servers})
           }}
+        _huggingface_effective_server_key: "{{ _huggingface_target_server_key | default(huggingface_mcp_server_key) }}"

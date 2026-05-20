@@ -10,6 +10,27 @@
   register: _huggingface_mcp_endpoint_probe
   changed_when: false
 
+- name: Remove legacy Hugging Face entry from Cursor mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _huggingface_target_name: "cursor"
+    _huggingface_target_config_path: "{{ huggingface_mcp_cursor_config_path }}"
+    _huggingface_target_server_key: "huggingface"
+  when:
+    - _huggingface_target_cursor_selected | bool
+    - "'huggingface' in huggingface_mcp_legacy_server_keys"
+    - huggingface_mcp_server_key != "huggingface"
+
+- name: Remove legacy Hugging Face entry from Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ huggingface_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "huggingface"
+  when:
+    - _huggingface_target_codex_selected | bool
+    - "'huggingface' in huggingface_mcp_legacy_server_keys"
+    - huggingface_mcp_server_key != "huggingface"
+
 - name: Ensure Hugging Face entry exists in Cursor mcp.json
   ansible.builtin.include_tasks: configure_target.yml
   vars:
