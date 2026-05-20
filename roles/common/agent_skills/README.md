@@ -59,6 +59,7 @@ Current imported personal-portable skills:
 - Cursor personal global skills:
   - `create-diagrams`
 - Codex personal global skills:
+  - `critical-naming-analysis`
   - `gemini-free-tier-model-chooser`
 
 ### Vendor-System Skills
@@ -87,6 +88,8 @@ Managed links:
   `roles/common/agent_skills/files/cursor/skills`
 - `~/.codex/skills/gemini-free-tier-model-chooser` ->
   `roles/common/agent_skills/files/codex/skills/gemini-free-tier-model-chooser`
+- `~/.codex/skills/critical-naming-analysis` ->
+  `roles/common/agent_skills/files/codex/skills/critical-naming-analysis`
 
 Codex gets an individual skill link instead of replacing all of
 `~/.codex/skills` so the tool-managed `.system` directory remains outside repo
