@@ -1,0 +1,31 @@
+---
+# Docker Compose — NetBox Webhook Handler
+# Deploys the schema enforcement service alongside your NetBox instance
+
+version: "3.9"
+
+services:
+  webhook-handler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cas-lab/netbox-webhook-handler:latest
+    container_name: netbox-schema-enforcer
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      - NETBOX_WEBHOOK_SECRET=${NETBOX_WEBHOOK_SECRET:-CHANGE_ME_STRONG_SECRET}
+      - LOG_LEVEL=INFO
+    networks:
+      - netbox_default
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  netbox_default:
+    external: true

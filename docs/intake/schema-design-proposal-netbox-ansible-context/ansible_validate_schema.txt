@@ -1,0 +1,48 @@
+---
+# validate_schema.yml — Standalone schema validation playbook
+# Usage: ansible-playbook playbooks/validate_schema.yml -i inventory/
+
+- name: "Validate CAS Lab Naming Schema"
+  hosts: all
+  gather_facts: false
+  vars:
+    schema_regex: '^[a-z]{2,3}-[a-z]{2,3}-[a-z]{2,3}-[a-z]{2,3}-[0-9]{2}$'
+    valid_tenants: [cas]
+    valid_envs:    [lab, dev, stg, prd, dmz, tst]
+    valid_sites:   [hom, dc1, dc2, col, cld, edg]
+  tasks:
+    - name: Parse hostname segments
+      ansible.builtin.set_fact:
+        hn_parts: "{{ inventory_hostname.split('-') }}"
+
+    - name: Assert segment count
+      ansible.builtin.assert:
+        that: hn_parts | length == 5
+        fail_msg: "{{ inventory_hostname }} must have exactly 5 dash-separated segments"
+
+    - name: Assert regex match
+      ansible.builtin.assert:
+        that: inventory_hostname is match(schema_regex)
+        fail_msg: "{{ inventory_hostname }} fails schema regex {{ schema_regex }}"
+
+    - name: Assert valid tenant
+      ansible.builtin.assert:
+        that: hn_parts[0] in valid_tenants
+        fail_msg: "Tenant '{{ hn_parts[0] }}' not in {{ valid_tenants }}"
+
+    - name: Assert valid env
+      ansible.builtin.assert:
+        that: hn_parts[1] in valid_envs
+        fail_msg: "Env '{{ hn_parts[1] }}' not in {{ valid_envs }}"
+
+    - name: Assert valid site
+      ansible.builtin.assert:
+        that: hn_parts[2] in valid_sites
+        fail_msg: "Site '{{ hn_parts[2] }}' not in {{ valid_sites }}"
+
+    - name: Schema validation summary
+      ansible.builtin.debug:
+        msg: >
+          PASS | {{ inventory_hostname }}
+          → tenant={{ hn_parts[0] }} env={{ hn_parts[1] }}
+            site={{ hn_parts[2] }} role={{ hn_parts[3] }} seq={{ hn_parts[4] }}

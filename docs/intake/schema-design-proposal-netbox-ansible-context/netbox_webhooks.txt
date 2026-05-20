@@ -1,0 +1,155 @@
+---
+# NetBox Webhook Definitions — Schema Enforcement
+# Tenant: cas | Env: lab | Site: hom
+# Apply via: NetBox UI → Extras → Webhooks, or NetBox API POST /api/extras/webhooks/
+
+webhooks:
+
+  - name: "schema-enforce-device-create"
+    content_types:
+      - "dcim.device"
+    events:
+      - created
+    enabled: true
+    url: "http://webhook-handler:9000/webhook/netbox/schema-enforce"
+    http_method: POST
+    http_content_type: "application/json"
+    secret: "CHANGE_ME_STRONG_SECRET"
+    ssl_verification: true
+    conditions:
+      attr: "name"
+      value: ""
+      op: "ne"
+    body_template: |
+      {
+        "event": "{{ event }}",
+        "model": "{{ model }}",
+        "timestamp": "{{ timestamp }}",
+        "data": {
+          "id": {{ data['id'] }},
+          "name": "{{ data['name'] }}",
+          "status": "{{ data['status']['value'] }}",
+          "tenant": {% if data['tenant'] %}"{{ data['tenant']['slug'] }}"{% else %}null{% endif %},
+          "site": {% if data['site'] %}"{{ data['site']['slug'] }}"{% else %}null{% endif %},
+          "device_role": {% if data['device_role'] %}"{{ data['device_role']['slug'] }}"{% else %}null{% endif %}
+        }
+      }
+
+  - name: "schema-enforce-device-update"
+    content_types:
+      - "dcim.device"
+    events:
+      - updated
+    enabled: true
+    url: "http://webhook-handler:9000/webhook/netbox/schema-enforce"
+    http_method: POST
+    http_content_type: "application/json"
+    secret: "CHANGE_ME_STRONG_SECRET"
+    ssl_verification: true
+    body_template: |
+      {
+        "event": "{{ event }}",
+        "model": "{{ model }}",
+        "timestamp": "{{ timestamp }}",
+        "data": {
+          "id": {{ data['id'] }},
+          "name": "{{ data['name'] }}"
+        }
+      }
+
+  - name: "schema-enforce-vm-create"
+    content_types:
+      - "virtualization.virtualmachine"
+    events:
+      - created
+      - updated
+    enabled: true
+    url: "http://webhook-handler:9000/webhook/netbox/schema-enforce"
+    http_method: POST
+    http_content_type: "application/json"
+    secret: "CHANGE_ME_STRONG_SECRET"
+    ssl_verification: true
+    body_template: |
+      {
+        "event": "{{ event }}",
+        "model": "virtualmachine",
+        "timestamp": "{{ timestamp }}",
+        "data": {
+          "id": {{ data['id'] }},
+          "name": "{{ data['name'] }}",
+          "status": "{{ data['status']['value'] }}",
+          "cluster": {% if data['cluster'] %}"{{ data['cluster']['name'] }}"{% else %}null{% endif %}
+        }
+      }
+
+# ── NetBox Custom Fields ──────────────────────────────────────────────────────
+# Create these via: NetBox UI → Extras → Custom Fields
+
+custom_fields:
+
+  - name: "schema_valid"
+    label: "Schema Valid"
+    type: boolean
+    content_types:
+      - "dcim.device"
+      - "virtualization.virtualmachine"
+    required: false
+    default: null
+    description: "Set by webhook handler — true if name passes schema validation"
+
+  - name: "schema_tenant"
+    label: "Schema Tenant"
+    type: text
+    content_types:
+      - "dcim.device"
+      - "virtualization.virtualmachine"
+    validation_regex: "^[a-z]{2,3}$"
+    description: "Parsed tenant segment from hostname schema"
+
+  - name: "schema_env"
+    label: "Schema Environment"
+    type: text
+    content_types:
+      - "dcim.device"
+      - "virtualization.virtualmachine"
+    validation_regex: "^[a-z]{2,3}$"
+    description: "Parsed environment segment from hostname schema"
+
+  - name: "schema_site_code"
+    label: "Schema Site Code"
+    type: text
+    content_types:
+      - "dcim.device"
+      - "virtualization.virtualmachine"
+    validation_regex: "^[a-z]{2,3}$"
+    description: "Parsed site segment from hostname schema"
+
+  - name: "schema_role_code"
+    label: "Schema Role Code"
+    type: text
+    content_types:
+      - "dcim.device"
+      - "virtualization.virtualmachine"
+    validation_regex: "^[a-z]{2,3}$"
+    description: "Parsed role segment from hostname schema"
+
+  - name: "schema_seq"
+    label: "Schema Sequence"
+    type: text
+    content_types:
+      - "dcim.device"
+      - "virtualization.virtualmachine"
+    validation_regex: "^[0-9]{2}$"
+    description: "Parsed sequence number from hostname schema"
+
+# ── Tags ─────────────────────────────────────────────────────────────────────
+tags:
+  - name: "schema-valid"
+    slug: "schema-valid"
+    color: "4caf50"
+    description: "Device name passes the compressed naming schema"
+
+  - name: "schema-violation"
+    slug: "schema-violation"
+    color: "f44336"
+    description: "Device name violates the compressed naming schema — review required"

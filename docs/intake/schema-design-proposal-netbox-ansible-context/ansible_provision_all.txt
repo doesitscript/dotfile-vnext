@@ -1,0 +1,70 @@
+---
+# provision_all.yml — Provision all CAS Lab hosts
+# Usage: ansible-playbook playbooks/provision_all.yml -i inventory/
+
+- name: "Schema validation pre-flight"
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Validate all hostnames against schema
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname is match('^[a-z]{2,3}-[a-z]{2,3}-[a-z]{2,3}-[a-z]{2,3}-[0-9]{2}$')
+        fail_msg: "SCHEMA VIOLATION: {{ inventory_hostname }} does not match {tenant}-{env}-{site}-{role}-{seq##}"
+      tags: [always, schema]
+
+- name: "Provision network infrastructure"
+  hosts: network
+  become: true
+  collections: [cas.lab]
+  roles:
+    - role: "{{ inventory_hostname.split('-')[3] }}"
+  tags: [network]
+
+- name: "Provision compute"
+  hosts: compute
+  become: true
+  collections: [cas.lab]
+  roles:
+    - role: "{{ inventory_hostname.split('-')[3] }}"
+  tags: [compute]
+
+- name: "Provision data services"
+  hosts: data
+  become: true
+  collections: [cas.lab]
+  roles:
+    - role: "{{ inventory_hostname.split('-')[3] }}"
+  tags: [data]
+
+- name: "Provision Kubernetes/Container hosts"
+  hosts: kubernetes
+  become: true
+  collections: [cas.lab]
+  roles:
+    - role: "{{ inventory_hostname.split('-')[3] }}"
+  tags: [kubernetes]
+
+- name: "Provision operations services"
+  hosts: operations
+  become: true
+  collections: [cas.lab]
+  roles:
+    - role: "{{ inventory_hostname.split('-')[3] }}"
+  tags: [operations]
+
+- name: "Provision infrastructure services"
+  hosts: infra_services
+  become: true
+  collections: [cas.lab]
+  roles:
+    - role: "{{ inventory_hostname.split('-')[3] }}"
+  tags: [infra_services]
+
+- name: "Provision security appliances"
+  hosts: security
+  become: true
+  collections: [cas.lab]
+  roles:
+    - role: "{{ inventory_hostname.split('-')[3] }}"
+  tags: [security]

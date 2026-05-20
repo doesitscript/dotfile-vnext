@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+"""
+NetBox Webhook Handler — Schema Enforcement
+Tenant: cas | Env: lab | Site: hom
+
+Validates device/VM names against the compressed naming schema:
+  {tenant}-{env}-{site}-{role}-{seq##}
+  Example: cas-lab-hom-csw-01
+
+Run: uvicorn webhook_handler:app --host 0.0.0.0 --port 9000
+"""
+
+import re
+import json
+import hmac
+import hashlib
+import logging
+from datetime import datetime
+from typing import Optional
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger("netbox-webhook")
+
+# ── Config ────────────────────────────────────────────────────────────────────
+NETBOX_WEBHOOK_SECRET = "CHANGE_ME_STRONG_SECRET"
+SCHEMA_REGEX = re.compile(
+    r"^(?P<tenant>[a-z]{2,3})-(?P<env>[a-z]{2,3})-(?P<site>[a-z]{2,3})-(?P<role>[a-z]{2,3})-(?P<seq>\d{2})$"
+)
+
+VALID_TENANTS = {"cas"}
+VALID_ENVS    = {"lab", "dev", "stg", "prd", "dmz", "tst"}
+VALID_SITES   = {"hom", "dc1", "dc2", "col", "cld", "edg"}
+
+ROLE_DICT = {
+    "csw":"Core Switch","dsw":"Distribution Switch","asw":"Access Switch",
+    "fw":"Firewall","vgw":"Virtual Gateway","rt":"Router",
+    "lb":"Load Balancer","ap":"Access Point",
+    "srv":"Generic Server","web":"Web Server","api":"API Server",
+    "hv":"Hypervisor","kvm":"KVM Host","esx":"ESXi Host",
+    "db":"Database Server","fs":"File Server","nas":"NAS Device",
+    "san":"SAN Fabric","isc":"iSCSI Target","smb":"SMB/CIFS Server",
+    "k3c":"K3s Control Plane","k3n":"K3s Node","ctr":"Container Host",
+    "ing":"Ingress Controller","wrk":"Worker Node",
+    "mon":"Monitoring Server","log":"Log Aggregator","bld":"Build Server",
+    "bkp":"Backup Server","msg":"Message Broker",
+    "dns":"DNS Server","dhc":"DHCP Server","ntp":"NTP Server","git":"Git Server",
+    "idm":"Identity Management","pki":"PKI / Certificate Authority","sec":"Security Appliance",
+}
+
+# ── Validation ────────────────────────────────────────────────────────────────
+def validate_name(name: str) -> dict:
+    result = {"name": name, "valid": False, "errors": [], "warnings": [], "parsed": {}}
+    if not name:
+        result["errors"].append("Name is empty")
+        return result
+    name = name.strip().lower()
+    m = SCHEMA_REGEX.match(name)
+    if not m:
+        result["errors"].append(
+            f"'{name}' does not match {{tenant}}-{{env}}-{{site}}-{{role}}-{{seq##}} "
+            f"(e.g. cas-lab-hom-csw-01)"
+        )
+        return result
+    tenant, env, site, role, seq = (
+        m.group("tenant"), m.group("env"), m.group("site"),
+        m.group("role"), m.group("seq")
+    )
+    result["parsed"] = {"tenant":tenant,"env":env,"site":site,"role":role,"seq":seq}
+    if tenant not in VALID_TENANTS:
+        result["errors"].append(f"Unknown tenant '{tenant}'. Valid: {sorted(VALID_TENANTS)}")
+    if env not in VALID_ENVS:
+        result["errors"].append(f"Unknown env '{env}'. Valid: {sorted(VALID_ENVS)}")
+    if site not in VALID_SITES:
+        result["errors"].append(f"Unknown site '{site}'. Valid: {sorted(VALID_SITES)}")
+    if role not in ROLE_DICT:
+        result["warnings"].append(f"Unknown role '{role}'. Not in role dictionary.")
+    if seq == "00":
+        result["warnings"].append("Sequence '00' is reserved — use 01+")
+    result["valid"] = len(result["errors"]) == 0
+    if result["valid"]:
+        result["role_full"] = ROLE_DICT.get(role, "Unknown")
+    return result
+
+# ── FastAPI App ───────────────────────────────────────────────────────────────
+try:
+    from fastapi import FastAPI, Request, HTTPException, Header
+    from fastapi.responses import JSONResponse
+
+    app = FastAPI(title="NetBox Schema Enforcement Webhook", version="1.0.0")
+
+    def _verify_sig(body: bytes, sig: str) -> bool:
+        expected = "sha512=" + hmac.new(
+            NETBOX_WEBHOOK_SECRET.encode(), body, hashlib.sha512
+        ).hexdigest()
+        return hmac.compare_digest(expected, sig)
+
+    @app.post("/webhook/netbox/schema-enforce")
+    async def schema_enforce(request: Request, x_hook_signature: Optional[str] = Header(None)):
+        body = await request.body()
+        if NETBOX_WEBHOOK_SECRET != "CHANGE_ME_STRONG_SECRET" and x_hook_signature:
+            if not _verify_sig(body, x_hook_signature):
+                raise HTTPException(status_code=401, detail="Invalid webhook signature")
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid JSON")
+        event    = payload.get("event", "unknown")
+        model    = payload.get("model", "unknown")
+        data     = payload.get("data", {})
+        obj_name = data.get("name", "")
+        obj_id   = data.get("id")
+        log.info(f"[{event}] model={model} id={obj_id} name='{obj_name}'")
+        if model not in ("device", "virtualmachine"):
+            return JSONResponse({"status":"skipped","reason":f"model '{model}' not enforced"})
+        v = validate_name(obj_name)
+        if v["errors"]:
+            log.warning(f"SCHEMA VIOLATION: {obj_name} → {v['errors']}")
+        return JSONResponse({
+            "timestamp": datetime.utcnow().isoformat()+"Z",
+            "event": event, "model": model,
+            "object_id": obj_id, "object_name": obj_name,
+            "schema_valid": v["valid"],
+            "parsed": v.get("parsed", {}),
+            "errors": v["errors"], "warnings": v["warnings"],
+        })
+
+    @app.get("/health")
+    async def health():
+        return {"status":"ok","roles":len(ROLE_DICT),"schema":"{tenant}-{env}-{site}-{role}-{seq##}"}
+
+    @app.get("/validate/{name}")
+    async def validate_endpoint(name: str):
+        return validate_name(name)
+
+except ImportError:
+    pass  # FastAPI not installed — use validate_name() standalone
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("webhook_handler:app", host="0.0.0.0", port=9000, reload=False)
