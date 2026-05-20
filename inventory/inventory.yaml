@@ -10,7 +10,7 @@
 #   - group_vars/<group>.yaml or group_vars/<group>/  (so Ansible loads the right vars)
 #   - physical node / host_vars "base" naming (server-225 -> server_225, etc.)
 # host_vars files are only for inventory host names such as
-# home-lab-auth-hvh-01, server-225-win, server-225-ubuntu, mac-dev, etc.
+# hom-lab-ctl-hvh-01, server-225-win, server-225-ubuntu, mac-dev, etc.
 
 all:
   children:
@@ -30,8 +30,8 @@ all:
         server-225-win:
           # All connection details in host_vars/server-225-win.yaml
 
-        home-lab-auth-hvh-01:
-          # All connection details in host_vars/home-lab-auth-hvh-01.yaml
+        hom-lab-ctl-hvh-01:
+          # All connection details in host_vars/hom-lab-ctl-hvh-01.yaml
 
     # All known Windows OS surfaces, regardless of current reachability. Use
     # this group for inventory/reporting and desired-state scope discussions,
@@ -55,7 +55,7 @@ all:
     windows_file_share_hosts:
       hosts:
         server-225-win:
-        home-lab-auth-hvh-01:
+        hom-lab-ctl-hvh-01:
 
     # Additive IPv6 fallback/control-plane surfaces for Windows hosts.
     # Keep these out of normal windows_hosts targeting so they remain explicit
@@ -77,16 +77,16 @@ all:
       hosts:
         server-225-ubuntu:
           # Active Hyper-V Ubuntu guest on server-225-win.
-        nsrv-dkr-01:
-          # Planned Docker Ubuntu guest on home-lab-auth-hvh-01.
-        nsrv-k3s-01:
-          # Planned K3s Ubuntu guest on home-lab-auth-hvh-01.
+        hom-lab-ctl-dkr-01:
+          # Planned Docker Ubuntu guest on hom-lab-ctl-hvh-01.
+        hom-lab-ctl-k3s-01:
+          # Planned K3s Ubuntu guest on hom-lab-ctl-hvh-01.
 
     # K3s VM prep/stub targets. These hosts are ready for base VM and
     # readiness-stub work only; real K3s installation stays behind k3s_cluster.
     k3s_vm_stub_hosts:
       hosts:
-        nsrv-k3s-01:
+        hom-lab-ctl-k3s-01:
 
     # SSH targets: hosts that may need an entry in the controller's ~/.ssh/config.
     # Windows hosts render from OpenSSH desired state. Linux VMs render when
@@ -103,7 +103,7 @@ all:
         execution_nodes: {}
       hosts:
         server-225-win:
-        home-lab-auth-hvh-01:
+        hom-lab-ctl-hvh-01:
         # dev-workstation-win: # deferred — add back when provisioned
 
     # Physical-node groups (names match group_vars/<group>.yaml and host_vars base names)
@@ -114,9 +114,9 @@ all:
 
     network_server:
       hosts:
-        home-lab-auth-hvh-01:
-        nsrv-dkr-01:
-        nsrv-k3s-01:
+        hom-lab-ctl-hvh-01:
+        hom-lab-ctl-dkr-01:
+        hom-lab-ctl-k3s-01:
 
     dev_3090:
       hosts:
@@ -134,7 +134,7 @@ all:
       children:
         server:
           hosts:
-            nsrv-k3s-01:
+            hom-lab-ctl-k3s-01:
         agent:
           hosts: {}
 

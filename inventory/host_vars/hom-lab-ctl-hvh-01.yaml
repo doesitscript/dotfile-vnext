@@ -1,6 +1,6 @@
 ---
 # Windows surface: WinRM for bootstrap; OpenSSH should land directly on Windows.
-# NetBox/source-of-truth name: home-lab-auth-hvh-01.
+# NetBox/source-of-truth name: hom-lab-ctl-hvh-01.
 # Legacy inventory/control alias: network-server.
 # ai-net-server-mgmt resolves via LAN mDNS but not from Mac controller — use IP directly.
 # Two Wi-Fi adapters will be active simultaneously once original adapter is restored.
@@ -24,7 +24,7 @@ winrm_port: 5985
 ansible_port: 5985
 win_user: "joshc"
 ansible_user: "joshc"
-physical_node: "home-lab-auth-hvh-01"
+physical_node: "hom-lab-ctl-hvh-01"
 legacy_aliases:
   - network-server
 win_password: "Pass@w0rd1"
@@ -79,15 +79,15 @@ hyperv_config:
   internal_ics_public_adapter_name: "vEthernet (External)"
 
 # Docker client — reaches the central Hyper-V Ubuntu Docker engine via SSH.
-docker_engine_ssh_host: "nsrv-dkr-01"
+docker_engine_ssh_host: "hom-lab-ctl-dkr-01"
 docker_engine_ssh_context_host: "{{ hyperv_ubuntu_vm_autoinstall_network_ipv4 }}"
 docker_engine_ssh_port: 22
 docker_engine_ssh_user: "joshc"
 
-# Hyper-V-native Docker Ubuntu VM companion for the home-lab-auth-hvh-01 physical node.
+# Hyper-V-native Docker Ubuntu VM companion for the hom-lab-ctl-hvh-01 physical node.
 hyperv_ubuntu_docker_vm_state: present
-hyperv_ubuntu_docker_vm_hostname: "nsrv-dkr-01"
-hyperv_ubuntu_docker_vm_inventory_host: "nsrv-dkr-01"
+hyperv_ubuntu_docker_vm_hostname: "hom-lab-ctl-dkr-01"
+hyperv_ubuntu_docker_vm_inventory_host: "hom-lab-ctl-dkr-01"
 hyperv_ubuntu_vm_cpus: 4
 hyperv_ubuntu_vm_memory: "8G"
 hyperv_ubuntu_vm_disk: "40G"
@@ -110,12 +110,12 @@ hyperv_ubuntu_vm_quick_create_image_url: >-
   https://partner-images.canonical.com/hyper-v/desktop/noble/release/current/ubuntu-noble-hyperv-amd64-ubuntu-desktop-hyperv.vhdx.zip
 hyperv_ubuntu_vm_server_iso_url: "https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso"
 
-# Hyper-V-native K3s Ubuntu VM companion for the home-lab-auth-hvh-01 physical node.
+# Hyper-V-native K3s Ubuntu VM companion for the hom-lab-ctl-hvh-01 physical node.
 # This prepares the VM only. Real k3s installation remains out of scope for the
 # stub lane and is gated by k3s_cluster membership later.
 hyperv_ubuntu_k3s_vm_state: present
-hyperv_ubuntu_k3s_vm_hostname: "nsrv-k3s-01"
-hyperv_ubuntu_k3s_vm_inventory_host: "nsrv-k3s-01"
+hyperv_ubuntu_k3s_vm_hostname: "hom-lab-ctl-k3s-01"
+hyperv_ubuntu_k3s_vm_inventory_host: "hom-lab-ctl-k3s-01"
 hyperv_ubuntu_k3s_vm_cpus: 4
 hyperv_ubuntu_k3s_vm_memory: "8G"
 hyperv_ubuntu_k3s_vm_disk: "60G"

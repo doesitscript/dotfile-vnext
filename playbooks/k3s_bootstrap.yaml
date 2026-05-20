@@ -1,7 +1,7 @@
 ---
 # k3s_bootstrap.yaml — Full k3s cluster bootstrap.
 #
-# This promotes the prepared nsrv-k3s-01 VM/stub lane into a functional
+# This promotes the prepared hom-lab-ctl-k3s-01 VM/stub lane into a functional
 # single-node k3s server. The preparatory path remains:
 #   1. playbooks/hyperv_ubuntu_k3s_vm.yaml
 #   2. playbooks/k3s_vm_stub.yaml
@@ -38,31 +38,31 @@
   hosts: localhost
   gather_facts: false
   tasks:
-    - name: Refuse real k3s bootstrap unless only nsrv-k3s-01 is selected
+    - name: Refuse real k3s bootstrap unless only hom-lab-ctl-k3s-01 is selected
       ansible.builtin.assert:
         that:
-          - query('ansible.builtin.inventory_hostnames', 'server') == ['nsrv-k3s-01']
+          - query('ansible.builtin.inventory_hostnames', 'server') == ['hom-lab-ctl-k3s-01']
           - query('ansible.builtin.inventory_hostnames', 'agent') | length == 0
-          - "'nsrv-dkr-01' not in query('ansible.builtin.inventory_hostnames', 'k3s_cluster')"
-          - "'nsrv-dkr-01' not in query('ansible.builtin.inventory_hostnames', 'server')"
-          - "'nsrv-dkr-01' not in query('ansible.builtin.inventory_hostnames', 'agent')"
-          - hostvars['nsrv-k3s-01'].ansible_host is defined
-          - hostvars['nsrv-k3s-01'].api_endpoint == hostvars['nsrv-k3s-01'].ansible_host
-          - hostvars['nsrv-k3s-01'].token is defined
-          - hostvars['nsrv-k3s-01'].token | length > 0
-          - hostvars['nsrv-k3s-01'].k3s_server_location == '/var/lib/rancher/k3s'
+          - "'hom-lab-ctl-dkr-01' not in query('ansible.builtin.inventory_hostnames', 'k3s_cluster')"
+          - "'hom-lab-ctl-dkr-01' not in query('ansible.builtin.inventory_hostnames', 'server')"
+          - "'hom-lab-ctl-dkr-01' not in query('ansible.builtin.inventory_hostnames', 'agent')"
+          - hostvars['hom-lab-ctl-k3s-01'].ansible_host is defined
+          - hostvars['hom-lab-ctl-k3s-01'].api_endpoint == hostvars['hom-lab-ctl-k3s-01'].ansible_host
+          - hostvars['hom-lab-ctl-k3s-01'].token is defined
+          - hostvars['hom-lab-ctl-k3s-01'].token | length > 0
+          - hostvars['hom-lab-ctl-k3s-01'].k3s_server_location == '/var/lib/rancher/k3s'
         fail_msg: >-
-          Real K3s bootstrap is allowed only for the single-node nsrv-k3s-01
-          server lane. Keep nsrv-dkr-01 Docker-only, keep agent empty, and keep
+          Real K3s bootstrap is allowed only for the single-node hom-lab-ctl-k3s-01
+          server lane. Keep hom-lab-ctl-dkr-01 Docker-only, keep agent empty, and keep
           data-dir on /var/lib/rancher/k3s until a real secondary Linux data
           mount is added.
-        success_msg: "k3s_cluster targets only nsrv-k3s-01; continuing real bootstrap."
+        success_msg: "k3s_cluster targets only hom-lab-ctl-k3s-01; continuing real bootstrap."
       tags:
         - always
 
 # --- Play 2: Windows Firewall ---
 - name: Open k3s firewall ports on the owning Hyper-V host
-  hosts: home-lab-auth-hvh-01
+  hosts: hom-lab-ctl-hvh-01
   gather_facts: false
   roles:
     - k3s_firewall

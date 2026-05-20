@@ -22,6 +22,7 @@
 #   ipam_netbox_seed_network_server_vm_model_preview — preview network-server VM model
 #   ipam_netbox_seed_network_server_vm_model — seed network-server VM model
 #   ipam_netbox_migrate_display_names — one-time rename mixed-case display names to lowercase
+#   ipam_netbox_migrate_compact_naming_schema — one-time reconcile NetBox names/slugs to compact schema
 #   ipam_netbox_backup_db — pg_dump NetBox postgres to artifacts/netbox-backups/
 #
 # Examples:
@@ -118,6 +119,17 @@
         tasks_from: migrate_display_names
       tags:
         - ipam_netbox_migrate_display_names
+
+- name: Migrate NetBox names and slugs to compact naming schema
+  hosts: server-225-ubuntu
+  gather_facts: false
+  tasks:
+    - name: Patch legacy NetBox names and role/tag slugs to compact schema via API
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: migrate_compact_naming_schema
+      tags:
+        - ipam_netbox_migrate_compact_naming_schema
 
 - name: Backup NetBox database
   hosts: server-225-ubuntu
