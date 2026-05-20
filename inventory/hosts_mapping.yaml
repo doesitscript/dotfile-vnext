@@ -1,128 +1,181 @@
 ---
-# Hostname/IP Mapping Reference
-# This file documents the mapping between physical nodes, their hostnames, and IP addresses
-# You can use either hostnames (if DNS is configured) or IP addresses in ansible_host
+# Host and surface mapping reference (documentation + bootstrap hostname detection)
+#
+# Naming layers — do not mix these up:
+# - inventory_hostname: Ansible/NetBox schema alias (hom-lab-ctl-hvh-02, server-225-ubuntu)
+# - os_hostname: Windows COMPUTERNAME / Linux hostname on the machine itself
+# - router_hostname: DHCP/DNS label on the LAN router (may differ from os_hostname)
+# - ansible_connect_target: value in host_vars ansible_host (what Ansible/SSH dials)
+# - host_ip / connect_address: stable IP for TCP checks and guest routing
+# - physical_node: metadata grouping key — NOT a hostname
+#
+# Connection policy for this repo:
+# - primary_connection: openssh (ansible_connection: ssh) — default for all active surfaces
+# - secondary_connection: winrm — bootstrap/troubleshooting/fallback only unless explicitly targeted
+#
+# Authoritative runtime values live in inventory/host_vars/<inventory_hostname>.yaml .
+# This file must stay aligned with those host_vars; when they diverge, host_vars win.
 
-# Router Hostname Mapping Strategy:
-# - Setting hostnames in your router (like "Joshs-MBP") is a practical solution
-# - Most routers provide basic DNS resolution for these hostnames on your local network
-# - You can use these hostnames directly in ansible_host if your router resolves them
-# - The "DNS Server (Optional)" field in router is for custom DNS servers for that client,
-#   NOT for setting up DNS resolution - leave it as "Default" unless you need custom DNS
-# - Full DNS names (like server-225.example.com) require a proper DNS server setup,
-#   but router hostnames work perfectly fine for Ansible
-
-# Physical Node Mappings
-# Each physical node can be accessed via hostname or IP.
-# Where a stable IPv6 address is known, it can also be used as an additive
-# fallback/control-plane surface instead of replacing the primary hostname/IPv4 path.
+# Physical node mappings
+# Bootstrap scripts (bin/bootstrap-local*.sh/ps1) auto-detect physical_node by matching
+# the local machine's hostname (case-insensitive) against `os_hostname` below.
 physical_nodes:
   server-225:
-    hostname: "DESKTOP-VLLM"  # Set this in your router's hostname mapping, or use IP
-    ip_address: "192.168.50.158"  # Replace with actual IP from router static assignment
+    os_hostname: "DESKTOP-VLLM"
+    inventory_windows_host: hom-lab-ctl-hvh-02
+    ip_address: "192.168.50.158"
     ipv6_address: "fdfa:7038:521c:a5fa:7c9:f4a1:90b8:1b1e"
-    # Router hostname: Set in router's "Manually Assigned IP" section
-    # Use hostname if router provides DNS resolution, otherwise use IP
+    # Bootstrap compatibility: legacy key read by bootstrap-local*.sh|ps1
+    hostname: "DESKTOP-VLLM"
 
   hom-lab-ctl-hvh-01:
-    hostname: "ai-net-server-mgmt"  # Current active adapter — revisit naming when original adapter restored
-    ip_address: "192.168.50.234"  # Primary surface for Ansible (backup Wi-Fi adapter, currently active)
-    ip_address_original: "192.168.50.233"  # Original Wi-Fi adapter (MAC 9c:c7:d3:10:68:5a — temporarily down)
+    os_hostname: "AI-NET-SERVER"
+    router_hostname: "ai-net-server-mgmt"
+    inventory_windows_host: hom-lab-ctl-hvh-01
+    ip_address: "192.168.50.234"
+    ip_address_original: "192.168.50.233"
     legacy_aliases:
       - network-server
-    # Router DHCP reservation: ai-net-server-mgmt → current adapter MAC → 192.168.50.234
-    # When original adapter restored: revisit hostname strategy and whether both need separate reservations
+    # Bootstrap compatibility — must match Windows COMPUTERNAME
+    hostname: "AI-NET-SERVER"
 
   dev-3090:
-    hostname: "Gaming-Desktop"  # Set this in your router's hostname mapping, or use IP
-    ip_address: "192.168.50.191"  # Replace with actual IP from router static assignment
-    # Router hostname: Set in router's "Manually Assigned IP" section
+    os_hostname: "Gaming-Desktop"
+    inventory_windows_host: dev-3090-win
+    ip_address: "192.168.50.191"
+    hostname: "Gaming-Desktop"
 
   mac-dev:
-    hostname: "Joshs-MBP"  # Already set in router - matches router configuration
-    ip_address: "192.168.50.33"  # Update with actual IP from router (currently shows 192.168.50.33)
-    # Router hostname: Already configured in router
+    os_hostname: "Joshs-MBP"
+    inventory_host: mac-dev
+    ip_address: "192.168.50.33"
+    hostname: "Joshs-MBP"
 
-# Ansible Surface Mappings
-# These map to the ansible_host values in inventory.yaml
+# Ansible surface mappings — one entry per inventory hostname
 ansible_surfaces:
-  # Windows surfaces (WinRM)
+  # --- Windows control surfaces (SSH primary) ---
+
   hom-lab-ctl-hvh-02:
     physical_node: server-225
-    connection_type: winrm
-    # Use either hostname or IP from physical_nodes.server-225 above
+    surface_type: windows_host
+    inventory_alias: true
+    primary_connection: ssh
+    secondary_connection: winrm
+    ansible_connect_target: "DESKTOP-VLLM"
+    connect_target_kind: os_hostname
+    ansible_port: 22
+    host_ip: "192.168.50.158"
+    os_hostname: "DESKTOP-VLLM"
+    host_vars: inventory/host_vars/hom-lab-ctl-hvh-02.yaml
 
   hom-lab-ctl-hvh-02-ipv6:
     physical_node: server-225
-    connection_type: winrm
-    # Explicit IPv6 fallback/control-plane surface for manual or troubleshooting use
+    surface_type: windows_host
+    inventory_alias: true
+    primary_connection: ssh
+    secondary_connection: winrm
+    ansible_connect_target: "fdfa:7038:521c:a5fa:7c9:f4a1:90b8:1b1e"
+    connect_target_kind: ipv6_address
+    ipv6_fallback_for: hom-lab-ctl-hvh-02
+    host_ip: "192.168.50.158"
+    host_vars: inventory/host_vars/hom-lab-ctl-hvh-02-ipv6.yaml
+    notes: Explicit fallback surface — not in default windows_hosts group
 
   hom-lab-ctl-hvh-01:
     physical_node: hom-lab-ctl-hvh-01
-    connection_type: winrm
-    # Use either hostname or IP from physical_nodes.hom-lab-ctl-hvh-01 above
+    surface_type: windows_host
+    inventory_alias: true
+    primary_connection: ssh
+    secondary_connection: winrm
+    ansible_connect_target: "192.168.50.234"
+    connect_target_kind: ip_address
+    ansible_port: 2222
+    host_ip: "192.168.50.234"
+    router_hostname: ai-net-server-mgmt
+    os_hostname: "AI-NET-SERVER"
+    legacy_aliases:
+      - network-server
+    host_vars: inventory/host_vars/hom-lab-ctl-hvh-01.yaml
+    notes: Uses IP for ansible_host because ai-net-server-mgmt is not reliably resolvable from mac-dev
 
   dev-3090-win:
     physical_node: dev-3090
-    connection_type: winrm
-    # Use either hostname or IP from physical_nodes.dev-3090 above
+    surface_type: windows_host
+    inventory_alias: true
+    primary_connection: ssh
+    secondary_connection: winrm
+    state: deferred
+    host_vars: inventory/host_vars/dev-3090-win.yaml
+    notes: Placeholder — no active ansible_host until provisioned
 
-  # Hyper-V Ubuntu VM surfaces (direct SSH guest access)
+  # --- Hyper-V Ubuntu guest surfaces (SSH only) ---
+
   server-225-ubuntu:
     physical_node: server-225
-    connection_type: ssh
-    # Routed/private-subnet Hyper-V Ubuntu guest on hom-lab-ctl-hvh-02
+    surface_type: ubuntu_vm
+    inventory_alias: true
+    primary_connection: ssh
+    ansible_connect_target: "192.168.137.10"
+    connect_target_kind: guest_ip
+    host_ip: "192.168.137.10"
+    ssh_proxy_jump_host: hom-lab-ctl-hvh-02
+    host_vars: inventory/host_vars/server-225-ubuntu.yaml
+    notes: Docker engine on hvh-02 guest subnet; guest OS hostname may differ from inventory name
 
   hom-lab-ctl-dkr-01:
     physical_node: hom-lab-ctl-hvh-01
-    connection_type: ssh
-    # Routed/private-subnet Docker Ubuntu guest on hom-lab-ctl-hvh-01
+    surface_type: ubuntu_vm
+    inventory_alias: true
+    primary_connection: ssh
+    ansible_connect_target: "192.168.138.10"
+    connect_target_kind: guest_ip
+    host_ip: "192.168.138.10"
+    ssh_proxy_jump_host: hom-lab-ctl-hvh-01
+    host_vars: inventory/host_vars/hom-lab-ctl-dkr-01.yaml
 
-  # macOS surface
+  hom-lab-ctl-k3s-01:
+    physical_node: hom-lab-ctl-hvh-01
+    surface_type: ubuntu_vm
+    inventory_alias: true
+    primary_connection: ssh
+    ansible_connect_target: "192.168.138.11"
+    connect_target_kind: guest_ip
+    host_ip: "192.168.138.11"
+    ssh_proxy_jump_host: hom-lab-ctl-hvh-01
+    host_vars: inventory/host_vars/hom-lab-ctl-k3s-01.yaml
+
+  hom-lab-ctl-k3s-02:
+    physical_node: server-225
+    surface_type: ubuntu_vm
+    inventory_alias: true
+    primary_connection: ssh
+    ansible_connect_target: "192.168.137.11"
+    connect_target_kind: guest_ip
+    host_ip: "192.168.137.11"
+    ssh_proxy_jump_host: hom-lab-ctl-hvh-02
+    fuzlang_external_postgres_connect_address: "192.168.137.10"
+    host_vars: inventory/host_vars/hom-lab-ctl-k3s-02.yaml
+
+  # --- macOS controller ---
+
   mac-dev:
     physical_node: mac-dev
-    connection_type: ssh
-    # Use either hostname or IP from physical_nodes.mac-dev above
+    surface_type: macos_host
+    inventory_alias: true
+    primary_connection: ssh
+    ansible_connect_target: "Joshs-MBP"
+    connect_target_kind: os_hostname
+    host_ip: "192.168.50.33"
+    host_vars: inventory/host_vars/mac-dev.yaml
 
-# DNS Configuration Status
-# Set this to true if your router provides hostname resolution (most routers do)
-# Set to false if you'll use IP addresses directly
-use_dns: true  # Most routers provide basic DNS for hostnames you set
+use_dns: true
 
-# Usage in inventory.yaml:
-# - If use_dns is true: Use hostname values (e.g., "Joshs-MBP", "fiberBottleneck")
-# - If use_dns is false: Use ip_address values (e.g., "192.168.50.33")
-# 
-# To test if router DNS works: ping Joshs-MBP (should resolve to 192.168.50.33)
-# If ping works with hostname, you can use hostnames in ansible_host
-
-# ============================================================================
-# AFTER SETTING HOSTNAMES IN ROUTER - What You Need to Do:
-# ============================================================================
-#
-# 1. DNS RESOLUTION (for other devices to find the hostname):
-#    - Router DNS updates are usually immediate - no restart needed
-#    - The device that's DOING the resolving (your Mac running Ansible) might
-#      need to flush DNS cache if it tried to resolve before:
-#      * macOS: sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder
-#      * Windows: ipconfig /flushdns
-#    - The TARGET device (server-225, etc.) doesn't need to know its hostname
-#      is in the router - that's for other devices to resolve it
-#
-# 2. IP ASSIGNMENT (if you changed the IP in router's static assignment):
-#    - If the device was already using that IP: No action needed
-#    - If you changed the IP assignment: The device needs to renew DHCP lease
-#      * Windows: ipconfig /release && ipconfig /renew
-#      * macOS: 
-#        - Find interface: networksetup -listallnetworkservices
-#        - Renew DHCP: sudo ipconfig set <interface> DHCP
-#        - Or: System Preferences > Network > Advanced > Renew DHCP Lease
-#        - Or just restart the device (easiest)
-#      * Linux: sudo dhclient -r && sudo dhclient
-#
-# 3. QUICK TEST:
-#    - From your Mac: ping Joshs-MBP (should work immediately if router DNS is working)
-#    - If ping fails, flush DNS cache on your Mac (see #1 above)
-#    - If still fails, check router DNS settings or use IP addresses instead
-#
-# SUMMARY: Usually NO restart needed for DNS. Only renew DHCP if IP changed.
+# Quick reference — what to use where:
+# | Use case                         | Use this field                         |
+# |----------------------------------|----------------------------------------|
+# | ansible-playbook --limit         | inventory_hostname                     |
+# | ~/.ssh/config Host block         | inventory_hostname                     |
+# | SSH HostName / ansible_host      | ansible_connect_target from host_vars  |
+# | psql / TCP / K8s external DB URL | host_ip or fuzlang_*_connect_address   |
+# | Bootstrap auto-detect on Windows | physical_nodes.*.os_hostname           |
+# | NetBox / schema naming           | inventory_hostname (may lead OS rename)|
