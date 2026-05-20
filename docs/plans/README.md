@@ -25,18 +25,18 @@ If a diagram is truly not applicable, include the section anyway with an explici
 
 ## Naming
 
-Use date-prefixed names:
+Use date-prefixed folder packets for all new approved plans:
 
-- `YYYY-MM-DD--short-slug.md`
 - `YYYY-MM-DD--short-slug/`
+- canonical entrypoint: `YYYY-MM-DD--short-slug/README.md`
 
 Example:
 
-- `2026-03-26--mcp-role-pattern-v1.md`
 - `2026-03-27--subagents-v1/`
 
-When a plan needs bundled research, references, or validation notes, prefer a
-folder-backed plan packet with a `README.md` as the canonical entrypoint.
+Legacy single-file plans may remain until touched. When a single-file plan is
+updated for new work, migrate it into a folder packet or mark it as archive
+material. Do not create new `YYYY-MM-DD--short-slug.md` plans.
 
 ## Completed Plan Lifecycle
 
@@ -83,7 +83,7 @@ The frontmatter metadata allows scripts or agents to identify archive-ready plan
 
 ```bash
 # Find all archive candidates
-grep -l "archive_candidate: true" docs/plans/*.md
+grep -R -l "archive_candidate: true" docs/plans
 ```
 
 ### Three-Layer Model
