@@ -1,9 +1,10 @@
 ---
-# Windows surface: WinRM for bootstrap; OpenSSH should land directly on Windows.
-# For manual SSH from the controller, prefer the repo-managed alias
-# `hom-lab-ctl-hvh-02` from ~/.ssh/config rather than using ansible_host directly.
-# ansible_host here is the WinRM/control-plane target and may not be the most
-# resilient manual SSH spelling.
+# Inventory name: hom-lab-ctl-hvh-02
+#   Ansible/NetBox schema alias for the server-225 Windows control surface.
+# Connect target: ansible_host = DESKTOP-VLLM (actual Windows OS hostname today).
+# physical_node: server-225 — metadata grouping key, NOT a hostname.
+# Router/LAN IP: host_ip 192.168.50.158
+# Manual SSH should prefer the repo-rendered Host alias hom-lab-ctl-hvh-02 from ~/.ssh/config.
 ansible_host: "DESKTOP-VLLM"
 ansible_connection: ssh
 ansible_port: 22
@@ -92,6 +93,18 @@ hyperv_config:
       listen_port: 3001
       connect_address: "192.168.137.10"
       connect_port: 3001
+    # Langfuse K3s web UI (roles/k3s_langfuse_platform, playbooks/deploy_langfuse_platform.yaml)
+    - name: "langfuse-k3s"
+      listen_address: "192.168.50.158"
+      listen_port: 30000
+      connect_address: "192.168.137.11"
+      connect_port: 30000
+    # LiteLLM K3s gateway (roles/k3s_litellm_gateway supplemental NodePort litellm-lan)
+    - name: "litellm-k3s"
+      listen_address: "192.168.50.158"
+      listen_port: 30400
+      connect_address: "192.168.137.11"
+      connect_port: 30400
   internal_ics_public_adapter_name: "vEthernet (External)"
 
 # OpenSSH Server: base feature on Windows hosts unless explicitly set absent.
