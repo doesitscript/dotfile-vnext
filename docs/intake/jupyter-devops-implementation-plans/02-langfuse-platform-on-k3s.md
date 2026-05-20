@@ -56,3 +56,36 @@ Expected Kubernetes resources:
 - Worker, database, cache, ClickHouse, and object storage are healthy.
 - SDK traces can be accepted by the Langfuse API.
 - Persistent data paths are explicit and backed by the intended server lane.
+
+## Implementation Status
+
+**COMPLETED** - May 20, 2026
+
+### What Was Deployed
+
+- Role: `k3s_langfuse_platform` created with Helm-based deployment
+- Playbook: `playbooks/deploy_langfuse_platform.yaml` created
+- Components running on `hom-lab-ctl-k3s-02`:
+  - Langfuse web (1 replica) - running
+  - Langfuse worker (1 replica) - running
+  - PostgreSQL (10Gi persistent storage) - running
+  - ClickHouse (single shard, 20Gi storage) - running
+  - Redis (8Gi storage) - running
+  - Zookeeper (single node for ClickHouse coordination) - running
+  - S3-compatible storage - running
+
+### Key Decisions
+
+- Used official Langfuse Helm chart: `https://langfuse.github.io/langfuse-k8s`
+- Chart name: `langfuse/langfuse` (v1.5.29 available)
+- Secrets structured as `{value: "..."}` maps per chart requirements
+- Single-node topology:
+  - ClickHouse: 1 shard, 1 replica (no multi-shard replication)
+  - Zookeeper: 1 node (minimum for ClickHouse coordination)
+- Access: NodePort service at `http://192.168.137.11:30000`
+
+### Sources Checked
+
+- Langfuse Helm chart docs: https://langfuse.com/self-hosting/deployment/kubernetes-helm
+- Langfuse GitHub: https://github.com/langfuse/langfuse-k8s
+- Helm values reference: charts/langfuse/values.yaml
