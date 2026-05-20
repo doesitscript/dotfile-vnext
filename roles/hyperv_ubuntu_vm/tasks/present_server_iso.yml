@@ -29,6 +29,29 @@
     - _hyperv_ubuntu_vm_server_iso_attach_installer | default(true) | bool
     - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
 
+- name: Check shared cache for existing remastered ISO and signature
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | default(true) | bool
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+    - hyperv_ubuntu_vm_shared_cache_enabled | bool
+  block:
+    - name: Probe shared cache remastered ISO
+      ansible.windows.win_stat:
+        path: "{{ hyperv_ubuntu_vm_shared_cache_remastered_isos }}\\{{ hyperv_ubuntu_vm_name }}-autoinstall.iso"
+      register: _hyperv_ubuntu_vm_shared_cache_iso_stat
+
+    - name: Probe shared cache remastered ISO signature
+      ansible.windows.win_stat:
+        path: "{{ hyperv_ubuntu_vm_shared_cache_remastered_isos }}\\{{ hyperv_ubuntu_vm_name }}-autoinstall.signature"
+      register: _hyperv_ubuntu_vm_shared_cache_signature_stat
+
+    - name: Read shared cache remastered ISO signature when present
+      ansible.windows.win_shell: |
+        Get-Content -Path '{{ hyperv_ubuntu_vm_shared_cache_remastered_isos }}\{{ hyperv_ubuntu_vm_name }}-autoinstall.signature' -Raw
+      register: _hyperv_ubuntu_vm_shared_cache_signature_content
+      when: _hyperv_ubuntu_vm_shared_cache_signature_stat.stat.exists | bool
+      changed_when: false
+
 - name: Set effective Ubuntu Server installer ISO path for Hyper-V Ubuntu VM
   ansible.builtin.set_fact:
     _hyperv_ubuntu_vm_server_iso_effective_host_path: >-
@@ -598,6 +621,59 @@
       )
     )
 
+- name: Copy remastered ISO from shared cache to Windows host artifact directory when available
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $sharedIso = '{{ hyperv_ubuntu_vm_shared_cache_remastered_isos }}\{{ hyperv_ubuntu_vm_name }}-autoinstall.iso'
+      $destination = '{{ hyperv_ubuntu_vm_host_server_iso_custom_path }}'
+      
+      if (Test-Path -LiteralPath $sharedIso) {
+        if (Test-Path -LiteralPath $destination) {
+          Remove-Item -LiteralPath $destination -Force -ErrorAction Stop
+        }
+        Copy-Item -Force -Path $sharedIso -Destination $destination
+        $Ansible.Changed = $true
+        $Ansible.Result = @{
+          source = 'shared_cache'
+          shared_path = $sharedIso
+          destination = $destination
+        }
+      } else {
+        $Ansible.Result = @{
+          source = 'shared_cache_missing'
+          shared_path = $sharedIso
+        }
+      }
+  register: _hyperv_ubuntu_vm_shared_cache_copy
+  when: >-
+    (_hyperv_ubuntu_vm_server_iso_attach_installer | bool)
+    and
+    (hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool)
+    and
+    (hyperv_ubuntu_vm_shared_cache_enabled | bool)
+    and
+    (
+      (_hyperv_ubuntu_vm_shared_cache_iso_stat.stat.exists | default(false))
+      and
+      (_hyperv_ubuntu_vm_shared_cache_signature_stat.stat.exists | default(false))
+      and
+      (
+        (_hyperv_ubuntu_vm_shared_cache_signature_content.stdout | default('') | trim)
+        == (_hyperv_ubuntu_vm_server_iso_custom_signature | trim)
+      )
+    )
+    and
+    (
+      not (_hyperv_ubuntu_vm_host_custom_signature_probe.result.exists | default(false))
+      or
+      (
+        (_hyperv_ubuntu_vm_host_custom_signature_probe.result.signature | default('') | trim)
+        != (_hyperv_ubuntu_vm_server_iso_custom_signature | trim)
+      )
+    )
+
 - name: Upload remastered Ubuntu Server autoinstall ISO to Windows SSH home when needed
   ansible.builtin.command:
     argv:
@@ -611,6 +687,12 @@
     (_hyperv_ubuntu_vm_server_iso_attach_installer | bool)
     and
     (hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool)
+    and
+    not (
+      (hyperv_ubuntu_vm_shared_cache_enabled | bool)
+      and
+      (_hyperv_ubuntu_vm_shared_cache_copy.changed | default(false))
+    )
     and
     (
       not (_hyperv_ubuntu_vm_host_custom_signature_probe.result.exists | default(false))
@@ -653,6 +735,12 @@
     and
     (hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool)
     and
+    not (
+      (hyperv_ubuntu_vm_shared_cache_enabled | bool)
+      and
+      (_hyperv_ubuntu_vm_shared_cache_copy.changed | default(false))
+    )
+    and
     (
       not (_hyperv_ubuntu_vm_host_custom_signature_probe.result.exists | default(false))
       or
@@ -669,6 +757,56 @@
   when:
     - _hyperv_ubuntu_vm_server_iso_attach_installer | bool
     - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+
+- name: Copy remastered ISO and signature to shared cache for reuse
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $sourceIso = '{{ hyperv_ubuntu_vm_host_server_iso_custom_path }}'
+      $sourceSig = '{{ hyperv_ubuntu_vm_host_server_iso_custom_signature_path }}'
+      $destIso = '{{ hyperv_ubuntu_vm_shared_cache_remastered_isos }}\{{ hyperv_ubuntu_vm_name }}-autoinstall.iso'
+      $destSig = '{{ hyperv_ubuntu_vm_shared_cache_remastered_isos }}\{{ hyperv_ubuntu_vm_name }}-autoinstall.signature'
+      
+      if (-not (Test-Path -LiteralPath '{{ hyperv_ubuntu_vm_shared_cache_remastered_isos }}')) {
+        New-Item -ItemType Directory -Path '{{ hyperv_ubuntu_vm_shared_cache_remastered_isos }}' -Force | Out-Null
+      }
+      
+      $changes = @()
+      
+      if (Test-Path -LiteralPath $sourceIso) {
+        Copy-Item -Force -Path $sourceIso -Destination $destIso
+        $changes += 'iso'
+      }
+      
+      if (Test-Path -LiteralPath $sourceSig) {
+        Copy-Item -Force -Path $sourceSig -Destination $destSig
+        $changes += 'signature'
+      }
+      
+      if ($changes.Count -gt 0) {
+        $Ansible.Changed = $true
+        $Ansible.Result = @{
+          copied = ($changes -join ', ')
+          dest_iso = $destIso
+          dest_sig = $destSig
+        }
+      } else {
+        $Ansible.Result = @{
+          reason = 'source_files_missing'
+          source_iso = $sourceIso
+          source_sig = $sourceSig
+        }
+      }
+  register: _hyperv_ubuntu_vm_shared_cache_populate
+  when:
+    - _hyperv_ubuntu_vm_server_iso_attach_installer | bool
+    - hyperv_ubuntu_vm_server_iso_autoinstall_enabled | bool
+    - hyperv_ubuntu_vm_shared_cache_enabled | bool
+    - >-
+      not (
+        (_hyperv_ubuntu_vm_shared_cache_copy.changed | default(false))
+      )
 
 - name: Detach mounted autoinstall seed ISO before replacing it
   ansible.windows.win_powershell:

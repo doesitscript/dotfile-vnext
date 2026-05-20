@@ -75,6 +75,21 @@ hyperv_ubuntu_vm_server_iso_autoinstall_enabled: true
 # auto keeps installer media attached for new or in-progress installer VMs.
 # detached is the day-2 state for already-installed server-ISO guests.
 hyperv_ubuntu_vm_server_iso_installer_media_state: auto
+
+# Shared Hyper-V Cache Infrastructure (Plan 00b)
+# Central Windows share for ISOs, cloud images, and remastered installers.
+# Eliminates slow Mac-controller scp uploads and enables reuse across hosts.
+hyperv_ubuntu_vm_shared_cache_enabled: true
+hyperv_ubuntu_vm_shared_cache_unc: "\\\\hom-lab-ctl-hvh-02\\public\\hyperv-cache"
+hyperv_ubuntu_vm_shared_cache_ubuntu_isos: "{{ hyperv_ubuntu_vm_shared_cache_unc }}\\ubuntu-isos"
+hyperv_ubuntu_vm_shared_cache_cloud_images: "{{ hyperv_ubuntu_vm_shared_cache_unc }}\\ubuntu-cloud-images"
+hyperv_ubuntu_vm_shared_cache_remastered_isos: "{{ hyperv_ubuntu_vm_shared_cache_unc }}\\remastered-isos"
+hyperv_ubuntu_vm_shared_cache_staging: "{{ hyperv_ubuntu_vm_shared_cache_unc }}\\staging"
+# Remaster delegate host: auto-detect (Ubuntu VM > Windows > Mac)
+# Set to specific inventory_hostname to force delegate, or 'auto' for detection
+hyperv_ubuntu_vm_remaster_delegate_host: auto
+hyperv_ubuntu_vm_remaster_delegate_prefer_ubuntu: true
+hyperv_ubuntu_vm_remaster_delegate_prefer_windows: true
 hyperv_ubuntu_vm_server_iso_customization_version: autoinstall-v13-cdrom-kernel-path
 hyperv_ubuntu_vm_server_iso_kernel_args: autoinstall subiquity.autoinstallpath=cdrom/autoinstall.yaml
 hyperv_ubuntu_vm_autoinstall_locale: en_US.UTF-8

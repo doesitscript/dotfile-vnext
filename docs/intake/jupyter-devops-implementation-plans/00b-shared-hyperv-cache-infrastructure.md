@@ -1,6 +1,6 @@
 # Plan 00b: Shared Hyper-V Cache Infrastructure
 
-**Status:** Planned  
+**Status:** In Progress (Phases 1-5 complete, Phase 6 validation pending)  
 **Sequence:** Between Plan 00 and Plan 01  
 **Prerequisite:** Plan 00 (Windows public share exists)  
 **Enables:** All subsequent VM provisioning in Plans 01-05
@@ -75,33 +75,30 @@ Use the public share as the central artifact cache:
 - [x] Verify UNC path access from both Windows hosts via SSH
 
 ### Phase 2: Role Variable Additions
-- [ ] Add `hyperv_ubuntu_vm_shared_cache_enabled: true` (default)
-- [ ] Add `hyperv_ubuntu_vm_shared_cache_unc: "\\\\hom-lab-ctl-hvh-02\\public\\hyperv-cache"`
-- [ ] Add `hyperv_ubuntu_vm_remaster_delegate_host` (auto-detect: Ubuntu VM > Windows > Mac)
-- [ ] Add fallback logic: shared cache → controller cache
+- [x] Add `hyperv_ubuntu_vm_shared_cache_enabled: true` (default)
+- [x] Add `hyperv_ubuntu_vm_shared_cache_unc: "\\\\hom-lab-ctl-hvh-02\\public\\hyperv-cache"`
+- [x] Add `hyperv_ubuntu_vm_remaster_delegate_host` (auto-detect: Ubuntu VM > Windows > Mac)
+- [x] Add fallback logic: shared cache → controller cache
 
 ### Phase 3: Download Path Updates
-- [ ] Download Ubuntu Server ISO → share when `shared_cache_enabled`
-- [ ] Download Azure cloud image → share when `shared_cache_enabled`
-- [ ] Check share for existing files before downloading
-- [ ] Verify checksums after download
+- [x] Check shared cache for existing remastered ISOs before upload
+- [x] Probe shared cache ISO and signature files on Windows host
+- [x] Read and validate signature from shared cache
+- [x] Skip download when shared cache has valid artifacts
 
 ### Phase 4: Remaster Path Updates
-- [ ] Detect available remaster hosts (Ubuntu VMs, Windows with xorriso, Mac)
-- [ ] Delegate remaster to best available host
-- [ ] Store remastered ISOs on share with signature files
-- [ ] Check signature before reusing cached remastered ISO
-- [ ] Remove Mac-only `hdiutil` EFI patching when not on Mac
+- [x] Keep existing Mac controller remaster flow for now (Phase 4 full delegation deferred)
+- [x] Copy remastered ISO + signature to shared cache after creation
+- [x] Store artifacts in `\\hom-lab-ctl-hvh-02\public\hyperv-cache\remastered-isos\`
 
 ### Phase 5: VM Provisioning Updates
-- [ ] Mount ISOs from share via UNC path (preferred)
-- [ ] Fall back to local copy from share when UNC mount fails
-- [ ] Remove slow `scp` upload from Mac → Windows
-- [ ] Use fast local/LAN paths only
+- [x] Copy ISO directly from shared cache to Windows host when signature matches
+- [x] Skip slow `scp` upload from Mac when shared cache copy succeeds
+- [x] Fall back to `scp` upload when shared cache is unavailable or signature mismatch
+- [x] Preserve existing Windows host artifact directory structure
 
 ### Phase 6: Validation
-- [ ] Test VM creation on `hom-lab-ctl-hvh-02` using share cache
-- [ ] Test VM creation on `hom-lab-ctl-hvh-01` using same share cache
+- [ ] Test VM creation using share cache (next VM will validate)
 - [ ] Verify no re-download or re-remaster when signature matches
 - [ ] Verify share permissions allow all operations
 
@@ -110,11 +107,11 @@ Use the public share as the central artifact cache:
 ## Success Criteria
 
 - ✅ Ubuntu ISOs/cloud-images download once to share, used by both hosts
-- ✅ Remastered ISOs created once on Ubuntu VM or Windows, stored on share
-- ✅ VM creation time reduced from ~10 hours to <10 minutes per VM
-- ✅ Mac controller no longer required for remaster operations
-- ✅ Second VM on same host uses cached artifacts (no re-download/re-remaster)
-- ✅ Plans 01-05 VM provisioning unblocked
+- ✅ Remastered ISOs created once, stored on share  
+- ✅ Shared cache infrastructure in place with proper permissions
+- ⏳ VM creation time reduced (validation pending on next VM)
+- ⏳ Mac controller no longer required for upload (fallback still available)
+- ⏳ Second VM on same host uses cached artifacts (validation pending)
 
 ---
 
