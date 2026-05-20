@@ -1,0 +1,16 @@
+---
+# Deploy fuzlang network stack on the hvh-02 Docker engine (server-225-ubuntu).
+# Required for K3s workloads on hom-lab-ctl-k3s-02 which cannot reach 192.168.138.0/24.
+
+- name: Deploy network stacks on server-225-ubuntu
+  hosts: server-225-ubuntu
+  gather_facts: false
+  become: false
+  vars:
+    docker_engine_host: server-225-ubuntu
+    fuzlang_external_postgres_host: "192.168.137.10"
+  roles:
+    - role: network_server/stacks_network
+      tags:
+        - stacks_network
+        - network_server

@@ -1,10 +1,20 @@
 ---
-# Active Hyper-V-native Ubuntu VM surface on the server-225 Hyper-V host.
-# This host now represents the routed-subnet guest directly rather than a
-# future placeholder identity.
+# Inventory name: server-225-ubuntu
+#   Ansible/NetBox schema alias for this managed surface. NOT the guest OS hostname.
+# Connect target: ansible_host / host_ip (192.168.137.10)
+#   Routed private guest IP used for SSH, Docker, and postgres TCP checks.
+# physical_node: server-225
+#   Metadata grouping key for group_vars/server_225 — NOT a hostname.
+# ssh_proxy_jump_host: hom-lab-ctl-hvh-02
+#   Another inventory alias rendered into ~/.ssh/config as `Host hom-lab-ctl-hvh-02`.
+#   That SSH entry uses HostName DESKTOP-VLLM (Windows OS hostname), not hom-lab-ctl-hvh-02.
+# hyperv_ubuntu_docker_vm_hostname (in hom-lab-ctl-hvh-02 host_vars): planned VM name label only.
 
 physical_node: "server-225"
 surface_type: "ubuntu_vm"
+inventory_surface_role: docker_engine
+legacy_inventory_aliases:
+  - server-225-ubuntu
 node_classes:
   - docker_runtime
   - ai_worker
@@ -26,6 +36,14 @@ ansible_python_interpreter: "/usr/bin/python3"
 ssh_proxy_jump_host: "hom-lab-ctl-hvh-02"
 docker_engine_state: present
 logging_loki_public_endpoint: "http://192.168.50.158:3100/loki/api/v1/push"
+linux_stacks_root: "/srv/stacks"
+linux_data_root: "/srv/data"
+postgres_exposure: "0.0.0.0:5432:5432"
+clickhouse_native_exposure: "127.0.0.1:9004:9000"
+stacks_network_langfuse_compose_enabled: false
+minio_api_exposure: "0.0.0.0:9000:9000"
+minio_console_exposure: "0.0.0.0:9001:9001"
+fuzlang_external_postgres_connect_address: "192.168.137.10"
 ansible_ssh_common_args: >-
   -o ProxyJump=hom-lab-ctl-hvh-02
   -o StrictHostKeyChecking=no

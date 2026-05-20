@@ -1,189 +1,197 @@
 ---
 # Network-Server Stacks Deployment Role
 # Deploys langfuse, postgres, clickhouse, redis, minio
-# Uses Windows Docker Engine
-
-- name: Create network stacks directory
-  win_file:
-    path: "{{ stacks_root | regex_replace('\\\\', '\\') }}\\network"
-    state: directory
-  register: stacks_dir_result
-
-- name: Create docker-compose.yml template directory
-  win_file:
-    path: "{{ stacks_root | regex_replace('\\\\', '\\') }}\\network"
-    state: directory
-  register: compose_dir_result
-
-- name: Create docker-compose.yml for network stack
-  win_copy:
-    content: |
-      version: '3.8'
-      
-      services:
-        postgres:
-          image: postgres:16
-          restart: unless-stopped
-          environment:
-            POSTGRES_USER: ${POSTGRES_USER}
-            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-            POSTGRES_DB: ${POSTGRES_DB}
-          volumes:
-            - {{ data_root }}\\postgres:/var/lib/postgresql/data
-          ports:
-            - "{{ postgres_exposure | default('127.0.0.1:5432:5432') }}"
-          networks:
-            - fuzlang_net_net
-          healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-            interval: 10s
-            timeout: 5s
-            retries: 5
-      
-        redis:
-          image: redis:7-alpine
-          restart: unless-stopped
-          volumes:
-            - {{ data_root }}\\redis:/data
-          ports:
-            - "{{ redis_exposure | default('127.0.0.1:6379:6379') }}"
-          networks:
-            - fuzlang_net_net
-          healthcheck:
-            test: ["CMD", "redis-cli", "ping"]
-            interval: 10s
-            timeout: 5s
-            retries: 5
-      
-        clickhouse:
-          image: clickhouse/clickhouse-server:24
-          restart: unless-stopped
-          volumes:
-            - {{ data_root }}\\clickhouse:/var/lib/clickhouse
-          ports:
-            - "{{ clickhouse_http_exposure | default('127.0.0.1:8123:8123') }}"
-            - "{{ clickhouse_native_exposure | default('127.0.0.1:9000:9000') }}"
-          networks:
-            - fuzlang_net_net
-          ulimits:
-            nofile:
-              soft: 262144
-              hard: 262144
-          healthcheck:
-            test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
-            interval: 10s
-            timeout: 5s
-            retries: 5
-      
-        minio:
-          image: minio/minio:latest
-          restart: unless-stopped
-          command: server /data --console-address ":9001"
-          environment:
-            MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-            MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-          volumes:
-            - {{ data_root }}\\minio:/data
-          ports:
-            - "{{ minio_api_exposure | default('0.0.0.0:9000:9000') }}"
-            - "{{ minio_console_exposure | default('0.0.0.0:9001:9001') }}"
-          networks:
-            - fuzlang_net_net
-          healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-            interval: 30s
-            timeout: 10s
-            retries: 3
-      
-        langfuse:
-          image: langfuse/langfuse:latest
-          restart: unless-stopped
-          depends_on:
-            postgres:
-              condition: service_healthy
-            redis:
-              condition: service_healthy
-            clickhouse:
-              condition: service_healthy
-          environment:
-            DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-            REDIS_URL: redis://redis:6379
-            CLICKHOUSE_URL: http://clickhouse:8123
-            NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
-            SALT: ${SALT}
-            LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
-            LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
-            MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-            MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-            MINIO_ENDPOINT: http://minio:9000
-          volumes:
-            - {{ data_root }}\\langfuse:/app/packages/database/data
-          ports:
-            - "{{ langfuse_exposure | default('0.0.0.0:3000:3000') }}"
-          networks:
-            - fuzlang_net_net
-          healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost:3000/api/public/health"]
-            interval: 30s
-            timeout: 10s
-            retries: 3
-      
-      networks:
-        fuzlang_net_net:
-          name: fuzlang_net_net
-          driver: bridge
-    dest: "{{ stacks_root | regex_replace('\\\\', '\\') }}\\network\\docker-compose.yml"
-  register: compose_file_result
+# Runs Docker Compose on hom-lab-ctl-dkr-01 (Hyper-V Ubuntu Docker engine)
 
 - name: Load shared vault for network stack
-  include_vars:
+  ansible.builtin.include_vars:
     file: "{{ playbook_dir }}/../vault/shared.vault.yml"
-    name: vault_shared
 
 - name: Load network vault for network stack
-  include_vars:
+  ansible.builtin.include_vars:
     file: "{{ playbook_dir }}/../vault/network.vault.yml"
-    name: vault_network
 
-- name: Render .env file from template
-  win_template:
+- name: Build network stack data directory list
+  ansible.builtin.set_fact:
+    stacks_network_data_dirs: >-
+      {{
+        [
+          'postgres',
+          'redis',
+          'clickhouse',
+          'minio'
+        ]
+        + (['langfuse'] if stacks_network_langfuse_compose_enabled | bool else [])
+      }}
+
+- name: Ensure network stack data directories on Docker engine host
+  ansible.builtin.file:
+    path: "{{ linux_data_root }}/{{ item }}"
+    state: directory
+    mode: "0755"
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
+  loop: "{{ stacks_network_data_dirs }}"
+
+- name: Create network stack directory on Docker engine host
+  ansible.builtin.file:
+    path: "{{ linux_stacks_root }}/network"
+    state: directory
+    mode: "0755"
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
+
+- name: Render docker-compose.yml on Docker engine host
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ linux_stacks_root }}/network/docker-compose.yml"
+    mode: "0644"
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
+
+- name: Render .env file on Docker engine host
+  ansible.builtin.template:
     src: env.j2
-    dest: "{{ stacks_root | regex_replace('\\\\', '\\') }}\\network\\.env"
-  register: env_file_result
+    dest: "{{ linux_stacks_root }}/network/.env"
+    mode: "0640"
+    owner: root
+    group: docker
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
   no_log: true
 
-- name: Pull Docker images
-  win_shell: |
-    cd {{ stacks_root }}\network
-    docker compose pull
-  register: docker_pull_result
-  failed_when: docker_pull_result.rc != 0
+- name: Ensure Docker engine admin user is in docker group
+  ansible.builtin.user:
+    name: "{{ hostvars[docker_engine_host].ansible_user }}"
+    groups: docker
+    append: true
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
 
-- name: Start network stack services
-  win_shell: |
-    cd {{ stacks_root }}\network
-    docker compose up -d
+- name: Verify rendered network stack .env exists and is readable
+  ansible.builtin.stat:
+    path: "{{ linux_stacks_root }}/network/.env"
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
+  register: stacks_network_env_stat
+
+- name: Assert network stack .env is present with expected permissions
+  ansible.builtin.assert:
+    that:
+      - stacks_network_env_stat.stat.exists
+      - stacks_network_env_stat.stat.mode is match('0640')
+    fail_msg: "Network stack .env missing or has unexpected permissions at {{ linux_stacks_root }}/network/.env"
+
+- name: Validate docker compose configuration renders with secrets
+  ansible.builtin.command:
+    cmd: docker compose config --quiet
+    chdir: "{{ linux_stacks_root }}/network"
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
+  changed_when: false
+
+- name: Pull Docker images on Docker engine host
+  ansible.builtin.command:
+    cmd: docker compose pull
+    chdir: "{{ linux_stacks_root }}/network"
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
+  register: docker_pull_result
+  changed_when: "'Pull complete' in docker_pull_result.stdout or 'Downloaded' in docker_pull_result.stdout"
+
+- name: Start network stack services on Docker engine host
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ linux_stacks_root }}/network"
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
   register: docker_up_result
-  failed_when: docker_up_result.rc != 0
+  changed_when: "'Started' in docker_up_result.stdout or 'Created' in docker_up_result.stdout or 'Recreated' in docker_up_result.stdout"
+
+- name: Sync PostgreSQL user password to vault contract on existing volume
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cid="$(docker ps -q \
+      --filter 'label=com.docker.compose.service=postgres' \
+      --filter 'label=com.docker.compose.project=fuzlang-net' | head -n1)"
+    if [ -z "$cid" ]; then
+      echo "fuzlang-net postgres container not found" >&2
+      exit 1
+    fi
+    docker exec "$cid" psql -U "$POSTGRES_USER" -d postgres -c \
+      "ALTER USER \"$POSTGRES_USER\" WITH PASSWORD '$POSTGRES_PASSWORD';"
+  args:
+    executable: /bin/bash
+  environment:
+    POSTGRES_USER: "{{ vault_network_postgres_user | default('langfuse') }}"
+    POSTGRES_PASSWORD: "{{ vault_network_postgres_password | default('Pass@w0rd1') }}"
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
+  no_log: true
+  register: stacks_network_postgres_password_sync
+  changed_when: "'ALTER ROLE' in stacks_network_postgres_password_sync.stdout or 'ALTER USER' in stacks_network_postgres_password_sync.stdout"
+
+- name: Stop MinIO before incompatible data reset
+  ansible.builtin.command:
+    cmd: docker compose stop minio
+    chdir: "{{ linux_stacks_root }}/network"
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
+  when: stacks_network_minio_reset_data | bool
+  changed_when: false
+
+- name: Remove incompatible MinIO data directory contents
+  ansible.builtin.file:
+    path: "{{ linux_data_root }}/minio"
+    state: absent
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
+  when: stacks_network_minio_reset_data | bool
+
+- name: Recreate MinIO data directory after reset
+  ansible.builtin.file:
+    path: "{{ linux_data_root }}/minio"
+    state: directory
+    mode: "0755"
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
+  when: stacks_network_minio_reset_data | bool
+
+- name: Start MinIO after data reset
+  ansible.builtin.command:
+    cmd: docker compose up -d minio
+    chdir: "{{ linux_stacks_root }}/network"
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
+  when: stacks_network_minio_reset_data | bool
+  register: stacks_network_minio_reset_up
+  changed_when: "'Started' in stacks_network_minio_reset_up.stdout or 'Created' in stacks_network_minio_reset_up.stdout"
 
 - name: Wait for services to be healthy
-  pause:
+  ansible.builtin.pause:
     seconds: 30
 
-- name: Verify services are running
-  win_shell: |
-    cd {{ stacks_root }}\network
-    docker compose ps
+- name: Verify services are running on Docker engine host
+  ansible.builtin.command:
+    cmd: docker compose ps
+    chdir: "{{ linux_stacks_root }}/network"
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
   register: docker_ps_result
   changed_when: false
 
 - name: Display network stack deployment summary
-  debug:
+  ansible.builtin.debug:
     msg:
       - "=== Network Stack Deployment ==="
-      - "Services deployed: postgres, redis, clickhouse, minio, langfuse"
-      - "Langfuse endpoint: http://network-server:3000"
-      - "MinIO API: http://network-server:9000"
-      - "MinIO Console: http://network-server:9001"
+      - "Docker engine: {{ docker_engine_host }}"
+      - >-
+        Services deployed: postgres, redis, clickhouse, minio{{
+        ', langfuse' if stacks_network_langfuse_compose_enabled | bool
+        else ' (langfuse compose disabled)' }}
+      - "PostgreSQL endpoint: {{ fuzlang_external_postgres_host | default(hostvars[docker_engine_host].host_ip) }}:5432"
+      - "Langfuse endpoint: http://{{ lan_ip | default(inventory_hostname) }}:3000"
+      - "MinIO API: http://{{ lan_ip | default(inventory_hostname) }}:9000"
+      - "MinIO Console: http://{{ lan_ip | default(inventory_hostname) }}:9001"
       - "Service status:"
       - "{{ docker_ps_result.stdout }}"
