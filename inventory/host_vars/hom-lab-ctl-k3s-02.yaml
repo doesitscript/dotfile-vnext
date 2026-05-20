@@ -1,7 +1,9 @@
 ---
-# Planned Hyper-V-native K3s Ubuntu VM surface on the RTX 5090 server-225 host.
-# This is a baseline/stub target only until the GPU-enabled K3s plan promotes
-# it into the real cluster.
+# Inventory name: hom-lab-ctl-k3s-02
+#   Ansible/NetBox schema alias. NOT necessarily the guest OS hostname.
+# Connect target: ansible_host / host_ip (192.168.137.11)
+# physical_node: server-225 — metadata grouping key, NOT a hostname.
+# ssh_proxy_jump_host: hom-lab-ctl-hvh-02 — inventory alias for ProxyJump/SSH config.
 
 physical_node: "server-225"
 surface_type: "ubuntu_vm"
@@ -24,6 +26,8 @@ ansible_user: "joshc"
 ansible_port: 22
 ansible_python_interpreter: "/usr/bin/python3"
 ssh_proxy_jump_host: "hom-lab-ctl-hvh-02"
+# Same Hyper-V host lane as server-225-ubuntu — use guest IP, not inventory names, in DB URLs.
+fuzlang_external_postgres_connect_address: "192.168.137.10"
 ansible_ssh_common_args: >-
   -o ProxyJump=hom-lab-ctl-hvh-02
   -o StrictHostKeyChecking=no

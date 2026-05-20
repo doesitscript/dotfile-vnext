@@ -1,0 +1,21 @@
+---
+- name: Load shared vault for LiteLLM gateway
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault/shared.vault.yml"
+
+- name: Load network vault for LiteLLM gateway (PostgreSQL contract)
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault/network.vault.yml"
+
+- name: Resolve LiteLLM external PostgreSQL credentials from vault
+  ansible.builtin.set_fact:
+    k3s_litellm_gateway_postgres_user: "{{ vault_network_postgres_user | default(fuzlang_external_postgres_user) }}"
+    k3s_litellm_gateway_postgres_password: "{{ vault_network_postgres_password | default(fuzlang_external_postgres_password) }}"
+    k3s_litellm_gateway_resolved_master_key: "{{ vault_k3s_litellm_gateway_master_key | default(k3s_litellm_gateway_master_key) }}"
+    k3s_litellm_gateway_resolved_openai_api_key: "{{ vault_shared_openai_api_key | default('') }}"
+    k3s_litellm_gateway_resolved_langfuse_public_key: "{{ vault_shared_langfuse_public_key | default(k3s_litellm_gateway_langfuse_public_key) }}"
+    k3s_litellm_gateway_resolved_langfuse_secret_key: "{{ vault_shared_langfuse_secret_key | default(k3s_litellm_gateway_langfuse_secret_key) }}"
+    k3s_litellm_gateway_db_url: >-
+      postgresql://{{ vault_network_postgres_user | default(fuzlang_external_postgres_user) }}:{{
+      (vault_network_postgres_password | default(fuzlang_external_postgres_password)) | urlencode
+      }}@{{ fuzlang_external_postgres_connect_address }}/{{ k3s_litellm_gateway_db_database }}

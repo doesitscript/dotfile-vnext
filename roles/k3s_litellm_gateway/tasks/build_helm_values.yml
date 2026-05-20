@@ -1,0 +1,46 @@
+---
+- name: Resolve LiteLLM model list when OpenAI key is configured in vault
+  ansible.builtin.set_fact:
+    k3s_litellm_gateway_resolved_model_list: >-
+      {{
+        k3s_litellm_gateway_model_list
+        if (k3s_litellm_gateway_resolved_openai_api_key | default('') | length > 0)
+        else k3s_litellm_gateway_model_list_without_openai
+      }}
+
+- name: Build LiteLLM Helm values from vault-backed configuration
+  ansible.builtin.set_fact:
+    k3s_litellm_gateway_helm_values:
+      replicaCount: "{{ k3s_litellm_gateway_replicas }}"
+      masterkeySecretName: "{{ k3s_litellm_gateway_env_secret_name }}"
+      masterkeySecretKey: PROXY_MASTER_KEY
+      environmentSecrets:
+        - "{{ k3s_litellm_gateway_env_secret_name }}"
+      image:
+        repository: "{{ k3s_litellm_gateway_image_repository }}"
+        tag: "{{ k3s_litellm_gateway_image_tag }}"
+      db:
+        deployStandalone: false
+        useExisting: true
+        endpoint: "{{ k3s_litellm_gateway_db_endpoint }}"
+        database: "{{ k3s_litellm_gateway_db_database }}"
+        url: "{{ k3s_litellm_gateway_db_url }}"
+        secret:
+          name: "{{ k3s_litellm_gateway_db_secret_name }}"
+          usernameKey: "{{ k3s_litellm_gateway_db_secret_username_key }}"
+          passwordKey: "{{ k3s_litellm_gateway_db_secret_password_key }}"
+      service:
+        type: "{{ k3s_litellm_gateway_service_type }}"
+        port: "{{ k3s_litellm_gateway_service_port }}"
+      resources:
+        limits:
+          cpu: "{{ k3s_litellm_gateway_cpu_limit }}"
+          memory: "{{ k3s_litellm_gateway_memory_limit }}"
+        requests:
+          cpu: "{{ k3s_litellm_gateway_cpu_request }}"
+          memory: "{{ k3s_litellm_gateway_memory_request }}"
+      proxy_config:
+        model_list: "{{ k3s_litellm_gateway_resolved_model_list }}"
+        general_settings:
+          master_key: os.environ/PROXY_MASTER_KEY
+        litellm_settings: "{{ k3s_litellm_gateway_proxy_litellm_settings }}"

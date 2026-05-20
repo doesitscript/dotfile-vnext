@@ -1,0 +1,200 @@
+---
+- name: Load vault variables for LiteLLM gateway
+  ansible.builtin.include_tasks: load_vault.yml
+
+- name: Build LiteLLM Helm values from vault-backed configuration
+  ansible.builtin.include_tasks: build_helm_values.yml
+
+- name: Ensure LiteLLM database exists on external PostgreSQL
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cid="$(docker ps -q \
+      --filter 'label=com.docker.compose.service=postgres' \
+      --filter 'label=com.docker.compose.project=fuzlang-net' | head -n1)"
+    if [ -z "$cid" ]; then
+      echo "fuzlang-net postgres container not found" >&2
+      docker ps --filter 'label=com.docker.compose.project=fuzlang-net' >&2 || true
+      exit 1
+    fi
+    exists="$(docker exec "$cid" psql -U {{ k3s_litellm_gateway_postgres_user }} -d postgres -tAc \
+      "SELECT 1 FROM pg_database WHERE datname='{{ k3s_litellm_gateway_db_database }}'")"
+    if [ "$exists" != "1" ]; then
+      docker exec "$cid" psql -U {{ k3s_litellm_gateway_postgres_user }} -d postgres -c \
+        "CREATE DATABASE {{ k3s_litellm_gateway_db_database }};"
+    fi
+  args:
+    executable: /bin/bash
+  delegate_to: "{{ k3s_litellm_gateway_postgres_inventory_host }}"
+  become: true
+  register: _k3s_litellm_db_create
+  changed_when: "'CREATE DATABASE' in _k3s_litellm_db_create.stdout"
+
+- name: Build LiteLLM provider environment secret map from vault
+  ansible.builtin.set_fact:
+    _k3s_litellm_gateway_env_secret_map: >-
+      {{
+        {
+          'PROXY_MASTER_KEY': k3s_litellm_gateway_resolved_master_key,
+          'LANGFUSE_HOST': k3s_litellm_gateway_langfuse_host,
+          'LANGFUSE_PUBLIC_KEY': k3s_litellm_gateway_resolved_langfuse_public_key,
+          'LANGFUSE_SECRET_KEY': k3s_litellm_gateway_resolved_langfuse_secret_key,
+        }
+        | combine(
+          {'OPENAI_API_KEY': k3s_litellm_gateway_resolved_openai_api_key}
+          if (k3s_litellm_gateway_resolved_openai_api_key | default('') | length > 0)
+          else {}
+        )
+      }}
+
+- name: Create LiteLLM provider environment secret from vault
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ k3s_litellm_gateway_env_secret_name }}"
+        namespace: "{{ k3s_litellm_gateway_namespace }}"
+      type: Opaque
+      stringData: "{{ _k3s_litellm_gateway_env_secret_map }}"
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  no_log: true
+
+- name: Create external PostgreSQL credentials secret for LiteLLM
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ k3s_litellm_gateway_db_secret_name }}"
+        namespace: "{{ k3s_litellm_gateway_namespace }}"
+      type: Opaque
+      stringData:
+        username: "{{ k3s_litellm_gateway_postgres_user }}"
+        password: "{{ k3s_litellm_gateway_postgres_password }}"
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  no_log: true
+
+- name: Remove bundled LiteLLM PostgreSQL StatefulSet when using external database
+  kubernetes.core.k8s:
+    api_version: apps/v1
+    kind: StatefulSet
+    name: litellm-postgresql
+    namespace: "{{ k3s_litellm_gateway_namespace }}"
+    state: absent
+    wait: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: not k3s_litellm_gateway_db_deploy_standalone | bool
+
+- name: Query LiteLLM Helm release status
+  ansible.builtin.command:
+    cmd: helm status {{ k3s_litellm_gateway_release_name }} -n {{ k3s_litellm_gateway_namespace }} -o json
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: _k3s_litellm_helm_status
+  changed_when: false
+  failed_when: false
+
+- name: Remove failed or pending LiteLLM Helm release before redeploy
+  ansible.builtin.command:
+    cmd: helm uninstall {{ k3s_litellm_gateway_release_name }} -n {{ k3s_litellm_gateway_namespace }}
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  changed_when: true
+  when:
+    - _k3s_litellm_helm_status.rc == 0
+    - (_k3s_litellm_helm_status.stdout | from_json).info.status | lower is search('failed|pending')
+
+- name: Deploy LiteLLM gateway with Helm OCI
+  kubernetes.core.helm:
+    name: "{{ k3s_litellm_gateway_release_name }}"
+    chart_ref: oci://docker.litellm.ai/berriai/litellm-helm
+    release_namespace: "{{ k3s_litellm_gateway_namespace }}"
+    chart_version: "{{ k3s_litellm_gateway_chart_version | default(omit) }}"
+    create_namespace: true
+    wait: true
+    wait_timeout: 10m
+    values: "{{ k3s_litellm_gateway_helm_values }}"
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Wait for LiteLLM deployment to be ready
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    namespace: "{{ k3s_litellm_gateway_namespace }}"
+    name: litellm
+    wait: true
+    wait_timeout: 300
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: _k3s_litellm_deployment
+
+- name: Query LiteLLM ClusterIP service selector
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    namespace: "{{ k3s_litellm_gateway_namespace }}"
+    name: "{{ k3s_litellm_gateway_release_name }}"
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: _k3s_litellm_cluster_service
+  when: k3s_litellm_gateway_lan_node_port_enabled | bool
+
+- name: Ensure supplemental LAN NodePort service for LiteLLM
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "{{ k3s_litellm_gateway_lan_service_name }}"
+        namespace: "{{ k3s_litellm_gateway_namespace }}"
+        labels:
+          app.kubernetes.io/managed-by: ansible
+          app.kubernetes.io/component: lan-exposure
+      spec:
+        type: NodePort
+        selector: "{{ _k3s_litellm_cluster_service.resources[0].spec.selector }}"
+        ports:
+          - name: http
+            port: "{{ k3s_litellm_gateway_service_port }}"
+            targetPort: "{{ k3s_litellm_gateway_service_port }}"
+            nodePort: "{{ k3s_litellm_gateway_lan_node_port }}"
+            protocol: TCP
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when:
+    - k3s_litellm_gateway_lan_node_port_enabled | bool
+    - _k3s_litellm_cluster_service.resources | length > 0
+
+- name: Display LiteLLM access information
+  ansible.builtin.debug:
+    msg: |
+      LiteLLM Gateway deployed successfully!
+
+      Namespace: {{ k3s_litellm_gateway_namespace }}
+      Release: {{ k3s_litellm_gateway_release_name }}
+
+      Internal service: http://litellm.{{ k3s_litellm_gateway_namespace }}.svc.cluster.local:{{ k3s_litellm_gateway_service_port }}
+      {% if k3s_litellm_gateway_lan_node_port_enabled | bool %}
+      LAN NodePort: http://192.168.50.158:{{ k3s_litellm_gateway_lan_node_port }}/ (via Windows portproxy on hom-lab-ctl-hvh-02)
+      Direct guest NodePort: http://192.168.137.11:{{ k3s_litellm_gateway_lan_node_port }}/
+      {% endif %}
+
+      Vault-backed secrets:
+      - Secret {{ k3s_litellm_gateway_env_secret_name }} (PROXY_MASTER_KEY, Langfuse)
+      - Secret {{ k3s_litellm_gateway_db_secret_name }} (external PostgreSQL)
+      - OpenAI: >-
+          {{ 'configured in vault'
+          if (k3s_litellm_gateway_resolved_openai_api_key | default('') | length > 0)
+          else 'not set — edit vault/shared.vault.yml' }}
+
+      Components deployed:
+      - LiteLLM Proxy ({{ k3s_litellm_gateway_replicas }} replicas)
+      - External PostgreSQL at {{ k3s_litellm_gateway_db_endpoint }}:{{ fuzlang_external_postgres_port }}/{{ k3s_litellm_gateway_db_database }}
+
+      Check status: kubectl get pods -n {{ k3s_litellm_gateway_namespace }}

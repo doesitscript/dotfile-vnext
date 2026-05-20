@@ -1,0 +1,76 @@
+---
+# LiteLLM Gateway on K3s configuration
+k3s_litellm_gateway_state: present
+k3s_litellm_gateway_namespace: litellm
+k3s_litellm_gateway_release_name: litellm
+k3s_litellm_gateway_chart_repo: https://charts.litellm.ai
+k3s_litellm_gateway_chart_name: litellm-helm
+k3s_litellm_gateway_chart_version: "" # Empty = latest
+k3s_litellm_gateway_replicas: 1
+
+# Standard proxy image — external Postgres on fuzlang stack; not litellm-database.
+k3s_litellm_gateway_image_repository: docker.litellm.ai/berriai/litellm
+k3s_litellm_gateway_image_tag: main-latest
+
+# LiteLLM master key — override via vault/k3s_litellm_gateway_master_key at deploy time.
+k3s_litellm_gateway_master_key: "sk-Pass@w0rd1"
+k3s_litellm_gateway_env_secret_name: litellm-env-secret
+
+# External PostgreSQL — Bitnami subchart disabled via db.deployStandalone.
+# db.endpoint/db.url must use fuzlang_external_postgres_connect_address (IP), never inventory_hostname.
+k3s_litellm_gateway_db_deploy_standalone: false
+k3s_litellm_gateway_db_use_existing: true
+k3s_litellm_gateway_db_endpoint: "{{ fuzlang_external_postgres_connect_address }}"
+k3s_litellm_gateway_db_database: litellm
+# Ansible inventory host for delegate_to DB prep tasks — NOT a TCP connect target.
+k3s_litellm_gateway_postgres_inventory_host: server-225-ubuntu
+k3s_litellm_gateway_postgres_compose_dir: /srv/stacks/network
+k3s_litellm_gateway_db_secret_name: litellm-external-postgres
+k3s_litellm_gateway_db_secret_username_key: username
+k3s_litellm_gateway_db_secret_password_key: password
+# Overwritten from vault in tasks/load_vault.yml at deploy time.
+k3s_litellm_gateway_db_url: >-
+  postgresql://{{ fuzlang_external_postgres_user }}:{{ fuzlang_external_postgres_password | urlencode
+  }}@{{ fuzlang_external_postgres_connect_address }}/{{ k3s_litellm_gateway_db_database }}
+
+# Service exposure
+k3s_litellm_gateway_service_type: ClusterIP
+k3s_litellm_gateway_service_port: 4000
+# Supplemental NodePort for LAN/Mac access (Helm chart does not expose nodePort).
+k3s_litellm_gateway_lan_node_port_enabled: true
+k3s_litellm_gateway_lan_node_port: 30400
+k3s_litellm_gateway_lan_service_name: litellm-lan
+
+# Resource limits (single-node cluster)
+k3s_litellm_gateway_cpu_limit: "500m"
+k3s_litellm_gateway_memory_limit: "2Gi"
+k3s_litellm_gateway_cpu_request: "100m"
+k3s_litellm_gateway_memory_request: "768Mi"
+
+# Langfuse integration — keys resolved from vault/shared.vault.yml at deploy time.
+k3s_litellm_gateway_langfuse_enabled: true
+k3s_litellm_gateway_langfuse_host: "http://langfuse-web.langfuse.svc.cluster.local:3000"
+k3s_litellm_gateway_langfuse_public_key: "{{ vault_shared_langfuse_public_key | default('lf_pk_Pass@w0rd1') }}"
+k3s_litellm_gateway_langfuse_secret_key: "{{ vault_shared_langfuse_secret_key | default('lf_sk_Pass@w0rd1') }}"
+k3s_litellm_gateway_proxy_litellm_settings: "{{ {'success_callback': ['langfuse']} if k3s_litellm_gateway_langfuse_enabled | bool else {} }}"
+
+# Model routes — api_key os.environ/* keys are injected via Kubernetes Secret litellm-env-secret.
+k3s_litellm_gateway_model_list:
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: gpt-4o-mini
+      api_base: https://api.openai.com/v1
+      api_key: "os.environ/OPENAI_API_KEY"
+  - model_name: default
+    litellm_params:
+      model: gpt-4o-mini
+      api_base: https://api.openai.com/v1
+      api_key: "os.environ/OPENAI_API_KEY"
+
+# Fallback when vault_shared_openai_api_key is unset — proxy still starts; OpenAI routes omitted.
+k3s_litellm_gateway_model_list_without_openai:
+  - model_name: default
+    litellm_params:
+      model: openai/fake
+      api_key: fake-key
+      api_base: https://exampleopenaiendpoint-production.up.railway.app/
