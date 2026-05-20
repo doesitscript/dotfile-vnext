@@ -133,13 +133,36 @@ all:
     # Single-node K3s server lane on the dedicated Hyper-V Ubuntu VM. VM
     # prep/stub work remains available through k3s_vm_stub_hosts as preflight.
     # k3s_version, token, api_endpoint live in group_vars/k3s_cluster.yaml -- do not duplicate here.
-    k3s_cluster:
+    
+    # Storage/Network K3s cluster (hom-lab-ctl-hvh-01)
+    k3s_cluster_network:
       children:
         server:
           hosts:
             hom-lab-ctl-k3s-01:
         agent:
           hosts: {}
+      vars:
+        server_group: server
+        agent_group: agent
+    
+    # GPU/Inference K3s cluster (hom-lab-ctl-hvh-02)
+    k3s_cluster_gpu:
+      children:
+        server_gpu:
+          hosts:
+            hom-lab-ctl-k3s-02:
+        agent_gpu:
+          hosts: {}
+      vars:
+        server_group: server_gpu
+        agent_group: agent_gpu
+    
+    # Combined k3s_cluster for shared variables
+    k3s_cluster:
+      children:
+        k3s_cluster_network: {}
+        k3s_cluster_gpu: {}
 
     # Loki logging server — host that runs the Loki Docker container.
     # Change the host here to move the Loki server to a different node.
