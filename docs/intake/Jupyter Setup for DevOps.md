@@ -10,238 +10,6 @@ what would be teh best setup considering I don't have a set up at all for this b
 
 ---
 
-# chatgpt response
-
-You’re talking about `Jupyter` notebooks (`.ipynb` files). And yes — for Python learning, AI cookbooks, data exploration, and experimentation, the Jupyter experience is dramatically better than “just opening Python files in VS Code.”
-
-Given your background (DevOps, Windows, WSL, infra-heavy mindset), I’d steer you toward a setup that feels more like a real development workstation rather than “random Python scripts.”
-
-The important distinction:
-
-- VS Code = editor
-- Jupyter = interactive execution environment
-- Conda/uv = Python environment management
-- Notebook/Lab = the UI experience
-
-For your use case (Langfuse cookbooks + AI experimentation), this is the stack I’d recommend:
-
----
-
-# Recommended Stack (Best Overall Experience)
-
-## 1. WSL2 Ubuntu
-Windows Subsystem for Linux
-
-Your actual Python environment should live inside WSL Ubuntu, not native Windows Python.
-
-Why:
-- Linux tooling compatibility
-- AI ecosystem assumes Linux
-- Cleaner package management
-- Better Docker/interpreter behavior
-- Easier transition into ML/LLM tooling later
-
-You already think this way with your infra setup, so this aligns naturally.
-
----
-
-## 2. Miniconda or Micromamba
-Miniconda
-
-This manages Python environments cleanly.
-
-You’ll use it to create isolated environments like:
-- `langfuse-cookbooks`
-- `ml-playground`
-- `llm-experiments`
-
-Why:
-- Prevents dependency hell
-- Standard in notebook/data ecosystem
-- Easy package installs
-
-If you want ultra-modern and faster:
-- `micromamba` instead of conda
-
-But Miniconda is more beginner-friendly.
-
----
-
-## 3. JupyterLab (NOT classic notebook)
-JupyterLab
-
-This is what you actually want.
-
-Think:
-- browser-based IDE
-- notebook tabs
-- terminals
-- file browser
-- markdown + code mixed together
-- visualization support
-
-This is the “real” modern notebook experience.
-
-Much better than the old classic Jupyter Notebook UI.
-
----
-
-## 4. Cursor OR VS Code (light usage only)
-Cursor
-Visual Studio Code
-
-You said you don’t want VS Code as the main notebook experience.
-
-I agree.
-
-But:
-- still useful for editing `.py`, YAML, Terraform, configs
-- useful for Git integration
-- useful for AI-assisted edits
-
-Use JupyterLab for notebooks.
-Use Cursor/VSCode for actual codebase editing.
-
-That split feels much cleaner.
-
----
-
-# The Actual Workflow You’ll Probably Love
-
-## JupyterLab
-For:
-- opening `.ipynb`
-- experimenting
-- learning Python
-- running Langfuse cookbook examples
-- visual debugging
-- markdown notes
-- data inspection
-
-## Cursor
-For:
-- structured projects
-- repo navigation
-- editing modules
-- AI-assisted coding
-- Git workflows
-
-## WSL Ubuntu
-For:
-- real execution environment
-- Python runtime
-- package installs
-- Docker integration
-
----
-
-# Additional Tools Worth Installing
-
-## Git
-Git
-
-Required. Everything assumes Git.
-
----
-
-## Docker Desktop + WSL integration
-Docker Desktop
-
-Needed later for:
-- Langfuse
-- databases
-- AI tooling
-- local services
-
-You’ll almost certainly want this soon.
-
----
-
-## Python Kernel Support
-Installed inside Jupyter environments.
-
-Lets each Conda environment appear as a selectable notebook runtime.
-
-Very important once you have multiple environments.
-
----
-
-# Optional But HIGHLY Recommended
-
-## uv
-uv
-
-Modern ultra-fast Python package manager from Astral.
-
-This is where Python ecosystem is heading.
-
-You can learn this later if you want a cleaner modern workflow than pip/conda.
-
----
-
-## nbstripout
-nbstripout
-
-Prevents giant notebook diffs in Git.
-
-Super useful eventually.
-
----
-
-# Your Likely Final Architecture
-
-```text
-Windows Host
-│
-├── WSL Ubuntu
-│   ├── Miniconda / Micromamba
-│   ├── Python Environments
-│   ├── JupyterLab
-│   ├── Git
-│   └── Docker CLI
-│
-├── Docker Desktop
-│
-├── Cursor
-│
-└── Browser
-    └── JupyterLab UI
-```
-
----
-
-# My Recommendation For You Specifically
-
-I would NOT:
-- install raw Windows Python
-- use PyCharm initially
-- use classic Jupyter Notebook
-- rely on global pip installs
-- run AI tooling directly in Windows
-
-I WOULD:
-- use WSL Ubuntu
-- use Miniconda
-- use JupyterLab
-- use Cursor alongside it
-- keep environments isolated from day one
-
-That gives you a setup that scales naturally into:
-- AI engineering
-- LangChain
-- Langfuse
-- local LLMs
-- ML experimentation
-- infra automation
-- notebook workflows
-- MCP experimentation
-
-without needing to rebuild everything later.
-
-And honestly, once this is working, those Langfuse cookbooks become much more approachable because you can execute cell-by-cell and inspect everything interactively instead of feeling blind.
-
----
-
 # you asked
 
 message time: 2026-05-19 12:01:00
@@ -1076,3 +844,20 @@ What to build first:
 ```
 
 Do not start by deploying a giant model. Get the pipe working first. Then scale.
+
+---
+
+# implementation planning note
+
+The implementation breakdown from this intake has been split into separate
+numbered files under:
+
+```text
+docs/intake/jupyter-devops-implementation-plans/
+```
+
+The plan set intentionally starts with `00-upgraded-server-ubuntu-docker-k3s-baseline.md`
+because this work targets **two upgraded servers**, not one:
+
+- storage/network server: platform and storage-heavy services
+- RTX 5090 server: GPU/inference lane
