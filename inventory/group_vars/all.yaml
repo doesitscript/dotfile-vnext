@@ -45,6 +45,17 @@ timezone_windows: Central Standard Time  # Windows timezone name
 # ────────────────────────────────────────────────────────────────────────────
 contract_file: contracts/fuzlang.contract.yaml
 
+# External PostgreSQL connect contract
+# fuzlang_external_postgres_connect_address is the IP/DNS target for TCP connections.
+# It is NOT an Ansible inventory hostname. Override per host when the postgres lane
+# differs (hvh-01/dkr-01 lane: 138.10; hvh-02/server-225-ubuntu lane: 137.10).
+fuzlang_external_postgres_connect_address: "192.168.138.10"
+fuzlang_external_postgres_host: "{{ fuzlang_external_postgres_connect_address }}"
+fuzlang_external_postgres_port: 5432
+fuzlang_external_postgres_user: langfuse
+fuzlang_external_postgres_password: Pass@w0rd1
+fuzlang_external_postgres_db: langfuse
+
 # Dotfiles role path defaults (override per host/group if needed).
 dotfiles_home: >-
   {{ 'D:\\develop\\dotfile-vnext'

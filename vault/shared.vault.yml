@@ -1,21 +1,21 @@
 ---
 # Shared Secrets Vault
-# Encrypted with: ansible-vault encrypt vault/shared.vault.yml
+# Encrypt with: ansible-vault encrypt vault/shared.vault.yml
 # These secrets are readable by mac-dev, main, network, and dev nodes
 # DO NOT commit unencrypted secrets to git
 
-# Windows connection passwords now belong in inventory-backed group vaults
-# such as inventory/group_vars/server_225/vault.yml.
+vault_shared_langfuse_public_key: lf_pk_Pass@w0rd1
+vault_shared_langfuse_secret_key: lf_sk_Pass@w0rd1
 
-# Langfuse shared keys (for API access from main/dev nodes)
-FUZLANG_LANGFUSE_PUBLIC_KEY: "{{ vault_shared_langfuse_public_key | default('PLACEHOLDER_REPLACE_WITH_VAULT') }}"
-FUZLANG_LANGFUSE_SECRET_KEY: "{{ vault_shared_langfuse_secret_key | default('PLACEHOLDER_REPLACE_WITH_VAULT') }}"
+vault_shared_minio_access_key: minioadmin
+vault_shared_minio_secret_key: Pass@w0rd1
 
-# MinIO shared keys (for API access from main/dev nodes)
-FUZLANG_MINIO_ACCESS_KEY: "{{ vault_shared_minio_access_key | default('PLACEHOLDER_REPLACE_WITH_VAULT') }}"
-FUZLANG_MINIO_SECRET_KEY: "{{ vault_shared_minio_secret_key | default('PLACEHOLDER_REPLACE_WITH_VAULT') }}"
+# Provider API keys — consumed by k3s_litellm_gateway (litellm-env-secret) and Jupyter/workbench.
+# Set your real key: ansible-vault edit vault/shared.vault.yml
+vault_shared_openai_api_key: ""
 
-# Ansible SSH public key (one line, e.g. ssh-ed25519 AAAA... user@host). Used by playbooks/bootstrap_local.yml
-# to install into WSL authorized_keys so Mac can SSH in.
-# Optional: if unset, bootstrap uses bootstrap/id_ed25519_ansible.pub when present (deprecated: bootstrap/mac_ssh_key.pub).
+# LiteLLM proxy master key — maps to PROXY_MASTER_KEY in litellm-env-secret.
+vault_k3s_litellm_gateway_master_key: "sk-Pass@w0rd1"
+
+# Ansible SSH public key (one line, e.g. ssh-ed25519 AAAA... user@host).
 vault_ansible_ssh_public_key: ""
