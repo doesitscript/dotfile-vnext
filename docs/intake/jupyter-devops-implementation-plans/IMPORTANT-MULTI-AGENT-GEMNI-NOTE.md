@@ -109,7 +109,10 @@ Phase 2 Coordinator (Sonnet 4.5 ansible-coordinator)
 - Safe separation between Docker, K3s, GPU, and platform lanes
 
 **Output:** Finalized plans ready for implementation
-- **Status:** 🔄 Pending (ready to launch)
+- **Status:** In progress as of 2026-05-20. Six real planner agents were
+  spawned. A seventh coordinator agent was not available because the runtime
+  capped this session at six spawned agents, so the main Codex thread used the
+  documented fallback and acted as coordinator.
 
 ### Phase 3: Post-Implementation Findings
 **Purpose:** Validate actual deployment and operational outcomes.
@@ -145,3 +148,13 @@ division of labor through the three-phase workflow documented above.
 - Gemini API model docs: https://ai.google.dev/gemini-api/docs/models/gemini-v2
 - Gemini API pricing docs: https://ai.google.dev/gemini-api/docs/pricing
 - `gemini-free-tier-model-chooser` skill
+
+## Simple Launch
+
+Short form:
+
+`Use $jupyter-devops-plan-implementer and start at Plan 00.`
+
+Preserved long-form launch prompt:
+
+`Start implementing the Jupyter DevOps plans in order. Begin with Plan 00. For each plan: create the repo resources, run the safe preview/validation steps, then deploy only after the plan-specific prerequisites pass. Continue plan by plan, stopping only for destructive actions, unresolved naming/NetBox decisions, missing secrets, or a failed validation that needs my decision.`
