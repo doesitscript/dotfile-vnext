@@ -21,7 +21,7 @@
 ## What Already Exists
 
 - `hyperv_networking` already owns Hyper-V feature enablement and External
-  switch management on `server-225-win`.
+  switch management on `hom-lab-ctl-hvh-02`.
 - `server-225-ubuntu` already exists as the reserved inventory identity for the
   replacement VM.
 - `multipass_ubuntu_vm` already contains the reusable bootstrap patterns we
@@ -43,7 +43,7 @@
   - `meta-data`
 - Generate the seed ISO on the controller with `hdiutil makehybrid`
 - Install `qemu-img` on the Windows host via Chocolatey
-- Convert the Ubuntu `.img` to a VM-owned `.vhdx` on `server-225-win`
+- Convert the Ubuntu `.img` to a VM-owned `.vhdx` on `hom-lab-ctl-hvh-02`
 - Publish the guest back to `server-225-ubuntu` through host facts and the
   controller SSH config refresh
 
@@ -56,7 +56,7 @@
     (`user-data`, `meta-data`) under ISO9660 restrictions
   - it keeps the Windows host dependency surface smaller
 - Windows-side image conversion still needs `qemu-img`, so the role owns that
-  bootstrap dependency on `server-225-win`
+  bootstrap dependency on `hom-lab-ctl-hvh-02`
 - Secure Boot should use the Linux-compatible template:
   - `MicrosoftUEFICertificateAuthority`
 
@@ -85,7 +85,7 @@
     while still remaining sparse/compressed at the filesystem layer
   - replacement-resource testing later proved a more viable route:
     - Canonical Azure VHD tarball
-    - extract published VHD on `server-225-win`
+    - extract published VHD on `hom-lab-ctl-hvh-02`
     - clear sparse flag and compression on the source artifact
     - native `Convert-VHD` to the final fixed VHDX
     - attach and boot successfully in Hyper-V
@@ -126,7 +126,7 @@
 
 1. Syntax-check the dedicated playbook
 2. Lint the new role
-3. Run the dedicated playbook against `server-225-win`
+3. Run the dedicated playbook against `hom-lab-ctl-hvh-02`
 4. Confirm:
    - VM exists in Hyper-V
    - guest obtains an IPv4 address on the External Switch

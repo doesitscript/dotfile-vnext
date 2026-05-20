@@ -201,7 +201,7 @@ Override `mcp_active_profile` in host_vars or group_vars:
 mcp_active_profile: dev_tools
 mcp_deployment_mode: uvx
 
-# host_vars/server-225-win.yaml (your server)
+# host_vars/hom-lab-ctl-hvh-02.yaml (your server)
 mcp_active_profile: foundation
 mcp_deployment_mode: docker
 ```

@@ -163,7 +163,7 @@ Examples:
 - Should match actual hostnames when possible
 
 **Examples:**
-- `server-225-win`
+- `hom-lab-ctl-hvh-02`
 - `server-225-ubuntu`
 - `home-lab-app-dkr-01`
 
@@ -278,7 +278,7 @@ project/
 │   │   ├── all.yml
 │   │   └── web_servers.yml
 │   └── host_vars/
-│       └── server-225-win.yml
+│       └── hom-lab-ctl-hvh-02.yml
 ├── playbooks/
 │   ├── deploy_ipam_netbox.yml
 │   └── deploy_development_nodes.yml

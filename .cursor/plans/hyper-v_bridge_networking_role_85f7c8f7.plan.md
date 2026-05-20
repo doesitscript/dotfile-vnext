@@ -18,7 +18,7 @@ todos:
     content: Add task to disable/mask ssh.socket so boot command owns port 22 cleanly (applies to all modes)
     status: completed
   - id: update-hostvars
-    content: Update server-225-win.yaml (wsl_networking_mode, adapter), server-225-wsl.yaml (bridged IP), mac-dev.yaml (docker host)
+    content: Update hom-lab-ctl-hvh-02.yaml (wsl_networking_mode, adapter), server-225-wsl.yaml (bridged IP), mac-dev.yaml (docker host)
     status: completed
   - id: update-playbook
     content: "Add hyperv_networking role to access_windows.yaml with when: wsl_networking_mode == 'bridged'"
@@ -63,7 +63,7 @@ A single variable controls which networking path runs:
 - `**wsl_networking_mode: bridged**` — `hyperv_networking` role runs, `ubuntu.yml` applies Netplan static IP, skips portproxy
 - `**wsl_networking_mode: nat**` (default) — `hyperv_networking` role is skipped, `ubuntu.yml` applies portproxy with dynamic WSL IP, skips Netplan
 
-Set in `host_vars/server-225-win.yaml`. Default is `nat` in `roles/access_identity_windows/defaults/main.yml` so existing hosts are unaffected.
+Set in `host_vars/hom-lab-ctl-hvh-02.yaml`. Default is `nat` in `roles/access_identity_windows/defaults/main.yml` so existing hosts are unaffected.
 
 All networking-agnostic tasks (WSL install, cloud-init, user setup, sshd, SSH keys, fact publishing, ssh.socket fix) always run regardless of mode.
 
@@ -218,7 +218,7 @@ Default is `nat` so existing hosts work unchanged. Override to `bridged` in host
 
 ## 4. Update host_vars
 
-### [inventory/host_vars/server-225-win.yaml](inventory/host_vars/server-225-win.yaml)
+### [inventory/host_vars/hom-lab-ctl-hvh-02.yaml](inventory/host_vars/hom-lab-ctl-hvh-02.yaml)
 
 - Add `wsl_networking_mode: bridged`
 - Add `hyperv_adapter_name: "Wi-Fi"` (or rely on default)

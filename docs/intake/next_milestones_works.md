@@ -45,7 +45,7 @@ This is the current rollback target if later milestones break the VM path.
 
 - Multipass is no longer the active implementation path.
 - Active WSL surfaces have been removed from the main runtime path.
-- `server-225-win` is the Windows control surface.
+- `hom-lab-ctl-hvh-02` is the Windows control surface.
 - `server-225-ubuntu` is the active Linux companion surface.
 - Ubuntu Server ISO + autoinstall is the working bootstrap path.
 - The site-level orchestration path now exists.
@@ -58,7 +58,7 @@ These are the important limits of the current checkpoint:
 
 - current working guest access now includes direct routed reachability from
   `mac-dev` to `192.168.137.10`
-- generated SSH with `ProxyJump` via `server-225-win` remains available as a
+- generated SSH with `ProxyJump` via `hom-lab-ctl-hvh-02` remains available as a
   fallback
 - the first direct-network target is now achieved as Mac-only routing to
   `192.168.137.0/24` through `192.168.50.158`
@@ -117,14 +117,14 @@ sudo apt update -o Acquire::ForceIPv4=true
 The current repo now has both:
 
 - direct routed SSH to `192.168.137.10`
-- generated SSH using `ProxyJump` through `server-225-win`
+- generated SSH using `ProxyJump` through `hom-lab-ctl-hvh-02`
 
 The current intended steady-state should stay:
 
 - primary:
   - direct routed guest-IP access
 - secondary/fallback:
-  - generated SSH through `server-225-win`
+  - generated SSH through `hom-lab-ctl-hvh-02`
 
 ### 5. Clarify bootstrap user vs runtime user
 

@@ -43,10 +43,10 @@ cd /path/to/dotfile-vnext
 ansible-playbook playbooks/bootstrap_execution_node.yaml -i inventory/inventory.yaml --limit execution_nodes
 ```
 
-**2. Windows OpenSSH (via WinRM)** – Sets up OpenSSH Server on Windows: capability, sshd service, firewall rule, `administrators_authorized_keys` file and ACL, installs the execution node’s public key, restarts sshd when needed. Assumes WinRM is already reachable. Target any Windows host(s) with `--limit` (e.g. `server-225-win`).
+**2. Windows OpenSSH (via WinRM)** – Sets up OpenSSH Server on Windows: capability, sshd service, firewall rule, `administrators_authorized_keys` file and ACL, installs the execution node’s public key, restarts sshd when needed. Assumes WinRM is already reachable. Target any Windows host(s) with `--limit` (e.g. `hom-lab-ctl-hvh-02`).
 
 ```bash
-ansible-playbook playbooks/boostrap_windows_ssh_via_winrm.yaml -i inventory/inventory.yaml --limit server-225-win
+ansible-playbook playbooks/boostrap_windows_ssh_via_winrm.yaml -i inventory/inventory.yaml --limit hom-lab-ctl-hvh-02
 ```
 
 Run the execution-node playbook first so the SSH key exists; then run the Windows OpenSSH playbook against the desired Windows host(s).
@@ -127,17 +127,17 @@ From your **Mac** (mac-dev), with the repo cloned and inventory/host_vars in pla
 cd /path/to/dotfile-vnext
 
 # Bootstrap Windows (WinRM): features, WSL, dirs, GPU check
-./bin/fz bootstrap --limit server-225-win
+./bin/fz bootstrap --limit hom-lab-ctl-hvh-02
 
 # Deploy main stacks (Ollama, LiteLLM, OpenWebUI) via SSH to WSL
 ./bin/fz deploy main --limit server-225-wsl
 
 # Optional: verify
-./bin/fz verify --limit server-225-win
+./bin/fz verify --limit hom-lab-ctl-hvh-02
 ./bin/fz verify --limit server-225-wsl
 ```
 
-If you have the repo in **WSL on Server-225**, run the same `./bin/fz` commands from there (WSL can use WinRM to `localhost` or the Windows hostname for `server-225-win`, and SSH to the same host for `server-225-wsl`). Ensure `inventory/host_vars/server-225-win.yaml` has `ansible_host` set to the Windows hostname or IP (e.g. `DESKTOP-VLLM` or `127.0.0.1` for local).
+If you have the repo in **WSL on Server-225**, run the same `./bin/fz` commands from there (WSL can use WinRM to `localhost` or the Windows hostname for `hom-lab-ctl-hvh-02`, and SSH to the same host for `server-225-wsl`). Ensure `inventory/host_vars/hom-lab-ctl-hvh-02.yaml` has `ansible_host` set to the Windows hostname or IP (e.g. `DESKTOP-VLLM` or `127.0.0.1` for local).
 
 Vault password is needed for deploy if you use encrypted vault files: add `--ask-vault-pass` to the deploy command.
 

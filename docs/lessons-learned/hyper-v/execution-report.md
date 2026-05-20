@@ -13,7 +13,7 @@ Disable-NetAdapter -Name "Network Bridge" -Confirm:$false; Disable-NetAdapter -N
 ```
 
 ### Execution Context:
-- **Host**: server-225-win (DESKTOP-VLLM)
+- **Host**: hom-lab-ctl-hvh-02 (DESKTOP-VLLM)
 - **Connection**: SSH via Wi-Fi  
 - **Time Started**: 17:50:32 UTC
 - **Method**: Single-line PowerShell command with semicolon separators
@@ -29,7 +29,7 @@ Disable-NetAdapter -Name "Network Bridge" -Confirm:$false; Disable-NetAdapter -N
 
 ### ⚠️ Network Impact (Expected)
 - **SSH Connection Lost**: Connection hung during execution
-- **DNS Resolution Failed**: `ping server-225-win` returns "Unknown host"  
+- **DNS Resolution Failed**: `ping hom-lab-ctl-hvh-02` returns "Unknown host"  
 - **Connection Timeout**: `ssh -o ConnectTimeout=5` returns "Operation timed out"
 - **Host**: desktop-vllm unreachable on port 22
 
@@ -65,7 +65,7 @@ Disable-NetAdapter -Name "Network Bridge" -Confirm:$false; Disable-NetAdapter -N
 
 ### Recovery Methods Available:
 1. **Wait for automatic recovery** (network stack stabilization)
-2. **Physical/console access** to server-225-win if needed
+2. **Physical/console access** to hom-lab-ctl-hvh-02 if needed
 3. **Device Manager method**: Scan for hardware changes
 4. **Network reset**: `netsh winsock reset` if required
 

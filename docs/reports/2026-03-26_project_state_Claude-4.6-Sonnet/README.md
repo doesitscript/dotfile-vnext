@@ -41,7 +41,7 @@ progress snapshot, not a stable baseline.
 AI/development environment. The operator is "joshc" on a macOS controller managing:
 
 - macOS controller (`mac-dev`, running locally, the Ansible execution node)
-- Windows Server 2025 GPU host (`server-225-win`, via WinRM)
+- Windows Server 2025 GPU host (`hom-lab-ctl-hvh-02`, via WinRM)
 - Linux companion surfaces (`server-225-wsl` legacy naming, `server-225-ubuntu` Multipass VM)
 - Network server Windows host (`home-lab-auth-hvh-01`, via WinRM)
 
@@ -59,13 +59,13 @@ The inventory model is well-designed and encodes durable truths:
 
 ```
 Execution surface:  mac-dev (macOS, ansible_connection=local)
-Windows hosts:      server-225-win, home-lab-auth-hvh-01 (WinRM)
+Windows hosts:      hom-lab-ctl-hvh-02, home-lab-auth-hvh-01 (WinRM)
 Linux (WSL legacy): server-225-wsl, network-server-wsl (SSH)
 Linux VM (new):     server-225-ubuntu (Multipass VM, SSH)
 Deferred:           dev-3090-win/wsl, dev-workstation-win/wsl
 K3s cluster:        network-server-wsl (server), server-225-wsl (agent)
 Logging server:     network-server-wsl (Loki)
-Docker clients:     mac-dev, server-225-win, home-lab-auth-hvh-01
+Docker clients:     mac-dev, hom-lab-ctl-hvh-02, home-lab-auth-hvh-01
 ```
 
 The `-wsl` suffix is explicitly labeled as legacy in the inventory comments. The
@@ -198,7 +198,7 @@ refinements.
 | Troubleshooting discipline | **4.5/5** | Evidence-first pattern with real artifacts; collected/missing/uncollected reporting |
 | MCP integration depth | **4.5/5** | Six servers; project-context-aware; drawio canonical example complete |
 | Documentation freshness | **2.5/5** | Root README still references missing paths; operator_runbook still wrapper-centric |
-| Secret hygiene | **2/5** | `ansible_password: "Pass@w0rd1"` confirmed plaintext in `inventory/host_vars/server-225-win.yaml` |
+| Secret hygiene | **2/5** | `ansible_password: "Pass@w0rd1"` confirmed plaintext in `inventory/host_vars/hom-lab-ctl-hvh-02.yaml` |
 | Verification enforcement | **3/5** | `.ansible-lint` and `.pre-commit-config.yaml` exist; pre-commit hook not installed |
 | Current engineering unblocked | **3/5** | Multipass Hyper-V networking blocker unresolved; WSL deprecation tracked but incomplete |
 
@@ -245,7 +245,7 @@ refinements.
 References at minimum: `playbooks/bootstrap_execution_node.yaml`, `playbooks/bootstrap_server_225.yaml`, `docs/architecture_rules.md`, and others — all missing. Do not build on `README.md` paths without verifying they exist.
 
 ### 2. Plaintext secrets in inventory
-`inventory/host_vars/server-225-win.yaml` contains `ansible_password: "Pass@w0rd1"` in plaintext. The vault infrastructure exists (vault templates, encrypted group vars). This gap is real and known.
+`inventory/host_vars/hom-lab-ctl-hvh-02.yaml` contains `ansible_password: "Pass@w0rd1"` in plaintext. The vault infrastructure exists (vault templates, encrypted group vars). This gap is real and known.
 
 ### 3. `*-wsl` naming is legacy
 Don't conflate `server-225-wsl` (legacy SSH companion via WSL) with `server-225-ubuntu` (new Multipass VM). These are different hosts with different bootstrap paths. The repo is actively migrating away from the WSL pattern.
@@ -338,7 +338,7 @@ Primary sources consulted for this report:
 
 - `AGENTS.md`
 - `inventory/inventory.yaml`
-- `inventory/host_vars/server-225-win.yaml`
+- `inventory/host_vars/hom-lab-ctl-hvh-02.yaml`
 - `inventory/group_vars/server_225.yaml`
 - `docs/codex_framework/README.md`
 - `docs/codex_framework/partner_process.md`

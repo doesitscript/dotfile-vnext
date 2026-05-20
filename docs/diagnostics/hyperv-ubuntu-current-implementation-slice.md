@@ -17,7 +17,7 @@ This is intentionally narrower than the full infrastructure story. It answers:
 The current working slice is:
 
 - physical/control host:
-  - `server-225-win`
+  - `hom-lab-ctl-hvh-02`
 - guest Linux companion:
   - `server-225-ubuntu`
 - guest subnet:
@@ -33,14 +33,14 @@ The current working slice is:
 - controller access model currently working:
   - direct routed access to `192.168.137.10`
 - controller fallback access model also still available:
-  - SSH `ProxyJump` through `server-225-win`
+  - SSH `ProxyJump` through `hom-lab-ctl-hvh-02`
 
 ## Source Of Truth Files
 
 Primary source-of-truth files for this slice:
 
 - Windows control surface:
-  - [server-225-win.yaml](/Users/joshc/develop/dotfile-vnext/inventory/host_vars/server-225-win.yaml)
+  - [hom-lab-ctl-hvh-02.yaml](/Users/joshc/develop/dotfile-vnext/inventory/host_vars/hom-lab-ctl-hvh-02.yaml)
 - Ubuntu guest surface:
   - [server-225-ubuntu.yaml](/Users/joshc/develop/dotfile-vnext/inventory/host_vars/server-225-ubuntu.yaml)
 - Hyper-V routed private subnet implementation:
@@ -60,7 +60,7 @@ This is not a hypothetical topology anymore.
 
 The repo now has:
 
-- a Windows Hyper-V host at `server-225-win`
+- a Windows Hyper-V host at `hom-lab-ctl-hvh-02`
 - a defined Ubuntu guest at `server-225-ubuntu`
 - host_vars for both surfaces
 - a concrete guest IP and subnet assignment
@@ -93,7 +93,7 @@ The current repo truth is now:
 - raw TCP to `192.168.137.10:22` succeeds from the Mac/controller
 - direct SSH to `joshc@192.168.137.10` succeeds from the Mac/controller
 - the generated SSH surface for `server-225-ubuntu` still supports:
-  - `ProxyJump=server-225-win`
+  - `ProxyJump=hom-lab-ctl-hvh-02`
 
 That means the current access contract is:
 
@@ -214,7 +214,7 @@ Still separate from this slice:
 
 The safe way to reason about the repo now is:
 
-- treat `server-225-win` + `server-225-ubuntu` as a real active implementation
+- treat `hom-lab-ctl-hvh-02` + `server-225-ubuntu` as a real active implementation
   path
 - treat this path as the current source of truth for the Hyper-V Ubuntu
   companion milestone

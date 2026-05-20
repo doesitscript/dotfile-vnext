@@ -1,7 +1,7 @@
 # Server-225 Hyper-V Ubuntu VM Replacing Multipass
 
 Canonical approvedb plan for replacing the deprecated Multipass-backed
-`server-225-ubuntu` surface with a Hyper-V-native Ubuntu VM on `server-225-win`.
+`server-225-ubuntu` surface with a Hyper-V-native Ubuntu VM on `hom-lab-ctl-hvh-02`.
 
 Tracked in GitHub issue [#4](https://github.com/doesitscript/dotfile-vnext/issues/4).
 
@@ -69,7 +69,7 @@ Recommended path:
   - `hyperv_ubuntu_vm_state: present | absent`
 - primary disk path:
   - download Canonical Azure VHD tarball
-  - extract the published VHD on `server-225-win`
+  - extract the published VHD on `hom-lab-ctl-hvh-02`
   - clear sparse/compression on the source artifact
   - run native `Convert-VHD` to the final fixed VHDX
 - keep the old raw `.img -> qemu-img -> vhdx` path only as fallback/legacy
@@ -111,12 +111,12 @@ Not in scope for this checkpoint:
 ## Apply / Verify / Undo / Change Class
 
 Apply:
-- run the legacy `absent` path to remove Multipass from `server-225-win`
+- run the legacy `absent` path to remove Multipass from `hom-lab-ctl-hvh-02`
 - remove active Multipass playbooks, host vars, and troubleshooting entrypoints
   from the repo
 
 Verify:
-- verify the Multipass MSI/runtime is gone from `server-225-win`
+- verify the Multipass MSI/runtime is gone from `hom-lab-ctl-hvh-02`
 - syntax-check touched playbooks
 - inspect the active control surfaces to confirm they no longer advertise
   Multipass as a supported path
@@ -137,7 +137,7 @@ implementation direction.
 Pinned runtime finding:
 
 - Canonical's published Azure VHD, after source normalization on
-  `server-225-win`, converted cleanly with native `Convert-VHD`
+  `hom-lab-ctl-hvh-02`, converted cleanly with native `Convert-VHD`
 - the resulting fixed VHDX booted `server-225-ubuntu` successfully
 
 Implementation consequence:
@@ -175,12 +175,12 @@ Current correction after live boot evidence:
 The networking direction has now moved past the original External-switch plan
 and the earlier ICS-only checkpoint.
 
-Current preferred topology on `server-225-win`:
+Current preferred topology on `hom-lab-ctl-hvh-02`:
 
 - keep the host control plane on `vEthernet (External)` on the LAN
 - keep the Ubuntu guest on an Internal Hyper-V switch
 - keep the private guest subnet on `192.168.137.0/24`
-- make `server-225-win` the transit host between the LAN and that guest subnet
+- make `hom-lab-ctl-hvh-02` the transit host between the LAN and that guest subnet
 - first add a Mac-only route to the guest subnet
 - later promote the same route to the router for whole-LAN reachability
 
@@ -191,7 +191,7 @@ What this milestone has already proven:
 - the guest can boot and obtain a private ICS-subnet IPv4
 - the Windows host can see and probe that guest address on the private subnet
 - the Mac/controller route can be installed toward that private subnet through
-  `server-225-win`
+  `hom-lab-ctl-hvh-02`
 
 What remains in progress:
 
@@ -259,7 +259,7 @@ Repo cleanup completed:
 
 Host cleanup blocked:
 
-- `server-225-win` is currently unreachable at the network layer, so the
+- `hom-lab-ctl-hvh-02` is currently unreachable at the network layer, so the
   destructive host-side teardown could - proving stable SSH authentication from the routed guest address
 not be completed in this pass
 

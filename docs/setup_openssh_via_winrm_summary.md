@@ -16,7 +16,7 @@ This doc describes the temporary playbook `playbooks/setup_openssh_via_winrm.yam
 | `vault/openssh_host_keys.vault.yml` exists | Yes |
 | `bootstrap/openssh_host_keys/` key files | `ssh_host_ed25519_key`, `ssh_host_ed25519_key.pub`, `ssh_host_rsa_key`, `ssh_host_rsa_key.pub` |
 
-### Windows host: server-225-win
+### Windows host: hom-lab-ctl-hvh-02
 
 | Check | Value |
 |-------|--------|
@@ -28,7 +28,7 @@ This doc describes the temporary playbook `playbooks/setup_openssh_via_winrm.yam
 | Inventory `ansible_user` | joshc |
 | `win_ssh_port` (host_var) | 2222 |
 
-So on server-225-win: OpenSSH Server is installed, the firewall allows port 2222, host keys are present, and the controller’s public key is already in `authorized_keys` (one line). Running `setup_openssh_via_winrm.yaml` against this host is idempotent and will not change behavior.
+So on hom-lab-ctl-hvh-02: OpenSSH Server is installed, the firewall allows port 2222, host keys are present, and the controller’s public key is already in `authorized_keys` (one line). Running `setup_openssh_via_winrm.yaml` against this host is idempotent and will not change behavior.
 
 ---
 
@@ -68,11 +68,11 @@ When connecting to this host via SSH, set `ansible_shell_type: bash` (DefaultShe
 From the Mac (repo root), with env loaded (e.g. `source .envrc` or direnv):
 
 ```bash
-.venv/bin/ansible-playbook playbooks/setup_openssh_via_winrm.yaml -i inventory/inventory.yaml --limit server-225-win
+.venv/bin/ansible-playbook playbooks/setup_openssh_via_winrm.yaml -i inventory/inventory.yaml --limit hom-lab-ctl-hvh-02
 ```
 
 - Use `--ask-vault-pass` or `.vault_pass` if the playbook needs to read `vault/openssh_host_keys.vault.yml`.
-- For multiple Windows hosts: `--limit server-225-win,home-lab-auth-hvh-01` or run once per host.
+- For multiple Windows hosts: `--limit hom-lab-ctl-hvh-02,home-lab-auth-hvh-01` or run once per host.
 
 ### Windows capabilities (lookup / install / remove)
 

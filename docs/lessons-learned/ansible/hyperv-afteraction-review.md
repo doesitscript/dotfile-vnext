@@ -58,7 +58,7 @@ Command:
 ANSIBLE_LOCAL_TEMP=/tmp/ansible-local ANSIBLE_REMOTE_TEMP=/tmp/ansible-remote \
 .venv/bin/ansible-playbook playbooks/server_225_multipass_ubuntu_vm.yaml \
   -i inventory/inventory.yaml \
-  --limit 'execution_nodes,server-225-win'
+  --limit 'execution_nodes,hom-lab-ctl-hvh-02'
 Repo implementation:
 hyperv_feature.yml
 Live output:

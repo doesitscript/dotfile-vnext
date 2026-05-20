@@ -3,14 +3,14 @@
 ## Purpose
 
 This note documents the current target networking model for
-`server-225-ubuntu` on `server-225-win`.
+`server-225-ubuntu` on `hom-lab-ctl-hvh-02`.
 
 It builds from the proven Internal switch + private guest subnet checkpoint and
 adds the missing reachability layer:
 
-- `server-225-win` acts as the transit host between the LAN and the guest
+- `hom-lab-ctl-hvh-02` acts as the transit host between the LAN and the guest
   subnet
-- `mac-dev` learns a route to the guest subnet through `server-225-win`
+- `mac-dev` learns a route to the guest subnet through `hom-lab-ctl-hvh-02`
 - later, the router can learn the same route for whole-LAN reachability
 
 ## Status Summary
@@ -22,7 +22,7 @@ Read the current progression like this:
 
 1. current working access:
    - direct reachability from `mac-dev` to `192.168.137.10`
-   - generated SSH with `ProxyJump=server-225-win` still available
+   - generated SSH with `ProxyJump=hom-lab-ctl-hvh-02` still available
 2. later whole-LAN target:
    - router static route for `192.168.137.0/24` via `192.168.50.158`
 
@@ -45,7 +45,7 @@ router
   |
   | Wi-Fi LAN
   |
-server-225-win
+hom-lab-ctl-hvh-02
   |
   |- vEthernet (External)   192.168.50.158   <- LAN/control-plane side
   |
@@ -132,7 +132,7 @@ Today, what is proven is:
 - `mac-dev` can also reach `192.168.137.10` directly
 - raw TCP/22 succeeds to the guest IP from the Mac/controller
 - direct SSH succeeds to `joshc@192.168.137.10`
-- generated SSH through `server-225-win` still works as a fallback
+- generated SSH through `hom-lab-ctl-hvh-02` still works as a fallback
 
 Operational interpretation:
 

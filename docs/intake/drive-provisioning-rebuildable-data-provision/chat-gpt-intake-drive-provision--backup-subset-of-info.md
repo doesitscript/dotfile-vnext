@@ -133,7 +133,7 @@ This prevents accidental runs from a broad inventory command.
 Example host vars:
 
 ```yaml id="kqgg10"
-# inventory/host_vars/server-225-win/storage.yaml
+# inventory/host_vars/hom-lab-ctl-hvh-02/storage.yaml
 
 disk_provisioning_enabled: true
 
@@ -155,7 +155,7 @@ Then at runtime:
 
 ```bash id="stf2eq"
 ansible-playbook playbooks/storage_10_prepare_windows_disks.yaml \
-  --limit server-225-win \
+  --limit hom-lab-ctl-hvh-02 \
   --tags storage,disk,destructive \
   -e disk_provisioning_apply=true \
   -e disk_provisioning_allow_destructive=true \
@@ -165,7 +165,7 @@ ansible-playbook playbooks/storage_10_prepare_windows_disks.yaml \
 That gives you several control points:
 
 ```text id="z1qjxy"
---limit server-225-win
+--limit hom-lab-ctl-hvh-02
 disk_provisioning_enabled: true in host_vars
 disk_provisioning_apply=true at runtime
 disk_provisioning_allow_destructive=true at runtime
@@ -265,7 +265,7 @@ Example command:
 
 ```bash id="28e9wu"
 ansible-playbook playbooks/storage_10_prepare_windows_disks.yaml \
-  --limit server-225-win \
+  --limit hom-lab-ctl-hvh-02 \
   -e disk_provisioning_mode=plan
 ```
 
@@ -273,7 +273,7 @@ Then:
 
 ```bash id="u9l7cs"
 ansible-playbook playbooks/storage_10_prepare_windows_disks.yaml \
-  --limit server-225-win \
+  --limit hom-lab-ctl-hvh-02 \
   -e disk_provisioning_mode=apply \
   -e disk_provisioning_allow_destructive=true \
   -e disk_provisioning_confirmation=FORMAT-I-DRIVE-ON-SERVER-225
@@ -439,7 +439,7 @@ Then you can run only verification:
 
 ```bash id="enmrct"
 ansible-playbook playbooks/storage_10_prepare_windows_disks.yaml \
-  --limit server-225-win \
+  --limit hom-lab-ctl-hvh-02 \
   --tags verify
 ```
 
@@ -447,7 +447,7 @@ And require destructive tag intentionally:
 
 ```bash id="a4kner"
 ansible-playbook playbooks/storage_10_prepare_windows_disks.yaml \
-  --limit server-225-win \
+  --limit hom-lab-ctl-hvh-02 \
   --tags storage,disk,destructive \
   -e disk_provisioning_mode=apply \
   -e disk_provisioning_allow_destructive=true \
@@ -567,7 +567,7 @@ Put eligible machines in a group:
 
 ```ini id="vwc95l"
 [storage_backup_cattle]
-server-225-win
+hom-lab-ctl-hvh-02
 home-lab-auth-hvh-01
 ```
 
@@ -626,7 +626,7 @@ inventory/
     storage_backup_cattle/
       storage_policy.yaml
   host_vars/
-    server-225-win/
+    hom-lab-ctl-hvh-02/
       storage.yaml
     home-lab-auth-hvh-01/
       storage.yaml
@@ -660,7 +660,7 @@ storage_policy:
 Example host intent:
 
 ```yaml id="ywcgyo"
-# inventory/host_vars/server-225-win/storage.yaml
+# inventory/host_vars/hom-lab-ctl-hvh-02/storage.yaml
 
 storage_surfaces:
   - name: backup-i
@@ -878,7 +878,7 @@ And use this group:
 
 ```ini id="insd6y"
 [storage_backup_landing]
-server-225-win
+hom-lab-ctl-hvh-02
 home-lab-auth-hvh-01
 ```
 
@@ -1267,7 +1267,7 @@ Because this marker lives on the node itself. Adding the node name inside the no
 So avoid:
 
 ```text id="h2j8p3"
-C:\ProgramData\fuzlab\state\delta\primary\server-225-win\storage\backup_landing\data-i\provisioned.json
+C:\ProgramData\fuzlab\state\delta\primary\hom-lab-ctl-hvh-02\storage\backup_landing\data-i\provisioned.json
 ```
 
 That makes more sense in a central backup repository, not inside the machine.

@@ -44,19 +44,19 @@ Sync the repo to the Mac (or pull) so the Mac has the updated host_vars (and key
 
 - **Bootstrap the Windows host** (reinforce WinRM HTTP + OpenSSH + deploy controller key):
   ```bash
-  ./bin/fz bootstrap --limit server-225-win
+  ./bin/fz bootstrap --limit hom-lab-ctl-hvh-02
   ```
   Runs `playbooks/bootstrap_windows.yaml`: WinRM HTTP (5985) firewall, OpenSSH Server (port 22), and adds the controller’s public key (`~/.ssh/id_ed25519_ansible.pub`, read at run time) to Windows `authorized_keys`.
 
 - **Node-specific bootstrap (more roles over WinRM):**
   ```bash
-  ./bin/fz bootstrap-winrm --limit server-225-win
+  ./bin/fz bootstrap-winrm --limit hom-lab-ctl-hvh-02
   ```
   Runs the node-specific playbook (e.g. `bootstrap_server_225.yaml`) over WinRM HTTP, including WSL installation/configuration through the Windows host.
 
 - **Verify:**
   ```bash
-  ./bin/fz ping server-225-win
+  ./bin/fz ping hom-lab-ctl-hvh-02
   ./bin/fz verify
   ```
 
@@ -85,7 +85,7 @@ Sync the repo to the Mac (or pull) so the Mac has the updated host_vars (and key
 |------|--------|------|
 | 1 | Windows (Admin) | Run `.\bin\bootstrap-local.ps1` → WinRM HTTP (5985), OpenSSH (22), host_vars for `-win` and `-wsl`; authorized_keys from playbook (~/.ssh/id_ed25519_ansible.pub) or bootstrap/id_ed25519_ansible.pub |
 | 2 | Mac | Sync repo so Mac has host_vars (and keys if needed) |
-| 3 | Mac | `./bin/fz bootstrap --limit server-225-win` → reinforce WinRM HTTP + OpenSSH + deploy controller key; configure the Linux companion through the Windows surface |
-| 4 | Mac | `./bin/fz ping server-225-win` and `./bin/fz verify`; after SSH is verified, target `server-225-wsl` directly |
+| 3 | Mac | `./bin/fz bootstrap --limit hom-lab-ctl-hvh-02` → reinforce WinRM HTTP + OpenSSH + deploy controller key; configure the Linux companion through the Windows surface |
+| 4 | Mac | `./bin/fz ping hom-lab-ctl-hvh-02` and `./bin/fz verify`; after SSH is verified, target `server-225-wsl` directly |
 
 All management is from the Mac. Windows is bootstrapped first over WinRM HTTP (5985), then the Linux companion side is targeted directly over OpenSSH (port 22) once SSH is working; no Ansible runs natively on Windows.

@@ -18,7 +18,7 @@ The Ansible SSH key has a **single source of truth**: the execution node’s `~/
 1. Put **`.vault_pass`** in the repo root if you use vault for other secrets (e.g. OpenSSH host keys). Not required for the Ansible SSH key.
 2. Run: **`./bin/fz bootstrap --limit mac-dev`**
 3. The playbook ensures **`~/.ssh/id_ed25519_ansible`** exists; if not, it generates an ed25519 key pair there. Nothing is written into the repo.
-4. Run **`./bin/fz bootstrap --limit server-225-win`** (and similar) from the Mac to deploy that public key to Windows/WSL. The playbook reads from the execution node’s `~/.ssh/id_ed25519_ansible.pub`.
+4. Run **`./bin/fz bootstrap --limit hom-lab-ctl-hvh-02`** (and similar) from the Mac to deploy that public key to Windows/WSL. The playbook reads from the execution node’s `~/.ssh/id_ed25519_ansible.pub`.
 
 ## Optional: bootstrap key file (local script only)
 

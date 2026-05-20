@@ -83,7 +83,7 @@ require_limit_or_all() {
   
   if ! has_limit_or_all "$@"; then
     log_error "${command_name} requires --limit <hosts> or --all"
-    log_info "Example: fz ${command_name} --limit server-225-win"
+    log_info "Example: fz ${command_name} --limit hom-lab-ctl-hvh-02"
     log_info "Example: fz ${command_name} --all"
     exit 1
   fi
@@ -102,7 +102,7 @@ case "${COMMAND}" in
     if ! has_limit_or_all "$@"; then
       log_error "bootstrap requires --limit <hosts> or --all"
       log_info "This prevents accidentally running bootstrap on all hosts"
-      log_info "Example: fz bootstrap --limit server-225-win"
+      log_info "Example: fz bootstrap --limit hom-lab-ctl-hvh-02"
       log_info "Example: fz bootstrap --limit mac-dev"
       log_info "Example: fz bootstrap --all"
       exit 1
@@ -162,7 +162,7 @@ case "${COMMAND}" in
         fz_ansible "playbooks/bootstrap_mac.yaml" "${all_args[@]}"
         mac_only_bootstrap=true
       fi
-      # Windows bootstrap: run Ansible playbook against any Windows host (server-225-win, home-lab-auth-hvh-01, dev-3090-win, etc.).
+      # Windows bootstrap: run Ansible playbook against any Windows host (hom-lab-ctl-hvh-02, home-lab-auth-hvh-01, dev-3090-win, etc.).
       if [[ "${limit_value}" == *"-win" ]]; then
         log_step "Running Windows bootstrap (playbooks/bootstrap_windows.yaml) for ${limit_value}"
         fz_ansible "playbooks/bootstrap_windows.yaml" "${all_args[@]}"
@@ -229,7 +229,7 @@ case "${COMMAND}" in
     if ! has_limit_or_all "$@"; then
       log_error "bootstrap-winrm requires --limit <hosts> or --all"
       log_info "This prevents accidentally running bootstrap on all hosts"
-      log_info "Example: fz bootstrap-winrm --limit server-225-win"
+      log_info "Example: fz bootstrap-winrm --limit hom-lab-ctl-hvh-02"
       log_info "Example: fz bootstrap-winrm --all"
       exit 1
     fi
@@ -450,7 +450,7 @@ case "${COMMAND}" in
       fi
       i=$((i+1))
     done
-    if [[ "${cf_limit}" == "server-225-win" ]] || [[ "${cf_limit}" == *"-win" ]]; then
+    if [[ "${cf_limit}" == "hom-lab-ctl-hvh-02" ]] || [[ "${cf_limit}" == *"-win" ]]; then
       log_info "Facts for Windows host '${cf_limit}' are collected on that machine."
       log_info "On that Windows host (Admin): .\\bin\\bootstrap-local.ps1 -FactsOnly"
       exit 0

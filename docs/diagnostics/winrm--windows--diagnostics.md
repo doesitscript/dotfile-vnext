@@ -13,7 +13,7 @@
 - Repo-side Windows debug collector logic:
   `/Users/joshc/develop/dotfile-vnext/roles/access_identity_windows/tasks/debug_output.yml`
 - Inventory surface for the current server-225 Windows host:
-  `/Users/joshc/develop/dotfile-vnext/inventory/host_vars/server-225-win.yaml`
+  `/Users/joshc/develop/dotfile-vnext/inventory/host_vars/hom-lab-ctl-hvh-02.yaml`
 
 ## Diagnostic Commands
 

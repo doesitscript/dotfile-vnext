@@ -3,7 +3,7 @@
 ## Purpose
 
 This note captures execution lessons from repeated `server-225-ubuntu` boot-disk
-failures on `server-225-win` so future troubleshooting starts with the proven
+failures on `hom-lab-ctl-hvh-02` so future troubleshooting starts with the proven
 evidence path instead of repeating weak retries.
 
 ## Evidence means collected output, not execution narration
@@ -149,7 +149,7 @@ Broader framework lesson:
 
 ## Package-based converter experiments on Windows
 
-Two interactive package-discovery paths were tested on `server-225-win`.
+Two interactive package-discovery paths were tested on `hom-lab-ctl-hvh-02`.
 
 ### Winget / Microsoft Store result
 
@@ -234,7 +234,7 @@ Pinned direction for this repo:
 - enable ICS from the public Wi-Fi adapter to the Internal switch adapter
 - attach the Hyper-V Ubuntu guest to that Internal switch
 
-Important host-specific nuance discovered on `server-225-win`:
+Important host-specific nuance discovered on `hom-lab-ctl-hvh-02`:
 
 - once the External Hyper-V switch already owned the active public network
   profile, the working ICS public connection was `vEthernet (External)`, not
@@ -251,7 +251,7 @@ Reference write-up that matched the observed behavior well:
 Implementation note:
 
 - the repo now treats Internal switch + ICS as the preferred Hyper-V Ubuntu
-  path on `server-225-win`
+  path on `hom-lab-ctl-hvh-02`
 
 - MVMC exposes real VHD/VHDX conversion cmdlets
 - but this direct `.img -> .vhdx` path did not accept the Ubuntu cloud image as
@@ -408,4 +408,4 @@ path.
 
 - [hyperv-ubuntu-vm--windows--diagnostics.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-ubuntu-vm--windows--diagnostics.md)
 - [evidence--hyperv-live-runs.md](/Users/joshc/develop/dotfile-vnext/docs/plans/2026-03-27--server-225-hyperv-ubuntu-vm-replacing-multipass/evidence--hyperv-live-runs.md)
-- [hyperv_ubuntu_vm_probe.json](/Users/joshc/develop/dotfile-vnext/artifacts/troubleshooting/hyperv_ubuntu_vm/server-225-win/20260327-123920/command_results/hyperv_ubuntu_vm_probe.json)
+- [hyperv_ubuntu_vm_probe.json](/Users/joshc/develop/dotfile-vnext/artifacts/troubleshooting/hyperv_ubuntu_vm/hom-lab-ctl-hvh-02/20260327-123920/command_results/hyperv_ubuntu_vm_probe.json)

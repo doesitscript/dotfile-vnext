@@ -87,7 +87,7 @@ In [roles/hyperv_networking/defaults/main.yml](roles/hyperv_networking/defaults/
 - Netplan bridged networking config (line 481-482)
 - DNS bootstrap resolv.conf (line 325)
 
-[inventory/host_vars/server-225-win.yaml](inventory/host_vars/server-225-win.yaml) sets:
+[inventory/host_vars/hom-lab-ctl-hvh-02.yaml](inventory/host_vars/hom-lab-ctl-hvh-02.yaml) sets:
 
 - `wsl_networking_mode: bridged` (triggers the role)
 - `hyperv_adapter_name: "Wi-Fi"` (override)

@@ -18,8 +18,8 @@ Current state:
 - the new dedicated playbook and role exist in the working tree:
   - [server_225_hyperv_ubuntu_vm.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/server_225_hyperv_ubuntu_vm.yaml)
   - [README.md](/Users/joshc/develop/dotfile-vnext/roles/hyperv_ubuntu_vm/README.md)
-- host vars already point `server-225-win` at the new lifecycle surface:
-  - [server-225-win.yaml](/Users/joshc/develop/dotfile-vnext/inventory/host_vars/server-225-win.yaml)
+- host vars already point `hom-lab-ctl-hvh-02` at the new lifecycle surface:
+  - [hom-lab-ctl-hvh-02.yaml](/Users/joshc/develop/dotfile-vnext/inventory/host_vars/hom-lab-ctl-hvh-02.yaml)
 - the implementation is not committed yet
 
 Latest real blocker:

@@ -12,7 +12,7 @@
 - Repo-side Windows debug collector logic:
   `/Users/joshc/develop/dotfile-vnext/roles/access_identity_windows/tasks/debug_output.yml`
 - Current Windows inventory surface for server-225:
-  `/Users/joshc/develop/dotfile-vnext/inventory/host_vars/server-225-win.yaml`
+  `/Users/joshc/develop/dotfile-vnext/inventory/host_vars/hom-lab-ctl-hvh-02.yaml`
 
 ## Diagnostic Commands
 
@@ -59,7 +59,7 @@ OpenSSH logs alone.
 - Microsoft also documents that `SyslogFacility LOCAL0` writes file logs under
   `%programdata%\ssh\logs`; otherwise logging goes to ETW/Event Viewer.
 - In this repo, Windows OpenSSH is intended to land directly on Windows for
-  `server-225-win`, not on WSL.
+  `hom-lab-ctl-hvh-02`, not on WSL.
 - The repo already has a Windows-side debug task that collects `sshd` service
   status, `sshd_config`, ssh log files, and OpenSSH event log entries in:
   `/Users/joshc/develop/dotfile-vnext/roles/access_identity_windows/tasks/debug_output.yml`

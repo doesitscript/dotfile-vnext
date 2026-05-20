@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This note documents the intended network layout for `server-225-win` when a
+This note documents the intended network layout for `hom-lab-ctl-hvh-02` when a
 Hyper-V Ubuntu guest is attached to an Internal switch and Windows Internet
 Connection Sharing (ICS) is used to give the guest outbound network access.
 
@@ -34,7 +34,7 @@ router
   |
   | Wi-Fi LAN
   |
-server-225-win
+hom-lab-ctl-hvh-02
   |
   |- vEthernet (External)   192.168.50.158   <- host-side public/control-plane
   |    ^

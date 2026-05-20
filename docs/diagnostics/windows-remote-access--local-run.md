@@ -1,6 +1,6 @@
 # Windows Remote Access Local Troubleshooting Run
 
-Use this when `server-225-win` is reachable locally but remote control surfaces
+Use this when `hom-lab-ctl-hvh-02` is reachable locally but remote control surfaces
 from another machine are failing or flapping.
 
 ## Local Helper

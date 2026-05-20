@@ -145,7 +145,7 @@ graph TD
  subgraph dotfile_vnext [dotfile-vnext Repository]
  subgraph inventory [Inventory Layer]
  all_group[inventory/group_vars/all.yaml<br/>version_contracts]
- host_vars[inventory/host_vars/<br/>server-225-win.yaml]
+ host_vars[inventory/host_vars/<br/>hom-lab-ctl-hvh-02.yaml]
  nb_inventory_yml[inventory/netbox.yml<br/>nb_inventory plugin config]
  end
  

@@ -1,7 +1,7 @@
 # Microsoft Network Adapter Multiplexor Removal - Troubleshooting Report
 
 ## Date: 2026-03-26
-## System: server-225-win (DESKTOP-VLLM)
+## System: hom-lab-ctl-hvh-02 (DESKTOP-VLLM)
 ## Issue: Remove problematic Microsoft Network Adapter Multiplexor drivers
 
 ---
@@ -128,7 +128,7 @@ Expected Results:
 - **Test with individual `Disable-NetAdapter` commands** before combined execution
 
 ### Recovery Plan (If Network Fails)
-1. Physical console access to server-225-win
+1. Physical console access to hom-lab-ctl-hvh-02
 2. Device Manager → Network Adapters → Scan for hardware changes  
 3. Re-enable Wi-Fi adapter manually
 4. Check Windows Network Reset if needed: `netsh winsock reset`

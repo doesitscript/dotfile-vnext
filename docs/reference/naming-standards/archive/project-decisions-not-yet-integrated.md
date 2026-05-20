@@ -84,7 +84,7 @@ home-lab-auth-hvh-01
 - Name recommendations must show the data fields that produced the name.
 
 **Current state:**
-- Existing inventory aliases such as `server-225-win` and the retired
+- Existing inventory aliases such as `hom-lab-ctl-hvh-02` and the retired
   network-server Windows control alias remain legacy/control aliases.
 - Existing compact VM names such as `nsrv-dkr-01` and `nsrv-k3s-01` can remain
   when they are already approved durable inventory names for a specific VM lane.
@@ -103,7 +103,7 @@ home-lab-auth-hvh-01
 | Platform | No | Platform | `Ubuntu 24.04` |
 | IP address | No | Interface + primary IP | `192.168.137.10` |
 | Host placement | No | Cluster / device relationship | `server-225-hyperv` |
-| Historical hostnames | No | Legacy alias, comments, config context | `server-225-win` |
+| Historical hostnames | No | Legacy alias, comments, config context | `hom-lab-ctl-hvh-02` |
 
 **Required candidate data shape:**
 
@@ -242,9 +242,9 @@ langfuse_cli_package_name: "langfuse-cli@{{ langfuse_cli_version }}"
 
 **Reason:** Current name is stable and working. Rename at rebuild, not as in-place change.
 
-### Current Hosts: `server-225-win`, `server-225-win-powershell`
+### Current Hosts: `hom-lab-ctl-hvh-02`, `hom-lab-ctl-hvh-02-powershell`
 
-**Assessment:** Windows host is `server-225-win`. `server-225-win-powershell` is SSH alias for OpenSSH access to PowerShell on Windows host.
+**Assessment:** Windows host is `hom-lab-ctl-hvh-02`. `hom-lab-ctl-hvh-02-powershell` is SSH alias for OpenSSH access to PowerShell on Windows host.
 
 **Future:** Keep as control aliases. Do not promote `server-225`/`s225` into the
 mature name schema unless a future decision explicitly makes it a controlled
@@ -307,7 +307,7 @@ name such as `home-lab-app-dkr-01`?
 
 **Current implementation:**
 - Service parent: `server-225-ubuntu`
-- Published by: `home-lab-auth-hvh-02` / legacy alias `server-225-win`
+- Published by: `home-lab-auth-hvh-02` / legacy alias `hom-lab-ctl-hvh-02`
 - Services: `netbox-web`, `semaphore-web`, `loki-http`, `grafana-web`
 - Access URLs are stored in service comments until a stronger URL/service
   catalog pattern is adopted.

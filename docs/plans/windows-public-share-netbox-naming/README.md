@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Add a reusable Windows public-share capability for `server-225-win` and `home-lab-auth-hvh-01`.
+- Add a reusable Windows public-share capability for `hom-lab-ctl-hvh-02` and `home-lab-auth-hvh-01`.
 - Replace the weak NetBox-facing `primary-hvh-01` and `exec-hvh-01` names with the current context baseline names `home-lab-auth-hvh-01` and `home-lab-auth-hvh-02`.
 - Keep historical/control names as aliases and push rich context into NetBox native fields, tags, and context metadata.
 - Fix the planning gap by adding a plan-authoring checklist under `docs/plans/`.
@@ -41,7 +41,7 @@ graph TB
         nbsite[site: homelab]
         nbtenant[tenant: home]
         nbdev1[device: home-lab-auth-hvh-01<br/>legacy_aliases: network-server, primary-hvh-01]
-        nbdev2[device: home-lab-auth-hvh-02<br/>legacy_aliases: server-225-win, exec-hvh-01]
+        nbdev2[device: home-lab-auth-hvh-02<br/>legacy_aliases: hom-lab-ctl-hvh-02, exec-hvh-01]
         nbrole[device_role: hyperv-host]
         nbplatform[platform: Windows Server 2025]
         nbtags[tags: ansible-managed, home, lab, auth, infra, hyperv, primary or execution]
@@ -49,7 +49,7 @@ graph TB
 
     subgraph windows [Windows Hosts]
         nsw[home-lab-auth-hvh-01<br/>F:\\shares\\public]
-        s225[server-225-win<br/>F:\\shares\\public]
+        s225[hom-lab-ctl-hvh-02<br/>F:\\shares\\public]
         smb[SMB share: public<br/>group: share_users]
     end
 
@@ -117,7 +117,7 @@ graph LR
     alias1[current Ansible inventory name<br/>home-lab-auth-hvh-01] --> name1[NetBox device<br/>home-lab-auth-hvh-01]
     legacy1[retired Windows control alias] --> name1
     old1[legacy NetBox name<br/>primary-hvh-01] --> name1
-    alias2[Ansible/control alias<br/>server-225-win] --> name2[NetBox device<br/>home-lab-auth-hvh-02]
+    alias2[Ansible/control alias<br/>hom-lab-ctl-hvh-02] --> name2[NetBox device<br/>home-lab-auth-hvh-02]
     old2[legacy NetBox name<br/>exec-hvh-01] --> name2
     role[role segment hvh] --> fullrole[device_role<br/>hyperv-host]
     name1 --> tags1[tags<br/>ansible-managed, home, lab, auth, infra, hyperv, primary]
@@ -184,4 +184,4 @@ Change class: idempotent Windows configuration plus NetBox source-of-truth model
   - `\\localhost\public` works with the vaulted credential
   - second apply is idempotent
   - NetBox contains `home-lab-auth-hvh-01` for the former network-server Windows control host
-  - NetBox contains `home-lab-auth-hvh-02` for `server-225-win`
+  - NetBox contains `home-lab-auth-hvh-02` for `hom-lab-ctl-hvh-02`

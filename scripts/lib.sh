@@ -155,7 +155,7 @@ ensure_venv() {
       did_install_pip=true
     else
       log_info "Requirements unchanged; skipping dependency install"
-      log_info "To install new collections (e.g. ansible.windows): .venv/bin/ansible-galaxy collection install -r requirements.yml ; then re-run (e.g. ./bin/fz bootstrap --limit server-225-win)"
+      log_info "To install new collections (e.g. ansible.windows): .venv/bin/ansible-galaxy collection install -r requirements.yml ; then re-run (e.g. ./bin/fz bootstrap --limit hom-lab-ctl-hvh-02)"
     fi
   else
     log_warn "Requirements file not found: ${requirements_file}"
@@ -806,12 +806,12 @@ Global Options:
 Commands:
   bootstrap              Full bootstrap (winrm -> verify -> deploy -> verify)
                         Requires --limit or --all
-                        Special case: --limit server-225-win runs local bootstrap only
+                        Special case: --limit hom-lab-ctl-hvh-02 runs local bootstrap only
                         Mac control node: --limit mac-dev runs playbooks/bootstrap_mac.yaml only
                         Use --SSHGenForce with --limit mac-dev to (re)generate OpenSSH host keys into bootstrap/openssh_host_keys/
   bootstrap-winrm        Bootstrap Windows hosts via WinRM
                         Requires --limit or --all
-                        Example: fz bootstrap-winrm --limit server-225-win
+                        Example: fz bootstrap-winrm --limit hom-lab-ctl-hvh-02
   bootstrap-ssh          Deploy stacks via SSH (WSL2 operations)
                         Requires --limit or --all
                         Example: fz bootstrap-ssh --limit server-225-wsl
@@ -867,9 +867,9 @@ Common Options (forwarded to ansible-playbook):
 
 Examples:
   fz --help                                 Show command help and exit
-  fz bootstrap --limit server-225-win      Run local bootstrap path for server-225-win
+  fz bootstrap --limit hom-lab-ctl-hvh-02      Run local bootstrap path for hom-lab-ctl-hvh-02
   fz bootstrap --limit mac-dev --SSHGenForce  Mac bootstrap and (re)generate OpenSSH host keys
-  fz bootstrap-winrm --limit server-225-win  Run WinRM bootstrap playbook for server-225
+  fz bootstrap-winrm --limit hom-lab-ctl-hvh-02  Run WinRM bootstrap playbook for server-225
   fz bootstrap-ssh --limit server-225-wsl  Run SSH deploy phase for server-225-wsl
   fz bootstrap-openssh-host-keys            Generate host keys on Mac (for Windows OpenSSH)
   fz bootstrap --limit server-225-wsl      Run full bootstrap flow for one WSL target

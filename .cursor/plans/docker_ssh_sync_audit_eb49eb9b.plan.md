@@ -13,7 +13,7 @@ The Docker client and SSH config are **coupled through a deliberate Ansible pipe
 
 ```mermaid
 flowchart TD
-    A["access.yaml runs"] --> B["access_identity_windows on server-225-win\n(ubuntu.yml)"]
+    A["access.yaml runs"] --> B["access_identity_windows on hom-lab-ctl-hvh-02\n(ubuntu.yml)"]
     B --> C["Sets ssh_configured=true as cacheable\ndelegatefact on server-225-wsl"]
     C --> D["access_identity_controller ssh_config.yml\ntemplates ~/.ssh/config"]
     D --> E["Host server-225-wsl\nHostName 192.168.50.222\nPort 22\nIdentityFile ~/.ssh/id_ed25519_ansible"]

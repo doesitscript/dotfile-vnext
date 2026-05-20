@@ -4,7 +4,7 @@ Yes, there are less imposing steps first, and I think that’s the right order.
 
 The static-IP commands I gave you were the stronger “validate the deterministic design” test. But before that, there’s a lighter DHCP-based recovery sequence that tests whether the current problem is just stale lease/state after the Hyper-V adapter transition.
 
-Try these first in elevated PowerShell on `server-225-win`:
+Try these first in elevated PowerShell on `hom-lab-ctl-hvh-02`:
 
 ```powershell
 Start-Transcript -Path "$env:USERPROFILE\Desktop\hyperv-host-network-dhcp-refresh.txt" -Force

@@ -33,7 +33,7 @@ Run on the Windows node in an elevated terminal:
 
 1. **Bootstrap main node (server-225)**:
    ```bash
-   ./bin/fz bootstrap --limit server-225-win
+   ./bin/fz bootstrap --limit hom-lab-ctl-hvh-02
    ```
    - Enables Windows Features (Hyper-V, Containers, WSL)
    - Installs OpenSSH Server
@@ -106,7 +106,7 @@ Run on the Windows node in an elevated terminal:
 
 2. **Check specific nodes**:
    ```bash
-   ./bin/fz verify --limit server-225-win
+   ./bin/fz verify --limit hom-lab-ctl-hvh-02
    ./bin/fz verify --limit home-lab-auth-hvh-01
    ```
 
@@ -150,7 +150,7 @@ Run on the Windows node in an elevated terminal:
 ./bin/fz verify
 
 # Verify specific hosts
-./bin/fz verify --limit server-225-win
+./bin/fz verify --limit hom-lab-ctl-hvh-02
 
 # Verify in check mode (dry-run)
 ./bin/fz verify --check
@@ -182,7 +182,7 @@ Run on the Windows node in an elevated terminal:
 ./bin/fz bootstrap --skip-tags firewall
 
 # Limit to specific hosts
-./bin/fz verify --limit "server-225-win:home-lab-auth-hvh-01"
+./bin/fz verify --limit "hom-lab-ctl-hvh-02:home-lab-auth-hvh-01"
 ```
 
 ## Connection Methods

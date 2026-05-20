@@ -21,7 +21,7 @@ todos:
     content: "Refactor access_windows.yaml: use include_role with scoped vars for hyperv_networking, gate on hyperv_config.external_switch_enabled."
     status: completed
   - id: update-host-vars
-    content: Replace flat hyperv vars with hyperv_config dictionary in server-225-win.yaml.
+    content: Replace flat hyperv vars with hyperv_config dictionary in hom-lab-ctl-hvh-02.yaml.
     status: completed
   - id: update-readme
     content: Rewrite hyperv_networking/README.md documenting the hyperv_config API contract.
@@ -318,7 +318,7 @@ tasks:
       name: access_identity_windows
 ```
 
-### 7. `inventory/host_vars/server-225-win.yaml`
+### 7. `inventory/host_vars/hom-lab-ctl-hvh-02.yaml`
 
 **Before:**
 

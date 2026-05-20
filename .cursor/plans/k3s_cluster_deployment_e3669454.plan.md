@@ -102,7 +102,7 @@ graph TD
       SQLite[embedded SQLite]
       DataDir1["data-dir: /mnt/d/k3s/rancher"]
     end
-    subgraph srv225Win ["server-225-win (WinRM)"]
+    subgraph srv225Win ["hom-lab-ctl-hvh-02 (WinRM)"]
       FW2["Firewall: k3s ports"]
       GPUInv["GPU inventory: RTX 5090 driver version"]
     end
@@ -204,7 +204,7 @@ Runs on Windows hosts via WinRM. Same pattern as [roles/access_identity_windows/
 
 Ports: TCP 6443 (API), UDP 8472 (Flannel VXLAN), TCP 10250 (kubelet).
 
-Targets `server-225-win` and `network-server-win`.
+Targets `hom-lab-ctl-hvh-02` and `network-server-win`.
 
 ---
 
@@ -260,7 +260,7 @@ When unblocked:
 ```yaml
 # Play 1: Open firewall ports on Windows hosts
 - name: Configure k3s firewall rules
-  hosts: server-225-win,network-server-win
+  hosts: hom-lab-ctl-hvh-02,network-server-win
   roles:
     - k3s_firewall
 
@@ -288,7 +288,7 @@ source .envrc
 export K3S_TOKEN=$(openssl rand -base64 32 | tr '/' '_')
 ansible-playbook playbooks/k3s_bootstrap.yaml \
   -i inventory/inventory.yaml \
-  --limit network-server-win,network-server-wsl,server-225-win,server-225-wsl
+  --limit network-server-win,network-server-wsl,hom-lab-ctl-hvh-02,server-225-wsl
 ```
 
 ### `playbooks/k3s_debug.yaml`

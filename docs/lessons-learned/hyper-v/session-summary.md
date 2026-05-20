@@ -25,7 +25,7 @@
 ## Key Accomplishments
 
 ### ✅ Research Phase Completed
-- **Verified SSH connectivity** to server-225-win working perfectly
+- **Verified SSH connectivity** to hom-lab-ctl-hvh-02 working perfectly
 - **Gathered detailed adapter information** using verbose `Get-NetAdapter` output  
 - **Identified root cause**: Both adapters share same GUID (broken bridge configuration)
 - **Researched official Microsoft documentation** for proper removal methods
@@ -67,7 +67,7 @@ Disable-NetAdapter -Name "Network Bridge" -Confirm:$false; Disable-NetAdapter -N
 
 ## Next Steps (Awaiting User Approval)
 
-1. **Execute the removal command** on server-225-win
+1. **Execute the removal command** on hom-lab-ctl-hvh-02
 2. **Verify successful removal** using provided verification steps
 3. **Confirm network connectivity** restored through Wi-Fi directly
 4. **Document final results** in this folder
@@ -77,7 +77,7 @@ Disable-NetAdapter -Name "Network Bridge" -Confirm:$false; Disable-NetAdapter -N
 ## Session Evidence
 
 ### Commands Successfully Executed:
-- ✅ `ssh server-225-win` - Interactive connection confirmed
+- ✅ `ssh hom-lab-ctl-hvh-02` - Interactive connection confirmed
 - ✅ `Get-NetAdapter` - Basic adapter listing
 - ✅ `Get-NetAdapter | foreach {$_ | select *}` - Detailed properties gathered
 - ✅ `pwd` - Confirmed working directory  
@@ -103,13 +103,13 @@ Disable-NetAdapter -Name "Network Bridge" -Confirm:$false; Disable-NetAdapter -N
 ## ✅ EXECUTION COMPLETED - 2026-03-26 17:50 UTC
 
 ### What Happened:
-- ✅ **Command executed successfully** on server-225-win
+- ✅ **Command executed successfully** on hom-lab-ctl-hvh-02
 - ⚠️ **Network connectivity disrupted** during execution (expected)
 - 🔄 **Wi-Fi network recovery** in progress  
 - 📄 **Complete execution details** in `execution-report.md`
 
 ### Current State:
-- SSH connection to server-225-win: **Timeout (expected)**
+- SSH connection to hom-lab-ctl-hvh-02: **Timeout (expected)**
 - Adapter removal: **Likely successful** (no PowerShell errors)
 - Network recovery: **In progress** (automatic via Wi-Fi)
 - Physical access: **Available** for recovery if needed

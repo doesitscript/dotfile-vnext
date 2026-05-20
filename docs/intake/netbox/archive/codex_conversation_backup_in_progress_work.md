@@ -222,7 +222,7 @@ Windows portproxy entries existed, but IP Helper was not actively listening on t
 What I did:
 
 Ran the repo-owned NetBox playbook: playbooks/deploy_ipam_netbox.yaml --tags ipam_netbox
-Restarted Windows iphlpsvc on server-225-win
+Restarted Windows iphlpsvc on hom-lab-ctl-hvh-02
 Did not commit anything new.
 Verified working now:
 

@@ -11,10 +11,10 @@ Implement a new Windows storage-layout capability that can:
 - identify a target non-OS disk using stable disk facts
 - initialize the disk if needed
 - partition it into two logical drives using the same proportions as the
-  reference physical disk on `server-225-win`
+  reference physical disk on `hom-lab-ctl-hvh-02`
 - format and label the resulting volumes
 
-Milestone one uses `server-225-win` only as the layout reference source.
+Milestone one uses `hom-lab-ctl-hvh-02` only as the layout reference source.
 Milestone one execution is intentionally guarded so it can run only for
 `home-lab-auth-hvh-01` until the layout has been validated there.
 
@@ -26,7 +26,7 @@ layout.
 
 Checked and confirmed:
 
-- inventory truth shows both `server-225-win` and `home-lab-auth-hvh-01` are in
+- inventory truth shows both `hom-lab-ctl-hvh-02` and `home-lab-auth-hvh-01` are in
   `windows_hosts`, while `home-lab-auth-hvh-01` is uniquely in `network_server`
 - the repo does not already contain a dedicated Windows disk-partitioning role
 - Ansible has native collection support for this workflow through:
@@ -52,7 +52,7 @@ The role should:
 - assert that the selected disk matches the intended host safeguard
 - initialize the disk with GPT unless inventory says otherwise
 - create two partitions that mirror the reference proportions from
-  `server-225-win`
+  `hom-lab-ctl-hvh-02`
 - assign drive letters and labels for the data and backup volumes
 - support a future `absent` path only where safe and intentionally scoped
 
@@ -67,7 +67,7 @@ Milestone-one execution path should be intentionally narrow:
 
 - first-target play runs only against `home-lab-auth-hvh-01`
 - the role remains reusable, but the first playbook entrypoint should not
-  casually target `server-225-win`
+  casually target `hom-lab-ctl-hvh-02`
 
 Recommended first-pass playbook contract:
 
@@ -105,7 +105,7 @@ fail safely until they are populated.
 
 ## Safeguards
 
-Milestone one must protect `server-225-win` from accidental execution.
+Milestone one must protect `hom-lab-ctl-hvh-02` from accidental execution.
 
 Required safeguards:
 
@@ -122,7 +122,7 @@ This keeps the reusable role scalable while making the first operator path safe.
 
 ## Reference-Layout Strategy
 
-Use `server-225-win` as a reference model, not a literal clone source.
+Use `hom-lab-ctl-hvh-02` as a reference model, not a literal clone source.
 
 Reference work should:
 
@@ -153,7 +153,7 @@ Explicitly excluded from milestone one:
 - changes to the existing `C:` / `D:` layout
 - backup-policy scheduling
 - workload-specific backup payloads
-- multi-host rollout to `server-225-win`
+- multi-host rollout to `hom-lab-ctl-hvh-02`
 
 ## Suggested Variable Direction
 
@@ -164,7 +164,7 @@ done:
 windows_storage_layout_state: present
 windows_storage_layout_allowed_hosts:
   - home-lab-auth-hvh-01
-windows_storage_layout_reference_host: server-225-win
+windows_storage_layout_reference_host: hom-lab-ctl-hvh-02
 windows_storage_layout_partition_style: gpt
 
 windows_storage_layout_target_disk:
@@ -231,7 +231,7 @@ live apply phase, not in this plan.
 
 ### Phase B — live reference discovery
 
-- gather live disk facts from `server-225-win`
+- gather live disk facts from `hom-lab-ctl-hvh-02`
 - determine the actual source physical disk and the partition percentage split
 
 ### Phase C — first target apply

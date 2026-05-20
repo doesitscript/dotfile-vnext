@@ -68,7 +68,7 @@ Bootstrap nodes to prepare them for stack deployment.
 
 ```bash
 # Bootstrap server-225 (main node) - REQUIRES --limit or --all
-./bin/fz bootstrap --limit server-225-win
+./bin/fz bootstrap --limit hom-lab-ctl-hvh-02
 
 # Bootstrap network-server and dev-3090 (Windows nodes) - REQUIRES --limit or --all
 ./bin/fz bootstrap-winrm --limit home-lab-auth-hvh-01
@@ -112,7 +112,7 @@ Verify the entire fabric is correctly configured.
 ./bin/fz verify
 
 # Verify specific hosts
-./bin/fz verify --limit server-225-win
+./bin/fz verify --limit hom-lab-ctl-hvh-02
 
 # Verify in check mode (dry-run)
 ./bin/fz verify --check
@@ -164,11 +164,11 @@ All commands forward these options to `ansible-playbook`:
 
 ```bash
 # Run only on specific hosts
-./bin/fz verify --limit server-225-win
+./bin/fz verify --limit hom-lab-ctl-hvh-02
 ./bin/fz deploy network --limit home-lab-auth-hvh-01
 
 # Run on multiple hosts
-./bin/fz verify --limit "server-225-win:home-lab-auth-hvh-01"
+./bin/fz verify --limit "hom-lab-ctl-hvh-02:home-lab-auth-hvh-01"
 ```
 
 ### Tags
@@ -314,7 +314,7 @@ The vault edit command:
 ./bin/fz verify
 
 # Verify specific hosts
-./bin/fz verify --limit server-225-win
+./bin/fz verify --limit hom-lab-ctl-hvh-02
 
 # Verify only Windows hosts
 ./bin/fz verify --limit windows_hosts
