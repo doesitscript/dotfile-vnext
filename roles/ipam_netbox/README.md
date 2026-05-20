@@ -220,7 +220,7 @@ objects to represent the current Server-225 world:
 - site: `homelab`
 - tenant: `home`
 - device: `hom-lab-ctl-hvh-02`
-- legacy device aliases: `server-225-win`, `server-225`, `exec-hvh-01`
+- legacy device aliases: `hom-lab-ctl-hvh-02`, `server-225`, `exec-hvh-01`
 - cluster: `server-225-hyperv`
 - VM: `server-225-ubuntu`
 - application services on `server-225-ubuntu`:
@@ -395,7 +395,7 @@ application on the VM — it does not configure the Windows host's port-proxy.
 
 To make NetBox reachable from the LAN (e.g. your Mac at `http://192.168.50.158:8000`),
 an entry must exist in `hyperv_config.guest_published_tcp_ports` in
-`inventory/host_vars/server-225-win.yaml`:
+`inventory/host_vars/hom-lab-ctl-hvh-02.yaml`:
 
 ```yaml
 # NetBox IPAM/DCIM web UI (roles/ipam_netbox, playbooks/deploy_ipam_netbox.yaml)
@@ -410,7 +410,7 @@ This entry is applied by running:
 
 ```bash
 ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml \
-  --limit server-225-win --tags hyperv_networking
+  --limit hom-lab-ctl-hvh-02 --tags hyperv_networking
 ```
 
 NetBox models these published endpoints as application services on the VM that
@@ -430,5 +430,5 @@ Grafana is Docker-published on the Ubuntu VM but is not currently published
 through the Windows LAN portproxy.
 
 That playbook creates the `netsh interface portproxy` rule and the
-`Hyper-V Guest Published TCP netbox` Windows Firewall rule on `server-225-win`.
+`Hyper-V Guest Published TCP netbox` Windows Firewall rule on `hom-lab-ctl-hvh-02`.
 This entry is already present in the current inventory.

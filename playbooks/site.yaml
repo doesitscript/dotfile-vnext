@@ -7,7 +7,8 @@
 #   3. Access / identity surfaces
 #   4. Hyper-V Windows host infrastructure
 #   5. Docker Ubuntu VM lifecycle for opted-in Windows hosts
-#   6. Docker engine / client verification
+#   6. K3s Ubuntu VM lifecycle for opted-in Windows hosts
+#   7. Docker engine / client verification
 #
 # Narrower playbooks remain available for faster loops and troubleshooting:
 #   - playbooks/provision_windows_host.yml              — Windows baseline only
@@ -29,7 +30,7 @@
 #     full active-stack converge. Include the execution node and any companion
 #     guest/client surfaces needed by the selected physical node.
 #     ./bin/codex-env ansible-playbook playbooks/site.yaml -i inventory/inventory.yaml \
-#       --limit 'mac-dev,server-225-win,server-225-ubuntu,hom-lab-ctl-hvh-01,hom-lab-ctl-dkr-01'
+#       --limit 'mac-dev,hom-lab-ctl-hvh-02,server-225-ubuntu,hom-lab-ctl-hvh-01,hom-lab-ctl-dkr-01'
 #
 - name: Site - active lab entrypoint preview
   hosts: localhost
@@ -52,6 +53,7 @@
             - hyperv_windows_host
             - windows_file_shares
             - hyperv_ubuntu_docker_vm
+            - hyperv_ubuntu_k3s_vm
             - docker_engine_client_verify
           active_inventory_surfaces:
             execution_nodes: "{{ query('inventory_hostnames', 'execution_nodes') }}"
@@ -84,6 +86,12 @@
   tags: [site_hyperv_ubuntu_docker_vm, hyperv_ubuntu_docker_vm]
   vars:
     hyperv_ubuntu_docker_vm_manage_networking_prereqs: false
+
+- name: Site - Hyper-V K3s Ubuntu guest lifecycle
+  import_playbook: hyperv_ubuntu_k3s_vm.yaml
+  tags: [site_hyperv_ubuntu_k3s_vm, hyperv_ubuntu_k3s_vm]
+  vars:
+    hyperv_ubuntu_k3s_vm_manage_networking_prereqs: false
 
 - name: Site - Docker surfaces
   import_playbook: docker.yaml

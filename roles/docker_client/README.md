@@ -25,7 +25,7 @@ After the CLI is installed, shared tasks in `main.yml` create a Docker context p
 This role targets the `docker_clients` group defined in `inventory/inventory.yaml`, which includes:
 
 - `execution_nodes` (mac-dev)
-- `server-225-win`
+- `hom-lab-ctl-hvh-02`
 
 ## Defaults
 
@@ -37,7 +37,7 @@ This role targets the `docker_clients` group defined in `inventory/inventory.yam
 | `docker_engine_ssh_context_host` | `{{ docker_engine_ssh_host }}` | Reachable hostname or IP written into the Docker SSH context |
 | `docker_engine_ssh_port` | `22` | SSH port for the engine connection |
 
-Override these in `host_vars/` per client. See `host_vars/mac-dev.yaml` and `host_vars/server-225-win.yaml` for examples.
+Override these in `host_vars/` per client. See `host_vars/mac-dev.yaml` and `host_vars/hom-lab-ctl-hvh-02.yaml` for examples.
 
 ## Example commands
 
@@ -49,7 +49,7 @@ ansible-playbook playbooks/docker_client.yaml -i inventory/inventory.yaml
 ansible-playbook playbooks/docker_client.yaml -i inventory/inventory.yaml --limit mac-dev
 
 # Windows only
-ansible-playbook playbooks/docker_client.yaml -i inventory/inventory.yaml --limit server-225-win
+ansible-playbook playbooks/docker_client.yaml -i inventory/inventory.yaml --limit hom-lab-ctl-hvh-02
 ```
 
 ## Related roles

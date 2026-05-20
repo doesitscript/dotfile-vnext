@@ -17,6 +17,7 @@
       verify:
         - "NetBox UI/API contains the hom-lab-ctl-hvh-02 device plus server-225 cluster/VM objects"
         - "NetBox VM server-225-ubuntu has primary IP 192.168.137.10/24"
+        - "NetBox VM hom-lab-ctl-k3s-02 is staged with role k3s and primary IP 192.168.137.11/24"
         - "NetBox application services exist for NetBox, Semaphore, Loki, and Grafana"
       undo: "manual NetBox object cleanup for this first modeling slice"
       model:
@@ -28,6 +29,7 @@
         device: "{{ ipam_netbox_server_225_model.device.name }}"
         legacy_device_names: "{{ ipam_netbox_server_225_model.device.legacy_aliases | default(['server-225']) }}"
         virtual_machine: "{{ ipam_netbox_server_225_model.virtual_machine.name }}"
+        k3s_virtual_machine: "{{ ipam_netbox_server_225_model.k3s_virtual_machine.name }}"
         services: "{{ ipam_netbox_server_225_model.services | map(attribute='name') | list }}"
   tags:
     - ipam_netbox
@@ -324,6 +326,78 @@
       name: "{{ ipam_netbox_server_225_model.virtual_machine.name }}"
       cluster: "{{ ipam_netbox_server_225_model.virtual_machine.cluster }}"
       primary_ip4: "{{ ipam_netbox_server_225_model.vm_ip.address }}"
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 K3s Ubuntu VM
+  netbox.netbox.netbox_virtual_machine:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_server_225_model.k3s_virtual_machine.name }}"
+      cluster: "{{ ipam_netbox_server_225_model.k3s_virtual_machine.cluster }}"
+      site: "{{ ipam_netbox_server_225_model.k3s_virtual_machine.site }}"
+      virtual_machine_role: "{{ ipam_netbox_server_225_model.k3s_virtual_machine.role }}"
+      platform: "{{ ipam_netbox_server_225_model.k3s_virtual_machine.platform }}"
+      status: "{{ ipam_netbox_server_225_model.k3s_virtual_machine.status }}"
+      vcpus: "{{ ipam_netbox_server_225_model.k3s_virtual_machine.vcpus }}"
+      memory: "{{ ipam_netbox_server_225_model.k3s_virtual_machine.memory }}"
+      tags: "{{ ipam_netbox_server_225_model.k3s_virtual_machine.tags }}"
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 K3s Ubuntu VM interface
+  netbox.netbox.netbox_vm_interface:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      virtual_machine: "{{ ipam_netbox_server_225_model.k3s_vm_interface.virtual_machine }}"
+      name: "{{ ipam_netbox_server_225_model.k3s_vm_interface.name }}"
+      tags:
+        - ansible-managed
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Seed server-225 K3s Ubuntu VM IP address
+  netbox.netbox.netbox_ip_address:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      address: "{{ ipam_netbox_server_225_model.k3s_vm_ip.address }}"
+      description: "{{ ipam_netbox_server_225_model.k3s_vm_ip.description }}"
+      assigned_object:
+        virtual_machine: "{{ ipam_netbox_server_225_model.k3s_vm_interface.virtual_machine }}"
+        name: "{{ ipam_netbox_server_225_model.k3s_vm_interface.name }}"
+      tags:
+        - ansible-managed
+        - homelab
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_server_225_model
+
+- name: Set server-225 K3s Ubuntu VM primary IPv4
+  netbox.netbox.netbox_virtual_machine:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_server_225_model.k3s_virtual_machine.name }}"
+      cluster: "{{ ipam_netbox_server_225_model.k3s_virtual_machine.cluster }}"
+      primary_ip4: "{{ ipam_netbox_server_225_model.k3s_vm_ip.address }}"
     state: present
   delegate_to: localhost
   tags:

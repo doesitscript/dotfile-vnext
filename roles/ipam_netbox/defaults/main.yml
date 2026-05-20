@@ -11,7 +11,7 @@ ipam_netbox_remove_volumes_on_absent: false
 # API endpoint used by controller-side NetBox modules.
 # The LAN portproxy path is reachable from mac-dev even when the routed guest
 # subnet is not reachable from every controller process.
-ipam_netbox_api_url: "http://{{ hostvars['server-225-win'].host_ip | default(ansible_host) }}:{{ ipam_netbox_http_port.split(':')[0] }}"
+ipam_netbox_api_url: "http://{{ hostvars['hom-lab-ctl-hvh-02'].host_ip | default(ansible_host) }}:{{ ipam_netbox_http_port.split(':')[0] }}"
 ipam_netbox_api_token_description: dotfile-vnext Ansible automation
 
 # Backup naming contract (docs/backup/backup-naming-contract.md)
@@ -145,7 +145,7 @@ ipam_netbox_server_225_model:
     name: hom-lab-ctl-hvh-02
     tenant: home
     legacy_aliases:
-      - server-225-win
+      - hom-lab-ctl-hvh-02
       - server-225
       - exec-hvh-01
     device_type: custom-server
@@ -179,6 +179,28 @@ ipam_netbox_server_225_model:
   vm_ip:
     address: 192.168.137.10/24
     description: server-225 Ubuntu VM routed private subnet interface
+  k3s_virtual_machine:
+    name: hom-lab-ctl-k3s-02
+    cluster: server-225-hyperv
+    site: homelab
+    role: k3s
+    platform: ubuntu-24-04
+    status: staged
+    vcpus: 4
+    memory: 8192
+    tags:
+      - ansible-managed
+      - experimental
+      - homelab
+      - hyperv
+      - infra
+      - k3s
+  k3s_vm_interface:
+    virtual_machine: hom-lab-ctl-k3s-02
+    name: eth0
+  k3s_vm_ip:
+    address: 192.168.137.11/24
+    description: hom-lab-ctl-k3s-02 routed private subnet interface for RTX 5090 K3s stub lane
   services:
     - name: netbox-web
       virtual_machine: server-225-ubuntu
@@ -198,7 +220,7 @@ ipam_netbox_server_225_model:
           direct_guest: http://192.168.137.10:8000/
         published_by:
           device: hom-lab-ctl-hvh-02
-          legacy_alias: server-225-win
+          legacy_alias: hom-lab-ctl-hvh-02
           mechanism: windows netsh portproxy
       tags:
         - ansible-managed
@@ -229,7 +251,7 @@ ipam_netbox_server_225_model:
           note: password intentionally not stored in NetBox service comments
         published_by:
           device: hom-lab-ctl-hvh-02
-          legacy_alias: server-225-win
+          legacy_alias: hom-lab-ctl-hvh-02
           mechanism: windows netsh portproxy
       tags:
         - ansible-managed
@@ -256,7 +278,7 @@ ipam_netbox_server_225_model:
           direct_guest: http://192.168.137.10:3100/
         published_by:
           device: hom-lab-ctl-hvh-02
-          legacy_alias: server-225-win
+          legacy_alias: hom-lab-ctl-hvh-02
           mechanism: windows netsh portproxy
       tags:
         - ansible-managed
@@ -282,7 +304,7 @@ ipam_netbox_server_225_model:
           direct_guest: http://192.168.137.10:3000/
         published_by:
           device: hom-lab-ctl-hvh-02
-          legacy_alias: server-225-win
+          legacy_alias: hom-lab-ctl-hvh-02
           mechanism: docker host port publish on the Ubuntu VM; no Windows LAN portproxy currently configured
       tags:
         - ansible-managed
@@ -347,11 +369,11 @@ ipam_netbox_windows_share_hosts_model:
           mgmt_only: true
           address: "{{ hostvars['hom-lab-ctl-hvh-01'].host_ip | default(hostvars['hom-lab-ctl-hvh-01'].ansible_host) }}/24"
           description: hom-lab-ctl-hvh-01 management address from Ansible inventory
-    - inventory_host: server-225-win
+    - inventory_host: hom-lab-ctl-hvh-02
       name: hom-lab-ctl-hvh-02
       tenant: home
       legacy_aliases:
-        - server-225-win
+        - hom-lab-ctl-hvh-02
         - server-225
         - exec-hvh-01
       device_type: custom-server
@@ -375,8 +397,8 @@ ipam_netbox_windows_share_hosts_model:
           type: Virtual
           enabled: true
           mgmt_only: true
-          address: "{{ hostvars['server-225-win'].host_ip | default(hostvars['server-225-win'].ansible_host) }}/24"
-          description: server-225-win management address from Ansible inventory
+          address: "{{ hostvars['hom-lab-ctl-hvh-02'].host_ip | default(hostvars['hom-lab-ctl-hvh-02'].ansible_host) }}/24"
+          description: hom-lab-ctl-hvh-02 management address from Ansible inventory
 
 ipam_netbox_network_server_vm_model:
   hyperv_host_inventory_host: hom-lab-ctl-hvh-01

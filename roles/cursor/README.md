@@ -135,7 +135,7 @@ ansible-playbook playbooks/deploy_shell_config.yaml --tags cursor_extensions
 ansible-playbook playbooks/deploy_development_nodes.yaml -i inventory/inventory.yaml --limit mac-dev --tags cursor_cli
 
 # Windows tasks only
-ansible-playbook playbooks/deploy_shell_config.yaml --tags cursor_windows --limit server-225-win
+ansible-playbook playbooks/deploy_shell_config.yaml --tags cursor_windows --limit hom-lab-ctl-hvh-02
 ```
 
 ---

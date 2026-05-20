@@ -83,7 +83,7 @@ feature taskfile so teardown remains explicit.
 On Windows hosts that are expected to stay reachable through the Hyper-V
 management OS, the safest first-pass recovery path is a temporary boot task
 that runs locally on the next reboot and applies the soft DHCP refresh sequence
-that already proved effective for `server-225-win`:
+that already proved effective for `hom-lab-ctl-hvh-02`:
 
 ```powershell
 Clear-DnsClientCache
@@ -219,7 +219,7 @@ tasks:
 Low-level standalone validation surface:
 
 ```bash
-ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit server-225-win
+ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit hom-lab-ctl-hvh-02
 ```
 
 The legacy Multipass teardown playbook has been retired after cleanup.

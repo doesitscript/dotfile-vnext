@@ -1,7 +1,7 @@
 # windows_managed_service_data_backup_disk
 
 Opinionated Windows role for the rebuildable non-OS managed service disk on
-infrastructure nodes such as `hom-lab-ctl-hvh-01` and `server-225-win`.
+infrastructure nodes such as `hom-lab-ctl-hvh-01` and `hom-lab-ctl-hvh-02`.
 
 ## Public contract
 
@@ -21,7 +21,7 @@ infrastructure nodes such as `hom-lab-ctl-hvh-01` and `server-225-win`.
 - allocation unit size: `4096`
 
 Percentages are derived once from the source physical Toshiba disk on
-`server-225-win` and baked into the role defaults:
+`hom-lab-ctl-hvh-02` and baked into the role defaults:
 
 - backup: `39.313758202`
 - data: `60.685346181`
