@@ -1,0 +1,14 @@
+---
+- name: Install PostgreSQL client (libpq) with Homebrew
+  community.general.homebrew:
+    name: "{{ postgresql_client_mac_package }}"
+    state: present
+
+- name: Link libpq client binaries into Homebrew PATH
+  ansible.builtin.command:
+    cmd: brew link --force libpq
+  register: postgresql_client_brew_link
+  changed_when: "'Linking' in postgresql_client_brew_link.stdout"
+  failed_when:
+    - postgresql_client_brew_link.rc != 0
+    - "'already linked' not in postgresql_client_brew_link.stderr"

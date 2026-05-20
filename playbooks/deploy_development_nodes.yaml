@@ -44,6 +44,7 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags tunnelblick_mac --limit mac-dev -e tunnelblick_mac_state=absent
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags mac_user_niceties --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags k3s_mac_client --limit mac-dev
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags postgresql_client --limit mac-dev
 #
 #   # Windows surface only
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cursor_windows --limit hom-lab-ctl-hvh-02
@@ -111,4 +112,6 @@
     - role: k3s_mac_client
       when: ansible_system == "Darwin"
       tags: [k3s_mac_client]
+    - role: common/postgresql_client
+      tags: [postgresql_client]
     - role: common/vscode

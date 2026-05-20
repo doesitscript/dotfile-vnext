@@ -1,0 +1,25 @@
+---
+- name: Include absent tasks for PostgreSQL client
+  ansible.builtin.include_tasks: absent.yml
+  when: postgresql_client_state == 'absent'
+
+- name: Include present tasks for PostgreSQL client
+  when: postgresql_client_state == 'present'
+  block:
+    - name: Install PostgreSQL client on macOS
+      ansible.builtin.import_tasks: mac.yml
+      when: ansible_facts['system'] == 'Darwin'
+
+    - name: Install PostgreSQL client on Ubuntu
+      ansible.builtin.import_tasks: ubuntu.yml
+      when: ansible_facts['distribution'] == 'Ubuntu'
+
+    - name: Verify psql is available
+      ansible.builtin.command:
+        cmd: psql --version
+      register: postgresql_client_version
+      changed_when: false
+
+    - name: Report PostgreSQL client version
+      ansible.builtin.debug:
+        msg: "psql available: {{ postgresql_client_version.stdout }}"

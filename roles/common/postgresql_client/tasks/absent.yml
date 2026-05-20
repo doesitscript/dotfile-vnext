@@ -1,0 +1,13 @@
+---
+- name: Remove PostgreSQL client on macOS
+  community.general.homebrew:
+    name: "{{ postgresql_client_mac_package }}"
+    state: absent
+  when: ansible_facts['system'] == 'Darwin'
+
+- name: Remove PostgreSQL client on Ubuntu
+  ansible.builtin.apt:
+    name: "{{ postgresql_client_ubuntu_packages }}"
+    state: absent
+  become: true
+  when: ansible_facts['distribution'] == 'Ubuntu'
