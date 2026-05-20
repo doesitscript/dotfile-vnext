@@ -1,0 +1,106 @@
+---
+- name: Validate naming schema for inventory hosts
+  hosts: all
+  gather_facts: false
+  vars:
+    naming_schema_regex: "^[a-z0-9]{2,3}-[a-z0-9]{2,3}-[a-z0-9]{2,3}-[a-z0-9]{2,3}-[0-9]{2}$"
+    naming_schema_valid_tenants:
+      - hom
+    naming_schema_valid_environments:
+      - lab
+    naming_schema_valid_domains:
+      - ctl
+      - aix
+    naming_schema_role_codes:
+      - ap
+      - api
+      - asw
+      - bkp
+      - bld
+      - csw
+      - db
+      - dhc
+      - dkr
+      - dns
+      - dsw
+      - esx
+      - fs
+      - fw
+      - git
+      - hvh
+      - idm
+      - ing
+      - isc
+      - k3s
+      - kvm
+      - lb
+      - log
+      - mon
+      - msg
+      - nas
+      - ntp
+      - pki
+      - rt
+      - san
+      - sec
+      - smb
+      - srv
+      - vgw
+      - web
+      - wrk
+  tasks:
+    - name: Parse naming schema segments
+      ansible.builtin.set_fact:
+        naming_schema_segments: "{{ inventory_hostname.split('-') }}"
+      tags:
+        - always
+        - schema
+
+    - name: Assert inventory hostname has five schema segments
+      ansible.builtin.assert:
+        that:
+          - naming_schema_segments | length == 5
+        fail_msg: >-
+          SCHEMA VIOLATION: {{ inventory_hostname }} must match
+          <tenant>-<environment>-<domain>-<role>-<idx>.
+      tags:
+        - always
+        - schema
+
+    - name: Assert inventory hostname matches naming schema regex
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname is match(naming_schema_regex)
+        fail_msg: >-
+          SCHEMA VIOLATION: {{ inventory_hostname }} fails regex
+          {{ naming_schema_regex }}.
+      tags:
+        - always
+        - schema
+
+    - name: Assert naming schema fields use known codes
+      ansible.builtin.assert:
+        that:
+          - naming_schema_segments[0] in naming_schema_valid_tenants
+          - naming_schema_segments[1] in naming_schema_valid_environments
+          - naming_schema_segments[2] in naming_schema_valid_domains
+          - naming_schema_segments[3] in naming_schema_role_codes
+          - naming_schema_segments[4] is match('^[0-9]{2}$')
+          - naming_schema_segments[4] != '00'
+        fail_msg: >-
+          SCHEMA VIOLATION: {{ inventory_hostname }} must use known
+          tenant/environment/domain/role codes and a two-digit idx starting at 01.
+      tags:
+        - always
+        - schema
+
+    - name: Report naming schema parse result
+      ansible.builtin.debug:
+        msg: >-
+          PASS | {{ inventory_hostname }} tenant={{ naming_schema_segments[0] }}
+          environment={{ naming_schema_segments[1] }}
+          domain={{ naming_schema_segments[2] }}
+          role={{ naming_schema_segments[3] }}
+          idx={{ naming_schema_segments[4] }}
+      tags:
+        - schema

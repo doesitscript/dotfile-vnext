@@ -1,0 +1,117 @@
+---
+schema_id: azure-ai
+schema_version: 1
+status: integrated
+owner: naming-standards
+
+sources:
+  - label: Local Azure Cursor intake
+    path: docs/brainstorming_designs/homelab_azure_cursor.md
+  - label: Azure CAF naming and tagging
+    url: https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/naming-and-tagging
+  - label: Azure CAF resource abbreviations
+    url: https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations
+
+context:
+  tenant: hom
+  environment: lab
+  domain: aix
+  idx_width: 2
+
+default_patterns:
+  azure_resource: "<type>-<tenant>-<environment>-<domain>-<component>-<idx>"
+  resource_group: "rg-<tenant>-<environment>-<domain>-<idx>"
+  local_metadata: "<type>-<tenant>-<environment>-<domain>-<component>-<idx>"
+
+components:
+  api:
+    full: api-access
+    status: integrated
+  fdy:
+    full: ai-foundry
+    status: integrated
+  agt:
+    full: agent-framework
+    status: integrated
+  vis:
+    full: vision
+    status: candidate
+  spc:
+    full: speech
+    status: candidate
+  mod:
+    full: model-deployment
+    status: candidate
+  cur:
+    full: cursor-byok
+    status: integrated
+
+resources:
+  resource_group:
+    type_code: rg
+    pattern: "rg-<tenant>-<environment>-<domain>-<idx>"
+    example: rg-hom-lab-aix-01
+    status: integrated
+  azure_openai_account:
+    type_code: oai
+    provider_type: Microsoft.CognitiveServices/accounts
+    provider_kind: OpenAI
+    pattern: "oai-<tenant>-<environment>-<domain>-<component>-<idx>"
+    example: oai-hom-lab-aix-api-01
+    stores:
+      - endpoint
+      - keys
+      - deployments
+    status: integrated
+  ai_foundry_resource:
+    type_code: fdy
+    provider_type: Microsoft.CognitiveServices/accounts
+    pattern: "fdy-<tenant>-<environment>-<domain>-<component>-<idx>"
+    example: fdy-hom-lab-aix-api-01
+    status: integrated
+  ai_foundry_project:
+    type_code: mlw
+    provider_type: Microsoft.MachineLearningServices/workspaces
+    pattern: "mlw-<tenant>-<environment>-<domain>-<component>-<idx>"
+    example: mlw-hom-lab-aix-fdy-01
+    status: integrated
+  model_deployment:
+    type_code: dep
+    pattern: "dep-<tenant>-<environment>-<domain>-<model>-<idx>"
+    example: dep-hom-lab-aix-g4o-01
+    status: under_review
+    note: "Model code registry required before enforcing deployment names."
+  vision_service:
+    type_code: cv
+    pattern: "cv-<tenant>-<environment>-<domain>-<component>-<idx>"
+    example: cv-hom-lab-aix-vis-01
+    status: candidate
+  speech_service:
+    type_code: spc
+    pattern: "spc-<tenant>-<environment>-<domain>-<component>-<idx>"
+    example: spc-hom-lab-aix-spc-01
+    status: candidate
+  key_vault:
+    type_code: kv
+    pattern: "kv-<tenant>-<environment>-<domain>-<idx>"
+    example: kv-hom-lab-aix-01
+    status: candidate
+    purpose: "Store Azure AI secrets if managed outside local vault."
+  cursor_byok_profile:
+    type_code: cur
+    provider_type: local-config
+    pattern: "cur-<tenant>-<environment>-<domain>-<component>-<idx>"
+    example: cur-hom-lab-aix-oai-01
+    status: integrated
+    note: "Local metadata name only; secrets stay outside committed config."
+
+tags:
+  required:
+    ManagedBy: ansible
+    Namespace: cst
+    Tenant: hom
+    Environment: lab
+    Domain: aix
+  optional:
+    Workload: azure-ai-cursor
+    CostScope: student-credit

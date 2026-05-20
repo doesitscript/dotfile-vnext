@@ -1,0 +1,50 @@
+---
+schema_id: enforcement
+schema_version: 1
+status: integrated
+owner: naming-standards
+
+levels:
+  advisory:
+    status: active
+    description: "Schema docs and critical-naming-analysis review are available."
+    blocks_work: false
+  soft_gate:
+    status: active
+    description: "Plans and naming work must consult schema; overrides require rationale."
+    blocks_work: false
+  preflight_gate:
+    status: scaffolded
+    description: "Ansible validation playbook asserts schema shape and known codes."
+    blocks_work: true
+    entrypoint: playbooks/validate_naming_schema.yml
+  repo_consistency_gate:
+    status: existing_and_expandable
+    description: "Repo stale-name checks and NetBox seed consistency gates."
+    blocks_work: true
+  hard_gate:
+    status: future
+    description: "NetBox webhook or CI policy rejects schema violations."
+    blocks_work: true
+
+rename_cleanup:
+  required_steps:
+    - "Identify old name, new name, object type, and reason."
+    - "Search the full repo for the old name before implementation."
+    - "Update functional references first: inventory, roles, playbooks, scripts, seed data, and config."
+    - "Update documentation references, leaving old names only in explicit legacy or migration context."
+    - "Update NetBox seed data before live NetBox changes."
+    - "Run or document the repo consistency gate."
+    - "Record any intentional legacy aliases."
+  stale_reference_policy:
+    active_functional_reference: forbidden
+    documentation_reference: allowed_only_if_legacy_marked
+    legacy_alias: allowed_with_reason
+
+schema_gap_process:
+  required_steps:
+    - "Declare the missing resource family or field."
+    - "Use local schema first for reusable context fields."
+    - "Research approved external references before proposing a new code."
+    - "Add candidate schema entry with status under_review or candidate."
+    - "Do not enforce until reviewed and promoted to integrated."

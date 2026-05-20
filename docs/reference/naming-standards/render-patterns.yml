@@ -1,0 +1,80 @@
+---
+schema_id: render-patterns
+schema_version: 1
+status: integrated
+owner: naming-standards
+
+defaults:
+  delimiter: "-"
+  canonical_index_field: idx
+  idx_width: 2
+  base_context_order:
+    - tenant
+    - environment
+    - domain
+  full_context_order:
+    - namespace
+    - tenant
+    - environment
+    - domain
+
+patterns:
+  baseline_resource:
+    status: integrated
+    pattern: "<tenant>-<environment>-<domain>-<role>-<idx>"
+    example: hom-lab-ctl-hvh-01
+    source_aliases:
+      - "{tenant}-{env}-{site}-{role}-{seq##}"
+      - "<namespace?>-<tenant>-<environment>-<stage>-<role_code>-<nn>"
+  canonical_id:
+    status: integrated
+    pattern: "<namespace>-<tenant>-<environment>-<domain>-<resource_class>-<name>-<idx>"
+    example: cst-hom-lab-ctl-service-netbox-01
+    use_for:
+      - metadata
+      - documentation
+      - cloud labels
+    avoid_for:
+      - short hostnames
+  physical_device:
+    status: integrated
+    pattern: "<tenant>-<environment>-<domain>-<role>-<idx>"
+    example: hom-lab-ctl-hvh-01
+    source_pattern: "{role}-{node}"
+    note: "Node or asset numbers are metadata unless accepted into a hardware code registry."
+  os_instance:
+    status: integrated
+    pattern: "<tenant>-<environment>-<domain>-<role>-<os_code>-<idx>"
+    example: hom-lab-ctl-hvh-win-01
+    source_pattern: "{role}-{node}-{os}"
+    note: "Use only when separate OS identity must be rendered; otherwise OS belongs in platform."
+  virtual_machine:
+    status: integrated
+    pattern: "<tenant>-<environment>-<domain>-<role>-<idx>"
+    example: hom-lab-ctl-k3s-01
+    source_pattern: "{role}-{node}-{vm_role}-{ordinal}"
+    note: "VM placement belongs in NetBox cluster fields."
+  service:
+    status: integrated
+    pattern: "<tenant>-<environment>-<domain>-<service>-<idx>"
+    example: hom-lab-ctl-nbx-01
+    source_pattern: "{namespace}-{tenant}-{environment}-{stage}-{service}-{ordinal}"
+  storage:
+    status: integrated
+    pattern: "<tenant>-<environment>-<domain>-<data_class>-<purpose>-<idx>"
+    example: hom-lab-ctl-hot-model-01
+    source_pattern: "{namespace}-{tenant}-{environment}-{stage}-{data_class}-{purpose}-{ordinal}"
+  azure_resource:
+    status: integrated
+    pattern: "<type>-<tenant>-<environment>-<domain>-<component>-<idx>"
+    example: oai-hom-lab-aix-api-01
+    note: "Provider-specific constraints are stored in provider schema files."
+
+field_aliases:
+  env: environment
+  stage: domain
+  role_code: role
+  seq: idx
+  sequence: idx
+  ordinal: idx
+  nn: idx

@@ -1,0 +1,81 @@
+---
+schema_id: context
+schema_version: 1
+status: integrated
+owner: naming-standards
+
+rules:
+  default_code_length: "2-3"
+  delimiter: "-"
+  case: lowercase
+  canonical_index_field: idx
+  imported_index_aliases:
+    - seq
+    - sequence
+    - nn
+  index:
+    width: 2
+    start: "01"
+    reserved:
+      - "00"
+    regex: "^[0-9]{2}$"
+
+context_fields:
+  namespace:
+    code: cst
+    full: castle
+    required_in_metadata: true
+    render_default: false
+    sources:
+      - cloud-posse-context
+      - project-decision
+  tenant:
+    code: hom
+    full: home
+    required_in_metadata: true
+    render_default: true
+    netbox_preferred_field: tenant
+  environment:
+    code: lab
+    full: lab
+    required_in_metadata: true
+    render_default: true
+    netbox_preferred_field: site
+  domain:
+    code: ctl
+    full: control-plane
+    required_in_metadata: true
+    render_default: true
+    netbox_preferred_field: config_context
+    replaces:
+      - auth
+      - aut
+  workload:
+    code: aix
+    full: ai-experiment
+    required_in_metadata: false
+    render_default: false
+    notes: "Use for Azure AI and AI integration work."
+  site:
+    code: lab
+    full: lab
+    required_in_metadata: true
+    render_default: false
+    netbox_preferred_field: site
+    notes: "Current project collapses environment and homelab site into lab until a separate site code registry is accepted."
+
+imported_examples:
+  cas:
+    status: candidate
+    source: docs/intake/schema-design-proposal-netbox-ansible-context
+    normalized_use: "Example tenant only; not active project tenant."
+  hom:
+    status: integrated
+    source: docs/intake/schema-design-proposal-netbox-ansible-context
+    normalized_use: "Accepted active tenant code for home."
+
+required_context_tags:
+  namespace: cst
+  tenant: hom
+  environment: lab
+  domain: ctl

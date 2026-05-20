@@ -1,0 +1,106 @@
+---
+schema_id: resource-roles
+schema_version: 1
+status: integrated
+owner: naming-standards
+
+rules:
+  code_length: "2-3"
+  delimiter: "-"
+  case: lowercase
+  active_code_statuses:
+    - integrated
+  candidate_code_statuses:
+    - candidate
+    - under_review
+
+categories:
+  network:
+    csw: {full: core-switch, status: candidate}
+    dsw: {full: distribution-switch, status: candidate}
+    asw: {full: access-switch, status: candidate}
+    fw: {full: firewall, status: candidate}
+    vgw: {full: virtual-gateway, status: candidate}
+    rt: {full: router, status: candidate}
+    lb: {full: load-balancer, status: candidate}
+    ap: {full: access-point, status: candidate}
+  compute:
+    srv: {full: generic-server, status: candidate}
+    web: {full: web-server, status: candidate}
+    api: {full: api-server, status: candidate}
+    hvh:
+      full: hyperv-host
+      status: integrated
+      replaces:
+        - hv
+      netbox_role_slug: hvh
+      legacy_slug_aliases:
+        - hyperv-host
+    kvm: {full: kvm-host, status: candidate}
+    esx: {full: esxi-host, status: candidate}
+  data:
+    db: {full: database-server, status: candidate}
+    fs: {full: file-server, status: candidate}
+    nas:
+      full: network-attached-storage
+      status: integrated
+      netbox_role_slug: nas
+    san: {full: san-fabric, status: candidate}
+    isc: {full: iscsi-target, status: candidate}
+    smb: {full: smb-server, status: candidate}
+  kubernetes:
+    k3s:
+      full: k3s-node
+      status: integrated
+      netbox_role_slug: k3s
+      note: "Current project single-node K3s role."
+    k3c:
+      full: k3s-control-plane
+      status: candidate
+      note: "Candidate if control-plane and worker roles split later."
+    k3n:
+      full: k3s-node
+      status: candidate
+      note: "Candidate if K3s agent nodes are added later."
+    ctr:
+      full: container-host
+      status: candidate
+      note: "Use dkr for Docker Engine-specific hosts."
+    ing: {full: ingress-controller, status: candidate}
+    wrk: {full: worker-node, status: candidate}
+  operations:
+    mon: {full: monitoring-server, status: candidate}
+    log: {full: log-aggregator, status: candidate}
+    bld: {full: build-server, status: candidate}
+    bkp: {full: backup-server, status: candidate}
+    msg: {full: message-broker, status: candidate}
+  infra_services:
+    dns: {full: dns-server, status: candidate}
+    dhc: {full: dhcp-server, status: candidate}
+    ntp: {full: ntp-server, status: candidate}
+    git: {full: git-server, status: candidate}
+  security:
+    idm: {full: identity-management, status: candidate}
+    pki: {full: certificate-authority, status: candidate}
+    sec: {full: security-appliance, status: candidate}
+  runtime:
+    dkr:
+      full: docker-engine
+      status: integrated
+      netbox_role_slug: dkr
+      legacy_slug_aliases:
+        - docker-engine
+  services:
+    nbx:
+      full: netbox
+      status: integrated
+    lfs:
+      full: langfuse
+      status: candidate
+
+source_mappings:
+  docs/intake/schema-design-proposal-netbox-ansible-context/ansible_inventory.txt:
+    status: integrated
+    normalized_fields:
+      seq: idx
+      hv: hvh

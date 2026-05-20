@@ -1,0 +1,63 @@
+---
+schema_id: ansible
+schema_version: 1
+status: integrated
+owner: naming-standards
+
+collection_naming:
+  pattern: "<namespace>.<collection>"
+  namespace:
+    regex: "^[a-z][a-z0-9_]*$"
+    project_default: cst
+  collection:
+    regex: "^[a-z][a-z0-9_]*$"
+    project_default: lab
+  imported_example:
+    namespace: cas
+    collection: lab
+    status: candidate
+    normalized_note: "Useful pattern only; not active project identity."
+  metadata_tags:
+    required:
+      - naming-schema
+      - netbox
+      - infrastructure
+
+role_naming:
+  pattern: "<capability>"
+  case: snake_case
+  no_hyphens: true
+  capability_focused: true
+  variable_prefix: "<role_name>_"
+  vault_variable_prefix: "vault_<role_name>_"
+  lifecycle_state_variable: "<role_name>_state"
+
+playbook_tags:
+  role_specific_pattern: "<role_name>_<operation>"
+  global_tags:
+    schema: "Run schema validation or preflight tasks."
+    always: "Required validation tasks that should run unless explicitly skipped."
+  namespace_rule: "Ansible tags use underscores; NetBox tags use hyphens."
+
+inventory_patterns:
+  hostname_schema: "<tenant>-<environment>-<domain>-<role>-<idx>"
+  imported_hostname_schema: "{tenant}-{env}-{site}-{role}-{seq##}"
+  field_aliases:
+    env: environment
+    site: environment
+    seq: idx
+
+schema_preflight:
+  status: scaffolded
+  preferred_entrypoint: playbooks/validate_naming_schema.yml
+  fail_message_prefix: "SCHEMA VIOLATION"
+  regex: "^[a-z0-9]{2,3}-[a-z0-9]{2,3}-[a-z0-9]{2,3}-[a-z0-9]{2,3}-[0-9]{2}$"
+  segment_order:
+    - tenant
+    - environment
+    - domain
+    - role
+    - idx
+  imported_sources:
+    - docs/intake/schema-design-proposal-netbox-ansible-context/ansible_provision_all.txt
+    - docs/intake/schema-design-proposal-netbox-ansible-context/ansible_validate_schema.txt

@@ -1,0 +1,100 @@
+---
+schema_id: netbox
+schema_version: 1
+status: integrated
+owner: naming-standards
+
+authority:
+  current_state: "NetBox is required for infrastructure facts, but naming data must be reconciled to this schema before live NetBox is authoritative."
+  required_inventory_setting:
+    config_context: true
+  preferred_object_rule: "Use compact code slugs for repo-controlled roles and tags; use descriptions for long friendly meaning."
+
+native_field_mapping:
+  tenant: tenancy.tenant
+  environment: dcim.site
+  role:
+    device: dcim.devicerole
+    virtual_machine: dcim.devicerole
+  platform: dcim.platform
+  cluster: virtualization.cluster
+  status: native_status
+  interface:
+    device: dcim.interface
+    virtual_machine: virtualization.vminterface
+  ip_address: ipam.ipaddress
+
+config_contexts:
+  naming-context:
+    status: planned
+    data_keys:
+      - namespace
+      - tenant
+      - environment
+      - domain
+      - naming_schema_version
+      - render_pattern
+      - role_code
+      - idx
+
+role_slugs:
+  hvh:
+    full: hyperv-host
+    replaces:
+      - hyperv-host
+  dkr:
+    full: docker-engine
+    replaces:
+      - docker-engine
+  k3s:
+    full: k3s-node
+    replaces:
+      - k3s-node
+  nas:
+    full: network-attached-storage
+
+tags:
+  ansible-managed:
+    status: integrated
+    meaning: "Object state is repo-managed."
+  schema-valid:
+    status: planned
+    meaning: "Object name passes active schema validation."
+  schema-violation:
+    status: planned
+    meaning: "Object name violates active schema and requires cleanup."
+
+custom_fields:
+  policy: "Use only when native fields, config context, and tags cannot represent the data."
+  planned_from_intake:
+    schema_valid:
+      type: boolean
+      status: future_hard_gate
+    schema_tenant:
+      type: text
+      status: future_hard_gate
+      normalized_to: tenant
+    schema_env:
+      type: text
+      status: future_hard_gate
+      normalized_to: environment
+    schema_site_code:
+      type: text
+      status: future_hard_gate
+      normalized_to: environment
+    schema_role_code:
+      type: text
+      status: future_hard_gate
+      normalized_to: role
+    schema_seq:
+      type: text
+      status: future_hard_gate
+      normalized_to: idx
+
+webhook_enforcement:
+  status: future
+  source_files:
+    - docs/intake/schema-design-proposal-netbox-ansible-context/netbox_webhooks.txt
+    - docs/intake/schema-design-proposal-netbox-ansible-context/netbox_webhook_handler.txt
+  endpoint_pattern: "/webhook/netbox/schema-enforce"
+  current_pass_action: "Document only; do not deploy webhook service."
