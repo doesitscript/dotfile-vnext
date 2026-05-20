@@ -19,3 +19,39 @@
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   ignore_errors: true
+
+- name: Remove lingering Langfuse PostgreSQL PVC after namespace delete
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: PersistentVolumeClaim
+    name: data-langfuse-postgresql-0
+    namespace: "{{ k3s_langfuse_platform_namespace }}"
+    state: absent
+    wait: false
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  failed_when: false
+
+- name: Remove lingering Langfuse ClickHouse shard PVC after namespace delete
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: PersistentVolumeClaim
+    name: data-langfuse-clickhouse-shard0-1
+    namespace: "{{ k3s_langfuse_platform_namespace }}"
+    state: absent
+    wait: false
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  failed_when: false
+
+- name: Remove lingering Langfuse ClickHouse primary PVC after namespace delete
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: PersistentVolumeClaim
+    name: data-langfuse-clickhouse-shard0-0
+    namespace: "{{ k3s_langfuse_platform_namespace }}"
+    state: absent
+    wait: false
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  failed_when: false

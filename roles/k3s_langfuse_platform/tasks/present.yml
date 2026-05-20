@@ -1,4 +1,7 @@
 ---
+- name: Load vault variables for Langfuse platform
+  ansible.builtin.include_tasks: load_vault.yml
+
 - name: Install Python Kubernetes library via apt
   ansible.builtin.apt:
     name:
@@ -43,6 +46,43 @@
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
+- name: Remove bundled Langfuse PostgreSQL StatefulSet when using external database
+  kubernetes.core.k8s:
+    api_version: apps/v1
+    kind: StatefulSet
+    name: langfuse-postgresql
+    namespace: "{{ k3s_langfuse_platform_namespace }}"
+    state: absent
+    wait: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: not k3s_langfuse_platform_postgres_deploy | bool
+
+- name: Remove bundled Langfuse PostgreSQL PVC when using external database
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: PersistentVolumeClaim
+    name: data-langfuse-postgresql-0
+    namespace: "{{ k3s_langfuse_platform_namespace }}"
+    state: absent
+    wait: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: not k3s_langfuse_platform_postgres_deploy | bool
+
+- name: Remove orphan Langfuse ClickHouse shard PVC when present
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: PersistentVolumeClaim
+    name: data-langfuse-clickhouse-shard0-1
+    namespace: "{{ k3s_langfuse_platform_namespace }}"
+    state: absent
+    wait: false
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: _k3s_langfuse_orphan_ch_pvc
+  failed_when: false
+
 - name: Deploy Langfuse platform with Helm
   kubernetes.core.helm:
     name: "{{ k3s_langfuse_platform_release_name }}"
@@ -53,60 +93,87 @@
     wait: true
     wait_timeout: 10m
     values:
+      global:
+        security:
+          allowInsecureImages: true
+        valkey:
+          password: "{{ k3s_langfuse_platform_resolved_redis_password }}"
+
       langfuse:
         nextauth:
           url: "{{ k3s_langfuse_platform_nextauth_url }}"
-          secret: "{{ k3s_langfuse_platform_nextauth_secret }}"
-        salt: "{{ k3s_langfuse_platform_salt }}"
-        encryptionKey: "{{ k3s_langfuse_platform_encryption_key }}"
-      
+          secret:
+            value: "{{ k3s_langfuse_platform_resolved_nextauth_secret }}"
+        salt:
+          value: "{{ k3s_langfuse_platform_resolved_salt }}"
+        encryptionKey:
+          value: "{{ k3s_langfuse_platform_resolved_encryption_key }}"
+        additionalEnv:
+          - name: DATABASE_URL
+            value: "{{ k3s_langfuse_platform_resolved_database_url }}"
+        web:
+          replicas: "{{ k3s_langfuse_platform_web_replicas }}"
+          resources:
+            limits:
+              cpu: "{{ k3s_langfuse_platform_web_cpu_limit }}"
+              memory: "{{ k3s_langfuse_platform_web_memory_limit }}"
+          service:
+            type: "{{ k3s_langfuse_platform_service_type }}"
+            port: "{{ k3s_langfuse_platform_service_port }}"
+            nodePort: "{{ k3s_langfuse_platform_node_port }}"
+        worker:
+          replicas: "{{ k3s_langfuse_platform_worker_replicas }}"
+          resources:
+            limits:
+              cpu: "{{ k3s_langfuse_platform_worker_cpu_limit }}"
+              memory: "{{ k3s_langfuse_platform_worker_memory_limit }}"
+
       postgresql:
-        enabled: "{{ k3s_langfuse_platform_postgres_enabled }}"
+        deploy: false
+        host: "{{ k3s_langfuse_platform_postgres_host }}"
+        port: "{{ k3s_langfuse_platform_postgres_port }}"
         auth:
-          database: "{{ k3s_langfuse_platform_postgres_db }}"
           username: "{{ k3s_langfuse_platform_postgres_user }}"
-          password: "{{ k3s_langfuse_platform_postgres_password }}"
-        primary:
-          persistence:
-            enabled: true
-            size: 10Gi
-      
+          password: "{{ k3s_langfuse_platform_resolved_postgres_password }}"
+          database: "{{ k3s_langfuse_platform_resolved_postgres_db }}"
+        migration:
+          autoMigrate: true
+
       clickhouse:
-        enabled: "{{ k3s_langfuse_platform_clickhouse_enabled }}"
+        deploy: true
         auth:
           username: "{{ k3s_langfuse_platform_clickhouse_user }}"
-          password: "{{ k3s_langfuse_platform_clickhouse_password }}"
+          password: "{{ k3s_langfuse_platform_resolved_clickhouse_password }}"
+        replicaCount: "1"
+        resourcesPreset: medium
+        zookeeper:
+          replicaCount: "1"
         persistence:
           enabled: true
           size: 20Gi
-      
-      redis:
-        enabled: "{{ k3s_langfuse_platform_redis_enabled }}"
+
+
+      s3:
+        deploy: true
+        defaultBuckets: "{{ k3s_langfuse_platform_s3_bucket }}"
+        image:
+          repository: "{{ k3s_langfuse_platform_s3_image_repository }}"
+          tag: "{{ k3s_langfuse_platform_s3_image_tag }}"
+        command: "{{ k3s_langfuse_platform_s3_command }}"
+        args: "{{ k3s_langfuse_platform_s3_args }}"
         auth:
-          enabled: "{{ k3s_langfuse_platform_redis_auth_enabled }}"
-        master:
+          rootUser: "{{ k3s_langfuse_platform_resolved_s3_root_user }}"
+          rootPassword: "{{ k3s_langfuse_platform_resolved_s3_root_password }}"
+
+      redis:
+        deploy: true
+        auth:
+          enabled: true
+          password: "{{ k3s_langfuse_platform_resolved_redis_password }}"
+        primary:
           persistence:
             enabled: true
             size: 8Gi
-      
-      web:
-        replicaCount: "{{ k3s_langfuse_platform_web_replicas }}"
-        resources:
-          limits:
-            cpu: "{{ k3s_langfuse_platform_web_cpu_limit }}"
-            memory: "{{ k3s_langfuse_platform_web_memory_limit }}"
-      
-      worker:
-        replicaCount: "{{ k3s_langfuse_platform_worker_replicas }}"
-        resources:
-          limits:
-            cpu: "{{ k3s_langfuse_platform_worker_cpu_limit }}"
-            memory: "{{ k3s_langfuse_platform_worker_memory_limit }}"
-      
-      service:
-        type: "{{ k3s_langfuse_platform_service_type }}"
-        port: "{{ k3s_langfuse_platform_service_port }}"
-        nodePort: "{{ k3s_langfuse_platform_node_port }}"
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
@@ -134,7 +201,7 @@
       Components deployed:
       - Langfuse Web ({{ k3s_langfuse_platform_web_replicas }} replicas)
       - Langfuse Worker ({{ k3s_langfuse_platform_worker_replicas }} replicas)
-      - PostgreSQL (persistent storage: 10Gi)
+      - External PostgreSQL at {{ k3s_langfuse_platform_postgres_host }}:{{ k3s_langfuse_platform_postgres_port }}
       - ClickHouse (persistent storage: 20Gi)
       - Redis (persistent storage: 8Gi)
       

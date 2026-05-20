@@ -1,0 +1,26 @@
+---
+- name: Load shared vault for Langfuse platform
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault/shared.vault.yml"
+
+- name: Load network vault for Langfuse platform
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault/network.vault.yml"
+
+- name: Resolve Langfuse platform secrets from vault
+  ansible.builtin.set_fact:
+    k3s_langfuse_platform_resolved_nextauth_secret: "{{ vault_network_langfuse_nextauth_secret | default('Pass@w0rd1') }}"
+    k3s_langfuse_platform_resolved_salt: "{{ vault_network_langfuse_salt | default('Pass@w0rd1') }}"
+    k3s_langfuse_platform_resolved_encryption_key: "{{ vault_network_langfuse_encryption_key }}"
+    k3s_langfuse_platform_resolved_postgres_user: "{{ vault_network_postgres_user | default(fuzlang_external_postgres_user) }}"
+    k3s_langfuse_platform_resolved_postgres_password: "{{ vault_network_postgres_password | default(fuzlang_external_postgres_password) }}"
+    k3s_langfuse_platform_resolved_postgres_db: "{{ vault_network_postgres_db | default(fuzlang_external_postgres_db) }}"
+    k3s_langfuse_platform_resolved_clickhouse_password: "{{ vault_network_clickhouse_password | default('Pass@w0rd1') }}"
+    k3s_langfuse_platform_resolved_redis_password: "{{ vault_network_redis_password | default('Pass@w0rd1') }}"
+    k3s_langfuse_platform_resolved_s3_root_user: "{{ vault_network_minio_root_user | default('minioadmin') }}"
+    k3s_langfuse_platform_resolved_s3_root_password: "{{ vault_network_minio_root_password | default('Pass@w0rd1') }}"
+    k3s_langfuse_platform_resolved_database_url: >-
+      postgresql://{{ vault_network_postgres_user | default(fuzlang_external_postgres_user) }}:{{
+      (vault_network_postgres_password | default(fuzlang_external_postgres_password)) | urlencode
+      }}@{{ fuzlang_external_postgres_connect_address }}:{{ fuzlang_external_postgres_port }}/{{
+      vault_network_postgres_db | default(fuzlang_external_postgres_db) }}?schema=public

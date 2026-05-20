@@ -4,43 +4,53 @@ k3s_langfuse_platform_state: present
 k3s_langfuse_platform_namespace: langfuse
 k3s_langfuse_platform_release_name: langfuse
 k3s_langfuse_platform_chart_repo: https://langfuse.github.io/langfuse-k8s
-k3s_langfuse_platform_chart_name: langfuse-k8s
+k3s_langfuse_platform_chart_name: langfuse
 k3s_langfuse_platform_chart_version: "" # Empty = latest
 
 # Helm installation
 k3s_langfuse_platform_install_helm: true
 k3s_langfuse_platform_helm_version: "3.16.3"
 
-# Langfuse configuration
+# When true, run absent tasks before present (clean redeploy).
+k3s_langfuse_platform_fresh_install: false
+
+# Langfuse configuration — secrets resolved from vault in tasks/load_vault.yml
 k3s_langfuse_platform_hostname: "langfuse.local"
 k3s_langfuse_platform_nextauth_url: "http://langfuse.local:3000"
-k3s_langfuse_platform_nextauth_secret: "changeme"  # Override in vault
-k3s_langfuse_platform_salt: "changeme"  # Override in vault
-k3s_langfuse_platform_encryption_key: "0000000000000000000000000000000000000000000000000000000000000000"  # Override in vault
 
-# Database configuration (PostgreSQL)
-k3s_langfuse_platform_postgres_enabled: true
-k3s_langfuse_platform_postgres_host: "langfuse-postgresql"
-k3s_langfuse_platform_postgres_port: 5432
-k3s_langfuse_platform_postgres_db: "langfuse"
-k3s_langfuse_platform_postgres_user: "langfuse"
-k3s_langfuse_platform_postgres_password: "changeme"  # Override in vault
+# Database configuration (external PostgreSQL on hom-lab-ctl-dkr-01)
+k3s_langfuse_platform_postgres_enabled: false
+k3s_langfuse_platform_postgres_deploy: false
+k3s_langfuse_platform_postgres_host: "{{ fuzlang_external_postgres_connect_address }}"
+k3s_langfuse_platform_postgres_port: "{{ fuzlang_external_postgres_port }}"
+k3s_langfuse_platform_postgres_db: "{{ fuzlang_external_postgres_db }}"
+k3s_langfuse_platform_postgres_user: "{{ fuzlang_external_postgres_user }}"
+k3s_langfuse_platform_postgres_password: "{{ fuzlang_external_postgres_password }}"
 
 # ClickHouse configuration
 k3s_langfuse_platform_clickhouse_enabled: true
 k3s_langfuse_platform_clickhouse_host: "langfuse-clickhouse"
 k3s_langfuse_platform_clickhouse_port: 9000
 k3s_langfuse_platform_clickhouse_user: "default"
-k3s_langfuse_platform_clickhouse_password: ""
 
 # Redis configuration
 k3s_langfuse_platform_redis_enabled: true
 k3s_langfuse_platform_redis_host: "langfuse-redis-master"
 k3s_langfuse_platform_redis_port: 6379
-k3s_langfuse_platform_redis_auth_enabled: false
+k3s_langfuse_platform_redis_auth_enabled: true
 
-# Storage configuration (MinIO/S3)
-k3s_langfuse_platform_s3_enabled: false  # Start without S3, can enable later
+# Storage configuration (MinIO/S3 bundled subchart)
+k3s_langfuse_platform_s3_enabled: true
+k3s_langfuse_platform_s3_image_repository: minio/minio
+k3s_langfuse_platform_s3_image_tag: RELEASE.2024-01-31T20-20-33Z
+# Bitnami chart mounts /bitnami/minio/data — official minio image needs explicit server command.
+k3s_langfuse_platform_s3_command:
+  - minio
+k3s_langfuse_platform_s3_args:
+  - server
+  - /bitnami/minio/data
+  - --console-address
+  - :9001
 k3s_langfuse_platform_s3_endpoint: ""
 k3s_langfuse_platform_s3_access_key: ""
 k3s_langfuse_platform_s3_secret_key: ""

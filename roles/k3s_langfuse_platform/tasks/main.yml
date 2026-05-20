@@ -1,4 +1,8 @@
 ---
+- name: Run Langfuse absent tasks before fresh install
+  ansible.builtin.include_tasks: absent.yml
+  when: k3s_langfuse_platform_fresh_install | bool
+
 - name: Include present tasks for Langfuse platform
   ansible.builtin.include_tasks: present.yml
   when: k3s_langfuse_platform_state == 'present'

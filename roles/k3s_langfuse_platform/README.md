@@ -1,38 +1,39 @@
-Role Name
-=========
+# k3s_langfuse_platform
 
-A brief description of the role goes here.
+Deploy Langfuse on K3s with external PostgreSQL on the Docker network stack.
 
-Requirements
-------------
+## Lifecycle
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+- `k3s_langfuse_platform_state: present|absent` — standard lifecycle control point.
+- `k3s_langfuse_platform_fresh_install: true` — runs absent tasks before present (clean redeploy).
 
-Role Variables
---------------
+## Fresh redeploy (recommended after credential or chart changes)
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+```bash
+ansible-playbook playbooks/deploy_langfuse_platform.yaml \
+  -i inventory/inventory.yaml \
+  -e k3s_langfuse_platform_state=absent -vvv
 
-Dependencies
-------------
+ansible-playbook playbooks/deploy_langfuse_platform.yaml \
+  -i inventory/inventory.yaml \
+  -e k3s_langfuse_platform_state=present -vvv
+```
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+Or single run with fresh-install flag:
 
-Example Playbook
-----------------
+```bash
+ansible-playbook playbooks/deploy_langfuse_platform.yaml \
+  -i inventory/inventory.yaml \
+  -e k3s_langfuse_platform_fresh_install=true -vvv
+```
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+## Secrets
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+Secrets load from `vault/network.vault.yml` and `vault/shared.vault.yml` via `tasks/load_vault.yml`.
+External PostgreSQL connect address must use `fuzlang_external_postgres_connect_address` (IP), not inventory hostname.
 
-License
--------
+## Tags
 
-BSD
-
-Author Information
-------------------
-
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+- `k3s_langfuse_platform`
+- `langfuse`
+- `ai_ml_platform`
