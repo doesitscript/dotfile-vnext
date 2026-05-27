@@ -27,6 +27,7 @@ one-line summary row to the index below.
 
 | File | One-line summary |
 |---|---|
+| [netbox-service-inventory-should-use-hybrid-preview-not-direct-auto-write.md](ansible/netbox-service-inventory-should-use-hybrid-preview-not-direct-auto-write.md) | NetBox service inventory should stay repo-first with read-only runtime discovery; hybrid preview gives drift visibility without letting temporary runtime state become source of truth |
 | [vscode-ansible-mcp-server-bundler-tsconfig--UNRESOLVED.md](ansible/vscode-ansible-mcp-server-bundler-tsconfig--UNRESOLVED.md) | v26.x tsconfig switched to `moduleResolution: "bundler"` + `@src/*` path aliases; plain `tsc` leaves aliases unresolved in compiled JS; `ERR_MODULE_NOT_FOUND` at runtime; workaround is pinning to v25.12.2; fix for v26.x+ is `tsc-alias` post-build step |
 
 ### `codex/` — Codex behavior, framework design, repo instruction workflow

@@ -22,6 +22,8 @@
 #   ipam_netbox_seed_windows_share_hosts_model — seed Windows share-host NetBox model
 #   ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview — preview storage-lane VM model
 #   ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model — seed storage-lane (hom-lab-ctl-hvh-01) VM model
+#   ipam_netbox_service_inventory_discovery_preview — read-only Docker/K3s runtime discovery + NetBox comparison
+#   ipam_netbox_service_inventory_discovery — alias for the same read-only service inventory discovery workflow
 #   ipam_netbox_seed_prefixes_preview — preview homelab IPAM /24 prefixes
 #   ipam_netbox_seed_prefixes — seed homelab IPAM prefixes (50/138/137)
 #   ipam_netbox_seed_config_contexts_preview — preview homelab config contexts
@@ -175,6 +177,43 @@
       tags:
         - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model
         - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview
+
+- name: Discover runtime service inventory on Docker VMs
+  hosts: hom-lab-ctl-dkr-01,hom-lab-ctl-dkr-02
+  gather_facts: false
+  tasks:
+    - name: Collect Docker runtime service facts
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: discover_service_inventory_docker
+      tags:
+        - ipam_netbox_service_inventory_discovery
+        - ipam_netbox_service_inventory_discovery_preview
+
+- name: Discover runtime service inventory on K3s VMs
+  hosts: hom-lab-ctl-k3s-01,hom-lab-ctl-k3s-02
+  gather_facts: false
+  tasks:
+    - name: Collect K3s runtime service facts
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: discover_service_inventory_k3s
+      tags:
+        - ipam_netbox_service_inventory_discovery
+        - ipam_netbox_service_inventory_discovery_preview
+
+- name: Compare curated, runtime, and live NetBox service inventory
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Render read-only NetBox service inventory comparison
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: discover_service_inventory_report
+      tags:
+        - ipam_netbox_service_inventory_discovery
+        - ipam_netbox_service_inventory_discovery_preview
 
 - name: Migrate NetBox display names to lowercase
   hosts: hom-lab-ctl-dkr-02

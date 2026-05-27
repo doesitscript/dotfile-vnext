@@ -1,0 +1,106 @@
+---
+- name: Gather Kubernetes objects for NetBox service discovery
+  block:
+    - name: Gather Kubernetes Services for NetBox service discovery
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        kubeconfig: /etc/rancher/k3s/k3s.yaml
+      register: _ipam_netbox_k3s_services
+
+    - name: Gather Kubernetes Ingresses for NetBox service discovery
+      kubernetes.core.k8s_info:
+        kind: Ingress
+        kubeconfig: /etc/rancher/k3s/k3s.yaml
+      register: _ipam_netbox_k3s_ingresses
+  rescue:
+    - name: Fallback to kubectl for Kubernetes Services on partially prepared K3s hosts
+      ansible.builtin.command:
+        cmd: kubectl get svc --all-namespaces -o json
+      register: _ipam_netbox_k3s_services_cli
+      changed_when: false
+
+    - name: Fallback to kubectl for Kubernetes Ingresses on partially prepared K3s hosts
+      ansible.builtin.command:
+        cmd: kubectl get ingress --all-namespaces -o json
+      register: _ipam_netbox_k3s_ingresses_cli
+      changed_when: false
+
+    - name: Normalize fallback kubectl Service output
+      ansible.builtin.set_fact:
+        _ipam_netbox_k3s_services:
+          resources: "{{ (_ipam_netbox_k3s_services_cli.stdout | from_json)['items'] | default([]) }}"
+
+    - name: Normalize fallback kubectl Ingress output
+      ansible.builtin.set_fact:
+        _ipam_netbox_k3s_ingresses:
+          resources: "{{ (_ipam_netbox_k3s_ingresses_cli.stdout | from_json)['items'] | default([]) }}"
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Summarize Kubernetes Services for NetBox service discovery
+  ansible.builtin.set_fact:
+    ipam_netbox_runtime_k3s_services: "{{ ipam_netbox_runtime_k3s_services | default([]) + [service_summary] }}"
+  vars:
+    service_summary:
+      virtual_machine: "{{ inventory_hostname }}"
+      runtime_kind: k3s
+      namespace: "{{ item.metadata.namespace }}"
+      source_name: "{{ item.metadata.name }}"
+      service_type: "{{ item.spec.type | default('ClusterIP') }}"
+      ports: "{{ item.spec.ports | default([]) }}"
+  loop: "{{ _ipam_netbox_k3s_services.resources | default([]) }}"
+  loop_control:
+    label: "{{ item.metadata.namespace }}/{{ item.metadata.name }}"
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Summarize Kubernetes Ingresses for NetBox service discovery
+  ansible.builtin.set_fact:
+    ipam_netbox_runtime_k3s_ingresses: "{{ ipam_netbox_runtime_k3s_ingresses | default([]) + [ingress_summary] }}"
+  vars:
+    ingress_summary:
+      virtual_machine: "{{ inventory_hostname }}"
+      runtime_kind: k3s
+      namespace: "{{ item.metadata.namespace }}"
+      source_name: "{{ item.metadata.name }}"
+      hosts: "{{ item.spec.rules | default([]) | map(attribute='host') | list }}"
+  loop: "{{ _ipam_netbox_k3s_ingresses.resources | default([]) }}"
+  loop_control:
+    label: "{{ item.metadata.namespace }}/{{ item.metadata.name }}"
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Initialize normalized K3s service endpoints
+  ansible.builtin.set_fact:
+    ipam_netbox_runtime_service_endpoints: "{{ ipam_netbox_runtime_service_endpoints | default([]) }}"
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Record normalized K3s externally meaningful endpoints
+  ansible.builtin.set_fact:
+    ipam_netbox_runtime_service_endpoints: "{{ ipam_netbox_runtime_service_endpoints + [endpoint] }}"
+  vars:
+    endpoint:
+      virtual_machine: "{{ inventory_hostname }}"
+      runtime_kind: k3s
+      namespace: "{{ item.0.metadata.namespace }}"
+      source_name: "{{ item.0.metadata.name }}"
+      service_type: "{{ item.0.spec.type | default('ClusterIP') }}"
+      protocol: "{{ item.1.protocol | lower }}"
+      public_port: "{{ item.1.nodePort | default(item.1.port) }}"
+      private_port: "{{ item.1.port }}"
+      target_port: "{{ item.1.targetPort | default(item.1.port) }}"
+  loop: "{{ (_ipam_netbox_k3s_services.resources | default([])) | subelements('spec.ports', skip_missing=True) }}"
+  loop_control:
+    label: "{{ item.0.metadata.namespace }}/{{ item.0.metadata.name }}:{{ item.1.nodePort | default(item.1.port) }}"
+  when:
+    - item.0.spec.type | default('ClusterIP') in ['NodePort', 'LoadBalancer']
+    - item.1.nodePort is defined
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview

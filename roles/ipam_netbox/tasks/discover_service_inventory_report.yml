@@ -1,0 +1,159 @@
+---
+- name: Include vault variables for NetBox service inventory discovery
+  ansible.builtin.include_tasks: load_vault.yml
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Require NetBox API token for service inventory discovery report
+  ansible.builtin.assert:
+    that:
+      - vault_vars.vault_netbox_api_token is defined
+      - vault_vars.vault_netbox_api_token | length > 0
+    fail_msg: >-
+      vault_netbox_api_token is required in vault.yml before the NetBox service
+      inventory discovery preview can compare runtime results to live NetBox
+      services.
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Query live NetBox Service objects for discovery comparison
+  ansible.builtin.uri:
+    url: "{{ ipam_netbox_api_url }}/api/ipam/services/?limit=200"
+    method: GET
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+    return_content: true
+    validate_certs: false
+  register: _ipam_netbox_live_services
+  changed_when: false
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Build curated repo service inventory list
+  ansible.builtin.set_fact:
+    ipam_netbox_curated_repo_services: >-
+      {{
+        (ipam_netbox_hom_lab_ctl_hvh_02_model.services | default([]))
+        + (ipam_netbox_hom_lab_ctl_hvh_01_vm_model.services | default([]))
+      }}
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Initialize aggregated service inventory discovery facts
+  ansible.builtin.set_fact:
+    ipam_netbox_discovered_runtime_endpoints: []
+    ipam_netbox_discovered_docker_containers: []
+    ipam_netbox_discovered_k3s_services: []
+    ipam_netbox_discovered_k3s_ingresses: []
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Aggregate runtime service discovery from configured hosts
+  ansible.builtin.set_fact:
+    ipam_netbox_discovered_runtime_endpoints: "{{ ipam_netbox_discovered_runtime_endpoints + (hostvars[item].ipam_netbox_runtime_service_endpoints | default([])) }}"
+    ipam_netbox_discovered_docker_containers: "{{ ipam_netbox_discovered_docker_containers + (hostvars[item].ipam_netbox_runtime_docker_containers | default([])) }}"
+    ipam_netbox_discovered_k3s_services: "{{ ipam_netbox_discovered_k3s_services + (hostvars[item].ipam_netbox_runtime_k3s_services | default([])) }}"
+    ipam_netbox_discovered_k3s_ingresses: "{{ ipam_netbox_discovered_k3s_ingresses + (hostvars[item].ipam_netbox_runtime_k3s_ingresses | default([])) }}"
+  loop: "{{ (ipam_netbox_service_inventory_discovery_hosts.docker + ipam_netbox_service_inventory_discovery_hosts.k3s) | unique }}"
+  loop_control:
+    label: "{{ item }}"
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Normalize live NetBox Service objects
+  ansible.builtin.set_fact:
+    ipam_netbox_live_netbox_services: "{{ ipam_netbox_live_netbox_services | default([]) + [normalized_service] }}"
+  vars:
+    normalized_service:
+      name: "{{ item.name }}"
+      virtual_machine: >-
+        {{
+          item.virtual_machine.name
+          if item.virtual_machine is mapping and item.virtual_machine.name is defined
+          else (
+            item.virtual_machine.display
+            if item.virtual_machine is mapping and item.virtual_machine.display is defined
+            else ''
+          )
+        }}
+      protocol: "{{ item.protocol | default('') | lower }}"
+      ports: "{{ item.ports | default([]) }}"
+      description: "{{ item.description | default('') }}"
+      comments: "{{ item.comments | default('') }}"
+      custom_fields: "{{ item.custom_fields | default({}) }}"
+      tags: "{{ item.tags | default([]) }}"
+  loop: "{{ _ipam_netbox_live_services.json.results | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Render normalized NetBox service inventory discovery report
+  ansible.builtin.set_fact:
+    ipam_netbox_service_inventory_report: "{{ lookup('template', 'service_inventory_discovery_report.json.j2') | from_json }}"
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Ensure service inventory discovery artifact directory exists
+  ansible.builtin.file:
+    path: "{{ ipam_netbox_service_inventory_artifact_dir }}"
+    state: directory
+    mode: "0755"
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Write latest service inventory discovery report
+  ansible.builtin.copy:
+    dest: "{{ ipam_netbox_service_inventory_artifact_dir }}/latest.json"
+    content: "{{ ipam_netbox_service_inventory_report | to_nice_json }}"
+    mode: "0644"
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Preview NetBox service inventory discovery summary
+  ansible.builtin.debug:
+    msg:
+      change_class: "read-only runtime discovery and NetBox comparison"
+      artifact: "{{ ipam_netbox_service_inventory_artifact_dir }}/latest.json"
+      curated_repo_services: "{{ ipam_netbox_curated_repo_services | length }}"
+      runtime_endpoints: "{{ ipam_netbox_discovered_runtime_endpoints | length }}"
+      live_netbox_services: "{{ ipam_netbox_live_netbox_services | default([]) | length }}"
+      runtime_misses: >-
+        {{
+          ipam_netbox_service_inventory_report.normalized_service_review
+          | rejectattr('runtime_match', 'equalto', true)
+          | map(attribute='name')
+          | list
+        }}
+      netbox_misses: >-
+        {{
+          ipam_netbox_service_inventory_report.normalized_service_review
+          | rejectattr('netbox_match', 'equalto', true)
+          | map(attribute='name')
+          | list
+        }}
+      runtime_unmodeled_exposures: >-
+        {{
+          ipam_netbox_service_inventory_report.runtime_unmodeled_exposures
+          | map(attribute='source_name')
+          | list
+        }}
+      netbox_unmodeled_services: >-
+        {{
+          ipam_netbox_service_inventory_report.netbox_unmodeled_services
+          | map(attribute='name')
+          | list
+        }}
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview

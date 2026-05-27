@@ -35,6 +35,9 @@ Where:
 | [cst-hom-lab-ctl-dia-gpu-topology-01.md](cst-hom-lab-ctl-dia-gpu-topology-01.md) | Post-router target topology for the GPU Hyper-V lane, including router, Windows host, guest VMs, subnets, and primary traffic paths |
 | [cst-hom-lab-ctl-dia-gpu-services-01.md](cst-hom-lab-ctl-dia-gpu-services-01.md) | Service exposure map for the GPU lane, showing direct guest endpoints versus Windows LAN-published endpoints |
 | [cst-hom-lab-ctl-dia-gpu-control-01.md](cst-hom-lab-ctl-dia-gpu-control-01.md) | Control-plane and operator access map for the GPU lane, including SSH, Ansible, NetBox, Docker, and K3s-related paths |
+| [cst-hom-lab-ctl-dia-svcinv-drift-01.md](cst-hom-lab-ctl-dia-svcinv-drift-01.md) | Pre-fix service inventory drift map for the storage lane, showing curated expectations versus broken runtime state |
+| [cst-hom-lab-ctl-dia-svcinv-remediation-02.md](cst-hom-lab-ctl-dia-svcinv-remediation-02.md) | Recovery sequence for the storage-lane stack and NetBox hybrid preview cleanup |
+| [cst-hom-lab-ctl-dia-svcinv-steady-03.md](cst-hom-lab-ctl-dia-svcinv-steady-03.md) | Final steady-state diagram for curated repo data, runtime discovery, and live NetBox service agreement |
 
 ## Notes
 

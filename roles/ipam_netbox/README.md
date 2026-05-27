@@ -74,7 +74,7 @@ ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
 ```
 
 Verify in the NetBox UI: you should see site `homelab`, tenant `home`,
-device `hom-lab-ctl-hvh-02`, cluster `hom-lab-ctl-hvh-02-hyperv`, VM
+device `hom-lab-ctl-hvh-02`, cluster `hom-lab-ctl-hvh-02`, VM
 `hom-lab-ctl-dkr-02` with primary IP, and tags including `ansible-managed`,
 `home`, `lab`, `ctl`, `homelab`, `hyperv`, `docker`, and `infra`. You should
 also see application services on `hom-lab-ctl-dkr-02` for `netbox-web`,
@@ -152,8 +152,10 @@ These control which tasks run when `--tags` is passed to `ansible-playbook`.
 | `ipam_netbox_seed_tags` | Seeds canonical object tags into NetBox via the API (requires `netbox.netbox` collection) |
 | `ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview` | Preview the first GPU-lane (hom-lab-ctl-hvh-02) NetBox object model without API mutation |
 | `ipam_netbox_seed_hom_lab_ctl_hvh_02_model` | Seed the first GPU-lane (hom-lab-ctl-hvh-02) NetBox object model via the API |
-| `ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview` | Preview the storage-lane Hyper-V VM model without API mutation |
-| `ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model` | Seed the storage-lane Hyper-V VM model via the API |
+| `ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview` | Preview the storage-lane Hyper-V VM + service model without API mutation |
+| `ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model` | Seed the storage-lane Hyper-V VM + service model via the API |
+| `ipam_netbox_service_inventory_discovery_preview` | Read-only Docker/K3s runtime discovery plus curated-vs-runtime-vs-NetBox comparison |
+| `ipam_netbox_service_inventory_discovery` | Alias for the same read-only service inventory discovery workflow |
 | `ipam_netbox_seed_prefixes_preview` | Preview homelab IPAM `/24` prefixes without API mutation |
 | `ipam_netbox_seed_prefixes` | Seed homelab IPAM prefixes (`192.168.50/138/137`) via the API |
 | `ipam_netbox_seed_config_contexts_preview` | Preview homelab config contexts without API mutation |
@@ -175,6 +177,10 @@ ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
 # Preview the network-server VM modeling slice
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
   --tags ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview
+
+# Compare repo-curated services against live Docker/K3s runtime plus live NetBox
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_service_inventory_discovery_preview
 
 # Verify the repo is not carrying stale active NetBox names before apply
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
@@ -225,7 +231,7 @@ objects to represent the current GPU-lane (hom-lab-ctl-hvh-02) world:
 - tenant: `home`
 - device: `hom-lab-ctl-hvh-02`
 - legacy device aliases: `hom-lab-ctl-hvh-02`, `server-225`, `exec-hvh-01`
-- cluster: `hom-lab-ctl-hvh-02-hyperv`
+- cluster: `hom-lab-ctl-hvh-02`
 - VM: `hom-lab-ctl-dkr-02`
 - application services on `hom-lab-ctl-dkr-02`:
   - `netbox-web` at `tcp/8000`
@@ -259,14 +265,22 @@ and stored as `vault_netbox_api_token`.
 ## Network-Server VM Model Slice
 
 The network-server VM slice seeds the Hyper-V objects that live under
-`hom-lab-ctl-hvh-01` without installing K3s:
+`hom-lab-ctl-hvh-01` without treating K3s runtime state as authoritative:
 
 - device: `hom-lab-ctl-hvh-01`
 - legacy/control aliases: `network-server`, `primary-hvh-01`, and the retired
   network-server Windows control alias
-- cluster: `hom-lab-ctl-hvh-01-hyv`
+- cluster: `hom-lab-ctl-hvh-01`
 - Docker VM: `hom-lab-ctl-dkr-01`
 - K3s placeholder VM: `hom-lab-ctl-k3s-01`
+- application services on `hom-lab-ctl-dkr-01`:
+  - `postgres-fuzlang` at `tcp/5432`
+  - `redis-fuzlang` at `tcp/6379`
+  - `clickhouse-http` at `tcp/8123`
+  - `clickhouse-native` at `tcp/9004`
+  - `minio-api` at `tcp/9000`
+  - `minio-console` at `tcp/9001`
+  - `langfuse-web` at `tcp/3000`
 - VM roles: `dkr`, `k3s`
 - tags: includes `docker`, `k3s`, `hyperv`, `authoritative-data`, and
   `lan-exposed-services`
@@ -287,6 +301,47 @@ ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
 
 This slice models `hom-lab-ctl-k3s-01` as a VM stub target only. It does not add the
 host to the live `k3s_cluster` server group and does not install K3s.
+
+## Hybrid Service Inventory Workflow
+
+This role now uses a repo-first hybrid preview workflow for NetBox service
+inventory:
+
+1. Curated repo seed data remains the only mutation source of truth.
+2. Read-only discovery collects live Docker and K3s runtime facts.
+3. A comparison report shows repo seed vs runtime vs live NetBox.
+4. Operators update repo seed data first, then apply the NetBox seed.
+
+Run the discovery preview:
+
+```bash
+ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+  --tags ipam_netbox_service_inventory_discovery_preview
+```
+
+The preview writes `artifacts/netbox-service-inventory/latest.json` and does
+not mutate NetBox.
+
+### Why hybrid preview
+
+This repo is intentionally **not** using direct auto-write from runtime
+discovery.
+
+| Approach | Authority | Safety | Drift risk | Reproducibility | Best for |
+|---|---|---|---|---|---|
+| Curated seed only | Repo YAML only | Highest | Higher manual drift | Highest | Small stable stacks |
+| Hybrid preview + repo reconciliation | Repo seed + read-only live checks | High | Low when reviewed regularly | High | Durable homelab services |
+| Direct auto-write from runtime discovery | Runtime state | Lowest | Highest | Weakest | Highly ephemeral environments only |
+
+The chosen path is hybrid preview because this repo wants:
+
+- reviewable, code-first NetBox mutations
+- durable names, tags, comments, and custom fields
+- drift visibility when runtime and intended state diverge
+- reproducible NetBox recovery from repo state alone
+
+See [NetBox Service Inventory Hybrid Preview](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/netbox-service-inventory-hybrid-preview.md:1)
+for the full discovery/reconciliation flow and alternate-approach notes.
 
 ## Reproducibility and Recovery
 
@@ -364,7 +419,18 @@ The DB password is in `vault.yml` under `vault_netbox_db_password`.
 ## Shadow Dynamic Inventory
 
 `inventory/netbox.yml` is a shadow inventory source for comparison only. It
-uses the NetBox inventory plugin and reads the API token from `NETBOX_TOKEN`.
+uses the NetBox inventory plugin (`netbox.netbox.nb_inventory`).
+
+**Controller environment (Mac / direnv):**
+
+- `NETBOX_TOKEN` — loaded from `vault.yml` (`vault_netbox_api_token`) by
+  `bin/load-netbox-controller-env.sh`, sourced from `.envrc` and `bin/codex-env`.
+  Do not put the token in `.envrc`.
+- **API URL** — `inventory/netbox.yml` uses LAN portproxy `http://192.168.50.158:8000`.
+  When using an SSH tunnel, pass `-i inventory/netbox_tunnel.yml` instead.
+
+Copy the hook from `.envrc.sample` into your local `.envrc` if `direnv` is in use.
+
 Do not switch playbooks to this inventory until its generated groups and host
 vars have been compared against `inventory/inventory.yaml`.
 

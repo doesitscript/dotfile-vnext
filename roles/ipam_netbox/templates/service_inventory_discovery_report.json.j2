@@ -1,0 +1,73 @@
+{% set ns = namespace(normalized=[], runtime_unmodeled=[], netbox_unmodeled=[]) %}
+{% for svc in ipam_netbox_curated_repo_services %}
+  {% set runtime_matches = [] %}
+  {% for endpoint in ipam_netbox_discovered_runtime_endpoints %}
+    {% if endpoint.virtual_machine == svc.virtual_machine and endpoint.protocol == svc.protocol and endpoint.public_port in svc.ports %}
+      {% set _ = runtime_matches.append(endpoint) %}
+    {% endif %}
+  {% endfor %}
+  {% set netbox_matches = [] %}
+  {% for live_service in ipam_netbox_live_netbox_services | default([]) %}
+    {% if live_service.virtual_machine == svc.virtual_machine and live_service.name == svc.name %}
+      {% set _ = netbox_matches.append(live_service) %}
+    {% endif %}
+  {% endfor %}
+  {% set _ = ns.normalized.append({
+    'name': svc.name,
+    'virtual_machine': svc.virtual_machine,
+    'protocol': svc.protocol,
+    'expected_ports': svc.ports,
+    'primary_access_point': svc.primary_access_point,
+    'runtime_match': (runtime_matches | length) > 0,
+    'runtime_matches': runtime_matches,
+    'netbox_match': (netbox_matches | length) > 0,
+    'netbox_matches': netbox_matches
+  }) %}
+{% endfor %}
+{% for endpoint in ipam_netbox_discovered_runtime_endpoints %}
+  {% set match = namespace(found=false) %}
+  {% for svc in ipam_netbox_curated_repo_services %}
+    {% if endpoint.virtual_machine == svc.virtual_machine and endpoint.protocol == svc.protocol and endpoint.public_port in svc.ports %}
+      {% set match.found = true %}
+    {% endif %}
+  {% endfor %}
+  {% set ignore_runtime_endpoint = (
+    (
+      endpoint.runtime_kind == 'docker'
+      and (ipam_netbox_service_inventory_discovery_ignore_loopback_docker_binds | default(true))
+      and (endpoint.bind_ip | default('')) in ['127.0.0.1', '::1', 'localhost']
+    )
+    or
+    (
+      endpoint.runtime_kind == 'k3s'
+      and (endpoint.namespace | default('')) in (ipam_netbox_service_inventory_discovery_ignored_k3s_namespaces | default([]))
+    )
+  ) %}
+  {% if not match.found and not ignore_runtime_endpoint %}
+    {% set _ = ns.runtime_unmodeled.append(endpoint) %}
+  {% endif %}
+{% endfor %}
+{% for live_service in ipam_netbox_live_netbox_services | default([]) %}
+  {% set match = namespace(found=false) %}
+  {% for svc in ipam_netbox_curated_repo_services %}
+    {% if live_service.virtual_machine == svc.virtual_machine and live_service.name == svc.name %}
+      {% set match.found = true %}
+    {% endif %}
+  {% endfor %}
+  {% if not match.found %}
+    {% set _ = ns.netbox_unmodeled.append(live_service) %}
+  {% endif %}
+{% endfor %}
+{
+  "comparison_mode": "hybrid-preview",
+  "generated_by_role": "ipam_netbox",
+  "curated_repo_services": {{ ipam_netbox_curated_repo_services | to_json }},
+  "runtime_discovered_endpoints": {{ ipam_netbox_discovered_runtime_endpoints | to_json }},
+  "docker_runtime_containers": {{ ipam_netbox_discovered_docker_containers | to_json }},
+  "k3s_runtime_services": {{ ipam_netbox_discovered_k3s_services | to_json }},
+  "k3s_runtime_ingresses": {{ ipam_netbox_discovered_k3s_ingresses | to_json }},
+  "live_netbox_services": {{ (ipam_netbox_live_netbox_services | default([])) | to_json }},
+  "normalized_service_review": {{ ns.normalized | to_json }},
+  "runtime_unmodeled_exposures": {{ ns.runtime_unmodeled | to_json }},
+  "netbox_unmodeled_services": {{ ns.netbox_unmodeled | to_json }}
+}

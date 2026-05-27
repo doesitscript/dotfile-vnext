@@ -14,9 +14,10 @@
       change_class: "idempotent NetBox source-of-truth modeling"
       apply: "ansible-playbook playbooks/deploy_ipam_netbox.yaml --tags ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model"
       verify:
-        - "NetBox contains cluster hom-lab-ctl-hvh-01-hyperv"
+        - "NetBox contains cluster hom-lab-ctl-hvh-01"
         - "NetBox contains VMs hom-lab-ctl-dkr-01 and hom-lab-ctl-k3s-01"
         - "NetBox VM hom-lab-ctl-k3s-01 has role k3s and tag k3s"
+        - "NetBox VM hom-lab-ctl-dkr-01 has service objects for Postgres, Redis, ClickHouse, MinIO, and Langfuse"
       undo: "manual NetBox object cleanup unless an absent seed path is added"
       model:
         site: "{{ ipam_netbox_hom_lab_ctl_hvh_01_vm_model.site }}"
@@ -25,6 +26,7 @@
         device_roles: "{{ ipam_netbox_hom_lab_ctl_hvh_01_vm_model.device_roles | map(attribute='slug') | list }}"
         cluster: "{{ ipam_netbox_hom_lab_ctl_hvh_01_vm_model.cluster.name }}"
         virtual_machines: "{{ ipam_netbox_hom_lab_ctl_hvh_01_vm_model.virtual_machines | map(attribute='name') | list }}"
+        services: "{{ ipam_netbox_hom_lab_ctl_hvh_01_vm_model.services | map(attribute='name') | list }}"
   tags:
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model
@@ -54,6 +56,13 @@
   tags:
     - ipam_netbox
     - ipam_netbox_api_token
+    - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model
+
+- name: Ensure NetBox Service custom fields before hom-lab-ctl-hvh-01 service seeding
+  ansible.builtin.include_tasks: seed_custom_fields.yml
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_custom_fields
     - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model
 
 - name: Seed hom-lab-ctl-hvh-01 NetBox tags
@@ -259,6 +268,36 @@
   loop: "{{ ipam_netbox_hom_lab_ctl_hvh_01_vm_model.virtual_machines | subelements('interfaces') }}"
   loop_control:
     label: "{{ item.0.name }} primary {{ item.1.address }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model
+
+- name: Seed hom-lab-ctl-hvh-01 application services
+  netbox.netbox.netbox_service:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      virtual_machine: "{{ item.virtual_machine }}"
+      protocol: "{{ item.protocol }}"
+      ports: "{{ item.ports }}"
+      ipaddresses: "{{ item.ipaddresses }}"
+      description: "{{ item.description }}"
+      comments: >-
+        {{
+          [
+            item.comments,
+            'primary_access_point: ' ~ item.primary_access_point
+          ] | reject('equalto', None) | join('\n')
+        }}
+      custom_fields: "{{ item.custom_fields | default(omit) }}"
+      tags: "{{ item.tags }}"
+    state: present
+  loop: "{{ ipam_netbox_hom_lab_ctl_hvh_01_vm_model.services }}"
+  loop_control:
+    label: "{{ item.name }}"
   delegate_to: localhost
   tags:
     - ipam_netbox

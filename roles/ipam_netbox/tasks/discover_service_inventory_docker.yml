@@ -1,0 +1,62 @@
+---
+- name: Gather Docker runtime inventory for NetBox service discovery
+  community.docker.docker_host_info:
+    containers: true
+    containers_all: false
+    verbose_output: true
+  register: _ipam_netbox_docker_runtime
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Summarize Docker containers for NetBox service discovery
+  ansible.builtin.set_fact:
+    ipam_netbox_runtime_docker_containers: "{{ ipam_netbox_runtime_docker_containers | default([]) + [container_summary] }}"
+  vars:
+    container_summary:
+      virtual_machine: "{{ inventory_hostname }}"
+      runtime_kind: docker
+      source_name: "{{ item.Labels['com.docker.compose.service'] | default(item.Names[0] | regex_replace('^/', '')) }}"
+      source_project: "{{ item.Labels['com.docker.compose.project'] | default('') }}"
+      state: "{{ item.State | default('unknown') }}"
+      status: "{{ item.Status | default('') }}"
+      health: "{{ item.Health.Status | default('unknown') }}"
+      image: "{{ item.Image }}"
+      published_ports: "{{ item.Ports | default([]) }}"
+  loop: "{{ _ipam_netbox_docker_runtime.containers | default([]) }}"
+  loop_control:
+    label: "{{ item.Names[0] | default(item.Image) }}"
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Initialize normalized Docker service endpoints
+  ansible.builtin.set_fact:
+    ipam_netbox_runtime_service_endpoints: "{{ ipam_netbox_runtime_service_endpoints | default([]) }}"
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Record normalized Docker service endpoints with published ports
+  ansible.builtin.set_fact:
+    ipam_netbox_runtime_service_endpoints: "{{ ipam_netbox_runtime_service_endpoints + [endpoint] }}"
+  vars:
+    endpoint:
+      virtual_machine: "{{ inventory_hostname }}"
+      runtime_kind: docker
+      source_name: "{{ item.0.Labels['com.docker.compose.service'] | default(item.0.Names[0] | regex_replace('^/', '')) }}"
+      source_project: "{{ item.0.Labels['com.docker.compose.project'] | default('') }}"
+      source_identifier: "{{ item.0.Names[0] | default('') | regex_replace('^/', '') }}"
+      state: "{{ item.0.State | default('unknown') }}"
+      health: "{{ item.0.Health.Status | default('unknown') }}"
+      bind_ip: "{{ item.1.IP | default('') }}"
+      protocol: "{{ item.1.Type | lower }}"
+      public_port: "{{ item.1.PublicPort }}"
+      private_port: "{{ item.1.PrivatePort }}"
+  loop: "{{ (_ipam_netbox_docker_runtime.containers | default([])) | subelements('Ports', skip_missing=True) }}"
+  loop_control:
+    label: "{{ item.0.Names[0] | default(item.0.Image) }}:{{ item.1.PublicPort | default('unpublished') }}"
+  when: item.1.PublicPort is defined
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
