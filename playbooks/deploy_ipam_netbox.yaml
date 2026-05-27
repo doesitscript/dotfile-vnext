@@ -1,6 +1,6 @@
 ---
 # This playbook deploys NetBox, our source of truth for infrastructure data.
-# It targets the primary Ubuntu Docker host, `server-225-ubuntu`.
+# It targets the primary Ubuntu Docker host, `hom-lab-ctl-dkr-02`.
 #
 # The deployment is managed by the `ipam_netbox` role, which uses
 # Docker Compose to stand up the entire NetBox stack. All configuration,
@@ -15,12 +15,15 @@
 #   ipam_netbox_api_token — ensure the dedicated repo NetBox API token exists
 #   ipam_netbox_repo_consistency — verify repo references match NetBox naming decisions
 #   ipam_netbox_seed_tags  — seed canonical object tags into NetBox via API
-#   ipam_netbox_seed_server_225_model_preview — preview first NetBox object model
-#   ipam_netbox_seed_server_225_model — seed first server-225 NetBox object model
+#   ipam_netbox_seed_custom_fields — seed Service custom field definitions via API
+#   ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview — preview GPU-lane NetBox model
+#   ipam_netbox_seed_hom_lab_ctl_hvh_02_model — seed GPU-lane (hom-lab-ctl-hvh-02) NetBox model
 #   ipam_netbox_seed_windows_share_hosts_model_preview — preview Windows share-host NetBox model
 #   ipam_netbox_seed_windows_share_hosts_model — seed Windows share-host NetBox model
-#   ipam_netbox_seed_network_server_vm_model_preview — preview network-server VM model
-#   ipam_netbox_seed_network_server_vm_model — seed network-server VM model
+#   ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview — preview storage-lane VM model
+#   ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model — seed storage-lane (hom-lab-ctl-hvh-01) VM model
+#   ipam_netbox_purge_legacy_vms — remove superseded NetBox VMs (e.g. server-225-ubuntu)
+#   ipam_netbox_migrate_legacy_cluster_names — rename legacy cluster slugs to compact schema
 #   ipam_netbox_migrate_display_names — one-time rename mixed-case display names to lowercase
 #   ipam_netbox_migrate_compact_naming_schema — one-time reconcile NetBox names/slugs to compact schema
 #   ipam_netbox_backup_db — pg_dump NetBox postgres to artifacts/netbox-backups/
@@ -30,12 +33,13 @@
 #   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass --tags ipam_netbox_smoke_test
 #   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass --tags ipam_netbox_repo_consistency
 #   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass --tags ipam_netbox_seed_tags
-#   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass --tags ipam_netbox_seed_server_225_model_preview
+#   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass --tags ipam_netbox_seed_custom_fields
+#   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass --tags ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview
 #   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass --tags ipam_netbox_seed_windows_share_hosts_model_preview
 #   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass -e ipam_netbox_state=absent
 
 - name: Deploy Source of Truth (NetBox)
-  hosts: server-225-ubuntu
+  hosts: hom-lab-ctl-dkr-02
   become: true
   roles:
     - role: ipam_netbox
@@ -43,7 +47,7 @@
         - ipam_netbox
 
 - name: Seed NetBox object tags
-  hosts: server-225-ubuntu
+  hosts: hom-lab-ctl-dkr-02
   gather_facts: false
   tasks:
     - name: Seed canonical NetBox tags via API
@@ -52,6 +56,17 @@
         tasks_from: seed_tags
       tags:
         - ipam_netbox_seed_tags
+
+- name: Seed NetBox Service custom field definitions
+  hosts: hom-lab-ctl-dkr-02
+  gather_facts: false
+  tasks:
+    - name: Seed Service custom fields via API
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: seed_custom_fields
+      tags:
+        - ipam_netbox_seed_custom_fields
 
 - name: Verify NetBox/repo naming consistency
   hosts: localhost
@@ -66,27 +81,49 @@
       changed_when: false
       tags:
         - ipam_netbox_repo_consistency
-        - ipam_netbox_seed_server_225_model
-        - ipam_netbox_seed_server_225_model_preview
+        - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+        - ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview
         - ipam_netbox_seed_windows_share_hosts_model
         - ipam_netbox_seed_windows_share_hosts_model_preview
-        - ipam_netbox_seed_network_server_vm_model
-        - ipam_netbox_seed_network_server_vm_model_preview
+        - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model
+        - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview
 
-- name: Seed server-225 NetBox model
-  hosts: server-225-ubuntu
+- name: Purge legacy NetBox VMs
+  hosts: hom-lab-ctl-dkr-02
   gather_facts: false
   tasks:
-    - name: Seed server-225 NetBox model via API
+    - name: Remove superseded NetBox VM objects
       ansible.builtin.include_role:
         name: ipam_netbox
-        tasks_from: seed_server_225_model
+        tasks_from: purge_legacy_netbox_objects
       tags:
-        - ipam_netbox_seed_server_225_model
-        - ipam_netbox_seed_server_225_model_preview
+        - ipam_netbox_purge_legacy_vms
+
+- name: Migrate legacy Hyper-V cluster names in NetBox
+  hosts: hom-lab-ctl-dkr-02
+  gather_facts: false
+  tasks:
+    - name: Rename legacy cluster slugs to compact-schema names
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: migrate_legacy_cluster_names
+      tags:
+        - ipam_netbox_migrate_legacy_cluster_names
+
+- name: Seed hom-lab-ctl-hvh-02 NetBox model
+  hosts: hom-lab-ctl-dkr-02
+  gather_facts: false
+  tasks:
+    - name: Seed GPU-lane NetBox model via API
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: seed_hom_lab_ctl_hvh_02_model
+      tags:
+        - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+        - ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview
 
 - name: Seed Windows share-host NetBox model
-  hosts: server-225-ubuntu
+  hosts: hom-lab-ctl-dkr-02
   gather_facts: false
   tasks:
     - name: Seed Windows share-host NetBox model via API
@@ -97,20 +134,20 @@
         - ipam_netbox_seed_windows_share_hosts_model
         - ipam_netbox_seed_windows_share_hosts_model_preview
 
-- name: Seed network-server VM NetBox model
-  hosts: server-225-ubuntu
+- name: Seed hom-lab-ctl-hvh-01 VM NetBox model
+  hosts: hom-lab-ctl-dkr-02
   gather_facts: false
   tasks:
-    - name: Seed network-server VM NetBox model via API
+    - name: Seed storage-lane VM NetBox model via API
       ansible.builtin.include_role:
         name: ipam_netbox
-        tasks_from: seed_network_server_vm_model
+        tasks_from: seed_hom_lab_ctl_hvh_01_vm_model
       tags:
-        - ipam_netbox_seed_network_server_vm_model
-        - ipam_netbox_seed_network_server_vm_model_preview
+        - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model
+        - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview
 
 - name: Migrate NetBox display names to lowercase
-  hosts: server-225-ubuntu
+  hosts: hom-lab-ctl-dkr-02
   gather_facts: false
   tasks:
     - name: Patch mixed-case display names to lowercase via API
@@ -121,7 +158,7 @@
         - ipam_netbox_migrate_display_names
 
 - name: Migrate NetBox names and slugs to compact naming schema
-  hosts: server-225-ubuntu
+  hosts: hom-lab-ctl-dkr-02
   gather_facts: false
   tasks:
     - name: Patch legacy NetBox names and role/tag slugs to compact schema via API
@@ -132,7 +169,7 @@
         - ipam_netbox_migrate_compact_naming_schema
 
 - name: Backup NetBox database
-  hosts: server-225-ubuntu
+  hosts: hom-lab-ctl-dkr-02
   gather_facts: true
   tasks:
     - name: Run pg_dump and fetch to controller

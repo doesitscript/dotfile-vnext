@@ -1,0 +1,91 @@
+---
+# Vault: use tasks/load_vault.yml — not playbook_dir/../vault.yml (see load_vault.yml).
+- name: Include vault variables for NetBox API token
+  ansible.builtin.include_tasks: load_vault.yml
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_custom_fields
+
+- name: Require NetBox API token for custom field seeding
+  ansible.builtin.assert:
+    that:
+      - vault_vars.vault_netbox_api_token is defined
+      - vault_vars.vault_netbox_api_token | length > 0
+    fail_msg: >-
+      vault_netbox_api_token is required in vault.yml before NetBox API seeding
+      can run.
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_custom_fields
+
+- name: Ensure dedicated NetBox API token before custom field seeding
+  ansible.builtin.include_tasks:
+    file: ensure_api_token.yml
+    apply:
+      tags:
+        - ipam_netbox
+        - ipam_netbox_api_token
+        - ipam_netbox_seed_custom_fields
+  tags:
+    - ipam_netbox
+    - ipam_netbox_api_token
+    - ipam_netbox_seed_custom_fields
+
+# Seed Service object custom field definitions via the NetBox API.
+#
+# Run standalone:
+#   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+#     --tags ipam_netbox_seed_custom_fields
+#
+- name: Seed stack_name choice set for Service custom fields
+  netbox.netbox.netbox_custom_field_choice_set:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: homelab-stack-names
+      description: Homelab Docker stack identifiers for NetBox Service objects
+      extra_choices:
+        - [logging, logging]
+        - [fuzlang-net, fuzlang-net]
+        - [netbox, netbox]
+        - [semaphore, semaphore]
+        - [langfuse, langfuse]
+        - [litellm, litellm]
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_custom_fields
+
+- name: Seed Service custom field definitions
+  netbox.netbox.netbox_custom_field:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data: "{{ item }}"
+    state: present
+  loop:
+    - name: compose_project
+      label: Compose project
+      type: text
+      object_types:
+        - ipam.service
+      description: Docker Compose project name for this service
+    - name: deployed_by_role
+      label: Deployed by role
+      type: text
+      object_types:
+        - ipam.service
+      description: Ansible role that deploys this service stack
+    - name: stack_name
+      label: Stack name
+      type: select
+      choice_set: homelab-stack-names
+      object_types:
+        - ipam.service
+      description: Homelab stack identifier for grouping related services
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_custom_fields

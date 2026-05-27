@@ -1,0 +1,549 @@
+---
+# Vault: use tasks/load_vault.yml — not playbook_dir/../vault.yml (see load_vault.yml).
+- name: Include vault variables for NetBox API token
+  ansible.builtin.include_tasks: load_vault.yml
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview
+
+- name: Preview GPU-lane NetBox model seed
+  ansible.builtin.debug:
+    msg:
+      api_url: "{{ ipam_netbox_api_url }}"
+      change_class: "idempotent NetBox source-of-truth modeling"
+      apply: "ansible-playbook playbooks/deploy_ipam_netbox.yaml --tags ipam_netbox_seed_hom_lab_ctl_hvh_02_model"
+      verify:
+        - "NetBox UI/API contains the hom-lab-ctl-hvh-02 device plus hom-lab-ctl-hvh-02-hyperv cluster/VM objects"
+        - "NetBox VM hom-lab-ctl-dkr-02 has primary IP 192.168.137.10/24"
+        - "NetBox VM hom-lab-ctl-k3s-02 is staged with role k3s and primary IP 192.168.137.11/24"
+        - "NetBox application services exist for NetBox, Semaphore, Loki, Grafana, Langfuse, LiteLLM, Postgres, and MinIO"
+      undo: "manual NetBox object cleanup for this first modeling slice"
+      model:
+        site: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.site }}"
+        tags: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.tags | map(attribute='slug') | list }}"
+        platforms: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.platforms | map(attribute='slug') | list }}"
+        device_roles: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.device_roles | map(attribute='slug') | list }}"
+        cluster: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.cluster.name }}"
+        device: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.device.name }}"
+        legacy_device_names: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.device.legacy_aliases | default(['server-225']) }}"
+        virtual_machine: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.virtual_machine.name }}"
+        k3s_virtual_machine: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_virtual_machine.name }}"
+        services: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.services | map(attribute='name') | list }}"
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview
+
+- name: Require NetBox API token for hom-lab-ctl-hvh-02 model seeding
+  ansible.builtin.assert:
+    that:
+      - vault_vars.vault_netbox_api_token is defined
+      - vault_vars.vault_netbox_api_token | length > 0
+    fail_msg: >-
+      vault_netbox_api_token is required in vault.yml before NetBox API seeding
+      can run. Run the preview tag to inspect the intended model without the
+      token.
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Ensure dedicated NetBox API token before hom-lab-ctl-hvh-02 model seeding
+  ansible.builtin.include_tasks:
+    file: ensure_api_token.yml
+    apply:
+      tags:
+        - ipam_netbox
+        - ipam_netbox_api_token
+        - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+  tags:
+    - ipam_netbox
+    - ipam_netbox_api_token
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 NetBox tags
+  netbox.netbox.netbox_tag:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      description: "{{ item.description }}"
+      color: "{{ item.color }}"
+    state: present
+  loop: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.tags }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 NetBox site
+  netbox.netbox.netbox_site:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.site.name }}"
+      slug: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.site.slug }}"
+      status: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.site.status }}"
+      time_zone: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.site.time_zone }}"
+      tags:
+        - homelab
+        - ansible-managed
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 NetBox tenants
+  netbox.netbox.netbox_tenant:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      description: "{{ item.description }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.tenants }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 NetBox manufacturers
+  netbox.netbox.netbox_manufacturer:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.manufacturers }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 NetBox device types
+  netbox.netbox.netbox_device_type:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      model: "{{ item.model }}"
+      slug: "{{ item.slug }}"
+      manufacturer: "{{ item.manufacturer }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.device_types }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 NetBox platforms
+  netbox.netbox.netbox_platform:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.platforms }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 NetBox device and VM roles
+  netbox.netbox.netbox_device_role:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      color: "{{ item.color }}"
+      vm_role: "{{ item.vm_role }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.device_roles }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 NetBox cluster types
+  netbox.netbox.netbox_cluster_type:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ item.name }}"
+      slug: "{{ item.slug }}"
+      tags:
+        - ansible-managed
+    state: present
+  loop: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.cluster_types }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 NetBox cluster
+  netbox.netbox.netbox_cluster:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.cluster.name }}"
+      cluster_type: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.cluster.cluster_type }}"
+      site: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.cluster.site }}"
+      status: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.cluster.status }}"
+      tags:
+        - ansible-managed
+        - homelab
+        - hyperv
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 NetBox device
+  netbox.netbox.netbox_device:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.device.name }}"
+      device_type: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.device.device_type }}"
+      device_role: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.device.device_role }}"
+      platform: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.device.platform }}"
+      tenant: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.device.tenant | default(omit) }}"
+      site: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.device.site }}"
+      cluster: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.cluster.name }}"
+      status: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.device.status }}"
+      tags: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.device.tags | default(['ansible-managed', 'homelab', 'hyperv', 'infra']) }}"
+      comments: >-
+        {{
+          (
+            ['legacy_aliases:']
+            + (
+              (ipam_netbox_hom_lab_ctl_hvh_02_model.device.legacy_aliases | default([]))
+              | map('regex_replace', '^(.*)$', '  - \\1')
+              | list
+            )
+          ) | join('\n')
+        }}
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 Ubuntu VM
+  netbox.netbox.netbox_virtual_machine:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.virtual_machine.name }}"
+      cluster: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.virtual_machine.cluster }}"
+      site: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.virtual_machine.site }}"
+      virtual_machine_role: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.virtual_machine.role }}"
+      platform: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.virtual_machine.platform }}"
+      status: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.virtual_machine.status }}"
+      vcpus: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.virtual_machine.vcpus }}"
+      memory: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.virtual_machine.memory }}"
+      tags:
+        - ansible-managed
+        - homelab
+        - hyperv
+        - docker
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 Ubuntu VM interface
+  netbox.netbox.netbox_vm_interface:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      virtual_machine: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.vm_interface.virtual_machine }}"
+      name: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.vm_interface.name }}"
+      tags:
+        - ansible-managed
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Look up existing hom-lab-ctl-dkr-02 guest IP in NetBox
+  ansible.builtin.uri:
+    url: >-
+      {{ ipam_netbox_api_url }}/api/ipam/ip-addresses/?address={{
+      ipam_netbox_hom_lab_ctl_hvh_02_model.vm_ip.address | urlencode }}
+    method: GET
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    validate_certs: false
+  register: ipam_netbox_dkr02_ip_lookup
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Look up legacy hom-lab-ctl-dkr-02 VM in NetBox
+  ansible.builtin.uri:
+    url: >-
+      {{ ipam_netbox_api_url }}/api/virtualization/virtual-machines/?name=server-225-ubuntu
+    method: GET
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    validate_certs: false
+  register: ipam_netbox_legacy_dkr02_vm_lookup
+  when: ipam_netbox_dkr02_ip_lookup.json.count | int > 0
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Clear primary IPv4 on legacy hom-lab-ctl-dkr-02 VM before IP reassignment
+  ansible.builtin.uri:
+    url: >-
+      {{ ipam_netbox_api_url }}/api/virtualization/virtual-machines/{{
+      ipam_netbox_legacy_dkr02_vm_lookup.json.results[0].id }}/
+    method: PATCH
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Accept: application/json
+      Content-Type: application/json
+    body_format: json
+    body:
+      primary_ip4: null
+    status_code: [200]
+    validate_certs: false
+  when:
+    - ipam_netbox_dkr02_ip_lookup.json.count | int > 0
+    - ipam_netbox_legacy_dkr02_vm_lookup.json.count | int > 0
+    - ipam_netbox_legacy_dkr02_vm_lookup.json.results[0].primary_ip4 is not none
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Resolve hom-lab-ctl-dkr-02 VM interface id for IP assignment
+  ansible.builtin.uri:
+    url: >-
+      {{ ipam_netbox_api_url }}/api/virtualization/interfaces/?virtual_machine={{
+      ipam_netbox_hom_lab_ctl_hvh_02_model.vm_interface.virtual_machine | urlencode }}&name={{
+      ipam_netbox_hom_lab_ctl_hvh_02_model.vm_interface.name | urlencode }}
+    method: GET
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    validate_certs: false
+  register: ipam_netbox_dkr02_vm_interface
+  when: ipam_netbox_dkr02_ip_lookup.json.count | int > 0
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Reassign existing hom-lab-ctl-dkr-02 guest IP to the renamed VM interface
+  ansible.builtin.uri:
+    url: >-
+      {{ ipam_netbox_api_url }}/api/ipam/ip-addresses/{{
+      ipam_netbox_dkr02_ip_lookup.json.results[0].id }}/
+    method: PATCH
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Accept: application/json
+      Content-Type: application/json
+    body_format: json
+    body:
+      description: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.vm_ip.description }}"
+      assigned_object_type: virtualization.vminterface
+      assigned_object_id: "{{ ipam_netbox_dkr02_vm_interface.json.results[0].id }}"
+    status_code: [200]
+    validate_certs: false
+  when:
+    - ipam_netbox_dkr02_ip_lookup.json.count | int > 0
+    - ipam_netbox_dkr02_vm_interface.json.count | int > 0
+    - >-
+      ipam_netbox_dkr02_ip_lookup.json.results[0].assigned_object_id
+      != ipam_netbox_dkr02_vm_interface.json.results[0].id
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 Ubuntu VM IP address
+  netbox.netbox.netbox_ip_address:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      address: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.vm_ip.address }}"
+      description: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.vm_ip.description }}"
+      assigned_object:
+        virtual_machine: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.vm_interface.virtual_machine }}"
+        name: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.vm_interface.name }}"
+      tags:
+        - ansible-managed
+        - homelab
+    state: present
+  when: ipam_netbox_dkr02_ip_lookup.json.count | int == 0
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Set hom-lab-ctl-dkr-02 VM primary IPv4
+  netbox.netbox.netbox_virtual_machine:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.virtual_machine.name }}"
+      cluster: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.virtual_machine.cluster }}"
+      primary_ip4: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.vm_ip.address }}"
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 K3s Ubuntu VM
+  netbox.netbox.netbox_virtual_machine:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_virtual_machine.name }}"
+      cluster: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_virtual_machine.cluster }}"
+      site: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_virtual_machine.site }}"
+      virtual_machine_role: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_virtual_machine.role }}"
+      platform: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_virtual_machine.platform }}"
+      status: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_virtual_machine.status }}"
+      vcpus: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_virtual_machine.vcpus }}"
+      memory: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_virtual_machine.memory }}"
+      tags: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_virtual_machine.tags }}"
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 K3s Ubuntu VM interface
+  netbox.netbox.netbox_vm_interface:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      virtual_machine: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_vm_interface.virtual_machine }}"
+      name: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_vm_interface.name }}"
+      tags:
+        - ansible-managed
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Seed hom-lab-ctl-hvh-02 K3s Ubuntu VM IP address
+  netbox.netbox.netbox_ip_address:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      address: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_vm_ip.address }}"
+      description: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_vm_ip.description }}"
+      assigned_object:
+        virtual_machine: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_vm_interface.virtual_machine }}"
+        name: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_vm_interface.name }}"
+      tags:
+        - ansible-managed
+        - homelab
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Set hom-lab-ctl-k3s-02 Ubuntu VM primary IPv4
+  netbox.netbox.netbox_virtual_machine:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_virtual_machine.name }}"
+      cluster: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_virtual_machine.cluster }}"
+      primary_ip4: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_vm_ip.address }}"
+    state: present
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+
+- name: Ensure NetBox Service custom field definitions exist
+  ansible.builtin.include_tasks: seed_custom_fields.yml
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
+    - ipam_netbox_seed_custom_fields
+
+- name: Seed hom-lab-ctl-hvh-02 application services
+  netbox.netbox.netbox_service:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      virtual_machine: "{{ item.virtual_machine }}"
+      name: "{{ item.name }}"
+      protocol: "{{ item.protocol }}"
+      ports: "{{ item.ports }}"
+      ipaddresses: "{{ item.ipaddresses }}"
+      description: >-
+        {{ item.description }}{{
+          (' — ' ~ item.primary_access_point)
+          if (item.primary_access_point | default('') | length > 0)
+          else ''
+        }}
+      comments: "{{ item.comments }}"
+      tags: "{{ item.tags }}"
+      custom_fields: "{{ item.custom_fields | default(omit) }}"
+    state: present
+  loop: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.services }}"
+  loop_control:
+    label: "{{ item.virtual_machine }} {{ item.name }} {{ item.protocol }}/{{ item.ports | join(',') }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_02_model

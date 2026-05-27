@@ -1,0 +1,104 @@
+---
+# One-time migration: rename legacy Hyper-V cluster slugs to compact-schema names.
+# Run with: --tags ipam_netbox_migrate_legacy_cluster_names
+#
+# Vault: use tasks/load_vault.yml — not playbook_dir/../vault.yml (see load_vault.yml).
+
+- name: Include vault variables for NetBox API token
+  ansible.builtin.include_tasks: load_vault.yml
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_legacy_cluster_names
+
+- name: Require NetBox API token for cluster name migration
+  ansible.builtin.assert:
+    that:
+      - vault_vars.vault_netbox_api_token is defined
+      - vault_vars.vault_netbox_api_token | length > 0
+    fail_msg: >-
+      vault_netbox_api_token is required in vault.yml before NetBox cluster
+      migration can run.
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_legacy_cluster_names
+
+- name: Define legacy cluster name migrations
+  ansible.builtin.set_fact:
+    _ipam_netbox_cluster_migrations:
+      - old_name: server-225-hyperv
+        new_name: hom-lab-ctl-hvh-02-hyperv
+      - old_name: hom-lab-ctl-hvh-01-hyv
+        new_name: hom-lab-ctl-hvh-01-hyperv
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_legacy_cluster_names
+
+- name: Query legacy cluster by name
+  ansible.builtin.uri:
+    url: >-
+      {{ ipam_netbox_api_url }}/api/virtualization/clusters/?name={{
+      item.old_name | urlencode }}
+    method: GET
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    validate_certs: false
+  loop: "{{ _ipam_netbox_cluster_migrations }}"
+  loop_control:
+    label: "{{ item.old_name }}"
+  register: _ipam_netbox_cluster_legacy_queries
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_legacy_cluster_names
+
+- name: Query target cluster name
+  ansible.builtin.uri:
+    url: >-
+      {{ ipam_netbox_api_url }}/api/virtualization/clusters/?name={{
+      item.new_name | urlencode }}
+    method: GET
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    validate_certs: false
+  loop: "{{ _ipam_netbox_cluster_migrations }}"
+  loop_control:
+    label: "{{ item.new_name }}"
+  register: _ipam_netbox_cluster_target_queries
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_legacy_cluster_names
+
+- name: Rename legacy Hyper-V clusters to compact-schema names
+  ansible.builtin.uri:
+    url: >-
+      {{ ipam_netbox_api_url }}/api/virtualization/clusters/{{
+      _ipam_netbox_cluster_legacy_queries.results[migration_idx].json.results[0].id }}/
+    method: PATCH
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Accept: application/json
+      Content-Type: application/json
+    body_format: json
+    body:
+      name: "{{ item.new_name }}"
+      slug: "{{ item.new_name }}"
+    status_code: [200]
+    validate_certs: false
+  loop: "{{ _ipam_netbox_cluster_migrations }}"
+  loop_control:
+    label: "{{ item.old_name }} -> {{ item.new_name }}"
+    index_var: migration_idx
+  when:
+    - _ipam_netbox_cluster_legacy_queries.results[migration_idx].json.count | int > 0
+    - _ipam_netbox_cluster_target_queries.results[migration_idx].json.count | int == 0
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_migrate_legacy_cluster_names

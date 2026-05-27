@@ -1,0 +1,106 @@
+---
+# Remove legacy NetBox VMs superseded by compact-schema names.
+# Run with: --tags ipam_netbox_purge_legacy_vms
+#
+# Vault: use tasks/load_vault.yml — not playbook_dir/../vault.yml (see load_vault.yml).
+
+- name: Include vault variables for NetBox API token
+  ansible.builtin.include_tasks: load_vault.yml
+  tags:
+    - ipam_netbox
+    - ipam_netbox_purge_legacy_vms
+
+- name: Require NetBox API token for legacy VM purge
+  ansible.builtin.assert:
+    that:
+      - vault_vars.vault_netbox_api_token is defined
+      - vault_vars.vault_netbox_api_token | length > 0
+    fail_msg: >-
+      vault_netbox_api_token is required in vault.yml before legacy NetBox purge
+      can run.
+  tags:
+    - ipam_netbox
+    - ipam_netbox_purge_legacy_vms
+
+- name: Look up canonical hom-lab-ctl-dkr-02 VM in NetBox
+  ansible.builtin.uri:
+    url: >-
+      {{ ipam_netbox_api_url }}/api/virtualization/virtual-machines/?name={{
+      ipam_netbox_hom_lab_ctl_hvh_02_model.virtual_machine.name | urlencode }}
+    method: GET
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    validate_certs: false
+  register: ipam_netbox_canonical_dkr02_vm_lookup
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_purge_legacy_vms
+
+- name: Require canonical hom-lab-ctl-dkr-02 VM before purging legacy name
+  ansible.builtin.assert:
+    that:
+      - ipam_netbox_canonical_dkr02_vm_lookup.json.count | int > 0
+    fail_msg: >-
+      Canonical VM {{ ipam_netbox_hom_lab_ctl_hvh_02_model.virtual_machine.name }}
+      must exist in NetBox before server-225-ubuntu can be purged.
+  tags:
+    - ipam_netbox
+    - ipam_netbox_purge_legacy_vms
+
+- name: Look up legacy server-225-ubuntu VM in NetBox
+  ansible.builtin.uri:
+    url: >-
+      {{ ipam_netbox_api_url }}/api/virtualization/virtual-machines/?name=server-225-ubuntu
+    method: GET
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    validate_certs: false
+  register: ipam_netbox_legacy_dkr02_vm_lookup
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_purge_legacy_vms
+
+- name: Clear primary IPv4 on legacy server-225-ubuntu VM before delete
+  ansible.builtin.uri:
+    url: >-
+      {{ ipam_netbox_api_url }}/api/virtualization/virtual-machines/{{
+      ipam_netbox_legacy_dkr02_vm_lookup.json.results[0].id }}/
+    method: PATCH
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Accept: application/json
+      Content-Type: application/json
+    body_format: json
+    body:
+      primary_ip4: null
+    status_code: [200]
+    validate_certs: false
+  when:
+    - ipam_netbox_legacy_dkr02_vm_lookup.json.count | int > 0
+    - ipam_netbox_legacy_dkr02_vm_lookup.json.results[0].primary_ip4 is not none
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_purge_legacy_vms
+
+- name: Remove legacy server-225-ubuntu VM from NetBox
+  netbox.netbox.netbox_virtual_machine:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      name: server-225-ubuntu
+    state: absent
+  when: ipam_netbox_legacy_dkr02_vm_lookup.json.count | int > 0
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_purge_legacy_vms

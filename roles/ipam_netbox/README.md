@@ -36,7 +36,7 @@ ansible-playbook playbooks/deploy_development_nodes.yaml \
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass
 ```
 
-This runs the full Docker Compose stack on `server-225-ubuntu`. Confirm the
+This runs the full Docker Compose stack on `hom-lab-ctl-dkr-02`. Confirm the
 web UI is reachable at `http://192.168.50.158:8000/` before proceeding.
 
 ### 4. Create a dedicated NetBox API token
@@ -63,21 +63,21 @@ Preview first (no NetBox mutation):
 
 ```bash
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
-  --tags ipam_netbox_seed_server_225_model_preview
+  --tags ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview
 ```
 
 Then apply:
 
 ```bash
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
-  --tags ipam_netbox_seed_server_225_model
+  --tags ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 ```
 
 Verify in the NetBox UI: you should see site `homelab`, tenant `home`,
-device `hom-lab-ctl-hvh-02`, cluster `server-225-hyperv`, VM
-`server-225-ubuntu` with primary IP, and tags including `ansible-managed`,
+device `hom-lab-ctl-hvh-02`, cluster `hom-lab-ctl-hvh-02-hyperv`, VM
+`hom-lab-ctl-dkr-02` with primary IP, and tags including `ansible-managed`,
 `home`, `lab`, `ctl`, `homelab`, `hyperv`, `docker`, and `infra`. You should
-also see application services on `server-225-ubuntu` for `netbox-web`,
+also see application services on `hom-lab-ctl-dkr-02` for `netbox-web`,
 `semaphore-web`, `loki-http`, and `grafana-web`.
 
 ### Repo Consistency Gate
@@ -150,10 +150,10 @@ These control which tasks run when `--tags` is passed to `ansible-playbook`.
 | `ipam_netbox_api_token` | Ensures the dedicated repo NetBox API token exists from vault |
 | `ipam_netbox_repo_consistency` | Verifies repo references match NetBox naming/modeling decisions before seed work |
 | `ipam_netbox_seed_tags` | Seeds canonical object tags into NetBox via the API (requires `netbox.netbox` collection) |
-| `ipam_netbox_seed_server_225_model_preview` | Preview the first Server-225 NetBox object model without API mutation |
-| `ipam_netbox_seed_server_225_model` | Seed the first Server-225 NetBox object model via the API |
-| `ipam_netbox_seed_network_server_vm_model_preview` | Preview the network-server Hyper-V VM model without API mutation |
-| `ipam_netbox_seed_network_server_vm_model` | Seed the network-server Hyper-V VM model via the API |
+| `ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview` | Preview the first GPU-lane (hom-lab-ctl-hvh-02) NetBox object model without API mutation |
+| `ipam_netbox_seed_hom_lab_ctl_hvh_02_model` | Seed the first GPU-lane (hom-lab-ctl-hvh-02) NetBox object model via the API |
+| `ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview` | Preview the network-server Hyper-V VM model without API mutation |
+| `ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model` | Seed the network-server Hyper-V VM model via the API |
 
 Examples:
 
@@ -166,11 +166,11 @@ ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass --tags ipam_
 
 # Preview the first NetBox source-of-truth modeling slice
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
-  --tags ipam_netbox_seed_server_225_model_preview
+  --tags ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview
 
 # Preview the network-server VM modeling slice
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
-  --tags ipam_netbox_seed_network_server_vm_model_preview
+  --tags ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview
 
 # Verify the repo is not carrying stale active NetBox names before apply
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
@@ -212,18 +212,18 @@ The `netbox.netbox` collection (`ansible-galaxy collection install netbox.netbox
 and a NetBox API token are required. The token should be stored in Ansible Vault
 under `vault_netbox_api_token` when this layer is wired.
 
-## First Server-225 Model Slice
+## First GPU-lane (hom-lab-ctl-hvh-02) Model Slice
 
 The first NetBox modeling slice is intentionally small. It seeds only enough
-objects to represent the current Server-225 world:
+objects to represent the current GPU-lane (hom-lab-ctl-hvh-02) world:
 
 - site: `homelab`
 - tenant: `home`
 - device: `hom-lab-ctl-hvh-02`
 - legacy device aliases: `hom-lab-ctl-hvh-02`, `server-225`, `exec-hvh-01`
-- cluster: `server-225-hyperv`
-- VM: `server-225-ubuntu`
-- application services on `server-225-ubuntu`:
+- cluster: `hom-lab-ctl-hvh-02-hyperv`
+- VM: `hom-lab-ctl-dkr-02`
+- application services on `hom-lab-ctl-dkr-02`:
   - `netbox-web` at `tcp/8000`
   - `semaphore-web` at `tcp/3001`
   - `loki-http` at `tcp/3100`
@@ -237,14 +237,14 @@ Preview the slice before mutation:
 
 ```bash
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
-  --tags ipam_netbox_seed_server_225_model_preview
+  --tags ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview
 ```
 
 Apply the slice after `vault_netbox_api_token` exists in `vault.yml`:
 
 ```bash
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
-  --tags ipam_netbox_seed_server_225_model
+  --tags ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 ```
 
 Do not wire the seed path to an ad hoc or placeholder-looking admin token. The
@@ -271,14 +271,14 @@ Preview the slice before mutation:
 
 ```bash
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
-  --tags ipam_netbox_seed_network_server_vm_model_preview
+  --tags ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview
 ```
 
 Apply after the preview and repo consistency gate are clean:
 
 ```bash
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
-  --tags ipam_netbox_seed_network_server_vm_model
+  --tags ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model
 ```
 
 This slice models `hom-lab-ctl-k3s-01` as a VM stub target only. It does not add the
@@ -309,7 +309,7 @@ ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass
 
 # Step 2: re-seed the source-of-truth model
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
-  --tags ipam_netbox_seed_server_225_model
+  --tags ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 ```
 
 Verify at `http://192.168.50.158:8000/` — objects should be back.
@@ -325,7 +325,7 @@ ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
 
 The dump lands at `artifacts/netbox-backups/netbox-<timestamp>.dump` on the
 controller (custom pg_dump format). The same dump is kept at
-`/opt/netbox/backups/` on `server-225-ubuntu`.
+`/opt/netbox/backups/` on `hom-lab-ctl-dkr-02`.
 
 Backups are git-ignored — they are binary artifacts, not source files.
 
@@ -336,11 +336,11 @@ Backups are git-ignored — they are binary artifacts, not source files.
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass
 
 # Step 2: copy the backup file to the host
-ansible server-225-ubuntu -m ansible.builtin.copy \
+ansible hom-lab-ctl-dkr-02 -m ansible.builtin.copy \
   -a "src=artifacts/netbox-backups/<file>.dump dest=/tmp/<file>.dump"
 
 # Step 3: restore into the running postgres container
-# (ssh to server-225-ubuntu as root/sudo)
+# (ssh to hom-lab-ctl-dkr-02 as root/sudo)
 docker cp /tmp/<file>.dump netbox-postgres-1:/tmp/<file>.dump
 docker exec -e PGPASSWORD=<db-password> netbox-postgres-1 \
   pg_restore -U netbox -d netbox --clean /tmp/<file>.dump
@@ -369,7 +369,7 @@ vars have been compared against `inventory/inventory.yaml`.
 ```yaml
 ---
 - name: Deploy Source of Truth (NetBox)
-  hosts: server-225-ubuntu
+  hosts: hom-lab-ctl-dkr-02
   become: true
   roles:
     - role: ipam_netbox
@@ -389,7 +389,7 @@ ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass -e "ipam_net
 
 ## Network Access From The LAN
 
-The `ipam_netbox` role deploys NetBox on `server-225-ubuntu`, which sits on a
+The `ipam_netbox` role deploys NetBox on `hom-lab-ctl-dkr-02`, which sits on a
 private Hyper-V subnet (`192.168.137.0/24`). The role only manages the
 application on the VM — it does not configure the Windows host's port-proxy.
 
@@ -418,10 +418,10 @@ runs them. For current access, use:
 
 | Service | LAN URL | Direct guest URL | NetBox parent |
 |---|---|---|---|
-| NetBox | `http://192.168.50.158:8000/` | `http://192.168.137.10:8000/` | `server-225-ubuntu` |
-| Semaphore | `http://192.168.50.158:3001/` | `http://192.168.137.10:3001/` | `server-225-ubuntu` |
-| Loki | `http://192.168.50.158:3100/loki/api/v1/push` | `http://192.168.137.10:3100/` | `server-225-ubuntu` |
-| Grafana | N/A | `http://192.168.137.10:3000/` | `server-225-ubuntu` |
+| NetBox | `http://192.168.50.158:8000/` | `http://192.168.137.10:8000/` | `hom-lab-ctl-dkr-02` |
+| Semaphore | `http://192.168.50.158:3001/` | `http://192.168.137.10:3001/` | `hom-lab-ctl-dkr-02` |
+| Loki | `http://192.168.50.158:3100/loki/api/v1/push` | `http://192.168.137.10:3100/` | `hom-lab-ctl-dkr-02` |
+| Grafana | N/A | `http://192.168.137.10:3000/` | `hom-lab-ctl-dkr-02` |
 
 NetBox does not natively model application-level port forwarding/PAT as a
 first-class relationship, so the service comments record the Windows

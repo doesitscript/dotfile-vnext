@@ -52,6 +52,24 @@ Rules:
 5. Any replacement name requires a repo-wide stale-name search and NetBox seed
    reconciliation.
 
+## Retired Names (do not use for new objects)
+
+| Retired | Replacement |
+|---------|-------------|
+| `server-225`, `server_225` | `hyperv_lane_gpu` group; control host `hom-lab-ctl-hvh-02` |
+| `server-225-ubuntu` | inventory host `hom-lab-ctl-dkr-02` |
+| `network_server`, `network-server` | `hyperv_lane_storage` group; control host `hom-lab-ctl-hvh-01` |
+| `server-225-hyperv` (NetBox cluster) | `hom-lab-ctl-hvh-02-hyperv` |
+
+## Ansible Inventory Group Conventions
+
+- **Capability groups** (`windows_hosts`, `linux_vm_hosts`, `logging_server`) —
+  group by what automation is doing.
+- **Physical Hyper-V lanes** (`hyperv_lane_gpu`, `hyperv_lane_storage`) — group
+  by lane purpose (GPU execution vs storage/observability), not hostname copies.
+- **Host identity** uses compact schema hostnames (`hom-lab-ctl-hvh-02`), not
+  group names.
+
 ## Research Archive
 
 Older prose-heavy research files were moved under `archive/` with status
