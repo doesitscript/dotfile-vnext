@@ -33,6 +33,14 @@ Use date-prefixed folder packets for all new approved plans:
 Example:
 
 - `2026-03-27--subagents-v1/`
+- `2026-05-27--name-alignment-netbox-metadata-incomplete/` (partial; Track H5 open)
+- `2026-05-27--netbox-wip-finish-roadmap-incomplete/` (active finish path; excludes edge dev hosts)
+- `2026-05-27--netbox-ipam-completion-incomplete/` (prefixes, storage services, config contexts)
+- `2026-05-27--edge-dev-host-naming-netbox-incomplete/` (deferred: mac-dev, dev-3090, dev-workstation)
+
+Plans migrated from `.cursor/plans/` on 2026-05-27. Folders suffixed with
+`-incomplete` are not fully implemented. See `.cursor/plans/README.md` for the
+redirect note.
 
 Legacy single-file plans may remain until touched. When a single-file plan is
 updated for new work, migrate it into a folder packet or mark it as archive

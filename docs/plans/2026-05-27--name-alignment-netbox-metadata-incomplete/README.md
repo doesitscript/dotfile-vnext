@@ -1,6 +1,9 @@
 ---
 name: Name Alignment + NetBox Metadata
+lifecycle: incomplete
+moved_from: .cursor/plans/name_alignment_+_netbox_metadata_ba618ac6.plan.md
 overview: Rename all server-225 inventory names to the canonical compact scheme, eliminate umbrella/delegation-wrapper roles, promote sub-roles to top-level capability roles, update group/metadata vars, add NetBox custom fields and stack tags, and wire Docker labels into all compose templates.
+open_work: Track H5 — retire static inventory and migrate group_vars to NetBox-derived groups (separate plan).
 todos:
   - id: pre-plan-windows
     content: "PRE-PLAN COMPLETE: Windows computers renamed to hom-lab-ctl-hvh-01 and hom-lab-ctl-hvh-02. IMMEDIATE ACTION: update ansible_host: DESKTOP-VLLM -> 192.168.50.158 (IP, safer than hostname until DNS resolves) in inventory/host_vars/hom-lab-ctl-hvh-02.yaml"
@@ -48,7 +51,10 @@ todos:
     content: Add com.homelab.stack and com.homelab.deployed-by labels to all 3 compose templates and the 2 docker_container tasks in logging_loki; use stacks_fuzlang_net role name after Track G
     status: completed
   - id: track-h-nb-inventory-primary
-    content: "POST-PLAN: H1 verify nb_inventory health; H2 run NetBox seed to set primary_ip4; H3 flip ansible.cfg order; H4 validate all hosts ping; H5 (separate plan) retire static inventory + migrate group_vars"
+    content: "POST-PLAN: H1–H4 nb_inventory promotion (H5 separate: retire static inventory)"
+    status: completed
+  - id: track-h5-static-inventory-retirement
+    content: "FOLLOW-UP PLAN: Remove inventory/inventory.yaml from ansible.cfg; migrate group_vars to NetBox-derived group names"
     status: pending
 isProject: false
 ---
@@ -377,60 +383,47 @@ labels:
 
 ---
 
-## Track H — Promote `nb_inventory` to primary (post-plan, after all above is done)
+## Track H — Promote `nb_inventory` to primary (post-plan)
 
-This track depends on Tracks A–F being complete and the NetBox seed having been re-run.
+**Status: H1–H4 completed 2026-05-27.** H5 remains a separate follow-up plan.
 
-### H1 — Verify nb_inventory is healthy
+Implementation note: inventory groups were further refined to Option B lane names
+(`hyperv_lane_gpu`, `hyperv_lane_storage`) after this plan was drafted.
 
-```bash
-bin/codex-env ansible-inventory -i inventory/netbox.yml --list | python3 -m json.tool | grep -E '"ansible_host"|"_meta"' | head -30
-```
+### H1 — Verify nb_inventory is healthy — DONE
 
-Expected: every `ansible-managed` device/VM appears with a valid IP as `ansible_host`.
+Six `ansible-managed` hosts with `ansible_host` from `primary_ip4` (tunnel
+`http://127.0.0.1:18000`): hom-lab-ctl-dkr-01/02, hom-lab-ctl-hvh-01/02,
+hom-lab-ctl-k3s-01/02.
 
-### H2 — Run NetBox seed to ensure all primary_ip4 are set
-
-```bash
-bin/codex-env ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
-  --tags ipam_netbox_seed_server_225_model,ipam_netbox_seed_network_server_vm_model,ipam_netbox_seed_windows_share_hosts_model
-```
-
-After: each device/VM in NetBox has `primary_ip4` set. `nb_inventory` will then return correct `ansible_host` for all hosts.
-
-### H3 — Flip ansible.cfg to nb_inventory as primary
-
-In [`ansible.cfg`](ansible.cfg), change:
-
-```ini
-# Before:
-inventory = inventory/inventory.yaml, inventory/netbox.yml
-
-# After:
-inventory = inventory/netbox.yml, inventory/inventory.yaml
-```
-
-Put `nb_inventory` first — Ansible merges both; nb_inventory now wins on `ansible_host` for any host it knows about.
-
-### H4 — Validate against both inventory sources
+### H2 — Run NetBox seed — DONE
 
 ```bash
-bin/codex-env ansible all -m ping --ask-vault-pass
+bin/codex-env ansible-playbook playbooks/deploy_ipam_netbox.yaml \
+  -e ipam_netbox_api_url=http://127.0.0.1:18000 \
+  --tags ipam_netbox_seed_hom_lab_ctl_hvh_02_model,ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model,ipam_netbox_seed_windows_share_hosts_model
 ```
 
-All `ansible-managed` hosts should respond. If a host only exists in the static inventory (not yet in NetBox), it will still work via `inventory/inventory.yaml` as fallback.
+Play recap: `ok=75 changed=1 failed=0`.
 
-### H5 (follow-up plan, not this plan) — Retire static inventory
+### H3 — Flip ansible.cfg — DONE
 
-Once nb_inventory covers all hosts reliably:
-- Remove `inventory/inventory.yaml` from `ansible.cfg`
-- Migrate `group_vars/` directory names to match NetBox-derived group names (e.g. `tag_ansible_managed`, `device_roles_hvh`, `sites_homelab`)
-- This is a separate plan — the group_vars migration touches many files and deserves its own sequencing
+[`ansible.cfg`](../../../ansible.cfg): `inventory = inventory/netbox.yml, inventory/inventory.yaml`
+
+### H4 — Validate ping — DONE (partial)
+
+- `hom-lab-ctl-dkr-02`, `mac-dev`: `ansible.builtin.ping` SUCCESS
+- `hom-lab-ctl-hvh-01/02`: `ansible.windows.win_ping` SUCCESS (builtin ping fails on PowerShell SSH)
+
+### H5 — Retire static inventory — OPEN (separate plan)
+
+Remove `inventory/inventory.yaml` from `ansible.cfg` and migrate `group_vars/` to
+NetBox-derived group names when ready.
 
 ---
 
 ## Known residuals (intentionally not changed)
 
 - `docs/reports/` — historical AI-generated state snapshot
-- General `server-225` narrative prose in `scripts/lib.sh` bootstrap comments (not the dead `server-225-wsl` code block — that gets removed in Track F)
-- `roles/network_server/` umbrella stub — left with deprecation note; delete in a future cleanup pass once confirmed no references remain
+- `legacy_inventory_aliases` / ipam purge tasks — explicit migration-only references to `server-225*`
+- `roles/network_server/` umbrella stub — deprecation note; delete when confirmed unused
