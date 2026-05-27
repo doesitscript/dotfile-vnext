@@ -1,6 +1,12 @@
 ---
 name: Name Alignment + NetBox Metadata
 lifecycle: incomplete
+
+> **Schema registry (current names):** [`docs/reference/naming-standards/live-object-registry.yml`](../../reference/naming-standards/live-object-registry.yml).
+> Inventory lane groups are **`hyperv_lane_gpu`** and **`hyperv_lane_storage`** (not `hvh_02` or `server_225`).
+> Tables below that still show old group or host names are **historical migration context** only.
+
+---
 moved_from: .cursor/plans/name_alignment_+_netbox_metadata_ba618ac6.plan.md
 overview: Rename all server-225 inventory names to the canonical compact scheme, eliminate umbrella/delegation-wrapper roles, promote sub-roles to top-level capability roles, update group/metadata vars, add NetBox custom fields and stack tags, and wire Docker labels into all compose templates.
 open_work: Track H5 — retire static inventory and migrate group_vars to NetBox-derived groups (separate plan).

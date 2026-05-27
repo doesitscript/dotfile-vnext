@@ -25,8 +25,9 @@ native_field_mapping:
   ip_address: ipam.ipaddress
 
 config_contexts:
-  naming-context:
-    status: planned
+  homelab-naming-context:
+    status: integrated
+    slug: homelab-naming-context
     data_keys:
       - namespace
       - tenant
@@ -34,8 +35,76 @@ config_contexts:
       - domain
       - naming_schema_version
       - render_pattern
-      - role_code
-      - idx
+      - schema_registry
+  homelab-hyperv-guest-routing:
+    status: integrated
+    slug: homelab-hyperv-guest-routing
+    data_keys:
+      - guest_subnets
+      - lan_management_subnet
+      - routing_note
+
+prefixes:
+  status: integrated
+  site_slug: homelab
+  homelab_prefixes:
+    - 192.168.50.0/24
+    - 192.168.138.0/24
+    - 192.168.137.0/24
+  registry: live-object-registry.yml
+
+cluster_naming:
+  status: integrated
+  suffix: null
+  pattern: "<device_name>"
+  examples:
+    - hom-lab-ctl-hvh-01
+    - hom-lab-ctl-hvh-02
+  note: "Virtualization layer belongs in cluster_type metadata, not in the cluster name."
+
+diagram_naming:
+  status: integrated
+  family_marker: dia
+  pattern: "<namespace>-<tenant>-<environment>-<domain>-dia-<name>-<idx>"
+  examples:
+    - cst-hom-lab-ctl-dia-gpu-topology-01
+    - cst-hom-lab-ctl-dia-gpu-services-01
+  note: "dia is a reserved documentation-artifact family marker."
+
+service_naming_layers:
+  status: integrated
+  registry: live-object-registry.yml
+  plan: docs/plans/2026-05-27--service-identity-dns-future-state/README.md
+  layers:
+    L1_slug: "NetBox service.name — compact slug (netbox-web)."
+    L2_vm: "Parent virtual_machine — inventory_hostname (hom-lab-ctl-dkr-02)."
+    L3_access: "primary_access_point in seed — URL/IP today."
+    L4_logical: "logical_service_hostname — render-patterns service pattern; Phase 2 NetBox metadata."
+    L5_fqdn: "Optional when DNS zone exists."
+  rule: "Do not replace L1 with L4; assign L4 alongside L1."
+
+value_by_surface:
+  status: integrated
+  note: "Codes vs full words depend on surface; not a snowflake if this table is authoritative."
+  namespace:
+    code: cst
+    full: castle
+    config_context_json_target: cst
+    config_context_json_current_seed: cst
+    backup_path_segment: castle
+    canonical_id_prefix: cst
+  tenant:
+    code: hom
+    full: home
+    hostname_render: hom
+    netbox_tenant_slug: home
+    config_context_json: hom
+    backup_path_segment: home
+  environment:
+    code: lab
+    hostname_render: lab
+    config_context_json: lab
+    backup_path_segment: lab
 
 role_slugs:
   hvh:

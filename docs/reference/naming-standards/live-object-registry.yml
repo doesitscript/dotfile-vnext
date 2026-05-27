@@ -1,0 +1,558 @@
+---
+schema_id: live-object-registry
+schema_version: 1
+status: integrated
+owner: naming-standards
+last_reconciled: "2026-05-27"
+
+metadata:
+  authority_note: >
+    Current names for repo-managed homelab objects. Sources of truth for rows:
+    roles/ipam_netbox/defaults/main.yml, inventory/inventory.yaml,
+    inventory/hosts_mapping.yaml. Retired strings appear only under retired_aliases.
+  naming_schema_version: 1
+  netbox_site_slug: homelab
+  netbox_tenant_slug: home
+
+naming_layers:
+  inventory_hostname:
+    description: Ansible inventory key and NetBox device/VM name when seeded
+    authoritative_for:
+      - ansible --limit
+      - nb_inventory host key when modeled in NetBox
+      - NetBox object name for repo-managed devices and VMs
+  os_hostname:
+    description: Windows COMPUTERNAME or Linux hostname on the guest OS
+    authoritative_for:
+      - bootstrap autodetect (physical_nodes.os_hostname)
+      - on-machine identity; may differ from inventory_hostname until rename
+  router_hostname:
+    description: DHCP/DNS label on the LAN router
+    authoritative_for:
+      - router UI and DNS when used
+    note: May differ from os_hostname and inventory_hostname
+  ansible_connect_target:
+    description: host_vars ansible_host — what Ansible dials for SSH/WinRM
+    authoritative_for:
+      - connection transport only
+  host_ip:
+    description: Stable IPv4 for probes, routing, and service URLs
+    authoritative_for:
+      - TCP checks and guest routing documentation
+  physical_node:
+    description: Metadata grouping key in hosts_mapping — not a hostname
+    authoritative_for:
+      - bootstrap lane detection only
+  ansible_group:
+    description: Inventory group for capability or Hyper-V lane scope
+    authoritative_for:
+      - group_vars loading and playbook targeting
+    note: Lane groups (hyperv_lane_*) are not NetBox objects
+
+live_hosts:
+  hom-lab-ctl-hvh-01:
+    object_type: device
+    role_code: hvh
+    platform_slug: windows-server-2025
+    cluster: null
+    primary_lan_ip: "192.168.50.234"
+    guest_subnet: 192.168.138.0/24
+    lane_group: hyperv_lane_storage
+    physical_node: hom-lab-ctl-hvh-01
+    os_hostname: AI-NET-SERVER
+    router_hostname: ai-net-server-mgmt
+    ansible_connect_target: "192.168.50.234"
+    connection_profile: ssh_primary_winrm_fallback
+    netbox_status: active
+    host_vars: inventory/host_vars/hom-lab-ctl-hvh-01.yaml
+
+  hom-lab-ctl-hvh-02:
+    object_type: device
+    role_code: hvh
+    platform_slug: windows-server-2025
+    cluster: null
+    primary_lan_ip: "192.168.50.158"
+    guest_subnet: 192.168.137.0/24
+    lane_group: hyperv_lane_gpu
+    physical_node: hom-lab-ctl-hvh-02
+    os_hostname: DESKTOP-VLLM
+    ansible_connect_target: "192.168.50.158"
+    connection_profile: ssh_primary_winrm_fallback
+    netbox_status: active
+    host_vars: inventory/host_vars/hom-lab-ctl-hvh-02.yaml
+
+  hom-lab-ctl-dkr-01:
+    object_type: virtual_machine
+    role_code: dkr
+    platform_slug: ubuntu-24-04
+    cluster: hom-lab-ctl-hvh-01
+    hyperv_host: hom-lab-ctl-hvh-01
+    guest_ip: "192.168.138.10"
+    guest_subnet: 192.168.138.0/24
+    lane_group: hyperv_lane_storage
+    physical_node: hom-lab-ctl-hvh-01
+    ansible_connect_target: "192.168.138.10"
+    ssh_proxy_jump_host: hom-lab-ctl-hvh-01
+    connection_profile: ssh_guest_via_jump
+    netbox_status: active
+    host_vars: inventory/host_vars/hom-lab-ctl-dkr-01.yaml
+
+  hom-lab-ctl-dkr-02:
+    object_type: virtual_machine
+    role_code: dkr
+    platform_slug: ubuntu-24-04
+    cluster: hom-lab-ctl-hvh-02
+    hyperv_host: hom-lab-ctl-hvh-02
+    guest_ip: "192.168.137.10"
+    guest_subnet: 192.168.137.0/24
+    lane_group: hyperv_lane_gpu
+    physical_node: hom-lab-ctl-hvh-02
+    ansible_connect_target: "192.168.137.10"
+    ssh_proxy_jump_host: hom-lab-ctl-hvh-02
+    connection_profile: ssh_guest_via_jump
+    netbox_status: active
+    host_vars: inventory/host_vars/hom-lab-ctl-dkr-02.yaml
+
+  hom-lab-ctl-k3s-01:
+    object_type: virtual_machine
+    role_code: k3s
+    platform_slug: ubuntu-24-04
+    cluster: hom-lab-ctl-hvh-01
+    hyperv_host: hom-lab-ctl-hvh-01
+    guest_ip: "192.168.138.11"
+    guest_subnet: 192.168.138.0/24
+    lane_group: hyperv_lane_storage
+    physical_node: hom-lab-ctl-hvh-01
+    ansible_connect_target: "192.168.138.11"
+    ssh_proxy_jump_host: hom-lab-ctl-hvh-01
+    connection_profile: ssh_guest_via_jump
+    netbox_status: active
+    host_vars: inventory/host_vars/hom-lab-ctl-k3s-01.yaml
+
+  hom-lab-ctl-k3s-02:
+    object_type: virtual_machine
+    role_code: k3s
+    platform_slug: ubuntu-24-04
+    cluster: hom-lab-ctl-hvh-02
+    hyperv_host: hom-lab-ctl-hvh-02
+    guest_ip: "192.168.137.11"
+    guest_subnet: 192.168.137.0/24
+    lane_group: hyperv_lane_gpu
+    physical_node: hom-lab-ctl-hvh-02
+    ansible_connect_target: "192.168.137.11"
+    ssh_proxy_jump_host: hom-lab-ctl-hvh-02
+    connection_profile: ssh_guest_via_jump
+    netbox_status: staged
+    host_vars: inventory/host_vars/hom-lab-ctl-k3s-02.yaml
+
+live_clusters:
+  hom-lab-ctl-hvh-01:
+    render_pattern: "<device_name>"
+    parent_device: hom-lab-ctl-hvh-01
+    cluster_type_slug: hyperv
+    site_slug: homelab
+    guest_subnet: 192.168.138.0/24
+  hom-lab-ctl-hvh-02:
+    render_pattern: "<device_name>"
+    parent_device: hom-lab-ctl-hvh-02
+    cluster_type_slug: hyperv
+    site_slug: homelab
+    guest_subnet: 192.168.137.0/24
+
+ipam_prefixes:
+  - prefix: 192.168.50.0/24
+    site_slug: homelab
+    description: LAN management network
+    association: lan_management
+  - prefix: 192.168.138.0/24
+    site_slug: homelab
+    description: hom-lab-ctl-hvh-01 Hyper-V guest routed private subnet
+    association: hyperv_lane_storage
+  - prefix: 192.168.137.0/24
+    site_slug: homelab
+    description: hom-lab-ctl-hvh-02 Hyper-V guest routed private subnet
+    association: hyperv_lane_gpu
+
+config_contexts:
+  homelab-naming-context:
+    status: integrated
+    weight: 1000
+    data_keys:
+      - namespace
+      - tenant
+      - environment
+      - domain
+      - naming_schema_version
+      - render_pattern
+      - schema_registry
+  homelab-hyperv-guest-routing:
+    status: integrated
+    weight: 900
+    data_keys:
+      - guest_subnets
+      - lan_management_subnet
+      - routing_note
+
+# L1 slug → L4 logical hostname (Phase 0 documentation). fqdn unset until Phase 3.
+# Full layer model: render-patterns.yml service_identity_layers
+service_identities:
+  status: documented_phase_0
+  not_applied_to_netbox_seeds: true
+  plan: docs/plans/2026-05-27--service-identity-dns-future-state/README.md
+  entries:
+    - l1_slug: netbox-web
+      l2_vm: hom-lab-ctl-dkr-02
+      l4_logical: hom-lab-ctl-nbx-01
+      l6_canonical_id: cst-hom-lab-ctl-service-netbox-01
+      service_code: nbx
+    - l1_slug: semaphore-web
+      l2_vm: hom-lab-ctl-dkr-02
+      l4_logical: hom-lab-ctl-sem-01
+      service_code: sem
+      service_code_status: candidate
+    - l1_slug: loki-http
+      l2_vm: hom-lab-ctl-dkr-02
+      l4_logical: hom-lab-ctl-log-01
+      service_code: log
+      service_code_status: candidate
+    - l1_slug: grafana-web
+      l2_vm: hom-lab-ctl-dkr-02
+      l4_logical: hom-lab-ctl-grf-01
+      service_code: grf
+      service_code_status: candidate
+    - l1_slug: postgres-fuzlang
+      l2_vm: hom-lab-ctl-dkr-02
+      l4_logical: hom-lab-ctl-pgs-02
+      service_code: pgs
+      note: GPU lane authoritative Postgres for K3s consumers
+    - l1_slug: minio-api
+      l2_vm: hom-lab-ctl-dkr-02
+      l4_logical: hom-lab-ctl-min-01
+      service_code: min
+    - l1_slug: minio-console
+      l2_vm: hom-lab-ctl-dkr-02
+      l4_logical: hom-lab-ctl-min-02
+      service_code: min
+      note: Second min ordinal for console on same VM
+    - l1_slug: langfuse-k3s-web
+      l2_vm: hom-lab-ctl-k3s-02
+      l4_logical: hom-lab-ctl-lfs-01
+      service_code: lfs
+    - l1_slug: litellm-k3s-gateway
+      l2_vm: hom-lab-ctl-k3s-02
+      l4_logical: hom-lab-ctl-llm-01
+      service_code: llm
+    - l1_slug: postgres-fuzlang
+      l2_vm: hom-lab-ctl-dkr-01
+      l4_logical: hom-lab-ctl-pgs-01
+      service_code: pgs
+      note: Storage lane Postgres
+    - l1_slug: redis-fuzlang
+      l2_vm: hom-lab-ctl-dkr-01
+      l4_logical: hom-lab-ctl-red-01
+      service_code: red
+      service_code_status: candidate
+    - l1_slug: clickhouse-http
+      l2_vm: hom-lab-ctl-dkr-01
+      l4_logical: hom-lab-ctl-chs-01
+      service_code: chs
+    - l1_slug: clickhouse-native
+      l2_vm: hom-lab-ctl-dkr-01
+      l4_logical: hom-lab-ctl-chs-02
+      service_code: chs
+    - l1_slug: minio-api
+      l2_vm: hom-lab-ctl-dkr-01
+      l4_logical: hom-lab-ctl-min-03
+      service_code: min
+      note: Storage lane MinIO API; idx 03 avoids collision with GPU lane min-01
+    - l1_slug: minio-console
+      l2_vm: hom-lab-ctl-dkr-01
+      l4_logical: hom-lab-ctl-min-04
+      service_code: min
+    - l1_slug: langfuse-web
+      l2_vm: hom-lab-ctl-dkr-01
+      l4_logical: hom-lab-ctl-lfs-02
+      service_code: lfs
+      note: Storage lane Langfuse web on Docker VM; idx 02 vs K3s lfs-01
+
+netbox_services:
+  gpu_lane:
+    virtual_machines:
+      hom-lab-ctl-dkr-02:
+        - netbox-web
+        - semaphore-web
+        - loki-http
+        - grafana-web
+        - postgres-fuzlang
+        - minio-api
+        - minio-console
+      hom-lab-ctl-k3s-02:
+        - langfuse-k3s-web
+        - litellm-k3s-gateway
+  storage_lane:
+    virtual_machines:
+      hom-lab-ctl-dkr-01:
+        - postgres-fuzlang
+        - redis-fuzlang
+        - clickhouse-http
+        - clickhouse-native
+        - minio-api
+        - minio-console
+        - langfuse-web
+    seed_status: integrated_in_ipam_netbox_defaults
+    live_netbox_status: verify_after_seed_apply
+
+ansible_inventory_groups:
+  hyperv_lane_gpu:
+    group_kind: lane
+    members:
+      - hom-lab-ctl-hvh-02
+      - hom-lab-ctl-dkr-02
+    group_vars: inventory/group_vars/hyperv_lane_gpu/
+  hyperv_lane_storage:
+    group_kind: lane
+    members:
+      - hom-lab-ctl-hvh-01
+      - hom-lab-ctl-dkr-01
+      - hom-lab-ctl-k3s-01
+    group_vars: inventory/group_vars/hyperv_lane_storage/
+  windows_hosts:
+    group_kind: capability
+    members:
+      - hom-lab-ctl-hvh-01
+      - hom-lab-ctl-hvh-02
+  linux_vm_hosts:
+    group_kind: capability
+    members:
+      - hom-lab-ctl-dkr-01
+      - hom-lab-ctl-dkr-02
+      - hom-lab-ctl-k3s-01
+      - hom-lab-ctl-k3s-02
+  execution_nodes:
+    group_kind: capability
+    members:
+      - mac-dev
+  k3s_cluster_gpu:
+    group_kind: capability
+    members:
+      - hom-lab-ctl-k3s-02
+  k3s_cluster_network:
+    group_kind: capability
+    members:
+      - hom-lab-ctl-k3s-01
+
+ansible_roles_capability_map:
+  hyperv_storage_layout:
+    status: integrated
+    replaces_role: network_server
+    lane: hyperv_lane_storage
+  hyperv_docker_runtime:
+    status: integrated
+    lane: hyperv_lane_storage
+  stacks_fuzlang_net:
+    status: integrated
+    lanes:
+      - hyperv_lane_storage
+      - hyperv_lane_gpu
+  logging_loki:
+    status: integrated
+    primary_host: hom-lab-ctl-dkr-02
+  ipam_netbox:
+    status: integrated
+    primary_host: hom-lab-ctl-dkr-02
+  network_server:
+    status: deprecated_umbrella
+    replacement: hyperv_storage_layout
+    readme: roles/network_server/README.md
+  server_225:
+    status: deprecated_umbrella
+    replacement: hyperv_lane_gpu group_vars and lane roles
+  hvh_02:
+    status: deprecated_pointer_only
+    replacement: hyperv_lane_gpu
+    readme: roles/hvh_02/README.md
+
+diagrams:
+  - canonical_id: cst-hom-lab-ctl-dia-gpu-topology-01
+    path: docs/diagrams/cst-hom-lab-ctl-dia-gpu-topology-01.md
+    scope: GPU lane network topology
+  - canonical_id: cst-hom-lab-ctl-dia-gpu-control-01
+    path: docs/diagrams/cst-hom-lab-ctl-dia-gpu-control-01.md
+    scope: GPU lane control-plane surfaces
+  - canonical_id: cst-hom-lab-ctl-dia-gpu-services-01
+    path: docs/diagrams/cst-hom-lab-ctl-dia-gpu-services-01.md
+    scope: GPU lane service endpoints
+  note: "`dia` is the reserved diagram-family marker for documentation artifacts."
+
+not_in_netbox:
+  mac-dev:
+    inventory_key: mac-dev
+    reason: execution-plane controller; static inventory until edge plan
+    plan: docs/plans/2026-05-27--edge-dev-host-naming-netbox-incomplete/README.md
+  dev-3090-win:
+    inventory_key: dev-3090-win
+    reason: deferred Windows host; not in windows_hosts
+    plan: docs/plans/2026-05-27--edge-dev-host-naming-netbox-incomplete/README.md
+  dev-workstation-win:
+    inventory_key: dev-workstation-win
+    reason: offline; windows_hosts_offline only
+    plan: docs/plans/2026-05-27--edge-dev-host-naming-netbox-incomplete/README.md
+
+candidates:
+  hom-lab-exe-mac-01:
+    status: candidate
+    current_inventory_key: mac-dev
+    proposed_render: hom-lab-exe-mac-01
+    schema_gap: domain code exe not yet integrated in context.yml
+    plan: docs/plans/2026-05-27--edge-dev-host-naming-netbox-incomplete/README.md
+  hom-lab-aix-gpu-01:
+    status: candidate
+    current_inventory_key: dev-3090-win
+    proposed_render: hom-lab-aix-gpu-01
+    schema_note: aix domain exists for Azure AI; dual-use must be documented before promotion
+    plan: docs/plans/2026-05-27--edge-dev-host-naming-netbox-incomplete/README.md
+  hom-lab-dev-wks-01:
+    status: candidate
+    current_inventory_key: dev-workstation-win
+    proposed_render: hom-lab-dev-wks-01
+    schema_gap: domain dev or role wks not yet integrated
+    plan: docs/plans/2026-05-27--edge-dev-host-naming-netbox-incomplete/README.md
+
+# Retired names — quarantine only. Do not copy into live_hosts or examples.
+retired_aliases:
+  - retired: server-225
+    replacement: hom-lab-ctl-hvh-02
+    object_type: device
+    also_maps_to_group: hyperv_lane_gpu
+    retired_reason: legacy physical node label for GPU lane
+    allowed_in:
+      - legacy_alias
+      - migration_doc
+      - retired_aliases
+    forbidden_in:
+      - live_hosts
+      - render_examples
+      - netbox_seed_slugs
+
+  - retired: server_225
+    replacement: hyperv_lane_gpu
+    object_type: ansible_group
+    retired_reason: snake_case inventory group before lane naming
+    allowed_in:
+      - legacy_alias
+      - migration_doc
+    forbidden_in:
+      - live_hosts
+      - ansible_inventory_groups
+
+  - retired: server-225-ubuntu
+    replacement: hom-lab-ctl-dkr-02
+    object_type: virtual_machine
+    retired_reason: legacy inventory alias for GPU lane Docker VM
+    allowed_in:
+      - legacy_inventory_aliases
+      - migration_doc
+    forbidden_in:
+      - live_hosts
+
+  - retired: network-server
+    replacement: hom-lab-ctl-hvh-01
+    object_type: device
+    also_maps_to_group: hyperv_lane_storage
+    retired_reason: legacy Windows control host name
+    allowed_in:
+      - legacy_alias
+      - migration_doc
+    forbidden_in:
+      - live_hosts
+      - inventory_host_keys
+
+  - retired: network-server-win
+    replacement: hom-lab-ctl-hvh-01
+    object_type: inventory_host
+    retired_reason: retired inventory host key; enforced by validate_netbox_repo_consistency.sh
+    allowed_in:
+      - legacy_alias
+      - migration_doc
+    forbidden_in:
+      - inventory/inventory.yaml
+      - inventory/host_vars
+
+  - retired: server-225-hyperv
+    replacement: hom-lab-ctl-hvh-02
+    object_type: cluster
+    retired_reason: legacy NetBox cluster slug
+    allowed_in:
+      - migration_doc
+    forbidden_in:
+      - live_clusters
+
+  - retired: hvh_02
+    replacement: hyperv_lane_gpu
+    object_type: ansible_group
+    retired_reason: hostname-copy group before lane-based group_vars
+    allowed_in:
+      - migration_doc
+      - deprecated_role_readme
+    forbidden_in:
+      - ansible_inventory_groups
+      - group_vars paths
+
+  - retired: auth
+    replacement: ctl
+    object_type: domain_code
+    retired_reason: imported domain code normalized to ctl
+    allowed_in:
+      - migration_doc
+      - source-reconciliation
+    forbidden_in:
+      - render_examples
+      - config_context domain field
+
+  - retired: aut
+    replacement: ctl
+    object_type: domain_code
+    retired_reason: alias of auth
+    allowed_in:
+      - migration_doc
+    forbidden_in:
+      - render_examples
+
+  - retired: home-lab-auth-hvh-01
+    replacement: hom-lab-ctl-hvh-01
+    object_type: device
+    retired_reason: pre-compact-schema device name
+    allowed_in:
+      - migration_doc
+      - validate_script_patterns
+    forbidden_in:
+      - live_hosts
+
+  - retired: home-lab-auth-hvh-02
+    replacement: hom-lab-ctl-hvh-02
+    object_type: device
+    retired_reason: pre-compact-schema device name
+    allowed_in:
+      - migration_doc
+    forbidden_in:
+      - live_hosts
+
+  - retired: exec-hvh-01
+    replacement: hom-lab-ctl-hvh-02
+    object_type: device
+    retired_reason: interim migration alias in ipam_netbox device_name_migrations
+    allowed_in:
+      - legacy_alias
+      - migration_doc
+    forbidden_in:
+      - live_hosts
+
+  - retired: primary-hvh-01
+    replacement: hom-lab-ctl-hvh-01
+    object_type: device
+    retired_reason: interim migration alias
+    allowed_in:
+      - legacy_alias
+      - migration_doc
+    forbidden_in:
+      - live_hosts

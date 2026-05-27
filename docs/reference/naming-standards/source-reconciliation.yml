@@ -65,6 +65,66 @@ intake_sources:
       - schema violation response shape
     deferred_reason: "No webhook service deployment in this pass."
 
+integration_passes:
+  2026-05-27-netbox-name-alignment:
+    status: integrated
+    captured:
+      - compact hom-lab-ctl-* hostnames in NetBox and inventory
+      - hyperv_lane_gpu and hyperv_lane_storage inventory groups
+      - ipam_netbox prefixes and config contexts
+      - GPU and storage lane NetBox service models
+      - live-object-registry.yml as authoritative live map
+    sources:
+      - roles/ipam_netbox/defaults/main.yml
+      - inventory/inventory.yaml
+      - inventory/hosts_mapping.yaml
+      - docs/plans/2026-05-27--name-alignment-netbox-metadata-incomplete/
+    rejected_not_reintegrated:
+      - auth/aut domain codes (normalized to ctl)
+      - server_225 and hvh_02 as active inventory groups
+      - network-server as active inventory host key
+    candidate_only:
+      - hom-lab-exe-mac-01
+      - hom-lab-aix-gpu-01
+      - hom-lab-dev-wks-01
+  2026-05-27-service-identity-phase-0:
+    status: integrated
+    captured:
+      - service_identity_layers L1-L6 in render-patterns.yml
+      - service_identities registry L1 to L4 map
+      - value_by_surface for namespace and tenant vocabulary
+      - candidate service codes sem log grf red in resource-roles.yml
+    plan: docs/plans/2026-05-27--service-identity-dns-future-state/README.md
+    not_applied:
+      - NetBox seed renames
+      - DNS TLS LB infrastructure
+  2026-05-27-service-identity-phase-1:
+    status: repo_integrated_apply_pending
+    captured:
+      - homelab-naming-context namespace cst in ipam_netbox defaults
+      - seed_windows_share_hosts_model preview naming_context namespace cst
+      - netbox.yml value_by_surface current_seed cst
+    apply:
+      tag: ipam_netbox_seed_config_contexts
+      api_url: "http://127.0.0.1:18000"
+    verify:
+      - NetBox homelab-naming-context JSON shows namespace cst
+    plan: docs/plans/2026-05-27--service-identity-phases-2-4-incomplete/README.md
+  2026-05-27-cluster-and-diagram-schema-cleanup:
+    status: integrated
+    captured:
+      - hyperv_cluster pattern normalized back to the compact baseline schema
+      - hyperv meaning moved to NetBox cluster_type metadata rather than a name suffix
+      - diagram_canonical_id promoted as an explicit diagram-family schema
+      - dia retained as a reserved documentation artifact marker
+      - static literal tokens allowed only when their schema rationale is documented
+    normalized:
+      hyperv_cluster_pattern: "<tenant>-<environment>-<domain>-<role>-<idx>"
+      diagram_family_marker: dia
+    rejected_not_reintegrated:
+      - trailing -hyperv in active cluster names
+      - undocumented literal suffixes in integrated render patterns
+
 archived_reference_sources:
   docs/reference/naming-standards/archive/ansible-naming-integrated.md:
     status: integrated

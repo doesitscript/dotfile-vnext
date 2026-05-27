@@ -50,12 +50,33 @@ context_fields:
     replaces:
       - auth
       - aut
+  domain_exe:
+    code: exe
+    full: execution-plane
+    required_in_metadata: false
+    render_default: true
+    status: candidate
+    notes: >
+      Proposed for mac-dev → hom-lab-exe-mac-01. Not integrated until edge-dev
+      plan is approved. See live-object-registry.yml candidates.
+  domain_dev:
+    code: dev
+    full: development-workstation
+    required_in_metadata: false
+    render_default: true
+    status: candidate
+    notes: >
+      Proposed for dev-workstation-win → hom-lab-dev-wks-01. Not integrated until
+      edge-dev plan is approved.
   workload:
     code: aix
     full: ai-experiment
     required_in_metadata: false
     render_default: false
-    notes: "Use for Azure AI and AI integration work."
+    notes: >
+      Primary use: Azure AI resources (azure-ai.yml). Candidate reuse for
+      hom-lab-aix-gpu-01 (dev-3090-win) — document dual-use before promoting to
+      integrated host domain; see live-object-registry.yml candidates.
   site:
     code: lab
     full: lab
@@ -79,3 +100,16 @@ required_context_tags:
   tenant: hom
   environment: lab
   domain: ctl
+
+value_by_surface:
+  status: integrated
+  registry: netbox.yml
+  note: >
+    Hostnames and config-context JSON use compact codes. NetBox tenant slug and
+    backup catalog paths may use full words (home, castle) by documented policy.
+  namespace:
+    code: cst
+    full: castle
+  tenant:
+    code: hom
+    full: home

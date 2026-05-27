@@ -46,6 +46,30 @@ inventory_patterns:
     env: environment
     site: environment
     seq: idx
+  hosts_mapping_reference: inventory/hosts_mapping.yaml
+  live_registry: docs/reference/naming-standards/live-object-registry.yml
+
+inventory_group_kinds:
+  lane:
+    description: Hyper-V physical lane — purpose-based group_vars, not a hostname copy
+    integrated:
+      - hyperv_lane_gpu
+      - hyperv_lane_storage
+    retired_replaced_by_lane:
+      - server_225
+      - hvh_02
+  capability:
+    description: Automation intent (windows_hosts, linux_vm_hosts, k3s_cluster_*)
+    examples:
+      - windows_hosts
+      - linux_vm_hosts
+      - execution_nodes
+      - logging_server
+
+legacy_alias_policy:
+  active_functional_reference: forbidden
+  documentation_reference: allowed_only_if_legacy_marked
+  registry_quarantine: live-object-registry.yml retired_aliases
 
 schema_preflight:
   status: scaffolded

@@ -1,5 +1,7 @@
 # NetBox WIP — capability usage planning
 
+**Live naming map:** [`docs/reference/naming-standards/live-object-registry.yml`](../reference/naming-standards/live-object-registry.yml) and [`README.md`](../reference/naming-standards/README.md) (current vs retired names).
+
 **Status snapshot:** 2026-05-27 (post name-alignment + lane seeds)
 
 **Active finish roadmap (no edge dev hosts):** [`docs/plans/2026-05-27--netbox-wip-finish-roadmap-incomplete/README.md`](../plans/2026-05-27--netbox-wip-finish-roadmap-incomplete/README.md)
@@ -18,6 +20,7 @@
 | `ansible-managed` tag | **Done** for seeded Hyper-V lane hosts (6 in `nb_inventory`) |
 | Shadow / primary inventory | **Done** — `ansible.cfg` lists `inventory/netbox.yml` first; shadow proven |
 | Service objects (GPU lane) | **Done** — 9 services on dkr-02 / k3s-02 via `ipam_netbox_hom_lab_ctl_hvh_02_model` |
+| Service objects (storage lane) | **Done** — storage-lane `dkr-01` services seeded in `ipam_netbox_hom_lab_ctl_hvh_01_vm_model` |
 | K3s nodes in NetBox | **Done** — both k3s VMs in hvh-01 and hvh-02 VM model seeds |
 | Legacy exec-hvh / primary-hvh gap | **Closed** — migrations + purge tasks in `ipam_netbox` |
 
@@ -28,7 +31,7 @@
 ### Service objects (original lines 4–8)
 
 - **GPU lane:** implemented (see above).
-- **Storage lane (`hom-lab-ctl-dkr-01`):** VMs/IPs only — no `services:` block yet.
+- **Storage lane (`hom-lab-ctl-dkr-01`):** now modeled with curated services plus hybrid runtime discovery preview for parity checks.
 - **Edge fleet (`mac-dev`, `dev-3090`, `dev-workstation`):** not modeled — [edge-dev-host naming plan](../plans/2026-05-27--edge-dev-host-naming-netbox-incomplete/README.md).
 
 ### Subnet prefixes (original line 34)
@@ -85,7 +88,7 @@
 | H5 retire static inventory | Drop duplicate `host_vars` IPs when NetBox owns them | name-alignment plan open_work |
 | LAN NetBox API (portproxy) | Mac can use `192.168.50.158:8000` without SSH tunnel | networking one-off |
 | `netbox-value-roadmap.md` refresh | Still references `server-225-ubuntu`, old Step 2 host table | docs/intake/netbox/ |
-| Storage-lane service registry | Parity with GPU lane when stacks run on dkr-01 | ipam_netbox hvh-01 model |
+| Service inventory discovery workflow | Keep repo seed authoritative while comparing against live Docker/K3s runtime and live NetBox | `docs/diagnostics/netbox-service-inventory-hybrid-preview.md` |
 | Token source for `nb_inventory` | Roadmap Step 3 — vault-backed token vs `NETBOX_TOKEN` env | inventory/netbox.yml |
 
 ---

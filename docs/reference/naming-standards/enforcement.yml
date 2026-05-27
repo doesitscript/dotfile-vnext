@@ -22,6 +22,16 @@ levels:
     status: existing_and_expandable
     description: "Repo stale-name checks and NetBox seed consistency gates."
     blocks_work: true
+    entrypoint: scripts/validate_netbox_repo_consistency.sh
+    enforced_retired_examples:
+      - network-server-win  # retired inventory host key
+      - home-lab-auth-hvh-01  # retired compact device name
+      - home-lab-auth-hvh-02  # retired compact device name
+    schema_quarantine: docs/reference/naming-standards/live-object-registry.yml
+    note: >
+      Retired strings may appear only in retired_aliases, legacy_alias fields,
+      or explicit migration/retired prose. Incomplete plan README play recaps
+      may still contain historical strings until consistency allowlist is extended.
   hard_gate:
     status: future
     description: "NetBox webhook or CI policy rejects schema violations."
@@ -48,3 +58,13 @@ schema_gap_process:
     - "Research approved external references before proposing a new code."
     - "Add candidate schema entry with status under_review or candidate."
     - "Do not enforce until reviewed and promoted to integrated."
+
+static_literal_token_policy:
+  status: active
+  allowed_only_if:
+    - "The literal identifies a documented schema family or artifact class."
+    - "Its rationale is captured in source-reconciliation.yml and/or the naming README."
+  examples_allowed:
+    - "dia in diagram canonical IDs"
+  examples_rejected:
+    - "hyperv as a trailing cluster-name suffix when cluster_type already stores the virtualization layer"
