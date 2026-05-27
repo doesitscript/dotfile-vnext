@@ -193,6 +193,25 @@ Current milestone:
   through a persistent route
 - the next milestone is a router-managed static route for the whole LAN
 
+Important routing nuance:
+
+- if `guest_outbound_nat_enabled: false`, the Windows host stops source-NATing
+  guest traffic
+- that restores true direct controller-to-guest TCP reachability, but guest
+  internet egress and whole-LAN return traffic still depend on the upstream
+  router learning the guest subnet through the Windows host
+- for the current `hom-lab-ctl-hvh-02` lane, that means the upstream router
+  needs a static route for `192.168.137.0/24` via `192.168.50.158`
+
+Router operator guide:
+
+- [docs/diagnostics/hyperv-router-static-route-guide.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-router-static-route-guide.md)
+- this role manages the Windows host side only; it does not program the
+  upstream router
+- if a lane stays on `guest_outbound_nat_enabled: true`, the router route is
+  not required for guest internet egress, but that lane is still using the
+  host-NAT tradeoff rather than the final routed design
+
 Published guest TCP ports have an additional recovery guard:
 
 - if a `netsh interface portproxy` rule exists but Windows is not actually

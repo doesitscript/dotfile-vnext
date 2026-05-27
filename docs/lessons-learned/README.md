@@ -53,6 +53,7 @@ one-line summary row to the index below.
 | File | One-line summary |
 |---|---|
 | [hyper-v-portproxy-can-fail-while-the-guest-service-is-healthy.md](networking/hyper-v-portproxy-can-fail-while-the-guest-service-is-healthy.md) | A guest-hosted service can be healthy while the Windows Hyper-V `portproxy` publication layer is dead; prove controller path, guest-local path, and Windows host path separately, then restart `iphlpsvc` if needed |
+| [hyper-v-routed-subnet-needs-router-route-or-host-nat.md](networking/hyper-v-routed-subnet-needs-router-route-or-host-nat.md) | A Hyper-V guest lane cannot cleanly have both true routed guest-IP access and outbound internet at the same time unless the upstream router learns the guest subnet; otherwise choose either host NAT or a router static route |
 
 ---
 

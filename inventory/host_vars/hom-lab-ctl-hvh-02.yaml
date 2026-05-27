@@ -69,7 +69,11 @@ hyperv_config:
   guest_switch_name: "Guest"
   guest_subnet_ipv4: "192.168.137.0/24"
   guest_gateway_ipv4: "192.168.137.1"
-  guest_outbound_nat_enabled: true
+  # Direct controller-to-guest routing is preferred on this lane.
+  # Full guest egress still requires the upstream router to learn
+  # 192.168.137.0/24 via 192.168.50.158; otherwise only hosts with an explicit
+  # static route (such as mac-dev) can reach the guest subnet directly.
+  guest_outbound_nat_enabled: false
   # Each entry here creates a netsh portproxy rule and a Windows Firewall inbound
   # rule on this host, forwarding LAN-side connections to the guest VM.
   # Format: listen_address/port = LAN-reachable endpoint on this host.

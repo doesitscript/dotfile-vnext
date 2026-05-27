@@ -13,18 +13,25 @@ adds the missing reachability layer:
 - `mac-dev` learns a route to the guest subnet through `hom-lab-ctl-hvh-02`
 - later, the router can learn the same route for whole-LAN reachability
 
+Operator guide:
+
+- [hyperv-router-static-route-guide.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-router-static-route-guide.md)
+
 ## Status Summary
 
-This note now describes both the achieved first direct-routing milestone and
-the next whole-LAN expansion.
+This note now describes the intended routed model and the missing dependency
+that becomes visible once Windows host NAT is removed.
 
 Read the current progression like this:
 
-1. current working access:
+1. current host-side routed access:
    - direct reachability from `mac-dev` to `192.168.137.10`
    - generated SSH with `ProxyJump=hom-lab-ctl-hvh-02` still available
-2. later whole-LAN target:
+2. missing upstream dependency:
    - router static route for `192.168.137.0/24` via `192.168.50.158`
+3. final whole-LAN target:
+   - router learns the guest subnet and the guest regains clean wider-LAN and
+     internet egress without Windows host NAT
 
 So the first direct-network setup is now realized as:
 
@@ -59,7 +66,7 @@ hom-lab-ctl-hvh-02
 ## What Part 1 Does
 
 Part 1 keeps the existing guest subnet and adds direct controller reachability.
-This is now the current working setup for `mac-dev`.
+This is now the current working direct-access setup for `mac-dev`.
 
 The intended path is:
 
@@ -78,8 +85,8 @@ That means the first milestone is:
 - Docker services can later bind to the guest IP on that same subnet
 
 This is the first **direct-network** milestone.
-It is now working for `mac-dev`, while the whole-LAN route milestone remains
-next.
+It is now working for `mac-dev`, but it is not the full final topology until
+the upstream router also learns that guest subnet.
 
 ## What Part 2 Adds
 
@@ -93,6 +100,7 @@ After that:
 
 - other LAN clients can reach the guest subnet directly
 - the Mac-specific route becomes optional
+- guest outbound internet/package access no longer depends on Windows host NAT
 
 ## Why This Is Different From The Earlier ICS-Only Checkpoint
 
@@ -108,6 +116,7 @@ Current target/current implementation direction:
 - keep the same guest gateway
 - use explicit Windows routing so the controller can reach the guest directly
 - keep ICS out of the primary access path for the direct-route milestone
+- add the upstream router route before calling the design complete
 
 So the routed-private-subnet design is not a throwaway replacement. It is the
 access-layer improvement on top of the stable private guest network we already
@@ -123,6 +132,8 @@ transit point:
 - Windows forwarding and weak-host behavior are enabled on the transit
   interfaces
 - `mac-dev` can reach the guest directly at `192.168.137.10`
+- without the router route, guest egress to the wider LAN/internet is still
+  incomplete once host NAT is removed
 
 ## Current controller access note
 
@@ -140,5 +151,5 @@ Operational interpretation:
   - direct routed guest-IP access
 - current working fallback path:
   - `ProxyJump`
-- later broader-network path:
+- missing final dependency:
   - router static route for the home LAN

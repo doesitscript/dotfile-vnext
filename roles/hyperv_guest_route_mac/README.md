@@ -51,3 +51,8 @@ hyperv_guest_route_gateway: "192.168.50.158"
   Hyper-V Windows hosts instead of hand-maintained as a static controller list.
 - It does not manage router-wide reachability. That is the later whole-LAN
   milestone.
+- If a Hyper-V lane disables host NAT, direct `mac-dev` access can work through
+  this role while guest outbound internet still remains blocked until the
+  upstream router learns the guest subnet.
+- Router-side guidance lives here:
+  [docs/diagnostics/hyperv-router-static-route-guide.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-router-static-route-guide.md)
