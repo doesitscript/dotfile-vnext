@@ -43,6 +43,32 @@ Rules:
 - NetBox must be consulted for infrastructure facts, but live NetBox naming is
   not authoritative until reconciled to this schema.
 
+## Container Orchestration Role Boundaries
+
+The resource-role schema now distinguishes current runtime identity from future
+or supporting orchestration semantics:
+
+- `k3s`
+  Current integrated general K3s node/runtime role used by the active K3s VMs.
+- `k3c`
+  Integrated control-plane semantic role. Use it for schema translation and
+  future modeled differentiation without forcing immediate hostname changes.
+- `k3n`
+  Integrated future worker or node semantic role.
+- `dkr`
+  Docker Engine-specific runtime role.
+- `ctr`
+  Candidate generic container-host role. Do not replace `dkr` with `ctr`
+  unless the runtime is no longer Docker Engine-specific.
+- `ing`
+  Integrated ingress-controller semantic role. Prefer workload or service-layer
+  placement unless ingress is intentionally modeled as its own host or VM role.
+
+Host or VM role codes and service-layer role codes stay separate:
+
+- host or VM identity: `hvh`, `dkr`, `k3s`, `k3c`, `k3n`
+- service identity: `nbx`, `lfs`, `llm`, `sem`, `log`, `grf`, `red`
+
 ## Live object map (current names)
 
 Authoritative detail: [`live-object-registry.yml`](live-object-registry.yml).

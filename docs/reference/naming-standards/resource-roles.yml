@@ -64,17 +64,20 @@ categories:
       note: "Current project single-node K3s role."
     k3c:
       full: k3s-control-plane
-      status: candidate
-      note: "Candidate if control-plane and worker roles split later."
+      status: integrated
+      note: "Integrated schema role for control-plane semantics without forcing immediate hostname renames."
     k3n:
       full: k3s-node
-      status: candidate
-      note: "Candidate if K3s agent nodes are added later."
+      status: integrated
+      note: "Integrated schema role for future K3s worker/node semantics."
     ctr:
       full: container-host
       status: candidate
-      note: "Use dkr for Docker Engine-specific hosts."
-    ing: {full: ingress-controller, status: candidate}
+      note: "Non-default generic container host. Use dkr for Docker Engine-specific hosts unless a non-Docker-engine runtime is introduced."
+    ing:
+      full: ingress-controller
+      status: integrated
+      note: "Integrated schema role for ingress-controller identity where ingress is modeled as a dedicated host, VM, or workload boundary."
     wrk: {full: worker-node, status: candidate}
   operations:
     mon: {full: monitoring-server, status: candidate}
@@ -155,3 +158,39 @@ source_mappings:
     normalized_fields:
       seq: idx
       hv: hvh
+
+boundary_guidance:
+  host_vm_identity:
+    description: >
+      Use resource role codes such as hvh, dkr, k3s, k3c, and k3n when the role
+      identifies the primary purpose of a host or VM.
+    examples:
+      - hvh
+      - dkr
+      - k3s
+      - k3c
+      - k3n
+  service_identity:
+    description: >
+      Use service role codes such as nbx, lfs, llm, and log for service-layer
+      identity, not for host or VM naming.
+    examples:
+      - nbx
+      - lfs
+      - llm
+      - sem
+      - log
+      - grf
+      - red
+  control_plane_expression:
+    description: >
+      Control-plane versus worker semantics should prefer NetBox cluster/group
+      membership, inventory grouping, and Kubernetes node metadata before
+      forcing hostname changes.
+    current_posture:
+      - Current hostnames remain on the integrated k3s baseline shape.
+      - k3c and k3n are schema-level semantic roles for translation and future modeled differentiation.
+  runtime_distinctions:
+    dkr: Docker Engine-specific runtime host or VM identity.
+    ctr: Candidate generic container-host role. Do not replace dkr with ctr unless the runtime is no longer Docker Engine-specific.
+    ing: Ingress-controller identity. Prefer workload or service-layer placement unless ingress is intentionally modeled as its own host or VM role.
