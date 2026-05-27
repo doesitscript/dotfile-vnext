@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs INSIDE WSL via: ssh server-225-wsl 'bash -s' < collect-logs.sh
+# Runs INSIDE WSL via: ssh hom-lab-ctl-dkr-02 'bash -s' < collect-logs.sh
 set -euo pipefail
 
 echo "=== systemctl capture ==="

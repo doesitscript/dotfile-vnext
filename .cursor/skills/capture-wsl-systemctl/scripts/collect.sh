@@ -9,7 +9,7 @@ DISTRO="${1:-Ubuntu-24.04}"
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
-OUT="${2:-${PROJECT_ROOT}/logs/wsl-systemctl/${TIMESTAMP}_server-225-wsl.log}"
+OUT="${2:-${PROJECT_ROOT}/logs/wsl-systemctl/${TIMESTAMP}_hom-lab-ctl-dkr-02.log}"
 REMOTE_SCRIPT="C:\\Windows\\Temp\\wsl_collect_logs.sh"
 
 mkdir -p "$(dirname "${OUT}")"
