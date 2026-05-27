@@ -47,6 +47,7 @@
     mode: "0644"
   delegate_to: "{{ docker_engine_host }}"
   become: true
+  register: stacks_network_compose_template
 
 - name: Render .env file on Docker engine host
   ansible.builtin.template:
@@ -58,6 +59,7 @@
   delegate_to: "{{ docker_engine_host }}"
   become: true
   no_log: true
+  register: stacks_network_env_template
 
 - name: Ensure Docker engine admin user is in docker group
   ansible.builtin.user:
@@ -100,7 +102,17 @@
 
 - name: Start network stack services on Docker engine host
   ansible.builtin.command:
-    cmd: docker compose up -d
+    cmd: >-
+      docker compose up -d{{
+        ' --force-recreate'
+        if (
+          stacks_network_force_recreate | bool
+          or
+          stacks_network_compose_template.changed | default(false)
+          or stacks_network_env_template.changed | default(false)
+        )
+        else ''
+      }}
     chdir: "{{ linux_stacks_root }}/network"
   delegate_to: "{{ docker_engine_host }}"
   become: true
