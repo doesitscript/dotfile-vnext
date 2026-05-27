@@ -1,0 +1,34 @@
+packet_id: netbox-model-bridge
+packet_kind: bridge_packet
+status: active
+primary_domain: netbox
+repo_authorities:
+  - inventory/netbox.yml
+  - roles/ipam_netbox/defaults/main.yml
+  - .cursor/rules/framework-netbox-modeling.mdc
+  - .cursor/rules/netbox-knowledge-gate.mdc
+  - docs/reference/naming-standards/resource-roles.yml
+
+bridge_rules:
+  - NetBox remains the authoritative modeled source for hosts, VMs, interfaces, IPs, platforms, roles, and sites.
+  - "`inventory/netbox.yml` remains shadow/comparison mode until the repo explicitly promotes it."
+  - Native fields outrank tags, and tags outrank custom fields.
+  - Generic imported tags must translate into existing compact role slugs, tags, and fields instead of becoming active vocabulary directly.
+
+term_translation:
+  k8s-control: use compact K3s schema plus control-plane semantics, not a new active NetBox role slug
+  k8s-worker: use compact K3s schema plus future worker semantics, not a new active NetBox role slug
+  kubernetes-node: prefer existing role/tag model instead of a new generic selection tag
+  docker-host: use existing `dkr` role and Docker runtime tags
+  traefik-node: model ingress workload and service identity separately instead of naming every host around Traefik
+
+rejected_modeling_patterns:
+  - generic boolean custom fields such as cf_k8s_role, cf_docker_host, or cf_traefik_node when native fields or tags already express the intent
+  - imported generic runtime tags that conflict with current compact role vocabulary
+
+future_replacement_paths:
+  - id: promote_netbox_inventory_from_shadow
+    current_path: inventory/netbox.yml
+    note: >
+      Dynamic inventory may become an active operating path later, but this
+      capability does not promote it today.

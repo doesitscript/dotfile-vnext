@@ -1,0 +1,74 @@
+---
+description: Framework-owned rules for normalizing imported Kubernetes and Docker guidance into repo-local runtime, NetBox, Ansible, and naming authorities.
+alwaysApply: true
+---
+
+# Container Orchestration Integration Rules
+
+Use the `container-orchestration-integration` skill when the user wants to:
+
+- integrate outside Kubernetes or Docker guidance into this repo
+- compare imported runtime guidance against current repo direction
+- turn intake notes into modular runtime integration packets
+- normalize generic K8s/Docker/NetBox/Ansible vocabulary into repo truth
+
+## Core Rule
+
+Treat imported guidance as provenance, not active repo authority.
+
+The skill and packet family should preserve the repo's actual runtime and naming
+decisions unless the repo explicitly promotes a schema or governance change.
+
+## Required Packet Split
+
+When this capability applies, keep imported guidance modular:
+
+- `source-packets`
+- `kubernetes-runtime-integration`
+- `docker-runtime-integration`
+- `netbox-model-bridge`
+- `ansible-translation-bridge`
+- `decision-crosswalk`
+
+Do not collapse those areas into one giant summary file.
+
+## Required Decision Labels
+
+Each imported item must be classified exactly once as one of:
+
+- `accept`
+- `adapt`
+- `documented_exception`
+- `future_replacement_path`
+- `reject`
+
+Each decision must cite the repo authority that controls the settled outcome.
+
+## Repo Alignment Rules
+
+- Preserve compact runtime naming such as `k3s`, `dkr`, and `hvh` unless the
+  schema explicitly changes.
+- Preserve Docker and K3s as separate runtime lanes.
+- Preserve NetBox as source of truth while keeping `inventory/netbox.yml` in
+  shadow/comparison mode until the repo intentionally promotes it.
+- Treat generic imported tags and custom fields as candidates to translate or
+  reject, not as active vocabulary by default.
+- When imported guidance exposes naming or resource-boundary gaps, update the
+  naming schema in the same work slice instead of leaving the translation
+  implicit.
+
+## Cleanup And Exception Handling
+
+When imported guidance points to a better steady-state pattern:
+
+- create a scoped cleanup item if the repo has active drift
+- use `documented_exception` when the repo intentionally retains a CLI-bound or
+  diagnostic-only path
+- use `future_replacement_path` when the repo wants to preserve the capability
+  but not move it into active cleanup scope yet
+
+Typical examples in this family:
+
+- K3s kubectl label/taint drift -> cleanup item
+- K3s diagnostic kubectl inspection -> documented exception
+- AWX alignment against future runtime direction -> future replacement path

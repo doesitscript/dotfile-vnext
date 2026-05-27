@@ -47,12 +47,14 @@ elsewhere in project docs.
 
 ## Current Seed Documents
 
-The first framework-compatible seed in this repo is:
+Current framework-compatible seed docs in this repo are:
 
 - [compatibility-map.md](/Users/joshc/develop/dotfile-vnext/docs/framework-compatible/compatibility-map.md)
+- [container-orchestration-integration.md](/Users/joshc/develop/dotfile-vnext/docs/framework-compatible/container-orchestration-integration.md)
 
-That document explains the current relationship between:
+These documents explain:
 
 - the `framework-*` rule family under `.cursor/rules/`
 - the Codex/OpenAI implementation documented under `docs/codex_framework/`
 - future compatible implementations that may be added later
+- the modular packet contract for imported container-orchestration guidance

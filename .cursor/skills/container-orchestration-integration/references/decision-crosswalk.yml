@@ -1,0 +1,150 @@
+crosswalk_id: container-orchestration-integration
+status: active
+source_packets:
+  - .cursor/skills/container-orchestration-integration/references/source-packets/ai-upgrade-kubernetes-raw.yml
+
+decisions:
+  - item_id: ai_upgrade_001
+    packet: ansible-translation-bridge
+    decision: adapt
+    repo_authority:
+      - AGENTS.md
+      - docs/codex_framework/README.md
+      - docs/framework-compatible/container-orchestration-integration.md
+    rationale: >
+      The repo should gain a removable capability packet, not a parallel
+      top-level policy tree that competes with existing framework and naming
+      authorities.
+    followup: create_capability_family_docs_and_rule
+  - item_id: ai_upgrade_002
+    packet: ansible-translation-bridge
+    decision: adapt
+    repo_authority:
+      - inventory/inventory.yaml
+      - playbooks/k3s_bootstrap.yaml
+      - playbooks/docker.yaml
+    rationale: >
+      The layered execution model fits the repo, but the current repo already
+      splits Hyper-V guest lifecycle, K3s bootstrap, Docker runtime, and
+      app/platform work across existing playbooks and roles.
+    followup: preserve_existing_repo_split
+  - item_id: ai_upgrade_003
+    packet: ansible-translation-bridge
+    decision: accept
+    repo_authority:
+      - .cursor/rules/ansible-knowledge-gate.mdc
+      - .cursor/rules/framework-partner-process.mdc
+    rationale: >
+      The repo already prefers modules over shell and wants imported guidance to
+      reinforce that preference.
+    followup: none
+  - item_id: ai_upgrade_004
+    packet: ansible-translation-bridge
+    decision: adapt
+    repo_authority:
+      - .cursor/rules/framework-partner-process.mdc
+      - .cursor/rules/ansible-coding-standards.mdc
+    rationale: >
+      Single-domain composable roles match repo direction, but the repo keeps
+      capability-focused names and current playbook organization rather than
+      importing generic role names directly.
+    followup: document_translation_pattern
+  - item_id: ai_upgrade_005
+    packet: kubernetes-runtime-integration
+    decision: adapt
+    repo_authority:
+      - docs/reference/naming-standards/render-patterns.yml
+      - docs/reference/naming-standards/resource-roles.yml
+      - inventory/inventory.yaml
+    rationale: >
+      Preserve current compact `k3s` hostnames and translate generic
+      controller/worker semantics into schema codes, inventory groups, and node
+      metadata.
+    followup: promote_k3c_and_k3n_schema_roles
+  - item_id: ai_upgrade_006
+    packet: kubernetes-runtime-integration
+    decision: accept
+    repo_authority:
+      - playbooks/k3s_bootstrap.yaml
+      - docs/plans/2026-05-19--langfuse-platform-on-k3s/README.md
+    rationale: >
+      File-backed Kubernetes resources, Helm-capable app deployment, and
+      Traefik-oriented ingress fit the current K3s direction.
+    followup: none
+  - item_id: ai_upgrade_007
+    packet: kubernetes-runtime-integration
+    decision: adapt
+    repo_authority:
+      - roles/k3s_node_config/tasks/main.yml
+      - playbooks/k3s_debug.yaml
+    rationale: >
+      The imported no-kubectl direction is correct for steady-state behavior,
+      but the repo currently has one active drift item and one diagnostic-only
+      exception that must be tracked separately.
+    followup: review_k3s_node_config_for_module_backed_labels_and_taints
+  - item_id: ai_upgrade_008
+    packet: docker-runtime-integration
+    decision: documented_exception
+    repo_authority:
+      - roles/docker_client/tasks/main.yml
+      - roles/verify_docker/tasks/main.yml
+      - roles/stacks_fuzlang_net/tasks/main.yml
+    rationale: >
+      The repo intentionally keeps CLI-bound Docker context, compose, and
+      verification paths where they are the current durable model, while still
+      preferring module-backed behavior elsewhere.
+    followup: keep_exception_registry_current
+  - item_id: ai_upgrade_009
+    packet: netbox-model-bridge
+    decision: adapt
+    repo_authority:
+      - inventory/netbox.yml
+      - .cursor/rules/framework-netbox-modeling.mdc
+      - roles/ipam_netbox/defaults/main.yml
+    rationale: >
+      NetBox remains authoritative for modeled truth, but dynamic inventory is
+      still intentionally shadow/comparison mode until the repo promotes it.
+    followup: preserve_shadow_inventory_posture
+  - item_id: ai_upgrade_010
+    packet: netbox-model-bridge
+    decision: reject
+    repo_authority:
+      - .cursor/rules/framework-netbox-modeling.mdc
+      - docs/reference/naming-standards/resource-roles.yml
+    rationale: >
+      Generic tags and boolean custom fields should not replace existing native
+      fields, compact role slugs, or tag-first modeling gates.
+    followup: translate_to_existing_roles_tags_and_fields
+  - item_id: ai_upgrade_011
+    packet: kubernetes-runtime-integration
+    decision: adapt
+    repo_authority:
+      - docs/reference/naming-standards/render-patterns.yml
+      - docs/reference/naming-standards/README.md
+    rationale: >
+      Repo naming keeps compact K3s/Docker identities and layered service
+      identity rather than adopting generic `k8s` host and DNS vocabulary.
+    followup: extend_resource_role_schema_notes
+  - item_id: ai_upgrade_012
+    packet: ansible-translation-bridge
+    decision: accept
+    repo_authority:
+      - .cursor/rules/ansible-knowledge-gate.mdc
+      - .cursor/rules/netbox-knowledge-gate.mdc
+      - .cursor/rules/framework-project-maturity-router.mdc
+    rationale: >
+      Imported AI-generation constraints align with the repo's current gate,
+      routing, and source-of-truth expectations once translated into existing
+      rule surfaces.
+    followup: none
+  - item_id: ai_upgrade_013
+    packet: ansible-translation-bridge
+    decision: adapt
+    repo_authority:
+      - inventory/inventory.yaml
+      - roles/automation_awx/README.md
+      - docs/framework-compatible/container-orchestration-integration.md
+    rationale: >
+      The repo should preserve current layout and capability naming while
+      capturing the imported structure only as a translation reference.
+    followup: document_awx_as_future_alignment_path

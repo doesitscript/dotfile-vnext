@@ -1,0 +1,134 @@
+packet_id: ai-upgrade-kubernetes-raw
+packet_kind: source_packet
+status: integrated
+source_path: docs/intake/ai-upgrade-kubernetes-raw.md
+provenance:
+  type: imported_intake_note
+  authority_level: provenance_only
+  note: >
+    This source note informs the capability family but does not become active
+    repo authority on its own.
+
+items:
+  - id: ai_upgrade_001
+    source_lines: "5-40"
+    primary_domain: ansible
+    summary: Introduce a top-level README plus separate policy files for Ansible, Kubernetes, Docker, NetBox, and naming.
+    source_terms:
+      - README.md
+      - ARCHITECTURE.md
+      - policy/ANSIBLE_POLICY.md
+      - policy/KUBERNETES_POLICY.md
+      - policy/DOCKER_POLICY.md
+      - policy/NETBOX_POLICY.md
+      - NAMING_POLICY.md
+  - id: ai_upgrade_002
+    source_lines: "47-105"
+    primary_domain: ansible
+    summary: Use a layered execution model covering NetBox inventory, node bootstrap, cluster services, and host-level Docker services.
+    source_terms:
+      - roles/base-node
+      - roles/docker-host
+      - roles/k8s-node
+      - roles/k8s-core
+      - roles/k8s-apps-*
+      - roles/traefik
+  - id: ai_upgrade_003
+    source_lines: "149-191"
+    primary_domain: ansible
+    summary: Prefer declarative Ansible modules over shell, including kubernetes.core and community.docker modules.
+    source_terms:
+      - kubernetes.core.k8s
+      - kubernetes.core.k8s_info
+      - community.docker.docker_container
+      - community.docker.docker_image
+      - community.docker.docker_network
+  - id: ai_upgrade_004
+    source_lines: "195-259"
+    primary_domain: ansible
+    summary: Use single-domain, composable roles with defaults/main.yml and tasks/main.yml orchestrators.
+    source_terms:
+      - docker-host
+      - docker-services-node-exporter
+      - k8s-node
+      - k8s-core
+  - id: ai_upgrade_005
+    source_lines: "279-317"
+    primary_domain: kubernetes
+    summary: Model K3s with generic controller and worker names and derive node labels from the naming pattern.
+    source_terms:
+      - hom-lab-ctl-k8s-01
+      - hom-lab-wrk-k8s-0X
+      - k8s-control
+      - k8s-worker
+  - id: ai_upgrade_006
+    source_lines: "323-357"
+    primary_domain: kubernetes
+    summary: Keep Kubernetes resources in Git, apply them with kubernetes.core.k8s, and prefer Traefik plus Helm-compatible values files.
+    source_terms:
+      - files/namespaces.yaml
+      - traefik
+      - kubernetes.core.helm
+      - community.kubernetes.helm
+  - id: ai_upgrade_007
+    source_lines: "361-377"
+    primary_domain: kubernetes
+    summary: Avoid kubectl for steady-state configuration and keep Docker logic out of Kubernetes roles.
+    source_terms:
+      - kubectl
+      - steady-state configuration
+  - id: ai_upgrade_008
+    source_lines: "397-469"
+    primary_domain: docker
+    summary: Use Docker for host-level services only, manage it with community.docker modules, and avoid Docker CLI in repo automation.
+    source_terms:
+      - docker-services-*
+      - community.docker
+      - docker-host
+      - docker CLI
+  - id: ai_upgrade_009
+    source_lines: "482-560"
+    primary_domain: netbox
+    summary: Treat NetBox as authoritative for host, interface, IP, role, and tag data and drive inventory and grouping from NetBox fields.
+    source_terms:
+      - netbox inventory plugin
+      - device_roles
+      - tags
+      - compose ansible_host
+  - id: ai_upgrade_010
+    source_lines: "522-560"
+    primary_domain: netbox
+    summary: Use generic NetBox tags and optional custom fields for Kubernetes, Docker, and Traefik selection.
+    source_terms:
+      - kubernetes-node
+      - docker-host
+      - traefik-node
+      - cf_k8s_role
+      - cf_docker_host
+      - cf_traefik_node
+  - id: ai_upgrade_011
+    source_lines: "573-623"
+    primary_domain: kubernetes
+    summary: Use a generic hostname and DNS pattern centered on k8s and dkr service codes.
+    source_terms:
+      - hom-lab-ctl-k8s-01
+      - hom-lab-wrk-k8s-01
+      - hom-lab-wrk-dkr-01
+      - traefik.hom.lab
+  - id: ai_upgrade_012
+    source_lines: "628-689"
+    primary_domain: ansible
+    summary: Enforce AI generation constraints around domain separation, modules over shell, and NetBox-driven host/IP truth.
+    source_terms:
+      - no docker CLI
+      - no kubectl
+      - no hardcoded IPs
+      - roles over monolithic playbooks
+  - id: ai_upgrade_013
+    source_lines: "690-741"
+    primary_domain: ansible
+    summary: Mirror a generic example repo layout for inventory, group_vars, host_vars, and role folders.
+    source_terms:
+      - ansible/inventory/hom/lab
+      - group_vars/k8s-control.yml
+      - roles/traefik

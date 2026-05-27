@@ -1,0 +1,42 @@
+packet_id: docker-runtime-integration
+packet_kind: integration_packet
+status: active
+primary_domain: docker
+repo_authorities:
+  - playbooks/docker.yaml
+  - roles/docker_client/tasks/main.yml
+  - roles/verify_docker/tasks/main.yml
+  - roles/stacks_fuzlang_net/tasks/main.yml
+  - docs/reference/naming-standards/resource-roles.yml
+
+normalized_terms:
+  docker-host: use `dkr` for Docker Engine-specific host or VM identity
+  docker-services-node-exporter: preserve repo capability naming and current stack boundaries instead of importing generic service-role names directly
+
+settled_decisions:
+  - imported_items:
+      - ai_upgrade_008
+    outcome: >
+      Preserve Docker as a separate runtime lane from K3s and keep `dkr` as the
+      active runtime identity for Docker Engine-specific hosts and VMs.
+
+documented_exceptions:
+  - id: docker_context_client_workflow
+    paths:
+      - roles/docker_client/tasks/main.yml
+      - roles/verify_docker/tasks/main.yml
+    status: retained
+    note: >
+      Docker CLI use for context management and engine verification is the
+      current durable client-side contract.
+  - id: compose_managed_stack_workflow
+    paths:
+      - roles/stacks_fuzlang_net/tasks/main.yml
+    status: retained
+    note: >
+      Compose-managed stack roles remain intentional exceptions until the repo
+      chooses a different stack-management model.
+
+future_boundaries:
+  - ctr remains candidate-only and should not replace `dkr` unless a generic
+    non-Docker-engine container host model becomes necessary.

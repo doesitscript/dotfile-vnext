@@ -254,6 +254,8 @@ These are the current files actively shaping this capability.
   The deeper working process for `Planner / Steward`, `Researcher`, and later `Executor`.
 - [docs/codex_framework/README.md](/Users/joshc/develop/dotfile-vnext/docs/codex_framework/README.md)
   This capability map and status document.
+- [docs/codex_framework/container-orchestration-integration.md](/Users/joshc/develop/dotfile-vnext/docs/codex_framework/container-orchestration-integration.md)
+  The Codex/OpenAI implementation note for the container-orchestration integration capability family.
 
 ### Capability-specific rule layer
 
@@ -281,6 +283,8 @@ These are the current files actively shaping this capability.
 - [.cursor/rules/framework-project-maturity-router.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/framework-project-maturity-router.mdc)
   The router rule for broad project-maturity requests that should activate one
   or more domain knowledge gates without merging them.
+- [.cursor/rules/framework-container-orchestration-integration.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/framework-container-orchestration-integration.mdc)
+  The framework-owned rule for normalizing imported Kubernetes and Docker guidance into repo-local runtime, NetBox, Ansible, and naming authorities.
 
 ### Skill workflows
 
@@ -305,6 +309,14 @@ These are the current files actively shaping this capability.
 - [.cursor/skills/project-maturity-router/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/project-maturity-router/SKILL.md)
   The composition skill for broad project-improvement requests. It routes to
   the Ansible gate, NetBox gate, or both while keeping the gates separate.
+- [.cursor/skills/container-orchestration-integration/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/container-orchestration-integration/SKILL.md)
+  The modular runtime-guidance integration workflow. It keeps imported
+  Kubernetes and Docker guidance in separable packets and maps each source item
+  to repo-local runtime, NetBox, Ansible, and naming authorities.
+- [.cursor/skills/container-orchestration-integration/capability.yml](/Users/joshc/develop/dotfile-vnext/.cursor/skills/container-orchestration-integration/capability.yml)
+  The machine-readable manifest for the container-orchestration integration
+  capability family, including packet refs, companion rule, and owned-file
+  inventory.
 - [.cursor/skills/github-issue-workflow/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/github-issue-workflow/SKILL.md)
   A small reusable workflow for turning concrete brainstorming or resumable work
   into GitHub issues when durable backlog tracking is better than local notes

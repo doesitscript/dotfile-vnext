@@ -1,0 +1,52 @@
+packet_id: kubernetes-runtime-integration
+packet_kind: integration_packet
+status: active
+primary_domain: kubernetes
+repo_authorities:
+  - playbooks/k3s_bootstrap.yaml
+  - roles/k3s_node_config/tasks/main.yml
+  - playbooks/k3s_debug.yaml
+  - docs/reference/naming-standards/render-patterns.yml
+  - docs/reference/naming-standards/resource-roles.yml
+  - inventory/inventory.yaml
+
+normalized_terms:
+  hom-lab-ctl-k8s-01: hom-lab-ctl-k3s-01
+  hom-lab-wrk-k8s-0X: future worker semantics should use schema-backed K3s node naming, not generic imported terms
+  k8s-control: use compact role and control-plane semantics through schema, inventory groups, and node metadata
+  k8s-worker: use compact role and future worker semantics through schema, inventory groups, and node metadata
+
+settled_decisions:
+  - imported_items:
+      - ai_upgrade_005
+      - ai_upgrade_011
+    outcome: >
+      Preserve `k3s` as the active integrated runtime identity and promote
+      `k3c` and `k3n` for control-plane and future worker semantics in the
+      naming schema.
+  - imported_items:
+      - ai_upgrade_006
+    outcome: >
+      Keep file-backed resource application, Traefik-oriented ingress, and
+      Helm-capable deployment as the preferred K3s app/runtime path.
+  - imported_items:
+      - ai_upgrade_007
+    outcome: >
+      Treat kubectl-free steady-state management as the target design while
+      separating active drift from diagnostic-only exceptions.
+
+cleanup_items:
+  - id: review_k3s_node_config_for_module_backed_labels_and_taints
+    path: roles/k3s_node_config/tasks/main.yml
+    status: active
+    note: >
+      The role still uses kubectl for steady-state label and taint operations
+      and should be reviewed for a kubernetes.core-backed desired-state path.
+
+documented_exceptions:
+  - id: k3s_debug_diagnostic_cli
+    path: playbooks/k3s_debug.yaml
+    status: retained
+    note: >
+      kubectl use here is diagnostic-only inspection, not steady-state
+      resource management.

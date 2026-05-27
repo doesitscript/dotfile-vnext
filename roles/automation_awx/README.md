@@ -7,6 +7,13 @@ job templates, AWX becomes the system of record for job status, timestamps,
 stdout, and result history. This role also includes a history-query tag that
 uses the `awx.awx` collection.
 
+## Current Repo Posture
+
+This role is a future alignment and replacement path, not part of the active
+container-orchestration cleanup scope. Keep the capability documented and
+usable, but do not treat it as the current repo runtime baseline unless the
+work explicitly moves AWX into active use.
+
 ## Why k3s First
 
 The supported AWX community install path is AWX Operator on Kubernetes. In this
