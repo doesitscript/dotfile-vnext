@@ -6,11 +6,11 @@
 # Linux VM guests still use explicit OS/runtime suffixes until their NetBox
 # naming migration is planned.
 #
-# Group names (server_225, network_server, dev_3090, mac_dev) match:
+# Group names (hyperv_lane_gpu, hyperv_lane_storage, dev_3090, mac_dev) match:
 #   - group_vars/<group>.yaml or group_vars/<group>/  (so Ansible loads the right vars)
-#   - physical node / host_vars "base" naming (server-225 -> server_225, etc.)
+#   - physical Hyper-V lanes group by purpose (GPU execution vs storage/observability)
 # host_vars files are only for inventory host names such as
-# hom-lab-ctl-hvh-01, hom-lab-ctl-hvh-02, server-225-ubuntu, mac-dev, etc.
+# hom-lab-ctl-hvh-01, hom-lab-ctl-hvh-02, hom-lab-ctl-dkr-02, mac-dev, etc.
 
 all:
   children:
@@ -75,10 +75,10 @@ all:
     # Hyper-V-native guests should use the explicit -ubuntu naming model.
     linux_vm_hosts:
       hosts:
-        server-225-ubuntu:
+        hom-lab-ctl-dkr-02:
           # Active Hyper-V Ubuntu guest on hom-lab-ctl-hvh-02.
         hom-lab-ctl-k3s-02:
-          # Planned K3s Ubuntu guest on the RTX 5090 server-225 host.
+          # Planned K3s Ubuntu guest on the RTX 5090 hom-lab-ctl-hvh-02 host.
         hom-lab-ctl-dkr-01:
           # Planned Docker Ubuntu guest on hom-lab-ctl-hvh-01.
         hom-lab-ctl-k3s-01:
@@ -109,13 +109,13 @@ all:
         hom-lab-ctl-hvh-01:
         # dev-workstation-win: # deferred — add back when provisioned
 
-    # Physical-node groups (names match group_vars/<group>.yaml and host_vars base names)
-    server_225:
+    # Hyper-V physical lanes (purpose-based group_vars; see docs/reference/naming-standards/README.md)
+    hyperv_lane_gpu:
       hosts:
         hom-lab-ctl-hvh-02:
-        server-225-ubuntu:
+        hom-lab-ctl-dkr-02:
 
-    network_server:
+    hyperv_lane_storage:
       hosts:
         hom-lab-ctl-hvh-01:
         hom-lab-ctl-dkr-01:
@@ -168,7 +168,7 @@ all:
     # Change the host here to move the Loki server to a different node.
     logging_server:
       hosts:
-        server-225-ubuntu:
+        hom-lab-ctl-dkr-02:
 
     mac_dev:
       hosts:

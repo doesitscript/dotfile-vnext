@@ -1,6 +1,6 @@
 ---
 # Scheduled Task Verification Role
-# Verifies scheduled task exists on server-225 and is configured correctly
+# Verifies scheduled task exists on hvh-02 hosts and is configured correctly
 
 - name: Check if scheduled task exists
   win_shell: |
@@ -15,7 +15,7 @@
   failed_when: false
   when: 
     - ansible_facts['system'] == "Windows"
-    - inventory_hostname in groups['server_225'] or 'server-225' in inventory_hostname
+    - inventory_hostname in groups['hyperv_lane_gpu'] or 'hvh-02' in inventory_hostname
     - task_scheduler_enabled | default(true)
 
 - name: Parse scheduled task information
@@ -25,7 +25,7 @@
     task_enabled: "{{ task_info.json.Settings.Enabled | default(false) if task_info.json is defined else false }}"
   when: 
     - ansible_facts['system'] == "Windows"
-    - inventory_hostname in groups['server_225'] or 'server-225' in inventory_hostname
+    - inventory_hostname in groups['hyperv_lane_gpu'] or 'hvh-02' in inventory_hostname
     - task_scheduler_enabled | default(true)
 
 - name: Get scheduled task action details
@@ -41,7 +41,7 @@
   failed_when: false
   when: 
     - ansible_facts['system'] == "Windows"
-    - inventory_hostname in groups['server_225'] or 'server-225' in inventory_hostname
+    - inventory_hostname in groups['hyperv_lane_gpu'] or 'hvh-02' in inventory_hostname
     - task_scheduler_enabled | default(true)
     - task_exists | default(false)
 
@@ -58,7 +58,7 @@
   failed_when: false
   when: 
     - ansible_facts['system'] == "Windows"
-    - inventory_hostname in groups['server_225'] or 'server-225' in inventory_hostname
+    - inventory_hostname in groups['hyperv_lane_gpu'] or 'hvh-02' in inventory_hostname
     - task_scheduler_enabled | default(true)
     - task_exists | default(false)
 
@@ -70,7 +70,7 @@
     success_msg: "Scheduled task exists"
   when: 
     - ansible_facts['system'] == "Windows"
-    - inventory_hostname in groups['server_225'] or 'server-225' in inventory_hostname
+    - inventory_hostname in groups['hyperv_lane_gpu'] or 'hvh-02' in inventory_hostname
     - task_scheduler_enabled | default(true)
 
 - name: Verify scheduled task is enabled
@@ -81,7 +81,7 @@
     success_msg: "Scheduled task is enabled"
   when: 
     - ansible_facts['system'] == "Windows"
-    - inventory_hostname in groups['server_225'] or 'server-225' in inventory_hostname
+    - inventory_hostname in groups['hyperv_lane_gpu'] or 'hvh-02' in inventory_hostname
     - task_scheduler_enabled | default(true)
     - task_exists | default(false)
 
@@ -95,7 +95,7 @@
     success_msg: "Scheduled task has boot trigger configured"
   when: 
     - ansible_facts['system'] == "Windows"
-    - inventory_hostname in groups['server_225'] or 'server-225' in inventory_hostname
+    - inventory_hostname in groups['hyperv_lane_gpu'] or 'hvh-02' in inventory_hostname
     - task_scheduler_enabled | default(true)
     - task_exists | default(false)
     - task_triggers.json is defined
@@ -112,6 +112,6 @@
       - "Status: {{ 'PASS' if (task_exists | default(false) and task_enabled | default(false)) else 'FAIL' }}"
   when: 
     - ansible_facts['system'] == "Windows"
-    - inventory_hostname in groups['server_225'] or 'server-225' in inventory_hostname
+    - inventory_hostname in groups['hyperv_lane_gpu'] or 'hvh-02' in inventory_hostname
     - task_scheduler_enabled | default(true)
 

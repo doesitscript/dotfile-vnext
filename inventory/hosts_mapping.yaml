@@ -2,7 +2,7 @@
 # Host and surface mapping reference (documentation + bootstrap hostname detection)
 #
 # Naming layers — do not mix these up:
-# - inventory_hostname: Ansible/NetBox schema alias (hom-lab-ctl-hvh-02, server-225-ubuntu)
+# - inventory_hostname: Ansible/NetBox schema alias (hom-lab-ctl-hvh-02, hom-lab-ctl-dkr-02)
 # - os_hostname: Windows COMPUTERNAME / Linux hostname on the machine itself
 # - router_hostname: DHCP/DNS label on the LAN router (may differ from os_hostname)
 # - ansible_connect_target: value in host_vars ansible_host (what Ansible/SSH dials)
@@ -21,15 +21,15 @@
 # the local machine's hostname (case-insensitive) against `os_hostname` below.
 physical_nodes:
   server-225:
-    os_hostname: "DESKTOP-VLLM"
+    os_hostname: "hom-lab-ctl-hvh-02"
     inventory_windows_host: hom-lab-ctl-hvh-02
     ip_address: "192.168.50.158"
     ipv6_address: "fdfa:7038:521c:a5fa:7c9:f4a1:90b8:1b1e"
     # Bootstrap compatibility: legacy key read by bootstrap-local*.sh|ps1
-    hostname: "DESKTOP-VLLM"
+    hostname: "hom-lab-ctl-hvh-02"
 
   hom-lab-ctl-hvh-01:
-    os_hostname: "AI-NET-SERVER"
+    os_hostname: "hom-lab-ctl-hvh-01"
     router_hostname: "ai-net-server-mgmt"
     inventory_windows_host: hom-lab-ctl-hvh-01
     ip_address: "192.168.50.234"
@@ -37,7 +37,7 @@ physical_nodes:
     legacy_aliases:
       - network-server
     # Bootstrap compatibility — must match Windows COMPUTERNAME
-    hostname: "AI-NET-SERVER"
+    hostname: "hom-lab-ctl-hvh-01"
 
   dev-3090:
     os_hostname: "Gaming-Desktop"
@@ -56,20 +56,20 @@ ansible_surfaces:
   # --- Windows control surfaces (SSH primary) ---
 
   hom-lab-ctl-hvh-02:
-    physical_node: server-225
+    physical_node: hom-lab-ctl-hvh-02
     surface_type: windows_host
     inventory_alias: true
     primary_connection: ssh
     secondary_connection: winrm
-    ansible_connect_target: "DESKTOP-VLLM"
-    connect_target_kind: os_hostname
+    ansible_connect_target: "192.168.50.158"
+    connect_target_kind: ip_address
     ansible_port: 22
     host_ip: "192.168.50.158"
     os_hostname: "DESKTOP-VLLM"
     host_vars: inventory/host_vars/hom-lab-ctl-hvh-02.yaml
 
   hom-lab-ctl-hvh-02-ipv6:
-    physical_node: server-225
+    physical_node: hom-lab-ctl-hvh-02
     surface_type: windows_host
     inventory_alias: true
     primary_connection: ssh
@@ -110,8 +110,8 @@ ansible_surfaces:
 
   # --- Hyper-V Ubuntu guest surfaces (SSH only) ---
 
-  server-225-ubuntu:
-    physical_node: server-225
+  hom-lab-ctl-dkr-02:
+    physical_node: hom-lab-ctl-hvh-02
     surface_type: ubuntu_vm
     inventory_alias: true
     primary_connection: ssh
@@ -119,8 +119,10 @@ ansible_surfaces:
     connect_target_kind: guest_ip
     host_ip: "192.168.137.10"
     ssh_proxy_jump_host: hom-lab-ctl-hvh-02
-    host_vars: inventory/host_vars/server-225-ubuntu.yaml
+    host_vars: inventory/host_vars/hom-lab-ctl-dkr-02.yaml
     notes: Docker engine on hvh-02 guest subnet; guest OS hostname may differ from inventory name
+    legacy_inventory_aliases:
+      - server-225-ubuntu
 
   hom-lab-ctl-dkr-01:
     physical_node: hom-lab-ctl-hvh-01
@@ -145,7 +147,7 @@ ansible_surfaces:
     host_vars: inventory/host_vars/hom-lab-ctl-k3s-01.yaml
 
   hom-lab-ctl-k3s-02:
-    physical_node: server-225
+    physical_node: hom-lab-ctl-hvh-02
     surface_type: ubuntu_vm
     inventory_alias: true
     primary_connection: ssh

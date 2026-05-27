@@ -37,7 +37,7 @@ nodes:
     lan_ip: null  # No inbound assumptions
 
   main_node:
-    name: Server-225
+    name: hom-lab-ctl-hvh-02
     # FIXME: Role naming here is still legacy scaffolding. Replace with a
     # properly designed scalable naming pattern aligned with NetBox/geodesic or
     # the repo's mature host classification schema.
@@ -55,7 +55,7 @@ nodes:
     lan_ip: "192.168.50.158"  # legacy snapshot, not a dynamic source of truth
 
   network_node:
-    name: network-server
+    name: hom-lab-ctl-hvh-01
     # FIXME: Role naming here is still legacy scaffolding. Replace with a
     # properly designed scalable naming pattern aligned with NetBox/geodesic or
     # the repo's mature host classification schema.
@@ -161,8 +161,8 @@ endpoint_map:
   langfuse_base_url: "http://network-server:3000"  # or http://<network_ip>:3000
   minio_api_url: "http://network-server:9000"
   minio_console_url: "http://network-server:9001"
-  ollama_base_url: "http://Server-225:11434"  # only if other nodes need it
-  litellm_base_url: "http://Server-225:4000"
+  ollama_base_url: "http://hom-lab-ctl-hvh-02:11434"  # only if other nodes need it
+  litellm_base_url: "http://hom-lab-ctl-hvh-02:4000"
   dev_ollama_base_url: "http://dev-3090:11434"  # optional
   dev_litellm_base_url: "http://dev-3090:4000"  # optional
 
@@ -222,12 +222,12 @@ ports:
   dev_ollama:
     port: 11434
     exposure: restricted  # or lan
-    allowed_sources: [mac-dev, Server-225, network-server]  # your choice
+    allowed_sources: [mac-dev, hom-lab-ctl-hvh-02, network-server]  # your choice
 
   dev_litellm:
     port: 4000
     exposure: restricted  # or lan
-    allowed_sources: [mac-dev, Server-225, network-server]
+    allowed_sources: [mac-dev, hom-lab-ctl-hvh-02, network-server]
 
 port_recommendations:
   expose_to_lan: [langfuse_web, minio_api, minio_console, litellm_gateway]

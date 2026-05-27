@@ -1,11 +1,11 @@
 ---
 # Inventory name: hom-lab-ctl-hvh-02
-#   Ansible/NetBox schema alias for the server-225 Windows control surface.
-# Connect target: ansible_host = DESKTOP-VLLM (actual Windows OS hostname today).
-# physical_node: server-225 — metadata grouping key, NOT a hostname.
+#   Ansible/NetBox schema alias for the hom-lab-ctl-hvh-02 Windows control surface.
+# Connect target: ansible_host = 192.168.50.158 (permanent LAN IP pattern).
+# physical_node: hom-lab-ctl-hvh-02 — metadata grouping key, NOT a hostname.
 # Router/LAN IP: host_ip 192.168.50.158
 # Manual SSH should prefer the repo-rendered Host alias hom-lab-ctl-hvh-02 from ~/.ssh/config.
-ansible_host: "DESKTOP-VLLM"
+ansible_host: "192.168.50.158"
 ansible_connection: ssh
 ansible_port: 22
 ansible_user: "joshc"
@@ -17,13 +17,13 @@ surface_type: "windows_host"
 host_ip: "192.168.50.158"
 # Stable internal ULA observed in gathered facts and verified live from mac-dev.
 host_ipv6: "fdfa:7038:521c:a5fa:7c9:f4a1:90b8:1b1e"
-physical_node: "server-225"
+physical_node: "hom-lab-ctl-hvh-02"
 verify_ssh_from_execnode: true
 
 # Legacy WinRM config (retained for reference, not active)
 # ansible_connection: winrm
 # winrm_port: 5985
-# ansible_winrm_password: "{{ vault_server_225_win_password }}"
+# ansible_winrm_password: "{{ vault_hyperv_lane_gpu_win_password }}"
 # ansible_winrm_scheme: "http"
 # ansible_winrm_transport: "ntlm"
 # HTTPS WinRM configuration (uncomment when HTTPS is enabled on server):
@@ -111,15 +111,15 @@ hyperv_config:
 openssh_server_state: present
 
 # Docker client — connects to the Docker engine on the Hyper-V Ubuntu guest.
-docker_engine_ssh_host: "server-225-ubuntu"
+docker_engine_ssh_host: "hom-lab-ctl-dkr-02"
 docker_engine_ssh_context_host: "{{ hyperv_ubuntu_vm_autoinstall_network_ipv4 }}"
 docker_engine_ssh_port: 22
 docker_engine_ssh_user: "joshc"
 
 # Hyper-V-native Docker Ubuntu VM replacement for the retired Multipass path.
 hyperv_ubuntu_docker_vm_state: present
-hyperv_ubuntu_docker_vm_hostname: "server-225-ubuntu"
-hyperv_ubuntu_docker_vm_inventory_host: "server-225-ubuntu"
+hyperv_ubuntu_docker_vm_hostname: "hom-lab-ctl-dkr-02"
+hyperv_ubuntu_docker_vm_inventory_host: "hom-lab-ctl-dkr-02"
 hyperv_ubuntu_vm_cpus: 4
 hyperv_ubuntu_vm_memory: "8G"
 hyperv_ubuntu_vm_disk: "40G"

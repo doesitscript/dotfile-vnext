@@ -15,11 +15,32 @@ add_failure() {
   failures+=("$1")
 }
 
+# macOS controllers may not have ripgrep; fall back to grep for gate checks.
+search_inventory_host_key() {
+  local host_key="$1"
+  local pattern="^[[:space:]]*${host_key}:"
+  if command -v rg >/dev/null 2>&1; then
+    rg -n "$pattern" inventory/inventory.yaml
+  else
+    grep -En "$pattern" inventory/inventory.yaml
+  fi
+}
+
+search_fixed_string() {
+  local needle="$1"
+  shift
+  if command -v rg >/dev/null 2>&1; then
+    rg -n --fixed-strings "$needle" "$@"
+  else
+    grep -RFn -- "$needle" "$@"
+  fi
+}
+
 if [[ -e "inventory/host_vars/${retired_name}.yaml" || -e "inventory/host_vars/${retired_name}.yml" ]]; then
   add_failure "Retired host_vars file still exists for ${retired_label}; use inventory/host_vars/${current_name}.yaml."
 fi
 
-if rg -n "^[[:space:]]*${retired_name}:" inventory/inventory.yaml >/tmp/netbox-repo-consistency-inventory.$$ 2>/dev/null; then
+if search_inventory_host_key "${retired_name}" >/tmp/netbox-repo-consistency-inventory.$$ 2>/dev/null; then
   while IFS= read -r line; do
     add_failure "Retired inventory host key remains active: inventory/inventory.yaml:${line}"
   done < /tmp/netbox-repo-consistency-inventory.$$
@@ -42,7 +63,7 @@ active_paths=(
   scripts
 )
 
-if rg -n --fixed-strings "${retired_name}" "${active_paths[@]}" >/tmp/netbox-repo-consistency-rg.$$ 2>/dev/null; then
+if search_fixed_string "${retired_name}" "${active_paths[@]}" >/tmp/netbox-repo-consistency-rg.$$ 2>/dev/null; then
   while IFS= read -r hit; do
     case "$hit" in
       *"legacy"*|*"Legacy"*|*"retired"*|*"Retired"*|*"former"*|*"Historical"*|*"historical"*|*"aliases"*|*"alias"*|*"old_name"*|*"migration"*|*"migrations"*|*"Do not introduce"*|*"keep it"*)
@@ -58,7 +79,8 @@ if rg -n --fixed-strings "${retired_name}" "${active_paths[@]}" >/tmp/netbox-rep
 
     if [[ "$hit" == inventory/hosts_mapping.yaml:*"- ${retired_name}"* ]] ||
        [[ "$hit" == "inventory/host_vars/${current_name}.yaml:"*"- ${retired_name}"* ]] ||
-       [[ "$hit" == inventory/group_vars/network_server.yaml:*"- ${retired_name}"* ]] ||
+       [[ "$hit" == inventory/group_vars/hyperv_lane_storage/*:*"- ${retired_name}"* ]] ||
+       [[ "$hit" == inventory/group_vars/hyperv_lane_gpu/*:*"- ${retired_name}"* ]] ||
        [[ "$hit" == roles/ipam_netbox/defaults/main.yml:*"- ${retired_name}"* ]]; then
       continue
     fi
@@ -68,7 +90,7 @@ if rg -n --fixed-strings "${retired_name}" "${active_paths[@]}" >/tmp/netbox-rep
 fi
 rm -f /tmp/netbox-repo-consistency-rg.$$
 
-if ! rg -n "^[[:space:]]*${current_name}:" inventory/inventory.yaml >/dev/null; then
+if ! search_inventory_host_key "${current_name}" >/dev/null 2>&1; then
   add_failure "Current NetBox host name ${current_name} is missing from inventory/inventory.yaml."
 fi
 
@@ -94,8 +116,7 @@ retired_compact_name_patterns=(
 )
 
 for retired_compact_name in "${retired_compact_name_patterns[@]}"; do
-  if rg -n --fixed-strings -g '!docs/reference/naming-standards/archive/**' \
-    "$retired_compact_name" "${compact_active_paths[@]}" >/tmp/netbox-repo-compact-rg.$$ 2>/dev/null; then
+  if search_fixed_string "$retired_compact_name" "${compact_active_paths[@]}" >/tmp/netbox-repo-compact-rg.$$ 2>/dev/null; then
     while IFS= read -r hit; do
       case "$hit" in
         *"legacy"*|*"Legacy"*|*"retired"*|*"Retired"*|*"former"*|*"Historical"*|*"historical"*|*"aliases"*|*"alias"*|*"old_name"*|*"migration"*|*"migrations"*)
@@ -105,6 +126,9 @@ for retired_compact_name in "${retired_compact_name_patterns[@]}"; do
 
       case "$hit" in
         scripts/validate_netbox_repo_consistency.sh:*)
+          continue
+          ;;
+        docs/reference/naming-standards/archive/*)
           continue
           ;;
         docs/intake/jupyter-devops-implementation-plans/research/*)

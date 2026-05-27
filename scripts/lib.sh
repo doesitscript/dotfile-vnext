@@ -405,8 +405,7 @@ fz_ansible() {
   "${ansible_cmd[@]}"
 }
 
-# Run ad-hoc ansible (e.g. ping) with venv and inventory. Usage: fz_ansible_adhoc server-225-wsl [extra args]
-# When target is server-225-wsl and we're on that host (WSL), use local connection so we don't SSH to ourselves.
+# Run ad-hoc ansible (e.g. ping) with venv and inventory. Usage: fz_ansible_adhoc hom-lab-ctl-dkr-02 [extra args]
 fz_ansible_adhoc() {
   local repo_root
   repo_root="$(repo_root)"
@@ -424,25 +423,6 @@ fz_ansible_adhoc() {
   if [ ! -f "${inventory_file}" ]; then
     log_error "Inventory not found: ${inventory_file}"
     exit 1
-  fi
-
-  # When pinging server-225-wsl from that same host (WSL), use local so we don't SSH to ourselves
-  if [ "${host_pattern}" = "server-225-wsl" ]; then
-    local host_vars_file="${repo_root}/inventory/host_vars/server-225-wsl.yaml"
-    local current_host
-    current_host="$(hostname 2>/dev/null || true)"
-    if [ -f "${host_vars_file}" ]; then
-      local ansible_host_value
-      ansible_host_value="$(sed -n 's/^[[:space:]]*ansible_host:[[:space:]]*"\{0,1\}\([^"#]*\).*/\1/p' "${host_vars_file}" | head -1 | tr -d '\r\n')"
-      if [ -n "${ansible_host_value}" ] && [ -n "${current_host}" ]; then
-        if [ "$(printf '%s' "${current_host}" | tr '[:upper:]' '[:lower:]')" = "$(printf '%s' "${ansible_host_value}" | tr '[:upper:]' '[:lower:]')" ]; then
-          log_info "Running on server-225 (hostname ${current_host}); using local connection instead of SSH"
-          log_info "Running: ${venv_ansible} localhost -m ping -c local"
-          "${venv_ansible}" localhost -m ping -c local
-          return
-        fi
-      fi
-    fi
   fi
 
   log_info "Running: ${venv_ansible} $* -m ping -i ${inventory_file}"
@@ -814,7 +794,7 @@ Commands:
                         Example: fz bootstrap-winrm --limit hom-lab-ctl-hvh-02
   bootstrap-ssh          Deploy stacks via SSH (WSL2 operations)
                         Requires --limit or --all
-                        Example: fz bootstrap-ssh --limit server-225-wsl
+                        Example: fz bootstrap-ssh --limit hom-lab-ctl-dkr-02
   bootstrap-openssh-host-keys  Generate OpenSSH host keys into bootstrap/openssh_host_keys/ (for Windows).
                         Run on the Mac; then sync folder to Windows and run bootstrap-local.ps1 there.
   deploy <target>        Deploy stacks to target node
@@ -870,13 +850,13 @@ Examples:
   fz bootstrap --limit hom-lab-ctl-hvh-02      Run local bootstrap path for hom-lab-ctl-hvh-02
   fz bootstrap --limit mac-dev --SSHGenForce  Mac bootstrap and (re)generate OpenSSH host keys
   fz bootstrap-winrm --limit hom-lab-ctl-hvh-02  Run WinRM bootstrap playbook for server-225
-  fz bootstrap-ssh --limit server-225-wsl  Run SSH deploy phase for server-225-wsl
+  fz bootstrap-ssh --limit hom-lab-ctl-dkr-02  Run SSH deploy phase for hom-lab-ctl-dkr-02
   fz bootstrap-openssh-host-keys            Generate host keys on Mac (for Windows OpenSSH)
-  fz bootstrap --limit server-225-wsl      Run full bootstrap flow for one WSL target
+  fz bootstrap --limit hom-lab-ctl-dkr-02  Run full bootstrap flow for one Docker host target
   fz bootstrap --all                        Run full bootstrap flow across all target groups
   fz deploy network --limit hom-lab-ctl-hvh-01  Deploy network stacks with confirmation prompt
   fz deploy network --limit hom-lab-ctl-hvh-01 --yes  Deploy network stacks without prompt
-  fz deploy main --limit server-225-wsl    Deploy main stacks to a specific host
+  fz deploy main --limit hom-lab-ctl-dkr-02  Deploy main stacks to a specific host
   fz gather-facts --all                      Gather facts from all reachable hosts
   fz gather-facts --limit windows_hosts      Gather facts from Windows hosts only
   fz verify                                 Verify fabric health and connectivity
