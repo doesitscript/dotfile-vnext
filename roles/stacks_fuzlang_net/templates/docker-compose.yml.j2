@@ -2,6 +2,9 @@ services:
   postgres:
     image: postgres:16
     restart: unless-stopped
+    labels:
+      com.homelab.stack: "fuzlang-net"
+      com.homelab.deployed-by: "stacks_fuzlang_net"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -21,6 +24,9 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    labels:
+      com.homelab.stack: "fuzlang-net"
+      com.homelab.deployed-by: "stacks_fuzlang_net"
     volumes:
       - {{ linux_data_root }}/redis:/data
     ports:
@@ -36,6 +42,9 @@ services:
   clickhouse:
     image: clickhouse/clickhouse-server:24
     restart: unless-stopped
+    labels:
+      com.homelab.stack: "fuzlang-net"
+      com.homelab.deployed-by: "stacks_fuzlang_net"
     volumes:
       - {{ linux_data_root }}/clickhouse:/var/lib/clickhouse
     ports:
@@ -56,6 +65,9 @@ services:
   minio:
     image: "{{ stacks_network_minio_image }}:{{ stacks_network_minio_image_tag }}"
     restart: unless-stopped
+    labels:
+      com.homelab.stack: "fuzlang-net"
+      com.homelab.deployed-by: "stacks_fuzlang_net"
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -77,6 +89,9 @@ services:
   langfuse:
     image: langfuse/langfuse:latest
     restart: unless-stopped
+    labels:
+      com.homelab.stack: "fuzlang-net"
+      com.homelab.deployed-by: "stacks_fuzlang_net"
     depends_on:
       postgres:
         condition: service_healthy

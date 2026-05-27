@@ -257,6 +257,20 @@
           $needsReset = $true
           $Ansible.Changed = $true
         }
+        else {
+          $listener = Get-NetTCPConnection `
+            -LocalAddress $entry.listen_address `
+            -LocalPort ([int]$entry.listen_port) `
+            -State Listen `
+            -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+
+          if (-not $listener) {
+            netsh interface portproxy delete v4tov4 listenaddress=$($entry.listen_address) listenport=$($entry.listen_port) | Out-Null
+            $needsReset = $true
+            $Ansible.Changed = $true
+          }
+        }
 
         if ($needsReset) {
           netsh interface portproxy add v4tov4 `

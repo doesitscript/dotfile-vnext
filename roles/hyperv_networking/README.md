@@ -193,6 +193,17 @@ Current milestone:
   through a persistent route
 - the next milestone is a router-managed static route for the whole LAN
 
+Published guest TCP ports have an additional recovery guard:
+
+- if a `netsh interface portproxy` rule exists but Windows is not actually
+  listening on that `listen_address:listen_port`, the role now treats that as
+  drift
+- during the next `hyperv_networking` apply, it recreates the affected
+  portproxy rule and restarts `iphlpsvc`
+
+This protects the common failure mode where the configured rules still exist
+but the LAN-published service path is dead.
+
 ## Playbook Integration
 
 Canonical capability playbook:
