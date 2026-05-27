@@ -37,6 +37,7 @@ Example:
 - `2026-05-27--netbox-wip-finish-roadmap-incomplete/` (active finish path; excludes edge dev hosts)
 - `2026-05-27--netbox-ipam-completion-incomplete/` (prefixes, storage services, config contexts)
 - `2026-05-27--edge-dev-host-naming-netbox-incomplete/` (deferred: mac-dev, dev-3090, dev-workstation)
+- `2026-05-27--netbox-application-plugins-evaluation/` (Proxbox, Custom Objects, Attachments — evaluation only)
 
 Plans migrated from `.cursor/plans/` on 2026-05-27. Folders suffixed with
 `-incomplete` are not fully implemented. See `.cursor/plans/README.md` for the
