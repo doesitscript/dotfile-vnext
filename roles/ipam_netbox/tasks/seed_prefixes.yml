@@ -1,0 +1,70 @@
+---
+# Vault: use tasks/load_vault.yml — not playbook_dir/../vault.yml (see load_vault.yml).
+- name: Include vault variables for NetBox API token
+  ansible.builtin.include_tasks: load_vault.yml
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_prefixes
+    - ipam_netbox_seed_prefixes_preview
+
+- name: Preview homelab IPAM prefix seed
+  ansible.builtin.debug:
+    msg:
+      api_url: "{{ ipam_netbox_api_url }}"
+      change_class: idempotent NetBox IPAM prefix modeling
+      apply: ansible-playbook playbooks/deploy_ipam_netbox.yaml --tags ipam_netbox_seed_prefixes
+      verify:
+        - NetBox IPAM shows 192.168.50.0/24, 192.168.138.0/24, and 192.168.137.0/24 under site homelab
+      undo: manual prefix deletion in NetBox unless an absent seed path is added
+      site: "{{ ipam_netbox_prefixes.site }}"
+      prefixes: "{{ ipam_netbox_prefixes.prefixes | map(attribute='prefix') | list }}"
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_prefixes
+    - ipam_netbox_seed_prefixes_preview
+
+- name: Require NetBox API token for IPAM prefix seeding
+  ansible.builtin.assert:
+    that:
+      - vault_vars.vault_netbox_api_token is defined
+      - vault_vars.vault_netbox_api_token | length > 0
+    fail_msg: >-
+      vault_netbox_api_token is required in vault.yml before NetBox API seeding
+      can run. Run the preview tag to inspect the intended prefixes without the
+      token.
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_prefixes
+
+- name: Ensure dedicated NetBox API token before IPAM prefix seeding
+  ansible.builtin.include_tasks:
+    file: ensure_api_token.yml
+    apply:
+      tags:
+        - ipam_netbox
+        - ipam_netbox_api_token
+        - ipam_netbox_seed_prefixes
+  tags:
+    - ipam_netbox
+    - ipam_netbox_api_token
+    - ipam_netbox_seed_prefixes
+
+- name: Seed homelab IPAM prefixes in NetBox
+  netbox.netbox.netbox_prefix:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data:
+      prefix: "{{ item.prefix }}"
+      site: "{{ ipam_netbox_prefixes.site }}"
+      status: "{{ item.status }}"
+      description: "{{ item.description }}"
+      tags: "{{ ipam_netbox_prefixes.tags }}"
+    state: present
+  loop: "{{ ipam_netbox_prefixes.prefixes }}"
+  loop_control:
+    label: "{{ item.prefix }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_prefixes

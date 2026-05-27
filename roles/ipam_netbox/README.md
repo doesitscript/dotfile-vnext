@@ -152,8 +152,12 @@ These control which tasks run when `--tags` is passed to `ansible-playbook`.
 | `ipam_netbox_seed_tags` | Seeds canonical object tags into NetBox via the API (requires `netbox.netbox` collection) |
 | `ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview` | Preview the first GPU-lane (hom-lab-ctl-hvh-02) NetBox object model without API mutation |
 | `ipam_netbox_seed_hom_lab_ctl_hvh_02_model` | Seed the first GPU-lane (hom-lab-ctl-hvh-02) NetBox object model via the API |
-| `ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview` | Preview the network-server Hyper-V VM model without API mutation |
-| `ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model` | Seed the network-server Hyper-V VM model via the API |
+| `ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview` | Preview the storage-lane Hyper-V VM model without API mutation |
+| `ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model` | Seed the storage-lane Hyper-V VM model via the API |
+| `ipam_netbox_seed_prefixes_preview` | Preview homelab IPAM `/24` prefixes without API mutation |
+| `ipam_netbox_seed_prefixes` | Seed homelab IPAM prefixes (`192.168.50/138/137`) via the API |
+| `ipam_netbox_seed_config_contexts_preview` | Preview homelab config contexts without API mutation |
+| `ipam_netbox_seed_config_contexts` | Seed homelab config contexts (naming + Hyper-V routing metadata) via the API |
 
 Examples:
 

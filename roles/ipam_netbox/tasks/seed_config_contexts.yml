@@ -1,0 +1,76 @@
+---
+# Vault: use tasks/load_vault.yml — not playbook_dir/../vault.yml (see load_vault.yml).
+- name: Include vault variables for NetBox API token
+  ansible.builtin.include_tasks: load_vault.yml
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_config_contexts
+    - ipam_netbox_seed_config_contexts_preview
+
+- name: Preview homelab NetBox config context seed
+  ansible.builtin.debug:
+    msg:
+      api_url: "{{ ipam_netbox_api_url }}"
+      change_class: idempotent NetBox config context modeling
+      apply: ansible-playbook playbooks/deploy_ipam_netbox.yaml --tags ipam_netbox_seed_config_contexts
+      verify:
+        - NetBox config contexts list includes homelab-naming-context and homelab-hyperv-guest-routing
+        - ansible-inventory -i inventory/netbox.yml merges context for tagged hosts
+      undo: manual config context deletion in NetBox unless an absent seed path is added
+      contexts: "{{ ipam_netbox_config_contexts | map(attribute='name') | list }}"
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_config_contexts
+    - ipam_netbox_seed_config_contexts_preview
+
+- name: Require NetBox API token for config context seeding
+  ansible.builtin.assert:
+    that:
+      - vault_vars.vault_netbox_api_token is defined
+      - vault_vars.vault_netbox_api_token | length > 0
+    fail_msg: >-
+      vault_netbox_api_token is required in vault.yml before NetBox API seeding
+      can run. Run the preview tag to inspect the intended contexts without the
+      token.
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_config_contexts
+
+- name: Ensure dedicated NetBox API token before config context seeding
+  ansible.builtin.include_tasks:
+    file: ensure_api_token.yml
+    apply:
+      tags:
+        - ipam_netbox
+        - ipam_netbox_api_token
+        - ipam_netbox_seed_config_contexts
+  tags:
+    - ipam_netbox
+    - ipam_netbox_api_token
+    - ipam_netbox_seed_config_contexts
+
+- name: Seed homelab NetBox config contexts
+  netbox.netbox.netbox_config_context:
+    netbox_url: "{{ ipam_netbox_api_url }}"
+    netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
+    validate_certs: false
+    data: >-
+      {{
+        {
+          'name': item.name,
+          'description': item.description,
+          'weight': item.weight,
+          'is_active': item.is_active,
+          'data': item.data,
+        }
+        | combine({'sites': item.sites} if item.sites is defined else {})
+        | combine({'tags': item.tags} if item.tags is defined else {})
+      }}
+    state: present
+  loop: "{{ ipam_netbox_config_contexts }}"
+  loop_control:
+    label: "{{ item.name }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_config_contexts

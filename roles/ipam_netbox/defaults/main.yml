@@ -577,3 +577,53 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
         - name: eth0
           address: 192.168.138.11/24
           description: hom-lab-ctl-k3s-01 routed private subnet interface for K3s control plane
+
+# Parent IPAM prefixes for homelab routed networks (see docs/plans/2026-05-27--netbox-ipam-completion-incomplete/)
+ipam_netbox_prefixes:
+  site: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.site.name }}"
+  tags:
+    - ansible-managed
+    - homelab
+    - infra
+  prefixes:
+    - prefix: 192.168.50.0/24
+      status: active
+      description: LAN management network (Windows hosts, Mac controller, port-proxies)
+    - prefix: 192.168.138.0/24
+      status: active
+      description: hom-lab-ctl-hvh-01 Hyper-V guest routed private subnet
+    - prefix: 192.168.137.0/24
+      status: active
+      description: hom-lab-ctl-hvh-02 Hyper-V guest routed private subnet
+
+# Config contexts applied to ansible-managed homelab objects (inventory/netbox.yml config_context: true)
+ipam_netbox_config_contexts:
+  - name: homelab-naming-context
+    description: Castle homelab compact naming schema metadata for repo-managed objects
+    weight: 1000
+    is_active: true
+    sites:
+      - homelab
+    tags:
+      - ansible-managed
+    data:
+      namespace: castle
+      tenant: hom
+      environment: lab
+      domain: ctl
+      naming_schema_version: 1
+      render_pattern: "<tenant>-<environment>-<domain>-<role>-<idx>"
+      schema_registry: docs/reference/naming-standards/
+  - name: homelab-hyperv-guest-routing
+    description: Routed private subnet layout for Hyper-V guest VMs
+    weight: 900
+    is_active: true
+    tags:
+      - hyperv
+      - ansible-managed
+    data:
+      guest_subnets:
+        hom_lab_ctl_hvh_01: 192.168.138.0/24
+        hom_lab_ctl_hvh_02: 192.168.137.0/24
+      lan_management_subnet: 192.168.50.0/24
+      routing_note: docs/lessons-learned/networking/hyper-v-routed-subnet-needs-router-route-or-host-nat.md

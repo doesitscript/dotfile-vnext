@@ -22,6 +22,10 @@
 #   ipam_netbox_seed_windows_share_hosts_model — seed Windows share-host NetBox model
 #   ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview — preview storage-lane VM model
 #   ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model — seed storage-lane (hom-lab-ctl-hvh-01) VM model
+#   ipam_netbox_seed_prefixes_preview — preview homelab IPAM /24 prefixes
+#   ipam_netbox_seed_prefixes — seed homelab IPAM prefixes (50/138/137)
+#   ipam_netbox_seed_config_contexts_preview — preview homelab config contexts
+#   ipam_netbox_seed_config_contexts — seed homelab config contexts
 #   ipam_netbox_purge_legacy_vms — remove superseded NetBox VMs (e.g. server-225-ubuntu)
 #   ipam_netbox_migrate_legacy_cluster_names — rename legacy cluster slugs to compact schema
 #   ipam_netbox_migrate_display_names — one-time rename mixed-case display names to lowercase
@@ -87,6 +91,8 @@
         - ipam_netbox_seed_windows_share_hosts_model_preview
         - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model
         - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview
+        - ipam_netbox_seed_prefixes
+        - ipam_netbox_seed_config_contexts
 
 - name: Purge legacy NetBox VMs
   hosts: hom-lab-ctl-dkr-02
@@ -109,6 +115,30 @@
         tasks_from: migrate_legacy_cluster_names
       tags:
         - ipam_netbox_migrate_legacy_cluster_names
+
+- name: Seed homelab IPAM prefixes
+  hosts: hom-lab-ctl-dkr-02
+  gather_facts: false
+  tasks:
+    - name: Seed homelab /24 prefixes via API
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: seed_prefixes
+      tags:
+        - ipam_netbox_seed_prefixes
+        - ipam_netbox_seed_prefixes_preview
+
+- name: Seed homelab NetBox config contexts
+  hosts: hom-lab-ctl-dkr-02
+  gather_facts: false
+  tasks:
+    - name: Seed homelab config contexts via API
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: seed_config_contexts
+      tags:
+        - ipam_netbox_seed_config_contexts
+        - ipam_netbox_seed_config_contexts_preview
 
 - name: Seed hom-lab-ctl-hvh-02 NetBox model
   hosts: hom-lab-ctl-dkr-02
