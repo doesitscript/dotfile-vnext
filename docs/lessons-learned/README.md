@@ -52,7 +52,7 @@ one-line summary row to the index below.
 
 | File | One-line summary |
 |---|---|
-| *(empty — add entries here)* | |
+| [hyper-v-portproxy-can-fail-while-the-guest-service-is-healthy.md](networking/hyper-v-portproxy-can-fail-while-the-guest-service-is-healthy.md) | A guest-hosted service can be healthy while the Windows Hyper-V `portproxy` publication layer is dead; prove controller path, guest-local path, and Windows host path separately, then restart `iphlpsvc` if needed |
 
 ---
 
