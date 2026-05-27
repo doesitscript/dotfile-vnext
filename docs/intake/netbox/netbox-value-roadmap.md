@@ -32,9 +32,12 @@ Active plans:
 
 Hyper-V lane complete. Edge dev hosts (`mac-dev`, `dev-3090-win`, `dev-workstation-win`) are a **separate deferred plan**, not this roadmap.
 
-### Step 3: Fix nb_inventory token source — OPEN
+### Step 3: Fix nb_inventory token source — DONE
 
-`inventory/netbox.yml` still uses `lookup('env', 'NETBOX_TOKEN')`. Prefer vault-backed or `.envrc`-loaded token without manual export.
+`inventory/netbox.yml` uses `lookup('env', 'NETBOX_TOKEN')` with token loaded by
+`bin/load-netbox-controller-env.sh` (vault → env, no secret in `.envrc`). LAN API
+`http://192.168.50.158:8000`; tunnel inventory `inventory/netbox_tunnel.yml`.
+See `.envrc.sample` and `roles/ipam_netbox/README.md` (Shadow Dynamic Inventory).
 
 ---
 

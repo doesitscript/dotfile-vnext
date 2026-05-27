@@ -1,9 +1,8 @@
 ---
+# Same as inventory/netbox.yml but API via Mac SSH tunnel to hom-lab-ctl-dkr-02 guest.
+# Use when LAN portproxy is down: ansible-inventory -i inventory/netbox_tunnel.yml --graph
 plugin: netbox.netbox.nb_inventory
-# LAN portproxy on hom-lab-ctl-hvh-02 (roles/ipam_netbox/README.md Network Access).
-# SSH tunnel instead: use inventory/netbox_tunnel.yml (127.0.0.1:18000).
-# Token: NETBOX_TOKEN from bin/load-netbox-controller-env.sh (.envrc / bin/codex-env).
-api_endpoint: http://192.168.50.158:8000
+api_endpoint: http://127.0.0.1:18000
 token: "{{ lookup('env', 'NETBOX_TOKEN') | default('') }}"
 validate_certs: false
 config_context: true
