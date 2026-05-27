@@ -94,7 +94,7 @@ Firewall rules and GPU driver inventory go through `-win` hosts via WinRM. Same 
 ```mermaid
 graph TD
   subgraph initial [Phase 1 - Active Deployment]
-    subgraph netSrvWin ["network-server-win (WinRM)"]
+    subgraph netSrvWin ["hom-lab-ctl-hvh-01 (WinRM)"]
       FW1["Firewall: k3s ports"]
     end
     subgraph netSrvWSL ["network-server-wsl (SSH)"]
@@ -204,7 +204,7 @@ Runs on Windows hosts via WinRM. Same pattern as [roles/access_identity_windows/
 
 Ports: TCP 6443 (API), UDP 8472 (Flannel VXLAN), TCP 10250 (kubelet).
 
-Targets `hom-lab-ctl-hvh-02` and `network-server-win`.
+Targets `hom-lab-ctl-hvh-02` and `hom-lab-ctl-hvh-01`.
 
 ---
 
@@ -260,7 +260,7 @@ When unblocked:
 ```yaml
 # Play 1: Open firewall ports on Windows hosts
 - name: Configure k3s firewall rules
-  hosts: hom-lab-ctl-hvh-02,network-server-win
+  hosts: hom-lab-ctl-hvh-02,hom-lab-ctl-hvh-01
   roles:
     - k3s_firewall
 
@@ -288,7 +288,7 @@ source .envrc
 export K3S_TOKEN=$(openssl rand -base64 32 | tr '/' '_')
 ansible-playbook playbooks/k3s_bootstrap.yaml \
   -i inventory/inventory.yaml \
-  --limit network-server-win,network-server-wsl,hom-lab-ctl-hvh-02,server-225-wsl
+  --limit hom-lab-ctl-hvh-01,network-server-wsl,hom-lab-ctl-hvh-02,server-225-wsl
 ```
 
 ### `playbooks/k3s_debug.yaml`
@@ -318,5 +318,4 @@ Standalone GPU validation (when unblocked).
 | CREATE | `playbooks/k3s_bootstrap.yaml`                                                        |
 | CREATE | `playbooks/k3s_debug.yaml`                                                            |
 | CREATE | `playbooks/k3s_gpu_validate.yaml` (BLOCKED)                                           |
-
 
