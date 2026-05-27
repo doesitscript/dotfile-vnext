@@ -158,11 +158,11 @@ migration_candidates:
 # 3. CROSS-NODE ENDPOINTS (CANONICAL BASE URLS)
 # ============================================================================
 endpoint_map:
-  langfuse_base_url: "http://network-server:3000"  # or http://<network_ip>:3000
-  minio_api_url: "http://network-server:9000"
-  minio_console_url: "http://network-server:9001"
-  ollama_base_url: "http://hom-lab-ctl-hvh-02:11434"  # only if other nodes need it
-  litellm_base_url: "http://hom-lab-ctl-hvh-02:4000"
+  langfuse_base_url: "http://hom-lab-ctl-hvh-01:3000"
+  minio_api_url: "http://hom-lab-ctl-hvh-01:9000"
+  minio_console_url: "http://hom-lab-ctl-hvh-01:9001"
+  ollama_base_url: "http://hom-lab-ctl-dkr-02:11434"
+  litellm_base_url: "http://hom-lab-ctl-dkr-02:4000"
   dev_ollama_base_url: "http://dev-3090:11434"  # optional
   dev_litellm_base_url: "http://dev-3090:4000"  # optional
 
@@ -222,17 +222,17 @@ ports:
   dev_ollama:
     port: 11434
     exposure: restricted  # or lan
-    allowed_sources: [mac-dev, hom-lab-ctl-hvh-02, network-server]  # your choice
+    allowed_sources: [mac-dev, hom-lab-ctl-hvh-02, hom-lab-ctl-hvh-01]
 
   dev_litellm:
     port: 4000
     exposure: restricted  # or lan
-    allowed_sources: [mac-dev, hom-lab-ctl-hvh-02, network-server]
+    allowed_sources: [mac-dev, hom-lab-ctl-hvh-02, hom-lab-ctl-hvh-01]
 
 port_recommendations:
   expose_to_lan: [langfuse_web, minio_api, minio_console, litellm_gateway]
   keep_restricted: [postgres, redis, clickhouse]
-  keep_localhost_only: [ollama]  # unless network-server must call it
+  keep_localhost_only: [ollama]  # unless hom-lab-ctl-hvh-01 must call it
 
 # ============================================================================
 # 5. SHARED SECRET CONTRACT
@@ -467,9 +467,9 @@ management_surfaces:
       - "<hostname>-wsl"  # SSH surface
     examples:
       - hom-lab-ctl-hvh-02
-      - server-225-wsl
-      - home-lab-auth-hvh-01
-      - network-server-wsl  # if WSL runtime chosen
+      - hom-lab-ctl-dkr-02
+      - hom-lab-ctl-hvh-01
+      - hom-lab-ctl-dkr-01
       - dev-3090-win
       - dev-3090-wsl
 

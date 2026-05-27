@@ -27,11 +27,11 @@
 #
 # .QUICK COMMANDS
 #   Run from repo root (after bootstrap-local.ps1): .\bin\bootstrap-ansible-local.ps1
-#   Explicit node:  .\bin\bootstrap-ansible-local.ps1 -PhysicalNode server-225
+#   Explicit node:  .\bin\bootstrap-ansible-local.ps1 -PhysicalNode hom-lab-ctl-hvh-02
 #   Skip fz at the end:  .\bin\bootstrap-ansible-local.ps1 -RunWslBootstrap:$false
 
 param(
-    # Physical node name (e.g., server-225, dev-3090, network-server).
+    # Physical node name (e.g., hom-lab-ctl-hvh-02, dev-3090, hom-lab-ctl-hvh-01).
     # Auto-detected from hostname if not provided.
     [string]$PhysicalNode = "",
     # If $true (default), unregister the WSL distribution if it already exists (wsl --unregister)
@@ -71,12 +71,17 @@ if (-not $PhysicalNode) {
         $lines = Get-Content $mappingPath
         $currentNode = $null
         foreach ($line in $lines) {
-            # Match 2-space indented node name under physical_nodes (e.g., "  server-225:")
+            # Match 2-space indented node name under physical_nodes (e.g., "  hom-lab-ctl-hvh-02:")
             if ($line -match '^\s{2}([a-z0-9_-]+):\s*$') {
                 $currentNode = $Matches[1]
             }
-            # Match hostname line and compare case-insensitively
             if ($currentNode -and $line -match 'hostname:\s*"?([^"#\s]+)"?') {
+                if ($Matches[1].ToUpper() -eq $detectedHostname) {
+                    $PhysicalNode = $currentNode
+                    break
+                }
+            }
+            if ($currentNode -and $line -match 'os_hostname:\s*"?([^"#\s]+)"?') {
                 if ($Matches[1].ToUpper() -eq $detectedHostname) {
                     $PhysicalNode = $currentNode
                     break
@@ -87,7 +92,7 @@ if (-not $PhysicalNode) {
 
     if (-not $PhysicalNode) {
         Write-Error "[ERROR] Could not auto-detect physical node from hostname '$($env:COMPUTERNAME)'." -ErrorAction Continue
-        Write-Host "  Pass -PhysicalNode <name> explicitly (e.g., server-225, dev-3090, network-server)" -ForegroundColor Yellow
+        Write-Host "  Pass -PhysicalNode <name> explicitly (e.g., hom-lab-ctl-hvh-02, dev-3090, hom-lab-ctl-hvh-01)" -ForegroundColor Yellow
         Write-Host "  Or ensure this machine's hostname is in inventory/hosts_mapping.yaml" -ForegroundColor Yellow
         exit 1
     }
@@ -97,10 +102,35 @@ if (-not $PhysicalNode) {
 }
 
 # ============================================================================
-# File paths based on physical node (no hardcoded node names)
+# File paths from hosts_mapping inventory host aliases (compact schema)
 # ============================================================================
-$wslHostVarsPath = Join-Path $repoRoot "inventory\host_vars\$PhysicalNode-wsl.yaml"
-$winHostVarsPath = Join-Path $repoRoot "inventory\host_vars\$PhysicalNode-win.yaml"
+$mappingPath = Join-Path $repoRoot "inventory\hosts_mapping.yaml"
+$winInventoryHost = $PhysicalNode
+$linuxInventoryHost = $null
+if (Test-Path $mappingPath) {
+    $inNode = $false
+    foreach ($line in Get-Content $mappingPath) {
+        if ($line -match "^\s{2}$([regex]::Escape($PhysicalNode)):\s*`$") {
+            $inNode = $true
+            continue
+        }
+        if ($inNode -and $line -match '^\s{2}[a-z0-9_-]+:\s*$') {
+            break
+        }
+        if ($inNode -and $line -match 'inventory_windows_host:\s*([a-z0-9_-]+)') {
+            $winInventoryHost = $Matches[1]
+        }
+        if ($inNode -and $line -match 'inventory_linux_vm_host:\s*([a-z0-9_-]+)') {
+            $linuxInventoryHost = $Matches[1]
+        }
+    }
+}
+$winHostVarsPath = Join-Path $repoRoot "inventory\host_vars\$winInventoryHost.yaml"
+if ($linuxInventoryHost) {
+    $wslHostVarsPath = Join-Path $repoRoot "inventory\host_vars\$linuxInventoryHost.yaml"
+} else {
+    $wslHostVarsPath = Join-Path $repoRoot "inventory\host_vars\$PhysicalNode-wsl.yaml"
+}
 Write-Verbose "wslHostVarsPath=$wslHostVarsPath"
 Write-Verbose "winHostVarsPath=$winHostVarsPath"
 

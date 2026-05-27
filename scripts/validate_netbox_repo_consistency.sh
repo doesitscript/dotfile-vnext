@@ -77,7 +77,8 @@ if search_fixed_string "${retired_name}" "${active_paths[@]}" >/tmp/netbox-repo-
         ;;
     esac
 
-    if [[ "$hit" == inventory/hosts_mapping.yaml:*"- ${retired_name}"* ]] ||
+    if [[ "$hit" == inventory/hosts_mapping.yaml:*"legacy_physical_node_aliases"* ]] ||
+       [[ "$hit" == inventory/hosts_mapping.yaml:*"- ${retired_name}"* ]] ||
        [[ "$hit" == "inventory/host_vars/${current_name}.yaml:"*"- ${retired_name}"* ]] ||
        [[ "$hit" == inventory/group_vars/hyperv_lane_storage/*:*"- ${retired_name}"* ]] ||
        [[ "$hit" == inventory/group_vars/hyperv_lane_gpu/*:*"- ${retired_name}"* ]] ||

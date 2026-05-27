@@ -20,18 +20,22 @@
 # Bootstrap scripts (bin/bootstrap-local*.sh/ps1) auto-detect physical_node by matching
 # the local machine's hostname (case-insensitive) against `os_hostname` below.
 physical_nodes:
-  server-225:
+  hom-lab-ctl-hvh-02:
     os_hostname: "hom-lab-ctl-hvh-02"
     inventory_windows_host: hom-lab-ctl-hvh-02
+    inventory_linux_vm_host: hom-lab-ctl-dkr-02
     ip_address: "192.168.50.158"
     ipv6_address: "fdfa:7038:521c:a5fa:7c9:f4a1:90b8:1b1e"
-    # Bootstrap compatibility: legacy key read by bootstrap-local*.sh|ps1
-    hostname: "hom-lab-ctl-hvh-02"
+    # Bootstrap autodetect: match Windows COMPUTERNAME (see ansible_surfaces os_hostname)
+    hostname: "DESKTOP-VLLM"
+    legacy_physical_node_aliases:
+      - server-225
 
   hom-lab-ctl-hvh-01:
     os_hostname: "hom-lab-ctl-hvh-01"
     router_hostname: "ai-net-server-mgmt"
     inventory_windows_host: hom-lab-ctl-hvh-01
+    inventory_linux_vm_host: hom-lab-ctl-dkr-01
     ip_address: "192.168.50.234"
     ip_address_original: "192.168.50.233"
     legacy_aliases:

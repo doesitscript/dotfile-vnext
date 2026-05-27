@@ -621,7 +621,7 @@ run_local_bootstrap_playbook() {
 }
 
 # Install controller SSH private key on this machine from vault/controller_ssh.vault.yml.
-# Part of server-225 / controller bootstrap: run on the machine that will SSH to server-225-wsl (e.g. Mac).
+# Controller bootstrap: run on the machine that will SSH to hom-lab-ctl-dkr-02 (e.g. Mac).
 run_controller_ssh_install() {
   local repo_root
   repo_root="$(repo_root)"
@@ -801,12 +801,12 @@ Commands:
                         Requires --limit or --all
                         Legacy orchestration wrapper. Prefer explicit
                         ansible-playbook commands when a focused playbook exists.
-    main                 Deploy main stacks (server-225)
-    network              Deploy network stacks (network-server)
+    main                 Deploy GPU-lane stacks (hom-lab-ctl-dkr-02 / hyperv_lane_gpu)
+    network              Deploy storage-lane stacks (hom-lab-ctl-hvh-01 / hyperv_lane_storage)
                         Prompts for confirmation unless --yes is provided
     dev                  Deploy dev stacks (dev-3090)
   verify                 Verify entire fabric (no --limit required)
-  controller-ssh-install Install controller SSH private key on this machine from vault (server-225 bootstrap).
+  controller-ssh-install Install controller SSH private key on this machine from vault (controller bootstrap).
                         Run on the controller (e.g. Mac) after WSL node has run bootstrap.
   collect-facts          Write facts for a node to facts/<node>.json
                         Requires --limit (e.g. --limit mac-dev)
@@ -849,7 +849,7 @@ Examples:
   fz --help                                 Show command help and exit
   fz bootstrap --limit hom-lab-ctl-hvh-02      Run local bootstrap path for hom-lab-ctl-hvh-02
   fz bootstrap --limit mac-dev --SSHGenForce  Mac bootstrap and (re)generate OpenSSH host keys
-  fz bootstrap-winrm --limit hom-lab-ctl-hvh-02  Run WinRM bootstrap playbook for server-225
+  fz bootstrap-winrm --limit hom-lab-ctl-hvh-02  Run WinRM bootstrap playbook for hom-lab-ctl-hvh-02
   fz bootstrap-ssh --limit hom-lab-ctl-dkr-02  Run SSH deploy phase for hom-lab-ctl-dkr-02
   fz bootstrap-openssh-host-keys            Generate host keys on Mac (for Windows OpenSSH)
   fz bootstrap --limit hom-lab-ctl-dkr-02  Run full bootstrap flow for one Docker host target

@@ -89,6 +89,35 @@ require_limit_or_all() {
   fi
 }
 
+# Legacy limit aliases (server-225, network-server, main) map to compact-schema lanes.
+fz_limit_is_gpu_lane() {
+  case "$1" in
+    hom-lab-ctl-hvh-02|hom-lab-ctl-dkr-02|hom-lab-ctl-k3s-02|hyperv_lane_gpu|main)
+      return 0
+      ;;
+  esac
+  case "$1" in
+    *hom-lab-ctl-hvh-02*|*hom-lab-ctl-dkr-02*|*hom-lab-ctl-k3s-02*|*hyperv_lane_gpu*|*server-225*|*main*)
+      [[ "$1" != *"-win" ]] && return 0
+      ;;
+  esac
+  return 1
+}
+
+fz_limit_is_storage_lane() {
+  case "$1" in
+    hom-lab-ctl-hvh-01|hom-lab-ctl-dkr-01|hom-lab-ctl-k3s-01|hyperv_lane_storage|network-server|network_server)
+      return 0
+      ;;
+  esac
+  case "$1" in
+    *hom-lab-ctl-hvh-01*|*hom-lab-ctl-dkr-01*|*hom-lab-ctl-k3s-01*|*hyperv_lane_storage*|*network-server*|*network_server*)
+      [[ "$1" != *"-win" ]] && return 0
+      ;;
+  esac
+  return 1
+}
+
 # Parse command
 COMMAND="${1:-}"
 shift || true
@@ -170,22 +199,20 @@ case "${COMMAND}" in
       fi
       # Check which playbook matches the limit (skip if already handled above).
       if [[ "${mac_only_bootstrap:-false}" != true ]] && [[ "${local_only_bootstrap:-false}" != true ]]; then
-        if ([[ "${limit_value}" == *"server-225"* ]] || [[ "${limit_value}" == *"main"* ]]) && [[ "${limit_value}" != *"-win" ]]; then
-          fz_ansible "playbooks/bootstrap_server_225.yaml" "${all_args[@]}"
+        if fz_limit_is_gpu_lane "${limit_value}"; then
+          fz_ansible "playbooks/access.yaml" --limit 'execution_nodes,hyperv_lane_gpu' "${all_args[@]}"
         fi
-        if [[ "${limit_value}" == *"network"* ]] && [[ "${limit_value}" != *"-win" ]]; then
-          fz_ansible "playbooks/bootstrap_network_server.yaml" "${all_args[@]}"
+        if fz_limit_is_storage_lane "${limit_value}"; then
+          fz_ansible "playbooks/access.yaml" --limit 'execution_nodes,hyperv_lane_storage' "${all_args[@]}"
         fi
         if ([[ "${limit_value}" == *"dev-3090"* ]] || [[ "${limit_value}" == *"dev"* ]]) && [[ "${limit_value}" != "mac-dev" ]] && [[ "${limit_value}" != *"-win" ]]; then
-          fz_ansible "playbooks/bootstrap_dev_3090.yaml" "${all_args[@]}"
+          fz_ansible "playbooks/provision_dev_3090.yaml" "${all_args[@]}"
         fi
       fi
     elif [ "${has_all}" = true ]; then
       log_check "bootstrap mode: --all"
-      # --all: run all bootstrap playbooks
-      fz_ansible "playbooks/bootstrap_server_225.yaml" "${all_args[@]}"
-      fz_ansible "playbooks/bootstrap_network_server.yaml" "${all_args[@]}"
-      fz_ansible "playbooks/bootstrap_dev_3090.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/access.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/provision_dev_3090.yaml" "${all_args[@]}"
     fi
 
     # Windows bootstrap (-win limit) is a phase-1-only path.
@@ -203,24 +230,27 @@ case "${COMMAND}" in
     fi
 
     log_step "Phase 2: Verify"
-    fz_ansible "playbooks/verify_fabric.yaml" "${all_args[@]}"
+    fz_ansible "playbooks/gather_facts.yaml" "${all_args[@]}"
     
     log_step "Phase 3: Deploy Stacks"
-    # Deploy main/dev stacks based on limit
     if [ "${has_limit}" = true ]; then
-      if [[ "${limit_value}" == *"server-225"* ]] || [[ "${limit_value}" == *"main"* ]]; then
-        fz_ansible "playbooks/deploy_main_stacks.yaml" "${all_args[@]}"
+      if fz_limit_is_gpu_lane "${limit_value}"; then
+        fz_ansible "playbooks/deploy_network_stacks_hvh02.yaml" "${all_args[@]}"
+      fi
+      if fz_limit_is_storage_lane "${limit_value}"; then
+        fz_ansible "playbooks/deploy_network_stacks.yaml" "${all_args[@]}"
       fi
       if [[ "${limit_value}" == *"dev-3090"* ]] || [[ "${limit_value}" == *"dev"* ]]; then
-        fz_ansible "playbooks/deploy_dev_stacks.yaml" "${all_args[@]}"
+        fz_ansible "playbooks/provision_dev_3090.yaml" "${all_args[@]}"
       fi
     elif [ "${has_all}" = true ]; then
-      fz_ansible "playbooks/deploy_main_stacks.yaml" "${all_args[@]}"
-      fz_ansible "playbooks/deploy_dev_stacks.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/deploy_network_stacks_hvh02.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/deploy_network_stacks.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/provision_dev_3090.yaml" "${all_args[@]}"
     fi
     
     log_step "Phase 4: Final Verify"
-    if fz_ansible "playbooks/verify_fabric.yaml" "${all_args[@]}"; then
+    if fz_ansible "playbooks/gather_facts.yaml" "${all_args[@]}"; then
       notify "FuzLang Bootstrap" "Bootstrap completed successfully"
     fi
     ;;
@@ -263,21 +293,18 @@ case "${COMMAND}" in
     
     # Run appropriate bootstrap playbooks
     if [ "${has_limit}" = true ]; then
-      # Check which playbook matches the limit
-      if [[ "${limit_value}" == *"server-225"* ]] || [[ "${limit_value}" == *"main"* ]]; then
-        fz_ansible "playbooks/bootstrap_server_225.yaml" "${all_args[@]}"
+      if fz_limit_is_gpu_lane "${limit_value}"; then
+        fz_ansible "playbooks/access.yaml" --limit 'execution_nodes,hyperv_lane_gpu' "${all_args[@]}"
       fi
-      if [[ "${limit_value}" == *"network"* ]]; then
-        fz_ansible "playbooks/bootstrap_network_server.yaml" "${all_args[@]}"
+      if fz_limit_is_storage_lane "${limit_value}"; then
+        fz_ansible "playbooks/access.yaml" --limit 'execution_nodes,hyperv_lane_storage' "${all_args[@]}"
       fi
       if [[ "${limit_value}" == *"dev-3090"* ]] || [[ "${limit_value}" == *"dev"* ]]; then
-        fz_ansible "playbooks/bootstrap_dev_3090.yaml" "${all_args[@]}"
+        fz_ansible "playbooks/provision_dev_3090.yaml" "${all_args[@]}"
       fi
     elif [ "${has_all}" = true ]; then
-      # --all: run all bootstrap playbooks
-      fz_ansible "playbooks/bootstrap_server_225.yaml" "${all_args[@]}"
-      fz_ansible "playbooks/bootstrap_network_server.yaml" "${all_args[@]}"
-      fz_ansible "playbooks/bootstrap_dev_3090.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/access.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/provision_dev_3090.yaml" "${all_args[@]}"
     fi
     
     # Send notification on success
@@ -312,17 +339,19 @@ case "${COMMAND}" in
     
     # Run appropriate deploy playbooks
     if [ "${has_limit}" = true ]; then
-      # Check which playbook matches the limit
-      if [[ "${limit_value}" == *"server-225"* ]] || [[ "${limit_value}" == *"main"* ]]; then
-        fz_ansible "playbooks/deploy_main_stacks.yaml" "${all_args[@]}"
+      if fz_limit_is_gpu_lane "${limit_value}"; then
+        fz_ansible "playbooks/deploy_network_stacks_hvh02.yaml" "${all_args[@]}"
+      fi
+      if fz_limit_is_storage_lane "${limit_value}"; then
+        fz_ansible "playbooks/deploy_network_stacks.yaml" "${all_args[@]}"
       fi
       if [[ "${limit_value}" == *"dev-3090"* ]] || [[ "${limit_value}" == *"dev"* ]]; then
-        fz_ansible "playbooks/deploy_dev_stacks.yaml" "${all_args[@]}"
+        fz_ansible "playbooks/provision_dev_3090.yaml" "${all_args[@]}"
       fi
     elif [ "${has_all}" = true ]; then
-      # --all: run all deploy playbooks
-      fz_ansible "playbooks/deploy_main_stacks.yaml" "${all_args[@]}"
-      fz_ansible "playbooks/deploy_dev_stacks.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/deploy_network_stacks_hvh02.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/deploy_network_stacks.yaml" "${all_args[@]}"
+      fz_ansible "playbooks/provision_dev_3090.yaml" "${all_args[@]}"
     fi
     ;;
   deploy)
@@ -379,20 +408,17 @@ case "${COMMAND}" in
     
     case "${DEPLOY_TARGET}" in
       main)
-        fz_ansible "playbooks/deploy_main_stacks.yaml" "$@"
-        ;;
-      main)
-        if fz_ansible "playbooks/deploy_main_stacks.yaml" "$@"; then
-          notify "FuzLang Deploy" "Main stacks deployed successfully"
+        if fz_ansible "playbooks/deploy_network_stacks_hvh02.yaml" "$@"; then
+          notify "FuzLang Deploy" "GPU-lane stacks deployed successfully"
         fi
         ;;
       network)
         if fz_ansible "playbooks/deploy_network_stacks.yaml" "$@"; then
-          notify "FuzLang Deploy" "Network stacks deployed successfully"
+          notify "FuzLang Deploy" "Storage-lane stacks deployed successfully"
         fi
         ;;
       dev)
-        if fz_ansible "playbooks/deploy_dev_stacks.yaml" "$@"; then
+        if fz_ansible "playbooks/provision_dev_3090.yaml" "$@"; then
           notify "FuzLang Deploy" "Dev stacks deployed successfully"
         fi
         ;;
@@ -409,15 +435,14 @@ case "${COMMAND}" in
       log_info "CHECK MODE: No changes will be applied"
     fi
 
-    if fz_ansible "playbooks/verify_fabric.yaml" "$@"; then
+    if fz_ansible "playbooks/gather_facts.yaml" "$@"; then
       notify "FuzLang Verify" "Fabric verification completed successfully"
     fi
     ;;
   ping)
-    # Ad-hoc ping: uses .venv and inventory. Example: fz ping server-225-wsl
     if [ $# -eq 0 ]; then
-      log_error "ping requires a host pattern (e.g. server-225-wsl or all)"
-      log_info "Example: fz ping server-225-wsl"
+      log_error "ping requires a host pattern (e.g. hom-lab-ctl-dkr-02 or all)"
+      log_info "Example: fz ping hom-lab-ctl-dkr-02"
       log_info "Example: fz ping all"
       exit 1
     fi
@@ -430,7 +455,7 @@ case "${COMMAND}" in
     fz_ansible "playbooks/bootstrap_openssh_host_keys.yaml" $force_arg
     ;;
   controller-ssh-install)
-    # Install controller SSH private key on this machine from vault (part of server-225 bootstrap).
+    # Install controller SSH private key on this machine from vault (controller bootstrap).
     run_controller_ssh_install "$@"
     ;;
   collect-facts)
