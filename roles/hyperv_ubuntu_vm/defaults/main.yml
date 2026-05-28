@@ -35,10 +35,19 @@ hyperv_ubuntu_vm_cloud_init_install_packages: false
 hyperv_ubuntu_vm_cloud_init_refresh_dhcp: false
 hyperv_ubuntu_vm_source_mode: azure_cloud_image
 hyperv_ubuntu_vm_publish_connection_facts: true
-hyperv_ubuntu_vm_cloud_image_offline_seed_enabled: true
+# Azure cloud-image offline seed defaults to off on server lanes. Historical bootstrap
+# used wsl.exe --mount on the Windows Hyper-V host; that path is desktop/bootstrap
+# only. Hyper-V server automation must use linux_openssh_delegate (future) or
+# server_iso_installer instead of WSL.
+hyperv_ubuntu_vm_cloud_image_offline_seed_enabled: false
 hyperv_ubuntu_vm_cloud_image_offline_seed_version: offline-seed-v2
+# disabled | wsl (legacy desktop/bootstrap) | linux_openssh_delegate (OpenSSH guest)
+hyperv_ubuntu_vm_cloud_image_offline_seed_mount_provider: disabled
+# Inventory host for linux_openssh_delegate, e.g. hom-lab-ctl-dkr-02 on the same physical node.
+hyperv_ubuntu_vm_cloud_image_offline_seed_linux_delegate_host: ""
 hyperv_ubuntu_vm_cloud_image_offline_mount_partition: 1
 hyperv_ubuntu_vm_cloud_image_offline_mount_name: "{{ hyperv_ubuntu_vm_name }}-root"
+# WSL-only mount root when mount_provider=wsl. Do not use on Hyper-V server lanes.
 hyperv_ubuntu_vm_cloud_image_offline_root_mount: >-
   /mnt/wsl/{{ hyperv_ubuntu_vm_cloud_image_offline_mount_name }}
 hyperv_ubuntu_vm_bootstrap_uid: 1000

@@ -56,3 +56,17 @@ hyperv_guest_route_gateway: "192.168.50.158"
   upstream router learns the guest subnet.
 - Router-side guidance lives here:
   [docs/diagnostics/hyperv-router-static-route-guide.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-router-static-route-guide.md)
+
+## Related DNS (separate from this role)
+
+This role manages **mac-dev routes** to guest subnets. It does **not** publish
+LAN-wide DNS names on the ASUS router.
+
+| Job | What it does | Doc |
+|-----|----------------|-----|
+| Job 1 — routing | Packets to `192.168.137.x` (router static route + this role on Mac) | [hyperv-router-static-route-guide.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-router-static-route-guide.md) |
+| Job 2 — host DNS | Optional `*.hom.lab` on GT6 manual DHCP table | [asus-gt6-stock-local-dns-option-c.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/asus-gt6-stock-local-dns-option-c.md) |
+
+Stock GT6 **cannot** add manual DHCP rows for `192.168.137.10` / `.11`. Use IP
+or future `homelab_hosts_file_mac` on `mac-dev`. See
+[router_local_dns README](../router_local_dns/README.md).

@@ -13,8 +13,9 @@ Stateful role for a Hyper-V-native Ubuntu VM on a Windows host.
   - `server_iso_installer`
 - build a NoCloud `CIDATA` seed image from the controller only for the
   `azure_cloud_image` path
-- optionally seed Azure cloud-image root filesystems offline through WSL before
-  first Hyper-V boot when NoCloud handoff is not enough for a lab host
+- optionally seed Azure cloud-image root filesystems offline before first
+  Hyper-V boot when NoCloud handoff is not enough; server lanes must not use
+  `wsl.exe --mount` (see `hyperv_ubuntu_vm_cloud_image_offline_seed_mount_provider`)
 - download Canonical's published source artifact and reconcile it into a
   role-owned VHDX on the Windows host
 - publish the guest back into the configured Ubuntu inventory identity
@@ -124,8 +125,11 @@ Dedicated saved-artifact playbook:
     - now supports the same static guest-network contract used by the
       installer path, rendered through cloud-init when
       `hyperv_ubuntu_vm_autoinstall_network_method: static`
-    - can apply an idempotent offline seed to the VHDX rootfs through WSL when
+    - can apply an idempotent offline seed to the VHDX rootfs when
       `hyperv_ubuntu_vm_cloud_image_offline_seed_enabled: true`
+    - mount provider `wsl` uses legacy `wsl.exe --mount` (desktop/bootstrap only);
+      server Hyper-V lanes must keep the default `disabled` or use
+      `linux_openssh_delegate` once implemented
     - the offline seed writes the bootstrap user, controller SSH key, static
       netplan config, hostname, passwordless sudo for automation, and SSH
       service enablement directly into the image

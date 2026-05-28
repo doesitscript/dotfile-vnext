@@ -351,15 +351,40 @@
       controller_pubkey_sha256={{ controller_pub_key_content | hash('sha256') }}
   when: hyperv_ubuntu_vm_cloud_image_offline_seed_enabled | bool
 
+- name: Require supported mount provider when Azure offline seed is enabled
+  ansible.builtin.assert:
+    that:
+      - hyperv_ubuntu_vm_cloud_image_offline_seed_mount_provider in ['wsl', 'linux_openssh_delegate']
+    fail_msg: >-
+      hyperv_ubuntu_vm_cloud_image_offline_seed_enabled is true but mount provider is
+      '{{ hyperv_ubuntu_vm_cloud_image_offline_seed_mount_provider }}'.
+      Server Hyper-V lanes must not rely on implicit WSL defaults. Set mount_provider to
+      linux_openssh_delegate (with linux_delegate_host) or disable offline seed.
+      wsl.exe --mount is legacy desktop/bootstrap only.
+  when:
+    - hyperv_ubuntu_vm_cloud_image_offline_seed_enabled | bool
+    - hyperv_ubuntu_vm_cloud_image_offline_seed_mount_provider == 'disabled'
+
+- name: Block unimplemented Linux OpenSSH delegate offline seed path
+  ansible.builtin.fail:
+    msg: >-
+      hyperv_ubuntu_vm_cloud_image_offline_seed_mount_provider=linux_openssh_delegate is
+      not implemented yet. Use server_iso_installer source mode, disable offline seed, or
+      document explicit desktop-only WSL opt-in with mount_provider=wsl.
+  when:
+    - hyperv_ubuntu_vm_cloud_image_offline_seed_enabled | bool
+    - hyperv_ubuntu_vm_cloud_image_offline_seed_mount_provider == 'linux_openssh_delegate'
+
 - name: Render Azure cloud image offline seed script on Windows host
   ansible.windows.win_template:
     src: azure-offline-seed.sh.j2
     dest: "{{ hyperv_ubuntu_vm_host_offline_seed_script_path }}"
   when:
     - hyperv_ubuntu_vm_cloud_image_offline_seed_enabled | bool
+    - hyperv_ubuntu_vm_cloud_image_offline_seed_mount_provider in ['wsl', 'linux_openssh_delegate']
     - not ansible_check_mode
 
-- name: Apply Azure cloud image offline seed to boot disk
+- name: Apply Azure cloud image offline seed to boot disk via WSL mount (legacy desktop/bootstrap)
   ansible.windows.win_powershell:
     error_action: stop
     script: |
@@ -476,6 +501,7 @@
       }
   when:
     - hyperv_ubuntu_vm_cloud_image_offline_seed_enabled | bool
+    - hyperv_ubuntu_vm_cloud_image_offline_seed_mount_provider == 'wsl'
     - not ansible_check_mode
 
 - name: Copy NoCloud seed image to Windows host

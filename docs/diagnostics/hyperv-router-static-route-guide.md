@@ -190,6 +190,10 @@ On the upstream router, add a static route with these values:
 | Gateway / next hop | `192.168.50.158` |
 | Interface | LAN / main home network |
 
+Current operator-applied status for the GPU lane is tracked separately here:
+
+- [asus-gt6-gpu-lane-router-current-state.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/asus-gt6-gpu-lane-router-current-state.md)
+
 If the storage lane later moves to the same model, add:
 
 | Field | Value |
@@ -273,3 +277,5 @@ Use this rule for each Hyper-V guest lane:
 - [hyperv-network-layout--windows--routed-private-subnet.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hyperv-network-layout--windows--routed-private-subnet.md)
 - [roles/hyperv_networking/README.md](/Users/joshc/develop/dotfile-vnext/roles/hyperv_networking/README.md)
 - [roles/hyperv_guest_route_mac/README.md](/Users/joshc/develop/dotfile-vnext/roles/hyperv_guest_route_mac/README.md)
+- [asus-gt6-gpu-lane-router-current-state.md](asus-gt6-gpu-lane-router-current-state.md) — Job 1 applied on GT6
+- [asus-gt6-stock-local-dns-option-c.md](asus-gt6-stock-local-dns-option-c.md) — optional Job 2 hostnames (separate from routing)
