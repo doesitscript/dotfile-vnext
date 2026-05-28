@@ -17,11 +17,11 @@ one-line summary row to the index below.
 
 ## Index
 
-### `windows/` — Windows host, WSL, WinRM, PowerShell, OpenSSH
+### `windows/` — Windows host, WinRM, PowerShell, OpenSSH
 
 | File | One-line summary |
 |---|---|
-| [wsl-idle-shutdown-and-wslconfig-parsing.md](windows/wsl-idle-shutdown-and-wslconfig-parsing.md) | WSL 2.6.x shuts down after ~8s idle; `vmIdleTimeout` is ignored; CRLF in `.wslconfig` silently rejects the entire file; fix is a keepalive scheduled task running as the user |
+| *(desktop WSL tips)* | See [desktop-wsl-optional.md](../reference/desktop-wsl-optional.md); historical WSL idle-shutdown narrative in [archive docker-ssh-fix report](../archive/wsl-deprecating/reports/2026-03-08--docker-ssh-fix-deprecating.md) |
 
 ### `ansible/` — Ansible engine, modules, WinRM transport, lint
 
@@ -43,7 +43,7 @@ one-line summary row to the index below.
 |---|---|
 | *(empty — add entries here)* | |
 
-### `linux/` — Linux distros (WSL and bare-metal), systemd, networking
+### `linux/` — Linux distros (bare-metal and Hyper-V guests), systemd, networking
 
 | File | One-line summary |
 |---|---|
@@ -79,9 +79,9 @@ should be migrated into this library when time allows:
 lessons-learned/
 ├── README.md          ← this file (index)
 ├── codex/             ← Codex behavior, framework design, instruction workflow
-├── windows/           ← Windows host, WSL, WinRM, PowerShell, OpenSSH
+├── windows/           ← Windows host, WinRM, PowerShell, OpenSSH
 ├── ansible/           ← Ansible engine, modules, WinRM transport, lint
 ├── docker/            ← Docker Engine, contexts, Compose, daemon config
-├── linux/             ← Linux (WSL + bare-metal), systemd, networking
+├── linux/             ← Linux guests and bare-metal, systemd, networking
 └── networking/        ← Hyper-V, bridged/NAT, firewall, SSH routing
 ```
