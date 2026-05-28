@@ -13,6 +13,8 @@ ipam_netbox_remove_volumes_on_absent: false
 # subnet is not reachable from every controller process.
 ipam_netbox_api_url: "http://{{ hostvars['hom-lab-ctl-hvh-02'].host_ip | default(ansible_host) }}:{{ ipam_netbox_http_port.split(':')[0] }}"
 ipam_netbox_api_token_description: dotfile-vnext Ansible automation
+# Set false when seeding from localhost and dkr-02 is unreachable (token already in vault).
+ipam_netbox_bootstrap_api_token_on_host: true
 # Controller-side vault path workaround:
 # playbook_dir/../vault.yml breaks when playbook_dir is the repo root (ad-hoc
 # include_role). role_path always resolves to roles/ipam_netbox, so two dirnames
@@ -387,13 +389,19 @@ ipam_netbox_hom_lab_ctl_hvh_02_model:
         - 30000
       ipaddresses:
         - address: 192.168.137.11/24
-      description: Langfuse platform web UI on K3s (NodePort)
-      primary_access_point: "http://{{ ipam_netbox_lan_publish_host }}:30000/"
-      comments: Langfuse on hom-lab-ctl-k3s-02; NodePort 30000; LAN-published via hom-lab-ctl-hvh-02 portproxy.
+      description: Langfuse platform web UI on K3s (Traefik ingress + NodePort fallback)
+      primary_access_point: "http://langfuse.hom.lab/"
+      comments: >-
+        Langfuse on hom-lab-ctl-k3s-02; canonical operator path via Traefik :80 portproxy;
+        fallback NodePort 30000 via langfuse-k3s portproxy row.
       custom_fields:
         compose_project: langfuse
         deployed_by_role: k3s_langfuse_platform
         stack_name: langfuse
+        ingress_hostname: langfuse.hom.lab
+        ingress_class: traefik
+        fallback_access_point: "http://{{ ipam_netbox_lan_publish_host }}:30000/"
+        logical_hostname: hom-lab-ctl-lfs-01
       tags:
         - ansible-managed
         - service-endpoint
@@ -402,6 +410,7 @@ ipam_netbox_hom_lab_ctl_hvh_02_model:
         - k3s
         - homelab
         - lan-exposed-services
+        - traefik-routed
     - name: litellm-k3s-gateway
       virtual_machine: hom-lab-ctl-k3s-02
       protocol: tcp
@@ -409,20 +418,28 @@ ipam_netbox_hom_lab_ctl_hvh_02_model:
         - 30400
       ipaddresses:
         - address: 192.168.137.11/24
-      description: LiteLLM OpenAI-compatible gateway on K3s (supplemental NodePort)
-      primary_access_point: "http://{{ ipam_netbox_lan_publish_host }}:30400/"
-      comments: LiteLLM gateway on hom-lab-ctl-k3s-02; NodePort 30400; uses external Postgres on hom-lab-ctl-dkr-02.
+      description: LiteLLM OpenAI-compatible gateway on K3s (Traefik ingress + NodePort fallback)
+      primary_access_point: "http://litellm.hom.lab/"
+      comments: >-
+        LiteLLM on hom-lab-ctl-k3s-02; canonical operator path via Traefik :80 portproxy;
+        fallback NodePort 30400 via litellm-k3s portproxy row.
       custom_fields:
         compose_project: litellm
         deployed_by_role: k3s_litellm_gateway
         stack_name: litellm
+        ingress_hostname: litellm.hom.lab
+        ingress_class: traefik
+        fallback_access_point: "http://{{ ipam_netbox_lan_publish_host }}:30400/"
+        logical_hostname: hom-lab-ctl-llm-01
       tags:
         - ansible-managed
         - service-endpoint
+        - web-ui
         - infra
         - k3s
         - homelab
         - lan-exposed-services
+        - traefik-routed
 
 ipam_netbox_windows_share_hosts_model:
   site: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.site }}"

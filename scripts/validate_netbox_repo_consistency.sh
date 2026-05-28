@@ -143,6 +143,54 @@ for retired_compact_name in "${retired_compact_name_patterns[@]}"; do
   rm -f /tmp/netbox-repo-compact-rg.$$
 done
 
+banned_operator_hostnames=(
+  "langfuse.local"
+  "litellm.local"
+)
+
+banned_active_paths=(
+  AGENTS.md
+  bin
+  contracts
+  docs/brainstorming_designs
+  docs/diagnostics
+  docs/intake
+  docs/operator_runbook.md
+  docs/plans
+  docs/reference/naming-standards
+  inventory
+  playbooks
+  roles
+  scripts
+)
+
+for banned_hostname in "${banned_operator_hostnames[@]}"; do
+  if search_fixed_string "$banned_hostname" "${banned_active_paths[@]}" >/tmp/netbox-repo-banned-rg.$$ 2>/dev/null; then
+    while IFS= read -r hit; do
+      case "$hit" in
+        scripts/validate_netbox_repo_consistency.sh:*)
+          continue
+          ;;
+        docs/reference/naming-standards/*)
+          continue
+          ;;
+        docs/plans/2026-05-27--k3s-hyperv-traefik-implemented/README.md:*G3*)
+          continue
+          ;;
+        docs/plans/2026-05-27--k3s-hyperv-traefik-implemented/README.md:*langfuse.local*)
+          continue
+          ;;
+        *"deprecated"*|*"banned"*|*"Do not use"*|*"deprecated_pilot"*|*"fails on"*)
+          continue
+          ;;
+      esac
+      add_failure "Banned operator hostname ${banned_hostname} in active repo path: ${hit}"
+    done < /tmp/netbox-repo-banned-rg.$$
+  fi
+  rm -f /tmp/netbox-repo-banned-rg.$$
+done
+
+
 if ((${#failures[@]} > 0)); then
   printf 'NetBox/repo consistency check failed.\n\n' >&2
   printf 'Retired alias: %s\nCurrent name: %s\n\n' "$retired_label" "$current_name" >&2

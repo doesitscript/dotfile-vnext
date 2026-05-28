@@ -1,0 +1,33 @@
+---
+# Controller-local NetBox API seeding when hom-lab-ctl-dkr-02 SSH is unavailable.
+# Tasks delegate_to localhost internally; play host is localhost for vault/API access.
+- name: Seed NetBox tags and Service custom fields (localhost)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Seed canonical NetBox tags via API
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: seed_tags
+      tags:
+        - ipam_netbox_seed_tags
+
+    - name: Seed Service custom fields via API
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: seed_custom_fields
+      tags:
+        - ipam_netbox_seed_custom_fields
+
+- name: Seed hom-lab-ctl-hvh-02 NetBox model (localhost)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Seed GPU-lane NetBox model via API
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: seed_hom_lab_ctl_hvh_02_model
+      tags:
+        - ipam_netbox_seed_hom_lab_ctl_hvh_02_model

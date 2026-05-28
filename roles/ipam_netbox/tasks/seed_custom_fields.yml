@@ -26,6 +26,7 @@
         - ipam_netbox
         - ipam_netbox_api_token
         - ipam_netbox_seed_custom_fields
+  when: ipam_netbox_bootstrap_api_token_on_host | bool
   tags:
     - ipam_netbox
     - ipam_netbox_api_token
@@ -85,6 +86,30 @@
       object_types:
         - ipam.service
       description: Homelab stack identifier for grouping related services
+    - name: ingress_hostname
+      label: Ingress hostname
+      type: text
+      object_types:
+        - ipam.service
+      description: Operator hostname for Traefik ingress (pilot .local or hom.lab cutover)
+    - name: ingress_class
+      label: Ingress class
+      type: text
+      object_types:
+        - ipam.service
+      description: K3s-bundled IngressClass (traefik)
+    - name: fallback_access_point
+      label: Fallback access point
+      type: text
+      object_types:
+        - ipam.service
+      description: NodePort or portproxy URL while fallback coexistence is active
+    - name: logical_hostname
+      label: Logical hostname
+      type: text
+      object_types:
+        - ipam.service
+      description: L4 logical service hostname (hom-lab-ctl-<code>-<idx>)
   delegate_to: localhost
   tags:
     - ipam_netbox
