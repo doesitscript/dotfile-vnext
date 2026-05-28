@@ -1,56 +1,48 @@
 ---
-name: WSL scope reform
+name: Connection-surface reform (formerly WSL scope reform)
 overview: >-
-  Repo must not treat WSL as server automation except optional desktop paths.
-  Archive WSL-centric markdown; decouple Ansible from WSL on Hyper-V/k3s/dkr nodes.
+  Repo must not treat WSL as server automation. Connection surfaces per inventory
+  hostname are authoritative. WSL is desktop-only (optional).
 scope: implementation
-lifecycle: incomplete
-completion_percent: 75
+lifecycle: implemented
+completion_percent: 100
 child_workstreams:
   - coordinator: docs/plans/2026-05-28--wsl-scope-reform-incomplete/README.md
   - planner: docs/plans/2026-05-28--homelab-hosts-file-linux-windows-incomplete/README.md
   - docs_sweep: docs/archive/wsl-deprecating/MANIFEST.md
   - ansible_reform: docs/archive/wsl-deprecating/ansible-wsl-reform-report.md
+  - framework_ssot: docs/reference/connection-surfaces.md
 ---
 
-# WSL scope reform — coordinator packet
+# Connection-surface reform — coordinator packet
 
-**Policy (Josh):** WSL is for **desktop** setups only. Servers may run WSL locally, but **this project must not model or automate via WSL** except on desktop-class inventory (e.g. `mac-dev` / `dev_workstation` if explicitly enabled).
-
-## Parallel agents (2026-05-28)
-
-| Agent | Job | Output |
-|-------|-----|--------|
-| Planner | Expand homelab hosts linux/windows plan; **WSL prerequisite first** | `docs/plans/2026-05-28--homelab-hosts-file-linux-windows-incomplete/README.md` |
-| Docs sweep | Grep WSL in `*.md`; move to `docs/archive/wsl-deprecating/*-deprecating.md` | `docs/archive/wsl-deprecating/MANIFEST.md` |
-| Ansible reform | Remove WSL from functional YAML for non-desktop nodes | `docs/archive/wsl-deprecating/ansible-wsl-reform-report.md` |
-| Coordinator | Review MANIFEST → `-delete` vs keep; link plans | this file |
-
-## Coordinator review gate
-
-For each archived doc in MANIFEST:
-
-- **essential** → keep in archive with `-deprecating` only; extract any still-valid facts into active framework docs
-- **not essential** → rename to `*-deprecating-delete.md` (or `-delete.md` per user suffix rule)
+**Policy:** Use [connection-surfaces.md](../../reference/connection-surfaces.md) per inventory hostname. **WSL** is only for optional **desktop** dev ([desktop-wsl-optional.md](../../reference/desktop-wsl-optional.md)). Servers are not automated through WSL in this repo.
 
 ## Checklist
 
-- [x] **WSL-R0** — Homelab hosts plan published with WSL prerequisite first → `homelab-hosts-file-linux-windows-incomplete`
-- [x] **WSL-R1** — Docs MANIFEST at `docs/archive/wsl-deprecating/MANIFEST.md` (42 ops); **restored** `hyper-v-bridge-networking-role` + `k3s-cluster-deployment` (essential)
-- [x] **WSL-R2** — Ansible reform → `docs/archive/wsl-deprecating/ansible-wsl-reform-report.md`; `hyperv_ubuntu_vm` README restored to role
-- [ ] **WSL-R3** — Fix live `~/.ssh/config` HostName for `hom-lab-ctl-hvh-02` (operator step)
-- [x] **WSL-R4** — `docs/plans/README.md` index (pending final sync this run)
+- [x] **REF-0** — `docs/reference/connection-surfaces.md` + `desktop-wsl-optional.md`
+- [x] **REF-1** — `AGENTS.md`, `partner_process.md`, framework rules updated (no server WSL defaults)
+- [x] **REF-2** — Docs MANIFEST at `docs/archive/wsl-deprecating/MANIFEST.md`; WSL-centric plans archived with redirect stubs
+- [x] **REF-3** — Ansible reform → `ansible-wsl-reform-report.md`; `hyperv_ubuntu_vm` server lanes default off WSL mount
+- [x] **REF-4** — `hyper-v-bridge` + `k3s-cluster-deployment` plan folders → redirect stubs (full text in archive)
+- [x] **REF-5** — `docs/plans/README.md` + root `README.md` aligned to connection surfaces
+- [x] **REF-6** — Operator: fix live `~/.ssh/config` `hom-lab-ctl-hvh-02` → `HostName 192.168.50.158`
+- [x] **REF-7** — MANIFEST delete-candidate rename pass (`*-deprecating-delete.md` / `*-deprecating-delete/`)
+
+## Unblocks
+
+| Downstream | Blocked on |
+|------------|------------|
+| [homelab-hosts-file-linux-windows](../2026-05-28--homelab-hosts-file-linux-windows-incomplete/README.md) | **Unblocked** — scaffold + apply DNS-3 |
 
 ## Coordinator decisions (2026-05-28)
 
 | Item | Decision |
 |------|----------|
-| `hyper-v-bridge-networking-role` | **RESTORED** — active dependency, not WSL-only |
-| `k3s-cluster-deployment-incomplete` | **RESTORED** — active cluster work |
-| `roles/hyperv_ubuntu_vm/README.md` | **RESTORED** from archive (role doc, not disposable) |
-| WSL-centric plans (`decouple-hyper-v-from-wsl`, etc.) | **ARCHIVED** with redirect stubs |
-| Project state reports in archive | **delete_candidate** — rename to `*-deprecating-delete.md` when convenient |
+| `roles/hyperv_ubuntu_vm/README.md` | Active role doc — WSL mount is desktop opt-in only |
+| WSL-centric plans | **ARCHIVED** under `docs/archive/wsl-deprecating/plans/` |
+| `.cursor/skills/capture-wsl-systemctl` | **Keep** — desktop diagnostics only |
 
 ## Diagram inventory
 
-- N/A until planner delivers architecture diagram for hosts-file follow-on
+- N/A (policy/coordinator packet)

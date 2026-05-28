@@ -67,13 +67,17 @@ Expose L4 names in NetBox (and seeds) so DNS/certs/ingress can target stable ide
 
 Repo already seeds Service custom fields: `compose_project`, `deployed_by_role`, `stack_name` ([`seed_custom_fields.yml`](../../../roles/ipam_netbox/tasks/seed_custom_fields.yml)).
 
-**Add:**
+**Current landed base:**
 
-1. Custom field `logical_hostname` (type text, object `ipam.service`) in `seed_custom_fields.yml`
-2. Per-service `logical_hostname: hom-lab-ctl-...` in `ipam_netbox_hom_lab_ctl_hvh_02_model.services` and `ipam_netbox_hom_lab_ctl_hvh_01_vm_model.services` in [`defaults/main.yml`](../../../roles/ipam_netbox/defaults/main.yml)
-3. Pass through existing service seed loops (`custom_fields` merge already wired in `seed_hom_lab_ctl_hvh_02_model.yml` / `seed_hom_lab_ctl_hvh_01_vm_model.yml`)
-4. Set `live-object-registry.yml` → `service_identities.not_applied_to_netbox_seeds: false` after apply
-5. Promote candidate service codes `sem`, `log`, `grf`, `red` to `integrated` in `resource-roles.yml` when approved
+1. Custom field `logical_hostname` is already defined in `seed_custom_fields.yml`
+2. K3s service rows in `roles/ipam_netbox/defaults/main.yml` already carry `logical_hostname`
+
+**Remaining work in this packet:**
+
+1. Extend `logical_hostname` across the remaining GPU/storage service rows in [`defaults/main.yml`](../../../roles/ipam_netbox/defaults/main.yml)
+2. Re-seed the affected services into live NetBox and verify the custom field values
+3. Set `live-object-registry.yml` → `service_identities.not_applied_to_netbox_seeds: false` after apply
+4. Promote candidate service codes `sem`, `log`, `grf`, `red` to `integrated` in `resource-roles.yml` when approved
 
 ### Alternative (faster, weaker)
 

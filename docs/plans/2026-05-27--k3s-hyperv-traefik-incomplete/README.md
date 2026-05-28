@@ -10,4 +10,4 @@ This monolith was split. Active plans:
 
 - [2026-05-28--homelab-hosts-file-linux-windows-incomplete](../2026-05-28--homelab-hosts-file-linux-windows-incomplete/README.md)
 - [2026-05-28--homelab-dns-adguard-authority-incomplete](../2026-05-28--homelab-dns-adguard-authority-incomplete/README.md)
-- [2026-05-28--k3s-vllm-web-catalog-incomplete](../2026-05-28--k3s-vllm-web-catalog-incomplete/README.md)
+- [2026-05-28--k3s-vllm-service-publication-incomplete](../2026-05-28--k3s-vllm-service-publication-incomplete/README.md)

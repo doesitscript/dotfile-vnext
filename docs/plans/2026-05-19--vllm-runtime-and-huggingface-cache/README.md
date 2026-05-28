@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This plan outlines the deployment of vLLM runtime with GPU support and Hugging Face model caching on a K3s Kubernetes cluster, specifically targeting an RTX 5090 GPU. The implementation will leverage Ansible for automation, focusing on NVIDIA driver prerequisites, GPU Operator deployment, and vLLM Helm chart deployment. A Qwen/Qwen3-0.6B model will be used for initial testing.
+This plan outlines the deployment of vLLM runtime with GPU support and Hugging Face model caching on a K3s Kubernetes cluster, specifically targeting an RTX 5090 GPU. The implementation will leverage Ansible for automation, focusing on NVIDIA driver prerequisites, GPU Operator deployment, and vLLM Helm chart deployment. A Qwen/Qwen3-0.6B model will be used for initial testing, but this packet is the serving-and-cache foundation rather than the long-term model inventory or model catalog strategy.
 
 ## Apply / Verify / Undo / Change Class
 
@@ -107,7 +107,7 @@ graph TD
 ### Phase 2: vLLM Deployment and HuggingFace Cache
 
 1.  **vLLM Runtime Deployment (`vllm_runtime` role):**
-    *   **Goal:** Deploy vLLM with Qwen/Qwen3-0.6B model and configure Hugging Face model caching.
+    *   **Goal:** Deploy vLLM with one initial test model and configure Hugging Face model caching so the runtime can later serve multiple downloaded models.
     *   **Tasks:**
         *   Create `vllm-runtime` namespace using `kubernetes.core.k8s`.
         *   Create `huggingface-token` Secret for `HF_TOKEN` from Ansible vault.
@@ -117,6 +117,10 @@ graph TD
     *   **Dependencies:** K3s cluster with GPU Operator, access to Hugging Face (via `HF_TOKEN`).
     *   **Naming Schemes:** Namespace `vllm-runtime`, PVC `huggingface-cache`.
     *   **Variable Sources:** `vault_huggingface_token` from `inventory/group_vars/all.yaml` (or similar vault file).
+
+2.  **Scope Boundary (future follow-on):**
+    *   This packet does **not** define the durable model catalog, model-role taxonomy, or agent-to-model assignment strategy.
+    *   Follow-on planning should treat model selection, publication, and lifecycle as a separate layer above the runtime substrate.
 
 ## Diagram Inventory
 

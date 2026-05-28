@@ -18,7 +18,7 @@ child_plans:
 deferred_plans:
   - docs/plans/2026-05-28--homelab-hosts-file-linux-windows-incomplete/README.md
   - docs/plans/2026-05-28--homelab-dns-adguard-authority-incomplete/README.md
-  - docs/plans/2026-05-28--k3s-vllm-web-catalog-incomplete/README.md
+  - docs/plans/2026-05-28--k3s-vllm-service-publication-incomplete/README.md
 ---
 
 # K3s Hyper-V Traefik ingress (v1) — implemented
@@ -36,11 +36,28 @@ Intake: [docs/intake/k3s-hyperv-traefik-blueprint.md](../../intake/k3s-hyperv-tr
 |------|-----|
 | [homelab-hosts-file-linux-windows](../2026-05-28--homelab-hosts-file-linux-windows-incomplete/README.md) | DNS-3 Ansible roles on guests/dev Windows |
 | [homelab-dns-adguard-authority](../2026-05-28--homelab-dns-adguard-authority-incomplete/README.md) | AdGuard / authoritative DNS (OP-1/OP-2 cancelled) |
-| [k3s-vllm-web-catalog](../2026-05-28--k3s-vllm-web-catalog-incomplete/README.md) | DNS-3e catalog row |
+| [k3s-vllm-service-publication](../2026-05-28--k3s-vllm-service-publication-incomplete/README.md) | DNS-3e service publication |
 
 **Superseded monolith:** [2026-05-27--k3s-hyperv-traefik-incomplete](../2026-05-27--k3s-hyperv-traefik-incomplete/README.md)
 
 ---
+
+## Mandatory NetBox slice
+
+### Objects affected
+
+- Traefik-routed service metadata, operator DNS intent rows, umbrella receipt links to NetBox-scoped child work
+
+### Declared / Applied / Verified
+
+- **Declared:** the umbrella delegates NetBox-scoped work to child packets instead of leaving it as advisory prose.
+- **Applied:** the in-scope live NetBox mutation for v1 is carried by the implemented hosts-file child packet.
+- **Verified:** the child packet evidence plus `scripts/validate_netbox_repo_consistency.sh` and `artifacts/netbox-service-inventory/latest.json`.
+
+### Artifact references
+
+- `artifacts/netbox-service-inventory/latest.json`
+- `scripts/validate_netbox_repo_consistency.sh`
 
 ## P0-remove-iis-hvh-02 — pass
 
@@ -82,7 +99,7 @@ Intake: [docs/intake/k3s-hyperv-traefik-blueprint.md](../../intake/k3s-hyperv-tr
 | O-04 | Parent gate | both children complete | pass | both 100% |
 | O-05 | DNS-3 linux/win | guest hosts roles | moved | [linux/windows incomplete](../2026-05-28--homelab-hosts-file-linux-windows-incomplete/README.md) |
 | O-06 | AdGuard | authoritative DNS | moved | [AdGuard incomplete](../2026-05-28--homelab-dns-adguard-authority-incomplete/README.md) |
-| O-07 | vLLM | catalog row | moved | [vLLM incomplete](../2026-05-28--k3s-vllm-web-catalog-incomplete/README.md) |
+| O-07 | vLLM | service publication | moved | [vLLM incomplete](../2026-05-28--k3s-vllm-service-publication-incomplete/README.md) |
 | O-08 | OP-1/OP-2 | GT6 DHCP rows | cancelled | matrix + AdGuard plan |
 
 **Completion gate:** umbrella v1 obligations `pass` or `moved`/`cancelled`; no open rows on this packet.

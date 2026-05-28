@@ -170,14 +170,13 @@ graph LR
 
 **Flexibility:** Backup paths can **stay** `castle/home/...` if documented under `value_by_surface` (no backup tree migration).
 
-### Phase 2 — Logical hostname in seed metadata (optional NetBox custom field)
+### Phase 2 — Logical hostname in seed metadata (NetBox custom field path is now the active repo direction)
 
-**Repo changes:**
+**Repo status now:**
 
-- Decide storage: NetBox custom field `logical_hostname` **or** structured comment / config-context key per service.
-- Extend `ipam_netbox` service dicts: e.g. `logical_hostname: hom-lab-ctl-nbx-01` for each GPU/storage service.
-- Seed tasks pass field into `netbox_service` module if using custom field.
-- Update `live-object-registry.yml` with full L1→L4 map for all nine GPU + seven storage services.
+- `roles/ipam_netbox/tasks/seed_custom_fields.yml` seeds `logical_hostname`.
+- `roles/ipam_netbox/defaults/main.yml` already carries `logical_hostname` on the currently modeled K3s services.
+- Remaining work is broadening that live metadata across the rest of the service catalog and verifying it in live NetBox.
 
 **What you get:**
 

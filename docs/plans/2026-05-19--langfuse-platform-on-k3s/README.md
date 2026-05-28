@@ -5,7 +5,7 @@
 
 ## Executive Summary
 
-This plan outlines the implementation of Langfuse on a K3s cluster using Ansible for automation. Langfuse is an open-source LLM observability platform that leverages a Helm chart for Kubernetes deployments. The deployment will include Langfuse web and worker, PostgreSQL, ClickHouse, Redis/Valkey, and MinIO/S3. Ansible will manage the Helm chart deployment and Kubernetes secrets.
+This plan outlines the implementation of Langfuse on a K3s cluster using Ansible for automation. Langfuse is an open-source LLM observability platform that leverages a Helm chart for Kubernetes deployments. The deployment will include Langfuse web and worker, PostgreSQL, ClickHouse, Redis/Valkey, and MinIO/S3. Ansible will manage the Helm chart deployment and Kubernetes secrets. In the broader lab direction, this packet should be understood as the observability substrate for multiple agents, IDE flows, and model lanes rather than a single-app deployment.
 
 ## Apply / Verify / Undo / Change Class
 

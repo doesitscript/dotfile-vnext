@@ -65,8 +65,15 @@ If a diagram is truly not applicable, include the section anyway with an explici
 Every affected implementation plan must include:
 
 - Section `## Mandatory NetBox slice` (or NetBox rows in `## Checklist` with **NB-** IDs)
-- Apply + verify steps: seed apply to live API (not repo-only defaults), `validate_netbox_repo_consistency.sh`, live object check
+- Declared / Applied / Verified contract:
+  - **Declared** — repo packet, schema rows, and implementation files agree on in-scope NetBox-managed objects
+  - **Applied** — existing live NetBox seed/apply path used, or explicit read-only reconciliation-only status
+  - **Verified** — `validate_netbox_repo_consistency.sh`, live object check, and artifact-backed comparison evidence
 - Execute receipt evidence for NB steps
+
+Bootstrap or recovery of NetBox itself is an allowed exception area, but it must
+be labeled as bootstrap/recovery work and must not be reported as normal
+steady-state NetBox completion.
 
 Repo-only `roles/ipam_netbox/defaults` changes do **not** satisfy NetBox completion until API apply passes.
 
@@ -105,10 +112,10 @@ Example:
 - `2026-05-27--k3s-hyperv-traefik-implemented/` (umbrella — Traefik + mac interim DNS + :80 portproxy — **done**)
 - `2026-05-27--k3s-hyperv-traefik-homelab-hosts-file-implemented/` (mac catalog + NB-4 — **done**)
 - `2026-05-27--k3s-hyperv-traefik-lan-http-portproxy-implemented/` (LA-2b, LA-5b — **done**)
-- `2026-05-28--wsl-scope-reform-incomplete/` (WSL desktop-only policy; doc archive + Ansible decouple — **in progress**)
-- `2026-05-28--homelab-hosts-file-linux-windows-incomplete/` (DNS-3 — blocked on WSL-R3 SSH fix; plan ready)
+- `2026-05-28--wsl-scope-reform-incomplete/` (connection-surface policy — **done**; optional MANIFEST delete pass)
+- `2026-05-28--homelab-hosts-file-linux-windows-incomplete/` (DNS-3 linux guests — **done**; windows scaffold when desktop commissioned)
 - `2026-05-28--homelab-dns-adguard-authority-incomplete/` (authoritative DNS — moved from Traefik umbrella)
-- `2026-05-28--k3s-vllm-web-catalog-incomplete/` (vLLM catalog row when runtime exists)
+- `2026-05-28--k3s-vllm-service-publication-incomplete/` (vLLM service publication entry when runtime exists; reserve model catalog for future multi-model planning)
 - `docs/archive/wsl-deprecating/` — archived WSL-centric markdown + MANIFEST (coordinator review)
 - `2026-05-27--plan-diagram-governance-incomplete/` (evaluate CI/skill enforcement for diagram gate)
 
@@ -116,13 +123,14 @@ Plans migrated from `.cursor/plans/` on 2026-05-27. Folders suffixed with
 `-incomplete` are not fully implemented. See `.cursor/plans/README.md` for the
 redirect note.
 
-### WSL-centric plans (archived 2026-05-28)
+### Historical WSL automation plans (archived 2026-05-28)
 
-Server/hyperv/k3s/docker WSL automation plans were moved to
-[`docs/archive/wsl-deprecating/plans/`](../archive/wsl-deprecating/plans/). Original
-`docs/plans/2026-05-20--*` stub folders remain as redirects. See
-[`docs/archive/wsl-deprecating/MANIFEST.md`](../archive/wsl-deprecating/MANIFEST.md).
-Active coordinator: [`2026-05-28--wsl-scope-reform-incomplete/`](2026-05-28--wsl-scope-reform-incomplete/README.md).
+Server/hyperv/k3s/docker WSL automation narratives live in
+[`docs/archive/wsl-deprecating/plans/`](../archive/wsl-deprecating/plans/). Active
+`docs/plans/2026-05-20--hyper-v-bridge-networking-role/` and
+`k3s-cluster-deployment-incomplete/` are **redirect stubs** only. Current policy:
+[`docs/reference/connection-surfaces.md`](../reference/connection-surfaces.md).
+Coordinator: [`2026-05-28--wsl-scope-reform-incomplete/`](2026-05-28--wsl-scope-reform-incomplete/README.md).
 
 Legacy single-file plans may remain until touched. When a single-file plan is
 updated for new work, migrate it into a folder packet or mark it as archive

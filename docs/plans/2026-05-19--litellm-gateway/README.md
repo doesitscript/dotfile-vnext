@@ -2,12 +2,13 @@
 
 ## Executive Summary
 
-This plan outlines the deployment of LiteLLM, an OpenAI-compatible API gateway, onto a K3s cluster using Ansible automation. LiteLLM will provide a unified interface for routing requests to various LLM providers, offering intelligent routing, load balancing, and integrated observability via Langfuse. The deployment will prioritize security with Kubernetes Secrets and Ansible Vault for credential management.
+This plan outlines the deployment of LiteLLM, an OpenAI-compatible API gateway, onto a K3s cluster using Ansible automation. LiteLLM will provide a unified interface for routing requests to various LLM providers and locally served model endpoints, offering intelligent routing, load balancing, and integrated observability via Langfuse. In the bigger lab direction, this packet is the multi-model control plane for agent and IDE workflows rather than the underlying model-serving runtime itself. The deployment will prioritize security with Kubernetes Secrets and Ansible Vault for credential management.
 
 ## Goals
 
 - Deploy LiteLLM Gateway to K3s cluster.
 - Implement intelligent routing and load balancing for multiple LLM providers.
+- Establish one gateway surface for multiple agents, IDE integrations, and model-serving backends.
 - Integrate with Langfuse for comprehensive observability.
 - Securely manage API keys and sensitive configuration using Kubernetes Secrets and Ansible Vault.
 - Establish a robust and scalable solution for LLM inference routing.
@@ -60,6 +61,7 @@ This plan outlines the deployment of LiteLLM, an OpenAI-compatible API gateway, 
 4.  **Routing & Fallback Chains:**
     *   Implement `model_list` entries with `litellm_params` including `rpm` and `tpm` for rate limiting.
     *   Define `router_settings` with `routing_strategy: "simple-shuffle"` and `fallbacks` based on research (e.g., vLLM -> Groq -> Azure OpenAI).
+    *   Treat this `model_list` as gateway routing configuration, not as the durable source-of-truth model catalog for the lab.
 
 ### Apply / Verify / Undo / Change Class
 
