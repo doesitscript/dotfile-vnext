@@ -1,7 +1,4 @@
 ---
-deprecated: true
-deprecating_reason: WSL scope reform 2026-05-28 — server paths must not use WSL
-coordinator_review: pending
 name: Hyper-V bridge networking role
 overview: Create a new `hyperv_networking` role using myllynen `dsc_settings` and `wsl_configuration` roles. Gate networking-mode-specific tasks in `ubuntu.yml` with a `wsl_networking_mode` variable so bridge and NAT paths coexist without conflict.
 todos:

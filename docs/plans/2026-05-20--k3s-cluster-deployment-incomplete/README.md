@@ -1,7 +1,4 @@
 ---
-deprecated: true
-deprecating_reason: WSL scope reform 2026-05-28 — server paths must not use WSL
-coordinator_review: pending
 name: k3s Cluster Deployment
 overview: Deploy a two-node k3s lab cluster (network-server control plane, server-225 GPU agent) using the official k3s-io/k3s-ansible collection. Custom roles for firewall (WinRM), storage prep, node config, GPU toolkit, and GPU validation. dev-workstation deferred in separate inventory group. WSL surfaces are standard Ubuntu via SSH. Windows GPU driver is manual -- Ansible inventories and validates only.
 todos:
