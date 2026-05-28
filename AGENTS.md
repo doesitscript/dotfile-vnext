@@ -15,8 +15,12 @@ this order:
 2. project `.codex/config.toml`
 3. `docs/codex_framework/README.md`
 4. `docs/codex_framework/partner_process.md`
-5. active `framework-*` files under `.cursor/rules/`, plus any explicitly
+5. `docs/codex_framework/capability_introduction_checklist.md` when adding roles,
+   playbooks, or new naming surfaces
+6. active `framework-*` files under `.cursor/rules/`, plus any explicitly
    referenced supporting rule files
+7. `docs/codex_framework/plan-governance-dependencies.md` and `docs/plans/README.md`
+   Required Diagram Checklist when writing or promoting under `docs/plans/`
 
 For this repo, framework docs and the referenced `framework-*` rule family are
 not optional background reading in Codex/OpenAI conversations. This file
@@ -64,6 +68,10 @@ Include:
 14. The first time a solution introduces or materially changes host targeting, filtering, or exclusion logic, require a read-only target-verification step before the first mutating run. That preview should show what is in scope, what is excluded, and why. If the capability also selects a subresource such as a disk or interface, the preview should show the selected candidate and the selection basis too.
 15. When a role or capability exposes a lifecycle interface such as `present|absent`, the owning playbook must preserve that interface instead of wrapper-filtering it down to only one state. Let the role handle the internal present/absent split.
 16. When the repo already points to a more scalable pattern, recommend that pattern plainly instead of presenting it as merely optional. For distinct capabilities that can coexist, prefer playbook composition with meaningful tags over merged roles or wrapper roles by default.
+17. When the user approves implementation, **execute**, or **go with recommendations and execute**, completing repo files alone is **PROHIBITED** as execute-complete. The agent MUST run preview/read-only verification with captured output, then mutating apply (playbooks, MCP, SSH) for each capability in scope, unless the user explicitly defers live apply in the same thread. If a prerequisite fails, cite probe output. **PROHIBITED** summary label: `operator-controlled` or `not applied live` when the user requested execute and gave no explicit deferral.
+18. **Implemented capability default (Ansible only):** When the user asks you to implement a new capability, set host-level gates to **enabled** (`*_enabled: true`, `*_state: present`) unless the user opts out or a documented upstream prerequisite is missing (probe evidence required). Role `defaults/` may stay conservative; **host_vars** for commissioned hosts should reflect enable-when-built. **Plans are not Ansible:** plan packets do not use `present|absent`; operationalizing a plan happens only when the user tells you to implement that plan. Do not retroactively flip unrelated inventory to `present`.
+19. **Idempotent desired state:** Re-running automation should converge out-of-state resources toward inventory desired state. `absent` is for explicit teardown or capabilities not yet commissioned — not the default for newly implemented work.
+20. **Plan verification is comprehensive:** When executing or completing a plan under `docs/plans/`, build a Plan verification receipt per `docs/codex_framework/plan-verification-receipt.md` — obligation inventory for the full plan packet (change contract, reference tables, prose gates, dependencies), not only `## Checklist` rows. Do not mark `lifecycle: implemented` or call execute-complete on checklist-only evidence.
 
 ## Repo Truths
 

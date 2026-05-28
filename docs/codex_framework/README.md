@@ -23,6 +23,19 @@ Project-specific information docs can still live elsewhere in `docs/` when they 
 
 Those notes can be important and still remain outside this folder. They are project information first, framework definition second.
 
+## Capability introduction
+
+Before adding a new Ansible capability with inventory SSOT, naming patterns, or
+NetBox seeds, complete
+[capability_introduction_checklist.md](capability_introduction_checklist.md).
+
+Plan diagram enforcement: [plan-governance-dependencies.md](plan-governance-dependencies.md)
+(see also `.cursor/rules/framework-plan-governance.mdc`).
+Plan execute/complete verification: [plan-verification-receipt.md](plan-verification-receipt.md)
+(full obligation inventory — not checklist-only).
+Patterns belong in `docs/reference/naming-standards/`; instances in
+`live-object-registry.yml` — not duplicated in plan bodies.
+
 ## Scope Boundary
 
 This folder name stays `docs/codex_framework/` on purpose.

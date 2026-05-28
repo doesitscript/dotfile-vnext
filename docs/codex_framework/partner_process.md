@@ -614,6 +614,12 @@ prefer a folder-backed plan packet with `README.md` as the canonical entrypoint.
 These repo plans are the canonical durable planning layer for accepted work.
 They should remain useful even if GitHub is unavailable.
 
+**Authoring:** Diagram gate receipt + Required Diagram Checklist (`docs/plans/README.md`).
+
+**Execute / complete:** Plan verification receipt with a full **obligation inventory**
+(checklist, change contract, reference tables, prose gates, dependencies) —
+not checklist-only receipts. See [plan-verification-receipt.md](plan-verification-receipt.md).
+
 For work that benefits from external tracking:
 
 - mirror the plan into a GitHub issue at a higher level

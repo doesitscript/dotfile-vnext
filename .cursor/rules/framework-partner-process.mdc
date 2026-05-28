@@ -138,6 +138,39 @@ New approved plans must be stored as folder packets with a canonical
 single-file plan artifacts; migrate legacy single-file plans when they are
 touched.
 
+### Plan promotion from intake
+
+When promoting `docs/intake/*.md` to `docs/plans/YYYY-MM-DD--slug/README.md`:
+
+- **Default scope:** inherit implementation surfaces from the intake blueprint
+  (roles, playbooks, inventory, schema) unless frontmatter sets `scope: doc-only`.
+- **Doc-only** must be explicit in plan frontmatter — not implied by a narrow first commit.
+- Plans cite schema **pattern IDs** and file paths; do not duplicate `live-object-registry.yml`
+  or inventory SSOT as large YAML blocks in the plan body.
+- Optional frontmatter: `depends_on_plans`, `unblocks` for cross-plan work (e.g. router DNS before Traefik LAN names).
+
+MUST read `docs/plans/README.md` Required Diagram Checklist via
+`docs/codex_framework/plan-governance-dependencies.md` before saving any plan packet.
+
+### Multi-plan execution
+
+When the user says **execute the plan** and multiple `.cursor/plans/*.plan.md` or
+`docs/plans/*` packets are active:
+
+1. Name which plan file is being executed.
+2. List sibling plans with **done / pending / out of scope for this run**.
+3. Do not mark a slice complete if only a related plan landed (e.g. router SSOT ≠ Traefik doc plan).
+4. Verification must use a **Plan verification receipt** per
+   `docs/codex_framework/plan-verification-receipt.md` — obligation inventory for the
+   **entire** plan packet, not only `## Checklist` rows.
+5. Do not set `lifecycle: implemented` or call execute-complete while any in-scope
+   obligation lacks `pass` evidence (or a documented `blocked`/`fail` with evidence).
+6. Short execute-receipt tables keyed by checklist IDs are summary views only; they
+   must mirror the full obligation inventory.
+
+Plan mode updates plans and markdown docs only. Implementation requires Agent mode;
+report any artifacts blocked by mode explicitly.
+
 If the topic is too novel or under-researched, the agent may summarize current direction but must escalate to research before producing a decision-complete plan.
 
 ### Mandatory Diagram Requirements
@@ -164,6 +197,62 @@ The plan is not valid until all of these are true:
   that could be created.
 
 If any check fails, do not output or save the plan. Revise the plan first.
+
+**Promotion and backfill:** When moving `docs/intake/*.md` into `docs/plans/`,
+carry forward intake diagrams and decision sections. A status-only README
+(implementation checklist without passing this gate) is invalid even if code
+already landed — backfill the plan before calling the slice complete.
+
+**Diagram gate receipt (required at end of plan body, before Diagram Inventory):**
+
+```markdown
+## Diagram gate receipt
+
+- [ ] Architecture/Structure: repo paths, external resources, data/control flow,
+  naming scheme, variable SSOT sources, tag/playbook wiring
+- [ ] Capability Routing: included OR N/A with one-line reason
+- [ ] Naming/Modeling: included OR N/A with one-line reason (N/A only when the
+  plan does not change names, aliases, object hierarchy, or naming standards)
+- [ ] Diagram Inventory lists every required section above, not only diagrams
+  actually drawn
+```
+
+Also satisfy `docs/plans/README.md` Required Diagram Checklist. On conflict,
+satisfy the stricter requirement.
+
+**Plan verification receipt (required when executing, reporting status, or completing a slice):**
+
+Before claiming execute progress or `lifecycle: implemented`, add or update
+`## Plan verification receipt` in the plan packet per
+`docs/codex_framework/plan-verification-receipt.md`.
+
+Minimum contents:
+
+- **Obligation inventory** table: every testable requirement from checklist,
+  change contract (Apply/Verify/Undo/Class), frontmatter (`depends_on_plans`, etc.),
+  prose gates ("not done until", "blocking"), reference tables for this slice, and
+  reinforcement tasks — each with `pass` | `fail` | `blocked` | `pending` | `deferred`
+- **Evidence** per in-scope row (raw output, artifact path, or explicit "not collected")
+- **Completion gate** checkboxes at the bottom of the receipt section
+
+Prohibited: building the receipt only from `## Checklist` while ignoring Verify/Undo,
+reference SSOT rows, and narrative completion criteria.
+
+**Execute vs lifecycle default:** When the user approves **execute** for a plan
+with `scope: implementation`, Agent mode MUST run that plan's live-apply phase in
+the same engagement. Writing roles, inventory, and playbooks without running them
+is **not** execute-complete. Governance for this lives in AGENTS.md Working
+Contract §17–19 and `framework-plan-governance.mdc` — not only inside individual
+plan bodies.
+
+**Implemented capability default:** Newly commissioned capabilities use
+`present` / `*_enabled: true` on target host_vars unless the user opts out or
+upstream prerequisites fail (with probe evidence). Re-running playbooks should
+converge drift. `absent` in role `defaults/` is for explicit teardown — see
+AGENTS.md §18–19. **Exception area (group-wide / automation-not-ready):**
+capabilities such as `router_local_dns` while `homelab_router_gt6_state: absent`
+remain off until router automation exists — document in the role README, not as
+the global default for all new work.
 
 #### 1. Architecture/Structure Diagram (ALWAYS REQUIRED)
 

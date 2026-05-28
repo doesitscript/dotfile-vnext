@@ -181,3 +181,21 @@ active schema registry under `docs/reference/naming-standards/` before using
 older docs, live NetBox naming, or examples. If the registry lacks the resource
 family, state the gap and use the `critical-naming-analysis` skill with approved
 source research before proposing a new code or rendered pattern.
+
+## Schema-Before-Inventory Gate
+
+When work introduces a **new Ansible capability** or **new naming surface**
+(route registry, portproxy row names, exposure-layer fields, router manual-assignment
+schema, new role variables):
+
+1. Read `docs/codex_framework/capability_introduction_checklist.md`.
+2. Add or extend **patterns** in `ansible.yml`, `netbox.yml`, or `render-patterns.yml`.
+3. Add **reference instances** in `live-object-registry.yml` — values from deployed
+   roles and `service_code`, not generic placeholders.
+4. Only then write `inventory/` or role defaults that mirror the registry.
+
+Plans must cite schema file targets and pattern IDs. Do not embed duplicate SSOT
+YAML blocks in plan bodies.
+
+Triggers include: new `roles/*`, new `*_entries` lists, new `guest_published_tcp_ports`
+names, and promoted plans from intake blueprints that specify implementation.

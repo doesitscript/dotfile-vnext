@@ -29,6 +29,7 @@ Do not use when:
 - The plan is still in progress
 - Verification failed or is incomplete
 - The work needs further iteration
+- **Plan verification receipt** is missing or checklist-only (see below)
 
 ## Typical trigger phrases
 
@@ -43,6 +44,21 @@ Do not use when:
 2. **Implementation date** (YYYY-MM-DD format)
 3. **Optional: GitHub issue number** (if issue already exists)
 4. **Optional: Archive candidate** (default: true for completed plans)
+
+## Plan verification receipt (mandatory)
+
+Before rename or `lifecycle: implemented`, the plan packet must include
+`## Plan verification receipt` per
+[docs/codex_framework/plan-verification-receipt.md](../../../docs/codex_framework/plan-verification-receipt.md):
+
+1. **Obligation inventory** — every testable requirement from the full plan (checklist,
+   change contract Apply/Verify/Undo/Class, frontmatter dependencies, prose gates,
+   reference tables for the slice) — not only `## Checklist` rows
+2. **Evidence** per in-scope obligation (`pass` with proof, or `blocked`/`fail` with proof)
+3. **Completion gate** checkboxes satisfied
+
+Reject completion if the only verification artifact is a short execute-receipt table
+without the full inventory.
 
 ## Workflow
 
@@ -244,11 +260,12 @@ Both use similar GitHub patterns but serve different lifecycle stages.
 
 This skill enforces the project's completed plan lifecycle pattern documented in `docs/plans/README.md`:
 
-1. YAML frontmatter with lifecycle metadata
-2. `-implemented` file suffix
-3. GitHub issue created and closed as done
-4. `archive_candidate: true` for searchable cleanup metadata
-5. Commit message updated with lifecycle completion
+1. Plan verification receipt with full obligation inventory (not checklist-only)
+2. YAML frontmatter with lifecycle metadata
+3. `-implemented` file suffix
+4. GitHub issue created and closed as done
+5. `archive_candidate: true` for searchable cleanup metadata
+6. Commit message updated with lifecycle completion
 
 ## Reference
 
