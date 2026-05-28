@@ -1,0 +1,52 @@
+---
+# One-shot identity alignment for the GPU-lane Docker VM:
+#   Hyper-V VM name: server-225-ubuntu -> hom-lab-ctl-dkr-02
+#   Guest OS hostname: hom-lab-ctl-dkr-02
+#   NetBox: seed canonical VM + purge legacy server-225-ubuntu (run NetBox tags separately)
+#
+# Apply:
+#   ansible-playbook playbooks/troubleshoot/align_hom_lab_ctl_dkr_02_identity.yaml \
+#     -i inventory/inventory.yaml --vault-password-file vault_pass.sh
+#
+# NetBox reconcile (after Hyper-V + guest hostname):
+#   ansible-playbook playbooks/deploy_ipam_netbox.yaml \
+#     -i inventory/inventory.yaml --vault-password-file vault_pass.sh \
+#     --tags ipam_netbox_seed_hom_lab_ctl_hvh_02_model,ipam_netbox_purge_legacy_vms,ipam_netbox_repo_consistency
+
+- name: Align Hyper-V VM identity on hom-lab-ctl-hvh-02
+  hosts: hom-lab-ctl-hvh-02
+  gather_facts: false
+  tags: [hyperv_align, always]
+
+  tasks:
+    - name: Align legacy Docker VM Hyper-V name to hom-lab-ctl-dkr-02
+      ansible.builtin.include_role:
+        name: hyperv_ubuntu_vm
+        tasks_from: align_legacy_vm_identity.yml
+      vars:
+        hyperv_ubuntu_vm_name: "{{ hyperv_ubuntu_docker_vm_hostname }}"
+        hyperv_ubuntu_vm_legacy_hyperv_name: server-225-ubuntu
+      when: hyperv_ubuntu_docker_vm_hostname == 'hom-lab-ctl-dkr-02'
+
+- name: Align guest OS hostname on hom-lab-ctl-dkr-02
+  hosts: hom-lab-ctl-dkr-02
+  become: true
+  tags: [guest_hostname, always]
+
+  tasks:
+    - name: Set persistent hostname to hom-lab-ctl-dkr-02
+      ansible.builtin.hostname:
+        name: hom-lab-ctl-dkr-02
+      register: hom_lab_ctl_dkr_02_hostname
+
+    - name: Report guest hostname alignment
+      ansible.builtin.command:
+        argv: [hostname, -f]
+      register: hom_lab_ctl_dkr_02_hostname_probe
+      changed_when: false
+
+    - name: Show aligned guest hostname
+      ansible.builtin.debug:
+        msg:
+          hostname_module: "{{ hom_lab_ctl_dkr_02_hostname }}"
+          hostname_f: "{{ hom_lab_ctl_dkr_02_hostname_probe.stdout | trim }}"

@@ -169,8 +169,8 @@ Dedicated saved-artifact playbook:
 Current verification commands:
 
 - Windows host:
-  - `Get-VM -Name server-225-ubuntu | Select-Object Name,State,Status,Uptime`
-  - `Get-VMDvdDrive -VMName server-225-ubuntu`
+  - `Get-VM -Name hom-lab-ctl-dkr-02 | Select-Object Name,State,Status,Uptime`
+  - `Get-VMDvdDrive -VMName hom-lab-ctl-dkr-02`
   - `Test-Connection 192.168.137.10 -Count 1`
   - `Test-NetConnection -ComputerName 192.168.137.10 -Port 22`
 - Mac/controller:

@@ -1,0 +1,171 @@
+---
+# Align a legacy Hyper-V VM name and host artifact directory to the compact schema target.
+# Use when inventory/NetBox already reference hom-lab-ctl-dkr-02 but the live VM still uses
+# server-225-ubuntu (or another legacy Hyper-V name).
+
+- name: Require legacy and target Hyper-V VM names for identity alignment
+  ansible.builtin.assert:
+    that:
+      - hyperv_ubuntu_vm_legacy_hyperv_name | default('') | length > 0
+      - hyperv_ubuntu_vm_name | default('') | length > 0
+      - hyperv_ubuntu_vm_legacy_hyperv_name != hyperv_ubuntu_vm_name
+    fail_msg: >-
+      hyperv_ubuntu_vm_legacy_hyperv_name and hyperv_ubuntu_vm_name must both be set
+      and must differ before Hyper-V identity alignment can run.
+  tags:
+    - hyperv_ubuntu_vm_align_identity
+
+- name: Probe legacy and target Hyper-V VM names
+  ansible.windows.win_powershell:
+    script: |
+      $legacy = '{{ hyperv_ubuntu_vm_legacy_hyperv_name }}'
+      $target = '{{ hyperv_ubuntu_vm_name }}'
+      $legacyVm = Get-VM -Name $legacy -ErrorAction SilentlyContinue
+      $targetVm = Get-VM -Name $target -ErrorAction SilentlyContinue
+      $Ansible.Result = @{
+        legacy_exists = [bool]$legacyVm
+        target_exists = [bool]$targetVm
+        legacy_state = if ($legacyVm) { $legacyVm.State.ToString() } else { $null }
+        target_state = if ($targetVm) { $targetVm.State.ToString() } else { $null }
+      }
+  register: hyperv_ubuntu_vm_identity_probe
+  changed_when: false
+  tags:
+    - hyperv_ubuntu_vm_align_identity
+
+- name: Report Hyper-V VM identity probe
+  ansible.builtin.debug:
+    var: hyperv_ubuntu_vm_identity_probe.result
+  tags:
+    - hyperv_ubuntu_vm_align_identity
+
+- name: Align legacy Hyper-V VM name and artifact directory to compact schema target
+  ansible.windows.win_powershell:
+    script: |
+      $legacy = '{{ hyperv_ubuntu_vm_legacy_hyperv_name }}'
+      $target = '{{ hyperv_ubuntu_vm_name }}'
+      $legacyRoot = "C:\ProgramData\Ansible\hyperv_ubuntu_vm\$legacy"
+      $targetRoot = "C:\ProgramData\Ansible\hyperv_ubuntu_vm\$target"
+      $changed = $false
+      $artifactAction = 'unchanged'
+      $legacyVm = Get-VM -Name $legacy -ErrorAction SilentlyContinue
+      $targetVm = Get-VM -Name $target -ErrorAction SilentlyContinue
+      if ($legacyVm -and $targetVm) {
+        throw "Both '$legacy' and '$target' Hyper-V VMs exist; manual cleanup required."
+      }
+      if ($legacyVm) {
+        if ($legacyVm.State -ne 'Off') {
+          Stop-VM -Name $legacy -TurnOff -Force -ErrorAction Stop
+          $changed = $true
+        }
+        Rename-VM -Name $legacy -NewName $target -ErrorAction Stop
+        $changed = $true
+        $targetVm = Get-VM -Name $target -ErrorAction Stop
+      }
+      if (-not $targetVm) {
+        throw "Target Hyper-V VM '$target' not found."
+      }
+      if ($targetVm.State -ne 'Off') {
+        Stop-VM -Name $target -TurnOff -Force -ErrorAction Stop
+        $changed = $true
+      }
+      if (Test-Path -LiteralPath $legacyRoot) {
+        $targetItem = Get-Item -LiteralPath $targetRoot -Force -ErrorAction SilentlyContinue
+        if (-not $targetItem) {
+          try {
+            Move-Item -LiteralPath $legacyRoot -Destination $targetRoot -ErrorAction Stop
+            $artifactAction = 'moved'
+            $changed = $true
+          } catch {
+            New-Item -ItemType Junction -Path $targetRoot -Target $legacyRoot -Force | Out-Null
+            $artifactAction = 'junction'
+            $changed = $true
+          }
+        } elseif ($targetItem.LinkType -eq 'Junction') {
+          $artifactAction = 'junction_already'
+        } else {
+          $targetChildren = @(Get-ChildItem -LiteralPath $targetRoot -Force -ErrorAction SilentlyContinue)
+          if ($targetChildren.Count -eq 0) {
+            Remove-Item -LiteralPath $targetRoot -Force -ErrorAction Stop
+            try {
+              Move-Item -LiteralPath $legacyRoot -Destination $targetRoot -ErrorAction Stop
+              $artifactAction = 'moved_after_empty_target_removed'
+              $changed = $true
+            } catch {
+              New-Item -ItemType Junction -Path $targetRoot -Target $legacyRoot -Force | Out-Null
+              $artifactAction = 'junction_after_empty_target_removed'
+              $changed = $true
+            }
+          } else {
+            $artifactAction = 'both_dirs_present'
+          }
+        }
+      }
+      $diskRepoint = $null
+      $disk = Get-VMHardDiskDrive -VMName $target -ErrorAction SilentlyContinue | Select-Object -First 1
+      if ($disk -and -not (Test-Path -LiteralPath $disk.Path)) {
+        $found = $null
+        foreach ($root in @($legacyRoot, $targetRoot)) {
+          if (-not (Test-Path -LiteralPath $root)) { continue }
+          $found = Get-ChildItem -LiteralPath $root -Filter '*.vhdx' -Recurse -File -ErrorAction SilentlyContinue |
+            Sort-Object Length -Descending |
+            Select-Object -First 1
+          if ($found) { break }
+        }
+        if (-not $found) {
+          throw "No VHDX candidate found under $legacyRoot or $targetRoot for VM '$target'."
+        }
+        Set-VMHardDiskDrive `
+          -VMName $target `
+          -ControllerType $disk.ControllerType `
+          -ControllerNumber $disk.ControllerNumber `
+          -ControllerLocation $disk.ControllerLocation `
+          -Path $found.FullName `
+          -ErrorAction Stop
+        $diskRepoint = @{
+          from = $disk.Path
+          to = $found.FullName
+        }
+        $changed = $true
+      }
+      $targetVm = Get-VM -Name $target -ErrorAction Stop
+      $startError = $null
+      if ($targetVm.State -eq 'Off') {
+        try {
+          Start-VM -Name $target -ErrorAction Stop | Out-Null
+          $changed = $true
+        } catch {
+          $startError = $_.Exception.Message
+        }
+      }
+      $Ansible.Changed = $changed
+      $Ansible.Result = @{
+        action = 'aligned'
+        legacy = $legacy
+        target = $target
+        state = (Get-VM -Name $target).State.ToString()
+        host_root = $targetRoot
+        legacy_root = $legacyRoot
+        host_root_exists = (Test-Path -LiteralPath $targetRoot)
+        legacy_root_exists = (Test-Path -LiteralPath $legacyRoot)
+        artifact_action = $artifactAction
+        disk_repoint = $diskRepoint
+        start_error = $startError
+      }
+  register: hyperv_ubuntu_vm_identity_rename
+  when:
+    - >-
+      (hyperv_ubuntu_vm_identity_probe.result.legacy_exists | default(false) | bool)
+      or (
+        (hyperv_ubuntu_vm_identity_probe.result.target_exists | default(false) | bool)
+        and not (hyperv_ubuntu_vm_identity_probe.result.legacy_exists | default(false) | bool)
+      )
+  tags:
+    - hyperv_ubuntu_vm_align_identity
+
+- name: Report Hyper-V VM identity alignment result
+  ansible.builtin.debug:
+    var: hyperv_ubuntu_vm_identity_rename.result
+  when: hyperv_ubuntu_vm_identity_rename is not skipped
+  tags:
+    - hyperv_ubuntu_vm_align_identity
