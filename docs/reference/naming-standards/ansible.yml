@@ -85,3 +85,55 @@ schema_preflight:
   imported_sources:
     - docs/intake/schema-design-proposal-netbox-ansible-context/ansible_provision_all.txt
     - docs/intake/schema-design-proposal-netbox-ansible-context/ansible_validate_schema.txt
+
+k3s_traefik_routes:
+  status: integrated
+  role: k3s_traefik_routes
+  lifecycle_variable: k3s_traefik_routes_state
+  registry_variable: k3s_traefik_routes_entries
+  registry_location: inventory/group_vars/k3s_cluster.yaml
+  live_registry: live-object-registry.yml ingress_routes
+  patterns:
+    route_key: "<product>-<surface>"
+    ingress_name: "<route_key>-ingress"
+  tags:
+    - k3s_traefik_routes
+    - k3s_traefik_routes_apply
+    - k3s_traefik_routes_verify
+    - k3s_traefik_routes_preview
+  note: >
+    Shared Ingress CR lifecycle for K3s kube-system Traefik. Does not install Traefik.
+
+homelab_hosts_file_web_catalog:
+  status: integrated
+  variable: homelab_hosts_file_web_catalog
+  group_vars: inventory/group_vars/all/homelab_hosts_file.yml
+  sources:
+    - k3s_traefik_routes_entries
+    - guest_published_tcp_ports on hom-lab-ctl-hvh-02
+    - guest_direct HTTP on hom-lab-ctl-dkr-02
+  live_registry: live-object-registry.yml ingress_routes guest_portproxy_catalog
+  note: DNS-3b SSOT for interim /etc/hosts web rows and curl verify matrix
+
+homelab_hosts_file_mac:
+  status: integrated
+  role: homelab_hosts_file_mac
+  lifecycle_variable: homelab_hosts_file_mac_enabled
+  galaxy_role: loz-hurst.hosts_file
+  data_source: homelab_hosts_file_web_catalog with mac_hosts_enabled true
+  mac_hosts_workaround_source: homelab_router_gt6_mac_hosts_workaround
+  note: mac-dev /etc/hosts for operator hostnames; add_short_name false
+
+guest_published_tcp_ports:
+  status: integrated
+  variable: guest_published_tcp_ports
+  host_vars: inventory/host_vars/hom-lab-ctl-hvh-02.yaml
+  name_pattern: "<runtime>-<product-or-purpose>[-<detail>]"
+  integrated_examples:
+    - name: k3s-traefik-http
+      purpose: K3s Traefik HTTP front door on hom-lab-ctl-hvh-02 LAN port 80
+    - name: langfuse-k3s
+      purpose: Langfuse web UI NodePort fallback on hom-lab-ctl-k3s-02
+    - name: litellm-k3s
+      purpose: LiteLLM gateway NodePort fallback on hom-lab-ctl-k3s-02
+  live_registry: live-object-registry.yml guest_portproxy_catalog

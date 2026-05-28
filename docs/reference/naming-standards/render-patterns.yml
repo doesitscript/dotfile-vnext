@@ -105,6 +105,29 @@ patterns:
     live_netbox_slug_note: >
       Seeds use L1 slugs (netbox-web) on L2 VMs; L4 is registry metadata until
       Phase 2 seeds or custom fields. Do not rename L1 to L4 without approval.
+  operator_service_hostname:
+    status: integrated
+    layer: operator_dns
+    pattern: "<product>.<zone>"
+    examples:
+      - langfuse.hom.lab
+      - litellm.hom.lab
+    deprecated_examples:
+      - langfuse.local
+      - litellm.local
+    use_for:
+      - Traefik Ingress rules host
+      - mac-dev /etc/hosts
+      - app canonical URLs (nextauth_url)
+    not_for:
+      - NetBox service.name (L1 slug)
+      - VM inventory_hostname
+      - L4 logical_service_hostname
+    private_dns_zone: hom.lab
+    deprecated_pilot_zone: local
+    note: >
+      Canonical zone is hom.lab (GT6 DHCP domain). .local was temporary until router
+      hom.lab was enabled. Distinct from hom-lab-ctl-lfs-01 L4 stem.
   storage:
     status: integrated
     pattern: "<tenant>-<environment>-<domain>-<data_class>-<purpose>-<idx>"
@@ -152,6 +175,18 @@ integrated_host_examples:
     - hom-lab-ctl-dkr-02
     - hom-lab-ctl-k3s-01
     - hom-lab-ctl-k3s-02
+
+banned_operator_hostnames:
+  status: integrated
+  enforced_by: scripts/validate_netbox_repo_consistency.sh
+  hostnames:
+    - langfuse.local
+    - litellm.local
+  gate_note: >
+    Deprecated pilot operator DNS names. Use operator_service_hostname examples
+    (langfuse.hom.lab, litellm.hom.lab). Allowed only in render-patterns deprecated_examples
+    and validate script allowlists — not in active intake, diagnostics tables, or inventory.
+
 
 field_aliases:
   env: environment

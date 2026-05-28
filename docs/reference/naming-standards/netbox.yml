@@ -135,6 +135,42 @@ tags:
   ctl:
     status: integrated
     meaning: "Control-plane/context segment for infrastructure hosts."
+  traefik-routed:
+    status: integrated
+    meaning: "Service reaches LAN via K3s Traefik ingress on GPU lane (hom-lab-ctl-k3s-02)."
+  web-ui:
+    status: integrated
+    meaning: "Browser-facing web UI service endpoint."
+  lan-exposed-services:
+    status: integrated
+    meaning: "Service published to the homelab LAN (portproxy or ingress)."
+
+ingress_metadata_custom_fields:
+  status: integrated
+  applies_to: ipam.service
+  fields:
+    ingress_hostname:
+      example: langfuse.hom.lab
+      meaning: Operator hostname for Traefik ingress (pilot or hom.lab cutover)
+    ingress_class:
+      example: traefik
+      meaning: K3s-bundled IngressClass
+    fallback_access_point:
+      example: "http://192.168.50.158:30000/"
+      meaning: NodePort URL while fallback coexistence is active
+    logical_hostname:
+      example: hom-lab-ctl-lfs-01
+      meaning: L4 logical service hostname (service_code lfs)
+
+kubernetes_ingress_annotations:
+  status: integrated
+  prefix: homelab.dotfile-vnext/
+  keys:
+    route-key: registry route_key
+    netbox-service-slug: L1 NetBox service.name
+    logical-hostname: L4 hom-lab-ctl-<code>-<idx>
+    deployed-by-role: owning Ansible role
+    fallback-exposure: nodeport or future values
 
 custom_fields:
   policy: "Use only when native fields, config context, and tags cannot represent the data."

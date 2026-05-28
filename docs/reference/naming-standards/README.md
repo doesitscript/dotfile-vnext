@@ -69,6 +69,17 @@ Host or VM role codes and service-layer role codes stay separate:
 - host or VM identity: `hvh`, `dkr`, `k3s`, `k3c`, `k3n`
 - service identity: `nbx`, `lfs`, `llm`, `sem`, `log`, `grf`, `red`
 
+## Traefik / ingress exposure (K3s GPU lane)
+
+- **L-A route registry:** `k3s_traefik_routes_entries` in `inventory/group_vars/k3s_cluster.yaml`
+- **Patterns:** `ansible.yml` → `k3s_traefik_routes`, `guest_published_tcp_ports`
+- **Reference instances:** `live-object-registry.yml` → `ingress_routes`, `guest_portproxy_catalog`
+- **Operator DNS:** `render-patterns.yml` → `operator_service_hostname` (`.local` pilot, `.hom.lab` cutover)
+- **Capability checklist:** `docs/codex_framework/capability_introduction_checklist.md`
+- **Plan:** `docs/plans/2026-05-27--k3s-hyperv-traefik-implemented/README.md`
+
+Traefik runs in **kube-system** on `hom-lab-ctl-k3s-02`; `ing` is semantic only — not a VM hostname role.
+
 ## Live object map (current names)
 
 Authoritative detail: [`live-object-registry.yml`](live-object-registry.yml).

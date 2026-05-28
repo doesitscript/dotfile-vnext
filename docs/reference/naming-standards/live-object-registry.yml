@@ -275,6 +275,72 @@ service_identities:
       service_code: lfs
       note: Storage lane Langfuse web on Docker VM; idx 02 vs K3s lfs-01
 
+ingress_routes:
+  parent_vm: hom-lab-ctl-k3s-02
+  lan_publish_device: hom-lab-ctl-hvh-02
+  lan_publish_ip: "192.168.50.158"
+  registry_variable: k3s_traefik_routes_entries
+  routes:
+    - route_key: langfuse-web
+      ingress_name: langfuse-web-ingress
+      deployed_by_role: k3s_langfuse_platform
+      namespace: langfuse
+      k8s_service_name: langfuse-web
+      service_port: 3000
+      netbox_l1_slug: langfuse-k3s-web
+      l4_logical: hom-lab-ctl-lfs-01
+      service_code: lfs
+      operator_hostname: langfuse.hom.lab
+      operator_hostname_deprecated: langfuse.local
+      fallback_portproxy_name: langfuse-k3s
+      fallback_node_port: 30000
+      mac_hosts_enabled: true
+    - route_key: litellm-gateway
+      ingress_name: litellm-gateway-ingress
+      deployed_by_role: k3s_litellm_gateway
+      namespace: litellm
+      k8s_service_name: litellm
+      service_port: 4000
+      netbox_l1_slug: litellm-k3s-gateway
+      l4_logical: hom-lab-ctl-llm-01
+      service_code: llm
+      operator_hostname: litellm.hom.lab
+      operator_hostname_deprecated: litellm.local
+      fallback_portproxy_name: litellm-k3s
+      fallback_node_port: 30400
+      mac_hosts_enabled: true
+
+guest_portproxy_catalog:
+  host: hom-lab-ctl-hvh-02
+  entries:
+    - name: k3s-traefik-http
+      listen_ip: "192.168.50.158"
+      listen_port: 80
+      connect_vm: hom-lab-ctl-k3s-02
+      connect_port: 80
+      purpose: K3s kube-system Traefik HTTP LAN front door
+    - name: langfuse-k3s
+      listen_port: 30000
+      connect_port: 30000
+      purpose: Langfuse web NodePort fallback
+    - name: litellm-k3s
+      listen_port: 30400
+      connect_port: 30400
+      purpose: LiteLLM gateway NodePort fallback
+
+router_dns_deferred_traefik:
+  dhcp_domain: hom.lab
+  note: Add on LAN cutover; router_enterable true on stock GT6
+  rows:
+    - client_name: langfuse
+      ip: "192.168.50.158"
+      fqdn: langfuse.hom.lab
+      purpose: Langfuse web via Traefik portproxy on hvh-02
+    - client_name: litellm
+      ip: "192.168.50.158"
+      fqdn: litellm.hom.lab
+      purpose: LiteLLM gateway via Traefik portproxy on hvh-02
+
 netbox_services:
   gpu_lane:
     virtual_machines:
