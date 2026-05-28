@@ -1,0 +1,17 @@
+---
+# k3s_traefik_routes — present|absent dispatch.
+
+- name: Include present tasks
+  ansible.builtin.include_tasks: present.yml
+  when: k3s_traefik_routes_state == 'present'
+  tags: [k3s_traefik_routes, k3s_traefik_routes_apply, k3s_traefik_routes_verify]
+
+- name: Include absent tasks
+  ansible.builtin.include_tasks: absent.yml
+  when: k3s_traefik_routes_state == 'absent'
+  tags: [k3s_traefik_routes]
+
+- name: Preview Traefik route registry
+  ansible.builtin.debug:
+    var: k3s_traefik_routes_entries
+  tags: [k3s_traefik_routes_preview]

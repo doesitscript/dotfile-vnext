@@ -1,0 +1,31 @@
+---
+# router_local_dns — stock ASUS GT6 manual DHCP assignment contract (preview only).
+
+router_local_dns_state: "{{ homelab_router_gt6_state | default('absent') }}"
+
+router_local_dns_dhcp_domain: "{{ homelab_router_gt6_dhcp_domain | default('hom.lab') }}"
+router_local_dns_dhcp_dns_server: "{{ homelab_router_gt6_dhcp_dns_server | default('192.168.50.1') }}"
+
+router_local_dns_static_routes: "{{ homelab_router_gt6_static_routes | default([]) }}"
+
+router_local_dns_manual_assignments: "{{ homelab_router_gt6_manual_assignments | default([]) }}"
+
+router_local_dns_router_enterable_assignments: >-
+  {{
+    router_local_dns_manual_assignments
+    | selectattr('router_enterable', 'equalto', true)
+    | rejectattr('router_action', 'equalto', 'delete')
+    | list
+  }}
+
+router_local_dns_mac_hosts_workaround: "{{ homelab_router_gt6_mac_hosts_workaround | default([]) }}"
+
+router_local_dns_automation_enabled: false
+
+router_local_dns_pending_add_assignments: >-
+  {{
+    router_local_dns_manual_assignments
+    | selectattr('router_gt6_ui_status', 'defined')
+    | selectattr('router_gt6_ui_status', 'equalto', 'pending_add')
+    | list
+  }}

@@ -1,0 +1,14 @@
+---
+# k3s_traefik_routes — remove managed Ingress CRs.
+
+- name: Remove Traefik Ingress routes from registry
+  kubernetes.core.k8s:
+    state: absent
+    api_version: networking.k8s.io/v1
+    kind: Ingress
+    name: "{{ item.ingress_name }}"
+    namespace: "{{ item.namespace }}"
+  loop: "{{ k3s_traefik_routes_entries }}"
+  environment:
+    KUBECONFIG: "{{ k3s_traefik_routes_kubeconfig }}"
+  tags: [k3s_traefik_routes]

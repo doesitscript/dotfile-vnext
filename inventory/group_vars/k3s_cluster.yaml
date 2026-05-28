@@ -30,6 +30,53 @@ server_config_yaml: |
   disable:
     - servicelb
 
+# K3s Traefik ingress route registry (SSOT runtime mirror — see live-object-registry.yml ingress_routes)
+k3s_traefik_routes_state: present
+
+k3s_traefik_routes_class_name: traefik
+
+k3s_traefik_routes_lan_publish_host: "{{ hostvars['hom-lab-ctl-hvh-02'].host_ip | default('192.168.50.158') }}"
+
+k3s_traefik_routes_entries:
+  - route_key: langfuse-web
+    ingress_name: langfuse-web-ingress
+    namespace: langfuse
+    hostname: langfuse.hom.lab
+    service_name: langfuse-web
+    service_port: 3000
+    path: /
+    path_type: Prefix
+    netbox_service_slug: langfuse-k3s-web
+    logical_hostname: hom-lab-ctl-lfs-01
+    deployed_by_role: k3s_langfuse_platform
+    fallback_exposure: nodeport
+    fallback_node_port: 30000
+    mac_hosts_enabled: true
+    tags:
+      - web-ui
+      - k3s
+      - traefik-routed
+      - lan-exposed-services
+  - route_key: litellm-gateway
+    ingress_name: litellm-gateway-ingress
+    namespace: litellm
+    hostname: litellm.hom.lab
+    service_name: litellm
+    service_port: 4000
+    path: /
+    path_type: Prefix
+    netbox_service_slug: litellm-k3s-gateway
+    logical_hostname: hom-lab-ctl-llm-01
+    deployed_by_role: k3s_litellm_gateway
+    fallback_exposure: nodeport
+    fallback_node_port: 30400
+    mac_hosts_enabled: true
+    tags:
+      - web-ui
+      - k3s
+      - traefik-routed
+      - lan-exposed-services
+
 # Agent config -- written to /etc/rancher/k3s/config.yaml on agent nodes.
 agent_config_yaml: |
   data-dir: /var/lib/rancher/k3s

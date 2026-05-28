@@ -1,0 +1,86 @@
+---
+# k3s_traefik_routes — apply Ingress CRs from registry.
+
+- name: Query kube-system Traefik Service
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    namespace: kube-system
+    label_selectors:
+      - app.kubernetes.io/name=traefik
+  environment:
+    KUBECONFIG: "{{ k3s_traefik_routes_kubeconfig }}"
+  register: k3s_traefik_routes_traefik_service
+  tags: [k3s_traefik_routes, k3s_traefik_routes_apply, k3s_traefik_routes_verify, k3s_traefik_routes_preview]
+
+- name: Report Traefik Service ports for portproxy alignment
+  ansible.builtin.debug:
+    msg: >-
+      Traefik services in kube-system: {{
+        k3s_traefik_routes_traefik_service.resources
+        | map(attribute='metadata.name')
+        | list
+      }}
+  tags: [k3s_traefik_routes_preview]
+
+- name: Apply Traefik Ingress routes from registry
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: "{{ item.ingress_name }}"
+        namespace: "{{ item.namespace }}"
+        labels:
+          app.kubernetes.io/managed-by: ansible
+          app.kubernetes.io/part-of: homelab-k3s-ingress
+          homelab.dotfile-vnext/route-key: "{{ item.route_key }}"
+        annotations:
+          homelab.dotfile-vnext/netbox-service-slug: "{{ item.netbox_service_slug }}"
+          homelab.dotfile-vnext/logical-hostname: "{{ item.logical_hostname }}"
+          homelab.dotfile-vnext/deployed-by-role: "{{ item.deployed_by_role }}"
+          homelab.dotfile-vnext/fallback-exposure: "{{ item.fallback_exposure }}"
+      spec:
+        ingressClassName: "{{ k3s_traefik_routes_class_name }}"
+        rules:
+          - host: "{{ item.hostname }}"
+            http:
+              paths:
+                - path: "{{ item.path | default('/') }}"
+                  pathType: "{{ item.path_type | default('Prefix') }}"
+                  backend:
+                    service:
+                      name: "{{ item.service_name }}"
+                      port:
+                        number: "{{ item.service_port | int }}"
+  loop: "{{ k3s_traefik_routes_entries }}"
+  environment:
+    KUBECONFIG: "{{ k3s_traefik_routes_kubeconfig }}"
+  tags: [k3s_traefik_routes, k3s_traefik_routes_apply]
+
+- name: Verify backend Service exists for each route
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    namespace: "{{ item.namespace }}"
+    name: "{{ item.service_name }}"
+  loop: "{{ k3s_traefik_routes_entries }}"
+  environment:
+    KUBECONFIG: "{{ k3s_traefik_routes_kubeconfig }}"
+  register: k3s_traefik_routes_backend_check
+  when: k3s_traefik_routes_verify_backends | bool
+  tags: [k3s_traefik_routes, k3s_traefik_routes_verify]
+
+- name: Assert each Ingress backend Service is present
+  ansible.builtin.assert:
+    that:
+      - item.resources | length > 0
+    fail_msg: >-
+      Service {{ item.item.namespace }}/{{ item.item.service_name }} missing for route
+      {{ item.item.route_key }}. Deploy app role first.
+  loop: "{{ k3s_traefik_routes_backend_check.results }}"
+  loop_control:
+    label: "{{ item.item.route_key }}"
+  when: k3s_traefik_routes_verify_backends | bool
+  tags: [k3s_traefik_routes, k3s_traefik_routes_verify]

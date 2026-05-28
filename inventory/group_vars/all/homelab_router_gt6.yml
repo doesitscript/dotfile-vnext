@@ -1,0 +1,130 @@
+---
+# SSOT for ASUS GT6 operator/automation surfaces.
+# router_local_dns consumes homelab_router_gt6_manual_assignments where
+# router_enterable: true. homelab_hosts_file_mac (future) consumes
+# homelab_router_gt6_mac_hosts_workaround.
+
+homelab_router_gt6_state: absent
+
+homelab_router_gt6_dhcp_domain: hom.lab
+homelab_router_gt6_dhcp_dns_server: "192.168.50.1"
+
+homelab_router_gt6_static_routes:
+  - destination: "192.168.137.0"
+    mask: "255.255.255.0"
+    gateway: "192.168.50.158"
+    metric: 1
+    interface: LAN
+    status: operator_applied
+  - destination: "192.168.138.0"
+    mask: "255.255.255.0"
+    gateway: "192.168.50.234"
+    metric: 1
+    interface: LAN
+    status: operator_applied
+
+homelab_router_gt6_manual_assignments:
+  - client_name: Joshs-MBP
+    mac: "A4:5E:60:DB:AE:BF"
+    ip: "192.168.50.33"
+    inventory_host: mac-dev
+    router_enterable: true
+    router_action: keep
+    router_gt6_ui_status: on_router
+    router_gt6_ui_verified_at: "2026-05-27"
+  - client_name: fiberBottleneck
+    mac: "C8:94:02:15:DA:2F"
+    ip: "192.168.50.38"
+    inventory_host: null
+    router_enterable: true
+    router_action: keep
+    notes: "Purpose unverified in inventory"
+    router_gt6_ui_status: on_router
+    router_gt6_ui_verified_at: "2026-05-27"
+  - client_name: DESKTOP-C1ACPUM
+    mac: "CC:28:AA:6C:D0:57"
+    ip: "192.168.50.70"
+    inventory_host: dev-workstation-win
+    router_enterable: true
+    router_action: rename
+    notes: "Confirm IP still .70 vs historical .132 drift"
+    router_gt6_ui_status: on_router
+    router_gt6_ui_verified_at: "2026-05-27"
+  - client_name: hom-lab-ctl-hvh-02
+    mac: "B4:B5:B6:94:5A:BD"
+    ip: "192.168.50.158"
+    inventory_host: hom-lab-ctl-hvh-02
+    router_enterable: true
+    router_action: rename
+    notes: "Was DESKTOP-VLLM in GT6 UI"
+    router_gt6_ui_status: on_router
+    router_gt6_ui_verified_at: "2026-05-27"
+  - client_name: langfuse
+    mac: "00:00:00:00:00:00"
+    ip: "192.168.50.158"
+    inventory_host: null
+    router_enterable: true
+    router_action: add
+    notes: "Traefik ingress front door on hvh-02; resolves langfuse.hom.lab via DHCP domain"
+    router_gt6_ui_status: pending_add
+    router_gt6_ui_verified_at: "2026-05-27"
+  - client_name: litellm
+    mac: "00:00:00:00:00:00"
+    ip: "192.168.50.158"
+    inventory_host: null
+    router_enterable: true
+    router_action: add
+    notes: "Traefik ingress front door on hvh-02; resolves litellm.hom.lab via DHCP domain"
+    router_gt6_ui_status: pending_add
+    router_gt6_ui_verified_at: "2026-05-27"
+  - client_name: Gaming-Desktop
+    mac: "14:F6:D8:7B:29:C9"
+    ip: "192.168.50.191"
+    inventory_host: dev-3090-win
+    router_enterable: true
+    router_action: keep
+    notes: "deferred in inventory"
+    router_gt6_ui_status: on_router
+    router_gt6_ui_verified_at: "2026-05-27"
+  - client_name: hom-lab-ctl-hvh-01
+    mac: "B8:86:87:F7:C8:6F"
+    ip: "192.168.50.234"
+    inventory_host: hom-lab-ctl-hvh-01
+    router_enterable: true
+    router_action: rename
+    notes: "Replaces AI-NET-SERVER @ .234; delete .233 row"
+    router_gt6_ui_status: on_router
+    router_gt6_ui_verified_at: "2026-05-27"
+  - client_name: hom-lab-ctl-dkr-02
+    mac: "00:15:5D:32:9E:1A"
+    ip: "192.168.137.10"
+    inventory_host: hom-lab-ctl-dkr-02
+    router_enterable: false
+    router_action: skip_on_router
+    workaround: homelab_hosts_file_mac
+    notes: "GT6 rejects IP outside 50.x pool; Hyper-V VM still server-225-ubuntu"
+    router_gt6_ui_status: not_enterable
+    router_gt6_ui_verified_at: "2026-05-27"
+  - client_name: hom-lab-ctl-k3s-02
+    mac: "00:15:5D:32:9E:1B"
+    ip: "192.168.137.11"
+    inventory_host: hom-lab-ctl-k3s-02
+    router_enterable: false
+    router_action: skip_on_router
+    workaround: homelab_hosts_file_mac
+    notes: "GT6 rejects IP outside 50.x pool"
+    router_gt6_ui_status: not_enterable
+    router_gt6_ui_verified_at: "2026-05-27"
+
+# Delete from GT6 UI (not desired state):
+# - AI-NET-SERVER / 9C:C7:D3:10:68:5A / 192.168.50.233
+
+homelab_router_gt6_mac_hosts_workaround:
+  - hostname: hom-lab-ctl-dkr-02
+    ip: "192.168.137.10"
+    inventory_host: hom-lab-ctl-dkr-02
+    source: homelab_router_gt6_manual_assignments
+  - hostname: hom-lab-ctl-k3s-02
+    ip: "192.168.137.11"
+    inventory_host: hom-lab-ctl-k3s-02
+    source: homelab_router_gt6_manual_assignments

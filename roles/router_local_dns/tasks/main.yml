@@ -1,0 +1,55 @@
+---
+# router_local_dns — preview and assert only until GT6 automation exists.
+
+- name: Skip router local DNS when state is absent
+  ansible.builtin.meta: end_host
+  when: router_local_dns_state | default('absent') == 'absent'
+  tags: [router_dns, router_dns_preview]
+
+- name: Preview GT6 DHCP domain and DNS server
+  ansible.builtin.debug:
+    msg:
+      dhcp_domain: "{{ router_local_dns_dhcp_domain }}"
+      dhcp_dns_server: "{{ router_local_dns_dhcp_dns_server }}"
+      automation_enabled: "{{ router_local_dns_automation_enabled }}"
+  tags: [router_dns, router_dns_preview]
+
+- name: Preview operator-applied static routes
+  ansible.builtin.debug:
+    var: router_local_dns_static_routes
+  tags: [router_dns, router_dns_preview]
+
+- name: Preview router-enterable manual assignment rows
+  ansible.builtin.debug:
+    var: router_local_dns_router_enterable_assignments
+  tags: [router_dns, router_dns_preview]
+
+- name: Preview mac /etc/hosts workaround entries for non-enterable guests
+  ansible.builtin.debug:
+    var: router_local_dns_mac_hosts_workaround
+  tags: [router_dns, router_dns_preview]
+
+- name: Preview manual assignments skipped on GT6 (guest subnet)
+  ansible.builtin.debug:
+    msg: >-
+      {{
+        router_local_dns_manual_assignments
+        | rejectattr('router_enterable', 'equalto', true)
+        | list
+      }}
+  tags: [router_dns, router_dns_preview]
+
+
+- name: Debug GT6 manual assignment rows pending UI add
+  ansible.builtin.debug:
+    var: router_local_dns_pending_add_assignments
+  tags: [router_dns, router_dns_preview]
+
+- name: Assert router automation is not enabled yet
+  ansible.builtin.fail:
+    msg: >-
+      router_local_dns_state is present but router_local_dns_automation_enabled is false.
+      Apply GT6 manual rows from inventory/group_vars/all/homelab_router_gt6.yml in the web UI.
+      See roles/router_local_dns/README.md and docs/diagnostics/asus-gt6-stock-local-dns-option-c.md.
+  when: not (router_local_dns_automation_enabled | bool)
+  tags: [router_dns]
