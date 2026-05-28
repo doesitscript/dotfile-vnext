@@ -6,13 +6,22 @@ dev_jupyterlab_workbench_home: "/home/{{ dev_jupyterlab_workbench_user }}"
 dev_jupyterlab_workbench_install_dir: "{{ dev_jupyterlab_workbench_home }}/jupyterlab-workbench"
 dev_jupyterlab_workbench_venv_path: "{{ dev_jupyterlab_workbench_install_dir }}/.venv"
 dev_jupyterlab_workbench_notebooks_dir: "{{ dev_jupyterlab_workbench_install_dir }}/notebooks"
+dev_jupyterlab_workbench_root_dir: "{{ dev_jupyterlab_workbench_install_dir }}"
+dev_jupyterlab_workbench_repo_checkout_dir: "{{ dev_jupyterlab_workbench_install_dir }}/langfuse-docs"
 dev_jupyterlab_workbench_cookbooks_dir: "{{ dev_jupyterlab_workbench_install_dir }}/langfuse-cookbooks"
+dev_jupyterlab_workbench_cookbooks_relative_path: "cookbook"
 dev_jupyterlab_workbench_port: 8888
-dev_jupyterlab_workbench_token: ""  # Empty = auto-generate, set to specific value to pin
 dev_jupyterlab_workbench_bind_address: "0.0.0.0"
 dev_jupyterlab_workbench_allow_origin: "*"
+dev_jupyterlab_workbench_default_url: "/lab/tree/langfuse-cookbooks"
+dev_jupyterlab_workbench_operator_hostname: "jupyter.hom.lab"
+dev_jupyterlab_workbench_operator_url: "http://{{ dev_jupyterlab_workbench_operator_hostname }}:{{ dev_jupyterlab_workbench_port }}/lab"
+dev_jupyterlab_workbench_config_dir: "{{ dev_jupyterlab_workbench_home }}/.jupyter"
+dev_jupyterlab_workbench_config_path: "{{ dev_jupyterlab_workbench_config_dir }}/jupyter_server_config.py"
 dev_jupyterlab_workbench_kernel_name: "langfuse-cookbooks"
 dev_jupyterlab_workbench_kernel_display_name: "Langfuse Cookbooks (Python 3)"
+dev_jupyterlab_workbench_password_plain: "Pass@w0rd1"
+dev_jupyterlab_workbench_password_hash: "argon2:$argon2id$v=19$m=10240,t=10,p=8$sbtNmpbfyocG+ml4FdtcYQ$valfcad1E2e1HQXOWVkoGvZq9AhzbN3OnZ7CpwP5wBA"
 
 # Python packages
 dev_jupyterlab_workbench_python_version: "3.11"
@@ -25,10 +34,31 @@ dev_jupyterlab_workbench_packages:
   - openai
 
 # Langfuse cookbook repo
-dev_jupyterlab_workbench_cookbooks_repo: "https://github.com/langfuse/langfuse-cookbooks.git"
+dev_jupyterlab_workbench_cookbooks_repo: "https://github.com/langfuse/langfuse-docs.git"
 dev_jupyterlab_workbench_cookbooks_version: "main"
 
 # Service configuration
 dev_jupyterlab_workbench_service_enabled: true
 dev_jupyterlab_workbench_service_name: "jupyterlab-workbench"
 dev_jupyterlab_workbench_service_description: "JupyterLab Workbench for AI/ML Development"
+
+# Homelab operator-facing integration
+dev_jupyterlab_workbench_langfuse_host: "http://langfuse.hom.lab"
+dev_jupyterlab_workbench_langfuse_public_key: "{{ vault_shared_langfuse_public_key | default('lf_pk_Pass@w0rd1') }}"
+dev_jupyterlab_workbench_langfuse_secret_key: "{{ vault_shared_langfuse_secret_key | default('lf_sk_Pass@w0rd1') }}"
+dev_jupyterlab_workbench_openai_base_url: "http://litellm.hom.lab/v1"
+dev_jupyterlab_workbench_openai_api_key: "{{ vault_k3s_litellm_gateway_master_key | default('sk-Pass@w0rd1') }}"
+dev_jupyterlab_workbench_openai_model: "default"
+dev_jupyterlab_workbench_anthropic_api_key: ""
+dev_jupyterlab_workbench_required_resolvable_hostnames:
+  - "{{ dev_jupyterlab_workbench_operator_hostname }}"
+  - "langfuse.hom.lab"
+  - "litellm.hom.lab"
+
+# Required keys for the managed runtime .env artifact.
+dev_jupyterlab_workbench_required_env_keys:
+  - LANGFUSE_HOST
+  - LANGFUSE_PUBLIC_KEY
+  - LANGFUSE_SECRET_KEY
+  - OPENAI_BASE_URL
+  - OPENAI_API_KEY

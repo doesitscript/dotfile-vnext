@@ -5,15 +5,11 @@ After=network.target
 [Service]
 Type=simple
 User={{ dev_jupyterlab_workbench_user }}
-WorkingDirectory={{ dev_jupyterlab_workbench_notebooks_dir }}
+WorkingDirectory={{ dev_jupyterlab_workbench_root_dir }}
 Environment="PATH={{ dev_jupyterlab_workbench_venv_path }}/bin:/usr/local/bin:/usr/bin:/bin"
 ExecStart={{ dev_jupyterlab_workbench_venv_path }}/bin/jupyter lab \
-    --ip={{ dev_jupyterlab_workbench_bind_address }} \
-    --port={{ dev_jupyterlab_workbench_port }} \
     --no-browser \
-    --ServerApp.allow_origin='{{ dev_jupyterlab_workbench_allow_origin }}' \
-    {% if dev_jupyterlab_workbench_token %}--ServerApp.token='{{ dev_jupyterlab_workbench_token }}'{% else %}--ServerApp.token=''{% endif %} \
-    --notebook-dir={{ dev_jupyterlab_workbench_notebooks_dir }}
+    --config={{ dev_jupyterlab_workbench_config_path }}
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal

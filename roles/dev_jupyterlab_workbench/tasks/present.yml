@@ -1,4 +1,9 @@
 ---
+- name: Load shared vault for JupyterLab workbench
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault/shared.vault.yml"
+  failed_when: false
+
 - name: Ensure Python 3 and venv are installed
   ansible.builtin.apt:
     name:
@@ -47,17 +52,113 @@
     group: "{{ dev_jupyterlab_workbench_user }}"
   become: true
 
-- name: Clone Langfuse cookbooks repository
+- name: Clone Langfuse docs repository for cookbook notebooks
   ansible.builtin.git:
     repo: "{{ dev_jupyterlab_workbench_cookbooks_repo }}"
-    dest: "{{ dev_jupyterlab_workbench_cookbooks_dir }}"
+    dest: "{{ dev_jupyterlab_workbench_repo_checkout_dir }}"
     version: "{{ dev_jupyterlab_workbench_cookbooks_version }}"
     force: false
     update: true
   environment:
     GIT_TERMINAL_PROMPT: "0"
-  ignore_errors: true
   register: _dev_jupyterlab_workbench_cookbook_clone
+
+- name: Verify Langfuse cookbook path exists in upstream checkout
+  ansible.builtin.stat:
+    path: "{{ dev_jupyterlab_workbench_repo_checkout_dir }}/{{ dev_jupyterlab_workbench_cookbooks_relative_path }}"
+  register: _dev_jupyterlab_workbench_cookbook_path
+
+- name: Assert Langfuse cookbook checkout is usable
+  ansible.builtin.assert:
+    that:
+      - _dev_jupyterlab_workbench_cookbook_path.stat.exists
+      - _dev_jupyterlab_workbench_cookbook_path.stat.isdir
+    fail_msg: >-
+      Langfuse upstream checkout at {{ dev_jupyterlab_workbench_cookbooks_repo }}
+      does not contain {{ dev_jupyterlab_workbench_cookbooks_relative_path }}
+    success_msg: >-
+      Langfuse upstream checkout contains {{ dev_jupyterlab_workbench_cookbooks_relative_path }}
+
+- name: Link cookbook folder into JupyterLab root
+  ansible.builtin.file:
+    src: "{{ dev_jupyterlab_workbench_repo_checkout_dir }}/{{ dev_jupyterlab_workbench_cookbooks_relative_path }}"
+    dest: "{{ dev_jupyterlab_workbench_cookbooks_dir }}"
+    state: link
+    force: true
+  become: true
+
+- name: Ensure Jupyter config directory exists
+  ansible.builtin.file:
+    path: "{{ dev_jupyterlab_workbench_config_dir }}"
+    state: directory
+    mode: "0755"
+    owner: "{{ dev_jupyterlab_workbench_user }}"
+    group: "{{ dev_jupyterlab_workbench_user }}"
+  become: true
+
+- name: Check for existing Jupyter server config
+  ansible.builtin.stat:
+    path: "{{ dev_jupyterlab_workbench_config_path }}"
+  register: _dev_jupyterlab_workbench_existing_config_stat
+
+- name: Read existing Jupyter server config
+  ansible.builtin.slurp:
+    src: "{{ dev_jupyterlab_workbench_config_path }}"
+  register: _dev_jupyterlab_workbench_existing_config
+  when: _dev_jupyterlab_workbench_existing_config_stat.stat.exists
+  no_log: true
+
+- name: Extract existing Jupyter password hash
+  ansible.builtin.set_fact:
+    _dev_jupyterlab_workbench_existing_password_hash: >-
+      {{
+        (
+          _dev_jupyterlab_workbench_existing_config.content
+          | b64decode
+          | regex_findall('c\\.ServerApp\\.password = "([^"]+)"')
+          | first
+        ) | default('')
+      }}
+  when: _dev_jupyterlab_workbench_existing_config_stat.stat.exists
+  no_log: true
+
+- name: Generate Jupyter password hash
+  ansible.builtin.command:
+    cmd: >-
+      {{ dev_jupyterlab_workbench_venv_path }}/bin/python -c
+      "from jupyter_server.auth import passwd; print(passwd('{{ dev_jupyterlab_workbench_password_plain }}'))"
+  register: _dev_jupyterlab_workbench_generated_password_hash
+  changed_when: false
+  check_mode: false
+  when:
+    - dev_jupyterlab_workbench_password_hash | length == 0
+    - (_dev_jupyterlab_workbench_existing_password_hash | default('')) | length == 0
+  no_log: true
+
+- name: Resolve Jupyter password hash
+  ansible.builtin.set_fact:
+    _dev_jupyterlab_workbench_resolved_password_hash: >-
+      {{
+        dev_jupyterlab_workbench_password_hash
+        if (dev_jupyterlab_workbench_password_hash | length > 0)
+        else (
+          _dev_jupyterlab_workbench_existing_password_hash
+          if ((_dev_jupyterlab_workbench_existing_password_hash | default('')) | length > 0)
+          else (_dev_jupyterlab_workbench_generated_password_hash.stdout | trim)
+        )
+      }}
+  no_log: true
+
+- name: Render Jupyter server config
+  ansible.builtin.template:
+    src: jupyter_server_config.py.j2
+    dest: "{{ dev_jupyterlab_workbench_config_path }}"
+    mode: "0600"
+    owner: "{{ dev_jupyterlab_workbench_user }}"
+    group: "{{ dev_jupyterlab_workbench_user }}"
+  become: true
+  notify:
+    - Restart JupyterLab workbench service
 
 - name: Register IPython kernel for JupyterLab
   ansible.builtin.command:
@@ -89,35 +190,67 @@
   become: true
   when: dev_jupyterlab_workbench_service_enabled | bool
 
-- name: Create sample .env file for notebooks
-  ansible.builtin.copy:
-    dest: "{{ dev_jupyterlab_workbench_notebooks_dir }}/.env.example"
-    content: |
-      # JupyterLab Workbench Environment Variables
-      # Copy to .env and fill in your API keys
-      
-      LANGFUSE_PUBLIC_KEY=your_public_key_here
-      LANGFUSE_SECRET_KEY=your_secret_key_here
-      LANGFUSE_HOST=https://cloud.langfuse.com
-      
-      OPENAI_API_KEY=your_openai_key_here
-      ANTHROPIC_API_KEY=your_anthropic_key_here
+- name: Render local homelab .env file for notebook recipes
+  ansible.builtin.template:
+    src: notebook.env.j2
+    dest: "{{ dev_jupyterlab_workbench_install_dir }}/.env"
+    mode: "0600"
+    owner: "{{ dev_jupyterlab_workbench_user }}"
+    group: "{{ dev_jupyterlab_workbench_user }}"
+  become: true
+  no_log: true
+
+- name: Remove legacy .env example artifact
+  ansible.builtin.file:
+    path: "{{ dev_jupyterlab_workbench_install_dir }}/.env.example"
+    state: absent
+  become: true
+
+- name: Read managed Jupyter workbench .env file
+  ansible.builtin.slurp:
+    src: "{{ dev_jupyterlab_workbench_install_dir }}/.env"
+  register: _dev_jupyterlab_workbench_env_file
+  no_log: true
+
+- name: Verify managed Jupyter workbench .env keys
+  ansible.builtin.assert:
+    that:
+      - ((_dev_jupyterlab_workbench_env_file.content | b64decode) | regex_search('^' ~ item ~ '=.+' , multiline=True)) is not none
+    fail_msg: "Managed Jupyter workbench .env is missing required populated key {{ item }}"
+    success_msg: "Managed Jupyter workbench .env contains required key {{ item }}"
+  loop: "{{ dev_jupyterlab_workbench_required_env_keys }}"
+  no_log: true
+
+- name: Verify required operator hostnames resolve on the workbench host
+  ansible.builtin.command:
+    cmd: "getent hosts {{ item }}"
+  register: _dev_jupyterlab_workbench_host_resolution
+  changed_when: false
+  loop: "{{ dev_jupyterlab_workbench_required_resolvable_hostnames }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: Render workbench quickstart note
+  ansible.builtin.template:
+    src: WORKBENCH-README.md.j2
+    dest: "{{ dev_jupyterlab_workbench_install_dir }}/WORKBENCH-README.md"
     mode: "0644"
-    force: false
+    owner: "{{ dev_jupyterlab_workbench_user }}"
+    group: "{{ dev_jupyterlab_workbench_user }}"
+  become: true
 
 - name: Display JupyterLab access information
   ansible.builtin.debug:
     msg: |
       JupyterLab Workbench deployed successfully!
-      
-      Access URL: http://{{ ansible_default_ipv4.address }}:{{ dev_jupyterlab_workbench_port }}
-      
-      SSH Tunnel (from Mac):
-        ssh -L {{ dev_jupyterlab_workbench_port }}:localhost:{{ dev_jupyterlab_workbench_port }} {{ dev_jupyterlab_workbench_user }}@{{ ansible_host }}
-      
-      Then open: http://localhost:{{ dev_jupyterlab_workbench_port }}
-      
-      Notebooks directory: {{ dev_jupyterlab_workbench_notebooks_dir }}
-      Langfuse cookbooks: {{ dev_jupyterlab_workbench_cookbooks_dir }}
-      
+
+      Access URL: {{ dev_jupyterlab_workbench_operator_url }}
+      Login password: {{ dev_jupyterlab_workbench_password_plain }}
+
+      Workbench root: {{ dev_jupyterlab_workbench_root_dir }}
+      Langfuse recipes entry: {{ dev_jupyterlab_workbench_cookbooks_dir }}
+      Managed runtime .env: {{ dev_jupyterlab_workbench_install_dir }}/.env
+      Langfuse endpoint: {{ dev_jupyterlab_workbench_langfuse_host }}
+      LiteLLM endpoint: {{ dev_jupyterlab_workbench_openai_base_url }}
+
       Service status: systemctl status {{ dev_jupyterlab_workbench_service_name }}

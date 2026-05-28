@@ -1,0 +1,30 @@
+# JupyterLab Workbench
+
+This workbench is managed by Ansible for `{{ inventory_hostname }}`.
+
+## Web access
+
+- URL: `{{ dev_jupyterlab_workbench_operator_url }}`
+- Password: `{{ dev_jupyterlab_workbench_password_plain }}`
+
+## What to open first
+
+- `langfuse-cookbooks/` contains the official Langfuse recipe notebooks from
+  `{{ dev_jupyterlab_workbench_cookbooks_repo }}`
+- upstream checkout lives at `{{ dev_jupyterlab_workbench_repo_checkout_dir }}`
+- `.env` is the managed runtime environment with the local homelab endpoints
+  and keys needed by the recipes
+
+## Local service wiring
+
+- Langfuse: `{{ dev_jupyterlab_workbench_langfuse_host }}`
+- LiteLLM: `{{ dev_jupyterlab_workbench_openai_base_url }}`
+
+## Notes
+
+- `OPENAI_API_KEY` is wired to the local LiteLLM proxy key so OpenAI-compatible
+  notebooks can target the homelab gateway when they honor `OPENAI_BASE_URL`.
+- `OPENAI_MODEL` defaults to `{{ dev_jupyterlab_workbench_openai_model }}` for
+  local OpenAI-compatible client usage through LiteLLM.
+- If a notebook expects a real upstream provider key, set it in `.env` after
+  deciding which provider you want to use.

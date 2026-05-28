@@ -1,4 +1,28 @@
 ---
+- name: Ensure mac-dev resolves published homelab service hostnames
+  hosts: mac-dev
+  gather_facts: true
+  become: true
+
+  roles:
+    - role: homelab_hosts_file_mac
+      tags:
+        - homelab_hosts_file_mac
+        - jupyter
+        - ai_ml_dev
+
+- name: Ensure Jupyter workbench host resolves homelab service hostnames
+  hosts: hom-lab-ctl-k3s-02
+  gather_facts: true
+  become: true
+
+  roles:
+    - role: homelab_hosts_file_linux
+      tags:
+        - homelab_hosts_file_linux
+        - jupyter
+        - ai_ml_dev
+
 - name: Deploy JupyterLab Development Workbench
   hosts: hom-lab-ctl-k3s-02
   gather_facts: true
