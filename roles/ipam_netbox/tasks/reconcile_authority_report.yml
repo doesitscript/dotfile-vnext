@@ -1,0 +1,184 @@
+---
+- name: Build read-only NetBox service inventory reconciliation report
+  ansible.builtin.include_tasks:
+    file: discover_service_inventory_report.yml
+    apply:
+      tags:
+        - netbox_authority_reconciliation
+  tags:
+    - netbox_authority_reconciliation
+
+- name: Query live NetBox devices for authority reconciliation
+  ansible.builtin.uri:
+    url: "{{ ipam_netbox_api_url }}/api/dcim/devices/?limit=200"
+    method: GET
+    headers:
+      Authorization: "Token {{ ipam_netbox_effective_api_token }}"
+    return_content: true
+    validate_certs: false
+  register: _ipam_netbox_reconcile_devices
+  changed_when: false
+  tags:
+    - netbox_authority_reconciliation
+
+- name: Query live NetBox virtual machines for authority reconciliation
+  ansible.builtin.uri:
+    url: "{{ ipam_netbox_api_url }}/api/virtualization/virtual-machines/?limit=200"
+    method: GET
+    headers:
+      Authorization: "Token {{ ipam_netbox_effective_api_token }}"
+    return_content: true
+    validate_certs: false
+  register: _ipam_netbox_reconcile_virtual_machines
+  changed_when: false
+  tags:
+    - netbox_authority_reconciliation
+
+- name: Query live NetBox prefixes for authority reconciliation
+  ansible.builtin.uri:
+    url: "{{ ipam_netbox_api_url }}/api/ipam/prefixes/?limit=200"
+    method: GET
+    headers:
+      Authorization: "Token {{ ipam_netbox_effective_api_token }}"
+    return_content: true
+    validate_certs: false
+  register: _ipam_netbox_reconcile_prefixes
+  changed_when: false
+  tags:
+    - netbox_authority_reconciliation
+
+- name: Query live NetBox config contexts for authority reconciliation
+  ansible.builtin.uri:
+    url: "{{ ipam_netbox_api_url }}/api/extras/config-contexts/?limit=200"
+    method: GET
+    headers:
+      Authorization: "Token {{ ipam_netbox_effective_api_token }}"
+    return_content: true
+    validate_certs: false
+  register: _ipam_netbox_reconcile_config_contexts
+  changed_when: false
+  tags:
+    - netbox_authority_reconciliation
+
+- name: Build declared and live NetBox authority datasets
+  ansible.builtin.set_fact:
+    ipam_netbox_declared_devices: >-
+      {{
+        (
+          [ipam_netbox_hom_lab_ctl_hvh_02_model.device.name]
+          + (ipam_netbox_windows_share_hosts_model.devices | default([]) | map(attribute='name') | list)
+        ) | unique | sort
+      }}
+    ipam_netbox_declared_virtual_machines: >-
+      {{
+        (
+          [
+            ipam_netbox_hom_lab_ctl_hvh_02_model.virtual_machine.name,
+            ipam_netbox_hom_lab_ctl_hvh_02_model.k3s_virtual_machine.name
+          ]
+          + (ipam_netbox_hom_lab_ctl_hvh_01_vm_model.virtual_machines | default([]) | map(attribute='name') | list)
+        ) | unique | sort
+      }}
+    ipam_netbox_declared_prefixes: >-
+      {{
+        ipam_netbox_prefixes.prefixes | default([]) | map(attribute='prefix') | list | unique | sort
+      }}
+    ipam_netbox_declared_config_contexts: >-
+      {{
+        ipam_netbox_config_contexts | default([]) | map(attribute='name') | list | unique | sort
+      }}
+    ipam_netbox_live_device_names: >-
+      {{
+        _ipam_netbox_reconcile_devices.json.results | default([]) | map(attribute='name') | list | unique | sort
+      }}
+    ipam_netbox_live_virtual_machine_names: >-
+      {{
+        _ipam_netbox_reconcile_virtual_machines.json.results | default([]) | map(attribute='name') | list | unique | sort
+      }}
+    ipam_netbox_live_prefix_strings: >-
+      {{
+        _ipam_netbox_reconcile_prefixes.json.results | default([]) | map(attribute='prefix') | list | unique | sort
+      }}
+    ipam_netbox_live_config_context_names: >-
+      {{
+        _ipam_netbox_reconcile_config_contexts.json.results | default([]) | map(attribute='name') | list | unique | sort
+      }}
+    ipam_netbox_authority_reconciliation_date: "{{ lookup('pipe', 'date -u +%F') }}"
+    ipam_netbox_authority_reconciliation_timestamp: "{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%SZ') }}"
+  tags:
+    - netbox_authority_reconciliation
+
+- name: Render NetBox authority reconciliation report
+  ansible.builtin.set_fact:
+    ipam_netbox_authority_reconciliation_report: >-
+      {{
+        lookup('template', 'netbox_authority_reconciliation.json.j2') | from_json
+      }}
+  tags:
+    - netbox_authority_reconciliation
+
+- name: Ensure dated NetBox reconciliation artifact directory exists
+  ansible.builtin.file:
+    path: >-
+      {{
+        ipam_netbox_reconciliation_artifact_dir
+      }}/{{ ipam_netbox_authority_reconciliation_date }}
+    state: directory
+    mode: "0755"
+  tags:
+    - netbox_authority_reconciliation
+
+- name: Write latest NetBox authority reconciliation artifact
+  ansible.builtin.copy:
+    dest: "{{ ipam_netbox_reconciliation_artifact_dir }}/latest.json"
+    content: "{{ ipam_netbox_authority_reconciliation_report | to_nice_json }}"
+    mode: "0644"
+  tags:
+    - netbox_authority_reconciliation
+
+- name: Write timestamped NetBox authority reconciliation artifact
+  ansible.builtin.copy:
+    dest: >-
+      {{
+        ipam_netbox_reconciliation_artifact_dir
+      }}/{{ ipam_netbox_authority_reconciliation_date }}/authority-{{
+        ipam_netbox_authority_reconciliation_timestamp
+      }}.json
+    content: "{{ ipam_netbox_authority_reconciliation_report | to_nice_json }}"
+    mode: "0644"
+  tags:
+    - netbox_authority_reconciliation
+
+- name: Preview NetBox authority reconciliation summary
+  ansible.builtin.debug:
+    msg:
+      comparison_mode: "declared-applied-verified"
+      artifact: "{{ ipam_netbox_reconciliation_artifact_dir }}/latest.json"
+      pass: "{{ ipam_netbox_authority_reconciliation_report.status.pass }}"
+      failure_reasons: "{{ ipam_netbox_authority_reconciliation_report.status.failure_reasons }}"
+      missing_devices: "{{ ipam_netbox_authority_reconciliation_report.applied.devices_missing }}"
+      missing_virtual_machines: "{{ ipam_netbox_authority_reconciliation_report.applied.virtual_machines_missing }}"
+      missing_prefixes: "{{ ipam_netbox_authority_reconciliation_report.applied.prefixes_missing }}"
+      missing_config_contexts: "{{ ipam_netbox_authority_reconciliation_report.applied.config_contexts_missing }}"
+      services_missing_in_runtime: "{{ ipam_netbox_authority_reconciliation_report.verified.services_missing_in_runtime }}"
+      services_missing_in_netbox: "{{ ipam_netbox_authority_reconciliation_report.verified.services_missing_in_netbox }}"
+      ingress_metadata_mismatches: >-
+        {{
+          ipam_netbox_authority_reconciliation_report.verified.ingress_intent_review
+          | rejectattr('ok', 'equalto', true)
+          | map(attribute='name')
+          | list
+        }}
+  tags:
+    - netbox_authority_reconciliation
+
+- name: Fail NetBox authority reconciliation on declared/applied/verified drift
+  ansible.builtin.assert:
+    that:
+      - ipam_netbox_authority_reconciliation_report.status.pass | bool
+    fail_msg: >-
+      NetBox authority reconciliation failed. Review {{
+      ipam_netbox_reconciliation_artifact_dir }}/latest.json and the gate output
+      for declared/applied/verified drift details.
+  tags:
+    - netbox_authority_reconciliation

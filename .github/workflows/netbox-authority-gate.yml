@@ -1,0 +1,38 @@
+name: NetBox Authority Gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * *"
+
+jobs:
+  netbox-static-governance:
+    name: NetBox static governance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run static NetBox authority gate
+        run: ./bin/netbox-authority-gate.sh --static-only
+
+  netbox-live-reconciliation:
+    name: NetBox live reconciliation
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on:
+      - self-hosted
+      - homelab
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run live NetBox authority gate
+        env:
+          NETBOX_TOKEN: ${{ secrets.NETBOX_TOKEN }}
+          IPAM_NETBOX_API_URL: ${{ secrets.IPAM_NETBOX_API_URL }}
+          NETBOX_INVENTORY_FILE: inventory/netbox.yml
+        run: ./bin/netbox-authority-gate.sh

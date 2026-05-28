@@ -440,6 +440,29 @@ ipam_netbox_hom_lab_ctl_hvh_02_model:
         - homelab
         - lan-exposed-services
         - traefik-routed
+    - name: jupyterlab-workbench
+      virtual_machine: hom-lab-ctl-k3s-02
+      protocol: tcp
+      ports:
+        - 8888
+      ipaddresses:
+        - address: 192.168.137.11/24
+      description: JupyterLab workbench for Langfuse cookbook exploration on the GPU-lane K3s VM
+      primary_access_point: "http://jupyter.hom.lab:8888/lab"
+      comments: >-
+        JupyterLab on hom-lab-ctl-k3s-02; canonical operator path is the guest-direct
+        hostname jupyter.hom.lab over the routed .137.x subnet. No Traefik or portproxy
+        front door is required for this service today.
+      custom_fields:
+        deployed_by_role: dev_jupyterlab_workbench
+        logical_hostname: hom-lab-ctl-jpy-01
+      tags:
+        - ansible-managed
+        - service-endpoint
+        - web-ui
+        - infra
+        - k3s
+        - homelab
 
 ipam_netbox_windows_share_hosts_model:
   site: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.site }}"
@@ -806,6 +829,17 @@ ipam_netbox_service_inventory_discovery_hosts:
     - hom-lab-ctl-k3s-02
 
 ipam_netbox_service_inventory_artifact_dir: "{{ ipam_netbox_project_root }}/artifacts/netbox-service-inventory"
+ipam_netbox_reconciliation_artifact_dir: "{{ ipam_netbox_project_root }}/artifacts/netbox-reconciliation"
 ipam_netbox_service_inventory_discovery_ignore_loopback_docker_binds: true
 ipam_netbox_service_inventory_discovery_ignored_k3s_namespaces:
   - kube-system
+ipam_netbox_service_inventory_guest_direct_runtime_probes:
+  - name: jupyterlab-workbench
+    virtual_machine: hom-lab-ctl-k3s-02
+    runtime_kind: guest_direct
+    host: 127.0.0.1
+    protocol: tcp
+    public_port: 8888
+    private_port: 8888
+    access_path: /lab
+    source_name: jupyterlab-workbench

@@ -1,0 +1,80 @@
+---
+# Read-only NetBox authority reconciliation entrypoint.
+#
+# This playbook is the focused runtime verification surface for:
+# - repo consistency against NetBox naming/modeling decisions
+# - curated service inventory vs runtime vs live NetBox
+# - declared/applied/verified reconciliation artifacts under artifacts/netbox-reconciliation/
+#
+# It does not mutate live NetBox state.
+
+- name: NetBox authority reconciliation - repo consistency preview
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Ensure repo active references match NetBox source-of-truth names
+      ansible.builtin.command:
+        cmd: scripts/validate_netbox_repo_consistency.sh
+        chdir: "{{ playbook_dir }}/.."
+      check_mode: false
+      changed_when: false
+      tags:
+        - netbox_authority_reconciliation
+
+- name: NetBox authority reconciliation - Docker runtime discovery
+  hosts: hom-lab-ctl-dkr-01,hom-lab-ctl-dkr-02
+  gather_facts: false
+  tasks:
+    - name: Collect Docker runtime service facts for reconciliation
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: discover_service_inventory_docker
+        apply:
+          tags:
+            - netbox_authority_reconciliation
+      tags:
+        - netbox_authority_reconciliation
+
+- name: NetBox authority reconciliation - K3s runtime discovery
+  hosts: hom-lab-ctl-k3s-01,hom-lab-ctl-k3s-02
+  gather_facts: false
+  tasks:
+    - name: Collect K3s runtime service facts for reconciliation
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: discover_service_inventory_k3s
+        apply:
+          tags:
+            - netbox_authority_reconciliation
+      tags:
+        - netbox_authority_reconciliation
+
+- name: NetBox authority reconciliation - guest-direct runtime discovery
+  hosts: linux_vm_hosts
+  gather_facts: false
+  tasks:
+    - name: Collect guest-direct runtime service facts for reconciliation
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: discover_service_inventory_guest_direct
+        apply:
+          tags:
+            - netbox_authority_reconciliation
+      tags:
+        - netbox_authority_reconciliation
+
+- name: NetBox authority reconciliation - declared/applied/verified report
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Build NetBox authority reconciliation report
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: reconcile_authority_report
+        apply:
+          tags:
+            - netbox_authority_reconciliation
+      tags:
+        - netbox_authority_reconciliation

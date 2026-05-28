@@ -100,6 +100,32 @@ The NetBox seed preview/apply tags also run this gate automatically. It fails
 when retired NetBox names remain in active inventory, playbooks, scripts, or
 planning docs outside explicit legacy-alias or migration contexts.
 
+### NetBox Authority Gate
+
+For NetBox-scoped packet enforcement and read-only reconciliation, use:
+
+```bash
+# Packet / plan governance only
+bin/netbox-authority-gate.sh --static-only
+
+# Full read-only reconciliation path
+bin/netbox-authority-gate.sh
+```
+
+The full mode runs the repo consistency gate, captures a NetBox inventory
+graph plus a shadow inventory compatibility report, runs
+`playbooks/reconcile_netbox.yaml`, and writes:
+
+- `artifacts/netbox-reconciliation/latest.json`
+- `artifacts/netbox-reconciliation/latest.inventory-compatibility.json`
+- `artifacts/netbox-service-inventory/latest.json`
+
+Runtime discovery in the reconciliation path covers:
+
+- Docker published services
+- K3s NodePort and ingress-backed services
+- guest-direct endpoints such as `jupyterlab-workbench` on `hom-lab-ctl-k3s-02`
+
 ---
 
 ## Role Variables
@@ -182,6 +208,9 @@ ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
   --tags ipam_netbox_service_inventory_discovery_preview
 
+# Run the read-only NetBox authority reconciliation path
+ansible-playbook playbooks/reconcile_netbox.yaml --tags netbox_authority_reconciliation
+
 # Verify the repo is not carrying stale active NetBox names before apply
 ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
   --tags ipam_netbox_repo_consistency
@@ -205,7 +234,8 @@ applied to objects *within* NetBox — devices, prefixes, IP addresses, VMs, etc
 They are a separate concern from Ansible play tags above.
 
 The `netbox.netbox` Ansible collection's `netbox_tag` module manages these via
-the NetBox API. A future `tasks/seed_tags.yml` task file should seed at minimum:
+the NetBox API. This repo already seeds tags through `tasks/seed_tags.yml`,
+including at minimum:
 
 | Tag name | Slug | Purpose |
 | --- | --- | --- |

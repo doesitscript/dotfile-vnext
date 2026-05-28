@@ -202,6 +202,18 @@
         - ipam_netbox_service_inventory_discovery
         - ipam_netbox_service_inventory_discovery_preview
 
+- name: Discover guest-direct runtime service inventory on Linux VMs
+  hosts: linux_vm_hosts
+  gather_facts: false
+  tasks:
+    - name: Collect guest-direct runtime service facts
+      ansible.builtin.include_role:
+        name: ipam_netbox
+        tasks_from: discover_service_inventory_guest_direct
+      tags:
+        - ipam_netbox_service_inventory_discovery
+        - ipam_netbox_service_inventory_discovery_preview
+
 - name: Compare curated, runtime, and live NetBox service inventory
   hosts: localhost
   connection: local

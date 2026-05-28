@@ -1,0 +1,57 @@
+---
+- name: Select guest-direct runtime probes for this host
+  ansible.builtin.set_fact:
+    ipam_netbox_guest_direct_runtime_probes_for_host: >-
+      {{
+        (ipam_netbox_service_inventory_guest_direct_runtime_probes | default([]))
+        | selectattr('virtual_machine', 'equalto', inventory_hostname)
+        | list
+      }}
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Initialize normalized guest-direct service endpoints
+  ansible.builtin.set_fact:
+    ipam_netbox_runtime_service_endpoints: "{{ ipam_netbox_runtime_service_endpoints | default([]) }}"
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Probe guest-direct runtime ports for NetBox service discovery
+  ansible.builtin.wait_for:
+    host: "{{ item.host | default('127.0.0.1') }}"
+    port: "{{ item.private_port }}"
+    state: started
+    timeout: 2
+    connect_timeout: 1
+  register: _ipam_netbox_guest_direct_port_probes
+  changed_when: false
+  failed_when: false
+  loop: "{{ ipam_netbox_guest_direct_runtime_probes_for_host }}"
+  loop_control:
+    label: "{{ item.name }}:{{ item.private_port }}"
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Record successful guest-direct runtime endpoints
+  ansible.builtin.set_fact:
+    ipam_netbox_runtime_service_endpoints: "{{ ipam_netbox_runtime_service_endpoints + [guest_direct_endpoint] }}"
+  vars:
+    guest_direct_endpoint:
+      virtual_machine: "{{ item.item.virtual_machine }}"
+      runtime_kind: "{{ item.item.runtime_kind }}"
+      source_name: "{{ item.item.source_name | default(item.item.name) }}"
+      host: "{{ item.item.host | default('127.0.0.1') }}"
+      protocol: "{{ item.item.protocol }}"
+      public_port: "{{ item.item.public_port }}"
+      private_port: "{{ item.item.private_port }}"
+      access_path: "{{ item.item.access_path | default('') }}"
+  loop: "{{ _ipam_netbox_guest_direct_port_probes.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name }}:{{ item.item.private_port }}"
+  when: not (item.failed | default(false))
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview

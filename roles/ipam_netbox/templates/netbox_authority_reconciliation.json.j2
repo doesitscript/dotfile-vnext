@@ -1,0 +1,165 @@
+{% set ns = namespace(
+  devices_missing=[],
+  devices_present=[],
+  virtual_machines_missing=[],
+  virtual_machines_present=[],
+  prefixes_missing=[],
+  prefixes_present=[],
+  config_contexts_missing=[],
+  config_contexts_present=[],
+  services_missing_in_runtime=[],
+  services_missing_in_netbox=[],
+  ingress_reviews=[],
+  failure_reasons=[]
+) %}
+{% for item in ipam_netbox_declared_devices %}
+  {% if item in ipam_netbox_live_device_names %}
+    {% set _ = ns.devices_present.append(item) %}
+  {% else %}
+    {% set _ = ns.devices_missing.append(item) %}
+  {% endif %}
+{% endfor %}
+{% for item in ipam_netbox_declared_virtual_machines %}
+  {% if item in ipam_netbox_live_virtual_machine_names %}
+    {% set _ = ns.virtual_machines_present.append(item) %}
+  {% else %}
+    {% set _ = ns.virtual_machines_missing.append(item) %}
+  {% endif %}
+{% endfor %}
+{% for item in ipam_netbox_declared_prefixes %}
+  {% if item in ipam_netbox_live_prefix_strings %}
+    {% set _ = ns.prefixes_present.append(item) %}
+  {% else %}
+    {% set _ = ns.prefixes_missing.append(item) %}
+  {% endif %}
+{% endfor %}
+{% for item in ipam_netbox_declared_config_contexts %}
+  {% if item in ipam_netbox_live_config_context_names %}
+    {% set _ = ns.config_contexts_present.append(item) %}
+  {% else %}
+    {% set _ = ns.config_contexts_missing.append(item) %}
+  {% endif %}
+{% endfor %}
+{% for item in ipam_netbox_service_inventory_report.normalized_service_review %}
+  {% if not item.runtime_match %}
+    {% set _ = ns.services_missing_in_runtime.append(item.name) %}
+  {% endif %}
+  {% if not item.netbox_match %}
+    {% set _ = ns.services_missing_in_netbox.append(item.name) %}
+  {% endif %}
+{% endfor %}
+{% for svc in ipam_netbox_curated_repo_services %}
+  {% set svc_custom = svc.custom_fields | default({}) %}
+  {% set needs_ingress_review = false %}
+  {% if svc_custom.ingress_hostname is defined or svc_custom.ingress_class is defined or svc_custom.fallback_access_point is defined or svc_custom.logical_hostname is defined or 'traefik-routed' in (svc.tags | default([])) %}
+    {% set needs_ingress_review = true %}
+  {% endif %}
+  {% if needs_ingress_review %}
+    {% set live = namespace(service=none) %}
+    {% for live_service in ipam_netbox_live_netbox_services | default([]) %}
+      {% if live_service.name == svc.name and live_service.virtual_machine == svc.virtual_machine %}
+        {% set live.service = live_service %}
+      {% endif %}
+    {% endfor %}
+    {% set live_cf = live.service.custom_fields if live.service is not none else {} %}
+    {% set live_tags = [] %}
+    {% if live.service is not none %}
+      {% for tag in live.service.tags | default([]) %}
+        {% if tag is mapping and tag.slug is defined %}
+          {% set _ = live_tags.append(tag.slug) %}
+        {% elif tag is string %}
+          {% set _ = live_tags.append(tag) %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    {% set mismatch = namespace(fields=[], tags=[]) %}
+    {% if svc_custom.ingress_hostname is defined and live_cf.get('ingress_hostname') != svc_custom.ingress_hostname %}
+      {% set _ = mismatch.fields.append('ingress_hostname') %}
+    {% endif %}
+    {% if svc_custom.ingress_class is defined and live_cf.get('ingress_class') != svc_custom.ingress_class %}
+      {% set _ = mismatch.fields.append('ingress_class') %}
+    {% endif %}
+    {% if svc_custom.fallback_access_point is defined and live_cf.get('fallback_access_point') != svc_custom.fallback_access_point %}
+      {% set _ = mismatch.fields.append('fallback_access_point') %}
+    {% endif %}
+    {% if svc_custom.logical_hostname is defined and live_cf.get('logical_hostname') != svc_custom.logical_hostname %}
+      {% set _ = mismatch.fields.append('logical_hostname') %}
+    {% endif %}
+    {% for tag in svc.tags | default([]) %}
+      {% if tag in ['traefik-routed', 'lan-exposed-services'] and tag not in live_tags %}
+        {% set _ = mismatch.tags.append(tag) %}
+      {% endif %}
+    {% endfor %}
+    {% set _ = ns.ingress_reviews.append({
+      'name': svc.name,
+      'virtual_machine': svc.virtual_machine,
+      'ok': live.service is not none and (mismatch.fields | length == 0) and (mismatch.tags | length == 0),
+      'live_service_found': live.service is not none,
+      'field_mismatches': mismatch.fields,
+      'missing_tags': mismatch.tags
+    }) %}
+  {% endif %}
+{% endfor %}
+{% if ns.devices_missing | length > 0 %}
+  {% set _ = ns.failure_reasons.append('missing_devices') %}
+{% endif %}
+{% if ns.virtual_machines_missing | length > 0 %}
+  {% set _ = ns.failure_reasons.append('missing_virtual_machines') %}
+{% endif %}
+{% if ns.prefixes_missing | length > 0 %}
+  {% set _ = ns.failure_reasons.append('missing_prefixes') %}
+{% endif %}
+{% if ns.config_contexts_missing | length > 0 %}
+  {% set _ = ns.failure_reasons.append('missing_config_contexts') %}
+{% endif %}
+{% if ns.services_missing_in_runtime | length > 0 %}
+  {% set _ = ns.failure_reasons.append('services_missing_in_runtime') %}
+{% endif %}
+{% if ns.services_missing_in_netbox | length > 0 %}
+  {% set _ = ns.failure_reasons.append('services_missing_in_netbox') %}
+{% endif %}
+{% if ipam_netbox_service_inventory_report.runtime_unmodeled_exposures | length > 0 %}
+  {% set _ = ns.failure_reasons.append('runtime_unmodeled_exposures') %}
+{% endif %}
+{% if ipam_netbox_service_inventory_report.netbox_unmodeled_services | length > 0 %}
+  {% set _ = ns.failure_reasons.append('netbox_unmodeled_services') %}
+{% endif %}
+{% if ns.ingress_reviews | rejectattr('ok', 'equalto', true) | list | length > 0 %}
+  {% set _ = ns.failure_reasons.append('ingress_metadata_mismatches') %}
+{% endif %}
+{
+  "comparison_mode": "declared-applied-verified",
+  "generated_at_utc": {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') | to_json }},
+  "declared": {
+    "devices": {{ ipam_netbox_declared_devices | to_json }},
+    "virtual_machines": {{ ipam_netbox_declared_virtual_machines | to_json }},
+    "prefixes": {{ ipam_netbox_declared_prefixes | to_json }},
+    "config_contexts": {{ ipam_netbox_declared_config_contexts | to_json }},
+    "services": {{ ipam_netbox_curated_repo_services | map(attribute='name') | list | unique | sort | to_json }}
+  },
+  "applied": {
+    "devices_present": {{ ns.devices_present | to_json }},
+    "devices_missing": {{ ns.devices_missing | to_json }},
+    "virtual_machines_present": {{ ns.virtual_machines_present | to_json }},
+    "virtual_machines_missing": {{ ns.virtual_machines_missing | to_json }},
+    "prefixes_present": {{ ns.prefixes_present | to_json }},
+    "prefixes_missing": {{ ns.prefixes_missing | to_json }},
+    "config_contexts_present": {{ ns.config_contexts_present | to_json }},
+    "config_contexts_missing": {{ ns.config_contexts_missing | to_json }}
+  },
+  "verified": {
+    "services_missing_in_runtime": {{ ns.services_missing_in_runtime | to_json }},
+    "services_missing_in_netbox": {{ ns.services_missing_in_netbox | to_json }},
+    "runtime_unmodeled_exposures": {{ ipam_netbox_service_inventory_report.runtime_unmodeled_exposures | to_json }},
+    "netbox_unmodeled_services": {{ ipam_netbox_service_inventory_report.netbox_unmodeled_services | to_json }},
+    "ingress_intent_review": {{ ns.ingress_reviews | to_json }}
+  },
+  "artifacts": {
+    "service_inventory_report": {{ (ipam_netbox_service_inventory_artifact_dir ~ '/latest.json') | to_json }},
+    "authority_reconciliation_report": {{ (ipam_netbox_reconciliation_artifact_dir ~ '/latest.json') | to_json }}
+  },
+  "status": {
+    "pass": {{ (ns.failure_reasons | length == 0) | to_json }},
+    "failure_reasons": {{ ns.failure_reasons | to_json }}
+  }
+}

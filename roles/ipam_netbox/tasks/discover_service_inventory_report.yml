@@ -1,6 +1,21 @@
 ---
 - name: Include vault variables for NetBox service inventory discovery
   ansible.builtin.include_tasks: load_vault.yml
+  when: lookup('env', 'NETBOX_TOKEN') | length == 0
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
+
+- name: Build effective NetBox API token for service inventory discovery report
+  ansible.builtin.set_fact:
+    ipam_netbox_effective_api_token: >-
+      {{
+        (
+          vault_vars.vault_netbox_api_token
+          if (vault_vars is defined and vault_vars.vault_netbox_api_token is defined)
+          else lookup('env', 'NETBOX_TOKEN')
+        ) | default('', true)
+      }}
   tags:
     - ipam_netbox_service_inventory_discovery
     - ipam_netbox_service_inventory_discovery_preview
@@ -8,12 +23,11 @@
 - name: Require NetBox API token for service inventory discovery report
   ansible.builtin.assert:
     that:
-      - vault_vars.vault_netbox_api_token is defined
-      - vault_vars.vault_netbox_api_token | length > 0
+      - ipam_netbox_effective_api_token | length > 0
     fail_msg: >-
-      vault_netbox_api_token is required in vault.yml before the NetBox service
-      inventory discovery preview can compare runtime results to live NetBox
-      services.
+      Set NETBOX_TOKEN in the environment or provide vault_netbox_api_token in
+      vault.yml before the NetBox service inventory discovery preview can
+      compare runtime results to live NetBox services.
   tags:
     - ipam_netbox_service_inventory_discovery
     - ipam_netbox_service_inventory_discovery_preview
@@ -23,7 +37,7 @@
     url: "{{ ipam_netbox_api_url }}/api/ipam/services/?limit=200"
     method: GET
     headers:
-      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Authorization: "Token {{ ipam_netbox_effective_api_token }}"
     return_content: true
     validate_certs: false
   register: _ipam_netbox_live_services
@@ -55,10 +69,26 @@
 
 - name: Aggregate runtime service discovery from configured hosts
   ansible.builtin.set_fact:
-    ipam_netbox_discovered_runtime_endpoints: "{{ ipam_netbox_discovered_runtime_endpoints + (hostvars[item].ipam_netbox_runtime_service_endpoints | default([])) }}"
-    ipam_netbox_discovered_docker_containers: "{{ ipam_netbox_discovered_docker_containers + (hostvars[item].ipam_netbox_runtime_docker_containers | default([])) }}"
-    ipam_netbox_discovered_k3s_services: "{{ ipam_netbox_discovered_k3s_services + (hostvars[item].ipam_netbox_runtime_k3s_services | default([])) }}"
-    ipam_netbox_discovered_k3s_ingresses: "{{ ipam_netbox_discovered_k3s_ingresses + (hostvars[item].ipam_netbox_runtime_k3s_ingresses | default([])) }}"
+    ipam_netbox_discovered_runtime_endpoints: >-
+      {{
+        ipam_netbox_discovered_runtime_endpoints
+        + (hostvars[item].ipam_netbox_runtime_service_endpoints | default([]))
+      }}
+    ipam_netbox_discovered_docker_containers: >-
+      {{
+        ipam_netbox_discovered_docker_containers
+        + (hostvars[item].ipam_netbox_runtime_docker_containers | default([]))
+      }}
+    ipam_netbox_discovered_k3s_services: >-
+      {{
+        ipam_netbox_discovered_k3s_services
+        + (hostvars[item].ipam_netbox_runtime_k3s_services | default([]))
+      }}
+    ipam_netbox_discovered_k3s_ingresses: >-
+      {{
+        ipam_netbox_discovered_k3s_ingresses
+        + (hostvars[item].ipam_netbox_runtime_k3s_ingresses | default([]))
+      }}
   loop: "{{ (ipam_netbox_service_inventory_discovery_hosts.docker + ipam_netbox_service_inventory_discovery_hosts.k3s) | unique }}"
   loop_control:
     label: "{{ item }}"

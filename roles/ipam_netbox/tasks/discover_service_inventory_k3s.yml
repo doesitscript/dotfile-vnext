@@ -1,5 +1,8 @@
 ---
 - name: Gather Kubernetes objects for NetBox service discovery
+  tags:
+    - ipam_netbox_service_inventory_discovery
+    - ipam_netbox_service_inventory_discovery_preview
   block:
     - name: Gather Kubernetes Services for NetBox service discovery
       kubernetes.core.k8s_info:
@@ -35,9 +38,6 @@
       ansible.builtin.set_fact:
         _ipam_netbox_k3s_ingresses:
           resources: "{{ (_ipam_netbox_k3s_ingresses_cli.stdout | from_json)['items'] | default([]) }}"
-  tags:
-    - ipam_netbox_service_inventory_discovery
-    - ipam_netbox_service_inventory_discovery_preview
 
 - name: Summarize Kubernetes Services for NetBox service discovery
   ansible.builtin.set_fact:
