@@ -201,7 +201,7 @@ K3s: Traefik in `kube-system` (see [`docs/diagrams/cst-hom-lab-ctl-dia-svcinv-dr
 |-------|--------|------------------|
 | Docker on dkr-02 | Caddy/Traefik container in compose | `stacks_fuzlang_net`, `logging_loki`, `ipam_netbox` |
 | K3s services | Ingress + cert-manager + Traefik | K3s roles, Langfuse plan |
-| LAN-published via hvh-02 | IIS/HTTP.SYS reverse proxy + TLS, or nginx on Windows | `hyperv_networking`, new Windows proxy role |
+| LAN-published via hvh-02 | portproxy (`hyperv_networking`) + optional future nginx on Windows; **not IIS** | `hyperv_networking`, Traefik/K3s ingress |
 | Homelab-wide | External reverse proxy VM | New role — highest cost |
 
 ### Suggested order

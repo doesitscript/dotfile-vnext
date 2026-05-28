@@ -1,5 +1,7 @@
 # Durable Plans
 
+**Authority index:** [docs/codex_framework/plan-governance-dependencies.md](../codex_framework/plan-governance-dependencies.md)
+
 Approved plans belong here.
 
 ## Default Rules
@@ -9,6 +11,41 @@ Approved plans belong here.
 - Mirror the work into a GitHub issue as a higher-level roadmap when GitHub is available.
 - Keep the GitHub issue shorter than the repo plan and link the two when that improves pickup.
 - **Include Mermaid diagrams** visualizing architecture, implementation flow, and naming standards (see `.cursor/rules/framework-partner-process.mdc` for full requirements). The same baseline applies to official conversational `<proposed_plan>` plans.
+
+## Promoting intake to a plan packet
+
+When moving `docs/intake/*.md` into `docs/plans/YYYY-MM-DD--short-slug/README.md`:
+
+| Frontmatter | Meaning |
+|-------------|---------|
+| `scope: implementation` (default) | Include roles, playbooks, inventory, and naming-schema updates from the intake doc |
+| `scope: doc-only` | Documentation and plan packet only — must be explicit |
+| `depends_on_plans` | Optional list of plan slugs that must land first |
+| `unblocks` | Optional list of plans this work enables |
+
+**Default:** inherit the intake blueprint's implementation scope. Do not shrink to
+"docs + commit" unless the user explicitly wants doc-only.
+
+**Naming:** complete `docs/codex_framework/capability_introduction_checklist.md` before
+writing new inventory SSOT. Patterns live in `docs/reference/naming-standards/`; instances
+in `live-object-registry.yml`.
+
+**Body:** reference schema pattern IDs and file paths — do not paste duplicate registry YAML.
+
+**Diagrams on promotion:** inherit intake blueprint diagrams and expand them to
+meet the checklist below. Do not replace a full intake Architecture diagram with
+a thinner status summary. Status tables are additive; they do not substitute for
+missing diagrams or a Diagram gate receipt (see `framework-partner-process.mdc`).
+
+**Verification on execute/complete:** use a **Plan verification receipt** that
+covers every testable obligation in the plan packet — checklist, change contract,
+reference tables, prose gates, and frontmatter dependencies — not checklist
+rows alone. Canonical spec:
+[docs/codex_framework/plan-verification-receipt.md](../codex_framework/plan-verification-receipt.md).
+
+**Implementation order:** code may land before the plan packet; if so, backfill
+the plan packet and pass the diagram gate before marking the plan slice complete.
+Build the plan verification receipt before calling the slice implemented.
 
 ## Required Diagram Checklist
 
@@ -22,6 +59,33 @@ Every stored plan must include these sections before it is considered complete:
 
 If a diagram is truly not applicable, include the section anyway with an explicit
 `N/A` reason. Do not omit the section silently.
+
+## Required NetBox Slice (when `netbox_scope: true` or plan touches services/naming/registry)
+
+Every affected implementation plan must include:
+
+- Section `## Mandatory NetBox slice` (or NetBox rows in `## Checklist` with **NB-** IDs)
+- Apply + verify steps: seed apply to live API (not repo-only defaults), `validate_netbox_repo_consistency.sh`, live object check
+- Execute receipt evidence for NB steps
+
+Repo-only `roles/ipam_netbox/defaults` changes do **not** satisfy NetBox completion until API apply passes.
+
+## Required verification receipt (execute and complete)
+
+When implementing, re-running, or closing a plan slice:
+
+1. Read the full plan `README.md` (and same-folder packet files for the active slice).
+2. Build an **obligation inventory** per
+   [plan-verification-receipt.md](../codex_framework/plan-verification-receipt.md).
+3. Add or update `## Plan verification receipt` in the plan packet with evidence per
+   in-scope row.
+4. Sync `## Checklist` checkboxes: `[x]` only when the matching inventory row is `pass`.
+
+**Prohibited:** receipts or "done" claims derived only from `## Checklist` while
+ignoring Apply/Verify/Undo, reference tables, or prose completion gates.
+
+Short **Execute receipt** tables (checklist ID → evidence) are allowed as a summary
+view but must mirror the full obligation inventory.
 
 ## Naming
 
@@ -38,10 +102,27 @@ Example:
 - `2026-05-27--netbox-ipam-completion-incomplete/` (prefixes, storage services, config contexts)
 - `2026-05-27--edge-dev-host-naming-netbox-incomplete/` (deferred: mac-dev, dev-3090, dev-workstation)
 - `2026-05-27--netbox-application-plugins-evaluation/` (Proxbox, Custom Objects, Attachments — evaluation only)
+- `2026-05-27--k3s-hyperv-traefik-implemented/` (umbrella — Traefik + mac interim DNS + :80 portproxy — **done**)
+- `2026-05-27--k3s-hyperv-traefik-homelab-hosts-file-implemented/` (mac catalog + NB-4 — **done**)
+- `2026-05-27--k3s-hyperv-traefik-lan-http-portproxy-implemented/` (LA-2b, LA-5b — **done**)
+- `2026-05-28--wsl-scope-reform-incomplete/` (WSL desktop-only policy; doc archive + Ansible decouple — **in progress**)
+- `2026-05-28--homelab-hosts-file-linux-windows-incomplete/` (DNS-3 — blocked on WSL-R3 SSH fix; plan ready)
+- `2026-05-28--homelab-dns-adguard-authority-incomplete/` (authoritative DNS — moved from Traefik umbrella)
+- `2026-05-28--k3s-vllm-web-catalog-incomplete/` (vLLM catalog row when runtime exists)
+- `docs/archive/wsl-deprecating/` — archived WSL-centric markdown + MANIFEST (coordinator review)
+- `2026-05-27--plan-diagram-governance-incomplete/` (evaluate CI/skill enforcement for diagram gate)
 
 Plans migrated from `.cursor/plans/` on 2026-05-27. Folders suffixed with
 `-incomplete` are not fully implemented. See `.cursor/plans/README.md` for the
 redirect note.
+
+### WSL-centric plans (archived 2026-05-28)
+
+Server/hyperv/k3s/docker WSL automation plans were moved to
+[`docs/archive/wsl-deprecating/plans/`](../archive/wsl-deprecating/plans/). Original
+`docs/plans/2026-05-20--*` stub folders remain as redirects. See
+[`docs/archive/wsl-deprecating/MANIFEST.md`](../archive/wsl-deprecating/MANIFEST.md).
+Active coordinator: [`2026-05-28--wsl-scope-reform-incomplete/`](2026-05-28--wsl-scope-reform-incomplete/README.md).
 
 Legacy single-file plans may remain until touched. When a single-file plan is
 updated for new work, migrate it into a folder packet or mark it as archive

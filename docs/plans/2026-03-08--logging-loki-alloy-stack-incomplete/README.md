@@ -1,18 +1,9 @@
 ---
-name: Logging Loki Alloy Stack
-overview: "Implement a full Grafana Loki + Alloy logging stack across all managed surfaces: two new roles (logging_loki for the server, logging_alloy for the cross-platform agent), a new playbook, and targeted log source configuration per surface — Windows, WSL/Linux, and macOS."
-todos: []
-isProject: false
+deprecated: true
+redirect: docs/archive/wsl-deprecating/plans/2026-03-08--logging-loki-alloy-stack-incomplete-deprecating/README.md
+deprecating_reason: WSL scope reform 2026-05-28 — server paths must not use WSL
 ---
 
-# Logging Stack — Grafana Loki + Alloy (All Surfaces)
+# Archived plan
 
-## Architecture
-
-```mermaid
-flowchart TD
-    subgraph win [
-```
-
-
-
+This plan folder was moved to [`docs/archive/wsl-deprecating/plans/2026-03-08--logging-loki-alloy-stack-incomplete-deprecating`](../docs/archive/wsl-deprecating/plans/2026-03-08--logging-loki-alloy-stack-incomplete-deprecating/README.md) as part of WSL scope reform (2026-05-28). Server/hyperv/k3s/docker lanes must not use WSL automation narrative.
