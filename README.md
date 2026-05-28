@@ -1,5 +1,7 @@
 # FUZLANG Infrastructure
 
+**Project version:** `0.7.0` ([VERSION](VERSION)) — homelab edge milestone (Traefik ingress, hom.lab hosts-file, `hom-lab-ctl-dkr-02` identity).
+
 Multi-node AI infrastructure automation using Ansible.
 
 ## Current Transition: NetBox Source Of Truth
@@ -30,7 +32,7 @@ See [docs/ansible/native-ansible-first.md](docs/ansible/native-ansible-first.md)
 
 ## Hands-free flow
 
-The only manual steps are: **(1)** put your vault secret in `.vault_pass` at repo root (see `config/README_vault_pass.md`), and **(2)** run the first kick-off command for the node (e.g. `.\bin\bootstrap-local.cmd` on Windows, or `./bin/fz bootstrap --limit mac-dev` on the Mac). Everything else (venv, collections, SSH key generation, host_vars, WSL bootstrap) is automated.
+The only manual steps are: **(1)** put your vault secret in `.vault_pass` at repo root (see `config/README_vault_pass.md`), and **(2)** run the first kick-off command for the node (e.g. `.\bin\bootstrap-local.cmd` on Windows, or bootstrap the Mac execution node). Everything else (venv, collections, SSH key generation, host_vars) is automated. Connection surfaces per host: [docs/reference/connection-surfaces.md](docs/reference/connection-surfaces.md).
 
 ## Most up-to-date capabilities (two sides of the same coin)
 
@@ -56,7 +58,7 @@ Run the execution-node playbook first so the SSH key exists; then run the Window
 - `playbooks/bootstrap_execution_node.yaml` - Execution node (Mac): SSH key and control-plane readiness
 - `playbooks/boostrap_windows_ssh_via_winrm.yaml` - Windows OpenSSH via WinRM (key from execution node)
 - `playbooks/bootstrap_server_225.yaml` - Server-225 full bootstrap (WinRM, roles; separate from the SSH pair above)
-- `playbooks/bootstrap_local.yml` - Local bootstrap playbook (runs in WSL on each Windows node)
+- `playbooks/bootstrap_local.yml` - Legacy local bootstrap (desktop/WSL historical; see [desktop-wsl-optional.md](docs/reference/desktop-wsl-optional.md))
 - `playbooks/deploy_shell_config.yaml` - Standalone shell configuration deployment (direnv, cursor, aliases)
 - `contracts/` - Canonical contract definitions
 - `inventory/` - Ansible inventory and variables
@@ -79,7 +81,7 @@ Before running bootstrap on a new Windows server, ensure:
 
 1. **Repository Cloned**: The dotfile-vnext repository is present on the target server (for example `D:\develop\dotfile-vnext`)
 2. **Administrator Privileges**: Run the terminal as Administrator (required for full Windows feature/bootstrap steps)
-3. **Network Access**: The server can reach required package/endpoints (for example WSL distro install)
+3. **Network Access**: The server can reach required package/endpoints (Windows features, OpenSSH, Hyper-V guests per [connection-surfaces.md](docs/reference/connection-surfaces.md))
 
 `bin/bootstrap-local.cmd` is the Windows entrypoint. It launches `bin/bootstrap-local.ps1` with:
 
@@ -112,12 +114,12 @@ On the Windows machine (as Administrator):
    cd D:\develop\dotfile-vnext
    .\bin\bootstrap-local.cmd
    ```
-3. `bootstrap-local.cmd` starts `bootstrap-local.ps1` as the first-stage bootstrap. The PowerShell script detects node identity, configures WinRM/WSL prerequisites, and writes generated facts and host vars.
+3. `bootstrap-local.cmd` starts `bootstrap-local.ps1` as the first-stage bootstrap. The PowerShell script detects node identity, configures WinRM/OpenSSH prerequisites, and writes generated facts and host vars.
 4. After that local bootstrap completes, use `bin/fz` from your control environment to run Ansible bootstrap/deploy/verify phases.
 
 `bootstrap-local.ps1` will also set `CurrentUser` execution policy to `Bypass` non-interactively so future local PowerShell bootstrap runs are not blocked by prompts.
 
-**Chosen values (any Windows/WSL target):** Ports and connection details are stored in the repo under `inventory/host_vars/<physical_node>-win.yaml` and `<physical_node>-wsl.yaml`. These files are created or updated when you run `.\bin\bootstrap-local.ps1` on that Windows machine. Key variables: `win_ssh_port` (OpenSSH Server, default 22), `wsl_ssh_port` (WSL SSH, default 22), `ansible_host`, `win_user`/`wsl_user`. The bootstrap playbooks and firewall logic use these values so the same code works for every Windows/WSL host in the inventory.
+**Chosen values (Windows control hosts):** Ports and connection details are in `inventory/host_vars/<inventory_hostname>.yaml` (see `inventory/hosts_mapping.yaml`). Bootstrap may still emit legacy `*-win.yaml` files; steady-state automation uses inventory hostnames such as `hom-lab-ctl-hvh-02` with OpenSSH on port 22.
 
 ### 2. Run Ansible **against** Server-225
 
@@ -126,18 +128,14 @@ From your **Mac** (mac-dev), with the repo cloned and inventory/host_vars in pla
 ```bash
 cd /path/to/dotfile-vnext
 
-# Bootstrap Windows (WinRM): features, WSL, dirs, GPU check
-./bin/fz bootstrap --limit hom-lab-ctl-hvh-02
+# Bootstrap Windows (WinRM/OpenSSH): features, dirs, GPU check
+ansible-playbook playbooks/boostrap_windows_ssh_via_winrm.yaml -i inventory/inventory.yaml --limit hom-lab-ctl-hvh-02
 
-# Deploy main stacks (Ollama, LiteLLM, OpenWebUI) via SSH to WSL
-./bin/fz deploy main --limit server-225-wsl
-
-# Optional: verify
-./bin/fz verify --limit hom-lab-ctl-hvh-02
-./bin/fz verify --limit server-225-wsl
+# Deploy capabilities via native playbooks (prefer over fz)
+ansible-playbook playbooks/site.yaml -i inventory/inventory.yaml --limit hom-lab-ctl-hvh-02
 ```
 
-If you have the repo in **WSL on Server-225**, run the same `./bin/fz` commands from there (WSL can use WinRM to `localhost` or the Windows hostname for `hom-lab-ctl-hvh-02`, and SSH to the same host for `server-225-wsl`). Ensure `inventory/host_vars/hom-lab-ctl-hvh-02.yaml` has `ansible_host` set to the Windows hostname or IP (e.g. `DESKTOP-VLLM` or `127.0.0.1` for local).
+Use SSH aliases from [connection-surfaces.md](docs/reference/connection-surfaces.md) (`hom-lab-ctl-hvh-02` → `192.168.50.158`). Optional desktop WSL: [desktop-wsl-optional.md](docs/reference/desktop-wsl-optional.md) only.
 
 Vault password is needed for deploy if you use encrypted vault files: add `--ask-vault-pass` to the deploy command.
 
@@ -155,7 +153,7 @@ echo -n 'YOUR_VAULT_PASSWORD' > .vault_pass   # or use --ask-vault-pass when run
 ./bin/fz bootstrap --limit mac-dev
 ```
 
-`fz bootstrap --limit mac-dev` does everything: creates `.venv`, installs Python deps and Ansible Galaxy collections (`requirements.yml`), then runs the Mac bootstrap playbook. The playbook ensures the Ansible SSH key exists at **`~/.ssh/id_ed25519_ansible`** (and `.pub`) on the Mac—generating it only if missing; the key is never copied into the repo. It then runs baseline, python, git, hub, homebrew, ansible_runner. Windows/WSL bootstrap playbooks read the public key from the execution node (Mac) at run time. After that, from this repo run `./bin/fz deploy main --limit server-225-wsl` and similar.
+`ansible-playbook playbooks/bootstrap_execution_node.yaml -i inventory/inventory.yaml --limit mac-dev` ensures the Ansible SSH key at **`~/.ssh/id_ed25519_ansible`**. Windows bootstrap playbooks read the public key from the execution node at run time. Deploy with focused playbooks under `playbooks/` (see [docs/ansible/native-ansible-first.md](docs/ansible/native-ansible-first.md)).
 
 For focused local Ansible toolchain convergence on the Mac, prefer:
 
@@ -190,8 +188,8 @@ Deploy direnv, cursor editor, and shell aliases independently of bootstrap:
 # Deploy to Mac
 ./bin/run-playbook.sh playbooks/deploy_shell_config.yaml --limit mac-dev
 
-# Deploy to WSL
-./bin/run-playbook.sh playbooks/deploy_shell_config.yaml --limit server-225-wsl
+# Deploy shell config to a commissioned host (example: mac-dev)
+ansible-playbook playbooks/deploy_shell_config.yaml -i inventory/inventory.yaml --limit mac-dev
 ```
 
 See `docs/deploy_shell_config.md` for detailed usage and troubleshooting.

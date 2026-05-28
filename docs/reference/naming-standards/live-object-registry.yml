@@ -242,6 +242,11 @@ service_identities:
       l2_vm: hom-lab-ctl-k3s-02
       l4_logical: hom-lab-ctl-llm-01
       service_code: llm
+    - l1_slug: jupyterlab-workbench
+      l2_vm: hom-lab-ctl-k3s-02
+      l4_logical: hom-lab-ctl-jpy-01
+      service_code: jpy
+      note: Browser workbench for Langfuse cookbook exploration; operator hostname jupyter.hom.lab
     - l1_slug: postgres-fuzlang
       l2_vm: hom-lab-ctl-dkr-01
       l4_logical: hom-lab-ctl-pgs-01
@@ -310,6 +315,22 @@ ingress_routes:
       fallback_node_port: 30400
       mac_hosts_enabled: true
 
+guest_direct_operator_services:
+  routes:
+    - route_key: jupyter-workbench
+      deployed_by_role: dev_jupyterlab_workbench
+      netbox_l1_slug: jupyterlab-workbench
+      parent_vm: hom-lab-ctl-k3s-02
+      operator_hostname: jupyter.hom.lab
+      guest_ip: "192.168.137.11"
+      guest_port: 8888
+      access_path: /lab
+      l4_logical: hom-lab-ctl-jpy-01
+      service_code: jpy
+      mac_hosts_enabled: true
+      linux_hosts_enabled: true
+      windows_hosts_enabled: true
+
 guest_portproxy_catalog:
   host: hom-lab-ctl-hvh-02
   entries:
@@ -355,6 +376,7 @@ netbox_services:
       hom-lab-ctl-k3s-02:
         - langfuse-k3s-web
         - litellm-k3s-gateway
+        - jupyterlab-workbench
   storage_lane:
     virtual_machines:
       hom-lab-ctl-dkr-01:
