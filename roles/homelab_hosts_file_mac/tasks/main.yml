@@ -1,0 +1,65 @@
+---
+# homelab_hosts_file_mac — transform registry rows into /private/etc/hosts lines.
+
+- name: Skip homelab hosts file when disabled
+  ansible.builtin.meta: end_host
+  when: not (homelab_hosts_file_mac_enabled | bool)
+  tags: [homelab_hosts_file_mac]
+
+- name: Initialize hosts file host list
+  ansible.builtin.set_fact:
+    homelab_hosts_file_mac_hosts_file_hosts: []
+  tags: [homelab_hosts_file_mac]
+
+- name: Add web catalog operator hostnames for mac-dev
+  ansible.builtin.set_fact:
+    homelab_hosts_file_mac_hosts_file_hosts: >-
+      {{
+        homelab_hosts_file_mac_hosts_file_hosts
+        + [
+          {
+            'hostname': item.hostname,
+            'add_short_name': false,
+            'ipv4': {'address': item.hosts_ip}
+          }
+        ]
+      }}
+  loop: "{{ homelab_hosts_file_mac_web_catalog | rejectattr('mac_hosts_enabled', 'equalto', false) | list }}"
+  loop_control:
+    label: "{{ item.catalog_key }}"
+  tags: [homelab_hosts_file_mac]
+
+- name: Add router workaround guest hostnames for mac-dev
+  ansible.builtin.set_fact:
+    homelab_hosts_file_mac_hosts_file_hosts: >-
+      {{
+        homelab_hosts_file_mac_hosts_file_hosts
+        + [
+          {
+            'hostname': item.hostname,
+            'add_short_name': false,
+            'ipv4': {'address': item.ip}
+          }
+        ]
+      }}
+  loop: "{{ homelab_hosts_file_mac_router_workaround }}"
+  loop_control:
+    label: "{{ item.hostname }}"
+  tags: [homelab_hosts_file_mac]
+
+- name: Preview mac-dev hosts file entries
+  ansible.builtin.debug:
+    var: homelab_hosts_file_mac_hosts_file_hosts
+  tags: [homelab_hosts_file_mac]
+
+- name: Ensure mac-dev hosts file entries per hostname
+  ansible.builtin.lineinfile:
+    path: "/private/etc/hosts"
+    regexp: '.*\s{{ item.hostname | regex_escape }}\s*$'
+    line: "{{ item.ipv4.address }} {{ item.hostname }}"
+    state: present
+  loop: "{{ homelab_hosts_file_mac_hosts_file_hosts }}"
+  loop_control:
+    label: "{{ item.hostname }}"
+  when: homelab_hosts_file_mac_hosts_file_hosts | length > 0
+  tags: [homelab_hosts_file_mac]

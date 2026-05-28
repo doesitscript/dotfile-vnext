@@ -38,6 +38,7 @@ Where:
 | [cst-hom-lab-ctl-dia-svcinv-drift-01.md](cst-hom-lab-ctl-dia-svcinv-drift-01.md) | Pre-fix service inventory drift map for the storage lane, showing curated expectations versus broken runtime state |
 | [cst-hom-lab-ctl-dia-svcinv-remediation-02.md](cst-hom-lab-ctl-dia-svcinv-remediation-02.md) | Recovery sequence for the storage-lane stack and NetBox hybrid preview cleanup |
 | [cst-hom-lab-ctl-dia-svcinv-steady-03.md](cst-hom-lab-ctl-dia-svcinv-steady-03.md) | Final steady-state diagram for curated repo data, runtime discovery, and live NetBox service agreement |
+| [cst-hom-lab-ctl-dia-homelab-hosts-file-01.md](cst-hom-lab-ctl-dia-homelab-hosts-file-01.md) | Interim DNS-3 hosts-file bridge (`homelab_hosts_file_*`, Traefik registry, portproxy web catalog) |
 
 ## Notes
 

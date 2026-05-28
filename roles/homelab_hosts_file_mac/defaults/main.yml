@@ -1,0 +1,16 @@
+---
+# homelab_hosts_file_mac — mac-dev /etc/hosts from Traefik registry + router workaround list.
+
+homelab_hosts_file_mac_enabled: false
+
+homelab_hosts_file_mac_galaxy_role: hosts_file
+
+homelab_hosts_file_mac_lan_publish_host: >-
+  {{ homelab_hosts_file_lan_publish_ip
+     | default(hostvars['hom-lab-ctl-hvh-02'].host_ip
+     | default(k3s_traefik_routes_lan_publish_host | default('192.168.50.158'))) }}
+
+# DNS-3b SSOT — Traefik ingress + portproxy web UIs + guest-direct HTTP.
+homelab_hosts_file_mac_web_catalog: "{{ homelab_hosts_file_web_catalog | default([]) }}"
+
+homelab_hosts_file_mac_router_workaround: "{{ homelab_router_gt6_mac_hosts_workaround | default([]) }}"

@@ -1,0 +1,14 @@
+---
+# mac-dev /etc/hosts from Traefik registry + router guest workaround.
+#
+#   ansible-playbook playbooks/homelab_hosts_file_mac.yaml -i inventory/inventory.yaml \
+#     --limit mac-dev -e homelab_hosts_file_mac_enabled=true
+
+- name: Manage homelab hosts file on mac-dev
+  hosts: mac-dev
+  gather_facts: true
+  become: true
+
+  roles:
+    - role: homelab_hosts_file_mac
+      tags: [homelab_hosts_file_mac]

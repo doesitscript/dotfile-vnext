@@ -1,0 +1,60 @@
+---
+# homelab_hosts_file_* — interim DNS SSOT for /etc/hosts and verify matrices (DNS-3b).
+# Mirror: docs/reference/naming-standards/live-object-registry.yml ingress_routes,
+# guest_portproxy_catalog, homelab_router_gt6_mac_hosts_workaround.
+#
+# hosts_ip = IP written to /etc/hosts (name resolution only — port lives in verify_url).
+# Guest VM SSH names remain in homelab_router_gt6_mac_hosts_workaround (not duplicated here).
+
+homelab_hosts_file_lan_publish_ip: >-
+  {{ hostvars['hom-lab-ctl-hvh-02'].host_ip | default('192.168.50.158') }}
+
+homelab_hosts_file_dkr_guest_ip: >-
+  {{ hostvars['hom-lab-ctl-dkr-02'].ansible_host | default('192.168.137.10') }}
+
+homelab_hosts_file_web_catalog:
+  # Traefik ingress + NodePort interim (k3s_traefik_routes_entries)
+  - catalog_key: langfuse-web
+    hostname: langfuse.hom.lab
+    hosts_ip: "{{ homelab_hosts_file_lan_publish_ip }}"
+    verify_url: "http://langfuse.hom.lab:30000/"
+    source: k3s_traefik_routes_entries
+    source_ref: langfuse-web
+    mac_hosts_enabled: true
+  - catalog_key: litellm-gateway
+    hostname: litellm.hom.lab
+    hosts_ip: "{{ homelab_hosts_file_lan_publish_ip }}"
+    verify_url: "http://litellm.hom.lab:30400/"
+    source: k3s_traefik_routes_entries
+    source_ref: litellm-gateway
+    mac_hosts_enabled: true
+  # LAN portproxy web UIs (guest_published_tcp_ports on hom-lab-ctl-hvh-02)
+  - catalog_key: netbox-web
+    hostname: netbox.hom.lab
+    hosts_ip: "{{ homelab_hosts_file_lan_publish_ip }}"
+    verify_url: "http://netbox.hom.lab:8000/"
+    source: guest_published_tcp_ports
+    source_ref: netbox
+    mac_hosts_enabled: true
+  - catalog_key: semaphore-web
+    hostname: semaphore.hom.lab
+    hosts_ip: "{{ homelab_hosts_file_lan_publish_ip }}"
+    verify_url: "http://semaphore.hom.lab:3001/"
+    source: guest_published_tcp_ports
+    source_ref: semaphore
+    mac_hosts_enabled: true
+  - catalog_key: loki-http
+    hostname: loki.hom.lab
+    hosts_ip: "{{ homelab_hosts_file_lan_publish_ip }}"
+    verify_url: "http://loki.hom.lab:3100/ready"
+    source: guest_published_tcp_ports
+    source_ref: loki
+    mac_hosts_enabled: true
+  # Guest-direct HTTP (no LAN portproxy today)
+  - catalog_key: grafana-web
+    hostname: grafana.hom.lab
+    hosts_ip: "{{ homelab_hosts_file_dkr_guest_ip }}"
+    verify_url: "http://grafana.hom.lab:3000/"
+    source: guest_direct
+    source_ref: hom-lab-ctl-dkr-02
+    mac_hosts_enabled: true
