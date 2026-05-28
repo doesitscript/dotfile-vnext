@@ -25,10 +25,12 @@
 #   .\bin\bootstrap-local.ps1 -RunAll:$false      Facts + host_vars + PSRemoting (no chain)
 #   .\bin\bootstrap-local.ps1 -ConfigureWSL       Also configure WSL (installs feature + distro)
 #   .\bin\bootstrap-local.ps1 -Rename             Prompt for new computer name and restart
-#   .\bin\bootstrap-local.ps1                     Full: PSRemoting + host_vars; chain -> bootstrap-ansible-local.ps1
+#   .\bin\bootstrap-local.ps1                     PSRemoting + host_vars (no WSL chain by default)
+#   .\bin\bootstrap-local.ps1 -RunDesktopWslChain  Chain -> bin/desktop/bootstrap-ansible-local.ps1
 
 param(
-    [bool]$RunAll = $true,
+    [bool]$RunAll = $false,
+    [switch]$RunDesktopWslChain = $false,
     [switch]$FactsOnly = $false,
     [switch]$InstallOpenSSH = $false,
     [switch]$ConfigureWSL = $false,
@@ -588,7 +590,7 @@ Write-Host "  - $winVarsPath" -ForegroundColor White
 Write-Host ''
 
 if ($ConfigureWSL) {
-    $wslScript = Join-Path $scriptDir 'bootstrap-wsl.ps1'
+    $wslScript = Join-Path $scriptDir 'desktop\bootstrap-wsl.ps1'
     if (Test-Path $wslScript) {
         Write-Host ''
         Write-Host '================================================================================' -ForegroundColor Cyan
@@ -930,12 +932,11 @@ Write-Skip "OpenSSH setup disabled in bootstrap (now managed by Ansible role acc
 
 Write-Host ''
 
-$nextScriptPath = Join-Path $scriptDir 'bootstrap-ansible-local.ps1'
-if ($RunAll) {
+$nextScriptPath = Join-Path $scriptDir 'desktop\bootstrap-ansible-local.ps1'
+if ($RunDesktopWslChain) {
     Write-Host ''
     Write-Host '================================================================================' -ForegroundColor Cyan
-    Write-Host '  [NEXT] CALLING: bin\bootstrap-ansible-local.ps1 (WSL bootstrap then fz)' -ForegroundColor Cyan
-    Write-Host '  TO RUN WITHOUT CHAINING: .\bin\bootstrap-local.ps1 -RunAll:$false' -ForegroundColor Yellow
+    Write-Host '  [NEXT] CALLING: bin\desktop\bootstrap-ansible-local.ps1 (desktop WSL only)' -ForegroundColor Cyan
     Write-Host '================================================================================' -ForegroundColor Cyan
     Write-Host ''
     & $nextScriptPath -PhysicalNode $physicalNode
@@ -946,7 +947,7 @@ if ($RunAll) {
 } else {
     Write-Step 'Next steps'
     Write-Host '  1. Review generated host_vars files' -ForegroundColor White
-    Write-Host '  2. Run bin\bootstrap-local.ps1 -ConfigureWSL to set up WSL (if needed)' -ForegroundColor White
-    Write-Host '  3. Run bin\bootstrap-ansible-local.ps1 to continue the chain (WSL + fz)' -ForegroundColor White
-    Write-Host '  4. Or run bin\bootstrap-local.sh inside WSL with --skip-fz-bootstrap' -ForegroundColor White
+    Write-Host '  2. From mac-dev: ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml' -ForegroundColor White
+    Write-Host '  3. Desktop WSL only: .\bin\bootstrap-local.ps1 -ConfigureWSL (see bin\desktop\README.md)' -ForegroundColor White
+    Write-Host '  4. Optional desktop chain: .\bin\bootstrap-local.ps1 -RunDesktopWslChain' -ForegroundColor White
 }

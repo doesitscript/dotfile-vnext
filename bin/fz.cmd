@@ -1,7 +1,6 @@
 @echo off
-setlocal
-REM Run fz via WSL from repo root. Ansible is run from Mac (or WSL); this entrypoint delegates to WSL.
-REM Usage: bin\fz.cmd ping hom-lab-ctl-dkr-02, bin\fz.cmd bootstrap --limit hom-lab-ctl-hvh-02, etc.
-cd /d "%~dp0.."
-wsl bash -c './bin/fz "$@"' _ %*
-exit /b %ERRORLEVEL%
+REM fz via WSL is retired for server automation. Use the Mac controller:
+REM   bin/codex-env ansible-playbook playbooks/... -i inventory/inventory.yaml
+REM Optional desktop WSL: bin/desktop/bootstrap-ansible-local.ps1
+echo [ERROR] bin\fz.cmd is retired. Run Ansible from mac-dev with bin/codex-env ansible-playbook.
+exit /b 1
