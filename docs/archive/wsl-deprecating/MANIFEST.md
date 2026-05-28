@@ -111,9 +111,11 @@ Redirect stubs remain at each original `docs/plans/2026-05-20--*` / `2026-03-08-
 |------|--------|
 | `.cursor/skills/capture-wsl-systemctl/SKILL.md` | Desktop diagnostics skill — may stay for mac-dev / gaming desktop paths |
 
-## delete_candidate index (coordinator rename → `*-delete.md`)
+## delete_candidate index (coordinator rename → `*-deprecating-delete.md`)
 
-1. `docs/archive/wsl-deprecating/project_improvements_wiki_github_plugin-deprecating.md`
+**Status (2026-05-28):** REF-7 complete — all listed paths renamed to `*-deprecating-delete.md` or `*-deprecating-delete/`.
+
+1. `docs/archive/wsl-deprecating/project_improvements_wiki_github_plugin-deprecating-delete.md`
 2. `docs/archive/wsl-deprecating/conversation--good-very-smart-cursor_chat_name_generation_process-deprecating.md`
 3. `docs/archive/wsl-deprecating/chat-gpt-intake-drive-provision--backup-subset-of-info-deprecating.md`
 4. `docs/archive/wsl-deprecating/debug-ssh-vvv-deprecating.md`
