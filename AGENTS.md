@@ -72,13 +72,15 @@ Include:
 18. **Implemented capability default (Ansible only):** When the user asks you to implement a new capability, set host-level gates to **enabled** (`*_enabled: true`, `*_state: present`) unless the user opts out or a documented upstream prerequisite is missing (probe evidence required). Role `defaults/` may stay conservative; **host_vars** for commissioned hosts should reflect enable-when-built. **Plans are not Ansible:** plan packets do not use `present|absent`; operationalizing a plan happens only when the user tells you to implement that plan. Do not retroactively flip unrelated inventory to `present`.
 19. **Idempotent desired state:** Re-running automation should converge out-of-state resources toward inventory desired state. `absent` is for explicit teardown or capabilities not yet commissioned — not the default for newly implemented work.
 20. **Plan verification is comprehensive:** When executing or completing a plan under `docs/plans/`, build a Plan verification receipt per `docs/codex_framework/plan-verification-receipt.md` — obligation inventory for the full plan packet (change contract, reference tables, prose gates, dependencies), not only `## Checklist` rows. Do not mark `lifecycle: implemented` or call execute-complete on checklist-only evidence.
+21. **Runtime env artifacts are real managed outputs:** When an implemented capability needs runtime environment variables or secret-backed config files, render the real artifact from the repo’s vault/inventory sources of truth and verify required keys after deployment. Do not treat `.env.example`, placeholders, or demo stubs as the primary delivered surface for an implemented capability.
+22. **NetBox-scoped completion is Declared / Applied / Verified:** For plans with `netbox_scope: true`, or plans that touch NetBox-managed naming, services, registry, DNS intent, or ingress metadata, completion requires a `## Mandatory NetBox slice` plus receipt evidence for Declared, Applied, and Verified surfaces. Bootstrap or recovery of NetBox itself is an allowed exception area, but it must be labeled explicitly as bootstrap/recovery work and cannot be reported as normal steady-state NetBox completion.
 
 ## Repo Truths
 
 1. `*-win` is the bootstrap and control surface for Windows-first operations.
 2. The Linux companion side is created and configured through `*-win`.
-3. `*-wsl` is a legacy hostname suffix, not proof of direct readiness.
-4. `wsl_hosts` should mean SSH-ready Linux companion surfaces.
+3. Use **connection surfaces defined per inventory hostname** — see `inventory/hosts_mapping.yaml` and `docs/reference/connection-surfaces.md`. Do not assume WSL, `wsl.exe`, or `*-wsl` hostnames for server or Hyper-V lane work.
+4. `linux_vm_hosts` are SSH-ready Hyper-V Ubuntu guests; Windows control hosts use `windows_hosts` with OpenSSH primary and WinRM secondary unless a play targets WinRM explicitly.
 5. Existing scripts in `bin/` are bootstrap helpers unless explicitly replaced by repeatable Ansible automation.
 6. Older brainstorming or history docs are background context unless explicitly referenced or promoted into the active rule/process layer.
 7. Bootstrap docs, bootstrap playbooks, and bootstrap helper scripts are first-touch machine-setup material by default. Do not treat them as the default source for steady-state operation, troubleshooting, or day-2 implementation unless the task is explicitly about initial setup, rebuild, or bootstrap-path changes.
@@ -117,6 +119,9 @@ Include:
     directly or through `ansible-playbook playbooks/deploy_ipam_netbox.yaml
     --tags ipam_netbox_repo_consistency`. Do not leave NetBox live state ahead
     of inventory, playbooks, active docs, or repo guidance.
+16. The repo-local preview path for NetBox-scoped packet enforcement is
+    `bin/netbox-authority-gate.sh`. Use `--static-only` for packet/governance
+    checks and the default mode for full read-only reconciliation artifacts.
 
 ## Research Expectations
 

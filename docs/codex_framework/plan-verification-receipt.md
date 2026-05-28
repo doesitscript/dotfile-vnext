@@ -37,6 +37,19 @@ they are part of the active slice). Include:
 - Sections labeled follow-on, deferred, v2+, or "not v1"
 - Explicit `scope: doc-only` plans — verify doc/schema deliverables only, not live apply
 
+## NetBox-scoped packets
+
+When `netbox_scope: true` is present, or the packet materially changes
+NetBox-managed naming, services, registry, DNS intent, or ingress metadata,
+the obligation inventory must explicitly cover:
+
+| Surface | Requirement |
+|--------|-------------|
+| **Declared** | Packet text, repo files, schema rows, and gate entrypoints agree on the NetBox-managed objects in scope |
+| **Applied** | Existing seed/apply path used, or explicit read-only reconciliation-only status stated; repo-only defaults are not sufficient |
+| **Verified** | Repo consistency, live object lookup, and artifact-backed comparison evidence |
+| **Bootstrap / recovery exception** | Allowed only when the work is truly bootstrapping or recovering NetBox itself; do not count it as normal steady-state completion evidence |
+
 ## Workflow
 
 ### 1. Build obligation inventory (before claiming progress)

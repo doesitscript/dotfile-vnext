@@ -505,6 +505,15 @@ required by the active framework rule, and an ending list of other available
 diagram types that could be made. If the baseline diagram is missing, that is a
 planning defect to correct before implementation.
 
+For NetBox-scoped work, plan completeness is also gated by a concrete runtime
+path rather than prose alone:
+
+- NetBox-scoped packets need `## Mandatory NetBox slice`
+- receipt evidence must separate **Declared / Applied / Verified**
+- bootstrap or recovery of NetBox itself may be necessary, but it must stay
+  explicitly labeled as bootstrap/recovery work instead of being conflated with
+  steady-state NetBox authority completion
+
 Before emitting or saving an official plan, perform the plan diagram gate:
 
 1. Confirm a fenced Mermaid `Architecture/Structure Diagram` is present.
@@ -653,8 +662,8 @@ For this repo, the working interpretation is:
 
 - `*-win` is the bootstrap and control surface for Windows-first operations
 - the Linux companion side is created and configured through `*-win`
-- `*-wsl` is a legacy hostname suffix, not a license to assume direct readiness
-- `wsl_hosts` should mean SSH-ready Linux companion surfaces, not "anything with a WSL distro somewhere behind it"
+- Use connection surfaces per inventory hostname (`inventory/hosts_mapping.yaml`, `docs/reference/connection-surfaces.md`); do not route server or Hyper-V automation through WSL unless the host is an explicit desktop dev surface and the user opted in
+- `linux_vm_hosts` are SSH-ready Hyper-V guests, not WSL distros on Windows servers
 - bootstrap scripts in `bin/` are Class B work unless and until they are replaced by a repeatable idempotent role/playbook path
 - older brainstorming/history docs are awareness material unless they are intentionally promoted into the active rule/process layer
 

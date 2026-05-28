@@ -952,7 +952,8 @@ Do not wait for the user to reference them explicitly:
 
 These rules apply when the agent is writing Ansible tasks, PowerShell scripts
 embedded in `win_powershell`, or responding to in-chat requests involving
-scripting on Windows or WSL hosts.
+scripting on Windows hosts. For optional desktop WSL only, see
+`docs/reference/desktop-wsl-optional.md`.
 
 ---
 
@@ -1022,9 +1023,12 @@ This is the established pattern in `roles/access_identity_windows/tasks/ubuntu.y
 
 ---
 
-## Rule 4 — `WSL_UTF8: "1"` for All `wsl.exe` Calls
+## Rule 4 — `WSL_UTF8: "1"` for Desktop-Only `wsl.exe` Calls
 
-Any `ansible.windows.win_powershell` task that calls `wsl.exe` **must** include:
+**Scope:** Desktop dev hosts only — not server or Hyper-V lane automation.
+See `docs/reference/desktop-wsl-optional.md`.
+
+Any `ansible.windows.win_powershell` task that calls `wsl.exe` on an allowed desktop **must** include:
 
 ```yaml
 environment:

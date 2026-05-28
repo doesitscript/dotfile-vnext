@@ -161,7 +161,7 @@ Preferred behavior:
 
 Pinned examples:
 
-- WSL/OpenSSH should replace `bash.exe` with `wsl.exe` plus the correct command
+- Use connection surfaces per host (`docs/reference/connection-surfaces.md`); deprecated `bash.exe` wrappers must not return for server lanes
   option instead of tuning the deprecated compatibility wrapper
 - Hyper-V Ubuntu should replace the disproven raw `.img -> qemu-img -> vhdx`
   path rather than keep adding conversion tweaks to the same bad artifact
