@@ -1,0 +1,58 @@
+---
+# homelab_hosts_file_windows — interactive desktop hosts file entries.
+
+- name: Skip homelab hosts file on Windows when disabled
+  ansible.builtin.meta: end_host
+  when: not (homelab_hosts_file_windows_enabled | bool)
+  tags: [homelab_hosts_file_windows]
+
+- name: Skip homelab hosts file on Windows when not interactive desktop
+  ansible.builtin.meta: end_host
+  when:
+    - (node_purpose | default('')) != 'interactive_desktop'
+    - not (homelab_hosts_file_windows_force | default(false) | bool)
+  tags: [homelab_hosts_file_windows]
+
+- name: Initialize Windows hosts file host list
+  ansible.builtin.set_fact:
+    homelab_hosts_file_windows_hosts_file_hosts: []
+  tags: [homelab_hosts_file_windows]
+
+- name: Add web catalog operator hostnames for Windows desktop
+  ansible.builtin.set_fact:
+    homelab_hosts_file_windows_hosts_file_hosts: >-
+      {{
+        homelab_hosts_file_windows_hosts_file_hosts
+        + [
+          {
+            'hostname': item.hostname,
+            'ipv4': {'address': item.hosts_ip}
+          }
+        ]
+      }}
+  loop: >-
+    {{
+      homelab_hosts_file_windows_web_catalog
+      | rejectattr('windows_hosts_enabled', 'equalto', false)
+      | list
+    }}
+  loop_control:
+    label: "{{ item.catalog_key }}"
+  tags: [homelab_hosts_file_windows]
+
+- name: Preview Windows desktop hosts file entries
+  ansible.builtin.debug:
+    var: homelab_hosts_file_windows_hosts_file_hosts
+  tags: [homelab_hosts_file_windows, debug_resources]
+
+- name: Ensure Windows desktop hosts file entries per hostname
+  community.windows.win_lineinfile:
+    path: C:\Windows\System32\drivers\etc\hosts
+    regexp: '.*\s{{ item.hostname | regex_escape }}\s*$'
+    line: "{{ item.ipv4.address }} {{ item.hostname }}"
+    state: present
+  loop: "{{ homelab_hosts_file_windows_hosts_file_hosts }}"
+  loop_control:
+    label: "{{ item.hostname }}"
+  when: homelab_hosts_file_windows_hosts_file_hosts | length > 0
+  tags: [homelab_hosts_file_windows]

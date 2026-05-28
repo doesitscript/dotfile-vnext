@@ -1,0 +1,16 @@
+---
+# Linux guest /etc/hosts from homelab_hosts_file_web_catalog (DNS-3).
+#
+# Prefer umbrella: playbooks/homelab_hosts_file.yaml or playbooks/site.yaml
+#
+#   ansible-playbook playbooks/homelab_hosts_file_linux.yaml -i inventory/inventory.yaml \
+#     --limit hom-lab-ctl-k3s-02,hom-lab-ctl-dkr-02
+
+- name: Manage homelab hosts file on Linux guests
+  hosts: hom-lab-ctl-k3s-02,hom-lab-ctl-dkr-02
+  gather_facts: true
+  become: true
+
+  roles:
+    - role: homelab_hosts_file_linux
+      tags: [homelab_hosts_file_linux]

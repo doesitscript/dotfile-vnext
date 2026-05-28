@@ -35,8 +35,8 @@ Service-to-service on k3s-02 / dkr-02 does **not** require hom.lab names — see
 | Role | Status | Playbook |
 |------|--------|----------|
 | `homelab_hosts_file_mac` | **implemented** | `playbooks/homelab_hosts_file_mac.yaml` |
-| `homelab_hosts_file_linux` | deferred plan | [2026-05-28--homelab-hosts-file-linux-windows-incomplete](../../docs/plans/2026-05-28--homelab-hosts-file-linux-windows-incomplete/README.md) |
-| `homelab_hosts_file_windows` | deferred plan | same |
+| `homelab_hosts_file_linux` | **implemented** | `playbooks/homelab_hosts_file_linux.yaml` |
+| `homelab_hosts_file_windows` | scaffolded | `playbooks/homelab_hosts_file_windows.yaml` (desktop hosts when commissioned) |
 
 Deprecated: `.local` pilot hostnames — replaced after GT6 `hom.lab` enabled.
 
@@ -48,7 +48,7 @@ Deprecated: `.local` pilot hostnames — replaced after GT6 `hom.lab` enabled.
 
 | | |
 |---|---|
-| **Apply** | `playbooks/homelab_hosts_file_mac.yaml` or `deploy_development_nodes.yaml --tags homelab_hosts_file_mac` |
+| **Apply** | `playbooks/site.yaml` / `homelab_hosts_file.yaml`, or `deploy_development_nodes.yaml --tags homelab_hosts_file_mac` |
 | **Verify** | `grep hom.lab /etc/hosts` on mac-dev |
 | **Undo** | `homelab_hosts_file_mac_enabled: false` |
 | **Class** | Idempotent config |

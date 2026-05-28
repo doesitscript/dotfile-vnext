@@ -1,0 +1,28 @@
+---
+# Interim hom.lab name resolution via hosts file (DNS-3).
+#
+# Umbrella for mac-dev, Hyper-V Linux guests, and optional Windows desktops.
+# Consumes SSOT: inventory/group_vars/all/homelab_hosts_file.yml
+#
+# The canonical full-stack entrypoint is playbooks/site.yaml (imports this
+# after Hyper-V guest VM lifecycle and Docker surfaces).
+#
+#   ansible-playbook playbooks/homelab_hosts_file.yaml -i inventory/inventory.yaml
+#   ansible-playbook playbooks/site.yaml -i inventory/inventory.yaml --tags homelab_hosts_file
+#
+# Per-surface:
+#   --tags homelab_hosts_file_mac --limit mac-dev
+#   --tags homelab_hosts_file_linux --limit hom-lab-ctl-k3s-02,hom-lab-ctl-dkr-02
+#   --tags homelab_hosts_file_windows --limit dev-workstation-win
+
+- name: Homelab hosts file - mac-dev operator surface
+  import_playbook: homelab_hosts_file_mac.yaml
+  tags: [homelab_hosts_file, homelab_hosts_file_mac, site_homelab_hosts_file]
+
+- name: Homelab hosts file - Hyper-V Linux guests
+  import_playbook: homelab_hosts_file_linux.yaml
+  tags: [homelab_hosts_file, homelab_hosts_file_linux, site_homelab_hosts_file]
+
+- name: Homelab hosts file - Windows interactive desktops
+  import_playbook: homelab_hosts_file_windows.yaml
+  tags: [homelab_hosts_file, homelab_hosts_file_windows, site_homelab_hosts_file]

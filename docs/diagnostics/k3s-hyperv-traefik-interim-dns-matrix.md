@@ -12,7 +12,7 @@ Operator-facing map for the homelab hosts-file slice. Canonical SSOT:
 | hom-lab-ctl-hvh-02 | LAN `:80` Traefik front door | `hyperv_networking` portproxy `k3s-traefik-http` | — | `http://langfuse.hom.lab/` → 200 (mac-dev) |
 | hom-lab-ctl-dkr-02 | Docker UIs via portproxy on hvh-02 | `guest_published_tcp_ports` | — | `:8000` netbox, `:3001` semaphore, `:3100` loki |
 | Linux guests (k3s-02, dkr-02) | service-to-service | **lesser solution:** K8s/compose DNS + `.137.x` IPs — hom.lab not required on guest | — | [guest-vm-hom-lab-dns-lesser-solution.md](../lessons-learned/networking/guest-vm-hom-lab-dns-lesser-solution.md) |
-| Linux guests (operator curl on guest) | catalog hostnames | **future** `homelab_hosts_file_linux` | — | [plan](../plans/2026-05-28--homelab-hosts-file-linux-windows-incomplete/README.md) |
+| Linux guests (operator curl on guest) | catalog hostnames | `homelab_hosts_file_linux` | `192.168.50.158` (LAN publish) / guest IP for grafana | Applied 2026-05-28 on k3s-02, dkr-02 |
 | Windows dev hosts | catalog hostnames | **future** `homelab_hosts_file_windows` | — | [plan](../plans/2026-05-28--homelab-hosts-file-linux-windows-incomplete/README.md) |
 | GT6 router | guest/service DHCP rows | **cancelled** (OP-1/OP-2) | — | use hosts-file + future AdGuard |
 | AdGuard Home | `*.hom.lab` authoritative | **future** intake plan | — | out of scope for v1 |

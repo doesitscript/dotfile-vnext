@@ -18,7 +18,7 @@ unblocks:
 deferred_plans:
   - docs/plans/2026-05-28--homelab-hosts-file-linux-windows-incomplete/README.md
   - docs/plans/2026-05-28--homelab-dns-adguard-authority-incomplete/README.md
-  - docs/plans/2026-05-28--k3s-vllm-web-catalog-incomplete/README.md
+  - docs/plans/2026-05-28--k3s-vllm-service-publication-incomplete/README.md
 ---
 
 # K3s Hyper-V Traefik — homelab hosts file — implemented (mac slice)
@@ -38,6 +38,23 @@ deferred_plans:
 
 ---
 
+## Mandatory NetBox slice
+
+### Objects affected
+
+- NetBox service metadata for Traefik-routed operator endpoints, catalog-backed DNS intent rows, repo consistency references
+
+### Declared / Applied / Verified
+
+- **Declared:** `homelab_hosts_file_web_catalog`, NetBox ingress metadata seed surface, and packet receipt rows point at the same operator URLs and hostnames.
+- **Applied:** live NetBox ingress metadata was seeded via the controller-side API path for the v1 services in scope.
+- **Verified:** `scripts/validate_netbox_repo_consistency.sh`, `artifacts/netbox-service-inventory/latest.json`, and the child receipt evidence below.
+
+### Artifact references
+
+- `artifacts/netbox-service-inventory/latest.json`
+- `scripts/validate_netbox_repo_consistency.sh`
+
 ## Checklist (v1 scope)
 
 ### Interim DNS
@@ -47,7 +64,7 @@ deferred_plans:
 - [x] **DNS-3b** — `homelab_hosts_file_web_catalog`
 - [x] **DNS-3c** — mac-dev catalog rows applied
 - [x] **DNS-3d** — curl matrix (2026-05-28)
-- [x] **DNS-3e** — vLLM — **MOVED** → [vLLM catalog plan](../2026-05-28--k3s-vllm-web-catalog-incomplete/README.md)
+- [x] **DNS-3e** — vLLM — **MOVED** → [vLLM service publication plan](../2026-05-28--k3s-vllm-service-publication-incomplete/README.md)
 
 ### Moved out of this packet
 
@@ -77,7 +94,7 @@ deferred_plans:
 | O-04 | DNS-3c | mac rows | pass | 8 entries; dscacheutil langfuse/netbox → .158 |
 | O-05 | DNS-3d | curl matrix | pass | langfuse/litellm/netbox/semaphore/grafana 200/302; loki root 404 |
 | O-06 | DNS-3 linux/win | guest /etc/hosts roles | moved | [2026-05-28--homelab-hosts-file-linux-windows-incomplete](../2026-05-28--homelab-hosts-file-linux-windows-incomplete/README.md) |
-| O-07 | DNS-3e vLLM | catalog row | moved | [2026-05-28--k3s-vllm-web-catalog-incomplete](../2026-05-28--k3s-vllm-web-catalog-incomplete/README.md) |
+| O-07 | DNS-3e vLLM | service publication entry | moved | [2026-05-28--k3s-vllm-service-publication-incomplete](../2026-05-28--k3s-vllm-service-publication-incomplete/README.md) |
 | O-08 | NB-4 | live NetBox ingress metadata | pass | `netbox_api_seed_localhost.yml` + API verify `traefik-routed` |
 | O-09 | NB verify | repo consistency gate | pass | `scripts/validate_netbox_repo_consistency.sh` |
 | O-10 | LA-5a | NodePort verify | pass | `:30000` / `:30400` → 200 OK mac-dev |

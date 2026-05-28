@@ -1,0 +1,51 @@
+---
+# homelab_hosts_file_linux — operator hostnames on Hyper-V guests (/etc/hosts).
+
+- name: Skip homelab hosts file on Linux when disabled
+  ansible.builtin.meta: end_host
+  when: not (homelab_hosts_file_linux_enabled | bool)
+  tags: [homelab_hosts_file_linux]
+
+- name: Initialize Linux hosts file host list
+  ansible.builtin.set_fact:
+    homelab_hosts_file_linux_hosts_file_hosts: []
+  tags: [homelab_hosts_file_linux]
+
+- name: Add web catalog operator hostnames for Linux guests
+  ansible.builtin.set_fact:
+    homelab_hosts_file_linux_hosts_file_hosts: >-
+      {{
+        homelab_hosts_file_linux_hosts_file_hosts
+        + [
+          {
+            'hostname': item.hostname,
+            'ipv4': {'address': item.hosts_ip}
+          }
+        ]
+      }}
+  loop: >-
+    {{
+      homelab_hosts_file_linux_web_catalog
+      | rejectattr('linux_hosts_enabled', 'equalto', false)
+      | list
+    }}
+  loop_control:
+    label: "{{ item.catalog_key }}"
+  tags: [homelab_hosts_file_linux]
+
+- name: Preview Linux guest hosts file entries
+  ansible.builtin.debug:
+    var: homelab_hosts_file_linux_hosts_file_hosts
+  tags: [homelab_hosts_file_linux, debug_resources]
+
+- name: Ensure Linux guest hosts file entries per hostname
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '.*\s{{ item.hostname | regex_escape }}\s*$'
+    line: "{{ item.ipv4.address }} {{ item.hostname }}"
+    state: present
+  loop: "{{ homelab_hosts_file_linux_hosts_file_hosts }}"
+  loop_control:
+    label: "{{ item.hostname }}"
+  when: homelab_hosts_file_linux_hosts_file_hosts | length > 0
+  tags: [homelab_hosts_file_linux]

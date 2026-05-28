@@ -9,6 +9,7 @@
 #   5. Docker Ubuntu VM lifecycle for opted-in Windows hosts
 #   6. K3s Ubuntu VM lifecycle for opted-in Windows hosts
 #   7. Docker engine / client verification
+#   8. Interim hom.lab hosts file (mac-dev + Linux guests + optional Windows desktops)
 #
 # Narrower playbooks remain available for faster loops and troubleshooting:
 #   - playbooks/provision_windows_host.yml              — Windows baseline only
@@ -16,6 +17,7 @@
 #   - playbooks/hyperv_ubuntu_docker_vm.yaml            — Docker VM orchestration
 #   - playbooks/access.yaml                             — identity/access only
 #   - playbooks/docker.yaml                             — Docker only
+#   - playbooks/homelab_hosts_file.yaml                 — interim DNS-3 hosts file only
 #
 # Commands:
 #   Full active-stack converge:
@@ -55,6 +57,7 @@
             - hyperv_ubuntu_docker_vm
             - hyperv_ubuntu_k3s_vm
             - docker_engine_client_verify
+            - homelab_hosts_file
           active_inventory_surfaces:
             execution_nodes: "{{ query('inventory_hostnames', 'execution_nodes') }}"
             windows_hosts: "{{ query('inventory_hostnames', 'windows_hosts') }}"
@@ -96,3 +99,7 @@
 - name: Site - Docker surfaces
   import_playbook: docker.yaml
   tags: [site_docker, docker]
+
+- name: Site - interim homelab hosts file (DNS-3)
+  import_playbook: homelab_hosts_file.yaml
+  tags: [site_homelab_hosts_file, homelab_hosts_file]
