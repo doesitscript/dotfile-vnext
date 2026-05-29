@@ -35,6 +35,23 @@ argument_specs:
           Windows capability string for OpenSSH Server. The explicit string
           avoids null/multi-object lookup errors when querying installed state.
 
+      openssh_server_capability_become:
+        type: bool
+        required: false
+        default: true
+        description: >-
+          Run Windows capability install/removal through Ansible runas
+          escalation. This avoids Windows Update Feature on Demand access
+          failures from WinRM network logon tokens.
+
+      openssh_server_capability_become_user:
+        type: str
+        required: false
+        default: "SYSTEM"
+        description: >-
+          Windows account used for OpenSSH Server capability install/removal
+          when openssh_server_capability_become is true.
+
       win_ssh_port:
         type: int
         required: false

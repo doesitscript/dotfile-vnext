@@ -30,6 +30,8 @@ Current preferred path:
 |----------|---------|-------------|
 | `openssh_server_state` | `present` | Desired lifecycle state for Windows OpenSSH |
 | `openssh_server_capability` | `OpenSSH.Server~~~~0.0.1.0` | Windows capability name |
+| `openssh_server_capability_become` | `true` | Run capability install/removal with Windows `runas` escalation |
+| `openssh_server_capability_become_user` | `SYSTEM` | Account used for the escalated capability install/removal |
 | `win_ssh_port` | `22` | Primary Windows OpenSSH listener |
 | `win_ssh_powershell_port` | `2223` | Legacy cleanup variable only; not an active preferred path |
 | `administrators_authorized_keys_path` | `C:\ProgramData\ssh\administrators_authorized_keys` | Admin authorized_keys path required by Windows OpenSSH |

@@ -34,6 +34,9 @@
       } else {
         $Ansible.Result = @{ action = 'already_absent'; capability = $capName }
       }
+  become: "{{ openssh_server_capability_become | bool }}"
+  become_method: ansible.builtin.runas
+  become_user: "{{ openssh_server_capability_become_user }}"
   failed_when: false
 
 - name: Remove SSH firewall rules

@@ -5,17 +5,44 @@
 
 # 1) Install OpenSSH capability
 - name: Ensure OpenSSH Server capability installed
-  ansible.windows.win_shell: |
-    $capName = "{{ openssh_server_capability }}"
-    $state = (Get-WindowsCapability -Online -Name $capName).State
-    if ($state -ne "Installed") {
-      Add-WindowsCapability -Online -Name $capName | Out-Null
-      Write-Output "INSTALLED"
-    } else {
-      Write-Output "AlreadyInstalled"
-    }
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $capName = "{{ openssh_server_capability }}"
+      $cap = Get-WindowsCapability -Online -Name $capName -ErrorAction Stop
+      $beforeState = $cap.State.ToString()
+
+      if ($beforeState -ne "Installed") {
+        Add-WindowsCapability -Online -Name $capName -ErrorAction Stop | Out-Null
+        $cap = Get-WindowsCapability -Online -Name $capName -ErrorAction Stop
+        $afterState = $cap.State.ToString()
+
+        if ($afterState -ne "Installed") {
+          throw "OpenSSH Server capability install did not converge. Before=$beforeState After=$afterState"
+        }
+
+        $Ansible.Changed = $true
+        $Ansible.Result = @{
+          action = "installed"
+          capability = $capName
+          before = $beforeState
+          after = $afterState
+          restart_needed = [bool]$cap.RestartNeeded
+        }
+      } else {
+        $Ansible.Result = @{
+          action = "already_installed"
+          capability = $capName
+          before = $beforeState
+          after = $beforeState
+          restart_needed = [bool]$cap.RestartNeeded
+        }
+      }
   register: ssh_install
-  changed_when: "'INSTALLED' in (ssh_install.stdout | default(''))"
+  become: "{{ openssh_server_capability_become | bool }}"
+  become_method: ansible.builtin.runas
+  become_user: "{{ openssh_server_capability_become_user }}"
   tags: [admin]
 
 # 2) Ensure service is enabled; start only after config cleanup
@@ -23,6 +50,110 @@
   ansible.windows.win_service:
     name: sshd
     start_mode: auto
+  tags: [admin]
+
+- name: Ensure OpenSSH ProgramData directory and config exist
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $configPath = "{{ sshd_config_path }}"
+      $configDir = Split-Path -Path $configPath -Parent
+      $defaultConfig = "C:\Windows\System32\OpenSSH\sshd_config_default"
+
+      if (-not (Test-Path -LiteralPath $configDir)) {
+        New-Item -Path $configDir -ItemType Directory -Force | Out-Null
+        $Ansible.Changed = $true
+      }
+
+      if (-not (Test-Path -LiteralPath $configPath)) {
+        Copy-Item -LiteralPath $defaultConfig -Destination $configPath -Force
+        $Ansible.Changed = $true
+      }
+
+      $Ansible.Result = @{
+        config_path = $configPath
+        config_exists = Test-Path -LiteralPath $configPath
+        default_config = $defaultConfig
+      }
+  register: sshd_config_seed_result
+  tags: [admin]
+
+- name: Ensure OpenSSH host keys exist
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $keyDir = "C:\ProgramData\ssh"
+      $before = @(
+        Get-ChildItem -LiteralPath $keyDir -Filter "ssh_host_*_key" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notmatch '\.pub$' }
+      )
+
+      & C:\Windows\System32\OpenSSH\ssh-keygen.exe -A | Out-Null
+
+      $after = @(
+        Get-ChildItem -LiteralPath $keyDir -Filter "ssh_host_*_key" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notmatch '\.pub$' }
+      )
+
+      if ($after.Count -gt $before.Count) {
+        $Ansible.Changed = $true
+      }
+
+      $Ansible.Result = @{
+        key_dir = $keyDir
+        before_count = $before.Count
+        after_count = $after.Count
+        host_keys = @($after | Select-Object -ExpandProperty Name)
+      }
+  register: sshd_host_keys_result
+  tags: [admin]
+
+- name: Lock down OpenSSH host key ACLs
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $keyDir = "C:\ProgramData\ssh"
+      $keyFiles = @(
+        Get-ChildItem -LiteralPath $keyDir -Filter "ssh_host_*_key" -ErrorAction Stop |
+        Where-Object { $_.Name -notmatch '\.pub$' }
+      )
+      $results = @()
+
+      foreach ($keyFile in $keyFiles) {
+        $before = (Get-Acl -LiteralPath $keyFile.FullName).Sddl
+
+        & icacls.exe $keyFile.FullName /inheritance:r | Out-Null
+        & icacls.exe $keyFile.FullName /setowner "SYSTEM" | Out-Null
+        & icacls.exe $keyFile.FullName /grant:r "SYSTEM:F" "Administrators:F" | Out-Null
+
+        foreach ($identity in @(
+          "$env:COMPUTERNAME\{{ ansible_user }}",
+          "$env:USERDOMAIN\{{ ansible_user }}",
+          "Authenticated Users",
+          "Users",
+          "Everyone"
+        )) {
+          & icacls.exe $keyFile.FullName /remove:g $identity 2>$null | Out-Null
+        }
+
+        $after = (Get-Acl -LiteralPath $keyFile.FullName).Sddl
+        if ($before -ne $after) {
+          $Ansible.Changed = $true
+        }
+        $results += @{
+          name = $keyFile.Name
+          changed = ($before -ne $after)
+        }
+      }
+
+      $Ansible.Result = @{
+        key_dir = $keyDir
+        host_keys = $results
+      }
+  register: sshd_host_key_acl_result
   tags: [admin]
 
 - name: Ensure sshd listens on the configured port before any Match block

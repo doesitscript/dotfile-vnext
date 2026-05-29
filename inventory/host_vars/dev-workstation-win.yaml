@@ -1,25 +1,32 @@
 ---
-# Windows surface: WinRM for bootstrap; OpenSSH should land directly on Windows.
-ansible_host: "DESKTOP-C1ACPUM"
-ansible_password: "Pass@w0rd1"
-surface_type: "windows_host"
-host_ip: "192.168.50.70"
-ansible_connection: winrm
-winrm_port: 5985
-ansible_port: 5985
-win_user: "joshc"
+# Inventory: dev-workstation-win (DESKTOP-C1ACPUM)
+# Connect target: ansible_host = 192.168.50.132
+# primary_connection: openssh (WinRM retained as secondary/bootstrap)
+ansible_host: "192.168.50.132"
+ansible_connection: ssh
+ansible_port: 22
 ansible_user: "joshc"
+ansible_ssh_private_key_file: "/Users/joshc/.ssh/id_ed25519_ansible"
+ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+ansible_shell_type: "powershell"
+ansible_shell_executable: "powershell.exe"
+surface_type: "windows_host"
+host_ip: "192.168.50.132"
 physical_node: "dev-workstation"
-win_password: "Pass@w0rd1"
-ansible_winrm_password: "Pass@w0rd1"
-ansible_winrm_scheme: "http"
-ansible_winrm_transport: "ntlm"
-# HTTPS WinRM configuration (uncomment when HTTPS is enabled on server):
-# winrm_port: 5986
-# ansible_port: 5986
-# ansible_winrm_scheme: "https"
-# ansible_winrm_server_cert_validation: "ignore"
+openssh_server_state: present
+verify_ssh_from_execnode: true
 
 windows_data_root: "D:\\ai"
 stacks_root: "D:\\ai\\stacks"
 data_root: "D:\\ai\\data"
+
+# Legacy WinRM (bootstrap/troubleshooting fallback)
+# ansible_connection: winrm
+# winrm_port: 5985
+# ansible_port: 5985
+# ansible_password: "{{ vault_dev_workstation_win_password }}"
+# win_user: "joshc"
+# win_password: "{{ vault_dev_workstation_win_password }}"
+# ansible_winrm_password: "{{ vault_dev_workstation_win_password }}"
+# ansible_winrm_scheme: "http"
+# ansible_winrm_transport: "ntlm"

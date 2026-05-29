@@ -10,6 +10,10 @@
 #   Windows-only run (admin + user on Windows hosts):
 #     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit hom-lab-ctl-hvh-02
 #
+#   Explicit troubleshooting target outside windows_hosts:
+#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml \
+#       -e access_windows_target=dev-workstation-win --limit dev-workstation-win
+#
 #   Full access pipeline (controller + Windows + generated SSH surfaces):
 #     ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml
 #
@@ -39,13 +43,15 @@
 # playbooks/site.yaml path.
 #
 - name: Access - windows identity
-  hosts: windows_hosts
+  hosts: "{{ access_windows_target | default('windows_hosts') }}"
   gather_facts: false
 
   pre_tasks:
-    - name: Skip hosts without WinRM connection configuration
+    # WinRM was the original bootstrap transport; OpenSSH is now valid for steady-state
+    # convergence once sshd is up (see hom-lab-ctl-hvh-02, dev-workstation-win).
+    - name: Skip hosts without a Windows remote connection (WinRM or SSH)
       ansible.builtin.meta: end_host
-      when: (ansible_connection | default('ssh')) != 'winrm'
+      when: (ansible_connection | default('ssh')) not in ['winrm', 'ssh']
       tags: [always]
 
   tasks:
