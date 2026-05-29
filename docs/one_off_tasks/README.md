@@ -22,3 +22,7 @@ Future agents should read these notes as:
 - allowed only for the specific situation described
 - not a standing permission to improvise remote cleanup
 - something to confirm with the user before execution
+
+## Subfolders
+
+- **[on-offs/](./on-offs/)** — setting on/off timelines and tool matrices for active troubleshooting (e.g. GPU/FPS). Tables use **What we got** for raw pulse evidence in that column; see [on-offs/README.md](./on-offs/README.md).
