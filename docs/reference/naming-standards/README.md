@@ -20,6 +20,10 @@ reevaluating infrastructure resources. Longer research notes live in
 | `enforcement.yml` | Enforcement maturity levels and rename cleanup requirements. |
 | `source-reconciliation.yml` | What was captured from intake and old reference files. |
 
+**AI homelab layers (runtime → publication):** see
+[ai-homelab-layer-model.md](../ai-homelab-layer-model.md). Phase 0 assessment:
+[netbox_ai_infra_impl_planning_wip/ASSESSMENT.md](../../intake/netbox/netbox_ai_infra_impl_planning_wip/ASSESSMENT.md).
+
 ## Current Baseline
 
 ```text

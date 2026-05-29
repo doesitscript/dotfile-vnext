@@ -2,7 +2,10 @@
 
 **Project version:** `0.7.0` ([VERSION](VERSION)) — homelab edge milestone (Traefik ingress, hom.lab hosts-file, `hom-lab-ctl-dkr-02` identity).
 
-Multi-node AI infrastructure automation using Ansible.
+Multi-node **AI product engineering** homelab automation using Ansible — agents,
+evaluation, observability, and controlled model lanes (not ML-training-first).
+Layer model: [docs/reference/ai-homelab-layer-model.md](docs/reference/ai-homelab-layer-model.md).
+Estate map: [docs/diagrams/cst-hom-lab-ctl-dia-homelab-estate-04.md](docs/diagrams/cst-hom-lab-ctl-dia-homelab-estate-04.md).
 
 ## Current Transition: NetBox Source Of Truth
 
@@ -71,8 +74,9 @@ Run the execution-node playbook first so the SSH key exists; then run the Window
 ## Nodes
 
 - **mac-dev**: Development control plane (macOS)
-- **Server-225**: Primary GPU node (Windows Server 2025, RTX 5090)
-- **network-server**: Storage and observability node (Windows Server 2025)
+- **hom-lab-ctl-hvh-02** (GPU lane): Windows Server 2025, RTX 5090 — legacy alias `DESKTOP-VLLM` / retired “Server-225”
+- **hom-lab-ctl-hvh-01** (storage lane): Windows Server 2025 — retired “network-server” label
+- **hom-lab-ctl-dkr-02** / **hom-lab-ctl-k3s-02**: Docker and K3s guests on the GPU lane (LiteLLM, Langfuse, Jupyter)
 - **dev-3090**: Development GPU node (Windows 11, RTX 3090)
 
 ## Prerequisites for Windows Servers
