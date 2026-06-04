@@ -1,0 +1,20 @@
+---
+- name: Remove HWiNFO CSV logging scheduled task
+  community.windows.win_scheduled_task:
+    name: "{{ gpu_diagnostics_windows_scheduled_task_name }}"
+    state: absent
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Uninstall HWiNFO Chocolatey package
+  chocolatey.chocolatey.win_chocolatey:
+    name: "{{ gpu_diagnostics_windows_chocolatey_package }}"
+    state: absent
+  failed_when: false
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Remove diagnostics log tree when purge requested
+  ansible.windows.win_file:
+    path: "{{ gpu_diagnostics_windows_root }}"
+    state: absent
+  when: gpu_diagnostics_windows_purge_logs_on_absent | bool
+  tags: [gpu_diagnostics, gpu_diagnostics_install]

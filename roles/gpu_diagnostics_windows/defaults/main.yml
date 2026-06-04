@@ -1,0 +1,44 @@
+---
+# gpu_diagnostics_windows — HWiNFO, diagnostics dirs, and evidence scripts on Windows GPU hosts.
+
+gpu_diagnostics_windows_state: absent
+
+gpu_diagnostics_windows_root: "{{ windows_data_root | default('D:\\\\ai') }}\\diagnostics"
+
+gpu_diagnostics_windows_subdirs:
+  - hwinfo
+  - presentmon
+  - afterburner
+  - amd-cn
+  - events
+  - probes
+
+gpu_diagnostics_windows_chocolatey_package: hwinfo
+
+gpu_diagnostics_windows_winget_id: REALiX.HWiNFO
+
+gpu_diagnostics_windows_hwinfo_exe_candidates:
+  - 'C:\Program Files\HWiNFO64\HWiNFO64.exe'
+  - 'C:\Program Files (x86)\HWiNFO64\HWiNFO64.exe'
+
+gpu_diagnostics_windows_hwinfo_log_file: "{{ gpu_diagnostics_windows_root }}\\hwinfo\\hwinfo_sensors.csv"
+
+gpu_diagnostics_windows_poll_rate_ms: 1000
+
+gpu_diagnostics_windows_pm_proc_ex: dwm.exe|explorer.exe|SearchHost.exe|ShellExperienceHost.exe
+
+gpu_diagnostics_windows_enable_scheduled_logging: true
+
+# When set (e.g. ericc), HWiNFO logs at interactive logon — required for sensor GUI/logging.
+# Empty string keeps legacy SYSTEM + boot trigger (often produces no CSV on gaming desktops).
+gpu_diagnostics_windows_logging_user: ""
+
+gpu_diagnostics_windows_scheduled_task_name: gpu_diagnostics_windows-hwinfo-csv-log
+
+gpu_diagnostics_windows_enable_presentmon_cli: false
+
+gpu_diagnostics_windows_presentmon_winget_id: PresentMon.PresentMon
+
+gpu_diagnostics_windows_purge_logs_on_absent: false
+
+gpu_diagnostics_windows_enable_gpu_energy_drv: false

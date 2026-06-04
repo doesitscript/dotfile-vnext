@@ -1,0 +1,98 @@
+---
+- name: Set dev workstation GPU troubleshooting artifact stamp when missing
+  ansible.builtin.set_fact:
+    troubleshooting_artifact_stamp: "{{ lookup('pipe', 'date +%Y%m%d-%H%M%S') }}"
+  when: (troubleshooting_artifact_stamp | default('')) | length == 0
+
+- name: Define dev workstation GPU troubleshooting artifact paths
+  ansible.builtin.set_fact:
+    _dev_workstation_win_gpu_artifact_dir: >-
+      {{ troubleshooting_artifact_root }}/dev_workstation_win_gpu/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}
+    _dev_workstation_win_gpu_probe_dir: >-
+      {{ troubleshooting_artifact_root }}/dev_workstation_win_gpu/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}/probes
+    _dev_workstation_win_gpu_notes_dir: >-
+      {{ troubleshooting_artifact_root }}/dev_workstation_win_gpu/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}/notes
+
+- name: Ensure dev workstation GPU troubleshooting artifact directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ _dev_workstation_win_gpu_artifact_dir }}"
+    - "{{ _dev_workstation_win_gpu_probe_dir }}"
+    - "{{ _dev_workstation_win_gpu_notes_dir }}"
+  delegate_to: localhost
+
+- name: Run GPU evidence collector on Windows host
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $root = '{{ windows_data_root | default("D:\\ai") }}\diagnostics'
+      $script = Join-Path $root 'probes\collect-gpu-evidence.ps1'
+      if (-not (Test-Path $script)) {
+        $Ansible.Failed = $true
+        $Ansible.Result = "Missing collector script: $script"
+        exit 1
+      }
+      $env:GPU_DIAGNOSTICS_ROOT = $root
+      & $script | Out-String
+  register: _dev_workstation_win_gpu_probe
+  tags: [collect_gpu, gpu_diagnostics]
+
+- name: Save GPU evidence collector output
+  ansible.builtin.copy:
+    dest: "{{ _dev_workstation_win_gpu_probe_dir }}/collect-gpu-evidence.txt"
+    mode: "0644"
+    content: "{{ _dev_workstation_win_gpu_probe.output | default([]) | join('\n') }}"
+  delegate_to: localhost
+  tags: [collect_gpu, gpu_diagnostics]
+
+- name: Fetch latest HWiNFO CSV samples when present
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $dir = '{{ windows_data_root | default("D:\\ai") }}\diagnostics\hwinfo'
+      if (-not (Test-Path $dir)) {
+        $Ansible.Result = @()
+        exit 0
+      }
+      Get-ChildItem $dir -Filter '*.csv' | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object {
+        [ordered]@{
+          path = $_.FullName
+          tail = (Get-Content $_.FullName -Tail 15 -ErrorAction SilentlyContinue)
+        }
+      } | ConvertTo-Json -Depth 4 -Compress
+  register: _dev_workstation_win_gpu_hwinfo_tail
+  tags: [collect_gpu, gpu_diagnostics]
+
+- name: Write HWiNFO CSV tail artifact
+  ansible.builtin.copy:
+    dest: "{{ _dev_workstation_win_gpu_probe_dir }}/hwinfo_csv_tail.json"
+    mode: "0644"
+    content: "{{ _dev_workstation_win_gpu_hwinfo_tail.output | default(['{}']) | join('\n') }}"
+  delegate_to: localhost
+  tags: [collect_gpu, gpu_diagnostics]
+
+- name: Write dev workstation GPU troubleshooting notes
+  ansible.builtin.copy:
+    dest: "{{ _dev_workstation_win_gpu_notes_dir }}/README.txt"
+    mode: "0644"
+    content: |
+      Scenario: dev_workstation_win_gpu
+      Host: {{ inventory_hostname }}
+      Artifact root: {{ _dev_workstation_win_gpu_artifact_dir }}
+      Diagnostics doc:
+      - docs/diagnostics/amd-gpu-windows-desktop--diagnostics.md
+      - docs/one_off_tasks/on-offs/DESKTOP-C1ACPUM-gpu-fps.md
+  delegate_to: localhost
+  tags: [collect_gpu, gpu_diagnostics]
+
+- name: Report dev workstation GPU troubleshooting artifact location
+  ansible.builtin.debug:
+    msg:
+      artifact_root: "{{ _dev_workstation_win_gpu_artifact_dir }}"
+      probe_output: "{{ _dev_workstation_win_gpu_probe_dir }}/collect-gpu-evidence.txt"
+      hwinfo_tail: "{{ _dev_workstation_win_gpu_probe_dir }}/hwinfo_csv_tail.json"
+      notes: "{{ _dev_workstation_win_gpu_notes_dir }}/README.txt"
+  tags: [collect_gpu, gpu_diagnostics]

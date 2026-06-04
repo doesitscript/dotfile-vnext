@@ -6,6 +6,12 @@
 **Active console user (gaming):** `ericc`  
 **Automation SSH user:** `joshc` (`~/.ssh/id_ed25519_ansible`)
 
+## Evidence collection setup
+
+- **Diagnostics + Eric manual playbook:** [../diagnostics/amd-gpu-windows-desktop--diagnostics.md](../diagnostics/amd-gpu-windows-desktop--diagnostics.md)
+- **Ansible deploy:** `playbooks/troubleshoot/deploy_dev_workstation_gpu_diagnostics.yaml` (`roles/gpu_diagnostics_windows`)
+- **Artifact collect:** `playbooks/troubleshoot/collect_dev_workstation_gpu_artifacts.yaml`
+
 Related intake/history:
 
 - [on-offs/DESKTOP-C1ACPUM-gpu-fps.md](./on-offs/DESKTOP-C1ACPUM-gpu-fps.md) — **on/off timeline** and tool matrix (**What we got** = pulse evidence per row; see [on-offs/README.md](./on-offs/README.md))

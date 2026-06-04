@@ -1,0 +1,18 @@
+---
+# Deploy GPU diagnostics (HWiNFO, D:\ai\diagnostics tree, collector script) on dev-workstation-win.
+#
+# Usage:
+#   bin/codex-env ansible-playbook playbooks/troubleshoot/deploy_dev_workstation_gpu_diagnostics.yaml \
+#     -i inventory/inventory.yaml --limit dev-workstation-win
+#
+# Optional PresentMon CLI (in addition to HWiNFO integration):
+#   ... --tags presentmon_cli -e gpu_diagnostics_windows_enable_presentmon_cli=true
+
+- name: Deploy GPU diagnostics on dev workstation
+  hosts: dev-workstation-win
+  gather_facts: true
+  vars:
+    package_upgrade: false
+  roles:
+    - role: gpu_diagnostics_windows
+      tags: [gpu_diagnostics, gpu_diagnostics_install]

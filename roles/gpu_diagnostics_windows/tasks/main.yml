@@ -1,0 +1,17 @@
+---
+- name: Validate gpu_diagnostics_windows_state
+  ansible.builtin.assert:
+    that:
+      - gpu_diagnostics_windows_state in ['present', 'absent']
+    quiet: true
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Apply gpu_diagnostics_windows present path
+  ansible.builtin.import_tasks: present.yml
+  when: gpu_diagnostics_windows_state == 'present'
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Apply gpu_diagnostics_windows absent path
+  ansible.builtin.import_tasks: absent.yml
+  when: gpu_diagnostics_windows_state == 'absent'
+  tags: [gpu_diagnostics, gpu_diagnostics_install]

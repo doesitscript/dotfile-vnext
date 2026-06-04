@@ -1,0 +1,45 @@
+---
+argument_specs:
+  main:
+    short_description: Install GPU diagnostics tooling on Windows hosts
+    options:
+      gpu_diagnostics_windows_state:
+        type: str
+        default: absent
+        choices:
+          - present
+          - absent
+        description:
+          - Lifecycle control for HWiNFO, diagnostics directories, and collector script.
+      gpu_diagnostics_windows_root:
+        type: str
+        default: "D:\\ai\\diagnostics"
+        description:
+          - Root directory for CSV, HML, and probe output.
+      gpu_diagnostics_windows_logging_user:
+        type: str
+        default: ""
+        description:
+          - Windows account name for interactive HWiNFO logon trigger (e.g. ericc).
+          - Leave empty to use SYSTEM boot trigger only.
+
+      gpu_diagnostics_windows_enable_scheduled_logging:
+        type: bool
+        default: true
+        description:
+          - Create a boot-triggered HWiNFO CSV logging scheduled task when HWiNFO is found.
+      gpu_diagnostics_windows_enable_presentmon_cli:
+        type: bool
+        default: false
+        description:
+          - Install standalone PresentMon CLI via winget (HWiNFO 7.63+ includes PresentMon integration).
+      gpu_diagnostics_windows_enable_gpu_energy_drv:
+        type: bool
+        default: false
+        description:
+          - Set GpuEnergyDrv Start=2 and reboot (experimental; not required for HWiNFO power).
+      gpu_diagnostics_windows_purge_logs_on_absent:
+        type: bool
+        default: false
+        description:
+          - Remove diagnostics root tree on absent.

@@ -55,6 +55,7 @@ Current collector task files:
 
 - `hyperv_ubuntu_vm.yml`
 - `windows_remote_access.yml`
+- `dev_workstation_win_gpu.yml`
 
 Collector scoping pattern:
 

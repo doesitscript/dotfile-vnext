@@ -1,0 +1,175 @@
+---
+- name: Bootstrap Chocolatey without upgrading all packages
+  ansible.builtin.import_role:
+    name: package_manager
+  vars:
+    package_upgrade: false
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Install HWiNFO via Chocolatey
+  chocolatey.chocolatey.win_chocolatey:
+    name: "{{ gpu_diagnostics_windows_chocolatey_package }}"
+    state: present
+  register: gpu_diagnostics_windows_choco_hwinfo
+  failed_when: false
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Install HWiNFO via winget when Chocolatey install did not succeed
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $winget = Get-Command winget -ErrorAction SilentlyContinue
+      if (-not $winget) {
+        $Ansible.Failed = $true
+        $Ansible.Result = 'winget not found on PATH'
+        exit 1
+      }
+      $id = '{{ gpu_diagnostics_windows_winget_id }}'
+      winget install --id $id --scope machine --accept-package-agreements --accept-source-agreements --disable-interactivity
+      if ($LASTEXITCODE -gt 1) {
+        $Ansible.Failed = $true
+        $Ansible.Result = "winget exit code $LASTEXITCODE"
+        exit 1
+      }
+      $Ansible.Changed = $true
+      $Ansible.Result = 'winget install completed'
+  when: gpu_diagnostics_windows_choco_hwinfo is failed
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Install PresentMon CLI via winget
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      winget install --id '{{ gpu_diagnostics_windows_presentmon_winget_id }}' --scope machine `
+        --accept-package-agreements --accept-source-agreements --disable-interactivity
+      if ($LASTEXITCODE -gt 1) { exit 1 }
+  when: gpu_diagnostics_windows_enable_presentmon_cli | bool
+  tags: [gpu_diagnostics, gpu_diagnostics_install, presentmon_cli]
+
+- name: Ensure diagnostics root directory exists
+  ansible.windows.win_file:
+    path: "{{ gpu_diagnostics_windows_root }}"
+    state: directory
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Ensure diagnostics subdirectories exist
+  ansible.windows.win_file:
+    path: "{{ gpu_diagnostics_windows_root }}\\{{ item }}"
+    state: directory
+  loop: "{{ gpu_diagnostics_windows_subdirs }}"
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Stat candidate HWiNFO executables
+  ansible.windows.win_stat:
+    path: "{{ item }}"
+  loop: "{{ gpu_diagnostics_windows_hwinfo_exe_candidates }}"
+  register: gpu_diagnostics_windows_hwinfo_stat
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Set resolved HWiNFO executable path
+  ansible.builtin.set_fact:
+    gpu_diagnostics_windows_hwinfo_exe: >-
+      {{
+        (
+          gpu_diagnostics_windows_hwinfo_stat.results
+          | selectattr('stat.exists', 'defined')
+          | selectattr('stat.exists')
+          | map(attribute='item')
+          | list
+          | first
+        ) | default('', true)
+      }}
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Set HWiNFO install directory for scheduled task working directory
+  ansible.builtin.set_fact:
+    gpu_diagnostics_windows_hwinfo_dir: >-
+      {{
+        gpu_diagnostics_windows_hwinfo_exe
+        | regex_replace('[/\\\\]HWiNFO64\\.exe$', '', ignorecase=True)
+      }}
+  when: gpu_diagnostics_windows_hwinfo_exe | length > 0
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Report when HWiNFO executable was not found after install
+  ansible.builtin.debug:
+    msg: >-
+      HWiNFO executable not found under expected paths; scheduled logging skipped.
+      Verify Chocolatey/winget install manually.
+  when: gpu_diagnostics_windows_hwinfo_exe | length == 0
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Deploy GPU evidence collector script
+  ansible.windows.win_copy:
+    src: collect-gpu-evidence.ps1
+    dest: "{{ gpu_diagnostics_windows_root }}\\probes\\collect-gpu-evidence.ps1"
+    force: true
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Configure HWiNFO sensor CSV logging scheduled task (interactive logon)
+  community.windows.win_scheduled_task:
+    name: "{{ gpu_diagnostics_windows_scheduled_task_name }}"
+    description: GPU diagnostics HWiNFO sensor logging (gpu_diagnostics_windows role)
+    actions:
+      - path: "{{ gpu_diagnostics_windows_hwinfo_exe }}"
+        arguments: >-
+          -l{{ gpu_diagnostics_windows_hwinfo_log_file }}
+          -poll_rate={{ gpu_diagnostics_windows_poll_rate_ms }}
+          -pm_proc_ex={{ gpu_diagnostics_windows_pm_proc_ex }}
+        working_directory: "{{ gpu_diagnostics_windows_hwinfo_dir }}"
+    triggers:
+      - type: logon
+        user_id: "{{ gpu_diagnostics_windows_logging_user }}"
+    username: "{{ gpu_diagnostics_windows_logging_user }}"
+    run_level: highest
+    logon_type: interactive_token
+    state: present
+    enabled: true
+  when:
+    - gpu_diagnostics_windows_hwinfo_exe | length > 0
+    - gpu_diagnostics_windows_enable_scheduled_logging | bool
+    - gpu_diagnostics_windows_logging_user | length > 0
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Configure HWiNFO sensor CSV logging scheduled task (SYSTEM boot fallback)
+  community.windows.win_scheduled_task:
+    name: "{{ gpu_diagnostics_windows_scheduled_task_name }}"
+    description: GPU diagnostics HWiNFO sensor logging (gpu_diagnostics_windows role)
+    actions:
+      - path: "{{ gpu_diagnostics_windows_hwinfo_exe }}"
+        arguments: >-
+          -l{{ gpu_diagnostics_windows_hwinfo_log_file }}
+          -poll_rate={{ gpu_diagnostics_windows_poll_rate_ms }}
+          -pm_proc_ex={{ gpu_diagnostics_windows_pm_proc_ex }}
+        working_directory: "{{ gpu_diagnostics_windows_hwinfo_dir }}"
+    triggers:
+      - type: boot
+        delay: PT3M
+    username: SYSTEM
+    run_level: highest
+    logon_type: service_account
+    state: present
+    enabled: true
+  when:
+    - gpu_diagnostics_windows_hwinfo_exe | length > 0
+    - gpu_diagnostics_windows_enable_scheduled_logging | bool
+    - gpu_diagnostics_windows_logging_user | length == 0
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Enable GpuEnergyDrv for experimental Windows GPU energy counters
+  ansible.windows.win_regedit:
+    path: HKLM:\SYSTEM\CurrentControlSet\Services\GpuEnergyDrv
+    name: Start
+    data: 2
+    type: dword
+  when: gpu_diagnostics_windows_enable_gpu_energy_drv | bool
+  register: gpu_diagnostics_windows_gpu_energy_drv
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Reboot when GpuEnergyDrv was enabled
+  ansible.windows.win_reboot:
+    reboot_timeout: 900
+  when:
+    - gpu_diagnostics_windows_enable_gpu_energy_drv | bool
+    - gpu_diagnostics_windows_gpu_energy_drv is changed
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
