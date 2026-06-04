@@ -1,0 +1,25 @@
+# AI Agent Profiles
+
+This file is managed by Ansible role `cursor`.
+
+Primary machine-readable contract:
+
+- Cursor: `{{ cursor_ai_agent_profiles_cursor_path }}`
+- Codex: `{{ cursor_ai_agent_profiles_codex_path }}`
+
+Gateway:
+
+```text
+{{ ai_agent_client_profiles.gateway.openai_base_url }}
+```
+
+Use this profile contract when a Codex or Cursor-compatible client needs to map
+work roles to model lane names. Runtime availability still depends on the
+LiteLLM, vLLM, Langfuse, and GPU prerequisite gates.
+
+## Agent Roles
+
+{% for role_name, role in ai_agent_client_profiles.roles.items() %}
+- `{{ role_name }}` -> default `{{ role.default_lane }}`, alternate
+  `{{ role.alternate_lane }}`, boundary `{{ role.write_boundary }}`
+{% endfor %}

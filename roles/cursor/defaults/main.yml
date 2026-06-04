@@ -50,3 +50,15 @@ cursor_settings_lf_utf8:
 cursor_cli_enabled: true
 cursor_cli_version: "{{ codex_tooling_version_contract.cursor_cli | default('') }}"
 cursor_cli_cask_state: present
+
+# Project-scoped AI agent/profile declarations for Cursor and Codex-compatible
+# clients. These files do not pretend to configure Cursor's account/model UI;
+# they give the project a stable, repo-managed contract that agents can read.
+cursor_ai_agent_profiles_enabled: true
+cursor_ai_agent_profiles_project_root: "{{ dotfiles_home | default(playbook_dir | dirname) }}"
+cursor_ai_agent_profiles_source_path: "{{ cursor_ai_agent_profiles_project_root }}/inventory/group_vars/all/ai_agent_profiles.yml"
+cursor_ai_model_catalog_source_path: "{{ cursor_ai_agent_profiles_project_root }}/inventory/group_vars/model_catalog/manifest.yml"
+cursor_ai_agent_profiles_cursor_path: "{{ cursor_ai_agent_profiles_project_root }}/.cursor/ai-agent-profiles.json"
+cursor_ai_agent_profiles_codex_path: "{{ cursor_ai_agent_profiles_project_root }}/.codex/ai-agent-profiles.json"
+cursor_ai_agent_profiles_rule_path: "{{ cursor_ai_agent_profiles_project_root }}/.cursor/rules/framework-ai-agent-model-lanes.mdc"
+cursor_ai_agent_profiles_codex_doc_path: "{{ cursor_ai_agent_profiles_project_root }}/.codex/AI_AGENT_PROFILES.md"

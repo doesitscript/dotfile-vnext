@@ -1,0 +1,67 @@
+---
+- name: Validate AI agent client profile declarations
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - "{{ playbook_dir }}/../inventory/group_vars/model_catalog/manifest.yml"
+    - "{{ playbook_dir }}/../inventory/group_vars/all/ai_agent_profiles.yml"
+  vars:
+    _required_agent_roles:
+      - planner
+      - coder
+      - tester
+      - reviewer
+      - documenter
+      - steward
+    _required_trace_metadata_keys:
+      - agent_role
+      - model_lane
+      - routing_policy
+      - context_class
+  tasks:
+    - name: Collect declared model lane names
+      ansible.builtin.set_fact:
+        _ai_agent_profile_lanes: "{{ model_catalog_manifest.entries | map(attribute='lane') | list }}"
+      changed_when: false
+
+    - name: Validate required agent role declarations
+      ansible.builtin.assert:
+        that:
+          - item in ai_agent_client_profiles.roles
+        fail_msg: "Missing AI agent client profile role: {{ item }}"
+      loop: "{{ _required_agent_roles }}"
+
+    - name: Validate trace metadata contract
+      ansible.builtin.assert:
+        that:
+          - item in ai_agent_client_profiles.trace_metadata_keys
+        fail_msg: "Missing AI agent trace metadata key: {{ item }}"
+      loop: "{{ _required_trace_metadata_keys }}"
+
+    - name: Validate client gateway targets LiteLLM
+      ansible.builtin.assert:
+        that:
+          - ai_agent_client_profiles.gateway.openai_base_url is search('litellm\\.hom\\.lab')
+          - ai_agent_client_profiles.gateway.openai_base_url is not search('vllm|localhost|127\\.0\\.0\\.1|:8000')
+        fail_msg: "AI agent clients must target the LiteLLM gateway, not a direct runtime URL."
+
+    - name: Validate every agent default and alternate lane exists in model catalog
+      ansible.builtin.assert:
+        that:
+          - item.value.default_lane in _ai_agent_profile_lanes
+          - item.value.alternate_lane in _ai_agent_profile_lanes
+        fail_msg: >-
+          AI agent role {{ item.key }} references missing lanes:
+          default={{ item.value.default_lane }},
+          alternate={{ item.value.alternate_lane }}.
+      loop: "{{ ai_agent_client_profiles.roles | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Summarize validated AI agent profile contract
+      ansible.builtin.debug:
+        msg:
+          gateway: "{{ ai_agent_client_profiles.gateway.openai_base_url }}"
+          roles: "{{ ai_agent_client_profiles.roles.keys() | list }}"
+          lanes: "{{ _ai_agent_profile_lanes }}"
+          trace_metadata_keys: "{{ ai_agent_client_profiles.trace_metadata_keys }}"

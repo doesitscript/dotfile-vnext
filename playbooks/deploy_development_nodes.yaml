@@ -76,6 +76,12 @@
   gather_facts: true
   become: false
   pre_tasks:
+    - name: Establish development node path contract
+      ansible.builtin.set_fact:
+        dotfiles_home: "{{ dotfiles_home | default(playbook_dir | dirname) }}"
+        dotfiles_user_home: "{{ dotfiles_user_home | default(ansible_facts['env']['HOME'] | default(ansible_user_dir)) }}"
+      tags: [always]
+
     - name: Load mac-dev vault for controller-local secrets
       ansible.builtin.include_vars:
         file: "{{ playbook_dir }}/../vault/mac_dev.vault.yml"

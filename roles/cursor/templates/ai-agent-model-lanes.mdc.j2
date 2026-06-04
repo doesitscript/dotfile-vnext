@@ -1,0 +1,50 @@
+---
+description: AI agent role and model-lane contract for this project.
+alwaysApply: true
+---
+
+# AI Agent Model Lanes
+
+This project uses LiteLLM as the client-facing gateway for local and provider
+model lanes. Cursor agents should use the lane names and role boundaries below
+instead of talking directly to individual vLLM runtimes.
+
+Gateway:
+
+```text
+{{ ai_agent_client_profiles.gateway.openai_base_url }}
+```
+
+Profile contract:
+
+```text
+{{ cursor_ai_agent_profiles_cursor_path }}
+```
+
+## Rules
+
+- Use `litellm.hom.lab` as the gateway surface when a custom OpenAI-compatible
+  base URL is available.
+- Do not point Cursor directly at `vllm-runtime`, localhost, or one-off node
+  ports for normal project work.
+- Preserve the user-approved model lane set. Do not collapse work to
+  `code-deep` just because it is the first runtime path.
+- Treat model catalog entries with `pending_research` or `provisional_example`
+  status as not selected for download or pinning.
+- Include trace metadata in tool/client wrappers when available:
+  `{{ ai_agent_client_profiles.trace_metadata_keys | join("`, `") }}`.
+
+## Agent Roles
+
+{% for role_name, role in ai_agent_client_profiles.roles.items() %}
+- `{{ role_name }}`: default lane `{{ role.default_lane }}`, alternate lane
+  `{{ role.alternate_lane }}`, boundary `{{ role.write_boundary }}`,
+  context `{{ role.context_class }}`
+{% endfor %}
+
+## Model Lanes
+
+{% for entry in (model_catalog_manifest.entries | default([])) %}
+- `{{ entry.lane }}`: {{ entry.purpose }}; status `{{ entry.status }}`{% if entry.example_hf_repo_id is defined %}; example `{{ entry.example_hf_repo_id }}`{% elif entry.hf_repo_id is defined %}; repo `{{ entry.hf_repo_id }}`{% elif entry.candidate_family is defined %}; family `{{ entry.candidate_family }}`{% endif %}
+
+{% endfor %}

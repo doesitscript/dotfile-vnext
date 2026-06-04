@@ -1,0 +1,70 @@
+---
+- name: Stat AI agent profile source
+  ansible.builtin.stat:
+    path: "{{ cursor_ai_agent_profiles_source_path }}"
+  register: _cursor_ai_agent_profiles_source
+
+- name: Stat AI model catalog source
+  ansible.builtin.stat:
+    path: "{{ cursor_ai_model_catalog_source_path }}"
+  register: _cursor_ai_model_catalog_source
+
+- name: Require AI agent profile source manifest
+  ansible.builtin.assert:
+    that:
+      - _cursor_ai_agent_profiles_source.stat.exists
+    fail_msg: "Missing {{ cursor_ai_agent_profiles_source_path }}; run the AI agent profile plan before deploying Cursor AI profiles."
+
+- name: Load AI agent profile source
+  ansible.builtin.include_vars:
+    file: "{{ cursor_ai_agent_profiles_source_path }}"
+
+- name: Load AI model catalog source when present
+  ansible.builtin.include_vars:
+    file: "{{ cursor_ai_model_catalog_source_path }}"
+  when: _cursor_ai_model_catalog_source.stat.exists
+
+- name: Ensure Cursor/Codex project directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ cursor_ai_agent_profiles_cursor_path | dirname }}"
+    - "{{ cursor_ai_agent_profiles_rule_path | dirname }}"
+    - "{{ cursor_ai_agent_profiles_codex_path | dirname }}"
+
+- name: Render Cursor AI agent profile contract
+  ansible.builtin.template:
+    src: ai-agent-profiles.json.j2
+    dest: "{{ cursor_ai_agent_profiles_cursor_path }}"
+    mode: "0644"
+
+- name: Render Codex AI agent profile contract
+  ansible.builtin.template:
+    src: ai-agent-profiles.json.j2
+    dest: "{{ cursor_ai_agent_profiles_codex_path }}"
+    mode: "0644"
+
+- name: Render Cursor rule for AI model lanes
+  ansible.builtin.template:
+    src: ai-agent-model-lanes.mdc.j2
+    dest: "{{ cursor_ai_agent_profiles_rule_path }}"
+    mode: "0644"
+
+- name: Render Codex companion profile note
+  ansible.builtin.template:
+    src: AI_AGENT_PROFILES.md.j2
+    dest: "{{ cursor_ai_agent_profiles_codex_doc_path }}"
+    mode: "0644"
+
+- name: Summarize AI agent profile deployment
+  ansible.builtin.debug:
+    msg:
+      cursor_profile: "{{ cursor_ai_agent_profiles_cursor_path }}"
+      cursor_rule: "{{ cursor_ai_agent_profiles_rule_path }}"
+      codex_profile: "{{ cursor_ai_agent_profiles_codex_path }}"
+      codex_doc: "{{ cursor_ai_agent_profiles_codex_doc_path }}"
+      gateway: "{{ ai_agent_client_profiles.gateway.openai_base_url }}"
+      roles: "{{ ai_agent_client_profiles.roles.keys() | list }}"
+      model_catalog_status: "{{ model_catalog_manifest.selection_status | default(model_catalog_manifest.status | default('unknown')) }}"

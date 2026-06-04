@@ -39,3 +39,11 @@
     cursor_settings_enabled | default(true) | bool
     and (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
   tags: [cursor, cursor_settings]
+
+- name: Deploy AI agent profile contract for Cursor and Codex
+  ansible.builtin.include_tasks:
+    file: ai_agent_profiles.yml
+    apply:
+      tags: [cursor, cursor_ai_profiles]
+  when: cursor_ai_agent_profiles_enabled | default(true) | bool
+  tags: [cursor, cursor_ai_profiles]
