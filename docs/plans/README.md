@@ -11,6 +11,12 @@ Approved plans belong here.
 - Mirror the work into a GitHub issue as a higher-level roadmap when GitHub is available.
 - Keep the GitHub issue shorter than the repo plan and link the two when that improves pickup.
 - **Include Mermaid diagrams** visualizing architecture, implementation flow, and naming standards (see `.cursor/rules/framework-partner-process.mdc` for full requirements). The same baseline applies to official conversational `<proposed_plan>` plans.
+- When the user explicitly decides or directs a scope item during plan work,
+  capture it immediately in `## On Deck — user decisions to integrate` at the
+  bottom of the active plan. This section is temporary. Plans cannot proceed to
+  build/execute until every on-deck item is integrated into the plan body,
+  routed to a named sibling plan with dependency linkage, or explicitly rejected
+  by a later user correction.
 
 ## Promoting intake to a plan packet
 
@@ -46,6 +52,29 @@ rows alone. Canonical spec:
 **Implementation order:** code may land before the plan packet; if so, backfill
 the plan packet and pass the diagram gate before marking the plan slice complete.
 Build the plan verification receipt before calling the slice implemented.
+
+**Scope vs sequencing:** A plan may say which slice runs first, but sequencing
+must not shrink approved scope. If the user decides that multiple model lanes,
+agent roles, hosts, or resources belong in the effort, the plan must carry the
+full set and mark individual rows `candidate`, `blocked`, or `pending research`
+as needed instead of omitting them.
+
+## Required On Deck Section
+
+Every active `*-incomplete*` implementation plan should include this section
+near the bottom, before the final diagram support sections, when any user
+decision has not yet been fully wired:
+
+```markdown
+## On Deck — user decisions to integrate
+
+| ID | User decision / direction | Target integration | Status |
+|----|---------------------------|--------------------|--------|
+```
+
+The section is empty or omitted only when all user decisions in the current
+planning thread are already represented in the plan's scope, checklist,
+dependencies, and receipt.
 
 ## Required Diagram Checklist
 
@@ -116,6 +145,12 @@ Example:
 - `2026-05-28--homelab-hosts-file-linux-windows-incomplete/` (DNS-3 linux guests — **done**; windows scaffold when desktop commissioned)
 - `2026-05-28--homelab-dns-adguard-authority-incomplete/` (authoritative DNS — moved from Traefik umbrella)
 - `2026-05-28--k3s-vllm-service-publication-incomplete/` (vLLM service publication entry when runtime exists; reserve model catalog for future multi-model planning)
+- `2026-05-29--ai-homelab-intake-execution-incomplete-wip/` (**umbrella** — NetBox-first program for intake `netbox_ai_infra_impl_planning_wip`; child slices below)
+- `2026-05-29--ai-ansible-modularity-and-gaps-incomplete-wip/` (glossary gaps: `ai_*`, `node_classes`, D-1, privacy router)
+- `2026-05-29--ai-model-catalog-hf-storage-incomplete-wip/` (HF weights on hvh-01 SMB; D-4)
+- `2026-05-29--ai-vllm-primary-stack-incomplete-wip/` (vLLM on k3s-02; extends 2026-05-19 + 2026-05-28 vLLM plans)
+- `2026-05-29--ai-litellm-model-lanes-incomplete-wip/` (`model_list` + `router_settings`; D-1, D-2)
+- `2026-05-29--ai-langfuse-observability-incomplete-wip/` (trace metadata + 1.4.0 cookbook patterns; D-3)
 - `docs/archive/wsl-deprecating/` — archived WSL-centric markdown + MANIFEST (coordinator review)
 - `2026-05-27--plan-diagram-governance-incomplete/` (evaluate CI/skill enforcement for diagram gate)
 

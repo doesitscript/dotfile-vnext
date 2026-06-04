@@ -33,6 +33,8 @@ Plan diagram enforcement: [plan-governance-dependencies.md](plan-governance-depe
 (see also `.cursor/rules/framework-plan-governance.mdc`).
 Plan execute/complete verification: [plan-verification-receipt.md](plan-verification-receipt.md)
 (full obligation inventory — not checklist-only).
+Reusable multi-agent and role-split execution patterns:
+[agent-workflows/](agent-workflows/README.md).
 Patterns belong in `docs/reference/naming-standards/`; instances in
 `live-object-registry.yml` — not duplicated in plan bodies.
 
@@ -67,7 +69,8 @@ Today the working stack is:
    the repo bootstrap
 5. skill discovery via `.cursor/skills/catalog.yml` and per-skill manifests
 6. MCP and live environment tools
-7. multi-agent delegation later, only after the first six are stable
+7. multi-agent delegation via reusable patterns under
+   `docs/codex_framework/agent-workflows/`, only after the first six are stable
 
 The current startup default is a stable single-agent Codex profile.
 Experimental multi-agent behavior remains available, but it is no longer the
@@ -125,6 +128,8 @@ Implemented now:
 - diagnostic-discovery research for finding logs, event channels, output
   surfaces, and verbosity controls for a component under investigation
 - explicit lifecycle-state modeling for Ansible capabilities as a preferred pattern
+- reusable agent workflow registry for coordinator/validator/release-gate
+  patterns
 - lightweight GitHub-issue workflow support for concrete brainstorming or
   resumable work that should outlive local notes once it becomes durable enough
   to preserve

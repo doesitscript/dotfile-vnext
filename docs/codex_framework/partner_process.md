@@ -105,6 +105,11 @@ It is:
 - an explicit researcher/steward/executor workflow
 - then reusable skills for recurring jobs
 
+Reusable multi-agent and role-split workflows live under
+`docs/codex_framework/agent-workflows/`. Plans may select one of those patterns,
+but the reusable coordination contract should not live only inside an individual
+plan packet.
+
 The current official Codex role mapping for this repo is:
 
 - `default` -> `Planner / Steward` in the primary thread
@@ -132,6 +137,8 @@ The Steward protects the target and the architecture.
 The Steward must:
 - preserve the user's actual goal
 - stop silent milestone substitution
+- capture explicit user decisions in the active plan immediately instead of
+  relying on chat memory
 - decide when research is required
 - use the repo's high-value MCP checkpoints when placement, inventory truth,
   Ansible interface shape, or Codex/MCP design is the actual question
@@ -143,6 +150,10 @@ The Steward must:
 - offer a concise draft plan at architecture moments
 - refine that draft until agreement
 - escalate to research first when the topic is too novel for a decision-complete plan
+- reject partial compliance that weakens the user's target, such as preserving
+  only one model lane when the user asked for a full lane family
+- keep exact resource picks as research-pending unless current source-backed
+  research and live probes justify choosing them
 
 ### 2. Partner
 
@@ -153,6 +164,7 @@ The partner provides:
 - constraints
 - corrections
 - acceptance of tradeoffs when tradeoffs are real
+- binding decisions that must be preserved in the active plan before build
 
 The partner does not need to pre-chew research, implementation shape, or rollback design for the agent.
 
@@ -186,6 +198,9 @@ The Researcher must:
   probes before treating them as trustworthy
 - report which evidence surfaces are already available, which are missing, and
   what simple knobs can be used to collect more evidence on the next run
+- for brainstorm/intake imports, compare real resource options before any
+  model ID, provider, hardware placement, or download path is treated as
+  selected rather than provisional
 
 Typical request shapes include:
 
@@ -443,6 +458,40 @@ For resumable work with a GitHub mirror:
 - role READMEs, role-local docs, or intake notes that materially shaped the issue
   should reference it briefly when that will help future pickup
 
+When the user explicitly says to do something, confirms a direction, or decides
+an in-scope item while a plan is being drafted or revised, add it immediately to
+the bottom of the active plan under `## On Deck — user decisions to integrate`.
+That section is a temporary holding area, not a deferral bin. Before the plan
+can proceed to build or execute, each on-deck item must be integrated into the
+relevant scope/checklist/receipt, moved to a named sibling plan with dependency
+linkage, or explicitly rejected because the user later changed the decision.
+Sequencing language may order execution, but it must not shrink the approved
+scope or drop decided model lanes, agent roles, resources, or obligations.
+
+When the user says to build or execute a plan family, the coordinator must not
+treat missing repo resources as a terminal handoff. Missing roles, playbooks,
+schema rows, research logs, or validation entrypoints are themselves work items.
+Before reporting a blocker, the coordinator must:
+
+- inspect the existing repo role/playbook/inventory/schema surfaces
+- consult authoritative docs or MCPs for the missing technology
+- scaffold or extend the repo-owned Ansible/resource surfaces when the path is clear
+- encode dependency order in an executable playbook chain, not only prose
+- run the first safe preview/read-only gate
+- update the plan receipt with pass/block evidence
+
+Only after that loop may a blocker be reported, and the evidence must show a
+real upstream, live-state, or operator-decision prerequisite. The independent
+validator can send the packet back when the coordinator stops at a missing
+resource without this research/scaffold/probe loop.
+
+When a plan family uses a coordinator/validator pattern, the validator is a
+release gate, not advisory commentary. A coordinator summary is not complete
+until the selected workflow pattern's validator and release-gate conditions are
+satisfied. If the validator tool or subagent is unavailable, the coordinator
+must narrow and retry, perform a direct repo audit, or leave the gate unsigned
+and report the work as incomplete.
+
 General lifecycle handling for that GitHub planning layer is intentionally
 simple:
 
@@ -472,6 +521,12 @@ For Ansible role and playbook design, also prefer:
 4. owning playbooks that preserve the full lifecycle interface instead of
    wrapper-filtering the role down to only `present` or only `absent`
 5. command or shell fallbacks only after a real state-query step proves no better module exists
+
+For multi-plan implementation, dependency order must exist in the automation
+surface as well as in the plan. If the plan says storage/catalog must precede
+GPU validation, vLLM, LiteLLM, Langfuse, and client profiles, add or update a
+playbook chain that enforces that order. Prose-only dependency tables are not a
+finished execution surface once implementation begins.
 
 ### 4. Write the Change Contract
 

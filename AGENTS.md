@@ -71,9 +71,18 @@ Include:
 17. When the user approves implementation, **execute**, or **go with recommendations and execute**, completing repo files alone is **PROHIBITED** as execute-complete. The agent MUST run preview/read-only verification with captured output, then mutating apply (playbooks, MCP, SSH) for each capability in scope, unless the user explicitly defers live apply in the same thread. If a prerequisite fails, cite probe output. **PROHIBITED** summary label: `operator-controlled` or `not applied live` when the user requested execute and gave no explicit deferral.
 18. **Implemented capability default (Ansible only):** When the user asks you to implement a new capability, set host-level gates to **enabled** (`*_enabled: true`, `*_state: present`) unless the user opts out or a documented upstream prerequisite is missing (probe evidence required). Role `defaults/` may stay conservative; **host_vars** for commissioned hosts should reflect enable-when-built. **Plans are not Ansible:** plan packets do not use `present|absent`; operationalizing a plan happens only when the user tells you to implement that plan. Do not retroactively flip unrelated inventory to `present`.
 19. **Idempotent desired state:** Re-running automation should converge out-of-state resources toward inventory desired state. `absent` is for explicit teardown or capabilities not yet commissioned — not the default for newly implemented work.
-20. **Plan verification is comprehensive:** When executing or completing a plan under `docs/plans/`, build a Plan verification receipt per `docs/codex_framework/plan-verification-receipt.md` — obligation inventory for the full plan packet (change contract, reference tables, prose gates, dependencies), not only `## Checklist` rows. Do not mark `lifecycle: implemented` or call execute-complete on checklist-only evidence.
+20. **Plan verification is comprehensive:** When executing or completing a plan under `docs/plans/`, build a Plan verification receipt per `docs/codex_framework/plan-verification-receipt.md` — obligation inventory for the full plan packet (change contract, reference tables, prose gates, dependencies), not only `## Checklist` rows. Do not mark `lifecycle: implemented` or call execute-complete on checklist-only evidence, pending rows, or blocked rows that remain inside current scope.
 21. **Runtime env artifacts are real managed outputs:** When an implemented capability needs runtime environment variables or secret-backed config files, render the real artifact from the repo’s vault/inventory sources of truth and verify required keys after deployment. Do not treat `.env.example`, placeholders, or demo stubs as the primary delivered surface for an implemented capability.
 22. **NetBox-scoped completion is Declared / Applied / Verified:** For plans with `netbox_scope: true`, or plans that touch NetBox-managed naming, services, registry, DNS intent, or ingress metadata, completion requires a `## Mandatory NetBox slice` plus receipt evidence for Declared, Applied, and Verified surfaces. Bootstrap or recovery of NetBox itself is an allowed exception area, but it must be labeled explicitly as bootstrap/recovery work and cannot be reported as normal steady-state NetBox completion.
+23. **On-deck user decisions are binding plan obligations:** When the user explicitly says to do something, approves a direction, or decides a scope item during planning, add it immediately to the bottom of the active plan packet under `## On Deck — user decisions to integrate`. This section is a holding bay only while another slice is being edited or the work spans multiple plans. Before any related plan proceeds to build/execute, every on-deck item must be integrated into the relevant plan scope/checklist/receipt, routed to a named sibling plan with dependency linkage, or explicitly rejected with the user's later correction. Do not use "first executable path" or similar sequencing language to narrow away user-approved scope; sequencing may order execution, not remove planned model lanes, agent types, resources, or obligations.
+24. **Coordinator does not stop at missing scaffolding:** When the user says to build/execute a plan family, the coordinator must resolve missing repo resources as work, not as a stopping point. Before reporting a blocker, the agent must: inspect existing repo surfaces; consult authoritative docs/MCPs for the missing technology; add or extend the repo-owned Ansible role/playbook/schema scaffolding where the path is clear; encode dependency order in an executable orchestration playbook or documented playbook chain; run the first safe preview/read-only gate; and update receipts with pass/block evidence. A blocker is valid only after that research/scaffolding/probe path has run and the evidence shows a real upstream or live-state prerequisite failure.
+25. **Independent validator is a send-back gate:** For multi-plan execution, a coordinator summary is not enough. The independent-validator role must review whether every planned obligation is implemented, blocked with evidence, or moved to a named future plan via `moved_to_plan`. If the validator finds open in-scope work without evidence, the work returns to the coordinator; the agent must keep working rather than end on its own convenience boundary.
+26. **Dependency order belongs in automation too:** If a plan family has runtime dependencies, encode them in Ansible entrypoints, not only prose. Umbrella plans should have a matching orchestrator playbook or playbook chain that preserves order such as storage/catalog → GPU prerequisite validation → runtime → gateway → observability → client/profile validation. Do not leave dependency order only in README tables when implementation has begun.
+27. **Blocked is not complete:** `blocked` or `fail` can be honest status, but it is not completion. A plan with blocked in-scope obligations must stay `incomplete-wip` or `incomplete` unless the blocked work is removed from current scope, moved to a named future plan with `moved_to_plan`, and the user accepts that narrower scope. Do not use "blocked with evidence" as a loophole to call a requested build done.
+28. **Validator/tool failure is not an escape hatch:** If a subagent, validator, MCP, or command times out or fails, narrow the scope, retry with a smaller prompt or direct repo commands, and record the failure as evidence. Do not end the turn merely because the validating tool failed. If validation is impossible after narrowing, leave the plan unsigned and state the exact missing validation.
+29. **Intent-integrity sweep before final:** Before a final response on plan execution or framework repair, review the changed plan text for decisions that weaken the user's stated target: "first path" wording that hides the full scope, exact resource picks without research, repo-only work presented as live execution, optionalized user decisions, or pending rows marked as success. Fix those before summarizing.
+30. **Research quality for candidate resources:** For brainstorm/intake imports, exact model IDs, provider routes, hardware placement, NetBox object additions, and download plans require a current research matrix and live probe evidence before they are treated as selected. Without that, use `pending_research` or `provisional_example`, keep candidate families visible, and do not download, pin, or mark the row stronger than research-pending.
+31. **Reusable multi-agent workflows live in the framework registry:** When the user asks for a coordinator, validator, permission grantor, multi-agent split, or reusable working pattern, document the reusable workflow under `docs/codex_framework/agent-workflows/` instead of burying it only in a plan packet. A plan may select a workflow pattern, but the pattern owns the role boundaries, gates, fallback behavior, and completion rule.
 
 ## Repo Truths
 
@@ -83,16 +92,21 @@ Include:
 4. `linux_vm_hosts` are SSH-ready Hyper-V Ubuntu guests; Windows control hosts use `windows_hosts` with OpenSSH primary and WinRM secondary unless a play targets WinRM explicitly.
 5. Existing scripts in `bin/` are bootstrap helpers unless explicitly replaced by repeatable Ansible automation.
 6. Older brainstorming or history docs are background context unless explicitly referenced or promoted into the active rule/process layer.
-7. Bootstrap docs, bootstrap playbooks, and bootstrap helper scripts are first-touch machine-setup material by default. Do not treat them as the default source for steady-state operation, troubleshooting, or day-2 implementation unless the task is explicitly about initial setup, rebuild, or bootstrap-path changes.
-8. For repo-local Python, Ansible, and WinRM-sensitive shell work, use `bin/codex-env <command> ...` or another repo-owned wrapper that explicitly loads the same environment. Do not invoke those commands through raw shell, raw Python, or ambient PATH assumptions.
-9. On macOS, if a repo-local query would launch Python or Ansible in a separate MCP/runtime path that does not provably load the repo `.envrc` and project `.venv`, treat that path as unsafe by default. Prefer a `bin/codex-env` shell command or another repo-owned wrapper instead. This guard exists to avoid WinRM worker-dead failures and Python fork crashes from missing environment variables.
-10. For controller-side manual SSH to managed hosts, prefer the repo-managed SSH alias that matches the inventory host name, such as `hom-lab-ctl-hvh-02`, instead of jumping straight to raw `ansible_host`, physical hostname, or machine NetBIOS name. In this repo, `ansible_host` may be a WinRM/control-plane target while the SSH alias carries the intended OpenSSH path and client options.
-11. When showing commands for the user/operator to run, present the canonical
+7. Treat `.aiignore` files as repo advisory context boundaries. They are not a
+   substitute for `AGENTS.md`, `.gitignore`, or access control, and not every
+   tool may enforce them natively. When a path is listed in `.aiignore`, do not
+   bulk-read, summarize, or spend context on it unless the user explicitly
+   references that path or the active task directly depends on it.
+8. Bootstrap docs, bootstrap playbooks, and bootstrap helper scripts are first-touch machine-setup material by default. Do not treat them as the default source for steady-state operation, troubleshooting, or day-2 implementation unless the task is explicitly about initial setup, rebuild, or bootstrap-path changes.
+9. For repo-local Python, Ansible, and WinRM-sensitive shell work, use `bin/codex-env <command> ...` or another repo-owned wrapper that explicitly loads the same environment. Do not invoke those commands through raw shell, raw Python, or ambient PATH assumptions.
+10. On macOS, if a repo-local query would launch Python or Ansible in a separate MCP/runtime path that does not provably load the repo `.envrc` and project `.venv`, treat that path as unsafe by default. Prefer a `bin/codex-env` shell command or another repo-owned wrapper instead. This guard exists to avoid WinRM worker-dead failures and Python fork crashes from missing environment variables.
+11. For controller-side manual SSH to managed hosts, prefer the repo-managed SSH alias that matches the inventory host name, such as `hom-lab-ctl-hvh-02`, instead of jumping straight to raw `ansible_host`, physical hostname, or machine NetBIOS name. In this repo, `ansible_host` may be a WinRM/control-plane target while the SSH alias carries the intended OpenSSH path and client options.
+12. When showing commands for the user/operator to run, present the canonical
     project command form such as `ansible-playbook ...`. Keep Codex-specific
     wrappers, sandbox temp vars, or local runtime workarounds out of
     user-facing commands unless the user explicitly asks for the exact command
     Codex must use from inside its sandbox.
-12. NetBox is the source of truth for host, VM, IP, platform, role, and site
+13. NetBox is the source of truth for host, VM, IP, platform, role, and site
     facts. The active naming schema under `docs/reference/naming-standards/`
     is the source of truth for naming patterns, compact codes, and context
     fields. Before naming an object, embedding metadata in a name, or adding a
@@ -103,23 +117,23 @@ Include:
     - compact schema code equals slug for repo-controlled code objects
     - object hierarchy: Site → Cluster → VM; Site → Device
     - IPs belong to interfaces, not directly to objects
-13. For project-maturity work, keep the knowledge gates modular:
+14. For project-maturity work, keep the knowledge gates modular:
     - Ansible automation design uses `ansible-knowledge-gate`
     - NetBox source-of-truth modeling uses `netbox-knowledge-gate`
     - broad project improvement uses `project-maturity-router` to activate one
       or both gates without merging them into one capability
-14. The former network-server Windows control alias is retired. Do not
+15. The former network-server Windows control alias is retired. Do not
     introduce new active inventory, playbook, or plan references to the retired
     alias. The current reconciled naming target for that control-plane Hyper-V
     host is the compact schema shape `hom-lab-ctl-hvh-01`; any live NetBox
     object still using an older long form is transitional until the NetBox seed
     reconciliation pass is complete.
-15. NetBox identity/modeling changes are not complete until the repo is updated
+16. NetBox identity/modeling changes are not complete until the repo is updated
     and `scripts/validate_netbox_repo_consistency.sh` passes. Run the gate
     directly or through `ansible-playbook playbooks/deploy_ipam_netbox.yaml
     --tags ipam_netbox_repo_consistency`. Do not leave NetBox live state ahead
     of inventory, playbooks, active docs, or repo guidance.
-16. The repo-local preview path for NetBox-scoped packet enforcement is
+17. The repo-local preview path for NetBox-scoped packet enforcement is
     `bin/netbox-authority-gate.sh`. Use `--static-only` for packet/governance
     checks and the default mode for full read-only reconciliation artifacts.
 
@@ -145,6 +159,20 @@ Include:
 9. When password passing, privilege escalation, or installer flow behaves unexpectedly, inspect the actual module/tool documentation or source before changing escalation strategy.
 10. When gathering repo context for a non-bootstrap task, prefer steady-state roles, deploy/verify playbooks, diagnostics notes, and active framework guidance before bootstrap docs or first-touch setup paths. Pull bootstrap material only when the task is explicitly about initial machine setup, bootstrap recovery, or replacing a bootstrap path.
 11. When the repo already documents a required runtime wrapper or environment-loading path for Python, Ansible, WinRM, or MCP-adjacent work, follow that documented path instead of calling the underlying interpreter directly.
+12. When importing brainstormed, AI-generated, or externally drafted work where
+    capabilities/needs are defined but exact resources are not, treat the gap as
+    a required research-and-probe slice before implementation. Do not pin model
+    IDs, runtime placement, hardware assumptions, NetBox metadata, download
+    lists, or Ansible defaults from the brainstorm alone. First collect
+    source-backed expert research for the domain and read-only live evidence for
+    the target lab surface, such as GPU inventory/VRAM, host reachability,
+    existing services, NetBox modeled state, and repo inventory. Exact resource
+    identifiers may be preserved as examples only when labeled as
+    `provisional_example` or `pending_research`; they are not selected
+    candidates until the research matrix compares alternatives, records license
+    and operational fit, and links the live probe evidence. Plans produced from
+    such intake must show the research/probe receipt or explicitly keep the
+    slice blocked/pending.
 
 ## Framework Rule Adherence
 

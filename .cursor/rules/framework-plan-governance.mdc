@@ -22,9 +22,31 @@ When **executing**, **reporting slice status**, or setting **`lifecycle: impleme
    status, `scripts/validate_netbox_repo_consistency.sh`, and live object verification.
 5. Maintain **Plan verification receipt** with a full **obligation inventory** and evidence —
    not checklist-only receipts.
+6. Treat `## On Deck — user decisions to integrate` as build-blocking until every
+   row is integrated into the plan, routed to a named sibling plan, or explicitly
+   rejected by a later user correction.
+7. Do not report missing roles/playbooks/resources as final blockers until the
+   coordinator has checked authoritative docs/MCPs, scaffolded repo-owned
+   surfaces where the implementation path is clear, run the first safe
+   preview/read-only dependency gate, and recorded receipt evidence.
+8. When implementation starts, dependency order must be represented by
+   executable Ansible entrypoints or an orchestrator playbook, not only README
+   prose.
+9. `blocked` and `fail` are valid evidence states but not completion states.
+   A plan with blocked in-scope obligations must remain incomplete unless that
+   work is moved to a named future plan and removed from current completion
+   obligations with user acceptance.
+10. Brainstormed exact resource picks, including model IDs, provider routes,
+    hardware placement, NetBox objects, and downloads, must remain
+    `pending_research` or `provisional_example` until current research and live
+    probes justify selecting them.
 
 A status-only plan without Naming/Modeling (when names/NetBox/schema change) is invalid.
 Checklist-only verification without the obligation inventory is invalid for complete/implemented.
+Plans with unresolved on-deck decisions are invalid for build/execute.
+Plans whose missing-resource blockers skipped the research/scaffold/probe loop
+are invalid for final status.
+Plans that treat blocked rows as implemented are invalid for final status.
 Bootstrap or recovery of NetBox itself must be labeled explicitly as bootstrap/recovery work.
 
 Plans are not Ansible objects — do not use `present|absent` for plan lifecycle. Use plan frontmatter (`lifecycle`, `-incomplete` suffix) instead.

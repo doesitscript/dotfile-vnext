@@ -1,0 +1,67 @@
+---
+description: AI agent role and model-lane contract for this project.
+alwaysApply: true
+---
+
+# AI Agent Model Lanes
+
+This project uses LiteLLM as the client-facing gateway for local and provider
+model lanes. Cursor agents should use the lane names and role boundaries below
+instead of talking directly to individual vLLM runtimes.
+
+Gateway:
+
+```text
+http://litellm.hom.lab/v1
+```
+
+Profile contract:
+
+```text
+/Users/joshc/develop/dotfile-vnext/.cursor/ai-agent-profiles.json
+```
+
+## Rules
+
+- Use `litellm.hom.lab` as the gateway surface when a custom OpenAI-compatible
+  base URL is available.
+- Do not point Cursor directly at `vllm-runtime`, localhost, or one-off node
+  ports for normal project work.
+- Preserve the user-approved model lane set. Do not collapse work to
+  `code-deep` just because it is the first runtime path.
+- Treat model catalog entries with `pending_research` or `provisional_example`
+  status as not selected for download or pinning.
+- Include trace metadata in tool/client wrappers when available:
+  `agent_role`, `model_lane`, `routing_policy`, `context_class`.
+
+## Agent Roles
+
+- `planner`: default lane `ripi-private`, alternate lane
+  `code-fast`, boundary `read_only`,
+  context `private_planning`
+- `coder`: default lane `code-deep`, alternate lane
+  `code-fast`, boundary `repo_write`,
+  context `implementation`
+- `tester`: default lane `code-test`, alternate lane
+  `code-fast`, boundary `test_execution`,
+  context `validation`
+- `reviewer`: default lane `code-review`, alternate lane
+  `ripi-private`, boundary `read_only`,
+  context `review`
+- `documenter`: default lane `code-fast`, alternate lane
+  `code-deep`, boundary `repo_write`,
+  context `documentation`
+- `steward`: default lane `ripi-private`, alternate lane
+  `code-review`, boundary `governance`,
+  context `planning_governance`
+
+## Model Lanes
+
+- `code-deep`: architecture, refactors, hard coding; status `pending_research`; example `Qwen/Qwen2.5-Coder-32B-Instruct-AWQ`
+- `experiment`: smoke tests and trial models; status `provisional_example`; example `Qwen/Qwen3-0.6B`
+- `code-fast`: autocomplete, small edits, repo questions; status `pending_research`; family `smaller coding/general model`
+- `code-review`: critique, risk finding, test review; status `pending_research`; family `reviewer/risk-finding model`
+- `code-test`: test generation and focused test repair; status `pending_research`; family `test generation/repair model`
+- `ripi-private`: private planning, governance, and conversation; status `pending_research`; family `private local reasoning/planning model`
+- `embeddings-local`: local retrieval and index embeddings; status `pending_research`; family `embedding model`
+- `public-research`: public docs, comparison, and research; status `deferred`; family `cloud/provider route unless local model is selected`

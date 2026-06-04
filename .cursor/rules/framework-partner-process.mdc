@@ -138,6 +138,29 @@ New approved plans must be stored as folder packets with a canonical
 single-file plan artifacts; migrate legacy single-file plans when they are
 touched.
 
+### On-deck decision capture
+
+When the user explicitly tells the agent to do something, confirms a direction,
+or decides an in-scope item during plan work, immediately add it to the bottom
+of the active plan under:
+
+```markdown
+## On Deck — user decisions to integrate
+```
+
+This section is a temporary holding area only while the correct plan body,
+checklist, receipt, or sibling packet is being updated. It is not a deferral bin.
+
+Before a related plan can proceed to build or execute, every on-deck item must be:
+
+- integrated into the relevant plan scope, checklist, and verification receipt;
+- moved to a named sibling plan with `depends_on_plans` / `unblocks` linkage; or
+- explicitly rejected because the user later changed the decision.
+
+Sequencing language such as "first executable path" may define run order only.
+It must not narrow away user-approved scope, model lanes, agent roles, resources,
+or implementation obligations.
+
 ### Plan promotion from intake
 
 When promoting `docs/intake/*.md` to `docs/plans/YYYY-MM-DD--slug/README.md`:
@@ -164,12 +187,32 @@ When the user says **execute the plan** and multiple `.cursor/plans/*.plan.md` o
    `docs/codex_framework/plan-verification-receipt.md` — obligation inventory for the
    **entire** plan packet, not only `## Checklist` rows.
 5. Do not set `lifecycle: implemented` or call execute-complete while any in-scope
-   obligation lacks `pass` evidence (or a documented `blocked`/`fail` with evidence).
+   obligation lacks `pass` evidence. `blocked`/`fail` with evidence is honest
+   incomplete status, not implemented status, unless the obligation is moved to
+   a named future plan and removed from current scope with user acceptance.
 6. Short execute-receipt tables keyed by checklist IDs are summary views only; they
    must mirror the full obligation inventory.
+7. Missing roles, playbooks, schemas, or validation entrypoints are not final
+   blockers by themselves. The coordinator must inspect repo surfaces, consult
+   authoritative docs/MCPs, scaffold clear repo-owned implementation surfaces,
+   run the first safe dependency gate, and then record pass/block evidence.
+8. Cross-plan dependency order must be encoded in Ansible entrypoints once
+   implementation begins. A README dependency table without a matching
+   playbook chain is insufficient for execute status.
+9. Validator, MCP, or subagent timeout is not permission to stop. Narrow the
+   validation scope, retry, or perform an equivalent direct repo audit before
+   reporting status. If validation still cannot run, leave the validator row
+   unsigned and record the exact failure.
+10. Brainstormed exact resource picks stay research-pending until current
+    source-backed research and live probes justify selecting them.
 
 Plan mode updates plans and markdown docs only. Implementation requires Agent mode;
 report any artifacts blocked by mode explicitly.
+
+Reusable coordinator, validator, permission-grantor, and multi-agent workflow
+patterns belong under `docs/codex_framework/agent-workflows/`. A plan may select
+one of those patterns, but reusable role boundaries, gates, fallback behavior,
+and completion rules must not live only inside an individual plan packet.
 
 If the topic is too novel or under-researched, the agent may summarize current direction but must escalate to research before producing a decision-complete plan.
 

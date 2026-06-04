@@ -15,6 +15,19 @@ authored correctly. **Plan verification receipt** proves the plan was fulfilled.
   **Verify** was never demonstrated with evidence
 - Treating narrative sections as "discussion" when they state completion criteria
   (e.g. "≠ done until …", "must pass before …", "blocking")
+- Ignoring `## On Deck — user decisions to integrate` rows when deciding whether
+  a plan is buildable or implemented
+- Reporting "missing role/playbook/resource" as a final blocker before checking
+  official docs/MCPs, scaffolding the missing repo-owned surface when clear, and
+  running the first safe dependency gate
+- Leaving dependency order only in prose after implementation begins instead of
+  adding or updating an executable playbook chain
+- Treating `blocked` or `fail` rows as completion. Blocked is honest status,
+  not done status, unless the work is removed from current scope and moved to a
+  named future plan accepted by the user.
+- Treating exact model IDs, providers, hardware placement, or downloads from
+  brainstormed intake as selected resources before a current research matrix and
+  live probe receipt exist.
 
 ## What counts as an obligation
 
@@ -30,7 +43,10 @@ they are part of the active slice). Include:
 | **Reference tables** | SSOT rows, ingress registry, host lists — each row that defines required runtime or operator state **for this slice** |
 | **Diagrams** | Nodes/edges that name files, hosts, tags, or flows the slice must realize (spot-check against repo + live evidence) |
 | **Reinforcement tasks** | Documentation or schema tasks added during planning |
+| **On Deck rows** | Explicit user decisions that must be integrated, routed, or rejected before build |
 | **Capability introduction** | Items from [capability_introduction_checklist.md](capability_introduction_checklist.md) when the plan introduces a capability |
+| **Coordinator dependency order** | Ordered playbooks or orchestrator entrypoint that enforces cross-plan prerequisites |
+| **Missing-resource resolution** | Research/source checks, scaffolded role/playbook/schema surfaces, and probe output before accepting a blocker |
 
 **Out of scope for this slice** (still list, do not require pass):
 
@@ -100,10 +116,21 @@ Add or update `## Plan verification receipt` in the plan `README.md` (before
 
 ### Completion gate (all required for `lifecycle: implemented`)
 
-- [ ] Every **in-scope** obligation is `pass` OR `blocked`/`fail` with evidence and no false `[x]` on checklist
+- [ ] Every **in-scope** obligation is `pass` or `n/a` with reason; `blocked`,
+      `fail`, or `pending` keeps the plan incomplete unless the obligation is
+      moved out of current scope to a named future plan
 - [ ] Change-contract **Verify** demonstrated for this slice (pasted output or artifact path)
 - [ ] `depends_on_plans` satisfied or failure documented with evidence
 - [ ] No in-scope obligation skipped because it was not duplicated in `## Checklist`
+- [ ] No unresolved `On Deck` row remains outside the plan body, checklist,
+      dependency graph, sibling plan routing, or rejection note
+- [ ] Missing roles/playbooks/resources were researched and scaffolded where
+      clear before being treated as blockers
+- [ ] Dependency order is represented in executable Ansible entrypoints, not
+      only prose
+- [ ] Exact candidate resources from brainstormed intake are either supported by
+      current research/probe evidence or labeled `pending_research` /
+      `provisional_example`
 ```
 
 ### 4. Checklist sync rule
