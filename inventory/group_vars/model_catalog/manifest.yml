@@ -1,0 +1,90 @@
+---
+model_catalog_manifest:
+  schema: model_catalog_manifest
+  status: candidate
+  storage_host: hom-lab-ctl-hvh-01
+  storage_root_unc: "\\\\hom-lab-ctl-hvh-01\\public\\models\\huggingface"
+  storage_root_windows: 'F:\shares\public\models\huggingface'
+  source_plan: docs/plans/2026-05-29--ai-model-catalog-hf-storage-incomplete-wip/README.md
+  research_required_before_download: true
+  selection_status: pending_research
+  selection_gate:
+    required_before_download_or_pin:
+      - current model research matrix compares multiple candidates per lane
+      - license and redistribution terms recorded
+      - VRAM/runtime fit checked against live GPU probe
+      - storage footprint estimate recorded before download
+      - serving runtime and quantization compatibility confirmed
+  entries:
+    - lane: code-deep
+      purpose: architecture, refactors, hard coding
+      status: pending_research
+      example_hf_repo_id: Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
+      candidate_family: large coding model suitable for 5090 vLLM
+      quantization: AWQ
+      serving_runtime: vllm
+      storage_host: hom-lab-ctl-hvh-01
+      unc_path: null
+      research_sources:
+        - https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
+      selection_blockers:
+        - current model research matrix incomplete
+        - live GPU probe failed on hom-lab-ctl-k3s-02
+      notes: Provisional example only; do not download or pin until research and GPU probe pass.
+    - lane: experiment
+      purpose: smoke tests and trial models
+      status: provisional_example
+      example_hf_repo_id: Qwen/Qwen3-0.6B
+      candidate_family: small smoke/trial model
+      serving_runtime: vllm
+      storage_host: hom-lab-ctl-hvh-01
+      unc_path: null
+      research_sources:
+        - https://huggingface.co/Qwen/Qwen3-0.6B
+      selection_blockers:
+        - current smoke-model research matrix incomplete
+        - live GPU probe failed on hom-lab-ctl-k3s-02
+      notes: Small smoke example verified to exist on Hugging Face; still not downloaded or pinned.
+    - lane: code-fast
+      purpose: autocomplete, small edits, repo questions
+      status: pending_research
+      candidate_family: smaller coding/general model
+      storage_host: hom-lab-ctl-hvh-01
+      unc_path: null
+      notes: Requires current model research before pinning an HF repo.
+    - lane: code-review
+      purpose: critique, risk finding, test review
+      status: pending_research
+      candidate_family: reviewer/risk-finding model
+      storage_host: hom-lab-ctl-hvh-01
+      unc_path: null
+      notes: Requires current model research and privacy route decision.
+    - lane: code-test
+      purpose: test generation and focused test repair
+      status: pending_research
+      candidate_family: test generation/repair model
+      storage_host: hom-lab-ctl-hvh-01
+      unc_path: null
+      notes: Requires current model research before pinning an HF repo.
+    - lane: ripi-private
+      purpose: private planning, governance, and conversation
+      status: pending_research
+      candidate_family: private local reasoning/planning model
+      storage_host: hom-lab-ctl-hvh-01
+      unc_path: null
+      notes: D-1 decides Notion MCP separately; this row is model-only.
+    - lane: embeddings-local
+      purpose: local retrieval and index embeddings
+      status: pending_research
+      candidate_family: embedding model
+      storage_host: hom-lab-ctl-hvh-01
+      unc_path: null
+      notes: Requires embedding serving research before pinning an HF repo.
+    - lane: public-research
+      purpose: public docs, comparison, and research
+      status: deferred
+      candidate_family: cloud/provider route unless local model is selected
+      storage_host: null
+      unc_path: null
+      moved_to_plan: docs/plans/2026-05-29--ai-litellm-model-lanes-incomplete-wip/README.md
+      notes: Tracked as provider routing first; no HF download by default.

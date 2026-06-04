@@ -62,6 +62,16 @@ policy_classes:
   - lan_exposed_services
 hyperv_networking_feature_prereqs_enabled: false
 
+# AI model catalog storage root on the existing public SMB share.
+# Operator decision D-4: the canonical HF root is
+# \\hom-lab-ctl-hvh-01\public\models\huggingface. This is storage-lane
+# desired state, not 5090 OS-disk runtime state.
+windows_file_shares_extra_directories:
+  - path: 'F:\shares\public\models'
+    purpose: AI model catalog root
+  - path: 'F:\shares\public\models\huggingface'
+    purpose: Hugging Face model weights
+
 # Infrastructure: Hyper-V External Switch (backbone, independent of any guest).
 hyperv_config:
   external_switch_enabled: true

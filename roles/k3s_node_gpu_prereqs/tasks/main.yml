@@ -1,0 +1,9 @@
+---
+- name: Include present tasks for K3s GPU prerequisites
+  ansible.builtin.include_tasks: present.yml
+  when: k3s_node_gpu_prereqs_state == 'present'
+
+- name: Report absent state for K3s GPU prerequisites
+  ansible.builtin.debug:
+    msg: "k3s_node_gpu_prereqs_state=absent has no teardown action; GPU substrate is managed outside this role."
+  when: k3s_node_gpu_prereqs_state == 'absent'

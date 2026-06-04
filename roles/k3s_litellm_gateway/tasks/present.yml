@@ -110,17 +110,50 @@
     - (_k3s_litellm_helm_status.stdout | from_json).info.status | lower is search('failed|pending')
 
 - name: Deploy LiteLLM gateway with Helm OCI
-  kubernetes.core.helm:
-    name: "{{ k3s_litellm_gateway_release_name }}"
-    chart_ref: oci://docker.litellm.ai/berriai/litellm-helm
-    release_namespace: "{{ k3s_litellm_gateway_namespace }}"
-    chart_version: "{{ k3s_litellm_gateway_chart_version | default(omit) }}"
-    create_namespace: true
-    wait: true
-    wait_timeout: 10m
-    values: "{{ k3s_litellm_gateway_helm_values }}"
-  environment:
-    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  block:
+    - name: Deploy LiteLLM gateway with Helm OCI
+      kubernetes.core.helm:
+        name: "{{ k3s_litellm_gateway_release_name }}"
+        chart_ref: oci://docker.litellm.ai/berriai/litellm-helm
+        release_namespace: "{{ k3s_litellm_gateway_namespace }}"
+        chart_version: "{{ k3s_litellm_gateway_chart_version | default(omit) }}"
+        create_namespace: true
+        wait: true
+        wait_timeout: 10m
+        values: "{{ k3s_litellm_gateway_helm_values }}"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  rescue:
+    - name: Confirm Helm failed on immutable LiteLLM migration Job
+      ansible.builtin.assert:
+        that:
+          - ansible_failed_result.msg is search('litellm-migrations')
+          - ansible_failed_result.msg is search('field is immutable')
+        fail_msg: "{{ ansible_failed_result.msg }}"
+
+    - name: Remove previous LiteLLM migration Job after immutable patch failure
+      kubernetes.core.k8s:
+        api_version: batch/v1
+        kind: Job
+        name: "{{ k3s_litellm_gateway_release_name }}-migrations"
+        namespace: "{{ k3s_litellm_gateway_namespace }}"
+        state: absent
+        wait: true
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Retry LiteLLM gateway Helm deploy after migration Job cleanup
+      kubernetes.core.helm:
+        name: "{{ k3s_litellm_gateway_release_name }}"
+        chart_ref: oci://docker.litellm.ai/berriai/litellm-helm
+        release_namespace: "{{ k3s_litellm_gateway_namespace }}"
+        chart_version: "{{ k3s_litellm_gateway_chart_version | default(omit) }}"
+        create_namespace: true
+        wait: true
+        wait_timeout: 10m
+        values: "{{ k3s_litellm_gateway_helm_values }}"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
 - name: Wait for LiteLLM deployment to be ready
   kubernetes.core.k8s_info:
@@ -195,6 +228,6 @@
 
       Components deployed:
       - LiteLLM Proxy ({{ k3s_litellm_gateway_replicas }} replicas)
-      - External PostgreSQL at {{ k3s_litellm_gateway_db_endpoint }}:{{ fuzlang_external_postgres_port }}/{{ k3s_litellm_gateway_db_database }}
+      - External PostgreSQL at {{ k3s_litellm_gateway_db_endpoint }}:{{ k3s_litellm_gateway_db_port }}/{{ k3s_litellm_gateway_db_database }}
 
       Check status: kubectl get pods -n {{ k3s_litellm_gateway_namespace }}

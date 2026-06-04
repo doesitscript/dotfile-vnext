@@ -390,6 +390,111 @@ netbox_services:
     seed_status: integrated_in_ipam_netbox_defaults
     live_netbox_status: verify_after_seed_apply
 
+model_lanes:
+  status: candidate
+  source_plan: docs/plans/2026-05-29--ai-litellm-model-lanes-incomplete-wip/README.md
+  variable: k3s_litellm_gateway_model_list
+  trace_metadata_key: model_lane
+  entries:
+    - slug: code-deep
+      purpose: architecture, refactors, hard coding
+      routing_policy: local-5090
+      primary_guest: hom-lab-ctl-k3s-02
+      catalog_lane: code-deep
+      status: pending_research
+    - slug: code-fast
+      purpose: autocomplete, small edits, repo questions
+      routing_policy: local-preferred
+      primary_guest: null
+      catalog_lane: code-fast
+      status: pending_research
+    - slug: code-review
+      purpose: critique, risk finding, test review
+      routing_policy: local-or-azure
+      primary_guest: null
+      catalog_lane: code-review
+      status: pending_research
+    - slug: code-test
+      purpose: test generation and focused test repair
+      routing_policy: local-preferred
+      primary_guest: null
+      catalog_lane: code-test
+      status: pending_research
+    - slug: ripi-private
+      purpose: private planning, governance, and conversation
+      routing_policy: local-only
+      primary_guest: null
+      catalog_lane: ripi-private
+      status: pending_research
+    - slug: embeddings-local
+      purpose: local retrieval and index embeddings
+      routing_policy: local-only
+      primary_guest: null
+      catalog_lane: embeddings-local
+      status: pending_research
+    - slug: public-research
+      purpose: public docs, comparison, and research
+      routing_policy: azure-allowed
+      primary_guest: null
+      catalog_lane: public-research
+      status: deferred
+    - slug: experiment
+      purpose: smoke tests and trial models
+      routing_policy: local-only
+      primary_guest: hom-lab-ctl-k3s-02
+      catalog_lane: experiment
+      status: provisional_example
+    - slug: gpt-4o-mini
+      purpose: migration fallback
+      routing_policy: migration
+      primary_guest: null
+      catalog_lane: null
+      status: migration
+    - slug: default
+      purpose: migration fallback
+      routing_policy: migration
+      primary_guest: null
+      catalog_lane: null
+      status: migration
+
+model_catalog_entries:
+  status: candidate
+  source_plan: docs/plans/2026-05-29--ai-model-catalog-hf-storage-incomplete-wip/README.md
+  manifest: inventory/group_vars/model_catalog/manifest.yml
+  storage_host: hom-lab-ctl-hvh-01
+  storage_root_unc: "\\\\hom-lab-ctl-hvh-01\\public\\models\\huggingface"
+  entries:
+    - lane: code-deep
+      status: pending_research
+      example_hf_repo_id: Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
+      candidate_family: large coding model suitable for 5090 vLLM
+      research_sources:
+        - https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
+    - lane: experiment
+      status: provisional_example
+      example_hf_repo_id: Qwen/Qwen3-0.6B
+      candidate_family: small smoke/trial model
+      research_sources:
+        - https://huggingface.co/Qwen/Qwen3-0.6B
+    - lane: code-fast
+      status: pending_research
+      candidate_family: small coding/general model
+    - lane: code-review
+      status: pending_research
+      candidate_family: reviewer/risk-finding model
+    - lane: code-test
+      status: pending_research
+      candidate_family: test generation/repair model
+    - lane: ripi-private
+      status: pending_research
+      candidate_family: private local reasoning/planning model
+    - lane: embeddings-local
+      status: pending_research
+      candidate_family: embedding model
+    - lane: public-research
+      status: deferred
+      candidate_family: cloud/provider route unless local model is selected
+
 ansible_inventory_groups:
   hyperv_lane_gpu:
     group_kind: lane
@@ -461,15 +566,16 @@ ansible_roles_capability_map:
     readme: roles/hvh_02/README.md
 
 diagrams:
-  - canonical_id: cst-hom-lab-ctl-dia-gpu-topology-01
-    path: docs/diagrams/cst-hom-lab-ctl-dia-gpu-topology-01.md
-    scope: GPU lane network topology
-  - canonical_id: cst-hom-lab-ctl-dia-gpu-control-01
-    path: docs/diagrams/cst-hom-lab-ctl-dia-gpu-control-01.md
-    scope: GPU lane control-plane surfaces
-  - canonical_id: cst-hom-lab-ctl-dia-gpu-services-01
-    path: docs/diagrams/cst-hom-lab-ctl-dia-gpu-services-01.md
-    scope: GPU lane service endpoints
+  entries:
+    - canonical_id: cst-hom-lab-ctl-dia-gpu-topology-01
+      path: docs/diagrams/cst-hom-lab-ctl-dia-gpu-topology-01.md
+      scope: GPU lane network topology
+    - canonical_id: cst-hom-lab-ctl-dia-gpu-control-01
+      path: docs/diagrams/cst-hom-lab-ctl-dia-gpu-control-01.md
+      scope: GPU lane control-plane surfaces
+    - canonical_id: cst-hom-lab-ctl-dia-gpu-services-01
+      path: docs/diagrams/cst-hom-lab-ctl-dia-gpu-services-01.md
+      scope: GPU lane service endpoints
   note: "`dia` is the reserved diagram-family marker for documentation artifacts."
 
 not_in_netbox:

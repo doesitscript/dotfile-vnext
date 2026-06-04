@@ -1,0 +1,47 @@
+---
+- name: Probe NVIDIA userspace on K3s node
+  ansible.builtin.command:
+    cmd: nvidia-smi -L
+  register: _k3s_node_gpu_prereqs_nvidia_smi
+  changed_when: false
+  failed_when: false
+
+- name: Probe PCI NVIDIA devices on K3s node
+  ansible.builtin.shell: |
+    if command -v lspci >/dev/null 2>&1; then
+      lspci | grep -i nvidia || true
+    fi
+  register: _k3s_node_gpu_prereqs_lspci
+  changed_when: false
+  failed_when: false
+
+- name: Probe Kubernetes advertised GPU capacity
+  ansible.builtin.command:
+    cmd: >-
+      kubectl get node {{ k3s_node_gpu_prereqs_node_name }}
+      -o jsonpath={.status.capacity['{{ k3s_node_gpu_prereqs_expected_resource }}']}
+  environment:
+    KUBECONFIG: "{{ k3s_node_gpu_prereqs_kubeconfig }}"
+  register: _k3s_node_gpu_prereqs_capacity
+  changed_when: false
+  failed_when: false
+
+- name: Summarize K3s GPU prerequisite probes
+  ansible.builtin.debug:
+    msg:
+      node: "{{ k3s_node_gpu_prereqs_node_name }}"
+      nvidia_smi_rc: "{{ _k3s_node_gpu_prereqs_nvidia_smi.rc }}"
+      nvidia_smi: "{{ _k3s_node_gpu_prereqs_nvidia_smi.stdout | default('') }}"
+      pci_nvidia: "{{ _k3s_node_gpu_prereqs_lspci.stdout | default('') }}"
+      kubernetes_gpu_capacity: "{{ _k3s_node_gpu_prereqs_capacity.stdout | default('') }}"
+
+- name: Assert K3s node has NVIDIA GPU runtime prerequisites
+  ansible.builtin.assert:
+    that:
+      - _k3s_node_gpu_prereqs_nvidia_smi.rc == 0
+      - (_k3s_node_gpu_prereqs_capacity.stdout | default('0') | int) >= k3s_node_gpu_prereqs_expected_count | int
+    fail_msg: >-
+      K3s GPU prerequisites are not ready for vLLM. The node must expose
+      nvidia-smi and advertise {{ k3s_node_gpu_prereqs_expected_resource }}
+      capacity before vLLM runtime deployment.
+    success_msg: "K3s GPU prerequisites are ready for vLLM runtime deployment."

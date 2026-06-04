@@ -25,6 +25,34 @@ ansible-vault edit vault/shared.vault.yml
 
 Helm `environmentSecrets` mounts `litellm-env-secret` into the pod; `proxy_config` uses `os.environ/OPENAI_API_KEY` and `os.environ/PROXY_MASTER_KEY`.
 
+External PostgreSQL uses `k3s_litellm_gateway_db_endpoint` plus
+`k3s_litellm_gateway_db_port` when rendering the database URL and status output.
+
+## Model routes vs model catalog
+
+`k3s_litellm_gateway_model_list` is the LiteLLM gateway route list. It defines
+client-facing aliases such as `code-deep`, `code-fast`, or the current migration
+fallbacks.
+
+The durable Hugging Face/storage catalog is separate:
+`inventory/group_vars/model_catalog/manifest.yml`. That manifest tracks
+candidate/downloaded/served model weights and their storage path on the
+`hom-lab-ctl-hvh-01` public SMB share.
+
+Do not duplicate the full catalog into this role. When a catalog row becomes a
+served runtime, add or update the corresponding LiteLLM route here and keep the
+route's `model_info.model_lane` aligned with its `model_name`.
+
+## Langfuse trace metadata
+
+The gateway supplies route-level metadata through LiteLLM `model_info`, including
+`model_lane`, `routing_policy`, and `project`.
+
+Per-request metadata such as `agent_role` and `context_class` is owned by the
+IDE/agent client profile. Those values must be sent with the completion request
+metadata, not hardcoded globally in the gateway, because planner, coder, tester,
+reviewer, documenter, and steward traffic can share the same gateway.
+
 ## Playbook
 
 ```bash

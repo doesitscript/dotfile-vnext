@@ -1,0 +1,161 @@
+---
+- name: Validate GPU prerequisites before vLLM mutation
+  ansible.builtin.include_role:
+    name: k3s_node_gpu_prereqs
+  vars:
+    k3s_node_gpu_prereqs_expected_resource: "{{ k3s_vllm_runtime_gpu_resource }}"
+    k3s_node_gpu_prereqs_expected_count: "{{ k3s_vllm_runtime_gpu_count }}"
+
+- name: Ensure vLLM namespace exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ k3s_vllm_runtime_namespace }}"
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+
+- name: Ensure vLLM Hugging Face cache PVC exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: "{{ k3s_vllm_runtime_name }}-hf-cache"
+        namespace: "{{ k3s_vllm_runtime_namespace }}"
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: "{{ k3s_vllm_runtime_hf_cache_size }}"
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+
+- name: Ensure vLLM Hugging Face token secret exists when configured
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ k3s_vllm_runtime_name }}-env"
+        namespace: "{{ k3s_vllm_runtime_namespace }}"
+      type: Opaque
+      stringData:
+        HF_TOKEN: "{{ k3s_vllm_runtime_hf_token }}"
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+  no_log: true
+  when: k3s_vllm_runtime_hf_token | length > 0
+
+- name: Build vLLM container args
+  ansible.builtin.set_fact:
+    _k3s_vllm_runtime_args: >-
+      {{
+        [
+          '--model', k3s_vllm_runtime_model,
+          '--served-model-name', k3s_vllm_runtime_served_model_name,
+          '--host', '0.0.0.0',
+          '--port', k3s_vllm_runtime_container_port | string
+        ]
+        + k3s_vllm_runtime_extra_args
+      }}
+
+- name: Ensure vLLM deployment exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ k3s_vllm_runtime_name }}"
+        namespace: "{{ k3s_vllm_runtime_namespace }}"
+        labels:
+          app.kubernetes.io/name: vllm
+          app.kubernetes.io/instance: "{{ k3s_vllm_runtime_name }}"
+          app.kubernetes.io/managed-by: ansible
+      spec:
+        replicas: "{{ k3s_vllm_runtime_replicas }}"
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: vllm
+            app.kubernetes.io/instance: "{{ k3s_vllm_runtime_name }}"
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/name: vllm
+              app.kubernetes.io/instance: "{{ k3s_vllm_runtime_name }}"
+          spec:
+            containers:
+              - name: vllm
+                image: "{{ k3s_vllm_runtime_image }}"
+                args: "{{ _k3s_vllm_runtime_args }}"
+                ports:
+                  - name: http
+                    containerPort: "{{ k3s_vllm_runtime_container_port }}"
+                envFrom: >-
+                  {{
+                    [{'secretRef': {'name': k3s_vllm_runtime_name ~ '-env'}}]
+                    if k3s_vllm_runtime_hf_token | length > 0 else []
+                  }}
+                volumeMounts:
+                  - name: hf-cache
+                    mountPath: /root/.cache/huggingface
+                resources:
+                  requests:
+                    cpu: "{{ k3s_vllm_runtime_cpu_request }}"
+                    memory: "{{ k3s_vllm_runtime_memory_request }}"
+                    "{{ k3s_vllm_runtime_gpu_resource }}": "{{ k3s_vllm_runtime_gpu_count }}"
+                  limits:
+                    cpu: "{{ k3s_vllm_runtime_cpu_limit }}"
+                    memory: "{{ k3s_vllm_runtime_memory_limit }}"
+                    "{{ k3s_vllm_runtime_gpu_resource }}": "{{ k3s_vllm_runtime_gpu_count }}"
+            volumes:
+              - name: hf-cache
+                persistentVolumeClaim:
+                  claimName: "{{ k3s_vllm_runtime_name }}-hf-cache"
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+
+- name: Ensure vLLM service exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "{{ k3s_vllm_runtime_name }}"
+        namespace: "{{ k3s_vllm_runtime_namespace }}"
+      spec:
+        type: ClusterIP
+        selector:
+          app.kubernetes.io/name: vllm
+          app.kubernetes.io/instance: "{{ k3s_vllm_runtime_name }}"
+        ports:
+          - name: http
+            port: "{{ k3s_vllm_runtime_service_port }}"
+            targetPort: "{{ k3s_vllm_runtime_container_port }}"
+            protocol: TCP
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+
+- name: Wait for vLLM deployment to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ k3s_vllm_runtime_namespace }}"
+    name: "{{ k3s_vllm_runtime_name }}"
+    wait: true
+    wait_timeout: 600
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+
+- name: Report vLLM runtime service URL
+  ansible.builtin.debug:
+    msg: >-
+      vLLM runtime deployed at
+      http://{{ k3s_vllm_runtime_name }}.{{ k3s_vllm_runtime_namespace }}.svc.cluster.local:{{ k3s_vllm_runtime_service_port }}/v1

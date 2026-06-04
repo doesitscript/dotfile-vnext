@@ -4,6 +4,8 @@ Canonical vocabulary for how this repo describes the homelab AI stack. Intake
 provenance: `docs/intake/netbox/netbox_ai_infra_impl_planning_wip/` (Phase 0).
 Enforcement: active plans and shipped Ansible roles — not chat export names alone.
 
+**Execution program (WIP):** [2026-05-29--ai-homelab-intake-execution-incomplete-wip](../plans/2026-05-29--ai-homelab-intake-execution-incomplete-wip/README.md)
+
 ## Lab identity
 
 This homelab is an **AI product engineering** environment: agents, evaluation,
@@ -19,6 +21,11 @@ lane K3s guest.
 | **GPU / inference** | `hyperv_lane_gpu` — `hom-lab-ctl-hvh-02`, `hom-lab-ctl-dkr-02`, `hom-lab-ctl-k3s-02` | vLLM (planned), LiteLLM, Langfuse, Jupyter, GPU verify |
 | **Storage / observability** | `hyperv_lane_storage` — `hom-lab-ctl-hvh-01`, dkr-01, k3s-01 | NetBox, Loki, Grafana, long-retention stack |
 | **Operator** | `mac-dev` (`execution_nodes`) | Ansible controller, IDE, CLI — not an inference host |
+
+Operator decision D-4: HF model weights use the storage lane canonical root
+`\\hom-lab-ctl-hvh-01\public\models\huggingface`, backed by
+`F:\shares\public\models\huggingface` on `hom-lab-ctl-hvh-01`. Do not place
+physical weights on the RTX 5090 OS disk as the source of truth.
 
 Retired names (`Server-225`, `network-server`) must not appear in new docs;
 use compact schema hostnames per `live-object-registry.yml`.
@@ -43,11 +50,11 @@ use compact schema hostnames per `live-object-registry.yml`.
 
 | Layer | Service code | Shipped role (repo) | Notes |
 |-------|--------------|---------------------|-------|
-| Runtime | `vlm` | *(planned)* `vllm_runtime` / `k3s_vllm_runtime` per plan | Not deployed; see `2026-05-28--k3s-vllm-service-publication-incomplete` |
-| Gateway | `llm` | `k3s_litellm_gateway` | Model **lanes** = LiteLLM `model_name` aliases (`code-deep`, …) — schema pattern **candidate**; see [gpu-lane-and-model-lane-mapping-evaluation.md](../intake/netbox/netbox_ai_infra_impl_planning_wip/gpu-lane-and-model-lane-mapping-evaluation.md) |
-| Observability | `lfs` | `k3s_langfuse_platform` | Trace metadata contract: intake `1.4.0` |
+| Runtime | `vlm` | *(planned)* `k3s_vllm_runtime` per [vLLM primary stack plan](../plans/2026-05-29--ai-vllm-primary-stack-incomplete-wip/README.md) | Not deployed; see also `2026-05-28--k3s-vllm-service-publication-incomplete` |
+| Gateway | `llm` | `k3s_litellm_gateway` | Model **lanes** = LiteLLM `model_name` aliases — [litellm model lanes plan](../plans/2026-05-29--ai-litellm-model-lanes-incomplete-wip/README.md); see also [gpu-lane evaluation](../intake/netbox/netbox_ai_infra_impl_planning_wip/gpu-lane-and-model-lane-mapping-evaluation.md) |
+| Observability | `lfs` | `k3s_langfuse_platform` | [Langfuse observability plan](../plans/2026-05-29--ai-langfuse-observability-incomplete-wip/README.md); intake `1.4.0` |
 | Publication | — | `homelab_hosts_file`, `ipam_netbox`, Traefik routes | Deferred until stable runtime URL |
-| Catalog | — | — | Reserved; do not confuse with NetBox **service** rows |
+| Catalog | — | *(planned)* [model-catalog plan](../plans/2026-05-29--ai-model-catalog-hf-storage-incomplete-wip/README.md) | HF manifest on hvh-01; do not confuse with NetBox **service** rows |
 
 ## GPU lane policy
 
