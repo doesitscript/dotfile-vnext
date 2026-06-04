@@ -11,6 +11,9 @@
       $shareRequests = ConvertFrom-Json -InputObject @'
       {{ windows_file_shares | to_json }}
       '@
+      $extraDirectoryRequests = ConvertFrom-Json -InputObject @'
+      {{ windows_file_shares_extra_directories | to_json }}
+      '@
       $groupRequests = ConvertFrom-Json -InputObject @'
       {{ windows_file_shares_groups | to_json }}
       '@
@@ -71,6 +74,13 @@
         }
         if (-not $shareUsersChange) {
           $errors.Add("Share $name is missing share_users Change permission")
+        }
+      }
+
+      foreach ($request in @($extraDirectoryRequests)) {
+        $path = [string]$request.path
+        if (-not (Test-Path -LiteralPath $path)) {
+          $errors.Add("Missing extra managed directory $path")
         }
       }
 

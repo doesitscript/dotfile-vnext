@@ -59,6 +59,14 @@
   loop_control:
     label: "{{ item.path }}"
 
+- name: Ensure extra managed share directories exist
+  ansible.windows.win_file:
+    path: "{{ item.path }}"
+    state: directory
+  loop: "{{ windows_file_shares_extra_directories }}"
+  loop_control:
+    label: "{{ item.path }}"
+
 - name: Ensure managed NTFS permissions
   ansible.windows.win_acl:
     path: "{{ item.0.path }}"
