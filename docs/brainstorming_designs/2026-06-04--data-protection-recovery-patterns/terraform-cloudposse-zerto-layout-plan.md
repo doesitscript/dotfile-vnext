@@ -1,7 +1,12 @@
-# Conversation Archive — Terraform + Cloud Posse Layout with Zerto
+# Terraform + Cloud Posse + Zerto Layout Plan
 
-> Exported conversation. Brainstorming material only — not repo authority.
+> Plan-like brainstorm — not an approved `docs/plans/` packet or repo authority.
+> Shaped from exported conversation; candidate architecture only.
 > Parent packet: [README.md](./README.md)
+>
+> **Scaled-out companion:** multi-surface management plane, AWS accounts, and
+> Azure workload protection —
+> [`terraform-multi-surface-data-protection-scaled-out-plan.md`](./terraform-multi-surface-data-protection-scaled-out-plan.md)
 
 ---
 
@@ -21,6 +26,10 @@ Your repo already captured the mapping research in `docs/reference/naming-standa
 <tenant>-<environment>-<domain>-<role>-<idx>
 → hom-lab-ctl-hvh-01
 ```
+
+**Diagrams (schema notation):** [diagrams/](./diagrams/) — start with
+[`cst-hom-lab-ctl-dia-data-protection-naming-01.md`](./diagrams/cst-hom-lab-ctl-dia-data-protection-naming-01.md)
+and [`cst-hom-lab-ctl-dia-zerto-homelab-topology-01.md`](./diagrams/cst-hom-lab-ctl-dia-zerto-homelab-topology-01.md).
 
 ---
 
@@ -49,12 +58,13 @@ Map once in root `context.tf` / `globals.hcl`:
 | `name` | role code | `zrt`, `bkp`, `hvh`, `dkr`, … |
 | `attributes` | idx + modifiers | `["01"]`, `["vra"]`, `["gpu-lane"]` |
 
-Example rendered IDs:
+Example rendered IDs (L4 baseline + L6 canonical):
 
 ```text
-hom-lab-ctl-zrt-01          # ZVM management VM (L4 service / host identity)
-hom-lab-ctl-bkp-01          # generic backup-server role (candidate bkp)
-cst-hom-lab-ctl-service-zerto-01   # L6 canonical doc/catalog ID
+hom-lab-ctl-zrt-01                              # L4 ZVM logical hostname (candidate)
+hom-lab-ctl-bkp-01                              # L4 generic backup-server (candidate bkp)
+cst-hom-lab-ctl-service-zerto-01                # L6 documentation / catalog ID
+cst-hom-lab-ctl-dia-zerto-homelab-topology-01   # L6 diagram ID (this packet)
 ```
 
 For Zerto specifically, add **`zrt`** as a **candidate service role** (like `nbx`, `lfs`) and keep **`bkp`** for generic backup infrastructure. Zerto VRAs attach to existing **`hvh`** hosts — they are components on `hom-lab-ctl-hvh-01/02`, not new hostnames.
@@ -169,54 +179,11 @@ dotfile-vnext/
 
 ### Zerto decomposition (what each folder owns)
 
-```mermaid
-graph TB
-  subgraph modules [terraform/modules/data-protection/zerto]
-    m_zvm[zvm]
-    m_vra[vra]
-    m_site[site]
-    m_pg[protection-group]
-    m_journal[journal]
-  end
+See diagram
+[`cst-hom-lab-ctl-dia-zerto-homelab-topology-01.md`](./diagrams/cst-hom-lab-ctl-dia-zerto-homelab-topology-01.md)
+for the full topology (live `hom-lab-ctl-*` hosts vs candidate Zerto units).
 
-  subgraph stacks_global [stacks/_global]
-    s_pair[zerto-site-pairing]
-  end
-
-  subgraph stacks_shared [stacks/hom/lab/ctl/shared]
-    s_zvm[zvm-01 → hom-lab-ctl-zrt-01]
-  end
-
-  subgraph lane_storage [stacks/.../lane-storage]
-    vra01[vra-hvh-01 on hom-lab-ctl-hvh-01]
-    pg_k3s01[protection-group-k3s-01]
-    pg_dkr01[protection-group-dkr-01]
-    journal01[journal-store-01]
-  end
-
-  subgraph lane_gpu [stacks/.../lane-gpu]
-    vra02[vra-hvh-02 on hom-lab-ctl-hvh-02]
-    pg_k3s02[protection-group-k3s-02]
-    pg_dkr02[protection-group-dkr-02]
-  end
-
-  s_pair --> s_zvm
-  s_zvm --> vra01
-  s_zvm --> vra02
-  vra01 --> pg_k3s01
-  vra01 --> pg_dkr01
-  vra02 --> pg_k3s02
-  vra02 --> pg_dkr02
-  pg_k3s01 --> journal01
-
-  m_zvm -.-> s_zvm
-  m_vra -.-> vra01
-  m_vra -.-> vra02
-  m_pg -.-> pg_k3s01
-  m_site -.-> s_pair
-```
-
-| Unit directory | Module | Protects / attaches to | Rendered name |
+| Unit directory | Module | Protects / attaches to | Rendered name (L4) |
 |----------------|--------|------------------------|---------------|
 | `shared/.../zvm-01` | `zvm` | new management VM | `hom-lab-ctl-zrt-01` |
 | `lane-storage/.../vra-hvh-01` | `vra` | `hom-lab-ctl-hvh-01` | attributes `vra-hvh-01` on host id |

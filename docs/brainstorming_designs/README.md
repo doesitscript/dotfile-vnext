@@ -34,7 +34,9 @@ Each packet should start with:
 
 - `README.md` - scope, status, and how to treat the material
 - `.aiignore` - local advisory context boundary
-- `conv_archive.md` - pasted/exported conversation material when available
+- `<topic>-plan.md` - shaped brainstorm or conversation archive (plan-like, not
+  an approved `docs/plans/` packet)
+- `diagrams/` - optional; diagram files use `cst-hom-lab-ctl-dia-<topic>-<idx>.md`
 
 Additional files should be added only when they help preserve the idea without
 turning it into active project direction.

@@ -10,12 +10,20 @@
 ## How Agents Should Treat This Packet
 
 - Read this README and the local `.aiignore` first.
-- Do not bulk-read `conv_archive.md` or future packet contents unless the user
+- Do not bulk-read the plan-like markdown files in this packet unless the user
   explicitly asks for them or the task directly depends on this packet.
 - Treat product names, hostnames, service names, model names, storage names, and
   candidate architectures as examples until promoted through `docs/intake/` or
   `docs/plans/`.
 - Preserve useful ideas, but do not infer active work from their presence here.
+
+## Packet Artifacts
+
+| File | Role |
+|------|------|
+| [`terraform-cloudposse-zerto-layout-plan.md`](./terraform-cloudposse-zerto-layout-plan.md) | T0 homelab layout — Terraform modules, stacks, Zerto on Hyper-V lanes |
+| [`terraform-multi-surface-data-protection-scaled-out-plan.md`](./terraform-multi-surface-data-protection-scaled-out-plan.md) | T1–T2 scaled layout — management plane, AWS workload/DR accounts, Azure `aix`, protection matrix |
+| [`diagrams/`](./diagrams/) | Schema-notation diagrams (`cst-hom-lab-ctl-dia-*-01`) — naming, topology, surfaces, stacks, flows |
 
 ## Intended Use
 
