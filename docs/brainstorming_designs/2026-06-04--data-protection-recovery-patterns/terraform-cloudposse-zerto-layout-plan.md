@@ -7,6 +7,9 @@
 > **Scaled-out companion:** multi-surface management plane, AWS accounts, and
 > Azure workload protection —
 > [`terraform-multi-surface-data-protection-scaled-out-plan.md`](./terraform-multi-surface-data-protection-scaled-out-plan.md)
+>
+> **Zerto vocabulary companion:** ZVM, VRA, VPG, journals, and repo naming map —
+> [`zerto-infrastructure-world-mapping-plan.md`](./zerto-infrastructure-world-mapping-plan.md)
 
 ---
 

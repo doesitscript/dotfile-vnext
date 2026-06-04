@@ -23,6 +23,7 @@
 |------|------|
 | [`terraform-cloudposse-zerto-layout-plan.md`](./terraform-cloudposse-zerto-layout-plan.md) | T0 homelab layout — Terraform modules, stacks, Zerto on Hyper-V lanes |
 | [`terraform-multi-surface-data-protection-scaled-out-plan.md`](./terraform-multi-surface-data-protection-scaled-out-plan.md) | T1–T2 scaled layout — management plane, AWS workload/DR accounts, Azure `aix`, protection matrix |
+| [`zerto-infrastructure-world-mapping-plan.md`](./zerto-infrastructure-world-mapping-plan.md) | Zerto object vocabulary mapped to repo infrastructure, Terraform units, and naming layers |
 | [`diagrams/`](./diagrams/) | Schema-notation diagrams (`cst-hom-lab-ctl-dia-*-01`) — naming, topology, surfaces, stacks, flows |
 
 ## Intended Use

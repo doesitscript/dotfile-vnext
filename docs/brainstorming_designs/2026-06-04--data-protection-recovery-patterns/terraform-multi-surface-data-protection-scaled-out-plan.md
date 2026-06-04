@@ -6,6 +6,9 @@
 > to a mature **management plane + workload surfaces** model (on-prem lanes, AWS
 > accounts, Azure workload domain).
 > Parent packet: [README.md](./README.md)
+>
+> **Zerto vocabulary companion:** ZVM, VRA, VPG, journals, and repo naming map —
+> [`zerto-infrastructure-world-mapping-plan.md`](./zerto-infrastructure-world-mapping-plan.md)
 
 ---
 
