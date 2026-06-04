@@ -11,9 +11,9 @@
 | Phase | Name | Status | Artifact(s) |
 |-------|------|--------|-------------|
 | **0** | Close the repo gap (assess + align) | `complete` | [ASSESSMENT.md](./ASSESSMENT.md), [ai-homelab-layer-model.md](../../reference/ai-homelab-layer-model.md) |
-| **0R** | **Reconcile** generic capabilities → tangible resources | `in_progress` | **[capability-requirements-to-resources-evaluation.md](./capability-requirements-to-resources-evaluation.md)** (primary) + `*-discussion` / `*-evaluation` |
+| **0R** | **Reconcile** generic capabilities → tangible resources | `in_progress` | **[interim_intake_instructions.md](./interim_intake_instructions.md)** + [plan-ready/](./plan-ready/) + evaluations |
 | **1** | Merge, triage, and route outcomes | `complete` | [GROUP-A](./phase-1-GROUP-A-product-lab-intent-synthesis.md), [GROUP-B](./phase-1-GROUP-B-infra-deployment-synthesis.md), [TRIAGE](./phase-1-TRIAGE.md) |
-| **2** | Create buildable plans | `blocked` | Until **0R** host + vLLM placement decisions; then infra-only incomplete packet |
+| **2** | Create buildable plans | `in_progress` | Seven `-incomplete-wip` packets under `docs/plans/2026-05-29--ai-*` — operator review in progress |
 | **3** | Execute (Ansible / NetBox / live apply) | `pending` | Plan verification receipt + playbook runs |
 
 ---
@@ -54,17 +54,39 @@
 
 ---
 
+## Phase 0R — Reconcile capabilities → tangible resources
+
+**Playbook:** [interim_intake_instructions.md](./interim_intake_instructions.md)
+**Principles:** [wip-intake-principles.md](./wip-intake-principles.md)
+
+| TODO | What to do | Status |
+|------|------------|--------|
+| **0R.0** | Publish interim intake instructions + principles | `done` |
+| **0R.1** | Per-archive pass — [archive-reconciliation/](./archive-reconciliation/) | `done` (first pass) |
+| **0R.2** | Plan-ready stubs for operator review | `done` — [plan-ready/00-index.md](./plan-ready/00-index.md) |
+| **0R.3** | Langfuse doc-gate evaluation | `done` |
+| **0R.4** | `ai_*` modularity evaluation | `done` |
+| **0R.5** | Operator review of plan-ready | `done` — plans look good; governed packets are source of truth |
+| **0R.6** | Promote approved stubs to `docs/plans/` | `done` — see [plan-ready/00-index.md](./plan-ready/00-index.md) promoted table |
+
+**0R exit:** All archives reconciled; plan-ready reviewed; D-1–D-4 decided or blocked with evidence.
+
+---
+
 ## Phase 2 — Create buildable plans
 
 **Goal:** Promote **implement now** and **buildable soon** items to governed plan packets.
 
 | TODO | What to do | Status |
 |------|------------|--------|
-| **2.1** | Promote routed items to `docs/plans/YYYY-MM-DD--slug/README.md` (diagram gate + change contract) | `pending` |
+| **2.1** | Promote routed items to `docs/plans/YYYY-MM-DD--slug/README.md` (diagram gate + change contract) | `done` — umbrella + 6 child plans; NetBox slice on each |
 | **2.2** | GitHub issues for durable tracking (optional) | `pending` |
 | **2.3** | No execution from raw chat exports | `pending` |
 
-**Blocked until:** Phase 0 exit criteria met (or explicit waiver per topic in `ASSESSMENT.md`) **and** Phase 1 exit criteria met.
+**Next:** Continue the ordered build through
+`playbooks/deploy_ai_inference_stack.yaml`; current blocker is the K3s GPU gate
+on `hom-lab-ctl-k3s-02` (no `nvidia-smi`, no `nvidia.com/gpu` capacity).
+Umbrella: [execution program](../../../plans/2026-05-29--ai-homelab-intake-execution-incomplete-wip/README.md).
 
 ---
 
@@ -92,6 +114,8 @@
 | 2026-05-29 | **Phase 0R started:** operator host mapping; vLLM/Ollama/OpenClaw docs. |
 | 2026-05-29 | **Capability evaluation:** full 1.1.0 generic→resource matrix (models, Langfuse, agents, catalog, trace links). |
 | 2026-05-29 | **Retracted:** `gpu_lane_id`, `homelab_gpu_lanes.yml`, NetBox `gpu-lane-*` tags — intake lane phrases stay evaluation-only; map to `hom-lab-ctl-hvh-*` + existing groups. |
+| 2026-05-29 | **Interim playbook:** `wip-intake-principles.md`, `interim_intake_instructions.md`, `plan-ready/`, `archive-reconciliation/`, Langfuse eval; all numbered archives first-pass reviewed. |
+| 2026-05-29 | **Phase 2 WIP plans:** six `docs/plans/2026-05-29--ai-*-incomplete-wip/` packets (umbrella + gaps + catalog + vLLM + LiteLLM + Langfuse); glossary gaps table wired. |
 
 ---
 
@@ -113,3 +137,10 @@
 | [gpu-host-inventory-evaluation.md](./gpu-host-inventory-evaluation.md) | GPU models per machine |
 | [placeholder-to-implementation-reconciliation-evaluation.md](./placeholder-to-implementation-reconciliation-evaluation.md) | Ollama→vLLM, models, OpenClaw |
 | [ai-homelab-layer-model.md](../../reference/ai-homelab-layer-model.md) | Canonical layer vocabulary |
+| [wip-intake-principles.md](./wip-intake-principles.md) | Core intake principles |
+| [interim_intake_instructions.md](./interim_intake_instructions.md) | **Active playbook** |
+| [plan-ready/00-index.md](./plan-ready/00-index.md) | Stubs + links to promoted `docs/plans/` |
+| [intake-semantic-vocabulary.md](./intake-semantic-vocabulary.md) | Design terms; gaps → plan paths |
+| [2026-05-29 AI execution program](../../../plans/2026-05-29--ai-homelab-intake-execution-incomplete-wip/README.md) | Umbrella incomplete-wip plan |
+| [langfuse-observability-reconciliation-evaluation.md](./langfuse-observability-reconciliation-evaluation.md) | Langfuse layer + doc gate |
+| [archive-reconciliation/](./archive-reconciliation/) | One-pager per numbered archive |

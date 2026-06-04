@@ -3,6 +3,8 @@
 **Type:** discussion  
 **Status:** **in_progress** — intake folder is **not** “done”; Phase 0 was repo gap assessment, not full placeholder reconciliation.
 
+**Current playbook (supersedes ad-hoc steps):** [interim_intake_instructions.md](./interim_intake_instructions.md) + [wip-intake-principles.md](./wip-intake-principles.md). **Review target:** [plan-ready/00-index.md](./plan-ready/00-index.md).
+
 ---
 
 ## What you expected vs what happened

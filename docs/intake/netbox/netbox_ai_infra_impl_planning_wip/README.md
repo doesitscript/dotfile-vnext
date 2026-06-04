@@ -2,11 +2,38 @@
 
 ChatGPT exports kept as intake before promotion to `docs/plans/`. Original export titles remain the **H1** in each file.
 
-**Status:** Intake archive — **not** buildable plans yet. Complete the prerequisite work below before creating or executing implementation plans from this material.
+---
 
-**Work tracker:** [_wip.md](./_wip.md) — phase status, Phase 0–3 definitions, Phase 1 syntheses and triage.
+## How to work this folder (current — 2026-05-29)
 
-**Reconciliation (in progress):** ChatGPT exports describe **capabilities**, not deployable names — start with **[capability-requirements-to-resources-evaluation.md](./capability-requirements-to-resources-evaluation.md)**. Also: [reconciliation-workflow-discussion.md](./reconciliation-workflow-discussion.md), [vllm-architecture-discussion.md](./vllm-architecture-discussion.md), [host-role-reconciliation-discussion.md](./host-role-reconciliation-discussion.md), [agent-workflow-phase2-planning-discussion.md](./agent-workflow-phase2-planning-discussion.md).
+External AI exports were written **without** live inventory, naming schema, or Ansible context. **Phase 0** compared repo code to intake vocabulary ([ASSESSMENT.md](./ASSESSMENT.md)). The **real work now is Phase 0R**: adapt each capability to tangible hosts, multi-layer config (catalog → vLLM → LiteLLM → Langfuse → IDE), and **plan-ready** stubs you review before anything is built.
+
+| Start here | Purpose |
+|------------|---------|
+| **[wip-intake-principles.md](./wip-intake-principles.md)** | Core principles (doc-first, layers, preserve rich intake wording in READMEs/plans) |
+| **[intake-semantic-vocabulary.md](./intake-semantic-vocabulary.md)** | Design terms → repo artifacts; what meaning to carry into implementation |
+| **[interim_intake_instructions.md](./interim_intake_instructions.md)** | Playbook: per-archive checklist, prohibited behaviors, file status |
+| **[plan-ready/00-index.md](./plan-ready/00-index.md)** | Stubs + links to promoted governed plans |
+| [_wip.md](./_wip.md) | Phase status and session log |
+| **[AI execution program](../../../plans/2026-05-29--ai-homelab-intake-execution-incomplete-wip/README.md)** | Umbrella `docs/plans/2026-05-29--ai-*-incomplete-wip/` — NetBox-first build queue |
+
+```mermaid
+flowchart LR
+  exports[Numbered archives]
+  zeroR[Phase 0R reconcile]
+  planReady[plan-ready stubs]
+  governed["docs/plans 2026-05-29 incomplete-wip"]
+  build[Live apply per slice]
+
+  exports --> zeroR
+  zeroR --> planReady
+  planReady --> governed
+  governed -->|"build when directed"| build
+```
+
+**Current step:** review or execute individual slices under the [execution program](../../../plans/2026-05-29--ai-homelab-intake-execution-incomplete-wip/README.md). **Not** raw Group B apply or intake GPU-lane SSOT.
+
+**Reconciliation artifacts:** [capability-requirements-to-resources-evaluation.md](./capability-requirements-to-resources-evaluation.md), [gpu-lane-and-model-lane-mapping-evaluation.md](./gpu-lane-and-model-lane-mapping-evaluation.md), [langfuse-observability-reconciliation-evaluation.md](./langfuse-observability-reconciliation-evaluation.md), [archive-reconciliation/](./archive-reconciliation/) one-pager per numbered file.
 
 ---
 

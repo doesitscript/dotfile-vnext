@@ -56,13 +56,17 @@ Intake `lane: local-5090` is **routing policy metadata** (+ future guardrails), 
 
 ---
 
-## Three layers (do not collapse)
+## Multi-layer stack (do not collapse)
+
+See [wip-intake-principles.md](./wip-intake-principles.md) — **fresh doc check** required for every **new** Langfuse / LiteLLM / IDE surface.
 
 | Layer | Role | What it stores | Repo owner |
 |-------|------|----------------|------------|
-| **1 — Weights / catalog** | Downloaded HF repos, quant choice, disk path | `Qwen/Qwen2.5-Coder-32B-Instruct-AWQ` on `\\hom-lab-ctl-hvh-01\public\models\...` | Model-catalog plan + share |
-| **2 — vLLM (runner)** | Loads **one** model (or configured set), serves OpenAI `/v1` | Helm release in `vllm-runtime` NS on **hom-lab-ctl-k3s-02** | `k3s_vllm_runtime` / [vLLM plan](../../../plans/2026-05-19--vllm-runtime-and-huggingface-cache/README.md) |
-| **3 — LiteLLM (gateway)** | Friendly **aliases** → `api_base` + `hosted_vllm/<hf-id>` | `k3s_litellm_gateway` → `proxy_config.model_list` | `roles/k3s_litellm_gateway` |
+| **1 — Weights / catalog** | Downloaded HF repos, quant choice, disk path | `Qwen/Qwen2.5-Coder-32B-Instruct-AWQ` on `\\hom-lab-ctl-hvh-01\public\models\...` | [plan-ready/model-catalog-storage-incomplete.md](./plan-ready/model-catalog-storage-incomplete.md) |
+| **2 — vLLM (runner)** | Loads **one** model (or configured set), serves OpenAI `/v1` | Helm release in `vllm-runtime` NS on **hom-lab-ctl-k3s-02** | [plan-ready/vllm-primary-stack-incomplete.md](./plan-ready/vllm-primary-stack-incomplete.md) |
+| **3 — LiteLLM (gateway)** | Friendly **aliases** → `model_name`, `litellm_params.model`, `api_base` | `k3s_litellm_gateway` → `proxy_config.model_list` | [plan-ready/litellm-model-lanes-incomplete.md](./plan-ready/litellm-model-lanes-incomplete.md) |
+| **4 — Langfuse (observability)** | Trace metadata, callbacks | `model_lane`, `context_class`, `agent_role` | [langfuse-observability-reconciliation-evaluation.md](./langfuse-observability-reconciliation-evaluation.md) |
+| **5 — IDE / operator client** | OpenClaw / Cursor → LiteLLM | `OPENAI_API_BASE`, alias choice | capability eval §I; Mac playbook |
 
 **Your read is correct:** vLLM is the **runner** (and local cache for weights it loads). LiteLLM **`code-deep`** is the **helpful name** that points at that runner. “Primary deep reasoning” and “Heavy coding” are **two intake jobs** that share **one vLLM deployment** but **different rows** in the table below (runtime vs alias).
 
