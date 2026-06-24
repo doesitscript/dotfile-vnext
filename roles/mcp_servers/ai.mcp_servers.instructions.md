@@ -25,6 +25,32 @@ Purpose mapping:
 | Browser-rendered sites | Playwright |
 | Technical docs / APIs | Context7 |
 
+Context7 is not a general web scraper. Use it as a known-documentation lookup
+and prompt-context tool for code/library/framework/API syntax. Firecrawl is the
+general live-web/vendor documentation collection tool.
+
+Practical examples:
+
+- Terraform AWS provider syntax for `aws_kms_key`: Context7 first.
+- Kubernetes resource syntax or Helm chart values: Context7 first.
+- Vendor product docs, Zerto docs, arbitrary URLs, product KBs, or blogs:
+  Firecrawl first.
+- Pages that require login, clicking, JavaScript rendering, or screenshots:
+  Playwright after Firecrawl fails or when the need is obvious.
+- Plain static pages with no extraction/crawl need: Fetch.
+
+For Firecrawl collection:
+
+- one known URL: scrape
+- multiple known URLs: batch scrape
+- discover URLs in a docs section: map, then scrape or batch scrape
+- unknown sources: search
+- broad docs-section coverage: crawl with explicit limits
+- structured fields: extract or JSON scrape format
+
+Use the smallest tool that can answer the research question. Do not crawl a
+whole site when a mapped URL list plus focused scrape is enough.
+
 ## Start With Upstream Classification
 
 Before writing tasks, classify the upstream server from its README, package

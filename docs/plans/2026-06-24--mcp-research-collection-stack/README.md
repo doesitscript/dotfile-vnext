@@ -30,6 +30,7 @@ the stack extensible for future research/fetch tools.
 |---|---|
 | Plan packet | `docs/plans/2026-06-24--mcp-research-collection-stack/README.md` |
 | Framework guide | `docs/codex_framework/mcp-research-collection-stack.md` |
+| Capability manifest | `docs/codex_framework/capabilities/mcp-research-collection-stack.yml` |
 | Framework rule routing | `.cursor/rules/framework-mcp-and-tool-usage.mdc` |
 | MCP role docs | `roles/mcp_servers/README.md`, `roles/mcp_servers/ai.mcp_servers.instructions.md` |
 | Playbook | `playbooks/mac/mcp_servers.yaml` |
@@ -84,6 +85,23 @@ Local env files:
 Tracked client config points at `bin/mcp-server-env-wrapper`, which sources the
 local env file and then execs the upstream MCP server binary.
 
+## Capability packaging
+
+This capability is packaged as a removable framework feature, not as scattered
+framework prose.
+
+| Boundary | Owner |
+|---|---|
+| Routing and framework behavior | `docs/codex_framework/mcp-research-collection-stack.md` |
+| Machine-readable ownership/removal | `docs/codex_framework/capabilities/mcp-research-collection-stack.yml` |
+| Global framework hook | `.cursor/rules/framework-mcp-and-tool-usage.mdc` as a short router anchor only |
+| Install/apply surface | `playbooks/mac/mcp_servers.yaml` with role tags |
+| Runtime role implementation | `roles/mcp_servers/{context7,firecrawl,playwright,fetch}` |
+| Commissioned host state | `inventory/host_vars/mac-dev.yaml` |
+
+Removal starts from the manifest's `removal_behavior`: run role states
+`absent`, remove owned files, then reverse the integration anchors.
+
 ## Checklist
 
 - [x] Add shared secret-safe MCP env wrapper and env-file renderer.
@@ -94,6 +112,8 @@ local env file and then execs the upstream MCP server binary.
 - [x] Wire all four roles into `playbooks/mac/mcp_servers.yaml` with independent tags.
 - [x] Enable commissioned desired state in `inventory/host_vars/mac-dev.yaml` for Cursor and Codex targets.
 - [x] Add framework and MCP role documentation for the ordered routing model.
+- [x] Add a capability manifest with owned files, integration anchors, and removal behavior.
+- [x] Add general usage guidance distinguishing Context7 known-doc lookup from Firecrawl web/vendor collection.
 - [x] Validate YAML and playbook syntax with `bin/codex-env`.
 - [x] Run `ansible-lint` on changed MCP roles.
 - [x] Run task preview for `mac-dev` with tags `context7,firecrawl,playwright,fetch`.
@@ -185,6 +205,8 @@ flowchart TD
 | O-10 | Framework docs | Add ordered usage guidance for agents. | yes | pass | `docs/codex_framework/mcp-research-collection-stack.md`, `.cursor/rules/framework-mcp-and-tool-usage.mdc`, and MCP role docs updated. |
 | O-11 | Package research | Prefer package management and confirm npm/brew availability. | yes | pass | `npm view` confirmed package/bin names; `brew search` found no matching formulae/casks. |
 | O-12 | Diagram gate | Architecture/Structure, Capability Routing, Naming/Modeling, and Diagram Inventory are present. | yes | pass | Diagram sections below and Diagram gate receipt checked. |
+| O-12a | Capability packaging | Make the stack removable/installable as a coherent capability with owned files and integration anchors. | yes | pass | `docs/codex_framework/capabilities/mcp-research-collection-stack.yml` owns the capability inventory; global MCP rule is now only a router anchor. |
+| O-12b | General usage guidance | Document how to use the stack beyond this repo, including Context7 vs Firecrawl boundaries and a vendor-doc example. | yes | pass | `docs/codex_framework/mcp-research-collection-stack.md`, `roles/mcp_servers/ai.mcp_servers.instructions.md`, and `roles/mcp_servers/README.md` now include general routing examples. |
 | O-13 | Live preview | Run read-only task preview for `mac-dev` with the four tags. | yes | pass | `--list-tasks --tags context7,firecrawl,playwright,fetch` listed the four role task sets for `mac-dev`. |
 | O-14 | Live apply | Apply the mac MCP playbook for the four tags. | yes | blocked | Full four-role apply stopped at Firecrawl assertion: `vault_firecrawl_mcp_api_key` empty. Context7 probe stopped at `vault_context7_mcp_api_key` empty. Playwright/Fetch apply passed with `changed=6`, `failed=0`. |
 | O-15 | Idempotence | Rerun apply and verify no second-run changes. | yes | blocked | Playwright/Fetch rerun passed with `changed=0`, `failed=0`; Context7/Firecrawl pending non-empty vault keys. |
@@ -193,7 +215,7 @@ flowchart TD
 
 ### Summary
 
-- In-scope obligations: 17 — pass: 13, fail: 0, blocked: 4, pending: 0
+- In-scope obligations: 19 — pass: 15, fail: 0, blocked: 4, pending: 0
 - Deferred: 0
 
 ### Completion gate

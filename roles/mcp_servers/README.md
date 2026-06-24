@@ -45,6 +45,12 @@ Purpose mapping:
 | Browser-rendered sites | Playwright |
 | Technical docs / APIs | Context7 |
 
+Context7 is a known-documentation lookup/index, not a web scraper. Use it for
+current API and implementation syntax. Firecrawl is the live-web and vendor-docs
+collector. For example, use Firecrawl first for Zerto installation or account
+setup documentation, then use Context7 for any Terraform, Kubernetes, SDK, or
+framework syntax needed while implementing from those docs.
+
 Vault-backed API keys must not be rendered into tracked `.cursor/mcp.json` or
 `.codex/config.toml`. Roles that need secrets render local `0600` env files
 under `~/.config/dotfile-vnext/mcp/env.d/` and point client config at

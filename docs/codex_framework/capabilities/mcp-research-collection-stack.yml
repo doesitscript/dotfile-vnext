@@ -1,0 +1,103 @@
+---
+name: mcp-research-collection-stack
+family: framework
+kind: mcp_server_stack
+portable: false
+
+summary: Controller-local MCP stack for documentation, web, and rendered-browser context collection.
+
+capabilities:
+  - technical_docs_lookup
+  - documentation_ingestion
+  - rendered_browser_research
+  - lightweight_web_fetch
+  - secret_safe_mcp_client_config
+
+suggested_roles:
+  - planner_steward
+  - researcher
+  - executor
+  - independent_validator
+
+trigger_style: repo_guided
+
+primary_doc: docs/codex_framework/mcp-research-collection-stack.md
+plan_packet: docs/plans/2026-06-24--mcp-research-collection-stack/README.md
+validation_report: docs/reports/mcp_server_validations/research_collection_stack/README.md
+
+companion_rules:
+  - .cursor/rules/framework-mcp-and-tool-usage.mdc
+
+ansible_entrypoints:
+  - playbooks/mac/mcp_servers.yaml
+
+inventory_surfaces:
+  - inventory/host_vars/mac-dev.yaml
+  - vault/mac_dev.vault.yml
+
+roles:
+  - roles/mcp_servers/context7
+  - roles/mcp_servers/firecrawl
+  - roles/mcp_servers/playwright
+  - roles/mcp_servers/fetch
+
+shared_runtime_files:
+  - bin/mcp-server-env-wrapper
+  - roles/mcp_servers/_shared/tasks/render_env_file.yml
+
+generated_runtime_files:
+  - ~/.config/dotfile-vnext/mcp/env.d/context7.env
+  - ~/.config/dotfile-vnext/mcp/env.d/firecrawl.env
+
+managed_client_config_blocks:
+  cursor_mcp_json:
+    path: .cursor/mcp.json
+    server_keys:
+      - context7
+      - firecrawl
+      - playwright
+      - fetch
+  codex_config_toml:
+    path: .codex/config.toml
+    server_keys:
+      - context7
+      - firecrawl
+      - playwright
+      - fetch
+
+owned_files:
+  - docs/codex_framework/capabilities/mcp-research-collection-stack.yml
+  - docs/codex_framework/mcp-research-collection-stack.md
+  - docs/plans/2026-06-24--mcp-research-collection-stack/README.md
+  - docs/reports/mcp_server_validations/research_collection_stack/README.md
+  - roles/mcp_servers/context7
+  - roles/mcp_servers/firecrawl
+  - roles/mcp_servers/playwright
+  - roles/mcp_servers/fetch
+  - roles/mcp_servers/_shared/tasks/render_env_file.yml
+  - bin/mcp-server-env-wrapper
+
+integration_files:
+  - .cursor/rules/framework-mcp-and-tool-usage.mdc
+  - docs/codex_framework/README.md
+  - roles/mcp_servers/README.md
+  - roles/mcp_servers/ai.mcp_servers.instructions.md
+  - playbooks/mac/mcp_servers.yaml
+  - inventory/host_vars/mac-dev.yaml
+  - .cursor/mcp.json
+  - .codex/config.toml
+
+update_behavior:
+  strategy: update-owned-files-and-integration-anchors
+  notes: >
+    Update owned files as a capability packet. Keep global rule changes limited
+    to short router anchors that point back to the primary capability document.
+
+removal_behavior:
+  strategy: remove-owned-files-and-reverse-integration-anchors
+  notes: >
+    First run the roles with *_mcp_state=absent for any commissioned hosts.
+    Then remove owned files, delete the role entries from playbooks/mac/mcp_servers.yaml,
+    delete host_vars state/target rows, and remove managed server keys from
+    .cursor/mcp.json and .codex/config.toml.
+

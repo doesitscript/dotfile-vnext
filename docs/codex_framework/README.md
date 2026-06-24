@@ -277,6 +277,9 @@ These are the current files actively shaping this capability.
 - [docs/codex_framework/mcp-research-collection-stack.md](/Users/joshc/develop/dotfile-vnext/docs/codex_framework/mcp-research-collection-stack.md)
   The controller-local research and fetching MCP capability covering Context7,
   Firecrawl, Playwright, and Fetch routing.
+- [docs/codex_framework/capabilities/mcp-research-collection-stack.yml](/Users/joshc/develop/dotfile-vnext/docs/codex_framework/capabilities/mcp-research-collection-stack.yml)
+  Machine-readable ownership, integration, update, and removal manifest for the
+  MCP Research Collection Stack.
 
 ### Capability-specific rule layer
 
