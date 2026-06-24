@@ -1,18 +1,24 @@
 ---
 name: Context Engineering MCP Roles
-overview: "Add five Ansible capabilities for Context Engineering MCP tooling on mac-dev: three standard MCP server roles (Artiforge, GitHub, Sequential Thinking), plus Knotic IDE install/skills scaffold and Devin CLI install with `.devin/config.json` MCP wiring. Human research and a product comparison table live in a new intake packet for your review."
+overview: "Add Context Engineering tooling on mac-dev: Artiforge, GitHub MCP, Sequential Thinking (MCP roles), plus Knotic IDE and Devin CLI (client roles). Builds on the new MCP Research Collection Stack scaffold and its secret-safe runtime patterns. Human comparison docs live in intake for review."
 todos:
+  - id: prerequisite-research-stack-vault
+    content: "Prerequisite: ingest vault_context7_mcp_api_key and vault_firecrawl_mcp_api_key; complete blocked rows in docs/plans/2026-06-24--mcp-research-collection-stack/README.md (O-14–O-17)"
+    status: pending
+  - id: http-secret-design-spike
+    content: "Design spike before Artiforge/GitHub roles — secret-safe HTTP MCP entries (PAT-in-URL / Bearer headers) without plaintext in tracked .cursor/mcp.json; extend or sibling wrapper to research-stack secret model"
+    status: pending
   - id: intake-packet
-    content: Create docs/intake/context-engineering-mcp-tools/ with README, feature-comparison.md (Artiforge vs Copilot vs Cursor vs Devin), and per-tool notes
+    content: Create docs/intake/context-engineering-mcp-tools/ with README, feature-comparison.md (Artiforge vs Copilot vs Cursor vs Devin), and per-tool notes; cross-link sibling MCP Research Collection Stack
     status: pending
   - id: role-sequential-thinking
-    content: Scaffold roles/mcp_servers/sequential_thinking/ from _template (npm stdio, no vault) and wire into playbooks/mac/mcp_servers.yaml
+    content: Scaffold roles/mcp_servers/sequential_thinking/ (npm stdio, no vault) using playwright/fetch as templates; wire into playbooks/mac/mcp_servers.yaml
     status: pending
   - id: role-artiforge
-    content: Scaffold roles/mcp_servers/artiforge/ (HTTP MCP, vault_artiforge_mcp_pat, extend configure_target for type/headers)
+    content: Scaffold roles/mcp_servers/artiforge/ (HTTP MCP, vault_artiforge_mcp_pat) — blocked on http-secret-design-spike
     status: pending
   - id: role-github
-    content: Scaffold roles/mcp_servers/github/ (remote HTTP default, vault_github_mcp_pat, optional docker override)
+    content: Scaffold roles/mcp_servers/github/ (remote HTTP default, vault_github_mcp_pat) — blocked on http-secret-design-spike
     status: pending
   - id: role-devin-cli
     content: Create roles/devin_cli/ — CLI install script + .devin/config.json MCP merge; add playbooks/mac/ai_client_tools.yaml
@@ -21,104 +27,144 @@ todos:
     content: Create roles/knotic/ — DMG bootstrap install + .knotic/skills/ seed templates; wire into ai_client_tools playbook
     status: pending
   - id: vault-inventory
-    content: Add vault placeholders + mac-dev host_vars gates; document encrypt_string ingest commands in intake README
+    content: Add vault placeholders (vault_artiforge_mcp_pat, vault_github_mcp_pat) + mac-dev host_vars gates; document encrypt_string ingest in intake README
     status: pending
   - id: validate-docs
-    content: Add mcp_server_validations stubs, update roles/mcp_servers/README.md and docs/tool_access/README.md
+    content: Add mcp_server_validations stubs for new roles; update docs/tool_access/README.md (still not updated by research-stack slice)
     status: pending
 isProject: false
 ---
 
 # Context Engineering MCP Tool Roles
 
+## Project state review (2026-06-24)
+
+A sibling capability landed since this plan was first drafted. **Review against live repo before building.**
+
+### Already implemented — MCP Research Collection Stack
+
+| Surface | Status |
+|---|---|
+| Plan | [`docs/plans/2026-06-24--mcp-research-collection-stack/README.md`](docs/plans/2026-06-24--mcp-research-collection-stack/README.md) — `lifecycle: in_progress` |
+| Framework doc | [`docs/codex_framework/mcp-research-collection-stack.md`](docs/codex_framework/mcp-research-collection-stack.md) |
+| Capability manifest | [`docs/codex_framework/capabilities/mcp-research-collection-stack.yml`](docs/codex_framework/capabilities/mcp-research-collection-stack.yml) |
+| Roles | `context7`, `firecrawl` (hardened), `playwright`, `fetch` under [`roles/mcp_servers/`](roles/mcp_servers/) |
+| Playbook | [`playbooks/mac/mcp_servers.yaml`](playbooks/mac/mcp_servers.yaml) — tags `context7`, `firecrawl`, `playwright`, `fetch` |
+| Host gates | [`inventory/host_vars/mac-dev.yaml`](inventory/host_vars/mac-dev.yaml) — all four `*_mcp_state: present`, Cursor+Codex targets |
+| Secret runtime | [`bin/mcp-server-env-wrapper`](bin/mcp-server-env-wrapper), [`roles/mcp_servers/_shared/tasks/render_env_file.yml`](roles/mcp_servers/_shared/tasks/render_env_file.yml) |
+| Vault placeholders | `vault_firecrawl_mcp_api_key`, `vault_context7_mcp_api_key` in [`vault/mac_dev.vault.yml`](vault/mac_dev.vault.yml) — **still empty** |
+| Validation report | [`docs/reports/mcp_server_validations/research_collection_stack/README.md`](docs/reports/mcp_server_validations/research_collection_stack/README.md) |
+
+**Receipt summary:** 15/19 in-scope obligations `pass`; **4 blocked** on empty Context7/Firecrawl vault keys (O-14–O-17). Playwright and Fetch applied idempotently on mac-dev.
+
+**Not done by research-stack slice:** [`docs/tool_access/README.md`](docs/tool_access/README.md) still lacks the new stack surfaces.
+
+### Still not in repo — this plan's targets
+
+| Target | Status |
+|---|---|
+| `roles/mcp_servers/artiforge/` | absent |
+| `roles/mcp_servers/github/` | absent |
+| `roles/mcp_servers/sequential_thinking/` | absent |
+| `roles/knotic/` | absent |
+| `roles/devin_cli/` | absent |
+| `playbooks/mac/ai_client_tools.yaml` | absent |
+| `docs/intake/context-engineering-mcp-tools/` | absent |
+
+### Relationship between the two capabilities
+
+```mermaid
+flowchart TB
+  subgraph researchStack [MCP Research Collection Stack - IMPLEMENTED scaffold]
+    c7[context7]
+    fc[firecrawl]
+    pw[playwright]
+    fe[fetch]
+  end
+
+  subgraph contextEng [Context Engineering Tools - THIS PLAN]
+    art[artiforge]
+    gh[github MCP]
+    seq[sequential_thinking]
+    kn[knotic IDE]
+    dv[devin_cli]
+  end
+
+  subgraph shared [Shared mac-dev surfaces]
+    playbook[playbooks/mac/mcp_servers.yaml]
+    vault[vault/mac_dev.vault.yml]
+    wrapper[bin/mcp-server-env-wrapper]
+    cursor[.cursor/mcp.json]
+  end
+
+  researchStack --> playbook
+  contextEng --> playbook
+  contextEng --> aiClientPlay[playbooks/mac/ai_client_tools.yaml NEW]
+  kn --> aiClientPlay
+  dv --> aiClientPlay
+  vault --> researchStack
+  vault --> contextEng
+  wrapper --> researchStack
+  wrapper --> seq
+  art --> cursor
+  gh --> cursor
+  seq --> cursor
+```
+
+**Boundary:** Research stack = external docs/web/browser collection. Context Engineering plan = Artiforge orchestration MCP, GitHub repo automation MCP, structured reasoning MCP, plus optional alternate IDE/CLI workspaces (Knotic, Devin).
+
+**User note (still in force):** fetch/firebase **API usage planning** is handled in a separate conversation. The `fetch` **role** is owned by the research stack — do not re-implement it here.
+
+---
+
 ## Scope (confirmed)
 
 **In scope for this plan:**
 - [Artiforge MCP](https://docs.artiforge.ai/getting-started/installation/) — remote HTTP MCP with PAT
-- [GitHub MCP Server](https://github.com/github/github-mcp-server) — **does not exist in repo today** (confirmed via grep)
+- [GitHub MCP Server](https://github.com/github/github-mcp-server) — not in repo
 - [Sequential Thinking MCP](https://mcpservers.org/servers/modelcontextprotocol/sequentialthinking) — npm stdio, no secrets
-- **Knotic** — IDE install on mac-dev **plus** `.knotic/skills/` scaffold ([comparison source](https://knotic.dev/vs/cursor))
-- **Devin** — Devin CLI install **plus** project `.devin/config.json` MCP entries ([MCP config docs](https://docs.devin.ai/cli/extensibility/mcp/configuration))
+- **Knotic** — IDE install on mac-dev + `.knotic/skills/` scaffold
+- **Devin** — Devin CLI install + `.devin/config.json` MCP entries
 
-**Explicitly out of scope:** fetch, firebase, and any API-usage plans you are handling elsewhere.
+**Explicitly out of scope:** Context7, Firecrawl, Playwright, Fetch roles (research stack); fetch/firebase API usage plans (other conversation).
 
-**Precedent already in repo:** [roles/mcp_servers/firecrawl/](roles/mcp_servers/firecrawl/) (vault + mac MCP playbook pattern from prior work).
-
----
-
-## Architecture
-
-```mermaid
-graph TB
-  subgraph humanDocs [Human intake - not automation SSOT]
-    intake[docs/intake/context-engineering-mcp-tools/README.md]
-    compare[feature-comparison.md]
-    notes[per-tool-notes/*.md]
-  end
-
-  subgraph vault [Secrets - mac-dev controller]
-    macVault[vault/mac_dev.vault.yml]
-    patArt[vault_artiforge_mcp_pat]
-    patGh[vault_github_mcp_pat]
-    macVault --> patArt
-    macVault --> patGh
-  end
-
-  subgraph inventory [Inventory gates]
-    macDev[inventory/host_vars/mac-dev.yaml]
-  end
-
-  subgraph mcpRoles [roles/mcp_servers]
-    artiforge[artiforge]
-    github[github]
-    seqThink[sequential_thinking]
-  end
-
-  subgraph clientRoles [Client workspace roles]
-    knotic[roles/knotic]
-    devin[roles/devin_cli]
-  end
-
-  subgraph playbooks [Playbooks]
-    mcpPlay[playbooks/mac/mcp_servers.yaml]
-    clientPlay[playbooks/mac/ai_client_tools.yaml]
-  end
-
-  intake --> mcpRoles
-  intake --> clientRoles
-  macVault --> artiforge
-  macVault --> github
-  macDev --> mcpRoles
-  macDev --> clientRoles
-  mcpPlay --> artiforge
-  mcpPlay --> github
-  mcpPlay --> seqThink
-  clientPlay --> knotic
-  clientPlay --> devin
-  artiforge --> cursorJson[.cursor/mcp.json]
-  github --> cursorJson
-  seqThink --> cursorJson
-  devin --> devinJson[.devin/config.json]
-  knotic --> knotSkills[.knotic/skills/]
-```
+**Mandatory implementation patterns (from research stack — do not regress):**
+- Secret-backed **stdio** MCP: `render_env_file.yml` + `bin/mcp-server-env-wrapper`; no API keys in tracked `.cursor/mcp.json` / `.codex/config.toml`
+- Role prefix + vault naming: `vault_<role>_mcp_*` in `vault/mac_dev.vault.yml`
+- Playbook home for MCP servers: [`playbooks/mac/mcp_servers.yaml`](playbooks/mac/mcp_servers.yaml) with per-role tags
+- Commissioned defaults in [`inventory/host_vars/mac-dev.yaml`](inventory/host_vars/mac-dev.yaml)
 
 ---
 
-## Human-readable reference area (for you, not framework SSOT)
+## Build readiness assessment
+
+| Slice | Ready to build? | Blocker |
+|---|---|---|
+| Intake packet + comparison table | **Yes** | None |
+| Sequential Thinking role | **Yes** | Copy `playwright`/`fetch` npm pattern; no vault |
+| Artiforge role | **No** | HTTP MCP with PAT-in-URL conflicts with secret-safe tracked config — needs `http-secret-design-spike` |
+| GitHub MCP role | **No** | Bearer token in `headers` has same tracked-config problem — same spike |
+| Knotic role | **Yes** (with bootstrap label) | DMG URL `pending_research` probe at implementation |
+| Devin CLI role | **Yes** (with bootstrap label) | Use `.devin/config.local.json` for secrets; compose MCP entries from other roles |
+| Full plan execute-complete | **No** | Prerequisite vault keys for research stack + HTTP secret pattern + intake review |
+
+**Recommendation before build:** (1) finish research-stack vault ingest for Context7/Firecrawl, (2) complete HTTP secret design spike, (3) approve intake comparison table, then implement Sequential Thinking first, then vault-gated HTTP roles.
+
+---
+
+## Human-readable reference area
 
 Create intake packet: [`docs/intake/context-engineering-mcp-tools/`](docs/intake/context-engineering-mcp-tools/)
 
 | File | Contents |
 |---|---|
-| `README.md` | Index, links to upstream docs, role mapping, implementation order |
-| `feature-comparison.md` | Your requested table — **Artiforge vs GitHub Copilot vs Cursor vs Devin** (Windsurf column renamed per your note). Rows sourced from [Artiforge blog](https://artiforge.ai/blog/context-engineering-mcp), [Knotic vs Cursor](https://knotic.dev/vs/cursor), and Devin docs — labeled `pending_research` where not verified live |
-| `notes/artiforge.md` | Context Engineering MCP summary, PAT flow, IDE install snippets |
-| `notes/knotic.md` | Team-governance positioning vs Cursor; Skills-as-Code; Gatekeeper/quarantine steps from [knotic.dev/download](https://knotic.dev/download) |
-| `notes/devin.md` | Cloud agent vs CLI; MCP namespacing (`mcp__server__tool`); `.devin/config.local.json` for secrets |
-| `notes/github-mcp.md` | Remote vs local Docker decision record |
-| `notes/sequential-thinking.md` | Tool purpose, verification prompts |
-
-This stays under `docs/intake/` until you promote it; roles READMEs link back with one line each.
+| `README.md` | Index, upstream links, role mapping, **explicit sibling link** to MCP Research Collection Stack |
+| `feature-comparison.md` | Artiforge vs GitHub Copilot vs Cursor vs Devin (Windsurf → Devin); `pending_research` where unverified |
+| `notes/artiforge.md` | Context Engineering MCP; PAT flow; relationship to research stack routing |
+| `notes/knotic.md` | [Knotic vs Cursor](https://knotic.dev/vs/cursor) summary; Gatekeeper/quarantine from [knotic.dev/download](https://knotic.dev/download) |
+| `notes/devin.md` | Cloud vs CLI; MCP namespacing; `.devin/config.local.json` |
+| `notes/github-mcp.md` | Remote HTTP vs Docker; org policy links |
+| `notes/sequential-thinking.md` | Tool purpose; verification prompts |
 
 ---
 
@@ -126,7 +172,7 @@ This stays under `docs/intake/` until you promote it; roles READMEs link back wi
 
 ### 1. `roles/mcp_servers/artiforge/` — HTTP MCP (secret required)
 
-**Upstream pattern** (from Artiforge docs):
+Upstream Cursor shape:
 
 ```json
 {
@@ -139,176 +185,109 @@ This stays under `docs/intake/` until you promote it; roles READMEs link back wi
 }
 ```
 
-**Role interface:**
-- `artiforge_mcp_state: present|absent`
-- `artiforge_mcp_targets: [cursor, codex]` (default `cursor` only initially)
-- Vault: `vault_artiforge_mcp_pat` in [`vault/mac_dev.vault.yml`](vault/mac_dev.vault.yml)
-- Load vault via `include_vars` + `name: vault_vars` (same pattern as [firecrawl load_vault.yml](roles/mcp_servers/firecrawl/tasks/load_vault.yml))
-- **No npm install** — configure-only HTTP MCP (like [langfuse_docs](roles/mcp_servers/langfuse_docs/))
-- Extend `configure_target.yml` to support optional `type: http` and URL-only entries (Cursor already accepts bare `url` for HF/Langfuse; Artiforge docs show explicit `type`)
+**Role interface:** `artiforge_mcp_state`, `artiforge_mcp_targets`, vault `vault_artiforge_mcp_pat`.
 
-**Apply / Verify / Undo / Class:** idempotent config; verify with `uri` probe to endpoint (expect 401/405 without valid PAT during dry checks — document in README); undo via `absent` + remove server key.
+**Build gate:** Do not copy netbox-style inline secrets or pre-hardening firecrawl pattern. Resolve PAT-in-URL vs secret-safe tracked config in `http-secret-design-spike` first (options: header-based auth if supported, gitignored local fragment, or thin stdio proxy wrapper).
 
 ---
 
 ### 2. `roles/mcp_servers/github/` — HTTP MCP (secret required)
 
-**Does not exist today** — new role.
+**Default:** remote HTTP at `https://api.githubcopilot.com/mcp/` with Bearer PAT. Docker override via `github_mcp_transport: remote|docker`.
 
-**Recommended default (architecture assertion):** **remote HTTP** at `https://api.githubcopilot.com/mcp/` with Bearer PAT — avoids Docker dependency on mac-dev and matches GitHub’s “easiest path” guidance. Local Docker (`ghcr.io/github/github-mcp-server`) remains an optional override via `github_mcp_transport: remote|docker`.
+Vault: `vault_github_mcp_pat`.
 
-**Role interface:**
-- `github_mcp_state`, `github_mcp_targets`, `github_mcp_server_key: github`
-- Vault: `vault_github_mcp_pat` in `vault/mac_dev.vault.yml`
-- Remote entry shape:
-
-```json
-{
-  "url": "https://api.githubcopilot.com/mcp/",
-  "type": "http",
-  "headers": { "Authorization": "Bearer <PAT>" }
-}
-```
-
-- Codex target via shared [`configure_codex_target.yml`](roles/mcp_servers/_shared/tasks/configure_codex_target.yml)
+**Build gate:** Same as Artiforge — Bearer in `headers` must not land in committed `.cursor/mcp.json`.
 
 ---
 
 ### 3. `roles/mcp_servers/sequential_thinking/` — npm stdio (no secret)
 
-**Upstream package:** `@modelcontextprotocol/server-sequential-thinking`
+Package: `@modelcontextprotocol/server-sequential-thinking`.
 
-**Role interface:** mirror [drawio](roles/mcp_servers/drawio/) / [firecrawl](roles/mcp_servers/firecrawl/):
-- Global npm install via `node_npm_executable`
-- Resolve binary or use `npx -y @modelcontextprotocol/server-sequential-thinking`
-- Optional env: `DISABLE_THOUGHT_LOGGING`
-- Targets: `cursor`, `codex` (default `cursor`)
+**Template roles:** [`playwright`](roles/mcp_servers/playwright/) / [`fetch`](roles/mcp_servers/fetch/) (not legacy firecrawl pre-wrapper).
 
-Simplest role — implement **first** to validate the batch pattern before vault-gated roles.
+Optional env: `DISABLE_THOUGHT_LOGGING`. Implement **first** in this plan.
 
 ---
 
-### 4. `roles/knotic/` — IDE install + Skills scaffold (not `mcp_servers/`)
+### 4. `roles/knotic/` — IDE install + Skills scaffold
 
-Knotic is a **VS Code fork workspace**, not an npm MCP server. Per your choice: **install IDE on mac-dev + scaffold repo skills**.
-
-**Role interface:**
-- `knotic_state: present|absent`
-- `knotic_install_method: dmg` (default; `pending_research` until live probe of download URL from [knotic.dev/download](https://knotic.dev/download))
-- `knotic_dmg_url` — provisional, verified at implementation via probe (unsigned ARM64 beta)
-- `knotic_app_path: /Applications/Knotic.app`
-- `knotic_skills_dir: "{{ dotfiles_home }}/.knotic/skills"`
-- `knotic_skills_seed: true` — deploy starter skill files (e.g. `ansible-conventions.md`, `homelab-context.md`) from role templates
-
-**Install tasks (bootstrap/semi-manual class):**
-1. `get_url` DMG to cache dir
-2. Mount/copy app to `/Applications` (macOS-specific tasks in `mac.yml`)
-3. `xattr -d com.apple.quarantine` on DMG/app (documented Gatekeeper flow from Knotic download page)
-4. Template seed skills into `.knotic/skills/` (idempotent)
-
-**Not in v1:** Knotic account/credits, BYOK keys, or `.knot` session files — human docs only.
-
-**README:** Use [Knotic vs Cursor](https://knotic.dev/vs/cursor) comparison table (tab completion, Context Lens, Skills-as-Code, pricing) as human-facing product context; do not duplicate full marketing copy.
+Per user choice: DMG install + `.knotic/skills/` seed. Bootstrap/semi-manual class. Not under `mcp_servers/`.
 
 ---
 
 ### 5. `roles/devin_cli/` — CLI install + Devin MCP config
 
-Per your choice: **install CLI + manage MCP config**.
+Install: `curl -fsSL https://cli.devin.ai/install.sh | bash` (bootstrap, `creates` guard).
 
-**CLI install (bootstrap/semi-manual):**
-- Official installer: `curl -fsSL https://cli.devin.ai/install.sh | bash` ([Devin intro](https://docs.devin.ai/get-started/devin-intro))
-- Wrap in idempotent `creates:` guard on resolved `devin` binary path
-- Document that full cloud Devin IDE remains at app.devin.ai — role manages **local CLI + repo config**, not SaaS signup
-
-**Config surface:**
-- Project file: `.devin/config.json` — committed baseline with `mcpServers` stubs and `read_config_from.cursor: true` optional
-- Gitignored template: `.devin/config.local.json.example` → operator copies to `.devin/config.local.json` for personal tokens
-- Role merges MCP entries for servers this repo already manages (Artiforge, GitHub, Sequential Thinking) using same vault vars — **secrets stay in local override or vault-rendered local file**, not committed JSON
-
-**Role interface:**
-- `devin_cli_state: present|absent`
-- `devin_cli_mcp_servers: [artiforge, github, sequential_thinking]` — composes entries from facts set by vault load tasks or inline templates
-- Tags: `devin_cli`, `devin_mcp`
+Config: `.devin/config.json` (committed baseline) + `.devin/config.local.json.example` for secrets. Compose MCP entries for servers managed by this repo; secrets in local override only.
 
 ---
 
 ## Playbook wiring
 
-| Playbook | Roles | When to run |
-|---|---|---|
-| [`playbooks/mac/mcp_servers.yaml`](playbooks/mac/mcp_servers.yaml) | `sequential_thinking`, `artiforge`, `github` (+ existing servers) | Controller MCP convergence |
-| **New** [`playbooks/mac/ai_client_tools.yaml`](playbooks/mac/ai_client_tools.yaml) | `knotic`, `devin_cli` | mac-dev IDE/CLI tooling |
+| Playbook | Roles |
+|---|---|
+| [`playbooks/mac/mcp_servers.yaml`](playbooks/mac/mcp_servers.yaml) | Existing + research stack + **new:** `sequential_thinking`, `artiforge`, `github` |
+| **New** [`playbooks/mac/ai_client_tools.yaml`](playbooks/mac/ai_client_tools.yaml) | `knotic`, `devin_cli` |
 
-Keep MCP servers out of [`deploy_development_nodes.yaml`](playbooks/deploy_development_nodes.yaml) per [ai.mcp_servers.instructions.md](roles/mcp_servers/ai.mcp_servers.instructions.md) — optional cross-link in playbook header comments only.
+Do not add MCP servers to [`deploy_development_nodes.yaml`](playbooks/deploy_development_nodes.yaml) per [`ai.mcp_servers.instructions.md`](roles/mcp_servers/ai.mcp_servers.instructions.md).
 
-**Inventory gates** in [`inventory/host_vars/mac-dev.yaml`](inventory/host_vars/mac-dev.yaml):
+**Suggested mac-dev host_vars gates (additive — do not disturb research stack block):**
 
 ```yaml
-sequential_thinking_mcp_state: present
-artiforge_mcp_state: absent      # enable after PAT ingested
-github_mcp_state: absent         # enable after PAT ingested
-knotic_state: absent             # enable when ready for unsigned beta install
-devin_cli_state: absent          # enable when CLI desired
+sequential_thinking_mcp_state: absent
+artiforge_mcp_state: absent
+github_mcp_state: absent
+knotic_state: absent
+devin_cli_state: absent
 ```
-
-Defaults stay conservative in role `defaults/`; host_vars flip to `present` when commissioned (AGENTS.md §18 pattern).
 
 ---
 
 ## Vault / secret ingestion
 
-Add to [`vault/mac_dev.vault.yml`](vault/mac_dev.vault.yml):
+**Research stack (prerequisite — already scaffolded):**
+
+```bash
+# vault_context7_mcp_api_key, vault_firecrawl_mcp_api_key in vault/mac_dev.vault.yml
+bin/codex-env ansible-vault encrypt_string 'YOUR_KEY' --name 'vault_context7_mcp_api_key' >> vault/mac_dev.vault.yml
+bin/codex-env ansible-vault encrypt_string 'fc-YOUR_KEY' --name 'vault_firecrawl_mcp_api_key' >> vault/mac_dev.vault.yml
+```
+
+**This plan (when roles are built):**
 
 | Variable | Used by |
 |---|---|
-| `vault_artiforge_mcp_pat` | artiforge MCP URL |
-| `vault_github_mcp_pat` | GitHub MCP Bearer header |
-
-**Operator commands** (for plan execution phase — same pattern as firecrawl):
-
-```bash
-cd /Users/joshc/develop/dotfile-vnext
-sed -i '' '/^vault_artiforge_mcp_pat: ""$/d' vault/mac_dev.vault.yml
-bin/codex-env ansible-vault encrypt_string 'YOUR_ARTIFORGE_PAT' \
-  --name 'vault_artiforge_mcp_pat' >> vault/mac_dev.vault.yml
-
-sed -i '' '/^vault_github_mcp_pat: ""$/d' vault/mac_dev.vault.yml
-bin/codex-env ansible-vault encrypt_string 'ghp_YOUR_GITHUB_PAT' \
-  --name 'vault_github_mcp_pat' >> vault/mac_dev.vault.yml
-```
-
-Then set corresponding `*_state: present` in `mac-dev.yaml`.
+| `vault_artiforge_mcp_pat` | artiforge |
+| `vault_github_mcp_pat` | github |
 
 ---
 
-## Shared implementation checklist (each role)
+## HTTP secret design spike (required before Artiforge/GitHub)
 
-Scaffold from [`roles/mcp_servers/_template/`](roles/mcp_servers/_template/) for MCP roles; custom layout for `knotic` and `devin_cli`.
+Research stack solved **stdio** secrets. These two roles are **HTTP** transports:
 
-Every role gets:
-- `defaults/main.yml`, `meta/argument_specs.yml`, `README.md`
-- MCP roles also: `mcp_contract.yml`, `tasks/{main,present,absent,configure_target,remove_target,openapi_stub}.yml`
-- Row in [`roles/mcp_servers/README.md`](roles/mcp_servers/README.md) (MCP roles only)
-- Validation stub under `docs/reports/mcp_server_validations/<name>/README.md`
+| Server | Secret shape | Problem |
+|---|---|---|
+| Artiforge | PAT in query string | URL with secret would be committed in `mcp.json` |
+| GitHub remote | Bearer in `headers` | Header value would be committed in `mcp.json` |
 
-**Executor gates before live apply:**
-1. `inventory-parse` / `inventory-find-host` for mac-dev merged vars
-2. `validate-playbook` + `ansible-lint`
-3. First run: read-only tag preview showing targets + vault key presence (no mutation without PAT)
-4. `-vvv` apply on mac-dev
+**Spike deliverable:** one repo-owned pattern (shared task or wrapper) documented in intake + framework, consistent with [`mcp-research-collection-stack.md`](docs/codex_framework/mcp-research-collection-stack.md) secret model. Until resolved, Artiforge/GitHub todos stay blocked.
 
 ---
 
 ## Recommended implementation order
 
-1. **Intake packet** + feature comparison table (human review first)
-2. **Sequential Thinking** — no vault; proves npm MCP path
-3. **Artiforge** — HTTP + vault; extends configure_target for `type: http`
-4. **GitHub MCP** — HTTP + vault; remote default
-5. **Devin CLI** — install script + `.devin/config.json` composer
-6. **Knotic** — DMG bootstrap + skills scaffold (highest bootstrap/manual class)
-7. Update [`docs/tool_access/README.md`](docs/tool_access/README.md) diagram with new MCP/client surfaces
+1. **Prerequisite:** ingest Context7 + Firecrawl vault keys; close research-stack O-14–O-17
+2. **Intake packet** + feature comparison (human review)
+3. **HTTP secret design spike**
+4. **Sequential Thinking** — npm, no vault
+5. **Artiforge** + **GitHub MCP** — after spike
+6. **Devin CLI** — can parallel with step 4–5
+7. **Knotic** — highest bootstrap/manual class
+8. Update [`docs/tool_access/README.md`](docs/tool_access/README.md) for **both** capabilities
 
 ---
 
@@ -316,22 +295,23 @@ Every role gets:
 
 | Risk | Mitigation |
 |---|---|
-| Knotic unsigned DMG URL changes | Probe at implementation; pin URL in role var with `pending_research` until verified |
-| Artiforge PAT in URL visible in `.cursor/mcp.json` | Document as upstream pattern; same class as netbox token in env today |
-| GitHub remote MCP needs org policy | README links to GitHub policies doc; fail with clear assert if probe returns 403 |
-| Devin CLI install script is imperative | Label bootstrap/semi-manual; guard with `creates` |
-| HTTP MCP entries need `headers` in Cursor JSON | Test merge shape against live `.cursor/mcp.json`; extend configure_target once for `headers` + `type` |
+| HTTP secrets vs research-stack hygiene | Mandatory design spike; do not ship plaintext PAT/Bearer in tracked config |
+| Knotic unsigned DMG URL changes | Probe at implementation; pin with `pending_research` until verified |
+| GitHub remote MCP org policy | README + fail-fast assert on 403 |
+| Devin/Knotic bootstrap installers | Label bootstrap/semi-manual; idempotent guards |
+| Plan overlap with research stack | Explicit capability boundary; no duplicate fetch/context7/firecrawl/playwright work |
+| NetBox token still in tracked mcp.json | Legacy debt; new roles must not follow that pattern |
 
 ---
 
 ## Diagram gate receipt
 
-- Architecture/Structure: included above
-- Capability Routing: N/A (no runtime router — playbook tags only)
-- Naming/Modeling: N/A for NetBox; role prefixes follow `artiforge_mcp_`, `github_mcp_`, `sequential_thinking_mcp_`, `knotic_`, `devin_cli_`
+- Architecture/Structure: included (updated with sibling stack)
+- Capability Routing: N/A for this plan (research stack owns collection routing; Artiforge is orchestration MCP)
+- Naming/Modeling: role prefixes `artiforge_mcp_`, `github_mcp_`, `sequential_thinking_mcp_`, `knotic_`, `devin_cli_`
 
 ## Diagram Inventory
 
-**Included:** Architecture/Structure diagram
+**Included:** Architecture/Structure (dual-capability)
 
-**Available on request:** Deployment flow (ordered playbook chain), vault-to-config data flow, Devin vs Cursor MCP config comparison
+**Available on request:** HTTP secret-flow diagram, Devin vs Cursor MCP config comparison, playbook dependency chain
