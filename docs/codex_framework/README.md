@@ -274,6 +274,9 @@ These are the current files actively shaping this capability.
   This capability map and status document.
 - [docs/codex_framework/container-orchestration-integration.md](/Users/joshc/develop/dotfile-vnext/docs/codex_framework/container-orchestration-integration.md)
   The Codex/OpenAI implementation note for the container-orchestration integration capability family.
+- [docs/codex_framework/mcp-research-collection-stack.md](/Users/joshc/develop/dotfile-vnext/docs/codex_framework/mcp-research-collection-stack.md)
+  The controller-local research and fetching MCP capability covering Context7,
+  Firecrawl, Playwright, and Fetch routing.
 
 ### Capability-specific rule layer
 
