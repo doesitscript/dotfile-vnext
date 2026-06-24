@@ -52,6 +52,36 @@ The rule file should stay a router, not the owner of the capability details.
 The role docs own MCP-server implementation details. This document owns the
 framework routing model. The manifest owns cleanup boundaries.
 
+## Commissioned Client Scope
+
+On `mac-dev`, the MCP Research Collection Stack is commissioned for Cursor and
+Codex:
+
+```yaml
+context7_mcp_targets:
+  - cursor
+  - codex
+firecrawl_mcp_targets:
+  - cursor
+  - codex
+playwright_mcp_targets:
+  - cursor
+  - codex
+fetch_mcp_targets:
+  - cursor
+  - codex
+```
+
+The roles support VS Code, but `.vscode/mcp.json` is not part of the
+commissioned target set unless `vscode` is added to the relevant target lists or
+a focused run includes `mcp_target_vscode`.
+
+After MCP client config changes, reload the client. Cursor Settings and
+already-running chat sessions can reflect stale MCP availability until the
+window/session restarts or the MCP server list is refreshed. Configured servers
+also do not become tools inside a chat session that was started before the MCP
+configuration was applied.
+
 ## Removal Path
 
 1. Run the commissioned roles absent before deleting files:

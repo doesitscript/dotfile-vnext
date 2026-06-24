@@ -1,9 +1,21 @@
 ---
 # Mac controller secrets vault.
-# Encrypt this file before storing real values:
-#   ansible-vault encrypt vault/mac_dev.vault.yml
-# or edit it in place:
-#   ansible-vault edit vault/mac_dev.vault.yml
+# This file is plain YAML with selected inline !vault values. Do not use
+# `ansible-vault edit` unless the whole file has first been encrypted with
+# `ansible-vault encrypt`.
+#
+# To store a single secret on macOS:
+#   1. Run:
+#      bin/codex-env ansible-vault encrypt_string --stdin-name vault_example_name | pbcopy
+#   2. Paste the raw secret in the terminal.
+#   3. Press Ctrl-D to finish input.
+#   4. The encrypted YAML block is now on the clipboard.
+#   5. Replace the matching empty/plain value in this file, for example:
+#      vault_example_name: ""
+#      becomes:
+#      vault_example_name: !vault |
+#                $ANSIBLE_VAULT;1.1;AES256
+#                ...
 #
 # This file is the intended durable home for mac-dev-specific Tunnelblick/OpenVPN
 # secrets, local admin/become credentials, and client config content.
@@ -30,7 +42,15 @@ vault_tunnelblick_mac_router_openvpn_ovpn_content: ""
 # roles/mcp_servers/firecrawl | playbooks/mac/mcp_servers.yaml
 # Obtain key: https://www.firecrawl.dev/app/api-keys
 # =============================================================================
-vault_firecrawl_mcp_api_key: ""
+vault_firecrawl_mcp_api_key: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          35613334643466336461313262303639653230626432393936343734313530306431393266623666
+          3862383439653239663337626338663935326132623865350a383663363239656162373965386162
+          65613662323137346530666530663436323531623437346239646338393532633837313764636132
+          6266336535386461380a363338373432366564383164343832323936366264646461303635316262
+          62653762383036633366393035666534303236393664663939306239313162336132326130363338
+          3164323433623266393333616662353437626633616362386165
+
 
 # =============================================================================
 # context7 — Context7 MCP server (mac-dev controller)
@@ -38,4 +58,11 @@ vault_firecrawl_mcp_api_key: ""
 # Obtain key: https://context7.com/dashboard
 # Maps to CONTEXT7_API_KEY in generated MCP client config.
 # =============================================================================
-vault_context7_mcp_api_key: ""
+vault_context7_mcp_api_key: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          62393135363363373639343535616537343331653733303537376137616532373230366635393864
+          6264616631633530306536643964363636616332613232360a656161336561653434613530653534
+          37626231313336613235363838316335316530313966356538316237636265396661373636636333
+          3138333665383633620a373630316335393539313233363533373562316335646436313964356235
+          30383164663335666561643066303564333633343934633437356230626565393034363330373133
+          6465353337623366386162633239393766323666393036316630

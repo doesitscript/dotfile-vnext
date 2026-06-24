@@ -23,6 +23,27 @@ Web scraping and crawling MCP tools for Cursor and other repo-local MCP clients.
 
 Store the Firecrawl API key in `vault/mac_dev.vault.yml` as `vault_firecrawl_mcp_api_key`.
 
+On macOS, generate the inline vault block and copy it to the clipboard:
+
+```bash
+bin/codex-env ansible-vault encrypt_string --stdin-name vault_firecrawl_mcp_api_key | pbcopy
+```
+
+Paste the raw API key in the terminal, press `Ctrl-D`, then replace this line in
+`vault/mac_dev.vault.yml`:
+
+```yaml
+vault_firecrawl_mcp_api_key: ""
+```
+
+with the encrypted block from the clipboard:
+
+```yaml
+vault_firecrawl_mcp_api_key: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          ...
+```
+
 This role loads that file through `include_vars` with `name: vault_vars` and maps the
 secret into a local runtime env file:
 
@@ -69,9 +90,3 @@ ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags firecrawl
 ```
 
 **Change Class:** Idempotent configuration management
-
-## Ingest API Key
-
-See role README section above and the vault header in `vault/mac_dev.vault.yml`.
-
-Tracked in repo structure only until first live apply on mac-dev.

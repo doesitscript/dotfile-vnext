@@ -25,7 +25,11 @@ the repo's WinRM safety vars instead of depending on interactive shell startup:
 ## Apply / Verify / Undo / Change Class
 
 - Apply: replace the install/uninstall stubs, fill in the contract, then run the focused MCP play with the new role.
-- Verify: syntax-check the play, run the role against the intended targets, and capture a validation report under `docs/reports/mcp_server_validations/`.
+- Verify: syntax-check the play, run the role against the commissioned targets,
+  confirm only those target config files changed, and capture a validation
+  report under `docs/reports/mcp_server_validations/`. Note that client UIs and
+  already-running chat sessions may need reload/restart before newly configured
+  MCP servers appear as available tools.
 - Undo: run with `<server>_state=absent`, then remove the role from the playbook if it is no longer wanted.
 - Change class: idempotent config once the runtime install/uninstall tasks are implemented.
 

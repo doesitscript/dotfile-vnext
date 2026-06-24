@@ -1,8 +1,9 @@
 ---
-lifecycle: in_progress
+lifecycle: implemented
 scope: implementation
 netbox_scope: false
 capability: mcp_research_collection_stack
+implemented_date: 2026-06-24
 ---
 
 # MCP Research Collection Stack
@@ -117,11 +118,11 @@ Removal starts from the manifest's `removal_behavior`: run role states
 - [x] Validate YAML and playbook syntax with `bin/codex-env`.
 - [x] Run `ansible-lint` on changed MCP roles.
 - [x] Run task preview for `mac-dev` with tags `context7,firecrawl,playwright,fetch`.
-- [ ] Apply the mac MCP playbook for the four role tags. Blocked for Context7/Firecrawl by empty vault keys.
-- [ ] Rerun apply for idempotence. Passed for Playwright/Fetch; blocked for Context7/Firecrawl by empty vault keys.
-- [ ] Verify npm binaries resolve. Passed for Playwright/Fetch; pending for Context7/Firecrawl after keys are set.
-- [ ] Verify Cursor and Codex configs contain all four server keys and no plaintext API keys. Passed for Playwright/Fetch and secret scan; blocked for Context7/Firecrawl.
-- [ ] Verify local secret env artifacts exist with mode `0600`. Blocked for Context7/Firecrawl by empty vault keys.
+- [x] Apply the mac MCP playbook for the four role tags.
+- [x] Rerun apply for idempotence.
+- [x] Verify npm binaries resolve.
+- [x] Verify Cursor and Codex configs contain all four server keys and no plaintext API keys.
+- [x] Verify local secret env artifacts exist with mode `0600`.
 
 ## Architecture/Structure Diagram
 
@@ -194,7 +195,7 @@ flowchart TD
 | ID | Source | Obligation | In slice scope? | Status | Evidence |
 |----|--------|------------|-----------------|--------|----------|
 | O-01 | Change contract | Apply path exists through `playbooks/mac/mcp_servers.yaml` and four tags. | yes | pass | `playbooks/mac/mcp_servers.yaml` has `context7`, `firecrawl`, `playwright`, and `fetch` role tags. |
-| O-02 | Change contract | Verify path covers syntax, lint, preview, apply, idempotence, binaries, config keys, secret hygiene, env-file mode. | yes | blocked | Syntax, task preview, changed-role lint, and playbook+role lint with pre-existing dependency exclusions passed. Playwright/Fetch apply/idempotence passed. Context7/Firecrawl blocked by empty vault keys. See `docs/reports/mcp_server_validations/research_collection_stack/README.md`. |
+| O-02 | Change contract | Verify path covers syntax, lint, preview, apply, idempotence, binaries, config keys, secret hygiene, env-file mode. | yes | pass | Syntax, task preview, changed-role lint, apply, idempotence, binary checks, Cursor/Codex key checks, secret scan, and env-file mode checks passed. See `docs/reports/mcp_server_validations/research_collection_stack/README.md`. |
 | O-03 | Change contract | Undo path exists through each role's `*_mcp_state=absent`. | yes | pass | Each role includes `tasks/absent.yml` and role README undo command. |
 | O-04 | Checklist | Add shared secret-safe wrapper and env renderer. | yes | pass | `bin/mcp-server-env-wrapper`; `roles/mcp_servers/_shared/tasks/render_env_file.yml`. |
 | O-05 | Checklist | Add Context7 role. | yes | pass | `roles/mcp_servers/context7` with npm package `@upstash/context7-mcp`. |
@@ -208,20 +209,20 @@ flowchart TD
 | O-12a | Capability packaging | Make the stack removable/installable as a coherent capability with owned files and integration anchors. | yes | pass | `docs/codex_framework/capabilities/mcp-research-collection-stack.yml` owns the capability inventory; global MCP rule is now only a router anchor. |
 | O-12b | General usage guidance | Document how to use the stack beyond this repo, including Context7 vs Firecrawl boundaries and a vendor-doc example. | yes | pass | `docs/codex_framework/mcp-research-collection-stack.md`, `roles/mcp_servers/ai.mcp_servers.instructions.md`, and `roles/mcp_servers/README.md` now include general routing examples. |
 | O-13 | Live preview | Run read-only task preview for `mac-dev` with the four tags. | yes | pass | `--list-tasks --tags context7,firecrawl,playwright,fetch` listed the four role task sets for `mac-dev`. |
-| O-14 | Live apply | Apply the mac MCP playbook for the four tags. | yes | blocked | Full four-role apply stopped at Firecrawl assertion: `vault_firecrawl_mcp_api_key` empty. Context7 probe stopped at `vault_context7_mcp_api_key` empty. Playwright/Fetch apply passed with `changed=6`, `failed=0`. |
-| O-15 | Idempotence | Rerun apply and verify no second-run changes. | yes | blocked | Playwright/Fetch rerun passed with `changed=0`, `failed=0`; Context7/Firecrawl pending non-empty vault keys. |
-| O-16 | Runtime verification | Confirm npm binaries resolve and Cursor/Codex configs contain all four keys. | yes | blocked | `/Users/joshc/.nvm/versions/node/v20.20.0/bin/playwright-mcp` and `mcp-fetch-server` executable; Cursor/Codex contain `playwright` and `fetch`; Context7/Firecrawl pending non-empty vault keys. |
-| O-17 | Secret verification | Confirm tracked configs have no plaintext API keys and env files are mode `0600`. | yes | blocked | Tracked `.cursor/mcp.json` and `.codex/config.toml` contain no secret key names. Context7/Firecrawl env files are absent because roles failed before rendering due empty vault keys. |
+| O-14 | Live apply | Apply the mac MCP playbook for the four tags. | yes | pass | Context7/Firecrawl apply passed with `changed=8`, `failed=0`; Playwright/Fetch apply previously passed with `changed=6`, `failed=0`. |
+| O-15 | Idempotence | Rerun apply and verify no second-run changes. | yes | pass | Context7/Firecrawl rerun passed with `changed=0`, `failed=0`; Playwright/Fetch rerun previously passed with `changed=0`, `failed=0`. |
+| O-16 | Runtime verification | Confirm npm binaries resolve and Cursor/Codex configs contain all four keys. | yes | pass | Cursor contains `context7`, `firecrawl`, `playwright`, and `fetch`; Codex config contains all four `[mcp_servers.*]` blocks; all four npm binaries resolve under the nvm Node path. |
+| O-17 | Secret verification | Confirm tracked configs have no plaintext API keys and env files are mode `0600`. | yes | pass | Secret scan found no raw key prefixes, secret env names, or vault key names in tracked Cursor/Codex config. Context7 and Firecrawl env files exist with mode `0600`. |
 
 ### Summary
 
-- In-scope obligations: 19 — pass: 15, fail: 0, blocked: 4, pending: 0
+- In-scope obligations: 19 — pass: 19, fail: 0, blocked: 0, pending: 0
 - Deferred: 0
 
 ### Completion gate
 
-- [ ] Every in-scope obligation is `pass` or `n/a` with reason.
-- [ ] Change-contract Verify demonstrated for this slice with command output. Blocked for Context7/Firecrawl until non-empty vault keys are set.
+- [x] Every in-scope obligation is `pass` or `n/a` with reason.
+- [x] Change-contract Verify demonstrated for this slice with command output.
 - [x] `depends_on_plans` satisfied or not applicable.
 - [x] No in-scope obligation skipped because it was not duplicated in the checklist.
 - [x] No unresolved `On Deck` row remains.

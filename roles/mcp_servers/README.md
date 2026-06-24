@@ -138,6 +138,17 @@ ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags drawio,mc
 If no target tag is supplied, the role uses its `<server>_targets` default or
 explicit variable override.
 
+Supported targets and commissioned targets are not the same thing. A role may
+support `cursor`, `vscode`, and `codex`, while a host only commissions a subset
+through inventory. For the MCP Research Collection Stack on `mac-dev`, the
+commissioned targets are `cursor` and `codex`; `.vscode/mcp.json` is not updated
+unless `vscode` is added to the relevant `*_mcp_targets` list or a focused run
+uses `mcp_target_vscode`.
+
+After client config changes, reload the MCP client. Cursor Settings and already
+running chat sessions can show stale MCP availability until the window/session
+restarts or the MCP server list is refreshed.
+
 ## Directory Layout
 
 ```text

@@ -16,10 +16,7 @@
     mode: "0644"
     content: "{{ {'mcpServers': {(context7_mcp_server_key): _context7_entry}} | to_nice_json }}\n"
   vars:
-    _context7_entry:
-      command: "{{ context7_mcp_wrapper_path }}"
-      args: "{{ [context7_mcp_env_file_path, context7_mcp_command] + context7_mcp_args }}"
-      env: "{{ context7_mcp_env }}"
+    _context7_entry: "{{ context7_mcp_client_entry }}"
   when: not _context7_target_mcp_json_stat.stat.exists
 
 - name: Merge Context7 entry into existing mcp.json for {{ _context7_target_name }}
@@ -37,10 +34,7 @@
         mode: "0644"
       vars:
         _context7_target_existing: "{{ _context7_target_mcp_json_raw.content | b64decode | from_json }}"
-        _context7_entry:
-          command: "{{ context7_mcp_wrapper_path }}"
-          args: "{{ [context7_mcp_env_file_path, context7_mcp_command] + context7_mcp_args }}"
-          env: "{{ context7_mcp_env }}"
+        _context7_entry: "{{ context7_mcp_client_entry }}"
         _context7_target_servers: >-
           {{
             (_context7_target_existing.mcpServers | default({}))

@@ -27,15 +27,24 @@
     _mcp_env_file_path: "{{ context7_mcp_env_file_path }}"
     _mcp_env_vars:
       CONTEXT7_API_KEY: "{{ context7_mcp_api_key }}"
+  when: (context7_mcp_api_key | default('') | length) > 0
 
-- name: Set Context7 Codex MCP entry after command resolution
+- name: Set Context7 MCP client entry after command resolution
   ansible.builtin.set_fact:
-    context7_mcp_codex_entry:
+    context7_mcp_client_entry: "{{ _context7_keyed_entry if ((context7_mcp_api_key | default('') | length) > 0) else _context7_keyless_entry }}"
+  vars:
+    _context7_keyed_entry:
       command: "{{ context7_mcp_wrapper_path }}"
       args: "{{ [context7_mcp_env_file_path, context7_mcp_command] + context7_mcp_args }}"
       env: "{{ context7_mcp_env }}"
-      required: false
-      startup_timeout_sec: 40
+    _context7_keyless_entry:
+      command: "{{ context7_mcp_command }}"
+      args: "{{ context7_mcp_args }}"
+      env: "{{ context7_mcp_env }}"
+
+- name: Set Context7 Codex MCP entry after command resolution
+  ansible.builtin.set_fact:
+    context7_mcp_codex_entry: "{{ context7_mcp_client_entry | combine({'required': false, 'startup_timeout_sec': 40}) }}"
 
 - name: Ensure Context7 entry exists in Cursor mcp.json
   ansible.builtin.include_tasks: configure_target.yml
