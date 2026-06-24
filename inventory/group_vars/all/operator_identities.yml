@@ -1,0 +1,31 @@
+---
+# Operator identity registry — Layer 1 (who) + credential pointers — Layer 2 refs only.
+# Secrets live in vault/operator_credentials.vault.yml (load via include_vars when consumed).
+# Product bindings (LLM, mail relay, etc.) are Layer 3 — add when a role consumes an identity.
+#
+# Reference: docs/reference/operator-identities.md
+
+operator_identities:
+  schema: operator_identities
+  status: declared
+  vault_file: vault/operator_credentials.vault.yml
+
+  accounts:
+    personal:
+      email: joshcastillo@gmail.com
+      class: personal
+      notes: Primary operator identity
+
+    work:
+      email: josh.castillo.work@gmail.com
+      class: sandbox
+      notes: Work-sandbox identity for external products (LLM, mail, etc.)
+      primary_password_vault_var: vault_operator_identity_work_primary_password
+      primary_password_env_var: OPERATOR_IDENTITY_WORK_PASSWORD
+
+    dev:
+      email: joshcastillo.dev@gmail.com
+      class: sandbox
+      notes: Dev-sandbox identity for external products
+      primary_password_vault_var: vault_operator_identity_dev_primary_password
+      primary_password_env_var: OPERATOR_IDENTITY_DEV_PASSWORD
