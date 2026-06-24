@@ -22,7 +22,7 @@ k3s_langfuse_platform_nextauth_url: "http://langfuse.hom.lab"
 k3s_langfuse_platform_postgres_enabled: false
 k3s_langfuse_platform_postgres_deploy: false
 k3s_langfuse_platform_postgres_host: "{{ fuzlang_external_postgres_connect_address }}"
-k3s_langfuse_platform_postgres_port: "{{ fuzlang_external_postgres_port }}"
+k3s_langfuse_platform_postgres_port: "{{ fuzlang_external_postgres_port | default(5432) }}"
 k3s_langfuse_platform_postgres_db: "{{ fuzlang_external_postgres_db }}"
 k3s_langfuse_platform_postgres_user: "{{ fuzlang_external_postgres_user }}"
 k3s_langfuse_platform_postgres_password: "{{ fuzlang_external_postgres_password }}"
@@ -32,6 +32,10 @@ k3s_langfuse_platform_clickhouse_enabled: true
 k3s_langfuse_platform_clickhouse_host: "langfuse-clickhouse"
 k3s_langfuse_platform_clickhouse_port: 9000
 k3s_langfuse_platform_clickhouse_user: "default"
+k3s_langfuse_platform_clickhouse_cpu_request: "500m"
+k3s_langfuse_platform_clickhouse_cpu_limit: "1500m"
+k3s_langfuse_platform_clickhouse_memory_request: "1Gi"
+k3s_langfuse_platform_clickhouse_memory_limit: "4Gi"
 
 # Redis configuration
 k3s_langfuse_platform_redis_enabled: true
@@ -63,6 +67,8 @@ k3s_langfuse_platform_web_cpu_limit: "1000m"
 k3s_langfuse_platform_web_memory_limit: "2Gi"
 k3s_langfuse_platform_worker_cpu_limit: "500m"
 k3s_langfuse_platform_worker_memory_limit: "1Gi"
+# A single-node lab cannot always schedule old and new pods concurrently.
+k3s_langfuse_platform_deployment_strategy_type: "Recreate"
 
 # Service exposure
 k3s_langfuse_platform_service_type: "NodePort"

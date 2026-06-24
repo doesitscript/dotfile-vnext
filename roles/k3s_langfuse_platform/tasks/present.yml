@@ -100,6 +100,9 @@
           password: "{{ k3s_langfuse_platform_resolved_redis_password }}"
 
       langfuse:
+        deployment:
+          strategy:
+            type: "{{ k3s_langfuse_platform_deployment_strategy_type }}"
         nextauth:
           url: "{{ k3s_langfuse_platform_nextauth_url }}"
           secret:
@@ -133,7 +136,7 @@
         host: "{{ k3s_langfuse_platform_postgres_host }}"
         port: "{{ k3s_langfuse_platform_postgres_port }}"
         auth:
-          username: "{{ k3s_langfuse_platform_postgres_user }}"
+          username: "{{ k3s_langfuse_platform_resolved_postgres_user }}"
           password: "{{ k3s_langfuse_platform_resolved_postgres_password }}"
           database: "{{ k3s_langfuse_platform_resolved_postgres_db }}"
         migration:
@@ -145,7 +148,14 @@
           username: "{{ k3s_langfuse_platform_clickhouse_user }}"
           password: "{{ k3s_langfuse_platform_resolved_clickhouse_password }}"
         replicaCount: "1"
-        resourcesPreset: medium
+        resourcesPreset: none
+        resources:
+          requests:
+            cpu: "{{ k3s_langfuse_platform_clickhouse_cpu_request }}"
+            memory: "{{ k3s_langfuse_platform_clickhouse_memory_request }}"
+          limits:
+            cpu: "{{ k3s_langfuse_platform_clickhouse_cpu_limit }}"
+            memory: "{{ k3s_langfuse_platform_clickhouse_memory_limit }}"
         zookeeper:
           replicaCount: "1"
         persistence:
@@ -192,17 +202,17 @@
   ansible.builtin.debug:
     msg: |
       Langfuse Platform deployed successfully!
-      
+
       Namespace: {{ k3s_langfuse_platform_namespace }}
       Release: {{ k3s_langfuse_platform_release_name }}
-      
+
       Access URL: http://{{ ansible_default_ipv4.address }}:{{ k3s_langfuse_platform_node_port }}
-      
+
       Components deployed:
       - Langfuse Web ({{ k3s_langfuse_platform_web_replicas }} replicas)
       - Langfuse Worker ({{ k3s_langfuse_platform_worker_replicas }} replicas)
       - External PostgreSQL at {{ k3s_langfuse_platform_postgres_host }}:{{ k3s_langfuse_platform_postgres_port }}
       - ClickHouse (persistent storage: 20Gi)
       - Redis (persistent storage: 8Gi)
-      
+
       Check status: kubectl get pods -n {{ k3s_langfuse_platform_namespace }}
