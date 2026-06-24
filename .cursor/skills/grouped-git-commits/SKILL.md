@@ -30,6 +30,8 @@ WIP detection for incomplete work.
    - group files by theme: framework rules, skills, plans, roles, playbooks, docs
    - prefer one commit per coherent workstream
    - do not mix unrelated themes just because they are all dirty
+   - files that do not fit any identified group become their own single-file (or
+     small) standalone commit — they are never left out
 
 3. Detect work-in-progress indicators.
    - incomplete plans (missing sections, TODO markers, "draft" in filename)
@@ -96,6 +98,8 @@ Mark a commit as WIP when ANY of these are true:
 - Keep the user informed about what is being committed before running the commit
 - If a commit contains only renames and reference updates, say so plainly
 - Always verify worktree is clean (or only untracked artifacts remain) after commits
+- **Files that do not fit any identified theme group still get committed — as their
+  own standalone commit. No file is ever silently left out.**
 
 ## Suggested trigger phrases
 
