@@ -1,0 +1,43 @@
+---
+- name: Install Firecrawl MCP package via npm on macOS
+  community.general.npm:
+    name: "{{ firecrawl_mcp_package_name }}"
+    global: true
+    state: present
+    executable: "{{ node_npm_executable }}"
+  timeout: 300
+
+- name: Check Firecrawl MCP binary candidates on macOS
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ _firecrawl_bin_candidates }}"
+  register: _firecrawl_mcp_bin_stats_mac
+  vars:
+    _firecrawl_bin_candidates: >-
+      {{
+        firecrawl_mcp_bin_candidates
+        if (firecrawl_mcp_bin_candidates | length > 0)
+        else [
+          (node_npm_executable | dirname) ~ '/firecrawl-mcp'
+        ]
+      }}
+
+- name: Set Firecrawl MCP command path for MCP clients on macOS
+  ansible.builtin.set_fact:
+    firecrawl_mcp_command: "{{ (_firecrawl_mcp_bin_stats_mac.results | selectattr('stat.exists') | map(attribute='item') | first) | default('') }}"
+
+- name: Fail if Firecrawl MCP binary was not found on macOS
+  ansible.builtin.fail:
+    msg: >-
+      Firecrawl MCP package installed, but no executable was found in
+      firecrawl_mcp_bin_candidates={{ _firecrawl_bin_candidates | to_json }}.
+  when: not (firecrawl_mcp_command | default(''))
+  vars:
+    _firecrawl_bin_candidates: >-
+      {{
+        firecrawl_mcp_bin_candidates
+        if (firecrawl_mcp_bin_candidates | length > 0)
+        else [
+          (node_npm_executable | dirname) ~ '/firecrawl-mcp'
+        ]
+      }}

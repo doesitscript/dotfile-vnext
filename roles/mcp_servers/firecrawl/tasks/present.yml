@@ -1,0 +1,64 @@
+---
+- name: Load Firecrawl MCP secrets from mac-dev vault
+  ansible.builtin.import_tasks: load_vault.yml
+
+- name: Build Firecrawl MCP runtime environment
+  ansible.builtin.set_fact:
+    firecrawl_mcp_env: >-
+      {{
+        firecrawl_mcp_env
+        | combine({'FIRECRAWL_API_KEY': firecrawl_mcp_api_key})
+        | combine({'FIRECRAWL_API_URL': firecrawl_mcp_api_url}, recursive=True)
+        if (firecrawl_mcp_api_url | default('') | length > 0)
+        else firecrawl_mcp_env | combine({'FIRECRAWL_API_KEY': firecrawl_mcp_api_key})
+      }}
+  no_log: true
+
+- name: Install Firecrawl MCP on macOS
+  ansible.builtin.import_tasks: mac.yml
+  when:
+    - not (firecrawl_mcp_command | default(''))
+    - ansible_facts['system'] == "Darwin"
+
+- name: Install Firecrawl MCP on Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when:
+    - not (firecrawl_mcp_command | default(''))
+    - ansible_facts['distribution'] == "Ubuntu"
+
+- name: Fail if Firecrawl MCP command could not be resolved
+  ansible.builtin.fail:
+    msg: >-
+      Firecrawl MCP command is empty after installation. This role currently
+      supports macOS and Ubuntu via npm, or an explicit firecrawl_mcp_command override.
+  when: not (firecrawl_mcp_command | default(''))
+
+- name: Set Firecrawl Codex MCP entry after command resolution
+  ansible.builtin.set_fact:
+    firecrawl_mcp_codex_entry:
+      command: "{{ firecrawl_mcp_command }}"
+      args: "{{ firecrawl_mcp_args }}"
+      env: "{{ firecrawl_mcp_env }}"
+      required: false
+
+- name: Ensure Firecrawl entry exists in Cursor mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _firecrawl_target_name: "cursor"
+    _firecrawl_target_config_path: "{{ firecrawl_mcp_cursor_config_path }}"
+  when: _firecrawl_target_cursor_selected | bool
+
+- name: Ensure Firecrawl entry exists in VS Code mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _firecrawl_target_name: "vscode"
+    _firecrawl_target_config_path: "{{ firecrawl_mcp_vscode_config_path }}"
+  when: _firecrawl_target_vscode_selected | bool
+
+- name: Ensure Firecrawl entry exists in Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ firecrawl_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ firecrawl_mcp_server_key }}"
+    _mcp_codex_entry: "{{ firecrawl_mcp_codex_entry }}"
+  when: _firecrawl_target_codex_selected | bool

@@ -1,0 +1,104 @@
+---
+argument_specs:
+  main:
+    short_description: Install the Firecrawl MCP server and configure repo-local Cursor, Codex, or VS Code targets on macOS or Ubuntu.
+    description: >
+      Installs the upstream firecrawl-mcp npm package with the nvm-managed npm,
+      resolves the installed executable, loads the Firecrawl API key from
+      vault/mac_dev.vault.yml, and merges a firecrawl entry into the selected
+      repo-local MCP client targets.
+    options:
+      firecrawl_mcp_state:
+        type: str
+        default: present
+        choices:
+          - present
+          - absent
+        description: Ensure the Firecrawl MCP package and local config are present or absent.
+
+      firecrawl_mcp_package_name:
+        type: str
+        default: "firecrawl-mcp"
+        description: npm package name for the Firecrawl MCP server.
+
+      firecrawl_mcp_server_key:
+        type: str
+        default: "firecrawl"
+        description: Key under mcpServers in target mcp.json files.
+
+      firecrawl_mcp_project_root:
+        type: str
+        required: false
+        description: Repo root used to derive default client target paths and vault location.
+
+      firecrawl_mcp_targets:
+        type: list
+        elements: str
+        default:
+          - cursor
+        description: >
+          Target client configs to manage. Supported values are cursor, vscode,
+          codex, and openapi. openapi is a deliberate v1 stub and fails fast if selected.
+
+      firecrawl_mcp_supported_targets:
+        type: list
+        elements: str
+        required: false
+        description: Supported target names used for validation and guardrails.
+
+      firecrawl_mcp_cursor_config_path:
+        type: str
+        required: false
+        description: Path to the repo-local Cursor mcp.json file.
+
+      firecrawl_mcp_vscode_config_path:
+        type: str
+        required: false
+        description: Path to the repo-local VS Code mcp.json file.
+
+      firecrawl_mcp_codex_config_path:
+        type: str
+        required: false
+        description: Path to the repo-local Codex config.toml file.
+
+      firecrawl_mcp_role_path:
+        type: str
+        default: "roles/mcp_servers/firecrawl"
+        description: Relative repo path for role tracking and debugging.
+
+      firecrawl_mcp_command:
+        type: str
+        default: ""
+        description: Resolved Firecrawl MCP executable path. Setting this skips install tasks.
+
+      firecrawl_mcp_args:
+        type: list
+        elements: str
+        default: []
+        description: Runtime args passed to the Firecrawl MCP server.
+
+      firecrawl_mcp_api_key:
+        type: str
+        default: ""
+        description: Firecrawl API key. Normally loaded from vault_firecrawl_mcp_api_key.
+
+      firecrawl_mcp_api_url:
+        type: str
+        default: ""
+        description: Optional custom Firecrawl API URL for self-hosted deployments.
+
+      firecrawl_mcp_env:
+        type: dict
+        required: false
+        description: Environment variables passed to the Firecrawl MCP server.
+
+      firecrawl_mcp_codex_entry:
+        type: dict
+        required: false
+        description: Structured Codex MCP entry override for the Firecrawl server.
+
+      firecrawl_mcp_bin_candidates:
+        type: list
+        elements: str
+        required: false
+        description: Candidate executable paths checked after npm install. First existing path wins.

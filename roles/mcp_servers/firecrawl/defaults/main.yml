@@ -1,0 +1,40 @@
+---
+firecrawl_mcp_state: present
+firecrawl_mcp_package_name: "firecrawl-mcp"
+firecrawl_mcp_server_key: "firecrawl"
+
+firecrawl_mcp_project_root: "{{ dotfiles_home | default(playbook_dir | dirname | dirname) }}"
+firecrawl_mcp_targets:
+  - cursor
+firecrawl_mcp_supported_targets:
+  - cursor
+  - vscode
+  - codex
+  - openapi
+
+firecrawl_mcp_cursor_config_path: "{{ firecrawl_mcp_project_root }}/.cursor/mcp.json"
+firecrawl_mcp_vscode_config_path: "{{ firecrawl_mcp_project_root }}/.vscode/mcp.json"
+firecrawl_mcp_codex_config_path: "{{ firecrawl_mcp_project_root }}/.codex/config.toml"
+firecrawl_mcp_role_path: "roles/mcp_servers/firecrawl"
+
+# Resolved after npm install, or set explicitly to skip install tasks.
+firecrawl_mcp_command: ""
+firecrawl_mcp_args: []
+
+# Populated from vault in present.yml via load_vault.yml.
+firecrawl_mcp_api_key: ""
+
+# Optional override for self-hosted Firecrawl. Leave empty for cloud API.
+firecrawl_mcp_api_url: ""
+
+firecrawl_mcp_env:
+  FIRECRAWL_API_KEY: "{{ firecrawl_mcp_api_key }}"
+  _MCP_ANSIBLE_ROLE_PATH: "{{ firecrawl_mcp_role_path }}"
+
+firecrawl_mcp_codex_entry:
+  command: "{{ firecrawl_mcp_command }}"
+  args: "{{ firecrawl_mcp_args }}"
+  env: "{{ firecrawl_mcp_env }}"
+  required: false
+
+firecrawl_mcp_bin_candidates: []

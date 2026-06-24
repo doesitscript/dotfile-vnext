@@ -1,0 +1,21 @@
+---
+- name: Include mac-dev vault variables for Firecrawl MCP
+  ansible.builtin.include_vars:
+    file: "{{ firecrawl_mcp_project_root }}/vault/mac_dev.vault.yml"
+    name: vault_vars
+  no_log: true
+
+- name: Set Firecrawl API key from vault
+  ansible.builtin.set_fact:
+    firecrawl_mcp_api_key: "{{ vault_vars.vault_firecrawl_mcp_api_key }}"
+  no_log: true
+
+- name: Assert Firecrawl API key is present in vault
+  ansible.builtin.assert:
+    that:
+      - firecrawl_mcp_api_key is defined
+      - firecrawl_mcp_api_key | length > 0
+    fail_msg: >-
+      vault_firecrawl_mcp_api_key is required in vault/mac_dev.vault.yml before
+      Firecrawl MCP can be configured. Obtain a key from
+      https://www.firecrawl.dev/app/api-keys and ingest it with ansible-vault.

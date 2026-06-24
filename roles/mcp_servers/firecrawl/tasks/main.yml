@@ -1,0 +1,132 @@
+---
+# Firecrawl MCP server — web scraping and crawling tools for AI clients.
+
+- name: Resolve node_npm_executable if not already set by common/node
+  ansible.builtin.include_role:
+    name: common/node
+    tasks_from: resolve_npm.yml
+    apply:
+      tags:
+        - mcp
+        - firecrawl
+  when:
+    - node_npm_executable is not defined
+    - firecrawl_mcp_state == "absent" or not (firecrawl_mcp_command | default(''))
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+  tags:
+    - mcp
+    - firecrawl
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Capture requested Firecrawl MCP target tags
+  ansible.builtin.set_fact:
+    _firecrawl_requested_target_tags: >-
+      {{
+        (ansible_run_tags | default([]))
+        | intersect(['mcp_target_cursor', 'mcp_target_vscode', 'mcp_target_codex', 'mcp_target_openapi'])
+      }}
+  tags:
+    - mcp
+    - firecrawl
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Validate configured Firecrawl MCP targets
+  ansible.builtin.assert:
+    that:
+      - (firecrawl_mcp_targets | difference(firecrawl_mcp_supported_targets)) | length == 0
+    fail_msg: >-
+      firecrawl_mcp_targets contains unsupported values:
+      {{ firecrawl_mcp_targets | difference(firecrawl_mcp_supported_targets) | to_json }}
+  tags:
+    - mcp
+    - firecrawl
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Determine active Firecrawl MCP client targets
+  ansible.builtin.set_fact:
+    _firecrawl_target_cursor_selected: >-
+      {{
+        ('mcp_target_cursor' in _firecrawl_requested_target_tags)
+        or
+        (
+          (_firecrawl_requested_target_tags | length) == 0
+          and ('cursor' in firecrawl_mcp_targets)
+        )
+      }}
+    _firecrawl_target_vscode_selected: >-
+      {{
+        ('mcp_target_vscode' in _firecrawl_requested_target_tags)
+        or
+        (
+          (_firecrawl_requested_target_tags | length) == 0
+          and ('vscode' in firecrawl_mcp_targets)
+        )
+      }}
+    _firecrawl_target_codex_selected: >-
+      {{
+        ('mcp_target_codex' in _firecrawl_requested_target_tags)
+        or
+        (
+          (_firecrawl_requested_target_tags | length) == 0
+          and ('codex' in firecrawl_mcp_targets)
+        )
+      }}
+    _firecrawl_target_openapi_selected: >-
+      {{
+        ('mcp_target_openapi' in _firecrawl_requested_target_tags)
+        or
+        (
+          (_firecrawl_requested_target_tags | length) == 0
+          and ('openapi' in firecrawl_mcp_targets)
+        )
+      }}
+  tags:
+    - mcp
+    - firecrawl
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Fail fast for the Firecrawl OpenAPI target stub
+  ansible.builtin.import_tasks: openapi_stub.yml
+  when: _firecrawl_target_openapi_selected | bool
+  tags:
+    - mcp
+    - firecrawl
+    - mcp_target_openapi
+
+- name: Ensure Firecrawl MCP server is present
+  ansible.builtin.import_tasks: present.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - firecrawl_mcp_state == "present"
+  tags:
+    - mcp
+    - firecrawl
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Ensure Firecrawl MCP server is absent
+  ansible.builtin.import_tasks: absent.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - firecrawl_mcp_state == "absent"
+  tags:
+    - mcp
+    - firecrawl
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi

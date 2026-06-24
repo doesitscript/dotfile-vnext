@@ -15,6 +15,7 @@ Each subdirectory is an Ansible role that installs and configures one MCP
 | `hf-mcp-server` | Hugging Face Hub, docs, papers, datasets, models, and Spaces tools | HTTP | launcher | Cursor, Codex | [Hugging Face MCP Server](https://huggingface.co/docs/hub/hf-mcp-server) |
 | `drawio` | draw.io MCP tool server | Node.js (npm) | interactive/editor | Cursor, Codex, VS Code, OpenAPI stub | [lgazo/drawio-mcp-server](https://github.com/lgazo/drawio-mcp-server) |
 | `netbox` | NetBox MCP query server | Python (uv) | launcher | Cursor, Codex | [netboxlabs/netbox-mcp-server](https://github.com/netboxlabs/netbox-mcp-server) |
+| `firecrawl` | Firecrawl web scraping/crawling MCP | Node.js (npm) | launcher | Cursor | [firecrawl/firecrawl-mcp-server](https://github.com/firecrawl/firecrawl-mcp-server) |
 
 ## Canonical Pattern
 
@@ -74,6 +75,7 @@ Install only one server:
 
 ```bash
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags drawio
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags firecrawl
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags langfuse-docs
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags huggingface
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags ansible-mcp

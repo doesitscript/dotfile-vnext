@@ -1,0 +1,49 @@
+---
+- name: Ensure target directory exists for {{ _firecrawl_target_name }}
+  ansible.builtin.file:
+    path: "{{ _firecrawl_target_config_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Check whether mcp.json exists for {{ _firecrawl_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _firecrawl_target_config_path }}"
+  register: _firecrawl_target_mcp_json_stat
+
+- name: Create mcp.json with Firecrawl entry for {{ _firecrawl_target_name }}
+  ansible.builtin.copy:
+    dest: "{{ _firecrawl_target_config_path }}"
+    mode: "0644"
+    content: "{{ {'mcpServers': {(firecrawl_mcp_server_key): _firecrawl_entry}} | to_nice_json }}\n"
+  vars:
+    _firecrawl_entry:
+      command: "{{ firecrawl_mcp_command }}"
+      args: "{{ firecrawl_mcp_args }}"
+      env: "{{ firecrawl_mcp_env }}"
+  when: not _firecrawl_target_mcp_json_stat.stat.exists
+
+- name: Merge Firecrawl entry into existing mcp.json for {{ _firecrawl_target_name }}
+  when: _firecrawl_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _firecrawl_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _firecrawl_target_config_path }}"
+      register: _firecrawl_target_mcp_json_raw
+
+    - name: Write merged mcp.json for {{ _firecrawl_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _firecrawl_target_config_path }}"
+        content: "{{ _firecrawl_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _firecrawl_target_existing: "{{ _firecrawl_target_mcp_json_raw.content | b64decode | from_json }}"
+        _firecrawl_entry:
+          command: "{{ firecrawl_mcp_command }}"
+          args: "{{ firecrawl_mcp_args }}"
+          env: "{{ firecrawl_mcp_env }}"
+        _firecrawl_target_servers: >-
+          {{
+            (_firecrawl_target_existing.mcpServers | default({}))
+            | combine({(firecrawl_mcp_server_key): _firecrawl_entry})
+          }}
+        _firecrawl_target_merged: "{{ _firecrawl_target_existing | combine({'mcpServers': _firecrawl_target_servers}) }}"
