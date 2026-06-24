@@ -392,6 +392,25 @@ Use that order on purpose:
 - rule fourth for repo-specific ambient guidance
 - docs last for broader explanation and capability inventory
 
+## Capability Packet Default
+
+Grouped capabilities are installed as capability packets, not scattered edits.
+This applies to framework extensions, skill families, MCP stacks, feature
+families, and non-trivial Ansible capability groups.
+
+Each packet needs a manifest that tracks:
+
+- `owned_files`
+- `integration_files` when existing framework surfaces are touched
+- `update_behavior`
+- `removal_behavior`
+- lifecycle/apply/verify/undo surfaces when runtime automation exists
+
+Broad framework docs and rules should carry short integration anchors that point
+back to the packet manifest or primary capability document. Detailed capability
+behavior belongs with the packet so install, update, and removal remain
+predictable.
+
 New or meaningfully updated skills should carry:
 
 - a `capability.yml`

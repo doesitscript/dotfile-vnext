@@ -1,0 +1,52 @@
+---
+name: framework-capability-packet-default
+family: framework
+kind: governance_capability
+portable: false
+
+summary: Require grouped framework capabilities to be introduced as manifest-owned, removable capability packets.
+
+capabilities:
+  - capability_packet_boundary
+  - owned_file_tracking
+  - integration_anchor_tracking
+  - update_and_removal_contracts
+  - grouped_capability_plan_governance
+
+suggested_roles:
+  - planner_steward
+  - researcher
+  - executor
+  - independent_validator
+
+trigger_style: repo_guided
+
+primary_doc: docs/codex_framework/capability_introduction_checklist.md
+plan_packet: docs/plans/2026-06-24--framework-capability-packet-default/README.md
+
+companion_rules:
+  - .cursor/rules/framework-plan-governance.mdc
+
+owned_files:
+  - docs/codex_framework/capabilities/framework-capability-packet-default.yml
+  - docs/plans/2026-06-24--framework-capability-packet-default/README.md
+
+integration_files:
+  - docs/codex_framework/capability_introduction_checklist.md
+  - docs/codex_framework/README.md
+  - docs/codex_framework/partner_process.md
+  - docs/codex_framework/plan-governance-dependencies.md
+  - docs/plans/README.md
+  - .cursor/rules/framework-plan-governance.mdc
+
+update_behavior:
+  strategy: update-owned-files-and-integration-anchors
+  notes: >
+    Keep the detailed packet contract in the manifest and checklist. Broad
+    framework docs and rules should stay as short enforcement anchors.
+
+removal_behavior:
+  strategy: remove-owned-files-and-reverse-integration-anchors
+  notes: >
+    Remove owned files first, then reverse the short packet-boundary anchors in
+    integration_files. Do not delete broad framework docs or rules.

@@ -53,6 +53,13 @@ rows alone. Canonical spec:
 the plan packet and pass the diagram gate before marking the plan slice complete.
 Build the plan verification receipt before calling the slice implemented.
 
+**Capability packet boundary:** grouped capability plans must include
+`## Capability Packet Boundary` before build/execute. The section must name the
+capability identifier, owner manifest path, owned files, integration anchors,
+update behavior, and uninstall/removal path. This applies to framework
+extensions, skill families, MCP stacks, feature families, and non-trivial Ansible
+capability groups. Tiny one-file fixes are exempt.
+
 **Scope vs sequencing:** A plan may say which slice runs first, but sequencing
 must not shrink approved scope. If the user decides that multiple model lanes,
 agent roles, hosts, or resources belong in the effort, the plan must carry the
@@ -75,6 +82,27 @@ decision has not yet been fully wired:
 The section is empty or omitted only when all user decisions in the current
 planning thread are already represented in the plan's scope, checklist,
 dependencies, and receipt.
+
+## Required Capability Packet Boundary
+
+Every grouped capability plan must include this section before build/execute:
+
+```markdown
+## Capability Packet Boundary
+
+| Field | Value |
+|-------|-------|
+| Capability identifier |  |
+| Owner manifest |  |
+| Owned files |  |
+| Integration anchors |  |
+| Update behavior |  |
+| Removal behavior |  |
+```
+
+Use the manifest as the cleanup source of truth. Removal means deleting owned
+files and reversing integration anchors; it does not mean deleting broad
+directories or asking future agents to rediscover every related file.
 
 ## Required Diagram Checklist
 

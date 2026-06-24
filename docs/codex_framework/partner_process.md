@@ -60,6 +60,13 @@ When a skill owns companion rule files, references, or other removable/update
 surfaces, list them under `owned_files` in the manifest so updated drops can
 replace the right files and removals do not leave companion surfaces behind.
 
+For grouped capabilities more broadly — framework extensions, skill families,
+MCP stacks, feature families, and non-trivial Ansible capability groups — use a
+manifest-owned capability packet. The manifest is the source of truth for
+`owned_files`, `integration_files`, `update_behavior`, and `removal_behavior`.
+Global framework docs and rules should keep short anchors that route back to the
+packet instead of absorbing scattered capability-specific instructions.
+
 ## Core Commitments
 
 1. The user sets the target. The agent does not invent a new milestone and quietly optimize for that instead.

@@ -6,6 +6,8 @@
 
 **Plan verification receipt (execute/complete):** [plan-verification-receipt.md](plan-verification-receipt.md) — obligation inventory + evidence for the full plan packet, not checklist-only
 
+**Capability packet boundary:** [capability_introduction_checklist.md](capability_introduction_checklist.md) and [docs/plans/README.md](../plans/README.md) — grouped capabilities must declare the owner manifest, `owned_files`, `integration_files`, update behavior, and removal behavior before build/execute
+
 ## Upstream authorities
 
 | Authority | Defines |
@@ -21,10 +23,11 @@
 |----------|---------|
 | Saving or promoting `docs/plans/**/README.md` | Always; Required NetBox Slice when `netbox_scope: true` or services/naming in scope |
 | Conversational `<proposed_plan>` with implementation scope | Always |
-| [capability_introduction_checklist.md](capability_introduction_checklist.md) item 9 | New capability + plan packet |
+| [capability_introduction_checklist.md](capability_introduction_checklist.md) | New grouped capability + capability packet + plan packet |
 | [complete-plan-lifecycle skill](../../.cursor/skills/complete-plan-lifecycle/SKILL.md) | Completing or renaming plan packets — requires Plan verification receipt |
 | [plan-verification-receipt.md](plan-verification-receipt.md) | Execute, status report, or `lifecycle: implemented` |
 | [framework-knowledge-and-research.mdc](../../.cursor/rules/framework-knowledge-and-research.mdc) | Naming schema work tied to a stored plan |
+| Capability packet manifests | Grouped capability plans before build/execute; include `## Capability Packet Boundary` |
 
 ## Evaluation packet
 
