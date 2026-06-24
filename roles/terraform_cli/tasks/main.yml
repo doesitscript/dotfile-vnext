@@ -1,0 +1,9 @@
+---
+- name: Require macOS for Terraform CLI package management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "terraform_cli currently supports macOS through Homebrew."
+
+- name: Manage Terraform CLI on macOS
+  ansible.builtin.import_tasks: mac.yml

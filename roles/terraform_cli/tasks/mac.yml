@@ -1,0 +1,76 @@
+---
+- name: Inspect installed Homebrew taps
+  ansible.builtin.command:
+    argv:
+      - brew
+      - tap
+  register: terraform_cli_installed_taps
+  changed_when: false
+
+- name: Add HashiCorp Homebrew tap
+  community.general.homebrew_tap:
+    name: "{{ terraform_cli_homebrew_tap }}"
+    state: present
+  when: terraform_cli_state == "present"
+
+- name: Manage Terraform CLI formula
+  community.general.homebrew:
+    name: "{{ terraform_cli_homebrew_formula }}"
+    state: "{{ terraform_cli_state }}"
+  when:
+    - not ansible_check_mode or terraform_cli_homebrew_tap in terraform_cli_installed_taps.stdout_lines
+
+- name: Report deferred Terraform formula preview
+  ansible.builtin.debug:
+    msg: >-
+      Terraform formula management will run after the
+      {{ terraform_cli_homebrew_tap }} tap is added during apply.
+  when:
+    - ansible_check_mode
+    - terraform_cli_state == "present"
+    - terraform_cli_homebrew_tap not in terraform_cli_installed_taps.stdout_lines
+
+- name: Verify installed Terraform CLI version
+  ansible.builtin.command:
+    argv:
+      - terraform
+      - version
+  register: terraform_cli_version
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - terraform_cli_verify | bool
+    - terraform_cli_state == "present"
+
+- name: Check removed Terraform CLI formula
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --formula
+      - terraform
+  register: terraform_cli_absent_check
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - terraform_cli_verify | bool
+    - terraform_cli_state == "absent"
+
+- name: Verify Terraform CLI formula is absent
+  ansible.builtin.assert:
+    that:
+      - terraform_cli_absent_check.rc != 0
+    fail_msg: "Terraform CLI remains installed after requesting absent state."
+  when:
+    - not ansible_check_mode
+    - terraform_cli_verify | bool
+    - terraform_cli_state == "absent"
+
+- name: Report Terraform CLI version
+  ansible.builtin.debug:
+    msg: "{{ terraform_cli_version.stdout_lines[0] }}"
+  when:
+    - not ansible_check_mode
+    - terraform_cli_verify | bool
+    - terraform_cli_state == "present"
