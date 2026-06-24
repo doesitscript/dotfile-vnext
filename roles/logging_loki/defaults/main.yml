@@ -31,3 +31,9 @@ logging_loki_grafana_port: 3000
 
 # Docker network name shared by Loki and Grafana
 logging_loki_docker_network: "logging"
+
+# Host-side readiness monitor. The official Loki image is distroless and cannot
+# execute an in-container HTTP healthcheck, so systemd probes Loki's /ready
+# endpoint from the Docker host.
+logging_loki_readiness_monitor_enabled: true
+logging_loki_readiness_monitor_interval: "1min"

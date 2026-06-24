@@ -45,6 +45,10 @@
       com.homelab.deployed-by: "logging_loki"
     user: "0"
     command: "-config.file=/etc/loki/local-config.yaml"
+    # Loki's distroless image has no shell, so its inherited CMD-SHELL
+    # healthcheck can never run. Readiness is verified by the URI task below.
+    healthcheck:
+      test: ["NONE"]
     ports:
       - "{{ logging_loki_port }}:3100"
     volumes:
@@ -85,3 +89,46 @@
   retries: 12
   delay: 5
   tags: [logging, logging_loki, logging_install]
+
+- name: Install curl for host-side Loki readiness monitoring
+  ansible.builtin.package:
+    name: curl
+    state: present
+  become: true
+  when: logging_loki_readiness_monitor_enabled | bool
+  tags: [logging, logging_loki, logging_monitoring]
+
+- name: Install Loki readiness monitor systemd units
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "/etc/systemd/system/{{ item.dest }}"
+    mode: "0644"
+  loop:
+    - src: loki-readiness-check.service.j2
+      dest: loki-readiness-check.service
+    - src: loki-readiness-check.timer.j2
+      dest: loki-readiness-check.timer
+  become: true
+  register: _logging_loki_readiness_units
+  when: logging_loki_readiness_monitor_enabled | bool
+  tags: [logging, logging_loki, logging_monitoring]
+
+- name: Enable recurring Loki readiness monitoring
+  ansible.builtin.systemd_service:
+    name: loki-readiness-check.timer
+    daemon_reload: "{{ _logging_loki_readiness_units is changed }}"
+    enabled: true
+    state: started
+  become: true
+  when: logging_loki_readiness_monitor_enabled | bool
+  tags: [logging, logging_loki, logging_monitoring]
+
+- name: Remove recurring Loki readiness monitoring when disabled
+  ansible.builtin.systemd_service:
+    name: loki-readiness-check.timer
+    enabled: false
+    state: stopped
+  become: true
+  failed_when: false
+  when: not (logging_loki_readiness_monitor_enabled | bool)
+  tags: [logging, logging_loki, logging_monitoring]

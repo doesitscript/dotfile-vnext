@@ -1,0 +1,8 @@
+[Unit]
+Description=Probe Grafana Loki readiness endpoint
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/curl --fail --silent --show-error --max-time 10 http://127.0.0.1:{{ logging_loki_port }}/ready
