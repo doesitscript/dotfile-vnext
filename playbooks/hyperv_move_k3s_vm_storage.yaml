@@ -1,0 +1,155 @@
+---
+# Controlled-outage relocation of an existing K3s VM boot VHDX.
+#
+# Preview:
+#   ansible-playbook playbooks/hyperv_move_k3s_vm_storage.yaml \
+#     -i inventory/inventory.yaml --limit hom-lab-ctl-hvh-02 --check
+#
+# Apply:
+#   ansible-playbook playbooks/hyperv_move_k3s_vm_storage.yaml \
+#     -i inventory/inventory.yaml --limit hom-lab-ctl-hvh-02
+#
+- name: Hyper-V K3s VM storage relocation
+  hosts: windows_hosts
+  gather_facts: false
+
+  tasks:
+    - name: Verify K3s VM storage relocation inputs
+      ansible.builtin.assert:
+        that:
+          - hyperv_ubuntu_k3s_vm_hostname | default('') | length > 0
+          - hyperv_ubuntu_k3s_vm_host_vhdx_path | default('') | length > 0
+        fail_msg: >-
+          The target host must declare hyperv_ubuntu_k3s_vm_hostname and
+          hyperv_ubuntu_k3s_vm_host_vhdx_path.
+
+    - name: Preview K3s VM storage relocation
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $vmName = '{{ hyperv_ubuntu_k3s_vm_hostname }}'
+          $destination = '{{ hyperv_ubuntu_k3s_vm_host_vhdx_path }}'
+          $vm = Get-VM -Name $vmName -ErrorAction Stop
+          $disk = Get-VMHardDiskDrive -VMName $vmName -ErrorAction Stop | Select-Object -First 1
+          $source = $disk.Path
+          $sourceItem = Get-Item $source -ErrorAction Stop
+          $destinationDrive = Get-Volume -DriveLetter ([System.IO.Path]::GetPathRoot($destination).Substring(0, 1))
+          $Ansible.Changed = $false
+          $Ansible.Result = @{
+            vm = $vmName
+            vm_state = $vm.State.ToString()
+            source = $source
+            source_file_gb = [math]::Round($sourceItem.Length / 1GB, 2)
+            destination = $destination
+            destination_exists = Test-Path $destination
+            destination_free_gb = [math]::Round($destinationDrive.SizeRemaining / 1GB, 2)
+            enough_space = $destinationDrive.SizeRemaining -gt $sourceItem.Length
+            checkpoints = @(Get-VMSnapshot -VMName $vmName -ErrorAction SilentlyContinue).Count
+          }
+      register: _hyperv_k3s_storage_preview
+      check_mode: false
+
+    - name: Verify K3s VM storage relocation is safe to start
+      ansible.builtin.assert:
+        that:
+          - >-
+            _hyperv_k3s_storage_preview.result.source
+            == _hyperv_k3s_storage_preview.result.destination
+            or _hyperv_k3s_storage_preview.result.enough_space | bool
+          - _hyperv_k3s_storage_preview.result.checkpoints | int == 0
+        fail_msg: >-
+          Storage relocation requires enough destination free space and zero
+          Hyper-V checkpoints.
+
+    - name: Request graceful K3s guest shutdown before storage relocation
+      ansible.builtin.systemd_service:
+        name: poweroff.target
+        state: started
+        no_block: true
+      become: true
+      delegate_to: "{{ hyperv_ubuntu_k3s_vm_inventory_host }}"
+      when:
+        - not ansible_check_mode
+        - _hyperv_k3s_storage_preview.result.source != _hyperv_k3s_storage_preview.result.destination
+        - _hyperv_k3s_storage_preview.result.vm_state != 'Off'
+
+    - name: Wait for Hyper-V to observe the K3s guest as off
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $vmName = '{{ hyperv_ubuntu_k3s_vm_hostname }}'
+          $deadline = (Get-Date).AddMinutes(5)
+          do {
+            $state = (Get-VM -Name $vmName -ErrorAction Stop).State.ToString()
+            if ($state -eq 'Off') {
+              break
+            }
+            Start-Sleep -Seconds 2
+          } while ((Get-Date) -lt $deadline)
+          if ($state -ne 'Off') {
+            throw 'VM did not shut down gracefully within five minutes; storage move not attempted.'
+          }
+          $Ansible.Changed = $false
+          $Ansible.Result = @{ vm = $vmName; state = $state }
+      when:
+        - not ansible_check_mode
+        - _hyperv_k3s_storage_preview.result.source != _hyperv_k3s_storage_preview.result.destination
+
+    - name: Move K3s VM VHDX and restart the VM
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $vmName = '{{ hyperv_ubuntu_k3s_vm_hostname }}'
+          $destination = '{{ hyperv_ubuntu_k3s_vm_host_vhdx_path }}'
+          $destinationDir = Split-Path $destination
+          $destinationDriveLetter = [System.IO.Path]::GetPathRoot($destination).Substring(0, 1)
+          $vm = Get-VM -Name $vmName -ErrorAction Stop
+          $disk = Get-VMHardDiskDrive -VMName $vmName -ErrorAction Stop | Select-Object -First 1
+          $source = $disk.Path
+          $Ansible.Changed = $false
+
+          if ($source -ne $destination) {
+            if ($vm.State.ToString() -ne 'Off') {
+              throw 'VM must be off before storage relocation.'
+            }
+
+            New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+            $mapping = @(@{
+              SourceFilePath = $source
+              DestinationFilePath = $destination
+            })
+            Move-VMStorage -VMName $vmName -Vhds $mapping -ErrorAction Stop
+            $Ansible.Changed = $true
+          }
+
+          $attachedPath = (Get-VMHardDiskDrive -VMName $vmName -ErrorAction Stop | Select-Object -First 1).Path
+          if ($attachedPath -ne $destination) {
+            throw "Hyper-V disk attachment is not at desired path: $attachedPath"
+          }
+
+          if ((Get-VM -Name $vmName).State.ToString() -ne 'Running') {
+            Start-VM -Name $vmName -ErrorAction Stop
+            $Ansible.Changed = $true
+          }
+
+          $Ansible.Result = @{
+            vm = $vmName
+            state = (Get-VM -Name $vmName).State.ToString()
+            source_exists = Test-Path $source
+            destination_exists = Test-Path $destination
+            attached_path = $attachedPath
+            destination_file_gb = [math]::Round((Get-Item $destination).Length / 1GB, 2)
+            destination_free_gb = [math]::Round((Get-Volume -DriveLetter $destinationDriveLetter).SizeRemaining / 1GB, 2)
+          }
+      register: _hyperv_k3s_storage_move
+      when:
+        - not ansible_check_mode
+        - _hyperv_k3s_storage_preview.result.source != _hyperv_k3s_storage_preview.result.destination
+
+    - name: Show K3s VM storage relocation result
+      ansible.builtin.debug:
+        msg: >-
+          {{
+            _hyperv_k3s_storage_move.result
+            | default(_hyperv_k3s_storage_preview.result)
+          }}

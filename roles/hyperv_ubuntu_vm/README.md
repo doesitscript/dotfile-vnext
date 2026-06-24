@@ -62,6 +62,31 @@ The role treats the VM as one capability:
 - Undo: rerun with `hyperv_ubuntu_vm_state=absent`
 - Change class: bootstrap plus idempotent lifecycle management
 
+## Existing K3s VM Storage Relocation
+
+Use the dedicated relocation playbook after declaring
+`hyperv_ubuntu_k3s_vm_host_vhdx_path` in the owning Hyper-V host inventory.
+The playbook previews the exact source, destination, free space, VM state, and
+checkpoint count before it requests a graceful guest shutdown.
+
+```bash
+# Preview without shutting down or moving the VM
+ansible-playbook playbooks/hyperv_move_k3s_vm_storage.yaml \
+  -i inventory/inventory.yaml --limit hom-lab-ctl-hvh-02 --check
+
+# Apply the controlled-outage move
+ansible-playbook playbooks/hyperv_move_k3s_vm_storage.yaml \
+  -i inventory/inventory.yaml --limit hom-lab-ctl-hvh-02
+```
+
+- Verify: rerun the preview and confirm `source == destination`; verify the
+  guest is reachable and its workloads are healthy.
+- Undo: declare the previous internal-disk VHDX path, verify that destination
+  has enough free space, and run the same controlled-outage playbook.
+- Change class: idempotent desired-state check plus controlled-outage storage
+  relocation.
+- Never target an external USB backup disk for an active VM VHDX.
+
 ## Troubleshooting controls
 
 Standard variables:
@@ -99,6 +124,18 @@ Dedicated saved-artifact playbook:
 ## Notes
 
 - Host feature and switch ownership stay with `hyperv_networking`
+- Active VM workload disks should use a dedicated internal SSD when one is
+  available. Do not place active VHDXs on external USB backup disks.
+- Keep the Windows system disk focused on Windows and host tooling. A K3s guest
+  that stores its OS, containerd data, and persistent volumes in one VHDX can
+  transfer a database I/O storm directly into Windows when that VHDX is on
+  `C:`.
+- Override `hyperv_ubuntu_vm_host_vhdx_path` from the capability-specific
+  wrapper inventory to place a VM boot VHDX on the intended internal workload
+  disk. Moving an existing VHDX is a controlled-outage operation and must be
+  previewed and performed separately before converging the new path. Use
+  [hyperv_move_k3s_vm_storage.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/hyperv_move_k3s_vm_storage.yaml)
+  for the K3s VM relocation workflow.
 - `absent` now preserves cached source artifacts such as downloaded ISOs and
   Quick Create archives under the host root directory so repeated loops do not
   redownload large files unnecessarily

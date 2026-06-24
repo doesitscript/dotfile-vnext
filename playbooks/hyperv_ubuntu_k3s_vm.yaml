@@ -10,6 +10,12 @@
 #   hyperv_ubuntu_k3s_vm_state: present | absent
 #   hyperv_ubuntu_k3s_vm_hostname: <vm-name-and-guest-hostname>
 #   hyperv_ubuntu_k3s_vm_inventory_host: <inventory-host>
+#   hyperv_ubuntu_k3s_vm_host_vhdx_path: <host path for the K3s boot VHDX>
+#
+# Storage rule:
+#   Keep active K3s VHDXs off the Windows system disk when a dedicated internal
+#   workload disk is available. External USB disks are backup targets, not
+#   active VM workload storage.
 #
 # Commands:
 #   Preview target selection:
@@ -106,6 +112,10 @@
                 | default(hostvars[item].hyperv_ubuntu_k3s_vm_hostname | default('unset'))
               ),
               'guest_ipv4': hostvars[item].hyperv_ubuntu_k3s_vm_autoinstall_network_ipv4 | default('unset'),
+              'host_vhdx_path': (
+                hostvars[item].hyperv_ubuntu_k3s_vm_host_vhdx_path
+                | default('role default')
+              ),
               'guest_subnet': (hostvars[item].hyperv_config | default({})).guest_subnet_ipv4 | default('unset'),
               'guest_switch': (hostvars[item].hyperv_config | default({})).guest_switch_name | default('unset'),
               'reason': hostvars[item].hyperv_ubuntu_k3s_vm_selection_reason | default('not classified')
@@ -160,6 +170,17 @@
         hyperv_ubuntu_vm_cpus: "{{ hyperv_ubuntu_k3s_vm_cpus }}"
         hyperv_ubuntu_vm_memory: "{{ hyperv_ubuntu_k3s_vm_memory }}"
         hyperv_ubuntu_vm_disk: "{{ hyperv_ubuntu_k3s_vm_disk }}"
+        hyperv_ubuntu_vm_host_vhdx_path: >-
+          {{
+            hyperv_ubuntu_k3s_vm_host_vhdx_path
+            | default(
+              'C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\'
+              ~ hyperv_ubuntu_k3s_vm_hostname
+              ~ '\\'
+              ~ hyperv_ubuntu_k3s_vm_hostname
+              ~ '.vhdx'
+            )
+          }}
         hyperv_ubuntu_vm_bootstrap_user: "{{ hyperv_ubuntu_k3s_vm_bootstrap_user }}"
         hyperv_ubuntu_vm_ssh_port: "{{ hyperv_ubuntu_k3s_vm_ssh_port }}"
         hyperv_ubuntu_vm_source_mode: "{{ hyperv_ubuntu_k3s_vm_source_mode }}"
