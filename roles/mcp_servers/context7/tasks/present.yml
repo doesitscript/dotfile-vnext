@@ -1,0 +1,60 @@
+---
+- name: Load Context7 MCP secrets from mac-dev vault
+  ansible.builtin.import_tasks: load_vault.yml
+
+- name: Install Context7 MCP on macOS
+  ansible.builtin.import_tasks: mac.yml
+  when:
+    - not (context7_mcp_command | default(''))
+    - ansible_facts['system'] == "Darwin"
+
+- name: Install Context7 MCP on Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when:
+    - not (context7_mcp_command | default(''))
+    - ansible_facts['distribution'] == "Ubuntu"
+
+- name: Fail if Context7 MCP command could not be resolved
+  ansible.builtin.fail:
+    msg: >-
+      Context7 MCP command is empty after installation. This role currently
+      supports macOS and Ubuntu via npm, or an explicit context7_mcp_command override.
+  when: not (context7_mcp_command | default(''))
+
+- name: Render Context7 MCP runtime env file
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/render_env_file.yml"
+  vars:
+    _mcp_env_file_path: "{{ context7_mcp_env_file_path }}"
+    _mcp_env_vars:
+      CONTEXT7_API_KEY: "{{ context7_mcp_api_key }}"
+
+- name: Set Context7 Codex MCP entry after command resolution
+  ansible.builtin.set_fact:
+    context7_mcp_codex_entry:
+      command: "{{ context7_mcp_wrapper_path }}"
+      args: "{{ [context7_mcp_env_file_path, context7_mcp_command] + context7_mcp_args }}"
+      env: "{{ context7_mcp_env }}"
+      required: false
+      startup_timeout_sec: 40
+
+- name: Ensure Context7 entry exists in Cursor mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _context7_target_name: "cursor"
+    _context7_target_config_path: "{{ context7_mcp_cursor_config_path }}"
+  when: _context7_target_cursor_selected | bool
+
+- name: Ensure Context7 entry exists in VS Code mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _context7_target_name: "vscode"
+    _context7_target_config_path: "{{ context7_mcp_vscode_config_path }}"
+  when: _context7_target_vscode_selected | bool
+
+- name: Ensure Context7 entry exists in Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ context7_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ context7_mcp_server_key }}"
+    _mcp_codex_entry: "{{ context7_mcp_codex_entry }}"
+  when: _context7_target_codex_selected | bool

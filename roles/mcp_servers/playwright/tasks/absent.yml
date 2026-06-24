@@ -1,0 +1,29 @@
+---
+- name: Remove Playwright MCP package via npm
+  community.general.npm:
+    name: "{{ playwright_mcp_package_name }}"
+    global: true
+    state: absent
+    executable: "{{ node_npm_executable }}"
+  timeout: 300
+
+- name: Remove Playwright entry from Cursor mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _playwright_target_name: "cursor"
+    _playwright_target_config_path: "{{ playwright_mcp_cursor_config_path }}"
+  when: _playwright_target_cursor_selected | bool
+
+- name: Remove Playwright entry from VS Code mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _playwright_target_name: "vscode"
+    _playwright_target_config_path: "{{ playwright_mcp_vscode_config_path }}"
+  when: _playwright_target_vscode_selected | bool
+
+- name: Remove Playwright entry from Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ playwright_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ playwright_mcp_server_key }}"
+  when: _playwright_target_codex_selected | bool

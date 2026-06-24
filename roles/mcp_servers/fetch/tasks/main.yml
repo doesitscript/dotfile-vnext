@@ -1,0 +1,130 @@
+---
+- name: Resolve node_npm_executable if not already set by common/node
+  ansible.builtin.include_role:
+    name: common/node
+    tasks_from: resolve_npm.yml
+    apply:
+      tags:
+        - mcp
+        - fetch
+  when:
+    - node_npm_executable is not defined
+    - fetch_mcp_state == "absent" or not (fetch_mcp_command | default(''))
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+  tags:
+    - mcp
+    - fetch
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Capture requested Fetch MCP target tags
+  ansible.builtin.set_fact:
+    _fetch_requested_target_tags: >-
+      {{
+        (ansible_run_tags | default([]))
+        | intersect(['mcp_target_cursor', 'mcp_target_vscode', 'mcp_target_codex', 'mcp_target_openapi'])
+      }}
+  tags:
+    - mcp
+    - fetch
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Validate configured Fetch MCP targets
+  ansible.builtin.assert:
+    that:
+      - (fetch_mcp_targets | difference(fetch_mcp_supported_targets)) | length == 0
+    fail_msg: >-
+      fetch_mcp_targets contains unsupported values:
+      {{ fetch_mcp_targets | difference(fetch_mcp_supported_targets) | to_json }}
+  tags:
+    - mcp
+    - fetch
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Determine active Fetch MCP client targets
+  ansible.builtin.set_fact:
+    _fetch_target_cursor_selected: >-
+      {{
+        ('mcp_target_cursor' in _fetch_requested_target_tags)
+        or
+        (
+          (_fetch_requested_target_tags | length) == 0
+          and ('cursor' in fetch_mcp_targets)
+        )
+      }}
+    _fetch_target_vscode_selected: >-
+      {{
+        ('mcp_target_vscode' in _fetch_requested_target_tags)
+        or
+        (
+          (_fetch_requested_target_tags | length) == 0
+          and ('vscode' in fetch_mcp_targets)
+        )
+      }}
+    _fetch_target_codex_selected: >-
+      {{
+        ('mcp_target_codex' in _fetch_requested_target_tags)
+        or
+        (
+          (_fetch_requested_target_tags | length) == 0
+          and ('codex' in fetch_mcp_targets)
+        )
+      }}
+    _fetch_target_openapi_selected: >-
+      {{
+        ('mcp_target_openapi' in _fetch_requested_target_tags)
+        or
+        (
+          (_fetch_requested_target_tags | length) == 0
+          and ('openapi' in fetch_mcp_targets)
+        )
+      }}
+  tags:
+    - mcp
+    - fetch
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Fail fast for the Fetch OpenAPI target stub
+  ansible.builtin.import_tasks: openapi_stub.yml
+  when: _fetch_target_openapi_selected | bool
+  tags:
+    - mcp
+    - fetch
+    - mcp_target_openapi
+
+- name: Ensure Fetch MCP server is present
+  ansible.builtin.import_tasks: present.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - fetch_mcp_state == "present"
+  tags:
+    - mcp
+    - fetch
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Ensure Fetch MCP server is absent
+  ansible.builtin.import_tasks: absent.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - fetch_mcp_state == "absent"
+  tags:
+    - mcp
+    - fetch
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi

@@ -1,0 +1,29 @@
+---
+- name: Check whether mcp.json exists for {{ _playwright_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _playwright_target_config_path }}"
+  register: _playwright_remove_target_mcp_json_stat
+
+- name: Remove Playwright entry from mcp.json for {{ _playwright_target_name }}
+  when: _playwright_remove_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _playwright_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _playwright_target_config_path }}"
+      register: _playwright_remove_target_mcp_json_raw
+
+    - name: Write mcp.json without the Playwright entry for {{ _playwright_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _playwright_target_config_path }}"
+        content: "{{ _playwright_remove_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _playwright_remove_target_existing: "{{ _playwright_remove_target_mcp_json_raw.content | b64decode | from_json }}"
+        _playwright_remove_target_filtered_servers: >-
+          {{
+            (_playwright_remove_target_existing.mcpServers | default({}))
+            | dict2items
+            | rejectattr('key', 'equalto', playwright_mcp_server_key)
+            | items2dict
+          }}
+        _playwright_remove_target_merged: "{{ _playwright_remove_target_existing | combine({'mcpServers': _playwright_remove_target_filtered_servers}) }}"

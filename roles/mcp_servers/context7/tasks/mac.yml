@@ -1,0 +1,43 @@
+---
+- name: Install Context7 MCP package via npm on macOS
+  community.general.npm:
+    name: "{{ context7_mcp_package_name }}"
+    global: true
+    state: present
+    executable: "{{ node_npm_executable }}"
+  timeout: 300
+
+- name: Check Context7 MCP binary candidates on macOS
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ _context7_bin_candidates }}"
+  register: _context7_mcp_bin_stats_mac
+  vars:
+    _context7_bin_candidates: >-
+      {{
+        context7_mcp_bin_candidates
+        if (context7_mcp_bin_candidates | length > 0)
+        else [
+          (node_npm_executable | dirname) ~ '/context7-mcp'
+        ]
+      }}
+
+- name: Set Context7 MCP command path for MCP clients on macOS
+  ansible.builtin.set_fact:
+    context7_mcp_command: "{{ (_context7_mcp_bin_stats_mac.results | selectattr('stat.exists') | map(attribute='item') | first) | default('') }}"
+
+- name: Fail if Context7 MCP binary was not found on macOS
+  ansible.builtin.fail:
+    msg: >-
+      Context7 MCP package installed, but no executable was found in
+      context7_mcp_bin_candidates={{ _context7_bin_candidates | to_json }}.
+  when: not (context7_mcp_command | default(''))
+  vars:
+    _context7_bin_candidates: >-
+      {{
+        context7_mcp_bin_candidates
+        if (context7_mcp_bin_candidates | length > 0)
+        else [
+          (node_npm_executable | dirname) ~ '/context7-mcp'
+        ]
+      }}

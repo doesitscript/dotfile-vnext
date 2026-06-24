@@ -1,0 +1,50 @@
+---
+- name: Install Playwright MCP on macOS
+  ansible.builtin.import_tasks: mac.yml
+  when:
+    - not (playwright_mcp_command | default(''))
+    - ansible_facts['system'] == "Darwin"
+
+- name: Install Playwright MCP on Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when:
+    - not (playwright_mcp_command | default(''))
+    - ansible_facts['distribution'] == "Ubuntu"
+
+- name: Fail if Playwright MCP command could not be resolved
+  ansible.builtin.fail:
+    msg: >-
+      Playwright MCP command is empty after installation. This role currently
+      supports macOS and Ubuntu via npm, or an explicit playwright_mcp_command override.
+  when: not (playwright_mcp_command | default(''))
+
+- name: Set Playwright Codex MCP entry after command resolution
+  ansible.builtin.set_fact:
+    playwright_mcp_codex_entry:
+      command: "{{ playwright_mcp_command }}"
+      args: "{{ playwright_mcp_args }}"
+      env: "{{ playwright_mcp_env }}"
+      required: false
+      startup_timeout_sec: 45
+
+- name: Ensure Playwright entry exists in Cursor mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _playwright_target_name: "cursor"
+    _playwright_target_config_path: "{{ playwright_mcp_cursor_config_path }}"
+  when: _playwright_target_cursor_selected | bool
+
+- name: Ensure Playwright entry exists in VS Code mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _playwright_target_name: "vscode"
+    _playwright_target_config_path: "{{ playwright_mcp_vscode_config_path }}"
+  when: _playwright_target_vscode_selected | bool
+
+- name: Ensure Playwright entry exists in Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ playwright_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ playwright_mcp_server_key }}"
+    _mcp_codex_entry: "{{ playwright_mcp_codex_entry }}"
+  when: _playwright_target_codex_selected | bool

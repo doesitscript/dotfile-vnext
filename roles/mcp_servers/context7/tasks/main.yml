@@ -1,0 +1,130 @@
+---
+- name: Resolve node_npm_executable if not already set by common/node
+  ansible.builtin.include_role:
+    name: common/node
+    tasks_from: resolve_npm.yml
+    apply:
+      tags:
+        - mcp
+        - context7
+  when:
+    - node_npm_executable is not defined
+    - context7_mcp_state == "absent" or not (context7_mcp_command | default(''))
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+  tags:
+    - mcp
+    - context7
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Capture requested Context7 MCP target tags
+  ansible.builtin.set_fact:
+    _context7_requested_target_tags: >-
+      {{
+        (ansible_run_tags | default([]))
+        | intersect(['mcp_target_cursor', 'mcp_target_vscode', 'mcp_target_codex', 'mcp_target_openapi'])
+      }}
+  tags:
+    - mcp
+    - context7
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Validate configured Context7 MCP targets
+  ansible.builtin.assert:
+    that:
+      - (context7_mcp_targets | difference(context7_mcp_supported_targets)) | length == 0
+    fail_msg: >-
+      context7_mcp_targets contains unsupported values:
+      {{ context7_mcp_targets | difference(context7_mcp_supported_targets) | to_json }}
+  tags:
+    - mcp
+    - context7
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Determine active Context7 MCP client targets
+  ansible.builtin.set_fact:
+    _context7_target_cursor_selected: >-
+      {{
+        ('mcp_target_cursor' in _context7_requested_target_tags)
+        or
+        (
+          (_context7_requested_target_tags | length) == 0
+          and ('cursor' in context7_mcp_targets)
+        )
+      }}
+    _context7_target_vscode_selected: >-
+      {{
+        ('mcp_target_vscode' in _context7_requested_target_tags)
+        or
+        (
+          (_context7_requested_target_tags | length) == 0
+          and ('vscode' in context7_mcp_targets)
+        )
+      }}
+    _context7_target_codex_selected: >-
+      {{
+        ('mcp_target_codex' in _context7_requested_target_tags)
+        or
+        (
+          (_context7_requested_target_tags | length) == 0
+          and ('codex' in context7_mcp_targets)
+        )
+      }}
+    _context7_target_openapi_selected: >-
+      {{
+        ('mcp_target_openapi' in _context7_requested_target_tags)
+        or
+        (
+          (_context7_requested_target_tags | length) == 0
+          and ('openapi' in context7_mcp_targets)
+        )
+      }}
+  tags:
+    - mcp
+    - context7
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Fail fast for the Context7 OpenAPI target stub
+  ansible.builtin.import_tasks: openapi_stub.yml
+  when: _context7_target_openapi_selected | bool
+  tags:
+    - mcp
+    - context7
+    - mcp_target_openapi
+
+- name: Ensure Context7 MCP server is present
+  ansible.builtin.import_tasks: present.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - context7_mcp_state == "present"
+  tags:
+    - mcp
+    - context7
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Ensure Context7 MCP server is absent
+  ansible.builtin.import_tasks: absent.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - context7_mcp_state == "absent"
+  tags:
+    - mcp
+    - context7
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi

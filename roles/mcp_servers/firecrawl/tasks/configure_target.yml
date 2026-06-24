@@ -17,8 +17,8 @@
     content: "{{ {'mcpServers': {(firecrawl_mcp_server_key): _firecrawl_entry}} | to_nice_json }}\n"
   vars:
     _firecrawl_entry:
-      command: "{{ firecrawl_mcp_command }}"
-      args: "{{ firecrawl_mcp_args }}"
+      command: "{{ firecrawl_mcp_wrapper_path }}"
+      args: "{{ [firecrawl_mcp_env_file_path, firecrawl_mcp_command] + firecrawl_mcp_args }}"
       env: "{{ firecrawl_mcp_env }}"
   when: not _firecrawl_target_mcp_json_stat.stat.exists
 
@@ -38,8 +38,8 @@
       vars:
         _firecrawl_target_existing: "{{ _firecrawl_target_mcp_json_raw.content | b64decode | from_json }}"
         _firecrawl_entry:
-          command: "{{ firecrawl_mcp_command }}"
-          args: "{{ firecrawl_mcp_args }}"
+          command: "{{ firecrawl_mcp_wrapper_path }}"
+          args: "{{ [firecrawl_mcp_env_file_path, firecrawl_mcp_command] + firecrawl_mcp_args }}"
           env: "{{ firecrawl_mcp_env }}"
         _firecrawl_target_servers: >-
           {{

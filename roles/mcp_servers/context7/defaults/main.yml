@@ -1,0 +1,35 @@
+---
+context7_mcp_state: present
+context7_mcp_package_name: "@upstash/context7-mcp"
+context7_mcp_server_key: "context7"
+
+context7_mcp_project_root: "{{ dotfiles_home | default(playbook_dir | dirname | dirname) }}"
+context7_mcp_targets:
+  - cursor
+context7_mcp_supported_targets:
+  - cursor
+  - vscode
+  - codex
+  - openapi
+
+context7_mcp_cursor_config_path: "{{ context7_mcp_project_root }}/.cursor/mcp.json"
+context7_mcp_vscode_config_path: "{{ context7_mcp_project_root }}/.vscode/mcp.json"
+context7_mcp_codex_config_path: "{{ context7_mcp_project_root }}/.codex/config.toml"
+context7_mcp_role_path: "roles/mcp_servers/context7"
+context7_mcp_wrapper_path: "{{ context7_mcp_project_root }}/bin/mcp-server-env-wrapper"
+context7_mcp_env_file_path: "{{ ansible_env.HOME }}/.config/dotfile-vnext/mcp/env.d/context7.env"
+
+context7_mcp_command: ""
+context7_mcp_args: []
+context7_mcp_api_key: ""
+context7_mcp_env:
+  _MCP_ANSIBLE_ROLE_PATH: "{{ context7_mcp_role_path }}"
+
+context7_mcp_codex_entry:
+  command: "{{ context7_mcp_wrapper_path }}"
+  args: "{{ [context7_mcp_env_file_path, context7_mcp_command] + context7_mcp_args }}"
+  env: "{{ context7_mcp_env }}"
+  required: false
+  startup_timeout_sec: 40
+
+context7_mcp_bin_candidates: []

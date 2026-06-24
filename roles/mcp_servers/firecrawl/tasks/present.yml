@@ -2,18 +2,6 @@
 - name: Load Firecrawl MCP secrets from mac-dev vault
   ansible.builtin.import_tasks: load_vault.yml
 
-- name: Build Firecrawl MCP runtime environment
-  ansible.builtin.set_fact:
-    firecrawl_mcp_env: >-
-      {{
-        firecrawl_mcp_env
-        | combine({'FIRECRAWL_API_KEY': firecrawl_mcp_api_key})
-        | combine({'FIRECRAWL_API_URL': firecrawl_mcp_api_url}, recursive=True)
-        if (firecrawl_mcp_api_url | default('') | length > 0)
-        else firecrawl_mcp_env | combine({'FIRECRAWL_API_KEY': firecrawl_mcp_api_key})
-      }}
-  no_log: true
-
 - name: Install Firecrawl MCP on macOS
   ansible.builtin.import_tasks: mac.yml
   when:
@@ -33,11 +21,26 @@
       supports macOS and Ubuntu via npm, or an explicit firecrawl_mcp_command override.
   when: not (firecrawl_mcp_command | default(''))
 
+- name: Render Firecrawl MCP runtime env file
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/render_env_file.yml"
+  vars:
+    _mcp_env_file_path: "{{ firecrawl_mcp_env_file_path }}"
+    _mcp_env_vars: >-
+      {{
+        {'FIRECRAWL_API_KEY': firecrawl_mcp_api_key}
+        | combine(
+            {'FIRECRAWL_API_URL': firecrawl_mcp_api_url},
+            recursive=True
+          )
+          if (firecrawl_mcp_api_url | default('') | length > 0)
+          else {'FIRECRAWL_API_KEY': firecrawl_mcp_api_key}
+      }}
+
 - name: Set Firecrawl Codex MCP entry after command resolution
   ansible.builtin.set_fact:
     firecrawl_mcp_codex_entry:
-      command: "{{ firecrawl_mcp_command }}"
-      args: "{{ firecrawl_mcp_args }}"
+      command: "{{ firecrawl_mcp_wrapper_path }}"
+      args: "{{ [firecrawl_mcp_env_file_path, firecrawl_mcp_command] + firecrawl_mcp_args }}"
       env: "{{ firecrawl_mcp_env }}"
       required: false
 

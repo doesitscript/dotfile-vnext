@@ -1,0 +1,34 @@
+---
+- name: Remove Context7 MCP package via npm
+  community.general.npm:
+    name: "{{ context7_mcp_package_name }}"
+    global: true
+    state: absent
+    executable: "{{ node_npm_executable }}"
+  timeout: 300
+
+- name: Remove Context7 entry from Cursor mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _context7_target_name: "cursor"
+    _context7_target_config_path: "{{ context7_mcp_cursor_config_path }}"
+  when: _context7_target_cursor_selected | bool
+
+- name: Remove Context7 entry from VS Code mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _context7_target_name: "vscode"
+    _context7_target_config_path: "{{ context7_mcp_vscode_config_path }}"
+  when: _context7_target_vscode_selected | bool
+
+- name: Remove Context7 entry from Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ context7_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ context7_mcp_server_key }}"
+  when: _context7_target_codex_selected | bool
+
+- name: Remove Context7 local env file
+  ansible.builtin.file:
+    path: "{{ context7_mcp_env_file_path }}"
+    state: absent

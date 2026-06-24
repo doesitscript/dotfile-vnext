@@ -14,6 +14,13 @@
   connection: local
   gather_facts: true
 
+  pre_tasks:
+    - name: Establish mac MCP controller path contract
+      ansible.builtin.set_fact:
+        dotfiles_home: "{{ dotfiles_home | default(playbook_dir | dirname | dirname) }}"
+        dotfiles_user_home: "{{ dotfiles_user_home | default(ansible_facts['env']['HOME'] | default(ansible_user_dir)) }}"
+      tags: [always]
+
   roles:
     - role: common/node
     - role: python
@@ -29,3 +36,9 @@
     - role: mcp_servers/netbox
     - role: mcp_servers/firecrawl
       tags: [firecrawl]
+    - role: mcp_servers/context7
+      tags: [context7]
+    - role: mcp_servers/playwright
+      tags: [playwright]
+    - role: mcp_servers/fetch
+      tags: [fetch]

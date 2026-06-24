@@ -1,0 +1,43 @@
+---
+- name: Install Fetch MCP package via npm on Ubuntu
+  community.general.npm:
+    name: "{{ fetch_mcp_package_name }}"
+    global: true
+    state: present
+    executable: "{{ node_npm_executable }}"
+  timeout: 300
+
+- name: Check Fetch MCP binary candidates on Ubuntu
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ _fetch_bin_candidates }}"
+  register: _fetch_mcp_bin_stats_ubuntu
+  vars:
+    _fetch_bin_candidates: >-
+      {{
+        fetch_mcp_bin_candidates
+        if (fetch_mcp_bin_candidates | length > 0)
+        else [
+          (node_npm_executable | dirname) ~ '/mcp-fetch-server'
+        ]
+      }}
+
+- name: Set Fetch MCP command path for MCP clients on Ubuntu
+  ansible.builtin.set_fact:
+    fetch_mcp_command: "{{ (_fetch_mcp_bin_stats_ubuntu.results | selectattr('stat.exists') | map(attribute='item') | first) | default('') }}"
+
+- name: Fail if Fetch MCP binary was not found on Ubuntu
+  ansible.builtin.fail:
+    msg: >-
+      Fetch MCP package installed, but no executable was found in
+      fetch_mcp_bin_candidates={{ _fetch_bin_candidates | to_json }}.
+  when: not (fetch_mcp_command | default(''))
+  vars:
+    _fetch_bin_candidates: >-
+      {{
+        fetch_mcp_bin_candidates
+        if (fetch_mcp_bin_candidates | length > 0)
+        else [
+          (node_npm_executable | dirname) ~ '/mcp-fetch-server'
+        ]
+      }}

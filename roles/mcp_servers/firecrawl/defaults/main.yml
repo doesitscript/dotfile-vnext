@@ -16,6 +16,8 @@ firecrawl_mcp_cursor_config_path: "{{ firecrawl_mcp_project_root }}/.cursor/mcp.
 firecrawl_mcp_vscode_config_path: "{{ firecrawl_mcp_project_root }}/.vscode/mcp.json"
 firecrawl_mcp_codex_config_path: "{{ firecrawl_mcp_project_root }}/.codex/config.toml"
 firecrawl_mcp_role_path: "roles/mcp_servers/firecrawl"
+firecrawl_mcp_wrapper_path: "{{ firecrawl_mcp_project_root }}/bin/mcp-server-env-wrapper"
+firecrawl_mcp_env_file_path: "{{ ansible_env.HOME }}/.config/dotfile-vnext/mcp/env.d/firecrawl.env"
 
 # Resolved after npm install, or set explicitly to skip install tasks.
 firecrawl_mcp_command: ""
@@ -28,12 +30,11 @@ firecrawl_mcp_api_key: ""
 firecrawl_mcp_api_url: ""
 
 firecrawl_mcp_env:
-  FIRECRAWL_API_KEY: "{{ firecrawl_mcp_api_key }}"
   _MCP_ANSIBLE_ROLE_PATH: "{{ firecrawl_mcp_role_path }}"
 
 firecrawl_mcp_codex_entry:
-  command: "{{ firecrawl_mcp_command }}"
-  args: "{{ firecrawl_mcp_args }}"
+  command: "{{ firecrawl_mcp_wrapper_path }}"
+  args: "{{ [firecrawl_mcp_env_file_path, firecrawl_mcp_command] + firecrawl_mcp_args }}"
   env: "{{ firecrawl_mcp_env }}"
   required: false
 

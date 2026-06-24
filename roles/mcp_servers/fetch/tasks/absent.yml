@@ -1,0 +1,29 @@
+---
+- name: Remove Fetch MCP package via npm
+  community.general.npm:
+    name: "{{ fetch_mcp_package_name }}"
+    global: true
+    state: absent
+    executable: "{{ node_npm_executable }}"
+  timeout: 300
+
+- name: Remove Fetch entry from Cursor mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _fetch_target_name: "cursor"
+    _fetch_target_config_path: "{{ fetch_mcp_cursor_config_path }}"
+  when: _fetch_target_cursor_selected | bool
+
+- name: Remove Fetch entry from VS Code mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _fetch_target_name: "vscode"
+    _fetch_target_config_path: "{{ fetch_mcp_vscode_config_path }}"
+  when: _fetch_target_vscode_selected | bool
+
+- name: Remove Fetch entry from Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ fetch_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ fetch_mcp_server_key }}"
+  when: _fetch_target_codex_selected | bool

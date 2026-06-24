@@ -1,0 +1,49 @@
+---
+- name: Install Fetch MCP on macOS
+  ansible.builtin.import_tasks: mac.yml
+  when:
+    - not (fetch_mcp_command | default(''))
+    - ansible_facts['system'] == "Darwin"
+
+- name: Install Fetch MCP on Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when:
+    - not (fetch_mcp_command | default(''))
+    - ansible_facts['distribution'] == "Ubuntu"
+
+- name: Fail if Fetch MCP command could not be resolved
+  ansible.builtin.fail:
+    msg: >-
+      Fetch MCP command is empty after installation. This role currently
+      supports macOS and Ubuntu via npm, or an explicit fetch_mcp_command override.
+  when: not (fetch_mcp_command | default(''))
+
+- name: Set Fetch Codex MCP entry after command resolution
+  ansible.builtin.set_fact:
+    fetch_mcp_codex_entry:
+      command: "{{ fetch_mcp_command }}"
+      args: "{{ fetch_mcp_args }}"
+      env: "{{ fetch_mcp_env }}"
+      required: false
+
+- name: Ensure Fetch entry exists in Cursor mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _fetch_target_name: "cursor"
+    _fetch_target_config_path: "{{ fetch_mcp_cursor_config_path }}"
+  when: _fetch_target_cursor_selected | bool
+
+- name: Ensure Fetch entry exists in VS Code mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _fetch_target_name: "vscode"
+    _fetch_target_config_path: "{{ fetch_mcp_vscode_config_path }}"
+  when: _fetch_target_vscode_selected | bool
+
+- name: Ensure Fetch entry exists in Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ fetch_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ fetch_mcp_server_key }}"
+    _mcp_codex_entry: "{{ fetch_mcp_codex_entry }}"
+  when: _fetch_target_codex_selected | bool

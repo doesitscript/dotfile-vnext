@@ -15,7 +15,40 @@ Each subdirectory is an Ansible role that installs and configures one MCP
 | `hf-mcp-server` | Hugging Face Hub, docs, papers, datasets, models, and Spaces tools | HTTP | launcher | Cursor, Codex | [Hugging Face MCP Server](https://huggingface.co/docs/hub/hf-mcp-server) |
 | `drawio` | draw.io MCP tool server | Node.js (npm) | interactive/editor | Cursor, Codex, VS Code, OpenAPI stub | [lgazo/drawio-mcp-server](https://github.com/lgazo/drawio-mcp-server) |
 | `netbox` | NetBox MCP query server | Python (uv) | launcher | Cursor, Codex | [netboxlabs/netbox-mcp-server](https://github.com/netboxlabs/netbox-mcp-server) |
-| `firecrawl` | Firecrawl web scraping/crawling MCP | Node.js (npm) | launcher | Cursor | [firecrawl/firecrawl-mcp-server](https://github.com/firecrawl/firecrawl-mcp-server) |
+| `context7` | Technical docs, APIs, SDK references, and library docs | Node.js (npm) | launcher | Cursor, Codex | [upstash/context7](https://github.com/upstash/context7) |
+| `firecrawl` | Firecrawl web scraping, crawling, search, and extraction MCP | Node.js (npm) | launcher | Cursor, Codex | [firecrawl/firecrawl-mcp-server](https://github.com/firecrawl/firecrawl-mcp-server) |
+| `playwright` | Browser-rendered pages, login flows, screenshots, and browser state | Node.js (npm) | launcher/browser | Cursor, Codex | [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp) |
+| `fetch` | Lightweight webpage fetching fallback | Node.js (npm) | launcher | Cursor, Codex | [zcaceres/fetch-mcp](https://github.com/zcaceres/fetch-mcp) |
+
+## MCP Research Collection Stack
+
+The controller-local research/fetch capability is named **MCP Research
+Collection Stack**. The name describes the job rather than one vendor, so the
+stack can grow without renaming the framework surface.
+
+Use the tools in this order:
+
+1. **Context7** for known products, libraries, APIs, SDKs, Terraform providers,
+   Kubernetes docs, AWS docs, and vendor docs.
+2. **Firecrawl** for documentation ingestion, crawl/search/extraction, and
+   collecting pages from multiple sources.
+3. **Playwright** when Firecrawl extraction quality is poor, login is required,
+   JavaScript rendering is required, screenshots help, or browser state matters.
+4. **Fetch** only as the lightweight fallback for simple pages.
+
+Purpose mapping:
+
+| Purpose | Best Choice |
+|---|---|
+| General webpage fetching | Fetch |
+| Documentation extraction | Firecrawl |
+| Browser-rendered sites | Playwright |
+| Technical docs / APIs | Context7 |
+
+Vault-backed API keys must not be rendered into tracked `.cursor/mcp.json` or
+`.codex/config.toml`. Roles that need secrets render local `0600` env files
+under `~/.config/dotfile-vnext/mcp/env.d/` and point client config at
+`bin/mcp-server-env-wrapper`.
 
 ## Canonical Pattern
 
@@ -24,6 +57,10 @@ Each subdirectory is an Ansible role that installs and configures one MCP
 - `roles/mcp_servers/openai_docs/` is the first Codex-target example.
 - `roles/mcp_servers/langfuse_docs/` is a simple public HTTP docs MCP example.
 - `roles/mcp_servers/huggingface/` is the official Hugging Face Hub HTTP MCP example.
+- `roles/mcp_servers/context7/` is the technical-docs first choice for known products and libraries.
+- `roles/mcp_servers/firecrawl/` is the secret-safe documentation ingestion example.
+- `roles/mcp_servers/playwright/` is the browser-rendered fallback example.
+- `roles/mcp_servers/fetch/` is the lightweight fetch fallback example.
 - `playbooks/mac/mcp_servers.yaml` is the focused controller-side control surface for local MCP convergence on the Mac.
 
 ## Hugging Face Auth Note
@@ -75,7 +112,10 @@ Install only one server:
 
 ```bash
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags drawio
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags context7
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags firecrawl
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags playwright
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags fetch
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags langfuse-docs
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags huggingface
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags ansible-mcp
@@ -102,8 +142,14 @@ roles/mcp_servers/
   mcp-sysoperator/
   ansible-mcp/
   openai_docs/
+  langfuse_docs/
   huggingface/
+  context7/
+  firecrawl/
+  playwright/
+  fetch/
   drawio/
+  netbox/
   _legacy_builder/
 ```
 

@@ -1,0 +1,21 @@
+---
+- name: Include mac-dev vault variables for Context7 MCP
+  ansible.builtin.include_vars:
+    file: "{{ context7_mcp_project_root }}/vault/mac_dev.vault.yml"
+    name: vault_vars
+  no_log: true
+
+- name: Set Context7 API key from vault
+  ansible.builtin.set_fact:
+    context7_mcp_api_key: "{{ vault_vars.vault_context7_mcp_api_key }}"
+  no_log: true
+
+- name: Assert Context7 API key is present in vault
+  ansible.builtin.assert:
+    that:
+      - context7_mcp_api_key is defined
+      - context7_mcp_api_key | length > 0
+    fail_msg: >-
+      vault_context7_mcp_api_key is required in vault/mac_dev.vault.yml before
+      Context7 MCP can be configured.
+  no_log: true

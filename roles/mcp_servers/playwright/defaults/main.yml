@@ -1,0 +1,42 @@
+---
+playwright_mcp_state: present
+playwright_mcp_package_name: "@playwright/mcp"
+playwright_mcp_server_key: "playwright"
+
+playwright_mcp_project_root: "{{ dotfiles_home | default(playbook_dir | dirname | dirname) }}"
+playwright_mcp_targets:
+  - cursor
+playwright_mcp_supported_targets:
+  - cursor
+  - vscode
+  - codex
+  - openapi
+
+playwright_mcp_cursor_config_path: "{{ playwright_mcp_project_root }}/.cursor/mcp.json"
+playwright_mcp_vscode_config_path: "{{ playwright_mcp_project_root }}/.vscode/mcp.json"
+playwright_mcp_codex_config_path: "{{ playwright_mcp_project_root }}/.codex/config.toml"
+playwright_mcp_role_path: "roles/mcp_servers/playwright"
+
+playwright_mcp_command: ""
+playwright_mcp_headless: false
+playwright_mcp_isolated: false
+playwright_mcp_browser: ""
+playwright_mcp_user_data_dir: ""
+playwright_mcp_extra_args: []
+playwright_mcp_args: >-
+  {{
+    ([] if not (playwright_mcp_headless | bool) else ['--headless'])
+    + ([] if not (playwright_mcp_isolated | bool) else ['--isolated'])
+    + ([] if (playwright_mcp_browser | default('') | length) == 0 else ['--browser=' ~ playwright_mcp_browser])
+    + ([] if (playwright_mcp_user_data_dir | default('') | length) == 0 else ['--user-data-dir', playwright_mcp_user_data_dir])
+    + playwright_mcp_extra_args
+  }}
+playwright_mcp_env:
+  _MCP_ANSIBLE_ROLE_PATH: "{{ playwright_mcp_role_path }}"
+playwright_mcp_codex_entry:
+  command: "{{ playwright_mcp_command }}"
+  args: "{{ playwright_mcp_args }}"
+  env: "{{ playwright_mcp_env }}"
+  required: false
+  startup_timeout_sec: 45
+playwright_mcp_bin_candidates: []

@@ -7,6 +7,11 @@
     executable: "{{ node_npm_executable }}"
   timeout: 300
 
+- name: Remove Firecrawl MCP runtime env file
+  ansible.builtin.file:
+    path: "{{ firecrawl_mcp_env_file_path }}"
+    state: absent
+
 - name: Remove Firecrawl entry from Cursor mcp.json
   ansible.builtin.include_tasks: remove_target.yml
   vars:

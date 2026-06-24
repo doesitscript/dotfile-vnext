@@ -1,0 +1,31 @@
+---
+fetch_mcp_state: present
+fetch_mcp_package_name: "mcp-fetch-server"
+fetch_mcp_server_key: "fetch"
+
+fetch_mcp_project_root: "{{ dotfiles_home | default(playbook_dir | dirname | dirname) }}"
+fetch_mcp_targets:
+  - cursor
+fetch_mcp_supported_targets:
+  - cursor
+  - vscode
+  - codex
+  - openapi
+
+fetch_mcp_cursor_config_path: "{{ fetch_mcp_project_root }}/.cursor/mcp.json"
+fetch_mcp_vscode_config_path: "{{ fetch_mcp_project_root }}/.vscode/mcp.json"
+fetch_mcp_codex_config_path: "{{ fetch_mcp_project_root }}/.codex/config.toml"
+fetch_mcp_role_path: "roles/mcp_servers/fetch"
+
+fetch_mcp_command: ""
+fetch_mcp_args: []
+fetch_mcp_default_limit: "5000"
+fetch_mcp_env:
+  DEFAULT_LIMIT: "{{ fetch_mcp_default_limit }}"
+  _MCP_ANSIBLE_ROLE_PATH: "{{ fetch_mcp_role_path }}"
+fetch_mcp_codex_entry:
+  command: "{{ fetch_mcp_command }}"
+  args: "{{ fetch_mcp_args }}"
+  env: "{{ fetch_mcp_env }}"
+  required: false
+fetch_mcp_bin_candidates: []

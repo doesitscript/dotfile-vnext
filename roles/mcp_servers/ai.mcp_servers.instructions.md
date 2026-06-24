@@ -3,6 +3,28 @@
 This document captures the repo-native pattern for MCP server roles. Use it
 when adding a new MCP server or refactoring an existing one.
 
+## MCP Research Collection Stack Routing
+
+For research and fetching work, prefer the **MCP Research Collection Stack**
+before ad hoc browser/search behavior. Use this order:
+
+1. Context7 first for known products, libraries, APIs, SDKs, Terraform
+   providers, Kubernetes docs, AWS docs, and vendor docs.
+2. Firecrawl for documentation ingestion, crawl/search/extraction, or collecting
+   pages from multiple sources.
+3. Playwright when Firecrawl extraction is poor, login is required, JavaScript
+   rendering is required, screenshots are useful, or browser state matters.
+4. Fetch only as a lightweight fallback for simple page fetching.
+
+Purpose mapping:
+
+| Purpose | Best Choice |
+|---|---|
+| General webpage fetching | Fetch |
+| Documentation extraction | Firecrawl |
+| Browser-rendered sites | Playwright |
+| Technical docs / APIs | Context7 |
+
 ## Start With Upstream Classification
 
 Before writing tasks, classify the upstream server from its README, package
@@ -139,6 +161,22 @@ Do not hand-edit `.cursor/mcp.json` or `.vscode/mcp.json` as an implementation
 shortcut when those files are already owned by an MCP role. Change the owning
 role/tasks instead. Only make a one-off manual config edit when the user
 explicitly asks for that exception.
+
+## Secret Hygiene
+
+Tracked client config must not contain vault-backed API keys or bearer tokens.
+When an MCP server needs a secret:
+
+1. Load the secret from vault in the role.
+2. Render a local env file under `~/.config/dotfile-vnext/mcp/env.d/` with mode
+   `0600`.
+3. Point `.cursor/mcp.json`, `.vscode/mcp.json`, and `.codex/config.toml` at
+   `bin/mcp-server-env-wrapper`.
+4. Put only non-secret metadata in the rendered client `env` block.
+5. Verify tracked config does not contain the secret variable name or value.
+
+This is required for Firecrawl and Context7. It is also the default for future
+research/fetch MCP servers with API keys.
 
 ## README Requirements
 

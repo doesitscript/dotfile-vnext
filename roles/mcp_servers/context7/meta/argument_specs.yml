@@ -1,0 +1,39 @@
+---
+argument_specs:
+  main:
+    short_description: Install Context7 MCP and configure repo-local Cursor, Codex, or VS Code targets.
+    description: >
+      Installs the upstream @upstash/context7-mcp npm package, resolves the
+      executable, loads vault_context7_mcp_api_key, renders a local secret env
+      file, and merges a Context7 entry into selected MCP client targets.
+    options:
+      context7_mcp_state:
+        type: str
+        default: present
+        choices: [present, absent]
+        description: Ensure the Context7 MCP package and local config are present or absent.
+      context7_mcp_targets:
+        type: list
+        elements: str
+        default: [cursor]
+        description: Target client configs to manage.
+      context7_mcp_package_name:
+        type: str
+        default: "@upstash/context7-mcp"
+        description: npm package name for the Context7 MCP server.
+      context7_mcp_server_key:
+        type: str
+        default: context7
+        description: Key under mcpServers in target configs.
+      context7_mcp_api_key:
+        type: str
+        default: ""
+        description: Context7 API key. Normally loaded from vault_context7_mcp_api_key.
+      context7_mcp_env_file_path:
+        type: str
+        required: false
+        description: Local secret env file rendered from Ansible Vault.
+      context7_mcp_wrapper_path:
+        type: str
+        required: false
+        description: Wrapper command used by MCP clients to load the local env file.

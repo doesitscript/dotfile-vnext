@@ -1,0 +1,25 @@
+---
+- name: Validate MCP env file variable names for {{ _mcp_env_file_path }}
+  ansible.builtin.assert:
+    that:
+      - item.key is match('^[A-Z_][A-Z0-9_]*$')
+    fail_msg: "Invalid MCP env var name {{ item.key }} for {{ _mcp_env_file_path }}"
+  loop: "{{ _mcp_env_vars | dict2items }}"
+  no_log: true
+
+- name: Ensure MCP env file directory exists for {{ _mcp_env_file_path }}
+  ansible.builtin.file:
+    path: "{{ _mcp_env_file_path | dirname }}"
+    state: directory
+    mode: "0700"
+
+- name: Render MCP env file for {{ _mcp_env_file_path }}
+  ansible.builtin.copy:
+    dest: "{{ _mcp_env_file_path }}"
+    mode: "0600"
+    content: |
+      # Ansible managed: local MCP runtime secrets.
+      {% for _mcp_env_item in (_mcp_env_vars | dict2items | sort(attribute='key')) %}
+      {{ _mcp_env_item.key }}={{ _mcp_env_item.value | string | quote }}
+      {% endfor %}
+  no_log: true

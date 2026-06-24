@@ -1,0 +1,130 @@
+---
+- name: Resolve node_npm_executable if not already set by common/node
+  ansible.builtin.include_role:
+    name: common/node
+    tasks_from: resolve_npm.yml
+    apply:
+      tags:
+        - mcp
+        - playwright
+  when:
+    - node_npm_executable is not defined
+    - playwright_mcp_state == "absent" or not (playwright_mcp_command | default(''))
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+  tags:
+    - mcp
+    - playwright
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Capture requested Playwright MCP target tags
+  ansible.builtin.set_fact:
+    _playwright_requested_target_tags: >-
+      {{
+        (ansible_run_tags | default([]))
+        | intersect(['mcp_target_cursor', 'mcp_target_vscode', 'mcp_target_codex', 'mcp_target_openapi'])
+      }}
+  tags:
+    - mcp
+    - playwright
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Validate configured Playwright MCP targets
+  ansible.builtin.assert:
+    that:
+      - (playwright_mcp_targets | difference(playwright_mcp_supported_targets)) | length == 0
+    fail_msg: >-
+      playwright_mcp_targets contains unsupported values:
+      {{ playwright_mcp_targets | difference(playwright_mcp_supported_targets) | to_json }}
+  tags:
+    - mcp
+    - playwright
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Determine active Playwright MCP client targets
+  ansible.builtin.set_fact:
+    _playwright_target_cursor_selected: >-
+      {{
+        ('mcp_target_cursor' in _playwright_requested_target_tags)
+        or
+        (
+          (_playwright_requested_target_tags | length) == 0
+          and ('cursor' in playwright_mcp_targets)
+        )
+      }}
+    _playwright_target_vscode_selected: >-
+      {{
+        ('mcp_target_vscode' in _playwright_requested_target_tags)
+        or
+        (
+          (_playwright_requested_target_tags | length) == 0
+          and ('vscode' in playwright_mcp_targets)
+        )
+      }}
+    _playwright_target_codex_selected: >-
+      {{
+        ('mcp_target_codex' in _playwright_requested_target_tags)
+        or
+        (
+          (_playwright_requested_target_tags | length) == 0
+          and ('codex' in playwright_mcp_targets)
+        )
+      }}
+    _playwright_target_openapi_selected: >-
+      {{
+        ('mcp_target_openapi' in _playwright_requested_target_tags)
+        or
+        (
+          (_playwright_requested_target_tags | length) == 0
+          and ('openapi' in playwright_mcp_targets)
+        )
+      }}
+  tags:
+    - mcp
+    - playwright
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Fail fast for the Playwright OpenAPI target stub
+  ansible.builtin.import_tasks: openapi_stub.yml
+  when: _playwright_target_openapi_selected | bool
+  tags:
+    - mcp
+    - playwright
+    - mcp_target_openapi
+
+- name: Ensure Playwright MCP server is present
+  ansible.builtin.import_tasks: present.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - playwright_mcp_state == "present"
+  tags:
+    - mcp
+    - playwright
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Ensure Playwright MCP server is absent
+  ansible.builtin.import_tasks: absent.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - playwright_mcp_state == "absent"
+  tags:
+    - mcp
+    - playwright
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi

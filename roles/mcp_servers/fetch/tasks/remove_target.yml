@@ -1,0 +1,29 @@
+---
+- name: Check whether mcp.json exists for {{ _fetch_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _fetch_target_config_path }}"
+  register: _fetch_remove_target_mcp_json_stat
+
+- name: Remove Fetch entry from mcp.json for {{ _fetch_target_name }}
+  when: _fetch_remove_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _fetch_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _fetch_target_config_path }}"
+      register: _fetch_remove_target_mcp_json_raw
+
+    - name: Write mcp.json without the Fetch entry for {{ _fetch_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _fetch_target_config_path }}"
+        content: "{{ _fetch_remove_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _fetch_remove_target_existing: "{{ _fetch_remove_target_mcp_json_raw.content | b64decode | from_json }}"
+        _fetch_remove_target_filtered_servers: >-
+          {{
+            (_fetch_remove_target_existing.mcpServers | default({}))
+            | dict2items
+            | rejectattr('key', 'equalto', fetch_mcp_server_key)
+            | items2dict
+          }}
+        _fetch_remove_target_merged: "{{ _fetch_remove_target_existing | combine({'mcpServers': _fetch_remove_target_filtered_servers}) }}"
