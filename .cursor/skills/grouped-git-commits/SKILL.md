@@ -1,14 +1,14 @@
 ---
 name: grouped-git-commits
-description: Group ALL dirty files by theme and commit each group with clear titles and bodies. Automatically marks incomplete work as WIP. Use when the user asks to add and commit current work cleanly, especially in a dirty worktree.
+description: Group ALL dirty files by theme, commit each group with clear titles and bodies, then push to the tracked remote so other machines can pull. Automatically marks incomplete work as WIP. Use when the user asks to add and commit current work cleanly, especially in a dirty worktree.
 ---
 
 # Grouped Git Commits
 
-Use this skill when the user wants ALL current work added and committed cleanly.
+Use this skill when the user wants ALL current work added, committed, and **available on the remote** cleanly.
 
 This skill commits **everything** in the worktree, grouped by theme, with automatic
-WIP detection for incomplete work.
+WIP detection for incomplete work, then **pushes** so `git pull` on other machines works.
 
 ## What this skill is for
 
@@ -19,12 +19,15 @@ WIP detection for incomplete work.
 - automatically marking incomplete work with `[WIP]` or `-wip` suffix
 - writing multiline commit messages with a short subject and useful body
 - committing everything so nothing is lost
+- **pushing committed work to origin** (default — not optional unless user opts out)
 
 ## Core workflow
 
 1. Inspect the worktree first.
    - run `git status --short`
    - if needed, inspect `git diff --stat` or targeted diffs to understand grouping
+   - note **which git repos** are dirty when the workspace has more than one (e.g.
+     `oneoffs` and `dotfile-vnext`) — repeat steps 2–7 **per repo** that has changes
 
 2. Identify ALL commit groupings.
    - group files by theme: framework rules, skills, plans, roles, playbooks, docs
@@ -52,10 +55,25 @@ WIP detection for incomplete work.
      - why the grouping makes sense
      - any important scope boundaries or next steps
 
-6. Verify the result.
+6. Verify the commit result.
    - run `git status --short`
    - confirm all intended commits landed
    - report if worktree is now clean or if untracked artifacts remain
+   - run `git status -sb` and confirm branch is **ahead** of upstream (commits exist to push)
+
+7. **Push to remote (default — required step).**
+   - After commits in a repo, push so other machines can `git pull`.
+   - Prefer the tracked upstream: `git push`
+   - If no upstream is set: `git push -u origin HEAD` (use the branch name from
+     `git branch --show-current`)
+   - **Never** `git push --force` or force-push to `main`/`master` unless the user
+     explicitly requests it.
+   - If push fails (auth, rejected non-fast-forward, no network), report the **raw
+     error** and stop — do not claim the skill finished successfully.
+   - Tell the user: repo name, remote, branch, and commit range pushed (e.g.
+     `origin/main f0d5817..8525491`).
+   - **Opt-out only:** skip push when the user explicitly says not to push in the
+     same request (e.g. "commit but don't push").
 
 ## Commit shape
 
@@ -93,11 +111,14 @@ Mark a commit as WIP when ANY of these are true:
 ## Guardrails
 
 - Commit EVERYTHING - do not leave dirty files uncommitted
+- **Push EVERYTHING committed** — local-only commits are incomplete for this skill
 - Do not rewrite or squash existing commits unless the user explicitly asks
 - If the grouping is ambiguous, choose the smallest sensible commit split
-- Keep the user informed about what is being committed before running the commit
+- Keep the user informed about what is being committed **and pushed** before running
+  destructive git operations
 - If a commit contains only renames and reference updates, say so plainly
 - Always verify worktree is clean (or only untracked artifacts remain) after commits
+- Always verify push succeeded or report push failure with evidence
 - **Files that do not fit any identified theme group still get committed — as their
   own standalone commit. No file is ever silently left out.**
 
@@ -107,3 +128,19 @@ Mark a commit as WIP when ANY of these are true:
 - "grouped commits" or "/grouped-git-commits"
 - "save all current work"
 - "commit all dirty files by theme"
+
+## Completion report (required)
+
+End with a short summary per repo touched:
+
+```text
+Repo: oneoffs
+Commits: 5 (subjects…)
+Push: origin/main abc1234..def5678 — ok
+
+Repo: dotfile-vnext
+Commits: none (clean)
+Push: skipped
+```
+
+If push was skipped because the user opted out, say so explicitly.
