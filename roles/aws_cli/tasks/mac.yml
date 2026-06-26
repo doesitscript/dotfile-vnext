@@ -1,0 +1,83 @@
+---
+- name: Ensure AWS CLI installer cache directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.cache/aws-cli"
+    state: directory
+    mode: "0755"
+  when: aws_cli_state == "present"
+
+- name: Download AWS CLI v2 pkg installer
+  ansible.builtin.get_url:
+    url: "{{ aws_cli_installer_url }}"
+    dest: "{{ ansible_env.HOME }}/.cache/aws-cli/AWSCLIV2.pkg"
+    mode: "0644"
+  when: aws_cli_state == "present"
+
+- name: Install AWS CLI v2 pkg
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/installer
+      - -pkg
+      - "{{ ansible_env.HOME }}/.cache/aws-cli/AWSCLIV2.pkg"
+      - -target
+      - /
+  become: true
+  register: aws_cli_install
+  changed_when: aws_cli_install.rc == 0
+  when: aws_cli_state == "present"
+
+- name: Remove AWS CLI v2 install root
+  ansible.builtin.file:
+    path: "{{ aws_cli_install_root }}"
+    state: absent
+  become: true
+  when: aws_cli_state == "absent"
+
+- name: Remove AWS CLI v2 binaries
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ aws_cli_binary_path }}"
+    - /usr/local/bin/aws_completer
+  become: true
+  when: aws_cli_state == "absent"
+
+- name: Verify installed AWS CLI version
+  ansible.builtin.command:
+    argv:
+      - "{{ aws_cli_binary_path }}"
+      - --version
+  register: aws_cli_version
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - aws_cli_verify | bool
+    - aws_cli_state == "present"
+
+- name: Verify AWS CLI binary is absent
+  ansible.builtin.stat:
+    path: "{{ aws_cli_binary_path }}"
+  register: aws_cli_absent_check
+  when:
+    - not ansible_check_mode
+    - aws_cli_verify | bool
+    - aws_cli_state == "absent"
+
+- name: Assert AWS CLI binary is absent
+  ansible.builtin.assert:
+    that:
+      - not aws_cli_absent_check.stat.exists
+    fail_msg: "AWS CLI remains installed after requesting absent state."
+  when:
+    - not ansible_check_mode
+    - aws_cli_verify | bool
+    - aws_cli_state == "absent"
+
+- name: Report AWS CLI version
+  ansible.builtin.debug:
+    msg: "{{ aws_cli_version.stdout_lines[0] }}"
+  when:
+    - not ansible_check_mode
+    - aws_cli_verify | bool
+    - aws_cli_state == "present"

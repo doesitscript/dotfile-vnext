@@ -1,0 +1,9 @@
+---
+- name: Require macOS for AWS CLI package management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "aws_cli currently supports macOS through Homebrew."
+
+- name: Manage AWS CLI on macOS
+  ansible.builtin.import_tasks: mac.yml

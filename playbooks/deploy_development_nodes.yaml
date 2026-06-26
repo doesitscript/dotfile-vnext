@@ -8,6 +8,7 @@
 #          common/agent_skills (repo-owned Cursor/Codex skill symlinks)
 #          langfuse_cli (Langfuse CLI for tracing and evaluation)
 #          terraform_cli (Terraform CLI on macOS through the official HashiCorp Homebrew tap)
+#          aws_cli (AWS CLI on macOS through Homebrew awscli formula)
 #          speech_central (Speech Central install on mac-dev via mas_cli dependency)
 #          remote_desktop_mac (macOS-only Microsoft Remote Desktop install)
 #          tunnelblick_mac (macOS-only deprecated Tunnelblick install for Monterey)
@@ -42,6 +43,7 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags langfuse --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags langfuse_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags terraform_cli --limit mac-dev
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags aws_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags speech_central --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags remote_desktop_mac --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags tunnelblick_mac --limit mac-dev
@@ -112,6 +114,9 @@
     - role: terraform_cli
       when: ansible_system == "Darwin"
       tags: [terraform_cli]
+    - role: aws_cli
+      when: ansible_system == "Darwin"
+      tags: [aws_cli]
     - role: speech_central
       tags: [speech_central]
     - role: remote_desktop_mac
