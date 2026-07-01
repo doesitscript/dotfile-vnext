@@ -50,10 +50,17 @@ Pick the mode from the request's scope shape:
 
 An export root (e.g. `docs/reference/export/`) contains:
 
-- **`nav-tree.yml`** — the export contract. Every node: slug, title, `status:
-  exported | pending | out_of_scope`, `export_path`, optional
-  `sidecar_artifacts`. Scope decisions live here, not in prose. Update statuses
-  as pages land.
+- **One folder per vendor bundle**, named by the bundle ID exactly as it
+  appears in the vendor URL (e.g. `ZIC.HTML/`, `AWS.Linux.ZCA.HTML.10.9/`).
+  Pages from a different guide/bundle never get shoehorned into an existing
+  bundle tree — add the sibling folder and declare it in the contract's
+  `bundles:` list. Section folders inside a bundle use `NN-<Section>` prefixes
+  mirroring that bundle's left-nav order.
+- **`nav-tree.yml`** — the export contract. Header: `bundles:` list (name,
+  vendor version, guide title). Every node: slug, title, `status:
+  exported | pending | out_of_scope`, `export_path` (export-root-relative,
+  including the bundle folder), optional `sidecar_artifacts`. Scope decisions
+  live here, not in prose. Update statuses as pages land.
 - **`_raw/<Slug>.raw.md`** — unmodified scrape output, kept for re-cleaning.
 - **`<Bundle>/<section>/<Page>/page.md`** — cleaned markdown with frontmatter:
   `source_url`, `page_slug`, `page_title`, `exported_at`.
