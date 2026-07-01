@@ -42,6 +42,7 @@ Use one of these statuses in each pattern:
 ## Current Patterns
 
 - [Plan family execution with validator](patterns/plan-family-execution-with-validator.md)
+- [Doc collection coordinator + per-page workers](patterns/doc-collection-coordinator.md)
 
 ## Rules
 
