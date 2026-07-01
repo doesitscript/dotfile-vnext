@@ -99,24 +99,67 @@ configuration was applied.
    MCP role docs, Cursor config, and Codex config.
 4. Rerun syntax/lint and verify the removed server keys are absent.
 
-## Routing Model
+## Composition Model — WHAT / HOW / OURS
 
-Use the stack in this order:
+These tools are not competing alternatives. They answer different questions in
+one workflow, and most real tasks use more than one of them. Route by phase,
+not by picking a single winner:
+
+| Question | Source | Tool |
+|---|---|---|
+| "What does the vendor/product require?" | Vendor docs, help portals, KBs | **Firecrawl** (ingestion) |
+| "How do I correctly use this library/provider/module to implement it?" | Library/SDK/provider docs | **Context7** (implementation syntax) |
+| "How do we implement this in our environment?" | Repo rules, standards, registries | **Internal docs** |
+
+```mermaid
+flowchart TD
+  vendor["Vendor documentation<br/>(help portals, KBs, product docs)"] --> fc["Firecrawl<br/>crawl + clean markdown"]
+  fc --> kb["Local knowledge base<br/>(repo markdown / export trees / RAG)"]
+  kb --> impl["Implementation phase<br/>agent knows WHAT is required"]
+  c7["Context7<br/>current Terraform/Ansible/SDK/library syntax"] --> impl
+  internal["Internal docs and rules<br/>standards, naming, governance"] --> impl
+  impl --> outArtifacts["Generated Terraform / Ansible /<br/>diagrams / runbooks / tests"]
+```
+
+A tool that is wrong for the current phase is not "benched" for the task — it
+is staged for its phase. Saying "Firecrawl, not Context7" about a vendor-doc
+ingestion step is correct routing; concluding Context7 is out of the workflow
+is a framing error. The confident default is: **Firecrawl now, Context7 at
+implementation.**
+
+### Default triggers — act without asking
+
+- Collecting vendor/product documentation into the repo: use Firecrawl. Do not
+  ask permission for read-only collection within the task's stated scope.
+- Generating or editing Terraform, Ansible, SDK, or library code derived from
+  collected vendor docs: call Context7 for the exact resources, modules, or
+  APIs involved by default. No permission-seeking, no answering provider/module
+  syntax from memory when Context7 can confirm it.
+- Calibration: skip Context7 where syntax churn is low and model knowledge is
+  stable (for example, core Mermaid syntax). Use it when versions, arguments,
+  deprecations, or provider/collection specifics matter.
+
+## Phase Routing
+
+Within the collection phase, use the stack in this order:
+
+1. **Firecrawl** for documentation ingestion, crawl/search/extraction, or
+   collecting pages from multiple sources.
+2. **Playwright** when extraction quality is poor, login is required,
+   JavaScript rendering is required, screenshots help, or browser state matters.
+3. **Fetch** only as a lightweight fallback for simple pages.
+
+Within the implementation phase:
 
 1. **Context7** for known products, libraries, APIs, SDKs, Terraform providers,
-   Kubernetes docs, AWS docs, and vendor docs.
-2. **Firecrawl** for documentation ingestion, crawl/search/extraction, or
-   collecting pages from multiple sources.
-3. **Playwright** when extraction quality is poor, login is required,
-   JavaScript rendering is required, screenshots help, or browser state matters.
-4. **Fetch** only as a lightweight fallback for simple pages.
+   Kubernetes docs, AWS docs — current, version-specific syntax and examples.
 
 | Purpose | Best Choice |
 |---|---|
 | General webpage fetching | Fetch |
 | Documentation extraction | Firecrawl |
 | Browser-rendered sites | Playwright |
-| Technical docs / APIs | Context7 |
+| Technical docs / APIs during implementation | Context7 |
 
 ## General Usage Model
 
@@ -164,6 +207,12 @@ Use Fetch only if this is a simple static page and we do not need crawl,
 structured extraction, screenshots, or browser state.
 ```
 
+```text
+Use Firecrawl to collect the vendor's CMK configuration pages into the export
+tree, then use Context7 for the current aws_kms_key and amazon.aws.iam_role
+syntax when implementing what those pages require.
+```
+
 For known Context7 libraries, include the exact product/library and version when
 you know them. For Firecrawl, include the URL scope and whether you need a
 single page, multiple known URLs, URL discovery, site-section coverage, or
@@ -178,9 +227,11 @@ Zerto installation docs
 Zerto member account setup docs
 ```
 
-do not expect Context7 to be the primary tool. Zerto-style docs are vendor help
-pages, not common package/library/API docs. Use Firecrawl first for discovery
-and collection:
+Context7 is not the collection tool — Zerto-style docs are vendor help pages,
+not common package/library/API docs. But Context7 is a co-equal stage of the
+same workflow, not out of scope for the task. The full sequence is:
+
+**Stage 1 — Collect WHAT (Firecrawl):**
 
 1. Use Firecrawl `search` when the right URLs are not known.
 2. Use Firecrawl `map` when the docs site or section is known but the page list
@@ -192,9 +243,21 @@ and collection:
 6. Escalate to Playwright when the site needs login, JavaScript rendering,
    clicking, or screenshots.
 
-Then use Context7 separately for implementation syntax that comes from known
-engineering docs, such as Terraform provider resources, Kubernetes manifests,
-SDK calls, or language/framework APIs.
+**Stage 2 — Implement HOW (Context7, by default):**
+
+7. When turning the collected requirements into automation, call Context7 for
+   the exact implementation surfaces involved — for example `aws_kms_key`,
+   `aws_iam_role`, `aws_cloudformation_stack_set` in the Terraform AWS
+   provider, or `amazon.aws` collection modules in Ansible. Current resource
+   names, arguments, deprecations, and version-specific syntax come from
+   Context7, not from model memory.
+8. Pair Context7 output with internal repo standards (naming, governance,
+   patterns) to produce the environment-correct implementation.
+
+Concrete example: Firecrawl collects "create an IAM role that trusts the Zerto
+deployment account with these permissions"; Context7 supplies the current
+`aws_iam_role` and `aws_iam_policy` syntax to implement it; repo rules supply
+the tagging and naming standards it must follow.
 
 ## Firecrawl Collection Shape
 
@@ -212,6 +275,11 @@ When using Firecrawl, choose the smallest collection mode that fits:
 Prefer structured/JSON extraction when you only need specific fields. Use full
 markdown when the task genuinely needs page-level reading, summarization, or
 doc-structure analysis.
+
+For durable local export of vendor documentation (structured export tree,
+localized images, AI image descriptions, any scope from one page to a full nav
+branch), use the `vendor-doc-collection` skill at
+`.cursor/skills/vendor-doc-collection/SKILL.md`.
 
 ## Multi-Agent Use
 
@@ -282,15 +350,17 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  need["Need external docs or web context"] --> known{"Known product/library?"}
-  known -- yes --> context7["Context7"]
-  known -- no --> docs{"Need crawl/search/extraction?"}
-  docs -- yes --> firecrawl["Firecrawl"]
-  docs -- no --> browser{"Needs rendered browser?"}
-  browser -- yes --> playwright["Playwright"]
-  browser -- no --> fetch["Fetch"]
-  firecrawl -- poor extraction --> playwright
+  need["Need external docs or web context"] --> phase{"Which phase?"}
+  phase -- "collect WHAT (vendor/product docs)" --> firecrawl["Firecrawl"]
+  phase -- "implement HOW (library/provider/module syntax)" --> context7["Context7"]
+  phase -- "environment OURS" --> internal["Internal rules and standards"]
+  firecrawl -- "poor extraction / JS / login" --> playwright["Playwright"]
+  firecrawl -- "simple static page only" --> fetch["Fetch"]
   fetch -- insufficient --> firecrawl
+  firecrawl --> kb["Local knowledge base"]
+  kb --> impl["Implementation"]
+  context7 --> impl
+  internal --> impl
 ```
 
 ## Naming/Modeling Diagram
