@@ -58,17 +58,27 @@ An export root (e.g. `docs/reference/export/`) contains:
 - **`<Bundle>/<section>/<Page>/page.md`** — cleaned markdown with frontmatter:
   `source_url`, `page_slug`, `page_title`, `exported_at`.
 - **`<Page>/meta.yml`** — same identity fields plus `child_exports` for hubs.
-- **`<Page>/images/NNN-<name>.png`** — every vendor image downloaded locally;
-  the markdown link rewritten relative with the vendor URL preserved in an
-  HTML comment (`<!-- source: https://... -->`).
+- **`<Page>/images/NNN-<vendor-stem>.png`** — every vendor image downloaded
+  locally; the markdown link rewritten relative with the vendor URL preserved
+  in an HTML comment (`<!-- source: https://... -->`). Filenames keep the
+  vendor stem with an order prefix — derivable from the source URL, so re-runs
+  are idempotent. Do not hand-write semantic filenames; the semantic layer is
+  the `images/README.md` description.
 - **`<Page>/images/README.md`** — AI descriptions per image: what is shown,
   visible fields/values transcribed exactly (searchability is the goal),
   purpose in the doc flow.
 - **`<Page>/artifacts/`** — referenced resources: inline JSON/policy blocks,
   templates, API summaries. Vendor-portal-only downloads get a note in
   `artifacts/README.md` instead of a broken copy.
-- **`scripts/`** — the pipeline scripts (see templates below).
-- **`README.md`** — conventions + regenerate-one-page runbook.
+- **`scripts/`** — the pipeline scripts (see templates below), including a
+  **conformance checker** (`check_export_conformance.py`) that encodes the
+  conventions as executable checks with a `CONVENTIONS_VERSION` constant.
+- **`README.md`** — conventions + regenerate-one-page runbook, pointing at the
+  checker as the machine-checkable conventions authority.
+
+The contract is bidirectional: every `status: exported` node must exist on
+disk, and every `page.md` on disk must have a slug entry in `nav-tree.yml`.
+Disk cannot outgrow the contract.
 
 Reference implementation:
 `oneoffs/issue/ca-3081-zerto/docs/reference/export/` (ZIC.HTML v1.9).
@@ -100,9 +110,29 @@ Reference implementation:
    image files.
 7. **Sidecars.** Extract inline JSON/policy/template blocks the page carries
    into `artifacts/`.
-8. **Verify.** Every contract node with `status: exported` has `page.md` with
-   frontmatter; no vendor-hosted image links remain outside provenance
-   comments; every `images/` dir has a README; nav-tree statuses match disk.
+8. **Verify.** Run the export root's `check_export_conformance.py`; it must
+   exit 0. The checker enforces frontmatter, meta.yml, image localization,
+   provenance comments, description coverage, filename shape, and the
+   bidirectional nav-tree contract. Eyeballing conventions is not
+   verification.
+
+## Convention drift detection
+
+Conventions will change over time (image handling did). The mechanism that
+keeps old pages honest:
+
+1. The conformance checker is the single machine-checkable authority for the
+   conventions, versioned via `CONVENTIONS_VERSION`.
+2. When a convention changes: bump the version, add or adjust the check
+   first, then run the checker — it lists every already-exported page that
+   no longer conforms. That list is the backfill work order.
+3. The checker runs at the end of every pipeline pass (step 8) and must exit
+   0 before the work is reported complete, so drift cannot accumulate
+   silently between convention changes.
+
+Prose conventions in the README describe intent; the checker decides
+conformance. If they disagree, fix the checker or the README in the same
+change — never leave them split.
 
 ## Delegation model
 
@@ -127,6 +157,8 @@ patterns per vendor):
   slug-filter argument
 - `download_page_images.py` — image localization, link rewrite, provenance
 - `extract_sidecar_json.py` — inline artifact extraction
+- `check_export_conformance.py` — versioned conventions checker / drift
+  detector (exit nonzero on any nonconforming page)
 
 The Firecrawl API key comes from the stack's managed env file
 (`~/.config/dotfile-vnext/mcp/env.d/firecrawl.env`); source it, never inline it.

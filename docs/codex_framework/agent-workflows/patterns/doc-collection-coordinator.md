@@ -108,10 +108,12 @@ Single-page collections do not need this pattern — run the skill directly.
 
 ## Completion Rule
 
-All contract nodes in scope are `exported` on disk, verification checks pass
-(tree completeness, no unlocalized vendor image links, description coverage),
-worker QA gate passed, and the receipt is updated. Worker confirmations alone
-are not completion.
+All contract nodes in scope are `exported` on disk, the export root's
+`check_export_conformance.py` exits 0 (frontmatter, image localization,
+description coverage, bidirectional nav-tree contract), worker QA gate passed,
+and the receipt is updated. Worker confirmations alone are not completion,
+and neither is an eyeball pass over conventions — the checker run is the
+verification evidence.
 
 ## Failure Rule
 
