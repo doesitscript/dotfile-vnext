@@ -1,0 +1,71 @@
+---
+name: instruction-scope-registry
+family: framework
+kind: instruction_routing_registry
+portable: true
+
+summary: >
+  Pairs every knowledge-shaped MCP server (access layer) with a routing
+  instruction (habit layer) at a matching scope, and manages machine-scope
+  instruction files with Ansible managed blocks so habits are deployed,
+  updated, and removed with the server that justifies them.
+
+capabilities:
+  - access_vs_habit_scope_pairing
+  - machine_scope_instruction_management
+  - routing_instruction_lifecycle_coupling
+  - scope_mismatch_detection
+
+suggested_roles:
+  - planner_steward
+  - executor
+
+trigger_style: repo_guided
+
+primary_doc: docs/codex_framework/instruction-scope-registry.md
+
+managed_instruction_files:
+  codex_user_agents_md:
+    path: ~/.codex/AGENTS.md
+    scope: machine
+    marker_family: "ANSIBLE MANAGED BLOCK: routing_<server_key>"
+    header_marker: "ANSIBLE MANAGED BLOCK: instruction_scope_registry_header"
+
+registry_rows:
+  - key: openaiDeveloperDocs
+    access_scope: machine_and_project
+    habit_scope: machine
+    owner_role: roles/mcp_servers/openai_docs
+    status: habit_block_pending_ansible_slice
+
+owned_files:
+  - docs/codex_framework/instruction-scope-registry.md
+  - docs/codex_framework/capabilities/instruction-scope-registry.yml
+
+planned_owned_files:
+  - roles/mcp_servers/_shared/tasks/configure_routing_instruction.yml
+  - roles/mcp_servers/_shared/tasks/remove_routing_instruction.yml
+
+integration_files:
+  - docs/codex_framework/README.md
+  - roles/mcp_servers/README.md
+  - .cursor/rules/framework-mcp-and-tool-usage.mdc
+  - roles/mcp_servers/openai_docs/defaults/main.yml
+  - roles/mcp_servers/openai_docs/tasks/present.yml
+  - roles/mcp_servers/openai_docs/tasks/absent.yml
+
+update_behavior:
+  strategy: update-owned-files-and-integration-anchors
+  notes: >
+    New routing pairs are added as registry rows plus role-defaults
+    *_routing_entries declarations. The shared helper tasks own the block
+    rendering; per-server roles own their entries. Keep global rule changes
+    limited to short router anchors pointing back to the primary doc.
+
+removal_behavior:
+  strategy: remove-owned-files-and-reverse-integration-anchors
+  notes: >
+    Individual routing blocks are removed by running the owning MCP server
+    role with *_mcp_state=absent. Full capability removal also deletes the
+    shared helper tasks, the registry header block in ~/.codex/AGENTS.md,
+    and the integration anchors.

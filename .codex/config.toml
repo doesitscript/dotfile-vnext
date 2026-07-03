@@ -14,8 +14,9 @@ Do not assume `.cursorrules` or `.cursor/rules/*.mdc` were auto-injected at
 startup. Treat them as repo guidance to load when AGENTS.md or the task calls
 for them.
 
-For Codex/OpenAI/MCP/subagent questions in this repo, use the
-`openaiDeveloperDocs` MCP server first.
+For Codex/OpenAI/MCP/subagent questions in this repo, prefer official OpenAI
+docs. Use the `openaiDeveloperDocs` MCP server only when it is enabled and
+healthy; otherwise use official OpenAI docs fallback paths.
 """
 
 [shell_environment_policy]
@@ -59,9 +60,6 @@ shell_snapshot = false
 [profiles.mcp_probe_drawio.mcp_servers.ansible]
 enabled = false
 
-[profiles.mcp_probe_drawio.mcp_servers.ansible-mcp]
-enabled = false
-
 [profiles.mcp_probe_drawio.mcp_servers.sysoperator]
 enabled = false
 
@@ -76,6 +74,8 @@ enabled = true
 # BEGIN ANSIBLE MANAGED BLOCK: mcp_server_drawio
 [mcp_servers.drawio]
 command = "/Users/joshc/develop/dotfile-vnext/bin/drawio-mcp-codex-stdio-wrapper.js"
+enabled = false
+required = false
 args = ["/Users/joshc/.nvm/versions/node/v20.20.0/bin/drawio-mcp-server", "--editor", "--asset-path", "/Users/joshc/.cache/drawio-mcp-server-assets", "--extension-port", "3349", "--http-port", "3006"]
 startup_timeout_sec = 45
 
@@ -86,11 +86,14 @@ _MCP_ANSIBLE_ROLE_PATH = "roles/mcp_servers/drawio"
 [mcp_servers.codex]
 command = "/Users/joshc/.nvm/versions/node/v20.20.0/bin/codex"
 args = ["mcp-server"]
+enabled = false
+required = false
 # END ANSIBLE MANAGED BLOCK: mcp_server_codex
 # BEGIN ANSIBLE MANAGED BLOCK: mcp_server_openaiDeveloperDocs
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
-required = true
+enabled = false
+required = false
 # END ANSIBLE MANAGED BLOCK: mcp_server_openaiDeveloperDocs
 # BEGIN ANSIBLE MANAGED BLOCK: mcp_server_netbox
 [mcp_servers.netbox]
@@ -111,6 +114,7 @@ required = false
 # BEGIN ANSIBLE MANAGED BLOCK: mcp_server_hf-mcp-server
 [mcp_servers.hf-mcp-server]
 url = "https://huggingface.co/mcp?login"
+enabled = false
 required = false
 # END ANSIBLE MANAGED BLOCK: mcp_server_hf-mcp-server
 # BEGIN ANSIBLE MANAGED BLOCK: mcp_server_playwright

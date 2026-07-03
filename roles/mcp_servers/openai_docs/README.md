@@ -1,8 +1,8 @@
 # openai_docs — OpenAI developer docs MCP + local Codex runtime
 
 Adds the OpenAI developer docs MCP server to repo-local Cursor config and
-project Codex config, and installs the local Codex runtime used for the `codex`
-MCP server entry on macOS and Ubuntu.
+keeps the Codex docs entry disabled by default, while installing the local
+Codex runtime used for the `codex` MCP server entry on macOS and Ubuntu.
 
 Apply: converge the role from `playbooks/mac/mcp_servers.yaml`.
 Verify: inspect `.cursor/mcp.json`, inspect `.codex/config.toml`, and confirm
@@ -15,7 +15,7 @@ Change class: idempotent config.
 - installs `@openai/codex` via the nvm-managed npm on macOS and Ubuntu
 - manages the `openaiDeveloperDocs` entry in Cursor config
 - manages the optional local `codex` entry in Cursor config
-- manages the `openaiDeveloperDocs` and optional local `codex` blocks in project `.codex/config.toml`
+- manages the disabled, non-required `openaiDeveloperDocs` block and optional local `codex` block in project `.codex/config.toml`
 - keeps Codex TOML merge/remove behavior on the shared helper path instead of using `codex mcp` CLI mutation
 - consumes the shared inventory version contract so the Codex runtime can be pinned without forking role logic
 
@@ -49,13 +49,15 @@ Target tags:
 | `openai_docs_codex_package_name` | resolved package spec | Effective npm package spec used by the install/remove task. |
 | `openai_docs_codex_command` | `""` | Resolved local Codex binary path. |
 | `openai_docs_codex_enabled` | `true` | Whether the local `codex` MCP entry is managed. |
-| `openai_docs_docs_codex_entry` | docs URL entry | Structured Codex entry for `openaiDeveloperDocs`. |
-| `openai_docs_codex_entry` | `{}` | Optional overrides for the local `codex` entry. |
+| `openai_docs_docs_codex_entry` | disabled docs URL entry | Structured Codex entry for `openaiDeveloperDocs`; disabled by default because Codex can fail hard when remote docs MCP resource-template listing is unsupported. |
+| `openai_docs_codex_entry` | disabled local `codex` entry | Optional overrides for the local `codex` entry; disabled by default in Codex config to avoid self-MCP startup loops. |
 
 ## Notes
 
 - `openapi` remains a deliberate stub target for this role in this pass.
 - Codex config is managed in project `.codex/config.toml`, not `~/.codex/config.toml`.
+- The Codex-side `openaiDeveloperDocs` entry is disabled and non-required by default; keep Cursor-side docs MCP available for docs workflows until Codex handles remote MCP resource-template negotiation without taking down the process.
+- The Codex-side local `codex` MCP entry is disabled by default; Cursor can still use its own `codex` MCP entry from `.cursor/mcp.json`.
 - The shared helper pattern preserves unrelated Codex config outside the managed MCP blocks.
 - If `.codex/config.toml` already contains an unmanaged `openaiDeveloperDocs` entry, the role leaves that single table in place instead of appending a duplicate managed table.
 - The shared inventory variable `codex_tooling_version_contract` is the intended

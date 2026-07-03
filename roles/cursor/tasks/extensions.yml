@@ -4,7 +4,11 @@
 # that can fail with HTTP 500.
 
 - name: Install Cursor extensions via CLI
-  ansible.builtin.command: "cursor --install-extension {{ item }}"
+  ansible.builtin.command:
+    cmd: >-
+      cursor --install-extension
+      {{ '--force' if (cursor_extensions_force_reinstall | default(true) | bool) else '' }}
+      {{ item }}
   loop: "{{ cursor_extensions }}"
   register: _cursor_ext_result
   changed_when: (_cursor_ext_result.stdout | default('')) is search('was successfully installed')

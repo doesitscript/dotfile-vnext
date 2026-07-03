@@ -8,8 +8,10 @@
       - xz
       - zlib
       - ca-certificates
+      - pyenv
       - pipx
     state: present
+  tags: [python, brew]
 
 - name: Ensure Homebrew CA certs are linked into OpenSSL directory
   ansible.builtin.file:
@@ -48,6 +50,54 @@
     src: "{{ dotfiles_home }}/roles/python/files/pytest.ini"
     dest: "{{ dotfiles_user_home }}/pytest.ini"
     state: link
+  tags: [python]
+
+- name: Ensure pyenv-virtualenv plugin is installed for pyenv
+  ansible.builtin.git:
+    repo: https://github.com/pyenv/pyenv-virtualenv.git
+    dest: "{{ ansible_env.HOME }}/.pyenv/plugins/pyenv-virtualenv"
+    update: true
+    force: true
+  tags: [python, pyenv]
+
+- name: Ensure requested pyenv versions are installed on macOS
+  ansible.builtin.command:
+    argv:
+      - pyenv
+      - install
+      - "{{ item }}"
+      - --skip-existing
+    creates: "{{ ansible_env.HOME }}/.pyenv/versions/{{ item | string }}"
+  loop: "{{ pyenv_global_versions | default([]) }}"
+  tags: [python, pyenv]
+
+- name: Check current pyenv global version file
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/.pyenv/version"
+  register: pyenv_global_version_stat
+  when: (pyenv_global_versions | default([]) | length) > 0
+  tags: [python, pyenv]
+
+- name: Read current pyenv global version file
+  ansible.builtin.slurp:
+    path: "{{ ansible_env.HOME }}/.pyenv/version"
+  register: pyenv_global_version_file
+  when:
+    - (pyenv_global_versions | default([]) | length) > 0
+    - pyenv_global_version_stat.stat.exists
+  tags: [python, pyenv]
+
+- name: Set pyenv global versions on macOS
+  ansible.builtin.command:
+    cmd: "pyenv global {{ pyenv_global_versions | map('string') | join(' ') }}"
+  when:
+    - (pyenv_global_versions | default([]) | length) > 0
+    - >
+      not pyenv_global_version_stat.stat.exists
+      or (pyenv_global_version_file.content | b64decode | trim)
+         != (pyenv_global_versions | map('string') | join(' '))
+  changed_when: true
+  tags: [python, pyenv]
 
 - name: Install Python CLI tools via pipx on macOS
   ansible.builtin.command: "pipx install {{ item }}"
@@ -57,4 +107,4 @@
   failed_when:
     - _pipx_result.rc != 0
     - "'already seems to be installed' not in _pipx_result.stderr"
-  tags: pipx
+  tags: [python, pipx]

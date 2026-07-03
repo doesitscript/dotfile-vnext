@@ -280,6 +280,13 @@ These are the current files actively shaping this capability.
 - [docs/codex_framework/capabilities/mcp-research-collection-stack.yml](/Users/joshc/develop/dotfile-vnext/docs/codex_framework/capabilities/mcp-research-collection-stack.yml)
   Machine-readable ownership, integration, update, and removal manifest for the
   MCP Research Collection Stack.
+- [docs/codex_framework/instruction-scope-registry.md](/Users/joshc/develop/dotfile-vnext/docs/codex_framework/instruction-scope-registry.md)
+  The access-layer vs habit-layer scope model for MCP routing instructions,
+  including the managed-block pattern for machine-scope files such as
+  `~/.codex/AGENTS.md`.
+- [docs/codex_framework/capabilities/instruction-scope-registry.yml](/Users/joshc/develop/dotfile-vnext/docs/codex_framework/capabilities/instruction-scope-registry.yml)
+  Machine-readable registry of access/habit routing pairs, managed instruction
+  files, and lifecycle ownership for the Instruction Scope Registry.
 
 ### Capability-specific rule layer
 

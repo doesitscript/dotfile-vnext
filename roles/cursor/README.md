@@ -80,6 +80,7 @@ This role handles the infrastructure side:
 | `cursor_settings_path` | *(platform auto-detected)* | Full path to Cursor's settings.json |
 | `cursor_settings_lf_utf8` | *(see defaults)* | Settings dict merged idempotently into settings.json |
 | `cursor_extensions` | *(see defaults)* | List of extension IDs to install via CLI |
+| `cursor_extensions_force_reinstall` | `true` | Reinstall extensions with `--force` so Cursor converges to the latest marketplace release |
 | `cursor_remote_ssh_hosts` | *(see defaults)* | List of SSH Host entries for Remote-SSH config |
 | `cursor_cli_enabled` | `true` | Set to `false` to skip Cursor CLI (Homebrew `cursor-cli`) install |
 | `cursor_cli_version` | `{{ codex_tooling_version_contract.cursor_cli }}` | Pinned CLI version; bump in inventory to trigger upgrade |
@@ -90,6 +91,10 @@ The default Codex/OpenAI extension entry is assembled as
 `{{ cursor_openai_extension_id }}@{{ cursor_openai_extension_version }}` when a
 version is provided, so the shared inventory contract can pin it without
 rewriting the whole extension list.
+
+Extension installs run with `--force` by default so Cursor replaces stale
+cached copies and converges the marketplace install to the newest release
+available for each unpinned extension.
 
 Each item in `cursor_remote_ssh_hosts`:
 

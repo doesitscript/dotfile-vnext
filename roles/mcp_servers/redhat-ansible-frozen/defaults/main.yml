@@ -1,30 +1,14 @@
 ---
-# Current live Red Hat Ansible MCP build.
-# Pin to a release tag; change this only when you intentionally upgrade.
-redhat_ansible_version: "v26.6.0"
+# Frozen snapshot of the older Red Hat Ansible MCP build.
+redhat_ansible_version: "v25.12.2"
 
-# Upstream repository
 redhat_ansible_repo: "https://github.com/ansible/vscode-ansible.git"
-
-# Install location (XDG-aligned ~/.local/lib)
-redhat_ansible_install_dir: "{{ dotfiles_user_home }}/.local/lib/vscode-ansible"
-
-# Built MCP entry point (packages/ansible-mcp-server/out/server/src/cli.js)
+redhat_ansible_install_dir: "{{ dotfiles_user_home }}/.local/lib/vscode-ansible-frozen"
 redhat_ansible_entry_point: "{{ redhat_ansible_install_dir }}/packages/ansible-mcp-server/out/server/src/cli.js"
-
-# Cursor project directory for .cursor/mcp.json
 redhat_ansible_project_dir: "{{ dotfiles_home }}/.cursor"
-
-# Relative path from project root (for tracking/debugging)
-redhat_ansible_role_path: "roles/mcp_servers/redhat-ansible"
-
-# PATH exported to the MCP server so it can find ansible CLIs
+redhat_ansible_role_path: "roles/mcp_servers/redhat-ansible-frozen"
 redhat_ansible_server_path: "{{ dotfiles_user_home }}/.local/bin:{{ dotfiles_user_home }}/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-
-# WORKSPACE_ROOT tells the MCP server which project tree to analyze
 redhat_ansible_workspace_root: "{{ dotfiles_home }}"
-
-# Shared Ansible env vars
 redhat_ansible_collections_paths: "{{ dotfiles_home }}/collections"
 redhat_ansible_roles_path: "{{ dotfiles_home }}/roles:{{ dotfiles_home }}/roles/galaxy:{{ dotfiles_home }}/playbooks/roles"
 redhat_ansible_config: "{{ dotfiles_home }}/ansible.cfg"
@@ -37,3 +21,4 @@ redhat_ansible_runtime_env:
   OBJC_DISABLE_INITIALIZE_FORK_SAFETY: "yes"
   no_proxy: "*"
   _MCP_ANSIBLE_ROLE_PATH: "{{ redhat_ansible_role_path }}"
+

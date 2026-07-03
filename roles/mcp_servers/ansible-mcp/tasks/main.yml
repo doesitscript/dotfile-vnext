@@ -1,14 +1,7 @@
 ---
-- name: Install ansible-mcp on macOS
-  ansible.builtin.import_tasks: mac.yml
-  when: ansible_facts['system'] == "Darwin"
-  tags: [mcp, ansible-mcp]
-
-- name: Install ansible-mcp on Ubuntu
-  ansible.builtin.import_tasks: ubuntu.yml
-  when: ansible_facts['distribution'] == "Ubuntu"
-  tags: [mcp, ansible-mcp]
-
-- name: Configure ansible-mcp entry in .cursor/mcp.json
-  ansible.builtin.import_tasks: configure.yml
-  tags: [mcp, ansible-mcp]
+- name: Fail frozen standalone Ansible MCP snapshot
+  ansible.builtin.fail:
+    msg: >-
+      roles/mcp_servers/ansible-mcp is frozen and no longer part of the active
+      mcp_servers playbook. Use the live Red Hat Ansible role and keep this
+      snapshot only for reference.

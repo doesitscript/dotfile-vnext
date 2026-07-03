@@ -5,6 +5,10 @@ Installs pyenv, pyenv-virtualenv, pipx, python2, python3, and poetry. Also adds 
 
 Use the `mkvenv` script for bootstrapping new virtualenvs.
 
+On macOS, the role installs the requested `pyenv_global_versions` and then sets
+`pyenv global` to match the inventory order. `mac-dev` currently pins only
+`3.14.6`.
+
 ## Python Tooling Patterns
 
 This role is authoritative for Python tooling decisions in this repository.

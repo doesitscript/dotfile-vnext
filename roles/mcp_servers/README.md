@@ -3,13 +3,16 @@
 Each subdirectory is an Ansible role that installs and configures one MCP
 (Model Context Protocol) server for repo-local client integration.
 
+Frozen snapshot roles are kept alongside the live roles for rollback and
+historical reference. They are not included in the controller playbook unless
+you explicitly add them back.
+
 ## Roles
 
 | Role | Server | Runtime | Interaction | Targets | Repo |
 |---|---|---|---|---|---|
 | `redhat-ansible` | Red Hat Ansible Cursor extension MCP | Node.js (extension build) | interactive/editor | Cursor | [redhat.ansible](https://marketplace.visualstudio.com/items?itemName=redhat.ansible) |
 | `mcp-sysoperator` | Infrastructure ops (file, shell, Terraform) | Node.js (npm) | launcher | Cursor | [tarnover/mcp-sysoperator](https://github.com/tarnover/mcp-sysoperator) |
-| `ansible-mcp` | Ansible playbook/inventory intelligence | Python (pip + venv) | launcher | Cursor | [bsahane/mcp-ansible](https://github.com/bsahane/mcp-ansible) |
 | `openai_docs` | OpenAI developer docs (search + read) | HTTP + local Codex | launcher | Cursor, Codex | [Docs MCP](https://developers.openai.com/resources/docs-mcp) |
 | `langfuse_docs` | Langfuse developer docs (search + read) | HTTP | launcher | Cursor, Codex | [Docs MCP](https://langfuse.com/docs/docs-mcp) |
 | `hf-mcp-server` | Hugging Face Hub, docs, papers, datasets, models, and Spaces tools | HTTP | launcher | Cursor, Codex | [Hugging Face MCP Server](https://huggingface.co/docs/hub/hf-mcp-server) |
@@ -61,6 +64,8 @@ under `~/.config/dotfile-vnext/mcp/env.d/` and point client config at
 - `roles/mcp_servers/_template/` is the MCP role scaffold.
 - `roles/mcp_servers/drawio/` is the first canonical JSON-target example.
 - `roles/mcp_servers/openai_docs/` is the first Codex-target example.
+- `roles/mcp_servers/redhat-ansible-frozen/` preserves the old pinned Red Hat Ansible MCP build for rollback/reference only.
+- `roles/mcp_servers/ansible-mcp/` is frozen and no longer included in the focused controller playbook.
 - `roles/mcp_servers/langfuse_docs/` is a simple public HTTP docs MCP example.
 - `roles/mcp_servers/huggingface/` is the official Hugging Face Hub HTTP MCP example.
 - `roles/mcp_servers/context7/` is the technical-docs first choice for known products and libraries.
@@ -68,6 +73,12 @@ under `~/.config/dotfile-vnext/mcp/env.d/` and point client config at
 - `roles/mcp_servers/playwright/` is the browser-rendered fallback example.
 - `roles/mcp_servers/fetch/` is the lightweight fetch fallback example.
 - `playbooks/mac/mcp_servers.yaml` is the focused controller-side control surface for local MCP convergence on the Mac.
+
+### Frozen snapshots
+
+- `roles/mcp_servers/redhat-ansible-frozen/` - old Red Hat Ansible MCP build, pinned to `v25.12.2`
+- `roles/mcp_servers/ansible-mcp/` - standalone Ansible MCP snapshot, pinned to commit `dcd92c9`
+- `roles/python-frozen/` - shared Python dependency snapshot
 
 ## Hugging Face Auth Note
 
@@ -124,7 +135,6 @@ ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags playwrigh
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags fetch
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags langfuse-docs
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags huggingface
-ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags ansible-mcp
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags mcp-sysoperator
 ```
 
@@ -137,6 +147,14 @@ ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags drawio,mc
 
 If no target tag is supplied, the role uses its `<server>_targets` default or
 explicit variable override.
+
+Client config targets carry the **access layer** only. Knowledge-shaped
+servers (docs MCPs, Context7, Firecrawl, NetBox) also need a **habit layer**:
+a routing instruction at a scope matching the config entry. Scope model,
+registry, and the managed-block pattern for machine-scope files such as
+`~/.codex/AGENTS.md` live in
+`docs/codex_framework/instruction-scope-registry.md`. A new knowledge server
+is not fully installed until its registry row and routing instruction exist.
 
 Supported targets and commissioned targets are not the same thing. A role may
 support `cursor`, `vscode`, and `codex`, while a host only commissions a subset
@@ -156,8 +174,8 @@ roles/mcp_servers/
   README.md
   _template/
   redhat-ansible/
+  redhat-ansible-frozen/
   mcp-sysoperator/
-  ansible-mcp/
   openai_docs/
   langfuse_docs/
   huggingface/

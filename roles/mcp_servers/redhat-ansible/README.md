@@ -1,12 +1,12 @@
 # redhat-ansible
 
-Builds the Red Hat Ansible MCP server from source (vscode-ansible) and configures the `"ansible"` entry in the project's `.cursor/mcp.json`. The package only upgrades when you change the version variable and re-run the role.
+Builds the current Red Hat Ansible MCP server from source (`ansible/vscode-ansible`) and configures the `"ansible"` entry in the project's `.cursor/mcp.json`. This is the live role; the frozen snapshot lives in `roles/mcp_servers/redhat-ansible-frozen/`.
 
 ## Background
 
-The Red Hat Ansible VS Code/Cursor extension used to ship an MCP entry point at `out/mcp/cli.js` inside the extension directory. In newer packaged builds (e.g. 26.3.0), that file is no longer present—the extension only ships data under `out/mcp/`, and the MCP server is intended to be started via the extension’s provider rather than a static path.
+The Red Hat Ansible VS Code/Cursor extension used to ship an MCP entry point at `out/mcp/cli.js` inside the extension directory. In newer packaged builds (e.g. 26.6.0), that file is no longer present—the extension only ships data under `out/mcp/`, and the MCP server is intended to be started via the extension’s provider rather than a static path.
 
-**This role does not recover or restore the old extension.** It builds the MCP server from the [ansible/vscode-ansible](https://github.com/ansible/vscode-ansible) source repo, pinned to a release tag (e.g. `v26.3.0`). The result is a standalone `cli.js` under `~/.local/lib/vscode-ansible/` that Cursor invokes directly. The MCP server you get is built from current upstream source and is independent of the Cursor extension install; upgrades are controlled only by `redhat_ansible_version`.
+**This role does not recover or restore the old extension.** It builds the MCP server from the [ansible/vscode-ansible](https://github.com/ansible/vscode-ansible) source repo, pinned to a release tag (currently `v26.6.0`). The result is a standalone `cli.js` under `~/.local/lib/vscode-ansible/` that Cursor invokes directly. The MCP server you get is built from current upstream source and is independent of the Cursor extension install; upgrades are controlled only by `redhat_ansible_version`.
 
 ## What It Does
 
@@ -32,7 +32,7 @@ The Red Hat Ansible VS Code/Cursor extension used to ship an MCP entry point at 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `redhat_ansible_version` | `"v26.3.0"` | Git ref to pin (tag, branch, or sha). **Change only when you want to upgrade.** |
+| `redhat_ansible_version` | `"v26.6.0"` | Git ref to pin (tag, branch, or sha). **Change only when you want to upgrade.** |
 | `redhat_ansible_repo` | `https://github.com/ansible/vscode-ansible.git` | Upstream repo URL |
 | `redhat_ansible_install_dir` | `~/.local/lib/vscode-ansible` | Clone destination |
 | `redhat_ansible_entry_point` | `<install_dir>/packages/ansible-mcp-server/out/server/src/cli.js` | Built MCP CLI path |
@@ -44,12 +44,12 @@ The Red Hat Ansible VS Code/Cursor extension used to ship an MCP entry point at 
 
 ## Upgrading
 
-To upgrade the MCP to a newer release, set `redhat_ansible_version` to the desired tag or commit SHA (e.g. in group_vars, host_vars, or extra vars) and re-run the role. The repo will update and the MCP package will rebuild.
+To upgrade the MCP to a newer release, set `redhat_ansible_version` to the desired tag or commit SHA (e.g. in group_vars, host_vars, or extra vars) and re-run the role. The repo will update and the MCP package will rebuild. Do not bump the frozen snapshot role; that one is intentionally preserved for rollback/reference.
 
 Example (pin to a newer tag):
 
 ```yaml
-redhat_ansible_version: "v26.4.0"
+redhat_ansible_version: "v26.6.0"
 ```
 
 ## Developer Setup Dependency — ansible_dev_tools Role
@@ -66,9 +66,9 @@ symlink is required (extension bug: `activationScript` skips `${workspaceFolder}
 
 ## Known Gap — MCP Server Tool Version
 
-The MCP server process finds `ansible-lint` via `~/.local/bin/ansible-lint` (pipx install,
-version 26.1.1) — not the project venv version (26.3.0). The venv is detected but not active
-in the MCP server's process environment.
+The MCP server process finds `ansible-lint` via `~/.local/bin/ansible-lint` (pipx install)
+— not the project venv version. The venv is detected but not active in the MCP server's
+process environment.
 
 **Current workaround:** None confirmed. The `.envrc` previously contained:
 ```bash
