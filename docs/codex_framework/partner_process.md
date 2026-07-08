@@ -560,11 +560,32 @@ The draft remains in the conversation by default and is refined until the user a
 
 If the topic is novel or under-researched, the planner may summarize current direction but should escalate to the Researcher before presenting a decision-complete plan.
 
+Ordinary planning prose can stay lightweight. The governed plan classes are
+only:
+
+- stored plans under `docs/plans/`
+- official conversational plan surfaces such as `<proposed_plan>` or a rendered
+  `Plan` card
+
+If the content is only a sketch, summary, or incomplete thought, keep it as
+normal prose. Do not use a plan-card / `<proposed_plan>` surface as a
+design-summary escape hatch.
+
 Official plans are more than lightweight draft notes. Conversational
-`<proposed_plan>` plans and stored plans under `docs/plans/` must include the
-baseline Mermaid `Architecture/Structure Diagram`, any conditional diagrams
-required by the active framework rule, and an ending list of other available
-diagram types that could be made. If the baseline diagram is missing, that is a
+`<proposed_plan>` plans and stored plans under `docs/plans/` must include:
+
+- clear title
+- brief summary
+- `Capability Packet Boundary` when grouped capability work is proposed
+- `Apply / Verify / Undo / Change class`
+- baseline Mermaid `Architecture/Structure Diagram`
+- `Capability Routing Diagram` when routing or branching matters
+- `Naming/Modeling Diagram` when names, routes, targets, or ownership change
+- `Diagram Inventory`
+- explicit assumptions/defaults
+- decision-complete implementation detail
+
+If the baseline or required conditional sections are missing, that is a
 planning defect to correct before implementation.
 
 For NetBox-scoped work, plan completeness is also gated by a concrete runtime

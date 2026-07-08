@@ -1,8 +1,23 @@
-# AI Library addition request
+---
+lifecycle: implemented
+scope: doc-only
+implemented_date: 2026-07-08
+archive_candidate: true
+---
+
+# Diagrams tool — AI library and skill setup
 
 Add a new entry to the AI Library for the `diagrams` Python tool so an AI can
 generate diagrams from instructions, Terraform, and product documentation with
 less iteration.
+
+## Status: implemented (2026-07-08)
+
+| Deliverable | Location |
+|-------------|----------|
+| Vendor documentation pack | `/Users/joshc/develop/ai-resource-library/vendors/diagrams/firecrawl/` |
+| Cursor skill | `roles/common/agent_skills/files/cursor/skills/create-diagrams/SKILL.md` |
+| Original intake note | Promoted from `docs/ai-library/diagrams_tool_install_plan.md` |
 
 ## Goal
 

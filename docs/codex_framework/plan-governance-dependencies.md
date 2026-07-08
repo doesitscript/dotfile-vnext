@@ -22,7 +22,7 @@
 | Consumer | Trigger |
 |----------|---------|
 | Saving or promoting `docs/plans/**/README.md` | Always; Required NetBox Slice when `netbox_scope: true` or services/naming in scope |
-| Conversational `<proposed_plan>` with implementation scope | Always |
+| Official conversational `<proposed_plan>` / rendered `Plan` card with implementation scope | Always |
 | [capability_introduction_checklist.md](capability_introduction_checklist.md) | New grouped capability + capability packet + plan packet |
 | [complete-plan-lifecycle skill](../../.cursor/skills/complete-plan-lifecycle/SKILL.md) | Completing or renaming plan packets — requires Plan verification receipt |
 | [plan-verification-receipt.md](plan-verification-receipt.md) | Execute, status report, or `lifecycle: implemented` |

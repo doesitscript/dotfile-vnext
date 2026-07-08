@@ -106,6 +106,8 @@ So this folder is also a migration aid. It makes the current framework visible e
 ## Current Status
 
 Implemented now:
+- manifest-backed `ai-library-entry` kickoff capability for durable
+  `ai-resource-library` additions
 - `Planner / Steward`
 - `Researcher`
 - official project-level Codex runtime config in `.codex/config.toml`

@@ -1,0 +1,48 @@
+---
+description: Route durable ai-resource-library additions through the ai-library-entry kickoff capability with packet-local entry-spec validation.
+alwaysApply: true
+---
+
+# AI Library Entry Governance
+
+Use `ai-library-entry` as the primary kickoff whenever the task adds or
+materially refreshes durable content under `ai-resource-library/`.
+
+This rule applies to work targeting:
+
+- `vendors/`
+- `sdk-context/`
+- `indexes/`
+- `prompts/`
+
+## Required behavior
+
+1. Classify the requested work into one or more content families:
+   - `vendor_docs`
+   - `sdk_api_context`
+   - `library_indexes`
+   - `operator_prompts`
+2. Create a governed packet under `docs/plans/YYYY-MM-DD--slug/README.md`
+   before major collection or synthesis work.
+3. Create a packet-local `entry-spec.yml` before collection/build work that
+   declares sources, outputs, modes, routing, Context7 expectations, asset
+   requirements, and validation rules.
+4. Use Firecrawl first for live vendor/product/help docs; use Playwright when
+   JS/login/browser state is needed; use Fetch only as a lightweight fallback.
+5. Use Context7 for implementation syntax and indexed technical-doc context,
+   not as a replacement for live vendor-doc collection.
+6. Use `vendor-doc-collection` only as the narrower helper when the routed
+   output needs a structured vendor-doc export tree.
+7. Do not mark the entry complete until:
+   - the validator passes for `entry-spec.yml`
+   - required outputs exist in their declared target roots
+   - required provenance and asset declarations are satisfied
+
+## Boundary
+
+This rule does not force all ai-library work into `vendors/`.
+Routing is part of the capability.
+
+This rule also does not convert ordinary research notes into a durable entry.
+It applies when the task is actually building or materially refreshing durable
+library content.

@@ -5,6 +5,13 @@ description: Collect vendor/product documentation into a structured, AI-friendly
 
 # Skill: Vendor Doc Collection
 
+Primary kickoff for new `ai-resource-library` additions is now
+`ai-library-entry`.
+
+Use this skill as the narrower structured vendor-doc export helper after the
+entry capability has already decided that the work belongs in a Firecrawl-style
+vendor tree.
+
 Turn vendor documentation (help portals, product guides, KB trees) into a
 structured local datasource: one folder per page mirroring the vendor nav
 hierarchy, cleaned markdown with provenance frontmatter, referenced artifacts

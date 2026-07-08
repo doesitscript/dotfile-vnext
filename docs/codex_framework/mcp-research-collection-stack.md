@@ -276,9 +276,12 @@ Prefer structured/JSON extraction when you only need specific fields. Use full
 markdown when the task genuinely needs page-level reading, summarization, or
 doc-structure analysis.
 
-For durable local export of vendor documentation (structured export tree,
-localized images, AI image descriptions, any scope from one page to a full nav
-branch), use the `vendor-doc-collection` skill at
+For durable `ai-resource-library` additions, start with the `ai-library-entry`
+capability at `.cursor/skills/ai-library-entry/SKILL.md`.
+
+When that capability routes the work into a structured vendor-doc export tree
+(localized images, AI image descriptions, any scope from one page to a full
+nav branch), use the narrower `vendor-doc-collection` helper at
 `.cursor/skills/vendor-doc-collection/SKILL.md`.
 
 ## Multi-Agent Use

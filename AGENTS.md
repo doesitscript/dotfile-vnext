@@ -240,12 +240,28 @@ planning or research question. If they are skipped, say why.
    - a short recap
    - a short draft plan
    - `Apply / Verify / Undo / Change class`
-3. Official plans, including conversational `<proposed_plan>` plans and stored
-   plans under `docs/plans/`, must include:
+3. Ordinary planning prose and official plan surfaces are not the same thing.
+   The governed plan classes in this repo are only:
+   - stored plan packets under `docs/plans/**`
+   - official conversational plan surfaces such as `<proposed_plan>` or a
+     rendered `Plan` card
+4. If the content is still a sketch, summary, or incomplete thought, keep it
+   as normal prose. Do not use a plan-card or `<proposed_plan>` surface as a
+   design-summary escape hatch.
+5. Official plans, including conversational `<proposed_plan>` plans and stored
+   plans under `docs/plans/`, must include the conversational-plan minimum:
+   - clear title
+   - brief summary
+   - `Capability Packet Boundary` when grouped capability work is proposed
+   - `Apply / Verify / Undo / Change class`
    - an `Architecture/Structure Diagram` in Mermaid
-   - any conditional diagrams required by the active framework rule
-   - an end section listing other available diagram types that could be made
-4. Before emitting a conversational `<proposed_plan>` or saving a plan under
+   - a `Capability Routing Diagram` when routing or branching matters
+   - a `Naming/Modeling Diagram` when names, routes, targets, or ownership
+     change
+   - `Diagram Inventory`
+   - explicit assumptions/defaults
+   - enough implementation detail to be decision-complete
+6. Before emitting a conversational `<proposed_plan>` or saving a plan under
    `docs/plans/`, run the plan diagram gate:
    - the plan contains a fenced Mermaid `Architecture/Structure Diagram`
    - the diagram shows repo structure, external resources, data/control flow,
@@ -257,16 +273,16 @@ planning or research question. If they are skipped, say why.
    - that final section lists diagrams included and other diagrams that could
      be created
    If this gate fails, do not emit or save the plan. Fix the plan first.
-5. Refine the draft until agreement instead of treating planning as one-shot.
-6. Keep draft plans in the conversation until they are accepted. Store approved plans under `docs/plans/` as the canonical durable artifact and mirror them to a GitHub issue as a higher-level roadmap when GitHub is available. New approved plans must be stored as folder packets: `docs/plans/YYYY-MM-DD--short-slug/README.md`. Do not create new single-file plan artifacts.
-7. At meaningful role transitions, briefly label the active framework surface when it helps the user track the work:
+7. Refine the draft until agreement instead of treating planning as one-shot.
+8. Keep draft plans in the conversation until they are accepted. Store approved plans under `docs/plans/` as the canonical durable artifact and mirror them to a GitHub issue as a higher-level roadmap when GitHub is available. New approved plans must be stored as folder packets: `docs/plans/YYYY-MM-DD--short-slug/README.md`. Do not create new single-file plan artifacts.
+9. At meaningful role transitions, briefly label the active framework surface when it helps the user track the work:
    - `Planner/Steward view:`
    - `Researcher view:`
    - `Executor view:`
    - `Outcomes:`
-8. Reserve `Evidence:` for collected outputs, saved artifacts, and source-backed findings. Use `Outcomes:` or plain implementation prose for change summaries, recaps, or results that are not proof artifacts.
-9. Treat Ansible task states such as `changed`, `ok`, and play recap counts as outcomes, not evidence, unless the underlying output, exception text, registered result, log/event entry, or saved artifact is also shown.
-10. Use those labels at transition points and decision points, not on every message.
+10. Reserve `Evidence:` for collected outputs, saved artifacts, and source-backed findings. Use `Outcomes:` or plain implementation prose for change summaries, recaps, or results that are not proof artifacts.
+11. Treat Ansible task states such as `changed`, `ok`, and play recap counts as outcomes, not evidence, unless the underlying output, exception text, registered result, log/event entry, or saved artifact is also shown.
+12. Use those labels at transition points and decision points, not on every message.
 
 ## Implementation Shape
 

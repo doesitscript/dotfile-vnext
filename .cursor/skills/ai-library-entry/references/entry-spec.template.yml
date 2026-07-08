@@ -1,0 +1,91 @@
+entry_id: example_vendor_entry
+
+content_families:
+  - vendor_docs
+  - sdk_api_context
+  - library_indexes
+  - operator_prompts
+
+library_targets:
+  vendor_docs: /absolute/path/to/ai-resource-library/vendors/example
+  sdk_api_context: /absolute/path/to/ai-resource-library/sdk-context/context7/example
+  library_indexes: /absolute/path/to/ai-resource-library/indexes/example
+  operator_prompts: /absolute/path/to/ai-resource-library/prompts/example
+
+source_urls:
+  - url: https://example.com/docs/overview
+    kind: live_doc
+    maps_to:
+      - overview-full
+      - metadata
+  - url: https://example.com/sdk/reference
+    kind: sdk_doc
+    maps_to:
+      - sdk-notes
+
+required_outputs:
+  - id: overview-full
+    path: /absolute/path/to/ai-resource-library/vendors/example/overview.md
+    content_family: vendor_docs
+    source_urls:
+      - https://example.com/docs/overview
+    provenance_required: true
+    summary_allowed: false
+    context7_topics: []
+    asset_paths: []
+  - id: metadata
+    path: /absolute/path/to/ai-resource-library/vendors/example/metadata.json
+    content_family: vendor_docs
+    source_urls:
+      - https://example.com/docs/overview
+    provenance_required: false
+    summary_allowed: false
+    context7_topics: []
+    asset_paths: []
+  - id: sdk-notes
+    path: /absolute/path/to/ai-resource-library/sdk-context/context7/example/README.md
+    content_family: sdk_api_context
+    source_urls:
+      - https://example.com/sdk/reference
+    provenance_required: true
+    summary_allowed: false
+    context7_topics:
+      - exact package or provider topic used
+    asset_paths: []
+
+output_modes:
+  overview-full: full_capture
+  metadata: index_record
+  sdk-notes: sdk_context_note
+
+collection_strategy:
+  primary: firecrawl_scrape
+  discovery: firecrawl_map_then_scrape
+  fallback:
+    - playwright_fallback
+    - fetch_fallback
+  live_collection_required: true
+
+context7_required: true
+
+context7_topics:
+  - exact package or provider topic used
+
+asset_requirements:
+  localization_required: false
+  sidecar_extraction_required: false
+
+allowed_summary_outputs: []
+
+validation_rules:
+  packet_readme: /absolute/path/to/docs/plans/YYYY-MM-DD--slug/README.md
+  validator_pass_token: AI_LIBRARY_ENTRY_VALIDATION_OK
+  required_metadata_outputs:
+    - metadata
+  required_index_outputs: []
+  full_capture_provenance_markers:
+    - "Source:"
+    - "Source URL:"
+    - "source_url:"
+    - "Collection-tool:"
+    - "Capture mode: full_capture"

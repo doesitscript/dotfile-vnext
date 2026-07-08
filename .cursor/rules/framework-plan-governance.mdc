@@ -6,7 +6,18 @@ alwaysApply: true
 
 # Plan Governance Gate
 
-Before saving or promoting any file under `docs/plans/` (including `*-incomplete/` packets):
+This rule governs only the repo's official plan classes:
+
+- stored packets under `docs/plans/**`
+- official conversational plan surfaces such as `<proposed_plan>` or a
+  rendered `Plan` card
+
+It does not apply to ordinary planning prose, sketch notes, or lightweight
+draft discussion that stays outside those official plan surfaces.
+
+Before saving or promoting any file under `docs/plans/` (including
+`*-incomplete/` packets), or before emitting an official conversational plan
+surface:
 
 1. Open [docs/codex_framework/plan-governance-dependencies.md](../docs/codex_framework/plan-governance-dependencies.md).
 2. Complete every item in [docs/plans/README.md](../docs/plans/README.md) **Required Diagram Checklist**.
@@ -15,32 +26,47 @@ Before saving or promoting any file under `docs/plans/` (including `*-incomplete
    name the owner manifest, owned files, integration anchors, update behavior,
    and removal behavior.
 4. Include **Diagram gate receipt** per [framework-partner-process.mdc](framework-partner-process.mdc).
+5. For official conversational plan surfaces, require the conversational-plan
+   minimum:
+   - clear title
+   - brief summary
+   - `Capability Packet Boundary` when grouped capability work is proposed
+   - `Apply / Verify / Undo / Change class`
+   - `Architecture/Structure Diagram`
+   - `Capability Routing Diagram` when routing or branching matters
+   - `Naming/Modeling Diagram` when names, routes, targets, or ownership change
+   - `Diagram Inventory`
+   - explicit assumptions/defaults
+   - decision-complete implementation detail
+6. If the content is only a sketch, summary, or incomplete thought, keep it in
+   normal prose. Do not emit a plan-card / `<proposed_plan>` surface for that
+   content.
 
 When **executing**, **reporting slice status**, or setting **`lifecycle: implemented`**:
 
-5. Open [docs/codex_framework/plan-verification-receipt.md](../docs/codex_framework/plan-verification-receipt.md).
+7. Open [docs/codex_framework/plan-verification-receipt.md](../docs/codex_framework/plan-verification-receipt.md).
    When the plan has **`netbox_scope: true`** or touches NetBox services/naming/registry,
    also satisfy [docs/plans/README.md](../docs/plans/README.md) **Required NetBox Slice**:
    `## Mandatory NetBox slice`, **Declared / Applied / Verified** evidence,
    seed apply to live API (not repo-only defaults) or explicit reconciliation-only
    status, `scripts/validate_netbox_repo_consistency.sh`, and live object verification.
-6. Maintain **Plan verification receipt** with a full **obligation inventory** and evidence —
+8. Maintain **Plan verification receipt** with a full **obligation inventory** and evidence —
    not checklist-only receipts.
-7. Treat `## On Deck — user decisions to integrate` as build-blocking until every
+9. Treat `## On Deck — user decisions to integrate` as build-blocking until every
    row is integrated into the plan, routed to a named sibling plan, or explicitly
    rejected by a later user correction.
-8. Do not report missing roles/playbooks/resources as final blockers until the
+10. Do not report missing roles/playbooks/resources as final blockers until the
    coordinator has checked authoritative docs/MCPs, scaffolded repo-owned
    surfaces where the implementation path is clear, run the first safe
    preview/read-only dependency gate, and recorded receipt evidence.
-9. When implementation starts, dependency order must be represented by
+11. When implementation starts, dependency order must be represented by
    executable Ansible entrypoints or an orchestrator playbook, not only README
    prose.
-10. `blocked` and `fail` are valid evidence states but not completion states.
+12. `blocked` and `fail` are valid evidence states but not completion states.
    A plan with blocked in-scope obligations must remain incomplete unless that
    work is moved to a named future plan and removed from current completion
    obligations with user acceptance.
-11. Brainstormed exact resource picks, including model IDs, provider routes,
+13. Brainstormed exact resource picks, including model IDs, provider routes,
     hardware placement, NetBox objects, and downloads, must remain
     `pending_research` or `provisional_example` until current research and live
     probes justify selecting them.
@@ -68,6 +94,7 @@ A status-only plan without Naming/Modeling (when names/NetBox/schema change) is 
 A grouped capability plan without `## Capability Packet Boundary` is invalid for build/execute.
 Checklist-only verification without the obligation inventory is invalid for complete/implemented.
 Plans with unresolved on-deck decisions are invalid for build/execute.
+An official conversational plan surface used as a sketch/summary escape hatch is invalid.
 Plans whose missing-resource blockers skipped the research/scaffold/probe loop
 are invalid for final status.
 Plans that treat blocked rows as implemented are invalid for final status.

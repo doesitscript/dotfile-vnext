@@ -10,7 +10,7 @@ Approved plans belong here.
 - Treat the repo plan as the canonical durable artifact.
 - Mirror the work into a GitHub issue as a higher-level roadmap when GitHub is available.
 - Keep the GitHub issue shorter than the repo plan and link the two when that improves pickup.
-- **Include Mermaid diagrams** visualizing architecture, implementation flow, and naming standards (see `.cursor/rules/framework-partner-process.mdc` for full requirements). The same baseline applies to official conversational `<proposed_plan>` plans.
+- **Include Mermaid diagrams** visualizing architecture, implementation flow, and naming standards (see `.cursor/rules/framework-partner-process.mdc` for full requirements). The same baseline applies to official conversational `<proposed_plan>` plans or rendered `Plan` cards, but not to ordinary prose planning.
 - When the user explicitly decides or directs a scope item during plan work,
   capture it immediately in `## On Deck — user decisions to integrate` at the
   bottom of the active plan. This section is temporary. Plans cannot proceed to
