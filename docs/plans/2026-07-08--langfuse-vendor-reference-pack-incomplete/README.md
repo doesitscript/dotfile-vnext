@@ -2,7 +2,8 @@
 lifecycle: in_progress
 scope: implementation
 netbox_scope: false
-depends_on_plans: []
+depends_on_plans:
+  - 2026-07-08--ai-library-entry-capability-incomplete
 unblocks: []
 ---
 
@@ -26,6 +27,9 @@ This slice captures:
 
 The result should be a re-runnable vendor reference pack with local markdown,
 local media assets, page/index metadata, and an explicit Context7 record.
+This remediation pass adds a packet-local `entry-spec.yml`, explicitly declares
+which outputs are allowed structured summaries versus full captures, and
+re-validates the pack through `ai-library-entry`.
 
 ## Capability Packet Boundary
 
@@ -57,12 +61,16 @@ local media assets, page/index metadata, and an explicit Context7 record.
 
 - Create a governed packet at `docs/plans/2026-07-08--langfuse-vendor-reference-pack-incomplete/README.md`.
 - Retain the pack-regeneration helper at `docs/plans/2026-07-08--langfuse-vendor-reference-pack-incomplete/build_langfuse_vendor_pack.py`.
+- Add packet-local `entry-spec.yml` so this entry is governed by the new
+  `ai-library-entry` contract instead of only the original vendor-pack packet.
 - Create a new vendor subtree at `/Users/joshc/develop/ai-resource-library/vendors/langfuse`.
 - Update `/Users/joshc/develop/ai-resource-library/vendors/README.md` to advertise the new subtree.
 - Materialize a Langfuse pack README, metadata, page index, markdown pages, and local assets.
 - Download integration icons to local files and reference them from markdown using standard media paths.
 - Download workshop screenshots/diagrams from the GitHub `docs/images/` tree and reconnect learner markdown to those local assets.
 - Record Context7 library id, query topics, and purpose in the pack README and metadata.
+- Keep the Langfuse outputs rooted under `vendors/langfuse`; no current file in
+  this slice needs to move to `sdk-context/` or `indexes/`.
 
 ## Build contract
 
@@ -101,7 +109,7 @@ local media assets, page/index metadata, and an explicit Context7 record.
 ### Content rules
 
 - Every generated markdown page must include provenance metadata: source URL(s),
-  capture date, and normalization notes.
+  capture date, capture mode, and normalization notes.
 - `integrations-overview.md` must preserve the category structure from the page
   and list the visible items under each category with local icon references when
   Langfuse exposes icon assets.
@@ -113,6 +121,8 @@ local media assets, page/index metadata, and an explicit Context7 record.
   from the upstream GitHub tree.
 - `page-index.json` must map every generated markdown page to its source URLs
   and relevant asset paths.
+- Structured-summary outputs are allowed only for the declared landing/bridge
+  pages; learner markdown and raw GitHub README captures remain full captures.
 
 ## Context7 gate
 
@@ -134,10 +144,12 @@ local media assets, page/index metadata, and an explicit Context7 record.
 - [x] P4 Capture the guides/workshop overview pages and every learner lesson page
 - [x] P5 Download and reconnect workshop screenshots/diagrams from the GitHub image tree
 - [x] P6 Capture the MCP/skills pages and record Context7 evidence in README/metadata
+- [x] P7 Add packet-local `entry-spec.yml` and align output modes with the new `ai-library-entry` contract
 - [x] V1 Verify all required markdown files exist and `page-index.json` points to real files
 - [x] V2 Verify local markdown asset references resolve to downloaded files
 - [x] V3 Verify every requested source URL is represented in the pack output or metadata
 - [x] V4 Verify integrations entries without source icon assets are explicitly annotated rather than silently dropped
+- [x] V5 Run the `ai-library-entry` validator and record the pass token
 
 ## Apply / Verify / Undo / Change class
 
@@ -202,6 +214,7 @@ flowchart LR
 - Verify the pack README and metadata record the Context7 library id, query topics, and purpose.
 - Verify `page-index.json` and `metadata.json` are valid JSON and point only to existing files.
 - Verify each requested source URL is represented either by a generated page or by explicit metadata coverage.
+- Verify `entry-spec.yml` explicitly allows the intended structured-summary outputs and that the validator returns `AI_LIBRARY_ENTRY_VALIDATION_OK`.
 
 ## Assumptions
 
@@ -209,6 +222,9 @@ flowchart LR
 - The pack root for this slice is `ai-resource-library/vendors/langfuse`, not a deeper product-specific subdirectory.
 - The guides index page is treated as a curated landing page in this slice; individual guide leaf pages beyond workshop lessons are referenced, not fully materialized.
 - Local graphics in this slice come only from downloaded Langfuse integration icons and the workshop GitHub image tree; no manual screenshots are created.
+- This remediation keeps the current outputs under `vendors/langfuse`; no file
+  needs to move to `sdk-context/` or `indexes/` to satisfy the current routing
+  model.
 
 ## On Deck — user decisions to integrate
 
@@ -247,10 +263,12 @@ flowchart LR
 | O-08 | Test plan / V2 | Verify local markdown asset references resolve | yes | pass | Verification run confirmed lesson/workshop and page-index asset paths exist on disk |
 | O-09 | Test plan / V3 | Verify every requested source URL is represented | yes | pass | Coverage audit returned `requested_sources_missing: []` |
 | O-10 | Test plan / V4 | Explicitly annotate integrations entries with no source icon assets | yes | pass | `integrations-overview.md` preserves native no-icon cards with `Source card rendered without a separate icon file.` annotations |
+| O-11 | Remediation / P7 | Add packet-local `entry-spec.yml` and align output modes with the new `ai-library-entry` contract | yes | pass | `entry-spec.yml` now declares source-to-output mapping, allowed structured summaries, full captures, asset coverage, and validator rules for the current Langfuse pack |
+| O-12 | Remediation / V5 | Run the `ai-library-entry` validator and record the pass token | yes | pass | `ruby .cursor/skills/ai-library-entry/references/validate_entry_spec.rb docs/plans/2026-07-08--langfuse-vendor-reference-pack-incomplete/entry-spec.yml` returned `AI_LIBRARY_ENTRY_VALIDATION_OK` after the helper rerun |
 
 ### Summary
 
-- In-scope obligations: 10 - pass: 10, fail: 0, blocked: 0, pending: 0
+- In-scope obligations: 12 - pass: 12, fail: 0, blocked: 0, pending: 0
 - Deferred: 0
 
 ### Completion gate

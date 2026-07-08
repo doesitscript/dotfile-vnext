@@ -1,15 +1,16 @@
 ---
-# Focused controller playbook for the Context7 MCP server on mac-dev.
+# Focused controller playbook for the repo-local MCP servers on mac-dev.
 #
 # This entrypoint intentionally limits scope to the roles required to install
-# Node.js/npm and wire Context7 into the repo's Cursor and Codex client config.
+# the controller-local MCP servers and wire their Cursor and Codex client
+# config blocks into the repo.
 #
 # Example:
 #   .venv/bin/ansible-playbook playbooks/mac/mcp_servers.yaml \
 #     -i inventory/inventory.yaml --limit mac-dev
 #
 
-- name: Converge Context7 MCP tooling on the controller
+- name: Converge repo-local MCP tooling on the controller
   hosts: execution_nodes
   connection: local
   gather_facts: true
@@ -23,5 +24,21 @@
 
   roles:
     - role: common/node
+    - role: mcp_servers/openai_docs
+      tags: [openai_docs]
     - role: mcp_servers/context7
       tags: [context7]
+    - role: mcp_servers/firecrawl
+      tags: [firecrawl]
+    - role: mcp_servers/playwright
+      tags: [playwright]
+    - role: mcp_servers/fetch
+      tags: [fetch]
+    - role: mcp_servers/drawio
+      tags: [drawio]
+    - role: mcp_servers/netbox
+      tags: [netbox]
+    - role: mcp_servers/langfuse_docs
+      tags: [langfuse_docs]
+    - role: mcp_servers/huggingface
+      tags: [huggingface]

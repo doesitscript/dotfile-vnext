@@ -180,10 +180,13 @@ def relative_output(path: Path) -> str:
     return path.relative_to(OUTPUT_ROOT).as_posix()
 
 
-def provenance_block(source_urls: list[str], notes: list[str]) -> str:
+def provenance_block(
+    source_urls: list[str], notes: list[str], capture_mode: str
+) -> str:
     lines = [
         "## Provenance",
         f"- Captured at: `{CAPTURED_AT}`",
+        f"- Capture mode: {capture_mode}",
         "- Source URL(s):",
     ]
     for url in source_urls:
@@ -194,8 +197,12 @@ def provenance_block(source_urls: list[str], notes: list[str]) -> str:
     return "\n".join(lines)
 
 
-def page_header(title: str, source_urls: list[str], notes: list[str]) -> str:
-    return "\n\n".join([f"# {title}", provenance_block(source_urls, notes)])
+def page_header(
+    title: str, source_urls: list[str], notes: list[str], capture_mode: str
+) -> str:
+    return "\n\n".join(
+        [f"# {title}", provenance_block(source_urls, notes, capture_mode)]
+    )
 
 
 def parse_integration_sections(html_text: str) -> list[dict[str, Any]]:
@@ -336,6 +343,7 @@ def build_integrations_page(
                 "Downloaded local icon assets whenever the source card exposed a discrete image file.",
                 "Annotated cards that rendered without a separate icon asset in the source HTML.",
             ],
+            "structured_summary",
         ),
         "## Summary",
         (
@@ -401,6 +409,7 @@ def build_guides_page(guides_cards: list[dict[str, str]]) -> str:
                 "Captured the current guides landing page as a curated index rather than a full leaf-page mirror.",
                 "Preserved live guide/blog links surfaced on the page for later expansion of the vendor subtree.",
             ],
+            "structured_summary",
         ),
         "## Summary",
         (
@@ -444,6 +453,7 @@ def build_workshop_overview(routes: list[str]) -> str:
                 "Recorded the learner-module routes visible on the workshop page.",
                 "Connected the workshop page to the raw learner markdown and localized GitHub image tree.",
             ],
+            "structured_summary",
         ),
         "## Summary",
         (
@@ -480,7 +490,7 @@ def build_summary_page(
     notes: list[str],
 ) -> str:
     lines = [
-        page_header(title, source_urls, notes),
+        page_header(title, source_urls, notes, "structured_summary"),
         "## Summary",
     ]
     lines.extend(f"- {line}" for line in summary_lines)
@@ -494,7 +504,7 @@ def build_raw_markdown_page(title: str, source_urls: list[str], body: str, notes
     return "\n\n".join(
         [
             f"# {title}",
-            provenance_block(source_urls, notes),
+            provenance_block(source_urls, notes, "full_capture"),
             "## Normalized content",
             body.strip(),
         ]
