@@ -1,0 +1,23 @@
+---
+k3s_nvidia_device_plugin_state: present
+k3s_nvidia_device_plugin_release_name: nvidia-device-plugin
+k3s_nvidia_device_plugin_namespace: nvidia-device-plugin
+k3s_nvidia_device_plugin_chart_ref: nvdp/nvidia-device-plugin
+k3s_nvidia_device_plugin_chart_version: 0.17.1
+k3s_nvidia_device_plugin_kubeconfig: /etc/rancher/k3s/k3s.yaml
+k3s_nvidia_device_plugin_values:
+  runtimeClassName: null
+  gfd:
+    enabled: false
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+    - key: node-role.kubernetes.io/master
+      operator: Exists
+      effect: NoSchedule

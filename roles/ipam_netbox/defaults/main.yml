@@ -375,6 +375,27 @@ ipam_netbox_hom_lab_ctl_hvh_02_model:
         - homelab
         - lan-exposed-services
         - traefik-routed
+    - name: vllm-k3s-primary
+      virtual_machine: hom-lab-ctl-k3s-02
+      protocol: tcp
+      ports:
+        - 8000
+      ipaddresses:
+        - address: 192.168.137.11/24
+      description: Primary vLLM OpenAI-compatible runtime service for the local coding lane
+      primary_access_point: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1"
+      comments: >-
+        Cluster-internal vLLM runtime on hom-lab-ctl-k3s-02 backing the local
+        LiteLLM lane contract. This is not a direct client/operator surface.
+      custom_fields:
+        deployed_by_role: k3s_vllm_runtime
+        logical_hostname: hom-lab-ctl-vlm-01
+      tags:
+        - ansible-managed
+        - service-endpoint
+        - infra
+        - k3s
+        - homelab
     - name: jupyterlab-workbench
       virtual_machine: hom-lab-ctl-k3s-02
       protocol: tcp

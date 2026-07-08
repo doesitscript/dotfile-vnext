@@ -18,7 +18,7 @@ lane K3s guest.
 
 | Lane | Inventory anchor | Primary jobs |
 |------|------------------|--------------|
-| **GPU / inference** | `hyperv_lane_gpu` — `hom-lab-ctl-hvh-02`, `hom-lab-ctl-dkr-02`, `hom-lab-ctl-k3s-02` | vLLM (planned), LiteLLM, Langfuse, Jupyter, GPU verify |
+| **GPU / inference** | `hyperv_lane_gpu` — `hom-lab-ctl-hvh-02`, `hom-lab-ctl-dkr-02`, `hom-lab-ctl-k3s-02` | vLLM target runtime, LiteLLM, Langfuse, Jupyter, GPU verify |
 | **Storage / observability** | `hyperv_lane_storage` — `hom-lab-ctl-hvh-01`, dkr-01, k3s-01 | NetBox, Loki, Grafana, long-retention stack |
 | **Operator** | `mac-dev` (`execution_nodes`) | Ansible controller, IDE, CLI — not an inference host |
 
@@ -50,7 +50,7 @@ use compact schema hostnames per `live-object-registry.yml`.
 
 | Layer | Service code | Shipped role (repo) | Notes |
 |-------|--------------|---------------------|-------|
-| Runtime | `vlm` | *(planned)* `k3s_vllm_runtime` per [vLLM primary stack plan](../plans/2026-05-29--ai-vllm-primary-stack-incomplete-wip/README.md) | Not deployed; see also `2026-05-28--k3s-vllm-service-publication-incomplete` |
+| Runtime | `vlm` | `k3s_vllm_runtime` per [vLLM primary stack plan](../plans/2026-05-29--ai-vllm-primary-stack-incomplete-wip/README.md) | Active repo-owned runtime path on `hom-lab-ctl-k3s-02`; depends on Hyper-V GPU partition + guest NVIDIA runtime + K3s device plugin |
 | Gateway | `llm` | `k3s_litellm_gateway` | Model **lanes** = LiteLLM `model_name` aliases — [litellm model lanes plan](../plans/2026-05-29--ai-litellm-model-lanes-incomplete-wip/README.md); see also [gpu-lane evaluation](../intake/netbox/netbox_ai_infra_impl_planning_wip/gpu-lane-and-model-lane-mapping-evaluation.md) |
 | Observability | `lfs` | `k3s_langfuse_platform` | [Langfuse observability plan](../plans/2026-05-29--ai-langfuse-observability-incomplete-wip/README.md); intake `1.4.0` |
 | Publication | — | `homelab_hosts_file`, `ipam_netbox`, Traefik routes | Deferred until stable runtime URL |
@@ -58,7 +58,7 @@ use compact schema hostnames per `live-object-registry.yml`.
 
 ## GPU lane policy
 
-- **RTX 5090 (primary):** deep / private primary vLLM lane when runtime lands.
+- **RTX 5090 (primary):** deep / private primary vLLM lane, gated by host SR-IOV/ACS support plus guest/runtime bring-up.
 - **Second GPU:** assigned purpose (reviewer, embeddings) — not an equal peer;
   host identity must be chosen in inventory before NetBox seed.
 - **Edge desktops** (`dev-3090-win`, `dev-workstation-win`): deferred; see
@@ -70,7 +70,7 @@ use compact schema hostnames per `live-object-registry.yml`.
 |--------------|---------------------|
 | `ai_litellm_gateway` | `k3s_litellm_gateway` |
 | `ai_langfuse_platform` | `k3s_langfuse_platform` |
-| `ai_vllm_runtime` | Planned vLLM role (see vLLM plan packet) |
+| `ai_vllm_runtime` | `k3s_vllm_runtime` (see vLLM plan packet) |
 | `ai_ide_client` | `langfuse_cli`, `k3s_mac_client`, `deploy_development_nodes` |
 
 Full assessment: [ASSESSMENT.md](../intake/netbox/netbox_ai_infra_impl_planning_wip/ASSESSMENT.md).

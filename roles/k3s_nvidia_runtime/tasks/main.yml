@@ -1,0 +1,115 @@
+---
+- name: Ensure APT prerequisites for NVIDIA runtime are present
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - ubuntu-drivers-common
+    state: present
+    update_cache: true
+  when: k3s_nvidia_runtime_state == 'present'
+
+- name: Ensure keyrings directory exists
+  ansible.builtin.file:
+    path: /usr/share/keyrings
+    state: directory
+    mode: "0755"
+  when: k3s_nvidia_runtime_state == 'present'
+
+- name: Download NVIDIA container toolkit GPG key
+  ansible.builtin.get_url:
+    url: https://nvidia.github.io/libnvidia-container/gpgkey
+    dest: /tmp/nvidia-container-toolkit.gpgkey
+    mode: "0644"
+  when: k3s_nvidia_runtime_state == 'present'
+
+- name: Dearmor NVIDIA container toolkit GPG key into keyring
+  ansible.builtin.command:
+    cmd: >-
+      gpg --dearmor
+      -o {{ k3s_nvidia_runtime_keyring_path }}
+      /tmp/nvidia-container-toolkit.gpgkey
+  args:
+    creates: "{{ k3s_nvidia_runtime_keyring_path }}"
+  when: k3s_nvidia_runtime_state == 'present'
+
+- name: Download NVIDIA container toolkit repository list
+  ansible.builtin.get_url:
+    url: https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list
+    dest: /tmp/nvidia-container-toolkit.list
+    mode: "0644"
+  when: k3s_nvidia_runtime_state == 'present'
+
+- name: Render NVIDIA container toolkit APT repository list with keyring
+  ansible.builtin.shell: >
+    sed 's#deb https://#deb [signed-by={{ k3s_nvidia_runtime_keyring_path }}] https://#g'
+    /tmp/nvidia-container-toolkit.list
+    > {{ k3s_nvidia_runtime_repo_list_path }}
+  args:
+    creates: "{{ k3s_nvidia_runtime_repo_list_path }}"
+  when: k3s_nvidia_runtime_state == 'present'
+
+- name: Ensure NVIDIA guest driver and container toolkit packages are present
+  ansible.builtin.apt:
+    name:
+      - "{{ k3s_nvidia_runtime_driver_package }}"
+      - "{{ k3s_nvidia_runtime_toolkit_package }}"
+    state: present
+    update_cache: true
+  register: k3s_nvidia_runtime_packages
+  when: k3s_nvidia_runtime_state == 'present'
+
+- name: Hold NVIDIA guest driver package to keep the branch pinned
+  ansible.builtin.dpkg_selections:
+    name: "{{ k3s_nvidia_runtime_driver_package }}"
+    selection: hold
+  when:
+    - k3s_nvidia_runtime_state == 'present'
+    - k3s_nvidia_runtime_driver_hold | bool
+
+- name: Reboot guest after NVIDIA guest driver install when package state changed
+  ansible.builtin.reboot:
+    reboot_timeout: 1800
+  when:
+    - k3s_nvidia_runtime_state == 'present'
+    - k3s_nvidia_runtime_packages is changed
+
+- name: Restart k3s after NVIDIA runtime changes so containerd runtime is rediscovered
+  ansible.builtin.service:
+    name: "{{ k3s_nvidia_runtime_k3s_service_name }}"
+    state: restarted
+  when:
+    - k3s_nvidia_runtime_state == 'present'
+    - k3s_nvidia_runtime_packages is changed
+
+- name: Validate NVIDIA userspace is available on guest
+  ansible.builtin.command:
+    cmd: nvidia-smi -L
+  register: k3s_nvidia_runtime_nvidia_smi
+  changed_when: false
+  when: k3s_nvidia_runtime_state == 'present'
+
+- name: Validate K3s containerd config exposes an NVIDIA runtime
+  ansible.builtin.command:
+    cmd: grep nvidia /var/lib/rancher/k3s/agent/etc/containerd/config.toml
+  register: k3s_nvidia_runtime_containerd_runtime
+  changed_when: false
+  when: k3s_nvidia_runtime_state == 'present'
+
+- name: Remove NVIDIA runtime packages when absent requested
+  ansible.builtin.apt:
+    name:
+      - "{{ k3s_nvidia_runtime_driver_package }}"
+      - "{{ k3s_nvidia_runtime_toolkit_package }}"
+    state: absent
+    purge: true
+    autoremove: true
+  when: k3s_nvidia_runtime_state == 'absent'
+
+- name: Report NVIDIA runtime readiness
+  ansible.builtin.debug:
+    msg:
+      nvidia_smi: "{{ k3s_nvidia_runtime_nvidia_smi.stdout_lines | default([]) }}"
+      containerd_nvidia_runtime: "{{ k3s_nvidia_runtime_containerd_runtime.stdout_lines | default([]) }}"
+  when: k3s_nvidia_runtime_state == 'present'

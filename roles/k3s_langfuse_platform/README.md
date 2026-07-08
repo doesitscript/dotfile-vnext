@@ -1,7 +1,7 @@
 # k3s_langfuse_platform
 
 Deploy Langfuse on K3s with external PostgreSQL, Redis, ClickHouse, and MinIO
-on the storage-lane Docker network stack.
+resolved through the shared `fuzlang_external_*` inventory contract.
 
 ## Lifecycle
 
@@ -34,10 +34,10 @@ Secrets load from `vault/network.vault.yml` and `vault/shared.vault.yml` via `ta
 External data-plane connect addresses must use the `fuzlang_external_*_connect_address`
 inventory contract values, not inventory hostnames.
 
-The intended runtime path for those external services is the Windows-published
-LAN surface on `hom-lab-ctl-hvh-01` (`192.168.50.234`). Do not swap this role
-back to the guest-direct `192.168.138.x` addresses unless that preference is
-explicitly changed in the shared inventory contract.
+The Langfuse web and worker workloads live on K3s. External data-plane targets
+are owned by `inventory/group_vars/all/fuzlang_external_services.yml`; change
+that shared contract first if the backing PostgreSQL/Redis/ClickHouse/MinIO
+placement moves in a later governed packet.
 
 ## Tags
 

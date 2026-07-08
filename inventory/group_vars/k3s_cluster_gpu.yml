@@ -1,0 +1,22 @@
+---
+server_config_yaml: |
+  write-kubeconfig-mode: "0644"
+  data-dir: /var/lib/rancher/k3s
+  node-label:
+    - "role=control"
+    - "accelerator=nvidia"
+    - "workload=inference"
+    - "nvidia.com/gpu.present=true"
+  kubelet-arg:
+    - "system-reserved=cpu=1,memory=1Gi"
+    - "kube-reserved=cpu=1,memory=1Gi"
+    - "eviction-hard=memory.available<256Mi,nodefs.available<10%"
+  disable:
+    - servicelb
+
+k3s_node_config_labels:
+  hom-lab-ctl-k3s-02:
+    role: control
+    accelerator: nvidia
+    workload: inference
+    nvidia.com/gpu.present: "true"

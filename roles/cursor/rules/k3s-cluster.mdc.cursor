@@ -41,11 +41,11 @@ alwaysApply: true
 
 ## GPU Boundary
 
-- Windows owns the NVIDIA GPU driver. Driver lifecycle is **manual**.
-- Ansible inventories the Windows driver version and validates GPU visibility. It does NOT install, upgrade, or manage the driver.
+- Windows owns the NVIDIA GPU driver. Driver lifecycle is **user-controlled and pinned**, not auto-updated behind the repo's back.
+- Ansible may read and validate the Windows driver state, and may depend on that pinned host-driver contract, but it should not hand driver version choice over to automatic NVIDIA update behavior.
 - Do NOT use the `nvidia.nvidia_driver` Ansible role.
-- Do NOT install Linux GPU drivers, DKMS modules, or kernel modules.
-- NVIDIA Container Toolkit and device plugin work are future agent-only work, not part of the `hom-lab-ctl-k3s-01` bootstrap.
+- Linux guest GPU runtime enablement belongs to explicit repo roles and playbooks for the GPU lane. Do not treat it as part of the `hom-lab-ctl-k3s-01` baseline bootstrap.
+- NVIDIA Container Toolkit, guest-side compute driver packages, Hyper-V GPU partition attachment, and the Kubernetes device plugin are valid repo-managed work for the `hom-lab-ctl-k3s-02` GPU lane when a governed packet calls for them.
 - k3s embeds containerd. Any future runtime customization must use k3s config templates, not `nvidia-ctk runtime configure --runtime=containerd`.
 - Do NOT use shell where a module exists.
 - Do NOT use GPU Operator.

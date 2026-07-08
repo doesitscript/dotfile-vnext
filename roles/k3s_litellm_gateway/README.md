@@ -9,7 +9,7 @@ Deploys the LiteLLM proxy on K3s using the official `litellm-helm` chart. Secret
 | `vault/shared.vault.yml` | `vault_shared_openai_api_key`, `vault_k3s_litellm_gateway_master_key`, Langfuse and Minio shared keys |
 | `vault/network.vault.yml` | `vault_network_postgres_*` (same credentials as `/srv/stacks/network/.env`) |
 
-Set a real OpenAI key before using OpenAI routes:
+Set a real OpenAI key before using the migration/provider routes:
 
 ```bash
 ansible-vault edit vault/shared.vault.yml
@@ -31,8 +31,16 @@ External PostgreSQL uses `k3s_litellm_gateway_db_endpoint` plus
 ## Model routes vs model catalog
 
 `k3s_litellm_gateway_model_list` is the LiteLLM gateway route list. It defines
-client-facing aliases such as `code-deep`, `code-fast`, or the current migration
-fallbacks.
+client-facing aliases such as `code-deep`, `experiment`, and the preserved
+migration rows.
+
+For the current slice:
+
+- `code-deep` is the first real local coding lane.
+- `experiment` remains visible as a smoke alias, but it currently shares the
+  same `vllm-primary` backend as `code-deep` until a second runtime exists.
+- `gpt-4o-mini` and `default` stay present as migration rows while local-lane
+  verification is still maturing.
 
 The durable Hugging Face/storage catalog is separate:
 `inventory/group_vars/model_catalog/manifest.yml`. That manifest tracks
@@ -59,7 +67,9 @@ reviewer, documenter, and steward traffic can share the same gateway.
 ansible-playbook playbooks/deploy_litellm_gateway.yaml
 ```
 
-Requires the fuzlang network stack on `server-225-ubuntu` (`playbooks/deploy_network_stacks_hvh02.yaml`) so external PostgreSQL and vault-aligned `.env` exist.
+Requires the shared fuzlang external data-plane declared in
+`inventory/group_vars/all/fuzlang_external_services.yml` so external
+PostgreSQL and the vault-aligned `.env` exist.
 
 ## Lifecycle
 

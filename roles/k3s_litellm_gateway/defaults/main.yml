@@ -54,6 +54,50 @@ k3s_litellm_gateway_langfuse_host: "http://langfuse-web.langfuse.svc.cluster.loc
 k3s_litellm_gateway_langfuse_public_key: "{{ vault_shared_langfuse_public_key | default('lf_pk_Pass@w0rd1') }}"
 k3s_litellm_gateway_langfuse_secret_key: "{{ vault_shared_langfuse_secret_key | default('lf_sk_Pass@w0rd1') }}"
 k3s_litellm_gateway_proxy_litellm_settings: "{{ {'success_callback': ['langfuse']} if k3s_litellm_gateway_langfuse_enabled | bool else {} }}"
+k3s_litellm_gateway_router_settings: {}
+
+# Local vLLM backend contract for the first serious local coding lane.
+k3s_litellm_gateway_primary_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1"
+k3s_litellm_gateway_primary_vllm_model: "Qwen/Qwen2.5-Coder-32B-Instruct-AWQ"
+
+# Full lane vocabulary stays visible here even while only part of it is
+# runtime-enabled. Blocked/deferred rows are explicit so client and validation
+# surfaces can preserve the intended contract without inventing backends.
+k3s_litellm_gateway_lane_contract:
+  - lane: code-deep
+    state: enabled
+    backend_kind: local-vllm
+    runtime: vllm-primary
+    reason: Primary local coding lane on the 5090-backed vLLM service.
+  - lane: experiment
+    state: enabled
+    backend_kind: local-vllm
+    runtime: vllm-primary
+    reason: Temporary smoke alias sharing the primary local runtime until a second local runtime exists.
+  - lane: code-fast
+    state: blocked
+    backend_kind: pending
+    reason: Awaiting a separate local or provider-backed fast lane decision.
+  - lane: code-review
+    state: blocked
+    backend_kind: pending
+    reason: Review-specific backend and policy path are not declared yet.
+  - lane: code-test
+    state: blocked
+    backend_kind: pending
+    reason: Test-focused backend and retry policy are not declared yet.
+  - lane: ripi-private
+    state: blocked
+    backend_kind: pending
+    reason: Private-only lane needs a dedicated backend and privacy guardrails.
+  - lane: embeddings-local
+    state: blocked
+    backend_kind: pending
+    reason: Local embeddings service is not commissioned yet.
+  - lane: public-research
+    state: blocked
+    backend_kind: pending
+    reason: Public web/provider lane is still a future policy slice.
 
 # Model routes — api_key os.environ/* keys are injected via Kubernetes Secret litellm-env-secret.
 #
@@ -65,6 +109,30 @@ k3s_litellm_gateway_proxy_litellm_settings: "{{ {'success_callback': ['langfuse'
 #   and used by Langfuse/client tracing. Per-request `agent_role` and
 #   `context_class` still come from the IDE/agent client metadata.
 k3s_litellm_gateway_model_list:
+  - model_name: code-deep
+    litellm_params:
+      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
+      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
+      api_key: "none"
+    model_info:
+      model_lane: code-deep
+      routing_policy: local-primary
+      project: ripi
+      backend_runtime: vllm-primary
+      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
+      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
+  - model_name: experiment
+    litellm_params:
+      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
+      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
+      api_key: "none"
+    model_info:
+      model_lane: experiment
+      routing_policy: local-smoke-compat
+      project: ripi
+      backend_runtime: vllm-primary
+      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
+      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
   - model_name: gpt-4o-mini
     litellm_params:
       model: gpt-4o-mini
@@ -90,14 +158,39 @@ k3s_litellm_gateway_model_list:
 
 # Fallback when vault_shared_openai_api_key is unset — proxy still starts; OpenAI routes omitted.
 k3s_litellm_gateway_model_list_without_openai:
+  - model_name: code-deep
+    litellm_params:
+      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
+      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
+      api_key: "none"
+    model_info:
+      model_lane: code-deep
+      routing_policy: local-primary
+      project: ripi
+      backend_runtime: vllm-primary
+      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
+      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
+  - model_name: experiment
+    litellm_params:
+      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
+      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
+      api_key: "none"
+    model_info:
+      model_lane: experiment
+      routing_policy: local-smoke-compat
+      project: ripi
+      backend_runtime: vllm-primary
+      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
+      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
   - model_name: default
     litellm_params:
-      model: openai/fake
-      api_key: fake-key
-      api_base: https://exampleopenaiendpoint-production.up.railway.app/
+      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
+      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
+      api_key: "none"
     model_info:
       model_lane: default
-      routing_policy: migration
+      routing_policy: local-default-fallback
       project: ripi
+      backend_runtime: vllm-primary
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml

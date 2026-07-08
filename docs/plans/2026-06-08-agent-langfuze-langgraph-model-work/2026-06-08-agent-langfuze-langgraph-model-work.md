@@ -1,17 +1,49 @@
 # Agent Langfuse LangGraph Model Work
 
-## Part 1
+## Summary
 
-We are deploying an adapted version of this approach.
+This note is a repo-adapted planning sketch derived from Langfuse examples and
+integration patterns. It is not the infrastructure source of truth.
 
-For your homelab, I'd actually lean into this.
+Infrastructure authority in this repo is imposed by:
 
-### Goals
+- NetBox for host, VM, IP, platform, role, and site facts
+- repo naming/schema and playbook patterns for durable implementation shape
+- current-state retrospectives when cookbook defaults conflict with live repo
+  placement
 
-- Reduce Claude costs
-- Run local models
-- Compare local vs. cloud
-- Build multi-agent coding workflows
+That means external examples can inform the plan, but they do not override the
+project's existing infrastructure model.
+
+## Authority Note
+
+Use this document as:
+
+- a routing and integration sketch
+- a product/dependency classification note
+- a checklist of example families to adapt into this homelab
+
+Do not use this document as:
+
+- a deployment authority for host placement
+- a replacement for NetBox truth
+- a replacement for current repo playbook targeting
+- a generic K3s/Helm topology to copy directly
+
+Current repo authority sources for this slice:
+
+- `AGENTS.md`
+- `README.md`
+- `docs/lessons-learned/lang-infra-retro/two-physical-server-langfuse-distribution-retrospective.md`
+
+## Part 1 - Routing Intent
+
+For this homelab, the value of the stack is still the same:
+
+- reduce Claude costs
+- run local models
+- compare local vs. cloud outcomes
+- build multi-agent coding workflows with observable routing decisions
 
 ### Suggested routing policy
 
@@ -32,65 +64,139 @@ Large design discussion?
   -> Claude
 ```
 
-Every one of those decisions gets logged into Langfuse. Over time, you'll have
-real data showing things like:
+Every one of those decisions should be logged into Langfuse so the routing
+policy can be validated with real traces, costs, latency, and quality evidence.
 
-- "Ornith handled 82% of Terraform tasks successfully."
-- "Claude was only needed for 18%."
-- "Average savings: $X/month."
+Representative outcomes the platform should eventually support:
 
-That's much more valuable than guessing.
+- "Ornith handled most Terraform tasks successfully."
+- "Claude was only needed for a smaller escalation slice."
+- "Average savings are measurable instead of guessed."
 
-## Part 2
+## Part 2 - Product Model
 
-We are deploying an adapted version of this too.
-
-One thing I think would fit your platform extremely well: I would still put
-LiteLLM in front of your models.
-
-### High-level flow
+The high-level product pattern still makes sense:
 
 ```text
-Cursor
+Cursor / VS Code / FastAPI clients
   |
-FastAPI
-  |
-LiteLLM
+LiteLLM gateway
   |- Claude
-  |- Ornith
-  |- Qwen
-  |- DeepSeek
-  `- local vLLM
-      |
-      v
-   Langfuse
+  |- OpenAI
+  `- local models via vLLM
+      |- Ornith
+      |- Qwen Coder
+      `- DeepSeek-compatible local/runtime path
+          |
+          v
+       Langfuse
 ```
 
-### Why
+### Why this still fits
 
-LiteLLM is excellent at the runtime concerns: OpenAI-compatible API, provider
-abstraction, retries, fallbacks, load balancing, budgets, and routing.
+LiteLLM is the runtime gateway:
 
-Langfuse is excellent at the engineering concerns: observability, prompt
-management, evaluations, experiments, and understanding whether your routing
-strategy is actually working.
+- OpenAI-compatible client surface
+- provider abstraction
+- model routing
+- fallback handling
+- budget and rate-limit controls
 
-## Part 3
+Langfuse is the engineering/observability layer:
 
-Guidance on how to implement the above.
+- traces
+- prompts
+- token usage
+- latency
+- cost visibility
+- evaluations
+- feedback and prompt-version tracking
 
-Set up both so that I can access both from within my IDE as different models.
-That is how they are configured in Cursor, I believe.
+### Product normalization for this repo
+
+- `Ornith` is a model, not a platform product
+- `Qwen Coder` is a model, not a platform product
+- `DeepSeek` is treated as a model/provider integration example
+- `vLLM` is the model-serving layer for local models
+- `Jupyter` is a client/workbench only
+
+## Part 3 - Repo-Aligned Infrastructure Interpretation
 
 ### Core components
 
-| Component | Purpose | Deploy |
-|-----------|---------|--------|
-| LiteLLM | Runtime gateway/router | K3s (Helm) |
-| Langfuse | Observability, prompts, evals, experiments | K3s (Helm) |
-| vLLM | Local model serving | GPU VM(s) |
-| Postgres | Langfuse database | K3s |
-| MinIO | Object storage | Already on your storage server |
+| Component | Purpose | Repo-aligned interpretation |
+|-----------|---------|-----------------------------|
+| LiteLLM | Runtime gateway/router | Gateway layer; current live path is repo-targeted on the GPU lane K3s surface |
+| Langfuse | Observability, prompts, evals, experiments | Platform layer; current live path is concentrated on the GPU lane, even if some examples imply cleaner separation |
+| vLLM | Local model serving | GPU-lane inference runtime for local models |
+| Postgres | Langfuse database | Current repo path uses the external PostgreSQL surface on `hom-lab-ctl-dkr-02` |
+| MinIO | Object storage | Example dependency pattern only; actual placement must follow repo-owned current state and role targeting |
+
+### Important correction to sample deployment language
+
+The original generic labels like `K3s (Helm)` are not sufficient source of
+truth here.
+
+Repo current-state evidence says:
+
+- the storage lane is `hom-lab-ctl-hvh-01` with guests `dkr-01` and `k3s-01`
+- the GPU lane is `hom-lab-ctl-hvh-02` with guests `dkr-02` and `k3s-02`
+- the live automation path still concentrates Langfuse, LiteLLM, vLLM, and
+  Jupyter on the GPU lane
+- the active Langfuse database path is tied to the `dkr-02` Docker-side
+  PostgreSQL surface
+
+So this plan must adapt examples to the repo's actual lane/guest model instead
+of assuming a fresh greenfield split.
+
+### Repo-authoritative baseline
+
+```text
+Control / authority
+- NetBox owns durable infrastructure facts and naming
+- repo playbooks and roles own execution and convergence
+
+Current live AI stack concentration
+- hom-lab-ctl-hvh-02
+  |- hom-lab-ctl-dkr-02: PostgreSQL, Loki, Grafana, NetBox, Semaphore
+  `- hom-lab-ctl-k3s-02: Langfuse, LiteLLM, vLLM, Jupyter, Traefik
+
+Storage lane context
+- hom-lab-ctl-hvh-01
+  |- hom-lab-ctl-dkr-01: Docker engine, no live Langfuse stack from current playbooks
+  `- hom-lab-ctl-k3s-01: readiness stub / no active K3s workload path
+```
+
+### Clients and consumers
+
+These are consumers of the stack, not infrastructure authority:
+
+- Cursor
+- VS Code
+- FastAPI applications
+- Jupyter workbench
+
+### Cursor local-model interpretation
+
+For this repo, Cursor local-model usage should be understood as:
+
+- Cursor using its OpenAI-compatible provider settings path
+- pointed at the repo-approved LiteLLM gateway endpoint
+- with model selection tied to LiteLLM alias names, not informal plan labels
+
+The repo-aligned target shape is:
+
+- gateway authority host: `litellm.hom.lab`
+- Cursor OpenAI-compatible API path: `http://litellm.hom.lab/v1`
+
+This is a client-routing decision only. It does not change where `vLLM`,
+LiteLLM, or Langfuse are deployed.
+
+One remaining planning gap is still open:
+
+- the exact Cursor-visible alias names for the local models need to be declared
+  from the repo-managed LiteLLM layer and then reflected back into operator
+  docs
 
 ### Local model examples behind vLLM
 
@@ -98,102 +204,13 @@ That is how they are configured in Cursor, I believe.
 - Qwen Coder
 - DeepSeek
 
-Provides:
+Representative runtime surface:
 
 - `http://vllm:8000/v1`
 
-### LiteLLM role
+That endpoint shape is an integration example, not a host-placement decision.
 
-LiteLLM provides one endpoint for everything.
-
-```text
-Cursor
-  |
-  v
-LiteLLM
-  |- Claude
-  |- OpenAI
-  |- Ornith (vLLM)
-  `- Qwen (vLLM)
-```
-
-Responsibilities:
-
-- Model routing
-- Fallbacks
-- Load balancing
-- Provider abstraction
-- Budget/rate limits
-- One OpenAI-compatible API
-
-### Langfuse role
-
-Langfuse is connected to LiteLLM and your apps.
-
-It collects:
-
-- Traces
-- Prompts
-- Token usage
-- Latency
-- Costs
-- Evaluations
-- User feedback
-- Prompt versions
-
-> You may need to alter this and other parts, because I do want two models set
-> up in my IDE, and I don't know if this exactly represents what I need for my
-> IDE.
-
-## Target architecture
-
-```text
-Clients
-- Cursor
-- VS Code
-- Jupyter
-- FastAPI
-
-          |
-          v
-       LiteLLM
-          |
-          |- Claude
-          |- OpenAI
-          `- vLLM
-              |
-              +-- Ornith
-              `-- Qwen Coder
-
-          |
-          v
-       Langfuse
-          |
-   Postgres + MinIO
-```
-
-### Kubernetes deployments
-
-```text
-ai-platform/
-|- litellm/
-|- langfuse/
-|- postgres/
-|- ingress/
-`- monitoring/
-```
-
-### GPU server
-
-```text
-gpu-services/
-`- vllm
-   |- ornith
-   |- qwen
-   `- deepseek
-```
-
-## Initial routing policy
+## Initial Routing Policy
 
 | Task | Model |
 |------|-------|
@@ -206,18 +223,27 @@ gpu-services/
 | Final review | Claude |
 | Failed local attempt | Claude |
 
-## Deployment order
+## Deployment Interpretation
 
-- [x] vLLM
-- [x] Ornith model
-- [x] LiteLLM
-- [x] Langfuse
+The intended order of capability still makes sense, but deployment must follow
+repo-owned patterns:
+
+- [x] vLLM layer
+- [x] Ornith model through vLLM
+- [x] LiteLLM gateway layer
+- [x] Langfuse observability layer
 - [x] Connect LiteLLM -> Langfuse
-- [x] Point Cursor to LiteLLM
+- [x] Point Cursor and other clients at the repo-approved gateway path
 - [x] Add additional local models as needed
 
 ## Outcome
 
-This gives you a single endpoint for all clients, local-first model usage to
-reduce Claude costs, and complete visibility into performance, quality, and
-spending through Langfuse.
+The desired result remains:
+
+- a single client-facing model gateway
+- local-first model usage to reduce Claude spend
+- observable routing, quality, and cost behavior through Langfuse
+
+But the implementation path must remain subordinate to repo truth, NetBox
+authority, and the existing homelab lane/guest model instead of to upstream
+sample topology.

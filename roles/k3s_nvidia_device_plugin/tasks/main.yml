@@ -1,0 +1,41 @@
+---
+- name: Ensure NVIDIA device plugin Helm repository is configured
+  kubernetes.core.helm_repository:
+    name: nvdp
+    repo_url: https://nvidia.github.io/k8s-device-plugin
+  when: k3s_nvidia_device_plugin_state == 'present'
+
+- name: Ensure NVIDIA device plugin release is present
+  kubernetes.core.helm:
+    name: "{{ k3s_nvidia_device_plugin_release_name }}"
+    chart_ref: "{{ k3s_nvidia_device_plugin_chart_ref }}"
+    chart_version: "{{ k3s_nvidia_device_plugin_chart_version }}"
+    release_namespace: "{{ k3s_nvidia_device_plugin_namespace }}"
+    create_namespace: true
+    values: "{{ k3s_nvidia_device_plugin_values }}"
+    kubeconfig: "{{ k3s_nvidia_device_plugin_kubeconfig }}"
+    state: present
+  when: k3s_nvidia_device_plugin_state == 'present'
+
+- name: Wait for NVIDIA device plugin daemonset to become ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: DaemonSet
+    namespace: "{{ k3s_nvidia_device_plugin_namespace }}"
+    name: "{{ k3s_nvidia_device_plugin_release_name }}"
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 600
+  when: k3s_nvidia_device_plugin_state == 'present'
+  environment:
+    KUBECONFIG: "{{ k3s_nvidia_device_plugin_kubeconfig }}"
+
+- name: Remove NVIDIA device plugin release when absent requested
+  kubernetes.core.helm:
+    name: "{{ k3s_nvidia_device_plugin_release_name }}"
+    release_namespace: "{{ k3s_nvidia_device_plugin_namespace }}"
+    kubeconfig: "{{ k3s_nvidia_device_plugin_kubeconfig }}"
+    state: absent
+  when: k3s_nvidia_device_plugin_state == 'absent'

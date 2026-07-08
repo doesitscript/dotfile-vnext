@@ -1,4 +1,47 @@
 ---
+- name: Ensure Hyper-V GPU partition is attached to the K3s GPU VM
+  hosts: hom-lab-ctl-hvh-02
+  gather_facts: false
+  roles:
+    - role: hyperv_gpu_partition_adapter
+      tags:
+        - hyperv_gpu_partition_adapter
+        - gpu_infra
+        - ai_ml_platform
+
+- name: Install guest-side NVIDIA runtime packages on K3s GPU node
+  hosts: hom-lab-ctl-k3s-02
+  gather_facts: false
+  become: true
+  roles:
+    - role: k3s_nvidia_runtime
+      tags:
+        - k3s_nvidia_runtime
+        - gpu_infra
+        - ai_ml_platform
+
+- name: Label K3s GPU node for NVIDIA workloads
+  hosts: server_gpu
+  gather_facts: false
+  become: true
+  roles:
+    - role: k3s_node_config
+      tags:
+        - k3s_node_config
+        - gpu_infra
+        - ai_ml_platform
+
+- name: Deploy NVIDIA device plugin to K3s GPU cluster
+  hosts: hom-lab-ctl-k3s-02
+  gather_facts: false
+  become: true
+  roles:
+    - role: k3s_nvidia_device_plugin
+      tags:
+        - k3s_nvidia_device_plugin
+        - gpu_infra
+        - ai_ml_platform
+
 - name: Validate K3s GPU infrastructure prerequisites
   hosts: hom-lab-ctl-k3s-02
   gather_facts: false
