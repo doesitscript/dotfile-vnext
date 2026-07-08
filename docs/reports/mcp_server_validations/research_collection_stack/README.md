@@ -53,7 +53,7 @@ bin/codex-env ansible-playbook -i inventory/inventory.yaml playbooks/mac/mcp_ser
 
 | Observation | Status |
 |---|---|
-| `.vscode/mcp.json` only contains `drawio` | Expected. The `mac-dev` commissioned targets for this stack are Cursor and Codex only. Add `vscode` to the four `*_mcp_targets` lists or run with `mcp_target_vscode` to manage VS Code. |
+| `.vscode/mcp.json` includes `drawio`, `context7`, `firecrawl`, `playwright`, and `fetch` | Expected. The `mac-dev` commissioned targets for this stack are Cursor, Codex, and VS Code. |
 | Cursor Settings or a chat session does not immediately show new MCP tools | Expected after config changes. Reload/restart the client or refresh the MCP server list. Already-running chat sessions may not gain newly configured tools retroactively. |
 | Context7 and Firecrawl entries use `bin/mcp-server-env-wrapper` | Expected. The wrapper loads local `0600` env files so tracked Cursor/Codex config does not contain API keys. |
 

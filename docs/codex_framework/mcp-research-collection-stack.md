@@ -54,27 +54,30 @@ framework routing model. The manifest owns cleanup boundaries.
 
 ## Commissioned Client Scope
 
-On `mac-dev`, the MCP Research Collection Stack is commissioned for Cursor and
-Codex:
+On `mac-dev`, the MCP Research Collection Stack is commissioned for Cursor,
+Codex, and VS Code:
 
 ```yaml
 context7_mcp_targets:
   - cursor
   - codex
+  - vscode
 firecrawl_mcp_targets:
   - cursor
   - codex
+  - vscode
 playwright_mcp_targets:
   - cursor
   - codex
+  - vscode
 fetch_mcp_targets:
   - cursor
   - codex
+  - vscode
 ```
 
-The roles support VS Code, but `.vscode/mcp.json` is not part of the
-commissioned target set unless `vscode` is added to the relevant target lists or
-a focused run includes `mcp_target_vscode`.
+The roles support VS Code, and `.vscode/mcp.json` is now part of the
+commissioned target set for `mac-dev`.
 
 After MCP client config changes, reload the client. Cursor Settings and
 already-running chat sessions can reflect stale MCP availability until the
