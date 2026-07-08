@@ -1,0 +1,48 @@
+---
+- name: Ensure Homebrew tap for Stirling PDF is present
+  community.general.homebrew_tap:
+    name: "{{ stirling_pdf_homebrew_tap }}"
+    state: present
+  when: stirling_pdf_state == 'present'
+
+- name: Install or remove Stirling PDF Homebrew cask
+  community.general.homebrew_cask:
+    name: "{{ stirling_pdf_cask_name }}"
+    state: "{{ stirling_pdf_state }}"
+  when: stirling_pdf_state in ['present', 'absent']
+
+- name: Verify Stirling PDF app bundle is present
+  ansible.builtin.stat:
+    path: "{{ stirling_pdf_app_path }}"
+  register: stirling_pdf_app_bundle
+  when:
+    - stirling_pdf_state == 'present'
+    - stirling_pdf_verify_install | bool
+
+- name: Assert Stirling PDF app bundle exists after install
+  ansible.builtin.assert:
+    that:
+      - stirling_pdf_app_bundle.stat.exists
+    success_msg: "Stirling PDF app bundle is installed."
+    fail_msg: "Stirling PDF app bundle was not found after install."
+  when:
+    - stirling_pdf_state == 'present'
+    - stirling_pdf_verify_install | bool
+
+- name: Verify Stirling PDF app bundle is absent after removal
+  ansible.builtin.stat:
+    path: "{{ stirling_pdf_app_path }}"
+  register: stirling_pdf_app_bundle_removed
+  when:
+    - stirling_pdf_state == 'absent'
+    - stirling_pdf_verify_install | bool
+
+- name: Assert Stirling PDF app bundle is absent
+  ansible.builtin.assert:
+    that:
+      - not stirling_pdf_app_bundle_removed.stat.exists
+    success_msg: "Stirling PDF app bundle is absent."
+    fail_msg: "Stirling PDF app bundle still exists after removal."
+  when:
+    - stirling_pdf_state == 'absent'
+    - stirling_pdf_verify_install | bool

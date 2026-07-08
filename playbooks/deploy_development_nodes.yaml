@@ -47,6 +47,7 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags aws_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags speech_central --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags remote_desktop_mac --limit mac-dev
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags stirling_pdf --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags tunnelblick_mac --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags tunnelblick_mac --limit mac-dev -e tunnelblick_mac_state=absent
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags mac_user_niceties --limit mac-dev
@@ -124,6 +125,9 @@
       tags: [speech_central]
     - role: remote_desktop_mac
       tags: [remote_desktop_mac]
+    - role: stirling_pdf
+      when: ansible_system == "Darwin"
+      tags: [stirling_pdf]
     - role: tunnelblick_mac
       tags: [tunnelblick_mac]
     - role: mac_user_niceties
