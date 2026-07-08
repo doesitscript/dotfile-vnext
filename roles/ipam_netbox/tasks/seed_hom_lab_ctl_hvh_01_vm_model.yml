@@ -17,7 +17,9 @@
         - "NetBox contains cluster hom-lab-ctl-hvh-01"
         - "NetBox contains VMs hom-lab-ctl-dkr-01 and hom-lab-ctl-k3s-01"
         - "NetBox VM hom-lab-ctl-k3s-01 has role k3s and tag k3s"
-        - "NetBox VM hom-lab-ctl-dkr-01 has service objects for Postgres, Redis, ClickHouse, MinIO, and Langfuse"
+        - "NetBox VM hom-lab-ctl-dkr-01 has service objects for Postgres, Redis, ClickHouse, and MinIO"
+        - "Stale duplicate service objects on hom-lab-ctl-dkr-02 are previewed before removal"
+        - "Storage-lane langfuse-web is removed from NetBox while compose is disabled on hom-lab-ctl-dkr-01"
       undo: "manual NetBox object cleanup unless an absent seed path is added"
       model:
         site: "{{ ipam_netbox_hom_lab_ctl_hvh_01_vm_model.site }}"
@@ -30,6 +32,123 @@
   tags:
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model
+    - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview
+
+- name: Query live NetBox storage-lane services by declared name
+  ansible.builtin.uri:
+    url: >-
+      {{ ipam_netbox_api_url }}/api/ipam/services/?name={{ item.name | urlencode }}
+    method: GET
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    validate_certs: false
+  loop: "{{ ipam_netbox_hom_lab_ctl_hvh_01_vm_model.services }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: ipam_netbox_hvh01_service_name_lookups
+  when:
+    - vault_vars.vault_netbox_api_token is defined
+    - vault_vars.vault_netbox_api_token | length > 0
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model
+    - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview
+
+- name: Build stale storage-lane service cleanup candidates
+  ansible.builtin.set_fact:
+    ipam_netbox_hvh01_stale_service_cleanup_candidates: >-
+      {{
+        (ipam_netbox_hvh01_stale_service_cleanup_candidates | default([]))
+        + stale_matches
+      }}
+  vars:
+    stale_matches: >-
+      {{
+        (item.json.results | default([]))
+        | rejectattr('virtual_machine', 'none')
+        | selectattr('virtual_machine', 'mapping')
+        | rejectattr('virtual_machine.name', 'undefined')
+        | rejectattr('virtual_machine.name', 'equalto', item.item.virtual_machine)
+        | list
+      }}
+  loop: "{{ ipam_netbox_hvh01_service_name_lookups.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when:
+    - vault_vars.vault_netbox_api_token is defined
+    - vault_vars.vault_netbox_api_token | length > 0
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model
+    - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview
+
+- name: Query retired storage-lane Langfuse service objects
+  ansible.builtin.uri:
+    url: "{{ ipam_netbox_api_url }}/api/ipam/services/?name=langfuse-web"
+    method: GET
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    validate_certs: false
+  register: ipam_netbox_hvh01_retired_langfuse_service_lookup
+  when:
+    - vault_vars.vault_netbox_api_token is defined
+    - vault_vars.vault_netbox_api_token | length > 0
+    - not (hostvars['hom-lab-ctl-dkr-01'].stacks_network_langfuse_compose_enabled | default(true) | bool)
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model
+    - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview
+
+- name: Append retired storage-lane Langfuse cleanup candidates
+  ansible.builtin.set_fact:
+    ipam_netbox_hvh01_stale_service_cleanup_candidates: >-
+      {{
+        (ipam_netbox_hvh01_stale_service_cleanup_candidates | default([]))
+        + (
+          (ipam_netbox_hvh01_retired_langfuse_service_lookup.json.results | default([]))
+          | rejectattr('virtual_machine', 'none')
+          | selectattr('virtual_machine', 'mapping')
+          | selectattr('virtual_machine.name', 'equalto', 'hom-lab-ctl-dkr-01')
+          | list
+        )
+      }}
+  when:
+    - ipam_netbox_hvh01_retired_langfuse_service_lookup is defined
+    - not (hostvars['hom-lab-ctl-dkr-01'].stacks_network_langfuse_compose_enabled | default(true) | bool)
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model
+    - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview
+
+- name: Preview stale storage-lane service cleanup candidates
+  ansible.builtin.debug:
+    msg:
+      cleanup_candidates: >-
+        {{
+          (ipam_netbox_hvh01_stale_service_cleanup_candidates | default([]))
+          | map(attribute='name')
+          | list
+        }}
+      cleanup_pairs: >-
+        {{
+          (ipam_netbox_hvh01_stale_service_cleanup_candidates | default([]))
+          | map(attribute='virtual_machine')
+          | map(attribute='name')
+          | list
+        }}
+  when:
+    - vault_vars.vault_netbox_api_token is defined
+    - vault_vars.vault_netbox_api_token | length > 0
+  tags:
+    - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview
 
 - name: Require NetBox API token for hom-lab-ctl-hvh-01 VM model seeding
@@ -77,6 +196,25 @@
       color: "{{ item.color }}"
     state: present
   loop: "{{ ipam_netbox_hom_lab_ctl_hvh_01_vm_model.tags }}"
+  delegate_to: localhost
+  tags:
+    - ipam_netbox
+    - ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model
+
+- name: Remove stale duplicate storage-lane service objects from NetBox
+  ansible.builtin.uri:
+    url: "{{ item.url }}"
+    method: DELETE
+    headers:
+      Authorization: "Token {{ vault_vars.vault_netbox_api_token }}"
+      Accept: application/json
+    validate_certs: false
+    status_code: [204]
+  loop: "{{ ipam_netbox_hvh01_stale_service_cleanup_candidates | default([]) }}"
+  loop_control:
+    label: "{{ item.name }} on {{ item.virtual_machine.name }}"
+  when:
+    - ipam_netbox_hvh01_stale_service_cleanup_candidates | default([]) | length > 0
   delegate_to: localhost
   tags:
     - ipam_netbox

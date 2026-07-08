@@ -310,7 +310,6 @@ The network-server VM slice seeds the Hyper-V objects that live under
   - `clickhouse-native` at `tcp/9004`
   - `minio-api` at `tcp/9000`
   - `minio-console` at `tcp/9001`
-  - `langfuse-web` at `tcp/3000`
 - VM roles: `dkr`, `k3s`
 - tags: includes `docker`, `k3s`, `hyperv`, `authoritative-data`, and
   `lan-exposed-services`
@@ -331,6 +330,11 @@ ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
 
 This slice models `hom-lab-ctl-k3s-01` as a VM stub target only. It does not add the
 host to the live `k3s_cluster` server group and does not install K3s.
+
+The storage-lane standalone `langfuse-web` service is intentionally excluded
+while `stacks_network_langfuse_compose_enabled: false` on `hom-lab-ctl-dkr-01`.
+The active operator-facing Langfuse web route is the K3s ingress-backed
+`langfuse-k3s-web` service on `hom-lab-ctl-k3s-02`.
 
 ## Hybrid Service Inventory Workflow
 

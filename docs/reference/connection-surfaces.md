@@ -28,6 +28,19 @@ Full fields: `inventory/hosts_mapping.yaml`.
 
 Prefer inventory hostname in `~/.ssh/config` (e.g. `hom-lab-ctl-hvh-02`), with `HostName` set to **ansible_connect_target** from hosts_mapping — not legacy NetBIOS names that fail DNS from the Mac.
 
+## Service Publication Preference
+
+For storage-lane runtime services that are meant to be consumed across the LAN,
+the canonical client path is the Windows-published surface on
+`hom-lab-ctl-hvh-01` (`192.168.50.234`), not the guest-direct `192.168.138.x`
+address. The active shared contract lives in
+`inventory/group_vars/all/fuzlang_external_services.yml`, and the publication
+mechanism lives in `inventory/host_vars/hom-lab-ctl-hvh-01.yaml` under
+`hyperv_config.guest_published_tcp_ports`.
+
+Use guest-direct `192.168.138.x` only for controller/host management, guest
+maintenance, or an explicitly chosen exception.
+
 ## Historical WSL-centric docs
 
 Plans and narratives that assumed `server-225-wsl` / WSL bridge automation are archived under `docs/archive/wsl-deprecating/`.
