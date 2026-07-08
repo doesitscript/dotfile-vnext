@@ -51,3 +51,10 @@
         dest: "{{ mcp_sysoperator_project_dir }}/mcp.json"
         content: "{{ _merged | to_nice_json }}\n"
         mode: "0644"
+
+- name: Ensure sysoperator entry exists in .codex/config.toml
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ mcp_sysoperator_codex_config_path }}"
+    _mcp_codex_server_key: "sysoperator"
+    _mcp_codex_entry: "{{ mcp_sysoperator_codex_entry }}"

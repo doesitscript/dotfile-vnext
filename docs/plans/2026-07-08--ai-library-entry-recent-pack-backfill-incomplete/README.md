@@ -1,6 +1,7 @@
 ---
-lifecycle: in_progress
+lifecycle: implemented
 scope: implementation
+implemented_date: 2026-07-08
 netbox_scope: false
 depends_on_plans:
   - 2026-07-07--aws-aft-operational-and-combined-incomplete
@@ -13,9 +14,10 @@ unblocks: []
 
 ## Summary
 
-Backfill the recent non-Langfuse AI-library entries so they conform to the new
-`ai-library-entry` kickoff capability, packet-local `entry-spec.yml`
-contracting, and validator-based completion rules.
+Implement the remaining non-Langfuse AI-library backfill work so the recent
+entries conform to the new `ai-library-entry` kickoff capability,
+packet-local `entry-spec.yml` contracting, and validator-based completion
+rules.
 
 This plan is intentionally limited to:
 
@@ -25,8 +27,16 @@ This plan is intentionally limited to:
 
 Langfuse is explicitly out of scope because it is being processed elsewhere.
 
-The remediation goal is not blind rebuild-first churn. Use a backfill-first
-path:
+This is an execution plan, not just a governance note. The remaining work is:
+
+1. create the packet-local entry specs for diagrams and AWS AFT
+2. run the validator against the current outputs
+3. patch metadata, packet text, and routing where that is sufficient
+4. regenerate only the files that still fail after the contract backfill
+5. record validator-backed receipts in the remediated packets
+
+The remediation goal is still not blind rebuild-first churn. Use a
+backfill-first path:
 
 1. declare packet-local entry specs for the recent entries
 2. validate existing outputs against the new contract
@@ -57,22 +67,32 @@ path:
 
 ### 1. Remediate the diagrams entry under `ai-library-entry`
 
-- Create a packet-local backfill spec for the diagrams entry.
+- Create the packet-local backfill spec:
+  - `docs/plans/2026-07-08--ai-library-entry-recent-pack-backfill-incomplete/diagrams-entry-spec.yml`
 - Validate whether the current `vendors/diagrams/firecrawl` output is correctly
   modeled as a pure `vendor_docs` slice or whether any durable material belongs
   in `indexes/`, `sdk-context/`, or `prompts/`.
 - Backfill provenance, output declarations, and validator evidence.
-- Do not rebuild the diagrams pack unless the spec or validator shows concrete
-  gaps.
+- Update the governing packet at
+  `docs/plans/2026-07-08--diagrams-tool-ai-library-implemented/README.md` so it
+  records the backfill contract and validator evidence.
+- Do not rebuild the diagrams pack unless the spec or validator proves concrete
+  gaps in outputs, routing, or provenance.
 
 ### 2. Remediate the AWS AFT operational + combined entries
 
-- Create a packet-local backfill spec for the AFT remediation family that
-  covers both `control_tower_operational` and `control_tower_combined`.
+- Create the packet-local backfill spec:
+  - `docs/plans/2026-07-08--ai-library-entry-recent-pack-backfill-incomplete/aws-aft-entry-spec.yml`
+- Cover both existing output roots in one remediation family:
+  - `/Users/joshc/develop/ai-resource-library/vendors/aws/control_tower_operational`
+  - `/Users/joshc/develop/ai-resource-library/vendors/aws/control_tower_combined`
 - Treat the existing sibling `control_tower` pack as a dependency, not a target
   for restructuring.
 - Validate the current outputs, provenance, metadata, and index coverage
   against the `ai-library-entry` contract.
+- Update the governing packet at
+  `docs/plans/2026-07-07--aws-aft-operational-and-combined-incomplete/README.md`
+  so it records the backfill contract and validator evidence.
 - Regenerate only the files that fail validator-backed checks.
 
 ### 3. Add validator-backed receipts to the recent entry family
@@ -88,6 +108,56 @@ path:
 - Do not broaden this into a whole-library migration.
 - Limit the slice to the recent entries that were identified as the most likely
   consumers of the new capability backfill.
+
+## Remaining Work To Implement
+
+### Slice A - diagrams
+
+Required implementation actions:
+
+- create `diagrams-entry-spec.yml`
+- inventory the current diagrams outputs and map them to declared sources
+- decide whether any current durable material belongs outside
+  `vendors/diagrams/firecrawl`
+- patch diagrams provenance or README/index anchors if the validator requires it
+- add validator-backed evidence to the diagrams packet
+
+Expected default result:
+
+- no content rebuild if the current pack already satisfies the contract after
+  metadata/provenance backfill
+
+### Slice B - AWS AFT operational + combined
+
+Required implementation actions:
+
+- create `aws-aft-entry-spec.yml`
+- declare both pack roots and their required outputs in one remediation contract
+- validate metadata, page/section indexes, provenance, Context7 recording, and
+  output declarations against the new capability
+- patch README/metadata/receipt text where that is enough
+- selectively regenerate only the operational or combined files that still fail
+  after the contract backfill
+- add validator-backed evidence to the AWS AFT packet
+
+Expected default result:
+
+- preserve the current output roots and file names unless the validator proves a
+  routing or ownership problem
+
+## Required Outputs
+
+This execution slice must produce at least:
+
+- `docs/plans/2026-07-08--ai-library-entry-recent-pack-backfill-incomplete/diagrams-entry-spec.yml`
+- `docs/plans/2026-07-08--ai-library-entry-recent-pack-backfill-incomplete/aws-aft-entry-spec.yml`
+- updated `docs/plans/2026-07-08--diagrams-tool-ai-library-implemented/README.md`
+  with backfill/validator evidence
+- updated `docs/plans/2026-07-07--aws-aft-operational-and-combined-incomplete/README.md`
+  with backfill/validator evidence
+- any required metadata/provenance/index fixes in the affected AI-library output
+  roots
+- validator pass evidence for diagrams and AWS AFT
 
 ## Public Interfaces / Types
 
@@ -115,6 +185,21 @@ path:
   is made later.
 - Change class: documentation-governance and content-normalization backfill; no
   infrastructure mutation.
+
+## Checklist
+
+- [x] P1 Create `diagrams-entry-spec.yml`
+- [x] P2 Create `aws-aft-entry-spec.yml`
+- [x] P3 Run validator against diagrams backfill spec
+- [x] P4 Run validator against AWS AFT backfill spec
+- [x] P5 Update the diagrams packet with contract + validator evidence
+- [x] P6 Update the AWS AFT packet with contract + validator evidence
+- [x] P7 Apply only the metadata/provenance/index fixes required for validator pass
+- [x] P8 Regenerate only the remaining failing slices after backfill-first remediation
+- [x] V1 Verify Langfuse remains out of scope for this packet
+- [x] V2 Verify diagrams passes without rebuild unless a real gap forces one
+- [x] V3 Verify AWS AFT operational and combined outputs pass with only the necessary targeted fixes
+- [x] V4 Verify both remediated entries have validator-backed completion evidence
 
 ## Architecture/Structure Diagram
 
@@ -178,6 +263,17 @@ flowchart LR
 - Verify existing packets and output READMEs record the remediated state after
   backfill.
 
+## Completion Contract
+
+This slice is not complete until all of the following are true:
+
+- both packet-local backfill specs exist
+- the validator has been run for both specs
+- both governing packets record validator-backed evidence
+- any failing outputs have been either fixed, selectively regenerated, or left
+  as explicit blockers with evidence
+- no Langfuse work has been pulled into this packet
+
 ## Assumptions
 
 - Langfuse is intentionally excluded because it is being handled in another
@@ -205,6 +301,27 @@ flowchart LR
 - [x] Naming/Modeling included for backfill-spec naming and the explicit
       Langfuse exclusion
 - [x] Diagram Inventory section included below
+
+## Plan verification receipt
+
+| ID | Obligation | Status | Evidence |
+|----|------------|--------|----------|
+| O-01 | Create `diagrams-entry-spec.yml` | pass | `docs/plans/2026-07-08--ai-library-entry-recent-pack-backfill-incomplete/diagrams-entry-spec.yml` |
+| O-02 | Create `aws-aft-entry-spec.yml` | pass | `docs/plans/2026-07-08--ai-library-entry-recent-pack-backfill-incomplete/aws-aft-entry-spec.yml` |
+| O-03 | Run validator for diagrams | pass | `AI_LIBRARY_ENTRY_VALIDATION_OK` from `validate_entry_spec.rb diagrams-entry-spec.yml` |
+| O-04 | Run validator for AWS AFT | pass | `AI_LIBRARY_ENTRY_VALIDATION_OK` from `validate_entry_spec.rb aws-aft-entry-spec.yml` |
+| O-05 | Update diagrams packet with validator-backed evidence | pass | diagrams packet updated with backfill section and validator receipt |
+| O-06 | Update AWS AFT packet with validator-backed evidence | pass | AWS AFT packet updated with backfill section and validator receipt |
+| O-07 | Apply only necessary metadata/provenance/index fixes | pass | diagrams gained `metadata.json` and `page-index.json`; AWS AFT operational pages gained `Capture mode: full_capture` and `Collection-tool: onenote-export-normalization` provenance markers |
+| O-08 | Regenerate only remaining failing slices | pass | No remaining failing slice required a rebuild after targeted backfill fixes; diagrams passed without rebuild and AWS AFT passed after provenance-only repair |
+| O-09 | Keep Langfuse out of scope | pass | No Langfuse paths, specs, or packet updates were included in this remediation slice |
+
+### Receipt summary
+
+- In-scope obligations: 9
+- Pass: 9
+- Fail: 0
+- Blocked: 0
 
 ## Diagram Inventory
 

@@ -55,3 +55,24 @@
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   failed_when: false
+
+- name: Discover stranded Langfuse local-path storage directories
+  ansible.builtin.find:
+    paths: /var/lib/rancher/k3s/storage
+    file_type: directory
+    recurse: false
+    patterns:
+      - "*_langfuse_data-langfuse-clickhouse-shard0-0"
+      - "*_langfuse_data-langfuse-clickhouse-shard0-1"
+      - "*_langfuse_data-langfuse-zookeeper-0"
+      - "*_langfuse_langfuse-s3"
+      - "*_langfuse_valkey-data-langfuse-redis-primary-0"
+  register: k3s_langfuse_platform_stranded_storage_dirs
+  failed_when: false
+
+- name: Remove stranded Langfuse local-path storage directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ k3s_langfuse_platform_stranded_storage_dirs.files | default([]) }}"
+  become: true

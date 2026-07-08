@@ -46,4 +46,27 @@ if [ -f "${REPO_ROOT}/.venv/bin/activate" ]; then
   set -u
 fi
 
+command_name="$(basename "$1")"
+case "${command_name}" in
+  ansible|ansible-*)
+    if [ "$(uname -s)" = "Darwin" ]; then
+      if [ -z "${TMPDIR:-}" ]; then
+        export TMPDIR="/private/tmp"
+      fi
+
+      if [ -z "${ANSIBLE_LOCAL_TEMP:-}" ]; then
+        export ANSIBLE_LOCAL_TEMP="${TMPDIR%/}/ansible-local"
+      fi
+
+      mkdir -p "${TMPDIR}" "${ANSIBLE_LOCAL_TEMP}"
+
+      case "${ANSIBLE_REMOTE_TEMP:-}" in
+        /private/tmp/*|/var/folders/*)
+          unset ANSIBLE_REMOTE_TEMP
+          ;;
+      esac
+    fi
+    ;;
+esac
+
 exec "$@"

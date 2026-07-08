@@ -231,6 +231,13 @@ flowchart LR
 - [x] Dependency order is represented in the implementation flow for this documentation slice
 - [x] Brainstormed target roots and parsing rules were replaced with source-backed decisions
 
+## AI-library-entry backfill (2026-07-08)
+
+- Backfill packet: `docs/plans/2026-07-08--ai-library-entry-recent-pack-backfill-incomplete/README.md`
+- Packet-local spec: `docs/plans/2026-07-08--ai-library-entry-recent-pack-backfill-incomplete/aws-aft-entry-spec.yml`
+- Validator result: `AI_LIBRARY_ENTRY_VALIDATION_OK`
+- Remediation shape: no structural rebuild was required after backfill; the operational pack received explicit `full_capture` provenance markers and both pack READMEs now record the validator-backed contract state.
+
 ## Diagram Inventory
 
 - Architecture/Structure Diagram: included

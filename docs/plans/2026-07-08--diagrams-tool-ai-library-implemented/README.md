@@ -19,6 +19,13 @@ less iteration.
 | Cursor skill | `roles/common/agent_skills/files/cursor/skills/create-diagrams/SKILL.md` |
 | Original intake note | Promoted from `docs/ai-library/diagrams_tool_install_plan.md` |
 
+## AI-library-entry backfill (2026-07-08)
+
+- Backfill packet: `docs/plans/2026-07-08--ai-library-entry-recent-pack-backfill-incomplete/README.md`
+- Packet-local spec: `docs/plans/2026-07-08--ai-library-entry-recent-pack-backfill-incomplete/diagrams-entry-spec.yml`
+- Validator result: `AI_LIBRARY_ENTRY_VALIDATION_OK`
+- Result: this pack passed the new `ai-library-entry` contract without content rebuild; the remediation added durable `metadata.json`, `page-index.json`, and packet/README validation evidence only.
+
 ## Goal
 
 The library should make it easy for an AI to:

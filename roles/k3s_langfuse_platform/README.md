@@ -1,6 +1,7 @@
 # k3s_langfuse_platform
 
-Deploy Langfuse on K3s with external PostgreSQL on the Docker network stack.
+Deploy Langfuse on K3s with external PostgreSQL, Redis, ClickHouse, and MinIO
+on the storage-lane Docker network stack.
 
 ## Lifecycle
 
@@ -30,7 +31,8 @@ ansible-playbook playbooks/deploy_langfuse_platform.yaml \
 ## Secrets
 
 Secrets load from `vault/network.vault.yml` and `vault/shared.vault.yml` via `tasks/load_vault.yml`.
-External PostgreSQL connect address must use `fuzlang_external_postgres_connect_address` (IP), not inventory hostname.
+External data-plane connect addresses must use the `fuzlang_external_*_connect_address`
+inventory contract values, not inventory hostnames.
 
 ## Tags
 

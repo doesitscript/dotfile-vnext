@@ -14,5 +14,17 @@ mcp_sysoperator_entry_point: "{{ mcp_sysoperator_install_dir }}/build/index.js"
 # Cursor project directory for .cursor/mcp.json
 mcp_sysoperator_project_dir: "{{ dotfiles_home }}/.cursor"
 
+# Project Codex config path for managed MCP blocks
+mcp_sysoperator_codex_config_path: "{{ dotfiles_home }}/.codex/config.toml"
+
 # Relative path from project root (for tracking/debugging)
 mcp_sysoperator_role_path: "roles/mcp_servers/mcp-sysoperator"
+
+# Codex client entry rendered through the shared helper
+mcp_sysoperator_codex_entry:
+  command: node
+  args:
+    - "{{ mcp_sysoperator_entry_point }}"
+  env:
+    _MCP_ANSIBLE_ROLE_PATH: "{{ mcp_sysoperator_role_path }}"
+  required: false

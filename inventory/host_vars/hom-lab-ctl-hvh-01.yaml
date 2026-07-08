@@ -92,6 +92,39 @@ hyperv_config:
   # Host-side outbound NAT gives routed lab guests internet/package access
   # without requiring the upstream LAN router to know this private subnet.
   guest_outbound_nat_enabled: true
+  # Publish storage-lane services through the Windows LAN IP so operators and
+  # cross-lane consumers do not have to rely on direct 192.168.138.x routing.
+  guest_published_tcp_ports:
+    - name: "postgres-fuzlang"
+      listen_address: "192.168.50.234"
+      listen_port: 5432
+      connect_address: "192.168.138.10"
+      connect_port: 5432
+    - name: "redis-fuzlang"
+      listen_address: "192.168.50.234"
+      listen_port: 6379
+      connect_address: "192.168.138.10"
+      connect_port: 6379
+    - name: "clickhouse-http"
+      listen_address: "192.168.50.234"
+      listen_port: 8123
+      connect_address: "192.168.138.10"
+      connect_port: 8123
+    - name: "clickhouse-native"
+      listen_address: "192.168.50.234"
+      listen_port: 9004
+      connect_address: "192.168.138.10"
+      connect_port: 9004
+    - name: "minio-api"
+      listen_address: "192.168.50.234"
+      listen_port: 9000
+      connect_address: "192.168.138.10"
+      connect_port: 9000
+    - name: "minio-console"
+      listen_address: "192.168.50.234"
+      listen_port: 9001
+      connect_address: "192.168.138.10"
+      connect_port: 9001
   internal_ics_public_adapter_name: "vEthernet (External)"
 
 # Docker client — reaches the central Hyper-V Ubuntu Docker engine via SSH.

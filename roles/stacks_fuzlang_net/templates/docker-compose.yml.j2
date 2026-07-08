@@ -27,6 +27,14 @@ services:
     labels:
       com.homelab.stack: "fuzlang-net"
       com.homelab.deployed-by: "stacks_fuzlang_net"
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+{% if vault_network_redis_password is defined and vault_network_redis_password | length > 0 %}
+      - --requirepass
+      - ${REDIS_PASSWORD}
+{% endif %}
     volumes:
       - {{ linux_data_root }}/redis:/data
     ports:
@@ -34,7 +42,11 @@ services:
     networks:
       - fuzlang_net_net
     healthcheck:
+{% if vault_network_redis_password is defined and vault_network_redis_password | length > 0 %}
+      test: ["CMD-SHELL", "redis-cli -a '${REDIS_PASSWORD}' ping"]
+{% else %}
       test: ["CMD", "redis-cli", "ping"]
+{% endif %}
       interval: 10s
       timeout: 5s
       retries: 5

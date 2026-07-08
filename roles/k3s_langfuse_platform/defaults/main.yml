@@ -29,9 +29,12 @@ k3s_langfuse_platform_postgres_password: "{{ fuzlang_external_postgres_password 
 
 # ClickHouse configuration
 k3s_langfuse_platform_clickhouse_enabled: true
-k3s_langfuse_platform_clickhouse_host: "langfuse-clickhouse"
-k3s_langfuse_platform_clickhouse_port: 9000
-k3s_langfuse_platform_clickhouse_user: "default"
+k3s_langfuse_platform_clickhouse_deploy: false
+k3s_langfuse_platform_clickhouse_host: "{{ fuzlang_external_clickhouse_connect_address }}"
+k3s_langfuse_platform_clickhouse_http_port: "{{ fuzlang_external_clickhouse_http_port }}"
+k3s_langfuse_platform_clickhouse_native_port: "{{ fuzlang_external_clickhouse_native_port }}"
+k3s_langfuse_platform_clickhouse_database: "{{ fuzlang_external_clickhouse_db }}"
+k3s_langfuse_platform_clickhouse_user: "{{ fuzlang_external_clickhouse_user }}"
 k3s_langfuse_platform_clickhouse_cpu_request: "500m"
 k3s_langfuse_platform_clickhouse_cpu_limit: "1500m"
 k3s_langfuse_platform_clickhouse_memory_request: "1Gi"
@@ -39,12 +42,15 @@ k3s_langfuse_platform_clickhouse_memory_limit: "4Gi"
 
 # Redis configuration
 k3s_langfuse_platform_redis_enabled: true
-k3s_langfuse_platform_redis_host: "langfuse-redis-master"
-k3s_langfuse_platform_redis_port: 6379
+k3s_langfuse_platform_redis_deploy: false
+k3s_langfuse_platform_redis_host: "{{ fuzlang_external_redis_connect_address }}"
+k3s_langfuse_platform_redis_port: "{{ fuzlang_external_redis_port }}"
+k3s_langfuse_platform_redis_username: null
 k3s_langfuse_platform_redis_auth_enabled: true
 
-# Storage configuration (MinIO/S3 bundled subchart)
+# Storage configuration
 k3s_langfuse_platform_s3_enabled: true
+k3s_langfuse_platform_s3_deploy: false
 k3s_langfuse_platform_s3_image_repository: minio/minio
 k3s_langfuse_platform_s3_image_tag: RELEASE.2024-01-31T20-20-33Z
 # Bitnami chart mounts /bitnami/minio/data — official minio image needs explicit server command.
@@ -55,10 +61,12 @@ k3s_langfuse_platform_s3_args:
   - /bitnami/minio/data
   - --console-address
   - :9001
-k3s_langfuse_platform_s3_endpoint: ""
+k3s_langfuse_platform_s3_endpoint: "{{ fuzlang_external_s3_endpoint }}"
 k3s_langfuse_platform_s3_access_key: ""
 k3s_langfuse_platform_s3_secret_key: ""
-k3s_langfuse_platform_s3_bucket: "langfuse"
+k3s_langfuse_platform_s3_bucket: "{{ fuzlang_external_s3_bucket }}"
+k3s_langfuse_platform_s3_region: "{{ fuzlang_external_s3_region }}"
+k3s_langfuse_platform_s3_force_path_style: "{{ fuzlang_external_s3_force_path_style }}"
 
 # Resource limits
 k3s_langfuse_platform_web_replicas: 1

@@ -1,0 +1,39 @@
+---
+- name: Check whether network stack directory exists on Docker engine host
+  ansible.builtin.stat:
+    path: "{{ linux_stacks_root }}/network/docker-compose.yml"
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
+  register: stacks_network_compose_file
+
+- name: Stop and remove fuzlang network stack on Docker engine host
+  ansible.builtin.command:
+    cmd: docker compose down --remove-orphans
+    chdir: "{{ linux_stacks_root }}/network"
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
+  when: stacks_network_compose_file.stat.exists
+  register: stacks_network_down_result
+  changed_when: "'Stopping' in stacks_network_down_result.stdout or 'Removing' in stacks_network_down_result.stdout or 'Removed' in stacks_network_down_result.stdout"
+
+- name: Remove network stack data directories when purge is requested
+  ansible.builtin.file:
+    path: "{{ linux_data_root }}/{{ item }}"
+    state: absent
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
+  when: stacks_network_purge_data_on_absent | bool
+  loop:
+    - postgres
+    - redis
+    - clickhouse
+    - minio
+    - langfuse
+
+- name: Display network stack removal summary
+  ansible.builtin.debug:
+    msg:
+      - "=== Network Stack Removal ==="
+      - "Docker engine: {{ docker_engine_host }}"
+      - "Compose path existed: {{ stacks_network_compose_file.stat.exists }}"
+      - "Data purged: {{ stacks_network_purge_data_on_absent | bool }}"

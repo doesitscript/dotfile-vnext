@@ -19,6 +19,8 @@ That can leave the runtime without:
 - the project Python virtual environment from `.venv`
 
 The result is intermittent "works in my terminal, fails in the agent" behavior.
+It can also leak a macOS-only temp path into `ANSIBLE_REMOTE_TEMP`, which
+breaks remote Linux hosts with `/private/tmp/...` temp-dir failures.
 
 ## Standard Entry Point
 
@@ -43,8 +45,13 @@ bin/codex-env ansible-playbook playbooks/access_windows.yaml -i inventory/invent
 1. changes to the repo root
 2. on macOS, normalizes invalid inherited `C.UTF-8` locale values to `en_US.UTF-8`
 3. sources `.envrc` when present
-4. activates `.venv/bin/activate` when present
-5. `exec`s the requested command
+4. sources `bin/load-netbox-controller-env.sh` when present
+5. activates `.venv/bin/activate` when present
+6. for `ansible*` commands on macOS, defaults controller temp paths under
+   `/private/tmp`
+7. for `ansible*` commands on macOS, drops inherited controller-only
+   `ANSIBLE_REMOTE_TEMP` values such as `/private/tmp/...` or `/var/folders/...`
+8. `exec`s the requested command
 
 This makes the environment explicit instead of depending on shell startup mode.
 
@@ -97,6 +104,24 @@ bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file o
 
 `bin/codex-env` normalizes those inherited values to `en_US.UTF-8` on macOS so
 repo commands run without that warning.
+
+## Ansible Temp Path Note
+
+For `ansible`, `ansible-playbook`, and similar commands on macOS, the wrapper
+also protects the controller/remote temp split:
+
+- controller temp files belong under macOS paths such as `/private/tmp`
+- remote temp files must use a path valid on the remote host OS
+
+So `bin/codex-env` now:
+
+- defaults `TMPDIR` to `/private/tmp` when unset
+- defaults `ANSIBLE_LOCAL_TEMP` to `/private/tmp/ansible-local` when unset
+- unsets inherited `ANSIBLE_REMOTE_TEMP` values that point at macOS-only
+  controller paths
+
+This is intentionally narrow. It hardens the controller-side environment
+without forcing one remote temp path onto Linux and Windows targets alike.
 
 For Codex specifically, the repo also sets these values in
 [.codex/config.toml](/Users/joshc/develop/dotfile-vnext/.codex/config.toml) via

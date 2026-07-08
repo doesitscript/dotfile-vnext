@@ -143,10 +143,17 @@
           autoMigrate: true
 
       clickhouse:
-        deploy: true
+        deploy: "{{ k3s_langfuse_platform_clickhouse_deploy | bool }}"
+        host: "{{ k3s_langfuse_platform_clickhouse_host }}"
+        httpPort: "{{ k3s_langfuse_platform_clickhouse_http_port }}"
+        nativePort: "{{ k3s_langfuse_platform_clickhouse_native_port }}"
+        database: "{{ k3s_langfuse_platform_clickhouse_database }}"
         auth:
           username: "{{ k3s_langfuse_platform_clickhouse_user }}"
           password: "{{ k3s_langfuse_platform_resolved_clickhouse_password }}"
+        migration:
+          autoMigrate: true
+          url: "clickhouse://{{ k3s_langfuse_platform_clickhouse_host }}:{{ k3s_langfuse_platform_clickhouse_native_port }}"
         replicaCount: "1"
         resourcesPreset: none
         resources:
@@ -164,7 +171,15 @@
 
 
       s3:
-        deploy: true
+        deploy: "{{ k3s_langfuse_platform_s3_deploy | bool }}"
+        bucket: "{{ k3s_langfuse_platform_s3_bucket }}"
+        endpoint: "{{ k3s_langfuse_platform_s3_endpoint }}"
+        region: "{{ k3s_langfuse_platform_s3_region }}"
+        forcePathStyle: "{{ k3s_langfuse_platform_s3_force_path_style | bool }}"
+        accessKeyId:
+          value: "{{ k3s_langfuse_platform_resolved_s3_access_key }}"
+        secretAccessKey:
+          value: "{{ k3s_langfuse_platform_resolved_s3_secret_key }}"
         defaultBuckets: "{{ k3s_langfuse_platform_s3_bucket }}"
         image:
           repository: "{{ k3s_langfuse_platform_s3_image_repository }}"
@@ -176,9 +191,11 @@
           rootPassword: "{{ k3s_langfuse_platform_resolved_s3_root_password }}"
 
       redis:
-        deploy: true
+        deploy: "{{ k3s_langfuse_platform_redis_deploy | bool }}"
+        host: "{{ k3s_langfuse_platform_redis_host }}"
+        port: "{{ k3s_langfuse_platform_redis_port }}"
         auth:
-          enabled: true
+          username: "{{ k3s_langfuse_platform_redis_username }}"
           password: "{{ k3s_langfuse_platform_resolved_redis_password }}"
         primary:
           persistence:
@@ -212,7 +229,8 @@
       - Langfuse Web ({{ k3s_langfuse_platform_web_replicas }} replicas)
       - Langfuse Worker ({{ k3s_langfuse_platform_worker_replicas }} replicas)
       - External PostgreSQL at {{ k3s_langfuse_platform_postgres_host }}:{{ k3s_langfuse_platform_postgres_port }}
-      - ClickHouse (persistent storage: 20Gi)
-      - Redis (persistent storage: 8Gi)
+      - ClickHouse at {{ k3s_langfuse_platform_clickhouse_host }}:{{ k3s_langfuse_platform_clickhouse_http_port }} / {{ k3s_langfuse_platform_clickhouse_native_port }}
+      - Redis at {{ k3s_langfuse_platform_redis_host }}:{{ k3s_langfuse_platform_redis_port }}
+      - S3 endpoint {{ k3s_langfuse_platform_s3_endpoint }}
 
       Check status: kubectl get pods -n {{ k3s_langfuse_platform_namespace }}

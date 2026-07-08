@@ -317,71 +317,6 @@ ipam_netbox_hom_lab_ctl_hvh_02_model:
         - docker
         - homelab
         - stack-logging
-    - name: postgres-fuzlang
-      virtual_machine: hom-lab-ctl-dkr-02
-      protocol: tcp
-      ports:
-        - 5432
-      ipaddresses:
-        - address: 192.168.137.10/24
-      description: External PostgreSQL for Langfuse and LiteLLM (fuzlang network stack)
-      primary_access_point: postgresql://192.168.137.10:5432/langfuse
-      comments: fuzlang-net Postgres on hom-lab-ctl-dkr-02; consumed by K3s langfuse and litellm on hom-lab-ctl-k3s-02.
-      custom_fields:
-        compose_project: fuzlang-net
-        deployed_by_role: stacks_fuzlang_net
-        stack_name: fuzlang-net
-      tags:
-        - ansible-managed
-        - service-endpoint
-        - infra
-        - docker
-        - homelab
-        - authoritative-data
-        - stack-fuzlang-net
-    - name: minio-api
-      virtual_machine: hom-lab-ctl-dkr-02
-      protocol: tcp
-      ports:
-        - 9000
-      ipaddresses:
-        - address: 192.168.137.10/24
-      description: MinIO S3-compatible API (fuzlang network stack)
-      primary_access_point: http://192.168.137.10:9000/
-      comments: fuzlang-net MinIO API on hom-lab-ctl-dkr-02.
-      custom_fields:
-        compose_project: fuzlang-net
-        deployed_by_role: stacks_fuzlang_net
-        stack_name: fuzlang-net
-      tags:
-        - ansible-managed
-        - service-endpoint
-        - infra
-        - docker
-        - homelab
-        - stack-fuzlang-net
-    - name: minio-console
-      virtual_machine: hom-lab-ctl-dkr-02
-      protocol: tcp
-      ports:
-        - 9001
-      ipaddresses:
-        - address: 192.168.137.10/24
-      description: MinIO web console (fuzlang network stack)
-      primary_access_point: http://192.168.137.10:9001/
-      comments: fuzlang-net MinIO console on hom-lab-ctl-dkr-02.
-      custom_fields:
-        compose_project: fuzlang-net
-        deployed_by_role: stacks_fuzlang_net
-        stack_name: fuzlang-net
-      tags:
-        - ansible-managed
-        - service-endpoint
-        - web-ui
-        - infra
-        - docker
-        - homelab
-        - stack-fuzlang-net
     - name: langfuse-k3s-web
       virtual_machine: hom-lab-ctl-k3s-02
       protocol: tcp
@@ -626,8 +561,8 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
       ipaddresses:
         - address: 192.168.138.10/24
       description: External PostgreSQL for the storage-lane Langfuse data plane
-      primary_access_point: postgresql://192.168.138.10:5432/langfuse
-      comments: fuzlang-net Postgres on hom-lab-ctl-dkr-01; LAN exposed and consumed by storage-lane services.
+      primary_access_point: postgresql://192.168.50.234:5432/langfuse
+      comments: fuzlang-net Postgres on hom-lab-ctl-dkr-01; preferred runtime/operator path is the Windows LAN-published route on hom-lab-ctl-hvh-01.
       custom_fields:
         compose_project: fuzlang-net
         deployed_by_role: stacks_fuzlang_net
@@ -648,8 +583,8 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
       ipaddresses:
         - address: 192.168.138.10/24
       description: Redis cache backing the storage-lane Langfuse data plane
-      primary_access_point: redis://127.0.0.1:6379/0
-      comments: fuzlang-net Redis on hom-lab-ctl-dkr-01; intentionally bound to guest loopback only.
+      primary_access_point: redis://192.168.50.234:6379/0
+      comments: fuzlang-net Redis on hom-lab-ctl-dkr-01; preferred runtime/operator path is the Windows LAN-published route on hom-lab-ctl-hvh-01.
       custom_fields:
         compose_project: fuzlang-net
         deployed_by_role: stacks_fuzlang_net
@@ -669,8 +604,8 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
       ipaddresses:
         - address: 192.168.138.10/24
       description: ClickHouse HTTP endpoint for the storage-lane Langfuse data plane
-      primary_access_point: http://127.0.0.1:8123/
-      comments: fuzlang-net ClickHouse HTTP endpoint on hom-lab-ctl-dkr-01; intentionally bound to guest loopback only.
+      primary_access_point: http://192.168.50.234:8123/
+      comments: fuzlang-net ClickHouse HTTP endpoint on hom-lab-ctl-dkr-01; preferred runtime/operator path is the Windows LAN-published route on hom-lab-ctl-hvh-01.
       custom_fields:
         compose_project: fuzlang-net
         deployed_by_role: stacks_fuzlang_net
@@ -690,8 +625,8 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
       ipaddresses:
         - address: 192.168.138.10/24
       description: ClickHouse native TCP endpoint for the storage-lane Langfuse data plane
-      primary_access_point: tcp://127.0.0.1:9004
-      comments: fuzlang-net ClickHouse native endpoint on hom-lab-ctl-dkr-01; remapped to 9004 and bound to guest loopback only.
+      primary_access_point: tcp://192.168.50.234:9004
+      comments: fuzlang-net ClickHouse native endpoint on hom-lab-ctl-dkr-01; remapped to 9004 and preferred via the Windows LAN-published route on hom-lab-ctl-hvh-01.
       custom_fields:
         compose_project: fuzlang-net
         deployed_by_role: stacks_fuzlang_net
@@ -711,8 +646,8 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
       ipaddresses:
         - address: 192.168.138.10/24
       description: MinIO S3-compatible API for the storage-lane Langfuse data plane
-      primary_access_point: http://192.168.138.10:9000/
-      comments: fuzlang-net MinIO API on hom-lab-ctl-dkr-01; LAN exposed for storage and object workloads.
+      primary_access_point: http://192.168.50.234:9000/
+      comments: fuzlang-net MinIO API on hom-lab-ctl-dkr-01; preferred runtime/operator path is the Windows LAN-published route on hom-lab-ctl-hvh-01.
       custom_fields:
         compose_project: fuzlang-net
         deployed_by_role: stacks_fuzlang_net
@@ -733,30 +668,8 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
       ipaddresses:
         - address: 192.168.138.10/24
       description: MinIO web console for the storage-lane Langfuse data plane
-      primary_access_point: http://192.168.138.10:9001/
-      comments: fuzlang-net MinIO console on hom-lab-ctl-dkr-01.
-      custom_fields:
-        compose_project: fuzlang-net
-        deployed_by_role: stacks_fuzlang_net
-        stack_name: fuzlang-net
-      tags:
-        - ansible-managed
-        - service-endpoint
-        - web-ui
-        - infra
-        - docker
-        - homelab
-        - stack-fuzlang-net
-    - name: langfuse-web
-      virtual_machine: hom-lab-ctl-dkr-01
-      protocol: tcp
-      ports:
-        - 3000
-      ipaddresses:
-        - address: 192.168.138.10/24
-      description: Storage-lane Langfuse web UI running directly on the Docker VM
-      primary_access_point: http://192.168.138.10:3000/
-      comments: fuzlang-net Langfuse web container on hom-lab-ctl-dkr-01; expected to be LAN exposed when healthy.
+      primary_access_point: http://192.168.50.234:9001/
+      comments: fuzlang-net MinIO console on hom-lab-ctl-dkr-01; preferred operator path is the Windows LAN-published route on hom-lab-ctl-hvh-01.
       custom_fields:
         compose_project: fuzlang-net
         deployed_by_role: stacks_fuzlang_net

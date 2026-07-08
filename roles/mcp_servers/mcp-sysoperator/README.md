@@ -6,7 +6,8 @@ Clones, builds, and installs the [mcp-sysoperator](https://github.com/tarnover/m
 
 1. Clones the repo to `~/.local/lib/mcp-sysoperator` (version-pinned via git ref)
 2. Runs `npm install` and `npm run build` using NVM-managed Node.js
-3. Prints the MCP JSON snippet to add to your project `.cursor/mcp.json`
+3. Prints the MCP JSON snippet to add to your project `.cursor/mcp.json` and
+   `.codex/config.toml`
 
 ## Dependencies
 
@@ -29,7 +30,8 @@ Clones, builds, and installs the [mcp-sysoperator](https://github.com/tarnover/m
 
 ## MCP Configuration
 
-After the role runs, it prints the JSON snippet. Add it to your project `.cursor/mcp.json`:
+After the role runs, it writes the repo-local Cursor entry and the project
+Codex entry for `sysoperator`:
 
 ```json
 {
@@ -43,11 +45,14 @@ After the role runs, it prints the JSON snippet. Add it to your project `.cursor
 }
 ```
 
-Replace the path with the actual `mcp_sysoperator_entry_point` value printed by the role.
+The Cursor entry uses the direct `node` launch pattern. The Codex entry uses
+the project `.codex/config.toml` managed-block pattern from the shared MCP
+helpers.
 
 ### Verified Working Config (Ubuntu over SSH)
 
-Installed to the project `.cursor/mcp.json` on an Ubuntu host reached via SSH:
+Installed to the project `.cursor/mcp.json` and `.codex/config.toml` on an
+Ubuntu host reached via SSH:
 
 ```json
 {
