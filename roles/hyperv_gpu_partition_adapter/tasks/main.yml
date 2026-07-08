@@ -6,7 +6,12 @@
       $vm = Get-VM -Name $vmName -ErrorAction Stop
       $adapter = Get-VMGpuPartitionAdapter -VMName $vmName -ErrorAction SilentlyContinue
       $partitionable = Get-VMHostPartitionableGpu -ErrorAction SilentlyContinue
-      $host = Get-VMHost
+      $vmHost = Get-VMHost
+
+      $iovReasons = @()
+      if ($null -ne $vmHost.IovSupportReasons) {
+        $iovReasons = @($vmHost.IovSupportReasons | ForEach-Object { $_.ToString() })
+      }
 
       [pscustomobject]@{
         vm_name = $vm.Name
@@ -14,9 +19,9 @@
         has_partitionable_gpu = [bool]($partitionable)
         has_gpu_partition_adapter = [bool]($adapter)
         partitionable_gpu_name = if ($partitionable) { $partitionable[0].Name } else { $null }
-        iov_support = [bool]($host.IovSupport)
-        iov_support_reasons = @($host.IovSupportReasons | ForEach-Object { $_.ToString() })
-        iov_support_reason_text = (($host.IovSupportReasons | ForEach-Object { $_.ToString() }) -join '; ')
+        iov_support = [bool]($vmHost.IovSupport)
+        iov_support_reasons = $iovReasons
+        iov_support_reason_text = ($iovReasons -join '; ')
       } | ConvertTo-Json -Compress
   register: hyperv_gpu_partition_adapter_probe
   changed_when: false
@@ -62,8 +67,6 @@
         -DynamicMemoryEnabled:([bool]::Parse('{{ hyperv_gpu_partition_adapter_dynamic_memory_enabled | string }}')) `
         -StartupBytes {{ hyperv_gpu_partition_adapter_startup_memory_bytes }} `
         -MinimumBytes {{ hyperv_gpu_partition_adapter_minimum_memory_bytes }}
-      Set-VMFirmware -VMName $vmName `
-        -EnableSecureBoot {{ 'On' if hyperv_gpu_partition_adapter_secure_boot_enabled else 'Off' }}
   register: hyperv_gpu_partition_adapter_vm_settings
 
 - name: Ensure Hyper-V GPU partition adapter is attached to VM
@@ -79,6 +82,14 @@
           if ($vm.State -eq 'Running') {
             Stop-VM -Name $vmName -Force -Confirm:$false
           }
+      when: hyperv_gpu_partition_adapter_restart_vm_when_changed | bool
+
+    - name: Ensure VM firmware is GPU-partition-compatible while VM is stopped
+      ansible.windows.win_powershell:
+        script: |
+          $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
+          Set-VMFirmware -VMName $vmName `
+            -EnableSecureBoot {{ 'On' if hyperv_gpu_partition_adapter_secure_boot_enabled else 'Off' }}
       when: hyperv_gpu_partition_adapter_restart_vm_when_changed | bool
 
     - name: Attach GPU partition adapter to target VM
@@ -111,6 +122,33 @@
       when:
         - hyperv_gpu_partition_adapter_restart_vm_when_changed | bool
         - hyperv_gpu_partition_adapter_vm_should_be_running | bool
+  rescue:
+    - name: Remove GPU partition adapter after failed attach/start attempt
+      ansible.windows.win_powershell:
+        script: |
+          $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
+          $adapter = Get-VMGpuPartitionAdapter -VMName $vmName -ErrorAction SilentlyContinue
+          if ($adapter) {
+            Remove-VMGpuPartitionAdapter -VMName $vmName
+          }
+
+    - name: Restore target VM to running state after failed GPU partition attempt
+      ansible.windows.win_powershell:
+        script: |
+          $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
+          $vm = Get-VM -Name $vmName -ErrorAction Stop
+          if ($vm.State -ne 'Running') {
+            Start-VM -Name $vmName -ErrorAction Stop | Out-Null
+          }
+      when: hyperv_gpu_partition_adapter_vm_should_be_running | bool
+
+    - name: Fail with recovered GPU partition startup error details
+      ansible.builtin.fail:
+        msg: >-
+          Hyper-V GPU partition attach/start failed for
+          {{ hyperv_gpu_partition_adapter_vm_name }}, but the role removed the
+          adapter and restored the VM to its prior running state. Review the
+          preceding Hyper-V error details for the resource-reservation failure.
 
 - name: Remove Hyper-V GPU partition adapter from VM
   when: hyperv_gpu_partition_adapter_state == 'absent'
@@ -127,14 +165,42 @@
   when:
     - hyperv_gpu_partition_adapter_state == 'present'
     - hyperv_gpu_partition_adapter_vm_should_be_running | bool
-  ansible.windows.win_powershell:
-    script: |
-      $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
-      $vm = Get-VM -Name $vmName -ErrorAction Stop
-      if ($vm.State -ne 'Running') {
-        Start-VM -Name $vmName -ErrorAction Stop | Out-Null
-      }
-  register: hyperv_gpu_partition_adapter_vm_start
+  block:
+    - name: Start target VM when not already running
+      ansible.windows.win_powershell:
+        script: |
+          $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
+          $vm = Get-VM -Name $vmName -ErrorAction Stop
+          if ($vm.State -ne 'Running') {
+            Start-VM -Name $vmName -ErrorAction Stop | Out-Null
+          }
+      register: hyperv_gpu_partition_adapter_vm_start
+  rescue:
+    - name: Remove GPU partition adapter after failed post-reconciliation start
+      ansible.windows.win_powershell:
+        script: |
+          $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
+          $adapter = Get-VMGpuPartitionAdapter -VMName $vmName -ErrorAction SilentlyContinue
+          if ($adapter) {
+            Remove-VMGpuPartitionAdapter -VMName $vmName
+          }
+
+    - name: Restore target VM after failed post-reconciliation start
+      ansible.windows.win_powershell:
+        script: |
+          $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
+          $vm = Get-VM -Name $vmName -ErrorAction Stop
+          if ($vm.State -ne 'Running') {
+            Start-VM -Name $vmName -ErrorAction Stop | Out-Null
+          }
+
+    - name: Fail with recovered post-reconciliation GPU partition error
+      ansible.builtin.fail:
+        msg: >-
+          Hyper-V GPU partition reconciliation failed to leave
+          {{ hyperv_gpu_partition_adapter_vm_name }} bootable. The role removed
+          the adapter and restored the VM to a running state. Review the
+          preceding Hyper-V GPU partition resource-reservation error details.
 
 - name: Report Hyper-V GPU partition adapter state
   ansible.builtin.debug:
