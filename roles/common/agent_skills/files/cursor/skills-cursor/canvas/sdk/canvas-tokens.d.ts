@@ -144,7 +144,8 @@ export declare const chartPalette: {
  * (`Swatch`, `UsageBar` segments, etc.). Hexes mirror the cursor core hues
  * from `packages/ui/src/tokens/themes/cursor-core/{dark,light}.ts` (via the
  * `text-{hue}-primary` semantic tokens); `gray` mirrors `text-tertiary`
- * (`mixTransparent base 54%`).
+ * (`mixTransparent base 54%`). `orange` is mixed 70/30 with red to keep
+ * Conversation distinct from Skills' yellow in light mode while staying warm.
  *
  * The insertion order here is the canonical category order — primitives
  * that auto-assign colors (e.g. `UsageBar` segments without an explicit
@@ -158,7 +159,8 @@ export declare const categoryPaletteDark: {
     readonly cyan: "#81A1C1";
     readonly pink: "#B48EAD";
     readonly blue: "#7BAFE9";
-    readonly orange: "#D08770";
+    readonly orange: "#DD7F76";
+    readonly red: "#FC6B83";
 };
 export declare const categoryPaletteLight: {
     readonly gray: "#1414148A";
@@ -168,7 +170,8 @@ export declare const categoryPaletteLight: {
     readonly cyan: "#4C7F8C";
     readonly pink: "#B8448B";
     readonly blue: "#3685BF";
-    readonly orange: "#DB704B";
+    readonly orange: "#D75C4E";
+    readonly red: "#CF2D56";
 };
 /** Legacy `colorPalette` name kept for back-compat; per-theme tables are `categoryPalette{Dark,Light}`. React consumers should read `useHostTheme().category` so the color flips with the host theme. */
 export declare const colorPalette: {
@@ -179,7 +182,8 @@ export declare const colorPalette: {
     readonly cyan: "#81A1C1";
     readonly pink: "#B48EAD";
     readonly blue: "#7BAFE9";
-    readonly orange: "#D08770";
+    readonly orange: "#DD7F76";
+    readonly red: "#FC6B83";
 };
 export type Color = keyof typeof colorPalette;
 export type CategoryPalette = Readonly<Record<Color, string>>;
@@ -234,7 +238,7 @@ declare function buildTokens(palette: CanvasPalette, category: CategoryPalette):
         stripAdded: string;
         stripRemoved: string;
     };
-    category: Readonly<Record<"blue" | "cyan" | "gray" | "green" | "orange" | "pink" | "purple" | "yellow", string>>;
+    category: Readonly<Record<"blue" | "cyan" | "gray" | "green" | "orange" | "pink" | "purple" | "red" | "yellow", string>>;
 };
 /** Semantic colors for components (spacing and radius live in `theme.ts`). */
 export declare const canvasTokens: {
@@ -274,7 +278,7 @@ export declare const canvasTokens: {
         stripAdded: string;
         stripRemoved: string;
     };
-    category: Readonly<Record<"blue" | "cyan" | "gray" | "green" | "orange" | "pink" | "purple" | "yellow", string>>;
+    category: Readonly<Record<"blue" | "cyan" | "gray" | "green" | "orange" | "pink" | "purple" | "red" | "yellow", string>>;
 };
 export declare const canvasTokensLight: {
     bg: {
@@ -313,7 +317,7 @@ export declare const canvasTokensLight: {
         stripAdded: string;
         stripRemoved: string;
     };
-    category: Readonly<Record<"blue" | "cyan" | "gray" | "green" | "orange" | "pink" | "purple" | "yellow", string>>;
+    category: Readonly<Record<"blue" | "cyan" | "gray" | "green" | "orange" | "pink" | "purple" | "red" | "yellow", string>>;
 };
 export type CanvasTokens = ReturnType<typeof buildTokens>;
 /**

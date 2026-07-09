@@ -5,9 +5,20 @@
     state: absent
   tags: [gpu_diagnostics, gpu_diagnostics_install]
 
-- name: Uninstall HWiNFO Chocolatey package
+- name: Set Chocolatey package list for GPU diagnostics removal
+  ansible.builtin.set_fact:
+    gpu_diagnostics_windows_chocolatey_packages: >-
+      {{
+        ([gpu_diagnostics_windows_chocolatey_package] + (gpu_diagnostics_windows_extra_chocolatey_packages | default([])))
+        | reject('equalto', '')
+        | unique
+        | list
+      }}
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Uninstall GPU diagnostics Chocolatey packages
   chocolatey.chocolatey.win_chocolatey:
-    name: "{{ gpu_diagnostics_windows_chocolatey_package }}"
+    name: "{{ gpu_diagnostics_windows_chocolatey_packages }}"
     state: absent
   failed_when: false
   tags: [gpu_diagnostics, gpu_diagnostics_install]

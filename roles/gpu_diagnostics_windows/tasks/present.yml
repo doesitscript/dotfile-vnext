@@ -6,9 +6,20 @@
     package_upgrade: false
   tags: [gpu_diagnostics, gpu_diagnostics_install]
 
-- name: Install HWiNFO via Chocolatey
+- name: Set Chocolatey package list for GPU diagnostics toolchain
+  ansible.builtin.set_fact:
+    gpu_diagnostics_windows_chocolatey_packages: >-
+      {{
+        ([gpu_diagnostics_windows_chocolatey_package] + (gpu_diagnostics_windows_extra_chocolatey_packages | default([])))
+        | reject('equalto', '')
+        | unique
+        | list
+      }}
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Install GPU diagnostics Chocolatey packages
   chocolatey.chocolatey.win_chocolatey:
-    name: "{{ gpu_diagnostics_windows_chocolatey_package }}"
+    name: "{{ gpu_diagnostics_windows_chocolatey_packages }}"
     state: present
   register: gpu_diagnostics_windows_choco_hwinfo
   failed_when: false
@@ -57,6 +68,30 @@
     path: "{{ gpu_diagnostics_windows_root }}\\{{ item }}"
     state: directory
   loop: "{{ gpu_diagnostics_windows_subdirs }}"
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Check whether Coreinfo executable is already present
+  ansible.windows.win_stat:
+    path: "{{ gpu_diagnostics_windows_coreinfo_exe_path }}"
+  register: gpu_diagnostics_windows_coreinfo_stat
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Download Coreinfo zip from Sysinternals when executable is missing
+  ansible.windows.win_get_url:
+    url: "{{ gpu_diagnostics_windows_coreinfo_url }}"
+    dest: "{{ gpu_diagnostics_windows_coreinfo_zip_path }}"
+  when: not (gpu_diagnostics_windows_coreinfo_stat.stat.exists | default(false))
+  tags: [gpu_diagnostics, gpu_diagnostics_install]
+
+- name: Expand Coreinfo zip when executable is missing
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $archive = '{{ gpu_diagnostics_windows_coreinfo_zip_path }}'
+      $destDir = '{{ gpu_diagnostics_windows_coreinfo_extract_dir }}'
+      New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+      Expand-Archive -LiteralPath $archive -DestinationPath $destDir -Force
+  when: not (gpu_diagnostics_windows_coreinfo_stat.stat.exists | default(false))
   tags: [gpu_diagnostics, gpu_diagnostics_install]
 
 - name: Stat candidate HWiNFO executables

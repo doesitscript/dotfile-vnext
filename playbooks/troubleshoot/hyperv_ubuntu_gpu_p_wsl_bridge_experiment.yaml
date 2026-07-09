@@ -1,0 +1,416 @@
+---
+- name: Prepare local staging for Hyper-V Ubuntu GPU-P WSL bridge experiment
+  hosts: localhost
+  gather_facts: false
+  vars:
+    hyperv_gpu_p_wsl_bridge_local_root: >-
+      {{ (lookup('env', 'TMPDIR') | default('/tmp', true)).rstrip('/') }}/hyperv-gpu-p-wsl-bridge-experiment
+
+  tasks:
+    - name: Reset local experiment staging root
+      ansible.builtin.file:
+        path: "{{ hyperv_gpu_p_wsl_bridge_local_root }}"
+        state: absent
+
+    - name: Create local experiment staging root
+      ansible.builtin.file:
+        path: "{{ hyperv_gpu_p_wsl_bridge_local_root }}"
+        state: directory
+        mode: "0700"
+
+- name: Gather WSL reference snapshot from Hyper-V host
+  hosts: hom-lab-ctl-hvh-02
+  gather_facts: false
+  vars:
+    hyperv_gpu_p_wsl_bridge_vm_name: hom-lab-ctl-k3s-02
+    hyperv_gpu_p_wsl_bridge_wsl_distro: Ubuntu-24.04
+    hyperv_gpu_p_wsl_bridge_windows_temp_root: >-
+      C:\Users\{{ ansible_user }}\AppData\Local\Temp\hyperv-gpu-p-wsl-bridge-experiment
+    hyperv_gpu_p_wsl_bridge_windows_tar_path: >-
+      {{ hyperv_gpu_p_wsl_bridge_windows_temp_root }}\wsl-lib.tar
+    hyperv_gpu_p_wsl_bridge_wsl_tar_path: >-
+      /mnt/c/Users/{{ ansible_user }}/AppData/Local/Temp/hyperv-gpu-p-wsl-bridge-experiment/wsl-lib.tar
+    hyperv_gpu_p_wsl_bridge_driverstore_dir: >-
+      C:\Windows\System32\DriverStore\FileRepository\nvmdsi.inf_amd64_e82263d194ad754a
+
+  tasks:
+    - name: Collect Hyper-V host GPU-P state
+      ansible.windows.win_powershell:
+        script: |
+          $vmName = '{{ hyperv_gpu_p_wsl_bridge_vm_name }}'
+          $vm = Get-VM -Name $vmName -ErrorAction Stop
+          $adapter = Get-VMGpuPartitionAdapter -VMName $vmName -ErrorAction SilentlyContinue
+          $partitionable = Get-VMHostPartitionableGpu -ErrorAction SilentlyContinue
+          $vmHost = Get-VMHost
+
+          [pscustomobject]@{
+            vm_name = $vm.Name
+            vm_state = $vm.State.ToString()
+            vm_status = $vm.Status
+            has_gpu_partition_adapter = [bool]($adapter)
+            has_partitionable_gpu = [bool]($partitionable)
+            partitionable_gpu_name = if ($partitionable) { $partitionable[0].Name } else { $null }
+            iov_support = [bool]($vmHost.IovSupport)
+            iov_support_reasons = @($vmHost.IovSupportReasons | ForEach-Object { $_.ToString() })
+          } | ConvertTo-Json -Compress
+      register: hyperv_gpu_p_wsl_bridge_host_probe
+      changed_when: false
+
+    - name: Parse Hyper-V host GPU-P state
+      ansible.builtin.set_fact:
+        hyperv_gpu_p_wsl_bridge_host_probe_json: "{{ hyperv_gpu_p_wsl_bridge_host_probe.output[0] | from_json }}"
+      changed_when: false
+
+    - name: Collect host-visible lxss and DriverStore inventory
+      ansible.windows.win_powershell:
+        script: |
+          $lxssDir = 'C:\Windows\System32\lxss\lib'
+          $driverDir = '{{ hyperv_gpu_p_wsl_bridge_driverstore_dir }}'
+
+          $lxssFiles = @()
+          if (Test-Path $lxssDir) {
+            $lxssFiles = Get-ChildItem $lxssDir | ForEach-Object {
+              [pscustomobject]@{
+                name = $_.Name
+                length = $_.Length
+                attributes = $_.Attributes.ToString()
+                link_type = if ($_.LinkType) { $_.LinkType } else { $null }
+                target = @($_.Target) -join ';'
+              }
+            }
+          }
+
+          $driverFiles = @()
+          if (Test-Path $driverDir) {
+            $driverFiles = Get-ChildItem $driverDir | ForEach-Object {
+              [pscustomobject]@{
+                name = $_.Name
+                length = $_.Length
+              }
+            }
+          }
+
+          [pscustomobject]@{
+            lxss_dir = $lxssDir
+            lxss_present = [bool](Test-Path $lxssDir)
+            lxss_has_libdxcore = [bool](Test-Path (Join-Path $lxssDir 'libdxcore.so'))
+            lxss_files = $lxssFiles
+            driverstore_dir = $driverDir
+            driverstore_has_libdxcore = [bool](Test-Path (Join-Path $driverDir 'libdxcore.so'))
+            driverstore_files = $driverFiles
+          } | ConvertTo-Json -Depth 6 -Compress
+      register: hyperv_gpu_p_wsl_bridge_windows_inventory
+      changed_when: false
+
+    - name: Parse host-visible lxss and DriverStore inventory
+      ansible.builtin.set_fact:
+        hyperv_gpu_p_wsl_bridge_windows_inventory_json: "{{ hyperv_gpu_p_wsl_bridge_windows_inventory.output[0] | from_json }}"
+      changed_when: false
+
+    - name: Ensure Windows-side temporary export directory exists
+      ansible.windows.win_file:
+        path: "{{ hyperv_gpu_p_wsl_bridge_windows_temp_root }}"
+        state: directory
+
+    - name: Probe live WSL GPU bridge and export library tarball
+      ansible.windows.win_powershell:
+        script: |
+          $wslExe = 'C:\Windows\System32\wsl.exe'
+          $distro = '{{ hyperv_gpu_p_wsl_bridge_wsl_distro }}'
+          $tarPathWindows = '{{ hyperv_gpu_p_wsl_bridge_windows_tar_path }}'
+          $tarPathWsl = '{{ hyperv_gpu_p_wsl_bridge_wsl_tar_path }}'
+          $exportDir = Split-Path -Path $tarPathWindows -Parent
+          New-Item -ItemType Directory -Force -Path $exportDir | Out-Null
+          if (Test-Path $tarPathWindows) {
+            Remove-Item -Path $tarPathWindows -Force
+          }
+
+          $dxgExists = $false
+          & $wslExe -d $distro -- test -e /dev/dxg
+          if ($LASTEXITCODE -eq 0) {
+            $dxgExists = $true
+          }
+
+          $fileScript = @'
+          find /usr/lib/wsl/lib -maxdepth 1 -printf '%f|%y|%l\n' | sort
+          '@
+          $wslFiles = @(& $wslExe -d $distro -- bash -lc $fileScript)
+
+          $ldconfigScript = @'
+          ldconfig -p | egrep 'cuda|nvidia|dxcore|d3d12' || true
+          '@
+          $ldconfigLines = @(& $wslExe -d $distro -- bash -lc $ldconfigScript)
+
+          $tarScript = @'
+          set -euo pipefail
+          mkdir -p "$(dirname "{{ hyperv_gpu_p_wsl_bridge_wsl_tar_path }}")"
+          tar -C /usr/lib/wsl/lib -cf "{{ hyperv_gpu_p_wsl_bridge_wsl_tar_path }}" .
+          '@
+          $null = & $wslExe -d $distro -- bash -lc $tarScript
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to export /usr/lib/wsl/lib from WSL."
+          }
+
+          [pscustomobject]@{
+            distro = $distro
+            dxg_exists = $dxgExists
+            files = $wslFiles
+            ldconfig = $ldconfigLines
+            tar_path = $tarPathWindows
+            has_libdxcore = [bool]($wslFiles | Where-Object { $_ -like 'libdxcore.so|*' })
+            has_libd3d12 = [bool]($wslFiles | Where-Object { $_ -like 'libd3d12.so|*' })
+            has_libd3d12core = [bool]($wslFiles | Where-Object { $_ -like 'libd3d12core.so|*' })
+          } | ConvertTo-Json -Depth 6 -Compress
+      register: hyperv_gpu_p_wsl_bridge_live_wsl
+      changed_when: true
+
+    - name: Parse live WSL probe
+      ansible.builtin.set_fact:
+        hyperv_gpu_p_wsl_bridge_live_wsl_json: "{{ hyperv_gpu_p_wsl_bridge_live_wsl.output[0] | from_json }}"
+      changed_when: false
+
+    - name: Fetch exported WSL library tarball to controller staging
+      ansible.builtin.fetch:
+        src: "{{ hyperv_gpu_p_wsl_bridge_windows_tar_path }}"
+        dest: "{{ hostvars['localhost'].hyperv_gpu_p_wsl_bridge_local_root }}/wsl-lib.tar"
+        flat: true
+
+- name: Stage WSL GPU bridge into Ubuntu VM and verify outcome
+  hosts: hom-lab-ctl-k3s-02
+  gather_facts: false
+  become: true
+  vars:
+    hyperv_gpu_p_wsl_bridge_local_tar_path: "{{ hostvars['localhost'].hyperv_gpu_p_wsl_bridge_local_root }}/wsl-lib.tar"
+    hyperv_gpu_p_wsl_bridge_guest_root: /opt/hyperv-gpu-p/wsl-bridge
+    hyperv_gpu_p_wsl_bridge_guest_lib_dir: /opt/hyperv-gpu-p/wsl-bridge/lib
+    hyperv_gpu_p_wsl_bridge_guest_ldso_file: /etc/ld.so.conf.d/hyperv-gpu-p-wsl-bridge.conf
+
+  tasks:
+    - name: Capture guest baseline probe bundle
+      ansible.builtin.shell: |
+        bash -lc '
+          echo "== device nodes =="
+          ls -l /dev/dxg /dev/nvidia* 2>/dev/null || true
+          echo "== lsmod =="
+          lsmod | egrep "dxg|nvidia|hyperv|hv_" || true
+          echo "== lspci =="
+          lspci -nnk | egrep -A4 "VGA|3D|Display" || true
+          echo "== dmesg =="
+          dmesg | egrep -i "dxg|nvidia|hyper-v|hyperv|vmbus|gpu" | tail -n 120 || true
+          echo "== ldconfig =="
+          ldconfig -p | egrep "cuda|nvidia|dxcore|d3d12" || true
+        '
+      register: hyperv_gpu_p_wsl_bridge_guest_baseline_bundle
+      changed_when: false
+
+    - name: Check guest baseline /dev/dxg presence
+      ansible.builtin.stat:
+        path: /dev/dxg
+      register: hyperv_gpu_p_wsl_bridge_guest_baseline_dxg
+
+    - name: Check guest baseline NVIDIA PCI visibility
+      ansible.builtin.shell: lspci | grep -i nvidia
+      register: hyperv_gpu_p_wsl_bridge_guest_baseline_lspci_nvidia
+      failed_when: false
+      changed_when: false
+
+    - name: Reset guest experiment directory
+      ansible.builtin.file:
+        path: "{{ hyperv_gpu_p_wsl_bridge_guest_root }}"
+        state: absent
+
+    - name: Create guest experiment library directory
+      ansible.builtin.file:
+        path: "{{ hyperv_gpu_p_wsl_bridge_guest_lib_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Unarchive live WSL library export into guest experiment directory
+      ansible.builtin.unarchive:
+        src: "{{ hyperv_gpu_p_wsl_bridge_local_tar_path }}"
+        dest: "{{ hyperv_gpu_p_wsl_bridge_guest_lib_dir }}"
+        remote_src: false
+
+    - name: Activate staged guest linker path
+      ansible.builtin.copy:
+        dest: "{{ hyperv_gpu_p_wsl_bridge_guest_ldso_file }}"
+        mode: "0644"
+        content: |
+          {{ hyperv_gpu_p_wsl_bridge_guest_lib_dir }}
+
+    - name: Refresh guest linker cache after activation
+      ansible.builtin.command: ldconfig
+      changed_when: true
+
+    - name: Capture guest post-activation probe bundle
+      ansible.builtin.shell: |
+        bash -lc '
+          echo "== device nodes =="
+          ls -l /dev/dxg /dev/nvidia* 2>/dev/null || true
+          echo "== lsmod =="
+          lsmod | egrep "dxg|nvidia|hyperv|hv_" || true
+          echo "== lspci =="
+          lspci -nnk | egrep -A4 "VGA|3D|Display" || true
+          echo "== dmesg =="
+          dmesg | egrep -i "dxg|nvidia|hyper-v|hyperv|vmbus|gpu" | tail -n 120 || true
+          echo "== ldconfig =="
+          ldconfig -p | egrep "cuda|nvidia|dxcore|d3d12" || true
+        '
+      register: hyperv_gpu_p_wsl_bridge_guest_post_bundle
+      changed_when: false
+
+    - name: Check guest post-activation /dev/dxg presence
+      ansible.builtin.stat:
+        path: /dev/dxg
+      register: hyperv_gpu_p_wsl_bridge_guest_post_dxg
+
+    - name: Check guest post-activation NVIDIA PCI visibility
+      ansible.builtin.shell: lspci | grep -i nvidia
+      register: hyperv_gpu_p_wsl_bridge_guest_post_lspci_nvidia
+      failed_when: false
+      changed_when: false
+
+    - name: Run staged nvidia-smi from guest experiment directory
+      ansible.builtin.command: "{{ hyperv_gpu_p_wsl_bridge_guest_lib_dir }}/nvidia-smi"
+      register: hyperv_gpu_p_wsl_bridge_guest_post_nvidia_smi
+      failed_when: false
+      changed_when: false
+
+    - name: Run guest CUDA and DXCore load test
+      ansible.builtin.shell: |
+        python3 - <<'PY'
+        import ctypes
+        import json
+        import sys
+
+        libs = ["libdxcore.so", "libd3d12.so", "libcuda.so.1", "libnvidia-ml.so.1"]
+        results = {}
+        loaded = []
+
+        for lib in libs:
+            try:
+                ctypes.CDLL(lib)
+                results[lib] = "loaded"
+                loaded.append(lib)
+            except OSError as exc:
+                results[lib] = f"error:{exc}"
+
+        print(json.dumps(results, sort_keys=True))
+        sys.exit(0 if loaded else 1)
+        PY
+      register: hyperv_gpu_p_wsl_bridge_guest_post_load_test
+      failed_when: false
+      changed_when: false
+
+    - name: Classify guest experiment outcome
+      ansible.builtin.set_fact:
+        hyperv_gpu_p_wsl_bridge_stage4_improved: >-
+          {{
+            (hyperv_gpu_p_wsl_bridge_guest_post_dxg.stat.exists | default(false))
+            or ((hyperv_gpu_p_wsl_bridge_guest_post_lspci_nvidia.stdout | default('') | trim | length) > 0)
+          }}
+        hyperv_gpu_p_wsl_bridge_stage5_improved: >-
+          {{
+            (hyperv_gpu_p_wsl_bridge_guest_post_nvidia_smi.rc | default(1)) == 0
+            or (hyperv_gpu_p_wsl_bridge_guest_post_load_test.rc | default(1)) == 0
+          }}
+      changed_when: false
+
+    - name: Decide whether staged activation should remain
+      ansible.builtin.set_fact:
+        hyperv_gpu_p_wsl_bridge_keep_activation: >-
+          {{
+            (hyperv_gpu_p_wsl_bridge_stage4_improved | bool)
+            or (hyperv_gpu_p_wsl_bridge_stage5_improved | bool)
+          }}
+      changed_when: false
+
+    - name: Roll back staged guest bridge when no usable guest GPU path appeared
+      when: not (hyperv_gpu_p_wsl_bridge_keep_activation | bool)
+      block:
+        - name: Remove guest linker override
+          ansible.builtin.file:
+            path: "{{ hyperv_gpu_p_wsl_bridge_guest_ldso_file }}"
+            state: absent
+
+        - name: Remove guest staged library tree
+          ansible.builtin.file:
+            path: "{{ hyperv_gpu_p_wsl_bridge_guest_root }}"
+            state: absent
+
+        - name: Refresh guest linker cache after rollback
+          ansible.builtin.command: ldconfig
+          changed_when: true
+
+        - name: Capture guest post-rollback probe bundle
+          ansible.builtin.shell: |
+            bash -lc '
+              echo "== device nodes =="
+              ls -l /dev/dxg /dev/nvidia* 2>/dev/null || true
+              echo "== lsmod =="
+              lsmod | egrep "dxg|nvidia|hyperv|hv_" || true
+              echo "== lspci =="
+              lspci -nnk | egrep -A4 "VGA|3D|Display" || true
+              echo "== dmesg =="
+              dmesg | egrep -i "dxg|nvidia|hyper-v|hyperv|vmbus|gpu" | tail -n 120 || true
+              echo "== ldconfig =="
+              ldconfig -p | egrep "cuda|nvidia|dxcore|d3d12" || true
+            '
+          register: hyperv_gpu_p_wsl_bridge_guest_rollback_bundle
+          changed_when: false
+
+        - name: Check guest post-rollback /dev/dxg presence
+          ansible.builtin.stat:
+            path: /dev/dxg
+          register: hyperv_gpu_p_wsl_bridge_guest_rollback_dxg
+
+        - name: Check guest post-rollback NVIDIA PCI visibility
+          ansible.builtin.shell: lspci | grep -i nvidia
+          register: hyperv_gpu_p_wsl_bridge_guest_rollback_lspci_nvidia
+          failed_when: false
+          changed_when: false
+
+    - name: Record whether rollback ran
+      ansible.builtin.set_fact:
+        hyperv_gpu_p_wsl_bridge_rollback_performed: "{{ not (hyperv_gpu_p_wsl_bridge_keep_activation | bool) }}"
+      changed_when: false
+
+    - name: Summarize guest experiment outcome
+      ansible.builtin.debug:
+        msg:
+          baseline_dxg: "{{ hyperv_gpu_p_wsl_bridge_guest_baseline_dxg.stat.exists | default(false) }}"
+          baseline_nvidia_pci_visible: "{{ (hyperv_gpu_p_wsl_bridge_guest_baseline_lspci_nvidia.stdout | default('') | trim | length) > 0 }}"
+          post_dxg: "{{ hyperv_gpu_p_wsl_bridge_guest_post_dxg.stat.exists | default(false) }}"
+          post_nvidia_pci_visible: "{{ (hyperv_gpu_p_wsl_bridge_guest_post_lspci_nvidia.stdout | default('') | trim | length) > 0 }}"
+          post_nvidia_smi_rc: "{{ hyperv_gpu_p_wsl_bridge_guest_post_nvidia_smi.rc | default('n/a') }}"
+          post_load_test_rc: "{{ hyperv_gpu_p_wsl_bridge_guest_post_load_test.rc | default('n/a') }}"
+          stage4_improved: "{{ hyperv_gpu_p_wsl_bridge_stage4_improved | bool }}"
+          stage5_improved: "{{ hyperv_gpu_p_wsl_bridge_stage5_improved | bool }}"
+          kept_activation: "{{ hyperv_gpu_p_wsl_bridge_keep_activation | bool }}"
+          rollback_performed: "{{ hyperv_gpu_p_wsl_bridge_rollback_performed | bool }}"
+
+- name: Clean up temporary WSL export artifacts
+  hosts: hom-lab-ctl-hvh-02
+  gather_facts: false
+  vars:
+    hyperv_gpu_p_wsl_bridge_windows_temp_root: >-
+      C:\Users\{{ ansible_user }}\AppData\Local\Temp\hyperv-gpu-p-wsl-bridge-experiment
+
+  tasks:
+    - name: Remove Windows-side temporary export directory
+      ansible.windows.win_file:
+        path: "{{ hyperv_gpu_p_wsl_bridge_windows_temp_root }}"
+        state: absent
+
+- name: Remove local controller staging for WSL bridge experiment
+  hosts: localhost
+  gather_facts: false
+  vars:
+    hyperv_gpu_p_wsl_bridge_local_root: >-
+      {{ (lookup('env', 'TMPDIR') | default('/tmp', true)).rstrip('/') }}/hyperv-gpu-p-wsl-bridge-experiment
+
+  tasks:
+    - name: Remove local experiment staging root
+      ansible.builtin.file:
+        path: "{{ hyperv_gpu_p_wsl_bridge_local_root }}"
+        state: absent
