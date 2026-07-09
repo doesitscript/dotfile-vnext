@@ -381,7 +381,10 @@
         - name: Run nvidia-smi
           ansible.builtin.command:
             argv:
-              - nvidia-smi
+              - /usr/lib/wsl/lib/nvidia-smi
+          environment:
+            PATH: "/usr/lib/wsl/lib:{{ ansible_env.PATH | default('/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin') }}"
+            LD_LIBRARY_PATH: /usr/lib/wsl/lib
           register: hyperv_ubuntu_gpu_p_runtime_verify_nvidia_smi
           changed_when: false
           failed_when: false
@@ -396,10 +399,10 @@
                   - -f
                   - -o
                   - /var/tmp/hyperv_ubuntu_gpu_p_runtime_nvidia_smi.strace
-                  - nvidia-smi
-              register: hyperv_ubuntu_gpu_p_runtime_verify_nvidia_smi_strace
-              changed_when: false
-              failed_when: false
+                  - /usr/lib/wsl/lib/nvidia-smi
+              environment:
+                PATH: "/usr/lib/wsl/lib:{{ ansible_env.PATH | default('/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin') }}"
+                LD_LIBRARY_PATH: /usr/lib/wsl/lib
 
             - name: Capture traced DriverStore miss
               ansible.builtin.shell: |

@@ -33,6 +33,7 @@ Not for: k9s UI (`homelab-k9s`), Ansible changes (`ansible-knowledge-gate`).
 Copy and track:
 
 ```text
+[ ] 0. Build lane inventory truth (repo declared + live verified)
 [ ] 1. Open artifact directory
 [ ] 2. Collect DNS matrix
 [ ] 3. Collect connection probes
@@ -40,6 +41,26 @@ Copy and track:
 [ ] 5. Invoke published-endpoints subskill
 [ ] 6. Write report from template
 ```
+
+### Step 0 — Lane inventory truth
+
+Before DNS suffix probes, render each lane as a **declared vs verified** map.
+
+1. **Declared** — read dotfile-vnext SSOT (see [examples/lane-inventory-truth-example.md](examples/lane-inventory-truth-example.md) and [references/inventory-lan-ip-sources.md](references/inventory-lan-ip-sources.md)):
+   - **LAN IP sweep:** all `inventory/host_vars/*.yaml` (`host_ip`, `ansible_host`, `host_ipv6`), `inventory/hosts_mapping.yaml`, `live-object-registry.yml` — not only one hypervisor file
+   - Per lane: hypervisor `host_vars`, guest `host_vars`, `hyperv_config.guest_subnet_ipv4`
+   - **VM identity:** `hyperv_ubuntu_docker_vm_hostname` + `hyperv_ubuntu_docker_vm_inventory_host` (and k3s parallels) on hypervisor host_vars
+   - **Portproxy:** each `guest_published_tcp_ports[]` item at full YAML level (`name`, `listen_address`, `listen_port`, `connect_address`, `connect_port`)
+   - `inventory/host_vars/mac-dev.yaml` (`hyperv_guest_route_mac_routes`)
+2. **Verified** — probe live deployment from mac-dev and via SSH to hypervisor:
+   - ping / SSH / `route -n get` / `nc` for every declared LAN and guest IP
+   - `Get-NetIPAddress` on hypervisor for undeclared adapters (e.g. mDNS `.159`)
+   - `netsh interface portproxy show all` — reconcile **each** portproxy list item
+   - `Get-VM <hyperv_ubuntu_*_vm_hostname>` for guest state
+3. **Reconcile** — table with status `MATCH` | `MISMATCH` | `DOWN` | `BLOCKED_UPSTREAM` | `NOT_PROBED`
+4. Save raw probes to `lane-inventory-truth-hvh-01.txt` (and `-hvh-02.txt` when in scope)
+
+Example output shape: [examples/lane-inventory-truth-example.md](examples/lane-inventory-truth-example.md)
 
 ### Step 1 — Artifact directory
 
@@ -119,6 +140,7 @@ Optionally mirror summary to `docs/lessons-learned/` when the user wants durable
 
 ## References
 
+- [references/inventory-lan-ip-sources.md](references/inventory-lan-ip-sources.md)
 - [references/dns-and-hosts.md](references/dns-and-hosts.md)
 - [references/connection-paths.md](references/connection-paths.md)
 - [references/report-template.md](references/report-template.md)
@@ -126,5 +148,6 @@ Optionally mirror summary to `docs/lessons-learned/` when the user wants durable
 
 ## Examples
 
+- [examples/lane-inventory-truth-example.md](examples/lane-inventory-truth-example.md) — hvh-01 lane map, validation source matrix (repo + live), reconciliation table
 - [examples/what-to-collect.md](examples/what-to-collect.md) — Mac resolver, hypervisor/guest suffix matrices, connection probes, legacy names
 - [examples/report-output-example.md](examples/report-output-example.md) — filled `report.md` from a real investigation run

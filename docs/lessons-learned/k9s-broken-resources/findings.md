@@ -290,3 +290,58 @@ helm list -A
 - `-vvv` on Ansible playbook runs when hosts are reachable
 - `kubectl describe pod -n <ns> <pod>` and `kubectl logs --previous`
 - `kubectl get events -A --field-selector type!=Normal`
+
+---
+
+## Track B remediation receipt — GPU host layer (2026-07-09)
+
+**Scope:** `hom-lab-ctl-hvh-02` + `hom-lab-ctl-k3s-02` only (data plane / Langfuse out of scope).
+
+### Plan verification receipt
+
+| ID | Obligation | Status | Evidence |
+|----|------------|--------|----------|
+| R0 | Baseline probes collected | **pass** | Pre-remediation: apt `nvidia-driver-580-server-open` held; `/dev/dxg` absent; device plugin CrashLoop `no driver store paths found` |
+| P0 | Apt driver absent + unheld; toolkit retained | **pass** | `deploy_gpu_infrastructure.yaml --tags k3s_nvidia_runtime` purged ~127 packages; `nvidia-container-toolkit` present |
+| P1 | GPU partition adapter attached | **pass** | After `RequireSecureDeviceAssignment=0` + `RequireSupportedDeviceAssignment=0` and 500MB partition sizing via guest gateway `192.168.137.1` |
+| P2 | Artifact share receipt current | **pass** | `hyperv_ubuntu_gpu_p_artifact_publish.yaml` on hvh-02 via `192.168.137.1` |
+| P3 | Guest runtime manifest + convergence | **pass** | `hyperv_ubuntu_gpu_p_guest_runtime_local_converge_hvh02_k3s02.yaml` with full SMB sync (`skip_artifact_sync=false`) |
+| V | Verify play assertions | **pass** | `hyperv_ubuntu_gpu_p_runtime.yaml` verify play; `/dev/dxg`, `dxgkrnl`, `ldconfig`, `nvidia-smi` rc=0 (RTX 5090) |
+| P4 | Toolkit-only runtime; no apt driver reinstall | **pass** | `install_guest_driver: false`; containerd nvidia runtime present; no `nvidia-driver-*` packages |
+| P5 | Device plugin ready; GPU capacity > 0 | **pass** | `nvidia.com/gpu` capacity=1 allocatable=1; DS `nvidia-device-plugin-sxvzg` 1/1 Running; prereqs assert pass |
+
+### Key repo changes
+
+| File | Change |
+|------|--------|
+| `roles/k3s_nvidia_runtime/` | Split apt driver vs toolkit; `remove_guest_driver.yml`; `argument_specs.yml` + README |
+| `inventory/host_vars/hom-lab-ctl-k3s-02.yaml` | `install_guest_driver: false`; `share_host_override: 192.168.137.1` |
+| `playbooks/hyperv_ubuntu_gpu_p_runtime_artifact_pipeline_hvh02_k3s02.yaml` | Pinned hvh-02/k3s-02 entrypoint |
+| `roles/hyperv_ubuntu_gpu_p_linux_guest_runtime/` | `skip_artifact_sync` + `share_host_override` for guest-gateway SMB path |
+| `playbooks/troubleshoot/hyperv_ubuntu_gpu_p_guest_runtime_local_converge_hvh02_k3s02.yaml` | Guest-only converge with optional full artifact sync |
+| `playbooks/hyperv_ubuntu_gpu_p_runtime.yaml` | Verify `nvidia-smi` uses `/usr/lib/wsl/lib/nvidia-smi` + WSL `PATH` |
+
+### Operational notes discovered during execute
+
+1. **hvh-02 LAN SSH (`192.168.50.158:22`) refused** from controller; **guest-switch gateway `192.168.137.1`** reachable for SSH/SMB — use `-e ansible_host=192.168.137.1` for Windows plays from mac-dev.
+2. **First GPU partition attach failed** with `0x800705AA` until Hyper-V policy DWORDs set to 0 and partition VRAM reduced to 500MB (`-e hyperv_gpu_partition_adapter_partition_vram_optimal=500000000`).
+3. **Conflicting apt driver** was the recurrence risk — `k3s_nvidia_runtime` must stay on toolkit-only lane for `gpu_p` guests.
+4. **Device plugin Helm wait** timed out at 600s in one combined run, but live state was already healthy (`nvidia.com/gpu: 1`); `k3s_node_gpu_prereqs` passed independently.
+
+### Post-remediation live state (2026-07-09 ~15:56 UTC)
+
+```
+kubectl -n nvidia-device-plugin get pods
+# nvidia-device-plugin-sxvzg   1/1   Running
+
+kubectl get node hom-lab-ctl-k3s-02 -o jsonpath='{.status.capacity.nvidia\.com/gpu}'
+# 1
+
+PATH=/usr/lib/wsl/lib:$PATH nvidia-smi -L
+# GPU 0: NVIDIA GeForce RTX 5090 (UUID: GPU-a5e5316b-bb6b-1dbf-fbce-d8babb1d5116)
+
+ls -la /dev/dxg
+# crw-rw-rw- 1 root root 10, 264 ... /dev/dxg
+```
+
+**Track B status:** GPU host layer **remediated**. Remaining broken workloads on k3s-02 are **Track A (data plane)** and **Track C (vLLM scheduling)** per executive summary above.

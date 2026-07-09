@@ -41,7 +41,13 @@
     hyperv_ubuntu_gpu_p_linux_guest_runtime_windows_host: >-
       {{ hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_host_receipt.windows_host }}
     hyperv_ubuntu_gpu_p_linux_guest_runtime_share_host: >-
-      {{ hostvars[hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_host_receipt.windows_host].ansible_host }}
+      {{
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_share_host_override
+        | default(
+            hostvars[hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_host_receipt.windows_host].ansible_host,
+            true
+          )
+      }}
     hyperv_ubuntu_gpu_p_linux_guest_runtime_share_user: >-
       {{ hostvars[hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_host_receipt.windows_host].windows_file_shares_unc_validation_user }}
     hyperv_ubuntu_gpu_p_linux_guest_runtime_share_password: >-

@@ -16,6 +16,27 @@ Quick index of declared surfaces. Always re-read SSOT files for current values.
 
 SSOT: `inventory/group_vars/all/homelab_hosts_file.yml`
 
+## Portproxy item shape (one declared endpoint)
+
+Parent skill documents full per-lane lists in [lane-inventory-truth-example.md](../../../examples/lane-inventory-truth-example.md). Each `guest_published_tcp_ports` entry:
+
+```yaml
+    - name: "loki"
+      listen_address: "192.168.50.158"
+      listen_port: 3100
+      connect_address: "192.168.137.10"
+      connect_port: 3100
+```
+
+## VM identity on hypervisor (links portproxy backend to inventory)
+
+```yaml
+hyperv_ubuntu_docker_vm_hostname: "hom-lab-ctl-dkr-02"
+hyperv_ubuntu_docker_vm_inventory_host: "hom-lab-ctl-dkr-02"
+```
+
+LAN IP sweep (all hosts): [inventory-lan-ip-sources.md](../../../references/inventory-lan-ip-sources.md)
+
 ## Portproxy — hvh-02 (`192.168.50.158`)
 
 | name | listen | → guest |

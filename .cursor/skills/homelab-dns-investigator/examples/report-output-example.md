@@ -12,7 +12,30 @@ Example `report.md` shape after a full investigation. Service endpoint detail li
 
 ## Executive summary
 
-`.hom.lab` router DNS is correct for both hypervisors. hvh-01 (`192.168.50.234`) is down, blocking the entire `192.168.138.0/24` lane including k3s-01 — this is a gateway outage, not a DNS typo. hvh-02 is reachable; IPv4 SSH on `.158` refuses but `.local` (`.159`) and IPv6 aliases work.
+`.hom.lab` router DNS is correct for both hypervisors. hvh-01 (`192.168.50.234`) is down, blocking the entire `192.168.138.0/24` lane including k3s-01 — gateway outage, not a DNS typo. hvh-02 is reachable; IPv4 SSH on `.158` refuses but `.local` (`.159`) and IPv6 aliases work.
+
+## Lane inventory truth
+
+See [lane-inventory-truth-example.md](lane-inventory-truth-example.md) for full validation source matrix.
+
+### hvh-01 — declared
+
+| Name | IP | Role |
+|---|---|---|
+| `hom-lab-ctl-hvh-01` | `192.168.50.234` | Hyper-V host (primary) |
+| `hom-lab-ctl-hvh-01` | `192.168.50.233` | Secondary Wi‑Fi (inventory: temporarily down) |
+| `hom-lab-ctl-dkr-01` / `nsrv-dkr-01` | `192.168.138.10` | Docker VM |
+| `hom-lab-ctl-k3s-01` / `nsrv-k3s-01` | `192.168.138.11` | K3s control plane |
+| Guest subnet | `192.168.138.0/24` | Gateway `192.168.138.1` on hvh-01 |
+
+Port proxies on `50.234` → `138.10`: postgres `5432`, redis `6379`, clickhouse `8123`/`9004`, minio `9000`/`9001`.
+
+### hvh-01 — reconciliation (this run)
+
+| Name | Declared | Verified | Status |
+|---|---|---|---|
+| `hom-lab-ctl-hvh-01` | `50.234` | ping/SSH fail | DOWN |
+| `hom-lab-ctl-k3s-01` | `138.11` | timeout via dead gateway | BLOCKED_UPSTREAM |
 
 ## Scope
 
