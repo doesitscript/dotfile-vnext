@@ -1,0 +1,301 @@
+---
+- name: Prepare local staging for supported Hyper-V Ubuntu GPU-P finalize flow
+  hosts: localhost
+  gather_facts: false
+  vars:
+    hyperv_gpu_p_supported_local_root: >-
+      {{ (lookup('env', 'TMPDIR') | default('/tmp', true)).rstrip('/') }}/hyperv-gpu-p-supported-finalize
+  tasks:
+    - name: Reset local staging root
+      ansible.builtin.file:
+        path: "{{ hyperv_gpu_p_supported_local_root }}"
+        state: absent
+
+    - name: Create local staging root
+      ansible.builtin.file:
+        path: "{{ hyperv_gpu_p_supported_local_root }}"
+        state: directory
+        mode: "0700"
+
+- name: Build supported Windows-side payload without WSL
+  hosts: hom-lab-ctl-hvh-02
+  gather_facts: false
+  vars:
+    hyperv_gpu_p_supported_windows_temp_root: >-
+      C:\Users\{{ ansible_user }}\AppData\Local\Temp\hyperv-gpu-p-supported-finalize
+    hyperv_gpu_p_supported_windows_export_root: >-
+      {{ hyperv_gpu_p_supported_windows_temp_root }}\payload
+    hyperv_gpu_p_supported_windows_zip_path: >-
+      {{ hyperv_gpu_p_supported_windows_temp_root }}\gpu-p-supported-payload.zip
+    hyperv_gpu_p_supported_programfiles_wsl_lib: C:\Program Files\WSL\lib
+    hyperv_gpu_p_supported_lxss_lib: C:\Windows\System32\lxss\lib
+    hyperv_gpu_p_supported_driverstore_root: C:\Windows\System32\DriverStore\FileRepository
+  tasks:
+    - name: Build supported payload on Windows host
+      ansible.windows.win_powershell:
+        script: |
+          $tempRoot = '{{ hyperv_gpu_p_supported_windows_temp_root }}'
+          $exportRoot = '{{ hyperv_gpu_p_supported_windows_export_root }}'
+          $zipPath = '{{ hyperv_gpu_p_supported_windows_zip_path }}'
+          $programFilesWslLib = '{{ hyperv_gpu_p_supported_programfiles_wsl_lib }}'
+          $lxssLib = '{{ hyperv_gpu_p_supported_lxss_lib }}'
+          $driverstoreRoot = '{{ hyperv_gpu_p_supported_driverstore_root }}'
+
+          if (Test-Path $tempRoot) {
+            Remove-Item -LiteralPath $tempRoot -Recurse -Force
+          }
+          New-Item -ItemType Directory -Force -Path $exportRoot | Out-Null
+
+          $videoControllers = @(Get-CimInstance Win32_VideoController -ErrorAction Stop)
+          $installedDriverText = ($videoControllers | ForEach-Object { $_.InstalledDisplayDrivers }) -join ';'
+          $driverMatch = [regex]::Match($installedDriverText, 'FileRepository\\([^\\]+)\\')
+          if (-not $driverMatch.Success) {
+            throw 'Could not resolve active NVIDIA DriverStore folder from InstalledDisplayDrivers.'
+          }
+
+          $driverFolder = $driverMatch.Groups[1].Value
+          $driverDir = Join-Path $driverstoreRoot $driverFolder
+          if (-not (Test-Path $driverDir)) {
+            throw "Resolved DriverStore folder does not exist: $driverDir"
+          }
+
+          $programFilesExport = Join-Path $exportRoot 'wsl-programfiles-lib'
+          $lxssExport = Join-Path $exportRoot 'wsl-lxss-lib'
+          $driverstoreExportRoot = Join-Path $exportRoot 'driverstore'
+          $driverstoreExport = Join-Path $driverstoreExportRoot $driverFolder
+
+          Copy-Item -LiteralPath $programFilesWslLib -Destination $programFilesExport -Recurse -Force
+          Copy-Item -LiteralPath $lxssLib -Destination $lxssExport -Recurse -Force
+
+          New-Item -ItemType Directory -Force -Path $driverstoreExportRoot | Out-Null
+          robocopy $driverDir $driverstoreExport /E /R:1 /W:1 /NFL /NDL /NJH /NJS /NP /COPY:DAT | Out-Null
+          if ($LASTEXITCODE -ge 8) {
+            throw "robocopy failed with code $LASTEXITCODE"
+          }
+
+          Compress-Archive -Path (Join-Path $exportRoot '*') -DestinationPath $zipPath -Force
+
+          [pscustomobject]@{
+            zip_path = $zipPath
+            export_root = $exportRoot
+            driverstore_folder = $driverFolder
+            programfiles_wsl_lib = $programFilesWslLib
+            lxss_lib = $lxssLib
+          } | ConvertTo-Json -Compress
+      register: hyperv_gpu_p_supported_payload_meta
+
+    - name: Parse supported payload metadata
+      ansible.builtin.set_fact:
+        hyperv_gpu_p_supported_payload_meta_json: "{{ hyperv_gpu_p_supported_payload_meta.output[0] | from_json }}"
+      changed_when: false
+
+- name: Fetch supported payload to controller and stage guest inputs
+  hosts: localhost
+  gather_facts: false
+  vars:
+    hyperv_gpu_p_supported_local_root: >-
+      {{ (lookup('env', 'TMPDIR') | default('/tmp', true)).rstrip('/') }}/hyperv-gpu-p-supported-finalize
+    hyperv_gpu_p_supported_local_zip_path: "{{ hyperv_gpu_p_supported_local_root }}/gpu-p-supported-payload.zip"
+    hyperv_gpu_p_supported_extract_root: "{{ hyperv_gpu_p_supported_local_root }}/payload"
+    hyperv_gpu_p_supported_sftp_batch: "{{ hyperv_gpu_p_supported_local_root }}/fetch_payload.sftp"
+    hyperv_gpu_p_supported_windows_host: "{{ hostvars['hom-lab-ctl-hvh-02'].ansible_host }}"
+    hyperv_gpu_p_supported_windows_user: "{{ hostvars['hom-lab-ctl-hvh-02'].ansible_user }}"
+    hyperv_gpu_p_supported_windows_key: "{{ hostvars['hom-lab-ctl-hvh-02'].ansible_ssh_private_key_file }}"
+    hyperv_gpu_p_supported_remote_zip_path: >-
+      /C:/Users/{{ hostvars['hom-lab-ctl-hvh-02'].ansible_user }}/AppData/Local/Temp/hyperv-gpu-p-supported-finalize/gpu-p-supported-payload.zip
+  tasks:
+    - name: Render SFTP batch file for supported payload fetch
+      ansible.builtin.copy:
+        dest: "{{ hyperv_gpu_p_supported_sftp_batch }}"
+        mode: "0600"
+        content: |
+          get {{ hyperv_gpu_p_supported_remote_zip_path }} {{ hyperv_gpu_p_supported_local_zip_path }}
+          quit
+
+    - name: Fetch supported payload ZIP from Windows host over OpenSSH
+      ansible.builtin.command:
+        argv:
+          - sftp
+          - -b
+          - "{{ hyperv_gpu_p_supported_sftp_batch }}"
+          - -i
+          - "{{ hyperv_gpu_p_supported_windows_key }}"
+          - -o
+          - StrictHostKeyChecking=no
+          - -o
+          - UserKnownHostsFile=/dev/null
+          - "{{ hyperv_gpu_p_supported_windows_user }}@{{ hyperv_gpu_p_supported_windows_host }}"
+      changed_when: true
+
+    - name: Extract supported payload ZIP with path-normalizing helper
+      ansible.builtin.command:
+        argv:
+          - python3
+          - /Users/joshc/develop/dotfile-vnext/scripts/hyperv_gpu_p_extract_payload.py
+          - --zip
+          - "{{ hyperv_gpu_p_supported_local_zip_path }}"
+          - --dest
+          - "{{ hyperv_gpu_p_supported_extract_root }}"
+          - --reset
+      changed_when: true
+
+    - name: Create tarball for Program Files WSL lib payload
+      ansible.builtin.command:
+        argv:
+          - tar
+          - -C
+          - "{{ hyperv_gpu_p_supported_extract_root }}/wsl-programfiles-lib"
+          - -cf
+          - "{{ hyperv_gpu_p_supported_local_root }}/wsl-programfiles-lib.tar"
+          - .
+      changed_when: true
+
+    - name: Create tarball for lxss WSL lib payload
+      ansible.builtin.command:
+        argv:
+          - tar
+          - -C
+          - "{{ hyperv_gpu_p_supported_extract_root }}/wsl-lxss-lib"
+          - -cf
+          - "{{ hyperv_gpu_p_supported_local_root }}/wsl-lxss-lib.tar"
+          - .
+      changed_when: true
+
+    - name: Discover extracted DriverStore subtree name
+      ansible.builtin.find:
+        paths: "{{ hyperv_gpu_p_supported_extract_root }}/driverstore"
+        file_type: directory
+        recurse: false
+      register: hyperv_gpu_p_supported_driverstore_dirs
+
+    - name: Fail if extracted DriverStore subtree is ambiguous
+      ansible.builtin.assert:
+        that:
+          - hyperv_gpu_p_supported_driverstore_dirs.matched == 1
+        fail_msg: >-
+          Expected exactly one extracted DriverStore subtree under
+          {{ hyperv_gpu_p_supported_extract_root }}/driverstore.
+
+    - name: Set extracted DriverStore subtree name
+      ansible.builtin.set_fact:
+        hyperv_gpu_p_supported_driverstore_folder: >-
+          {{ hyperv_gpu_p_supported_driverstore_dirs.files[0].path | basename }}
+
+    - name: Create tarball for exact DriverStore subtree
+      ansible.builtin.command:
+        argv:
+          - tar
+          - -C
+          - "{{ hyperv_gpu_p_supported_extract_root }}/driverstore"
+          - -cf
+          - "{{ hyperv_gpu_p_supported_local_root }}/driverstore-subtree.tar"
+          - "{{ hyperv_gpu_p_supported_driverstore_folder }}"
+      changed_when: true
+
+- name: Apply supported GPU-P finalize payload to Ubuntu guest
+  hosts: hom-lab-ctl-k3s-02
+  gather_facts: false
+  become: true
+  vars:
+    hyperv_gpu_p_supported_local_root: >-
+      {{ (lookup('env', 'TMPDIR') | default('/tmp', true)).rstrip('/') }}/hyperv-gpu-p-supported-finalize
+    hyperv_gpu_p_supported_guest_wsl_root: /usr/lib/wsl
+    hyperv_gpu_p_supported_guest_wsl_lib: /usr/lib/wsl/lib
+    hyperv_gpu_p_supported_guest_wsl_drivers: /usr/lib/wsl/drivers
+    hyperv_gpu_p_supported_guest_ldso_file: /etc/ld.so.conf.d/ld.wsl.conf
+  tasks:
+    - name: Ensure guest WSL runtime directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ hyperv_gpu_p_supported_guest_wsl_root }}"
+        - "{{ hyperv_gpu_p_supported_guest_wsl_lib }}"
+        - "{{ hyperv_gpu_p_supported_guest_wsl_drivers }}"
+
+    - name: Unarchive Program Files WSL lib payload into guest
+      ansible.builtin.unarchive:
+        src: "{{ hyperv_gpu_p_supported_local_root }}/wsl-programfiles-lib.tar"
+        dest: "{{ hyperv_gpu_p_supported_guest_wsl_lib }}"
+        remote_src: false
+
+    - name: Unarchive lxss WSL lib payload into guest
+      ansible.builtin.unarchive:
+        src: "{{ hyperv_gpu_p_supported_local_root }}/wsl-lxss-lib.tar"
+        dest: "{{ hyperv_gpu_p_supported_guest_wsl_lib }}"
+        remote_src: false
+
+    - name: Unarchive exact DriverStore subtree into guest
+      ansible.builtin.unarchive:
+        src: "{{ hyperv_gpu_p_supported_local_root }}/driverstore-subtree.tar"
+        dest: "{{ hyperv_gpu_p_supported_guest_wsl_drivers }}"
+        remote_src: false
+
+    - name: Normalize guest WSL file ownership
+      ansible.builtin.file:
+        path: "{{ hyperv_gpu_p_supported_guest_wsl_root }}"
+        owner: root
+        group: root
+        recurse: true
+
+    - name: Normalize guest WSL directory permissions
+      ansible.builtin.shell: |
+        find "{{ hyperv_gpu_p_supported_guest_wsl_root }}" -type d -exec chmod 755 {} +
+      changed_when: true
+
+    - name: Ensure copied DriverStore nvidia-smi is executable
+      ansible.builtin.shell: |
+        find "{{ hyperv_gpu_p_supported_guest_wsl_drivers }}" -path '*/nvidia-smi' -exec chmod 755 {} +
+      changed_when: true
+
+    - name: Ensure canonical WSL symlinks exist
+      ansible.builtin.file:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        state: link
+        force: true
+      loop:
+        - src: /usr/lib/wsl/lib/libd3d12core.so
+          dest: /usr/lib/wsl/lib/libD3D12Core.so
+        - src: /usr/lib/wsl/lib/libcuda.so
+          dest: /usr/lib/wsl/lib/libcuda.so.1
+        - src: /usr/lib/wsl/lib/libnvoptix.so.1
+          dest: /usr/lib/wsl/lib/libnvoptix_loader.so.1
+
+    - name: Ensure WSL ld.so path file is present
+      ansible.builtin.copy:
+        dest: "{{ hyperv_gpu_p_supported_guest_ldso_file }}"
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          {{ hyperv_gpu_p_supported_guest_wsl_lib }}
+
+    - name: Ensure PATH includes WSL lib location
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        regexp: '^PATH='
+        line: 'PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/lib/wsl/lib"'
+
+    - name: Refresh linker cache
+      ansible.builtin.command: ldconfig
+      changed_when: true
+
+    - name: Validate guest NVIDIA runtime through supported path
+      ansible.builtin.shell: |
+        bash -lc '
+          echo "=== nvidia-smi ==="
+          nvidia-smi | sed -n "1,20p"
+          echo "=== dxg ==="
+          ls -l /dev/dxg
+          echo "=== traced driverstore hit ==="
+          strace -f -o /tmp/nvidia-smi-supported.strace nvidia-smi >/dev/null 2>&1 || true
+          grep -m 1 -i "/usr/lib/wsl/drivers/.*/libnvidia-ml.so.1" /tmp/nvidia-smi-supported.strace || true
+        '
+      register: hyperv_gpu_p_supported_validation
+      changed_when: false
+
+    - name: Show supported-path validation summary
+      ansible.builtin.debug:
+        var: hyperv_gpu_p_supported_validation.stdout_lines
