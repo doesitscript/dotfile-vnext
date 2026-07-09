@@ -1,6 +1,146 @@
 ---
+- name: Preflight Hyper-V GPU-P host management reachability
+  hosts: mac-dev
+  gather_facts: false
+  vars:
+    _hyperv_gpu_p_host_precheck_targets: >-
+      {{
+        query(
+          'inventory_hostnames',
+          hyperv_gpu_p_host_precheck_hosts | default('windows_server_2025:&windows_nvidia_gpu_hosts')
+        )
+      }}
+    _hyperv_gpu_p_host_precheck_run_management_preflight: >-
+      {{ hyperv_gpu_p_host_precheck_run_management_preflight | default(true) | bool }}
+    _hyperv_gpu_p_host_precheck_enforce_management_preflight: >-
+      {{ hyperv_gpu_p_host_precheck_enforce_management_preflight | default(false) | bool }}
+  tasks:
+    - name: Probe SSH reachability for Hyper-V GPU-P host targets
+      ansible.builtin.wait_for:
+        host: "{{ hostvars[item].ansible_host | default(item) }}"
+        port: "{{ hostvars[item].ansible_port | default(22) }}"
+        timeout: 3
+        connect_timeout: 2
+        state: started
+      register: _hyperv_gpu_p_host_precheck_ssh_probe
+      failed_when: false
+      changed_when: false
+      loop: "{{ _hyperv_gpu_p_host_precheck_targets }}"
+      loop_control:
+        label: "{{ item }}"
+      when: _hyperv_gpu_p_host_precheck_run_management_preflight
+
+    - name: Probe WinRM reachability for Hyper-V GPU-P host targets
+      ansible.builtin.wait_for:
+        host: "{{ hostvars[item].ansible_host | default(item) }}"
+        port: >-
+          {{
+            hostvars[item].winrm_port
+            | default(
+                hostvars[item].ansible_port
+                if (hostvars[item].ansible_connection | default('')) == 'winrm'
+                else 5985
+              )
+          }}
+        timeout: 3
+        connect_timeout: 2
+        state: started
+      register: _hyperv_gpu_p_host_precheck_winrm_probe
+      failed_when: false
+      changed_when: false
+      loop: "{{ _hyperv_gpu_p_host_precheck_targets }}"
+      loop_control:
+        label: "{{ item }}"
+      when: _hyperv_gpu_p_host_precheck_run_management_preflight
+
+    - name: Register management-reachable Hyper-V GPU-P host targets
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        groups: hyperv_gpu_p_host_precheck_reachable
+        hyperv_gpu_p_management_preflight_ssh_state: >-
+          {{ _hyperv_gpu_p_host_precheck_ssh_probe.results[ansible_loop.index0].state | default('down') }}
+        hyperv_gpu_p_management_preflight_winrm_state: >-
+          {{ _hyperv_gpu_p_host_precheck_winrm_probe.results[ansible_loop.index0].state | default('down') }}
+      loop: "{{ _hyperv_gpu_p_host_precheck_targets }}"
+      loop_control:
+        label: "{{ item }}"
+      when:
+        - _hyperv_gpu_p_host_precheck_run_management_preflight
+        - >-
+          (
+            _hyperv_gpu_p_host_precheck_ssh_probe.results[ansible_loop.index0].state
+            | default('')
+          ) == 'started'
+          or
+          (
+            _hyperv_gpu_p_host_precheck_winrm_probe.results[ansible_loop.index0].state
+            | default('')
+          ) == 'started'
+
+    - name: Register management-unreachable Hyper-V GPU-P host targets
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        groups: hyperv_gpu_p_host_precheck_unreachable
+        hyperv_gpu_p_management_preflight_ssh_state: >-
+          {{ _hyperv_gpu_p_host_precheck_ssh_probe.results[ansible_loop.index0].state | default('down') }}
+        hyperv_gpu_p_management_preflight_winrm_state: >-
+          {{ _hyperv_gpu_p_host_precheck_winrm_probe.results[ansible_loop.index0].state | default('down') }}
+      loop: "{{ _hyperv_gpu_p_host_precheck_targets }}"
+      loop_control:
+        label: "{{ item }}"
+      when:
+        - _hyperv_gpu_p_host_precheck_run_management_preflight
+        - >-
+          (
+            _hyperv_gpu_p_host_precheck_ssh_probe.results[ansible_loop.index0].state
+            | default('')
+          ) != 'started'
+          and
+          (
+            _hyperv_gpu_p_host_precheck_winrm_probe.results[ansible_loop.index0].state
+            | default('')
+          ) != 'started'
+
+    - name: Warn when Hyper-V GPU-P host targets are management-unreachable
+      ansible.builtin.debug:
+        msg: >-
+          WARNING: Hyper-V GPU-P precheck skipped for {{ item }} because no
+          controller-to-host management surface is reachable.
+          ssh={{ hostvars[item].ansible_host | default(item) }}:{{ hostvars[item].ansible_port | default(22) }}
+          state={{ hostvars[item].hyperv_gpu_p_management_preflight_ssh_state | default('down') }}
+          winrm={{ hostvars[item].ansible_host | default(item) }}:{{
+            hostvars[item].winrm_port
+            | default(
+                hostvars[item].ansible_port
+                if (hostvars[item].ansible_connection | default('')) == 'winrm'
+                else 5985
+              )
+          }}
+          state={{ hostvars[item].hyperv_gpu_p_management_preflight_winrm_state | default('down') }}.
+          This is an advisory precheck by default and does not fail the run.
+      loop: "{{ groups['hyperv_gpu_p_host_precheck_unreachable'] | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+      when: _hyperv_gpu_p_host_precheck_run_management_preflight
+
+    - name: Enforce management reachability precheck when explicitly requested
+      ansible.builtin.assert:
+        that:
+          - (groups['hyperv_gpu_p_host_precheck_unreachable'] | default([]) | length) == 0
+        fail_msg: >-
+          Hyper-V GPU-P precheck management reachability enforcement failed.
+          Unreachable targets={{ groups['hyperv_gpu_p_host_precheck_unreachable'] | default([]) }}.
+      when:
+        - _hyperv_gpu_p_host_precheck_run_management_preflight
+        - _hyperv_gpu_p_host_precheck_enforce_management_preflight
+
 - name: Run Hyper-V GPU-P host prechecks
-  hosts: "{{ hyperv_gpu_p_host_precheck_hosts | default('windows_server_2025:&windows_nvidia_gpu_hosts') }}"
+  hosts: >-
+    {{
+      'hyperv_gpu_p_host_precheck_reachable'
+      if (hyperv_gpu_p_host_precheck_run_management_preflight | default(true) | bool)
+      else (hyperv_gpu_p_host_precheck_hosts | default('windows_server_2025:&windows_nvidia_gpu_hosts'))
+    }}
   gather_facts: false
   roles:
     - role: hyperv_gpu_p_host_precheck

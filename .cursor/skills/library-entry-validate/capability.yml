@@ -1,0 +1,38 @@
+name: library-entry-validate
+family: framework
+kind: skill
+portable: false
+
+summary: Independent validator for ai-library-entry packet contracts; runs validate_entry_spec.rb and blocks incomplete packs.
+
+capabilities:
+  - library_entry_validation
+  - entry_spec_validator_gate
+
+suggested_roles:
+  - independent_validator
+  - steward
+
+trigger_style: explicit_or_repo_guided
+
+skill_file: .cursor/skills/library-entry-validate/SKILL.md
+readme_file: .cursor/skills/library-entry-validate/README.md
+
+companion_rules: []
+
+references:
+  - .cursor/skills/ai-library-entry/references/validate_entry_spec.rb
+  - .cursor/skills/ai-library-entry/references/entry-spec.template.yml
+
+owned_files:
+  - .cursor/skills/library-entry-validate/SKILL.md
+  - .cursor/skills/library-entry-validate/README.md
+  - .cursor/skills/library-entry-validate/capability.yml
+
+update_behavior:
+  strategy: replace-owned-files
+  notes: Validator logic stays in ai-library-entry/references/validate_entry_spec.rb; this skill owns the workflow gate only.
+
+removal_behavior:
+  strategy: remove-owned-files
+  notes: Remove skill files and catalog entry; keep validate_entry_spec.rb under ai-library-entry.

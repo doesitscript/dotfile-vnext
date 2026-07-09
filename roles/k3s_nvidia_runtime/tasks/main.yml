@@ -1,4 +1,10 @@
 ---
+- name: Remove apt NVIDIA guest driver packages when GPU-P cleanup is requested
+  ansible.builtin.include_tasks: remove_guest_driver.yml
+  when:
+    - k3s_nvidia_runtime_state == 'present'
+    - k3s_nvidia_runtime_remove_guest_driver | bool
+
 - name: Ensure APT prerequisites for NVIDIA runtime are present
   ansible.builtin.apt:
     name:
@@ -50,45 +56,63 @@
     creates: "{{ k3s_nvidia_runtime_repo_list_path }}"
   when: k3s_nvidia_runtime_state == 'present'
 
-- name: Ensure NVIDIA guest driver and container toolkit packages are present
+- name: Ensure apt NVIDIA guest driver package is present on bare-metal GPU guests
   ansible.builtin.apt:
-    name:
-      - "{{ k3s_nvidia_runtime_driver_package }}"
-      - "{{ k3s_nvidia_runtime_toolkit_package }}"
+    name: "{{ k3s_nvidia_runtime_driver_package }}"
     state: present
     update_cache: true
-  register: k3s_nvidia_runtime_packages
-  when: k3s_nvidia_runtime_state == 'present'
+  register: k3s_nvidia_runtime_driver_package_result
+  when:
+    - k3s_nvidia_runtime_state == 'present'
+    - k3s_nvidia_runtime_install_guest_driver | bool
 
-- name: Hold NVIDIA guest driver package to keep the branch pinned
+- name: Hold apt NVIDIA guest driver package to keep the branch pinned
   ansible.builtin.dpkg_selections:
     name: "{{ k3s_nvidia_runtime_driver_package }}"
     selection: hold
   when:
     - k3s_nvidia_runtime_state == 'present'
+    - k3s_nvidia_runtime_install_guest_driver | bool
     - k3s_nvidia_runtime_driver_hold | bool
 
-- name: Reboot guest after NVIDIA guest driver install when package state changed
+- name: Ensure NVIDIA container toolkit package is present
+  ansible.builtin.apt:
+    name: "{{ k3s_nvidia_runtime_toolkit_package }}"
+    state: present
+    update_cache: true
+  register: k3s_nvidia_runtime_toolkit_package_result
+  when: k3s_nvidia_runtime_state == 'present'
+
+- name: Reboot guest after apt NVIDIA guest driver install when package state changed
   ansible.builtin.reboot:
     reboot_timeout: 1800
   when:
     - k3s_nvidia_runtime_state == 'present'
-    - k3s_nvidia_runtime_packages is changed
+    - k3s_nvidia_runtime_install_guest_driver | bool
+    - k3s_nvidia_runtime_driver_package_result is changed
 
-- name: Restart k3s after NVIDIA runtime changes so containerd runtime is rediscovered
+- name: Restart k3s after NVIDIA runtime package changes so containerd runtime is rediscovered
   ansible.builtin.service:
     name: "{{ k3s_nvidia_runtime_k3s_service_name }}"
     state: restarted
   when:
     - k3s_nvidia_runtime_state == 'present'
-    - k3s_nvidia_runtime_packages is changed
+    - >-
+      (k3s_nvidia_runtime_driver_package_result is defined
+      and k3s_nvidia_runtime_driver_package_result is changed)
+      or (k3s_nvidia_runtime_toolkit_package_result is defined
+      and k3s_nvidia_runtime_toolkit_package_result is changed)
+      or (k3s_nvidia_runtime_guest_driver_removed is defined
+      and k3s_nvidia_runtime_guest_driver_removed is changed)
 
 - name: Validate NVIDIA userspace is available on guest
   ansible.builtin.command:
     cmd: nvidia-smi -L
   register: k3s_nvidia_runtime_nvidia_smi
   changed_when: false
-  when: k3s_nvidia_runtime_state == 'present'
+  when:
+    - k3s_nvidia_runtime_state == 'present'
+    - k3s_nvidia_runtime_validate_nvidia_smi | bool
 
 - name: Validate K3s containerd config exposes an NVIDIA runtime
   ansible.builtin.command:
@@ -110,6 +134,8 @@
 - name: Report NVIDIA runtime readiness
   ansible.builtin.debug:
     msg:
+      install_guest_driver: "{{ k3s_nvidia_runtime_install_guest_driver }}"
+      remove_guest_driver: "{{ k3s_nvidia_runtime_remove_guest_driver }}"
       nvidia_smi: "{{ k3s_nvidia_runtime_nvidia_smi.stdout_lines | default([]) }}"
       containerd_nvidia_runtime: "{{ k3s_nvidia_runtime_containerd_runtime.stdout_lines | default([]) }}"
   when: k3s_nvidia_runtime_state == 'present'

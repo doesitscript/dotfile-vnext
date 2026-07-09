@@ -1,0 +1,14 @@
+---
+# Package version — pin via version contract in inventory/group_vars/all.yaml
+litellm_cli_version: "{{ litellm_tooling_version_contract.cli | default('') }}"
+litellm_cli_package_spec: >-
+  {{
+    'litellm==' ~ litellm_cli_version
+    if litellm_cli_version | default('') | length > 0
+    else 'litellm'
+  }}
+litellm_cli_state: present
+litellm_cli_pipx_executable: pipx
+litellm_cli_force_reinstall: false
+litellm_cli_global_bin_dir: "{{ ansible_env.HOME }}/.local/bin"
+litellm_cli_verify: true

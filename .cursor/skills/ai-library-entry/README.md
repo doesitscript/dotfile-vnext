@@ -1,30 +1,27 @@
 # AI Library Entry Capability
 
-`ai-library-entry` is the repo-native kickoff for durable additions to
-`ai-resource-library`.
+Orchestrator for durable `ai-resource-library` additions. Delegates execution
+to the library skill family — see `references/skill-family-map.md`.
 
-It owns routing and validation for mixed entry work across:
+## Child skills
 
-- `vendors/`
-- `sdk-context/`
-- `indexes/`
-- `prompts/`
+| Skill | Role |
+|-------|------|
+| `library-entry-validate` | Validator gate |
+| `firecrawl-context7-crosscheck` | Gap reconciliation |
+| `library-indexes-pack` | `indexes/<entry>/` |
+| `library-context7-pack` | Context7 shards |
+| `library-entry-build` | Registered build scripts |
 
-Use `vendor-doc-collection` as the narrower export helper after this capability
-has already decided that the entry needs a structured vendor-doc tree.
+`vendor-doc-collection` remains the narrower Firecrawl export helper.
 
-## Owned files
+## Build registry
 
-- `.cursor/skills/ai-library-entry/SKILL.md`
-- `.cursor/skills/ai-library-entry/README.md`
-- `.cursor/skills/ai-library-entry/capability.yml`
-- `.cursor/skills/ai-library-entry/references/routing-matrix.md`
-- `.cursor/skills/ai-library-entry/references/entry-spec.template.yml`
-- `.cursor/skills/ai-library-entry/references/validate_entry_spec.rb`
-- `.cursor/rules/framework-ai-library-entry.mdc`
+`library-entry-build/references/build-registry.yml` — add a row before new `build_*.mjs`.
 
-## Update rule
+## Owned shared references (do not split into separate skills)
 
-Update the skill, the validator, the template, and the companion rule together.
-The `owned_files` list in `capability.yml` is the update/remove source of
-truth.
+- `references/shared/context7_entry.mjs`
+- `references/shared/mcp_runtime.mjs`
+- `references/validate_entry_spec.rb`
+- `references/entry-spec.template.yml`

@@ -1,6 +1,6 @@
 ---
-- name: Gather GPU-P readiness evidence on all Windows Server 2025 GPU hosts
-  hosts: "windows_server_2025:&windows_nvidia_gpu_hosts"
+- name: Gather required GPU-P readiness evidence on active Windows Server 2025 GPU-P hosts
+  hosts: "windows_server_2025:&hyperv_gpu_partition_enabled_hosts"
   gather_facts: false
   roles:
     - role: hyperv_gpu_p_host_precheck
@@ -20,9 +20,179 @@
         - gpu_infra
         - ai_ml_platform
 
+- name: Gather optional GPU readiness evidence on non-active Windows Server 2025 NVIDIA hosts
+  hosts: "windows_server_2025:&windows_nvidia_gpu_hosts:!hyperv_gpu_partition_enabled_hosts"
+  gather_facts: false
+  ignore_unreachable: true
+  tasks:
+    - name: Probe optional Windows NVIDIA host SSH reachability from the controller
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: "{{ ansible_port | default(22) }}"
+        timeout: 5
+      delegate_to: localhost
+      register: _hyperv_gpu_optional_host_ssh_probe
+      failed_when: false
+      changed_when: false
+      tags:
+        - hyperv_gpu_p_host_precheck
+        - gpu_infra
+        - ai_ml_platform
+
+    - name: Run optional Hyper-V GPU-P host precheck on non-active NVIDIA hosts
+      ansible.builtin.include_role:
+        name: hyperv_gpu_p_host_precheck
+      vars:
+        hyperv_gpu_p_host_precheck_require_iov_support: >-
+          {{
+            ((runtime_planes | default({})).get('hyperv_gpu_partitioning', {})).get('enabled', false)
+            | bool
+          }}
+        hyperv_gpu_p_host_precheck_require_partitionable_gpu: >-
+          {{
+            ((runtime_planes | default({})).get('hyperv_gpu_partitioning', {})).get('enabled', false)
+            | bool
+          }}
+      register: _hyperv_gpu_optional_precheck
+      ignore_errors: true
+      when:
+        - not (_hyperv_gpu_optional_host_ssh_probe.failed | default(false))
+        - hyperv_gpu_optional_full_host_precheck_enabled | default(false) | bool
+      tags:
+        - hyperv_gpu_p_host_precheck
+        - gpu_infra
+        - ai_ml_platform
+
+    - name: Report optional Windows NVIDIA host is reachable but full remote precheck is disabled
+      ansible.builtin.debug:
+        msg:
+          host: "{{ inventory_hostname }}"
+          optional_probe: true
+          status: "reachable"
+          full_remote_precheck_enabled: false
+          note: >-
+            Controller-side reachability probe succeeded. Full remote Hyper-V GPU-P
+            host precheck is disabled by default for non-active NVIDIA hosts. Set
+            `hyperv_gpu_optional_full_host_precheck_enabled=true` to opt in.
+      when:
+        - not (_hyperv_gpu_optional_host_ssh_probe.failed | default(false))
+        - not (hyperv_gpu_optional_full_host_precheck_enabled | default(false) | bool)
+      tags:
+        - hyperv_gpu_p_host_precheck
+        - gpu_infra
+        - ai_ml_platform
+
+    - name: Report optional Windows NVIDIA host reachability issue without failing the run
+      ansible.builtin.debug:
+        msg:
+          host: "{{ inventory_hostname }}"
+          optional_probe: true
+          status: "unreachable"
+          detail: >-
+            {{
+              _hyperv_gpu_optional_host_ssh_probe.msg
+              | default('Optional SSH precheck failed before Hyper-V GPU-P host probe could run.')
+            }}
+      when: _hyperv_gpu_optional_host_ssh_probe.failed | default(false)
+      tags:
+        - hyperv_gpu_p_host_precheck
+        - gpu_infra
+        - ai_ml_platform
+
+    - name: Report optional Hyper-V GPU-P host precheck issue without failing the run
+      ansible.builtin.debug:
+        msg:
+          host: "{{ inventory_hostname }}"
+          optional_probe: true
+          status: "failed_or_unreachable"
+          detail: >-
+            {{
+              _hyperv_gpu_optional_precheck.msg
+              | default(_hyperv_gpu_optional_precheck | to_nice_json)
+            }}
+      when:
+        - _hyperv_gpu_optional_precheck is defined
+        - _hyperv_gpu_optional_precheck is failed
+      tags:
+        - hyperv_gpu_p_host_precheck
+        - gpu_infra
+        - ai_ml_platform
+
 - name: Ensure Hyper-V GPU partition is attached on active GPU-P Windows hosts
   hosts: "windows_server_2025:&hyperv_gpu_partition_enabled_hosts"
   gather_facts: false
+  pre_tasks:
+    - name: Derive guest GPU workload targets from active Hyper-V GPU-P hosts
+      ansible.builtin.set_fact:
+        _gpu_infrastructure_expected_guest_hosts: >-
+          {{
+            ansible_play_hosts_all
+            | map('extract', hostvars, 'hyperv_ubuntu_k3s_vm_inventory_host')
+            | reject('equalto', None)
+            | reject('equalto', '')
+            | list
+            | unique
+          }}
+      run_once: true
+
+    - name: Assert derived guest GPU workload targets are modeled in inventory
+      ansible.builtin.assert:
+        that:
+          - _gpu_infrastructure_expected_guest_hosts | length > 0
+          - >-
+            (
+              _gpu_infrastructure_expected_guest_hosts
+              | difference(groups['container_orchestrator_k3s'] | default([]))
+              | length
+            ) == 0
+          - >-
+            (
+              _gpu_infrastructure_expected_guest_hosts
+              | difference(groups['gpu_workload_nodes'] | default([]))
+              | length
+            ) == 0
+        fail_msg: >-
+          The active Hyper-V GPU-P Windows hosts resolve derived guest targets
+          {{ _gpu_infrastructure_expected_guest_hosts | default([]) }}, but those
+          guests are not fully modeled in both `container_orchestrator_k3s` and
+          `gpu_workload_nodes`. Refresh the VM inventory/host-vars contract before
+          running GPU guest roles.
+      run_once: true
+
+    - name: Initialize derived guest limit guard
+      ansible.builtin.set_fact:
+        _gpu_infrastructure_limit_mentions_guest_host: false
+      when: (ansible_limit | default('')) | length > 0
+      run_once: true
+
+    - name: Detect whether the active Ansible limit includes a derived guest host
+      ansible.builtin.set_fact:
+        _gpu_infrastructure_limit_mentions_guest_host: true
+      when:
+        - (ansible_limit | default('')) | length > 0
+        - ansible_limit is search(item)
+      loop: "{{ _gpu_infrastructure_expected_guest_hosts | default([]) }}"
+      run_once: true
+
+    - name: Assert the active Ansible limit does not exclude derived guest GPU hosts
+      ansible.builtin.assert:
+        that:
+          - >-
+            (ansible_limit | default('') | length == 0)
+            or ('container_orchestrator_k3s' in ansible_limit)
+            or ('gpu_workload_nodes' in ansible_limit)
+            or ('all' in ansible_limit)
+            or ('*' in ansible_limit)
+            or (_gpu_infrastructure_limit_mentions_guest_host | default(false))
+        fail_msg: >-
+          The current Ansible limit (`{{ ansible_limit }}`) includes the Hyper-V
+          GPU-P host(s) but excludes the derived guest GPU workload host(s)
+          {{ _gpu_infrastructure_expected_guest_hosts | default([]) }}. The guest
+          inventory is current, but these plays will be skipped under that limit.
+          Re-run without `--limit`, or include both layers explicitly, for example:
+          `--limit hom-lab-ctl-hvh-02,{{ (_gpu_infrastructure_expected_guest_hosts | default([])) | join(',') }}`
+      when: (_gpu_infrastructure_expected_guest_hosts | default([]) | length) > 0
+      run_once: true
   roles:
     - role: hyperv_gpu_partition_adapter
       vars:

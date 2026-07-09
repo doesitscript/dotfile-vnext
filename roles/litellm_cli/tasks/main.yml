@@ -1,0 +1,26 @@
+---
+- name: Validate litellm_cli state
+  ansible.builtin.assert:
+    that:
+      - litellm_cli_state in ["present", "absent"]
+    fail_msg: "litellm_cli_state must be present or absent."
+
+- name: Require macOS for LiteLLM CLI package management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "litellm_cli currently supports macOS only."
+
+- name: Include present tasks
+  ansible.builtin.include_tasks: present.yml
+  when: litellm_cli_state == "present"
+  tags:
+    - litellm
+    - litellm_cli
+
+- name: Include absent tasks
+  ansible.builtin.include_tasks: absent.yml
+  when: litellm_cli_state == "absent"
+  tags:
+    - litellm
+    - litellm_cli

@@ -1,0 +1,22 @@
+---
+- name: Release apt hold on managed NVIDIA guest driver packages
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: install
+  loop: "{{ k3s_nvidia_runtime_guest_driver_packages }}"
+  register: k3s_nvidia_runtime_driver_unhold
+  failed_when: false
+  changed_when: k3s_nvidia_runtime_driver_unhold is changed
+
+- name: Remove conflicting apt NVIDIA guest driver packages for GPU-P hosts
+  ansible.builtin.apt:
+    name: "{{ k3s_nvidia_runtime_guest_driver_packages }}"
+    state: absent
+    purge: true
+    autoremove: true
+  register: k3s_nvidia_runtime_guest_driver_removed
+
+- name: Reboot guest after apt NVIDIA guest driver removal when packages changed
+  ansible.builtin.reboot:
+    reboot_timeout: 1800
+  when: k3s_nvidia_runtime_guest_driver_removed is changed

@@ -1,0 +1,38 @@
+name: library-entry-build
+family: framework
+kind: skill
+portable: false
+
+summary: Invoke registered ai-library-entry build scripts; capture stderr evidence; chain validate.
+
+capabilities:
+  - library_entry_build
+  - library_build_registry
+
+suggested_roles:
+  - executor
+
+trigger_style: explicit_or_repo_guided
+
+skill_file: .cursor/skills/library-entry-build/SKILL.md
+readme_file: .cursor/skills/library-entry-build/README.md
+
+companion_rules: []
+
+references:
+  - .cursor/skills/library-entry-build/references/build-registry.yml
+  - .cursor/skills/ai-library-entry/references/skill-family-map.md
+
+owned_files:
+  - .cursor/skills/library-entry-build/SKILL.md
+  - .cursor/skills/library-entry-build/README.md
+  - .cursor/skills/library-entry-build/capability.yml
+  - .cursor/skills/library-entry-build/references/build-registry.yml
+
+update_behavior:
+  strategy: replace-owned-files
+  notes: Add build-registry.yml row before any new build_*.mjs script.
+
+removal_behavior:
+  strategy: remove-owned-files
+  notes: Build scripts under ai-resource-library/scripts remain; only skill wrapper removed.

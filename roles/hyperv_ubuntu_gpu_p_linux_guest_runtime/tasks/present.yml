@@ -47,6 +47,7 @@
     hyperv_ubuntu_gpu_p_linux_guest_runtime_share_password: >-
       {{ hostvars[hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_host_receipt.windows_host].windows_file_shares_unc_validation_password }}
   changed_when: false
+  when: not (hyperv_ubuntu_gpu_p_linux_guest_runtime_skip_artifact_sync | bool)
 
 - name: Assert guest artifact share connection facts exist
   ansible.builtin.assert:
@@ -55,6 +56,7 @@
       - hyperv_ubuntu_gpu_p_linux_guest_runtime_share_user | length > 0
       - hyperv_ubuntu_gpu_p_linux_guest_runtime_share_password | length > 0
     fail_msg: Windows artifact share connection facts are not available to the Ubuntu guest runtime.
+  when: not (hyperv_ubuntu_gpu_p_linux_guest_runtime_skip_artifact_sync | bool)
 
 - name: Write temporary SMB credentials file for guest artifact mount
   ansible.builtin.copy:
@@ -66,8 +68,10 @@
       username={{ hyperv_ubuntu_gpu_p_linux_guest_runtime_share_user }}
       password={{ hyperv_ubuntu_gpu_p_linux_guest_runtime_share_password }}
   no_log: true
+  when: not (hyperv_ubuntu_gpu_p_linux_guest_runtime_skip_artifact_sync | bool)
 
 - name: Mount, sync, and cleanly release Windows artifact share on Ubuntu guest
+  when: not (hyperv_ubuntu_gpu_p_linux_guest_runtime_skip_artifact_sync | bool)
   block:
     - name: Mount Windows artifact share on Ubuntu guest
       ansible.posix.mount:
@@ -363,8 +367,30 @@
         ~ (hyperv_ubuntu_gpu_p_linux_guest_runtime_wsl_commit_short.stdout | trim)
       }}
     hyperv_ubuntu_gpu_p_linux_guest_runtime_driverstore_folder: >-
-      {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_local_receipt_json.driverstore_folder }}
+      {{
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_local_receipt_json.driverstore_folder
+        if not (hyperv_ubuntu_gpu_p_linux_guest_runtime_skip_artifact_sync | bool)
+        else hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json['driverstore_folder']
+      }}
   changed_when: false
+
+- name: Assert existing guest manifest includes driverstore metadata when artifact sync is skipped
+  ansible.builtin.assert:
+    that:
+      - hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json.get('driverstore_folder', '') | length > 0
+    fail_msg: >-
+      Artifact sync is skipped but the existing guest runtime manifest does not include
+      driverstore_folder metadata.
+  when: hyperv_ubuntu_gpu_p_linux_guest_runtime_skip_artifact_sync | bool
+
+- name: Reuse managed payload metadata from existing manifest when artifact sync is skipped
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_managed_lib_files: >-
+      {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json.get('managed_lib_files', []) }}
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_managed_driverstore_files: >-
+      {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json.get('managed_driverstore_files', []) }}
+  changed_when: false
+  when: hyperv_ubuntu_gpu_p_linux_guest_runtime_skip_artifact_sync | bool
 
 - name: Capture current dkms status
   ansible.builtin.command:

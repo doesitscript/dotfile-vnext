@@ -1,0 +1,44 @@
+---
+- name: Remove LiteLLM CLI via pipx
+  ansible.builtin.command:
+    argv:
+      - "{{ litellm_cli_pipx_executable }}"
+      - uninstall
+      - litellm
+  register: litellm_cli_pipx_uninstall
+  changed_when: "'uninstalled package' in (litellm_cli_pipx_uninstall.stdout | default('') | lower)"
+  failed_when:
+    - litellm_cli_pipx_uninstall.rc != 0
+    - "'not installed' not in ((litellm_cli_pipx_uninstall.stderr | default('')) | lower)"
+    - "'nothing to uninstall' not in ((litellm_cli_pipx_uninstall.stdout | default('')) | lower)"
+  tags:
+    - litellm
+    - litellm_cli
+
+- name: Check whether LiteLLM CLI remains available
+  ansible.builtin.command:
+    argv:
+      - which
+      - litellm
+  register: litellm_cli_absent_check
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - litellm_cli_verify | bool
+  tags:
+    - litellm
+    - litellm_cli
+
+- name: Verify LiteLLM CLI is absent
+  ansible.builtin.assert:
+    that:
+      - litellm_cli_absent_check.rc != 0
+    fail_msg: "LiteLLM CLI remains on PATH after requesting absent state."
+  when:
+    - not ansible_check_mode
+    - litellm_cli_verify | bool
+    - litellm_cli_absent_check is defined
+  tags:
+    - litellm
+    - litellm_cli

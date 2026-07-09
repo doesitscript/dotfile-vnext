@@ -71,6 +71,53 @@ context7_required: true
 context7_topics:
   - exact package or provider topic used
 
+context7:
+  tools:
+    - resolve-library-id
+    - query-docs
+  resolve_libraries:
+    - library_name: Example SDK
+      resolve_query: implementation syntax for the commissioned version
+      version_pin:
+        source_file: /absolute/path/to/inventory/version-contract.yml
+        yaml_path: example_tooling_version_contract.cli
+        version_library_suffix: stable
+      fallback_library_ids:
+        - /org/example-website-docs
+        - /org/example
+  topic_shards:
+    - id: core-config
+      title: Core configuration
+      path: /absolute/path/to/ai-resource-library/sdk-context/context7/example/core-config.md
+      query: exact configuration syntax topic
+      library_ids:
+        - website
+        - sdk
+  page_validation:
+    enabled: true
+    library_id: /org/example-website-docs
+    metadata_field: context7_page_validation
+  firecrawl_cross_check:
+    enabled: true
+    library_id: /org/example-website-docs
+    index_path: /absolute/path/to/ai-resource-library/indexes/example/firecrawl-context7-crosscheck.json
+    update_on_new_pages: true
+  openapi_swagger:
+    enabled: true
+    primary_tool: context7
+    library_id: /org/example-website-docs
+    spec_mirror:
+      url: https://example.com/openapi.json
+      path: /absolute/path/to/ai-resource-library/vendors/example/openapi/openapi.json
+    outputs:
+      overview: /absolute/path/to/ai-resource-library/sdk-context/context7/example/openapi-swagger-overview.md
+      usage_notes: /absolute/path/to/ai-resource-library/sdk-context/context7/example/openapi-usage-notes.md
+    core_paths:
+      - /v1/example
+  crosswalk_index:
+    enabled: true
+    path: /absolute/path/to/ai-resource-library/indexes/example/doc-api-inventory-crosswalk.json
+
 asset_requirements:
   localization_required: false
   sidecar_extraction_required: false

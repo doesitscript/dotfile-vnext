@@ -143,6 +143,73 @@ if spec["context7_required"] && context7_topics.empty?
   errors << "context7_required is true but context7_topics is empty"
 end
 
+if spec["context7_required"] && content_families.include?("vendor_docs") && !content_families.include?("library_indexes")
+  errors << "vendor_docs with context7_required should also declare library_indexes for indexes/<entry>/ crosswalk and cross-check outputs"
+end
+
+context7_config = ensure_hash(spec["context7"] || {}, "context7", errors)
+if spec["context7_required"] && !spec.key?("context7")
+  errors << "context7_required is true but context7 extended block is missing (recommended; required for new topic-sharded entries)"
+end
+
+if spec.key?("context7") && !context7_config.empty?
+  tools = ensure_array(context7_config["tools"], "context7.tools", errors)
+  unless tools.include?("resolve-library-id") && tools.include?("query-docs")
+    errors << "context7.tools must include resolve-library-id and query-docs"
+  end
+
+  topic_shards = ensure_array(context7_config["topic_shards"], "context7.topic_shards", errors)
+  topic_shards.each_with_index do |shard, index|
+    shard_hash = ensure_hash(shard, "context7.topic_shards[#{index}]", errors)
+    %w[id path query].each do |key|
+      errors << "context7.topic_shards[#{index}] missing #{key}" if shard_hash[key].to_s.empty?
+    end
+    shard_path = shard_hash["path"]
+    next if shard_path.to_s.empty?
+
+    output_match = required_outputs.find { |entry| entry["path"] == shard_path }
+    errors << "context7.topic_shards[#{index}] path #{shard_path} is not declared in required_outputs" unless output_match
+    errors << "required output for shard #{shard_hash['id']} must be sdk_api_context" if output_match && output_match["content_family"] != "sdk_api_context"
+  end
+
+  crosswalk = ensure_hash(context7_config["crosswalk_index"] || {}, "context7.crosswalk_index", errors)
+  if crosswalk["enabled"]
+    crosswalk_path = crosswalk["path"]
+    errors << "context7.crosswalk_index.path is required when enabled" if crosswalk_path.to_s.empty?
+    if crosswalk_path && !crosswalk_path.to_s.empty?
+      output_match = required_outputs.find { |entry| entry["path"] == crosswalk_path }
+      errors << "context7.crosswalk_index.path #{crosswalk_path} is not declared in required_outputs" unless output_match
+      errors << "crosswalk output must be library_indexes family" if output_match && output_match["content_family"] != "library_indexes"
+    end
+  end
+
+  firecrawl_cross_check = ensure_hash(
+    context7_config["firecrawl_cross_check"] || {},
+    "context7.firecrawl_cross_check",
+    errors,
+  )
+  if firecrawl_cross_check["enabled"]
+    cross_check_path = firecrawl_cross_check["index_path"]
+    errors << "context7.firecrawl_cross_check.index_path is required when enabled" if cross_check_path.to_s.empty?
+    if cross_check_path && !cross_check_path.to_s.empty?
+      output_match = required_outputs.find { |entry| entry["path"] == cross_check_path }
+      errors << "context7.firecrawl_cross_check.index_path #{cross_check_path} is not declared in required_outputs" unless output_match
+      errors << "firecrawl cross-check output must be library_indexes family" if output_match && output_match["content_family"] != "library_indexes"
+    end
+  end
+
+  openapi_swagger = ensure_hash(context7_config["openapi_swagger"] || {}, "context7.openapi_swagger", errors)
+  if openapi_swagger["enabled"]
+    outputs = ensure_hash(openapi_swagger["outputs"] || {}, "context7.openapi_swagger.outputs", errors)
+    %w[overview usage_notes].each do |key|
+      next if outputs[key].to_s.empty?
+
+      output_match = required_outputs.find { |entry| entry["path"] == outputs[key] }
+      errors << "context7.openapi_swagger.outputs.#{key} #{outputs[key]} is not declared in required_outputs" unless output_match
+    end
+  end
+end
+
 source_map = {}
 source_urls.each_with_index do |entry, index|
   source = ensure_hash(entry, "source_urls[#{index}]", errors)

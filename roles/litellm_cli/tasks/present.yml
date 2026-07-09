@@ -1,0 +1,76 @@
+---
+- name: Require pipx for LiteLLM CLI installation
+  ansible.builtin.command:
+    argv:
+      - which
+      - "{{ litellm_cli_pipx_executable }}"
+  register: litellm_cli_pipx_which
+  changed_when: false
+  failed_when: litellm_cli_pipx_which.rc != 0
+  tags:
+    - litellm
+    - litellm_cli
+
+- name: Install LiteLLM CLI via pipx
+  ansible.builtin.command:
+    argv: "{{ litellm_cli_pipx_install_argv }}"
+  vars:
+    litellm_cli_pipx_install_argv: >-
+      {{
+        [litellm_cli_pipx_executable, 'install', litellm_cli_package_spec]
+        + (['--force'] if litellm_cli_force_reinstall | bool else [])
+      }}
+  register: litellm_cli_pipx_install
+  changed_when: "'installed package' in (litellm_cli_pipx_install.stdout | default(''))"
+  failed_when:
+    - litellm_cli_pipx_install.rc != 0
+    - >-
+      'already seems to be installed' not in
+      ((litellm_cli_pipx_install.stdout | default('')) ~ (litellm_cli_pipx_install.stderr | default('')))
+  tags:
+    - litellm
+    - litellm_cli
+
+- name: Verify installed LiteLLM CLI responds
+  ansible.builtin.command:
+    argv:
+      - "{{ litellm_cli_global_bin_dir }}/litellm"
+      - --help
+  register: litellm_cli_version_probe
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - litellm_cli_verify | bool
+  tags:
+    - litellm
+    - litellm_cli
+
+- name: Report LiteLLM CLI install state
+  ansible.builtin.command:
+    argv:
+      - "{{ litellm_cli_pipx_executable }}"
+      - list
+  register: litellm_cli_pipx_list
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - litellm_cli_verify | bool
+  tags:
+    - litellm
+    - litellm_cli
+
+- name: Show LiteLLM pipx package summary
+  ansible.builtin.debug:
+    msg: >-
+      {{
+        (litellm_cli_pipx_list.stdout_lines | default([]))
+        | select('search', 'package litellm')
+        | list
+      }}
+  when:
+    - not ansible_check_mode
+    - litellm_cli_verify | bool
+    - litellm_cli_pipx_list is defined
+  tags:
+    - litellm
+    - litellm_cli

@@ -1,0 +1,50 @@
+---
+argument_specs:
+  main:
+    short_description: Install K3s NVIDIA container runtime packages on Linux GPU guests
+    options:
+      k3s_nvidia_runtime_state:
+        type: str
+        default: present
+        choices:
+          - present
+          - absent
+        description: Lifecycle state for the NVIDIA runtime role.
+      k3s_nvidia_runtime_driver_package:
+        type: str
+        default: nvidia-driver-580-server-open
+        description: Apt guest driver package for bare-metal or PCI-passthrough GPU guests.
+      k3s_nvidia_runtime_toolkit_package:
+        type: str
+        default: nvidia-container-toolkit
+        description: NVIDIA container toolkit package used by K3s containerd.
+      k3s_nvidia_runtime_install_guest_driver:
+        type: bool
+        default: true
+        description: >-
+          When false, skip apt guest driver install/hold. Use on Hyper-V GPU-P guests
+          that consume the Windows DriverStore through /usr/lib/wsl instead.
+      k3s_nvidia_runtime_remove_guest_driver:
+        type: bool
+        default: false
+        description: >-
+          One-time convergence flag to unhold and purge conflicting apt guest driver
+          packages before GPU-P runtime apply.
+      k3s_nvidia_runtime_validate_nvidia_smi:
+        type: bool
+        default: true
+        description: >-
+          Validate nvidia-smi during role apply. Disable on GPU-P guests until the
+          hyperv_ubuntu_gpu_p_linux_guest_runtime path is healthy.
+      k3s_nvidia_runtime_driver_hold:
+        type: bool
+        default: true
+        description: Hold the apt guest driver package after install on bare-metal guests.
+      k3s_nvidia_runtime_guest_driver_packages:
+        type: list
+        elements: str
+        description: Apt packages removed during GPU-P guest driver cleanup.
+      k3s_nvidia_runtime_k3s_service_name:
+        type: str
+        default: k3s
+        description: K3s systemd unit restarted after runtime package changes.

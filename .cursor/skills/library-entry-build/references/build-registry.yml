@@ -1,0 +1,29 @@
+# Library entry build script registry
+#
+# ADD A ROW HERE before creating any new build_*.mjs under
+# ai-resource-library/scripts/ai-library-entry/<entry>/.
+#
+# library-entry-build resolves scripts from this file only.
+# After adding a row, run library-entry-validate on the entry-spec.
+#
+# Flags (passed through to scripts that support them):
+#   --context7-only   skip Firecrawl/OpenAPI fetch; refresh Context7 + indexes
+#   --refresh-pages   comma-separated page ids for targeted Firecrawl re-scrape
+
+build_scripts:
+  - entry_id: litellm_vendor_reference_pack
+    entry_spec: docs/plans/2026-07-09--litellm-vendor-reference-pack-incomplete/entry-spec.yml
+    script: ai-resource-library/scripts/ai-library-entry/litellm/build_litellm_vendor_pack.mjs
+    supports_context7_only: true
+    supports_refresh_pages: true
+    notes: >-
+      Full vendor + Context7 + indexes pack. Use --refresh-pages=proxy-quick-start
+      to thicken thin Firecrawl captures before cross-check.
+
+  - entry_id: langfuse_guides_full_capture
+    entry_spec: docs/plans/2026-07-08--langfuse-vendor-reference-pack-incomplete/entry-spec.yml
+    script: ai-resource-library/scripts/ai-library-entry/langfuse/build_langfuse_guides_pack.mjs
+    supports_context7_only: false
+    supports_refresh_pages: false
+    notes: >-
+      Guides full-capture pack (Firecrawl-heavy). Context7 cross-check not wired yet.

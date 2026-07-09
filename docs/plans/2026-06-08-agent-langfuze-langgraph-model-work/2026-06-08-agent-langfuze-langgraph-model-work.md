@@ -247,3 +247,6 @@ The desired result remains:
 But the implementation path must remain subordinate to repo truth, NetBox
 authority, and the existing homelab lane/guest model instead of to upstream
 sample topology.
+
+curl -s http://litellm.hom.lab:8000/v1/models -H "Authorization: Bearer sk-Pass@w0rd1"
+curl -s http://litellm.hom.lab:30400/v1/models -H "Authorization: Bearer sk-Pass@w0rd1"

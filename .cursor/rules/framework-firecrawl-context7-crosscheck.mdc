@@ -1,0 +1,22 @@
+---
+description: Require Firecrawl↔Context7 cross-check when vendor_docs and context7_required are both in scope.
+alwaysApply: false
+---
+
+# Firecrawl ↔ Context7 Cross-Check
+
+Use skill `firecrawl-context7-crosscheck` when both Firecrawl vendor captures
+and Context7 are in scope for a library entry.
+
+## Required behavior
+
+1. Produce `indexes/<entry>/firecrawl-context7-crosscheck.json` on every build
+   that touches vendor pages or Context7 shards.
+2. Record `gap_notes` per priority page; do not ignore `context7_only_terms`.
+3. Add thin captures to `capture-backlog.yml` when cross-check flags gaps.
+4. Re-scrape with **markdown** (not summary-only) before marking the entry complete.
+
+## Pairing
+
+Run after `vendor-doc-collection` or `library-entry-build` Firecrawl phase.
+Run before `library-entry-validate`.
