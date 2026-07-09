@@ -119,8 +119,8 @@ ansible-playbook playbooks/reconcile_netbox.yaml \
 ## Current Nodes
 
 - `mac-dev`: macOS controller / execution node
-- `hom-lab-ctl-hvh-02`: Windows Server 2025 GPU lane control host
-- `hom-lab-ctl-hvh-01`: Windows Server 2025 storage lane control host
+- `HOM-LAB-HVH-02`: Windows Server 2025 GPU lane control host
+- `HOM-LAB-HVH-01`: Windows Server 2025 storage lane control host
 - `hom-lab-ctl-dkr-02`: Docker VM on the GPU lane
 - `hom-lab-ctl-k3s-02`: K3s VM on the GPU lane
 - `hom-lab-ctl-dkr-01`: Docker VM on the storage lane

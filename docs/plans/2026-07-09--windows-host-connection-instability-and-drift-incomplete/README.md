@@ -2,7 +2,7 @@
 
 ## Summary
 
-This packet captures the current findings for `hom-lab-ctl-hvh-02` and defines the next repo-native remediation slice for the recurring connection instability affecting SSH, WinRM, SMB/share access, and Windows-published guest services on `192.168.50.158`.
+This packet captures the current findings for `HOM-LAB-HVH-02` and defines the next repo-native remediation slice for the recurring connection instability affecting SSH, WinRM, SMB/share access, and Windows-published guest services on `192.168.50.158`.
 
 Clean answer from the investigation:
 
@@ -18,7 +18,7 @@ This plan does not assume SSH is the root cause. It treats SSH failures as one s
 | Capability identifier | `windows_host_connection_instability_and_drift_remediation` |
 | Owner manifest | None; this is a governed troubleshooting and remediation packet, not a new manifest-backed long-lived capability |
 | Owned files | This packet README plus any follow-on troubleshooting or remediation artifacts created for Windows host connectivity, drift capture, and recovery |
-| Integration anchors | `inventory/host_vars/hom-lab-ctl-hvh-02.yaml`, `playbooks/access_windows.yaml`, `playbooks/configure_hyperv_windows_hosts.yaml`, `playbooks/troubleshoot/collect_windows_remote_access_artifacts.yaml`, `roles/hyperv_networking`, `roles/access_identity_windows`, and Windows event-log evidence on `hom-lab-ctl-hvh-02` |
+| Integration anchors | `inventory/host_vars/HOM-LAB-HVH-02.yaml`, `playbooks/access_windows.yaml`, `playbooks/configure_hyperv_windows_hosts.yaml`, `playbooks/troubleshoot/collect_windows_remote_access_artifacts.yaml`, `roles/hyperv_networking`, `roles/access_identity_windows`, and Windows event-log evidence on `HOM-LAB-HVH-02` |
 | Update behavior | Re-runnable evidence collection, drift classification, cleanup/remediation, and post-remediation verification for the Windows host networking/control surface |
 | Removal behavior | Remove only troubleshooting-specific artifacts or temporary remediation helpers added by this slice; do not remove the intended Hyper-V external switch or the Windows access surface itself |
 
@@ -34,7 +34,7 @@ This plan does not assume SSH is the root cause. It treats SSH failures as one s
 ## Public Interfaces / Types
 
 - Primary affected host:
-  - `hom-lab-ctl-hvh-02`
+  - `HOM-LAB-HVH-02`
 - Primary connection surface:
   - SSH to `192.168.50.158`
 - Existing troubleshooting collector:
@@ -44,13 +44,13 @@ This plan does not assume SSH is the root cause. It treats SSH failures as one s
 - Existing Hyper-V networking playbook:
   - `playbooks/configure_hyperv_windows_hosts.yaml`
 - Existing Hyper-V networking SSOT:
-  - `inventory/host_vars/hom-lab-ctl-hvh-02.yaml`
+  - `inventory/host_vars/HOM-LAB-HVH-02.yaml`
 
 ## Findings
 
 ### 1. Intended topology is not the drift
 
-The repo explicitly declares that `hom-lab-ctl-hvh-02` should:
+The repo explicitly declares that `HOM-LAB-HVH-02` should:
 
 - run an External Hyper-V switch named `External`
 - bind that switch to the Wi-Fi adapter `RZ608 Wi-Fi 6E 80MHz`
@@ -59,7 +59,7 @@ The repo explicitly declares that `hom-lab-ctl-hvh-02` should:
 
 That lives in:
 
-- `inventory/host_vars/hom-lab-ctl-hvh-02.yaml`
+- `inventory/host_vars/HOM-LAB-HVH-02.yaml`
 
 So the statement:
 
@@ -124,7 +124,7 @@ Current live state still includes:
 - `SharedAccess` service present and running
 - dynamic ICS-related firewall rules appearing in the logs
 
-That does not match the current intended routed-private-subnet direction for `hom-lab-ctl-hvh-02`, which explicitly says:
+That does not match the current intended routed-private-subnet direction for `HOM-LAB-HVH-02`, which explicitly says:
 
 - `internal_ics_sharing_enabled: false`
 - `guest_outbound_nat_enabled: false`
@@ -255,7 +255,7 @@ Use the existing troubleshooting collector before and after any cleanup so the s
 
 ```mermaid
 flowchart TD
-    A["Repo SSOT<br/>inventory/host_vars/hom-lab-ctl-hvh-02.yaml"] --> B["Windows host<br/>hom-lab-ctl-hvh-02"]
+    A["Repo SSOT<br/>inventory/host_vars/HOM-LAB-HVH-02.yaml"] --> B["Windows host<br/>HOM-LAB-HVH-02"]
     C["Windows access roles/playbooks<br/>access_windows.yaml<br/>configure_hyperv_windows_hosts.yaml"] --> B
     D["Evidence collector<br/>collect_windows_remote_access_artifacts.yaml"] --> E["Artifact bundle + drift receipt"]
     B --> F["Management surface<br/>vEthernet (External)<br/>192.168.50.158"]
@@ -318,7 +318,7 @@ flowchart LR
 
 ## Assumptions And Defaults
 
-- `hom-lab-ctl-hvh-02` remains a Windows Hyper-V host whose management plane intentionally lives on `vEthernet (External)` over the `RZ608` Wi-Fi uplink.
+- `HOM-LAB-HVH-02` remains a Windows Hyper-V host whose management plane intentionally lives on `vEthernet (External)` over the `RZ608` Wi-Fi uplink.
 - The current issue is broader than SSH and should be solved at the Windows networking/control-plane layer.
 - Older repo findings about stale bridge/multiplexor state remain relevant because the same artifact family is still present live.
 - This packet is a remediation plan, not yet the cleanup implementation itself.

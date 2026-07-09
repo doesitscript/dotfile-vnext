@@ -15,8 +15,8 @@ All hostnames use baseline pattern `hom-lab-ctl-<role>-<idx>`.
 
 | inventory_hostname | role | lane_group | guest / LAN |
 |--------------------|------|------------|-------------|
-| `hom-lab-ctl-hvh-01` | `hvh` | `hyperv_lane_storage` | LAN `192.168.50.234`, guests `192.168.138.0/24` |
-| `hom-lab-ctl-hvh-02` | `hvh` | `hyperv_lane_gpu` | LAN `192.168.50.158`, guests `192.168.137.0/24` |
+| `HOM-LAB-HVH-01` | `hvh` | `hyperv_lane_storage` | LAN `192.168.50.234`, guests `192.168.138.0/24` |
+| `HOM-LAB-HVH-02` | `hvh` | `hyperv_lane_gpu` | LAN `192.168.50.158`, guests `192.168.137.0/24` |
 | `hom-lab-ctl-dkr-01` | `dkr` | `hyperv_lane_storage` | `192.168.138.10` |
 | `hom-lab-ctl-dkr-02` | `dkr` | `hyperv_lane_gpu` | `192.168.137.10` |
 | `hom-lab-ctl-k3s-01` | `k3s` | `hyperv_lane_storage` | `192.168.138.11` |
@@ -33,7 +33,7 @@ flowchart TB
   end
 
   subgraph lane_s [hyperv_lane_storage]
-    HVH01["hom-lab-ctl-hvh-01"]
+    HVH01["HOM-LAB-HVH-01"]
     VRA01["VRA on hvh-01\nattr: vra-hvh-01"]
     DKR01["hom-lab-ctl-dkr-01"]
     K3S01["hom-lab-ctl-k3s-01"]
@@ -43,7 +43,7 @@ flowchart TB
   end
 
   subgraph lane_g [hyperv_lane_gpu]
-    HVH02["hom-lab-ctl-hvh-02"]
+    HVH02["HOM-LAB-HVH-02"]
     VRA02["VRA on hvh-02\nattr: vra-hvh-02"]
     DKR02["hom-lab-ctl-dkr-02"]
     K3S02["hom-lab-ctl-k3s-02"]
@@ -75,11 +75,11 @@ flowchart TB
 | Terragrunt unit | Protects (inventory_hostname) | Module |
 |-----------------|----------------------------|--------|
 | `shared/.../zvm-01` | — (creates ZVM) | `modules/data-protection/zerto/zvm` |
-| `lane-storage/.../vra-hvh-01` | `hom-lab-ctl-hvh-01` | `zerto/vra` |
+| `lane-storage/.../vra-hvh-01` | `HOM-LAB-HVH-01` | `zerto/vra` |
 | `lane-storage/.../protection-group-dkr-01` | `hom-lab-ctl-dkr-01` | `zerto/protection-group` |
 | `lane-storage/.../protection-group-k3s-01` | `hom-lab-ctl-k3s-01` | `zerto/protection-group` |
 | `lane-storage/.../journal-store-01` | journal path on storage lane | `zerto/journal` |
-| `lane-gpu/.../vra-hvh-02` | `hom-lab-ctl-hvh-02` | `zerto/vra` |
+| `lane-gpu/.../vra-hvh-02` | `HOM-LAB-HVH-02` | `zerto/vra` |
 | `lane-gpu/.../protection-group-dkr-02` | `hom-lab-ctl-dkr-02` | `zerto/protection-group` |
 | `lane-gpu/.../protection-group-k3s-02` | `hom-lab-ctl-k3s-02` | `zerto/protection-group` |
 

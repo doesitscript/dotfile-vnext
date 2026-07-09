@@ -46,9 +46,9 @@ References: [ASUS FAQ — manually assign LAN IP](https://rog.asus.com/support/f
 
 | Client name | MAC | IP | Notes |
 |-------------|-----|-----|--------|
-| `hom-lab-ctl-hvh-02` | `B4:B5:B6:94:5A:BD` | `192.168.50.158` | Rename from `DESKTOP-VLLM` |
+| `HOM-LAB-HVH-02` | `B4:B5:B6:94:5A:BD` | `192.168.50.158` | Rename from `DESKTOP-VLLM` |
 | `Joshs-MBP` or `mac-dev` | `A4:5E:60:DB:AE:BF` | `192.168.50.33` | Optional rename |
-| `hom-lab-ctl-hvh-01` | `B8:86:87:F7:C8:6F` | `192.168.50.234` | Rename from `AI-NET-SERVER` @ .234 |
+| `HOM-LAB-HVH-01` | `B8:86:87:F7:C8:6F` | `192.168.50.234` | Rename from `AI-NET-SERVER` @ .234 |
 
 **Delete:** `AI-NET-SERVER` / `9C:C7:D3:10:68:5A` / `192.168.50.233`
 
@@ -64,7 +64,7 @@ See [asus-gt6-guest-subnet-not-enterable-in-dhcp-manual-assign.md](../lessons-le
 ## Verify
 
 ```bash
-nslookup hom-lab-ctl-hvh-02.hom.lab 192.168.50.1
+nslookup HOM-LAB-HVH-02.hom.lab 192.168.50.1
 ```
 
 Expect `192.168.50.158`.

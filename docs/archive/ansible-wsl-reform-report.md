@@ -13,7 +13,7 @@ This reform:
 1. Defaults offline seed **off** with mount provider **`disabled`** (no implicit WSL on server runs).
 2. Gates the legacy WSL mount task behind explicit `mount_provider: wsl` (desktop/bootstrap opt-in).
 3. Documents and blocks the not-yet-built `linux_openssh_delegate` path.
-4. Pins K3s VM on `hom-lab-ctl-hvh-02` to offline-seed-disabled server policy.
+4. Pins K3s VM on `HOM-LAB-HVH-02` to offline-seed-disabled server policy.
 
 `wsl_hosts` is **absent** from active inventory YAML (already removed).
 
@@ -34,7 +34,7 @@ This reform:
 
 Guest access pattern already aligned with AGENTS.md:
 
-- Windows OpenSSH → `hom-lab-ctl-hvh-02` at `192.168.50.158`
+- Windows OpenSSH → `HOM-LAB-HVH-02` at `192.168.50.158`
 - Guest Linux SSH → `hom-lab-ctl-dkr-02` / `hom-lab-ctl-k3s-02` via routed subnet + `ProxyJump`
 
 ---
@@ -71,7 +71,7 @@ Added public contract fields:
 
 Updated offline-seed documentation: WSL is legacy opt-in; server lanes use `disabled` or future `linux_openssh_delegate`.
 
-### `inventory/host_vars/hom-lab-ctl-hvh-02.yaml`
+### `inventory/host_vars/HOM-LAB-HVH-02.yaml`
 
 Added explicit K3s VM offline-seed policy:
 
@@ -103,7 +103,7 @@ These are **expected** post-reform. None are active server automation paths unle
 | `roles/hyperv_ubuntu_vm/tasks/present.yml` | `wsl.exe --mount` PowerShell block | **Legacy opt-in** — runs only when `mount_provider: wsl` |
 | `roles/hyperv_ubuntu_vm/defaults/main.yml` | `/mnt/wsl/...` mount root | **Legacy path variable** — used only by WSL provider |
 | `roles/hyperv_ubuntu_vm/defaults/main.yml` | Comments referencing WSL | Documentation |
-| `inventory/host_vars/hom-lab-ctl-hvh-02.yaml` | Comment "no wsl.exe" | Documentation |
+| `inventory/host_vars/HOM-LAB-HVH-02.yaml` | Comment "no wsl.exe" | Documentation |
 | `inventory/inventory.yaml` | Comment on `wsl_hosts` legacy | Documentation |
 | `contracts/fuzlang.contract.yaml` | Deprecated WSL runtime scaffolding | Contract archive — marked FIXME/deprecated |
 | `.cursor/skills/catalog.yml` | `capture-wsl-systemctl` skill entry | **Retained per policy** (diagnostics skill, not server automation) |
@@ -128,7 +128,7 @@ Full ansible-lint/idempotence not run — reform is gating/defaults only; no liv
 
 ### 1. Azure cloud-image bootstrap without WSL offline seed
 
-**Context:** K3s VM on `hom-lab-ctl-hvh-02` uses `azure_cloud_image` with offline seed now **disabled**. Prior lab practice relied on WSL mount for deterministic first-boot seeding.
+**Context:** K3s VM on `HOM-LAB-HVH-02` uses `azure_cloud_image` with offline seed now **disabled**. Prior lab practice relied on WSL mount for deterministic first-boot seeding.
 
 **Options:**
 
@@ -171,4 +171,4 @@ hyperv_ubuntu_vm_cloud_image_offline_seed_enabled: true
 hyperv_ubuntu_vm_cloud_image_offline_seed_mount_provider: wsl
 ```
 
-Do **not** set this on `hom-lab-ctl-hvh-01`, `hom-lab-ctl-hvh-02`, or other server inventory hosts.
+Do **not** set this on `HOM-LAB-HVH-01`, `HOM-LAB-HVH-02`, or other server inventory hosts.

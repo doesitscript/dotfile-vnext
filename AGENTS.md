@@ -100,7 +100,7 @@ Include:
 8. Bootstrap docs, bootstrap playbooks, and bootstrap helper scripts are first-touch machine-setup material by default. Do not treat them as the default source for steady-state operation, troubleshooting, or day-2 implementation unless the task is explicitly about initial setup, rebuild, or bootstrap-path changes.
 9. For repo-local Python, Ansible, and WinRM-sensitive shell work, use `bin/codex-env <command> ...` or another repo-owned wrapper that explicitly loads the same environment. Do not invoke those commands through raw shell, raw Python, or ambient PATH assumptions.
 10. On macOS, if a repo-local query would launch Python or Ansible in a separate MCP/runtime path that does not provably load the repo `.envrc` and project `.venv`, treat that path as unsafe by default. Prefer a `bin/codex-env` shell command or another repo-owned wrapper instead. This guard exists to avoid WinRM worker-dead failures and Python fork crashes from missing environment variables.
-11. For controller-side manual SSH to managed hosts, prefer the repo-managed SSH alias that matches the inventory host name, such as `hom-lab-ctl-hvh-02`, instead of jumping straight to raw `ansible_host`, physical hostname, or machine NetBIOS name. In this repo, `ansible_host` may be a WinRM/control-plane target while the SSH alias carries the intended OpenSSH path and client options.
+11. For controller-side manual SSH to managed hosts, prefer the repo-managed SSH alias that matches the inventory host name, such as `HOM-LAB-HVH-02`, instead of jumping straight to raw `ansible_host`, physical hostname, or machine NetBIOS name. In this repo, `ansible_host` may be a WinRM/control-plane target while the SSH alias carries the intended OpenSSH path and client options.
 12. When showing commands for the user/operator to run, present the canonical
     project command form such as `ansible-playbook ...`. Keep Codex-specific
     wrappers, sandbox temp vars, or local runtime workarounds out of
@@ -125,7 +125,7 @@ Include:
 15. The former network-server Windows control alias is retired. Do not
     introduce new active inventory, playbook, or plan references to the retired
     alias. The current reconciled naming target for that control-plane Hyper-V
-    host is the compact schema shape `hom-lab-ctl-hvh-01`; any live NetBox
+    host is the compact schema shape `HOM-LAB-HVH-01`; any live NetBox
     object still using an older long form is transitional until the NetBox seed
     reconciliation pass is complete.
 16. NetBox identity/modeling changes are not complete until the repo is updated

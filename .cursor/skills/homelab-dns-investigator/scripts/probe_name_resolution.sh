@@ -7,7 +7,7 @@ ROUTER_DNS="${ROUTER_DNS:-192.168.50.1}"
 OUT_DIR="${1:-}"
 
 hosts=(
-  hom-lab-ctl-hvh-01 hom-lab-ctl-hvh-02
+  HOM-LAB-HVH-01 HOM-LAB-HVH-02
   hom-lab-ctl-k3s-01 hom-lab-ctl-k3s-02
   hom-lab-ctl-dkr-01 hom-lab-ctl-dkr-02
   litellm langfuse netbox grafana jupyter semaphore loki

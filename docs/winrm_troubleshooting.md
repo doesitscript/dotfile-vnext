@@ -2,7 +2,7 @@
 
 ## "ConvertFrom-Json ... System.Object[]" / "Module result deserialization failed: No start of json char found"
 
-When running Ansible against Windows over WinRM (e.g. `ansible hom-lab-ctl-hvh-02 -m ping -i inventory/inventory.yaml`), the pipeline wrapper on the Windows host can receive the module payload as multiple lines. PowerShell then builds an array for `$codeJson`, but `ConvertFrom-Json -InputObject` requires a single string, so the task fails.
+When running Ansible against Windows over WinRM (e.g. `ansible HOM-LAB-HVH-02 -m ping -i inventory/inventory.yaml`), the pipeline wrapper on the Windows host can receive the module payload as multiple lines. PowerShell then builds an array for `$codeJson`, but `ConvertFrom-Json -InputObject` requires a single string, so the task fails.
 
 ### What we changed in this project
 

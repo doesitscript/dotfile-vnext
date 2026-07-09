@@ -20,7 +20,7 @@ Default to Context7 (not inference, not fetch-only summaries) for:
 - **Config accuracy** — `config.yaml`, env vars, Helm values, CLI flags
 - **Topic shards** — one durable file per topic cluster
 - **Firecrawl cross-check** — compare every priority Firecrawl capture against a matching Context7 query; record gaps and update indexes when new pages land
-- **`library_indexes` packs** — crosswalks, coverage maps, Firecrawl↔Context7 reconciliation JSON under `indexes/<entry>/`
+- **`library_indexes` packs** — crosswalks, coverage maps, Firecrawl↔Context7 reconciliation JSON, and capture backlogs under `indexes/<entry>/`
 
 Context7 is the **primary interpretive layer** for OpenAPI/Swagger. A local
 spec mirror (fetch) is optional offline material; Context7 queries are the
@@ -48,6 +48,7 @@ When an entry includes `vendor_docs` and `context7_required: true`, also declare
 | `README.md` | Index of crosswalks, coverage maps, and reconciliation artifacts |
 | `doc-api-inventory-crosswalk.json` | doc page ↔ OpenAPI path ↔ inventory key |
 | `firecrawl-context7-crosscheck.json` | per-page Firecrawl vs Context7 gap report |
+| `capture-backlog.yml` | prioritized Firecrawl follow-up list for thin captures |
 
 **Update rule:** when adding a new priority doc page, OpenAPI path, or inventory
 surface, extend the crosswalk and re-run the Firecrawl↔Context7 cross-check in
@@ -83,6 +84,7 @@ context7:
     enabled: true
     library_id: /websites/litellm_ai
     index_path: .../indexes/<entry>/firecrawl-context7-crosscheck.json
+    backlog_path: .../indexes/<entry>/capture-backlog.yml
     update_on_new_pages: true
   openapi_swagger:
     enabled: true
@@ -116,6 +118,7 @@ context7:
 - `README.md` — indexes pack entrypoint
 - `doc-api-inventory-crosswalk.json`
 - `firecrawl-context7-crosscheck.json`
+- `capture-backlog.yml`
 
 Record in `vendors/<entry>/metadata.json`:
 
@@ -131,7 +134,8 @@ Record in `vendors/<entry>/metadata.json`:
 4. Context7-first `openapi_swagger` outputs (overview + per-path usage notes)
 5. Optional `spec_mirror` fetch for offline JSON — does not replace Context7
 6. Firecrawl↔Context7 cross-check for every priority page
-7. Emit/update `indexes/<entry>/` pack
-8. Support `--context7-only` to refresh Context7, cross-check, and indexes without re-scraping
+7. Write/update `capture-backlog.yml` for pages flagged by the cross-check
+8. Emit/update `indexes/<entry>/` pack
+9. Support `--context7-only` to refresh Context7, cross-check, backlog, and indexes without re-scraping
 
 Shared helper: `references/shared/context7_entry.mjs`

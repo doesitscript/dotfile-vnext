@@ -27,7 +27,7 @@ Your repo already captured the mapping research in `docs/reference/naming-standa
 
 ```text
 <tenant>-<environment>-<domain>-<role>-<idx>
-→ hom-lab-ctl-hvh-01
+→ HOM-LAB-HVH-01
 ```
 
 **Diagrams (schema notation):** [diagrams/](./diagrams/) — start with
@@ -70,7 +70,7 @@ cst-hom-lab-ctl-service-zerto-01                # L6 documentation / catalog ID
 cst-hom-lab-ctl-dia-zerto-homelab-topology-01   # L6 diagram ID (this packet)
 ```
 
-For Zerto specifically, add **`zrt`** as a **candidate service role** (like `nbx`, `lfs`) and keep **`bkp`** for generic backup infrastructure. Zerto VRAs attach to existing **`hvh`** hosts — they are components on `hom-lab-ctl-hvh-01/02`, not new hostnames.
+For Zerto specifically, add **`zrt`** as a **candidate service role** (like `nbx`, `lfs`) and keep **`bkp`** for generic backup infrastructure. Zerto VRAs attach to existing **`hvh`** hosts — they are components on `HOM-LAB-HVH-01/02`, not new hostnames.
 
 ---
 
@@ -189,8 +189,8 @@ for the full topology (live `hom-lab-ctl-*` hosts vs candidate Zerto units).
 | Unit directory | Module | Protects / attaches to | Rendered name (L4) |
 |----------------|--------|------------------------|---------------|
 | `shared/.../zvm-01` | `zvm` | new management VM | `hom-lab-ctl-zrt-01` |
-| `lane-storage/.../vra-hvh-01` | `vra` | `hom-lab-ctl-hvh-01` | attributes `vra-hvh-01` on host id |
-| `lane-gpu/.../vra-hvh-02` | `vra` | `hom-lab-ctl-hvh-02` | attributes `vra-hvh-02` |
+| `lane-storage/.../vra-hvh-01` | `vra` | `HOM-LAB-HVH-01` | attributes `vra-hvh-01` on host id |
+| `lane-gpu/.../vra-hvh-02` | `vra` | `HOM-LAB-HVH-02` | attributes `vra-hvh-02` |
 | `.../protection-group-k3s-01` | `protection-group` | `hom-lab-ctl-k3s-01` | group name from PG module + tags |
 | `.../protection-group-k3s-02` | `protection-group` | `hom-lab-ctl-k3s-02` | same pattern |
 | `.../journal-store-01` | `journal` | journal LUN/path on storage lane | `hom-lab-ctl-bkp-journal-01` or attribute on `bkp` |
@@ -218,7 +218,7 @@ terraform {
 
 dependency "hyperv_storage_lane" {
   config_path = "../../../../lane-storage/hyperv/host-hvh-01"
-  mock_outputs = { host_fqdn = "hom-lab-ctl-hvh-01" }
+  mock_outputs = { host_fqdn = "HOM-LAB-HVH-01" }
 }
 
 inputs = {
@@ -231,7 +231,7 @@ inputs = {
   attributes  = ["01"]
 
   # Homelab anchors (from live-object-registry / inventory)
-  hyperv_host            = "hom-lab-ctl-hvh-01"
+  hyperv_host            = "HOM-LAB-HVH-01"
   management_subnet_cidr = "192.168.138.0/24"
   guest_ip               = "192.168.138.20"   # example; pick unused IP
 

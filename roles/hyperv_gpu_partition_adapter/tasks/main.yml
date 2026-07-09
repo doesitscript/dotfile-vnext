@@ -1,4 +1,10 @@
 ---
+- name: Ensure Hyper-V GPU policy registry keys are present when required
+  ansible.builtin.include_tasks: hyperv_gpu_policy_registry.yml
+  when:
+    - hyperv_gpu_partition_adapter_state == 'present'
+    - hyperv_gpu_partition_adapter_require_hyperv_gpu_policy_keys | bool
+
 - name: Inspect Hyper-V GPU partition state for target VM
   ansible.windows.win_powershell:
     script: |

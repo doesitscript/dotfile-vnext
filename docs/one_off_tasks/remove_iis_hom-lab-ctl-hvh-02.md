@@ -1,4 +1,4 @@
-# One-off: Remove IIS from hom-lab-ctl-hvh-02
+# One-off: Remove IIS from HOM-LAB-HVH-02
 
 **Not Ansible.** Do not add IIS install/remove tasks to any role.
 
@@ -7,7 +7,7 @@ portproxy front door. This homelab does not use IIS for any service.
 
 **When:** **Before** any Traefik plan work (parent checklist **P0-remove-iis-hvh-02**; alias **P0-IIS**).
 
-**Host:** `hom-lab-ctl-hvh-02` (WinRM or `ssh hom-lab-ctl-hvh-02-powershell`).
+**Host:** `HOM-LAB-HVH-02` (WinRM or `ssh HOM-LAB-HVH-02-powershell`).
 
 ## Apply (PowerShell one-off)
 
@@ -33,7 +33,7 @@ if ($feature.Installed) {
 
 ## Verify
 
-On **hom-lab-ctl-hvh-02**:
+On **HOM-LAB-HVH-02**:
 
 ```powershell
 Get-WindowsFeature -Name Web-Server | Select-Object Name, InstallState

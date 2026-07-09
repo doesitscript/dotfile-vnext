@@ -547,7 +547,7 @@ First, let's update the workflow document.
 
 The workflow document has been updated with the expanded, more authoritative role for the `Planner`.
 
-Now, as the `Planner`, I will begin to formulate the plan for our immediate goal: **"Create a new Ubuntu VM on the `hom-lab-ctl-hvh-02` Hyper-V host, configured for remote SSH access."**
+Now, as the `Planner`, I will begin to formulate the plan for our immediate goal: **"Create a new Ubuntu VM on the `HOM-LAB-HVH-02` Hyper-V host, configured for remote SSH access."**
 
 My first step is to locate the existing bootstrapping logic you mentioned. You pointed me to `playbooks/access.yaml` and `playbooks/access_windows.yaml`. I will start by reading these files to understand the established pattern for gaining remote access to a new system.
 
@@ -1618,7 +1618,7 @@ Here is the refined implementation plan that incorporates these new inputs.
 
 ### Implementation Plan: Ubuntu VM on Hyper-V
 
-**Objective:** Deploy and configure a new Ubuntu VM on the `hom-lab-ctl-hvh-02` Hyper-V host, making it ready for remote SSH access and subsequent Docker/LLM stack deployment.
+**Objective:** Deploy and configure a new Ubuntu VM on the `HOM-LAB-HVH-02` Hyper-V host, making it ready for remote SSH access and subsequent Docker/LLM stack deployment.
 
 **Phase 1: Role Creation and Structure (Local)**
 
@@ -1653,4 +1653,3 @@ Here is the refined implementation plan that incorporates these new inputs.
 This plan directly incorporates the patterns and high-quality components from your research documents, creating a robust, reusable, and idempotent workflow.
 
 Are you ready for me to begin creating the `hyperv_ubuntu_vm` role structure?
-

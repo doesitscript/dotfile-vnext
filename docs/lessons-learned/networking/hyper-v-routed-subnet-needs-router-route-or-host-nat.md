@@ -3,7 +3,7 @@
 ## Problem
 
 Direct controller access to the Hyper-V guest IP and guest outbound internet
-egress did not both work at the same time on `hom-lab-ctl-hvh-02`.
+egress did not both work at the same time on `HOM-LAB-HVH-02`.
 
 ## What was happening
 

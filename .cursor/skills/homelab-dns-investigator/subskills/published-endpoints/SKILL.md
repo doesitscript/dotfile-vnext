@@ -15,8 +15,8 @@ Inventory declared endpoints from repo SSOT, compare to live Kubernetes, probe r
 | Source | What it declares |
 |---|---|
 | `inventory/group_vars/all/homelab_hosts_file.yml` | `homelab_hosts_file_web_catalog` — hostname, `verify_url`, `hosts_ip` |
-| `inventory/host_vars/hom-lab-ctl-hvh-01.yaml` | `hyperv_config.guest_published_tcp_ports` (storage lane) |
-| `inventory/host_vars/hom-lab-ctl-hvh-02.yaml` | `hyperv_config.guest_published_tcp_ports` (GPU lane + K3s NodePorts) |
+| `inventory/host_vars/HOM-LAB-HVH-01.yaml` | `hyperv_config.guest_published_tcp_ports` (storage lane) |
+| `inventory/host_vars/HOM-LAB-HVH-02.yaml` | `hyperv_config.guest_published_tcp_ports` (GPU lane + K3s NodePorts) |
 | `docs/reference/service-entrypoints-and-ai-surfaces.md` | Browser URLs and AI API surfaces |
 | `roles/common/endpoint_verify/tasks/main.yml` | mac-dev probe URLs (may lag inventory — flag drift) |
 | `roles/k3s_litellm_gateway/defaults/main.yml` | LiteLLM routes and NodePort contract |

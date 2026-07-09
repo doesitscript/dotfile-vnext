@@ -20,7 +20,7 @@ This is a **product rule**, not operator error and not a guest misconfiguration.
 | Need | Mechanism |
 |------|-----------|
 | Guest ↔ LAN by IP | Upstream static route `192.168.137.0/24` → `192.168.50.158` (Job 1) |
-| Windows host LAN name | Manual row for `hom-lab-ctl-hvh-02` @ `192.168.50.158` |
+| Windows host LAN name | Manual row for `HOM-LAB-HVH-02` @ `192.168.50.158` |
 | Mac controller names for guests | Future `homelab_hosts_file_mac` from `homelab_router_gt6_mac_hosts_workaround` |
 | SSH / Ansible | Inventory hostnames over SSH; use guest IPs |
 

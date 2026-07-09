@@ -45,7 +45,7 @@ You need **both** short slugs and host-style names; they are not alternatives.
 
 | Surface | namespace | tenant / site | Notes |
 |---------|-----------|---------------|--------|
-| Hostname render | (omitted) | `hom` | `hom-lab-ctl-hvh-02` |
+| Hostname render | (omitted) | `hom` | `HOM-LAB-HVH-02` |
 | Config context JSON (target) | `cst` | `hom` | Align with `required_context_tags` in `context.yml` |
 | Config context JSON (today) | `castle` | `hom` | **Drift** — fix to `cst` |
 | NetBox tenant slug | — | `home` | NetBox object slug; not the same as code `hom` |
@@ -207,7 +207,7 @@ graph LR
 **Steps (high level):**
 
 1. Issue certs for L4 or L5 (not for raw IP).
-2. Terminate TLS on `hom-lab-ctl-hvh-02` portproxy, reverse proxy, or K3s ingress using L4 as `server_name` / ingress host.
+2. Terminate TLS on `HOM-LAB-HVH-02` portproxy, reverse proxy, or K3s ingress using L4 as `server_name` / ingress host.
 3. Map existing NodePort services (`langfuse-k3s-web`, etc.) to L4 names in ingress rules.
 
 **Repo touchpoints:** `hyperv_networking`, K3s ingress roles, `stacks_fuzlang_net` / compose published URLs only if you choose hostname-based env vars (optional).

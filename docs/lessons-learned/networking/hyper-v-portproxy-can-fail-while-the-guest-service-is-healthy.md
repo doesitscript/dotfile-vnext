@@ -6,7 +6,7 @@ NetBox looked down from the LAN at `http://192.168.50.158:8000/`, but the real
 failure was not NetBox itself.
 
 The broken layer was the Windows `netsh interface portproxy` publish path on
-`hom-lab-ctl-hvh-02`.
+`HOM-LAB-HVH-02`.
 
 ## What was happening
 
@@ -55,14 +55,14 @@ This answers:
 ### 3. Check from the Windows Hyper-V host
 
 Probe both the direct guest path and the LAN-published path from
-`hom-lab-ctl-hvh-02`:
+`HOM-LAB-HVH-02`:
 
 ```bash
-bin/codex-env ansible hom-lab-ctl-hvh-02 -i inventory/inventory.yaml -m ansible.windows.win_shell -a "try { \$r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 http://192.168.137.10:8000/api/status/; Write-Output ('guest_status=' + [int]\$r.StatusCode); Write-Output \$r.Content } catch { Write-Output \$_.Exception.Message; exit 1 }"
+bin/codex-env ansible HOM-LAB-HVH-02 -i inventory/inventory.yaml -m ansible.windows.win_shell -a "try { \$r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 http://192.168.137.10:8000/api/status/; Write-Output ('guest_status=' + [int]\$r.StatusCode); Write-Output \$r.Content } catch { Write-Output \$_.Exception.Message; exit 1 }"
 
-bin/codex-env ansible hom-lab-ctl-hvh-02 -i inventory/inventory.yaml -m ansible.windows.win_shell -a "try { \$r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 http://192.168.50.158:8000/api/status/; Write-Output ('lan_status=' + [int]\$r.StatusCode); Write-Output \$r.Content } catch { Write-Output \$_.Exception.Message; exit 1 }"
+bin/codex-env ansible HOM-LAB-HVH-02 -i inventory/inventory.yaml -m ansible.windows.win_shell -a "try { \$r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 http://192.168.50.158:8000/api/status/; Write-Output ('lan_status=' + [int]\$r.StatusCode); Write-Output \$r.Content } catch { Write-Output \$_.Exception.Message; exit 1 }"
 
-bin/codex-env ansible hom-lab-ctl-hvh-02 -i inventory/inventory.yaml -m ansible.windows.win_shell -a "Test-NetConnection 192.168.137.10 -Port 8000 -InformationLevel Detailed | Select-Object ComputerName,RemotePort,TcpTestSucceeded,InterfaceAlias,SourceAddress | Format-List"
+bin/codex-env ansible HOM-LAB-HVH-02 -i inventory/inventory.yaml -m ansible.windows.win_shell -a "Test-NetConnection 192.168.137.10 -Port 8000 -InformationLevel Detailed | Select-Object ComputerName,RemotePort,TcpTestSucceeded,InterfaceAlias,SourceAddress | Format-List"
 ```
 
 This answers:
@@ -77,7 +77,7 @@ The configured rules can still exist even when the publish path is not actually
 working:
 
 ```bash
-bin/codex-env ansible hom-lab-ctl-hvh-02 -i inventory/inventory.yaml -m ansible.windows.win_shell -a "netsh interface portproxy show all"
+bin/codex-env ansible HOM-LAB-HVH-02 -i inventory/inventory.yaml -m ansible.windows.win_shell -a "netsh interface portproxy show all"
 ```
 
 So do not stop at "the rules are present." Verify reachability too.
@@ -87,7 +87,7 @@ So do not stop at "the rules are present." Verify reachability too.
 Restart the Windows `IP Helper` service:
 
 ```bash
-bin/codex-env ansible hom-lab-ctl-hvh-02 -i inventory/inventory.yaml -m ansible.windows.win_service -a "name=iphlpsvc state=restarted start_mode=auto"
+bin/codex-env ansible HOM-LAB-HVH-02 -i inventory/inventory.yaml -m ansible.windows.win_service -a "name=iphlpsvc state=restarted start_mode=auto"
 ```
 
 After that, re-run the three checks above.
@@ -114,7 +114,7 @@ Treat this as a real operational caveat:
 
 The published guest port surface for this host lives here:
 
-- `inventory/host_vars/hom-lab-ctl-hvh-02.yaml`
+- `inventory/host_vars/HOM-LAB-HVH-02.yaml`
 
 The repo-managed implementation path for those rules lives here:
 

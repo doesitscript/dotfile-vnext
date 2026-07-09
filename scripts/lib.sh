@@ -155,7 +155,7 @@ ensure_venv() {
       did_install_pip=true
     else
       log_info "Requirements unchanged; skipping dependency install"
-      log_info "To install new collections (e.g. ansible.windows): .venv/bin/ansible-galaxy collection install -r requirements.yml ; then re-run (e.g. ./bin/fz bootstrap --limit hom-lab-ctl-hvh-02)"
+      log_info "To install new collections (e.g. ansible.windows): .venv/bin/ansible-galaxy collection install -r requirements.yml ; then re-run (e.g. ./bin/fz bootstrap --limit HOM-LAB-HVH-02)"
     fi
   else
     log_warn "Requirements file not found: ${requirements_file}"
@@ -786,12 +786,12 @@ Global Options:
 Commands:
   bootstrap              Full bootstrap (winrm -> verify -> deploy -> verify)
                         Requires --limit or --all
-                        Special case: --limit hom-lab-ctl-hvh-02 runs local bootstrap only
+                        Special case: --limit HOM-LAB-HVH-02 runs local bootstrap only
                         Mac control node: --limit mac-dev runs playbooks/bootstrap_mac.yaml only
                         Use --SSHGenForce with --limit mac-dev to (re)generate OpenSSH host keys into bootstrap/openssh_host_keys/
   bootstrap-winrm        Bootstrap Windows hosts via WinRM
                         Requires --limit or --all
-                        Example: fz bootstrap-winrm --limit hom-lab-ctl-hvh-02
+                        Example: fz bootstrap-winrm --limit HOM-LAB-HVH-02
   bootstrap-ssh          Deploy stacks via SSH (WSL2 operations)
                         Requires --limit or --all
                         Example: fz bootstrap-ssh --limit hom-lab-ctl-dkr-02
@@ -802,7 +802,7 @@ Commands:
                         Legacy orchestration wrapper. Prefer explicit
                         ansible-playbook commands when a focused playbook exists.
     main                 Deploy GPU-lane stacks (hom-lab-ctl-dkr-02 / hyperv_lane_gpu)
-    network              Deploy storage-lane stacks (hom-lab-ctl-hvh-01 / hyperv_lane_storage)
+    network              Deploy storage-lane stacks (HOM-LAB-HVH-01 / hyperv_lane_storage)
                         Prompts for confirmation unless --yes is provided
     dev                  Deploy dev stacks (dev-3090)
   verify                 Verify entire fabric (no --limit required)
@@ -847,15 +847,15 @@ Common Options (forwarded to ansible-playbook):
 
 Examples:
   fz --help                                 Show command help and exit
-  fz bootstrap --limit hom-lab-ctl-hvh-02      Run local bootstrap path for hom-lab-ctl-hvh-02
+  fz bootstrap --limit HOM-LAB-HVH-02      Run local bootstrap path for HOM-LAB-HVH-02
   fz bootstrap --limit mac-dev --SSHGenForce  Mac bootstrap and (re)generate OpenSSH host keys
-  fz bootstrap-winrm --limit hom-lab-ctl-hvh-02  Run WinRM bootstrap playbook for hom-lab-ctl-hvh-02
+  fz bootstrap-winrm --limit HOM-LAB-HVH-02  Run WinRM bootstrap playbook for HOM-LAB-HVH-02
   fz bootstrap-ssh --limit hom-lab-ctl-dkr-02  Run SSH deploy phase for hom-lab-ctl-dkr-02
   fz bootstrap-openssh-host-keys            Generate host keys on Mac (for Windows OpenSSH)
   fz bootstrap --limit hom-lab-ctl-dkr-02  Run full bootstrap flow for one Docker host target
   fz bootstrap --all                        Run full bootstrap flow across all target groups
-  fz deploy network --limit hom-lab-ctl-hvh-01  Deploy network stacks with confirmation prompt
-  fz deploy network --limit hom-lab-ctl-hvh-01 --yes  Deploy network stacks without prompt
+  fz deploy network --limit HOM-LAB-HVH-01  Deploy network stacks with confirmation prompt
+  fz deploy network --limit HOM-LAB-HVH-01 --yes  Deploy network stacks without prompt
   fz deploy main --limit hom-lab-ctl-dkr-02  Deploy main stacks to a specific host
   fz gather-facts --all                      Gather facts from all reachable hosts
   fz gather-facts --limit windows_hosts      Gather facts from Windows hosts only

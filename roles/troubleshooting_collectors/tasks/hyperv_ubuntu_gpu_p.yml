@@ -1,0 +1,175 @@
+---
+- name: Set Hyper-V Ubuntu GPU-P troubleshooting artifact stamp when missing
+  ansible.builtin.set_fact:
+    troubleshooting_artifact_stamp: "{{ lookup('pipe', 'date +%Y%m%d-%H%M%S') }}"
+  when: (troubleshooting_artifact_stamp | default('')) | length == 0
+
+- name: Define Hyper-V Ubuntu GPU-P troubleshooting artifact paths
+  ansible.builtin.set_fact:
+    _hyperv_ubuntu_gpu_p_collector_vm_name: >-
+      {{
+        hyperv_ubuntu_gpu_p_collector_vm_name
+        | default(
+            hyperv_ubuntu_k3s_vm_hostname
+            | default(hyperv_ubuntu_k3s_vm_inventory_host | default('hom-lab-ctl-k3s-02'))
+          )
+      }}
+    _hyperv_ubuntu_gpu_p_artifact_dir: >-
+      {{ troubleshooting_artifact_root }}/hyperv_ubuntu_gpu_p/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}
+    _hyperv_ubuntu_gpu_p_command_dir: >-
+      {{ troubleshooting_artifact_root }}/hyperv_ubuntu_gpu_p/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}/command_results
+    _hyperv_ubuntu_gpu_p_notes_dir: >-
+      {{ troubleshooting_artifact_root }}/hyperv_ubuntu_gpu_p/{{ inventory_hostname }}/{{ troubleshooting_artifact_stamp }}/notes
+
+- name: Ensure Hyper-V Ubuntu GPU-P troubleshooting artifact directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ _hyperv_ubuntu_gpu_p_artifact_dir }}"
+    - "{{ _hyperv_ubuntu_gpu_p_command_dir }}"
+    - "{{ _hyperv_ubuntu_gpu_p_notes_dir }}"
+  delegate_to: localhost
+
+- name: Collect Hyper-V Ubuntu GPU-P guest runtime evidence
+  when:
+    - (surface_type | default('')) == 'ubuntu_vm'
+    - (gpu_contract.passthrough_mode | default('')) == 'gpu_p'
+  block:
+    - name: Run GPU-P guest diagnostic bundle
+      ansible.builtin.shell: |
+        set -o pipefail
+        export PATH="/usr/lib/wsl/lib:${PATH}"
+        export LD_LIBRARY_PATH="/usr/lib/wsl/lib"
+        python3 - <<'PY'
+        import json
+        import os
+        import subprocess
+
+        def run(argv):
+            proc = subprocess.run(argv, capture_output=True, text=True)
+            return {"argv": argv, "rc": proc.returncode, "stdout": proc.stdout, "stderr": proc.stderr}
+
+        result = {
+            "host": os.environ.get("HOSTNAME", ""),
+            "dpkg_nvidia": run(["dpkg", "-l"]),
+            "apt_hold": run(["apt-mark", "showhold"]),
+            "dev_dxg": run(["bash", "-lc", "test -e /dev/dxg && echo present || echo absent"]),
+            "lsmod_dxg": run(["bash", "-lc", "lsmod | grep -E 'dxg|vgem' || true"]),
+            "dkms_status": run(["dkms", "status"]),
+            "ldconfig_gpu": run(["bash", "-lc", "ldconfig -p | egrep 'libdxcore.so|libd3d12.so|libcuda.so.1|libnvidia-ml.so.1' || true"]),
+            "nvidia_smi_wsl": run(["/usr/lib/wsl/lib/nvidia-smi", "-L"]),
+            "state_manifest": run(["bash", "-lc", "cat /var/lib/ansible/hyperv_ubuntu_gpu_p_runtime/state.json 2>/dev/null || true"]),
+            "kubectl_gpu_capacity": run([
+                "kubectl", "get", "node", os.environ.get("K3S_NODE", os.uname().nodename),
+                "-o", "jsonpath={.status.capacity.nvidia\\.com/gpu}|{.status.allocatable.nvidia\\.com/gpu}\\n",
+            ]),
+            "device_plugin_pods": run([
+                "kubectl", "get", "pods", "-n", "nvidia-device-plugin",
+                "-o", "wide", "--no-headers",
+            ]),
+        }
+        print(json.dumps(result))
+        PY
+      environment:
+        K3S_NODE: "{{ inventory_hostname }}"
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+        PATH: "/usr/lib/wsl/lib:{{ ansible_env.PATH | default('/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin') }}"
+        LD_LIBRARY_PATH: /usr/lib/wsl/lib
+      register: _hyperv_ubuntu_gpu_p_guest_bundle
+      changed_when: false
+      failed_when: false
+
+    - name: Write GPU-P guest diagnostic bundle JSON
+      ansible.builtin.copy:
+        dest: "{{ _hyperv_ubuntu_gpu_p_command_dir }}/guest_runtime_probe.json"
+        content: "{{ _hyperv_ubuntu_gpu_p_guest_bundle.stdout | default('{}') }}"
+        mode: "0644"
+      delegate_to: localhost
+
+- name: Collect Hyper-V Ubuntu GPU-P Windows host evidence
+  when:
+    - (surface_type | default('')) == 'windows_host'
+    - >-
+      (
+        ((runtime_planes | default({})).get('hyperv_gpu_partitioning', {})).get('enabled', false)
+        | bool
+      )
+      or ((guest_gateway_for | default('')) | length > 0)
+  block:
+    - name: Run GPU-P Windows diagnostic bundle
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $hypervServer = '{{ hyperv_management_endpoint | default(ansible_host) }}'
+          $vmName = '{{ _hyperv_ubuntu_gpu_p_collector_vm_name }}'
+          $receiptPath = 'F:\shares\public\artifacts\hyperv_ubuntu_gpu_p_runtime\current\publish-receipt.json'
+
+          $policyPath = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\HyperV'
+          $policy = @{
+            require_secure_device_assignment = $null
+            require_supported_device_assignment = $null
+          }
+          foreach ($name in @('RequireSecureDeviceAssignment', 'RequireSupportedDeviceAssignment')) {
+            $item = Get-ItemProperty -Path $policyPath -Name $name -ErrorAction SilentlyContinue
+            if ($name -eq 'RequireSecureDeviceAssignment') {
+              $policy.require_secure_device_assignment = if ($item) { [int]$item.$name } else { $null }
+            } else {
+              $policy.require_supported_device_assignment = if ($item) { [int]$item.$name } else { $null }
+            }
+          }
+
+          $adapter = Get-VMGpuPartitionAdapter -ComputerName $hypervServer -VMName $vmName -ErrorAction SilentlyContinue
+          $partitionable = Get-VMHostPartitionableGpu -ComputerName $hypervServer -ErrorAction SilentlyContinue
+          $receiptStat = Get-Item -LiteralPath $receiptPath -ErrorAction SilentlyContinue
+
+          $result = [ordered]@{
+            hyperv_server = $hypervServer
+            vm_name = $vmName
+            policy = $policy
+            partition_adapter = if ($adapter) { @{
+              MinPartitionVRAM = $adapter.MinPartitionVRAM
+              MaxPartitionVRAM = $adapter.MaxPartitionVRAM
+              OptimalPartitionVRAM = $adapter.OptimalPartitionVRAM
+            } } else { $null }
+            partitionable_gpu_count = @($partitionable).Count
+            publish_receipt_exists = [bool]$receiptStat
+            publish_receipt_last_write = if ($receiptStat) { $receiptStat.LastWriteTimeUtc.ToString('o') } else { $null }
+          }
+
+          $result | ConvertTo-Json -Depth 6 -Compress
+      register: _hyperv_ubuntu_gpu_p_windows_bundle
+      changed_when: false
+
+    - name: Write GPU-P Windows diagnostic bundle JSON
+      ansible.builtin.copy:
+        dest: "{{ _hyperv_ubuntu_gpu_p_command_dir }}/windows_host_probe.json"
+        content: "{{ _hyperv_ubuntu_gpu_p_windows_bundle.output[0] | default('{}') }}"
+        mode: "0644"
+      delegate_to: localhost
+
+- name: Write Hyper-V Ubuntu GPU-P troubleshooting notes
+  ansible.builtin.copy:
+    dest: "{{ _hyperv_ubuntu_gpu_p_notes_dir }}/README.txt"
+    mode: "0644"
+    content: |
+      Scenario: hyperv_ubuntu_gpu_p
+      Host: {{ inventory_hostname }}
+      Artifact root: {{ _hyperv_ubuntu_gpu_p_artifact_dir }}
+      VM name: {{ _hyperv_ubuntu_gpu_p_collector_vm_name }}
+      Reference: docs/reference/gpu-p-operational-contracts.md
+      Diagnostics: docs/lessons-learned/hyper-v-ubuntu-gpu/ReqSecDevAssign.md
+  delegate_to: localhost
+
+- name: Report Hyper-V Ubuntu GPU-P troubleshooting artifact location
+  ansible.builtin.debug:
+    msg:
+      artifact_root: "{{ _hyperv_ubuntu_gpu_p_artifact_dir }}"
+      command_dir: "{{ _hyperv_ubuntu_gpu_p_command_dir }}"
+      notes: "{{ _hyperv_ubuntu_gpu_p_notes_dir }}/README.txt"
+
+- name: Include GPU-P remediation receipt writer
+  ansible.builtin.include_tasks: hyperv_ubuntu_gpu_p_receipt.yml
+  tags:
+    - gpu_p_receipt

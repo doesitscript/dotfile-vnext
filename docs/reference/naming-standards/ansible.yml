@@ -40,7 +40,9 @@ playbook_tags:
   namespace_rule: "Ansible tags use underscores; NetBox tags use hyphens."
 
 inventory_patterns:
-  hostname_schema: "<tenant>-<environment>-<domain>-<role>-<idx>"
+  hostname_schema:
+    default: "<tenant>-<environment>-<domain>-<role>-<idx>"
+    physical_hyperv_windows_host: "<tenant>-<environment>-<role>-<idx>"
   imported_hostname_schema: "{tenant}-{env}-{site}-{role}-{seq##}"
   field_aliases:
     env: environment
@@ -75,13 +77,19 @@ schema_preflight:
   status: scaffolded
   preferred_entrypoint: playbooks/validate_naming_schema.yml
   fail_message_prefix: "SCHEMA VIOLATION"
-  regex: "^[a-z0-9]{2,3}-[a-z0-9]{2,3}-[a-z0-9]{2,3}-[a-z0-9]{2,3}-[0-9]{2}$"
+  regex: "^([a-z0-9]{2,3}-[a-z0-9]{2,3}-[a-z0-9]{2,3}-[a-z0-9]{2,3}-[0-9]{2}|[a-z0-9]{2,3}-[a-z0-9]{2,3}-[a-z0-9]{2,3}-[0-9]{2})$"
   segment_order:
-    - tenant
-    - environment
-    - domain
-    - role
-    - idx
+    default:
+      - tenant
+      - environment
+      - domain
+      - role
+      - idx
+    physical_hyperv_windows_host:
+      - tenant
+      - environment
+      - role
+      - idx
   imported_sources:
     - docs/intake/schema-design-proposal-netbox-ansible-context/ansible_provision_all.txt
     - docs/intake/schema-design-proposal-netbox-ansible-context/ansible_validate_schema.txt
@@ -110,7 +118,7 @@ homelab_hosts_file_web_catalog:
   group_vars: inventory/group_vars/all/homelab_hosts_file.yml
   sources:
     - k3s_traefik_routes_entries
-    - guest_published_tcp_ports on hom-lab-ctl-hvh-02
+    - guest_published_tcp_ports on hom-lab-hvh-02
     - guest_direct HTTP on hom-lab-ctl-dkr-02
   live_registry: live-object-registry.yml ingress_routes guest_portproxy_catalog
   note: DNS-3b SSOT for interim /etc/hosts web rows and curl verify matrix
@@ -127,11 +135,11 @@ homelab_hosts_file_mac:
 guest_published_tcp_ports:
   status: integrated
   variable: guest_published_tcp_ports
-  host_vars: inventory/host_vars/hom-lab-ctl-hvh-02.yaml
+  host_vars: inventory/host_vars/hom-lab-hvh-02.yaml
   name_pattern: "<runtime>-<product-or-purpose>[-<detail>]"
   integrated_examples:
     - name: k3s-traefik-http
-      purpose: K3s Traefik HTTP front door on hom-lab-ctl-hvh-02 LAN port 80
+      purpose: K3s Traefik HTTP front door on hom-lab-hvh-02 LAN port 80
     - name: langfuse-k3s
       purpose: Langfuse web UI NodePort fallback on hom-lab-ctl-k3s-02
     - name: litellm-k3s
@@ -161,7 +169,7 @@ model_catalog_manifest:
   variable: model_catalog_manifest
   group_vars: inventory/group_vars/model_catalog/manifest.yml
   registry_location: docs/reference/naming-standards/live-object-registry.yml model_catalog_entries
-  storage_root_unc: "\\\\hom-lab-ctl-hvh-01\\public\\models\\huggingface"
+  storage_root_unc: "\\\\hom-lab-hvh-01\\public\\models\\huggingface"
   status_enum:
     - pending_research
     - provisional_example

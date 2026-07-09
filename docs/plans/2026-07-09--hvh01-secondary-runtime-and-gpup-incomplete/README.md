@@ -2,7 +2,7 @@
 
 ## Summary
 
-Commission `hom-lab-ctl-hvh-01` as the first real secondary local-model host through a host-local Windows Ollama runtime, while keeping the shared LiteLLM and Langfuse control plane centralized on `hom-lab-ctl-k3s-02`.
+Commission `HOM-LAB-HVH-01` as the first real secondary local-model host through a host-local Windows Ollama runtime, while keeping the shared LiteLLM and Langfuse control plane centralized on `hom-lab-ctl-k3s-02`.
 
 This packet governs two related but intentionally unequal paths:
 
@@ -11,7 +11,7 @@ This packet governs two related but intentionally unequal paths:
 
 Current live truth captured for this packet:
 
-- `hom-lab-ctl-hvh-01` is a Windows Hyper-V host with `NVIDIA GeForce GTX 1060 6GB`.
+- `HOM-LAB-HVH-01` is a Windows Hyper-V host with `NVIDIA GeForce GTX 1060 6GB`.
 - `guest_gpu_capability.state` is currently `blocked`.
 - Current probe evidence on `2026-07-09` shows `IovSupport=False`, no partitionable GPU result, and `nvidia-smi` reporting NVML not found.
 - The live Hyper-V VM name for the future guest path is `nsrv-k3s-01`, while the inventory host remains `hom-lab-ctl-k3s-01`.
@@ -24,7 +24,7 @@ Current live truth captured for this packet:
 | Capability identifier | `hvh01_secondary_runtime_and_gpup_extension` |
 | Owner manifest | None; this packet spans existing AI runtime, gateway, and Hyper-V GPU-P surfaces |
 | Owned files | New Windows Ollama runtime role and role README, new hvh-01 deployment playbook, corrected hvh-01 GPU-P wrapper, LiteLLM lane updates, endpoint/validation/catalog/host-metadata updates, this governed packet |
-| Integration anchors | `inventory/host_vars/hom-lab-ctl-hvh-01.yaml`, `inventory/group_vars/model_catalog/manifest.yml`, `roles/k3s_litellm_gateway`, `roles/common/endpoint_verify`, `playbooks/deploy_hvh01_secondary_model_runtime.yaml`, `playbooks/validate_ai_inference_stack_contracts.yaml`, `playbooks/hyperv_ubuntu_gpu_p_runtime_artifact_pipeline_hvh01_k3s01.yaml` |
+| Integration anchors | `inventory/host_vars/HOM-LAB-HVH-01.yaml`, `inventory/group_vars/model_catalog/manifest.yml`, `roles/k3s_litellm_gateway`, `roles/common/endpoint_verify`, `playbooks/deploy_hvh01_secondary_model_runtime.yaml`, `playbooks/validate_ai_inference_stack_contracts.yaml`, `playbooks/hyperv_ubuntu_gpu_p_runtime_artifact_pipeline_hvh01_k3s01.yaml` |
 | Update behavior | Re-runnable host-local runtime convergence; re-runnable GPU-P evidence/probe path with explicit blocked outcome allowed |
 | Removal behavior | Remove the managed hvh-01 Ollama runtime, lane mapping, endpoint checks, and packet-owned metadata; leave central LiteLLM/Langfuse and the general GPU-P framework intact |
 
@@ -136,7 +136,7 @@ Current live truth captured for this packet:
 
 ```mermaid
 flowchart TD
-    A["hom-lab-ctl-hvh-01<br/>Windows host<br/>GTX 1060 6GB"] --> B["Host-local Ollama runtime<br/>qwen2.5-coder:3b"]
+    A["HOM-LAB-HVH-01<br/>Windows host<br/>GTX 1060 6GB"] --> B["Host-local Ollama runtime<br/>qwen2.5-coder:3b"]
     A --> C["Shared storage root<br/>F:\\shares\\public\\models\\ollama"]
     A --> D["GPU-P evidence/probe path<br/>existing hvh01_k3s01 wrapper"]
     D --> E["nsrv-k3s-01 guest path<br/>future/blocked-until-ready"]
@@ -174,7 +174,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A["Host class<br/>hom-lab-ctl-hvh-01"] --> B["Secondary local model host"]
+    A["Host class<br/>HOM-LAB-HVH-01"] --> B["Secondary local model host"]
     B --> C["Runtime slug<br/>ollama-secondary-hvh-01"]
 
     D["Client-facing lane"] --> E["code-review"]
@@ -189,7 +189,7 @@ flowchart LR
 
 ## Test Plan
 
-- Verify `hom-lab-ctl-hvh-01` host metadata records:
+- Verify `HOM-LAB-HVH-01` host metadata records:
   - `gpu: gtx-1060-6gb`
   - blocked guest GPU capability
   - the new secondary runtime contract fields
@@ -229,23 +229,23 @@ Current verification state:
   - `playbooks/validate_ai_inference_stack_contracts.yaml`
   - `playbooks/hyperv_ubuntu_gpu_p_runtime_artifact_pipeline_hvh01_k3s01.yaml`
 - YAML structure checked for the new `windows_ollama_runtime` role files.
-- First live apply attempt on `2026-07-09` reached the repo-managed NVIDIA driver stage and triggered a host reboot on `hom-lab-ctl-hvh-01`.
+- First live apply attempt on `2026-07-09` reached the repo-managed NVIDIA driver stage and triggered a host reboot on `HOM-LAB-HVH-01`.
 - That run failed in `llm_compute_windows` during handler `Reboot after NVIDIA Studio Driver install` with:
   - `Timed out waiting for last boot time check (timeout=600.0)`
 - Immediate post-failure host reachability checks showed:
   - `192.168.50.234`: host down
   - `192.168.50.233`: host down
 - Repo-side mitigation applied after that run:
-  - `llm_compute_windows_reboot_timeout` raised to `1200` in `inventory/host_vars/hom-lab-ctl-hvh-01.yaml`
+  - `llm_compute_windows_reboot_timeout` raised to `1200` in `inventory/host_vars/HOM-LAB-HVH-01.yaml`
 - Live deployment and runtime receipt are still pending after host recovery:
-  - Windows Ollama install/start on `hom-lab-ctl-hvh-01`
+  - Windows Ollama install/start on `HOM-LAB-HVH-01`
   - central LiteLLM routing to the hvh-01 Ollama backend
   - endpoint health through the real network path
   - GPU-P hvh-01 evidence slice rerun after the host is reachable again
 
 ## Sources Checked
 
-- `inventory/host_vars/hom-lab-ctl-hvh-01.yaml`
+- `inventory/host_vars/HOM-LAB-HVH-01.yaml`
 - `inventory/group_vars/model_catalog/manifest.yml`
 - `roles/k3s_litellm_gateway/defaults/main.yml`
 - `playbooks/hyperv_ubuntu_gpu_p_runtime_artifact_pipeline_hvh01_k3s01.yaml`

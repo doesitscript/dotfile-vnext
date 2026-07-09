@@ -37,7 +37,7 @@ node_capabilities:
 Example host vars:
 
 host_kind: vm
-parent_hypervisor: hom-lab-ctl-hvh-02
+parent_hypervisor: HOM-LAB-HVH-02
 
 workload_runtime:
   type: k3s

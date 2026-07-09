@@ -11,7 +11,7 @@ flowchart LR
     Preview["Hybrid preview\nartifacts/netbox-service-inventory/latest.json"]
     NetBox["Live NetBox service objects"]
 
-    subgraph HVH01["hom-lab-ctl-hvh-01 lane"]
+    subgraph HVH01["HOM-LAB-HVH-01 lane"]
       DKR01["hom-lab-ctl-dkr-01\nDocker VM 192.168.138.10"]
       K3S01["hom-lab-ctl-k3s-01\nK3s VM 192.168.138.11"]
 

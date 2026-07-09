@@ -16,8 +16,10 @@ Agents must **not** assume WSL, `wsl.exe`, `bash.exe`, or `*-wsl` inventory name
 | inventory_hostname | primary_connection | Typical target | Notes |
 |------------------|-------------------|----------------|-------|
 | `mac-dev` | local | Joshs-MBP | Ansible controller / execution node |
-| `hom-lab-ctl-hvh-02` | ssh | `192.168.50.158` | Windows OpenSSH; WinRM secondary |
-| `hom-lab-ctl-hvh-01` | ssh | `192.168.50.234` | Storage lane Windows |
+| `hom-lab-hvh-02` | ssh | `192.168.50.158` | Windows OpenSSH; WinRM secondary |
+| `hom-lab-hvh-02-guest-gw` | ssh | `192.168.137.1` | Guest-switch gateway fallback when LAN SSH is refused |
+| `hom-lab-hvh-02-ipv6` | ssh | ULA (see hosts_mapping) | IPv6 fallback when IPv4 path fails |
+| `hom-lab-hvh-01` | ssh | `192.168.50.234` | Storage lane Windows |
 | `hom-lab-ctl-dkr-02` | ssh | guest `.137.10` | Hyper-V Ubuntu VM; ProxyJump via hvh-02 if needed |
 | `hom-lab-ctl-k3s-02` | ssh | guest `.137.11` | K3s VM |
 | `dev-3090-win` | (deferred) | — | Interactive desktop; not in default deploy scope |
@@ -26,16 +28,16 @@ Full fields: `inventory/hosts_mapping.yaml`.
 
 ## Controller SSH aliases
 
-Prefer inventory hostname in `~/.ssh/config` (e.g. `hom-lab-ctl-hvh-02`), with `HostName` set to **ansible_connect_target** from hosts_mapping — not legacy NetBIOS names that fail DNS from the Mac.
+Prefer inventory hostname in `~/.ssh/config` (e.g. `hom-lab-hvh-02`), with `HostName` set to **ansible_connect_target** from hosts_mapping — not legacy NetBIOS names that fail DNS from the Mac.
 
 ## Service Publication Preference
 
 For storage-lane runtime services that are meant to be consumed across the LAN,
 the canonical client path is the Windows-published surface on
-`hom-lab-ctl-hvh-01` (`192.168.50.234`), not the guest-direct `192.168.138.x`
+`hom-lab-hvh-01` (`192.168.50.234`), not the guest-direct `192.168.138.x`
 address. The active shared contract lives in
 `inventory/group_vars/all/fuzlang_external_services.yml`, and the publication
-mechanism lives in `inventory/host_vars/hom-lab-ctl-hvh-01.yaml` under
+mechanism lives in `inventory/host_vars/hom-lab-hvh-01.yaml` under
 `hyperv_config.guest_published_tcp_ports`.
 
 Use guest-direct `192.168.138.x` only for controller/host management, guest

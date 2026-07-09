@@ -58,7 +58,7 @@ commissioned on `hom-lab-ctl-k3s-02`.
 ## Follow-up blocker to resolve
 
 - The immediate missing prerequisite is on the Hyper-V host, not inside the
-  Ubuntu guest. `Get-VMHost` on `hom-lab-ctl-hvh-02` currently reports
+  Ubuntu guest. `Get-VMHost` on `HOM-LAB-HVH-02` currently reports
   `IovSupport=False` with BIOS/PCIe ACS reasons, so GPU partition startup fails
   before guest-side NVIDIA packages can matter.
 - Repo work completed in this slice:
@@ -69,7 +69,7 @@ commissioned on `hom-lab-ctl-k3s-02`.
     `runtimeClassName: nvidia`
 - Remaining external prerequisite:
   - enable the required BIOS/PCIe SR-IOV/ACS support on the physical Hyper-V
-    platform backing `hom-lab-ctl-hvh-02`, or move the GPU lane to hardware
+    platform backing `HOM-LAB-HVH-02`, or move the GPU lane to hardware
     that exposes supported GPU partition prerequisites
 - Once that host prerequisite is satisfied:
   - re-run `playbooks/deploy_gpu_infrastructure.yaml`

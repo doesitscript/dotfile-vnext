@@ -209,6 +209,117 @@
     - evidence
     - debug_resources
 
+- name: Probe live publish surface before guest published TCP convergence
+  ansible.builtin.include_tasks: published_port_surface_probe.yml
+  when:
+    - (_hyperv.guest_published_tcp_ports | default([])) | length > 0
+    - (_hyperv.guest_published_tcp_ports_state | default('present')) == 'present'
+
+- name: Attempt Hyper-V management IPv4 recovery when published listen addresses are missing
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $scriptPath = 'C:\ProgramData\Ansible\hyperv_networking\scripts\management_os_boot_recovery.ps1'
+      if (-not (Test-Path $scriptPath)) {
+        throw "Hyper-V management OS recovery script missing at $scriptPath"
+      }
+
+      $output = & $scriptPath `
+        -ExpectedIPv4 '{{ host_ip }}' `
+        -TaskName HyperVManagementOsBootRecovery `
+        -TaskPath '\Ansible\HyperV\' 2>&1 | Out-String
+
+      $Ansible.Changed = $true
+      $Ansible.Result = @{
+        expected_host_ip = '{{ host_ip }}'
+        output = $output.Trim()
+      }
+  register: _hyperv_management_ip_recovery
+  when:
+    - (_hyperv.guest_published_tcp_ports | default([])) | length > 0
+    - (_hyperv.guest_published_tcp_ports_state | default('present')) == 'present'
+    - (host_ip | default('')) | length > 0
+    - hyperv_networking_management_ip_recovery_enabled | bool
+    - (_hyperv_published_port_surface.result.missing_listen_addresses | default([])) | length > 0
+
+- name: Re-probe live publish surface after management IPv4 recovery
+  ansible.builtin.include_tasks: published_port_surface_probe.yml
+  when:
+    - _hyperv_management_ip_recovery is changed
+
+- name: Ensure expected management IPv4 exists on the public interface
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $publicAlias = '{{ _hyperv_routed_public_adapter_alias }}'
+      $expectedIp = '{{ host_ip }}'
+      $Ansible.Changed = $false
+
+      $current = Get-NetIPAddress -InterfaceAlias $publicAlias -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+        Where-Object { $_.IPAddress -eq $expectedIp } |
+        Select-Object -First 1
+
+      if (-not $current) {
+        $existingPublic = Get-NetIPAddress -InterfaceAlias $publicAlias -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+          Where-Object {
+            $_.IPAddress -notlike '169.254.*' -and
+            $_.IPAddress -ne '127.0.0.1'
+          } |
+          Select-Object -First 1
+
+        $prefixLength = if ($existingPublic) { $existingPublic.PrefixLength } else { 24 }
+
+        New-NetIPAddress `
+          -InterfaceAlias $publicAlias `
+          -IPAddress $expectedIp `
+          -PrefixLength $prefixLength `
+          -Type Unicast `
+          -ErrorAction Stop | Out-Null
+
+        $Ansible.Changed = $true
+      }
+
+      $final = Get-NetIPAddress -InterfaceAlias $publicAlias -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+        Select-Object InterfaceAlias,IPAddress,PrefixLength
+
+      $Ansible.Result = @{
+        public_interface = $publicAlias
+        expected_host_ip = $expectedIp
+        live_public_interface_ipv4 = @($final | ForEach-Object { $_.IPAddress })
+      }
+  register: _hyperv_management_ip_alias
+  when:
+    - (_hyperv.guest_published_tcp_ports | default([])) | length > 0
+    - (_hyperv.guest_published_tcp_ports_state | default('present')) == 'present'
+    - (host_ip | default('')) | length > 0
+    - (_hyperv_published_port_surface.result.missing_listen_addresses | default([])) | length > 0
+  vars:
+    _hyperv_routed_public_adapter_alias: >-
+      {{
+        _hyperv.internal_ics_public_adapter_name
+        | default(_hyperv.adapter_name | default('Wi-Fi'))
+      }}
+
+- name: Re-probe live publish surface after management IPv4 alias convergence
+  ansible.builtin.include_tasks: published_port_surface_probe.yml
+  when:
+    - _hyperv_management_ip_alias is changed
+
+- name: Require guest published listen addresses to exist on the Windows host
+  ansible.builtin.assert:
+    that:
+      - (_hyperv_published_port_surface.result.missing_listen_addresses | default([])) | length == 0
+    fail_msg: >-
+      Missing guest published listen addresses on {{ inventory_hostname }} before
+      portproxy convergence: {{
+        _hyperv_published_port_surface.result.missing_listen_addresses | default([])
+      }}. Live IPv4 addresses: {{
+        _hyperv_published_port_surface.result.live_all_ipv4 | default([])
+      }}.
+  when:
+    - (_hyperv.guest_published_tcp_ports | default([])) | length > 0
+    - (_hyperv.guest_published_tcp_ports_state | default('present')) == 'present'
+
 - name: Ensure IP Helper service is enabled for guest published TCP ports
   ansible.windows.win_service:
     name: iphlpsvc

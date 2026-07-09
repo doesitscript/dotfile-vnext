@@ -32,7 +32,7 @@ Current client-facing lanes declared in the gateway contract:
 | --- | --- | --- |
 | `code-deep` | enabled | primary local `vLLM` |
 | `experiment` | enabled | primary local `vLLM` |
-| `code-review` | enabled | secondary local `Ollama` on `hom-lab-ctl-hvh-01` |
+| `code-review` | enabled | secondary local `Ollama` on `hom-lab-hvh-01` |
 | `code-fast` | blocked | pending |
 | `code-test` | blocked | pending |
 | `ripi-private` | blocked | pending |

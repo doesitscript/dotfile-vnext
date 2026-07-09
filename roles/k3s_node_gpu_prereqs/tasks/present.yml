@@ -1,10 +1,24 @@
 ---
+- name: Probe NVIDIA userspace on K3s node via WSL DriverStore path for GPU-P guests
+  ansible.builtin.command:
+    argv:
+      - /usr/lib/wsl/lib/nvidia-smi
+      - -L
+  environment:
+    PATH: "/usr/lib/wsl/lib:{{ ansible_env.PATH | default('/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin') }}"
+    LD_LIBRARY_PATH: /usr/lib/wsl/lib
+  register: _k3s_node_gpu_prereqs_nvidia_smi
+  changed_when: false
+  failed_when: false
+  when: (gpu_contract.passthrough_mode | default('')) == 'gpu_p'
+
 - name: Probe NVIDIA userspace on K3s node
   ansible.builtin.command:
     cmd: nvidia-smi -L
   register: _k3s_node_gpu_prereqs_nvidia_smi
   changed_when: false
   failed_when: false
+  when: (gpu_contract.passthrough_mode | default('')) != 'gpu_p'
 
 - name: Probe PCI NVIDIA devices on K3s node
   ansible.builtin.shell: |
@@ -57,5 +71,7 @@
     fail_msg: >-
       K3s GPU prerequisites are not ready for vLLM. The node must expose
       nvidia-smi and advertise {{ k3s_node_gpu_prereqs_expected_resource }}
-      capacity before vLLM runtime deployment.
+      capacity before vLLM runtime deployment. When gpu_contract.passthrough_mode
+      is gpu_p, fix userspace in roles/hyperv_ubuntu_gpu_p_linux_guest_runtime
+      and toolkit in roles/k3s_nvidia_runtime before roles/k3s_nvidia_device_plugin.
     success_msg: "K3s GPU prerequisites are ready for vLLM runtime deployment."

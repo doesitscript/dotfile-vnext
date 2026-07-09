@@ -42,7 +42,7 @@ graph TB
   end
 
   subgraph hyperv [Hyper-V lane today]
-    hvh[hom-lab-ctl-hvh-01/02]
+    hvh[HOM-LAB-HVH-01/02]
     dkr[hom-lab-ctl-dkr-01/02]
     k3s[hom-lab-ctl-k3s-01/02]
   end
@@ -178,7 +178,7 @@ Today that logic lives in **Ansible variables and docs**, not as queryable NetBo
 
 | Custom object type | Purpose | Example row |
 |--------------------|---------|-------------|
-| `PortproxyEndpoint` | Document Windows `netsh portproxy` rows not native in NetBox | `netbox` → `192.168.50.158:8000` → guest `192.168.137.10:8000` on `hom-lab-ctl-hvh-02` |
+| `PortproxyEndpoint` | Document Windows `netsh portproxy` rows not native in NetBox | `netbox` → `192.168.50.158:8000` → guest `192.168.137.10:8000` on `HOM-LAB-HVH-02` |
 | `ServiceIdentity` | Hold L4 `logical_service_hostname` before Phase 2 custom field lands | `hom-lab-ctl-nbx-01` for service slug `netbox-web` |
 | `GpuWorkloadProfile` | Tie 5090 / vLLM intent to a host | profile `inference-70b` on future edge GPU host |
 | `AnsibleCapability` | Map repo capability to NetBox scope | `ipam_netbox` ↔ tag `ansible-managed` + playbook `deploy_ipam_netbox.yaml` |
@@ -212,8 +212,8 @@ The **Attachments** plugin adds **file uploads** to NetBox objects (devices, VMs
 
 | Object | Attachment | Why |
 |--------|------------|-----|
-| `hom-lab-ctl-hvh-02` (device) | PDF export of Hyper-V virtual switch diagram | Field tech view from NetBox |
-| `hom-lab-ctl-hvh-02` | `hyper-v-portproxy` troubleshooting excerpt | Link runbook to the host that owns portproxy |
+| `HOM-LAB-HVH-02` (device) | PDF export of Hyper-V virtual switch diagram | Field tech view from NetBox |
+| `HOM-LAB-HVH-02` | `hyper-v-portproxy` troubleshooting excerpt | Link runbook to the host that owns portproxy |
 | `hom-lab-ctl-dkr-02` | `docker compose config` snapshot after NetBox deploy | Drift reference |
 | `hom-lab-ctl-k3s-02` | Traefik / ingress screenshot or YAML | Service debugging |
 | Site `homelab` | Rack photo or floor plan (if you model physical) | DCIM completeness |

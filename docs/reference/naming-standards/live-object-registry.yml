@@ -50,7 +50,7 @@ naming_layers:
     note: Lane groups (hyperv_lane_*) are not NetBox objects
 
 live_hosts:
-  hom-lab-ctl-hvh-01:
+  hom-lab-hvh-01:
     object_type: device
     role_code: hvh
     platform_slug: windows-server-2025
@@ -63,15 +63,15 @@ live_hosts:
     primary_lan_ip: "192.168.50.234"
     guest_subnet: 192.168.138.0/24
     lane_group: hyperv_lane_storage
-    physical_node: hom-lab-ctl-hvh-01
-    os_hostname: AI-NET-SERVER
+    physical_node: hom-lab-hvh-01
+    os_hostname: hom-lab-hvh-01
     router_hostname: ai-net-server-mgmt
     ansible_connect_target: "192.168.50.234"
     connection_profile: ssh_primary_winrm_fallback
     netbox_status: active
-    host_vars: inventory/host_vars/hom-lab-ctl-hvh-01.yaml
+    host_vars: inventory/host_vars/hom-lab-hvh-01.yaml
 
-  hom-lab-ctl-hvh-02:
+  hom-lab-hvh-02:
     object_type: device
     role_code: hvh
     platform_slug: windows-server-2025
@@ -79,27 +79,27 @@ live_hosts:
     primary_lan_ip: "192.168.50.158"
     guest_subnet: 192.168.137.0/24
     lane_group: hyperv_lane_gpu
-    physical_node: hom-lab-ctl-hvh-02
-    os_hostname: DESKTOP-VLLM
+    physical_node: hom-lab-hvh-02
+    os_hostname: hom-lab-hvh-02
     ansible_connect_target: "192.168.50.158"
     connection_profile: ssh_primary_winrm_fallback
     netbox_status: active
-    host_vars: inventory/host_vars/hom-lab-ctl-hvh-02.yaml
+    host_vars: inventory/host_vars/hom-lab-hvh-02.yaml
 
   hom-lab-ctl-dkr-01:
     object_type: virtual_machine
     role_code: dkr
     platform_slug: ubuntu-24-04
-    cluster: hom-lab-ctl-hvh-01
-    hyperv_host: hom-lab-ctl-hvh-01
+    cluster: hom-lab-hvh-01
+    hyperv_host: hom-lab-hvh-01
     os_hostname: nsrv-dkr-01
     hyperv_vm_name: nsrv-dkr-01
     guest_ip: "192.168.138.10"
     guest_subnet: 192.168.138.0/24
     lane_group: hyperv_lane_storage
-    physical_node: hom-lab-ctl-hvh-01
+    physical_node: hom-lab-hvh-01
     ansible_connect_target: "192.168.138.10"
-    ssh_proxy_jump_host: hom-lab-ctl-hvh-01
+    ssh_proxy_jump_host: hom-lab-hvh-01
     connection_profile: ssh_guest_via_jump
     netbox_status: active
     host_vars: inventory/host_vars/hom-lab-ctl-dkr-01.yaml
@@ -108,14 +108,14 @@ live_hosts:
     object_type: virtual_machine
     role_code: dkr
     platform_slug: ubuntu-24-04
-    cluster: hom-lab-ctl-hvh-02
-    hyperv_host: hom-lab-ctl-hvh-02
+    cluster: hom-lab-hvh-02
+    hyperv_host: hom-lab-hvh-02
     guest_ip: "192.168.137.10"
     guest_subnet: 192.168.137.0/24
     lane_group: hyperv_lane_gpu
-    physical_node: hom-lab-ctl-hvh-02
+    physical_node: hom-lab-hvh-02
     ansible_connect_target: "192.168.137.10"
-    ssh_proxy_jump_host: hom-lab-ctl-hvh-02
+    ssh_proxy_jump_host: hom-lab-hvh-02
     connection_profile: ssh_guest_via_jump
     netbox_status: active
     host_vars: inventory/host_vars/hom-lab-ctl-dkr-02.yaml
@@ -124,16 +124,16 @@ live_hosts:
     object_type: virtual_machine
     role_code: k3s
     platform_slug: ubuntu-24-04
-    cluster: hom-lab-ctl-hvh-01
-    hyperv_host: hom-lab-ctl-hvh-01
+    cluster: hom-lab-hvh-01
+    hyperv_host: hom-lab-hvh-01
     os_hostname: nsrv-k3s-01
     hyperv_vm_name: nsrv-k3s-01
     guest_ip: "192.168.138.11"
     guest_subnet: 192.168.138.0/24
     lane_group: hyperv_lane_storage
-    physical_node: hom-lab-ctl-hvh-01
+    physical_node: hom-lab-hvh-01
     ansible_connect_target: "192.168.138.11"
-    ssh_proxy_jump_host: hom-lab-ctl-hvh-01
+    ssh_proxy_jump_host: hom-lab-hvh-01
     connection_profile: ssh_guest_via_jump
     netbox_status: active
     host_vars: inventory/host_vars/hom-lab-ctl-k3s-01.yaml
@@ -142,28 +142,28 @@ live_hosts:
     object_type: virtual_machine
     role_code: k3s
     platform_slug: ubuntu-24-04
-    cluster: hom-lab-ctl-hvh-02
-    hyperv_host: hom-lab-ctl-hvh-02
+    cluster: hom-lab-hvh-02
+    hyperv_host: hom-lab-hvh-02
     guest_ip: "192.168.137.11"
     guest_subnet: 192.168.137.0/24
     lane_group: hyperv_lane_gpu
-    physical_node: hom-lab-ctl-hvh-02
+    physical_node: hom-lab-hvh-02
     ansible_connect_target: "192.168.137.11"
-    ssh_proxy_jump_host: hom-lab-ctl-hvh-02
+    ssh_proxy_jump_host: hom-lab-hvh-02
     connection_profile: ssh_guest_via_jump
     netbox_status: staged
     host_vars: inventory/host_vars/hom-lab-ctl-k3s-02.yaml
 
 live_clusters:
-  hom-lab-ctl-hvh-01:
+  hom-lab-hvh-01:
     render_pattern: "<device_name>"
-    parent_device: hom-lab-ctl-hvh-01
+    parent_device: hom-lab-hvh-01
     cluster_type_slug: hyperv
     site_slug: homelab
     guest_subnet: 192.168.138.0/24
-  hom-lab-ctl-hvh-02:
+  hom-lab-hvh-02:
     render_pattern: "<device_name>"
-    parent_device: hom-lab-ctl-hvh-02
+    parent_device: hom-lab-hvh-02
     cluster_type_slug: hyperv
     site_slug: homelab
     guest_subnet: 192.168.137.0/24
@@ -175,11 +175,11 @@ ipam_prefixes:
     association: lan_management
   - prefix: 192.168.138.0/24
     site_slug: homelab
-    description: hom-lab-ctl-hvh-01 Hyper-V guest routed private subnet
+    description: hom-lab-hvh-01 Hyper-V guest routed private subnet
     association: hyperv_lane_storage
   - prefix: 192.168.137.0/24
     site_slug: homelab
-    description: hom-lab-ctl-hvh-02 Hyper-V guest routed private subnet
+    description: hom-lab-hvh-02 Hyper-V guest routed private subnet
     association: hyperv_lane_gpu
 
 config_contexts:
@@ -289,7 +289,7 @@ service_identities:
       service_code: min
 ingress_routes:
   parent_vm: hom-lab-ctl-k3s-02
-  lan_publish_device: hom-lab-ctl-hvh-02
+  lan_publish_device: hom-lab-hvh-02
   lan_publish_ip: "192.168.50.158"
   registry_variable: k3s_traefik_routes_entries
   routes:
@@ -339,7 +339,7 @@ guest_direct_operator_services:
       windows_hosts_enabled: true
 
 guest_portproxy_catalog:
-  host: hom-lab-ctl-hvh-02
+  host: hom-lab-hvh-02
   entries:
     - name: k3s-traefik-http
       listen_ip: "192.168.50.158"
@@ -418,7 +418,7 @@ model_lanes:
       purpose: critique, risk finding, test review
       routing_policy: local-secondary-review
       primary_guest: null
-      primary_host: hom-lab-ctl-hvh-01
+      primary_host: hom-lab-hvh-01
       catalog_lane: code-review
       status: selected_secondary_runtime
     - slug: code-test
@@ -468,8 +468,8 @@ model_catalog_entries:
   status: candidate
   source_plan: docs/plans/2026-05-29--ai-model-catalog-hf-storage-incomplete-wip/README.md
   manifest: inventory/group_vars/model_catalog/manifest.yml
-  storage_host: hom-lab-ctl-hvh-01
-  storage_root_unc: "\\\\hom-lab-ctl-hvh-01\\public\\models\\huggingface"
+  storage_host: hom-lab-hvh-01
+  storage_root_unc: "\\\\hom-lab-hvh-01\\public\\models\\huggingface"
   entries:
     - lane: code-deep
       status: pending_research
@@ -506,21 +506,21 @@ ansible_inventory_groups:
   hyperv_lane_gpu:
     group_kind: lane
     members:
-      - hom-lab-ctl-hvh-02
+      - hom-lab-hvh-02
       - hom-lab-ctl-dkr-02
     group_vars: inventory/group_vars/hyperv_lane_gpu/
   hyperv_lane_storage:
     group_kind: lane
     members:
-      - hom-lab-ctl-hvh-01
+      - hom-lab-hvh-01
       - hom-lab-ctl-dkr-01
       - hom-lab-ctl-k3s-01
     group_vars: inventory/group_vars/hyperv_lane_storage/
   windows_hosts:
     group_kind: capability
     members:
-      - hom-lab-ctl-hvh-01
-      - hom-lab-ctl-hvh-02
+      - hom-lab-hvh-01
+      - hom-lab-hvh-02
   linux_vm_hosts:
     group_kind: capability
     members:
@@ -622,7 +622,7 @@ candidates:
 # Retired names — quarantine only. Do not copy into live_hosts or examples.
 retired_aliases:
   - retired: server-225
-    replacement: hom-lab-ctl-hvh-02
+    replacement: hom-lab-hvh-02
     object_type: device
     also_maps_to_group: hyperv_lane_gpu
     retired_reason: legacy physical node label for GPU lane
@@ -657,7 +657,7 @@ retired_aliases:
       - live_hosts
 
   - retired: network-server
-    replacement: hom-lab-ctl-hvh-01
+    replacement: hom-lab-hvh-01
     object_type: device
     also_maps_to_group: hyperv_lane_storage
     retired_reason: legacy Windows control host name
@@ -669,7 +669,7 @@ retired_aliases:
       - inventory_host_keys
 
   - retired: network-server-win
-    replacement: hom-lab-ctl-hvh-01
+    replacement: hom-lab-hvh-01
     object_type: inventory_host
     retired_reason: retired inventory host key; enforced by validate_netbox_repo_consistency.sh
     allowed_in:
@@ -680,7 +680,7 @@ retired_aliases:
       - inventory/host_vars
 
   - retired: server-225-hyperv
-    replacement: hom-lab-ctl-hvh-02
+    replacement: hom-lab-hvh-02
     object_type: cluster
     retired_reason: legacy NetBox cluster slug
     allowed_in:
@@ -720,7 +720,7 @@ retired_aliases:
       - render_examples
 
   - retired: home-lab-auth-hvh-01
-    replacement: hom-lab-ctl-hvh-01
+    replacement: hom-lab-hvh-01
     object_type: device
     retired_reason: pre-compact-schema device name
     allowed_in:
@@ -730,7 +730,7 @@ retired_aliases:
       - live_hosts
 
   - retired: home-lab-auth-hvh-02
-    replacement: hom-lab-ctl-hvh-02
+    replacement: hom-lab-hvh-02
     object_type: device
     retired_reason: pre-compact-schema device name
     allowed_in:
@@ -739,7 +739,7 @@ retired_aliases:
       - live_hosts
 
   - retired: exec-hvh-01
-    replacement: hom-lab-ctl-hvh-02
+    replacement: hom-lab-hvh-02
     object_type: device
     retired_reason: interim migration alias in ipam_netbox device_name_migrations
     allowed_in:
@@ -749,7 +749,7 @@ retired_aliases:
       - live_hosts
 
   - retired: primary-hvh-01
-    replacement: hom-lab-ctl-hvh-01
+    replacement: hom-lab-hvh-01
     object_type: device
     retired_reason: interim migration alias
     allowed_in:

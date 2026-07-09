@@ -182,7 +182,7 @@ graph LR
     llm_code[service_code llm]
     vlm_code[service_code vlm]
     lfs_code[service_code lfs]
-    hosts[hom-lab-ctl-hvh-02 hom-lab-ctl-hvh-01]
+    hosts[HOM-LAB-HVH-02 HOM-LAB-HVH-01]
   end
 
   ml --> litellm_name[model_name code-deep]
@@ -229,7 +229,7 @@ NetBox is **first-class** on this program: every child plan with `netbox_scope: 
 | D-1 | ripi-private vs Notion MCP | gaps plan, litellm | open |
 | D-2 | code-fast local vs Gemini default | litellm router | open |
 | D-3 | Langfuse/MinIO placement k3s-02 vs hvh-01 | langfuse, catalog | open |
-| D-4 | HF share path on hvh-01 | catalog, vllm | closed/applied: `F:\shares\public\models\huggingface` on `hom-lab-ctl-hvh-01` |
+| D-4 | HF share path on hvh-01 | catalog, vllm | closed/applied: `F:\shares\public\models\huggingface` on `HOM-LAB-HVH-01` |
 
 ## Operator decisions already made
 

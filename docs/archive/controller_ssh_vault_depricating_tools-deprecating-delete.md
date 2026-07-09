@@ -12,7 +12,7 @@ The **server-225 win Ansible bootstrap** creates and stores the controller SSH k
 
 Run the local bootstrap (creates the key and stores it in the vault):
 
-- **`./bin/fz bootstrap --limit hom-lab-ctl-hvh-02`**  
+- **`./bin/fz bootstrap --limit HOM-LAB-HVH-02`**  
   Or as part of full server-225 bootstrap: **`.\bin\bootstrap-ansible-local.ps1`** (which runs the above inside WSL).
 
 If **`vault/controller_ssh.vault.yml`** does not exist, Ansible generates an ed25519 key pair, installs the public key into that node’s `authorized_keys`, and writes the private and public keys into **`vault/controller_ssh.vault.yml`** (encrypted). If the vault already exists, it just installs the public key from it.

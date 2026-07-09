@@ -46,7 +46,7 @@ Do not use when:
 |--------|--------|-----------------|
 | `vendor_docs` | `vendors/` | captures, README, metadata, page indexes |
 | `sdk_api_context` | `sdk-context/` | Context7 shards, API notes |
-| `library_indexes` | `indexes/` | crosswalk, cross-check, routing README |
+| `library_indexes` | `indexes/` | crosswalk, cross-check, capture backlog, routing README |
 | `operator_prompts` | `prompts/` | runbooks, kickoff prompts |
 
 ## Defaults (contract-level)
@@ -54,7 +54,7 @@ Do not use when:
 When `vendor_docs` + `context7_required`:
 
 - declare `library_indexes` in `content_families`
-- require `indexes/<entry>/` (README, crosswalk, cross-check)
+- require `indexes/<entry>/` (README, crosswalk, cross-check, capture backlog)
 - run Firecrawl ↔ Context7 cross-check on every priority page
 - Context7 primary for OpenAPI/Swagger; fetch mirror optional
 

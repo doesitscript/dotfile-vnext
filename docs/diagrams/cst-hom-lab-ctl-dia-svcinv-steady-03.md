@@ -12,8 +12,8 @@ flowchart TB
       StackRole["stacks_fuzlang_net\ncompose + env contract"]
     end
 
-    subgraph StorageLane["hom-lab-ctl-hvh-01 storage lane"]
-      HVH["hom-lab-ctl-hvh-01\nWindows Hyper-V host"]
+    subgraph StorageLane["HOM-LAB-HVH-01 storage lane"]
+      HVH["HOM-LAB-HVH-01\nWindows Hyper-V host"]
       DKR["hom-lab-ctl-dkr-01\nDocker VM 192.168.138.10"]
       K3S["hom-lab-ctl-k3s-01\nK3s VM 192.168.138.11"]
 

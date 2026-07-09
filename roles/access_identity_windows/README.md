@@ -40,14 +40,14 @@ Current preferred path:
 
 ```bash
 .venv/bin/ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml \
-  --limit 'execution_nodes,hom-lab-ctl-hvh-02'
+  --limit 'execution_nodes,hom-lab-hvh-02'
 ```
 
 For Windows-only OpenSSH work:
 
 ```bash
 .venv/bin/ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml \
-  --limit hom-lab-ctl-hvh-02 --tags admin
+  --limit hom-lab-hvh-02 --tags admin
 ```
 
 ## Verification
@@ -59,13 +59,13 @@ After a successful run:
 - Direct SSH from the Mac should work:
 
 ```bash
-ssh hom-lab-ctl-hvh-02
+ssh hom-lab-hvh-02
 ```
 
 PowerShell-only command check:
 
 ```bash
-ssh hom-lab-ctl-hvh-02 'Get-Location | Select-Object -ExpandProperty Path'
+ssh hom-lab-hvh-02 'Get-Location | Select-Object -ExpandProperty Path'
 ```
 
 Expected result: a Windows path such as `C:\Users\joshc`, not a Linux guest path.

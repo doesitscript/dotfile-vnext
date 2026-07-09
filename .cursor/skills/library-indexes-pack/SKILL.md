@@ -32,7 +32,8 @@ Do not use when:
 
 ## Required workflow
 
-1. Read `entry-spec.library_indexes` for `index_path` and declared outputs.
+1. Read declared `library_indexes` outputs plus `context7.crosswalk_index` and
+   `context7.firecrawl_cross_check` paths from `entry-spec.yml`.
 2. Build crosswalk from entry-spec page ids, Context7 topic shards, and repo anchors.
 3. Ensure `indexes/<entry>/README.md` lists:
    - vendor pack path

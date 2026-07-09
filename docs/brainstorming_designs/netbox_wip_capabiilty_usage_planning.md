@@ -16,7 +16,7 @@
 
 | Topic | Status |
 |---|---|
-| Compact host names in NetBox | **Done** — `hom-lab-ctl-hvh-01/02`, `hom-lab-ctl-dkr-01/02`, `hom-lab-ctl-k3s-01/02` seeded |
+| Compact host names in NetBox | **Done** — `HOM-LAB-HVH-01/02`, `hom-lab-ctl-dkr-01/02`, `hom-lab-ctl-k3s-01/02` seeded |
 | `ansible-managed` tag | **Done** for seeded Hyper-V lane hosts (6 in `nb_inventory`) |
 | Shadow / primary inventory | **Done** — `ansible.cfg` lists `inventory/netbox.yml` first; shadow proven |
 | Service objects (GPU lane) | **Done** — 9 services on dkr-02 / k3s-02 via `ipam_netbox_hom_lab_ctl_hvh_02_model` |

@@ -1,13 +1,13 @@
 # GPU Lane Topology
 
 This diagram shows the intended post-router-fix topology for the GPU Hyper-V
-lane on `hom-lab-ctl-hvh-02`.
+lane on `HOM-LAB-HVH-02`.
 
 ## Scope
 
 - `mac-dev`
 - LAN router
-- `hom-lab-ctl-hvh-02`
+- `HOM-LAB-HVH-02`
 - `hom-lab-ctl-dkr-02`
 - `hom-lab-ctl-k3s-02`
 - direct guest-IP paths
@@ -21,7 +21,7 @@ flowchart LR
     Router["LAN router\n192.168.50.1\nstatic route:\n192.168.137.0/24 via 192.168.50.158"]
 
     subgraph LAN["LAN 192.168.50.0/24"]
-      HVH["hom-lab-ctl-hvh-02\nHyper-V Windows host\nLAN: 192.168.50.158\nGuest GW: 192.168.137.1"]
+      HVH["HOM-LAB-HVH-02\nHyper-V Windows host\nLAN: 192.168.50.158\nGuest GW: 192.168.137.1"]
     end
 
     subgraph Guest["Hyper-V guest subnet 192.168.137.0/24"]
@@ -50,7 +50,7 @@ flowchart LR
 
 ## Key points
 
-- `hom-lab-ctl-hvh-02` is the forwarding point between the LAN and the guest
+- `HOM-LAB-HVH-02` is the forwarding point between the LAN and the guest
   subnet.
 - `hom-lab-ctl-dkr-02` and `hom-lab-ctl-k3s-02` keep their private guest IPs.
 - The upstream router route is what turns this from a Mac-only direct-route

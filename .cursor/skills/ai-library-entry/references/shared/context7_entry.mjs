@@ -131,15 +131,24 @@ function extractCrossCheckTerms(text) {
   const terms = new Set();
   const body = String(text || "");
   for (const match of body.matchAll(/`([^`]{2,80})`/g)) {
-    terms.add(match[1].toLowerCase().trim());
+    const term = match[1].toLowerCase().trim();
+    if (term) {
+      terms.add(term);
+    }
   }
   for (const match of body.matchAll(/^#+\s+(.+)$/gm)) {
-    terms.add(match[1].toLowerCase().trim());
+    const term = match[1].toLowerCase().trim();
+    if (term) {
+      terms.add(term);
+    }
   }
   for (const match of body.matchAll(
     /\b(config\.yaml|litellm_params|model_list|master_key|virtual[_ ]?key|openapi|swagger|\/v1\/[a-z0-9_/-]+|bearer|authorization)\b/gi,
   )) {
-    terms.add(match[1].toLowerCase().trim());
+    const term = match[1].toLowerCase().trim();
+    if (term) {
+      terms.add(term);
+    }
   }
   return terms;
 }
@@ -338,8 +347,18 @@ export function buildIndexesPackReadme({
   indexRoot,
   crosswalkPath,
   crossCheckPath,
+  backlogPath,
   collectedAt,
 }) {
+  const artifactLines = [
+    `- [doc-api-inventory-crosswalk.json](./${path.basename(crosswalkPath)}) — doc page ↔ OpenAPI ↔ inventory`,
+    `- [firecrawl-context7-crosscheck.json](./${path.basename(crossCheckPath)}) — per-page capture vs Context7 gaps`,
+  ];
+  if (backlogPath) {
+    artifactLines.push(
+      `- [capture-backlog.yml](./${path.basename(backlogPath)}) — pages needing thicker Firecrawl capture`,
+    );
+  }
   const content = [
     `# ${entryId} — library indexes`,
     "",
@@ -349,12 +368,11 @@ export function buildIndexesPackReadme({
     "",
     "## Artifacts",
     "",
-    `- [doc-api-inventory-crosswalk.json](./${path.basename(crosswalkPath)}) — doc page ↔ OpenAPI ↔ inventory`,
-    `- [firecrawl-context7-crosscheck.json](./${path.basename(crossCheckPath)}) — per-page capture vs Context7 gaps`,
+    ...artifactLines,
     "",
     "## Update rule",
     "",
-    "When adding vendor doc pages, OpenAPI paths, or inventory surfaces, update both JSON files in the same build slice.",
+    "When adding vendor doc pages, OpenAPI paths, or inventory surfaces, update the crosswalk, cross-check, and capture backlog in the same build slice.",
     "",
   ].join("\n");
   fs.mkdirSync(indexRoot, { recursive: true });
@@ -376,6 +394,103 @@ export function summarizeCrossCheck(pages) {
       (page.gap_notes || []).includes("low_term_overlap"),
     ).length,
   };
+}
+
+function yamlString(value) {
+  return JSON.stringify(String(value));
+}
+
+function backlogPriority(page) {
+  const notes = page.gap_notes || [];
+  if (
+    notes.includes("missing_firecrawl_capture") ||
+    notes.includes("firecrawl_capture_thinner_than_context7")
+  ) {
+    return "high";
+  }
+  return "medium";
+}
+
+function backlogCaptureMode(page) {
+  const notes = page.gap_notes || [];
+  if (
+    notes.includes("missing_firecrawl_capture") ||
+    notes.includes("firecrawl_capture_thinner_than_context7") ||
+    (page.context7_only_terms || []).length >= 10
+  ) {
+    return "markdown";
+  }
+  return "markdown";
+}
+
+function backlogActions(page) {
+  const notes = page.gap_notes || [];
+  const actions = [];
+  if (notes.includes("missing_firecrawl_capture")) {
+    actions.push("Create the missing Firecrawl capture for this page.");
+  }
+  if (notes.includes("low_term_overlap")) {
+    actions.push("Re-scrape with Firecrawl markdown instead of summary-only output.");
+  }
+  if (notes.includes("context7_has_terms_missing_from_firecrawl")) {
+    actions.push("Review Context7-only terms and thicken the vendor capture around those config/API concepts.");
+  }
+  if (notes.includes("firecrawl_capture_thinner_than_context7")) {
+    actions.push("Prefer a thicker Firecrawl markdown capture and consider a full capture if the page stays thin.");
+  }
+  if (notes.includes("missing_firecrawl_provenance")) {
+    actions.push("Normalize the vendor markdown with the required provenance header.");
+  }
+  if (actions.length === 0) {
+    actions.push("Inspect the cross-check entry and refresh the Firecrawl capture if needed.");
+  }
+  return actions;
+}
+
+export function buildCaptureBacklog({
+  entryId,
+  pages,
+  collectedAt,
+  crossCheckArtifact = "firecrawl-context7-crosscheck.json",
+}) {
+  const backlogPages = pages.filter((page) => page.status === "gaps_detected");
+  const lines = [
+    `generated_at: ${yamlString(collectedAt)}`,
+    `entry_id: ${yamlString(entryId)}`,
+    `source_artifact: ${yamlString(crossCheckArtifact)}`,
+  ];
+
+  if (backlogPages.length === 0) {
+    lines.push("pages: []");
+    return `${lines.join("\n")}\n`;
+  }
+
+  lines.push("pages:");
+  for (const page of backlogPages) {
+    lines.push(`  - page_id: ${yamlString(page.page_id)}`);
+    lines.push(`    url: ${yamlString(page.url)}`);
+    lines.push(`    priority: ${yamlString(backlogPriority(page))}`);
+    lines.push(`    recommended_firecrawl_format: ${yamlString(backlogCaptureMode(page))}`);
+    lines.push("    gap_notes:");
+    for (const note of page.gap_notes || []) {
+      lines.push(`      - ${yamlString(note)}`);
+    }
+    lines.push("    follow_up_actions:");
+    for (const action of backlogActions(page)) {
+      lines.push(`      - ${yamlString(action)}`);
+    }
+    const context7Only = (page.context7_only_terms || []).slice(0, 10);
+    if (context7Only.length === 0) {
+      lines.push("    context7_only_terms: []");
+    } else {
+      lines.push("    context7_only_terms:");
+      for (const term of context7Only) {
+        lines.push(`      - ${yamlString(term)}`);
+      }
+    }
+  }
+
+  return `${lines.join("\n")}\n`;
 }
 
 export function buildDocApiInventoryCrosswalk({

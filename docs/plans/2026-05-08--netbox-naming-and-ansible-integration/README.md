@@ -170,7 +170,7 @@ native fields, and stage the first `server-225` seed path behind a preview tag.
 Check the proposed mapping against:
 
 - `docs/ansible/vm-naming.md`
-- current `inventory/host_vars/hom-lab-ctl-hvh-02.yaml`
+- current `inventory/host_vars/HOM-LAB-HVH-02.yaml`
 - current `inventory/host_vars/server-225-ubuntu.yaml`
 - NetBox's VM, device, platform, role, tag, and custom-field model
 

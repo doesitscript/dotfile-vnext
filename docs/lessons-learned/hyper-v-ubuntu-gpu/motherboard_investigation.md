@@ -1,6 +1,6 @@
-# Motherboard investigation — GPU-P / SR-IOV on hom-lab-ctl-hvh-02
+# Motherboard investigation — GPU-P / SR-IOV on HOM-LAB-HVH-02
 
-Evidence collected from the Windows host (`hom-lab-ctl-hvh-02`).
+Evidence collected from the Windows host (`HOM-LAB-HVH-02`).
 
 ## Get-VMPartitionableGpu
 
@@ -55,7 +55,7 @@ Matches prior observations:
 - `Get-VMPartitionableGpu` succeeding means this is not "Windows can't see the GPU" and not the simple "wrong NVIDIA driver family" class of failure.
 - The first `IovSupportReason` still leaves room for a BIOS setting or update issue.
 - The second reason is the heavier clue: `no ACS at any root port` points toward a platform / motherboard PCIe capability limit rather than MMIO sizing, guest Ubuntu setup, or K3s config.
-- Treat the missing capability as host-platform SR-IOV/ACS support on `hom-lab-ctl-hvh-02`, not the Linux guest.
+- Treat the missing capability as host-platform SR-IOV/ACS support on `HOM-LAB-HVH-02`, not the Linux guest.
 
 ## Next host-side investigation
 
@@ -77,7 +77,7 @@ The repo fast-fails before re-breaking the VM, and `hom-lab-ctl-k3s-02` is back 
 ## Definitions
 
 Terms and BIOS/platform settings referenced in this investigation, with context for
-`hom-lab-ctl-hvh-02` (ROG STRIX X570-E GAMING WIFI II, Ryzen 9 5900X, RTX 5090,
+`HOM-LAB-HVH-02` (ROG STRIX X570-E GAMING WIFI II, Ryzen 9 5900X, RTX 5090,
 Windows Server 2025 + Hyper-V).
 
 ### GPU-P (GPU partitioning) and the GPU partition adapter
@@ -189,7 +189,7 @@ platform IOV/ACS/firmware limits rather than a guest package error.
 
 ## BIOS settings to verify
 
-Items to confirm in firmware on `hom-lab-ctl-hvh-02` (ROG STRIX X570-E GAMING WIFI II,
+Items to confirm in firmware on `HOM-LAB-HVH-02` (ROG STRIX X570-E GAMING WIFI II,
 current BIOS **5044**).
 
 **Manual lookup result:** The extracted user manual

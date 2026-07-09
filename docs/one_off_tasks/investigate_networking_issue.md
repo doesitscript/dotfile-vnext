@@ -12,7 +12,7 @@ NetBox is up — I'll verify connectivity, run the seed playbooks, then complete
 --- 192.168.50.158 ping statistics ---
 2 packets transmitted, 2 packets received, 0.0% packet loss, 2 packets out of wait time
 round-trip min/avg/max/stddev = 6.134/6.166/6.198/0.032 ms
-ping: cannot resolve hom-lab-ctl-hvh-02: Unknown host
+ping: cannot resolve HOM-LAB-HVH-02: Unknown host
 http_code:000
 NETBOX_TOKEN unset
 cd /Users/joshc/develop/dotfile-vnext && source .envrc 2>/dev/null; curl -s -m 8 -w "\nhttp:%{http_code}\n" "http://192.168.137.10:8000/api/status/" 2>&1 | tail -3; curl -s -m 8 -w "\nhttp:%{http_code}\n" -H "Authorization: Token ${NETBOX_TOKEN}" "http://192.168.137.10:8000/api/" 2>&1 | tail -3

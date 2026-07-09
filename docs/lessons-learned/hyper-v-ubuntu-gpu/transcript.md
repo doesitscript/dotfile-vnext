@@ -312,7 +312,7 @@ Read main.yml
 
 Read hom-lab-ctl-k3s-02.yaml
 
-Read hom-lab-ctl-hvh-02.yaml
+Read HOM-LAB-HVH-02.yaml
 
 Read main.yml
 

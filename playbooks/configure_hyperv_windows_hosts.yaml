@@ -23,7 +23,7 @@
 #     Only use --limit when intentionally narrowing the otherwise scalable
 #     all-opted-in run.
 #     ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml \
-#       -i inventory/inventory.yaml --limit hom-lab-ctl-hvh-01
+#       -i inventory/inventory.yaml --limit hom-lab-hvh-01
 #
 - name: Hyper-V Windows hosts - classify target hosts
   hosts: windows_hosts
@@ -124,6 +124,18 @@
             }
           }}
       loop: "{{ query('inventory_hostnames', 'windows_hosts') }}"
+
+- name: Hyper-V Windows hosts - live LAN publish preview
+  hosts: windows_hosts
+  gather_facts: false
+  tags: [hyperv_windows_host_preview]
+
+  tasks:
+    - name: Preview live Hyper-V LAN publish surface
+      ansible.builtin.include_role:
+        name: hyperv_networking
+        tasks_from: preview.yml
+      when: hyperv_windows_host_should_manage | default(false) | bool
 
 - name: Hyper-V Windows hosts - lifecycle
   hosts: windows_hosts

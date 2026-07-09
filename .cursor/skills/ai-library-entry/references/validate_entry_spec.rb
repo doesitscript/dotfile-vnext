@@ -190,11 +190,18 @@ if spec.key?("context7") && !context7_config.empty?
   )
   if firecrawl_cross_check["enabled"]
     cross_check_path = firecrawl_cross_check["index_path"]
+    backlog_path = firecrawl_cross_check["backlog_path"]
     errors << "context7.firecrawl_cross_check.index_path is required when enabled" if cross_check_path.to_s.empty?
+    errors << "context7.firecrawl_cross_check.backlog_path is required when enabled" if backlog_path.to_s.empty?
     if cross_check_path && !cross_check_path.to_s.empty?
       output_match = required_outputs.find { |entry| entry["path"] == cross_check_path }
       errors << "context7.firecrawl_cross_check.index_path #{cross_check_path} is not declared in required_outputs" unless output_match
       errors << "firecrawl cross-check output must be library_indexes family" if output_match && output_match["content_family"] != "library_indexes"
+    end
+    if backlog_path && !backlog_path.to_s.empty?
+      output_match = required_outputs.find { |entry| entry["path"] == backlog_path }
+      errors << "context7.firecrawl_cross_check.backlog_path #{backlog_path} is not declared in required_outputs" unless output_match
+      errors << "firecrawl capture backlog output must be library_indexes family" if output_match && output_match["content_family"] != "library_indexes"
     end
   end
 

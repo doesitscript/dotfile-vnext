@@ -9,7 +9,7 @@
   gather_facts: false
   vars:
     ipam_netbox_bootstrap_api_token_on_host: false
-    ipam_netbox_api_url: "http://192.168.50.158:8000"
+    ipam_netbox_api_url: "http://{{ hostvars['hom-lab-hvh-02'].host_ip }}:8000"
   tasks:
     - name: Seed NetBox tags
       ansible.builtin.include_role:
@@ -25,7 +25,7 @@
       tags:
         - ipam_netbox_seed_custom_fields
 
-    - name: Seed hom-lab-ctl-hvh-02 NetBox model
+    - name: Seed hom-lab-hvh-02 NetBox model
       ansible.builtin.include_role:
         name: ipam_netbox
         tasks_from: seed_hom_lab_ctl_hvh_02_model.yml

@@ -1,7 +1,7 @@
 ---
 name: K3s Hyper-V Traefik LAN HTTP portproxy
 overview: >-
-  LAN :80 front door on hom-lab-ctl-hvh-02: Traefik NodePort connect_port,
+  LAN :80 front door on HOM-LAB-HVH-02: Traefik NodePort connect_port,
   hyperv_networking portproxy, verify http://*.hom.lab/ on port 80.
 scope: implementation
 lifecycle: implemented
@@ -48,7 +48,7 @@ unblocks: []
 | ID | Source | Obligation | Status | Evidence |
 |----|--------|------------|--------|----------|
 | O-01 | P0 (parent) | IIS removed before :80 use | pass | Parent P0 receipt |
-| O-02 | LA-2b | NodePort 31461 in inventory | pass | `inventory/host_vars/hom-lab-ctl-hvh-02.yaml` |
+| O-02 | LA-2b | NodePort 31461 in inventory | pass | `inventory/host_vars/HOM-LAB-HVH-02.yaml` |
 | O-03 | LA-2b Apply | `hyperv_networking` on hvh-02 | pass | ok=30 changed=2 post-reboot |
 | O-04 | LA-5b Verify | mac-dev port-80 curls | pass | `HTTP/1.1 200 OK` both hostnames 2026-05-28 |
 | O-05 | Verify contract | No Microsoft-IIS | pass | Langfuse HTML headers; no IIS server header |

@@ -18,13 +18,13 @@ lane K3s guest.
 
 | Lane | Inventory anchor | Primary jobs |
 |------|------------------|--------------|
-| **GPU / inference** | `hyperv_lane_gpu` — `hom-lab-ctl-hvh-02`, `hom-lab-ctl-dkr-02`, `hom-lab-ctl-k3s-02` | vLLM target runtime, LiteLLM, Langfuse, Jupyter, GPU verify |
-| **Storage / observability** | `hyperv_lane_storage` — `hom-lab-ctl-hvh-01`, dkr-01, k3s-01 | NetBox, Loki, Grafana, long-retention stack |
+| **GPU / inference** | `hyperv_lane_gpu` — `hom-lab-hvh-02`, `hom-lab-ctl-dkr-02`, `hom-lab-ctl-k3s-02` | vLLM target runtime, LiteLLM, Langfuse, Jupyter, GPU verify |
+| **Storage / observability** | `hyperv_lane_storage` — `hom-lab-hvh-01`, dkr-01, k3s-01 | NetBox, Loki, Grafana, long-retention stack |
 | **Operator** | `mac-dev` (`execution_nodes`) | Ansible controller, IDE, CLI — not an inference host |
 
 Operator decision D-4: HF model weights use the storage lane canonical root
-`\\hom-lab-ctl-hvh-01\public\models\huggingface`, backed by
-`F:\shares\public\models\huggingface` on `hom-lab-ctl-hvh-01`. Do not place
+`\\hom-lab-hvh-01\public\models\huggingface`, backed by
+`F:\shares\public\models\huggingface` on `hom-lab-hvh-01`. Do not place
 physical weights on the RTX 5090 OS disk as the source of truth.
 
 Retired names (`Server-225`, `network-server`) must not appear in new docs;
@@ -59,7 +59,7 @@ use compact schema hostnames per `live-object-registry.yml`.
 ## GPU lane policy
 
 - **RTX 5090 (primary):** deep / private primary vLLM lane, gated by host SR-IOV/ACS support plus guest/runtime bring-up.
-- **Second GPU (`hom-lab-ctl-hvh-01`, GTX 1060 6GB):** assigned purpose
+- **Second GPU (`hom-lab-hvh-01`, GTX 1060 6GB):** assigned purpose
   (reviewer, embeddings) — not an equal peer; currently inventory-selected and
   GPU-labeled, but blocked for guest GPU partitioning until the Hyper-V host
   capability gap is resolved.

@@ -118,7 +118,7 @@ flowchart TD
 ```mermaid
 flowchart LR
     A["Schema registry"] --> B["Compact codes / native-field mapping / tag vocabulary"]
-    B --> C["Rendered inventory hostnames<br/>hom-lab-ctl-hvh-02<br/>hom-lab-ctl-dkr-02"]
+    B --> C["Rendered inventory hostnames<br/>HOM-LAB-HVH-02<br/>hom-lab-ctl-dkr-02"]
     B --> D["NetBox native fields<br/>site, tenant, role, platform, cluster"]
     B --> E["NetBox tags<br/>ansible-managed, homelab, hyperv, docker, k3s"]
     D --> F["NetBox objects"]

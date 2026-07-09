@@ -11,7 +11,7 @@ ipam_netbox_remove_volumes_on_absent: false
 # API endpoint used by controller-side NetBox modules.
 # The LAN portproxy path is reachable from mac-dev even when the routed guest
 # subnet is not reachable from every controller process.
-ipam_netbox_api_url: "http://{{ hostvars['hom-lab-ctl-hvh-02'].host_ip | default(ansible_host) }}:{{ ipam_netbox_http_port.split(':')[0] }}"
+ipam_netbox_api_url: "http://{{ hostvars['hom-lab-hvh-02'].host_ip | default(ansible_host) }}:{{ ipam_netbox_http_port.split(':')[0] }}"
 ipam_netbox_api_token_description: dotfile-vnext Ansible automation
 # Set false when seeding from localhost and dkr-02 is unreachable (token already in vault).
 ipam_netbox_bootstrap_api_token_on_host: true
@@ -22,7 +22,7 @@ ipam_netbox_bootstrap_api_token_on_host: true
 ipam_netbox_project_root: "{{ role_path | dirname | dirname }}"
 ipam_netbox_vault_file: "{{ ipam_netbox_project_root }}/vault.yml"
 # Windows host LAN address used in portproxy-published access points.
-ipam_netbox_lan_publish_host: "{{ hostvars['hom-lab-ctl-hvh-02'].host_ip | default('192.168.50.158') }}"
+ipam_netbox_lan_publish_host: "{{ hostvars['hom-lab-hvh-02'].host_ip | default('192.168.50.158') }}"
 
 # Backup naming contract (docs/backup/backup-naming-contract.md)
 # These values are the accepted defaults for this project.
@@ -163,15 +163,15 @@ ipam_netbox_hom_lab_ctl_hvh_02_model:
     - name: hyperv
       slug: hyperv
   cluster:
-    name: hom-lab-ctl-hvh-02
+    name: hom-lab-hvh-02
     cluster_type: hyperv
     site: homelab
     status: active
   device:
-    name: hom-lab-ctl-hvh-02
+    name: hom-lab-hvh-02
     tenant: home
     legacy_aliases:
-      - hom-lab-ctl-hvh-02
+      - hom-lab-hvh-02
       - server-225
       - exec-hvh-01
     device_type: custom-server
@@ -192,7 +192,7 @@ ipam_netbox_hom_lab_ctl_hvh_02_model:
       - non-authoritative-data
   virtual_machine:
     name: hom-lab-ctl-dkr-02
-    cluster: hom-lab-ctl-hvh-02
+    cluster: hom-lab-hvh-02
     site: homelab
     role: dkr
     platform: ubuntu-24-04
@@ -207,7 +207,7 @@ ipam_netbox_hom_lab_ctl_hvh_02_model:
     description: hom-lab-ctl-dkr-02 routed private subnet interface
   k3s_virtual_machine:
     name: hom-lab-ctl-k3s-02
-    cluster: hom-lab-ctl-hvh-02
+    cluster: hom-lab-hvh-02
     site: homelab
     role: k3s
     platform: ubuntu-24-04
@@ -237,7 +237,7 @@ ipam_netbox_hom_lab_ctl_hvh_02_model:
         - address: 192.168.137.10/24
       description: NetBox source-of-truth web UI and API
       primary_access_point: "http://{{ ipam_netbox_lan_publish_host }}:8000/"
-      comments: NetBox web UI on hom-lab-ctl-dkr-02; LAN-published via Windows portproxy on hom-lab-ctl-hvh-02.
+      comments: NetBox web UI on hom-lab-ctl-dkr-02; LAN-published via Windows portproxy on hom-lab-hvh-02.
       custom_fields:
         compose_project: netbox
         deployed_by_role: ipam_netbox
@@ -434,18 +434,18 @@ ipam_netbox_windows_share_hosts_model:
       vm_role: false
   device_name_migrations:
     - old_name: server-225
-      new_name: hom-lab-ctl-hvh-02
+      new_name: hom-lab-hvh-02
     - old_name: exec-hvh-01
-      new_name: hom-lab-ctl-hvh-02
+      new_name: hom-lab-hvh-02
     - old_name: "{{ 'network-server' ~ '-win' }}"
-      new_name: hom-lab-ctl-hvh-01
+      new_name: hom-lab-hvh-01
     - old_name: network-server
-      new_name: hom-lab-ctl-hvh-01
+      new_name: hom-lab-hvh-01
     - old_name: primary-hvh-01
-      new_name: hom-lab-ctl-hvh-01
+      new_name: hom-lab-hvh-01
   devices:
-    - inventory_host: hom-lab-ctl-hvh-01
-      name: hom-lab-ctl-hvh-01
+    - inventory_host: hom-lab-hvh-01
+      name: hom-lab-hvh-01
       tenant: home
       legacy_aliases:
         - "{{ 'network-server' ~ '-win' }}"
@@ -472,13 +472,13 @@ ipam_netbox_windows_share_hosts_model:
           type: Virtual
           enabled: true
           mgmt_only: true
-          address: "{{ hostvars['hom-lab-ctl-hvh-01'].host_ip | default(hostvars['hom-lab-ctl-hvh-01'].ansible_host) }}/24"
-          description: hom-lab-ctl-hvh-01 management address from Ansible inventory
-    - inventory_host: hom-lab-ctl-hvh-02
-      name: hom-lab-ctl-hvh-02
+          address: "{{ hostvars['hom-lab-hvh-01'].host_ip | default(hostvars['hom-lab-hvh-01'].ansible_host) }}/24"
+          description: hom-lab-hvh-01 management address from Ansible inventory
+    - inventory_host: hom-lab-hvh-02
+      name: hom-lab-hvh-02
       tenant: home
       legacy_aliases:
-        - hom-lab-ctl-hvh-02
+        - hom-lab-hvh-02
         - server-225
         - exec-hvh-01
       device_type: custom-server
@@ -502,11 +502,11 @@ ipam_netbox_windows_share_hosts_model:
           type: Virtual
           enabled: true
           mgmt_only: true
-          address: "{{ hostvars['hom-lab-ctl-hvh-02'].host_ip | default(hostvars['hom-lab-ctl-hvh-02'].ansible_host) }}/24"
-          description: hom-lab-ctl-hvh-02 management address from Ansible inventory
+          address: "{{ hostvars['hom-lab-hvh-02'].host_ip | default(hostvars['hom-lab-hvh-02'].ansible_host) }}/24"
+          description: hom-lab-hvh-02 management address from Ansible inventory
 
 ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
-  hyperv_host_inventory_host: hom-lab-ctl-hvh-01
+  hyperv_host_inventory_host: hom-lab-hvh-01
   site: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.site }}"
   tags: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.tags }}"
   tenants: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.tenants }}"
@@ -522,7 +522,7 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
       vm_role: true
   cluster_types: "{{ ipam_netbox_hom_lab_ctl_hvh_02_model.cluster_types }}"
   cluster:
-    name: hom-lab-ctl-hvh-01
+    name: hom-lab-hvh-01
     cluster_type: hyperv
     site: homelab
     status: active
@@ -534,7 +534,7 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
       - lan-exposed-services
   virtual_machines:
     - name: hom-lab-ctl-dkr-01
-      cluster: hom-lab-ctl-hvh-01
+      cluster: hom-lab-hvh-01
       site: homelab
       role: dkr
       platform: ubuntu-24-04
@@ -554,7 +554,7 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
           address: 192.168.138.10/24
           description: hom-lab-ctl-dkr-01 routed private subnet interface
     - name: hom-lab-ctl-k3s-01
-      cluster: hom-lab-ctl-hvh-01
+      cluster: hom-lab-hvh-01
       site: homelab
       role: k3s
       platform: ubuntu-24-04
@@ -583,7 +583,7 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
         - address: 192.168.138.10/24
       description: External PostgreSQL for the storage-lane Langfuse data plane
       primary_access_point: postgresql://192.168.50.234:5432/langfuse
-      comments: fuzlang-net Postgres on hom-lab-ctl-dkr-01; preferred runtime/operator path is the Windows LAN-published route on hom-lab-ctl-hvh-01.
+      comments: fuzlang-net Postgres on hom-lab-ctl-dkr-01; preferred runtime/operator path is the Windows LAN-published route on hom-lab-hvh-01.
       custom_fields:
         compose_project: fuzlang-net
         deployed_by_role: stacks_fuzlang_net
@@ -605,7 +605,7 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
         - address: 192.168.138.10/24
       description: Redis cache backing the storage-lane Langfuse data plane
       primary_access_point: redis://192.168.50.234:6379/0
-      comments: fuzlang-net Redis on hom-lab-ctl-dkr-01; preferred runtime/operator path is the Windows LAN-published route on hom-lab-ctl-hvh-01.
+      comments: fuzlang-net Redis on hom-lab-ctl-dkr-01; preferred runtime/operator path is the Windows LAN-published route on hom-lab-hvh-01.
       custom_fields:
         compose_project: fuzlang-net
         deployed_by_role: stacks_fuzlang_net
@@ -626,7 +626,7 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
         - address: 192.168.138.10/24
       description: ClickHouse HTTP endpoint for the storage-lane Langfuse data plane
       primary_access_point: http://192.168.50.234:8123/
-      comments: fuzlang-net ClickHouse HTTP endpoint on hom-lab-ctl-dkr-01; preferred runtime/operator path is the Windows LAN-published route on hom-lab-ctl-hvh-01.
+      comments: fuzlang-net ClickHouse HTTP endpoint on hom-lab-ctl-dkr-01; preferred runtime/operator path is the Windows LAN-published route on hom-lab-hvh-01.
       custom_fields:
         compose_project: fuzlang-net
         deployed_by_role: stacks_fuzlang_net
@@ -647,7 +647,7 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
         - address: 192.168.138.10/24
       description: ClickHouse native TCP endpoint for the storage-lane Langfuse data plane
       primary_access_point: tcp://192.168.50.234:9004
-      comments: fuzlang-net ClickHouse native endpoint on hom-lab-ctl-dkr-01; remapped to 9004 and preferred via the Windows LAN-published route on hom-lab-ctl-hvh-01.
+      comments: fuzlang-net ClickHouse native endpoint on hom-lab-ctl-dkr-01; remapped to 9004 and preferred via the Windows LAN-published route on hom-lab-hvh-01.
       custom_fields:
         compose_project: fuzlang-net
         deployed_by_role: stacks_fuzlang_net
@@ -668,7 +668,7 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
         - address: 192.168.138.10/24
       description: MinIO S3-compatible API for the storage-lane Langfuse data plane
       primary_access_point: http://192.168.50.234:9000/
-      comments: fuzlang-net MinIO API on hom-lab-ctl-dkr-01; preferred runtime/operator path is the Windows LAN-published route on hom-lab-ctl-hvh-01.
+      comments: fuzlang-net MinIO API on hom-lab-ctl-dkr-01; preferred runtime/operator path is the Windows LAN-published route on hom-lab-hvh-01.
       custom_fields:
         compose_project: fuzlang-net
         deployed_by_role: stacks_fuzlang_net
@@ -690,7 +690,7 @@ ipam_netbox_hom_lab_ctl_hvh_01_vm_model:
         - address: 192.168.138.10/24
       description: MinIO web console for the storage-lane Langfuse data plane
       primary_access_point: http://192.168.50.234:9001/
-      comments: fuzlang-net MinIO console on hom-lab-ctl-dkr-01; preferred operator path is the Windows LAN-published route on hom-lab-ctl-hvh-01.
+      comments: fuzlang-net MinIO console on hom-lab-ctl-dkr-01; preferred operator path is the Windows LAN-published route on hom-lab-hvh-01.
       custom_fields:
         compose_project: fuzlang-net
         deployed_by_role: stacks_fuzlang_net
@@ -716,10 +716,10 @@ ipam_netbox_prefixes:
       description: LAN management network (Windows hosts, Mac controller, port-proxies)
     - prefix: 192.168.138.0/24
       status: active
-      description: hom-lab-ctl-hvh-01 Hyper-V guest routed private subnet
+      description: hom-lab-hvh-01 Hyper-V guest routed private subnet
     - prefix: 192.168.137.0/24
       status: active
-      description: hom-lab-ctl-hvh-02 Hyper-V guest routed private subnet
+      description: hom-lab-hvh-02 Hyper-V guest routed private subnet
 
 # Config contexts applied to ansible-managed homelab objects (inventory/netbox.yml config_context: true)
 ipam_netbox_config_contexts:
@@ -737,7 +737,7 @@ ipam_netbox_config_contexts:
       environment: lab
       domain: ctl
       naming_schema_version: 1
-      render_pattern: "<tenant>-<environment>-<domain>-<role>-<idx>"
+      render_pattern: "<tenant>-<environment>-<role>-<idx> for Hyper-V Windows hosts/clusters; <tenant>-<environment>-<domain>-<role>-<idx> otherwise"
       schema_registry: docs/reference/naming-standards/
   - name: homelab-hyperv-guest-routing
     description: Routed private subnet layout for Hyper-V guest VMs
@@ -748,8 +748,8 @@ ipam_netbox_config_contexts:
       - ansible-managed
     data:
       guest_subnets:
-        hom_lab_ctl_hvh_01: 192.168.138.0/24
-        hom_lab_ctl_hvh_02: 192.168.137.0/24
+        hom_lab_hvh_01: 192.168.138.0/24
+        hom_lab_hvh_02: 192.168.137.0/24
       lan_management_subnet: 192.168.50.0/24
       routing_note: docs/lessons-learned/networking/hyper-v-routed-subnet-needs-router-route-or-host-nat.md
 

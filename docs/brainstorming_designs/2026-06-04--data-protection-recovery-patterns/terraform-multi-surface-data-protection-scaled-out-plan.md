@@ -102,7 +102,7 @@ goes in **directory path** (`us-east-1/`) and optionally in `attributes`
 
 | Surface code | Meaning | Stack path | L4 example | L6 canonical example |
 |--------------|---------|------------|------------|----------------------|
-| `ctl` | On-prem control plane | `stacks/on-prem/hom/lab/ctl/` | `hom-lab-ctl-hvh-01` | `cst-hom-lab-ctl-device-hvh-01` |
+| `ctl` | On-prem control plane | `stacks/on-prem/hom/lab/ctl/` | `HOM-LAB-HVH-01` | `cst-hom-lab-ctl-device-hvh-01` |
 | `mgmt` | Management / org / state | `stacks/management/aws/hom/lab/mgmt/` | `hom-lab-mgmt-bkp-tfstate-01` | `cst-hom-lab-mgmt-artifact-tfstate-01` |
 | `wrk` | AWS primary workload | `stacks/aws/hom/lab/wrk/` | `hom-lab-wrk-ec2-01` | `cst-hom-lab-wrk-artifact-ec2-01` |
 | `dr` | AWS DR / vault copy | `stacks/aws/hom/lab/dr/` | `hom-lab-dr-bkp-01` | `cst-hom-lab-dr-artifact-bkp-01` |

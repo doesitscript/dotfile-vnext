@@ -1,0 +1,118 @@
+---
+- name: Probe live Hyper-V LAN publish surface
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $publicAlias = '{{ _hyperv_published_public_adapter_alias }}'
+      $privateAlias = '{{ _hyperv_published_private_adapter_alias }}'
+      $expectedHostIp = '{{ _hyperv_published_expected_host_ip }}'
+      $desired = @'
+      {{ _hyperv_guest_published_tcp_ports | to_json }}
+      '@ | ConvertFrom-Json
+
+      $expectedListen = @(
+        $desired |
+          ForEach-Object { $_.listen_address } |
+          Where-Object { $_ } |
+          Select-Object -Unique
+      )
+
+      if ($expectedHostIp -and ($expectedListen -notcontains $expectedHostIp)) {
+        $expectedListen += $expectedHostIp
+      }
+
+      $allIpv4 = @(
+        Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+          Select-Object InterfaceAlias,IPAddress,PrefixLength
+      )
+      $publicIpv4 = @(
+        $allIpv4 |
+          Where-Object { $_.InterfaceAlias -eq $publicAlias }
+      )
+      $privateIpv4 = @(
+        $allIpv4 |
+          Where-Object { $_.InterfaceAlias -eq $privateAlias }
+      )
+
+      $currentPortproxyRows = @()
+      foreach ($line in (netsh interface portproxy show v4tov4)) {
+        if ($line -match '^\s*(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s*$') {
+          $currentPortproxyRows += [PSCustomObject]@{
+            listen_address = $matches[1]
+            listen_port = [int]$matches[2]
+            connect_address = $matches[3]
+            connect_port = [int]$matches[4]
+          }
+        }
+      }
+
+      $currentListeners = @(
+        Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+          Where-Object { $expectedListen -contains $_.LocalAddress } |
+          Sort-Object LocalAddress,LocalPort |
+          Select-Object @{Name='listen_address';Expression={$_.LocalAddress}},
+                        @{Name='listen_port';Expression={[int]$_.LocalPort}},
+                        @{Name='owning_process';Expression={$_.OwningProcess}}
+      )
+
+      $liveAllIpv4 = @($allIpv4 | ForEach-Object { $_.IPAddress } | Select-Object -Unique)
+      $missingListen = @(
+        $expectedListen |
+          Where-Object { $liveAllIpv4 -notcontains $_ }
+      )
+
+      $desiredRows = @(
+        $desired |
+          ForEach-Object {
+            [PSCustomObject]@{
+              name = $_.name
+              listen_address = $_.listen_address
+              listen_port = [int]$_.listen_port
+              connect_address = $_.connect_address
+              connect_port = [int]$_.connect_port
+            }
+          }
+      )
+
+      $Ansible.Result = @{
+        public_interface = $publicAlias
+        private_interface = $privateAlias
+        expected_host_ip = $expectedHostIp
+        expected_listen_addresses = @($expectedListen)
+        missing_listen_addresses = @($missingListen)
+        live_all_ipv4 = @($liveAllIpv4)
+        live_public_interface_ipv4 = @($publicIpv4 | ForEach-Object { $_.IPAddress })
+        live_private_interface_ipv4 = @($privateIpv4 | ForEach-Object { $_.IPAddress })
+        current_listeners = @($currentListeners)
+        current_portproxy_rows = @($currentPortproxyRows)
+        desired_portproxy_rows = @($desiredRows)
+      }
+  register: _hyperv_published_port_surface
+  changed_when: false
+  check_mode: false
+  vars:
+    _hyperv_published_public_adapter_alias: >-
+      {{
+        _hyperv.internal_ics_public_adapter_name
+        | default(_hyperv.adapter_name | default('Wi-Fi'))
+      }}
+    _hyperv_published_private_adapter_alias: >-
+      {{
+        _hyperv.internal_ics_private_adapter_alias
+        | default('vEthernet (' ~ (_hyperv.guest_switch_name | default(_hyperv.internal_ics_switch_name | default('Guest'))) ~ ')')
+      }}
+    _hyperv_published_expected_host_ip: "{{ host_ip | default('') }}"
+    _hyperv_guest_published_tcp_ports: "{{ _hyperv.guest_published_tcp_ports | default([]) }}"
+
+- name: Report Hyper-V LAN publish surface preview
+  ansible.builtin.debug:
+    var: _hyperv_published_port_surface.result
+  when:
+    - ansible_check_mode | bool or
+      (ansible_troubleshooting_mode | default(false) | bool) or
+      (debug_remote_output | default(false) | bool) or
+      (debug_collect_component_evidence | default(false) | bool)
+  tags:
+    - preview
+    - evidence
+    - debug_resources

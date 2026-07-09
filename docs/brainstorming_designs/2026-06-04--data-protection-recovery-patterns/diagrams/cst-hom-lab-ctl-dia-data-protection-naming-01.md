@@ -27,7 +27,7 @@ are brainstorm-only until promoted to the active registry.
 
 **Live examples** (`live-object-registry.yml`):
 
-- `hom-lab-ctl-hvh-01`, `hom-lab-ctl-hvh-02`
+- `HOM-LAB-HVH-01`, `HOM-LAB-HVH-02`
 - `hom-lab-ctl-dkr-01`, `hom-lab-ctl-k3s-02`
 
 ---
@@ -130,7 +130,7 @@ flowchart LR
 
 | Group | Schema anchor hosts | Data-protection scope |
 |-------|---------------------|------------------------|
-| `hyperv_lane_storage` | `hom-lab-ctl-hvh-01`, guests `.138.x` | VRA, PGs, journal |
-| `hyperv_lane_gpu` | `hom-lab-ctl-hvh-02`, guests `.137.x` | VRA, PGs |
+| `hyperv_lane_storage` | `HOM-LAB-HVH-01`, guests `.138.x` | VRA, PGs, journal |
+| `hyperv_lane_gpu` | `HOM-LAB-HVH-02`, guests `.137.x` | VRA, PGs |
 
 See [cst-hom-lab-ctl-dia-zerto-homelab-topology-01.md](./cst-hom-lab-ctl-dia-zerto-homelab-topology-01.md).

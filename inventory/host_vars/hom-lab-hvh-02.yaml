@@ -1,10 +1,10 @@
 ---
-# Inventory name: hom-lab-ctl-hvh-02
-#   Ansible/NetBox schema alias for the hom-lab-ctl-hvh-02 Windows control surface.
+# Inventory name: hom-lab-hvh-02
+#   Ansible/NetBox schema alias for the hom-lab-hvh-02 Windows control surface.
 # Connect target: ansible_host = 192.168.50.158 (permanent LAN IP pattern).
-# physical_node: hom-lab-ctl-hvh-02 — metadata grouping key, NOT a hostname.
+# physical_node: hom-lab-hvh-02 — metadata grouping key, NOT a hostname.
 # Router/LAN IP: host_ip 192.168.50.158
-# Manual SSH should prefer the repo-rendered Host alias hom-lab-ctl-hvh-02 from ~/.ssh/config.
+# Manual SSH should prefer the repo-rendered Host alias hom-lab-hvh-02 from ~/.ssh/config.
 ansible_host: "192.168.50.158"
 ansible_connection: ssh
 ansible_port: 22
@@ -14,7 +14,7 @@ ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev
 ansible_shell_type: "powershell"
 ansible_shell_executable: "powershell.exe"
 surface_type: "windows_host"
-os_hostname: "hom-lab-ctl-hvh-02"
+os_hostname: "hom-lab-hvh-02"
 # Windows still exposes a truncated NetBIOS COMPUTERNAME here; do not use it as
 # the Hyper-V management endpoint for repo automation.
 windows_netbios_hostname: "HOM-LAB-CTL-HVH"
@@ -22,7 +22,7 @@ hyperv_management_endpoint: "{{ ansible_host }}"
 host_ip: "192.168.50.158"
 # Stable internal ULA observed in gathered facts and verified live from mac-dev.
 host_ipv6: "fdfa:7038:521c:a5fa:7c9:f4a1:90b8:1b1e"
-physical_node: "hom-lab-ctl-hvh-02"
+physical_node: "hom-lab-hvh-02"
 host_kind: "physical_server"
 node_capabilities:
   - windows_server_2025
@@ -72,6 +72,13 @@ policy_classes:
   - experimental
   - non_authoritative_data
 hyperv_networking_feature_prereqs_enabled: false
+
+# GPU-P partition sizing — hvh-02 partitionable VRAM pool is ~1GB.
+hyperv_gpu_partition_adapter_partition_vram_optimal: 500000000
+hyperv_gpu_partition_adapter_partition_vram_max: 500000000
+hyperv_gpu_partition_adapter_partition_compute_optimal: 500000000
+hyperv_gpu_partition_adapter_partition_decode_optimal: 500000000
+hyperv_gpu_partition_adapter_require_hyperv_gpu_policy_keys: true
 
 # Hyper-V Ubuntu GPU-P runtime artifact root on the existing public SMB share.
 # This keeps large WSL/DriverStore payload handoff off the interactive

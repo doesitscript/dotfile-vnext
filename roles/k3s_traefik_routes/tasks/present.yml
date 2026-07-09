@@ -59,6 +59,19 @@
     KUBECONFIG: "{{ k3s_traefik_routes_kubeconfig }}"
   tags: [k3s_traefik_routes, k3s_traefik_routes_apply]
 
+- name: Verify live Ingress object exists for each route
+  kubernetes.core.k8s_info:
+    api_version: networking.k8s.io/v1
+    kind: Ingress
+    namespace: "{{ item.namespace }}"
+    name: "{{ item.ingress_name }}"
+  loop: "{{ k3s_traefik_routes_entries }}"
+  environment:
+    KUBECONFIG: "{{ k3s_traefik_routes_kubeconfig }}"
+  register: k3s_traefik_routes_ingress_check
+  when: k3s_traefik_routes_verify_ingress_objects | bool
+  tags: [k3s_traefik_routes, k3s_traefik_routes_verify]
+
 - name: Verify backend Service exists for each route
   kubernetes.core.k8s_info:
     api_version: v1
@@ -72,6 +85,46 @@
   when: k3s_traefik_routes_verify_backends | bool
   tags: [k3s_traefik_routes, k3s_traefik_routes_verify]
 
+- name: Query backend Endpoints for each route
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Endpoints
+    namespace: "{{ item.namespace }}"
+    name: "{{ item.service_name }}"
+  loop: "{{ k3s_traefik_routes_entries }}"
+  environment:
+    KUBECONFIG: "{{ k3s_traefik_routes_kubeconfig }}"
+  register: k3s_traefik_routes_endpoints_check
+  when: k3s_traefik_routes_verify_backends | bool
+  tags: [k3s_traefik_routes, k3s_traefik_routes_verify]
+
+- name: Query backend EndpointSlices for each route
+  kubernetes.core.k8s_info:
+    api_version: discovery.k8s.io/v1
+    kind: EndpointSlice
+    namespace: "{{ item.namespace }}"
+    label_selectors:
+      - "kubernetes.io/service-name={{ item.service_name }}"
+  loop: "{{ k3s_traefik_routes_entries }}"
+  environment:
+    KUBECONFIG: "{{ k3s_traefik_routes_kubeconfig }}"
+  register: k3s_traefik_routes_endpointslice_check
+  when: k3s_traefik_routes_verify_endpoint_slices | bool
+  tags: [k3s_traefik_routes, k3s_traefik_routes_verify]
+
+- name: Assert each live Ingress object is present
+  ansible.builtin.assert:
+    that:
+      - item.resources | length > 0
+    fail_msg: >-
+      Ingress {{ item.item.namespace }}/{{ item.item.ingress_name }} missing for route
+      {{ item.item.route_key }} after apply.
+  loop: "{{ k3s_traefik_routes_ingress_check.results }}"
+  loop_control:
+    label: "{{ item.item.route_key }}"
+  when: k3s_traefik_routes_verify_ingress_objects | bool
+  tags: [k3s_traefik_routes, k3s_traefik_routes_verify]
+
 - name: Assert each Ingress backend Service is present
   ansible.builtin.assert:
     that:
@@ -83,4 +136,93 @@
   loop_control:
     label: "{{ item.item.route_key }}"
   when: k3s_traefik_routes_verify_backends | bool
+  tags: [k3s_traefik_routes, k3s_traefik_routes_verify]
+
+- name: Require each route to have non-empty live backend endpoints
+  ansible.builtin.assert:
+    that:
+      - (_endpoint_address_count | int) > 0 or (_endpointslice_address_count | int) > 0
+    fail_msg: >-
+      Backend {{ item.service_name }} for route {{ item.route_key }} has no live
+      endpoints. Endpoints addresses={{ _endpoint_address_count }}, EndpointSlice
+      addresses={{ _endpointslice_address_count }}.
+  loop: "{{ k3s_traefik_routes_entries }}"
+  loop_control:
+    index_var: _route_idx
+    label: "{{ item.route_key }}"
+  vars:
+    _endpoint_address_count: >-
+      {{
+        (
+          (
+            (
+              k3s_traefik_routes_endpoints_check.results[_route_idx].resources
+              | default([])
+              | first
+              | default({})
+            ).subsets
+            | default([])
+            | map(attribute='addresses')
+            | list
+            | flatten
+          )
+        ) | length
+      }}
+    _endpointslice_address_count: >-
+      {{
+        (
+          k3s_traefik_routes_endpointslice_check.results[_route_idx].resources
+          | default([])
+          | map(attribute='endpoints')
+          | list
+          | flatten
+          | map(attribute='addresses')
+          | list
+          | flatten
+        ) | length
+      }}
+  when:
+    - k3s_traefik_routes_verify_backends | bool
+    - k3s_traefik_routes_verify_endpoint_slices | bool
+  tags: [k3s_traefik_routes, k3s_traefik_routes_verify]
+
+- name: Resolve Traefik HTTP node port for route probes
+  ansible.builtin.set_fact:
+    k3s_traefik_routes_http_node_port: >-
+      {{
+        (
+          k3s_traefik_routes_traefik_service.resources[0].spec.ports
+          | selectattr('port', 'equalto', 80)
+          | map(attribute='nodePort')
+          | first
+        ) | int
+      }}
+  when:
+    - k3s_traefik_routes_verify_host_header | bool
+    - (k3s_traefik_routes_traefik_service.resources | default([])) | length > 0
+  tags: [k3s_traefik_routes, k3s_traefik_routes_verify]
+
+- name: Require Traefik HTTP node port for host-header route probes
+  ansible.builtin.assert:
+    that:
+      - (k3s_traefik_routes_http_node_port | default(0) | int) > 0
+    fail_msg: "Traefik HTTP node port could not be resolved for host-header probes."
+  when: k3s_traefik_routes_verify_host_header | bool
+  tags: [k3s_traefik_routes, k3s_traefik_routes_verify]
+
+- name: Probe each route through Traefik with the declared Host header
+  ansible.builtin.uri:
+    url: >-
+      http://{{ k3s_traefik_routes_probe_host }}:{{ k3s_traefik_routes_http_node_port }}{{ item.path | default('/') }}
+    headers:
+      Host: "{{ item.hostname }}"
+    method: GET
+    status_code: "{{ k3s_traefik_routes_probe_status_codes }}"
+    return_content: false
+    timeout: 5
+  loop: "{{ k3s_traefik_routes_entries }}"
+  loop_control:
+    label: "{{ item.route_key }}"
+  register: k3s_traefik_routes_host_header_probe
+  when: k3s_traefik_routes_verify_host_header | bool
   tags: [k3s_traefik_routes, k3s_traefik_routes_verify]

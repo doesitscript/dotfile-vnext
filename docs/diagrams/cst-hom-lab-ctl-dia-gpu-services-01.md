@@ -59,7 +59,7 @@ flowchart TB
       JUP["Jupyter :8888\njupyter.hom.lab"]
     end
 
-    subgraph HVH["hom-lab-ctl-hvh-02 192.168.50.158"]
+    subgraph HVH["HOM-LAB-HVH-02 192.168.50.158"]
       PP["portproxy\n:80 :8000 :3001 :3100\n:30000 :30400"]
     end
 

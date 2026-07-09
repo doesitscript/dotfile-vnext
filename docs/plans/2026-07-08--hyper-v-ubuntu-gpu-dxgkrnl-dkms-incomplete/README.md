@@ -103,7 +103,7 @@ This slice is intentionally manual and evidence-first. It does not automate `dxg
 flowchart TD
     A["Imported upstream README<br/>docs/lessons-learned/hyper-v-ubuntu-gpu/dx_build_files/README.md"] --> B["Governed packet<br/>docs/plans/2026-07-08--hyper-v-ubuntu-gpu-dxgkrnl-dkms-incomplete/README.md"]
     C["Existing WSL bridge plan + playbook<br/>dx_build_from_wsl.md<br/>hyperv_ubuntu_gpu_p_wsl_bridge_experiment.yaml"] --> B
-    D["Hyper-V host<br/>hom-lab-ctl-hvh-02"] --> E["Ubuntu guest<br/>hom-lab-ctl-k3s-02"]
+    D["Hyper-V host<br/>HOM-LAB-HVH-02"] --> E["Ubuntu guest<br/>hom-lab-ctl-k3s-02"]
     B --> E
     E --> F["Guest actions before reboot<br/>dxgkrnl-dkms install<br/>/usr/lib/wsl layout<br/>ldconfig"]
     D --> G["Operator-controlled reboot from outside guest"]

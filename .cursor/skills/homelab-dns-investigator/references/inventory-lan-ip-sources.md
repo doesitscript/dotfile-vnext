@@ -23,10 +23,10 @@ Use when building **lane inventory truth**. LAN IPs are scattered across invento
 
 | inventory_hostname | IP / target | kind | primary host_vars |
 |---|---|---|---|
-| `hom-lab-ctl-hvh-01` | `192.168.50.234` | primary LAN | `hom-lab-ctl-hvh-01.yaml` |
-| `hom-lab-ctl-hvh-01` | `192.168.50.233` | secondary adapter (comment: down) | header comments + `hosts_mapping` `ip_address_original` |
-| `hom-lab-ctl-hvh-02` | `192.168.50.158` | primary LAN | `hom-lab-ctl-hvh-02.yaml` |
-| `hom-lab-ctl-hvh-02` | `fdfa:7038:521c:a5fa:7c9:f4a1:90b8:1b1e` | IPv6 SSH surface | `hom-lab-ctl-hvh-02.yaml` `host_ipv6`, `hom-lab-ctl-hvh-02-ipv6.yaml` |
+| `HOM-LAB-HVH-01` | `192.168.50.234` | primary LAN | `HOM-LAB-HVH-01.yaml` |
+| `HOM-LAB-HVH-01` | `192.168.50.233` | secondary adapter (comment: down) | header comments + `hosts_mapping` `ip_address_original` |
+| `HOM-LAB-HVH-02` | `192.168.50.158` | primary LAN | `HOM-LAB-HVH-02.yaml` |
+| `HOM-LAB-HVH-02` | `fdfa:7038:521c:a5fa:7c9:f4a1:90b8:1b1e` | IPv6 SSH surface | `HOM-LAB-HVH-02.yaml` `host_ipv6`, `HOM-LAB-HVH-02-ipv6.yaml` |
 | `hom-lab-ctl-dkr-01` | `192.168.138.10` | guest | `hom-lab-ctl-dkr-01.yaml` |
 | `hom-lab-ctl-k3s-01` | `192.168.138.11` | guest | `hom-lab-ctl-k3s-01.yaml` |
 | `hom-lab-ctl-dkr-02` | `192.168.137.10` | guest | `hom-lab-ctl-dkr-02.yaml` |

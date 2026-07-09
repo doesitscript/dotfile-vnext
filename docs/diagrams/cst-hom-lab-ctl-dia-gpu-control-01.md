@@ -8,7 +8,7 @@ Hyper-V lane resources.
 ```mermaid
 flowchart LR
     Mac["mac-dev\ncontroller / operator node"]
-    HVH["hom-lab-ctl-hvh-02\nHyper-V Windows host"]
+    HVH["HOM-LAB-HVH-02\nHyper-V Windows host"]
     DKR["hom-lab-ctl-dkr-02\nDocker VM"]
     K3S["hom-lab-ctl-k3s-02\nK3s VM"]
     NetBox["NetBox service\non hom-lab-ctl-dkr-02"]
@@ -42,7 +42,7 @@ flowchart LR
 ## What this clarifies
 
 - `mac-dev` is the controller and operator node.
-- `hom-lab-ctl-hvh-02` is the Windows host and port publication surface.
+- `HOM-LAB-HVH-02` is the Windows host and port publication surface.
 - `hom-lab-ctl-dkr-02` is both the Docker engine endpoint and the NetBox host.
 - `hom-lab-ctl-k3s-02` is the K3s service lane.
 - Direct routed guest-IP access and LAN-published Windows access are parallel

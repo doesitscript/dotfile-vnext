@@ -51,7 +51,7 @@ Semaphore listens on container port 3000, mapped to host port 3001.
 | From the Windows host (direct) | `http://192.168.137.10:3001/` |
 | From the LAN (Mac or other hosts) | `http://192.168.50.158:3001/` |
 
-LAN access requires a `guest_published_tcp_ports` entry on the Windows Hyper-V host (`inventory/host_vars/hom-lab-ctl-hvh-02.yaml`) creating a `netsh portproxy` rule and Windows Firewall inbound rule. See `playbooks/configure_hyperv_windows_hosts.yaml`.
+LAN access requires a `guest_published_tcp_ports` entry on the Windows Hyper-V host (`inventory/host_vars/hom-lab-hvh-02.yaml`) creating a `netsh portproxy` rule and Windows Firewall inbound rule. See `playbooks/configure_hyperv_windows_hosts.yaml`.
 
 ## Playbook
 

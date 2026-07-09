@@ -9,7 +9,7 @@ hvh-02 portproxy and VM identity blocks are canonical in the main example file. 
 
 | inventory_hostname | hyperv_vm_hostname | IP |
 |---|---|---|
-| `hom-lab-ctl-hvh-02` | — | `192.168.50.158` |
+| `HOM-LAB-HVH-02` | — | `192.168.50.158` |
 | `hom-lab-ctl-dkr-02` | `hom-lab-ctl-dkr-02` | `192.168.137.10` |
 | `hom-lab-ctl-k3s-02` | `hom-lab-ctl-k3s-02` | `192.168.137.11` |
 

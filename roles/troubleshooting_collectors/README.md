@@ -54,6 +54,7 @@ is the evidence.
 Current collector task files:
 
 - `hyperv_ubuntu_vm.yml`
+- `hyperv_ubuntu_gpu_p.yml`
 - `windows_remote_access.yml`
 - `dev_workstation_win_gpu.yml`
 
@@ -94,6 +95,7 @@ logging system.
 Current dedicated playbook entrypoint:
 
 - [collect_hyperv_ubuntu_vm_artifacts.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/troubleshoot/collect_hyperv_ubuntu_vm_artifacts.yaml)
+- [collect_hyperv_ubuntu_gpu_p_artifacts.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/troubleshoot/collect_hyperv_ubuntu_gpu_p_artifacts.yaml)
 - [collect_windows_remote_access_artifacts.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/troubleshoot/collect_windows_remote_access_artifacts.yaml)
 
 Current Hyper-V Ubuntu troubleshooting note:

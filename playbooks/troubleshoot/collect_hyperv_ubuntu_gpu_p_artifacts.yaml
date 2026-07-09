@@ -1,0 +1,86 @@
+---
+- name: Hyper-V Ubuntu GPU-P collector - classify guest targets
+  hosts: "container_orchestrator_k3s:&gpu_workload_nodes"
+  gather_facts: false
+
+  tasks:
+    - name: Classify GPU-P guest troubleshooting eligibility
+      ansible.builtin.set_fact:
+        hyperv_ubuntu_gpu_p_should_collect: >-
+          {{
+            (gpu_contract.passthrough_mode | default('')) == 'gpu_p'
+          }}
+      changed_when: false
+
+    - name: Derive runtime group for GPU-P guest troubleshooting hosts
+      ansible.builtin.group_by:
+        key: >-
+          {{
+            'runtime_hyperv_ubuntu_gpu_p_guest_troubleshoot'
+            if (hyperv_ubuntu_gpu_p_should_collect | default(false) | bool)
+            else 'runtime_hyperv_ubuntu_gpu_p_guest_troubleshoot_excluded'
+          }}
+      changed_when: false
+
+- name: Collect Hyper-V Ubuntu GPU-P guest troubleshooting artifacts
+  hosts: runtime_hyperv_ubuntu_gpu_p_guest_troubleshoot
+  gather_facts: false
+
+  tasks:
+    - name: Collect Hyper-V Ubuntu GPU-P guest artifacts
+      ansible.builtin.include_role:
+        name: troubleshooting_collectors
+        tasks_from: hyperv_ubuntu_gpu_p.yml
+
+- name: Hyper-V Ubuntu GPU-P collector - classify Windows targets
+  hosts: "windows_server_2025:&hyperv_gpu_partition_enabled_hosts"
+  gather_facts: false
+
+  tasks:
+    - name: Classify GPU-P Windows troubleshooting eligibility
+      ansible.builtin.set_fact:
+        hyperv_ubuntu_gpu_p_windows_should_collect: true
+      changed_when: false
+
+    - name: Derive runtime group for GPU-P Windows troubleshooting hosts
+      ansible.builtin.group_by:
+        key: runtime_hyperv_ubuntu_gpu_p_windows_troubleshoot
+      changed_when: false
+
+- name: Collect Hyper-V Ubuntu GPU-P Windows troubleshooting artifacts
+  hosts: runtime_hyperv_ubuntu_gpu_p_windows_troubleshoot
+  gather_facts: false
+
+  tasks:
+    - name: Collect Hyper-V Ubuntu GPU-P Windows host artifacts
+      ansible.builtin.include_role:
+        name: troubleshooting_collectors
+        tasks_from: hyperv_ubuntu_gpu_p.yml
+      vars:
+        hyperv_ubuntu_gpu_p_collector_vm_name: >-
+          {{
+            hyperv_ubuntu_k3s_vm_hostname
+            | default(hyperv_ubuntu_k3s_vm_inventory_host | default(''))
+          }}
+
+- name: Hyper-V Ubuntu GPU-P collector - classify guest-gateway Windows surfaces
+  hosts: windows_guest_gateway_surfaces
+  gather_facts: false
+
+  tasks:
+    - name: Derive runtime group for guest-gateway GPU-P Windows troubleshooting hosts
+      ansible.builtin.group_by:
+        key: runtime_hyperv_ubuntu_gpu_p_guest_gateway_troubleshoot
+      changed_when: false
+
+- name: Collect Hyper-V Ubuntu GPU-P guest-gateway Windows troubleshooting artifacts
+  hosts: runtime_hyperv_ubuntu_gpu_p_guest_gateway_troubleshoot
+  gather_facts: false
+
+  tasks:
+    - name: Collect Hyper-V Ubuntu GPU-P Windows host artifacts via guest gateway
+      ansible.builtin.include_role:
+        name: troubleshooting_collectors
+        tasks_from: hyperv_ubuntu_gpu_p.yml
+      vars:
+        hyperv_ubuntu_gpu_p_collector_vm_name: hom-lab-ctl-k3s-02

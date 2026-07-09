@@ -24,7 +24,7 @@ If API fails with correct DNS/route, the hypervisor gateway is likely down — n
 
 | Alias | When |
 |---|---|
-| `hom-lab-ctl-hvh-02-ipv6` | IPv4 SSH refused on `.158` |
-| `hom-lab-ctl-hvh-02.local` | mDNS path to `.159` |
+| `HOM-LAB-HVH-02-ipv6` | IPv4 SSH refused on `.158` |
+| `HOM-LAB-HVH-02.local` | mDNS path to `.159` |
 
 Kubeconfig refresh: `roles/k3s_mac_client/` via `playbooks/k3s_mac_client.yaml` — only after gateway path is proven up.

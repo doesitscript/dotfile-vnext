@@ -1,4 +1,18 @@
 ---
+- name: Reject apt NVIDIA guest driver install on GPU-P guests
+  ansible.builtin.assert:
+    that:
+      - not (
+          (gpu_contract.passthrough_mode | default('')) == 'gpu_p'
+          and (k3s_nvidia_runtime_install_guest_driver | bool)
+        )
+    fail_msg: >-
+      GPU-P guests must not install apt nvidia-driver packages. Set
+      k3s_nvidia_runtime_install_guest_driver: false and converge userspace via
+      roles/hyperv_ubuntu_gpu_p_linux_guest_runtime. To purge an existing apt
+      driver, set k3s_nvidia_runtime_remove_guest_driver: true.
+  when: k3s_nvidia_runtime_state == 'present'
+
 - name: Remove apt NVIDIA guest driver packages when GPU-P cleanup is requested
   ansible.builtin.include_tasks: remove_guest_driver.yml
   when:

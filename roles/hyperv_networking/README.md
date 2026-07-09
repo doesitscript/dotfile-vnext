@@ -83,7 +83,7 @@ feature taskfile so teardown remains explicit.
 On Windows hosts that are expected to stay reachable through the Hyper-V
 management OS, the safest first-pass recovery path is a temporary boot task
 that runs locally on the next reboot and applies the soft DHCP refresh sequence
-that already proved effective for `hom-lab-ctl-hvh-02`:
+that already proved effective for `hom-lab-hvh-02`:
 
 ```powershell
 Clear-DnsClientCache
@@ -200,7 +200,7 @@ Important routing nuance:
 - that restores true direct controller-to-guest TCP reachability, but guest
   internet egress and whole-LAN return traffic still depend on the upstream
   router learning the guest subnet through the Windows host
-- for the current `hom-lab-ctl-hvh-02` lane, that means the upstream router
+- for the current `hom-lab-hvh-02` lane, that means the upstream router
   needs a static route for `192.168.137.0/24` via `192.168.50.158`
 
 Router operator guide:
@@ -249,7 +249,7 @@ tasks:
 Low-level standalone validation surface:
 
 ```bash
-ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit hom-lab-ctl-hvh-02
+ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit hom-lab-hvh-02
 ```
 
 The legacy Multipass teardown playbook has been retired after cleanup.

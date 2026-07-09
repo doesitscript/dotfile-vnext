@@ -57,7 +57,7 @@ netbox_service_slug: vllm-k3s-primary
 | Primary deep local reasoning | Largest local model for hard problems on powerhouse GPU | vLLM serves `Qwen/Qwen2.5-Coder-32B-Instruct-AWQ` after smoke `Qwen/Qwen3-0.6B` |
 | vLLM primary | Main 5090 OpenAI-compatible inference service | Namespace `vllm-runtime`, stable cluster `api_base`, operator `vllm.hom.lab` |
 | Heavy coding | Coding-focused use of same stack | LiteLLM alias `code-deep` → this runtime (owned by the sibling LiteLLM packet) |
-| 5090 lane *(provenance only)* | Jobs for powerhouse GPU host | `hom-lab-ctl-hvh-02` + `hom-lab-ctl-k3s-02` — **not** an inventory group name |
+| 5090 lane *(provenance only)* | Jobs for powerhouse GPU host | `HOM-LAB-HVH-02` + `hom-lab-ctl-k3s-02` — **not** an inventory group name |
 
 **Not in this slice, but not dropped:** LiteLLM `model_list` aliases, the full model-purpose set, agent role defaults, Langfuse trace metadata, and RIPI product surfaces are carried by named sibling packets. This vLLM packet must not be read as "only implement `code-deep`."
 
@@ -214,7 +214,7 @@ graph TB
 ```mermaid
 graph TB
   subgraph hosts [Inventory hosts]
-    hvh02["hom-lab-ctl-hvh-02 device hvh GPU lane"]
+    hvh02["HOM-LAB-HVH-02 device hvh GPU lane"]
     k3s02["hom-lab-ctl-k3s-02 VM k3s guest .137.11"]
   end
 
@@ -258,7 +258,7 @@ graph TB
 - **VM:** `hom-lab-ctl-k3s-02` — promote `netbox_status` from `staged` to `active` when live apply verified
 - **Service:** `vlm` — slug `vllm-k3s-primary`, parent VM k3s-02, tags `service-endpoint`, `homelab`, `ansible-managed`
 - **Publication alignment:** same operator URL as `homelab_hosts_file_web_catalog` row and NetBox ingress metadata
-- **Cluster:** `hom-lab-ctl-hvh-02` Hyper-V parent (existing registry row)
+- **Cluster:** `HOM-LAB-HVH-02` Hyper-V parent (existing registry row)
 
 ### Declared / Applied / Verified
 

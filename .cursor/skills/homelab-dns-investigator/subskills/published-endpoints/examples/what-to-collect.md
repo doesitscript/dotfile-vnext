@@ -34,7 +34,7 @@ From `homelab_hosts_file_web_catalog` — match hostname to `verify_url`:
 
 ## Portproxy listen endpoints (hvh-02)
 
-From `inventory/host_vars/hom-lab-ctl-hvh-02.yaml` — probe `listen_address:listen_port`:
+From `inventory/host_vars/HOM-LAB-HVH-02.yaml` — probe `listen_address:listen_port`:
 
 | name | listen | backend |
 |---|---|---|

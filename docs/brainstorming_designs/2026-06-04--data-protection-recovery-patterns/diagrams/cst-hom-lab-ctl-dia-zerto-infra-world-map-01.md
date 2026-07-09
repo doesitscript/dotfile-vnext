@@ -17,8 +17,8 @@ extensions until promoted through the active naming registry.
 flowchart TB
   subgraph infra [Repo infrastructure world]
     NBX["NetBox + live-object-registry\nsource of truth for host VM service facts"]
-    HVH01["hom-lab-ctl-hvh-01\nstorage Hyper-V host"]
-    HVH02["hom-lab-ctl-hvh-02\nGPU Hyper-V host"]
+    HVH01["HOM-LAB-HVH-01\nstorage Hyper-V host"]
+    HVH02["HOM-LAB-HVH-02\nGPU Hyper-V host"]
     DKR01["hom-lab-ctl-dkr-01"]
     K3S01["hom-lab-ctl-k3s-01"]
     DKR02["hom-lab-ctl-dkr-02"]
@@ -83,7 +83,7 @@ flowchart TB
 
 | Shape | Example | Meaning |
 |-------|---------|---------|
-| `hom-lab-ctl-hvh-02` | live infrastructure name | NetBox/inventory host or VM identity |
+| `HOM-LAB-HVH-02` | live infrastructure name | NetBox/inventory host or VM identity |
 | `vra-hvh-02` | Terraform unit | Zerto VRA attached to the `hvh-02` host |
 | `vpg-k3s-02` | Terraform unit / policy object | VPG protecting K3s workload in a lane |
 | `hom-lab-ctl-zrt-01` | candidate L4 service or VM | Zerto manager identity if promoted |

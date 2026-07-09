@@ -10,7 +10,7 @@ WSL may exist on a **development Windows desktop** (e.g. gaming PC). This repo d
 
 ## When WSL is wrong
 
-- Reaching `hom-lab-ctl-hvh-02`, `hom-lab-ctl-dkr-02`, or `hom-lab-ctl-k3s-02` automation targets
+- Reaching `hom-lab-hvh-02`, `hom-lab-ctl-dkr-02`, or `hom-lab-ctl-k3s-02` automation targets
 - Substituting `wsl.exe` for OpenSSH to a Windows host or SSH to a Hyper-V guest
 - Inventory groups or hostnames implying `*-wsl` are the production Linux surface
 

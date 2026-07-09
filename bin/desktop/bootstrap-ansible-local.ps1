@@ -28,11 +28,11 @@
 #
 # .QUICK COMMANDS
 #   Run from repo root (after bootstrap-local.ps1): .\bin\bootstrap-ansible-local.ps1
-#   Explicit node:  .\bin\bootstrap-ansible-local.ps1 -PhysicalNode hom-lab-ctl-hvh-02
+#   Explicit node:  .\bin\bootstrap-ansible-local.ps1 -PhysicalNode HOM-LAB-HVH-02
 #   Skip fz at the end:  .\bin\bootstrap-ansible-local.ps1 -RunWslBootstrap:$false
 
 param(
-    # Physical node name (e.g., hom-lab-ctl-hvh-02, dev-3090, hom-lab-ctl-hvh-01).
+    # Physical node name (e.g., HOM-LAB-HVH-02, dev-3090, HOM-LAB-HVH-01).
     # Auto-detected from hostname if not provided.
     [string]$PhysicalNode = "",
     # If $true (default), unregister the WSL distribution if it already exists (wsl --unregister)
@@ -72,7 +72,7 @@ if (-not $PhysicalNode) {
         $lines = Get-Content $mappingPath
         $currentNode = $null
         foreach ($line in $lines) {
-            # Match 2-space indented node name under physical_nodes (e.g., "  hom-lab-ctl-hvh-02:")
+            # Match 2-space indented node name under physical_nodes (e.g., "  HOM-LAB-HVH-02:")
             if ($line -match '^\s{2}([a-z0-9_-]+):\s*$') {
                 $currentNode = $Matches[1]
             }
@@ -93,7 +93,7 @@ if (-not $PhysicalNode) {
 
     if (-not $PhysicalNode) {
         Write-Error "[ERROR] Could not auto-detect physical node from hostname '$($env:COMPUTERNAME)'." -ErrorAction Continue
-        Write-Host "  Pass -PhysicalNode <name> explicitly (e.g., hom-lab-ctl-hvh-02, dev-3090, hom-lab-ctl-hvh-01)" -ForegroundColor Yellow
+        Write-Host "  Pass -PhysicalNode <name> explicitly (e.g., HOM-LAB-HVH-02, dev-3090, HOM-LAB-HVH-01)" -ForegroundColor Yellow
         Write-Host "  Or ensure this machine's hostname is in inventory/hosts_mapping.yaml" -ForegroundColor Yellow
         exit 1
     }

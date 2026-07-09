@@ -4,7 +4,7 @@ Durable diagram for interim name resolution without GT6 router DNS rows.
 Ansible resources: `roles/homelab_hosts_file_mac`, planned `homelab_hosts_file_linux` /
 `homelab_hosts_file_windows`, playbooks `homelab_hosts_file_mac.yaml`, inventory SSOT
 `homelab_router_gt6_mac_hosts_workaround`, `k3s_traefik_routes_entries`,
-`guest_published_tcp_ports` on `hom-lab-ctl-hvh-02`.
+`guest_published_tcp_ports` on `HOM-LAB-HVH-02`.
 
 Plan: [2026-05-27--k3s-hyperv-traefik-homelab-hosts-file-implemented](../plans/2026-05-27--k3s-hyperv-traefik-homelab-hosts-file-implemented/README.md)
 
@@ -16,7 +16,7 @@ flowchart TB
     traefikEntries["k3s_traefik_routes_entries\nlangfuse.hom.lab litellm.hom.lab"]
     routerWorkaround["homelab_router_gt6_mac_hosts_workaround\nguest VM hostnames"]
     webCatalog["homelab_hosts_file_web_catalog\nDNS-3b portproxy web UIs"]
-    hvhPorts["guest_published_tcp_ports\nhom-lab-ctl-hvh-02"]
+    hvhPorts["guest_published_tcp_ports\nHOM-LAB-HVH-02"]
   end
 
   subgraph ansible [Ansible]

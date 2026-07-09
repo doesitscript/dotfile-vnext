@@ -12,7 +12,7 @@ skills below in build order.
 | 3 | `library-entry-build` | Run registered `build_*.mjs` |
 | 4 | `library-context7-pack` | Context7 shards / OpenAPI interpretation (often via build `--context7-only`) |
 | 5 | `firecrawl-context7-crosscheck` | Gap JSON + capture backlog |
-| 6 | `library-indexes-pack` | `indexes/<entry>/` crosswalk + README |
+| 6 | `library-indexes-pack` | `indexes/<entry>/` crosswalk + README + backlog |
 | 7 | `library-entry-validate` | `AI_LIBRARY_ENTRY_VALIDATION_OK` gate |
 
 **Effectiveness first:** steps 7 and 5 block incomplete packs early once outputs exist.

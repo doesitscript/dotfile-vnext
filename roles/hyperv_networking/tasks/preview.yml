@@ -1,0 +1,9 @@
+---
+- name: Resolve hyperv_config contract for preview
+  ansible.builtin.set_fact:
+    _hyperv: "{{ hyperv_config | default({}) }}"
+
+- name: Probe published port surface during Hyper-V preview
+  ansible.builtin.include_tasks: published_port_surface_probe.yml
+  when:
+    - (_hyperv.guest_published_tcp_ports | default([])) | length > 0

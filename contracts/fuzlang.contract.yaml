@@ -37,7 +37,7 @@ nodes:
     lan_ip: null  # No inbound assumptions
 
   main_node:
-    name: hom-lab-ctl-hvh-02
+    name: HOM-LAB-HVH-02
     # FIXME: Role naming here is still legacy scaffolding. Replace with a
     # properly designed scalable naming pattern aligned with NetBox/geodesic or
     # the repo's mature host classification schema.
@@ -55,7 +55,7 @@ nodes:
     lan_ip: "192.168.50.158"  # legacy snapshot, not a dynamic source of truth
 
   network_node:
-    name: hom-lab-ctl-hvh-01
+    name: HOM-LAB-HVH-01
     # FIXME: Role naming here is still legacy scaffolding. Replace with a
     # properly designed scalable naming pattern aligned with NetBox/geodesic or
     # the repo's mature host classification schema.
@@ -158,9 +158,9 @@ migration_candidates:
 # 3. CROSS-NODE ENDPOINTS (CANONICAL BASE URLS)
 # ============================================================================
 endpoint_map:
-  langfuse_base_url: "http://hom-lab-ctl-hvh-01:3000"
-  minio_api_url: "http://hom-lab-ctl-hvh-01:9000"
-  minio_console_url: "http://hom-lab-ctl-hvh-01:9001"
+  langfuse_base_url: "http://HOM-LAB-HVH-01:3000"
+  minio_api_url: "http://HOM-LAB-HVH-01:9000"
+  minio_console_url: "http://HOM-LAB-HVH-01:9001"
   ollama_base_url: "http://hom-lab-ctl-dkr-02:11434"
   litellm_base_url: "http://hom-lab-ctl-dkr-02:4000"
   dev_ollama_base_url: "http://dev-3090:11434"  # optional
@@ -222,17 +222,17 @@ ports:
   dev_ollama:
     port: 11434
     exposure: restricted  # or lan
-    allowed_sources: [mac-dev, hom-lab-ctl-hvh-02, hom-lab-ctl-hvh-01]
+    allowed_sources: [mac-dev, HOM-LAB-HVH-02, HOM-LAB-HVH-01]
 
   dev_litellm:
     port: 4000
     exposure: restricted  # or lan
-    allowed_sources: [mac-dev, hom-lab-ctl-hvh-02, hom-lab-ctl-hvh-01]
+    allowed_sources: [mac-dev, HOM-LAB-HVH-02, HOM-LAB-HVH-01]
 
 port_recommendations:
   expose_to_lan: [langfuse_web, minio_api, minio_console, litellm_gateway]
   keep_restricted: [postgres, redis, clickhouse]
-  keep_localhost_only: [ollama]  # unless hom-lab-ctl-hvh-01 must call it
+  keep_localhost_only: [ollama]  # unless HOM-LAB-HVH-01 must call it
 
 # ============================================================================
 # 5. SHARED SECRET CONTRACT
@@ -466,9 +466,9 @@ management_surfaces:
       - "<hostname>-win"  # WinRM surface
       - "<hostname>-wsl"  # SSH surface
     examples:
-      - hom-lab-ctl-hvh-02
+      - HOM-LAB-HVH-02
       - hom-lab-ctl-dkr-02
-      - hom-lab-ctl-hvh-01
+      - HOM-LAB-HVH-01
       - hom-lab-ctl-dkr-01
       - dev-3090-win
       - dev-3090-wsl

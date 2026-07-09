@@ -37,11 +37,11 @@ Checking how `shell_config` includes its task files and fetching the best-practi
 
 
 
-Reading inventory-parse output for hom-lab-ctl-hvh-02 and running ansible-task (ping) for familiarity.
+Reading inventory-parse output for HOM-LAB-HVH-02 and running ansible-task (ping) for familiarity.
 
 
 
-Reading hom-lab-ctl-hvh-02 hostvars to inspect ansible_env structure:
+Reading HOM-LAB-HVH-02 hostvars to inspect ansible_env structure:
 
 
 
@@ -53,11 +53,11 @@ Checking how Windows reports the system fact:
 
 
 
-Checking hom-lab-ctl-hvh-02's `ansible_system` value in the dump:
+Checking HOM-LAB-HVH-02's `ansible_system` value in the dump:
 
 
 
-Identifying root cause: on hom-lab-ctl-hvh-02 `ansible_system` is "Win32NT", not "Windows", so `ansible_facts['system'] != "Windows"` is true and unix.yml runs. Windows has no `ansible_env.HOME` (it uses USERPROFILE). Adding a fix: treat Win32NT as Windows and require `HOME` for unix tasks.
+Identifying root cause: on HOM-LAB-HVH-02 `ansible_system` is "Win32NT", not "Windows", so `ansible_facts['system'] != "Windows"` is true and unix.yml runs. Windows has no `ansible_env.HOME` (it uses USERPROFILE). Adding a fix: treat Win32NT as Windows and require `HOME` for unix tasks.
 
 
 
@@ -99,15 +99,15 @@ Run on **deploy_development_nodes.yaml**. It lists both plays and all tasks (gro
 
 **inventory-parse** was run with `project_root: /Users/joshc/develop/dotfile-vnext`, `include_hostvars: true`. Full output is in the agent-tools file; here’s what matters for the failure.
 
-**For hom-lab-ctl-hvh-02:**
+**For HOM-LAB-HVH-02:**
 
 - **ansible_env** has **no `HOME`**. It has:
   - **USERPROFILE**: `C:\Users\joshc`
   - **HOMEDRIVE**: `C:`
   - **HOMEPATH**: `\Users\joshc`
-- So on that host, **`ansible_env.HOME` does not exist**; the value that “broke” (the one the task expected) **should not be used on Windows at all**. On Unix it would evaluate to something like `/Users/joshc` (or the real home); on hom-lab-ctl-hvh-02 the correct “home” concept is USERPROFILE, but the unix task should not run there.
+- So on that host, **`ansible_env.HOME` does not exist**; the value that “broke” (the one the task expected) **should not be used on Windows at all**. On Unix it would evaluate to something like `/Users/joshc` (or the real home); on HOM-LAB-HVH-02 the correct “home” concept is USERPROFILE, but the unix task should not run there.
 
-**Root cause:** On Windows, `ansible_facts['system']` is **`Win32NT`**, not `"Windows"`. The role had `when: ansible_facts['system'] != "Windows"`, so on hom-lab-ctl-hvh-02 the condition was true, unix.yml ran, and `path: "{{ ansible_env.HOME }}/.bashrc.d"` was evaluated on a host that has no `HOME` → “object of type 'dict' has no attribute 'HOME'”.
+**Root cause:** On Windows, `ansible_facts['system']` is **`Win32NT`**, not `"Windows"`. The role had `when: ansible_facts['system'] != "Windows"`, so on HOM-LAB-HVH-02 the condition was true, unix.yml ran, and `path: "{{ ansible_env.HOME }}/.bashrc.d"` was evaluated on a host that has no `HOME` → “object of type 'dict' has no attribute 'HOME'”.
 
 ---
 
@@ -121,7 +121,7 @@ In **roles/common/shell_config/tasks/main.yml**:
 - Windows tasks run when `ansible_facts['system']` is **Windows** or **Win32NT**.
 
 So:
-- **What the value “should have been”:** On Unix, `ansible_env.HOME` (e.g. `/Users/joshc`). On hom-lab-ctl-hvh-02 it should never be evaluated; the fix ensures unix tasks (and thus `ansible_env.HOME`) are skipped there.
+- **What the value “should have been”:** On Unix, `ansible_env.HOME` (e.g. `/Users/joshc`). On HOM-LAB-HVH-02 it should never be evaluated; the fix ensures unix tasks (and thus `ansible_env.HOME`) are skipped there.
 - **Why it broke:** Windows was treated as “not Windows” because of `Win32NT`, and unix.yml ran and tried to use `ansible_env.HOME`, which doesn’t exist on Windows.
 
 ---
@@ -135,7 +135,7 @@ So:
 
 ---
 
-**Summary:** You ran list_tasks, inventory-parse, create-role-structure, create-playbook, and ansible-task; reviewed best practices; saw from inventory-parse that hom-lab-ctl-hvh-02 has no `ansible_env.HOME` (only USERPROFILE); fixed the role so unix tasks run only when system is not Windows/Win32NT and `HOME` is in `ansible_env`; and validated the serviced playbooks and the new test playbook.
+**Summary:** You ran list_tasks, inventory-parse, create-role-structure, create-playbook, and ansible-task; reviewed best practices; saw from inventory-parse that HOM-LAB-HVH-02 has no `ansible_env.HOME` (only USERPROFILE); fixed the role so unix tasks run only when system is not Windows/Win32NT and `HOME` is in `ansible_env`; and validated the serviced playbooks and the new test playbook.
 
 ---
 
@@ -153,7 +153,7 @@ Running the full playbook and addressing any errors until it completes successfu
 
 
 Addressing two failures:
-1. direnv — same `ansible_env.HOME` issue on Windows: gate Unix tasks so they don't run on hom-lab-ctl-hvh-02.
+1. direnv — same `ansible_env.HOME` issue on Windows: gate Unix tasks so they don't run on HOM-LAB-HVH-02.
 2. cursor — merge fails because existing settings.json has a trailing comma (invalid JSON); making the merge tolerant.
 
 
@@ -166,7 +166,7 @@ Fixing the cursor settings merge to tolerate trailing commas in JSON:
 
 
 
-Re-running the playbook with --limit mac-dev,hom-lab-ctl-hvh-02 to verify the fixes (other hosts are unreachable due to network/DNS).
+Re-running the playbook with --limit mac-dev,HOM-LAB-HVH-02 to verify the fixes (other hosts are unreachable due to network/DNS).
 
 
 
@@ -191,7 +191,7 @@ Chaining the trailing-comma removal multiple times to handle nested structures.
 
 
 Fixing two issues:
-1. Restricting Cursor settings to non-Windows — stat/slurp fail on hom-lab-ctl-hvh-02 (WinRM/PowerShell).
+1. Restricting Cursor settings to non-Windows — stat/slurp fail on HOM-LAB-HVH-02 (WinRM/PowerShell).
 2. Fixing trailing-comma handling — trying a simpler regex and a rescue path.
 
 
@@ -216,7 +216,7 @@ Using a shell task to normalize the JSON so parsing always succeeds:
 
 
 
-Gating the mcp_servers/openai_docs role on hom-lab-ctl-hvh-02 so directory tasks run only on non-Windows (or use a Windows-safe module).
+Gating the mcp_servers/openai_docs role on HOM-LAB-HVH-02 so directory tasks run only on non-Windows (or use a Windows-safe module).
 
 
 
@@ -232,7 +232,7 @@ Passing the path via an environment variable to fix the YAML quoting error:
 
 
 
-Playbook run with `--limit mac-dev,hom-lab-ctl-hvh-02` completed successfully (exit code 0). Running idempotence check (second run) to confirm no unexpected changes:
+Playbook run with `--limit mac-dev,HOM-LAB-HVH-02` completed successfully (exit code 0). Running idempotence check (second run) to confirm no unexpected changes:
 
 
 
@@ -242,7 +242,7 @@ Summary of what was fixed and how the playbook behaves now:
 
 ## Playbook status
 
-**`playbooks/deploy_development_nodes.yaml`** runs successfully with **`--limit mac-dev,hom-lab-ctl-hvh-02`** (exit code 0). A second run is mostly idempotent (one small change per host is acceptable).
+**`playbooks/deploy_development_nodes.yaml`** runs successfully with **`--limit mac-dev,HOM-LAB-HVH-02`** (exit code 0). A second run is mostly idempotent (one small change per host is acceptable).
 
 ---
 
@@ -252,15 +252,15 @@ Summary of what was fixed and how the playbook behaves now:
    - Unix tasks run only when `ansible_facts['system']` is not `Windows` or `Win32NT` and `'HOME' in ansible_env`, so Windows no longer runs `ansible_env.HOME` and no longer fails.
 
 2. **direnv**
-   - **roles/direnv/tasks/main.yml**: Windows gate updated to `(ansible_facts['system'] | default('')) in ['Windows', 'Win32NT']`. “Deploy direnv bash hook” runs only when system is not Windows/Win32NT and `'HOME' in ansible_env`, so it never runs on hom-lab-ctl-hvh-02.
+   - **roles/direnv/tasks/main.yml**: Windows gate updated to `(ansible_facts['system'] | default('')) in ['Windows', 'Win32NT']`. “Deploy direnv bash hook” runs only when system is not Windows/Win32NT and `'HOME' in ansible_env`, so it never runs on HOM-LAB-HVH-02.
 
 3. **cursor**
-   - **roles/cursor/tasks/main.yml**: “Ensure Cursor settings.json…” runs only when `(ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']`, so settings merge is skipped on hom-lab-ctl-hvh-02 (avoids WinRM/stat/slurp issues).
+   - **roles/cursor/tasks/main.yml**: “Ensure Cursor settings.json…” runs only when `(ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']`, so settings merge is skipped on HOM-LAB-HVH-02 (avoids WinRM/stat/slurp issues).
    - **roles/cursor/tasks/extensions.yml**: “Install Cursor extensions via CLI” has `when: (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']` and `changed_when` uses `(_cursor_ext_result.stdout | default('')) is search('was successfully installed')` so Windows and malformed results don’t break the run.
    - **roles/cursor/tasks/settings.yml**: Replaced fragile regex-based parsing with a **normalize step**: a shell task runs Python on the host to strip JSONC comments and trailing commas, then the merge task uses that output with `from_json`. Path is passed via `CURSOR_SETTINGS_PATH` so YAML quoting is safe. Merge runs when the file exists and the normalize task has run.
 
 4. **mcp_servers/openai_docs**
-   - **roles/mcp_servers/openai_docs/tasks/main.yml**: “Configure openaiDeveloperDocs entry…” has `when: (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']`, so the whole role is skipped on hom-lab-ctl-hvh-02 and WinRM module deserialization errors are avoided.
+   - **roles/mcp_servers/openai_docs/tasks/main.yml**: “Configure openaiDeveloperDocs entry…” has `when: (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']`, so the whole role is skipped on HOM-LAB-HVH-02 and WinRM module deserialization errors are avoided.
 
 ---
 
@@ -272,14 +272,14 @@ Without `--limit`, these hosts are still **unreachable** (DNS/network):
 
 So:
 
-- **With `--limit mac-dev,hom-lab-ctl-hvh-02`**: playbook runs to completion with no errors.
+- **With `--limit mac-dev,HOM-LAB-HVH-02`**: playbook runs to completion with no errors.
 - **With no limit**: the playbook will still fail on the unreachable hosts until their network/DNS is fixed; the changes above do not alter that.
 
 ---
 
 ## Idempotence
 
-A second run with `--limit mac-dev,hom-lab-ctl-hvh-02` completed with **ok=30** on mac-dev and **ok=9** on hom-lab-ctl-hvh-02, with one reported change per host (e.g. VS Code extension or similar). No repeated failures; behavior is stable for the limited run.
+A second run with `--limit mac-dev,HOM-LAB-HVH-02` completed with **ok=30** on mac-dev and **ok=9** on HOM-LAB-HVH-02, with one reported change per host (e.g. VS Code extension or similar). No repeated failures; behavior is stable for the limited run.
 
 ---
 
@@ -290,7 +290,7 @@ A second run with `--limit mac-dev,hom-lab-ctl-hvh-02` completed with **ok=30** 
 @dotfile-vnext/roles/access_identity_windows/tasks/ubuntu.yml:35-115 Double checking, you should have made sure that WSL is no longer enabled or estate should not be enabled. So just make sure that these lines right here and any other WSL ones that you have made sure that they do not trigger installation from here on. They are disabled, their stay is not to install them
 
 Run the access playbook after making the adjustments above if needed and fix anything that comes up along the way until everything runs without error.
-playbooks/access.yaml -i inventory/inventory.yaml --limit 'execution_nodes,hom-lab-ctl-hvh-02' # network_server is temporarily down  and can be ignored
+playbooks/access.yaml -i inventory/inventory.yaml --limit 'execution_nodes,HOM-LAB-HVH-02' # network_server is temporarily down  and can be ignored
 
 ---
 
@@ -321,7 +321,7 @@ Running the access playbook:
 
 
 
-Checking whether hom-lab-ctl-hvh-02 sets wsl_enabled; ubuntu.yml is still running.
+Checking whether HOM-LAB-HVH-02 sets wsl_enabled; ubuntu.yml is still running.
 
 
 
@@ -386,16 +386,16 @@ With **`wsl_enabled: false`** (default), a normal access run no longer installs 
 Command run:
 
 ```bash
-ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit 'execution_nodes,hom-lab-ctl-hvh-02'
+ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit 'execution_nodes,HOM-LAB-HVH-02'
 ```
 
 **Result:** Exit code 0. All three plays completed:
 
 - **Play 1 (controller):** mac-dev – SSH keypair, controller key facts.
-- **Play 2 (Windows):** hom-lab-ctl-hvh-02 – OpenSSH install, sshd, firewall, DefaultShell = PowerShell, admin keys, SSH-configured fact; WSL tasks skipped (14 skipped); debug collection ran.
+- **Play 2 (Windows):** HOM-LAB-HVH-02 – OpenSSH install, sshd, firewall, DefaultShell = PowerShell, admin keys, SSH-configured fact; WSL tasks skipped (14 skipped); debug collection ran.
 - **Play 3 (controller SSH config):** mac-dev – SSH config templated from deployed targets.
 
-**PLAY RECAP:** mac-dev ok=12 changed=1, hom-lab-ctl-hvh-02 ok=46 changed=5, no failures.
+**PLAY RECAP:** mac-dev ok=12 changed=1, HOM-LAB-HVH-02 ok=46 changed=5, no failures.
 
 **validate-playbook** on `playbooks/access.yaml` passed.
 
@@ -443,7 +443,7 @@ So the “tag” is **membership in `wsl_hosts`**: anything in that group is exc
 1. **playbooks/deploy_development_nodes.yaml** – Second play set to `hosts: node_purpose_development:!wsl_hosts`, with a short comment that this avoids UNREACHABLE while WSL is being phased out and that you can still use `--limit server-225-wsl` (or similar) to include a -wsl host when needed.
 2. **inventory/group_vars/all.yaml** – One-sentence note under the node_purpose / development section that the playbook uses `node_purpose_development:!wsl_hosts` and why.
 
-With this, a normal run of `deploy_development_nodes.yaml` will only run on mac-dev, hom-lab-ctl-hvh-02, and any other development nodes that are **not** in `wsl_hosts`, so you won’t hit the “Data could not be sent to remote host DESKTOP-VLLM” / UNREACHABLE for server-225-wsl unless you explicitly add it with `--limit`. When WSL is fully back in scope, you can switch the play back to `hosts: node_purpose_development` (or introduce a variable to toggle the exclusion) if you prefer.
+With this, a normal run of `deploy_development_nodes.yaml` will only run on mac-dev, HOM-LAB-HVH-02, and any other development nodes that are **not** in `wsl_hosts`, so you won’t hit the “Data could not be sent to remote host DESKTOP-VLLM” / UNREACHABLE for server-225-wsl unless you explicitly add it with `--limit`. When WSL is fully back in scope, you can switch the play back to `hosts: node_purpose_development` (or introduce a variable to toggle the exclusion) if you prefer.
 
 ---
 
@@ -631,7 +631,7 @@ You can run the playbooks that use `mcp_servers/openai_docs` and `cursor` (e.g. 
 
 @/Users/joshc/.cursor/projects/Users-joshc-develop-dotfile-vnext-code-workspace/terminals/7.txt:833-844 Can you either fix my command or work through running this yourself. ansible-playbook playbooks/deploy_development_nodes.yaml --tags 'codex,openai-docs' --limit 'mac_dev'
 
-i'mve tried that, and this: 'hom-lab-ctl-hvh-02,execution_node'  in the limit block and it's not doing any matching
+i'mve tried that, and this: 'HOM-LAB-HVH-02,execution_node'  in the limit block and it's not doing any matching
 
 ---
 
@@ -698,7 +698,7 @@ The group_by task in the playbook was given `tags: [always]` so it always runs w
   `ansible-playbook playbooks/deploy_development_nodes.yaml --tags 'codex,openai-docs' --limit mac-dev`
 
 - **Mac + Windows surface of server-225:**  
-  `ansible-playbook playbooks/deploy_development_nodes.yaml --tags 'codex,openai-docs' --limit 'mac-dev,hom-lab-ctl-hvh-02'`
+  `ansible-playbook playbooks/deploy_development_nodes.yaml --tags 'codex,openai-docs' --limit 'mac-dev,HOM-LAB-HVH-02'`
 
 - **All development nodes (no limit):**  
   `ansible-playbook playbooks/deploy_development_nodes.yaml --tags 'codex,openai-docs'`
@@ -1790,4 +1790,3 @@ mac-dev carries `node_role: development-control-plane`. That variable already ex
 Leave Codex in `deploy_development_nodes.yaml` targeting `node_purpose_development` — that's already correct. Once the `node_role` group_by lands, you can optionally tighten the Codex play to target `node_role_development-control-plane` specifically if you ever add a development node that *shouldn't* have an IDE toolchain (like a CI runner). You don't need to do that today — but the infrastructure will be there.
 
 No new tag needed. No new variable needed. The pattern you already have is the right one.
-

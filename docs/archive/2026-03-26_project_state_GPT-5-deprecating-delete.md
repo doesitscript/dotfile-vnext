@@ -265,7 +265,7 @@ This matters because a new AI might start at `README.md` and immediately build o
 
 The repo clearly knows how to use vaults. There are vault templates, encrypted group vars, and README guidance. But current Windows host vars still contain plaintext credentials such as:
 
-- `inventory/host_vars/hom-lab-ctl-hvh-02.yaml`
+- `inventory/host_vars/HOM-LAB-HVH-02.yaml`
 - `inventory/host_vars/home-lab-auth-hvh-01.yaml`
 - `inventory/host_vars/dev-workstation-win.yaml`
 
@@ -277,7 +277,7 @@ The repo is actively translating from older WSL-oriented assumptions toward a Mu
 
 - `inventory/inventory.yaml` explicitly labels `-wsl` as legacy naming
 - `inventory/group_vars/linux_vm_hosts.yaml` introduces a new direct Linux VM group
-- `inventory/host_vars/hom-lab-ctl-hvh-02.yaml` carries `multipass_ubuntu_vm_*` variables
+- `inventory/host_vars/HOM-LAB-HVH-02.yaml` carries `multipass_ubuntu_vm_*` variables
 - `playbooks/provision_server_225.yaml` retains `server_225/wsl2` as legacy reference while adding `multipass_ubuntu_vm`
 
 That means another AI should not overgeneralize from the old WSL path.

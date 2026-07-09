@@ -45,7 +45,7 @@ For the current slice:
 The durable Hugging Face/storage catalog is separate:
 `inventory/group_vars/model_catalog/manifest.yml`. That manifest tracks
 candidate/downloaded/served model weights and their storage path on the
-`hom-lab-ctl-hvh-01` public SMB share.
+`hom-lab-hvh-01` public SMB share.
 
 Do not duplicate the full catalog into this role. When a catalog row becomes a
 served runtime, add or update the corresponding LiteLLM route here and keep the

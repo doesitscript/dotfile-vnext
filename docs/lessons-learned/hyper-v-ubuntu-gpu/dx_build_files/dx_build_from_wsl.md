@@ -40,7 +40,7 @@ This file preserves the finalized packet content in the lessons-learned area for
 | Capability identifier | `hyperv_ubuntu_gpu_p_host_visible_wsl_runtime_reference` |
 | Owner manifest | None; this is a governed experimental troubleshooting packet, not a manifest-backed capability |
 | Owned files | This reference note and the post-execution mirror note at `docs/lessons-learned/hyper-v-ubuntu-gpu/dx_build_files/dx_build_from_wsl.md` |
-| Integration anchors | Existing Hyper-V Ubuntu GPU-P evidence under `docs/lessons-learned/hyper-v-ubuntu-gpu/`, inventory connection surfaces for `hom-lab-ctl-hvh-02` and `hom-lab-ctl-k3s-02`, and the host-visible Windows library paths |
+| Integration anchors | Existing Hyper-V Ubuntu GPU-P evidence under `docs/lessons-learned/hyper-v-ubuntu-gpu/`, inventory connection surfaces for `HOM-LAB-HVH-02` and `hom-lab-ctl-k3s-02`, and the host-visible Windows library paths |
 | Update behavior | Historical reference plus pointer to the supported finalize playbook |
 | Removal behavior | Keep until the supported finalize playbook and downstream automation fully supersede the historical notes |
 
@@ -128,7 +128,7 @@ This file preserves the finalized packet content in the lessons-learned area for
 flowchart TD
     A["Governed packet<br/>docs/plans/2026-07-08--hyper-v-ubuntu-gpu-dx-build-from-wsl-incomplete/README.md"] --> B["Supported finalize playbook<br/>playbooks/troubleshoot/hyperv_ubuntu_gpu_p_supported_finalize.yaml"]
     C["Lessons-learned evidence<br/>ReqSecDevAssign.md<br/>Host_DriverStore_for_full_VMs.md<br/>notes.md<br/>motherboard_investigation.md"] --> A
-    D["Windows host<br/>hom-lab-ctl-hvh-02<br/>SSH transport + PowerShell shell"] --> E["Host-visible inventory<br/>lxss\\lib<br/>DriverStore<br/>Program Files\\WSL"]
+    D["Windows host<br/>HOM-LAB-HVH-02<br/>SSH transport + PowerShell shell"] --> E["Host-visible inventory<br/>lxss\\lib<br/>DriverStore<br/>Program Files\\WSL"]
     D --> F["Host-visible runtime files<br/>Program Files\\WSL\\lib<br/>lxss\\lib<br/>resolved DriverStore subtree"]
     E --> B
     F --> B

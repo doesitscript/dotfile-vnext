@@ -18,8 +18,8 @@ Sources: `scutil --dns`, `grep hom.lab /etc/hosts`, `inventory/group_vars/all/ho
 
 | Name | `.hom.lab` (router) | bare (search → `.hom.lab`) | `.local` (mDNS) | `.lab` |
 |---|---|---|---|---|
-| `hom-lab-ctl-hvh-01` | `192.168.50.234` | `192.168.50.234` | none | none |
-| `hom-lab-ctl-hvh-02` | `192.168.50.158` | `192.168.50.158` | `192.168.50.159` | none |
+| `HOM-LAB-HVH-01` | `192.168.50.234` | `192.168.50.234` | none | none |
+| `HOM-LAB-HVH-02` | `192.168.50.158` | `192.168.50.158` | `192.168.50.159` | none |
 
 Commands per cell: `dig +short <fqdn> @192.168.50.1`, `dscacheutil -q host -a name <fqdn>`, `dns-sd -G v4 <name>.local`
 
@@ -28,17 +28,17 @@ Commands per cell: `dig +short <fqdn> @192.168.50.1`, `dscacheutil -q host -a na
 When DNS layers disagree, probe **both** IPs:
 
 ```text
-Important mismatch: hom-lab-ctl-hvh-02.local → 192.168.50.159, not inventory 192.168.50.158.
+Important mismatch: HOM-LAB-HVH-02.local → 192.168.50.159, not inventory 192.168.50.158.
 
 Evidence:
-- 192.168.50.159 — ping OK, SSH port 22 open, hostname hom-lab-ctl-hvh-02
+- 192.168.50.159 — ping OK, SSH port 22 open, hostname HOM-LAB-HVH-02
 - 192.168.50.158 — ping OK, but SSH connection refused on IPv4
 ```
 
 Assessment: `.local` is a working alternate path to hvh-02 (likely second adapter). Inventory/SSH config still target `.158`.
 
 ```text
-hom-lab-ctl-hvh-01 has no .local record — only .hom.lab via router DNS. Host is still down at 50.234.
+HOM-LAB-HVH-01 has no .local record — only .hom.lab via router DNS. Host is still down at 50.234.
 ```
 
 Save raw ping/SSH/nc output to `connection-probes.txt`.

@@ -19,13 +19,13 @@ Current lane already switched to direct routed mode:
 
 | Lane | Windows host | Host LAN IP | Guest subnet | Guest gateway | Current NAT setting |
 |---|---|---|---|---|---|
-| GPU lane | `hom-lab-ctl-hvh-02` | `192.168.50.158` | `192.168.137.0/24` | `192.168.137.1` | `false` |
+| GPU lane | `HOM-LAB-HVH-02` | `192.168.50.158` | `192.168.137.0/24` | `192.168.137.1` | `false` |
 
 Parallel lane that still keeps host NAT enabled today:
 
 | Lane | Windows host | Host LAN IP | Guest subnet | Guest gateway | Current NAT setting |
 |---|---|---|---|---|---|
-| Storage lane | `hom-lab-ctl-hvh-01` | `192.168.50.234` | `192.168.138.0/24` | `192.168.138.1` | `true` |
+| Storage lane | `HOM-LAB-HVH-01` | `192.168.50.234` | `192.168.138.0/24` | `192.168.138.1` | `true` |
 
 If the storage lane is later switched to direct routed mode too, it will need
 the same router pattern:
@@ -51,7 +51,7 @@ how to send return traffic back to the guest subnet.
 flowchart LR
     Mac["mac-dev\n192.168.50.33"]
     Router["LAN router\n192.168.50.1"]
-    Win["hom-lab-ctl-hvh-02\nLAN 192.168.50.158\nGuest GW 192.168.137.1"]
+    Win["HOM-LAB-HVH-02\nLAN 192.168.50.158\nGuest GW 192.168.137.1"]
     VM["hom-lab-ctl-dkr-02\n192.168.137.10"]
     Portproxy["Windows portproxy\n192.168.50.158:8000 -> 192.168.137.10:8000"]
     Good["Guest outbound internet: works"]
@@ -78,13 +78,13 @@ flowchart LR
 
 ## Topology 2: Routed Mode Plus Windows `HyperVGuestNat`
 
-This is the drifted mixed state we proved live on `hom-lab-ctl-hvh-02`.
+This is the drifted mixed state we proved live on `HOM-LAB-HVH-02`.
 
 ```mermaid
 flowchart LR
     Mac["mac-dev\n192.168.50.33"]
     Router["LAN router\n192.168.50.1"]
-    Win["hom-lab-ctl-hvh-02\nforwarding on\nHyperVGuestNat still present"]
+    Win["HOM-LAB-HVH-02\nforwarding on\nHyperVGuestNat still present"]
     VM["hom-lab-ctl-dkr-02\n192.168.137.10"]
     Mixed["Mixed model:\nrouted subnet + host NAT"]
     Bad["Observed failure:\nMac direct TCP to guest IP breaks"]
@@ -117,7 +117,7 @@ This is the current host-side fix we applied.
 flowchart LR
     Mac["mac-dev\nstatic route:\n192.168.137.0/24 via 192.168.50.158"]
     Router["LAN router\n192.168.50.1\nno route for 192.168.137.0/24"]
-    Win["hom-lab-ctl-hvh-02\nforwarding on\nno host NAT"]
+    Win["HOM-LAB-HVH-02\nforwarding on\nno host NAT"]
     VM["hom-lab-ctl-dkr-02\n192.168.137.10"]
     Good["Direct Mac -> guest IP: works"]
     Bad["Guest outbound internet: broken"]
@@ -155,7 +155,7 @@ flowchart LR
     Mac["mac-dev\n192.168.50.33"]
     Other["Other LAN clients\n192.168.50.0/24"]
     Router["LAN router\nstatic route:\n192.168.137.0/24 via 192.168.50.158"]
-    Win["hom-lab-ctl-hvh-02\nforwarding on\nno host NAT"]
+    Win["HOM-LAB-HVH-02\nforwarding on\nno host NAT"]
     VM["hom-lab-ctl-dkr-02\n192.168.137.10"]
     Good1["Direct guest-IP access: works"]
     Good2["Guest outbound internet/package access: works"]

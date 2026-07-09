@@ -6,20 +6,20 @@
 - name: Set endpoint URLs from contract (defaults per contract)
   set_fact:
     langfuse_url: "http://192.168.50.158:30000"
-    minio_api_url: "http://hom-lab-ctl-hvh-01:9000"
-    minio_console_url: "http://hom-lab-ctl-hvh-01:9001"
+    minio_api_url: "http://hom-lab-hvh-01:9000"
+    minio_console_url: "http://hom-lab-hvh-01:9001"
     litellm_url: "http://192.168.50.158:30400"
     ollama_url: "http://hom-lab-ctl-dkr-02:11434"
     secondary_ollama_url: >-
       http://{{
-        hostvars['hom-lab-ctl-hvh-01'].host_ip
-        | default(hostvars['hom-lab-ctl-hvh-01'].ansible_host | default('hom-lab-ctl-hvh-01'))
+        hostvars['hom-lab-hvh-01'].host_ip
+        | default(hostvars['hom-lab-hvh-01'].ansible_host | default('hom-lab-hvh-01'))
       }}:{{
-        hostvars['hom-lab-ctl-hvh-01'].windows_ollama_runtime_port | default(11434)
+        hostvars['hom-lab-hvh-01'].windows_ollama_runtime_port | default(11434)
       }}
     secondary_ollama_required: >-
       {{
-        hostvars['hom-lab-ctl-hvh-01'].windows_ollama_runtime_state | default('absent')
+        hostvars['hom-lab-hvh-01'].windows_ollama_runtime_state | default('absent')
       }} == 'present'
     dev_ollama_url: "http://dev-3090:11434"
     dev_litellm_url: "http://dev-3090:4000"

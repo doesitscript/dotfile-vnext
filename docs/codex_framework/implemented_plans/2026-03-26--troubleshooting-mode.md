@@ -121,7 +121,7 @@ execution when an interactive path would produce better evidence.
 
 Pinned example:
 
-- Hyper-V Ubuntu VHDX conversion debugging on `hom-lab-ctl-hvh-02` was materially
+- Hyper-V Ubuntu VHDX conversion debugging on `HOM-LAB-HVH-02` was materially
   clearer through an interactive Windows OpenSSH session than through delayed
   remote command batches.
 
@@ -188,7 +188,7 @@ Additional clarification:
 
 Pinned example:
 
-- WinRM/OpenSSH on `hom-lab-ctl-hvh-02` now has diagnostics notes plus a dedicated
+- WinRM/OpenSSH on `HOM-LAB-HVH-02` now has diagnostics notes plus a dedicated
   saved-artifact entrypoint at
   `playbooks/troubleshoot/collect_windows_remote_access_artifacts.yaml`
 - the Windows remote-access collector now groups evidence by logical scope so

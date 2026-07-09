@@ -12,7 +12,7 @@ overview: Rename all server-225 inventory names to the canonical compact scheme,
 open_work: Track H5 — retire static inventory and migrate group_vars to NetBox-derived groups (separate plan).
 todos:
   - id: pre-plan-windows
-    content: "PRE-PLAN COMPLETE: Windows computers renamed to hom-lab-ctl-hvh-01 and hom-lab-ctl-hvh-02. IMMEDIATE ACTION: update ansible_host: DESKTOP-VLLM -> 192.168.50.158 (IP, safer than hostname until DNS resolves) in inventory/host_vars/hom-lab-ctl-hvh-02.yaml"
+    content: "PRE-PLAN COMPLETE: Windows computers renamed to HOM-LAB-HVH-01 and HOM-LAB-HVH-02. IMMEDIATE ACTION: update ansible_host: DESKTOP-VLLM -> 192.168.50.158 (IP, safer than hostname until DNS resolves) in inventory/host_vars/HOM-LAB-HVH-02.yaml"
     status: completed
   - id: track-g-delete-wrappers
     content: "Delete delegation-wrapper sub-roles (server_225/gpu_driver_validation, server_225/windows_base, server_225/stacks_main, network_server/windows_base, network_server/backup_baseline); update consumer comments in windows_base and common/gpu_driver_validation"
@@ -36,13 +36,13 @@ todos:
     content: "Rename inventory group server_225 -> hvh_02 in inventory.yaml; rename group_vars/server_225/ -> group_vars/hvh_02/; rename roles/server_225/ -> roles/hvh_02/; update groups['server_225'] conditions in secrets_render, secrets_verify, scheduled_task_verify, gpu_driver_validation, windows_base"
     status: completed
   - id: track-c-metadata-vars
-    content: "Update physical_node: server-225 and host_name: Server-225 to hom-lab-ctl-hvh-02 in group_vars/hvh_02/main.yml"
+    content: "Update physical_node: server-225 and host_name: Server-225 to HOM-LAB-HVH-02 in group_vars/hvh_02/main.yml"
     status: completed
   - id: gap1-vault-rename
     content: "Decrypt inventory/group_vars/server_225/vault.yml, rename vault_server_225_win_password -> vault_hvh_02_win_password, re-encrypt after dir rename, update 3 comment lines in host_vars"
     status: completed
   - id: track-f-additional-refs
-    content: "Update ensure_api_token.yml tag name; hom-lab-ctl-hvh-02-ipv6.yaml; host_vars_windows.yml.j2 comment; contracts/fuzlang.contract.yaml (4 Server-225 refs); framework-netbox-modeling.mdc rule text; delete facts/server-225.json; remove server-225-wsl dead code from scripts/lib.sh"
+    content: "Update ensure_api_token.yml tag name; HOM-LAB-HVH-02-ipv6.yaml; host_vars_windows.yml.j2 comment; contracts/fuzlang.contract.yaml (4 Server-225 refs); framework-netbox-modeling.mdc rule text; delete facts/server-225.json; remove server-225-wsl dead code from scripts/lib.sh"
     status: completed
   - id: track-d-tags
     content: Add 4 stack-* tags (stack-logging, stack-fuzlang-net, stack-netbox, stack-semaphore) to ipam_netbox/defaults/main.yml
@@ -73,7 +73,7 @@ isProject: false
 
 ```
 PRE-PLAN (user, manual)
-  └─ Windows computer rename + update ansible_host in hom-lab-ctl-hvh-02.yaml
+  └─ Windows computer rename + update ansible_host in HOM-LAB-HVH-02.yaml
 
 Track G  ← do first: cleans up role structure before umbrella dirs are renamed
   G1: Delete delegation-wrapper sub-roles (zero callers, safe to delete)
@@ -111,8 +111,8 @@ Tracks D/E  ← NetBox custom fields + Docker labels (independent; do last)
 | Ansible group | `server_225` | `hvh_02` |
 | `group_vars` directory | `inventory/group_vars/server_225/` | `inventory/group_vars/hvh_02/` |
 | Role umbrella directory | `roles/server_225/` | `roles/hvh_02/` |
-| Physical node metadata var | `physical_node: server-225` | `physical_node: hom-lab-ctl-hvh-02` |
-| Host display name var | `host_name: Server-225` | `host_name: hom-lab-ctl-hvh-02` |
+| Physical node metadata var | `physical_node: server-225` | `physical_node: HOM-LAB-HVH-02` |
+| Host display name var | `host_name: Server-225` | `host_name: HOM-LAB-HVH-02` |
 | Windows computer name `DESKTOP-VLLM` | manual rename before plan | short form ≤14 chars |
 | Windows computer name `AI-NET-SERVER` | manual rename before plan | short form ≤14 chars |
 
@@ -136,12 +136,12 @@ Tracks D/E  ← NetBox custom fields + Docker labels (independent; do last)
 ## PRE-PLAN — Status: COMPLETE (Windows rename done)
 
 Both Windows computers have been renamed:
-- `DESKTOP-VLLM` → `hom-lab-ctl-hvh-02` ✓
-- `AI-NET-SERVER` → `hom-lab-ctl-hvh-01` ✓
+- `DESKTOP-VLLM` → `HOM-LAB-HVH-02` ✓
+- `AI-NET-SERVER` → `HOM-LAB-HVH-01` ✓
 
 **Immediate action before any other step (first file change in the plan):**
 
-Update [`inventory/host_vars/hom-lab-ctl-hvh-02.yaml`](inventory/host_vars/hom-lab-ctl-hvh-02.yaml) line 8:
+Update [`inventory/host_vars/HOM-LAB-HVH-02.yaml`](inventory/host_vars/HOM-LAB-HVH-02.yaml) line 8:
 
 ```yaml
 # Before:
@@ -154,18 +154,18 @@ ansible_host: "192.168.50.158"
 Also update the comment on line 4 to remove the `DESKTOP-VLLM` reference.
 
 **This is a permanent change, not temporary.** Reasons:
-- `hom-lab-ctl-hvh-01` already uses `ansible_host: 192.168.50.234` (IP) — this is the established pattern
+- `HOM-LAB-HVH-01` already uses `ansible_host: 192.168.50.234` (IP) — this is the established pattern
 - `nb_inventory` will also use IPs via `compose: ansible_host: primary_ip4.address.split('/')[0]` — static and dynamic inventory align
-- The inventory key (`hom-lab-ctl-hvh-02:`) carries the canonical name; `ansible_host` is only the connection target
+- The inventory key (`HOM-LAB-HVH-02:`) carries the canonical name; `ansible_host` is only the connection target
 - No local DNS means hostname-based `ansible_host` would fail on every Ansible run
 
-`hom-lab-ctl-hvh-01` uses `ansible_host: 192.168.50.234` (IP already) — no change needed.
+`HOM-LAB-HVH-01` uses `ansible_host: 192.168.50.234` (IP already) — no change needed.
 
 ---
 
 ## NetBox / shadow inventory path (background)
 
-The Windows rename makes the names converge: NetBox already has `hom-lab-ctl-hvh-02` as the device name. The mismatch (`DESKTOP-VLLM` on Windows vs `hom-lab-ctl-hvh-02` in NetBox) is now gone.
+The Windows rename makes the names converge: NetBox already has `HOM-LAB-HVH-02` as the device name. The mismatch (`DESKTOP-VLLM` on Windows vs `HOM-LAB-HVH-02` in NetBox) is now gone.
 
 `nb_inventory` is already configured in `inventory/netbox.yml` and wired alongside the static inventory in `ansible.cfg`. It queries hosts tagged `ansible-managed` and builds `ansible_host` from `primary_ip4` in NetBox — so it's IP-based, same pattern as the static inventory.
 
@@ -214,7 +214,7 @@ Note: The role's internal Docker filter `com.docker.compose.project=fuzlang-net`
 - **Rename** [`inventory/host_vars/server-225-ubuntu.yaml`](inventory/host_vars/server-225-ubuntu.yaml) → `inventory/host_vars/hom-lab-ctl-dkr-02.yaml`
 - [`inventory/inventory.yaml`](inventory/inventory.yaml) — 3 occurrences of host key `server-225-ubuntu:`
 - [`inventory/hosts_mapping.yaml`](inventory/hosts_mapping.yaml) — crosswalk entry
-- [`inventory/host_vars/hom-lab-ctl-hvh-02.yaml`](inventory/host_vars/hom-lab-ctl-hvh-02.yaml) — `hyperv_ubuntu_docker_vm_hostname` and `hyperv_ubuntu_docker_vm_inventory_host`
+- [`inventory/host_vars/HOM-LAB-HVH-02.yaml`](inventory/host_vars/HOM-LAB-HVH-02.yaml) — `hyperv_ubuntu_docker_vm_hostname` and `hyperv_ubuntu_docker_vm_inventory_host`
 - [`inventory/host_vars/hom-lab-ctl-k3s-02.yaml`](inventory/host_vars/hom-lab-ctl-k3s-02.yaml) — cross-references
 - [`inventory/host_vars/mac-dev.yaml`](inventory/host_vars/mac-dev.yaml) — cross-references
 - [`inventory/group_vars/server_225/main.yml`](inventory/group_vars/server_225/main.yml) — `docker_engine_host: "server-225-ubuntu"` and header comment
@@ -269,8 +269,8 @@ physical_node: server-225
 host_name: Server-225
 
 # After:
-physical_node: hom-lab-ctl-hvh-02
-host_name: hom-lab-ctl-hvh-02
+physical_node: HOM-LAB-HVH-02
+host_name: HOM-LAB-HVH-02
 ```
 
 ---
@@ -283,8 +283,8 @@ host_name: hom-lab-ctl-hvh-02
 2. Rename `vault_server_225_win_password` → `vault_hvh_02_win_password`
 3. `ansible-vault encrypt inventory/group_vars/hvh_02/vault.yml` (after directory rename)
 4. Update comment lines in:
-   - [`inventory/host_vars/hom-lab-ctl-hvh-02.yaml`](inventory/host_vars/hom-lab-ctl-hvh-02.yaml) line 26
-   - [`inventory/host_vars/hom-lab-ctl-hvh-02-ipv6.yaml`](inventory/host_vars/hom-lab-ctl-hvh-02-ipv6.yaml) lines 23, 26
+   - [`inventory/host_vars/HOM-LAB-HVH-02.yaml`](inventory/host_vars/HOM-LAB-HVH-02.yaml) line 26
+   - [`inventory/host_vars/HOM-LAB-HVH-02-ipv6.yaml`](inventory/host_vars/HOM-LAB-HVH-02-ipv6.yaml) lines 23, 26
    - [`playbooks/templates/host_vars_windows.yml.j2`](playbooks/templates/host_vars_windows.yml.j2) line 12
 
 ---
@@ -399,7 +399,7 @@ Implementation note: inventory groups were further refined to Option B lane name
 ### H1 — Verify nb_inventory is healthy — DONE
 
 Six `ansible-managed` hosts with `ansible_host` from `primary_ip4` (tunnel
-`http://127.0.0.1:18000`): hom-lab-ctl-dkr-01/02, hom-lab-ctl-hvh-01/02,
+`http://127.0.0.1:18000`): hom-lab-ctl-dkr-01/02, HOM-LAB-HVH-01/02,
 hom-lab-ctl-k3s-01/02.
 
 ### H2 — Run NetBox seed — DONE
@@ -419,7 +419,7 @@ Play recap: `ok=75 changed=1 failed=0`.
 ### H4 — Validate ping — DONE (partial)
 
 - `hom-lab-ctl-dkr-02`, `mac-dev`: `ansible.builtin.ping` SUCCESS
-- `hom-lab-ctl-hvh-01/02`: `ansible.windows.win_ping` SUCCESS (builtin ping fails on PowerShell SSH)
+- `HOM-LAB-HVH-01/02`: `ansible.windows.win_ping` SUCCESS (builtin ping fails on PowerShell SSH)
 
 ### H5 — Retire static inventory — OPEN (separate plan)
 

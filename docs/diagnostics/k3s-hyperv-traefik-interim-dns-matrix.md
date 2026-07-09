@@ -9,7 +9,7 @@ Operator-facing map for the homelab hosts-file slice. Canonical SSOT:
 | mac-dev | `grafana.hom.lab` | same | `192.168.137.10` (dkr guest direct) | `http://grafana.hom.lab:3000/` → 302 |
 | mac-dev | `hom-lab-ctl-dkr-02`, `hom-lab-ctl-k3s-02` | `homelab_router_gt6_mac_hosts_workaround` | guest `.137.x` | SSH (not HTTP) |
 | hom-lab-ctl-k3s-02 | Traefik ingress hostnames | K3s `k3s_traefik_routes` | — | NodePort `:30000` / `:30400` interim |
-| hom-lab-ctl-hvh-02 | LAN `:80` Traefik front door | `hyperv_networking` portproxy `k3s-traefik-http` | — | `http://langfuse.hom.lab/` → 200 (mac-dev) |
+| HOM-LAB-HVH-02 | LAN `:80` Traefik front door | `hyperv_networking` portproxy `k3s-traefik-http` | — | `http://langfuse.hom.lab/` → 200 (mac-dev) |
 | hom-lab-ctl-dkr-02 | Docker UIs via portproxy on hvh-02 | `guest_published_tcp_ports` | — | `:8000` netbox, `:3001` semaphore, `:3100` loki |
 | Linux guests (k3s-02, dkr-02) | service-to-service | **lesser solution:** K8s/compose DNS + `.137.x` IPs — hom.lab not required on guest | — | [guest-vm-hom-lab-dns-lesser-solution.md](../lessons-learned/networking/guest-vm-hom-lab-dns-lesser-solution.md) |
 | Linux guests (operator curl on guest) | catalog hostnames | `homelab_hosts_file_linux` | `192.168.50.158` (LAN publish) / guest IP for grafana | Applied 2026-05-28 on k3s-02, dkr-02 |

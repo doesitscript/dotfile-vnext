@@ -42,15 +42,15 @@ to `logs/wsl-systemctl/` in the project root.
 | Alias              | Port | Lands in         | Use for                        |
 |--------------------|------|------------------|--------------------------------|
 | `server-225-wsl`   | 22   | WSL bash (Ubuntu) | systemctl — use this           |
-| `hom-lab-ctl-hvh-02`   | 2222 | WSL bash (Ubuntu) | same, alternate name           |
-| `hom-lab-ctl-hvh-02-powershell` | 2223 | PowerShell  | Windows-only tasks  |
+| `HOM-LAB-HVH-02`   | 2222 | WSL bash (Ubuntu) | same, alternate name           |
+| `HOM-LAB-HVH-02-powershell` | 2223 | PowerShell  | Windows-only tasks  |
 
-Both `server-225-wsl` and `hom-lab-ctl-hvh-02` connect to port 2222 on DESKTOP-VLLM and
+Both `server-225-wsl` and `HOM-LAB-HVH-02` connect to port 2222 on DESKTOP-VLLM and
 land directly in WSL bash — no `wsl` wrapper needed, run `systemctl` directly.
 
 **Requires WSL to be running.** If WSL is down, re-deploy keepwsl.service:
 ```
-ansible-playbook playbooks/access_windows.yaml --limit hom-lab-ctl-hvh-02 --tags wsl
+ansible-playbook playbooks/access_windows.yaml --limit HOM-LAB-HVH-02 --tags wsl
 ```
 
 ## Output location

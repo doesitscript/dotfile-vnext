@@ -295,7 +295,7 @@ helm list -A
 
 ## Track B remediation receipt — GPU host layer (2026-07-09)
 
-**Scope:** `hom-lab-ctl-hvh-02` + `hom-lab-ctl-k3s-02` only (data plane / Langfuse out of scope).
+**Scope:** `HOM-LAB-HVH-02` + `hom-lab-ctl-k3s-02` only (data plane / Langfuse out of scope).
 
 ### Plan verification receipt
 

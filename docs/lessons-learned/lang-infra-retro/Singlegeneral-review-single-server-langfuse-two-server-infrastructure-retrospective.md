@@ -3,7 +3,7 @@
 ## Scope
 
 This retrospective maps the Langfuse-related services across the two Linux
-guests hosted by `hom-lab-ctl-hvh-02`. It combines repo-declared topology with
+guests hosted by `HOM-LAB-HVH-02`. It combines repo-declared topology with
 live troubleshooting evidence gathered after the Windows host experienced a
 slow login, a prolonged black screen, and a stalled Server Manager splash.
 
@@ -23,7 +23,7 @@ flowchart TB
   operator["LAN clients and operator"]
   alloy["Grafana Alloy<br/>Windows event-log collector"]
 
-  subgraph hvh["hom-lab-ctl-hvh-02 - Windows Server / Hyper-V - 192.168.50.158"]
+  subgraph hvh["HOM-LAB-HVH-02 - Windows Server / Hyper-V - 192.168.50.158"]
     portproxy["Windows portproxy publication<br/>80, 30000, 30400, 3100"]
     cdrive["C: Patriot P300 512 GB NVMe<br/>Windows OS and Docker VM VHDX"]
     ddrive["D: SanDisk Ultra 3D NVMe<br/>K3s VM VHDX after June 6 move"]
@@ -130,7 +130,7 @@ flowchart TB
 flowchart TB
   clients["LAN clients and operators"]
 
-  subgraph hvh["hom-lab-ctl-hvh-02 - Windows Server / Hyper-V"]
+  subgraph hvh["HOM-LAB-HVH-02 - Windows Server / Hyper-V"]
     ctarget["C: Patriot P300<br/>Windows OS and host tools only"]
     dtarget["D: SanDisk Ultra 3D NVMe<br/>VM and active workload storage"]
     backup["External USB storage<br/>backup copies only"]
@@ -192,7 +192,7 @@ flowchart TB
 
 ## Evidence Surfaces
 
-- `inventory/host_vars/hom-lab-ctl-hvh-02.yaml`
+- `inventory/host_vars/HOM-LAB-HVH-02.yaml`
 - `inventory/host_vars/hom-lab-ctl-dkr-02.yaml`
 - `inventory/host_vars/hom-lab-ctl-k3s-02.yaml`
 - `roles/hyperv_ubuntu_vm/defaults/main.yml`

@@ -34,7 +34,7 @@ Use this matrix before collecting or writing files.
 |---|---|
 | `vendor_docs` | pack `README.md`, provenance, metadata/index file, declared page outputs, localized assets when required |
 | `sdk_api_context` | resolved library IDs, topic shard paths, OpenAPI/Swagger Context7 notes, README index |
-| `library_indexes` | `indexes/<entry>/README.md`, crosswalk JSON, Firecrawl↔Context7 cross-check JSON when Context7 is in scope |
+| `library_indexes` | `indexes/<entry>/README.md`, crosswalk JSON, Firecrawl↔Context7 cross-check JSON, capture backlog when Context7 is in scope |
 | `operator_prompts` | reusable prompt file, clear start/stop conditions, reference to the kickoff capability when appropriate |
 
 ## Summary policy

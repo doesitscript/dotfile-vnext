@@ -27,5 +27,5 @@ Included in `deploy_development_nodes.yaml`. Run with:
 ```bash
 ansible-playbook playbooks/deploy_development_nodes.yaml
 ansible-playbook playbooks/deploy_development_nodes.yaml --limit mac-dev
-ansible-playbook playbooks/deploy_development_nodes.yaml --limit hom-lab-ctl-hvh-02
+ansible-playbook playbooks/deploy_development_nodes.yaml --limit hom-lab-hvh-02
 ```

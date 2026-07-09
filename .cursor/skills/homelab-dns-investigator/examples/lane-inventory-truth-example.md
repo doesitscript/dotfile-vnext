@@ -14,8 +14,8 @@ LAN IP and portproxy rules: [inventory-lan-ip-sources.md](../references/inventor
 
 | inventory_hostname | hyperv_vm_hostname | IP | Role |
 |---|---|---|---|
-| `hom-lab-ctl-hvh-01` | — | `192.168.50.234` | Hyper-V host (primary LAN) |
-| `hom-lab-ctl-hvh-01` | — | `192.168.50.233` | Secondary Wi‑Fi (inventory: temporarily down) |
+| `HOM-LAB-HVH-01` | — | `192.168.50.234` | Hyper-V host (primary LAN) |
+| `HOM-LAB-HVH-01` | — | `192.168.50.233` | Secondary Wi‑Fi (inventory: temporarily down) |
 | `hom-lab-ctl-dkr-01` | `nsrv-dkr-01` | `192.168.138.10` | Docker VM |
 | `hom-lab-ctl-k3s-01` | `nsrv-k3s-01` | `192.168.138.11` | K3s control plane |
 | Guest subnet | — | `192.168.138.0/24` | Gateway `192.168.138.1` on hvh-01 |
@@ -23,7 +23,7 @@ LAN IP and portproxy rules: [inventory-lan-ip-sources.md](../references/inventor
 **VM identity (declared on hypervisor host_vars):**
 
 ```yaml
-# inventory/host_vars/hom-lab-ctl-hvh-01.yaml
+# inventory/host_vars/HOM-LAB-HVH-01.yaml
 hyperv_ubuntu_docker_vm_hostname: "nsrv-dkr-01"
 hyperv_ubuntu_docker_vm_inventory_host: "hom-lab-ctl-dkr-01"
 hyperv_ubuntu_k3s_vm_hostname: "nsrv-k3s-01"
@@ -32,7 +32,7 @@ hyperv_ubuntu_k3s_vm_inventory_host: "hom-lab-ctl-k3s-01"
 
 ### Port proxies — each list item (`guest_published_tcp_ports`)
 
-Source: `inventory/host_vars/hom-lab-ctl-hvh-01.yaml` → `hyperv_config.guest_published_tcp_ports`
+Source: `inventory/host_vars/HOM-LAB-HVH-01.yaml` → `hyperv_config.guest_published_tcp_ports`
 
 ```yaml
     - name: "postgres-fuzlang"
@@ -75,8 +75,8 @@ Source: `inventory/host_vars/hom-lab-ctl-hvh-01.yaml` → `hyperv_config.guest_p
 
 | inventory_hostname | hyperv_vm_hostname | IP | Role |
 |---|---|---|---|
-| `hom-lab-ctl-hvh-02` | — | `192.168.50.158` | Hyper-V host (primary LAN) |
-| `hom-lab-ctl-hvh-02-ipv6` | — | `fdfa:7038:521c:...` | IPv6 SSH surface |
+| `HOM-LAB-HVH-02` | — | `192.168.50.158` | Hyper-V host (primary LAN) |
+| `HOM-LAB-HVH-02-ipv6` | — | `fdfa:7038:521c:...` | IPv6 SSH surface |
 | `hom-lab-ctl-dkr-02` | `hom-lab-ctl-dkr-02` | `192.168.137.10` | Docker VM |
 | `hom-lab-ctl-k3s-02` | `hom-lab-ctl-k3s-02` | `192.168.137.11` | K3s GPU runtime |
 | Guest subnet | — | `192.168.137.0/24` | Gateway `192.168.137.1` on hvh-02 |
@@ -84,7 +84,7 @@ Source: `inventory/host_vars/hom-lab-ctl-hvh-01.yaml` → `hyperv_config.guest_p
 **VM identity (declared on hypervisor host_vars):**
 
 ```yaml
-# inventory/host_vars/hom-lab-ctl-hvh-02.yaml
+# inventory/host_vars/HOM-LAB-HVH-02.yaml
 hyperv_ubuntu_docker_vm_hostname: "hom-lab-ctl-dkr-02"
 hyperv_ubuntu_docker_vm_inventory_host: "hom-lab-ctl-dkr-02"
 hyperv_ubuntu_k3s_vm_hostname: "hom-lab-ctl-k3s-02"
@@ -95,7 +95,7 @@ Note: hvh-02 uses **aligned** inventory and Hyper-V names; hvh-01 still uses leg
 
 ### Port proxies — each list item
 
-Source: `inventory/host_vars/hom-lab-ctl-hvh-02.yaml` → `hyperv_config.guest_published_tcp_ports`
+Source: `inventory/host_vars/HOM-LAB-HVH-02.yaml` → `hyperv_config.guest_published_tcp_ports`
 
 ```yaml
     - name: "loki"
@@ -142,7 +142,7 @@ Every row must cite **Declared (repo)** and **Verified (live)**. Do not mark ver
 |---|---|---|
 | **All LAN IPs** | [inventory-lan-ip-sources.md](../references/inventory-lan-ip-sources.md) | sweep `host_vars/*`, `hosts_mapping.yaml`, `live-object-registry.yml` |
 | Hypervisor primary/alt LAN | `hosts_mapping.yaml` `physical_nodes`, each hvh `host_vars` | `host_ip`, `ansible_host`, comments, `ip_address_original` |
-| IPv6 management surface | `hom-lab-ctl-hvh-02.yaml`, `hom-lab-ctl-hvh-02-ipv6.yaml` | `host_ipv6`, `ansible_host` |
+| IPv6 management surface | `HOM-LAB-HVH-02.yaml`, `HOM-LAB-HVH-02-ipv6.yaml` | `host_ipv6`, `ansible_host` |
 | Guest VM IPs | guest `host_vars` + hypervisor `hyperv_ubuntu_*_vm_autoinstall_network_ipv4` | `ansible_host`, `host_ip` |
 | Guest VM identity triple | hypervisor `host_vars` | `hyperv_ubuntu_docker_vm_*`, `hyperv_ubuntu_k3s_vm_*` |
 | Guest subnet + gateway | hypervisor `hyperv_config` | `guest_subnet_ipv4`, `guest_gateway_ipv4` |
@@ -172,7 +172,7 @@ Save raw output to `lane-inventory-truth-hvh-01.txt` / `lane-inventory-truth-hvh
 |---|---|---|---|
 | `loki` | `50.158:3100` → `137.10:3100` | nc OK on listen; backend OK | MATCH |
 | `postgres-fuzlang` | `50.234:5432` → `138.10:5432` | not probed (hvh-01 down) | BLOCKED_UPSTREAM |
-| `hom-lab-ctl-hvh-01` | `192.168.50.234` | ping/SSH fail | DOWN |
+| `HOM-LAB-HVH-01` | `192.168.50.234` | ping/SSH fail | DOWN |
 
 Status: `MATCH`, `MISMATCH`, `DOWN`, `BLOCKED_UPSTREAM`, `NOT_PROBED`.
 

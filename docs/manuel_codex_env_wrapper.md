@@ -35,7 +35,7 @@ Examples:
 ```bash
 bin/codex-env python3 -c 'import sys; print(sys.executable)'
 bin/codex-env ansible-playbook --version
-bin/codex-env ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit hom-lab-ctl-hvh-02
+bin/codex-env ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit HOM-LAB-HVH-02
 ```
 
 ## What The Wrapper Does

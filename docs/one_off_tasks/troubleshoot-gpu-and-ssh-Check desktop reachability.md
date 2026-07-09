@@ -319,7 +319,7 @@ user authorized_keys exists: True
 sshd: Running, StartType Automatic
 ```
 
-`inventory/host_vars/dev-workstation-win.yaml` updated to **SSH primary** (same shape as `hom-lab-ctl-hvh-02`); WinRM commented as fallback.
+`inventory/host_vars/dev-workstation-win.yaml` updated to **SSH primary** (same shape as `HOM-LAB-HVH-02`); WinRM commented as fallback.
 
 Ansible ad-hoc over SSH:
 

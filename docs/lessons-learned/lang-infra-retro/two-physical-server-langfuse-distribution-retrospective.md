@@ -9,8 +9,8 @@ to live vs where Ansible playbooks **actually target** today. No changes applied
 
 | Host | Role (repo) | LAN IP | Guest subnet |
 |------|-------------|--------|--------------|
-| `hom-lab-ctl-hvh-01` | storage / observability (`hyperv_lane_storage`) | `192.168.50.234` | `192.168.138.0/24` |
-| `hom-lab-ctl-hvh-02` | primary GPU / execution (`hyperv_lane_gpu`, RTX 5090) | `192.168.50.158` | `192.168.137.0/24` |
+| `HOM-LAB-HVH-01` | storage / observability (`hyperv_lane_storage`) | `192.168.50.234` | `192.168.138.0/24` |
+| `HOM-LAB-HVH-02` | primary GPU / execution (`hyperv_lane_gpu`, RTX 5090) | `192.168.50.158` | `192.168.137.0/24` |
 
 **Linux guests**
 
@@ -68,12 +68,12 @@ flowchart TB
     router["Router / DNS<br/>hom.lab names"]
     mac["mac-dev<br/>192.168.50.x<br/>Ansible controller<br/>Alloy agent<br/>kubectl / Cursor client"]
 
-    subgraph hvh01box ["hom-lab-ctl-hvh-01 — storage — .234"]
+    subgraph hvh01box ["HOM-LAB-HVH-01 — storage — .234"]
       direction TB
       H01["See Diagram A"]
     end
 
-    subgraph hvh02box ["hom-lab-ctl-hvh-02 — RTX 5090 — .158"]
+    subgraph hvh02box ["HOM-LAB-HVH-02 — RTX 5090 — .158"]
       direction TB
       H02["See Diagram B"]
     end
@@ -98,18 +98,18 @@ Legend for deployment diagrams:
 
 ---
 
-## Diagram A — Current deployment on `hom-lab-ctl-hvh-01` (storage physical server)
+## Diagram A — Current deployment on `HOM-LAB-HVH-01` (storage physical server)
 
 What is running **inside** each surface on this host today (repo automation targets).
 
 ```mermaid
 flowchart TB
-  subgraph hvh01 ["hom-lab-ctl-hvh-01 — 192.168.50.234 — guest subnet 192.168.138.0/24"]
+  subgraph hvh01 ["HOM-LAB-HVH-01 — 192.168.50.234 — guest subnet 192.168.138.0/24"]
     subgraph win01 ["Windows Server 2025 — directly on host"]
       hv01["Hyper-V + Guest switch NAT"]
       ssh01["OpenSSH Server"]
       alloy01["Grafana Alloy agent<br/>forwards logs outbound"]
-      smb01["SMB share F:<br/>\\\\hom-lab-ctl-hvh-01\\public\\models\\huggingface"]
+      smb01["SMB share F:<br/>\\\\HOM-LAB-HVH-01\\public\\models\\huggingface"]
       backup01["Windows Server Backup<br/>scheduled to E: backups"]
     end
 
@@ -156,7 +156,7 @@ flowchart TB
 
 ---
 
-## Diagram B — Current deployment on `hom-lab-ctl-hvh-02` (5090 physical server)
+## Diagram B — Current deployment on `HOM-LAB-HVH-02` (5090 physical server)
 
 What is running **inside** each surface on this host today (repo automation targets).
 
@@ -164,7 +164,7 @@ What is running **inside** each surface on this host today (repo automation targ
 flowchart TB
   operator["LAN clients / mac-dev"]
 
-  subgraph hvh02 ["hom-lab-ctl-hvh-02 — 192.168.50.158 — guest subnet 192.168.137.0/24"]
+  subgraph hvh02 ["HOM-LAB-HVH-02 — 192.168.50.158 — guest subnet 192.168.137.0/24"]
     subgraph win02 ["Windows Server 2025 — directly on host"]
       hv02["Hyper-V host"]
       ssh02["OpenSSH Server"]
@@ -256,7 +256,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  subgraph hvh01 ["hom-lab-ctl-hvh-01 — storage lane — 192.168.50.234"]
+  subgraph hvh01 ["HOM-LAB-HVH-01 — storage lane — 192.168.50.234"]
     subgraph live01 ["Live today"]
       l_smb["HF model SMB"]
       l_alloy["Alloy collector"]
@@ -290,7 +290,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  subgraph hvh02 ["hom-lab-ctl-hvh-02 — RTX 5090 lane — 192.168.50.158"]
+  subgraph hvh02 ["HOM-LAB-HVH-02 — RTX 5090 lane — 192.168.50.158"]
     subgraph live02 ["Live today — concentrated stack"]
       l_dkr["dkr-02 Docker:<br/>Postgres, Loki, Grafana, NetBox, Semaphore<br/>+ orphan CH/Redis/MinIO compose"]
       l_k3s["k3s-02 K3s:<br/>Langfuse, LiteLLM, vLLM, Jupyter, Traefik"]
@@ -423,8 +423,8 @@ intentional split-DB, not duplication.
 
 - `inventory/group_vars/hyperv_lane_storage/main.yml`
 - `inventory/group_vars/hyperv_lane_gpu/main.yml`
-- `inventory/host_vars/hom-lab-ctl-hvh-01.yaml`
-- `inventory/host_vars/hom-lab-ctl-hvh-02.yaml`
+- `inventory/host_vars/HOM-LAB-HVH-01.yaml`
+- `inventory/host_vars/HOM-LAB-HVH-02.yaml`
 - `inventory/host_vars/hom-lab-ctl-dkr-01.yaml`
 - `inventory/host_vars/hom-lab-ctl-dkr-02.yaml`
 - `inventory/host_vars/hom-lab-ctl-k3s-01.yaml`

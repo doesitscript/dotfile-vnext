@@ -16,14 +16,14 @@ Manage the storage-lane external Langfuse data-plane services on
 ## Reachability contract
 
 This role owns the guest-side containers. Cross-lane and operator consumers
-should prefer the Windows-published LAN surface on `hom-lab-ctl-hvh-01`
+should prefer the Windows-published LAN surface on `hom-lab-hvh-01`
 (`192.168.50.234`) instead of binding themselves to the guest-direct
 `192.168.138.10` address.
 
 That publication path is declared in:
 
 - `inventory/group_vars/all/fuzlang_external_services.yml`
-- `inventory/host_vars/hom-lab-ctl-hvh-01.yaml`
+- `inventory/host_vars/hom-lab-hvh-01.yaml`
 
 The guest-direct VM address remains valid for SSH and maintenance, but it is
 not the preferred shared service endpoint.

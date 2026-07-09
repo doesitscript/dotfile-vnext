@@ -1,0 +1,102 @@
+---
+- name: Build GPU-P remediation receipt payload on guest
+  when:
+    - (surface_type | default('')) == 'ubuntu_vm'
+    - (gpu_contract.passthrough_mode | default('')) == 'gpu_p'
+  block:
+    - name: Probe receipt obligations on GPU-P guest
+      ansible.builtin.shell: |
+        set -o pipefail
+        export PATH="/usr/lib/wsl/lib:${PATH}"
+        export LD_LIBRARY_PATH="/usr/lib/wsl/lib"
+        python3 - <<'PY'
+        import json
+        import subprocess
+
+        def run(argv):
+            proc = subprocess.run(argv, capture_output=True, text=True)
+            return proc.returncode, proc.stdout.strip(), proc.stderr.strip()
+
+        apt_hold_rc, apt_hold_out, _ = run(["apt-mark", "showhold"])
+        dpkg_rc, dpkg_out, _ = run(["bash", "-lc", "dpkg -l 'nvidia-driver*' 2>/dev/null | grep ^ii || true"])
+        dxg_rc, dxg_out, _ = run(["bash", "-lc", "test -e /dev/dxg && echo present || echo absent"])
+        lsmod_rc, lsmod_out, _ = run(["bash", "-lc", "lsmod | grep -q dxgkrnl && echo loaded || echo missing"])
+        ld_rc, ld_out, _ = run(["bash", "-lc", "ldconfig -p | egrep 'libcuda.so.1|libnvidia-ml.so.1' | wc -l"])
+        smi_rc, smi_out, smi_err = run(["/usr/lib/wsl/lib/nvidia-smi", "-L"])
+        cap_rc, cap_out, _ = run([
+            "kubectl", "get", "node", os.environ.get("K3S_NODE", ""),
+            "-o", "jsonpath={.status.capacity.nvidia\\.com/gpu}",
+        ])
+
+        receipt = {
+            "host": "{{ inventory_hostname }}",
+            "timestamp": "{{ troubleshooting_artifact_stamp }}",
+            "obligations": {
+                "R0_apt_driver_absent": apt_hold_rc == 0 and "nvidia-driver" not in dpkg_out,
+                "P1_partition_adapter": None,
+                "P3_guest_runtime": dxg_out == "present" and lsmod_out == "loaded",
+                "V_verify_userspace": smi_rc == 0,
+                "P4_toolkit_only": ld_rc == 0 and int(ld_out or "0") >= 2,
+                "P5_k8s_capacity": cap_rc == 0 and (cap_out or "0").isdigit() and int(cap_out or "0") >= 1,
+            },
+            "probes": {
+                "nvidia_smi_rc": smi_rc,
+                "nvidia_smi_stdout": smi_out,
+                "nvidia_smi_stderr": smi_err,
+                "nvidia_com_gpu_capacity": cap_out,
+                "apt_hold": apt_hold_out,
+                "dpkg_nvidia": dpkg_out,
+            },
+        }
+        print(json.dumps(receipt))
+        PY
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+        K3S_NODE: "{{ inventory_hostname }}"
+      register: _hyperv_ubuntu_gpu_p_receipt_payload
+      changed_when: false
+      failed_when: false
+
+    - name: Parse GPU-P remediation receipt payload
+      ansible.builtin.set_fact:
+        _hyperv_ubuntu_gpu_p_receipt_data: "{{ _hyperv_ubuntu_gpu_p_receipt_payload.stdout | from_json }}"
+      changed_when: false
+
+    - name: Write GPU-P remediation receipt JSON
+      ansible.builtin.copy:
+        dest: "{{ _hyperv_ubuntu_gpu_p_artifact_dir }}/receipt.json"
+        content: "{{ _hyperv_ubuntu_gpu_p_receipt_data | to_nice_json }}"
+        mode: "0644"
+      delegate_to: localhost
+
+    - name: Write GPU-P remediation receipt markdown summary
+      ansible.builtin.copy:
+        dest: "{{ _hyperv_ubuntu_gpu_p_artifact_dir }}/receipt.md"
+        mode: "0644"
+        content: |
+          # GPU-P remediation receipt — {{ inventory_hostname }}
+
+          Timestamp: {{ troubleshooting_artifact_stamp }}
+
+          ## Obligations
+
+          | ID | Pass |
+          |----|------|
+          | R0 apt driver absent | {{ _hyperv_ubuntu_gpu_p_receipt_data.obligations.R0_apt_driver_absent }} |
+          | P3 guest runtime | {{ _hyperv_ubuntu_gpu_p_receipt_data.obligations.P3_guest_runtime }} |
+          | V verify userspace | {{ _hyperv_ubuntu_gpu_p_receipt_data.obligations.V_verify_userspace }} |
+          | P4 toolkit only | {{ _hyperv_ubuntu_gpu_p_receipt_data.obligations.P4_toolkit_only }} |
+          | P5 k8s capacity | {{ _hyperv_ubuntu_gpu_p_receipt_data.obligations.P5_k8s_capacity }} |
+
+          ## nvidia.com/gpu capacity
+
+          {{ _hyperv_ubuntu_gpu_p_receipt_data.probes.nvidia_com_gpu_capacity | default('unknown') }}
+
+          Artifact root: {{ _hyperv_ubuntu_gpu_p_artifact_dir }}
+      delegate_to: localhost
+
+    - name: Report GPU-P remediation receipt location
+      ansible.builtin.debug:
+        msg:
+          receipt_json: "{{ _hyperv_ubuntu_gpu_p_artifact_dir }}/receipt.json"
+          receipt_md: "{{ _hyperv_ubuntu_gpu_p_artifact_dir }}/receipt.md"

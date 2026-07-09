@@ -64,20 +64,20 @@ All of these are reporting changed:
 '
 
 TASK [hyperv_gpu_partition_adapter : Ensure VM has GPU-partition-compatible Hyper-V settings] ***
-changed: [hom-lab-ctl-hvh-02]
+changed: [HOM-LAB-HVH-02]
 
 TASK [hyperv_gpu_partition_adapter : Stop VM before adding GPU partition adapter when restart is allowed] ***
-changed: [hom-lab-ctl-hvh-02]
+changed: [HOM-LAB-HVH-02]
 
 TASK [hyperv_gpu_partition_adapter : Ensure VM firmware is GPU-partition-compatible while VM is stopped] ***
-changed: [hom-lab-ctl-hvh-02]
+changed: [HOM-LAB-HVH-02]
 
 TASK [hyperv_gpu_partition_adapter : Attach GPU partition adapter to target VM] ***
-changed: [hom-lab-ctl-hvh-02]
+changed: [HOM-LAB-HVH-02]
 
 TASK [hyperv_gpu_partition_adapter : Start VM after GPU partition adapter change when desired] ***
-changed: [hom-lab-ctl-hvh-02]
+changed: [HOM-LAB-HVH-02]
 
 TASK [hyperv_gpu_partition_adapter : Apply explicit GPU partition sizing for target VM] ***
-changed: [hom-lab-ctl-hvh-02]
+changed: [HOM-LAB-HVH-02]
 '

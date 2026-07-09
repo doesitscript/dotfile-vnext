@@ -1,0 +1,22 @@
+---
+argument_specs:
+  main:
+    short_description: Attach and size Hyper-V GPU partition adapters for guest VMs.
+    options:
+      hyperv_gpu_partition_adapter_state:
+        type: str
+        default: present
+        choices: [present, absent]
+      hyperv_gpu_partition_adapter_vm_name:
+        type: str
+        default: "{{ hyperv_ubuntu_k3s_vm_hostname | default(hyperv_ubuntu_k3s_vm_inventory_host | default('')) }}"
+      hyperv_gpu_partition_adapter_require_hyperv_gpu_policy_keys:
+        type: bool
+        default: false
+        description: >-
+          Ensure RequireSecureDeviceAssignment and RequireSupportedDeviceAssignment
+          Hyper-V policy registry keys are set to 0 before partition attach.
+      hyperv_gpu_partition_adapter_restart_vmms_when_policy_keys_change:
+        type: bool
+        default: true
+        description: Restart vmms when GPU policy registry keys change.

@@ -83,7 +83,7 @@ require_limit_or_all() {
   
   if ! has_limit_or_all "$@"; then
     log_error "${command_name} requires --limit <hosts> or --all"
-    log_info "Example: fz ${command_name} --limit hom-lab-ctl-hvh-02"
+    log_info "Example: fz ${command_name} --limit HOM-LAB-HVH-02"
     log_info "Example: fz ${command_name} --all"
     exit 1
   fi
@@ -92,12 +92,12 @@ require_limit_or_all() {
 # Legacy limit aliases (server-225, network-server, main) map to compact-schema lanes.
 fz_limit_is_gpu_lane() {
   case "$1" in
-    hom-lab-ctl-hvh-02|hom-lab-ctl-dkr-02|hom-lab-ctl-k3s-02|hyperv_lane_gpu|main)
+    HOM-LAB-HVH-02|hom-lab-ctl-dkr-02|hom-lab-ctl-k3s-02|hyperv_lane_gpu|main)
       return 0
       ;;
   esac
   case "$1" in
-    *hom-lab-ctl-hvh-02*|*hom-lab-ctl-dkr-02*|*hom-lab-ctl-k3s-02*|*hyperv_lane_gpu*|*server-225*|*main*)
+    *HOM-LAB-HVH-02*|*hom-lab-ctl-dkr-02*|*hom-lab-ctl-k3s-02*|*hyperv_lane_gpu*|*server-225*|*main*)
       [[ "$1" != *"-win" ]] && return 0
       ;;
   esac
@@ -106,12 +106,12 @@ fz_limit_is_gpu_lane() {
 
 fz_limit_is_storage_lane() {
   case "$1" in
-    hom-lab-ctl-hvh-01|hom-lab-ctl-dkr-01|hom-lab-ctl-k3s-01|hyperv_lane_storage|network-server|network_server)
+    HOM-LAB-HVH-01|hom-lab-ctl-dkr-01|hom-lab-ctl-k3s-01|hyperv_lane_storage|network-server|network_server)
       return 0
       ;;
   esac
   case "$1" in
-    *hom-lab-ctl-hvh-01*|*hom-lab-ctl-dkr-01*|*hom-lab-ctl-k3s-01*|*hyperv_lane_storage*|*network-server*|*network_server*)
+    *HOM-LAB-HVH-01*|*hom-lab-ctl-dkr-01*|*hom-lab-ctl-k3s-01*|*hyperv_lane_storage*|*network-server*|*network_server*)
       [[ "$1" != *"-win" ]] && return 0
       ;;
   esac
@@ -131,7 +131,7 @@ case "${COMMAND}" in
     if ! has_limit_or_all "$@"; then
       log_error "bootstrap requires --limit <hosts> or --all"
       log_info "This prevents accidentally running bootstrap on all hosts"
-      log_info "Example: fz bootstrap --limit hom-lab-ctl-hvh-02"
+      log_info "Example: fz bootstrap --limit HOM-LAB-HVH-02"
       log_info "Example: fz bootstrap --limit mac-dev"
       log_info "Example: fz bootstrap --all"
       exit 1
@@ -191,7 +191,7 @@ case "${COMMAND}" in
         fz_ansible "playbooks/bootstrap_mac.yaml" "${all_args[@]}"
         mac_only_bootstrap=true
       fi
-      # Windows bootstrap: run Ansible playbook against any Windows host (hom-lab-ctl-hvh-02, home-lab-auth-hvh-01, dev-3090-win, etc.).
+      # Windows bootstrap: run Ansible playbook against any Windows host (HOM-LAB-HVH-02, home-lab-auth-hvh-01, dev-3090-win, etc.).
       if [[ "${limit_value}" == *"-win" ]]; then
         log_step "Running Windows bootstrap (playbooks/bootstrap_windows.yaml) for ${limit_value}"
         fz_ansible "playbooks/bootstrap_windows.yaml" "${all_args[@]}"
@@ -259,7 +259,7 @@ case "${COMMAND}" in
     if ! has_limit_or_all "$@"; then
       log_error "bootstrap-winrm requires --limit <hosts> or --all"
       log_info "This prevents accidentally running bootstrap on all hosts"
-      log_info "Example: fz bootstrap-winrm --limit hom-lab-ctl-hvh-02"
+      log_info "Example: fz bootstrap-winrm --limit HOM-LAB-HVH-02"
       log_info "Example: fz bootstrap-winrm --all"
       exit 1
     fi
@@ -475,7 +475,7 @@ case "${COMMAND}" in
       fi
       i=$((i+1))
     done
-    if [[ "${cf_limit}" == "hom-lab-ctl-hvh-02" ]] || [[ "${cf_limit}" == *"-win" ]]; then
+    if [[ "${cf_limit}" == "HOM-LAB-HVH-02" ]] || [[ "${cf_limit}" == *"-win" ]]; then
       log_info "Facts for Windows host '${cf_limit}' are collected on that machine."
       log_info "On that Windows host (Admin): .\\bin\\bootstrap-local.ps1 -FactsOnly"
       exit 0
@@ -692,4 +692,3 @@ PYTHON_SCRIPT
     exit 1
     ;;
 esac
-

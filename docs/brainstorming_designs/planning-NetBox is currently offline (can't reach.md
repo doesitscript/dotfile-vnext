@@ -58,7 +58,7 @@ NetBox is currently offline (can't reach `192.168.50.158:8000`), so I'll work fr
 - `exec-hvh-01` and `primary-hvh-01` seeded and verified in NetBox
 
 ### Partially done / diverged
-- **Host naming has moved on.** Static `host_vars/` now has `hom-lab-ctl-hvh-01`, `hom-lab-ctl-hvh-02`, `hom-lab-ctl-dkr-01`, `hom-lab-ctl-k3s-01`, `hom-lab-ctl-k3s-02` — these are new compact names that are almost certainly NOT yet seeded in NetBox. NetBox likely still has `exec-hvh-01` / `primary-hvh-01` from before the rename. This is the primary gap right now.
+- **Host naming has moved on.** Static `host_vars/` now has `HOM-LAB-HVH-01`, `HOM-LAB-HVH-02`, `hom-lab-ctl-dkr-01`, `hom-lab-ctl-k3s-01`, `hom-lab-ctl-k3s-02` — these are new compact names that are almost certainly NOT yet seeded in NetBox. NetBox likely still has `exec-hvh-01` / `primary-hvh-01` from before the rename. This is the primary gap right now.
 - **`ansible-managed` tag coverage is incomplete.** Only the original seeded hosts have the tag. The new host names won't appear in `nb_inventory` until they're seeded.
 
 ### Not started yet

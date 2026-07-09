@@ -48,7 +48,7 @@ LAN IP sweep (all hosts): [inventory-lan-ip-sources.md](../../../references/inve
 | langfuse-k3s | :30000 | 137.11:30000 |
 | litellm-k3s | :30400 | 137.11:30400 |
 
-SSOT: `inventory/host_vars/hom-lab-ctl-hvh-02.yaml`
+SSOT: `inventory/host_vars/HOM-LAB-HVH-02.yaml`
 
 ## Portproxy — hvh-01 (`192.168.50.234`)
 
@@ -61,7 +61,7 @@ SSOT: `inventory/host_vars/hom-lab-ctl-hvh-02.yaml`
 | minio-api | :9000 | 138.10:9000 |
 | minio-console | :9001 | 138.10:9001 |
 
-SSOT: `inventory/host_vars/hom-lab-ctl-hvh-01.yaml`
+SSOT: `inventory/host_vars/HOM-LAB-HVH-01.yaml`
 
 ## AI API surfaces
 

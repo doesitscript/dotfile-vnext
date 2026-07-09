@@ -66,10 +66,16 @@
             ) | default('')
           )
       }}
+    hyperv_ubuntu_gpu_p_runtime_windows_connect_host_override: >-
+      {{ hyperv_ubuntu_gpu_p_runtime_windows_connect_host_override | default('') }}
   tasks:
     - name: Wait for Windows SSH port to be reachable after NVIDIA contract stage
       ansible.builtin.wait_for:
-        host: "{{ hostvars[hyperv_ubuntu_gpu_p_runtime_windows_host_anchor].ansible_host }}"
+        host: >-
+          {{
+            hyperv_ubuntu_gpu_p_runtime_windows_connect_host_override
+            | default(hostvars[hyperv_ubuntu_gpu_p_runtime_windows_host_anchor].ansible_host, true)
+          }}
         port: "{{ hostvars[hyperv_ubuntu_gpu_p_runtime_windows_host_anchor].ansible_port | default(22) | int }}"
         timeout: 120
         sleep: 5
@@ -443,3 +449,28 @@
             that:
               - not (hyperv_ubuntu_gpu_p_runtime_verify_ldso_absent.stat.exists | bool)
             fail_msg: ld.wsl.conf still exists after absent apply.
+
+- name: Hyper-V Ubuntu GPU-P runtime - troubleshooting collection
+  hosts: "{{ hyperv_ubuntu_gpu_p_runtime_guest_hosts | default('container_orchestrator_k3s:&gpu_workload_nodes') }}"
+  gather_facts: false
+  tags: [never, collect_hyperv_gpu_p]
+
+  tasks:
+    - name: Collect Hyper-V Ubuntu GPU-P troubleshooting artifacts from guest
+      ansible.builtin.include_role:
+        name: troubleshooting_collectors
+        tasks_from: hyperv_ubuntu_gpu_p.yml
+      when: (gpu_contract.passthrough_mode | default('')) == 'gpu_p'
+
+- name: Hyper-V Ubuntu GPU-P runtime - Windows troubleshooting collection
+  hosts: "{{ hyperv_ubuntu_gpu_p_runtime_windows_hosts | default('windows_server_2025:&hyperv_gpu_partition_enabled_hosts') }}"
+  gather_facts: false
+  tags: [never, collect_hyperv_gpu_p]
+
+  tasks:
+    - name: Collect Hyper-V Ubuntu GPU-P troubleshooting artifacts from Windows host
+      ansible.builtin.include_role:
+        name: troubleshooting_collectors
+        tasks_from: hyperv_ubuntu_gpu_p.yml
+      vars:
+        hyperv_ubuntu_gpu_p_collector_vm_name: "{{ hyperv_ubuntu_gpu_p_runtime_guest_vm_name | default('') }}"

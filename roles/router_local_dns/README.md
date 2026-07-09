@@ -23,7 +23,7 @@ Hyper-V guest addresses such as `192.168.137.10` and `192.168.137.11` are
 | Need | Approach |
 |------|----------|
 | Guest ↔ LAN by IP | Upstream static route `192.168.137.0/24` → `192.168.50.158` (Job 1) |
-| LAN-wide name for Windows host | Router row: `hom-lab-ctl-hvh-02` → `192.168.50.158` |
+| LAN-wide name for Windows host | Router row: `hom-lab-hvh-02` → `192.168.50.158` |
 | Name for guest VMs on GT6 | **Not supported** — use IP or mac `/etc/hosts` workaround |
 | mac-dev guest hostnames | Future `homelab_hosts_file_mac` ← `homelab_router_gt6_mac_hosts_workaround` |
 

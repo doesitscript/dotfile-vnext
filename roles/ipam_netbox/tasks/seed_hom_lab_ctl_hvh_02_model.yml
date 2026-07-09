@@ -14,7 +14,7 @@
       change_class: "idempotent NetBox source-of-truth modeling"
       apply: "ansible-playbook playbooks/deploy_ipam_netbox.yaml --tags ipam_netbox_seed_hom_lab_ctl_hvh_02_model"
       verify:
-        - "NetBox UI/API contains the hom-lab-ctl-hvh-02 device plus hom-lab-ctl-hvh-02 cluster/VM objects"
+        - "NetBox UI/API contains the hom-lab-hvh-02 device plus hom-lab-hvh-02 cluster/VM objects"
         - "NetBox VM hom-lab-ctl-dkr-02 has primary IP 192.168.137.10/24"
         - "NetBox VM hom-lab-ctl-k3s-02 is staged with role k3s and primary IP 192.168.137.11/24"
         - "NetBox application services exist for NetBox, Semaphore, Loki, Grafana, Langfuse, LiteLLM, Postgres, and MinIO"
@@ -35,7 +35,7 @@
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview
 
-- name: Require NetBox API token for hom-lab-ctl-hvh-02 model seeding
+- name: Require NetBox API token for hom-lab-hvh-02 model seeding
   ansible.builtin.assert:
     that:
       - vault_vars.vault_netbox_api_token is defined
@@ -48,7 +48,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Ensure dedicated NetBox API token before hom-lab-ctl-hvh-02 model seeding
+- name: Ensure dedicated NetBox API token before hom-lab-hvh-02 model seeding
   ansible.builtin.include_tasks:
     file: ensure_api_token.yml
     apply:
@@ -62,7 +62,7 @@
     - ipam_netbox_api_token
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 NetBox tags
+- name: Seed hom-lab-hvh-02 NetBox tags
   netbox.netbox.netbox_tag:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -79,7 +79,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 NetBox site
+- name: Seed hom-lab-hvh-02 NetBox site
   netbox.netbox.netbox_site:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -98,7 +98,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 NetBox tenants
+- name: Seed hom-lab-hvh-02 NetBox tenants
   netbox.netbox.netbox_tenant:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -116,7 +116,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 NetBox manufacturers
+- name: Seed hom-lab-hvh-02 NetBox manufacturers
   netbox.netbox.netbox_manufacturer:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -133,7 +133,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 NetBox device types
+- name: Seed hom-lab-hvh-02 NetBox device types
   netbox.netbox.netbox_device_type:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -151,7 +151,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 NetBox platforms
+- name: Seed hom-lab-hvh-02 NetBox platforms
   netbox.netbox.netbox_platform:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -168,7 +168,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 NetBox device and VM roles
+- name: Seed hom-lab-hvh-02 NetBox device and VM roles
   netbox.netbox.netbox_device_role:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -187,7 +187,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 NetBox cluster types
+- name: Seed hom-lab-hvh-02 NetBox cluster types
   netbox.netbox.netbox_cluster_type:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -204,7 +204,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 NetBox cluster
+- name: Seed hom-lab-hvh-02 NetBox cluster
   netbox.netbox.netbox_cluster:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -224,7 +224,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 NetBox device
+- name: Seed hom-lab-hvh-02 NetBox device
   netbox.netbox.netbox_device:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -256,7 +256,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 Ubuntu VM
+- name: Seed hom-lab-hvh-02 Ubuntu VM
   netbox.netbox.netbox_virtual_machine:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -281,7 +281,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 Ubuntu VM interface
+- name: Seed hom-lab-hvh-02 Ubuntu VM interface
   netbox.netbox.netbox_vm_interface:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -405,7 +405,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 Ubuntu VM IP address
+- name: Seed hom-lab-hvh-02 Ubuntu VM IP address
   netbox.netbox.netbox_ip_address:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -441,7 +441,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 K3s Ubuntu VM
+- name: Seed hom-lab-hvh-02 K3s Ubuntu VM
   netbox.netbox.netbox_virtual_machine:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -462,7 +462,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 K3s Ubuntu VM interface
+- name: Seed hom-lab-hvh-02 K3s Ubuntu VM interface
   netbox.netbox.netbox_vm_interface:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -478,7 +478,7 @@
     - ipam_netbox
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
-- name: Seed hom-lab-ctl-hvh-02 K3s Ubuntu VM IP address
+- name: Seed hom-lab-hvh-02 K3s Ubuntu VM IP address
   netbox.netbox.netbox_ip_address:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"
@@ -520,7 +520,7 @@
     - ipam_netbox_seed_hom_lab_ctl_hvh_02_model
     - ipam_netbox_seed_custom_fields
 
-- name: Seed hom-lab-ctl-hvh-02 application services
+- name: Seed hom-lab-hvh-02 application services
   netbox.netbox.netbox_service:
     netbox_url: "{{ ipam_netbox_api_url }}"
     netbox_token: "{{ vault_vars.vault_netbox_api_token }}"

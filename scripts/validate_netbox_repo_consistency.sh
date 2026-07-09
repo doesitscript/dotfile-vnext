@@ -7,7 +7,7 @@ cd "$repo_root"
 retired_base="network-server"
 retired_name="${retired_base}-win"
 retired_label="retired network-server Windows control alias"
-current_name="hom-lab-ctl-hvh-01"
+current_name="HOM-LAB-HVH-01"
 
 failures=()
 

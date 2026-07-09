@@ -214,7 +214,9 @@
 
       Internal service: http://litellm.{{ k3s_litellm_gateway_namespace }}.svc.cluster.local:{{ k3s_litellm_gateway_service_port }}
       {% if k3s_litellm_gateway_lan_node_port_enabled | bool %}
-      LAN NodePort: http://192.168.50.158:{{ k3s_litellm_gateway_lan_node_port }}/ (via Windows portproxy on hom-lab-ctl-hvh-02)
+      LAN NodePort: http://{{
+        hostvars['hom-lab-hvh-02'].host_ip | default('192.168.50.158')
+      }}:{{ k3s_litellm_gateway_lan_node_port }}/ (via Windows portproxy on hom-lab-hvh-02)
       Direct guest NodePort: http://192.168.137.11:{{ k3s_litellm_gateway_lan_node_port }}/
       {% endif %}
 

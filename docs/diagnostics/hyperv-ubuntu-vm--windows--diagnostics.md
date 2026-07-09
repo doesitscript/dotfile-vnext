@@ -169,7 +169,7 @@ rejects the boot disk or fails the VM start path.
       installer path
     - keep autoinstall as the explicit follow-up, not as implied behavior
 - first server-ISO installer milestone:
-  - the ISO downloaded and verified successfully on `hom-lab-ctl-hvh-02`
+  - the ISO downloaded and verified successfully on `HOM-LAB-HVH-02`
   - the VM was recreated cleanly with the ISO attached as the DVD boot media
   - Hyper-V reported the VM `Operating normally` on switch `Guest`
   - no guest IP or SSH publication was attempted in this mode; this is an

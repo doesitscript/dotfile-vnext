@@ -36,7 +36,7 @@ roles/access_identity_controller/defaults/main.yml:3:21 Jinja2 template rewrite 
 Command:
 
 ```bash
-ansible-playbook playbooks/server_225_hyperv_ubuntu_vm.yaml -i inventory/inventory.yaml --limit 'execution_nodes,hom-lab-ctl-hvh-02'
+ansible-playbook playbooks/server_225_hyperv_ubuntu_vm.yaml -i inventory/inventory.yaml --limit 'execution_nodes,HOM-LAB-HVH-02'
 ```
 
 Output excerpt:
@@ -50,14 +50,14 @@ TASK [hyperv_networking : Create External VMSwitch with PowerShell when absent] 
 Follow-up evidence:
 
 ```text
-hom-lab-ctl-hvh-02 | SUCCESS => {
+HOM-LAB-HVH-02 | SUCCESS => {
     "changed": false,
     "ping": "pong"
 }
 ```
 
 ```text
-hom-lab-ctl-hvh-02 | CHANGED | rc=0 >>
+HOM-LAB-HVH-02 | CHANGED | rc=0 >>
 {"Name":"External","SwitchType":2,"NetAdapterInterfaceDescription":"RZ608 Wi-Fi 6E 80MHz"}
 ```
 
@@ -76,7 +76,7 @@ Output excerpt:
 
 ```text
 TASK [hyperv_ubuntu_vm : Resolve qemu-img command path on Windows host] ********
-fatal: [hom-lab-ctl-hvh-02]: FAILED! => {
+fatal: [HOM-LAB-HVH-02]: FAILED! => {
   "result": "qemu-img was not found after package installation"
 }
 ```
@@ -84,7 +84,7 @@ fatal: [hom-lab-ctl-hvh-02]: FAILED! => {
 Follow-up evidence:
 
 ```text
-hom-lab-ctl-hvh-02 | CHANGED | rc=0 >>
+HOM-LAB-HVH-02 | CHANGED | rc=0 >>
 C:\Program Files\qemu\qemu-img.exe
 ```
 
@@ -94,7 +94,7 @@ Output excerpt:
 
 ```text
 TASK [hyperv_ubuntu_vm : Resize VHDX to desired capacity] **********************
-fatal: [hom-lab-ctl-hvh-02]: FAILED! => {
+fatal: [HOM-LAB-HVH-02]: FAILED! => {
   "output": "Resize-VHD : Failed to resize the virtual disk... Virtual hard disk files must be uncompressed and unencrypted and must not be sparse. (0xC03A001A)."
 }
 ```
@@ -105,7 +105,7 @@ Output excerpt:
 
 ```text
 TASK [hyperv_ubuntu_vm : Resize VHDX to desired capacity] **********************
-fatal: [hom-lab-ctl-hvh-02]: FAILED! => {
+fatal: [HOM-LAB-HVH-02]: FAILED! => {
   "output": "qemu-img.exe: Image format driver does not support resize"
 }
 ```
@@ -127,7 +127,7 @@ Output locations collected in the current troubleshooting pass:
 Live disk inspection:
 
 ```text
-hom-lab-ctl-hvh-02 | CHANGED | rc=0 >>
+HOM-LAB-HVH-02 | CHANGED | rc=0 >>
 image: C:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu\server-225-ubuntu.vhdx
 file format: vhdx
 virtual size: 3.5 GiB (3758096384 bytes)
@@ -141,12 +141,12 @@ Child node '/file':
 ```
 
 ```text
-hom-lab-ctl-hvh-02 | CHANGED | rc=0 >>
+HOM-LAB-HVH-02 | CHANGED | rc=0 >>
 {"Path":"C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\server-225-ubuntu\\server-225-ubuntu.vhdx","VhdType":2,"FileSize":5997854720,"Size":3758096384}
 ```
 
 ```text
-hom-lab-ctl-hvh-02 | CHANGED | rc=0 >>
+HOM-LAB-HVH-02 | CHANGED | rc=0 >>
 This file is set as sparse
 ...
 Of 1 files within 1 directories
@@ -181,10 +181,10 @@ $ arp -an | rg 192.168.50.158
 Assessment:
 
 - repo-side Multipass implementation can be removed independently
-- host-side Multipass teardown is blocked until `hom-lab-ctl-hvh-02` comes back on
+- host-side Multipass teardown is blocked until `HOM-LAB-HVH-02` comes back on
   the network
 TASK [Probe Hyper-V Ubuntu boot disk evidence] *********************************
-changed: [hom-lab-ctl-hvh-02] => {
+changed: [HOM-LAB-HVH-02] => {
   "result": {
     "exists": true,
     "get_vhd": {
@@ -215,7 +215,7 @@ This is the current contradiction to design around:
 After clearing compression and sparse flag:
 
 ```text
-hom-lab-ctl-hvh-02 | CHANGED | rc=0 >>
+HOM-LAB-HVH-02 | CHANGED | rc=0 >>
 This file is NOT set as sparse
 ...
 Of 1 files within 1 directories
@@ -227,7 +227,7 @@ The compression ratio is 1.0 to 1.
 Start attempt after that change:
 
 ```text
-hom-lab-ctl-hvh-02 | CHANGED | rc=0 >>
+HOM-LAB-HVH-02 | CHANGED | rc=0 >>
 {"Name":"server-225-ubuntu","State":3}
 Start-VM : 'server-225-ubuntu' failed to start.
 Synthetic SCSI Controller ... Virtual hard disk files must be uncompressed and unencrypted and must not be sparse.

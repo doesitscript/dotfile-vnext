@@ -28,7 +28,9 @@
       type: Available
       status: "True"
     wait_timeout: 600
-  when: k3s_nvidia_device_plugin_state == 'present'
+  when:
+    - k3s_nvidia_device_plugin_state == 'present'
+    - k3s_nvidia_device_plugin_wait_for_daemonset | bool
   environment:
     KUBECONFIG: "{{ k3s_nvidia_device_plugin_kubeconfig }}"
 

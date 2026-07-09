@@ -26,8 +26,8 @@ flowchart TB
   subgraph LAN["LAN 192.168.50.0/24"]
     Router["GT6 router\n192.168.50.1"]
     Mac["mac-dev\ncontroller / execution node\n~192.168.50.33"]
-    HVH02["hom-lab-ctl-hvh-02\nWindows Hyper-V host\n192.168.50.158\nrole: hvh · lane: GPU"]
-    HVH01["hom-lab-ctl-hvh-01\nWindows Hyper-V host\n192.168.50.234\nrole: hvh · lane: storage"]
+    HVH02["HOM-LAB-HVH-02\nWindows Hyper-V host\n192.168.50.158\nrole: hvh · lane: GPU"]
+    HVH01["HOM-LAB-HVH-01\nWindows Hyper-V host\n192.168.50.234\nrole: hvh · lane: storage"]
     DeferredWin["dev-workstation-win · dev-3090-win\n(deferred / offline)"]
   end
 
@@ -71,7 +71,7 @@ flowchart TB
     MacCtl["Ansible controller\nDocker CLI context → hom-lab-ctl-dkr-02\nhomelab_hosts_file_mac\nSSH client config render"]
   end
 
-  subgraph HVH02Node["hom-lab-ctl-hvh-02 — Hyper-V + LAN publish"]
+  subgraph HVH02Node["HOM-LAB-HVH-02 — Hyper-V + LAN publish"]
     HVHRoles["Roles: hyperv_networking · hyperv_ubuntu_vm\nhyperv_docker_runtime · openssh_server\nportproxy :80 → Traefik :31461\n:8000 :3001 :3100 :30000 :30400"]
   end
 
@@ -83,7 +83,7 @@ flowchart TB
     K3S02Svc["K3s server · Traefik kube-system\nk3s_langfuse_platform → :30000\nk3s_litellm_gateway → :30400\nJupyter workbench :8888\nPostgres consumer → 192.168.137.10"]
   end
 
-  subgraph HVH01Node["hom-lab-ctl-hvh-01 — storage lane host"]
+  subgraph HVH01Node["HOM-LAB-HVH-01 — storage lane host"]
     HVH01Roles["hyperv_networking · hyperv_ubuntu_vm\nNAT guest egress today\n(storage convergence planned)"]
   end
 
@@ -137,10 +137,10 @@ flowchart LR
   end
 
   subgraph Hosts["Inventory host → roles"]
-    A["hom-lab-ctl-hvh-02 → hvh"]
+    A["HOM-LAB-HVH-02 → hvh"]
     B["hom-lab-ctl-dkr-02 → dkr"]
     C["hom-lab-ctl-k3s-02 → k3s"]
-    D["hom-lab-ctl-hvh-01 → hvh"]
+    D["HOM-LAB-HVH-01 → hvh"]
     E["hom-lab-ctl-dkr-01 → dkr"]
     F["hom-lab-ctl-k3s-01 → k3s"]
     G["mac-dev → execution only"]
@@ -174,10 +174,10 @@ flowchart LR
 
 | Host | `runtime_planes` / `node_classes` (summary) |
 |------|---------------------------------------------|
-| **hom-lab-ctl-hvh-02** | `hyperv_host`, `hyperv_docker_vm`, `hyperv_k3s_vm`, `docker_client`, `gpu_host` |
+| **HOM-LAB-HVH-02** | `hyperv_host`, `hyperv_docker_vm`, `hyperv_k3s_vm`, `docker_client`, `gpu_host` |
 | **hom-lab-ctl-dkr-02** | `docker_engine` (via roles), logging/NetBox stacks |
 | **hom-lab-ctl-k3s-02** | `k3s_node` · `k3s_runtime`, `ai_worker`, GPU classes |
-| **hom-lab-ctl-hvh-01** | `hyperv_host`, `hyperv_docker_vm`, `hyperv_k3s_vm`, `storage_observability` |
+| **HOM-LAB-HVH-01** | `hyperv_host`, `hyperv_docker_vm`, `hyperv_k3s_vm`, `storage_observability` |
 | **hom-lab-ctl-dkr-01** | `docker_engine`, `storage_observability`, authoritative-data policy |
 | **hom-lab-ctl-k3s-01** | K3s network cluster server (inventory) |
 | **mac-dev** | `execution_nodes`, `docker_clients`, `homelab_hosts_file_mac` |
@@ -191,7 +191,7 @@ flowchart LR
   Browser["Operator browser\nmac-dev / LAN client"]
   HostsMac["/etc/hosts on mac-dev\nhomelab_hosts_file_mac"]
   HostsLinux["/etc/hosts on dkr-02, k3s-02\nhomelab_hosts_file_linux"]
-  Publish158["192.168.50.158\nhom-lab-ctl-hvh-02 portproxy"]
+  Publish158["192.168.50.158\nHOM-LAB-HVH-02 portproxy"]
   Traefik80[":80 → guest :31461\nTraefik NodePort"]
   Direct137["Direct 192.168.137.x\ngrafana · jupyter"]
 

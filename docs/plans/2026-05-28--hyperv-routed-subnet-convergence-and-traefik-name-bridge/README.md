@@ -39,29 +39,29 @@ work is now:
 
 | Lane | Hyper-V host | Host LAN IP | Guest subnet | GT6 route state |
 |---|---|---|---|---|
-| GPU | `hom-lab-ctl-hvh-02` | `192.168.50.158` | `192.168.137.0/24` | operator-applied |
-| Storage | `hom-lab-ctl-hvh-01` | `192.168.50.234` | `192.168.138.0/24` | operator-applied |
+| GPU | `HOM-LAB-HVH-02` | `192.168.50.158` | `192.168.137.0/24` | operator-applied |
+| Storage | `HOM-LAB-HVH-01` | `192.168.50.234` | `192.168.138.0/24` | operator-applied |
 
 ### Host convergence truth
 
 | Host | Desired model | Repo host var today | Meaning |
 |---|---|---|---|
-| `hom-lab-ctl-hvh-02` | `guest_network_mode: routed_private_subnet`, `guest_outbound_nat_enabled: false` | `false` | reference lane already aligned |
-| `hom-lab-ctl-hvh-01` | `guest_network_mode: routed_private_subnet`, `guest_outbound_nat_enabled: false` | `true` | convergence lane still needs validation and likely removal of NAT |
+| `HOM-LAB-HVH-02` | `guest_network_mode: routed_private_subnet`, `guest_outbound_nat_enabled: false` | `false` | reference lane already aligned |
+| `HOM-LAB-HVH-01` | `guest_network_mode: routed_private_subnet`, `guest_outbound_nat_enabled: false` | `true` | convergence lane still needs validation and likely removal of NAT |
 
 ### Naming bridge truth
 
 | Concern | Current practical path | Not the long-term answer |
 |---|---|---|
 | `mac-dev` resolves guest VMs | `playbooks/homelab_hosts_file_mac.yaml` | GT6 cannot hold `.137.x` or `.138.x` guest rows |
-| `langfuse.hom.lab` / `litellm.hom.lab` | current bridge through `192.168.50.158` on `hom-lab-ctl-hvh-02` | GT6 placeholder-MAC service rows are optional/operator-only, not completion blockers |
+| `langfuse.hom.lab` / `litellm.hom.lab` | current bridge through `192.168.50.158` on `HOM-LAB-HVH-02` | GT6 placeholder-MAC service rows are optional/operator-only, not completion blockers |
 | Proper LAN DNS | future dedicated authority | do not overload GT6 DHCP/manual assignment as the final DNS model |
 
 ## Apply / Verify / Undo / Change class
 
 | | |
 |---|---|
-| **Apply** | Update SSOT/docs for both GT6 routes; use `playbooks/hyperv_networking.yaml` to converge `hom-lab-ctl-hvh-01` onto routed private subnet without NAT; keep temporary hostname bridge via `playbooks/homelab_hosts_file_mac.yaml` |
+| **Apply** | Update SSOT/docs for both GT6 routes; use `playbooks/hyperv_networking.yaml` to converge `HOM-LAB-HVH-01` onto routed private subnet without NAT; keep temporary hostname bridge via `playbooks/homelab_hosts_file_mac.yaml` |
 | **Verify** | Confirm both GT6 routes are documented, verify `HyperVGuestNat` absent on both hosts, verify active guests on `192.168.137.0/24` and `192.168.138.0/24` have outbound LAN/internet and are reachable from LAN by IP, verify current Traefik hostname bridge still works |
 | **Undo** | Remove GT6 static routes manually if rollback is required; restore host NAT through the owning Hyper-V networking automation if routed-no-NAT convergence fails; remove temporary hosts-file entries by disabling `homelab_hosts_file_mac` |
 | **Change class** | mixed: docs/SSOT updates plus idempotent infrastructure convergence |
@@ -76,9 +76,9 @@ work is now:
 
 ### Host-side convergence
 
-- [ ] **H-1** — Read-only verify current NAT state on `hom-lab-ctl-hvh-02`
-- [ ] **H-2** — Read-only verify current NAT state on `hom-lab-ctl-hvh-01`
-- [ ] **H-3** — If NAT is still present on `hom-lab-ctl-hvh-01`, remove it through the owning Hyper-V networking path
+- [ ] **H-1** — Read-only verify current NAT state on `HOM-LAB-HVH-02`
+- [ ] **H-2** — Read-only verify current NAT state on `HOM-LAB-HVH-01`
+- [ ] **H-3** — If NAT is still present on `HOM-LAB-HVH-01`, remove it through the owning Hyper-V networking path
 - [ ] **H-4** — Align repo host vars so both Hyper-V hosts declare `guest_outbound_nat_enabled: false`
 - [ ] **H-5** — Update docs that still treat mixed NAT/routed posture as acceptable current design
 
@@ -115,8 +115,8 @@ work is now:
 | [playbooks/homelab_hosts_file_mac.yaml](../../../playbooks/homelab_hosts_file_mac.yaml) | temporary name bridge on `mac-dev` |
 | [playbooks/router_dns.yaml](../../../playbooks/router_dns.yaml) | preview-only GT6 local-DNS/operator contract |
 | [inventory/group_vars/all/homelab_router_gt6.yml](../../../inventory/group_vars/all/homelab_router_gt6.yml) | router SSOT for static routes and manual rows |
-| [inventory/host_vars/hom-lab-ctl-hvh-01.yaml](../../../inventory/host_vars/hom-lab-ctl-hvh-01.yaml) | convergence lane host truth |
-| [inventory/host_vars/hom-lab-ctl-hvh-02.yaml](../../../inventory/host_vars/hom-lab-ctl-hvh-02.yaml) | reference lane host truth |
+| [inventory/host_vars/HOM-LAB-HVH-01.yaml](../../../inventory/host_vars/HOM-LAB-HVH-01.yaml) | convergence lane host truth |
+| [inventory/host_vars/HOM-LAB-HVH-02.yaml](../../../inventory/host_vars/HOM-LAB-HVH-02.yaml) | reference lane host truth |
 
 ### Scope boundary
 
@@ -132,8 +132,8 @@ implementation paths live in the companion intake:
 flowchart TB
   subgraph repo [Repo surfaces]
     gt6ssot["inventory/group_vars/all/homelab_router_gt6.yml"]
-    hvh01vars["inventory/host_vars/hom-lab-ctl-hvh-01.yaml"]
-    hvh02vars["inventory/host_vars/hom-lab-ctl-hvh-02.yaml"]
+    hvh01vars["inventory/host_vars/HOM-LAB-HVH-01.yaml"]
+    hvh02vars["inventory/host_vars/HOM-LAB-HVH-02.yaml"]
     hypervPlay["playbooks/hyperv_networking.yaml"]
     hostsPlay["playbooks/homelab_hosts_file_mac.yaml"]
     routerPlay["playbooks/router_dns.yaml"]
@@ -146,13 +146,13 @@ flowchart TB
     dhcpRows["manual assignment / DHCP domain\noperator-owned, limited"]
   end
 
-  subgraph hvh02 [hom-lab-ctl-hvh-02]
+  subgraph hvh02 [HOM-LAB-HVH-02]
     hvh02lan["LAN 192.168.50.158"]
     hvh02sub["guest subnet 192.168.137.0/24"]
     traefik["Traefik / current name bridge"]
   end
 
-  subgraph hvh01 [hom-lab-ctl-hvh-01]
+  subgraph hvh01 [HOM-LAB-HVH-01]
     hvh01lan["LAN 192.168.50.234"]
     hvh01sub["guest subnet 192.168.138.0/24"]
     natState["NAT parity must be removed/verified"]
@@ -202,7 +202,7 @@ flowchart TB
 
   subgraph temporary [Current bridge]
     hosts["homelab_hosts_file_mac\n/etc/hosts bridge"]
-    entry["192.168.50.158\nLAN entrypoint on hom-lab-ctl-hvh-02"]
+    entry["192.168.50.158\nLAN entrypoint on HOM-LAB-HVH-02"]
   end
 
   subgraph services [Service identities]
@@ -242,6 +242,6 @@ Included:
 - Naming/Modeling Diagram
 
 Other available diagram types:
-- Verification sequence for `hom-lab-ctl-hvh-01` NAT removal and guest reachability
+- Verification sequence for `HOM-LAB-HVH-01` NAT removal and guest reachability
 - Traffic-flow comparison for temporary hosts-file bridge vs dedicated DNS authority
 - Execution ownership map for router operator steps vs repo-owned Hyper-V convergence

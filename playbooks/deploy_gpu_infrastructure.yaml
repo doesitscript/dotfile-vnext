@@ -190,7 +190,7 @@
           {{ _gpu_infrastructure_expected_guest_hosts | default([]) }}. The guest
           inventory is current, but these plays will be skipped under that limit.
           Re-run without `--limit`, or include both layers explicitly, for example:
-          `--limit hom-lab-ctl-hvh-02,{{ (_gpu_infrastructure_expected_guest_hosts | default([])) | join(',') }}`
+          `--limit hom-lab-hvh-02,{{ (_gpu_infrastructure_expected_guest_hosts | default([])) | join(',') }}`
       when: (_gpu_infrastructure_expected_guest_hosts | default([]) | length) > 0
       run_once: true
   roles:
@@ -250,3 +250,32 @@
         - k3s_node_gpu_prereqs
         - gpu_infra
         - ai_ml_platform
+
+- name: GPU infrastructure - guest GPU-P troubleshooting collection
+  hosts: "container_orchestrator_k3s:&gpu_workload_nodes"
+  gather_facts: false
+  tags: [never, collect_hyperv_gpu_p]
+
+  tasks:
+    - name: Collect Hyper-V Ubuntu GPU-P guest troubleshooting artifacts
+      ansible.builtin.include_role:
+        name: troubleshooting_collectors
+        tasks_from: hyperv_ubuntu_gpu_p.yml
+      when: (gpu_contract.passthrough_mode | default('')) == 'gpu_p'
+
+- name: GPU infrastructure - Windows GPU-P troubleshooting collection
+  hosts: "windows_server_2025:&hyperv_gpu_partition_enabled_hosts"
+  gather_facts: false
+  tags: [never, collect_hyperv_gpu_p]
+
+  tasks:
+    - name: Collect Hyper-V Ubuntu GPU-P Windows troubleshooting artifacts
+      ansible.builtin.include_role:
+        name: troubleshooting_collectors
+        tasks_from: hyperv_ubuntu_gpu_p.yml
+      vars:
+        hyperv_ubuntu_gpu_p_collector_vm_name: >-
+          {{
+            hyperv_ubuntu_k3s_vm_hostname
+            | default(hyperv_ubuntu_k3s_vm_inventory_host | default(''))
+          }}

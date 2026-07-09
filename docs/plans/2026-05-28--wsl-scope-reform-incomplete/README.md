@@ -26,7 +26,7 @@ child_workstreams:
 - [x] **REF-3** — Ansible reform → `ansible-wsl-reform-report.md`; `hyperv_ubuntu_vm` server lanes default off WSL mount
 - [x] **REF-4** — `hyper-v-bridge` + `k3s-cluster-deployment` plan folders → redirect stubs (full text in archive)
 - [x] **REF-5** — `docs/plans/README.md` + root `README.md` aligned to connection surfaces
-- [x] **REF-6** — Operator: fix live `~/.ssh/config` `hom-lab-ctl-hvh-02` → `HostName 192.168.50.158`
+- [x] **REF-6** — Operator: fix live `~/.ssh/config` `HOM-LAB-HVH-02` → `HostName 192.168.50.158`
 - [x] **REF-7** — MANIFEST delete-candidate rename pass (`*-deprecating-delete.md` / `*-deprecating-delete/`)
 
 ## Unblocks

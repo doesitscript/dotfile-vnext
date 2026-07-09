@@ -74,7 +74,7 @@ ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
 ```
 
 Verify in the NetBox UI: you should see site `homelab`, tenant `home`,
-device `hom-lab-ctl-hvh-02`, cluster `hom-lab-ctl-hvh-02`, VM
+device `hom-lab-hvh-02`, cluster `hom-lab-hvh-02`, VM
 `hom-lab-ctl-dkr-02` with primary IP, and tags including `ansible-managed`,
 `home`, `lab`, `ctl`, `homelab`, `hyperv`, `docker`, and `infra`. You should
 also see application services on `hom-lab-ctl-dkr-02` for `netbox-web`,
@@ -176,8 +176,8 @@ These control which tasks run when `--tags` is passed to `ansible-playbook`.
 | `ipam_netbox_api_token` | Ensures the dedicated repo NetBox API token exists from vault |
 | `ipam_netbox_repo_consistency` | Verifies repo references match NetBox naming/modeling decisions before seed work |
 | `ipam_netbox_seed_tags` | Seeds canonical object tags into NetBox via the API (requires `netbox.netbox` collection) |
-| `ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview` | Preview the first GPU-lane (hom-lab-ctl-hvh-02) NetBox object model without API mutation |
-| `ipam_netbox_seed_hom_lab_ctl_hvh_02_model` | Seed the first GPU-lane (hom-lab-ctl-hvh-02) NetBox object model via the API |
+| `ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview` | Preview the first GPU-lane (hom-lab-hvh-02) NetBox object model without API mutation |
+| `ipam_netbox_seed_hom_lab_ctl_hvh_02_model` | Seed the first GPU-lane (hom-lab-hvh-02) NetBox object model via the API |
 | `ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview` | Preview the storage-lane Hyper-V VM + service model without API mutation |
 | `ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model` | Seed the storage-lane Hyper-V VM + service model via the API |
 | `ipam_netbox_service_inventory_discovery_preview` | Read-only Docker/K3s runtime discovery plus curated-vs-runtime-vs-NetBox comparison |
@@ -252,16 +252,16 @@ The `netbox.netbox` collection (`ansible-galaxy collection install netbox.netbox
 and a NetBox API token are required. The token should be stored in Ansible Vault
 under `vault_netbox_api_token` when this layer is wired.
 
-## First GPU-lane (hom-lab-ctl-hvh-02) Model Slice
+## First GPU-lane (hom-lab-hvh-02) Model Slice
 
 The first NetBox modeling slice is intentionally small. It seeds only enough
-objects to represent the current GPU-lane (hom-lab-ctl-hvh-02) world:
+objects to represent the current GPU-lane (hom-lab-hvh-02) world:
 
 - site: `homelab`
 - tenant: `home`
-- device: `hom-lab-ctl-hvh-02`
-- legacy device aliases: `hom-lab-ctl-hvh-02`, `server-225`, `exec-hvh-01`
-- cluster: `hom-lab-ctl-hvh-02`
+- device: `hom-lab-hvh-02`
+- legacy device aliases: `hom-lab-hvh-02`, `server-225`, `exec-hvh-01`
+- cluster: `hom-lab-hvh-02`
 - VM: `hom-lab-ctl-dkr-02`
 - application services on `hom-lab-ctl-dkr-02`:
   - `netbox-web` at `tcp/8000`
@@ -295,12 +295,12 @@ and stored as `vault_netbox_api_token`.
 ## Network-Server VM Model Slice
 
 The network-server VM slice seeds the Hyper-V objects that live under
-`hom-lab-ctl-hvh-01` without treating K3s runtime state as authoritative:
+`hom-lab-hvh-01` without treating K3s runtime state as authoritative:
 
-- device: `hom-lab-ctl-hvh-01`
+- device: `hom-lab-hvh-01`
 - legacy/control aliases: `network-server`, `primary-hvh-01`, and the retired
   network-server Windows control alias
-- cluster: `hom-lab-ctl-hvh-01`
+- cluster: `hom-lab-hvh-01`
 - Docker VM: `hom-lab-ctl-dkr-01`
 - K3s placeholder VM: `hom-lab-ctl-k3s-01`
 - application services on `hom-lab-ctl-dkr-01`:
@@ -499,7 +499,7 @@ application on the VM — it does not configure the Windows host's port-proxy.
 
 To make NetBox reachable from the LAN (e.g. your Mac at `http://192.168.50.158:8000`),
 an entry must exist in `hyperv_config.guest_published_tcp_ports` in
-`inventory/host_vars/hom-lab-ctl-hvh-02.yaml`:
+`inventory/host_vars/hom-lab-hvh-02.yaml`:
 
 ```yaml
 # NetBox IPAM/DCIM web UI (roles/ipam_netbox, playbooks/deploy_ipam_netbox.yaml)
@@ -514,7 +514,7 @@ This entry is applied by running:
 
 ```bash
 ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml \
-  --limit hom-lab-ctl-hvh-02 --tags hyperv_networking
+  --limit hom-lab-hvh-02 --tags hyperv_networking
 ```
 
 NetBox models these published endpoints as application services on the VM that
@@ -529,10 +529,10 @@ runs them. For current access, use:
 
 NetBox does not natively model application-level port forwarding/PAT as a
 first-class relationship, so the service comments record the Windows
-`netsh portproxy` publishing path through `hom-lab-ctl-hvh-02`.
+`netsh portproxy` publishing path through `hom-lab-hvh-02`.
 Grafana is Docker-published on the Ubuntu VM but is not currently published
 through the Windows LAN portproxy.
 
 That playbook creates the `netsh interface portproxy` rule and the
-`Hyper-V Guest Published TCP netbox` Windows Firewall rule on `hom-lab-ctl-hvh-02`.
+`Hyper-V Guest Published TCP netbox` Windows Firewall rule on `hom-lab-hvh-02`.
 This entry is already present in the current inventory.

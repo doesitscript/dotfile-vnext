@@ -139,8 +139,8 @@ truth here.
 
 Repo current-state evidence says:
 
-- the storage lane is `hom-lab-ctl-hvh-01` with guests `dkr-01` and `k3s-01`
-- the GPU lane is `hom-lab-ctl-hvh-02` with guests `dkr-02` and `k3s-02`
+- the storage lane is `HOM-LAB-HVH-01` with guests `dkr-01` and `k3s-01`
+- the GPU lane is `HOM-LAB-HVH-02` with guests `dkr-02` and `k3s-02`
 - the live automation path still concentrates Langfuse, LiteLLM, vLLM, and
   Jupyter on the GPU lane
 - the active Langfuse database path is tied to the `dkr-02` Docker-side
@@ -157,12 +157,12 @@ Control / authority
 - repo playbooks and roles own execution and convergence
 
 Current live AI stack concentration
-- hom-lab-ctl-hvh-02
+- HOM-LAB-HVH-02
   |- hom-lab-ctl-dkr-02: PostgreSQL, Loki, Grafana, NetBox, Semaphore
   `- hom-lab-ctl-k3s-02: Langfuse, LiteLLM, vLLM, Jupyter, Traefik
 
 Storage lane context
-- hom-lab-ctl-hvh-01
+- HOM-LAB-HVH-01
   |- hom-lab-ctl-dkr-01: Docker engine, no live Langfuse stack from current playbooks
   `- hom-lab-ctl-k3s-01: readiness stub / no active K3s workload path
 ```
@@ -248,5 +248,6 @@ But the implementation path must remain subordinate to repo truth, NetBox
 authority, and the existing homelab lane/guest model instead of to upstream
 sample topology.
 
+#Company's
 curl -s http://litellm.hom.lab:8000/v1/models -H "Authorization: Bearer sk-Pass@w0rd1"
 curl -s http://litellm.hom.lab:30400/v1/models -H "Authorization: Bearer sk-Pass@w0rd1"

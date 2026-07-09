@@ -18,7 +18,7 @@ This report covers the specific issues encountered while implementing fixes thro
 
 ```
 Error while resolving value for 'dest': object of type 'dict' has no attribute 'HOME'
-fatal: [hom-lab-ctl-hvh-02]: FAILED!
+fatal: [HOM-LAB-HVH-02]: FAILED!
 fatal: [home-lab-auth-hvh-01]: FAILED!
 ```
 

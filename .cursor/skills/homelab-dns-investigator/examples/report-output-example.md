@@ -22,8 +22,8 @@ See [lane-inventory-truth-example.md](lane-inventory-truth-example.md) for full 
 
 | Name | IP | Role |
 |---|---|---|
-| `hom-lab-ctl-hvh-01` | `192.168.50.234` | Hyper-V host (primary) |
-| `hom-lab-ctl-hvh-01` | `192.168.50.233` | Secondary Wi‑Fi (inventory: temporarily down) |
+| `HOM-LAB-HVH-01` | `192.168.50.234` | Hyper-V host (primary) |
+| `HOM-LAB-HVH-01` | `192.168.50.233` | Secondary Wi‑Fi (inventory: temporarily down) |
 | `hom-lab-ctl-dkr-01` / `nsrv-dkr-01` | `192.168.138.10` | Docker VM |
 | `hom-lab-ctl-k3s-01` / `nsrv-k3s-01` | `192.168.138.11` | K3s control plane |
 | Guest subnet | `192.168.138.0/24` | Gateway `192.168.138.1` on hvh-01 |
@@ -34,7 +34,7 @@ Port proxies on `50.234` → `138.10`: postgres `5432`, redis `6379`, clickhouse
 
 | Name | Declared | Verified | Status |
 |---|---|---|---|
-| `hom-lab-ctl-hvh-01` | `50.234` | ping/SSH fail | DOWN |
+| `HOM-LAB-HVH-01` | `50.234` | ping/SSH fail | DOWN |
 | `hom-lab-ctl-k3s-01` | `138.11` | timeout via dead gateway | BLOCKED_UPSTREAM |
 
 ## Scope
@@ -53,7 +53,7 @@ See `dns-matrix.txt`. Summary tables in [what-to-collect.md](what-to-collect.md)
 - `.local` is mDNS only — hvh-02 advertises at `.159` (SSH works); hvh-01 has no `.local` record.
 - `.lab` does nothing in this setup.
 - Bare names with search domain `hom.lab`: hvh hosts → router DNS; services → `/etc/hosts`; guests → hosts file only for 02 lane.
-- **No DNS/hosts mismatch explains k3s-01 timeout** — `hom-lab-ctl-hvh-01.hom.lab` correctly points to `50.234`, which is down.
+- **No DNS/hosts mismatch explains k3s-01 timeout** — `HOM-LAB-HVH-01.hom.lab` correctly points to `50.234`, which is down.
 
 ## Connection evidence
 
@@ -71,7 +71,7 @@ Raw: `connection-probes.txt`
 
 | Name | Router DNS | Mac resolver | `/etc/hosts` | Mismatch |
 |---|---|---|---|---|
-| `hom-lab-ctl-hvh-02` | `50.158` | `50.158` | — | `.local` → `50.159` |
+| `HOM-LAB-HVH-02` | `50.158` | `50.158` | — | `.local` → `50.159` |
 | `hom-lab-ctl-k3s-02` | none | `137.11` (hosts) | `137.11` | expected — no router row |
 | `hom-lab-ctl-k3s-01` | none | none | missing | expected — 01 lane uses route not hosts |
 
@@ -85,17 +85,17 @@ See `published-endpoints.md` for service `*.hom.lab` resolution and HTTP/TCP pro
 
 | target | working path |
 |---|---|
-| hvh-02 | `hom-lab-ctl-hvh-02-ipv6`, `hom-lab-ctl-hvh-02.local` (`50.159`), or `192.168.50.159` |
+| hvh-02 | `HOM-LAB-HVH-02-ipv6`, `HOM-LAB-HVH-02.local` (`50.159`), or `192.168.50.159` |
 | k3s-02 | `hom-lab-ctl-k3s-02` (hosts → `137.11`) or IP directly |
 | hvh-01 / k3s-01 | **blocked** until `50.234` is back — DNS already correct |
 
 ## Assessment
 
-DNS naming is consistent with inventory. Primary blocker is physical/network availability of `hom-lab-ctl-hvh-01` at `192.168.50.234`, not resolver configuration.
+DNS naming is consistent with inventory. Primary blocker is physical/network availability of `HOM-LAB-HVH-01` at `192.168.50.234`, not resolver configuration.
 
 ## Next required step
 
-Restore or power on `hom-lab-ctl-hvh-01` and re-run connection probes to `192.168.50.234` before expecting k3s-01 or `192.168.138.x` services.
+Restore or power on `HOM-LAB-HVH-01` and re-run connection probes to `192.168.50.234` before expecting k3s-01 or `192.168.138.x` services.
 
 ## Sources checked
 

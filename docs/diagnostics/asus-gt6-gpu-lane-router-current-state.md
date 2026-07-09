@@ -39,7 +39,7 @@ Per ASUS FAQ 1011706-style field names:
 
 | Repo concept | Value |
 |---|---|
-| Windows Hyper-V host | `hom-lab-ctl-hvh-02` |
+| Windows Hyper-V host | `HOM-LAB-HVH-02` |
 | Windows host LAN IP | `192.168.50.158` |
 | Routed guest subnet | `192.168.137.0/24` |
 | Guest gateway on Windows host | `192.168.137.1` |
@@ -75,7 +75,7 @@ The repo-side checks confirmed:
 - `http://192.168.137.10:8000/api/status/` returns `200`
 - `hom-lab-ctl-dkr-02` regained outbound internet access
 - `hom-lab-ctl-k3s-02` is reachable again on the routed subnet
-- Windows `HyperVGuestNat` on `hom-lab-ctl-hvh-02` is `absent`
+- Windows `HyperVGuestNat` on `HOM-LAB-HVH-02` is `absent`
 
 That combination matches the intended final routed-subnet design:
 

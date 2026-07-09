@@ -1,7 +1,7 @@
 ---
 name: AI model catalog — HF storage on storage lane
 overview: >-
-  Establish the catalog layer on hom-lab-ctl-hvh-01: SMB public share layout for
+  Establish the catalog layer on HOM-LAB-HVH-01: SMB public share layout for
   Hugging Face weights, git SSOT manifest, naming-schema pattern, and NetBox
   metadata for the full planned model-purpose set — without deploying vLLM or LiteLLM.
 scope: implementation
@@ -40,7 +40,7 @@ parent_program: docs/plans/2026-05-29--ai-homelab-intake-execution-incomplete-wi
 From intake reconciliation:
 
 - **Model catalog** means a durable inventory of **chosen/downloaded** HF models, their lanes, paths, and operational metadata — not LiteLLM `model_list` rows and not a single vLLM `--model` argument.
-- **Physical weights** belong on the **storage lane** (`hom-lab-ctl-hvh-01`) via the public SMB share, not on the 5090 OS disk.
+- **Physical weights** belong on the **storage lane** (`HOM-LAB-HVH-01`) via the public SMB share, not on the 5090 OS disk.
 - **vLLM on `hom-lab-ctl-k3s-02`** may read from the share (SMB mount or sync) or from a local PVC; it does not own catalog SSOT.
 - Intake vocabulary row **“Model catalog (durable inventory of chosen HF models)”** → `manifest.yml` + registry rows ([intake-semantic-vocabulary.md](../../intake/netbox/netbox_ai_infra_impl_planning_wip/intake-semantic-vocabulary.md) gaps table).
 
@@ -48,10 +48,10 @@ From intake reconciliation:
 
 | ID | Question | Candidate answer | Status |
 |----|----------|------------------|--------|
-| D-4 | Public share path: confirm `F:\shares\public\models` on **hvh-01** as canonical HF root | UNC `\\hom-lab-ctl-hvh-01\public\models\huggingface\` | **repo-declared/applied 2026-05-29** |
+| D-4 | Public share path: confirm `F:\shares\public\models` on **hvh-01** as canonical HF root | UNC `\\HOM-LAB-HVH-01\public\models\huggingface\` | **repo-declared/applied 2026-05-29** |
 
 D-4 is now implemented as idempotent Windows share desired state for
-`hom-lab-ctl-hvh-01`. The existing `public` share was verified first; the
+`HOM-LAB-HVH-01`. The existing `public` share was verified first; the
 `models` and `models\huggingface` directories were then created and verified.
 
 ---
@@ -66,7 +66,7 @@ D-4 is now implemented as idempotent Windows share desired state for
 | `live-object-registry.yml` rows per HF repo | Automated bulk download (optional follow-on) |
 | NetBox device context / tags for storage lane + `hfc` | GPU operator on k3s-02 |
 
-**Depends on:** [windows-public-share-netbox-naming](../windows-public-share-netbox-naming/README.md) — SMB `public` share on `hom-lab-ctl-hvh-01` must exist and be reachable before catalog verify.
+**Depends on:** [windows-public-share-netbox-naming](../windows-public-share-netbox-naming/README.md) — SMB `public` share on `HOM-LAB-HVH-01` must exist and be reachable before catalog verify.
 
 ---
 
@@ -100,7 +100,7 @@ graph TB
 
     subgraph inventory [Inventory]
       manifest["inventory/group_vars/model_catalog/manifest.yml"]
-      hvh01["host_vars/hom-lab-ctl-hvh-01.yaml"]
+      hvh01["host_vars/HOM-LAB-HVH-01.yaml"]
       shareGv["windows_file_share_hosts group_vars"]
     end
 
@@ -117,7 +117,7 @@ graph TB
   end
 
   subgraph external [Managed targets]
-    hvh01win["hom-lab-ctl-hvh-01<br/>F:\\shares\\public\\models\\huggingface"]
+    hvh01win["HOM-LAB-HVH-01<br/>F:\\shares\\public\\models\\huggingface"]
     k3s02["hom-lab-ctl-k3s-02<br/>reader mount optional"]
     netbox["NetBox API<br/>homelab site"]
   end
@@ -171,7 +171,7 @@ graph TB
 ```mermaid
 graph TB
   subgraph physical [Physical / storage lane]
-    dev["device hom-lab-ctl-hvh-01<br/>role_code hvh<br/>lane hyperv_lane_storage"]
+    dev["device HOM-LAB-HVH-01<br/>role_code hvh<br/>lane hyperv_lane_storage"]
     share["SMB share public<br/>tag lan-exposed-services"]
   end
 
@@ -227,8 +227,8 @@ passes. Do not collapse this plan down to one primary row.
 
 - `hf_repo_id`: candidate chosen by research receipt
 - `lane`: one of the model lane aliases from the LiteLLM plan
-- `storage_host`: `hom-lab-ctl-hvh-01`
-- `unc_path`: `\\hom-lab-ctl-hvh-01\public\models\huggingface\`
+- `storage_host`: `HOM-LAB-HVH-01`
+- `unc_path`: `\\HOM-LAB-HVH-01\public\models\huggingface\`
 - `status`: `candidate` until downloaded/served evidence exists
 - `smoke_repo`: small HF repo chosen by research receipt
 
@@ -238,7 +238,7 @@ passes. Do not collapse this plan down to one primary row.
 
 ### Objects affected
 
-- **Device:** `hom-lab-ctl-hvh-01` (storage lane Hyper-V host) — already in `live-object-registry.yml`; confirm `netbox_status: active`
+- **Device:** `HOM-LAB-HVH-01` (storage lane Hyper-V host) — already in `live-object-registry.yml`; confirm `netbox_status: active`
 - **Service / cache identity:** `hfc` (`huggingface-cache`) — metadata via config context or future service row when weights are installed
 - **Config context:** `homelab-model-catalog` *(proposed)* — manifest summary for operators, not duplicate of full `manifest.yml`
 - **Tags:** `homelab`, `ansible-managed`, `infra`, `lan-exposed-services` on share-exposed paths
@@ -264,7 +264,7 @@ passes. Do not collapse this plan down to one primary row.
 
 ### Operator / path
 
-- [x] **C-01** — D-4: `F:\shares\public\models` declared for `hom-lab-ctl-hvh-01`
+- [x] **C-01** — D-4: `F:\shares\public\models` declared for `HOM-LAB-HVH-01`
 - [x] **C-02** — `models\huggingface\` directory layout created on share
 
 ### Repo SSOT
@@ -283,7 +283,7 @@ passes. Do not collapse this plan down to one primary row.
 
 - [ ] **NB-C1** — **Declared:** registry + manifest + packet agree on hvh-01 catalog placement
 - [ ] **NB-C2** — **Applied:** NetBox config context `homelab-model-catalog` seeded (or explicit reconciliation-only note)
-- [ ] **NB-C3** — **Verified:** `validate_netbox_repo_consistency.sh` pass + live device check for `hom-lab-ctl-hvh-01`
+- [ ] **NB-C3** — **Verified:** `validate_netbox_repo_consistency.sh` pass + live device check for `HOM-LAB-HVH-01`
 - [ ] **NB-C4** — **Verified:** reconciliation artifact saved under `artifacts/netbox-reconciliation/`
 
 ### Downstream
@@ -305,7 +305,7 @@ passes. Do not collapse this plan down to one primary row.
 
 | ID | Source | Obligation | In slice scope? | Status | Evidence |
 |----|--------|------------|-----------------|--------|----------|
-| O-01 | C-01 / D-4 | Canonical HF root declared on hvh-01 | yes | pass | `inventory/host_vars/hom-lab-ctl-hvh-01.yaml` `windows_file_shares_extra_directories` |
+| O-01 | C-01 / D-4 | Canonical HF root declared on hvh-01 | yes | pass | `inventory/host_vars/HOM-LAB-HVH-01.yaml` `windows_file_shares_extra_directories` |
 | O-02 | C-02 | Share subdirectory layout exists | yes | pass | `windows_file_shares.yml` apply created `F:\shares\public\models` + `models\huggingface`; read-only probe returned both `exists: true` |
 | O-03 | C-03 | `model_catalog_manifest` in ansible.yml | yes | pass | `docs/reference/naming-standards/ansible.yml` |
 | O-04 | C-04 | `manifest.yml` SSOT with full lane-purpose candidate set + smoke repo | yes | pass | `inventory/group_vars/model_catalog/manifest.yml` |
@@ -378,7 +378,7 @@ passes. Do not collapse this plan down to one primary row.
 | Gap surfaced | Reinforcement task | Status |
 |--------------|-------------------|--------|
 | Catalog vs LiteLLM `model_list` confusion | Comment in `k3s_litellm_gateway` defaults pointing at `model_catalog` manifest | **implemented** — `roles/k3s_litellm_gateway/defaults/main.yml` and role README now distinguish route list from catalog manifest |
-| D-4 not in operator runbook | Add one-line decision to `hom-lab-ctl-hvh-01` host README or storage lane doc | **implemented** — `inventory/host_vars/hom-lab-ctl-hvh-01.yaml` and `docs/reference/ai-homelab-layer-model.md` now carry the canonical HF root |
+| D-4 not in operator runbook | Add one-line decision to `HOM-LAB-HVH-01` host README or storage lane doc | **implemented** — `inventory/host_vars/HOM-LAB-HVH-01.yaml` and `docs/reference/ai-homelab-layer-model.md` now carry the canonical HF root |
 
 ---
 

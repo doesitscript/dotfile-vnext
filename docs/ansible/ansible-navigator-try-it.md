@@ -62,7 +62,7 @@ Inspect the full repo inventory:
 Inspect one host from inventory:
 
 ```bash
-.venv/bin/ansible-navigator inventory -i inventory/inventory.yaml --host hom-lab-ctl-hvh-02 --mode stdout --ee false
+.venv/bin/ansible-navigator inventory -i inventory/inventory.yaml --host HOM-LAB-HVH-02 --mode stdout --ee false
 ```
 
 This is useful when you want to answer questions like:

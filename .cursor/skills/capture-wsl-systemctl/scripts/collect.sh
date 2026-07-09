@@ -18,23 +18,23 @@ source .envrc 2>/dev/null || true
 source .venv/bin/activate 2>/dev/null || true
 
 echo "Connection method:"
-echo "  [1] ansible win_copy → hom-lab-ctl-hvh-02 (WinRM port 5985)"
+echo "  [1] ansible win_copy → HOM-LAB-HVH-02 (WinRM port 5985)"
 echo "      src:  ${SCRIPT_DIR}/collect-logs.sh"
 echo "      dest: ${REMOTE_SCRIPT} (Windows temp)"
-echo "  [2] ansible win_shell → hom-lab-ctl-hvh-02 (WinRM port 5985)"
+echo "  [2] ansible win_shell → HOM-LAB-HVH-02 (WinRM port 5985)"
 echo "      cmd:  wsl -d ${DISTRO} -u root -- bash /mnt/c/Windows/Temp/wsl_collect_logs.sh"
 echo "  Note: WinRM → win_shell → wsl.exe bypasses SSH entirely."
 echo "        Works even when the WSL SSH server is not running."
 echo ""
 
 # Step 1: copy the remote script to Windows temp
-ansible hom-lab-ctl-hvh-02 -i inventory/inventory.yaml \
+ansible HOM-LAB-HVH-02 -i inventory/inventory.yaml \
   -m ansible.windows.win_copy \
   -a "src=${SCRIPT_DIR}/collect-logs.sh dest=${REMOTE_SCRIPT}" \
   2>&1 | grep -v "^$" || true
 
 # Step 2: run it inside WSL, capture output
-ansible hom-lab-ctl-hvh-02 -i inventory/inventory.yaml \
+ansible HOM-LAB-HVH-02 -i inventory/inventory.yaml \
   -m ansible.windows.win_shell \
   -a "wsl -d ${DISTRO} -u root -- bash /mnt/c/Windows/Temp/wsl_collect_logs.sh" \
   2>&1 > "${OUT}"

@@ -55,16 +55,16 @@ Do not promote `vru` as a repo code. It is a voice-to-text miss for **VRA**.
 current:
   naming_baseline:
     pattern: "<tenant>-<environment>-<domain>-<role>-<idx>"
-    example: "hom-lab-ctl-hvh-01"
+    example: "HOM-LAB-HVH-01"
     canonical_diagram_pattern: "cst-hom-lab-ctl-dia-<topic>-<idx>"
   live_on_prem_hosts:
     hyperv_lane_storage:
-      host: "hom-lab-ctl-hvh-01"
+      host: "HOM-LAB-HVH-01"
       guests:
         - "hom-lab-ctl-dkr-01"
         - "hom-lab-ctl-k3s-01"
     hyperv_lane_gpu:
-      host: "hom-lab-ctl-hvh-02"
+      host: "HOM-LAB-HVH-02"
       guests:
         - "hom-lab-ctl-dkr-02"
         - "hom-lab-ctl-k3s-02"
@@ -116,8 +116,8 @@ These names are already schema-shaped and should remain stable:
 
 | Repo object | Type | Name |
 |-------------|------|------|
-| Storage Hyper-V host | physical device / cluster anchor | `hom-lab-ctl-hvh-01` |
-| GPU Hyper-V host | physical device / cluster anchor | `hom-lab-ctl-hvh-02` |
+| Storage Hyper-V host | physical device / cluster anchor | `HOM-LAB-HVH-01` |
+| GPU Hyper-V host | physical device / cluster anchor | `HOM-LAB-HVH-02` |
 | Storage Docker VM | virtual machine | `hom-lab-ctl-dkr-01` |
 | GPU Docker VM | virtual machine | `hom-lab-ctl-dkr-02` |
 | Storage K3s VM | virtual machine | `hom-lab-ctl-k3s-01` |
@@ -131,8 +131,8 @@ replace the repo object identity.
 | Zerto object | Product meaning | Repo mapping |
 |--------------|-----------------|--------------|
 | ZVM | management service | candidate `hom-lab-ctl-zrt-01` |
-| VRA on storage host | host-attached replication appliance | Terraform unit `vra-hvh-01`, attached to `hom-lab-ctl-hvh-01` |
-| VRA on GPU host | host-attached replication appliance | Terraform unit `vra-hvh-02`, attached to `hom-lab-ctl-hvh-02` |
+| VRA on storage host | host-attached replication appliance | Terraform unit `vra-hvh-01`, attached to `HOM-LAB-HVH-01` |
+| VRA on GPU host | host-attached replication appliance | Terraform unit `vra-hvh-02`, attached to `HOM-LAB-HVH-02` |
 | VPG for K3s lane | recovery group for related VMs | Terraform unit `vpg-k3s-01` or `vpg-k3s-control-01` |
 | VPG for Docker lane | recovery group for related VMs | Terraform unit `vpg-dkr-01` or `vpg-docker-runtime-01` |
 | Journal storage | recovery history target | candidate `hom-lab-ctl-bkp-journal-01` or storage-purpose metadata |
@@ -176,8 +176,8 @@ Canonical companion diagram:
 flowchart TB
   subgraph infra [Repo infrastructure world]
     NBX["NetBox / live-object-registry\nhost VM service truth"]
-    HVH01["hom-lab-ctl-hvh-01\nstorage Hyper-V host"]
-    HVH02["hom-lab-ctl-hvh-02\nGPU Hyper-V host"]
+    HVH01["HOM-LAB-HVH-01\nstorage Hyper-V host"]
+    HVH02["HOM-LAB-HVH-02\nGPU Hyper-V host"]
     DKR01["hom-lab-ctl-dkr-01"]
     K3S01["hom-lab-ctl-k3s-01"]
     DKR02["hom-lab-ctl-dkr-02"]
@@ -287,7 +287,7 @@ terraform/
 |----------|--------|
 | Where is this deployed? | Stack path: `on-prem/hom/lab/ctl/lane-gpu/...` |
 | What product owns it? | Module path: `data-protection/zerto/...` |
-| What host is attached? | Unit name and input: `vra-hvh-02`, `hyperv_host = hom-lab-ctl-hvh-02` |
+| What host is attached? | Unit name and input: `vra-hvh-02`, `hyperv_host = HOM-LAB-HVH-02` |
 | What is protected? | VPG inputs: protected inventory hosts |
 | What gets a repo hostname? | Only durable host/service surfaces such as ZVM |
 | What remains product object naming? | VRA, VPG, journal policy names |
@@ -313,7 +313,7 @@ inputs = {
   name        = "zrt"
   attributes  = ["vra", "hvh", "02"]
 
-  hyperv_host_inventory_hostname = "hom-lab-ctl-hvh-02"
+  hyperv_host_inventory_hostname = "HOM-LAB-HVH-02"
   lane_group                     = "hyperv_lane_gpu"
   product_object_type            = "vra"
   vendor_display_name_policy     = "z-vra-hostname"
@@ -356,8 +356,8 @@ inputs = {
 | Repo layer | Repo object | Zerto object | Terraform unit | Naming decision |
 |------------|-------------|--------------|----------------|-----------------|
 | L2 VM / L4 service | `hom-lab-ctl-zrt-01` | ZVM | `shared/.../zvm-01` | Candidate real host/service identity |
-| Hyper-V host | `hom-lab-ctl-hvh-01` | VRA attachment target | `lane-storage/.../vra-hvh-01` | VRA maps to host, not new baseline hostname |
-| Hyper-V host | `hom-lab-ctl-hvh-02` | VRA attachment target | `lane-gpu/.../vra-hvh-02` | Same pattern |
+| Hyper-V host | `HOM-LAB-HVH-01` | VRA attachment target | `lane-storage/.../vra-hvh-01` | VRA maps to host, not new baseline hostname |
+| Hyper-V host | `HOM-LAB-HVH-02` | VRA attachment target | `lane-gpu/.../vra-hvh-02` | Same pattern |
 | Protected VM | `hom-lab-ctl-k3s-02` | VM in VPG | `lane-gpu/.../vpg-k3s-02` | VPG policy references inventory hostname |
 | Protected VM | `hom-lab-ctl-dkr-01` | VM in VPG | `lane-storage/.../vpg-dkr-01` | VPG policy references inventory hostname |
 | Storage | candidate `hom-lab-ctl-bkp-journal-01` | journal target | `lane-storage/.../journal-store-01` | Use `bkp` + purpose, not `zrt` host role |

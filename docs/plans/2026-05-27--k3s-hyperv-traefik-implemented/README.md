@@ -61,7 +61,7 @@ Intake: [docs/intake/k3s-hyperv-traefik-blueprint.md](../../intake/k3s-hyperv-tr
 
 ## P0-remove-iis-hvh-02 — pass
 
-- [x] **P0-remove-iis-hvh-02** — [one-off doc](../../one_off_tasks/remove_iis_hom-lab-ctl-hvh-02.md); reboot + portproxy re-apply
+- [x] **P0-remove-iis-hvh-02** — [one-off doc](../../one_off_tasks/remove_iis_HOM-LAB-HVH-02.md); reboot + portproxy re-apply
 - [x] **P0-gate** — children unblocked
 
 ---

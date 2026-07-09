@@ -15,15 +15,15 @@ mkdir -p "$(dirname "$OUT")"
     "$REPO_ROOT/inventory/group_vars/all/homelab_hosts_file.yml" || true
 
   echo
-  echo "=== guest_published_tcp_ports hom-lab-ctl-hvh-01 ==="
+  echo "=== guest_published_tcp_ports HOM-LAB-HVH-01 ==="
   rg -n "name:|listen_address:|listen_port:|connect_address:|connect_port:" \
-    "$REPO_ROOT/inventory/host_vars/hom-lab-ctl-hvh-01.yaml" \
+    "$REPO_ROOT/inventory/host_vars/HOM-LAB-HVH-01.yaml" \
     -A0 -B0 2>/dev/null | head -80 || true
 
   echo
-  echo "=== guest_published_tcp_ports hom-lab-ctl-hvh-02 ==="
+  echo "=== guest_published_tcp_ports HOM-LAB-HVH-02 ==="
   rg -n "name:|listen_address:|listen_port:|connect_address:|connect_port:" \
-    "$REPO_ROOT/inventory/host_vars/hom-lab-ctl-hvh-02.yaml" \
+    "$REPO_ROOT/inventory/host_vars/HOM-LAB-HVH-02.yaml" \
     -A0 -B0 2>/dev/null | head -80 || true
 
   echo

@@ -9,7 +9,7 @@ stack and clean up the hybrid service-inventory preview.
 sequenceDiagram
     participant Mac as mac-dev
     participant Playbook as deploy_network_stacks.yaml
-    participant HVH as hom-lab-ctl-hvh-01
+    participant HVH as HOM-LAB-HVH-01
     participant DKR as hom-lab-ctl-dkr-01
     participant Stack as stacks_fuzlang_net
     participant Preview as deploy_ipam_netbox.yaml
