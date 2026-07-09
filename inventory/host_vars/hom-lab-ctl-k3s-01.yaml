@@ -1,9 +1,19 @@
 ---
 # Hyper-V-native K3s Ubuntu VM surface on hom-lab-ctl-hvh-01.
-# This host is the current single-node K3s control-plane target. The readiness
-# stub remains available for pre-install or post-reset validation.
+# This host is the current single-node K3s control-plane surface. Inventory
+# identity is hom-lab-ctl-k3s-01; the live guest hostname / Hyper-V VM name is
+# nsrv-k3s-01. Legacy readiness checks may still target this host, but that does
+# not make the host itself a stub-only identity.
 
 physical_node: "hom-lab-ctl-hvh-01"
+host_kind: "vm"
+parent_hypervisor: "hom-lab-ctl-hvh-01"
+workload_runtime:
+  type: k3s
+  role: server
+node_capabilities:
+  - k3s_node
+  - container_orchestrator_node
 surface_type: "ubuntu_vm"
 node_classes:
   - k3s_runtime
@@ -12,10 +22,15 @@ hardware_classes:
 runtime_planes:
   k3s_node:
     enabled: true
-    purpose: control_plane_stub
+    purpose: control_plane
 policy_classes:
   - authoritative_data
   - lan_exposed_services
+gpu_contract:
+  vendor: none
+  partitioned: false
+  passthrough_mode: none
+  workloads_enabled: false
 ansible_host: "192.168.138.11"
 host_ip: "192.168.138.11"
 ansible_user: "joshc"
@@ -26,4 +41,4 @@ ansible_ssh_common_args: >-
   -o ProxyJump=hom-lab-ctl-hvh-01
   -o StrictHostKeyChecking=no
   -o UserKnownHostsFile=/dev/null
-k3s_readiness_stub_expected_runtime: absent
+k3s_readiness_stub_expected_runtime: present

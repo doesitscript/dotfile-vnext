@@ -1,0 +1,12 @@
+---
+- name: Remove staged Windows payload temp root
+  ansible.windows.win_file:
+    path: "{{ hyperv_ubuntu_gpu_p_windows_payload_temp_root }}"
+    state: absent
+
+- name: Remove controller-staged Windows payload zip
+  delegate_to: localhost
+  become: false
+  ansible.builtin.file:
+    path: "{{ hyperv_ubuntu_gpu_p_windows_payload_controller_zip_path }}"
+    state: absent

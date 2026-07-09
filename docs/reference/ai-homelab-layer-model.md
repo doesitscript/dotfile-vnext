@@ -59,8 +59,10 @@ use compact schema hostnames per `live-object-registry.yml`.
 ## GPU lane policy
 
 - **RTX 5090 (primary):** deep / private primary vLLM lane, gated by host SR-IOV/ACS support plus guest/runtime bring-up.
-- **Second GPU:** assigned purpose (reviewer, embeddings) — not an equal peer;
-  host identity must be chosen in inventory before NetBox seed.
+- **Second GPU (`hom-lab-ctl-hvh-01`, GTX 1060 6GB):** assigned purpose
+  (reviewer, embeddings) — not an equal peer; currently inventory-selected and
+  GPU-labeled, but blocked for guest GPU partitioning until the Hyper-V host
+  capability gap is resolved.
 - **Edge desktops** (`dev-3090-win`, `dev-workstation-win`): deferred; see
   `edge-dev-host-naming-netbox-incomplete`.
 

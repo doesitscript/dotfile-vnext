@@ -1,0 +1,42 @@
+---
+- name: Remove Ollama runtime scheduled task
+  community.windows.win_scheduled_task:
+    name: "{{ windows_ollama_runtime_task_name }}"
+    state: absent
+
+- name: Stop Ollama process if it is still running
+  ansible.windows.win_powershell:
+    error_action: continue
+    script: |
+      Get-Process ollama -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+  changed_when: false
+
+- name: Remove Windows Firewall rule for Ollama runtime API
+  community.windows.win_firewall_rule:
+    name: "{{ windows_ollama_runtime_firewall_rule_name }}"
+    state: absent
+
+- name: Remove managed Ollama machine environment variables
+  ansible.windows.win_environment:
+    state: absent
+    name: "{{ item }}"
+    level: machine
+  loop:
+    - OLLAMA_MODELS
+    - OLLAMA_HOST
+
+- name: Remove managed Ollama install root
+  ansible.windows.win_file:
+    path: "{{ windows_ollama_runtime_install_root }}"
+    state: absent
+
+- name: Remove managed Ollama contract root
+  ansible.windows.win_file:
+    path: "{{ windows_ollama_runtime_contract_root }}"
+    state: absent
+
+- name: Remove managed Ollama model root when purge requested
+  ansible.windows.win_file:
+    path: "{{ windows_ollama_runtime_models_path }}"
+    state: absent
+  when: windows_ollama_runtime_purge_models_on_absent | bool

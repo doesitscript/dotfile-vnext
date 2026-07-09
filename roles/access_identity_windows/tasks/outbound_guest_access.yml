@@ -1,0 +1,209 @@
+---
+- name: Build Windows outbound SSH companion guest target list
+  ansible.builtin.set_fact:
+    windows_outbound_ssh_targets: >-
+      {{
+        []
+        + (
+          [
+            {
+              'inventory_host': hyperv_ubuntu_docker_vm_inventory_host,
+              'guest_name': hyperv_ubuntu_docker_vm_hostname,
+              'ssh_host': hostvars[hyperv_ubuntu_docker_vm_inventory_host].ansible_host,
+              'ssh_user': (
+                hostvars[hyperv_ubuntu_docker_vm_inventory_host].ansible_user
+                | default(hyperv_ubuntu_vm_bootstrap_user | default('joshc'))
+              ),
+              'ssh_port': (
+                hostvars[hyperv_ubuntu_docker_vm_inventory_host].ansible_port
+                | default(hyperv_ubuntu_vm_ssh_port | default(22))
+              ),
+              'host_aliases': [
+                hyperv_ubuntu_docker_vm_inventory_host,
+                hyperv_ubuntu_docker_vm_hostname,
+                hostvars[hyperv_ubuntu_docker_vm_inventory_host].ansible_host
+              ]
+            }
+          ]
+          if (
+            (surface_type | default('')) == 'windows_host'
+            and ((runtime_planes | default({})).get('hyperv_docker_vm', {})).get('enabled', false)
+            and (hyperv_ubuntu_docker_vm_state | default('absent')) == 'present'
+            and (hyperv_ubuntu_docker_vm_inventory_host | default('') | length) > 0
+            and (hyperv_ubuntu_docker_vm_hostname | default('') | length) > 0
+            and (hostvars[hyperv_ubuntu_docker_vm_inventory_host].ansible_host | default('') | length) > 0
+          )
+          else []
+        )
+        + (
+          [
+            {
+              'inventory_host': hyperv_ubuntu_k3s_vm_inventory_host,
+              'guest_name': hyperv_ubuntu_k3s_vm_hostname,
+              'ssh_host': hostvars[hyperv_ubuntu_k3s_vm_inventory_host].ansible_host,
+              'ssh_user': (
+                hostvars[hyperv_ubuntu_k3s_vm_inventory_host].ansible_user
+                | default(hyperv_ubuntu_k3s_vm_bootstrap_user | default('joshc'))
+              ),
+              'ssh_port': (
+                hostvars[hyperv_ubuntu_k3s_vm_inventory_host].ansible_port
+                | default(hyperv_ubuntu_k3s_vm_ssh_port | default(22))
+              ),
+              'host_aliases': [
+                hyperv_ubuntu_k3s_vm_inventory_host,
+                hyperv_ubuntu_k3s_vm_hostname,
+                hostvars[hyperv_ubuntu_k3s_vm_inventory_host].ansible_host
+              ]
+            }
+          ]
+          if (
+            (surface_type | default('')) == 'windows_host'
+            and ((runtime_planes | default({})).get('hyperv_k3s_vm', {})).get('enabled', false)
+            and (hyperv_ubuntu_k3s_vm_state | default('absent')) == 'present'
+            and (hyperv_ubuntu_k3s_vm_inventory_host | default('') | length) > 0
+            and (hyperv_ubuntu_k3s_vm_hostname | default('') | length) > 0
+            and (hostvars[hyperv_ubuntu_k3s_vm_inventory_host].ansible_host | default('') | length) > 0
+          )
+          else []
+        )
+      }}
+  tags: [user]
+
+- name: Ensure Windows outbound SSH keypair exists for companion guests
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $desiredState = '{{ windows_outbound_ssh_state | default("present") }}'
+      $sshDir  = '{{ ansible_ssh_dir_path }}'
+      $keyPath = '{{ windows_outbound_ssh_private_key_path }}'
+      $pubPath = '{{ windows_outbound_ssh_public_key_path }}'
+      $escapedPath = $keyPath -replace '"', '""'
+
+      New-Item -ItemType Directory -Path $sshDir -Force | Out-Null
+
+      if (($desiredState -eq 'present') -and ((-not (Test-Path -LiteralPath $keyPath)) -or (-not (Test-Path -LiteralPath $pubPath)))) {
+        cmd /c "ssh-keygen -t ed25519 -f ""$escapedPath"" -N """" -q 2>&1" | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+          $Ansible.Result = @{
+            key_path = $keyPath
+            public_key_path = $pubPath
+          }
+          $Ansible.Failed = $true
+          Exit 1
+        }
+        $Ansible.Changed = $true
+      }
+
+      if (-not (Test-Path -LiteralPath $pubPath)) {
+        $Ansible.Result = @{
+          key_path = $keyPath
+          public_key_path = $pubPath
+          public_key = ''
+        }
+        Exit 0
+      }
+
+      $pubKey = (Get-Content -LiteralPath $pubPath -Raw -ErrorAction Stop).Trim()
+      $Ansible.Result = @{
+        key_path = $keyPath
+        public_key_path = $pubPath
+        public_key = $pubKey
+      }
+  register: _windows_outbound_ssh_keypair
+  when:
+    - (windows_outbound_ssh_targets | default([]) | length) > 0
+  tags: [user]
+
+- name: Publish Windows outbound SSH key facts
+  ansible.builtin.set_fact:
+    windows_outbound_ssh_private_key_path_live: "{{ _windows_outbound_ssh_keypair.result.key_path }}"
+    windows_outbound_ssh_public_key_path_live: "{{ _windows_outbound_ssh_keypair.result.public_key_path }}"
+    windows_outbound_ssh_public_key_content: "{{ _windows_outbound_ssh_keypair.result.public_key }}"
+    cacheable: true
+  when:
+    - _windows_outbound_ssh_keypair is defined
+    - _windows_outbound_ssh_keypair.result.public_key | default('') | length > 0
+  tags: [user]
+
+- name: Build Windows outbound SSH client config block for companion guests
+  ansible.builtin.set_fact:
+    _windows_outbound_ssh_config_block: |
+      # BEGIN ANSIBLE managed companion guest access
+      {% for target in windows_outbound_ssh_targets | default([]) %}
+      Host {{ target.host_aliases | unique | join(' ') }}
+          HostName {{ target.ssh_host }}
+          User {{ target.ssh_user }}
+          Port {{ target.ssh_port }}
+          IdentityFile {{ windows_outbound_ssh_private_key_path }}
+          IdentitiesOnly yes
+          BatchMode yes
+          StrictHostKeyChecking no
+          UserKnownHostsFile NUL
+          ConnectTimeout 10
+
+      {% endfor %}
+      # END ANSIBLE managed companion guest access
+  when:
+    - (windows_outbound_ssh_targets | default([]) | length) > 0
+  tags: [user]
+
+- name: Ensure Windows SSH client config can reach companion guests
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $sshDir = '{{ ansible_ssh_dir_path }}'
+      $configPath = Join-Path $sshDir 'config'
+      $begin = "# BEGIN ANSIBLE managed companion guest access"
+      $end = "# END ANSIBLE managed companion guest access"
+      $block = @"
+      {{ _windows_outbound_ssh_config_block | trim }}
+      "@
+
+      New-Item -ItemType Directory -Path $sshDir -Force | Out-Null
+
+      $current = ''
+      if (Test-Path -LiteralPath $configPath) {
+        $current = Get-Content -LiteralPath $configPath -Raw -ErrorAction Stop
+      }
+      $hasBom = $false
+      if (Test-Path -LiteralPath $configPath) {
+        $bytes = [System.IO.File]::ReadAllBytes($configPath)
+        $hasBom = $bytes.Length -ge 3 -and
+          $bytes[0] -eq 0xEF -and
+          $bytes[1] -eq 0xBB -and
+          $bytes[2] -eq 0xBF
+      }
+
+      $pattern = "(?ms)^" + [regex]::Escape($begin) + ".*?^" + [regex]::Escape($end) + "\r?\n?"
+      $desiredState = '{{ windows_outbound_ssh_state | default("present") }}'
+      if ($desiredState -eq 'absent') {
+        if ($current -match $pattern) {
+          $updated = [regex]::Replace($current, $pattern, '')
+        } else {
+          $updated = $current
+        }
+      } elseif ($current -match $pattern) {
+        $updated = [regex]::Replace($current, $pattern, $block + [Environment]::NewLine)
+      } elseif ([string]::IsNullOrWhiteSpace($current)) {
+        $updated = $block + [Environment]::NewLine
+      } else {
+        $updated = $current.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + $block + [Environment]::NewLine
+      }
+
+      if ($updated -ne $current -or $hasBom) {
+        $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+        [System.IO.File]::WriteAllText($configPath, $updated, $utf8NoBom)
+        $Ansible.Changed = $true
+      }
+
+      $Ansible.Result = @{
+        config_path = $configPath
+        target_count = {{ windows_outbound_ssh_targets | default([]) | length }}
+        desired_state = '{{ windows_outbound_ssh_state | default("present") }}'
+        rewritten_for_bom = $hasBom
+      }
+  when:
+    - (windows_outbound_ssh_targets | default([]) | length) > 0
+  tags: [user]

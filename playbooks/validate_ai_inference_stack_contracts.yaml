@@ -20,6 +20,7 @@
     _required_enabled_gateway_routes:
       - code-deep
       - experiment
+      - code-review
     _required_migration_gateway_routes:
       - gpt-4o-mini
       - default
@@ -57,8 +58,9 @@
         that:
           - "'code-deep' in _gateway_no_openai_route_names"
           - "'experiment' in _gateway_no_openai_route_names"
+          - "'code-review' in _gateway_no_openai_route_names"
           - "'default' in _gateway_no_openai_route_names"
-        fail_msg: "LiteLLM local-only fallback must still expose code-deep, experiment, and default."
+        fail_msg: "LiteLLM local-only fallback must still expose code-deep, experiment, code-review, and default."
 
     - name: Validate every main gateway route carries required model metadata
       ansible.builtin.assert:
@@ -78,6 +80,7 @@
       ansible.builtin.set_fact:
         _code_deep_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', 'code-deep') | list | first) }}"
         _experiment_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', 'experiment') | list | first) }}"
+        _code_review_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', 'code-review') | list | first) }}"
       changed_when: false
 
     - name: Validate local coding lane points at the declared primary vLLM backend
@@ -87,6 +90,10 @@
           - _code_deep_route.litellm_params.model == 'hosted_vllm/' ~ k3s_litellm_gateway_primary_vllm_model
           - _code_deep_route.model_info.routing_policy == 'local-primary'
           - _experiment_route.litellm_params.api_base == k3s_litellm_gateway_primary_vllm_api_base
+          - _code_review_route.litellm_params.api_base == k3s_litellm_gateway_secondary_review_ollama_api_base
+          - _code_review_route.litellm_params.model == 'ollama_chat/' ~ k3s_litellm_gateway_secondary_review_ollama_model
+          - _code_review_route.model_info.routing_policy == 'local-secondary-review'
+          - _code_review_route.model_info.backend_runtime == k3s_litellm_gateway_secondary_review_runtime_slug
         fail_msg: "Local LiteLLM lanes are not aligned to the declared primary vLLM backend."
 
     - name: Validate vLLM defaults match the declared primary local model
@@ -105,4 +112,6 @@
           local_only_gateway_routes: "{{ _gateway_no_openai_route_names }}"
           lane_contract_names: "{{ _lane_contract_names }}"
           primary_vllm_model: "{{ k3s_vllm_runtime_model }}"
+          secondary_review_runtime: "{{ k3s_litellm_gateway_secondary_review_runtime_slug }}"
+          secondary_review_api_base: "{{ k3s_litellm_gateway_secondary_review_ollama_api_base }}"
           gateway_url: "{{ ai_agent_client_profiles.gateway.openai_base_url }}"

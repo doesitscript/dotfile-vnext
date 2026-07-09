@@ -1,16 +1,43 @@
 ---
-- name: Ensure Hyper-V GPU partition is attached to the K3s GPU VM
-  hosts: hom-lab-ctl-hvh-02
+- name: Gather GPU-P readiness evidence on all Windows Server 2025 GPU hosts
+  hosts: "windows_server_2025:&windows_nvidia_gpu_hosts"
+  gather_facts: false
+  roles:
+    - role: hyperv_gpu_p_host_precheck
+      vars:
+        hyperv_gpu_p_host_precheck_require_iov_support: >-
+          {{
+            ((runtime_planes | default({})).get('hyperv_gpu_partitioning', {})).get('enabled', false)
+            | bool
+          }}
+        hyperv_gpu_p_host_precheck_require_partitionable_gpu: >-
+          {{
+            ((runtime_planes | default({})).get('hyperv_gpu_partitioning', {})).get('enabled', false)
+            | bool
+          }}
+      tags:
+        - hyperv_gpu_p_host_precheck
+        - gpu_infra
+        - ai_ml_platform
+
+- name: Ensure Hyper-V GPU partition is attached on active GPU-P Windows hosts
+  hosts: "windows_server_2025:&hyperv_gpu_partition_enabled_hosts"
   gather_facts: false
   roles:
     - role: hyperv_gpu_partition_adapter
+      vars:
+        hyperv_gpu_partition_adapter_vm_name: >-
+          {{
+            hyperv_ubuntu_k3s_vm_hostname
+            | default(hyperv_ubuntu_k3s_vm_inventory_host)
+          }}
       tags:
         - hyperv_gpu_partition_adapter
         - gpu_infra
         - ai_ml_platform
 
-- name: Install guest-side NVIDIA runtime packages on K3s GPU node
-  hosts: hom-lab-ctl-k3s-02
+- name: Install guest-side NVIDIA runtime packages on derived K3s GPU guests
+  hosts: "container_orchestrator_k3s:&gpu_workload_nodes"
   gather_facts: false
   become: true
   roles:
@@ -20,8 +47,8 @@
         - gpu_infra
         - ai_ml_platform
 
-- name: Label K3s GPU node for NVIDIA workloads
-  hosts: server_gpu
+- name: Label derived K3s GPU nodes for NVIDIA workloads
+  hosts: "container_orchestrator_k3s:&gpu_workload_nodes"
   gather_facts: false
   become: true
   roles:
@@ -31,8 +58,8 @@
         - gpu_infra
         - ai_ml_platform
 
-- name: Deploy NVIDIA device plugin to K3s GPU cluster
-  hosts: hom-lab-ctl-k3s-02
+- name: Deploy NVIDIA device plugin to derived K3s GPU clusters
+  hosts: "container_orchestrator_k3s:&gpu_workload_nodes"
   gather_facts: false
   become: true
   roles:
@@ -42,8 +69,8 @@
         - gpu_infra
         - ai_ml_platform
 
-- name: Validate K3s GPU infrastructure prerequisites
-  hosts: hom-lab-ctl-k3s-02
+- name: Validate derived K3s GPU infrastructure prerequisites
+  hosts: "container_orchestrator_k3s:&gpu_workload_nodes"
   gather_facts: false
   become: false
 

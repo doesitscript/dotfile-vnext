@@ -1,0 +1,22 @@
+---
+- name: Run Hyper-V GPU-P host prechecks
+  hosts: "{{ hyperv_gpu_p_host_precheck_hosts | default('windows_server_2025:&windows_nvidia_gpu_hosts') }}"
+  gather_facts: false
+  roles:
+    - role: hyperv_gpu_p_host_precheck
+      vars:
+        hyperv_gpu_p_host_precheck_state: present
+        hyperv_gpu_p_host_precheck_require_iov_support: >-
+          {{
+            ((runtime_planes | default({})).get('hyperv_gpu_partitioning', {})).get('enabled', false)
+            | bool
+          }}
+        hyperv_gpu_p_host_precheck_require_partitionable_gpu: >-
+          {{
+            ((runtime_planes | default({})).get('hyperv_gpu_partitioning', {})).get('enabled', false)
+            | bool
+          }}
+      tags:
+        - hyperv_gpu_p_host_precheck
+        - gpu_infra
+        - ai_ml_platform

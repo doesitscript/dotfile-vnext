@@ -1,0 +1,72 @@
+---
+hyperv_ubuntu_gpu_p_linux_guest_runtime_state: present
+hyperv_ubuntu_gpu_p_linux_guest_target_kernel: "{{ ansible_kernel }}"
+hyperv_ubuntu_gpu_p_dxgkrnl_repo_url: https://github.com/staralt/dxgkrnl-dkms.git
+hyperv_ubuntu_gpu_p_dxgkrnl_repo_version: 02565c968e19af86d84fe074d9fba8f059af65a2
+hyperv_ubuntu_gpu_p_wsl2_kernel_repo_url: https://github.com/microsoft/WSL2-Linux-Kernel.git
+hyperv_ubuntu_gpu_p_install_vgem: false
+hyperv_ubuntu_gpu_p_wsl_kernel_short_sha_length: 9
+hyperv_ubuntu_gpu_p_guest_wsl_root: /usr/lib/wsl
+hyperv_ubuntu_gpu_p_guest_state_manifest_path: /var/lib/ansible/hyperv_ubuntu_gpu_p_runtime/state.json
+hyperv_ubuntu_gpu_p_guest_work_root: /var/lib/ansible/hyperv_ubuntu_gpu_p_runtime
+hyperv_ubuntu_gpu_p_guest_repo_cache_root: /var/lib/ansible/hyperv_ubuntu_gpu_p_runtime/repo-cache
+hyperv_ubuntu_gpu_p_guest_build_root: /var/lib/ansible/hyperv_ubuntu_gpu_p_runtime/build
+hyperv_ubuntu_gpu_p_guest_artifact_stage_root: /var/lib/ansible/hyperv_ubuntu_gpu_p_runtime/artifact
+hyperv_ubuntu_gpu_p_guest_artifact_extract_root: "{{ hyperv_ubuntu_gpu_p_guest_artifact_stage_root }}/payload"
+hyperv_ubuntu_gpu_p_guest_artifact_mount_path: /mnt/hyperv_ubuntu_gpu_p_runtime_share
+hyperv_ubuntu_gpu_p_guest_artifact_credentials_path: /var/lib/ansible/hyperv_ubuntu_gpu_p_runtime/smb.creds
+hyperv_ubuntu_gpu_p_guest_artifact_receipt_path: "{{ hyperv_ubuntu_gpu_p_guest_artifact_stage_root }}/publish-receipt.json"
+hyperv_ubuntu_gpu_p_guest_artifact_manifest_path: "{{ hyperv_ubuntu_gpu_p_guest_artifact_stage_root }}/payload-manifest.json"
+hyperv_ubuntu_gpu_p_guest_artifact_driver_contract_path: "{{ hyperv_ubuntu_gpu_p_guest_artifact_stage_root }}/driver-contract.json"
+hyperv_ubuntu_gpu_p_guest_artifact_share_name: public
+hyperv_ubuntu_gpu_p_guest_artifact_share_relative_root: artifacts/hyperv_ubuntu_gpu_p_runtime/current
+hyperv_ubuntu_gpu_p_guest_artifact_mount_opts: "rw,vers=3,sec=ntlmssp"
+hyperv_ubuntu_gpu_p_guest_ldso_file: /etc/ld.so.conf.d/ld.wsl.conf
+hyperv_ubuntu_gpu_p_guest_root_owner: root
+hyperv_ubuntu_gpu_p_guest_root_group: root
+hyperv_ubuntu_gpu_p_guest_wsl_root_mode: "0755"
+hyperv_ubuntu_gpu_p_guest_wsl_lib_mode: "0755"
+hyperv_ubuntu_gpu_p_guest_wsl_drivers_mode: "0555"
+hyperv_ubuntu_gpu_p_guest_required_packages:
+  - git
+  - dkms
+  - grep
+  - patch
+  - build-essential
+  - strace
+  - cifs-utils
+  - rsync
+  - "linux-headers-{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+hyperv_ubuntu_gpu_p_wsl_kernel_branch_commit_map:
+  linux-msft-wsl-5.15.y: 6ac7abbd97a07d5b0bc4bbdb0f3b364f8eb2a22b
+  linux-msft-wsl-6.6.y: a07f9ea8a99139913acbcc1c160b132cb2a49c81
+  linux-msft-wsl-6.18.y: 1bd4ed3d4ada93738eef3fc2a66b674c640dc326
+hyperv_ubuntu_gpu_p_wsl_kernel_build_exclusive_map:
+  linux-msft-wsl-5.15.y: ^(5\.1[5-9]+\.)
+  linux-msft-wsl-6.6.y: ^(6\.[6-9]\.|6\.1[0-7]\.)
+  linux-msft-wsl-6.18.y: ^(6\.1[8-9]\.|7\.[0-9]{1,2}\.)
+hyperv_ubuntu_gpu_p_dxgkrnl_branch_patch_map:
+  linux-msft-wsl-5.15.y:
+    - linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch
+    - linux-msft-wsl-5.15.y/0002-Add-a-multiple-kernel-version-support.patch
+  linux-msft-wsl-6.6.y:
+    - linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch
+    - linux-msft-wsl-6.6.y/0002-Fix-eventfd_signal.patch
+    - linux-msft-wsl-6.6.y/0003-Update-get_task_comm-function.patch
+    - linux-msft-wsl-6.6.y/0004-Fix-timer-related-error.patch
+    - linux-msft-wsl-6.6.y/0005-Fix-pointer-casting-error-in-dxgsyncfile.c.patch
+    - linux-msft-wsl-6.6.y/0006-mmap_write_lock-before-remap_pfn_range.patch
+  linux-msft-wsl-6.18.y:
+    - linux-msft-wsl-5.15.y/0001-Add-a-gpu-pv-support.patch
+hyperv_ubuntu_gpu_p_vgem_branch_patch_map:
+  linux-msft-wsl-6.6.y:
+    - linux-msft-wsl-6.6.y/vgem/0001-Do-not-set-the-deprecated-drm_driver-param.patch
+    - linux-msft-wsl-6.6.y/vgem/0002-Fix-timer-related-error.patch
+hyperv_ubuntu_gpu_p_guest_managed_symlinks:
+  - src: /usr/lib/wsl/lib/libd3d12core.so
+    dest: /usr/lib/wsl/lib/libD3D12Core.so
+  - src: /usr/lib/wsl/lib/libcuda.so
+    dest: /usr/lib/wsl/lib/libcuda.so.1
+  - src: /usr/lib/wsl/lib/libnvoptix.so.1
+    dest: /usr/lib/wsl/lib/libnvoptix_loader.so.1
+hyperv_ubuntu_gpu_p_guest_environment_path_append: /usr/lib/wsl/lib

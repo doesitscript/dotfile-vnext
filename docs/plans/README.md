@@ -66,6 +66,27 @@ agent roles, hosts, or resources belong in the effort, the plan must carry the
 full set and mark individual rows `candidate`, `blocked`, or `pending research`
 as needed instead of omitting them.
 
+**AI runtime host evidence:** Any plan that introduces or changes GPU-backed AI
+runtime work, model lanes, local model serving, or agent-routing hosts must
+record the target host capability evidence before build/execute. At minimum,
+capture:
+
+- the inventory host(s) and execution surface(s)
+- the repo SSOT GPU label (`gpu:` or equivalent capability field) plus the live
+  probe source used to confirm it
+- whether the target path is host-local runtime, Docker guest, K3s guest, or
+  Hyper-V GPU partition path
+- guest-GPU readiness evidence when virtualization is involved (for example
+  `IovSupport`, partitionable GPU visibility, or an explicit blocker)
+- the intended serving runtime (`vllm`, `ollama`, or other approved runtime)
+  and why it fits the hardware
+- the shared-infra integrations that must be reused or updated (LiteLLM,
+  Langfuse, Hugging Face/model catalog, NetBox/publication, client profile
+  surfaces)
+
+Plans touching this class of work are incomplete if they propose a model/runtime
+deployment but do not record the host capability and runtime-fit evidence.
+
 ## Required On Deck Section
 
 Every active `*-incomplete*` implementation plan should include this section

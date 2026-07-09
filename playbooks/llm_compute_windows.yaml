@@ -11,7 +11,7 @@
 #   ansible-playbook playbooks/llm_compute_windows.yaml -i inventory/inventory.yaml --check --diff
 
 - name: Prepare Windows GPU hosts for LLM compute
-  hosts: hom-lab-ctl-hvh-02
+  hosts: "{{ llm_compute_windows_hosts | default('windows_server_2025:&windows_nvidia_gpu_hosts') }}"
   gather_facts: false
   roles:
     - llm_compute_windows

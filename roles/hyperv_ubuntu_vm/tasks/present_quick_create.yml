@@ -228,16 +228,17 @@
   ansible.windows.win_powershell:
     error_action: stop
     script: |
+      $hypervServer = '{{ hyperv_ubuntu_vm_hyperv_server }}'
       $Ansible.Changed = $false
-      $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
+      $vm = Get-VM -ComputerName $hypervServer -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
       if (-not $vm) {
         $Ansible.Result = @{ exists = $false }
         Exit 0
       }
 
-      $disk = Get-VMHardDiskDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
-      $dvd = Get-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
-      $adapter = Get-VMNetworkAdapter -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
+      $disk = Get-VMHardDiskDrive -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
+      $dvd = Get-VMDvdDrive -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
+      $adapter = Get-VMNetworkAdapter -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
       $Ansible.Result = @{
         exists = $true
         state = $vm.State.ToString()
@@ -257,6 +258,7 @@
       ansible.windows.win_powershell:
         error_action: stop
         script: |
+          $hypervServer = '{{ hyperv_ubuntu_vm_hyperv_server }}'
           function Convert-ToBytes([string]$Value) {
             $normalized = $Value.Trim().ToUpper()
             $normalized = $normalized -replace 'GB$', 'G' -replace 'MB$', 'M' -replace 'KB$', 'K' -replace 'TB$', 'T'
@@ -274,6 +276,7 @@
           $Ansible.Changed = $false
           $memory = Convert-ToBytes '{{ hyperv_ubuntu_vm_memory }}'
           New-VM `
+            -ComputerName $hypervServer `
             -Name '{{ hyperv_ubuntu_vm_name }}' `
             -Generation {{ hyperv_ubuntu_vm_generation }} `
             -MemoryStartupBytes $memory `
@@ -281,9 +284,9 @@
             -Path '{{ hyperv_ubuntu_vm_host_vm_dir }}' `
             -SwitchName '{{ hyperv_ubuntu_vm_switch_name }}' | Out-Null
 
-          Set-VMProcessor -VMName '{{ hyperv_ubuntu_vm_name }}' -Count {{ hyperv_ubuntu_vm_cpus }}
-          Set-VMMemory -VMName '{{ hyperv_ubuntu_vm_name }}' -DynamicMemoryEnabled $false -StartupBytes $memory
-          Set-VMFirmware -VMName '{{ hyperv_ubuntu_vm_name }}' -EnableSecureBoot On -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}'
+          Set-VMProcessor -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -Count {{ hyperv_ubuntu_vm_cpus }}
+          Set-VMMemory -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -DynamicMemoryEnabled $false -StartupBytes $memory
+          Set-VMFirmware -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -EnableSecureBoot On -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}'
           $Ansible.Changed = $true
           $Ansible.Result = @{ created = $true }
       register: _hyperv_ubuntu_vm_create
@@ -293,6 +296,7 @@
       ansible.windows.win_powershell:
         error_action: stop
         script: |
+          $hypervServer = '{{ hyperv_ubuntu_vm_hyperv_server }}'
           function Convert-ToBytes([string]$Value) {
             $normalized = $Value.Trim().ToUpper()
             $normalized = $normalized -replace 'GB$', 'G' -replace 'MB$', 'M' -replace 'KB$', 'K' -replace 'TB$', 'T'
@@ -309,30 +313,31 @@
 
           $Ansible.Changed = $false
           $desiredMemory = Convert-ToBytes '{{ hyperv_ubuntu_vm_memory }}'
-          $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop
+          $vm = Get-VM -ComputerName $hypervServer -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop
 
           if ($vm.ProcessorCount -ne {{ hyperv_ubuntu_vm_cpus }}) {
-            Set-VMProcessor -VMName '{{ hyperv_ubuntu_vm_name }}' -Count {{ hyperv_ubuntu_vm_cpus }}
+            Set-VMProcessor -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -Count {{ hyperv_ubuntu_vm_cpus }}
             $Ansible.Changed = $true
           }
 
           if ($vm.MemoryStartup -ne $desiredMemory) {
-            Set-VMMemory -VMName '{{ hyperv_ubuntu_vm_name }}' -DynamicMemoryEnabled $false -StartupBytes $desiredMemory
+            Set-VMMemory -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -DynamicMemoryEnabled $false -StartupBytes $desiredMemory
             $Ansible.Changed = $true
           }
 
-          $adapter = Get-VMNetworkAdapter -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop | Select-Object -First 1
+          $adapter = Get-VMNetworkAdapter -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop | Select-Object -First 1
           if ($adapter.SwitchName -ne '{{ hyperv_ubuntu_vm_switch_name }}') {
-            Connect-VMNetworkAdapter -VMName '{{ hyperv_ubuntu_vm_name }}' -SwitchName '{{ hyperv_ubuntu_vm_switch_name }}'
+            Connect-VMNetworkAdapter -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -SwitchName '{{ hyperv_ubuntu_vm_switch_name }}'
             $Ansible.Changed = $true
           }
 
-          $disk = Get-VMHardDiskDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
+          $disk = Get-VMHardDiskDrive -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $disk) {
-            Add-VMHardDiskDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -Path '{{ hyperv_ubuntu_vm_host_vhdx_path }}' | Out-Null
+            Add-VMHardDiskDrive -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -Path '{{ hyperv_ubuntu_vm_host_vhdx_path }}' | Out-Null
             $Ansible.Changed = $true
           } elseif ($disk.Path -ne '{{ hyperv_ubuntu_vm_host_vhdx_path }}') {
             Set-VMHardDiskDrive `
+              -ComputerName $hypervServer `
               -VMName '{{ hyperv_ubuntu_vm_name }}' `
               -ControllerType $disk.ControllerType.ToString() `
               -ControllerNumber $disk.ControllerNumber `
@@ -341,9 +346,10 @@
             $Ansible.Changed = $true
           }
 
-          $dvd = Get-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
+          $dvd = Get-VMDvdDrive -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($dvd) {
             Remove-VMDvdDrive `
+              -ComputerName $hypervServer `
               -VMName '{{ hyperv_ubuntu_vm_name }}' `
               -ControllerNumber $dvd.ControllerNumber `
               -ControllerLocation $dvd.ControllerLocation `
@@ -351,7 +357,7 @@
             $Ansible.Changed = $true
           }
 
-          Set-VMFirmware -VMName '{{ hyperv_ubuntu_vm_name }}' -EnableSecureBoot On -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}'
+          Set-VMFirmware -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -EnableSecureBoot On -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}'
           $Ansible.Result = @{ reconciled = $true }
       register: _hyperv_ubuntu_vm_reconcile
       when: _hyperv_ubuntu_vm_probe.result.exists | default(false)
@@ -360,13 +366,14 @@
       ansible.windows.win_powershell:
         error_action: stop
         script: |
+          $hypervServer = '{{ hyperv_ubuntu_vm_hyperv_server }}'
           $Ansible.Changed = $false
-          $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop
+          $vm = Get-VM -ComputerName $hypervServer -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop
           if ($vm.State.ToString() -ne 'Running') {
-            Start-VM -Name '{{ hyperv_ubuntu_vm_name }}' | Out-Null
+            Start-VM -ComputerName $hypervServer -Name '{{ hyperv_ubuntu_vm_name }}' | Out-Null
             $Ansible.Changed = $true
           }
-          $Ansible.Result = @{ state = (Get-VM -Name '{{ hyperv_ubuntu_vm_name }}').State.ToString() }
+          $Ansible.Result = @{ state = (Get-VM -ComputerName $hypervServer -Name '{{ hyperv_ubuntu_vm_name }}').State.ToString() }
       register: _hyperv_ubuntu_vm_start
 
     - name: Decide whether Hyper-V Ubuntu VM readiness checks can run
@@ -416,9 +423,10 @@
       ansible.windows.win_powershell:
         error_action: stop
         script: |
+          $hypervServer = '{{ hyperv_ubuntu_vm_hyperv_server }}'
           $Ansible.Changed = $false
           $blocked = @('{{ host_ip | default("") }}') | Where-Object { $_ }
-          $adapter = Get-VMNetworkAdapter -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
+          $adapter = Get-VMNetworkAdapter -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
           $reportedAll = @(
             if ($adapter) { $adapter.IPAddresses }
           ) | Where-Object { $_ }
@@ -553,11 +561,12 @@
       ansible.windows.win_powershell:
         error_action: stop
         script: |
+          $hypervServer = '{{ hyperv_ubuntu_vm_hyperv_server }}'
           $Ansible.Changed = $false
-          $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
-          $disk = Get-VMHardDiskDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
-          $dvd = Get-VMDvdDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
-          $firmware = Get-VMFirmware -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
+          $vm = Get-VM -ComputerName $hypervServer -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
+          $disk = Get-VMHardDiskDrive -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
+          $dvd = Get-VMDvdDrive -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
+          $firmware = Get-VMFirmware -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
           $workerEvents = @()
           $vmmsEvents = @()
           try {

@@ -8,7 +8,7 @@ Use this plan, not the imported upstream `README.md`, when running the `dxgkrnl-
 
 This slice is manual and evidence-first:
 
-- reuse the existing WSL bridge/file-staging process as the driver-copy path
+- use the supported host-visible Windows file-staging process as the driver-copy path
 - skip upstream Step 2 as the primary repo workflow
 - pin installation to the current guest kernel `6.17.0-1018-azure`
 - perform guest-side config only until reboot
@@ -31,8 +31,8 @@ This slice is manual and evidence-first:
 
 - Do not use the imported README's Step 2 as the primary repo flow.
 - Instead, reuse:
-  - `dx_build_from_wsl.md`
-  - `playbooks/troubleshoot/hyperv_ubuntu_gpu_p_wsl_bridge_experiment.yaml`
+  - `dx_build_from_wsl.md` as historical reference only
+  - `playbooks/troubleshoot/hyperv_ubuntu_gpu_p_supported_finalize.yaml` as the supported repo path
 - Any additional file requirement for `dxgkrnl-dkms` should be treated as a delta to that established process, not as a competing copy workflow.
 
 ### 3. Install dxgkrnl-dkms in the guest
@@ -91,9 +91,9 @@ curl -fsSL https://content.staralt.dev/dxgkrnl-dkms/main/install.sh | sudo bash 
 
 - Authoritative packet:
   - `docs/plans/2026-07-08--hyper-v-ubuntu-gpu-dxgkrnl-dkms-incomplete/README.md`
-- Existing WSL bridge/file staging support:
+- Historical reference plus supported file staging support:
   - `docs/lessons-learned/hyper-v-ubuntu-gpu/dx_build_files/dx_build_from_wsl.md`
-  - `playbooks/troubleshoot/hyperv_ubuntu_gpu_p_wsl_bridge_experiment.yaml`
+  - `playbooks/troubleshoot/hyperv_ubuntu_gpu_p_supported_finalize.yaml`
 - Deprecated upstream source:
   - `docs/lessons-learned/hyper-v-ubuntu-gpu/dx_build_files/README.md`
 

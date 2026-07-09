@@ -7,10 +7,187 @@
 - name: Install and pin NVIDIA Studio Driver
   chocolatey.chocolatey.win_chocolatey:
     name: nvidia-studio-driver
-    version: "{{ llm_compute_windows_studio_driver_version }}"
+    version: "{{ llm_compute_windows_studio_driver_package_version }}"
     pinned: "{{ llm_compute_windows_studio_driver_pinned }}"
     state: present
+    force: "{{ llm_compute_windows_force_reinstall }}"
     package_params: "/RemoveOtherVersions /SkipCompatCheck"
   notify:
     - Reboot after NVIDIA Studio Driver install
     - Wait for system to come back online after driver reboot
+  when: llm_compute_windows_manage_package | bool
+
+- name: Flush NVIDIA driver reboot handlers before contract discovery
+  meta: flush_handlers
+  when: llm_compute_windows_manage_package | bool
+
+- name: Ensure NVIDIA driver contract root exists
+  ansible.windows.win_file:
+    path: "{{ llm_compute_windows_contract_root }}"
+    state: directory
+
+- name: Discover managed NVIDIA driver contract details
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      function Convert-NvidiaWindowsDriverVersion {
+        param(
+          [Parameter(Mandatory = $true)]
+          [string]$RawVersion
+        )
+
+        if ([string]::IsNullOrWhiteSpace($RawVersion)) {
+          return $null
+        }
+
+        $parts = $RawVersion.Split('.')
+        if ($parts.Count -lt 4) {
+          return $null
+        }
+
+        $combined = $parts[2] + $parts[3]
+        if ($combined.Length -lt 5) {
+          return $null
+        }
+
+        $tail = $combined.Substring($combined.Length - 5)
+        return ($tail.Substring(0, 3) + '.' + $tail.Substring(3, 2))
+      }
+
+      $controllers = @(Get-CimInstance Win32_VideoController -ErrorAction Stop)
+      $folders = New-Object System.Collections.Generic.List[string]
+
+      foreach ($controller in $controllers) {
+        $installed = [string]$controller.InstalledDisplayDrivers
+        if ([string]::IsNullOrWhiteSpace($installed)) {
+          continue
+        }
+
+        foreach ($match in [regex]::Matches($installed, 'FileRepository\\([^\\]+)\\')) {
+          $folders.Add($match.Groups[1].Value)
+        }
+      }
+
+      $unique = @($folders | Sort-Object -Unique)
+      if ($unique.Count -eq 0) {
+        throw 'Could not resolve an active DriverStore folder from InstalledDisplayDrivers.'
+      }
+
+      if ($unique.Count -gt 1) {
+        throw ('Resolved multiple DriverStore folders: ' + ($unique -join ', '))
+      }
+
+      $nvidiaSmiPath = $null
+      $resolvedVersionSource = $null
+      $resolvedVersionRaw = $null
+      $nvidiaSmiCommand = Get-Command nvidia-smi.exe -ErrorAction SilentlyContinue
+      if ($nvidiaSmiCommand) {
+        $nvidiaSmiPath = $nvidiaSmiCommand.Source
+      }
+      if (-not $nvidiaSmiPath) {
+        foreach ($candidate in @({{ llm_compute_windows_nvidia_smi_candidate_paths | map('to_json') | join(', ') }})) {
+          if (Test-Path $candidate) {
+            $nvidiaSmiPath = $candidate
+            break
+          }
+        }
+      }
+      if (-not $nvidiaSmiPath) {
+        throw 'Could not resolve nvidia-smi.exe from PATH or known install locations.'
+      }
+
+      $driverVersion = & $nvidiaSmiPath --query-gpu=driver_version --format=csv,noheader 2>$null
+      if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($driverVersion)) {
+        $resolvedVersionRaw = ($driverVersion -split "`r?`n" | Where-Object {
+          -not [string]::IsNullOrWhiteSpace($_)
+        } | Select-Object -First 1).Trim()
+        $resolvedVersionSource = 'nvidia-smi'
+      }
+      else {
+        $nvidiaController = @(
+          $controllers | Where-Object { [string]$_.Name -match 'NVIDIA' }
+        ) | Select-Object -First 1
+        if (-not $nvidiaController) {
+          throw 'nvidia-smi did not return a driver version and no NVIDIA Win32_VideoController entry was found.'
+        }
+        $resolvedVersionRaw = [string]$nvidiaController.DriverVersion
+        $resolvedVersionSource = 'win32_videocontroller'
+      }
+
+      $resolvedVersion = $resolvedVersionRaw
+      if ($resolvedVersionSource -eq 'win32_videocontroller') {
+        $resolvedVersion = Convert-NvidiaWindowsDriverVersion -RawVersion $resolvedVersionRaw
+      }
+      if ([string]::IsNullOrWhiteSpace($resolvedVersion)) {
+        throw ('Could not normalize NVIDIA driver version from source ' + $resolvedVersionSource + '.')
+      }
+
+      $packageVersion = $null
+      $chocoLines = @(choco list --local-only --exact --limit-output '{{ llm_compute_windows_driver_contract_package_name }}' 2>$null)
+      if ($LASTEXITCODE -eq 0 -and $chocoLines.Count -gt 0) {
+        $packageLine = $chocoLines | Select-Object -Last 1
+        if ($packageLine -match '^[^|]+\|(.+)$') {
+          $packageVersion = $Matches[1].Trim()
+        }
+      }
+
+      $driverVersionMatches = ($resolvedVersion -eq '{{ llm_compute_windows_studio_driver_version }}')
+      $packageVersionMatches = ($packageVersion -eq '{{ llm_compute_windows_studio_driver_package_version }}')
+      $policyPassed = $driverVersionMatches -and $packageVersionMatches
+
+      [pscustomobject]@{
+        package_name = '{{ llm_compute_windows_driver_contract_package_name }}'
+        expected_package_version = '{{ llm_compute_windows_studio_driver_package_version }}'
+        expected_driver_version = '{{ llm_compute_windows_studio_driver_version }}'
+        installed_package_version = $packageVersion
+        installed_driver_version = $resolvedVersion
+        installed_driver_version_raw = $resolvedVersionRaw
+        installed_driver_version_source = $resolvedVersionSource
+        driver_version_matches = $driverVersionMatches
+        package_version_matches = $packageVersionMatches
+        policy_passed = $policyPassed
+        nvidia_smi_path = $nvidiaSmiPath
+        driverstore_folder = $unique[0]
+        driverstore_root = 'C:\Windows\System32\DriverStore\FileRepository'
+        driverstore_path = (Join-Path 'C:\Windows\System32\DriverStore\FileRepository' $unique[0])
+      } | ConvertTo-Json -Compress
+  register: llm_compute_windows_driver_contract_discovery
+
+- name: Parse managed NVIDIA driver contract details
+  ansible.builtin.set_fact:
+    llm_compute_windows_driver_contract: "{{ llm_compute_windows_driver_contract_discovery.output[0] | from_json }}"
+  changed_when: false
+
+- name: Persist managed NVIDIA driver contract
+  ansible.windows.win_copy:
+    dest: "{{ llm_compute_windows_driver_contract_path }}"
+    content: "{{ llm_compute_windows_driver_contract | to_nice_json }}"
+
+- name: Persist discovery NVIDIA driver contract
+  ansible.windows.win_copy:
+    dest: "{{ llm_compute_windows_driver_discovery_contract_path }}"
+    content: "{{ llm_compute_windows_driver_contract | to_nice_json }}"
+
+- name: Assert expected NVIDIA driver version when enforcement is enabled
+  ansible.builtin.assert:
+    that:
+      - llm_compute_windows_driver_contract.driver_version_matches | bool
+    fail_msg: >-
+      Installed NVIDIA driver version {{
+        llm_compute_windows_driver_contract.installed_driver_version
+      }} does not match expected {{
+        llm_compute_windows_driver_contract.expected_driver_version
+      }}.
+  when: llm_compute_windows_enforce_expected_driver_version | bool
+
+- name: Assert expected NVIDIA package version when enforcement is enabled
+  ansible.builtin.assert:
+    that:
+      - llm_compute_windows_driver_contract.package_version_matches | bool
+    fail_msg: >-
+      Installed NVIDIA package version {{
+        llm_compute_windows_driver_contract.installed_package_version | default('unknown')
+      }} does not match expected {{
+        llm_compute_windows_driver_contract.expected_package_version
+      }}.
+  when: llm_compute_windows_enforce_expected_package_version | bool

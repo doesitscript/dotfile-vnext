@@ -14,15 +14,29 @@
 # uplink before any recreate path.
 ansible_host: "192.168.50.234"
 ansible_connection: ssh
-ansible_port: 2222
+# Managed Windows OpenSSH steady-state port. Legacy 2222 experiments were
+# retired by the repo-native access role.
+ansible_port: 22
 ansible_user: "joshc"
 ansible_ssh_private_key_file: "/Users/joshc/.ssh/id_ed25519_ansible"
 ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 ansible_shell_type: "powershell"
 ansible_shell_executable: "powershell.exe"
 surface_type: "windows_host"
+hyperv_management_endpoint: "{{ ansible_host }}"
 host_ip: "192.168.50.234"
 physical_node: "hom-lab-ctl-hvh-01"
+host_kind: "physical_server"
+node_capabilities:
+  - windows_server_2025
+  - hyperv_host
+  - nvidia_gpu_host
+  - storage_lane_host
+gpu_contract:
+  vendor: nvidia
+  partitioned: false
+  passthrough_mode: none
+  workloads_enabled: false
 legacy_aliases:
   - network-server
 
@@ -48,8 +62,11 @@ node_classes:
   - docker_vm_host
   - docker_client
   - storage_observability
+  - gpu_host
 hardware_classes:
   - bulk_storage
+  - nvidia_gpu
+gpu: gtx-1060-6gb
 runtime_planes:
   hyperv_host:
     enabled: true
@@ -57,9 +74,30 @@ runtime_planes:
     enabled: true
   hyperv_k3s_vm:
     enabled: true
+  secondary_model_runtime:
+    enabled: true
+    runtime: ollama-secondary-hvh-01
+    lane: code-review
+    capability_state: planned_apply
+  hyperv_gpu_partitioning:
+    enabled: false
+    capability_state: blocked
+    reason: "2026-07-09 live probe: IovSupport=False and Get-VMHostPartitionableGpu returned no GPU."
 policy_classes:
   - authoritative_data
   - lan_exposed_services
+guest_gpu_capability:
+  state: blocked
+  capability_class: host_has_gpu_but_not_guest_gpu_ready
+  checked_date: "2026-07-09"
+  probe_source: "live Hyper-V host probe over SSH + PowerShell"
+  iov_support: false
+  partitionable_gpu_visible: false
+  nvidia_smi_nvml_ready: false
+  block_reasons:
+    - "Get-VMHost().IovSupport=False"
+    - "Get-VMHostPartitionableGpu returned no GPU"
+    - "nvidia-smi -L returned 'Failed to initialize NVML: Not Found'"
 hyperv_networking_feature_prereqs_enabled: false
 
 # AI model catalog storage root on the existing public SMB share.
@@ -71,6 +109,16 @@ windows_file_shares_extra_directories:
     purpose: AI model catalog root
   - path: 'F:\shares\public\models\huggingface'
     purpose: Hugging Face model weights
+  - path: 'F:\shares\public\models\ollama'
+    purpose: Ollama model storage root
+  - path: 'F:\shares\public\artifacts'
+    purpose: Public share artifact root
+  - path: 'F:\shares\public\artifacts\hyperv_ubuntu_gpu_p_runtime'
+    purpose: Hyper-V Ubuntu GPU-P runtime artifact root
+  - path: 'F:\shares\public\artifacts\hyperv_ubuntu_gpu_p_runtime\current'
+    purpose: Current Hyper-V Ubuntu GPU-P runtime artifact set
+  - path: 'F:\shares\public\artifacts\hyperv_ubuntu_gpu_p_runtime\runs'
+    purpose: Timestamped Hyper-V Ubuntu GPU-P runtime artifact history
 
 # Infrastructure: Hyper-V External Switch (backbone, independent of any guest).
 hyperv_config:
@@ -134,8 +182,10 @@ docker_engine_ssh_port: 22
 docker_engine_ssh_user: "joshc"
 
 # Hyper-V-native Docker Ubuntu VM companion for the hom-lab-ctl-hvh-01 physical node.
+# Inventory identity remains hom-lab-ctl-dkr-01; the live Hyper-V VM / guest
+# hostname is nsrv-dkr-01.
 hyperv_ubuntu_docker_vm_state: present
-hyperv_ubuntu_docker_vm_hostname: "hom-lab-ctl-dkr-01"
+hyperv_ubuntu_docker_vm_hostname: "nsrv-dkr-01"
 hyperv_ubuntu_docker_vm_inventory_host: "hom-lab-ctl-dkr-01"
 hyperv_ubuntu_vm_cpus: 4
 hyperv_ubuntu_vm_memory: "8G"
@@ -160,10 +210,10 @@ hyperv_ubuntu_vm_quick_create_image_url: >-
 hyperv_ubuntu_vm_server_iso_url: "https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso"
 
 # Hyper-V-native K3s Ubuntu VM companion for the hom-lab-ctl-hvh-01 physical node.
-# This prepares the VM only. Real k3s installation remains out of scope for the
-# stub lane and is gated by k3s_cluster membership later.
+# Inventory identity remains hom-lab-ctl-k3s-01; the live Hyper-V VM / guest
+# hostname is nsrv-k3s-01.
 hyperv_ubuntu_k3s_vm_state: present
-hyperv_ubuntu_k3s_vm_hostname: "hom-lab-ctl-k3s-01"
+hyperv_ubuntu_k3s_vm_hostname: "nsrv-k3s-01"
 hyperv_ubuntu_k3s_vm_inventory_host: "hom-lab-ctl-k3s-01"
 hyperv_ubuntu_k3s_vm_cpus: 4
 hyperv_ubuntu_k3s_vm_memory: "8G"
@@ -183,3 +233,22 @@ hyperv_ubuntu_k3s_vm_autoinstall_network_dns_servers:
 
 # OpenSSH Server: base feature on Windows hosts unless explicitly set absent.
 openssh_server_state: present
+
+# Secondary host-local model runtime: Windows Ollama on the GTX 1060 6GB host.
+windows_ollama_runtime_state: present
+windows_ollama_runtime_bind_host: "0.0.0.0"
+windows_ollama_runtime_port: 11434
+windows_ollama_runtime_models_path: 'F:\shares\public\models\ollama'
+windows_ollama_runtime_default_model: "qwen2.5-coder:3b"
+windows_ollama_runtime_fallback_model: "qwen2.5-coder:1.5b"
+windows_ollama_runtime_models_present:
+  - "qwen2.5-coder:3b"
+windows_ollama_runtime_model_aliases:
+  - lane: code-review
+    runtime_slug: ollama-secondary-hvh-01
+    model: "qwen2.5-coder:3b"
+    fallback_model: "qwen2.5-coder:1.5b"
+
+# Live driver/runtime convergence on this Windows GPU host can take longer than
+# the generic Windows reboot window, especially after GPU-driver changes.
+llm_compute_windows_reboot_timeout: 1200

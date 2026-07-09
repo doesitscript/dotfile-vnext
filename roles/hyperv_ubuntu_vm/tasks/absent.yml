@@ -3,8 +3,9 @@
   ansible.windows.win_powershell:
     error_action: stop
     script: |
+      $hypervServer = '{{ hyperv_ubuntu_vm_hyperv_server }}'
       $Ansible.Changed = $false
-      $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
+      $vm = Get-VM -ComputerName $hypervServer -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue
       $Ansible.Result = @{
         exists = [bool]$vm
         state = if ($vm) { $vm.State.ToString() } else { $null }
@@ -16,11 +17,12 @@
   ansible.windows.win_powershell:
     error_action: continue
     script: |
+      $hypervServer = '{{ hyperv_ubuntu_vm_hyperv_server }}'
       $Ansible.Changed = $false
-      $vm = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop
+      $vm = Get-VM -ComputerName $hypervServer -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop
       if ($vm.State.ToString() -ne 'Off') {
         try {
-          Stop-VM -Name '{{ hyperv_ubuntu_vm_name }}' -TurnOff -Force -ErrorAction Stop
+          Stop-VM -ComputerName $hypervServer -Name '{{ hyperv_ubuntu_vm_name }}' -TurnOff -Force -ErrorAction Stop
           $Ansible.Changed = $true
           $Ansible.Result = @{
             stop_attempted = $true
@@ -40,9 +42,10 @@
   ansible.windows.win_powershell:
     error_action: stop
     script: |
+      $hypervServer = '{{ hyperv_ubuntu_vm_hyperv_server }}'
       $Ansible.Changed = $false
-      if (Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue) {
-        Remove-VM -Name '{{ hyperv_ubuntu_vm_name }}' -Force
+      if (Get-VM -ComputerName $hypervServer -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue) {
+        Remove-VM -ComputerName $hypervServer -Name '{{ hyperv_ubuntu_vm_name }}' -Force
         $Ansible.Changed = $true
       }
   when: _hyperv_ubuntu_vm_absent_probe.result.exists | default(false)

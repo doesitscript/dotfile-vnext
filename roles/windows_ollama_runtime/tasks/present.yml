@@ -1,0 +1,186 @@
+---
+- name: Ensure Windows Ollama runtime directories exist
+  ansible.windows.win_file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ windows_ollama_runtime_download_root }}"
+    - "{{ windows_ollama_runtime_install_root }}"
+    - "{{ windows_ollama_runtime_contract_root }}"
+    - "{{ windows_ollama_runtime_models_path }}"
+
+- name: Stat repo-managed NVIDIA driver contract
+  ansible.windows.win_stat:
+    path: "{{ windows_ollama_runtime_driver_contract_path }}"
+  register: windows_ollama_runtime_driver_contract_stat
+
+- name: Assert repo-managed NVIDIA driver contract exists when required
+  ansible.builtin.assert:
+    that:
+      - windows_ollama_runtime_driver_contract_stat.stat.exists | bool
+    fail_msg: >-
+      Managed NVIDIA driver contract is required before deploying the Windows
+      Ollama runtime but was not found at
+      {{ windows_ollama_runtime_driver_contract_path }}.
+  when: windows_ollama_runtime_require_driver_contract | bool
+
+- name: Parse repo-managed NVIDIA driver contract
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      Get-Content -LiteralPath '{{ windows_ollama_runtime_driver_contract_path }}' -Raw
+  register: windows_ollama_runtime_driver_contract_raw
+  changed_when: false
+  when: windows_ollama_runtime_driver_contract_stat.stat.exists | bool
+
+- name: Set parsed NVIDIA driver contract
+  ansible.builtin.set_fact:
+    windows_ollama_runtime_driver_contract: "{{ windows_ollama_runtime_driver_contract_raw.output[0] | from_json }}"
+  changed_when: false
+  when: windows_ollama_runtime_driver_contract_stat.stat.exists | bool
+
+- name: Download official standalone Ollama runtime archive
+  ansible.windows.win_get_url:
+    url: "{{ windows_ollama_runtime_download_url }}"
+    dest: "{{ windows_ollama_runtime_archive_path }}"
+
+- name: Stop scheduled Ollama runtime before refresh
+  ansible.windows.win_powershell:
+    error_action: continue
+    script: |
+      $task = Get-ScheduledTask -TaskName '{{ windows_ollama_runtime_task_name }}' -ErrorAction SilentlyContinue
+      if ($task) {
+        Stop-ScheduledTask -TaskName '{{ windows_ollama_runtime_task_name }}' -ErrorAction SilentlyContinue
+      }
+      Get-Process ollama -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+  changed_when: false
+
+- name: Expand standalone Ollama runtime archive
+  community.windows.win_unzip:
+    src: "{{ windows_ollama_runtime_archive_path }}"
+    dest: "{{ windows_ollama_runtime_install_root }}"
+    delete_archive: false
+
+- name: Ensure OLLAMA_MODELS machine environment variable is managed
+  ansible.windows.win_environment:
+    state: present
+    name: OLLAMA_MODELS
+    value: "{{ windows_ollama_runtime_models_path }}"
+    level: machine
+
+- name: Ensure OLLAMA_HOST machine environment variable is managed
+  ansible.windows.win_environment:
+    state: present
+    name: OLLAMA_HOST
+    value: "{{ windows_ollama_runtime_listen_address }}"
+    level: machine
+
+- name: Ensure Windows Firewall rule exists for Ollama runtime API
+  community.windows.win_firewall_rule:
+    name: "{{ windows_ollama_runtime_firewall_rule_name }}"
+    localport: "{{ windows_ollama_runtime_port }}"
+    action: allow
+    direction: in
+    protocol: tcp
+    state: present
+    enabled: true
+
+- name: Configure boot-triggered Ollama runtime scheduled task
+  community.windows.win_scheduled_task:
+    name: "{{ windows_ollama_runtime_task_name }}"
+    description: Host-local Ollama runtime managed by the windows_ollama_runtime role
+    actions:
+      - path: "{{ windows_ollama_runtime_exe_path }}"
+        arguments: serve
+        working_directory: "{{ windows_ollama_runtime_install_root }}"
+    triggers:
+      - type: boot
+        delay: "{{ windows_ollama_runtime_task_boot_delay }}"
+    username: SYSTEM
+    logon_type: service_account
+    run_level: highest
+    state: present
+    enabled: true
+
+- name: Start Ollama runtime scheduled task
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      Start-ScheduledTask -TaskName '{{ windows_ollama_runtime_task_name }}'
+
+- name: Wait for Ollama runtime API health
+  ansible.windows.win_uri:
+    url: "{{ windows_ollama_runtime_healthcheck_url }}"
+    method: GET
+    status_code: 200
+  register: windows_ollama_runtime_healthcheck
+  retries: 12
+  delay: 10
+  until: windows_ollama_runtime_healthcheck.status == 200
+
+- name: Ensure declared Ollama models are present
+  ansible.windows.win_command: "{{ windows_ollama_runtime_exe_path }} pull {{ item }}"
+  environment:
+    OLLAMA_HOST: "{{ windows_ollama_runtime_host_loopback }}:{{ windows_ollama_runtime_port }}"
+    OLLAMA_MODELS: "{{ windows_ollama_runtime_models_path }}"
+  register: windows_ollama_runtime_model_pull
+  retries: "{{ windows_ollama_runtime_pull_retries }}"
+  delay: "{{ windows_ollama_runtime_pull_delay }}"
+  until: windows_ollama_runtime_model_pull.rc == 0
+  loop: "{{ windows_ollama_runtime_models_present }}"
+  loop_control:
+    label: "{{ item }}"
+  changed_when: >-
+    'pulling manifest' in (windows_ollama_runtime_model_pull.stdout | default('') | lower)
+    or 'downloading' in (windows_ollama_runtime_model_pull.stdout | default('') | lower)
+    or 'verifying sha256 digest' in (windows_ollama_runtime_model_pull.stdout | default('') | lower)
+
+- name: List locally available Ollama models
+  ansible.windows.win_command: "{{ windows_ollama_runtime_exe_path }} list"
+  environment:
+    OLLAMA_HOST: "{{ windows_ollama_runtime_host_loopback }}:{{ windows_ollama_runtime_port }}"
+    OLLAMA_MODELS: "{{ windows_ollama_runtime_models_path }}"
+  register: windows_ollama_runtime_model_list
+  changed_when: false
+
+- name: Capture Ollama runtime version
+  ansible.windows.win_command: "{{ windows_ollama_runtime_exe_path }} --version"
+  register: windows_ollama_runtime_version
+  changed_when: false
+
+- name: Persist Windows Ollama runtime contract
+  ansible.windows.win_copy:
+    dest: "{{ windows_ollama_runtime_contract_path }}"
+    content: >-
+      {{
+        {
+          'runtime': 'ollama',
+          'runtime_slug': 'ollama-secondary-hvh-01',
+          'install_root': windows_ollama_runtime_install_root,
+          'models_path': windows_ollama_runtime_models_path,
+          'api_base': windows_ollama_runtime_api_base,
+          'listen_address': windows_ollama_runtime_listen_address,
+          'default_model': windows_ollama_runtime_default_model,
+          'fallback_model': windows_ollama_runtime_fallback_model,
+          'models_present': windows_ollama_runtime_models_present,
+          'model_aliases': windows_ollama_runtime_model_aliases,
+          'driver_contract_path': windows_ollama_runtime_driver_contract_path,
+          'driver_contract': windows_ollama_runtime_driver_contract | default({}),
+          'ollama_version': windows_ollama_runtime_version.stdout | default(''),
+          'captured_at_utc': lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ')
+        } | to_nice_json
+      }}
+
+- name: Persist Windows Ollama runtime health receipt
+  ansible.windows.win_copy:
+    dest: "{{ windows_ollama_runtime_receipt_path }}"
+    content: >-
+      {{
+        {
+          'api_base': windows_ollama_runtime_api_base,
+          'healthcheck_url': windows_ollama_runtime_healthcheck_url,
+          'health_status': windows_ollama_runtime_healthcheck.status,
+          'model_list_stdout': windows_ollama_runtime_model_list.stdout | default(''),
+          'captured_at_utc': lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ')
+        } | to_nice_json
+      }}

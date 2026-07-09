@@ -14,10 +14,28 @@ ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev
 ansible_shell_type: "powershell"
 ansible_shell_executable: "powershell.exe"
 surface_type: "windows_host"
+os_hostname: "hom-lab-ctl-hvh-02"
+# Windows still exposes a truncated NetBIOS COMPUTERNAME here; do not use it as
+# the Hyper-V management endpoint for repo automation.
+windows_netbios_hostname: "HOM-LAB-CTL-HVH"
+hyperv_management_endpoint: "{{ ansible_host }}"
 host_ip: "192.168.50.158"
 # Stable internal ULA observed in gathered facts and verified live from mac-dev.
 host_ipv6: "fdfa:7038:521c:a5fa:7c9:f4a1:90b8:1b1e"
 physical_node: "hom-lab-ctl-hvh-02"
+host_kind: "physical_server"
+node_capabilities:
+  - windows_server_2025
+  - hyperv_host
+  - nvidia_gpu_host
+  - gpu_partition_enabled_host
+  - artifact_share_host
+gpu_contract:
+  vendor: nvidia
+  partitioned: true
+  passthrough_mode: gpu_p
+  workloads_enabled: true
+  driver_contract_path: "{{ llm_compute_windows_driver_contract_path }}"
 verify_ssh_from_execnode: true
 
 # Legacy WinRM config (retained for reference, not active)
@@ -47,10 +65,26 @@ runtime_planes:
     enabled: true
   hyperv_k3s_vm:
     enabled: true
+  hyperv_gpu_partitioning:
+    enabled: true
+    capability_state: active_apply
 policy_classes:
   - experimental
   - non_authoritative_data
 hyperv_networking_feature_prereqs_enabled: false
+
+# Hyper-V Ubuntu GPU-P runtime artifact root on the existing public SMB share.
+# This keeps large WSL/DriverStore payload handoff off the interactive
+# controller-to-Windows SSH path.
+windows_file_shares_extra_directories:
+  - path: 'F:\shares\public\artifacts'
+    purpose: Public share artifact root
+  - path: 'F:\shares\public\artifacts\hyperv_ubuntu_gpu_p_runtime'
+    purpose: Hyper-V Ubuntu GPU-P runtime artifact root
+  - path: 'F:\shares\public\artifacts\hyperv_ubuntu_gpu_p_runtime\current'
+    purpose: Current Hyper-V Ubuntu GPU-P runtime artifact set
+  - path: 'F:\shares\public\artifacts\hyperv_ubuntu_gpu_p_runtime\runs'
+    purpose: Timestamped Hyper-V Ubuntu GPU-P runtime artifact history
 
 # Infrastructure: Hyper-V External Switch (backbone, independent of any guest).
 hyperv_config:
@@ -159,7 +193,7 @@ hyperv_ubuntu_k3s_vm_state: present
 hyperv_ubuntu_k3s_vm_hostname: "hom-lab-ctl-k3s-02"
 hyperv_ubuntu_k3s_vm_inventory_host: "hom-lab-ctl-k3s-02"
 hyperv_ubuntu_k3s_vm_cpus: 4
-hyperv_ubuntu_k3s_vm_memory: "8G"
+hyperv_ubuntu_k3s_vm_memory: "10G"
 hyperv_ubuntu_k3s_vm_disk: "80G"
 # Keep sustained K3s/container/PVC I/O off the Windows system disk.
 hyperv_ubuntu_k3s_vm_host_vhdx_path: 'D:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-k3s-02\hom-lab-ctl-k3s-02.vhdx'

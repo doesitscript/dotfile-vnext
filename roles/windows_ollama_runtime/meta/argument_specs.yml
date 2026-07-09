@@ -1,0 +1,103 @@
+---
+argument_specs:
+  main:
+    short_description: Managed host-local Ollama runtime on Windows GPU hosts
+    description: >-
+      Installs the official standalone Ollama Windows runtime, manages its
+      machine-scoped runtime contract, and enforces a repo-declared set of
+      locally hosted models for reuse behind the central LiteLLM gateway.
+    options:
+      windows_ollama_runtime_state:
+        type: str
+        required: false
+        description: Lifecycle control for the Windows Ollama runtime capability.
+      windows_ollama_runtime_download_url:
+        type: str
+        required: false
+        description: Official Ollama Windows standalone zip URL.
+      windows_ollama_runtime_version:
+        type: str
+        required: false
+        description: Pinned upstream Ollama release tag used to form the standalone asset URL.
+      windows_ollama_runtime_install_root:
+        type: str
+        required: false
+        description: Machine-wide install root for the Ollama runtime binaries.
+      windows_ollama_runtime_download_root:
+        type: str
+        required: false
+        description: Local cache root for the downloaded Ollama runtime archive.
+      windows_ollama_runtime_archive_path:
+        type: str
+        required: false
+        description: Cached archive path for the standalone Ollama runtime zip.
+      windows_ollama_runtime_contract_root:
+        type: str
+        required: false
+        description: Machine-local contract directory for the runtime receipt.
+      windows_ollama_runtime_contract_path:
+        type: str
+        required: false
+        description: Machine-local runtime contract JSON path.
+      windows_ollama_runtime_receipt_path:
+        type: str
+        required: false
+        description: Machine-local health receipt JSON path.
+      windows_ollama_runtime_bind_host:
+        type: str
+        required: false
+        description: Host/interface binding component for the Ollama API listener.
+      windows_ollama_runtime_port:
+        type: int
+        required: false
+        description: Host-local Ollama HTTP API port.
+      windows_ollama_runtime_models_path:
+        type: str
+        required: false
+        description: Durable model storage path for Ollama models on the Windows host.
+      windows_ollama_runtime_default_model:
+        type: str
+        required: false
+        description: Primary model that must be present for this runtime.
+      windows_ollama_runtime_fallback_model:
+        type: str
+        required: false
+        description: Explicit fallback model for constrained secondary hosts.
+      windows_ollama_runtime_models_present:
+        type: list
+        elements: str
+        required: false
+        description: Exact Ollama model tags that must be present locally.
+      windows_ollama_runtime_model_aliases:
+        type: list
+        elements: dict
+        required: false
+        description: Lane/runtime aliases that this host-local runtime is intended to serve.
+      windows_ollama_runtime_task_name:
+        type: str
+        required: false
+        description: Scheduled-task name used to keep the Ollama runtime running at boot.
+      windows_ollama_runtime_firewall_rule_name:
+        type: str
+        required: false
+        description: Windows Firewall rule name for the Ollama HTTP API listener.
+      windows_ollama_runtime_task_boot_delay:
+        type: str
+        required: false
+        description: ISO-8601 task boot delay before Ollama serve starts.
+      windows_ollama_runtime_require_driver_contract:
+        type: bool
+        required: false
+        description: Require the repo-managed NVIDIA driver contract before runtime install.
+      windows_ollama_runtime_driver_contract_path:
+        type: str
+        required: false
+        description: Path to the repo-managed Windows NVIDIA driver contract JSON.
+      windows_ollama_runtime_driver_contract_package_name:
+        type: str
+        required: false
+        description: Expected NVIDIA package source recorded in the runtime contract.
+      windows_ollama_runtime_purge_models_on_absent:
+        type: bool
+        required: false
+        description: Remove the managed model root during absent if explicitly requested.

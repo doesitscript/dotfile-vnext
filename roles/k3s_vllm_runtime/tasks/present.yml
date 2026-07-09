@@ -64,6 +64,22 @@
         ]
         + k3s_vllm_runtime_extra_args
       }}
+    _k3s_vllm_runtime_resource_requests: >-
+      {{
+        {
+          'cpu': k3s_vllm_runtime_cpu_request,
+          'memory': k3s_vllm_runtime_memory_request
+        }
+        | combine({k3s_vllm_runtime_gpu_resource: k3s_vllm_runtime_gpu_count})
+      }}
+    _k3s_vllm_runtime_resource_limits: >-
+      {{
+        {
+          'cpu': k3s_vllm_runtime_cpu_limit,
+          'memory': k3s_vllm_runtime_memory_limit
+        }
+        | combine({k3s_vllm_runtime_gpu_resource: k3s_vllm_runtime_gpu_count})
+      }}
 
 - name: Ensure vLLM deployment exists
   kubernetes.core.k8s:
@@ -107,14 +123,8 @@
                   - name: hf-cache
                     mountPath: /root/.cache/huggingface
                 resources:
-                  requests:
-                    cpu: "{{ k3s_vllm_runtime_cpu_request }}"
-                    memory: "{{ k3s_vllm_runtime_memory_request }}"
-                    "{{ k3s_vllm_runtime_gpu_resource }}": "{{ k3s_vllm_runtime_gpu_count }}"
-                  limits:
-                    cpu: "{{ k3s_vllm_runtime_cpu_limit }}"
-                    memory: "{{ k3s_vllm_runtime_memory_limit }}"
-                    "{{ k3s_vllm_runtime_gpu_resource }}": "{{ k3s_vllm_runtime_gpu_count }}"
+                  requests: "{{ _k3s_vllm_runtime_resource_requests }}"
+                  limits: "{{ _k3s_vllm_runtime_resource_limits }}"
             volumes:
               - name: hf-cache
                 persistentVolumeClaim:

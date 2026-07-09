@@ -1,0 +1,442 @@
+---
+- name: Prepare controller staging for Hyper-V Ubuntu GPU-P runtime
+  hosts: localhost
+  gather_facts: false
+  vars:
+    __hyperv_ubuntu_gpu_p_runtime_state: "{{ hyperv_ubuntu_gpu_p_runtime_state | default('present') }}"
+  tasks:
+    - name: Validate Hyper-V Ubuntu GPU-P runtime state
+      ansible.builtin.assert:
+        that:
+          - __hyperv_ubuntu_gpu_p_runtime_state in ['present', 'absent']
+        fail_msg: hyperv_ubuntu_gpu_p_runtime_state must be present or absent.
+
+- name: Build or remove Windows GPU-P runtime payload
+  hosts: "{{ hyperv_ubuntu_gpu_p_runtime_windows_hosts | default('windows_server_2025:&hyperv_gpu_partition_enabled_hosts') }}"
+  gather_facts: false
+  vars:
+    __hyperv_ubuntu_gpu_p_runtime_state: "{{ hyperv_ubuntu_gpu_p_runtime_state | default('present') }}"
+    __hyperv_ubuntu_gpu_p_runtime_guest_vm_name: >-
+      {{
+        hyperv_ubuntu_gpu_p_runtime_guest_vm_name
+        | default(
+            hyperv_ubuntu_k3s_vm_hostname
+            | default(hyperv_ubuntu_k3s_vm_inventory_host | default(''))
+          )
+      }}
+  tasks:
+    - name: Publish selected Windows payload host anchor to controller
+      ansible.builtin.set_fact:
+        hyperv_ubuntu_gpu_p_runtime_windows_host_anchor: "{{ inventory_hostname }}"
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true
+    - name: Assert canonical runtime guest target is a concrete VM name
+      ansible.builtin.assert:
+        that:
+          - __hyperv_ubuntu_gpu_p_runtime_guest_vm_name | length > 0
+          - '"," not in __hyperv_ubuntu_gpu_p_runtime_guest_vm_name'
+          - '":" not in __hyperv_ubuntu_gpu_p_runtime_guest_vm_name'
+        fail_msg: >-
+          hyperv_ubuntu_gpu_p_runtime_guest_vm_name must be a single concrete VM name.
+          Current value: {{ __hyperv_ubuntu_gpu_p_runtime_guest_vm_name }}
+  roles:
+    - role: llm_compute_windows
+      when: __hyperv_ubuntu_gpu_p_runtime_state == 'present'
+      tags:
+        - llm_compute_windows
+        - gpu_infra
+        - ai_ml_platform
+
+- name: Wait for Windows SSH control surface after NVIDIA contract stage
+  hosts: localhost
+  gather_facts: false
+  vars:
+    __hyperv_ubuntu_gpu_p_runtime_state: "{{ hyperv_ubuntu_gpu_p_runtime_state | default('present') }}"
+    hyperv_ubuntu_gpu_p_runtime_windows_host_anchor: >-
+      {{
+        hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_windows_host_anchor
+        | default(
+            (
+              query(
+                'inventory_hostnames',
+                hyperv_ubuntu_gpu_p_runtime_windows_hosts
+                | default('windows_server_2025:&hyperv_gpu_partition_enabled_hosts')
+              ) | first
+            ) | default('')
+          )
+      }}
+  tasks:
+    - name: Wait for Windows SSH port to be reachable after NVIDIA contract stage
+      ansible.builtin.wait_for:
+        host: "{{ hostvars[hyperv_ubuntu_gpu_p_runtime_windows_host_anchor].ansible_host }}"
+        port: "{{ hostvars[hyperv_ubuntu_gpu_p_runtime_windows_host_anchor].ansible_port | default(22) | int }}"
+        timeout: 120
+        sleep: 5
+      when: __hyperv_ubuntu_gpu_p_runtime_state == 'present'
+
+- name: Converge Hyper-V GPU-P host runtime state and payload
+  hosts: "{{ hyperv_ubuntu_gpu_p_runtime_windows_hosts | default('windows_server_2025:&hyperv_gpu_partition_enabled_hosts') }}"
+  gather_facts: false
+  vars:
+    __hyperv_ubuntu_gpu_p_runtime_state: "{{ hyperv_ubuntu_gpu_p_runtime_state | default('present') }}"
+    __hyperv_ubuntu_gpu_p_runtime_guest_vm_name: >-
+      {{
+        hyperv_ubuntu_gpu_p_runtime_guest_vm_name
+        | default(
+            hyperv_ubuntu_k3s_vm_hostname
+            | default(hyperv_ubuntu_k3s_vm_inventory_host | default(''))
+          )
+      }}
+  roles:
+    - role: hyperv_gpu_p_host_precheck
+      when: __hyperv_ubuntu_gpu_p_runtime_state == 'present'
+      tags:
+        - hyperv_gpu_p_host_precheck
+        - gpu_infra
+        - ai_ml_platform
+    - role: hyperv_gpu_partition_adapter
+      vars:
+        hyperv_gpu_partition_adapter_state: "{{ __hyperv_ubuntu_gpu_p_runtime_state }}"
+        hyperv_gpu_partition_adapter_vm_name: "{{ __hyperv_ubuntu_gpu_p_runtime_guest_vm_name }}"
+      tags:
+        - hyperv_gpu_partition_adapter
+        - gpu_infra
+        - ai_ml_platform
+  post_tasks:
+    - name: Publish host-side runtime receipt facts to controller
+      ansible.builtin.set_fact:
+        hyperv_ubuntu_gpu_p_runtime_host_receipt:
+          windows_host: "{{ inventory_hostname }}"
+          guest_vm_name: "{{ __hyperv_ubuntu_gpu_p_runtime_guest_vm_name }}"
+          driver_contract_path: >-
+            {{
+              llm_compute_windows_driver_contract_path
+              | default(
+                  hyperv_gpu_p_host_precheck_driver_contract_path
+                  | default('C:\\ProgramData\\Ansible\\llm_compute_windows\\nvidia_driver_contract.json')
+                )
+            }}
+          precheck_receipt_path: "{{ hyperv_gpu_p_host_precheck_receipt_path }}"
+      delegate_to: localhost
+      delegate_facts: true
+      when: __hyperv_ubuntu_gpu_p_runtime_state == 'present'
+
+- name: Verify host-side GPU-P runtime wiring
+  hosts: "{{ hyperv_ubuntu_gpu_p_runtime_windows_hosts | default('windows_server_2025:&hyperv_gpu_partition_enabled_hosts') }}"
+  gather_facts: false
+  vars:
+    __hyperv_ubuntu_gpu_p_runtime_state: "{{ hyperv_ubuntu_gpu_p_runtime_state | default('present') }}"
+    __hyperv_ubuntu_gpu_p_runtime_guest_vm_name: >-
+      {{
+        hyperv_ubuntu_gpu_p_runtime_guest_vm_name
+        | default(
+            hyperv_ubuntu_k3s_vm_hostname
+            | default(hyperv_ubuntu_k3s_vm_inventory_host | default(''))
+          )
+      }}
+  tasks:
+    - name: Verify host-side runtime wiring for present state
+      when: __hyperv_ubuntu_gpu_p_runtime_state == 'present'
+      block:
+        - name: Stat repo-managed NVIDIA driver contract on Windows host
+          ansible.windows.win_stat:
+            path: >-
+              {{
+                llm_compute_windows_driver_contract_path
+                | default(
+                    hyperv_gpu_p_host_precheck_driver_contract_path
+                    | default('C:\\ProgramData\\Ansible\\llm_compute_windows\\nvidia_driver_contract.json')
+                  )
+              }}
+          register: hyperv_ubuntu_gpu_p_runtime_verify_driver_contract
+
+        - name: Assert repo-managed NVIDIA driver contract exists on Windows host
+          ansible.builtin.assert:
+            that:
+              - hyperv_ubuntu_gpu_p_runtime_verify_driver_contract.stat.exists | bool
+            fail_msg: Managed NVIDIA driver contract is missing on the Windows host.
+
+        - name: Stat Hyper-V GPU-P precheck receipt on Windows host
+          ansible.windows.win_stat:
+            path: >-
+              {{
+                hyperv_gpu_p_host_precheck_receipt_path
+                | default('C:\\ProgramData\\Ansible\\hyperv_gpu_p_host_precheck\\current.json')
+              }}
+          register: hyperv_ubuntu_gpu_p_runtime_verify_precheck_receipt
+
+        - name: Assert Hyper-V GPU-P precheck receipt exists on Windows host
+          ansible.builtin.assert:
+            that:
+              - hyperv_ubuntu_gpu_p_runtime_verify_precheck_receipt.stat.exists | bool
+            fail_msg: Hyper-V GPU-P host precheck receipt is missing on the Windows host.
+
+        - name: Verify Hyper-V GPU partition adapter is attached to runtime target VM
+          ansible.windows.win_powershell:
+            error_action: stop
+            script: |
+              $hypervServer = '{{ hyperv_management_endpoint | default(ansible_host | default(host_ip | default(os_hostname | default(inventory_hostname)))) }}'
+              $vmName = '{{ __hyperv_ubuntu_gpu_p_runtime_guest_vm_name }}'
+              $adapter = Get-VMGpuPartitionAdapter -ComputerName $hypervServer -VMName $vmName -ErrorAction SilentlyContinue
+              $vm = Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
+              [pscustomobject]@{
+                vm_name = $vm.Name
+                vm_state = $vm.State.ToString()
+                has_adapter = [bool]($adapter)
+              } | ConvertTo-Json -Compress
+          register: hyperv_ubuntu_gpu_p_runtime_verify_host_vm
+
+        - name: Parse Hyper-V GPU partition adapter verification
+          ansible.builtin.set_fact:
+            hyperv_ubuntu_gpu_p_runtime_verify_host_vm_json: "{{ hyperv_ubuntu_gpu_p_runtime_verify_host_vm.output[0] | from_json }}"
+          changed_when: false
+
+        - name: Assert Hyper-V GPU partition adapter is attached to runtime target VM
+          ansible.builtin.assert:
+            that:
+              - hyperv_ubuntu_gpu_p_runtime_verify_host_vm_json.vm_name == __hyperv_ubuntu_gpu_p_runtime_guest_vm_name
+              - hyperv_ubuntu_gpu_p_runtime_verify_host_vm_json.has_adapter | bool
+            fail_msg: >-
+              Hyper-V GPU partition adapter is not attached to the runtime target VM
+              {{ __hyperv_ubuntu_gpu_p_runtime_guest_vm_name }}.
+
+- name: Publish guest-consumed artifact routing facts
+  hosts: localhost
+  gather_facts: false
+  vars:
+    __hyperv_ubuntu_gpu_p_runtime_guest_vm_name: >-
+      {{
+        hyperv_ubuntu_gpu_p_runtime_guest_vm_name
+        | default(
+            (
+              query(
+                'inventory_hostnames',
+                hyperv_ubuntu_gpu_p_runtime_guest_hosts
+                | default('container_orchestrator_k3s:&gpu_workload_nodes')
+              ) | first
+            ) | default('')
+          )
+      }}
+  tasks:
+    - name: Assert host-side runtime receipt matches canonical guest VM target
+      ansible.builtin.assert:
+        that:
+          - hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_host_receipt.guest_vm_name == __hyperv_ubuntu_gpu_p_runtime_guest_vm_name
+        fail_msg: >-
+          Host-side GPU-P runtime receipt guest target does not match the canonical guest VM name.
+
+- name: Apply or remove Linux guest GPU-P runtime
+  hosts: "{{ hyperv_ubuntu_gpu_p_runtime_guest_hosts | default('container_orchestrator_k3s:&gpu_workload_nodes') }}"
+  gather_facts: true
+  become: true
+  vars:
+    __hyperv_ubuntu_gpu_p_runtime_state: "{{ hyperv_ubuntu_gpu_p_runtime_state | default('present') }}"
+    __hyperv_ubuntu_gpu_p_runtime_guest_vm_name: >-
+      {{
+        hyperv_ubuntu_gpu_p_runtime_guest_vm_name
+        | default(
+            (
+              query(
+                'inventory_hostnames',
+                hyperv_ubuntu_gpu_p_runtime_guest_hosts
+                | default('container_orchestrator_k3s:&gpu_workload_nodes')
+              ) | first
+            ) | default('')
+          )
+      }}
+  pre_tasks:
+    - name: Assert runtime guest host matches canonical VM target
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname == __hyperv_ubuntu_gpu_p_runtime_guest_vm_name
+        fail_msg: >-
+          Runtime guest inventory host {{ inventory_hostname }} does not match
+          canonical guest VM target {{ __hyperv_ubuntu_gpu_p_runtime_guest_vm_name }}.
+  roles:
+    - role: hyperv_ubuntu_gpu_p_linux_guest_runtime
+      tags:
+        - hyperv_ubuntu_gpu_p_linux_guest_runtime
+        - gpu_infra
+        - ai_ml_platform
+
+- name: Verify Hyper-V Ubuntu GPU-P runtime state
+  hosts: "{{ hyperv_ubuntu_gpu_p_runtime_guest_hosts | default('container_orchestrator_k3s:&gpu_workload_nodes') }}"
+  gather_facts: false
+  become: true
+  vars:
+    __hyperv_ubuntu_gpu_p_runtime_state: "{{ hyperv_ubuntu_gpu_p_runtime_state | default('present') }}"
+  tasks:
+    - name: Slurp runtime state manifest for verification
+      ansible.builtin.slurp:
+        src: /var/lib/ansible/hyperv_ubuntu_gpu_p_runtime/state.json
+      register: hyperv_ubuntu_gpu_p_runtime_verify_manifest
+      failed_when: false
+      changed_when: false
+
+    - name: Parse runtime state manifest for verification
+      ansible.builtin.set_fact:
+        hyperv_ubuntu_gpu_p_runtime_verify_manifest_json: >-
+          {{
+            (hyperv_ubuntu_gpu_p_runtime_verify_manifest.content | b64decode | from_json)
+            if (hyperv_ubuntu_gpu_p_runtime_verify_manifest is succeeded)
+            else {}
+          }}
+      changed_when: false
+
+    - name: Verify present runtime state
+      when: __hyperv_ubuntu_gpu_p_runtime_state == 'present'
+      block:
+        - name: Assert runtime state manifest exists
+          ansible.builtin.assert:
+            that:
+              - hyperv_ubuntu_gpu_p_runtime_verify_manifest is succeeded
+            fail_msg: Runtime state manifest was not written after present apply.
+
+        - name: Check /dev/dxg presence
+          ansible.builtin.stat:
+            path: /dev/dxg
+          register: hyperv_ubuntu_gpu_p_runtime_verify_dxg
+
+        - name: Assert /dev/dxg exists
+          ansible.builtin.assert:
+            that:
+              - hyperv_ubuntu_gpu_p_runtime_verify_dxg.stat.exists | bool
+            fail_msg: /dev/dxg is missing after runtime apply.
+
+        - name: Check exact DriverStore subtree presence
+          ansible.builtin.stat:
+            path: >-
+              /usr/lib/wsl/drivers/{{
+                hyperv_ubuntu_gpu_p_runtime_verify_manifest_json['driverstore_folder']
+              }}
+          register: hyperv_ubuntu_gpu_p_runtime_verify_driverstore
+
+        - name: Assert exact DriverStore subtree exists
+          ansible.builtin.assert:
+            that:
+              - hyperv_ubuntu_gpu_p_runtime_verify_driverstore.stat.exists | bool
+            fail_msg: Managed DriverStore subtree is missing after runtime apply.
+
+        - name: Capture dkms status
+          ansible.builtin.command:
+            argv:
+              - dkms
+              - status
+          register: hyperv_ubuntu_gpu_p_runtime_verify_dkms_status
+          changed_when: false
+
+        - name: Assert dkms status includes expected dxgkrnl version
+          ansible.builtin.assert:
+            that:
+              - >-
+                (
+                  'dxgkrnl/'
+                  ~ hyperv_ubuntu_gpu_p_runtime_verify_manifest_json['dxgkrnl_version']
+                  ~ ', '
+                  ~ hyperv_ubuntu_gpu_p_runtime_verify_manifest_json['target_kernel']
+                ) in hyperv_ubuntu_gpu_p_runtime_verify_dkms_status.stdout
+            fail_msg: Expected dxgkrnl DKMS version is not installed for the target kernel.
+
+        - name: Capture lsmod
+          ansible.builtin.command:
+            argv:
+              - lsmod
+          register: hyperv_ubuntu_gpu_p_runtime_verify_lsmod
+          changed_when: false
+
+        - name: Assert lsmod shows dxgkrnl
+          ansible.builtin.assert:
+            that:
+              - "'dxgkrnl' in hyperv_ubuntu_gpu_p_runtime_verify_lsmod.stdout"
+            fail_msg: dxgkrnl is not loaded after runtime apply.
+
+        - name: Capture dmesg evidence
+          ansible.builtin.shell: |
+            dmesg | grep -Ei 'dxg|hyper-v|vmbus' | tail -n 50
+          register: hyperv_ubuntu_gpu_p_runtime_verify_dmesg
+          changed_when: false
+
+        - name: Assert dmesg includes dxg or Hyper-V evidence
+          ansible.builtin.assert:
+            that:
+              - hyperv_ubuntu_gpu_p_runtime_verify_dmesg.stdout | length > 0
+            fail_msg: Expected dxg or Hyper-V evidence was not found in dmesg.
+
+        - name: Capture ldconfig GPU runtime entries
+          ansible.builtin.shell: |
+            ldconfig -p | egrep 'libdxcore.so|libd3d12.so|libcuda.so.1|libnvidia-ml.so.1'
+          register: hyperv_ubuntu_gpu_p_runtime_verify_ldconfig
+          changed_when: false
+
+        - name: Assert ldconfig resolves required GPU runtime libraries
+          ansible.builtin.assert:
+            that:
+              - "'libdxcore.so' in hyperv_ubuntu_gpu_p_runtime_verify_ldconfig.stdout"
+              - "'libd3d12.so' in hyperv_ubuntu_gpu_p_runtime_verify_ldconfig.stdout"
+              - "'libcuda.so.1' in hyperv_ubuntu_gpu_p_runtime_verify_ldconfig.stdout"
+              - "'libnvidia-ml.so.1' in hyperv_ubuntu_gpu_p_runtime_verify_ldconfig.stdout"
+            fail_msg: One or more required GPU runtime libraries are unresolved.
+
+        - name: Run nvidia-smi
+          ansible.builtin.command:
+            argv:
+              - nvidia-smi
+          register: hyperv_ubuntu_gpu_p_runtime_verify_nvidia_smi
+          changed_when: false
+          failed_when: false
+
+        - name: Collect strace evidence when nvidia-smi fails
+          when: hyperv_ubuntu_gpu_p_runtime_verify_nvidia_smi.rc != 0
+          block:
+            - name: Run strace on failing nvidia-smi
+              ansible.builtin.command:
+                argv:
+                  - strace
+                  - -f
+                  - -o
+                  - /var/tmp/hyperv_ubuntu_gpu_p_runtime_nvidia_smi.strace
+                  - nvidia-smi
+              register: hyperv_ubuntu_gpu_p_runtime_verify_nvidia_smi_strace
+              changed_when: false
+              failed_when: false
+
+            - name: Capture traced DriverStore miss
+              ansible.builtin.shell: |
+                grep -m 1 -i '/usr/lib/wsl/drivers/.*/libnvidia-ml.so.1' /var/tmp/hyperv_ubuntu_gpu_p_runtime_nvidia_smi.strace || true
+              register: hyperv_ubuntu_gpu_p_runtime_verify_nvidia_smi_trace_hit
+              changed_when: false
+
+            - name: Fail with nvidia-smi diagnostic evidence
+              ansible.builtin.fail:
+                msg: >-
+                  nvidia-smi failed after runtime apply.
+                  stdout={{ hyperv_ubuntu_gpu_p_runtime_verify_nvidia_smi.stdout | default('') }}
+                  stderr={{ hyperv_ubuntu_gpu_p_runtime_verify_nvidia_smi.stderr | default('') }}
+                  trace_hit={{ hyperv_ubuntu_gpu_p_runtime_verify_nvidia_smi_trace_hit.stdout | default('') }}
+
+        - name: Assert nvidia-smi succeeds
+          ansible.builtin.assert:
+            that:
+              - hyperv_ubuntu_gpu_p_runtime_verify_nvidia_smi.rc == 0
+            fail_msg: nvidia-smi did not succeed after runtime apply.
+
+    - name: Verify absent runtime state
+      when: __hyperv_ubuntu_gpu_p_runtime_state == 'absent'
+      block:
+        - name: Assert runtime state manifest is absent
+          ansible.builtin.assert:
+            that:
+              - hyperv_ubuntu_gpu_p_runtime_verify_manifest is failed
+            fail_msg: Runtime state manifest still exists after absent apply.
+
+        - name: Stat ld.wsl.conf after absent
+          ansible.builtin.stat:
+            path: /etc/ld.so.conf.d/ld.wsl.conf
+          register: hyperv_ubuntu_gpu_p_runtime_verify_ldso_absent
+
+        - name: Assert ld.wsl.conf is absent
+          ansible.builtin.assert:
+            that:
+              - not (hyperv_ubuntu_gpu_p_runtime_verify_ldso_absent.stat.exists | bool)
+            fail_msg: ld.wsl.conf still exists after absent apply.

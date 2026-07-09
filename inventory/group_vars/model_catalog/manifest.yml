@@ -54,11 +54,20 @@ model_catalog_manifest:
       notes: Requires current model research before pinning an HF repo.
     - lane: code-review
       purpose: critique, risk finding, test review
-      status: pending_research
-      candidate_family: reviewer/risk-finding model
+      status: selected_for_secondary_runtime
+      candidate_family: small code-review/support model on a 6GB Windows GPU host
+      serving_runtime: ollama
+      selected_model: qwen2.5-coder:3b
+      fallback_model: qwen2.5-coder:1.5b
       storage_host: hom-lab-ctl-hvh-01
-      unc_path: null
-      notes: Requires current model research and privacy route decision.
+      unc_path: "\\\\hom-lab-ctl-hvh-01\\public\\models\\ollama"
+      research_sources:
+        - https://ollama.com/library/qwen2.5-coder
+        - https://ollama.com/library/qwen2.5-coder/tags
+      notes: >-
+        First secondary local-review lane on hvh-01. Central LiteLLM owns the
+        client-facing alias; Ollama stays host-local and Langfuse remains
+        centralized on k3s-02.
     - lane: code-test
       purpose: test generation and focused test repair
       status: pending_research

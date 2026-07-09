@@ -1,0 +1,134 @@
+---
+- name: Slurp existing guest runtime state manifest before removal
+  ansible.builtin.slurp:
+    src: "{{ hyperv_ubuntu_gpu_p_guest_state_manifest_path }}"
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest
+  failed_when: false
+  changed_when: false
+
+- name: Parse guest runtime state manifest before removal
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json: >-
+      {{
+        (hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest.content | b64decode | from_json)
+        if (
+          not (hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest.failed | default(false))
+          and (hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest.content is defined)
+        )
+        else {}
+      }}
+  changed_when: false
+
+- name: Remove WSL ld.so path file
+  ansible.builtin.file:
+    path: "{{ hyperv_ubuntu_gpu_p_guest_ldso_file }}"
+    state: absent
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_ldso
+
+- name: Remove canonical WSL runtime symlinks
+  ansible.builtin.file:
+    path: "{{ item.dest }}"
+    state: absent
+  loop: "{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json.get('managed_symlinks', hyperv_ubuntu_gpu_p_guest_managed_symlinks) }}"
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_symlinks
+
+- name: Remove PATH mutation for /usr/lib/wsl/lib
+  ansible.builtin.lineinfile:
+    path: /etc/environment
+    regexp: '^(PATH=".*):{{ hyperv_ubuntu_gpu_p_guest_environment_path_append | regex_escape }}(")$'
+    line: '\1\2'
+    backrefs: true
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_environment_path
+
+- name: Remove managed DriverStore subtree
+  ansible.builtin.file:
+    path: >-
+      {{
+        hyperv_ubuntu_gpu_p_guest_wsl_root
+        ~ '/drivers/'
+        ~ hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json['driverstore_folder']
+      }}
+    state: absent
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_driverstore
+  when: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json.get('driverstore_folder', '') | length > 0
+
+- name: Remove managed WSL lib files
+  ansible.builtin.file:
+    path: "{{ hyperv_ubuntu_gpu_p_guest_wsl_root }}/lib/{{ item }}"
+    state: absent
+  loop: "{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json.get('managed_lib_files', []) }}"
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_lib_files
+  when: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json.get('managed_lib_files', []) | length > 0
+
+- name: Remove managed dxgkrnl dkms module
+  ansible.builtin.command:
+    argv:
+      - dkms
+      - remove
+      - "dxgkrnl/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json['dxgkrnl_version'] }}"
+      - --all
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_dkms_remove
+  failed_when: false
+  changed_when: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_dkms_remove.rc == 0
+  when: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json.get('dxgkrnl_version', '') | length > 0
+
+- name: Remove managed vgem dkms module
+  ansible.builtin.command:
+    argv:
+      - dkms
+      - remove
+      - "vgem/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json['dxgkrnl_version'] }}"
+      - --all
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_vgem_remove
+  failed_when: false
+  changed_when: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_vgem_remove.rc == 0
+  when:
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json.get('vgem_installed', false)
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json.get('dxgkrnl_version', '') | length > 0
+
+- name: Remove managed dxgkrnl source tree
+  ansible.builtin.file:
+    path: "/usr/src/dxgkrnl-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json['dxgkrnl_version'] }}"
+    state: absent
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_dxg_src
+  when: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json.get('dxgkrnl_version', '') | length > 0
+
+- name: Remove managed vgem source tree
+  ansible.builtin.file:
+    path: "/usr/src/vgem-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json['dxgkrnl_version'] }}"
+    state: absent
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_vgem_src
+  when:
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json.get('vgem_installed', false)
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_json.get('dxgkrnl_version', '') | length > 0
+
+- name: Refresh guest linker cache after removal
+  ansible.builtin.command:
+    argv:
+      - ldconfig
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_ldconfig
+  changed_when: true
+
+- name: Remove guest runtime state manifest
+  ansible.builtin.file:
+    path: "{{ hyperv_ubuntu_gpu_p_guest_state_manifest_path }}"
+    state: absent
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_manifest_remove
+
+- name: Determine whether guest reboot is required after removal
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_reboot_required: >-
+      {{
+        (hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_ldso is changed)
+        or (hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_symlinks is changed)
+        or (hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_environment_path is changed)
+        or (hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_driverstore is changed if (hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_driverstore is defined) else false)
+        or (hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_dkms_remove is changed if (hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_dkms_remove is defined) else false)
+        or (hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_vgem_remove is changed if (hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_vgem_remove is defined) else false)
+      }}
+  changed_when: false
+
+- name: Reboot guest after runtime removal
+  ansible.builtin.reboot:
+    reboot_timeout: 900
+  when: hyperv_ubuntu_gpu_p_linux_guest_runtime_absent_reboot_required | bool

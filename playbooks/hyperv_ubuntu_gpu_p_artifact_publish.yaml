@@ -1,0 +1,28 @@
+---
+- name: Publish Hyper-V Ubuntu GPU-P runtime artifact set to managed Windows share
+  hosts: "{{ hyperv_ubuntu_gpu_p_runtime_windows_hosts | default('windows_server_2025:&hyperv_gpu_partition_enabled_hosts') }}"
+  gather_facts: false
+  vars:
+    __hyperv_ubuntu_gpu_p_runtime_state: "{{ hyperv_ubuntu_gpu_p_runtime_state | default('present') }}"
+  roles:
+    - role: llm_compute_windows
+      when: __hyperv_ubuntu_gpu_p_runtime_state == 'present'
+      tags:
+        - llm_compute_windows
+        - gpu_infra
+        - ai_ml_platform
+    - role: windows_file_shares
+      vars:
+        windows_file_shares_state: present
+      when: __hyperv_ubuntu_gpu_p_runtime_state == 'present'
+      tags:
+        - windows_file_shares
+        - gpu_infra
+        - ai_ml_platform
+    - role: hyperv_ubuntu_gpu_p_windows_artifact_publish
+      vars:
+        hyperv_ubuntu_gpu_p_windows_artifact_publish_state: "{{ __hyperv_ubuntu_gpu_p_runtime_state }}"
+      tags:
+        - hyperv_ubuntu_gpu_p_windows_artifact_publish
+        - gpu_infra
+        - ai_ml_platform

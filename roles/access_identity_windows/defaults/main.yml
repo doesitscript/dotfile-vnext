@@ -36,3 +36,12 @@ ansible_authorized_keys_path: "C:\\Users\\joshc\\.ssh\\authorized_keys"
 # Controller public key path — must match access_identity_controller defaults.
 # Used by delegate_to + slurp so this role can run directly without a preceding controller play.
 controller_ssh_public_key_path: "~/.ssh/id_ed25519_ansible.pub"
+
+# Windows-host outbound SSH path for companion Linux guests on private Hyper-V
+# subnets. This makes host-originated guest SSH a repo-managed surface instead
+# of an ad-hoc/manual one-off. Guest-side authorization of this key is applied
+# by the Hyper-V Ubuntu VM lifecycle role once the guest is SSH-ready.
+windows_outbound_ssh_state: "present"
+windows_outbound_ssh_key_basename: "id_ed25519_ansible"
+windows_outbound_ssh_private_key_path: "{{ ansible_ssh_dir_path }}\\{{ windows_outbound_ssh_key_basename }}"
+windows_outbound_ssh_public_key_path: "{{ windows_outbound_ssh_private_key_path }}.pub"

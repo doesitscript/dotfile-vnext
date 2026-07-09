@@ -1,0 +1,57 @@
+---
+- import_playbook: llm_compute_windows_hvh01.yaml
+
+- name: Deploy host-local Ollama runtime on hvh-01
+  hosts: hom-lab-ctl-hvh-01
+  gather_facts: false
+  roles:
+    - role: windows_ollama_runtime
+      tags:
+        - windows_ollama_runtime
+        - ollama
+        - ai_ml_platform
+        - hvh01_secondary_runtime
+
+- import_playbook: deploy_litellm_gateway.yaml
+- import_playbook: validate_ai_inference_stack_contracts.yaml
+
+- name: Verify hvh-01 secondary runtime and central gateway health
+  hosts: localhost
+  gather_facts: false
+  vars:
+    _hvh01_secondary_ollama_url: >-
+      http://{{
+        hostvars['hom-lab-ctl-hvh-01'].host_ip
+        | default(hostvars['hom-lab-ctl-hvh-01'].ansible_host | default('hom-lab-ctl-hvh-01'))
+      }}:{{
+        hostvars['hom-lab-ctl-hvh-01'].windows_ollama_runtime_port | default(11434)
+      }}
+    _litellm_gateway_url: "{{ ai_agent_client_profiles.gateway.openai_base_url | regex_replace('/v1$', '') }}"
+  vars_files:
+    - "{{ playbook_dir }}/../inventory/group_vars/all/ai_agent_profiles.yml"
+  tasks:
+    - name: Check hvh-01 secondary Ollama endpoint
+      ansible.builtin.uri:
+        url: "{{ _hvh01_secondary_ollama_url }}/api/tags"
+        method: GET
+        status_code: 200
+        timeout: 10
+      register: _hvh01_secondary_ollama_check
+      changed_when: false
+
+    - name: Check central LiteLLM gateway health
+      ansible.builtin.uri:
+        url: "{{ _litellm_gateway_url }}/health"
+        method: GET
+        status_code: [200, 401, 403]
+        timeout: 10
+      register: _litellm_gateway_check
+      changed_when: false
+
+    - name: Summarize hvh-01 secondary runtime verification
+      ansible.builtin.debug:
+        msg:
+          hvh01_secondary_ollama_url: "{{ _hvh01_secondary_ollama_url }}"
+          hvh01_secondary_ollama_status: "{{ _hvh01_secondary_ollama_check.status }}"
+          litellm_gateway_url: "{{ _litellm_gateway_url }}"
+          litellm_gateway_status: "{{ _litellm_gateway_check.status }}"

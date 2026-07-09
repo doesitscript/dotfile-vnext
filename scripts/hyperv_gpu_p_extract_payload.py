@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Extract a Windows-created ZIP payload while normalizing backslash paths.
+"""Deprecated helper for the superseded Hyper-V GPU-P troubleshoot flow.
 
-This avoids heredoc-heavy one-off shell extraction logic and keeps the
-supported GPU-P flow non-interactive and PTY-free on the controller.
+The canonical runtime automation no longer depends on this script. It is
+retained only as historical support for earlier troubleshooting packets that
+normalized backslash-heavy ZIP payloads on the controller.
 """
 
 from __future__ import annotations

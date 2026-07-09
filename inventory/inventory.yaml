@@ -57,6 +57,24 @@ all:
         hom-lab-ctl-hvh-02:
         hom-lab-ctl-hvh-01:
 
+    # Windows Server 2025 surfaces. Keep OS targeting separate from capability
+    # targeting so playbooks can intersect them instead of pinning a node name.
+    windows_server_2025:
+      hosts:
+        hom-lab-ctl-hvh-02:
+        hom-lab-ctl-hvh-01:
+
+    # Windows hosts with repo-managed NVIDIA GPU hardware.
+    windows_nvidia_gpu_hosts:
+      hosts:
+        hom-lab-ctl-hvh-02:
+        hom-lab-ctl-hvh-01:
+
+    # Windows Hyper-V hosts where GPU partitioning is intentionally enabled.
+    hyperv_gpu_partition_enabled_hosts:
+      hosts:
+        hom-lab-ctl-hvh-02:
+
     # Additive IPv6 fallback/control-plane surfaces for Windows hosts.
     # Keep these out of normal windows_hosts targeting so they remain explicit
     # operator/troubleshooting entry points instead of changing the default path.
@@ -80,15 +98,33 @@ all:
         hom-lab-ctl-k3s-02:
           # Planned K3s Ubuntu guest on the RTX 5090 hom-lab-ctl-hvh-02 host.
         hom-lab-ctl-dkr-01:
-          # Planned Docker Ubuntu guest on hom-lab-ctl-hvh-01.
+          # Active Docker Ubuntu guest on hom-lab-ctl-hvh-01.
         hom-lab-ctl-k3s-01:
-          # Planned K3s Ubuntu guest on hom-lab-ctl-hvh-01.
+          # Active K3s Ubuntu guest on hom-lab-ctl-hvh-01.
 
-    # K3s VM prep/stub targets. These hosts are ready for base VM and
-    # readiness-stub work only; real K3s installation stays behind k3s_cluster.
+    # Legacy K3s VM readiness-preflight targets. Membership here does not define
+    # the host identity; it only exposes optional readiness validation when a
+    # troubleshooting or preflight run explicitly wants it.
     k3s_vm_stub_hosts:
       hosts:
         hom-lab-ctl-k3s-01:
+        hom-lab-ctl-k3s-02:
+
+    # K3s/orchestrator surfaces. Use this for runtime-targeted playbooks rather
+    # than pinning a specific inventory hostname.
+    container_orchestrator_k3s:
+      hosts:
+        hom-lab-ctl-k3s-01:
+        hom-lab-ctl-k3s-02:
+
+    # Linux nodes that are expected to run NVIDIA-backed GPU workloads.
+    gpu_workload_nodes:
+      hosts:
+        hom-lab-ctl-k3s-02:
+
+    # Nodes that participate in the AI inference stack contract.
+    ai_inference_stack_nodes:
+      hosts:
         hom-lab-ctl-k3s-02:
 
     # SSH targets: hosts that may need an entry in the controller's ~/.ssh/config.

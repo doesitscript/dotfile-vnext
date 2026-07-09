@@ -1,0 +1,14 @@
+---
+- name: Validate Hyper-V Ubuntu GPU-P Linux guest runtime state
+  ansible.builtin.assert:
+    that:
+      - hyperv_ubuntu_gpu_p_linux_guest_runtime_state in ['present', 'absent']
+    fail_msg: hyperv_ubuntu_gpu_p_linux_guest_runtime_state must be present or absent.
+
+- name: Apply Hyper-V Ubuntu GPU-P Linux guest runtime
+  ansible.builtin.include_tasks: present.yml
+  when: hyperv_ubuntu_gpu_p_linux_guest_runtime_state == 'present'
+
+- name: Remove Hyper-V Ubuntu GPU-P Linux guest runtime
+  ansible.builtin.include_tasks: absent.yml
+  when: hyperv_ubuntu_gpu_p_linux_guest_runtime_state == 'absent'

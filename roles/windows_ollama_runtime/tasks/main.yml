@@ -1,0 +1,14 @@
+---
+- name: Validate windows_ollama_runtime_state
+  ansible.builtin.assert:
+    that:
+      - windows_ollama_runtime_state in ["present", "absent"]
+    fail_msg: windows_ollama_runtime_state must be "present" or "absent".
+
+- name: Apply Windows Ollama runtime capability
+  ansible.builtin.include_tasks: present.yml
+  when: windows_ollama_runtime_state == "present"
+
+- name: Remove Windows Ollama runtime capability
+  ansible.builtin.include_tasks: absent.yml
+  when: windows_ollama_runtime_state == "absent"

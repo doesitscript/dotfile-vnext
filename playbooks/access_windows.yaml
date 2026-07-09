@@ -37,10 +37,12 @@
 #     ansible-playbook playbooks/troubleshoot/collect_windows_remote_access_artifacts.yaml \
 #       -i inventory/inventory.yaml --limit hom-lab-ctl-hvh-02
 #
-# Linux guest access is not configured here. Once a Hyper-V Ubuntu guest exists
-# and has realized SSH connection facts, its generated `-ubuntu` SSH surface is
-# rendered by the controller pass in playbooks/access.yaml or the canonical
-# playbooks/site.yaml path.
+# Linux guest access is partially configured here for Windows Hyper-V hosts:
+# this role ensures the Windows host has a managed outbound SSH key/config for
+# its companion Ubuntu guests. Guest-side authorization of that Windows-host
+# key is applied by the Hyper-V Ubuntu VM lifecycle role after the guest is
+# SSH-ready. Controller-side SSH config rendering still happens in
+# playbooks/access.yaml or the canonical playbooks/site.yaml path.
 #
 - name: Access - windows identity
   hosts: "{{ access_windows_target | default('windows_hosts') }}"

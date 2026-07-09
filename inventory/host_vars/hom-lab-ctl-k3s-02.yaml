@@ -6,6 +6,17 @@
 # ssh_proxy_jump_host: hom-lab-ctl-hvh-02 — inventory alias for ProxyJump/SSH config.
 
 physical_node: "hom-lab-ctl-hvh-02"
+host_kind: "vm"
+parent_hypervisor: "hom-lab-ctl-hvh-02"
+workload_runtime:
+  type: k3s
+  role: server
+node_capabilities:
+  - k3s_node
+  - container_orchestrator_node
+  - gpu_workload_node
+  - nvidia_container_runtime
+  - ai_inference_stack_node
 surface_type: "ubuntu_vm"
 node_classes:
   - k3s_runtime
@@ -20,6 +31,12 @@ runtime_planes:
 policy_classes:
   - experimental
   - non_authoritative_data
+gpu_contract:
+  vendor: nvidia
+  partitioned: true
+  passthrough_mode: gpu_p
+  workloads_enabled: true
+  runtime: nvidia_container_runtime
 ansible_host: "192.168.137.11"
 host_ip: "192.168.137.11"
 ansible_user: "joshc"
@@ -30,6 +47,8 @@ ssh_proxy_jump_host: "hom-lab-ctl-hvh-02"
 # published route so the path is stable from anywhere on the LAN.
 ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 k3s_readiness_stub_expected_runtime: present
+k3s_vllm_runtime_memory_request: 2Gi
+k3s_vllm_runtime_memory_limit: 8Gi
 
 # Operator /etc/hosts for hom.lab URLs (LAN publish IP via portproxy).
 homelab_hosts_file_linux_enabled: true

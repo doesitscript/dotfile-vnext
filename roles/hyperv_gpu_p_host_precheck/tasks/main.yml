@@ -1,0 +1,14 @@
+---
+- name: Validate Hyper-V GPU-P host precheck state
+  ansible.builtin.assert:
+    that:
+      - hyperv_gpu_p_host_precheck_state in ['present', 'absent']
+    fail_msg: hyperv_gpu_p_host_precheck_state must be present or absent.
+
+- name: Include Hyper-V GPU-P host precheck present tasks
+  ansible.builtin.import_tasks: present.yml
+  when: hyperv_gpu_p_host_precheck_state == 'present'
+
+- name: Include Hyper-V GPU-P host precheck absent tasks
+  ansible.builtin.import_tasks: absent.yml
+  when: hyperv_gpu_p_host_precheck_state == 'absent'

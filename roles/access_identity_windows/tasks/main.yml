@@ -10,11 +10,13 @@
     src: "{{ controller_ssh_public_key_path }}"
   register: _controller_pubkey_slurp
   delegate_to: "{{ groups['execution_nodes'][0] }}"
+  when: controller_pub_key_content is not defined
   tags: [admin, user]
 
 - name: Set controller public key content fact
   ansible.builtin.set_fact:
     controller_pub_key_content: "{{ _controller_pubkey_slurp.content | b64decode | trim }}"
+  when: controller_pub_key_content is not defined
   tags: [admin, user]
 
 - name: Verify controller public key was loaded
@@ -51,6 +53,10 @@
 # Include user tasks; run with --tags user to run only user tasks.
 - name: Include user tasks
   ansible.builtin.include_tasks: user.yml
+  tags: [user]
+
+- name: Include outbound companion guest access tasks
+  ansible.builtin.include_tasks: outbound_guest_access.yml
   tags: [user]
 
 # --- Debug output: collect logs and diagnostics from all systems ---

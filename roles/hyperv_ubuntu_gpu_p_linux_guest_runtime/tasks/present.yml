@@ -1,0 +1,965 @@
+---
+- name: Ensure guest runtime working directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ hyperv_ubuntu_gpu_p_guest_work_root }}"
+    - "{{ hyperv_ubuntu_gpu_p_guest_repo_cache_root }}"
+    - "{{ hyperv_ubuntu_gpu_p_guest_build_root }}"
+    - "{{ hyperv_ubuntu_gpu_p_guest_artifact_stage_root }}"
+    - "{{ hyperv_ubuntu_gpu_p_guest_artifact_mount_path }}"
+    - "{{ hyperv_ubuntu_gpu_p_guest_wsl_root }}"
+    - "{{ hyperv_ubuntu_gpu_p_guest_wsl_root }}/lib"
+    - "{{ hyperv_ubuntu_gpu_p_guest_wsl_root }}/drivers"
+
+- name: Slurp existing guest runtime state manifest when present
+  ansible.builtin.slurp:
+    src: "{{ hyperv_ubuntu_gpu_p_guest_state_manifest_path }}"
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest
+  failed_when: false
+  changed_when: false
+
+- name: Parse existing guest runtime state manifest
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json: >-
+      {{
+        (hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest.content | b64decode | from_json)
+        if (
+          not (hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest.failed | default(false))
+          and (hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest.content is defined)
+        )
+        else {}
+      }}
+  changed_when: false
+
+- name: Build guest artifact share connection facts
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_windows_host: >-
+      {{ hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_host_receipt.windows_host }}
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_share_host: >-
+      {{ hostvars[hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_host_receipt.windows_host].ansible_host }}
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_share_user: >-
+      {{ hostvars[hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_host_receipt.windows_host].windows_file_shares_unc_validation_user }}
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_share_password: >-
+      {{ hostvars[hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_host_receipt.windows_host].windows_file_shares_unc_validation_password }}
+  changed_when: false
+
+- name: Assert guest artifact share connection facts exist
+  ansible.builtin.assert:
+    that:
+      - hyperv_ubuntu_gpu_p_linux_guest_runtime_share_host | length > 0
+      - hyperv_ubuntu_gpu_p_linux_guest_runtime_share_user | length > 0
+      - hyperv_ubuntu_gpu_p_linux_guest_runtime_share_password | length > 0
+    fail_msg: Windows artifact share connection facts are not available to the Ubuntu guest runtime.
+
+- name: Write temporary SMB credentials file for guest artifact mount
+  ansible.builtin.copy:
+    dest: "{{ hyperv_ubuntu_gpu_p_guest_artifact_credentials_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |-
+      username={{ hyperv_ubuntu_gpu_p_linux_guest_runtime_share_user }}
+      password={{ hyperv_ubuntu_gpu_p_linux_guest_runtime_share_password }}
+  no_log: true
+
+- name: Mount, sync, and cleanly release Windows artifact share on Ubuntu guest
+  block:
+    - name: Mount Windows artifact share on Ubuntu guest
+      ansible.posix.mount:
+        src: "//{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_share_host }}/{{ hyperv_ubuntu_gpu_p_guest_artifact_share_name }}"
+        path: "{{ hyperv_ubuntu_gpu_p_guest_artifact_mount_path }}"
+        fstype: cifs
+        state: ephemeral
+        opts: >-
+          {{ hyperv_ubuntu_gpu_p_guest_artifact_mount_opts }},credentials={{ hyperv_ubuntu_gpu_p_guest_artifact_credentials_path }}
+        opts_no_log: true
+
+    - name: Stat published artifact receipt on mounted share from guest
+      ansible.builtin.stat:
+        path: >-
+          {{
+            hyperv_ubuntu_gpu_p_guest_artifact_mount_path
+            ~ '/'
+            ~ hyperv_ubuntu_gpu_p_guest_artifact_share_relative_root
+            ~ '/publish-receipt.json'
+          }}
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_share_receipt_stat
+
+    - name: Assert published artifact receipt exists on mounted share from guest
+      ansible.builtin.assert:
+        that:
+          - hyperv_ubuntu_gpu_p_linux_guest_runtime_share_receipt_stat.stat.exists | bool
+        fail_msg: Published artifact receipt is missing from the mounted Windows share on the Ubuntu guest.
+
+    - name: Copy published artifact metadata files locally on guest
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: root
+        group: root
+        mode: "0600"
+      loop:
+        - src: >-
+            {{
+              hyperv_ubuntu_gpu_p_guest_artifact_mount_path
+              ~ '/'
+              ~ hyperv_ubuntu_gpu_p_guest_artifact_share_relative_root
+              ~ '/publish-receipt.json'
+            }}
+          dest: "{{ hyperv_ubuntu_gpu_p_guest_artifact_receipt_path }}"
+        - src: >-
+            {{
+              hyperv_ubuntu_gpu_p_guest_artifact_mount_path
+              ~ '/'
+              ~ hyperv_ubuntu_gpu_p_guest_artifact_share_relative_root
+              ~ '/payload-manifest.json'
+            }}
+          dest: "{{ hyperv_ubuntu_gpu_p_guest_artifact_manifest_path }}"
+        - src: >-
+            {{
+              hyperv_ubuntu_gpu_p_guest_artifact_mount_path
+              ~ '/'
+              ~ hyperv_ubuntu_gpu_p_guest_artifact_share_relative_root
+              ~ '/driver-contract.json'
+            }}
+          dest: "{{ hyperv_ubuntu_gpu_p_guest_artifact_driver_contract_path }}"
+
+    - name: Read local guest artifact receipt
+      ansible.builtin.slurp:
+        src: "{{ hyperv_ubuntu_gpu_p_guest_artifact_receipt_path }}"
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_local_receipt
+
+    - name: Parse local guest artifact receipt
+      ansible.builtin.set_fact:
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_local_receipt_json: >-
+          {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_local_receipt.content | b64decode | from_json }}
+      changed_when: false
+
+    - name: Stat published payload root on mounted share from guest
+      ansible.builtin.stat:
+        path: >-
+          {{
+            hyperv_ubuntu_gpu_p_guest_artifact_mount_path
+            ~ '/'
+            ~ hyperv_ubuntu_gpu_p_guest_artifact_share_relative_root
+            ~ '/payload'
+          }}
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_share_payload_root_stat
+
+    - name: Assert published payload root exists on mounted share from guest
+      ansible.builtin.assert:
+        that:
+          - hyperv_ubuntu_gpu_p_linux_guest_runtime_share_payload_root_stat.stat.exists | bool
+          - hyperv_ubuntu_gpu_p_linux_guest_runtime_share_payload_root_stat.stat.isdir | bool
+        fail_msg: Published payload root is missing from the mounted Windows share on the Ubuntu guest.
+
+    - name: Reset guest-local extracted payload root
+      ansible.builtin.file:
+        path: "{{ hyperv_ubuntu_gpu_p_guest_artifact_extract_root }}"
+        state: absent
+
+    - name: Recreate guest-local extracted payload root
+      ansible.builtin.file:
+        path: "{{ hyperv_ubuntu_gpu_p_guest_artifact_extract_root }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Rsync payload tree from mounted share to guest local stage
+      ansible.builtin.command:
+        argv:
+          - rsync
+          - -a
+          - --partial
+          - --inplace
+          - --checksum
+          - >-
+            {{
+              hyperv_ubuntu_gpu_p_guest_artifact_mount_path
+              ~ '/'
+              ~ hyperv_ubuntu_gpu_p_guest_artifact_share_relative_root
+              ~ '/payload/'
+            }}
+          - "{{ hyperv_ubuntu_gpu_p_guest_artifact_extract_root }}/"
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_rsync
+      changed_when: true
+      retries: 5
+      delay: 10
+      until: hyperv_ubuntu_gpu_p_linux_guest_runtime_rsync.rc == 0
+
+    - name: Find guest-local Program Files WSL payload files
+      ansible.builtin.find:
+        paths: "{{ hyperv_ubuntu_gpu_p_guest_artifact_extract_root }}/wsl-programfiles-lib"
+        recurse: true
+        file_type: file
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_programfiles_payload
+
+    - name: Find guest-local lxss WSL payload files
+      ansible.builtin.find:
+        paths: "{{ hyperv_ubuntu_gpu_p_guest_artifact_extract_root }}/wsl-lxss-lib"
+        recurse: true
+        file_type: file
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_lxss_payload
+
+    - name: Find guest-local DriverStore payload files
+      ansible.builtin.find:
+        paths: >-
+          {{
+            hyperv_ubuntu_gpu_p_guest_artifact_extract_root
+            ~ '/driverstore/'
+            ~ hyperv_ubuntu_gpu_p_linux_guest_runtime_local_receipt_json.driverstore_folder
+          }}
+        recurse: true
+        file_type: file
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_driverstore_payload
+
+    - name: Publish guest-local payload file facts
+      ansible.builtin.set_fact:
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_managed_lib_files: >-
+          {{
+            (
+              hyperv_ubuntu_gpu_p_linux_guest_runtime_programfiles_payload.files
+              + hyperv_ubuntu_gpu_p_linux_guest_runtime_lxss_payload.files
+            )
+            | map(attribute='path')
+            | map('basename')
+            | unique
+            | list
+          }}
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_managed_driverstore_files: >-
+          {{
+            hyperv_ubuntu_gpu_p_linux_guest_runtime_driverstore_payload.files
+            | map(attribute='path')
+            | map('basename')
+            | unique
+            | list
+          }}
+      changed_when: false
+  always:
+    - name: Unmount Windows artifact share on Ubuntu guest
+      ansible.posix.mount:
+        path: "{{ hyperv_ubuntu_gpu_p_guest_artifact_mount_path }}"
+        state: unmounted
+      failed_when: false
+
+    - name: Remove temporary SMB credentials file after guest artifact sync
+      ansible.builtin.file:
+        path: "{{ hyperv_ubuntu_gpu_p_guest_artifact_credentials_path }}"
+        state: absent
+
+- name: Validate supported guest kernel family
+  ansible.builtin.assert:
+    that:
+      - hyperv_ubuntu_gpu_p_linux_guest_target_kernel is match('^(5\\.1[5-9]\\.|6\\.[0-9]+\\.|7\\.)')
+    fail_msg: >-
+      Unsupported kernel family for Hyper-V Ubuntu GPU-P runtime:
+      {{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}
+
+- name: Derive WSL2 kernel branch and dxgkrnl version prefix
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_wsl_branch: >-
+      {%- if hyperv_ubuntu_gpu_p_linux_guest_target_kernel is match('^(6\\.1[8-9]\\.|7\\.)') -%}
+      linux-msft-wsl-6.18.y
+      {%- elif hyperv_ubuntu_gpu_p_linux_guest_target_kernel is match('^(6\\.[6-9]\\.|6\\.1[0-7]\\.)') -%}
+      linux-msft-wsl-6.6.y
+      {%- elif hyperv_ubuntu_gpu_p_linux_guest_target_kernel is match('^(5\\.1[5-9]\\.|6\\.[0-5]\\.)') -%}
+      linux-msft-wsl-5.15.y
+      {%- else -%}
+      unsupported
+      {%- endif -%}
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_version_prefix: >-
+      {%- if hyperv_ubuntu_gpu_p_linux_guest_target_kernel is match('^(6\\.1[8-9]\\.|7\\.)') -%}
+      6.18
+      {%- elif hyperv_ubuntu_gpu_p_linux_guest_target_kernel is match('^(6\\.[6-9]\\.|6\\.1[0-7]\\.)') -%}
+      6.6
+      {%- elif hyperv_ubuntu_gpu_p_linux_guest_target_kernel is match('^(5\\.1[5-9]\\.|6\\.[0-5]\\.)') -%}
+      5.15
+      {%- else -%}
+      unsupported
+      {%- endif -%}
+  changed_when: false
+
+- name: Assert WSL2 kernel branch is supported
+  ansible.builtin.assert:
+    that:
+      - hyperv_ubuntu_gpu_p_linux_guest_runtime_wsl_branch != 'unsupported'
+    fail_msg: >-
+      No supported WSL2 kernel branch mapping exists for
+      {{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}.
+
+- name: Install guest runtime prerequisite packages
+  ansible.builtin.apt:
+    name: "{{ hyperv_ubuntu_gpu_p_guest_required_packages }}"
+    state: present
+    update_cache: true
+
+- name: Ensure pinned dxgkrnl-dkms source checkout exists
+  ansible.builtin.git:
+    repo: "{{ hyperv_ubuntu_gpu_p_dxgkrnl_repo_url }}"
+    dest: "{{ hyperv_ubuntu_gpu_p_guest_repo_cache_root }}/dxgkrnl-dkms"
+    version: "{{ hyperv_ubuntu_gpu_p_dxgkrnl_repo_version }}"
+    depth: 1
+    single_branch: true
+    force: false
+
+- name: Ensure pinned WSL2 Linux kernel source checkout exists
+  ansible.builtin.git:
+    repo: "{{ hyperv_ubuntu_gpu_p_wsl2_kernel_repo_url }}"
+    dest: "{{ hyperv_ubuntu_gpu_p_guest_repo_cache_root }}/WSL2-Linux-Kernel"
+    version: "{{ hyperv_ubuntu_gpu_p_wsl_kernel_branch_commit_map[hyperv_ubuntu_gpu_p_linux_guest_runtime_wsl_branch] }}"
+    depth: 1
+    single_branch: true
+    force: false
+
+- name: Initialize sparse checkout for WSL2 Linux kernel cache
+  ansible.builtin.command:
+    argv:
+      - git
+      - -C
+      - "{{ hyperv_ubuntu_gpu_p_guest_repo_cache_root }}/WSL2-Linux-Kernel"
+      - sparse-checkout
+      - init
+      - --no-cone
+  changed_when: false
+
+- name: Set sparse checkout patterns for WSL2 Linux kernel cache
+  ansible.builtin.command:
+    argv:
+      - git
+      - -C
+      - "{{ hyperv_ubuntu_gpu_p_guest_repo_cache_root }}/WSL2-Linux-Kernel"
+      - sparse-checkout
+      - set
+      - /drivers/hv/dxgkrnl
+      - /drivers/gpu/drm/vgem
+      - /include/uapi/misc/d3dkmthk.h
+  changed_when: false
+
+- name: Capture pinned WSL2 Linux kernel short commit
+  ansible.builtin.command:
+    argv:
+      - git
+      - -C
+      - "{{ hyperv_ubuntu_gpu_p_guest_repo_cache_root }}/WSL2-Linux-Kernel"
+      - rev-parse
+      - "--short={{ hyperv_ubuntu_gpu_p_wsl_kernel_short_sha_length }}"
+      - HEAD
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_wsl_commit_short
+  changed_when: false
+
+- name: Compute guest dxgkrnl runtime version
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version: >-
+      {{
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_version_prefix
+        ~ '-'
+        ~ (hyperv_ubuntu_gpu_p_linux_guest_runtime_wsl_commit_short.stdout | trim)
+      }}
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_driverstore_folder: >-
+      {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_local_receipt_json.driverstore_folder }}
+  changed_when: false
+
+- name: Capture current dkms status
+  ansible.builtin.command:
+    argv:
+      - dkms
+      - status
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_status
+  changed_when: false
+
+- name: Collect existing dxgkrnl and vgem dkms versions
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_dxg_versions: >-
+      {{
+        (
+          hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_status.stdout_lines | default([])
+          | select('match', '^dxgkrnl/')
+          | map('regex_replace', '^dxgkrnl/', '')
+          | map('regex_replace', '[,:].*$', '')
+          | list
+        )
+        | unique
+      }}
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_vgem_versions: >-
+      {{
+        (
+          hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_status.stdout_lines | default([])
+          | select('match', '^vgem/')
+          | map('regex_replace', '^vgem/', '')
+          | map('regex_replace', '[,:].*$', '')
+          | list
+        )
+        | unique
+      }}
+  changed_when: false
+
+- name: Remove stray dxgkrnl dkms versions that do not match the desired runtime
+  ansible.builtin.command:
+    argv:
+      - dkms
+      - remove
+      - "dxgkrnl/{{ item }}"
+      - --all
+  loop: >-
+    {{
+      hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_dxg_versions
+      | reject('equalto', hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version)
+      | list
+    }}
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_dxg
+  changed_when: hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_dxg.rc == 0
+  failed_when: false
+
+- name: Remove stray vgem dkms versions that do not match the desired runtime
+  ansible.builtin.command:
+    argv:
+      - dkms
+      - remove
+      - "vgem/{{ item }}"
+      - --all
+  loop: >-
+    {{
+      hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_vgem_versions
+      | reject('equalto', hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version)
+      | list
+    }}
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_vgem
+  changed_when: hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_vgem.rc == 0
+  failed_when: false
+  when: hyperv_ubuntu_gpu_p_install_vgem | bool
+
+- name: Refresh dkms status after stray version cleanup
+  ansible.builtin.command:
+    argv:
+      - dkms
+      - status
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_status
+  changed_when: false
+  when: >-
+    {{
+      (
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_dxg is defined
+        and (hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_dxg.results | default([]) | selectattr('rc', 'equalto', 0) | list | length > 0)
+      )
+      or
+      (
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_vgem is defined
+        and (hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_vgem.results | default([]) | selectattr('rc', 'equalto', 0) | list | length > 0)
+      )
+    }}
+
+- name: Determine whether dxgkrnl runtime install is needed
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_installed: >-
+      {{
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version
+        in hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_dxg_versions
+      }}
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_installed: >-
+      {{
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version
+        in hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_vgem_versions
+      }}
+  changed_when: false
+
+- name: Remove previously managed DriverStore subtree when folder changed
+  ansible.builtin.file:
+    path: >-
+      {{
+        hyperv_ubuntu_gpu_p_guest_wsl_root
+        ~ '/drivers/'
+        ~ hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json['driverstore_folder']
+      }}
+    state: absent
+  when:
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json.get('driverstore_folder', '') | length > 0
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json['driverstore_folder'] != hyperv_ubuntu_gpu_p_linux_guest_runtime_driverstore_folder
+
+- name: Remove previously managed dxgkrnl dkms version when version changed
+  ansible.builtin.command:
+    argv:
+      - dkms
+      - remove
+      - "dxgkrnl/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json['dxgkrnl_version'] }}"
+      - --all
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_old_dxg
+  failed_when: false
+  changed_when: hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_old_dxg.rc == 0
+  when:
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json.get('dxgkrnl_version', '') | length > 0
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json['dxgkrnl_version'] != hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version
+
+- name: Remove previously managed vgem dkms version when version changed
+  ansible.builtin.command:
+    argv:
+      - dkms
+      - remove
+      - "vgem/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json['dxgkrnl_version'] }}"
+      - --all
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_old_vgem
+  failed_when: false
+  changed_when: hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_old_vgem.rc == 0
+  when:
+    - hyperv_ubuntu_gpu_p_install_vgem | bool
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json.get('vgem_installed', false)
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json.get('dxgkrnl_version', '') | length > 0
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json['dxgkrnl_version'] != hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version
+
+- name: Remove previous managed dxgkrnl source tree when version changed
+  ansible.builtin.file:
+    path: >-
+      /usr/src/dxgkrnl-{{
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json['dxgkrnl_version']
+      }}
+    state: absent
+  when:
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json.get('dxgkrnl_version', '') | length > 0
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json['dxgkrnl_version'] != hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version
+
+- name: Remove previous managed vgem source tree when version changed
+  ansible.builtin.file:
+    path: >-
+      /usr/src/vgem-{{
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json['dxgkrnl_version']
+      }}
+    state: absent
+  when:
+    - hyperv_ubuntu_gpu_p_install_vgem | bool
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json.get('vgem_installed', false)
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json.get('dxgkrnl_version', '') | length > 0
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_manifest_json['dxgkrnl_version'] != hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version
+
+- name: Rebuild dxgkrnl source tree when install is needed
+  when: not (hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_installed | bool)
+  block:
+    - name: Reset guest dxgkrnl build workspace
+      ansible.builtin.file:
+        path: "{{ hyperv_ubuntu_gpu_p_guest_build_root }}/dxgkrnl-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+        state: absent
+
+    - name: Create guest dxgkrnl build workspace
+      ansible.builtin.file:
+        path: "{{ hyperv_ubuntu_gpu_p_guest_build_root }}/dxgkrnl-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Copy pristine WSL2 kernel include tree into build workspace
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ hyperv_ubuntu_gpu_p_guest_repo_cache_root }}/WSL2-Linux-Kernel/include/"
+        dest: "{{ hyperv_ubuntu_gpu_p_guest_build_root }}/dxgkrnl-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}/include/"
+
+    - name: Copy pristine WSL2 kernel dxgkrnl tree into build workspace
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ hyperv_ubuntu_gpu_p_guest_repo_cache_root }}/WSL2-Linux-Kernel/drivers/hv/dxgkrnl/"
+        dest: "{{ hyperv_ubuntu_gpu_p_guest_build_root }}/dxgkrnl-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}/drivers/hv/dxgkrnl/"
+
+    - name: Apply dxgkrnl upstream patches to build workspace
+      ansible.posix.patch:
+        src: "{{ hyperv_ubuntu_gpu_p_guest_repo_cache_root }}/dxgkrnl-dkms/{{ item }}"
+        basedir: "{{ hyperv_ubuntu_gpu_p_guest_build_root }}/dxgkrnl-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+        remote_src: true
+        strip: 1
+        state: present
+      loop: "{{ hyperv_ubuntu_gpu_p_dxgkrnl_branch_patch_map[hyperv_ubuntu_gpu_p_linux_guest_runtime_wsl_branch] }}"
+
+    - name: Reset target dxgkrnl source tree under /usr/src
+      ansible.builtin.file:
+        path: "/usr/src/dxgkrnl-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+        state: absent
+
+    - name: Create target dxgkrnl source tree under /usr/src
+      ansible.builtin.file:
+        path: "/usr/src/dxgkrnl-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Copy patched dxgkrnl source files into /usr/src
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ hyperv_ubuntu_gpu_p_guest_build_root }}/dxgkrnl-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}/drivers/hv/dxgkrnl/"
+        dest: "/usr/src/dxgkrnl-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}/"
+
+    - name: Copy patched include tree into /usr/src
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ hyperv_ubuntu_gpu_p_guest_build_root }}/dxgkrnl-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}/include/"
+        dest: "/usr/src/dxgkrnl-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}/include/"
+
+    - name: Force dxgkrnl module build mode in Makefile
+      ansible.builtin.replace:
+        path: "/usr/src/dxgkrnl-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}/Makefile"
+        regexp: '\\$\\(CONFIG_DXGKRNL\\)'
+        replace: m
+
+    - name: Append dxgkrnl extra Makefile flags
+      ansible.builtin.blockinfile:
+        path: "/usr/src/dxgkrnl-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}/Makefile"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK hyperv_ubuntu_gpu_p_dxgkrnl"
+        block: |
+          ifeq ($(shell echo ${kernelver} | egrep "\+deb[0-9]+"),)
+          KERNEL_INCLUDE_PATH = /lib/modules/${kernelver}/build/include
+          else
+          KERNEL_INCLUDE_PATH = /lib/modules/${kernelver}/source/include
+          endif
+          EXTRA_CFLAGS += -I$(PWD)/include -D_MAIN_KERNEL_ -I${KERNEL_INCLUDE_PATH}/linux -include ${KERNEL_INCLUDE_PATH}/linux/vmalloc.h
+          ccflags-y += ${EXTRA_CFLAGS}
+
+    - name: Write dxgkrnl dkms.conf
+      ansible.builtin.template:
+        src: dxgkrnl-dkms.conf.j2
+        dest: "/usr/src/dxgkrnl-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}/dkms.conf"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Add dxgkrnl dkms module
+      ansible.builtin.command:
+        argv:
+          - dkms
+          - add
+          - "-k"
+          - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+          - "dxgkrnl/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_add
+      changed_when: true
+
+    - name: Build dxgkrnl dkms module
+      ansible.builtin.command:
+        argv:
+          - dkms
+          - build
+          - "-k"
+          - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+          - "dxgkrnl/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+          - --force
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_build
+      changed_when: true
+
+    - name: Install dxgkrnl dkms module
+      ansible.builtin.command:
+        argv:
+          - dkms
+          - install
+          - "-k"
+          - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+          - "dxgkrnl/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+          - --force
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_install
+      changed_when: true
+
+- name: Rebuild vgem source tree when enabled and install is needed
+  when:
+    - hyperv_ubuntu_gpu_p_install_vgem | bool
+    - not (hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_installed | bool)
+  block:
+    - name: Reset guest vgem build workspace
+      ansible.builtin.file:
+        path: "{{ hyperv_ubuntu_gpu_p_guest_build_root }}/vgem-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+        state: absent
+
+    - name: Create guest vgem build workspace
+      ansible.builtin.file:
+        path: "{{ hyperv_ubuntu_gpu_p_guest_build_root }}/vgem-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Copy pristine WSL2 kernel vgem tree into build workspace
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ hyperv_ubuntu_gpu_p_guest_repo_cache_root }}/WSL2-Linux-Kernel/drivers/gpu/drm/vgem/"
+        dest: "{{ hyperv_ubuntu_gpu_p_guest_build_root }}/vgem-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}/drivers/gpu/drm/vgem/"
+
+    - name: Apply vgem upstream patches to build workspace
+      ansible.posix.patch:
+        src: "{{ hyperv_ubuntu_gpu_p_guest_repo_cache_root }}/dxgkrnl-dkms/{{ item }}"
+        basedir: "{{ hyperv_ubuntu_gpu_p_guest_build_root }}/vgem-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+        remote_src: true
+        strip: 1
+        state: present
+      loop: "{{ hyperv_ubuntu_gpu_p_vgem_branch_patch_map.get(hyperv_ubuntu_gpu_p_linux_guest_runtime_wsl_branch, []) }}"
+
+    - name: Reset target vgem source tree under /usr/src
+      ansible.builtin.file:
+        path: "/usr/src/vgem-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+        state: absent
+
+    - name: Create target vgem source tree under /usr/src
+      ansible.builtin.file:
+        path: "/usr/src/vgem-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Copy patched vgem source files into /usr/src
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ hyperv_ubuntu_gpu_p_guest_build_root }}/vgem-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}/drivers/gpu/drm/vgem/"
+        dest: "/usr/src/vgem-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}/"
+
+    - name: Force vgem module build mode in Makefile
+      ansible.builtin.replace:
+        path: "/usr/src/vgem-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}/Makefile"
+        regexp: '\\$\\(CONFIG_DRM_VGEM\\)'
+        replace: m
+
+    - name: Append vgem extra Makefile flags
+      ansible.builtin.blockinfile:
+        path: "/usr/src/vgem-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}/Makefile"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK hyperv_ubuntu_gpu_p_vgem"
+        block: |
+          ifeq ($(shell echo ${kernelver} | egrep "\+deb[0-9]+"),)
+          KERNEL_INCLUDE_PATH = /lib/modules/${kernelver}/build/include
+          else
+          KERNEL_INCLUDE_PATH = /lib/modules/${kernelver}/source/include
+          endif
+          EXTRA_CFLAGS = -I$(PWD)/include -D_MAIN_KERNEL_ -I${KERNEL_INCLUDE_PATH}/linux -include ${KERNEL_INCLUDE_PATH}/linux/vmalloc.h
+          ccflags-y += ${EXTRA_CFLAGS}
+
+    - name: Write vgem dkms.conf
+      ansible.builtin.template:
+        src: vgem-dkms.conf.j2
+        dest: "/usr/src/vgem-{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}/dkms.conf"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Add vgem dkms module
+      ansible.builtin.command:
+        argv:
+          - dkms
+          - add
+          - "-k"
+          - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+          - "vgem/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_add
+      changed_when: true
+
+    - name: Build vgem dkms module
+      ansible.builtin.command:
+        argv:
+          - dkms
+          - build
+          - "-k"
+          - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+          - "vgem/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+          - --force
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_build
+      changed_when: true
+
+    - name: Install vgem dkms module
+      ansible.builtin.command:
+        argv:
+          - dkms
+          - install
+          - "-k"
+          - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+          - "vgem/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+          - --force
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_install
+      changed_when: true
+
+- name: Ensure exact managed DriverStore destination exists
+  ansible.builtin.file:
+    path: >-
+      {{
+        hyperv_ubuntu_gpu_p_guest_wsl_root
+        ~ '/drivers/'
+        ~ hyperv_ubuntu_gpu_p_linux_guest_runtime_driverstore_folder
+      }}
+    state: directory
+    owner: "{{ hyperv_ubuntu_gpu_p_guest_root_owner }}"
+    group: "{{ hyperv_ubuntu_gpu_p_guest_root_group }}"
+    mode: "{{ hyperv_ubuntu_gpu_p_guest_wsl_drivers_mode }}"
+
+- name: Ensure canonical /usr/lib/wsl root ownership and mode
+  ansible.builtin.file:
+    path: "{{ hyperv_ubuntu_gpu_p_guest_wsl_root }}"
+    state: directory
+    owner: "{{ hyperv_ubuntu_gpu_p_guest_root_owner }}"
+    group: "{{ hyperv_ubuntu_gpu_p_guest_root_group }}"
+    mode: "{{ hyperv_ubuntu_gpu_p_guest_wsl_root_mode }}"
+
+- name: Ensure canonical /usr/lib/wsl/lib ownership and mode
+  ansible.builtin.file:
+    path: "{{ hyperv_ubuntu_gpu_p_guest_wsl_root }}/lib"
+    state: directory
+    owner: "{{ hyperv_ubuntu_gpu_p_guest_root_owner }}"
+    group: "{{ hyperv_ubuntu_gpu_p_guest_root_group }}"
+    mode: "{{ hyperv_ubuntu_gpu_p_guest_wsl_lib_mode }}"
+
+- name: Ensure canonical /usr/lib/wsl/drivers ownership and mode
+  ansible.builtin.file:
+    path: "{{ hyperv_ubuntu_gpu_p_guest_wsl_root }}/drivers"
+    state: directory
+    owner: "{{ hyperv_ubuntu_gpu_p_guest_root_owner }}"
+    group: "{{ hyperv_ubuntu_gpu_p_guest_root_group }}"
+    mode: "{{ hyperv_ubuntu_gpu_p_guest_wsl_drivers_mode }}"
+
+- name: Copy Program Files WSL runtime files into guest
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ hyperv_ubuntu_gpu_p_guest_artifact_extract_root }}/wsl-programfiles-lib/"
+    dest: "{{ hyperv_ubuntu_gpu_p_guest_wsl_root }}/lib/"
+    owner: "{{ hyperv_ubuntu_gpu_p_guest_root_owner }}"
+    group: "{{ hyperv_ubuntu_gpu_p_guest_root_group }}"
+    directory_mode: "{{ hyperv_ubuntu_gpu_p_guest_wsl_lib_mode }}"
+    mode: "{{ hyperv_ubuntu_gpu_p_guest_wsl_lib_mode }}"
+
+- name: Copy lxss WSL runtime files into guest
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ hyperv_ubuntu_gpu_p_guest_artifact_extract_root }}/wsl-lxss-lib/"
+    dest: "{{ hyperv_ubuntu_gpu_p_guest_wsl_root }}/lib/"
+    owner: "{{ hyperv_ubuntu_gpu_p_guest_root_owner }}"
+    group: "{{ hyperv_ubuntu_gpu_p_guest_root_group }}"
+    directory_mode: "{{ hyperv_ubuntu_gpu_p_guest_wsl_lib_mode }}"
+    mode: "{{ hyperv_ubuntu_gpu_p_guest_wsl_lib_mode }}"
+
+- name: Copy exact DriverStore subtree into guest
+  ansible.builtin.copy:
+    remote_src: true
+    src: >-
+      {{
+        hyperv_ubuntu_gpu_p_guest_artifact_extract_root
+        ~ '/driverstore/'
+        ~ hyperv_ubuntu_gpu_p_linux_guest_runtime_driverstore_folder
+        ~ '/'
+      }}
+    dest: >-
+      {{
+        hyperv_ubuntu_gpu_p_guest_wsl_root
+        ~ '/drivers/'
+        ~ hyperv_ubuntu_gpu_p_linux_guest_runtime_driverstore_folder
+        ~ '/'
+      }}
+    owner: "{{ hyperv_ubuntu_gpu_p_guest_root_owner }}"
+    group: "{{ hyperv_ubuntu_gpu_p_guest_root_group }}"
+    directory_mode: "{{ hyperv_ubuntu_gpu_p_guest_wsl_drivers_mode }}"
+    mode: "{{ hyperv_ubuntu_gpu_p_guest_wsl_drivers_mode }}"
+
+- name: Enforce recursive ownership and mode for /usr/lib/wsl/lib
+  ansible.builtin.file:
+    path: "{{ hyperv_ubuntu_gpu_p_guest_wsl_root }}/lib"
+    state: directory
+    owner: "{{ hyperv_ubuntu_gpu_p_guest_root_owner }}"
+    group: "{{ hyperv_ubuntu_gpu_p_guest_root_group }}"
+    mode: "{{ hyperv_ubuntu_gpu_p_guest_wsl_lib_mode }}"
+    recurse: true
+
+- name: Enforce recursive ownership and mode for exact DriverStore subtree
+  ansible.builtin.file:
+    path: >-
+      {{
+        hyperv_ubuntu_gpu_p_guest_wsl_root
+        ~ '/drivers/'
+        ~ hyperv_ubuntu_gpu_p_linux_guest_runtime_driverstore_folder
+      }}
+    state: directory
+    owner: "{{ hyperv_ubuntu_gpu_p_guest_root_owner }}"
+    group: "{{ hyperv_ubuntu_gpu_p_guest_root_group }}"
+    mode: "{{ hyperv_ubuntu_gpu_p_guest_wsl_drivers_mode }}"
+    recurse: true
+
+- name: Ensure nvidia-smi is executable from exact DriverStore subtree
+  ansible.builtin.file:
+    path: >-
+      {{
+        hyperv_ubuntu_gpu_p_guest_wsl_root
+        ~ '/drivers/'
+        ~ hyperv_ubuntu_gpu_p_linux_guest_runtime_driverstore_folder
+        ~ '/nvidia-smi'
+      }}
+    owner: "{{ hyperv_ubuntu_gpu_p_guest_root_owner }}"
+    group: "{{ hyperv_ubuntu_gpu_p_guest_root_group }}"
+    mode: "{{ hyperv_ubuntu_gpu_p_guest_wsl_drivers_mode }}"
+  failed_when: false
+
+- name: Ensure canonical WSL runtime symlinks exist
+  ansible.builtin.file:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    state: link
+    force: true
+  loop: "{{ hyperv_ubuntu_gpu_p_guest_managed_symlinks }}"
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_symlinks
+
+- name: Ensure WSL ld.so path file exists
+  ansible.builtin.copy:
+    dest: "{{ hyperv_ubuntu_gpu_p_guest_ldso_file }}"
+    owner: "{{ hyperv_ubuntu_gpu_p_guest_root_owner }}"
+    group: "{{ hyperv_ubuntu_gpu_p_guest_root_group }}"
+    mode: "0644"
+    content: |
+      {{ hyperv_ubuntu_gpu_p_guest_wsl_root }}/lib
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_ldso
+
+- name: Ensure /etc/environment PATH includes /usr/lib/wsl/lib
+  ansible.builtin.lineinfile:
+    path: /etc/environment
+    regexp: '^(PATH=".*?)(?::/usr/lib/wsl/lib)?(")$'
+    line: '\1:{{ hyperv_ubuntu_gpu_p_guest_environment_path_append }}\2'
+    backrefs: true
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_environment_path
+
+- name: Refresh guest linker cache
+  ansible.builtin.command:
+    argv:
+      - ldconfig
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_ldconfig
+  changed_when: true
+
+- name: Write guest runtime state manifest
+  ansible.builtin.copy:
+    dest: "{{ hyperv_ubuntu_gpu_p_guest_state_manifest_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    content: "{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_manifest | to_nice_json }}"
+  vars:
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_manifest:
+      target_kernel: "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+      wsl_branch: "{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_wsl_branch }}"
+      dxgkrnl_version: "{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+      dxgkrnl_repo_url: "{{ hyperv_ubuntu_gpu_p_dxgkrnl_repo_url }}"
+      dxgkrnl_repo_version: "{{ hyperv_ubuntu_gpu_p_dxgkrnl_repo_version }}"
+      wsl2_kernel_repo_url: "{{ hyperv_ubuntu_gpu_p_wsl2_kernel_repo_url }}"
+      wsl2_kernel_repo_version: "{{ hyperv_ubuntu_gpu_p_wsl_kernel_branch_commit_map[hyperv_ubuntu_gpu_p_linux_guest_runtime_wsl_branch] }}"
+      driverstore_folder: "{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_driverstore_folder }}"
+      managed_lib_files: "{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_managed_lib_files }}"
+      managed_driverstore_files: "{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_managed_driverstore_files }}"
+      managed_symlinks: "{{ hyperv_ubuntu_gpu_p_guest_managed_symlinks }}"
+      vgem_installed: "{{ hyperv_ubuntu_gpu_p_install_vgem | bool }}"
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_manifest_write
+
+- name: Determine whether guest reboot is required
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_reboot_required: >-
+      {{
+        (not (hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_installed | bool))
+        or (hyperv_ubuntu_gpu_p_install_vgem | bool and not (hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_installed | bool))
+        or (hyperv_ubuntu_gpu_p_linux_guest_runtime_symlinks is changed)
+        or (hyperv_ubuntu_gpu_p_linux_guest_runtime_ldso is changed)
+        or (hyperv_ubuntu_gpu_p_linux_guest_runtime_environment_path is changed)
+      }}
+  changed_when: false
+
+- name: Reboot guest after runtime changes
+  ansible.builtin.reboot:
+    reboot_timeout: 900
+  when: hyperv_ubuntu_gpu_p_linux_guest_runtime_reboot_required | bool

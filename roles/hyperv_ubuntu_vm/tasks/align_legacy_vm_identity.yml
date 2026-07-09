@@ -18,10 +18,11 @@
 - name: Probe legacy and target Hyper-V VM names
   ansible.windows.win_powershell:
     script: |
+      $hypervServer = '{{ hyperv_ubuntu_vm_hyperv_server }}'
       $legacy = '{{ hyperv_ubuntu_vm_legacy_hyperv_name }}'
       $target = '{{ hyperv_ubuntu_vm_name }}'
-      $legacyVm = Get-VM -Name $legacy -ErrorAction SilentlyContinue
-      $targetVm = Get-VM -Name $target -ErrorAction SilentlyContinue
+      $legacyVm = Get-VM -ComputerName $hypervServer -Name $legacy -ErrorAction SilentlyContinue
+      $targetVm = Get-VM -ComputerName $hypervServer -Name $target -ErrorAction SilentlyContinue
       $Ansible.Result = @{
         legacy_exists = [bool]$legacyVm
         target_exists = [bool]$targetVm
@@ -42,31 +43,32 @@
 - name: Align legacy Hyper-V VM name and artifact directory to compact schema target
   ansible.windows.win_powershell:
     script: |
+      $hypervServer = '{{ hyperv_ubuntu_vm_hyperv_server }}'
       $legacy = '{{ hyperv_ubuntu_vm_legacy_hyperv_name }}'
       $target = '{{ hyperv_ubuntu_vm_name }}'
       $legacyRoot = "C:\ProgramData\Ansible\hyperv_ubuntu_vm\$legacy"
       $targetRoot = "C:\ProgramData\Ansible\hyperv_ubuntu_vm\$target"
       $changed = $false
       $artifactAction = 'unchanged'
-      $legacyVm = Get-VM -Name $legacy -ErrorAction SilentlyContinue
-      $targetVm = Get-VM -Name $target -ErrorAction SilentlyContinue
+      $legacyVm = Get-VM -ComputerName $hypervServer -Name $legacy -ErrorAction SilentlyContinue
+      $targetVm = Get-VM -ComputerName $hypervServer -Name $target -ErrorAction SilentlyContinue
       if ($legacyVm -and $targetVm) {
         throw "Both '$legacy' and '$target' Hyper-V VMs exist; manual cleanup required."
       }
       if ($legacyVm) {
         if ($legacyVm.State -ne 'Off') {
-          Stop-VM -Name $legacy -TurnOff -Force -ErrorAction Stop
+          Stop-VM -ComputerName $hypervServer -Name $legacy -TurnOff -Force -ErrorAction Stop
           $changed = $true
         }
-        Rename-VM -Name $legacy -NewName $target -ErrorAction Stop
+        Rename-VM -ComputerName $hypervServer -Name $legacy -NewName $target -ErrorAction Stop
         $changed = $true
-        $targetVm = Get-VM -Name $target -ErrorAction Stop
+        $targetVm = Get-VM -ComputerName $hypervServer -Name $target -ErrorAction Stop
       }
       if (-not $targetVm) {
         throw "Target Hyper-V VM '$target' not found."
       }
       if ($targetVm.State -ne 'Off') {
-        Stop-VM -Name $target -TurnOff -Force -ErrorAction Stop
+        Stop-VM -ComputerName $hypervServer -Name $target -TurnOff -Force -ErrorAction Stop
         $changed = $true
       }
       if (Test-Path -LiteralPath $legacyRoot) {
@@ -102,7 +104,7 @@
         }
       }
       $diskRepoint = $null
-      $disk = Get-VMHardDiskDrive -VMName $target -ErrorAction SilentlyContinue | Select-Object -First 1
+      $disk = Get-VMHardDiskDrive -ComputerName $hypervServer -VMName $target -ErrorAction SilentlyContinue | Select-Object -First 1
       if ($disk -and -not (Test-Path -LiteralPath $disk.Path)) {
         $found = $null
         foreach ($root in @($legacyRoot, $targetRoot)) {
@@ -116,6 +118,7 @@
           throw "No VHDX candidate found under $legacyRoot or $targetRoot for VM '$target'."
         }
         Set-VMHardDiskDrive `
+          -ComputerName $hypervServer `
           -VMName $target `
           -ControllerType $disk.ControllerType `
           -ControllerNumber $disk.ControllerNumber `
@@ -128,11 +131,11 @@
         }
         $changed = $true
       }
-      $targetVm = Get-VM -Name $target -ErrorAction Stop
+      $targetVm = Get-VM -ComputerName $hypervServer -Name $target -ErrorAction Stop
       $startError = $null
       if ($targetVm.State -eq 'Off') {
         try {
-          Start-VM -Name $target -ErrorAction Stop | Out-Null
+          Start-VM -ComputerName $hypervServer -Name $target -ErrorAction Stop | Out-Null
           $changed = $true
         } catch {
           $startError = $_.Exception.Message
@@ -143,7 +146,7 @@
         action = 'aligned'
         legacy = $legacy
         target = $target
-        state = (Get-VM -Name $target).State.ToString()
+        state = (Get-VM -ComputerName $hypervServer -Name $target).State.ToString()
         host_root = $targetRoot
         legacy_root = $legacyRoot
         host_root_exists = (Test-Path -LiteralPath $targetRoot)

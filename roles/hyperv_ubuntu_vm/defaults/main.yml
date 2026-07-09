@@ -1,5 +1,10 @@
 ---
 hyperv_ubuntu_vm_state: present
+hyperv_ubuntu_vm_hyperv_server: >-
+  {{
+    hyperv_management_endpoint
+    | default(ansible_host | default(host_ip | default(os_hostname | default(inventory_hostname))))
+  }}
 hyperv_ubuntu_vm_name: >-
   {{ (physical_node | default(inventory_hostname | regex_replace('-win$', ''))) ~ '-ubuntu' }}
 hyperv_ubuntu_vm_inventory_host: "{{ hyperv_ubuntu_vm_name }}"
@@ -132,10 +137,21 @@ hyperv_ubuntu_vm_host_offline_seed_script_path: "{{ hyperv_ubuntu_vm_host_root_d
 hyperv_ubuntu_vm_host_offline_seed_signature_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\azure-offline-seed.signature"
 
 hyperv_ubuntu_vm_controller_host: "{{ groups['execution_nodes'][0] }}"
+hyperv_ubuntu_vm_controller_user_home: >-
+  {{
+    hostvars[hyperv_ubuntu_vm_controller_host].dotfiles_user_home
+    | default(
+      hostvars[hyperv_ubuntu_vm_controller_host].ansible_env.HOME
+      | default(
+        hostvars[hyperv_ubuntu_vm_controller_host].ansible_user_dir
+        | default(lookup('env', 'HOME'))
+      )
+    )
+  }}
 hyperv_ubuntu_vm_controller_cache_dir: >-
-  {{ hostvars[hyperv_ubuntu_vm_controller_host].dotfiles_user_home }}/.local/state/dotfile-vnext/hyperv_iso_work
+  {{ hyperv_ubuntu_vm_controller_user_home }}/.local/state/dotfile-vnext/hyperv_iso_work
 hyperv_ubuntu_vm_controller_staging_dir: >-
-  {{ hostvars[hyperv_ubuntu_vm_controller_host].dotfiles_user_home }}/.local/state/dotfile-vnext/hyperv_ubuntu_vm/{{ hyperv_ubuntu_vm_name }}
+  {{ hyperv_ubuntu_vm_controller_user_home }}/.local/state/dotfile-vnext/hyperv_ubuntu_vm/{{ hyperv_ubuntu_vm_name }}
 hyperv_ubuntu_vm_controller_seed_dir: "{{ hyperv_ubuntu_vm_controller_staging_dir }}/seed"
 hyperv_ubuntu_vm_controller_user_data_path: "{{ hyperv_ubuntu_vm_controller_seed_dir }}/user-data"
 hyperv_ubuntu_vm_controller_meta_data_path: "{{ hyperv_ubuntu_vm_controller_seed_dir }}/meta-data"
@@ -149,4 +165,16 @@ hyperv_ubuntu_vm_controller_server_iso_custom_signature_path: "{{ hyperv_ubuntu_
 hyperv_ubuntu_vm_controller_server_iso_efi_image_path: "{{ hyperv_ubuntu_vm_controller_server_iso_custom_dir }}/efi-partition.img"
 hyperv_ubuntu_vm_controller_iso_command: /usr/bin/hdiutil
 hyperv_ubuntu_vm_controller_xorriso_command: /usr/local/bin/xorriso
+hyperv_ubuntu_vm_manage_guest_authorized_keys: true
+hyperv_ubuntu_vm_authorized_public_keys_extra: []
+hyperv_ubuntu_vm_authorize_windows_host_outbound_key: true
+hyperv_ubuntu_vm_windows_host_outbound_ssh_key_basename: >-
+  {{ windows_outbound_ssh_key_basename | default('id_ed25519_ansible') }}
+hyperv_ubuntu_vm_windows_host_outbound_public_key_path: >-
+  {{
+    (ansible_ssh_dir_path | default('C:\\Users\\' ~ (ansible_user | default('joshc')) ~ '\\.ssh'))
+    ~ '\\'
+    ~ hyperv_ubuntu_vm_windows_host_outbound_ssh_key_basename
+    ~ '.pub'
+  }}
 controller_ssh_public_key_path: "~/.ssh/id_ed25519_ansible.pub"

@@ -85,6 +85,7 @@
     error_action: stop
     script: |
       $vmName = '{{ _hyperv_ubuntu_vm_collector_vm_name }}'
+      $hypervServer = '{{ hyperv_management_endpoint | default(ansible_host | default(host_ip | default(os_hostname | default(inventory_hostname)))) }}'
       $rootDir = '{{ _hyperv_ubuntu_vm_collector_root_dir }}'
       $archivePath = '{{ _hyperv_ubuntu_vm_collector_archive_path }}'
       $sourceVhdPath = '{{ _hyperv_ubuntu_vm_collector_source_vhd_path }}'
@@ -112,7 +113,7 @@
       }
 
       try {
-        $vm = Get-VM -Name $vmName -ErrorAction SilentlyContinue
+        $vm = Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction SilentlyContinue
         if ($vm) {
           $result.vm = @{
             Name = $vm.Name
@@ -124,21 +125,21 @@
       } catch {}
 
       try {
-        $disk = Get-VMHardDiskDrive -VMName $vmName -ErrorAction SilentlyContinue | Select-Object -First 1
+        $disk = Get-VMHardDiskDrive -ComputerName $hypervServer -VMName $vmName -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($disk) {
           $result.disk = $disk | Select-Object Path, ControllerType, ControllerNumber, ControllerLocation
         }
       } catch {}
 
       try {
-        $dvd = Get-VMDvdDrive -VMName $vmName -ErrorAction SilentlyContinue | Select-Object -First 1
+        $dvd = Get-VMDvdDrive -ComputerName $hypervServer -VMName $vmName -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($dvd) {
           $result.dvd = $dvd | Select-Object Path, ControllerNumber, ControllerLocation
         }
       } catch {}
 
       try {
-        $firmware = Get-VMFirmware -VMName $vmName -ErrorAction SilentlyContinue
+        $firmware = Get-VMFirmware -ComputerName $hypervServer -VMName $vmName -ErrorAction SilentlyContinue
         if ($firmware) {
           $result.firmware = $firmware | Select-Object SecureBoot, SecureBootTemplate, FirstBootDevice
         }

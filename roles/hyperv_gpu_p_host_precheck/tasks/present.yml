@@ -1,0 +1,150 @@
+---
+- name: Ensure Hyper-V GPU-P precheck receipt root exists
+  ansible.windows.win_file:
+    path: "{{ hyperv_gpu_p_host_precheck_receipt_root }}"
+    state: directory
+
+- name: Stat repo-managed NVIDIA driver contract
+  ansible.windows.win_stat:
+    path: "{{ hyperv_gpu_p_host_precheck_driver_contract_path }}"
+  register: hyperv_gpu_p_host_precheck_driver_contract_stat
+
+- name: Assert repo-managed NVIDIA driver contract exists when required
+  ansible.builtin.assert:
+    that:
+      - hyperv_gpu_p_host_precheck_driver_contract_stat.stat.exists | bool
+    fail_msg: >-
+      Managed NVIDIA driver contract is missing at
+      {{ hyperv_gpu_p_host_precheck_driver_contract_path }}.
+  when: hyperv_gpu_p_host_precheck_require_driver_contract | bool
+
+- name: Gather Hyper-V GPU-P host readiness evidence
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $hypervServer = '{{ hyperv_gpu_p_host_precheck_hyperv_server }}'
+      $computerInfo = Get-ComputerInfo
+      $vmHost = Get-VMHost -ComputerName $hypervServer
+      $partitionableGpu = @(Get-VMHostPartitionableGpu -ComputerName $hypervServer -ErrorAction SilentlyContinue)
+      $displayDevices = @(
+        Get-PnpDevice -Class Display -ErrorAction SilentlyContinue | ForEach-Object {
+          [pscustomobject]@{
+            friendly_name = $_.FriendlyName
+            status = $_.Status
+            instance_id = $_.InstanceId
+          }
+        }
+      )
+      $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
+      $bios = Get-CimInstance Win32_BIOS | Select-Object -First 1
+      $coreinfoSignals = @()
+      $coreinfoPath = '{{ hyperv_gpu_p_host_precheck_coreinfo_exe_path }}'
+      if (Test-Path $coreinfoPath) {
+        $coreinfoRaw = & $coreinfoPath -accepteula -v 2>$null
+        if ($LASTEXITCODE -eq 0 -and $coreinfoRaw) {
+          $coreinfoSignals = @(
+            $coreinfoRaw | Where-Object {
+              $_ -match '^\s*(SVM|VMX|NP|EPT|HYPERVISOR)\s'
+            }
+          )
+        }
+      }
+
+      $iovReasons = @()
+      if ($null -ne $vmHost.IovSupportReasons) {
+        $iovReasons = @($vmHost.IovSupportReasons | ForEach-Object { $_.ToString() })
+      }
+
+      [pscustomobject]@{
+        hypervisor_present = [bool]$computerInfo.HyperVisorPresent
+        virtualization_firmware_enabled = [bool]$computerInfo.HyperVRequirementVirtualizationFirmwareEnabled
+        iov_support = [bool]$vmHost.IovSupport
+        iov_support_reasons = $iovReasons
+        partitionable_gpu_count = $partitionableGpu.Count
+        partitionable_gpu_names = @($partitionableGpu | ForEach-Object { $_.Name })
+        display_devices = $displayDevices
+        cpu_name = $cpu.Name
+        cpu_manufacturer = $cpu.Manufacturer
+        bios_version = ($computerInfo.BiosVersion | Out-String).Trim()
+        bios_smbios_version = $bios.SMBIOSBIOSVersion
+        coreinfo_path = if (Test-Path $coreinfoPath) { $coreinfoPath } else { $null }
+        coreinfo_signals = $coreinfoSignals
+      } | ConvertTo-Json -Depth 8 -Compress
+  register: hyperv_gpu_p_host_precheck_probe
+  changed_when: false
+
+- name: Parse Hyper-V GPU-P host readiness evidence
+  ansible.builtin.set_fact:
+    hyperv_gpu_p_host_precheck_probe_json: "{{ hyperv_gpu_p_host_precheck_probe.output[0] | from_json }}"
+  changed_when: false
+
+- name: Build Hyper-V GPU-P host precheck receipt
+  ansible.builtin.set_fact:
+    hyperv_gpu_p_host_precheck_receipt:
+      driver_contract_path: "{{ hyperv_gpu_p_host_precheck_driver_contract_path }}"
+      driver_contract_present: "{{ hyperv_gpu_p_host_precheck_driver_contract_stat.stat.exists | default(false) }}"
+      hypervisor_present: "{{ hyperv_gpu_p_host_precheck_probe_json.hypervisor_present }}"
+      virtualization_firmware_enabled: "{{ hyperv_gpu_p_host_precheck_probe_json.virtualization_firmware_enabled }}"
+      iov_support: "{{ hyperv_gpu_p_host_precheck_probe_json.iov_support }}"
+      iov_support_reasons: "{{ hyperv_gpu_p_host_precheck_probe_json.iov_support_reasons | default([]) }}"
+      partitionable_gpu_count: "{{ hyperv_gpu_p_host_precheck_probe_json.partitionable_gpu_count }}"
+      partitionable_gpu_names: "{{ hyperv_gpu_p_host_precheck_probe_json.partitionable_gpu_names | default([]) }}"
+      display_devices: "{{ hyperv_gpu_p_host_precheck_probe_json.display_devices | default([]) }}"
+      cpu_name: "{{ hyperv_gpu_p_host_precheck_probe_json.cpu_name }}"
+      cpu_manufacturer: "{{ hyperv_gpu_p_host_precheck_probe_json.cpu_manufacturer }}"
+      bios_version: "{{ hyperv_gpu_p_host_precheck_probe_json.bios_version }}"
+      bios_smbios_version: "{{ hyperv_gpu_p_host_precheck_probe_json.bios_smbios_version }}"
+      coreinfo_path: "{{ hyperv_gpu_p_host_precheck_probe_json.coreinfo_path | default('') }}"
+      coreinfo_signals: "{{ hyperv_gpu_p_host_precheck_probe_json.coreinfo_signals | default([]) }}"
+  changed_when: false
+
+- name: Persist Hyper-V GPU-P host precheck receipt
+  ansible.windows.win_copy:
+    dest: "{{ hyperv_gpu_p_host_precheck_receipt_path }}"
+    content: "{{ hyperv_gpu_p_host_precheck_receipt | to_nice_json }}"
+
+- name: Assert Hyper-V hypervisor is present when required
+  ansible.builtin.assert:
+    that:
+      - hyperv_gpu_p_host_precheck_probe_json.hypervisor_present | bool
+    fail_msg: Hyper-V hypervisor is not reported as present on this host.
+  when: hyperv_gpu_p_host_precheck_require_hypervisor_present | bool
+
+- name: Assert virtualization firmware support is enabled when required
+  ansible.builtin.assert:
+    that:
+      - hyperv_gpu_p_host_precheck_probe_json.virtualization_firmware_enabled | bool
+    fail_msg: Hyper-V virtualization firmware support is not reported as enabled on this host.
+  when: hyperv_gpu_p_host_precheck_require_virtualization_firmware_enabled | bool
+
+- name: Assert IO virtualization support is enabled when required
+  ansible.builtin.assert:
+    that:
+      - hyperv_gpu_p_host_precheck_probe_json.iov_support | bool
+      - (hyperv_gpu_p_host_precheck_probe_json.iov_support_reasons | default([]) | length) == 0
+    fail_msg: >-
+      Hyper-V host does not satisfy GPU-P IO virtualization requirements.
+      Reasons={{ hyperv_gpu_p_host_precheck_probe_json.iov_support_reasons | default([]) }}
+  when: hyperv_gpu_p_host_precheck_require_iov_support | bool
+
+- name: Assert a partitionable GPU is present when required
+  ansible.builtin.assert:
+    that:
+      - (hyperv_gpu_p_host_precheck_probe_json.partitionable_gpu_count | int) > 0
+    fail_msg: Hyper-V host does not report a partitionable GPU.
+  when: hyperv_gpu_p_host_precheck_require_partitionable_gpu | bool
+
+- name: Assert partitionable GPU name matches expected regex when declared
+  ansible.builtin.assert:
+    that:
+      - >-
+        (
+          hyperv_gpu_p_host_precheck_probe_json.partitionable_gpu_names | default([])
+          | select('match', hyperv_gpu_p_host_precheck_expected_partitionable_gpu_name_regex)
+          | list
+          | length
+        ) > 0
+    fail_msg: >-
+      Partitionable GPU names {{ hyperv_gpu_p_host_precheck_probe_json.partitionable_gpu_names | default([]) }}
+      did not match expected regex {{ hyperv_gpu_p_host_precheck_expected_partitionable_gpu_name_regex }}.
+  when: hyperv_gpu_p_host_precheck_expected_partitionable_gpu_name_regex | length > 0

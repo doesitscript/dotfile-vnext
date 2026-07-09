@@ -1,8 +1,27 @@
-# Hyper-V Ubuntu GPU-P WSL Bridge Experiment Packet
+# Hyper-V Ubuntu GPU-P Host-Visible WSL Runtime Reference Packet
+
+## Deprecation Status
+
+Use host-visible Windows paths only for this workflow.
+
+The supported repo path is:
+
+- `playbooks/troubleshoot/hyperv_ubuntu_gpu_p_supported_finalize.yaml`
+
+This packet is retained as historical reference for:
+
+- the host-visible Windows source locations
+- the `/usr/lib/wsl/lib` staging insight
+- the later need for the exact traced DriverStore subtree under `/usr/lib/wsl/drivers`
 
 ## Summary
 
-This packet governs a bounded troubleshooting experiment for `hom-lab-ctl-k3s-02`: use the host's working WSL GPU bridge layout as the reference model for a full Ubuntu Hyper-V VM that already passes host-side GPU-P attach and boot, but still fails to expose a usable guest GPU interface.
+This packet now serves as a historical reference for the troubleshooting work on `hom-lab-ctl-k3s-02`.
+
+The reusable conclusion is:
+
+- use host-visible Windows paths as the file source
+- do not execute inside WSL as part of the supported method
 
 Baseline truth before execution:
 
@@ -10,26 +29,26 @@ Baseline truth before execution:
 - `hom-lab-ctl-k3s-02` can receive the GPU partition adapter.
 - `hom-lab-ctl-k3s-02` can boot with it attached.
 - Ubuntu guest does not expose `/dev/dxg`, does not show an NVIDIA PCI device, and only shows the Microsoft Basic Render path.
-- Host-side WSL bridge evidence exists and must be inventoried before any guest staging.
+- Host-visible Windows paths contain the Linux-facing payloads needed for guest staging.
 
-This README is the authoritative packet. The raw note at `docs/lessons-learned/hyper-v-ubuntu-gpu/dx_build_from_wsl.md` remains an execution mirror only and must be backfilled from this packet after the run is complete.
+This README is the authoritative packet. The mirrored lessons note lives at `docs/lessons-learned/hyper-v-ubuntu-gpu/dx_build_files/dx_build_from_wsl.md`.
 
 ## Capability Packet Boundary
 
 | Field | Value |
 |-------|-------|
-| Capability identifier | `hyperv_ubuntu_gpu_p_wsl_bridge_experiment` |
+| Capability identifier | `hyperv_ubuntu_gpu_p_host_visible_wsl_runtime_reference` |
 | Owner manifest | None; this is a governed experimental troubleshooting packet, not a manifest-backed capability |
-| Owned files | This packet README, the repo-owned experiment playbook, and the post-execution mirror note at `docs/lessons-learned/hyper-v-ubuntu-gpu/dx_build_from_wsl.md` |
+| Owned files | This packet README, the supported finalize playbook reference, and the mirrored lessons note at `docs/lessons-learned/hyper-v-ubuntu-gpu/dx_build_files/dx_build_from_wsl.md` |
 | Integration anchors | Existing Hyper-V Ubuntu GPU-P evidence under `docs/lessons-learned/hyper-v-ubuntu-gpu/`, inventory connection surfaces for `hom-lab-ctl-hvh-02` and `hom-lab-ctl-k3s-02`, and the host's WSL/NVIDIA library paths |
 | Update behavior | Re-runnable experiment packet with explicit snapshot, stage, activate, verify, rollback, and receipt phases |
-| Removal behavior | Delete the experiment playbook and packet; remove any guest linker override and staged guest libraries if present; keep historical lessons unless explicitly retired |
+| Removal behavior | Delete the historical packet if no longer needed; keep the supported finalize playbook and remove any guest linker override and staged guest libraries only when intentionally rolling back the workflow |
 
 ## Apply / Verify / Undo / Change Class
 
 | Field | Value |
 |---|---|
-| Apply | Run `playbooks/troubleshoot/hyperv_ubuntu_gpu_p_wsl_bridge_experiment.yaml` to gather a WSL reference snapshot on `hom-lab-ctl-hvh-02`, stage a Linux GPU bridge set into `hom-lab-ctl-k3s-02`, and record the outcome |
+| Apply | Use `playbooks/troubleshoot/hyperv_ubuntu_gpu_p_supported_finalize.yaml` for the supported repo path |
 | Verify | Re-check the five-stage ladder: partitionable host GPU, VM adapter present, VM boots, guest exposes `/dev/dxg` or equivalent guest GPU path, guest can resolve and call the staged GPU runtime |
 | Undo | Remove the guest linker drop-in and staged library tree, rerun `ldconfig`, and prove the guest returned to its pre-experiment state |
 | Change class | Experimental live host/guest troubleshooting with explicit rollback |
@@ -37,7 +56,7 @@ This README is the authoritative packet. The raw note at `docs/lessons-learned/h
 ## Public Interfaces / Types
 
 - Governing packet: `docs/plans/2026-07-08--hyper-v-ubuntu-gpu-dx-build-from-wsl-incomplete/README.md`
-- Repo-owned execution entrypoint: `playbooks/troubleshoot/hyperv_ubuntu_gpu_p_wsl_bridge_experiment.yaml`
+- Supported execution entrypoint: `playbooks/troubleshoot/hyperv_ubuntu_gpu_p_supported_finalize.yaml`
 - Guest staging contract:
   - guest root: `/opt/hyperv-gpu-p/wsl-bridge`
   - guest library dir: `/opt/hyperv-gpu-p/wsl-bridge/lib`
@@ -45,7 +64,7 @@ This README is the authoritative packet. The raw note at `docs/lessons-learned/h
 - Receipt evidence contract:
   - Hyper-V host GPU-P state
   - host-visible `lxss` and DriverStore inventory
-  - live WSL `/usr/lib/wsl/lib` reference snapshot
+  - host-visible `Program Files\WSL\lib`, `lxss`, and DriverStore inventory
   - guest baseline / post-activation / post-rollback probes
   - final five-stage ladder classification
 
@@ -57,22 +76,22 @@ This README is the authoritative packet. The raw note at `docs/lessons-learned/h
 - Treat `dx_build_from_wsl.md` as a post-execution mirror target only.
 - Backfill the raw note from this packet after receipt completion.
 
-### 2. Build the WSL reference set before touching the guest
+### 2. Build the host-visible reference set before touching the guest
 
 - Inventory:
   - `C:\Windows\System32\lxss\lib`
   - `C:\Program Files\WSL`
   - `C:\Windows\System32\DriverStore\FileRepository\nvmdsi.inf_amd64_e82263d194ad754a`
-- If callable, inspect the live WSL distro for:
-  - `/dev/dxg`
-  - `ldconfig -p | egrep 'cuda|nvidia|dxcore|d3d12'`
-  - the exact `/usr/lib/wsl/lib` filenames and symlink relationships
-- Use the live WSL bridge as the exact reference set when it exposes files not visible through the host-side `lxss` path.
+- Use host-visible Windows paths as the supported source set:
+  - `C:\Program Files\WSL\lib`
+  - `C:\Windows\System32\lxss\lib`
+  - `C:\Windows\System32\DriverStore\FileRepository\<resolved-folder>`
+- Earlier live-WSL inspection is historical investigation only and is not part of the supported path.
 
 ### 3. Stage a bounded guest activation experiment
 
-- Export the live WSL bridge set from the host.
-- Stage it under `/opt/hyperv-gpu-p/wsl-bridge/lib` on `hom-lab-ctl-k3s-02`.
+- Export the host-visible Windows source set from the host.
+- Stage the needed library set and exact DriverStore subtree on `hom-lab-ctl-k3s-02`.
 - Activate it only through a dedicated linker drop-in.
 - Do not overwrite distro-owned guest library paths.
 
@@ -98,17 +117,17 @@ This README is the authoritative packet. The raw note at `docs/lessons-learned/h
 
 ```mermaid
 flowchart TD
-    A["Governed packet<br/>docs/plans/2026-07-08--hyper-v-ubuntu-gpu-dx-build-from-wsl-incomplete/README.md"] --> B["Repo-owned experiment playbook<br/>playbooks/troubleshoot/hyperv_ubuntu_gpu_p_wsl_bridge_experiment.yaml"]
+    A["Governed packet<br/>docs/plans/2026-07-08--hyper-v-ubuntu-gpu-dx-build-from-wsl-incomplete/README.md"] --> B["Supported finalize playbook<br/>playbooks/troubleshoot/hyperv_ubuntu_gpu_p_supported_finalize.yaml"]
     C["Lessons-learned evidence<br/>ReqSecDevAssign.md<br/>Host_DriverStore_for_full_VMs.md<br/>notes.md<br/>motherboard_investigation.md"] --> A
     D["Windows host<br/>hom-lab-ctl-hvh-02<br/>SSH transport + PowerShell shell"] --> E["Host-visible inventory<br/>lxss\\lib<br/>DriverStore<br/>Program Files\\WSL"]
-    D --> F["Live WSL reference<br/>Ubuntu-24.04<br/>/usr/lib/wsl/lib<br/>/dev/dxg"]
+    D --> F["Host-visible runtime files<br/>Program Files\\WSL\\lib<br/>lxss\\lib<br/>resolved DriverStore subtree"]
     E --> B
     F --> B
     B --> G["Ubuntu guest<br/>hom-lab-ctl-k3s-02"]
     G --> H["Guest staging root<br/>/opt/hyperv-gpu-p/wsl-bridge/lib"]
     G --> I["Guest activation file<br/>/etc/ld.so.conf.d/hyperv-gpu-p-wsl-bridge.conf"]
     G --> J["Verification probes<br/>/dev/dxg<br/>lspci<br/>lsmod<br/>dmesg<br/>ldconfig<br/>nvidia-smi"]
-    A --> K["Post-execution mirror<br/>docs/lessons-learned/hyper-v-ubuntu-gpu/dx_build_from_wsl.md"]
+    A --> K["Post-execution mirror<br/>docs/lessons-learned/hyper-v-ubuntu-gpu/dx_build_files/dx_build_from_wsl.md"]
 ```
 
 ## Capability Routing Diagram
@@ -116,11 +135,11 @@ flowchart TD
 ```mermaid
 flowchart TD
     S["Start experiment"] --> T["Capture host + guest baseline"]
-    T --> U["Inventory host-visible lxss and DriverStore"]
-    U --> V["Probe live WSL /usr/lib/wsl/lib"]
-    V --> W{"Live WSL reference export succeeds?"}
-    W -- No --> X["Record blocker in packet receipt<br/>do not stage guest bridge"]
-    W -- Yes --> Y["Stage exported WSL bridge into guest"]
+    T --> U["Inventory host-visible Program Files\\WSL\\lib, lxss\\lib, and DriverStore"]
+    U --> V["Resolve exact DriverStore subtree"]
+    V --> W{"Host-visible source set complete?"}
+    W -- No --> X["Record blocker in packet receipt<br/>do not stage guest payload"]
+    W -- Yes --> Y["Stage supported payload into guest"]
     Y --> Z["Activate via dedicated ld.so drop-in"]
     Z --> AA["Re-run guest probes"]
     AA --> AB{"Stage 4 or 5 improved?"}
@@ -134,10 +153,10 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A["Raw scratch note<br/>docs/lessons-learned/.../dx_build_from_wsl.md"] --> B["Execution mirror only"]
+    A["Raw scratch note<br/>docs/lessons-learned/.../dx_build_files/dx_build_from_wsl.md"] --> B["Execution mirror only"]
     C["Authoritative plan surface"] --> D["Governed packet README"]
     E["Host-visible lxss\\lib"] --> F["Inventory source, not automatically sufficient"]
-    G["Live WSL /usr/lib/wsl/lib"] --> H["Exact bridge reference when richer than host-visible lxss"]
+    G["Host-visible Program Files\\WSL\\lib"] --> H["Primary DX/D3D userspace source"]
     I["DriverStore nvmdsi.inf_amd64_*"] --> J["Fallback or comparison source only"]
     K["Guest system library paths"] --> L["Do not overwrite"]
     M["Guest experiment root<br/>/opt/hyperv-gpu-p/wsl-bridge/lib"] --> N["Only activated through dedicated ld.so drop-in"]
@@ -148,7 +167,7 @@ flowchart LR
 - Verify the packet records the current baseline correctly: host stages 1-3 pass and guest stages 4-5 fail before activation.
 - Verify the host reference inventory distinguishes:
   - host-visible `lxss` bridge files
-  - live WSL bridge files
+  - host-visible `Program Files\WSL\lib` files
   - DriverStore fallback files
 - Verify staged guest files are placed only under `/opt/hyperv-gpu-p/wsl-bridge/lib`.
 - Verify the activation path uses only `/etc/ld.so.conf.d/hyperv-gpu-p-wsl-bridge.conf`.
@@ -162,14 +181,14 @@ flowchart LR
   - the Python `ctypes` load test
 - Verify rollback returns the guest to the pre-experiment state when the activation fails to unlock a usable stage 4 or 5 result.
 - Verify the packet receipt classifies the final result on the five-stage ladder.
-- Verify the finalized packet body is copied into `docs/lessons-learned/hyper-v-ubuntu-gpu/dx_build_from_wsl.md` after execution.
+- Verify the finalized packet body is copied into `docs/lessons-learned/hyper-v-ubuntu-gpu/dx_build_files/dx_build_from_wsl.md` after execution.
 
 ## Assumptions And Defaults
 
-- The raw `dx_build_from_wsl.md` file is intentionally treated as empty scratch space at the start of this slice.
+- The original `dx_build_from_wsl.md` scratch note was intentionally treated as empty scratch space at the start of this slice.
 - The governed packet under `docs/plans/**` is the official plan home for this effort.
-- The live WSL distro is allowed to refine the host bridge source set when it exposes files that are not visible through simple host-side `lxss` inspection.
-- This slice is an experiment to unlock guest stage 4 or 5, not a guarantee that a WSL-derived bridge will make a full Ubuntu Hyper-V VM behave like WSL.
+- The supported method uses host-visible Windows paths only.
+- Earlier live-WSL inspection is retained only as historical investigation context.
 
 ## Diagram gate receipt
 
@@ -180,7 +199,7 @@ flowchart LR
 
 ## Plan verification receipt
 
-Pending execution. This section will be replaced with the obligation inventory and evidence after the experiment playbook runs.
+Historical packet retained. The supported host-visible-path workflow superseded the original bridge experiment path.
 
 ## Diagram Inventory
 

@@ -1,0 +1,46 @@
+---
+# windows_ollama_runtime — managed host-local Ollama runtime for Windows GPU hosts.
+
+windows_ollama_runtime_state: absent
+
+windows_ollama_runtime_version: "v0.31.2"
+windows_ollama_runtime_download_url: "https://github.com/ollama/ollama/releases/download/{{ windows_ollama_runtime_version }}/ollama-windows-amd64.zip"
+windows_ollama_runtime_install_root: 'C:\Program Files\Ollama'
+windows_ollama_runtime_download_root: 'C:\ProgramData\Ansible\downloads\ollama'
+windows_ollama_runtime_archive_path: '{{ windows_ollama_runtime_download_root }}\ollama-windows-amd64.zip'
+windows_ollama_runtime_contract_root: 'C:\ProgramData\Ansible\windows_ollama_runtime'
+windows_ollama_runtime_contract_path: '{{ windows_ollama_runtime_contract_root }}\runtime_contract.json'
+windows_ollama_runtime_receipt_path: '{{ windows_ollama_runtime_contract_root }}\runtime_receipt.json'
+
+windows_ollama_runtime_bind_host: '0.0.0.0'
+windows_ollama_runtime_port: 11434
+windows_ollama_runtime_host_loopback: '127.0.0.1'
+windows_ollama_runtime_models_path: 'F:\shares\public\models\ollama'
+windows_ollama_runtime_default_model: 'qwen2.5-coder:3b'
+windows_ollama_runtime_fallback_model: 'qwen2.5-coder:1.5b'
+windows_ollama_runtime_models_present:
+  - '{{ windows_ollama_runtime_default_model }}'
+windows_ollama_runtime_model_aliases:
+  - lane: code-review
+    runtime_slug: ollama-secondary-hvh-01
+    model: '{{ windows_ollama_runtime_default_model }}'
+    fallback_model: '{{ windows_ollama_runtime_fallback_model }}'
+
+windows_ollama_runtime_api_base: >-
+  http://{{ host_ip | default(ansible_host | default('127.0.0.1')) }}:{{ windows_ollama_runtime_port }}
+windows_ollama_runtime_listen_address: '{{ windows_ollama_runtime_bind_host }}:{{ windows_ollama_runtime_port }}'
+windows_ollama_runtime_local_api_base: >-
+  http://{{ windows_ollama_runtime_host_loopback }}:{{ windows_ollama_runtime_port }}
+windows_ollama_runtime_healthcheck_url: '{{ windows_ollama_runtime_local_api_base }}/api/tags'
+windows_ollama_runtime_task_name: 'ollama-runtime'
+windows_ollama_runtime_firewall_rule_name: 'Ollama Runtime API'
+windows_ollama_runtime_task_boot_delay: PT15S
+windows_ollama_runtime_pull_retries: 3
+windows_ollama_runtime_pull_delay: 10
+windows_ollama_runtime_require_driver_contract: true
+windows_ollama_runtime_driver_contract_path: >-
+  {{ llm_compute_windows_driver_contract_path | default('C:\ProgramData\Ansible\llm_compute_windows\nvidia_driver_contract.json') }}
+windows_ollama_runtime_driver_contract_package_name: >-
+  {{ llm_compute_windows_driver_contract_package_name | default('nvidia-studio-driver') }}
+windows_ollama_runtime_purge_models_on_absent: false
+windows_ollama_runtime_exe_path: '{{ windows_ollama_runtime_install_root }}\ollama.exe'

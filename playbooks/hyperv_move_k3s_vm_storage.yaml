@@ -27,10 +27,11 @@
       ansible.windows.win_powershell:
         error_action: stop
         script: |
+          $hypervServer = '{{ hyperv_management_endpoint | default(ansible_host | default(host_ip | default(os_hostname | default(inventory_hostname)))) }}'
           $vmName = '{{ hyperv_ubuntu_k3s_vm_hostname }}'
           $destination = '{{ hyperv_ubuntu_k3s_vm_host_vhdx_path }}'
-          $vm = Get-VM -Name $vmName -ErrorAction Stop
-          $disk = Get-VMHardDiskDrive -VMName $vmName -ErrorAction Stop | Select-Object -First 1
+          $vm = Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
+          $disk = Get-VMHardDiskDrive -ComputerName $hypervServer -VMName $vmName -ErrorAction Stop | Select-Object -First 1
           $source = $disk.Path
           $sourceItem = Get-Item $source -ErrorAction Stop
           $destinationDrive = Get-Volume -DriveLetter ([System.IO.Path]::GetPathRoot($destination).Substring(0, 1))
@@ -44,7 +45,7 @@
             destination_exists = Test-Path $destination
             destination_free_gb = [math]::Round($destinationDrive.SizeRemaining / 1GB, 2)
             enough_space = $destinationDrive.SizeRemaining -gt $sourceItem.Length
-            checkpoints = @(Get-VMSnapshot -VMName $vmName -ErrorAction SilentlyContinue).Count
+            checkpoints = @(Get-VMSnapshot -ComputerName $hypervServer -VMName $vmName -ErrorAction SilentlyContinue).Count
           }
       register: _hyperv_k3s_storage_preview
       check_mode: false
@@ -77,10 +78,11 @@
       ansible.windows.win_powershell:
         error_action: stop
         script: |
+          $hypervServer = '{{ hyperv_management_endpoint | default(ansible_host | default(host_ip | default(os_hostname | default(inventory_hostname)))) }}'
           $vmName = '{{ hyperv_ubuntu_k3s_vm_hostname }}'
           $deadline = (Get-Date).AddMinutes(5)
           do {
-            $state = (Get-VM -Name $vmName -ErrorAction Stop).State.ToString()
+            $state = (Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop).State.ToString()
             if ($state -eq 'Off') {
               break
             }
@@ -99,12 +101,13 @@
       ansible.windows.win_powershell:
         error_action: stop
         script: |
+          $hypervServer = '{{ hyperv_management_endpoint | default(ansible_host | default(host_ip | default(os_hostname | default(inventory_hostname)))) }}'
           $vmName = '{{ hyperv_ubuntu_k3s_vm_hostname }}'
           $destination = '{{ hyperv_ubuntu_k3s_vm_host_vhdx_path }}'
           $destinationDir = Split-Path $destination
           $destinationDriveLetter = [System.IO.Path]::GetPathRoot($destination).Substring(0, 1)
-          $vm = Get-VM -Name $vmName -ErrorAction Stop
-          $disk = Get-VMHardDiskDrive -VMName $vmName -ErrorAction Stop | Select-Object -First 1
+          $vm = Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
+          $disk = Get-VMHardDiskDrive -ComputerName $hypervServer -VMName $vmName -ErrorAction Stop | Select-Object -First 1
           $source = $disk.Path
           $Ansible.Changed = $false
 
@@ -118,23 +121,23 @@
               SourceFilePath = $source
               DestinationFilePath = $destination
             })
-            Move-VMStorage -VMName $vmName -Vhds $mapping -ErrorAction Stop
+            Move-VMStorage -ComputerName $hypervServer -VMName $vmName -Vhds $mapping -ErrorAction Stop
             $Ansible.Changed = $true
           }
 
-          $attachedPath = (Get-VMHardDiskDrive -VMName $vmName -ErrorAction Stop | Select-Object -First 1).Path
+          $attachedPath = (Get-VMHardDiskDrive -ComputerName $hypervServer -VMName $vmName -ErrorAction Stop | Select-Object -First 1).Path
           if ($attachedPath -ne $destination) {
             throw "Hyper-V disk attachment is not at desired path: $attachedPath"
           }
 
-          if ((Get-VM -Name $vmName).State.ToString() -ne 'Running') {
-            Start-VM -Name $vmName -ErrorAction Stop
+          if ((Get-VM -ComputerName $hypervServer -Name $vmName).State.ToString() -ne 'Running') {
+            Start-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
             $Ansible.Changed = $true
           }
 
           $Ansible.Result = @{
             vm = $vmName
-            state = (Get-VM -Name $vmName).State.ToString()
+            state = (Get-VM -ComputerName $hypervServer -Name $vmName).State.ToString()
             source_exists = Test-Path $source
             destination_exists = Test-Path $destination
             attached_path = $attachedPath

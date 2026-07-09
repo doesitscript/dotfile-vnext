@@ -125,3 +125,41 @@ argument_specs:
           authorized on Windows hosts. Must match the key used in
           ansible.cfg ssh_args / IdentityFile. Used with delegate_to + slurp
           so this role can run directly without a preceding controller play.
+
+      windows_outbound_ssh_state:
+        type: str
+        required: false
+        default: "present"
+        choices:
+          - present
+          - absent
+        description: >-
+          Desired state for the Windows host outbound SSH companion-guest
+          surface. `present` ensures a per-host outbound keypair and SSH client
+          config entries for Hyper-V companion Linux VMs. Guest-side
+          authorization of this key is applied by the Hyper-V Ubuntu VM
+          lifecycle role after the guest reaches SSH-ready state.
+
+      windows_outbound_ssh_key_basename:
+        type: str
+        required: false
+        default: "id_ed25519_ansible"
+        description: >-
+          Basename for the Windows host outbound SSH keypair used to reach
+          companion Linux guests on private Hyper-V networks.
+
+      windows_outbound_ssh_private_key_path:
+        type: str
+        required: false
+        default: "C:\\Users\\joshc\\.ssh\\id_ed25519_ansible"
+        description: >-
+          Full path to the Windows host outbound SSH private key used for
+          companion guest access.
+
+      windows_outbound_ssh_public_key_path:
+        type: str
+        required: false
+        default: "C:\\Users\\joshc\\.ssh\\id_ed25519_ansible.pub"
+        description: >-
+          Full path to the Windows host outbound SSH public key used for
+          companion guest authorization.

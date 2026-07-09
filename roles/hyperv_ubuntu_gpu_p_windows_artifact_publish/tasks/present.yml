@@ -1,0 +1,246 @@
+---
+- name: Stat required Windows host-visible payload paths
+  ansible.windows.win_stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_wsl_exe_path }}"
+    - "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_programfiles_wsl_lib_path }}"
+    - "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_lxss_lib_path }}"
+    - "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_root }}"
+    - "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_share_root }}"
+  register: hyperv_ubuntu_gpu_p_windows_artifact_publish_required_path_stats
+
+- name: Assert required Windows host-visible payload paths exist
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists | default(false)
+    fail_msg: >-
+      Required Windows artifact publish source path is missing: {{ item.item }}
+  loop: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_required_path_stats.results }}"
+
+- name: Stat repo-managed NVIDIA driver contract
+  ansible.windows.win_stat:
+    path: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_driver_contract_path }}"
+  register: hyperv_ubuntu_gpu_p_windows_artifact_publish_driver_contract_stat
+
+- name: Assert repo-managed NVIDIA driver contract exists
+  ansible.builtin.assert:
+    that:
+      - hyperv_ubuntu_gpu_p_windows_artifact_publish_driver_contract_stat.stat.exists | bool
+    fail_msg: >-
+      Managed NVIDIA driver contract is missing at
+      {{ hyperv_ubuntu_gpu_p_windows_artifact_publish_driver_contract_path }}.
+
+- name: Read repo-managed NVIDIA driver contract
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      Get-Content -LiteralPath '{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_driver_contract_path }}' -Raw
+  register: hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_meta
+
+- name: Parse repo-managed NVIDIA driver contract
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_meta_json: >-
+      {{ hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_meta.output[0] | from_json }}
+  changed_when: false
+
+- name: Assert driver contract version matches expected role version
+  ansible.builtin.assert:
+    that:
+      - >-
+        hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_meta_json.installed_driver_version
+        == hyperv_ubuntu_gpu_p_windows_artifact_publish_expected_driver_version
+    fail_msg: >-
+      Driver contract version
+      {{ hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_meta_json.installed_driver_version }}
+      does not match expected version
+      {{ hyperv_ubuntu_gpu_p_windows_artifact_publish_expected_driver_version }}.
+  when: hyperv_ubuntu_gpu_p_windows_artifact_publish_expected_driver_version | length > 0
+
+- name: Assert resolved DriverStore subtree exists
+  ansible.windows.win_stat:
+    path: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_meta_json.driverstore_path }}"
+  register: hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_path_stat
+
+- name: Validate resolved DriverStore subtree exists
+  ansible.builtin.assert:
+    that:
+      - hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_path_stat.stat.exists | default(false)
+    fail_msg: >-
+      Resolved DriverStore subtree does not exist:
+      {{ hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_meta_json.driverstore_path }}
+
+- name: Ensure Windows payload staging and share directories exist
+  ansible.windows.win_file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_temp_root }}"
+    - "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_export_root }}"
+    - "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_export_root }}\\wsl-programfiles-lib"
+    - "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_export_root }}\\wsl-lxss-lib"
+    - "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_export_root }}\\driverstore"
+    - "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_publish_root }}"
+    - "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_publish_payload_root }}"
+    - "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_share_current_root }}"
+    - "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_share_runs_root }}"
+
+- name: Find existing staged DriverStore subdirectories
+  ansible.windows.win_find:
+    paths: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_export_root }}\\driverstore"
+    file_type: directory
+    recurse: false
+  register: hyperv_ubuntu_gpu_p_windows_artifact_publish_existing_driverstore_dirs
+
+- name: Remove stale staged DriverStore subdirectories
+  ansible.windows.win_file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_existing_driverstore_dirs.files }}"
+  when: >-
+    (item.path | basename)
+    != hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_meta_json.driverstore_folder
+
+- name: Mirror Program Files WSL lib into staged payload
+  community.windows.win_robocopy:
+    src: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_programfiles_wsl_lib_path }}"
+    dest: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_export_root }}\\wsl-programfiles-lib"
+    recurse: true
+    purge: true
+  register: hyperv_ubuntu_gpu_p_windows_artifact_publish_programfiles_sync
+
+- name: Mirror lxss WSL lib into staged payload
+  community.windows.win_robocopy:
+    src: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_lxss_lib_path }}"
+    dest: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_export_root }}\\wsl-lxss-lib"
+    recurse: true
+    purge: true
+  register: hyperv_ubuntu_gpu_p_windows_artifact_publish_lxss_sync
+
+- name: Mirror exact DriverStore subtree into staged payload
+  community.windows.win_robocopy:
+    src: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_meta_json.driverstore_path }}"
+    dest: >-
+      {{
+        hyperv_ubuntu_gpu_p_windows_artifact_publish_export_root
+        ~ '\\driverstore\\'
+        ~ hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_meta_json.driverstore_folder
+      }}
+    recurse: true
+    purge: true
+  register: hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_sync
+
+- name: Gather artifact publish metadata
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
+      $exportRoot = '{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_export_root }}'
+      $files = Get-ChildItem -LiteralPath $exportRoot -Recurse -File | ForEach-Object {
+        $_.FullName.Substring($exportRoot.Length + 1).Replace('\','/')
+      }
+      [pscustomobject]@{
+        run_stamp = $stamp
+        payload_file_count = @($files).Count
+        payload_files = @($files)
+      } | ConvertTo-Json -Compress
+  register: hyperv_ubuntu_gpu_p_windows_artifact_publish_metadata_probe
+
+- name: Parse artifact publish metadata
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_windows_artifact_publish_metadata_json: >-
+      {{ hyperv_ubuntu_gpu_p_windows_artifact_publish_metadata_probe.output[0] | from_json }}
+  changed_when: false
+
+- name: Reset publish staging directory
+  ansible.windows.win_file:
+    path: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_publish_root }}"
+    state: absent
+
+- name: Recreate publish staging directory
+  ansible.windows.win_file:
+    path: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_publish_root }}"
+    state: directory
+
+- name: Recreate publish payload directory
+  ansible.windows.win_file:
+    path: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_publish_payload_root }}"
+    state: directory
+
+- name: Mirror payload tree into publish staging
+  community.windows.win_robocopy:
+    src: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_export_root }}"
+    dest: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_publish_payload_root }}"
+    recurse: true
+    purge: true
+
+- name: Copy driver contract into publish staging
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $publishRoot = '{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_publish_root }}'
+      Copy-Item -LiteralPath '{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_driver_contract_path }}' -Destination (Join-Path $publishRoot 'driver-contract.json') -Force
+
+- name: Write payload manifest file
+  ansible.windows.win_copy:
+    dest: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_publish_root }}\\payload-manifest.json"
+    content: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_metadata_json | to_nice_json }}"
+
+- name: Build artifact publish receipt
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_windows_artifact_publish_receipt:
+      published_at_utc: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+      run_stamp: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_metadata_json.run_stamp }}"
+      share_root: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_share_root }}"
+      share_current_root: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_share_current_root }}"
+      payload_root_name: payload
+      payload_manifest_name: payload-manifest.json
+      payload_file_count: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_metadata_json.payload_file_count }}"
+      driver_contract_name: driver-contract.json
+      driverstore_folder: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_meta_json.driverstore_folder }}"
+      driverstore_path: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_meta_json.driverstore_path }}"
+      installed_driver_version: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_meta_json.installed_driver_version }}"
+      expected_driver_version: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_meta_json.expected_driver_version }}"
+  changed_when: false
+
+- name: Write artifact publish receipt
+  ansible.windows.win_copy:
+    dest: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_publish_root }}\\publish-receipt.json"
+    content: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_receipt | to_nice_json }}"
+
+- name: Ensure timestamped artifact run directory exists
+  ansible.windows.win_file:
+    path: >-
+      {{
+        hyperv_ubuntu_gpu_p_windows_artifact_publish_share_runs_root
+        ~ '\\'
+        ~ hyperv_ubuntu_gpu_p_windows_artifact_publish_metadata_json.run_stamp
+      }}
+    state: directory
+
+- name: Publish artifact set to current share directory
+  community.windows.win_robocopy:
+    src: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_publish_root }}"
+    dest: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_share_current_root }}"
+    recurse: true
+    purge: true
+
+- name: Publish artifact set to timestamped share directory
+  community.windows.win_robocopy:
+    src: "{{ hyperv_ubuntu_gpu_p_windows_artifact_publish_publish_root }}"
+    dest: >-
+      {{
+        hyperv_ubuntu_gpu_p_windows_artifact_publish_share_runs_root
+        ~ '\\'
+        ~ hyperv_ubuntu_gpu_p_windows_artifact_publish_metadata_json.run_stamp
+      }}
+    recurse: true
+    purge: true
+
+- name: Publish Windows artifact metadata facts
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_folder: >-
+      {{ hyperv_ubuntu_gpu_p_windows_artifact_publish_driverstore_meta_json.driverstore_folder }}
+    hyperv_ubuntu_gpu_p_windows_artifact_publish_receipt_path: >-
+      {{ hyperv_ubuntu_gpu_p_windows_artifact_publish_share_current_root }}\publish-receipt.json
+  changed_when: false

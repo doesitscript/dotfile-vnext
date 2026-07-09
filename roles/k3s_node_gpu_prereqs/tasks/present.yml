@@ -16,15 +16,27 @@
   failed_when: false
 
 - name: Probe Kubernetes advertised GPU capacity
-  ansible.builtin.command:
-    cmd: >-
-      kubectl get node {{ k3s_node_gpu_prereqs_node_name }}
-      -o jsonpath={.status.capacity['{{ k3s_node_gpu_prereqs_expected_resource }}']}
+  ansible.builtin.shell: >-
+    kubectl get node {{ k3s_node_gpu_prereqs_node_name }}
+    -o jsonpath='{.status.capacity.nvidia\.com/gpu}{"|"}{.status.allocatable.nvidia\.com/gpu}{"\n"}'
   environment:
     KUBECONFIG: "{{ k3s_node_gpu_prereqs_kubeconfig }}"
   register: _k3s_node_gpu_prereqs_capacity
   changed_when: false
   failed_when: false
+
+- name: Parse Kubernetes advertised GPU capacity and allocatable values
+  ansible.builtin.set_fact:
+    _k3s_node_gpu_prereqs_capacity_raw: "{{ (_k3s_node_gpu_prereqs_capacity.stdout | default('') | trim).split('|') }}"
+    _k3s_node_gpu_prereqs_capacity_value: >-
+      {{
+        ((_k3s_node_gpu_prereqs_capacity.stdout | default('') | trim).split('|') | first | default('0'))
+      }}
+    _k3s_node_gpu_prereqs_allocatable_value: >-
+      {{
+        ((_k3s_node_gpu_prereqs_capacity.stdout | default('') | trim).split('|') | last | default('0'))
+      }}
+  changed_when: false
 
 - name: Summarize K3s GPU prerequisite probes
   ansible.builtin.debug:
@@ -33,13 +45,15 @@
       nvidia_smi_rc: "{{ _k3s_node_gpu_prereqs_nvidia_smi.rc }}"
       nvidia_smi: "{{ _k3s_node_gpu_prereqs_nvidia_smi.stdout | default('') }}"
       pci_nvidia: "{{ _k3s_node_gpu_prereqs_lspci.stdout | default('') }}"
-      kubernetes_gpu_capacity: "{{ _k3s_node_gpu_prereqs_capacity.stdout | default('') }}"
+      kubernetes_gpu_capacity: "{{ _k3s_node_gpu_prereqs_capacity_value }}"
+      kubernetes_gpu_allocatable: "{{ _k3s_node_gpu_prereqs_allocatable_value }}"
 
 - name: Assert K3s node has NVIDIA GPU runtime prerequisites
   ansible.builtin.assert:
     that:
       - _k3s_node_gpu_prereqs_nvidia_smi.rc == 0
-      - (_k3s_node_gpu_prereqs_capacity.stdout | default('0') | int) >= k3s_node_gpu_prereqs_expected_count | int
+      - (_k3s_node_gpu_prereqs_capacity_value | int) >= k3s_node_gpu_prereqs_expected_count | int
+      - (_k3s_node_gpu_prereqs_allocatable_value | int) >= k3s_node_gpu_prereqs_expected_count | int
     fail_msg: >-
       K3s GPU prerequisites are not ready for vLLM. The node must expose
       nvidia-smi and advertise {{ k3s_node_gpu_prereqs_expected_resource }}

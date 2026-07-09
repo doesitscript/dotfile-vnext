@@ -55,6 +55,11 @@ live_hosts:
     role_code: hvh
     platform_slug: windows-server-2025
     cluster: null
+    gpu: gtx-1060-6gb
+    runtime_slug: ollama-secondary-hvh-01
+    runtime_lane: code-review
+    runtime_capability_state: planned_apply
+    guest_gpu_capability_state: blocked
     primary_lan_ip: "192.168.50.234"
     guest_subnet: 192.168.138.0/24
     lane_group: hyperv_lane_storage
@@ -87,6 +92,8 @@ live_hosts:
     platform_slug: ubuntu-24-04
     cluster: hom-lab-ctl-hvh-01
     hyperv_host: hom-lab-ctl-hvh-01
+    os_hostname: nsrv-dkr-01
+    hyperv_vm_name: nsrv-dkr-01
     guest_ip: "192.168.138.10"
     guest_subnet: 192.168.138.0/24
     lane_group: hyperv_lane_storage
@@ -119,6 +126,8 @@ live_hosts:
     platform_slug: ubuntu-24-04
     cluster: hom-lab-ctl-hvh-01
     hyperv_host: hom-lab-ctl-hvh-01
+    os_hostname: nsrv-k3s-01
+    hyperv_vm_name: nsrv-k3s-01
     guest_ip: "192.168.138.11"
     guest_subnet: 192.168.138.0/24
     lane_group: hyperv_lane_storage
@@ -407,10 +416,11 @@ model_lanes:
       status: pending_research
     - slug: code-review
       purpose: critique, risk finding, test review
-      routing_policy: local-or-azure
+      routing_policy: local-secondary-review
       primary_guest: null
+      primary_host: hom-lab-ctl-hvh-01
       catalog_lane: code-review
-      status: pending_research
+      status: selected_secondary_runtime
     - slug: code-test
       purpose: test generation and focused test repair
       routing_policy: local-preferred
@@ -477,8 +487,8 @@ model_catalog_entries:
       status: pending_research
       candidate_family: small coding/general model
     - lane: code-review
-      status: pending_research
-      candidate_family: reviewer/risk-finding model
+      status: selected_secondary_runtime
+      candidate_family: small Ollama-hosted code-review/support model on GTX 1060 6GB
     - lane: code-test
       status: pending_research
       candidate_family: test generation/repair model

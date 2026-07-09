@@ -2,11 +2,12 @@
 - name: Inspect Hyper-V GPU partition state for target VM
   ansible.windows.win_powershell:
     script: |
+      $hypervServer = '{{ hyperv_gpu_partition_adapter_hyperv_server }}'
       $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
-      $vm = Get-VM -Name $vmName -ErrorAction Stop
-      $adapter = Get-VMGpuPartitionAdapter -VMName $vmName -ErrorAction SilentlyContinue
-      $partitionable = Get-VMHostPartitionableGpu -ErrorAction SilentlyContinue
-      $vmHost = Get-VMHost
+      $vm = Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
+      $adapter = Get-VMGpuPartitionAdapter -ComputerName $hypervServer -VMName $vmName -ErrorAction SilentlyContinue
+      $partitionable = Get-VMHostPartitionableGpu -ComputerName $hypervServer -ErrorAction SilentlyContinue
+      $vmHost = Get-VMHost -ComputerName $hypervServer
 
       $iovReasons = @()
       if ($null -ne $vmHost.IovSupportReasons) {
@@ -19,6 +20,7 @@
         has_partitionable_gpu = [bool]($partitionable)
         has_gpu_partition_adapter = [bool]($adapter)
         partitionable_gpu_name = if ($partitionable) { $partitionable[0].Name } else { $null }
+        partitionable_gpu_instance_path = if ($partitionable) { $partitionable[0].Name } else { $null }
         iov_support = [bool]($vmHost.IovSupport)
         iov_support_reasons = $iovReasons
         iov_support_reason_text = ($iovReasons -join '; ')
@@ -57,13 +59,14 @@
   when: hyperv_gpu_partition_adapter_state == 'present'
   ansible.windows.win_powershell:
     script: |
+      $hypervServer = '{{ hyperv_gpu_partition_adapter_hyperv_server }}'
       $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
-      Set-VM -VMName $vmName `
+      Set-VM -ComputerName $hypervServer -VMName $vmName `
         -GuestControlledCacheTypes:([bool]::Parse('{{ hyperv_gpu_partition_adapter_guest_controlled_cache_types | string }}')) `
         -LowMemoryMappedIoSpace {{ hyperv_gpu_partition_adapter_low_mmio_space }} `
         -HighMemoryMappedIoSpace {{ hyperv_gpu_partition_adapter_high_mmio_space }} `
         -CheckpointType {{ hyperv_gpu_partition_adapter_checkpoint_type }}
-      Set-VMMemory -VMName $vmName `
+      Set-VMMemory -ComputerName $hypervServer -VMName $vmName `
         -DynamicMemoryEnabled:([bool]::Parse('{{ hyperv_gpu_partition_adapter_dynamic_memory_enabled | string }}')) `
         -StartupBytes {{ hyperv_gpu_partition_adapter_startup_memory_bytes }} `
         -MinimumBytes {{ hyperv_gpu_partition_adapter_minimum_memory_bytes }}
@@ -77,48 +80,37 @@
     - name: Stop VM before adding GPU partition adapter when restart is allowed
       ansible.windows.win_powershell:
         script: |
+          $hypervServer = '{{ hyperv_gpu_partition_adapter_hyperv_server }}'
           $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
-          $vm = Get-VM -Name $vmName -ErrorAction Stop
+          $vm = Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
           if ($vm.State -eq 'Running') {
-            Stop-VM -Name $vmName -Force -Confirm:$false
+            Stop-VM -ComputerName $hypervServer -Name $vmName -Force -Confirm:$false
           }
       when: hyperv_gpu_partition_adapter_restart_vm_when_changed | bool
 
     - name: Ensure VM firmware is GPU-partition-compatible while VM is stopped
       ansible.windows.win_powershell:
         script: |
+          $hypervServer = '{{ hyperv_gpu_partition_adapter_hyperv_server }}'
           $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
-          Set-VMFirmware -VMName $vmName `
+          Set-VMFirmware -ComputerName $hypervServer -VMName $vmName `
             -EnableSecureBoot {{ 'On' if hyperv_gpu_partition_adapter_secure_boot_enabled else 'Off' }}
       when: hyperv_gpu_partition_adapter_restart_vm_when_changed | bool
 
     - name: Attach GPU partition adapter to target VM
       ansible.windows.win_powershell:
         script: |
+          $hypervServer = '{{ hyperv_gpu_partition_adapter_hyperv_server }}'
           $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
-          Add-VMGpuPartitionAdapter -VMName $vmName
+          Add-VMGpuPartitionAdapter -ComputerName $hypervServer -VMName $vmName -InstancePath '{{ _hyperv_gpu_partition_adapter_probe.partitionable_gpu_instance_path }}'
       register: hyperv_gpu_partition_adapter_attach
-
-    - name: Apply explicit GPU partition sizing for target VM
-      ansible.windows.win_powershell:
-        script: |
-          $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
-          Set-VMGpuPartitionAdapter -VMName $vmName `
-            -MinPartitionVRAM {{ hyperv_gpu_partition_adapter_partition_vram_min }} `
-            -MaxPartitionVRAM {{ hyperv_gpu_partition_adapter_partition_vram_max }} `
-            -OptimalPartitionVRAM {{ hyperv_gpu_partition_adapter_partition_vram_optimal }} `
-            -MinPartitionDecode {{ hyperv_gpu_partition_adapter_partition_decode_min }} `
-            -MaxPartitionDecode {{ hyperv_gpu_partition_adapter_partition_decode_max }} `
-            -OptimalPartitionDecode {{ hyperv_gpu_partition_adapter_partition_decode_optimal }} `
-            -MinPartitionCompute {{ hyperv_gpu_partition_adapter_partition_compute_min }} `
-            -MaxPartitionCompute {{ hyperv_gpu_partition_adapter_partition_compute_max }} `
-            -OptimalPartitionCompute {{ hyperv_gpu_partition_adapter_partition_compute_optimal }}
 
     - name: Start VM after GPU partition adapter change when desired
       ansible.windows.win_powershell:
         script: |
+          $hypervServer = '{{ hyperv_gpu_partition_adapter_hyperv_server }}'
           $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
-          Start-VM -Name $vmName
+          Start-VM -ComputerName $hypervServer -Name $vmName
       when:
         - hyperv_gpu_partition_adapter_restart_vm_when_changed | bool
         - hyperv_gpu_partition_adapter_vm_should_be_running | bool
@@ -126,19 +118,21 @@
     - name: Remove GPU partition adapter after failed attach/start attempt
       ansible.windows.win_powershell:
         script: |
+          $hypervServer = '{{ hyperv_gpu_partition_adapter_hyperv_server }}'
           $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
-          $adapter = Get-VMGpuPartitionAdapter -VMName $vmName -ErrorAction SilentlyContinue
+          $adapter = Get-VMGpuPartitionAdapter -ComputerName $hypervServer -VMName $vmName -ErrorAction SilentlyContinue
           if ($adapter) {
-            Remove-VMGpuPartitionAdapter -VMName $vmName
+            Remove-VMGpuPartitionAdapter -ComputerName $hypervServer -VMName $vmName
           }
 
     - name: Restore target VM to running state after failed GPU partition attempt
       ansible.windows.win_powershell:
         script: |
+          $hypervServer = '{{ hyperv_gpu_partition_adapter_hyperv_server }}'
           $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
-          $vm = Get-VM -Name $vmName -ErrorAction Stop
+          $vm = Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
           if ($vm.State -ne 'Running') {
-            Start-VM -Name $vmName -ErrorAction Stop | Out-Null
+            Start-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop | Out-Null
           }
       when: hyperv_gpu_partition_adapter_vm_should_be_running | bool
 
@@ -150,14 +144,35 @@
           adapter and restored the VM to its prior running state. Review the
           preceding Hyper-V error details for the resource-reservation failure.
 
+- name: Apply explicit GPU partition sizing for target VM
+  when: hyperv_gpu_partition_adapter_state == 'present'
+  ansible.windows.win_powershell:
+    script: |
+      $hypervServer = '{{ hyperv_gpu_partition_adapter_hyperv_server }}'
+      $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
+      Set-VMGpuPartitionAdapter -ComputerName $hypervServer -VMName $vmName `
+        -MinPartitionVRAM {{ hyperv_gpu_partition_adapter_partition_vram_min }} `
+        -MaxPartitionVRAM {{ hyperv_gpu_partition_adapter_partition_vram_max }} `
+        -OptimalPartitionVRAM {{ hyperv_gpu_partition_adapter_partition_vram_optimal }} `
+        -MinPartitionEncode {{ hyperv_gpu_partition_adapter_partition_encode_min }} `
+        -MaxPartitionEncode {{ hyperv_gpu_partition_adapter_partition_encode_max }} `
+        -OptimalPartitionEncode {{ hyperv_gpu_partition_adapter_partition_encode_optimal }} `
+        -MinPartitionDecode {{ hyperv_gpu_partition_adapter_partition_decode_min }} `
+        -MaxPartitionDecode {{ hyperv_gpu_partition_adapter_partition_decode_max }} `
+        -OptimalPartitionDecode {{ hyperv_gpu_partition_adapter_partition_decode_optimal }} `
+        -MinPartitionCompute {{ hyperv_gpu_partition_adapter_partition_compute_min }} `
+        -MaxPartitionCompute {{ hyperv_gpu_partition_adapter_partition_compute_max }} `
+        -OptimalPartitionCompute {{ hyperv_gpu_partition_adapter_partition_compute_optimal }}
+
 - name: Remove Hyper-V GPU partition adapter from VM
   when: hyperv_gpu_partition_adapter_state == 'absent'
   ansible.windows.win_powershell:
     script: |
+      $hypervServer = '{{ hyperv_gpu_partition_adapter_hyperv_server }}'
       $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
-      $adapter = Get-VMGpuPartitionAdapter -VMName $vmName -ErrorAction SilentlyContinue
+      $adapter = Get-VMGpuPartitionAdapter -ComputerName $hypervServer -VMName $vmName -ErrorAction SilentlyContinue
       if ($adapter) {
-        Remove-VMGpuPartitionAdapter -VMName $vmName
+        Remove-VMGpuPartitionAdapter -ComputerName $hypervServer -VMName $vmName
       }
   register: hyperv_gpu_partition_adapter_remove
 
@@ -169,36 +184,39 @@
     - name: Start target VM when not already running
       ansible.windows.win_powershell:
         script: |
+          $hypervServer = '{{ hyperv_gpu_partition_adapter_hyperv_server }}'
           $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
-          $vm = Get-VM -Name $vmName -ErrorAction Stop
+          $vm = Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
           if ($vm.State -ne 'Running') {
-            Start-VM -Name $vmName -ErrorAction Stop | Out-Null
+            Start-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop | Out-Null
           }
       register: hyperv_gpu_partition_adapter_vm_start
   rescue:
     - name: Remove GPU partition adapter after failed post-reconciliation start
       ansible.windows.win_powershell:
         script: |
+          $hypervServer = '{{ hyperv_gpu_partition_adapter_hyperv_server }}'
           $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
-          $adapter = Get-VMGpuPartitionAdapter -VMName $vmName -ErrorAction SilentlyContinue
+          $adapter = Get-VMGpuPartitionAdapter -ComputerName $hypervServer -VMName $vmName -ErrorAction SilentlyContinue
           if ($adapter) {
-            Remove-VMGpuPartitionAdapter -VMName $vmName
+            Remove-VMGpuPartitionAdapter -ComputerName $hypervServer -VMName $vmName
           }
 
     - name: Restore target VM after failed post-reconciliation start
       ansible.windows.win_powershell:
         script: |
+          $hypervServer = '{{ hyperv_gpu_partition_adapter_hyperv_server }}'
           $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
-          $vm = Get-VM -Name $vmName -ErrorAction Stop
+          $vm = Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
           if ($vm.State -ne 'Running') {
-            Start-VM -Name $vmName -ErrorAction Stop | Out-Null
+            Start-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop | Out-Null
           }
 
     - name: Fail with recovered post-reconciliation GPU partition error
       ansible.builtin.fail:
         msg: >-
           Hyper-V GPU partition reconciliation failed to leave
-          {{ hyperv_gpu_partition_adapter_vm_name }} bootable. The role removed
+          '{{ hyperv_gpu_partition_adapter_vm_name }}' bootable. The role removed
           the adapter and restored the VM to a running state. Review the
           preceding Hyper-V GPU partition resource-reservation error details.
 

@@ -59,6 +59,21 @@ k3s_litellm_gateway_router_settings: {}
 # Local vLLM backend contract for the first serious local coding lane.
 k3s_litellm_gateway_primary_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1"
 k3s_litellm_gateway_primary_vllm_model: "Qwen/Qwen2.5-Coder-32B-Instruct-AWQ"
+k3s_litellm_gateway_secondary_review_runtime_host: "hom-lab-ctl-hvh-01"
+k3s_litellm_gateway_secondary_review_ollama_api_base: >-
+  http://{{
+    hostvars[k3s_litellm_gateway_secondary_review_runtime_host].host_ip
+    | default(hostvars[k3s_litellm_gateway_secondary_review_runtime_host].ansible_host | default('192.168.50.234'))
+  }}:{{
+    hostvars[k3s_litellm_gateway_secondary_review_runtime_host].windows_ollama_runtime_port
+    | default(11434)
+  }}
+k3s_litellm_gateway_secondary_review_ollama_model: >-
+  {{
+    hostvars[k3s_litellm_gateway_secondary_review_runtime_host].windows_ollama_runtime_default_model
+    | default('qwen2.5-coder:3b')
+  }}
+k3s_litellm_gateway_secondary_review_runtime_slug: "ollama-secondary-hvh-01"
 
 # Full lane vocabulary stays visible here even while only part of it is
 # runtime-enabled. Blocked/deferred rows are explicit so client and validation
@@ -79,9 +94,10 @@ k3s_litellm_gateway_lane_contract:
     backend_kind: pending
     reason: Awaiting a separate local or provider-backed fast lane decision.
   - lane: code-review
-    state: blocked
-    backend_kind: pending
-    reason: Review-specific backend and policy path are not declared yet.
+    state: enabled
+    backend_kind: local-ollama
+    runtime: "{{ k3s_litellm_gateway_secondary_review_runtime_slug }}"
+    reason: Secondary local review lane on the GTX 1060 6GB Windows host via host-local Ollama.
   - lane: code-test
     state: blocked
     backend_kind: pending
@@ -133,6 +149,18 @@ k3s_litellm_gateway_model_list:
       backend_runtime: vllm-primary
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
+  - model_name: code-review
+    litellm_params:
+      model: "ollama_chat/{{ k3s_litellm_gateway_secondary_review_ollama_model }}"
+      api_base: "{{ k3s_litellm_gateway_secondary_review_ollama_api_base }}"
+      api_key: "none"
+    model_info:
+      model_lane: code-review
+      routing_policy: local-secondary-review
+      project: ripi
+      backend_runtime: "{{ k3s_litellm_gateway_secondary_review_runtime_slug }}"
+      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
+      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
   - model_name: gpt-4o-mini
     litellm_params:
       model: gpt-4o-mini
@@ -180,6 +208,18 @@ k3s_litellm_gateway_model_list_without_openai:
       routing_policy: local-smoke-compat
       project: ripi
       backend_runtime: vllm-primary
+      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
+      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
+  - model_name: code-review
+    litellm_params:
+      model: "ollama_chat/{{ k3s_litellm_gateway_secondary_review_ollama_model }}"
+      api_base: "{{ k3s_litellm_gateway_secondary_review_ollama_api_base }}"
+      api_key: "none"
+    model_info:
+      model_lane: code-review
+      routing_policy: local-secondary-review
+      project: ripi
+      backend_runtime: "{{ k3s_litellm_gateway_secondary_review_runtime_slug }}"
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
   - model_name: default
