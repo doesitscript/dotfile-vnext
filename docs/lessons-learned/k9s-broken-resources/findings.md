@@ -252,7 +252,7 @@ graph TB
 | 1b | Data plane | Ensure k3s-02 guest can route to `192.168.50.234` (or override connect address to guest-reachable IP) | same |
 | 2 | GPU host | Attach GPU partition on hvh-02; complete GPU-P guest runtime (`dxgkrnl`, `/dev/dxg`, `nvidia-smi`) | nvidia-device-plugin |
 | 3 | GPU plugin | Re-run `k3s_nvidia_device_plugin` after host GPU works | `nvidia.com/gpu` capacity |
-| 4 | vLLM | Reconcile memory/cpu requests for single-node lab; then redeploy `vllm-primary` | inference backend for LiteLLM `code-deep` lane |
+| 4 | vLLM | Reconcile memory/cpu requests for single-node lab; then redeploy `vllm-primary` | inference backend for LiteLLM `deepreinforce-ai/Ornith-1.0-35B-GGUF` lane |
 
 ---
 

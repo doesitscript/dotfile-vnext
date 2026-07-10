@@ -1,6 +1,6 @@
 # AMD GPU Windows Desktop Diagnostic Sources
 
-**Primary host:** `dev-workstation-win` / **DESKTOP-C1ACPUM** / **192.168.50.132**  
+**Primary host:** `dev-workstation-win` / **DESKTOP-C1ACPUM** / **192.168.50.133**  
 **Gaming user:** `ericc`  
 **GPU:** AMD Radeon RX 9060 XT 16GB (TBP ~160W; ASUS `SUBSYS_061E1043`)
 

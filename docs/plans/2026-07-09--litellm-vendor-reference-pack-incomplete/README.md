@@ -103,7 +103,7 @@ graph TB
 
 ```mermaid
 graph LR
-  lane[model_lane code-deep] --> alias[LiteLLM model_name]
+  lane[model_lane deepreinforce-ai/Ornith-1.0-35B-GGUF] --> alias[LiteLLM model_name]
   alias --> backend[vLLM hosted_vllm route]
   service[litellm.hom.lab] --> traefik[Traefik ingress]
   traefik --> nodeport[NodePort 30400 supplemental]

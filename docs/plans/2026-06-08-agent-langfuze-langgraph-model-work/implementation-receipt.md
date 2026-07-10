@@ -6,7 +6,7 @@
 
 ## Applied repo changes
 
-- Promoted the LiteLLM gateway contract so `code-deep` is a real local lane and
+- Promoted the LiteLLM gateway contract so `deepreinforce-ai/Ornith-1.0-35B-GGUF` is a real local lane and
   `experiment` remains a temporary smoke alias on the same `vllm-primary`
   backend.
 - Preserved migration rows `gpt-4o-mini` and `default` in the main LiteLLM
@@ -74,5 +74,5 @@ commissioned on `hom-lab-ctl-k3s-02`.
 - Once that host prerequisite is satisfied:
   - re-run `playbooks/deploy_gpu_infrastructure.yaml`
   - re-run `playbooks/deploy_ai_inference_stack.yaml`
-  - verify the `code-deep` and `experiment` LiteLLM routes against the live
+  - verify the `deepreinforce-ai/Ornith-1.0-35B-GGUF` and `experiment` LiteLLM routes against the live
     `vllm-primary` backend once the node advertises GPU capacity

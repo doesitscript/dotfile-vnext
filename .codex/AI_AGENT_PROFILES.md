@@ -21,13 +21,13 @@ LiteLLM, vLLM, Langfuse, and GPU prerequisite gates.
 
 - `planner` -> default `ripi-private`, alternate
   `code-fast`, boundary `read_only`
-- `coder` -> default `code-deep`, alternate
+- `coder` -> default `deepreinforce-ai/Ornith-1.0-35B-GGUF`, alternate
   `code-fast`, boundary `repo_write`
 - `tester` -> default `code-test`, alternate
   `code-fast`, boundary `test_execution`
 - `reviewer` -> default `code-review`, alternate
   `ripi-private`, boundary `read_only`
 - `documenter` -> default `code-fast`, alternate
-  `code-deep`, boundary `repo_write`
+  `deepreinforce-ai/Ornith-1.0-35B-GGUF`, boundary `repo_write`
 - `steward` -> default `ripi-private`, alternate
   `code-review`, boundary `governance`

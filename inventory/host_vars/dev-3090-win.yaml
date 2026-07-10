@@ -1,6 +1,31 @@
 ---
-# Windows surface placeholder for the deferred dev-3090 system.
-# Connection details are intentionally not active yet, but the surface type is
-# useful for inventory-level eligibility previews.
+# Inventory: dev-3090-win (Gaming-Desktop)
+# Connect target: ansible_host = 192.168.50.191
+# primary_connection: openssh (WinRM retained as secondary/bootstrap)
+ansible_host: "192.168.50.191"
+ansible_connection: ssh
+ansible_port: 22
+ansible_user: "joshc"
+ansible_ssh_private_key_file: "/Users/joshc/.ssh/id_ed25519_ansible"
+ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+ansible_shell_type: "powershell"
+ansible_shell_executable: "powershell.exe"
 surface_type: "windows_host"
 physical_node: "dev-3090"
+host_ip: "192.168.50.191"
+verify_ssh_from_execnode: true
+
+windows_data_root: "D:\\ai"
+stacks_root: "D:\\ai\\stacks"
+data_root: "D:\\ai\\data"
+
+# Legacy WinRM (bootstrap/troubleshooting fallback)
+# ansible_connection: winrm
+# winrm_port: 5985
+# ansible_port: 5985
+# ansible_password: "{{ vault_dev_3090_win_password }}"
+# win_user: "joshc"
+# win_password: "{{ vault_dev_3090_win_password }}"
+# ansible_winrm_password: "{{ vault_dev_3090_win_password }}"
+# ansible_winrm_scheme: "http"
+# ansible_winrm_transport: "ntlm"

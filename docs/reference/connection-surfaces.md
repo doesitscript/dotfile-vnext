@@ -7,9 +7,10 @@ Agents must **not** assume WSL, `wsl.exe`, `bash.exe`, or `*-wsl` inventory name
 ## Rules
 
 1. **Read the surface before connecting** — `primary_connection` is what steady-state Ansible and SSH should use.
-2. **WinRM is secondary** on Windows control hosts — bootstrap and troubleshooting unless the play explicitly targets WinRM.
+2. **WinRM is secondary** on Windows control hosts — use SSH first for steady-state work, but `playbooks/access_windows_best_effort.yaml` must automatically fall back to the already-enabled WinRM/PowerShell remoting surface on that same host when SSH is unavailable.
 3. **Linux workloads on Hyper-V** use `linux_vm_hosts` (SSH to guest IP, often `192.168.137.x`), not a WSL distro on the Windows host.
 4. **Desktop-only optional WSL** — see [desktop-wsl-optional.md](desktop-wsl-optional.md). Never use WSL to reach server lanes (`HOM-LAB-HVH-*`, `hom-lab-ctl-dkr-*`, `hom-lab-ctl-k3s-*`).
+5. **WinRM fallback is transport-only** for `access_windows_best_effort.yaml` — this means use existing PowerShell remoting when SSH is down, not a bootstrap script or first-touch machine-setup path.
 
 ## Active homelab surfaces (summary)
 

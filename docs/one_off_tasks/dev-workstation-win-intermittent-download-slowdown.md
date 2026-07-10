@@ -18,12 +18,12 @@ The active suspected download client during the session was Steam.
 - Computer name: `DESKTOP-C1ACPUM`
 - Repo inventory path: `inventory/host_vars/dev-workstation-win.yaml`
 - Inventory-stored address at the time: `192.168.50.70`
-- Live address discovered during this session: `192.168.50.132`
+- Live address discovered during this session: `192.168.50.133`
 - Working remote path: WinRM / PS Remoting through Ansible
 - SSH status: not available
 
 The old inventory address was stale for this session. Name lookup and mDNS
-showed `DESKTOP-C1ACPUM` at `192.168.50.132`, and WinRM worked only after
+showed `DESKTOP-C1ACPUM` at `192.168.50.133`, and WinRM worked only after
 overriding `ansible_host`.
 
 ## Confirmed remote access
@@ -32,7 +32,7 @@ Working command shape:
 
 ```bash
 bin/codex-env ansible -i inventory/inventory.yaml dev-workstation-win \
-  -e ansible_host=192.168.50.132 \
+  -e ansible_host=192.168.50.133 \
   -m ansible.windows.win_shell \
   -a 'hostname; whoami; $PSVersionTable.PSVersion.ToString()'
 ```
@@ -69,27 +69,27 @@ ssh -o BatchMode=yes -o ConnectTimeout=5 \
 dscacheutil -q host -a name DESKTOP-C1ACPUM
 smbutil lookup DESKTOP-C1ACPUM
 dns-sd -G v4v6 DESKTOP-C1ACPUM.local
-ping -c 2 192.168.50.132
+ping -c 2 192.168.50.133
 ssh -o BatchMode=yes -o ConnectTimeout=5 \
   -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-  joshc@192.168.50.132 hostname
+  joshc@192.168.50.133 hostname
 ```
 
 Key results:
 
 ```text
 smbutil lookup DESKTOP-C1ACPUM
-Got response from 192.168.50.132
-IP address of DESKTOP-C1ACPUM: 192.168.50.132
+Got response from 192.168.50.133
+IP address of DESKTOP-C1ACPUM: 192.168.50.133
 ```
 
 ```text
-ping 192.168.50.132
+ping 192.168.50.133
 2 packets transmitted, 2 packets received, 0.0% packet loss
 ```
 
 ```text
-ssh: connect to host 192.168.50.132 port 22: Operation timed out
+ssh: connect to host 192.168.50.133 port 22: Operation timed out
 ```
 
 Windows-side probe showed SSH was not configured or listening:
@@ -308,7 +308,7 @@ It should be sampled during the bad window before ruling it out.
 
    ```bash
    bin/codex-env ansible -i inventory/inventory.yaml dev-workstation-win \
-     -e ansible_host=192.168.50.132 \
+     -e ansible_host=192.168.50.133 \
      -m ansible.windows.win_shell \
      -a 'hostname; netsh wlan show interfaces'
    ```
@@ -352,7 +352,7 @@ Basic live check:
 
 ```bash
 bin/codex-env ansible -i inventory/inventory.yaml dev-workstation-win \
-  -e ansible_host=192.168.50.132 \
+  -e ansible_host=192.168.50.133 \
   -m ansible.windows.win_shell \
   -a 'hostname; netsh wlan show interfaces'
 ```
@@ -361,7 +361,7 @@ Steam priority again, if Steam has restarted:
 
 ```bash
 bin/codex-env ansible -i inventory/inventory.yaml dev-workstation-win \
-  -e ansible_host=192.168.50.132 \
+  -e ansible_host=192.168.50.133 \
   -m ansible.windows.win_shell \
   -a '$targets = Get-Process | Where-Object { $_.ProcessName -match "^steam$|steamwebhelper" }; foreach ($p in $targets) { try { $p.PriorityClass = "BelowNormal" } catch {} }; $targets | Select-Object ProcessName,Id,PriorityClass'
 ```
@@ -370,7 +370,7 @@ One-minute Wi-Fi rate sampler:
 
 ```bash
 bin/codex-env ansible -i inventory/inventory.yaml dev-workstation-win \
-  -e ansible_host=192.168.50.132 \
+  -e ansible_host=192.168.50.133 \
   -m ansible.windows.win_shell \
   -a '$samples=@(); for($i=0;$i -lt 60;$i++){ $wifi=Get-NetAdapterStatistics -Name "Wi-Fi 3"; $iface=(netsh wlan show interfaces | Out-String); $samples += [pscustomobject]@{ t=(Get-Date).ToString("HH:mm:ss"); rx=[int64]$wifi.ReceivedBytes; tx=[int64]$wifi.SentBytes; signal=if($iface -match "Signal\s+:\s+(\d+)%"){[int]$Matches[1]}else{$null}; rxRate=if($iface -match "Receive rate \(Mbps\)\s+:\s+([0-9.]+)"){[double]$Matches[1]}else{$null} }; Start-Sleep 1 }; $rates=@(); for($i=1;$i -lt $samples.Count;$i++){ $rates += [pscustomobject]@{ t=$samples[$i].t; rxMbps=[math]::Round((($samples[$i].rx-$samples[$i-1].rx)*8/1MB),2); signal=$samples[$i].signal; rxRate=$samples[$i].rxRate } }; $rates | ConvertTo-Json -Depth 4'
 ```

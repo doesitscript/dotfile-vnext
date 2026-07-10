@@ -2,7 +2,7 @@
 
 **Inventory host:** `dev-workstation-win`  
 **OS hostname:** `DESKTOP-C1ACPUM`  
-**LAN IP:** `192.168.50.132`  
+**LAN IP:** `192.168.50.133`  
 **Active console user (gaming):** `ericc`  
 **Automation SSH user:** `joshc` (`~/.ssh/id_ed25519_ansible`)
 
@@ -66,7 +66,7 @@ This is **not** the same as “GPU at 100%.” DWM thrashing can produce catastr
 
 ## Troubleshooting profile (A/B test — “lean gaming path”)
 
-Applied remotely **2026-05-29** via OpenSSH (`joshc@192.168.50.132`) for the next gaming session.
+Applied remotely **2026-05-29** via OpenSSH (`joshc@192.168.50.133`) for the next gaming session.
 
 ### Target state for the test
 
@@ -139,7 +139,7 @@ RTSS was restarted after profile write. **Eric must confirm** frametime appears 
 **Connection:**
 
 ```text
-ssh -i ~/.ssh/id_ed25519_ansible joshc@192.168.50.132
+ssh -i ~/.ssh/id_ed25519_ansible joshc@192.168.50.133
 ansible -i inventory/inventory.yaml dev-workstation-win -m ansible.windows.win_shell -a "..."
 ```
 

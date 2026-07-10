@@ -1,6 +1,6 @@
 # DESKTOP-C1ACPUM — GPU/FPS on-offs and evidence
 
-**Host:** `dev-workstation-win` / **DESKTOP-C1ACPUM** / **192.168.50.132**  
+**Host:** `dev-workstation-win` / **DESKTOP-C1ACPUM** / **192.168.50.133**  
 **Gaming user:** `ericc`  
 **Problem:** intermittent **1–5 FPS** (Dead by Daylight, ultrawide 3440×1440 @ 180 Hz)
 

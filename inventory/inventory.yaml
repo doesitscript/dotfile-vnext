@@ -49,6 +49,23 @@ all:
       hosts:
         dev-workstation-win:
 
+    # Windows hosts eligible for access-only convergence such as OpenSSH,
+    # controller key deployment, and SSH client alias rendering. This is
+    # intentionally broader than windows_hosts, but still excludes deferred
+    # placeholders with no active connection surface.
+    windows_access_hosts:
+      hosts:
+        dev-3090-win:
+      children:
+        windows_hosts: {}
+        windows_hosts_offline: {}
+
+    # Runtime placeholder for the best-effort Windows access playbook.
+    # playbooks/access_windows_best_effort.yaml populates this dynamically with
+    # sibling Windows connection surfaces for the requested physical node(s).
+    windows_access_best_effort_candidates:
+      hosts: {}
+
     # Windows hosts that expose repo-managed SMB file shares.
     # This is intentionally narrower than windows_hosts so share mutations stay
     # scoped to hosts with explicit file-share intent.
@@ -133,11 +150,12 @@ all:
         hom-lab-ctl-k3s-02:
 
     # SSH targets: hosts that may need an entry in the controller's ~/.ssh/config.
-    # Windows hosts render from OpenSSH desired state. Linux VMs render when
-    # they have realized connection facts.
+    # Windows access hosts render from OpenSSH desired state plus a realized
+    # connection surface. Linux VMs render when they have realized connection
+    # facts.
     ssh_targets:
       children:
-        windows_hosts: {}
+        windows_access_hosts: {}
         linux_vm_hosts: {}
 
     # Docker clients: hosts that need the Docker CLI + SSH context to a Docker engine.

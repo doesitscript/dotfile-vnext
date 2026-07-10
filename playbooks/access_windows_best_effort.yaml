@@ -1,0 +1,216 @@
+---
+# Access: best-effort Windows OpenSSH convergence with bounded per-surface
+# reachability retries and mandatory WinRM/PowerShell remoting fallback.
+#
+# This playbook is intentionally narrower in behavior than access_windows.yaml:
+# - it expands the requested Windows host(s) to sibling Windows connection
+#   surfaces on the same physical node
+# - it gives each candidate surface a bounded SSH wait/retry window
+# - when SSH is unavailable, it must try the already-enabled WinRM/PowerShell
+#   remoting surface on that same host before skipping it
+# - it skips only after both transports fail and then continues the run
+#
+# Use this playbook when you want the access role to keep going across hosts
+# while still requiring a WinRM/PowerShell remoting fallback attempt before a
+# Windows host is considered skipped.
+#
+# Recommended single-node usage:
+#   ansible-playbook playbooks/access_windows_best_effort.yaml \
+#     -i inventory/inventory.yaml \
+#     -e access_windows_best_effort_target=HOM-LAB-HVH-02
+#
+# The best-effort target should usually be supplied as
+# access_windows_best_effort_target instead of --limit so the playbook can
+# expand sibling fallback surfaces automatically.
+#
+# Read-only preview of the expanded candidate surfaces:
+#   ansible-playbook playbooks/access_windows_best_effort.yaml \
+#     -i inventory/inventory.yaml \
+#     -e access_windows_best_effort_target=HOM-LAB-HVH-02 \
+#     --tags preview
+
+- name: Access - build best-effort Windows candidate surfaces
+  hosts: execution_nodes
+  connection: local
+  gather_facts: false
+  vars:
+    _access_windows_best_effort_requested_target: >-
+      {{ access_windows_best_effort_target | default('windows_access_hosts') }}
+
+  tasks:
+    - name: Resolve requested Windows access hosts
+      ansible.builtin.set_fact:
+        _access_windows_best_effort_base_hosts: >-
+          {{ query('ansible.builtin.inventory_hostnames', _access_windows_best_effort_requested_target) }}
+      run_once: true
+      tags: [always, preview]
+
+    - name: Resolve physical nodes for requested Windows access hosts
+      ansible.builtin.set_fact:
+        _access_windows_best_effort_physical_nodes: >-
+          {{
+            _access_windows_best_effort_base_hosts
+            | map('extract', hostvars, 'physical_node')
+            | reject('equalto', None)
+            | reject('equalto', '')
+            | unique
+            | list
+          }}
+      run_once: true
+      tags: [always, preview]
+
+    - name: Add candidate Windows surfaces for requested physical nodes
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        groups: windows_access_best_effort_candidates
+      loop: "{{ query('ansible.builtin.inventory_hostnames', 'all') }}"
+      when:
+        - hostvars[item].surface_type | default('') == 'windows_host'
+        - (hostvars[item].physical_node | default(item)) in _access_windows_best_effort_physical_nodes
+        - hostvars[item].ansible_host is defined
+        - (hostvars[item].ansible_connection | default('ssh')) in ['ssh', 'winrm']
+      run_once: true
+      tags: [always, preview]
+
+    - name: Require at least one reachable-candidate Windows surface to be modeled
+      ansible.builtin.assert:
+        that:
+          - (groups['windows_access_best_effort_candidates'] | default([]) | length) > 0
+        fail_msg: >-
+          No Windows candidate surfaces with active connection details were found
+          for target {{ _access_windows_best_effort_requested_target }}.
+      run_once: true
+      tags: [always, preview]
+
+    - name: Preview expanded Windows candidate surfaces
+      ansible.builtin.debug:
+        msg:
+          requested_target: "{{ _access_windows_best_effort_requested_target }}"
+          base_hosts: "{{ _access_windows_best_effort_base_hosts }}"
+          physical_nodes: "{{ _access_windows_best_effort_physical_nodes }}"
+          candidate_surfaces: "{{ groups['windows_access_best_effort_candidates'] | default([]) | sort }}"
+      run_once: true
+      tags: [preview]
+
+- name: Access - windows identity (best effort)
+  hosts: windows_access_best_effort_candidates
+  gather_facts: false
+  ignore_unreachable: true
+  serial: 1
+  vars:
+    access_windows_best_effort_probe_timeout: 20
+    access_windows_best_effort_probe_connect_timeout: 5
+    access_windows_best_effort_probe_sleep: 5
+
+  pre_tasks:
+    - name: Skip remote convergence during preview-only runs
+      ansible.builtin.meta: end_play
+      when: "'preview' in (ansible_run_tags | default([]))"
+      run_once: true
+      tags: [always]
+
+    - name: Skip hosts without a Windows remote connection (WinRM or SSH)
+      ansible.builtin.meta: end_host
+      when: (ansible_connection | default('ssh')) not in ['winrm', 'ssh']
+      tags: [always]
+
+    - name: Require WinRM/PowerShell remoting fallback credentials
+      ansible.builtin.assert:
+        that:
+          - windows_remoting_fallback_enabled | default(true) | bool
+          - windows_remoting_fallback_user | default('') | length > 0
+          - vault_windows_house_remoting_password | default('') | length > 0
+        fail_msg: >-
+          windows_remoting_fallback_* variables and
+          vault_windows_house_remoting_password must be defined for
+          access_windows_best_effort.
+      tags: [always]
+
+    - name: Wait briefly for primary candidate surface reachability
+      ansible.builtin.wait_for_connection:
+        timeout: "{{ access_windows_best_effort_probe_timeout }}"
+        connect_timeout: "{{ access_windows_best_effort_probe_connect_timeout }}"
+        sleep: "{{ access_windows_best_effort_probe_sleep }}"
+      register: _access_windows_best_effort_wait_primary
+      ignore_unreachable: true
+      ignore_errors: true
+      tags: [always]
+
+    - name: Attempt WinRM/PowerShell remoting fallback after SSH failure
+      when:
+        - >-
+          (_access_windows_best_effort_wait_primary is failed) or
+          (_access_windows_best_effort_wait_primary.unreachable | default(false))
+      tags: [always]
+      block:
+        - name: Switch candidate surface to WinRM/PowerShell remoting fallback
+          ansible.builtin.set_fact:
+            ansible_connection: winrm
+            ansible_user: "{{ windows_remoting_fallback_user }}"
+            ansible_password: "{{ vault_windows_house_remoting_password }}"
+            ansible_winrm_password: "{{ vault_windows_house_remoting_password }}"
+            ansible_port: "{{ windows_remoting_fallback_port }}"
+            ansible_winrm_scheme: "{{ windows_remoting_fallback_scheme }}"
+            ansible_winrm_transport: "{{ windows_remoting_fallback_transport }}"
+            ansible_shell_type: "{{ windows_remoting_fallback_shell_type }}"
+            ansible_shell_executable: "{{ windows_remoting_fallback_shell_executable }}"
+
+        - name: Reset connection before WinRM/PowerShell fallback attempt
+          ansible.builtin.meta: reset_connection
+
+        - name: Wait briefly for WinRM/PowerShell remoting fallback reachability
+          ansible.builtin.wait_for_connection:
+            timeout: "{{ access_windows_best_effort_probe_timeout }}"
+            connect_timeout: "{{ access_windows_best_effort_probe_connect_timeout }}"
+            sleep: "{{ access_windows_best_effort_probe_sleep }}"
+          register: _access_windows_best_effort_wait_fallback
+          ignore_unreachable: true
+          ignore_errors: true
+
+    - name: Report skipped candidate surface after SSH and WinRM fallback failure
+      ansible.builtin.debug:
+        msg: >-
+          Skipping {{ inventory_hostname }} after primary SSH and fallback
+          WinRM/PowerShell remoting retries failed
+          (timeout={{ access_windows_best_effort_probe_timeout }}s,
+          connect_timeout={{ access_windows_best_effort_probe_connect_timeout }}s,
+          sleep={{ access_windows_best_effort_probe_sleep }}s).
+      when:
+        - >-
+          (
+            (_access_windows_best_effort_wait_primary is failed) or
+            (_access_windows_best_effort_wait_primary.unreachable | default(false))
+          ) and (
+            (_access_windows_best_effort_wait_fallback is not defined) or
+            (_access_windows_best_effort_wait_fallback is failed) or
+            (_access_windows_best_effort_wait_fallback.unreachable | default(false))
+          )
+      tags: [always]
+
+    - name: End candidate surface after SSH and WinRM fallback failure
+      ansible.builtin.meta: end_host
+      when:
+        - >-
+          (
+            (_access_windows_best_effort_wait_primary is failed) or
+            (_access_windows_best_effort_wait_primary.unreachable | default(false))
+          ) and (
+            (_access_windows_best_effort_wait_fallback is not defined) or
+            (_access_windows_best_effort_wait_fallback is failed) or
+            (_access_windows_best_effort_wait_fallback.unreachable | default(false))
+          )
+      tags: [always]
+
+  tasks:
+    - name: Configure Windows identity
+      ansible.builtin.include_role:
+        name: access_identity_windows
+      tags: [always]
+
+    - name: Collect Windows remote access troubleshooting artifacts
+      ansible.builtin.include_role:
+        name: troubleshooting_collectors
+        tasks_from: windows_remote_access.yml
+      tags:
+        - never
+        - collect_windows_remote_access

@@ -14,7 +14,7 @@
 {% set ssh_port = hv.get('ssh_port') or hv.get('win_ssh_port') or hv.get('ansible_port') or 22 %}
 {% set ssh_proxy_jump_host = hv.get('ssh_proxy_jump_host', '') %}
 {% set emit_ssh_entry = (
-  (hv.get('surface_type', '') == 'windows_host' and windows_ssh_state == 'present')
+  (hv.get('surface_type', '') == 'windows_host' and windows_ssh_state == 'present' and hv.get('ansible_host', ''))
   or (hv.get('surface_type', '') == 'ubuntu_vm' and hv.get('ansible_host', ''))
 ) %}
 {% if emit_ssh_entry %}

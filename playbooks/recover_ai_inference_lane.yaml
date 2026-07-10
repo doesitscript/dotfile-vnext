@@ -1,0 +1,308 @@
+---
+# Recover the shared AI inference lane on hom-lab-ctl-k3s-02 when rollout
+# churn, node disk-pressure, or a stalled vLLM/LiteLLM bring-up leaves the
+# public model routes declared but not actually usable.
+#
+# Preview:
+#   bin/codex-env ansible-playbook playbooks/recover_ai_inference_lane.yaml \
+#     -i inventory/inventory.yaml --tags ai_inference_lane_recovery_preview
+#
+# Apply:
+#   bin/codex-env ansible-playbook playbooks/recover_ai_inference_lane.yaml \
+#     -i inventory/inventory.yaml
+#
+# Verify:
+#   curl -s -H 'Authorization: Bearer sk-Pass@w0rd1' \
+#     http://litellm.hom.lab/v1/models | jq '.data[]?.id'
+#
+# Undo:
+#   Re-run the normal owner playbooks (`deploy_vllm_runtime.yaml`,
+#   `deploy_litellm_gateway.yaml`, `deploy_langfuse_platform.yaml`,
+#   `k3s_traefik_routes.yaml`) after restoring prior repo truth.
+
+- name: AI inference lane recovery - preview
+  hosts: execution_nodes
+  connection: local
+  gather_facts: false
+  tags: [ai_inference_lane_recovery_preview, always]
+  vars:
+    ai_inference_lane_recovery_target_node: hom-lab-ctl-k3s-02
+    ai_inference_lane_recovery_required_gateway_models:
+      - deepreinforce-ai/Ornith-1.0-35B-GGUF
+      - experiment
+      - code-review
+      - default
+
+  tasks:
+    - name: Preview AI inference lane recovery entrypoint
+      ansible.builtin.debug:
+        msg:
+          entrypoint: playbooks/recover_ai_inference_lane.yaml
+          change_class: mixed live recovery and idempotent re-converge
+          apply: "./bin/codex-env ansible-playbook playbooks/recover_ai_inference_lane.yaml -i inventory/inventory.yaml"
+          verify:
+            - node Ready and DiskPressure=False on hom-lab-ctl-k3s-02
+            - vllm-primary / litellm / langfuse rollouts succeed
+            - litellm.hom.lab/v1/models exposes the expected route aliases
+            - deepreinforce-ai/Ornith-1.0-35B-GGUF completion probe succeeds
+          undo:
+            - rerun owner playbooks after restoring prior repo truth
+            - repeat the node cleanup/restart slice only when disk-pressure or rollout churn returns
+          phase_order:
+            - preview_and_node_probe
+            - node_cleanup_if_needed
+            - k3s_restart_if_needed
+            - vllm_runtime
+            - litellm_gateway
+            - langfuse_platform
+            - traefik_routes
+            - contract_validation
+            - live_gateway_verification
+          target_node: "{{ ai_inference_lane_recovery_target_node }}"
+          required_gateway_models: "{{ ai_inference_lane_recovery_required_gateway_models }}"
+
+- name: AI inference lane recovery - hom-lab-ctl-k3s-02 node cleanup and readiness gate
+  hosts: hom-lab-ctl-k3s-02
+  gather_facts: false
+  become: true
+  vars:
+    ai_inference_lane_recovery_cleanup_enabled: true
+    ai_inference_lane_recovery_force_cleanup: false
+    ai_inference_lane_recovery_restart_k3s_when_cleanup_runs: true
+    ai_inference_lane_recovery_k3s_service_name: k3s
+    ai_inference_lane_recovery_journal_vacuum_size: 200M
+  tags: [ai_inference_lane_recovery, ai_inference_lane_recovery_node]
+
+  tasks:
+    - name: Capture initial AI lane node condition
+      ansible.builtin.shell: >
+        kubectl get node {{ inventory_hostname }}
+        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}
+        {.status.conditions[?(@.type=="DiskPressure")].status}'
+      args:
+        executable: /bin/bash
+      register: _ai_inference_lane_recovery_initial_node_state
+      changed_when: false
+
+    - name: Report initial AI lane node condition
+      ansible.builtin.debug:
+        msg:
+          node: "{{ inventory_hostname }}"
+          initial_node_state: "{{ _ai_inference_lane_recovery_initial_node_state.stdout | trim }}"
+          cleanup_enabled: "{{ ai_inference_lane_recovery_cleanup_enabled }}"
+          force_cleanup: "{{ ai_inference_lane_recovery_force_cleanup }}"
+
+    - name: Capture initial filesystem and journal receipt
+      ansible.builtin.shell: |
+        journalctl --disk-usage
+        echo
+        df -h / /var/lib/rancher/k3s /run/k3s/containerd 2>/dev/null || true
+      args:
+        executable: /bin/bash
+      register: _ai_inference_lane_recovery_initial_storage_receipt
+      changed_when: false
+
+    - name: Print initial filesystem and journal receipt
+      ansible.builtin.debug:
+        msg: "{{ _ai_inference_lane_recovery_initial_storage_receipt.stdout_lines }}"
+
+    - name: Vacuum journals for AI lane node recovery
+      ansible.builtin.command:
+        cmd: journalctl --vacuum-size={{ ai_inference_lane_recovery_journal_vacuum_size }}
+      register: _ai_inference_lane_recovery_vacuum
+      changed_when: true
+      when:
+        - ai_inference_lane_recovery_cleanup_enabled | bool
+        - ai_inference_lane_recovery_force_cleanup | bool
+          or (_ai_inference_lane_recovery_initial_node_state.stdout | trim) is search('True True|False True')
+
+    - name: Remove exited CRI containers for AI lane node recovery
+      ansible.builtin.shell: |
+        crictl ps -a --state Exited -q | xargs -r crictl rm
+      args:
+        executable: /bin/bash
+      register: _ai_inference_lane_recovery_rm_exited
+      changed_when: (_ai_inference_lane_recovery_rm_exited.stdout | default('') | trim | length) > 0
+      when:
+        - ai_inference_lane_recovery_cleanup_enabled | bool
+        - ai_inference_lane_recovery_force_cleanup | bool
+          or (_ai_inference_lane_recovery_initial_node_state.stdout | trim) is search('True True|False True')
+
+    - name: Remove not-ready CRI sandboxes for AI lane node recovery
+      ansible.builtin.shell: |
+        crictl pods --state notready -q | xargs -r crictl rmp
+      args:
+        executable: /bin/bash
+      register: _ai_inference_lane_recovery_rm_notready_pods
+      changed_when: (_ai_inference_lane_recovery_rm_notready_pods.stdout | default('') | trim | length) > 0
+      when:
+        - ai_inference_lane_recovery_cleanup_enabled | bool
+        - ai_inference_lane_recovery_force_cleanup | bool
+          or (_ai_inference_lane_recovery_initial_node_state.stdout | trim) is search('True True|False True')
+
+    - name: Delete failed Kubernetes pods for AI lane node recovery
+      ansible.builtin.command:
+        cmd: kubectl delete pod -A --field-selector=status.phase==Failed --ignore-not-found
+      register: _ai_inference_lane_recovery_delete_failed_pods
+      changed_when: (_ai_inference_lane_recovery_delete_failed_pods.stdout | default('')) is search('deleted')
+      when:
+        - ai_inference_lane_recovery_cleanup_enabled | bool
+        - ai_inference_lane_recovery_force_cleanup | bool
+          or (_ai_inference_lane_recovery_initial_node_state.stdout | trim) is search('True True|False True')
+
+    - name: Restart k3s after AI lane cleanup when requested
+      ansible.builtin.service:
+        name: "{{ ai_inference_lane_recovery_k3s_service_name }}"
+        state: restarted
+      when:
+        - ai_inference_lane_recovery_restart_k3s_when_cleanup_runs | bool
+        - ai_inference_lane_recovery_cleanup_enabled | bool
+        - ai_inference_lane_recovery_force_cleanup | bool
+          or (_ai_inference_lane_recovery_initial_node_state.stdout | trim) is search('True True|False True')
+
+    - name: Wait for AI lane node Ready with DiskPressure cleared
+      ansible.builtin.shell: >
+        kubectl get node {{ inventory_hostname }}
+        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}
+        {.status.conditions[?(@.type=="DiskPressure")].status}'
+      args:
+        executable: /bin/bash
+      register: _ai_inference_lane_recovery_final_node_state
+      changed_when: false
+      until: (_ai_inference_lane_recovery_final_node_state.stdout | trim) == 'True False'
+      retries: 120
+      delay: 5
+
+    - name: Capture final filesystem and journal receipt
+      ansible.builtin.shell: |
+        journalctl --disk-usage
+        echo
+        df -h / /var/lib/rancher/k3s /run/k3s/containerd 2>/dev/null || true
+      args:
+        executable: /bin/bash
+      register: _ai_inference_lane_recovery_final_storage_receipt
+      changed_when: false
+
+    - name: Print final AI lane node recovery receipt
+      ansible.builtin.debug:
+        msg:
+          final_node_state: "{{ _ai_inference_lane_recovery_final_node_state.stdout | trim }}"
+          final_storage_receipt: "{{ _ai_inference_lane_recovery_final_storage_receipt.stdout_lines }}"
+
+- name: AI inference lane recovery - vLLM runtime
+  ansible.builtin.import_playbook: deploy_vllm_runtime.yaml
+  vars:
+    k3s_vllm_runtime_state: present
+
+- name: AI inference lane recovery - LiteLLM gateway
+  ansible.builtin.import_playbook: deploy_litellm_gateway.yaml
+  vars:
+    k3s_litellm_gateway_state: present
+
+- name: AI inference lane recovery - Langfuse platform
+  ansible.builtin.import_playbook: deploy_langfuse_platform.yaml
+  vars:
+    k3s_langfuse_platform_state: present
+
+- name: AI inference lane recovery - Traefik publication
+  ansible.builtin.import_playbook: k3s_traefik_routes.yaml
+  vars:
+    k3s_traefik_routes_state: present
+
+- name: AI inference lane recovery - agent client profiles contract
+  ansible.builtin.import_playbook: validate_ai_agent_client_profiles.yaml
+
+- name: AI inference lane recovery - inference stack contract
+  ansible.builtin.import_playbook: validate_ai_inference_stack_contracts.yaml
+
+- name: AI inference lane recovery - live gateway verification from mac-dev
+  hosts: mac-dev
+  connection: local
+  gather_facts: false
+  vars_files:
+    - "{{ playbook_dir }}/../roles/k3s_litellm_gateway/defaults/main.yml"
+  vars:
+    ai_inference_lane_recovery_required_gateway_models:
+      - deepreinforce-ai/Ornith-1.0-35B-GGUF
+      - experiment
+      - code-review
+      - default
+    ai_inference_lane_recovery_completion_probe_model: deepreinforce-ai/Ornith-1.0-35B-GGUF
+    ai_inference_lane_recovery_completion_probe_prompt: Reply with only the word READY.
+    ai_inference_lane_recovery_completion_probe_expected_text: READY
+  tags: [ai_inference_lane_recovery, ai_inference_lane_recovery_verify]
+
+  tasks:
+    - name: Wait for LiteLLM readiness on the published lane
+      ansible.builtin.uri:
+        url: http://litellm.hom.lab/health/readiness
+        method: GET
+        headers:
+          Authorization: "Bearer {{ k3s_litellm_gateway_master_key }}"
+        status_code: 200
+        timeout: 30
+      register: _ai_inference_lane_recovery_litellm_readiness
+      until: _ai_inference_lane_recovery_litellm_readiness.status == 200
+      retries: 30
+      delay: 5
+
+    - name: Read LiteLLM model list from the published lane
+      ansible.builtin.uri:
+        url: http://litellm.hom.lab/v1/models
+        method: GET
+        headers:
+          Authorization: "Bearer {{ k3s_litellm_gateway_master_key }}"
+        status_code: 200
+        return_content: true
+        timeout: 30
+      register: _ai_inference_lane_recovery_models
+
+    - name: Collect published LiteLLM model IDs
+      ansible.builtin.set_fact:
+        _ai_inference_lane_recovery_published_model_ids: >-
+          {{
+            (_ai_inference_lane_recovery_models.json.data | default([]))
+            | map(attribute='id')
+            | list
+          }}
+      changed_when: false
+
+    - name: Assert required published LiteLLM models are live
+      ansible.builtin.assert:
+        that:
+          - item in _ai_inference_lane_recovery_published_model_ids
+        fail_msg: "Published LiteLLM model route missing after recovery: {{ item }}"
+      loop: "{{ ai_inference_lane_recovery_required_gateway_models }}"
+
+    - name: Run published Ornith lane completion probe
+      ansible.builtin.uri:
+        url: http://litellm.hom.lab/v1/chat/completions
+        method: POST
+        headers:
+          Authorization: "Bearer {{ k3s_litellm_gateway_master_key }}"
+        body_format: json
+        body:
+          model: "{{ ai_inference_lane_recovery_completion_probe_model }}"
+          messages:
+            - role: user
+              content: "{{ ai_inference_lane_recovery_completion_probe_prompt }}"
+          max_tokens: 8
+        status_code: 200
+        return_content: true
+        timeout: 300
+      register: _ai_inference_lane_recovery_completion
+
+    - name: Assert published Ornith lane returns the expected probe answer
+      ansible.builtin.assert:
+        that:
+          - _ai_inference_lane_recovery_completion.json.choices[0].message.content | trim == ai_inference_lane_recovery_completion_probe_expected_text
+        fail_msg: >-
+          Unexpected completion probe response for {{ ai_inference_lane_recovery_completion_probe_model }}:
+          {{ _ai_inference_lane_recovery_completion.content | default('') }}
+
+    - name: Summarize AI inference lane recovery verification
+      ansible.builtin.debug:
+        msg:
+          published_model_ids: "{{ _ai_inference_lane_recovery_published_model_ids }}"
+          completion_probe_model: "{{ ai_inference_lane_recovery_completion_probe_model }}"
+          completion_probe_text: "{{ _ai_inference_lane_recovery_completion.json.choices[0].message.content | trim }}"

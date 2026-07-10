@@ -36,7 +36,7 @@ This packet is the **roadmap** for work massaged from ChatGPT exports (`1.0.0`�
 
 External design described a **modular AI product engineering lab**: model lanes (LiteLLM aliases), vLLM as runner, Langfuse as observability, privacy before cloud routing, multi-GPU **jobs** on named hosts, and bounded agent roles. Reconciliation in the intake folder produced repo truth; these plans are the **build queue**.
 
-Operator decision now captured: **implement several agent types and model lanes now**. That means the program must carry the full model-purpose and agent-role set from the numbered docs. Individual rows can be `candidate`, `blocked`, or `pending research`, but they cannot disappear behind a single `code-deep` first path.
+Operator decision now captured: **implement several agent types and model lanes now**. That means the program must carry the full model-purpose and agent-role set from the numbered docs. Individual rows can be `candidate`, `blocked`, or `pending research`, but they cannot disappear behind a single `deepreinforce-ai/Ornith-1.0-35B-GGUF` first path.
 
 ---
 
@@ -185,7 +185,7 @@ graph LR
     hosts[HOM-LAB-HVH-02 HOM-LAB-HVH-01]
   end
 
-  ml --> litellm_name[model_name code-deep]
+  ml --> litellm_name[model_name deepreinforce-ai/Ornith-1.0-35B-GGUF]
   jobs --> hosts
   trace --> lfs_meta[Langfuse metadata keys]
   llm_code --> litellm_name
@@ -236,7 +236,7 @@ NetBox is **first-class** on this program: every child plan with `netbox_scope: 
 | ID | Decision | Required plan effect |
 |----|----------|----------------------|
 | OD-AI-001 | Implement several agent types and model lanes now | LiteLLM/model-catalog plans carry the full model-purpose set; gaps/agent workflow route carries planner/coder/tester/reviewer/documenter/steward foundations |
-| OD-AI-002 | Do not describe `code-deep` as "one first path" in a way that defers the rest | Plans may sequence runtime execution, but must keep full lane/agent scope visible as obligations |
+| OD-AI-002 | Do not describe `deepreinforce-ai/Ornith-1.0-35B-GGUF` as "one first path" in a way that defers the rest | Plans may sequence runtime execution, but must keep full lane/agent scope visible as obligations |
 | OD-AI-004 | Add coordinator + independent validator workflow; validator can send work back unless explicitly moved to a future plan | Parent plan owns execution workflow; child receipts must carry validator status before completion |
 | OD-AI-005 | Missing Ansible resources are implementation work, not a reason to stop without research/scaffolding/probes | Framework guidance plus vLLM/GPU roles and ordered playbook chain |
 
@@ -248,7 +248,7 @@ NetBox is **first-class** on this program: every child plan with `netbox_scope: 
 - [ ] **P-02** — D-1–D-4 decided or explicitly `blocked` with evidence
 - [ ] **P-03** — Each child plan verification receipt shows NetBox **Verified** where in scope
 - [ ] **P-04** — Intake folder `_wip.md` updated when a child moves to `implemented`
-- [x] **P-05** — Full model-purpose set from numbered docs represented in LiteLLM + catalog receipts, not only `code-deep`
+- [x] **P-05** — Full model-purpose set from numbered docs represented in LiteLLM + catalog receipts, not only `deepreinforce-ai/Ornith-1.0-35B-GGUF`
 - [x] **P-06** — Several agent types represented in plan chain or named sibling agent-workflow plan before build
 - [ ] **P-07** — No child plan uses sequencing language to drop approved scope
 - [x] **P-08** — Coordinator / slice-worker / independent-validator workflow documented
@@ -295,7 +295,7 @@ NetBox is **first-class** on this program: every child plan with `netbox_scope: 
 | ID | User decision / direction | Target integration | Status |
 |----|---------------------------|--------------------|--------|
 | OD-AI-001 | Implement several agent types and model lanes now | Integrated into parent checklist; child plans must finish full lane/agent rows before build | on-deck until child receipts carry it |
-| OD-AI-002 | Stop framing `code-deep` as the only real executable path | LiteLLM, catalog, and vLLM wording/checklists | integrated in child packets |
+| OD-AI-002 | Stop framing `deepreinforce-ai/Ornith-1.0-35B-GGUF` as the only real executable path | LiteLLM, catalog, and vLLM wording/checklists | integrated in child packets |
 | OD-AI-003 | Operator reviewed plans — ready for slice-by-slice build when directed | P-01; child `-incomplete-wip` packets current | integrated 2026-05-29 |
 | OD-AI-004 | Use a coordinator plus independent validator send-back gate for all planned work | Parent workflow, receipts, and child packet validation rows | integrated in this packet |
 | OD-AI-005 | Do not stop at missing resources if docs/MCP research and scaffolding can advance the build | Framework rules, vLLM role scaffolding, ordered Ansible playbook | integrated in this packet |

@@ -4,6 +4,61 @@ This is the quickest repo-native place to answer two operator questions:
 
 - "What URLs can I open in a browser right now?"
 - "Where are the LiteLLM, Langfuse, and related AI solution surfaces defined?"
+- "Which playbook do I run to deploy my changes into the lab?"
+
+## Deployment Entrypoints
+
+Use the owner playbook for the surface you changed.
+
+### Canonical entrypoints
+
+| Goal | Preferred playbook | What it covers |
+| --- | --- | --- |
+| Broad active-lab converge | `playbooks/site.yaml` | Windows base, access, Hyper-V host infrastructure, guest lifecycle, Docker surfaces, and interim hosts-file publication |
+| Hyper-V guest connectivity foundation | `playbooks/hyperv_guest_connectivity_foundation.yaml` | Access foundation, Windows host networking, guest lifecycle, mac guest routes, and hosts-file bridge |
+| AI inference stack deploy | `playbooks/deploy_ai_inference_stack.yaml` | Storage/catalog prerequisite, GPU infra, `vLLM`, LiteLLM, Langfuse, client-profile validation, and inference-stack contract validation |
+
+### Most common targeted deploys
+
+| If you changed... | Run this |
+| --- | --- |
+| Windows LAN publish edge, portproxy, guest routes, or host networking | `ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml -i inventory/inventory.yaml` |
+| SSH/access surfaces, controller SSH config, mac hosts-file, or mac kube client | `ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml` |
+| Shared backing services on the storage lane | `ansible-playbook playbooks/deploy_network_stacks.yaml -i inventory/inventory.yaml` |
+| GPU runtime, K3s GPU node setup, `vLLM`, LiteLLM, Langfuse, Traefik routes, and mac kube refresh | `ansible-playbook playbooks/deploy_gpu_infrastructure.yaml -i inventory/inventory.yaml` |
+| Full AI lane with validation at the end | `ansible-playbook playbooks/deploy_ai_inference_stack.yaml -i inventory/inventory.yaml` |
+| Recover the shared AI lane after node pressure, eviction churn, or stale LiteLLM route publication | `ansible-playbook playbooks/recover_ai_inference_lane.yaml -i inventory/inventory.yaml` |
+
+### What the AI stack entrypoint validates
+
+`playbooks/deploy_ai_inference_stack.yaml` ends by running:
+
+- `playbooks/validate_ai_agent_client_profiles.yaml`
+- `playbooks/validate_ai_inference_stack_contracts.yaml`
+
+That last validation playbook is the repo gate for the local inference contract. It asserts:
+
+- expected LiteLLM lane names remain present
+- enabled local gateway routes still exist
+- migration/default routes are preserved
+- the primary local `vLLM` route and secondary review route still match their declared backends
+
+### Practical deploy order
+
+When you want to push most infrastructure changes out in a safe repo-native order:
+
+```bash
+ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml -i inventory/inventory.yaml
+ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml
+ansible-playbook playbooks/deploy_network_stacks.yaml -i inventory/inventory.yaml
+ansible-playbook playbooks/deploy_ai_inference_stack.yaml -i inventory/inventory.yaml
+```
+
+If you only changed AI app/runtime surfaces, you can usually start at:
+
+```bash
+ansible-playbook playbooks/deploy_ai_inference_stack.yaml -i inventory/inventory.yaml
+```
 
 ## Browser URLs
 
@@ -30,7 +85,7 @@ Current client-facing lanes declared in the gateway contract:
 
 | Lane / model name | State | Backend |
 | --- | --- | --- |
-| `code-deep` | enabled | primary local `vLLM` |
+| `deepreinforce-ai/Ornith-1.0-35B-GGUF` | enabled | primary local `vLLM` |
 | `experiment` | enabled | primary local `vLLM` |
 | `code-review` | enabled | secondary local `Ollama` on `HOM-LAB-HVH-01` |
 | `code-fast` | blocked | pending |

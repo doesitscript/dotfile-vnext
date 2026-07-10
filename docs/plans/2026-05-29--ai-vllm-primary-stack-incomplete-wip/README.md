@@ -30,7 +30,7 @@ netbox_service_slug: vllm-k3s-primary
 
 **Parent program:** [2026-05-29--ai-homelab-intake-execution-incomplete-wip](../2026-05-29--ai-homelab-intake-execution-incomplete-wip/README.md)
 
-**Planner/Steward view:** GPU-backed **OpenAI-compatible** inference service on the 5090 path — not a LiteLLM alias and not the durable model catalog. **Heavy coding** is how clients *use* this service via LiteLLM `code-deep` (separate packet). This packet supplies one runtime/backend for the full model-lane program; it does not narrow the program to one lane.
+**Planner/Steward view:** GPU-backed **OpenAI-compatible** inference service on the 5090 path — not a LiteLLM alias and not the durable model catalog. **Heavy coding** is how clients *use* this service via LiteLLM `deepreinforce-ai/Ornith-1.0-35B-GGUF` (separate packet). This packet supplies one runtime/backend for the full model-lane program; it does not narrow the program to one lane.
 
 **Intake sources:**
 
@@ -56,10 +56,10 @@ netbox_service_slug: vllm-k3s-primary
 |---------------|----------------|------------------|
 | Primary deep local reasoning | Largest local model for hard problems on powerhouse GPU | vLLM serves `Qwen/Qwen2.5-Coder-32B-Instruct-AWQ` after smoke `Qwen/Qwen3-0.6B` |
 | vLLM primary | Main 5090 OpenAI-compatible inference service | Namespace `vllm-runtime`, stable cluster `api_base`, operator `vllm.hom.lab` |
-| Heavy coding | Coding-focused use of same stack | LiteLLM alias `code-deep` → this runtime (owned by the sibling LiteLLM packet) |
+| Heavy coding | Coding-focused use of same stack | LiteLLM alias `deepreinforce-ai/Ornith-1.0-35B-GGUF` → this runtime (owned by the sibling LiteLLM packet) |
 | 5090 lane *(provenance only)* | Jobs for powerhouse GPU host | `HOM-LAB-HVH-02` + `hom-lab-ctl-k3s-02` — **not** an inventory group name |
 
-**Not in this slice, but not dropped:** LiteLLM `model_list` aliases, the full model-purpose set, agent role defaults, Langfuse trace metadata, and RIPI product surfaces are carried by named sibling packets. This vLLM packet must not be read as "only implement `code-deep`."
+**Not in this slice, but not dropped:** LiteLLM `model_list` aliases, the full model-purpose set, agent role defaults, Langfuse trace metadata, and RIPI product surfaces are carried by named sibling packets. This vLLM packet must not be read as "only implement `deepreinforce-ai/Ornith-1.0-35B-GGUF`."
 
 ---
 
@@ -82,7 +82,7 @@ netbox_service_slug: vllm-k3s-primary
 **Optional catalog dependency:** [model catalog HF storage plan](../2026-05-29--ai-model-catalog-hf-storage-incomplete-wip/README.md) — vLLM may use PVC first; share read is preferred steady-state.
 
 **Sibling obligations:** Before this program builds, the model-catalog and
-LiteLLM packets must still represent `code-deep`, `code-fast`, `code-review`,
+LiteLLM packets must still represent `deepreinforce-ai/Ornith-1.0-35B-GGUF`, `code-fast`, `code-review`,
 `code-test`, `ripi-private`, `embeddings-local`, `experiment`, and cloud/public
 fallback lanes as candidate/blocked/enabled rows. This runtime may be the first
 backend verified, but it is not the full AI lane plan.
@@ -155,7 +155,7 @@ graph TB
 
   subgraph operator [Operator path]
     mac["mac-dev curl vllm.hom.lab"]
-    litellmLater["LiteLLM code-deep future"]
+    litellmLater["LiteLLM deepreinforce-ai/Ornith-1.0-35B-GGUF future"]
   end
 
   planReady --> vllmRole
@@ -364,7 +364,7 @@ graph TB
 
 | ID | User decision / direction | Target integration | Status |
 |----|---------------------------|--------------------|--------|
-| OD-AI-002 | Do not use `code-deep` first-path wording to defer the rest | Scope boundary, sibling obligations, V-11/O-17 | integrated into this packet; verify against sibling receipts before build |
+| OD-AI-002 | Do not use `deepreinforce-ai/Ornith-1.0-35B-GGUF` first-path wording to defer the rest | Scope boundary, sibling obligations, V-11/O-17 | integrated into this packet; verify against sibling receipts before build |
 | OD-AI-004 | Use independent validator send-back gate before completion | V-12 and receipt O-18 | integrated |
 
 ---
@@ -389,7 +389,7 @@ graph TB
 ### Additional Diagrams Available On Request
 
 - **Deployment Flow**: ordered GPU infra then vLLM Helm
-- **Integration Sequence**: LiteLLM `code-deep` → vLLM `api_base` (litellm packet)
+- **Integration Sequence**: LiteLLM `deepreinforce-ai/Ornith-1.0-35B-GGUF` → vLLM `api_base` (litellm packet)
 - **Network Topology**: hvh-02 portproxy / Traefik path to k3s-02
 
 ---

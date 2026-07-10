@@ -83,7 +83,7 @@ graph TB
     lfs_svc["langfuse-k3s-web service_code lfs"]
   end
 
-  ide -->|"model: code-deep"| litellm_pod
+  ide -->|"model: deepreinforce-ai/Ornith-1.0-35B-GGUF"| litellm_pod
   litellm_pod -->|"callback"| langfuse_web
   langfuse_web --> traces
   traces --> ui
@@ -119,7 +119,7 @@ graph LR
 ```mermaid
 graph TB
   subgraph request [Request / proxy]
-    model_name["LiteLLM model_name<br/>e.g. code-deep"]
+    model_name["LiteLLM model_name<br/>e.g. deepreinforce-ai/Ornith-1.0-35B-GGUF"]
     extra_meta["metadata / tags on request"]
   end
 
@@ -150,7 +150,7 @@ graph TB
 **Target metadata contract (per completion):**
 
 ```yaml
-model_lane: code-deep          # same string as LiteLLM model_name
+model_lane: deepreinforce-ai/Ornith-1.0-35B-GGUF          # same string as LiteLLM model_name
 routing_policy: local-5090     # from model_info / router
 context_class: private-code
 agent_role: coder

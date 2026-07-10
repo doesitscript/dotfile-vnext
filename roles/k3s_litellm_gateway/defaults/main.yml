@@ -60,10 +60,12 @@ k3s_litellm_gateway_router_settings: {}
 k3s_litellm_gateway_primary_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1" #FIXME: v1 is note part of the base
 k3s_litellm_gateway_primary_vllm_model: "Qwen/Qwen2.5-Coder-32B-Instruct-AWQ"
 k3s_litellm_gateway_secondary_review_runtime_host: "HOM-LAB-HVH-01"
+# FIXME: avoid the hard-coded secondary-review fallback IP once inventory fully
+# owns this surface.
 k3s_litellm_gateway_secondary_review_ollama_api_base: >-
   http://{{
     hostvars[k3s_litellm_gateway_secondary_review_runtime_host].host_ip
-    | default(hostvars[k3s_litellm_gateway_secondary_review_runtime_host].ansible_host | default('192.168.50.234')) # FIXME don't hardcode this
+    | default(hostvars[k3s_litellm_gateway_secondary_review_runtime_host].ansible_host | default('192.168.50.234'))
   }}:{{
     hostvars[k3s_litellm_gateway_secondary_review_runtime_host].windows_ollama_runtime_port
     | default(11434)
@@ -79,7 +81,7 @@ k3s_litellm_gateway_secondary_review_runtime_slug: "ollama-secondary-hvh-01"
 # runtime-enabled. Blocked/deferred rows are explicit so client and validation
 # surfaces can preserve the intended contract without inventing backends.
 k3s_litellm_gateway_lane_contract:
-  - lane: code-deep
+  - lane: deepreinforce-ai/Ornith-1.0-35B-GGUF
     state: enabled
     backend_kind: local-vllm
     runtime: vllm-primary
@@ -125,13 +127,13 @@ k3s_litellm_gateway_lane_contract:
 #   and used by Langfuse/client tracing. Per-request `agent_role` and
 #   `context_class` still come from the IDE/agent client metadata.
 k3s_litellm_gateway_model_list:
-  - model_name: code-deep
+  - model_name: deepreinforce-ai/Ornith-1.0-35B-GGUF
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
       api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
       api_key: "none"
     model_info:
-      model_lane: code-deep
+      model_lane: deepreinforce-ai/Ornith-1.0-35B-GGUF
       routing_policy: local-primary
       project: ripi
       backend_runtime: vllm-primary
@@ -186,13 +188,13 @@ k3s_litellm_gateway_model_list:
 
 # Fallback when vault_shared_openai_api_key is unset — proxy still starts; OpenAI routes omitted.
 k3s_litellm_gateway_model_list_without_openai:
-  - model_name: code-deep
+  - model_name: deepreinforce-ai/Ornith-1.0-35B-GGUF
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
       api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
       api_key: "none"
     model_info:
-      model_lane: code-deep
+      model_lane: deepreinforce-ai/Ornith-1.0-35B-GGUF
       routing_policy: local-primary
       project: ripi
       backend_runtime: vllm-primary

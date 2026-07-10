@@ -1,6 +1,7 @@
 ---
-# Access: enable OpenSSH on Windows (via WinRM), set up administrators_authorized_keys and controller key.
-# Run after access_controller. Targets windows_hosts.
+# Access: enable OpenSSH on Windows (via WinRM/SSH), set up
+# administrators_authorized_keys and controller key.
+# Run after access_controller. Targets windows_access_hosts by default.
 #
 # Prerequisite: for hosts that also own Hyper-V guest networking, run
 # playbooks/configure_hyperv_windows_hosts.yaml first. For the canonical
@@ -9,10 +10,11 @@
 # Commands:
 #   Windows-only run (admin + user on Windows hosts):
 #     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit HOM-LAB-HVH-02
+#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit dev-workstation-win
 #
-#   Explicit troubleshooting target outside windows_hosts:
+#   Override the default target group when needed:
 #     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml \
-#       -e access_windows_target=dev-workstation-win --limit dev-workstation-win
+#       -e access_windows_target=windows_hosts --limit HOM-LAB-HVH-02
 #
 #   Full access pipeline (controller + Windows + generated SSH surfaces):
 #     ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml
@@ -45,7 +47,7 @@
 # playbooks/access.yaml or the canonical playbooks/site.yaml path.
 #
 - name: Access - windows identity
-  hosts: "{{ access_windows_target | default('windows_hosts') }}"
+  hosts: "{{ access_windows_target | default('windows_access_hosts') }}"
   gather_facts: false
 
   pre_tasks:

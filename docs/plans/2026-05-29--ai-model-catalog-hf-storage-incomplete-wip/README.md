@@ -214,7 +214,7 @@ passes. Do not collapse this plan down to one primary row.
 
 | Lane / purpose | Catalog status before research | Candidate family to research | Notes |
 |----------------|--------------------------------|------------------------------|-------|
-| `code-deep` | `candidate` | large coding model suitable for 5090 vLLM | Former primary example; not the whole catalog |
+| `deepreinforce-ai/Ornith-1.0-35B-GGUF` | `candidate` | large coding model suitable for 5090 vLLM | Former primary example; not the whole catalog |
 | `code-fast` | `candidate` | smaller coding/general model | local-preferred |
 | `code-review` | `candidate` | reviewer/risk-finding model | local with optional scrubbed cloud route in LiteLLM |
 | `code-test` | `candidate` | test generation / repair model | reviewer/tester lane from infra exports |
@@ -290,7 +290,7 @@ passes. Do not collapse this plan down to one primary row.
 
 - [ ] **C-09** — vLLM primary plan references manifest row for `Qwen/Qwen2.5-Coder-32B-Instruct-AWQ`
 - [x] **C-10** — Expert research/live-probe receipt exists before any model row is marked stronger than `candidate`
-- [x] **C-11** — LiteLLM full lane set cross-linked so catalog rows are not only `code-deep`
+- [x] **C-11** — LiteLLM full lane set cross-linked so catalog rows are not only `deepreinforce-ai/Ornith-1.0-35B-GGUF`
 - [ ] **C-12** — Independent validator signs this slice; any deferred catalog/download work is moved to a named future plan with `moved_to_plan`
 
 ---
@@ -321,7 +321,7 @@ passes. Do not collapse this plan down to one primary row.
 | O-14 | Change contract Verify | Manifest lists every planned lane-purpose row with status and evidence level | yes | pending | |
 | O-15 | C-09 | vLLM plan cross-link | no | deferred | downstream packet |
 | O-16 | C-10 | Research/probe receipt before stronger-than-candidate rows | yes | pass | exact HF IDs are only `candidate`; Qwen repos verified on Hugging Face 2026-05-29 |
-| O-17 | C-11 / OD-AI-001 | Catalog cross-links full LiteLLM lane set | yes | pass | manifest carries code-deep, code-fast, code-review, code-test, ripi-private, embeddings-local, experiment, public-research |
+| O-17 | C-11 / OD-AI-001 | Catalog cross-links full LiteLLM lane set | yes | pass | manifest carries deepreinforce-ai/Ornith-1.0-35B-GGUF, code-fast, code-review, code-test, ripi-private, embeddings-local, experiment, public-research |
 | O-18 | C-12 / OD-AI-004 | Independent validator signed; deferrals moved out | yes | pending | |
 
 ### Summary
@@ -343,7 +343,7 @@ passes. Do not collapse this plan down to one primary row.
 | ID | User decision / direction | Target integration | Status |
 |----|---------------------------|--------------------|--------|
 | OD-AI-001 | Implement several model lanes now, not only one primary model | Model-purpose catalog set, C-04/C-10/C-11, receipt O-04/O-16/O-17 | integrated into packet; build-blocking until research/probe rows exist |
-| OD-AI-002 | Do not let `code-deep` first-path wording defer the rest | Model-purpose table and verify wording | integrated |
+| OD-AI-002 | Do not let `deepreinforce-ai/Ornith-1.0-35B-GGUF` first-path wording defer the rest | Model-purpose table and verify wording | integrated |
 | OD-AI-004 | Use independent validator send-back gate before completion | C-12 and receipt O-18 | integrated |
 
 ---

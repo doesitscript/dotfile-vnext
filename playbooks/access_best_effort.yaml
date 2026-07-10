@@ -1,0 +1,42 @@
+---
+# Access-only identity + SSH pipeline with best-effort Windows reachability.
+#
+# This entrypoint matches playbooks/access.yaml except the Windows phase:
+# instead of strict windows_access_hosts targeting, it expands sibling Windows
+# surfaces on the requested physical node(s), tries SSH first, then must try
+# existing WinRM/PowerShell remoting when SSH is unavailable, and only then
+# skips a surface so the run can continue.
+#
+# Recommended single-node usage:
+#   ansible-playbook playbooks/access_best_effort.yaml \
+#     -i inventory/inventory.yaml \
+#     -e access_windows_best_effort_target=HOM-LAB-HVH-02
+#
+# Read-only preview of expanded Windows candidate surfaces:
+#   ansible-playbook playbooks/access_best_effort.yaml \
+#     -i inventory/inventory.yaml \
+#     -e access_windows_best_effort_target=HOM-LAB-HVH-02 \
+#     --tags preview
+
+- name: Access - controller identity
+  import_playbook: access_controller.yaml
+
+- name: Access - Windows identity surfaces (best effort)
+  import_playbook: access_windows_best_effort.yaml
+
+- name: Access - update controller SSH client config
+  hosts: execution_nodes
+  connection: local
+  gather_facts: true
+
+  tasks:
+    - name: Generate SSH client config from deployed targets
+      ansible.builtin.include_role:
+        name: access_identity_controller
+        tasks_from: ssh_config.yml
+
+- name: Access - refresh mac homelab hosts file after SSH surface updates
+  import_playbook: homelab_hosts_file_mac.yaml
+
+- name: Access - refresh mac Hyper-V guest routes and K3s client config
+  import_playbook: k3s_mac_client.yaml

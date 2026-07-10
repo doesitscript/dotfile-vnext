@@ -31,14 +31,14 @@ External PostgreSQL uses `k3s_litellm_gateway_db_endpoint` plus
 ## Model routes vs model catalog
 
 `k3s_litellm_gateway_model_list` is the LiteLLM gateway route list. It defines
-client-facing aliases such as `code-deep`, `experiment`, and the preserved
+client-facing aliases such as `deepreinforce-ai/Ornith-1.0-35B-GGUF`, `experiment`, and the preserved
 migration rows.
 
 For the current slice:
 
-- `code-deep` is the first real local coding lane.
+- `deepreinforce-ai/Ornith-1.0-35B-GGUF` is the first real local coding lane.
 - `experiment` remains visible as a smoke alias, but it currently shares the
-  same `vllm-primary` backend as `code-deep` until a second runtime exists.
+  same `vllm-primary` backend as `deepreinforce-ai/Ornith-1.0-35B-GGUF` until a second runtime exists.
 - `gpt-4o-mini` and `default` stay present as migration rows while local-lane
   verification is still maturing.
 

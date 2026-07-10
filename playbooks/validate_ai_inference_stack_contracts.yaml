@@ -9,7 +9,7 @@
     - "{{ playbook_dir }}/../roles/k3s_vllm_runtime/defaults/main.yml"
   vars:
     _required_lane_contract_names:
-      - code-deep
+      - deepreinforce-ai/Ornith-1.0-35B-GGUF
       - code-fast
       - code-review
       - code-test
@@ -18,7 +18,7 @@
       - public-research
       - experiment
     _required_enabled_gateway_routes:
-      - code-deep
+      - deepreinforce-ai/Ornith-1.0-35B-GGUF
       - experiment
       - code-review
     _required_migration_gateway_routes:
@@ -56,11 +56,11 @@
     - name: Validate local-only fallback list still exposes useful lanes
       ansible.builtin.assert:
         that:
-          - "'code-deep' in _gateway_no_openai_route_names"
+          - "'deepreinforce-ai/Ornith-1.0-35B-GGUF' in _gateway_no_openai_route_names"
           - "'experiment' in _gateway_no_openai_route_names"
           - "'code-review' in _gateway_no_openai_route_names"
           - "'default' in _gateway_no_openai_route_names"
-        fail_msg: "LiteLLM local-only fallback must still expose code-deep, experiment, code-review, and default."
+        fail_msg: "LiteLLM local-only fallback must still expose deepreinforce-ai/Ornith-1.0-35B-GGUF, experiment, code-review, and default."
 
     - name: Validate every main gateway route carries required model metadata
       ansible.builtin.assert:
@@ -76,9 +76,9 @@
       loop_control:
         label: "{{ item.model_name }}"
 
-    - name: Resolve main code-deep gateway row
+    - name: Resolve main deepreinforce-ai/Ornith-1.0-35B-GGUF gateway row
       ansible.builtin.set_fact:
-        _code_deep_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', 'code-deep') | list | first) }}"
+        _code_deep_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', 'deepreinforce-ai/Ornith-1.0-35B-GGUF') | list | first) }}"
         _experiment_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', 'experiment') | list | first) }}"
         _code_review_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', 'code-review') | list | first) }}"
       changed_when: false

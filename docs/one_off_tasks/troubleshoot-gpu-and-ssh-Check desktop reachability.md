@@ -14,27 +14,27 @@ can you see if the one desktop that is partly setup (and ocassionly i've had to 
 
 Worked for 2m 34s
 Evidence:
-Troubleshooting mode: on. dev-workstation-win is up, but only the WinRM surface is currently working, and only when using the live IP 192.168.50.132.
+Troubleshooting mode: on. dev-workstation-win is up, but only the WinRM surface is currently working, and only when using the live IP 192.168.50.133.
 
 Key output seen:
 
 smbutil lookup DESKTOP-C1ACPUM
-Got response from 192.168.50.132
-IP address of DESKTOP-C1ACPUM: 192.168.50.132
+Got response from 192.168.50.133
+IP address of DESKTOP-C1ACPUM: 192.168.50.133
 ping DESKTOP-C1ACPUM.local
 2 packets transmitted, 2 packets received, 0.0% packet loss
-nc 192.168.50.132 5985
-Connection to 192.168.50.132 port 5985 [tcp/wsman] succeeded!
+nc 192.168.50.133 5985
+Connection to 192.168.50.133 port 5985 [tcp/wsman] succeeded!
 dev-workstation-win | SUCCESS => {
     "changed": false,
     "ping": "pong"
 }
 SSH is still not available:
 
-nc: connectx to 192.168.50.132 port 22 (tcp) failed: Operation timed out
+nc: connectx to 192.168.50.133 port 22 (tcp) failed: Operation timed out
 sshd_service=absent
 tcp_22_listener=absent
-192.168.50.132
+192.168.50.133
 The repo/default route is still stale/broken: inventory has ansible_host: DESKTOP-C1ACPUM and host_ip: 192.168.50.70, while DNS/cache currently maps DESKTOP-C1ACPUM to .70; default win_ping failed as unreachable against desktop-c1acpum:5985. So: machine up, WinRM good by live IP override, SSH absent, repo default addressing not reliable yet.
 
 No files changed.
@@ -73,20 +73,20 @@ You’re right to challenge that wording. I compressed three different “names�
 
 The clearer version is:
 
-DESKTOP-C1ACPUM.local resolved by mDNS to 192.168.50.132
-NetBIOS lookup also found DESKTOP-C1ACPUM at 192.168.50.132
-192.168.50.132:5985 is reachable
-win_ping works when I override Ansible to use 192.168.50.132
+DESKTOP-C1ACPUM.local resolved by mDNS to 192.168.50.133
+NetBIOS lookup also found DESKTOP-C1ACPUM at 192.168.50.133
+192.168.50.133:5985 is reachable
+win_ping works when I override Ansible to use 192.168.50.133
 the repo/default path uses ansible_host: DESKTOP-C1ACPUM
 that default name path resolved/canonicalized to desktop-c1acpum / 192.168.50.70
 192.168.50.70:5985 failed, so default win_ping failed
 So there is no contradiction in the WinRM result:
 
-WinRM via live IP 192.168.50.132:5985 = works
+WinRM via live IP 192.168.50.133:5985 = works
 WinRM via repo/default hostname path = fails because it lands on stale/unreachable .70
 Hostname case is not the meaningful issue here. DESKTOP-C1ACPUM, desktop-c1acpum, and desktop-c1acpum.hom.lab should be treated as case-insensitive DNS/Windows names. The important issue is that different resolution paths disagree about the address.
 
-Best current truth: the desktop is up at 192.168.50.132, WinRM works there, SSH is absent, and the repo/router/DNS inventory path still needs reconciliation before default Ansible targeting is reliable.
+Best current truth: the desktop is up at 192.168.50.133, WinRM works there, SSH is absent, and the repo/router/DNS inventory path still needs reconciliation before default Ansible targeting is reliable.
 
 
 
@@ -99,7 +99,7 @@ connect to the host, the host is currently havign fps issues sometimes he's gett
 
 Worked for 3m 55s
 Evidence:
-Troubleshooting mode: on. I connected to dev-workstation-win over WinRM at 192.168.50.132 and collected read-only performance state while DeadByDaylight-Win64-Shipping was running.
+Troubleshooting mode: on. I connected to dev-workstation-win over WinRM at 192.168.50.133 and collected read-only performance state while DeadByDaylight-Win64-Shipping was running.
 
 Most likely issue: the machine is resource-constrained during the game, especially GPU memory and overlays/background GPU users. The AMD card reports about 4 GB VRAM, and the snapshot showed dedicated GPU memory already heavily consumed:
 
@@ -140,7 +140,7 @@ Missing this run: actual FPS telemetry, AMD Adrenalin metrics, GPU temperature/h
 
 Sources checked:
 
-dev-workstation-win live WinRM output via bin/codex-env ansible ... -e ansible_host=192.168.50.132
+dev-workstation-win live WinRM output via bin/codex-env ansible ... -e ansible_host=192.168.50.133
 docs/one_off_tasks/dev-workstation-win-intermittent-download-slowdown.md (line 17)
 
 dev-workstation-win-intermittent-download-slowdown.md
@@ -237,7 +237,7 @@ Ran 2 commands
 | Topic | Standing truth |
 |---|---|
 | Host | `dev-workstation-win` / `DESKTOP-C1ACPUM` |
-| Live IP | `192.168.50.132` (inventory `host_vars` now aligned) |
+| Live IP | `192.168.50.133` (inventory `host_vars` now aligned) |
 | WinRM | Works on default inventory path (no override needed) |
 | SSH | `sshd` running, TCP/22 listening; controller SSH auth still fails (`Permission denied`) |
 | FPS issue class | Windows Diagnostics-Performance: DWM video-memory thrashing (pre-reboot 12:38 AM) |
@@ -250,8 +250,8 @@ Ran 2 commands
 
 ```text
 dev-workstation-win | SUCCESS => { "ping": "pong" }
-nc 192.168.50.132 22 -> succeeded
-ssh joshc@192.168.50.132 hostname -> Permission denied (publickey,password,keyboard-interactive)
+nc 192.168.50.133 22 -> succeeded
+ssh joshc@192.168.50.133 hostname -> Permission denied (publickey,password,keyboard-interactive)
 ```
 
 **Shutdown/reboot (clean this time)**
@@ -305,7 +305,7 @@ Cleaner boot than the unclean 12:30 AM cycle. System is reachable and stable on 
 SSH is working from `mac-dev` with the repo controller key (not password/TTY):
 
 ```text
-ssh -i ~/.ssh/id_ed25519_ansible joshc@192.168.50.132 "hostname; whoami"
+ssh -i ~/.ssh/id_ed25519_ansible joshc@192.168.50.133 "hostname; whoami"
 DESKTOP-C1ACPUM
 desktop-c1acpum\joshc
 ```

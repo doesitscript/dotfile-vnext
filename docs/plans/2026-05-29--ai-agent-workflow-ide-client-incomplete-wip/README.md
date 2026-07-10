@@ -140,7 +140,7 @@ graph TB
   end
 
   subgraph model_lanes [LiteLLM model_name aliases]
-    codeDeep["code-deep"]
+    codeDeep["deepreinforce-ai/Ornith-1.0-35B-GGUF"]
     codeFast["code-fast"]
     codeReview["code-review"]
     codeTest["code-test"]
@@ -173,10 +173,10 @@ graph TB
 | Agent role | Default lane | Alternate lane | Boundary |
 |------------|--------------|----------------|----------|
 | `planner` | `ripi-private` | `code-fast` | read/reasoning; no repo write by default |
-| `coder` | `code-deep` | `code-fast` | repo write through IDE/agent tool |
+| `coder` | `deepreinforce-ai/Ornith-1.0-35B-GGUF` | `code-fast` | repo write through IDE/agent tool |
 | `tester` | `code-test` | `code-fast` | tests, check commands, focused repair |
 | `reviewer` | `code-review` | `ripi-private` | diff review and risk finding; no write by default |
-| `documenter` | `code-fast` | `code-deep` | docs, receipts, implementation notes |
+| `documenter` | `code-fast` | `deepreinforce-ai/Ornith-1.0-35B-GGUF` | docs, receipts, implementation notes |
 | `steward` | `ripi-private` | `code-review` | promotion, governance, final evidence summaries |
 
 No role is complete unless its default lane exists in the LiteLLM plan as

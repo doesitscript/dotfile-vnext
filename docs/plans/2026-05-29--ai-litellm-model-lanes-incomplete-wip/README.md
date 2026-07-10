@@ -31,7 +31,7 @@ operator_decisions:
 **Parent program:** [2026-05-29--ai-homelab-intake-execution-incomplete-wip](../2026-05-29--ai-homelab-intake-execution-incomplete-wip/README.md)
 
 **Promoted from:** intake plan-ready `litellm-model-lanes-incomplete.md` and evaluation § Full `proxy_config`  
-**Vocabulary:** model **lanes** are client-facing LiteLLM `model_name` aliases (`code-deep`, …); intake **GPU lane** phrases are job provenance only — do not mint `gpu_lane_*` inventory keys.
+**Vocabulary:** model **lanes** are client-facing LiteLLM `model_name` aliases (`deepreinforce-ai/Ornith-1.0-35B-GGUF`, …); intake **GPU lane** phrases are job provenance only — do not mint `gpu_lane_*` inventory keys.
 
 | | |
 |---|---|
@@ -116,7 +116,7 @@ graph LR
 ```mermaid
 graph TB
   subgraph client [Client vocabulary]
-    alias["model_name: code-deep"]
+    alias["model_name: deepreinforce-ai/Ornith-1.0-35B-GGUF"]
   end
 
   subgraph litellm [LiteLLM proxy_config]
@@ -153,13 +153,13 @@ graph TB
 ## Reference — model lanes (full planned set)
 
 Canonical slugs from intake `model_aliases` (1.1.0) plus the 1.2.0/1.3.0
-`code-test` reviewer/tester need. `code-deep` is one lane in the set, not the
+`code-test` reviewer/tester need. `deepreinforce-ai/Ornith-1.0-35B-GGUF` is one lane in the set, not the
 plan by itself. Rows may be `candidate` or `blocked` until model research and
 read-only GPU/runtime probes pass; they must still remain visible in this plan.
 
 | `model_name` (client) | Purpose | `routing_policy` | Candidate backend | Status before execute |
 |-----------------------|---------|------------------|-------------------|-----------------------|
-| `code-deep` | architecture, refactors, hard coding | `local-5090` | hosted vLLM on `hom-lab-ctl-k3s-02` | candidate until research/probe receipt |
+| `deepreinforce-ai/Ornith-1.0-35B-GGUF` | architecture, refactors, hard coding | `local-5090` | hosted vLLM on `hom-lab-ctl-k3s-02` | candidate until research/probe receipt |
 | `code-fast` | autocomplete, small edits, repo questions | `local-preferred` | smaller local vLLM/Ollama-compatible backend | candidate until second-runtime decision |
 | `code-review` | critique, risk finding, test review | `local-or-azure` | local reviewer model with optional scrubbed cloud leg | candidate until privacy router research |
 | `code-test` | test generation and focused test repair | `local-preferred` | reviewer/tester backend | candidate until second-runtime decision |
@@ -178,7 +178,7 @@ a later agent-workflow plan makes them so.
 | Agent role | Default model lane | Boundary |
 |------------|--------------------|----------|
 | `planner` | `ripi-private` or `code-fast` | read/reasoning, no repo write by default |
-| `coder` | `code-deep` | branch write through IDE/agent tool |
+| `coder` | `deepreinforce-ai/Ornith-1.0-35B-GGUF` | branch write through IDE/agent tool |
 | `tester` | `code-test` or `code-fast` | test files and commands |
 | `reviewer` | `code-review` | diff/review, no write by default |
 | `documenter` | `code-fast` | docs/runbooks/receipts |
@@ -187,7 +187,7 @@ a later agent-workflow plan makes them so.
 **Concrete copy target (example row, not the whole plan):**
 
 ```yaml
-- model_name: code-deep
+- model_name: deepreinforce-ai/Ornith-1.0-35B-GGUF
   litellm_params:
     model: hosted_vllm/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
     api_base: http://vllm.vllm-runtime.svc.cluster.local:8000/v1
@@ -238,14 +238,14 @@ Related (read-only for this slice): `vllm-k3s-primary` / `vlm` — owned by vLLM
 ### LiteLLM / schema (L-)
 
 - [x] **L-01** — Add `model_lane_aliases` pattern to `docs/reference/naming-standards/ansible.yml` (candidate → active on pass)
-- [x] **L-02** — Add `model_lanes:` reference instances to `live-object-registry.yml` for the full planned set (`code-deep`, `code-fast`, `code-review`, `code-test`, `ripi-private`, `embeddings-local`, `public-research`, `experiment`, migration rows)
+- [x] **L-02** — Add `model_lanes:` reference instances to `live-object-registry.yml` for the full planned set (`deepreinforce-ai/Ornith-1.0-35B-GGUF`, `code-fast`, `code-review`, `code-test`, `ripi-private`, `embeddings-local`, `public-research`, `experiment`, migration rows)
 - [ ] **L-03** — Extend `k3s_litellm_gateway_model_list` with every planned lane; enabled rows require live `api_base`, candidate rows require blocker/research receipt
 - [ ] **L-04** — Add `proxy_config.router_settings` in `build_helm_values.yml` beside existing `model_list`
 - [ ] **L-05** — Keep `gpt-4o-mini` / `default` migration rows; document removal criteria in role README
 - [ ] **L-06** — `curl` chat completion for every enabled lane via `litellm.hom.lab`; candidate lanes listed as blocked with evidence
 - [ ] **L-07** — Confirm no new `gpu_lane_*` inventory keys or NetBox lane taxonomy
 - [ ] **L-08** — Doc research URLs recorded (LiteLLM proxy + vLLM provider)
-- [x] **L-09** — Full model-purpose set represented; no approved lane omitted because `code-deep` is first to verify
+- [x] **L-09** — Full model-purpose set represented; no approved lane omitted because `deepreinforce-ai/Ornith-1.0-35B-GGUF` is first to verify
 - [x] **L-10** — Agent role defaults documented or routed to named agent-workflow sibling plan
 - [ ] **L-11** — Independent validator signs this slice; any deferred lane/router work is moved to a named future plan with `moved_to_plan`
 
@@ -290,7 +290,7 @@ Related (read-only for this slice): `vllm-k3s-primary` / `vlm` — owned by vLLM
 | ID | User decision / direction | Target integration | Status |
 |----|---------------------------|--------------------|--------|
 | OD-AI-001 | Implement several agent types and model lanes now | L-02/L-03/L-09/L-10 and receipt O-02/O-03/O-09/O-14 | integrated into this packet; remains build-blocking until evidence rows pass or block |
-| OD-AI-002 | Do not make `code-deep` wording hide the rest of the lane set | Reference table and checklist wording | integrated |
+| OD-AI-002 | Do not make `deepreinforce-ai/Ornith-1.0-35B-GGUF` wording hide the rest of the lane set | Reference table and checklist wording | integrated |
 | OD-AI-004 | Use independent validator send-back gate before completion | L-11 and receipt O-15 | integrated |
 
 ---

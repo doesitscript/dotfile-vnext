@@ -32,7 +32,7 @@ Use when building **lane inventory truth**. LAN IPs are scattered across invento
 | `hom-lab-ctl-dkr-02` | `192.168.137.10` | guest | `hom-lab-ctl-dkr-02.yaml` |
 | `hom-lab-ctl-k3s-02` | `192.168.137.11` | guest | `hom-lab-ctl-k3s-02.yaml` |
 | `mac-dev` | controller LAN | operator | `mac-dev.yaml` |
-| `dev-workstation-win` | `192.168.50.132` | deferred | `dev-workstation-win.yaml` |
+| `dev-workstation-win` | `192.168.50.133` | deferred | `dev-workstation-win.yaml` |
 
 **Not inventory LAN rows:** mDNS discoveries (e.g. `192.168.50.159` for `.local`) — live-only; compare to declared, do not treat as SSOT.
 
