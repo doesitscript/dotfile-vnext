@@ -17,11 +17,11 @@
 #   ipam_netbox_seed_tags  — seed canonical object tags into NetBox via API
 #   ipam_netbox_seed_custom_fields — seed Service custom field definitions via API
 #   ipam_netbox_seed_hom_lab_ctl_hvh_02_model_preview — preview GPU-lane NetBox model
-#   ipam_netbox_seed_hom_lab_ctl_hvh_02_model — seed GPU-lane (hom-lab-hvh-02) NetBox model
+#   ipam_netbox_seed_hom_lab_ctl_hvh_02_model — seed GPU-lane (HOM-LAB-HVH-02) NetBox model
 #   ipam_netbox_seed_windows_share_hosts_model_preview — preview Windows share-host NetBox model
 #   ipam_netbox_seed_windows_share_hosts_model — seed Windows share-host NetBox model
 #   ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model_preview — preview storage-lane VM model
-#   ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model — seed storage-lane (hom-lab-hvh-01) VM model
+#   ipam_netbox_seed_hom_lab_ctl_hvh_01_vm_model — seed storage-lane (HOM-LAB-HVH-01) VM model
 #   ipam_netbox_service_inventory_discovery_preview — read-only Docker/K3s runtime discovery + NetBox comparison
 #   ipam_netbox_service_inventory_discovery — alias for the same read-only service inventory discovery workflow
 #   ipam_netbox_seed_prefixes_preview — preview homelab IPAM /24 prefixes
@@ -75,7 +75,7 @@
         - ipam_netbox_seed_custom_fields
 
 - name: Verify NetBox/repo naming consistency
-  hosts: localhost
+  hosts: execution_nodes
   connection: local
   gather_facts: false
   tasks:
@@ -142,7 +142,7 @@
         - ipam_netbox_seed_config_contexts
         - ipam_netbox_seed_config_contexts_preview
 
-- name: Seed hom-lab-hvh-02 NetBox model
+- name: Seed HOM-LAB-HVH-02 NetBox model
   hosts: hom-lab-ctl-dkr-02
   gather_facts: false
   tasks:
@@ -166,7 +166,7 @@
         - ipam_netbox_seed_windows_share_hosts_model
         - ipam_netbox_seed_windows_share_hosts_model_preview
 
-- name: Seed hom-lab-hvh-01 VM NetBox model
+- name: Seed HOM-LAB-HVH-01 VM NetBox model
   hosts: hom-lab-ctl-dkr-02
   gather_facts: false
   tasks:
@@ -215,7 +215,7 @@
         - ipam_netbox_service_inventory_discovery_preview
 
 - name: Compare curated, runtime, and live NetBox service inventory
-  hosts: localhost
+  hosts: execution_nodes
   connection: local
   gather_facts: false
   tasks:

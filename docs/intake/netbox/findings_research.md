@@ -38,7 +38,7 @@ Create a capability-focused role and playbook:
 - lifecycle variable: `netbox_server_state: present|absent`
 - inventory group: `netbox_server`
 
-The likely host is `nsrv-dkr-01` if the network-server Docker VM is meant to
+The likely host is `hom-lab-ctl-dkr-01` if the HOM-LAB-HVH-01 Docker VM is meant to
 become the authoritative shared service host. The standalone NetBox playbook
 should be verified before it is composed into `playbooks/site.yaml`.
 
@@ -62,7 +62,7 @@ Cons:
 - Secrets, version pins, plugin config, ports, backups, and health checks drift
   outside the repo.
 - It bypasses the repo's preview and targeting rules.
-- It is harder to recreate on `nsrv-dkr-01` or move later.
+- It is harder to recreate on `hom-lab-ctl-dkr-01` or move later.
 - It is easier to forget the NetBox Docker requirement that image tags and
   supporting `netbox-docker` files stay compatible.
 - It is a weak fit for this milestone because NetBox is intended to become
@@ -123,7 +123,7 @@ NetBox plugin is named as required.
 
 1. Add `netbox.netbox` to `requirements.yml`.
 2. Add inventory intent with a `netbox_server` group, likely pointing at
-   `nsrv-dkr-01`.
+   `hom-lab-ctl-dkr-01`.
 3. Create `roles/netbox_server` with `netbox_server_state: present|absent`.
 4. Template or copy a pinned Compose project under `/opt/netbox`.
 5. Include `.env` and secrets from vault-backed inventory variables.

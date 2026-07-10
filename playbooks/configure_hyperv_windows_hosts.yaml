@@ -12,8 +12,7 @@
 #
 # Commands:
 #   Preview target selection:
-#     ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml \
-#       -i inventory/inventory.yaml --check --tags hyperv_windows_host_preview
+  #  bin/codex-env ansible-playbook  playbooks/configure_hyperv_windows_hosts.yaml -i inventory/inventory.yaml --check --tags hyperv_windows_host_preview
 #
 #   Apply to all opted-in Hyper-V Windows hosts:
 #     ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml \
@@ -23,7 +22,7 @@
 #     Only use --limit when intentionally narrowing the otherwise scalable
 #     all-opted-in run.
 #     ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml \
-#       -i inventory/inventory.yaml --limit hom-lab-hvh-01
+#       -i inventory/inventory.yaml --limit HOM-LAB-HVH-01
 #
 - name: Hyper-V Windows hosts - classify target hosts
   hosts: windows_hosts
@@ -92,7 +91,7 @@
       tags: [always]
 
 - name: Hyper-V Windows hosts - preview target selection
-  hosts: localhost
+  hosts: windows_hosts
   connection: local
   gather_facts: false
   tags: [hyperv_windows_host_preview, always]
@@ -123,6 +122,7 @@
               'reason': hostvars[item].hyperv_windows_host_selection_reason | default('not classified')
             }
           }}
+      run_once: true
       loop: "{{ query('inventory_hostnames', 'windows_hosts') }}"
 
 - name: Hyper-V Windows hosts - live LAN publish preview

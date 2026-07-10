@@ -3,14 +3,14 @@
 #   Ansible/NetBox schema alias for this managed surface. NOT the guest OS hostname.
 # Connect target: ansible_host / host_ip (192.168.137.10)
 #   Routed private guest IP used for SSH, Docker, and postgres TCP checks.
-# physical_node: hom-lab-hvh-02
+# physical_node: HOM-LAB-HVH-02
 #   Metadata grouping key for group_vars/hyperv_lane_gpu — NOT a hostname.
-# ssh_proxy_jump_host: hom-lab-hvh-02
-#   Another inventory alias rendered into ~/.ssh/config as `Host hom-lab-hvh-02`.
-#   That SSH entry uses HostName 192.168.50.158 (Windows LAN IP), not hom-lab-hvh-02.
-# hyperv_ubuntu_docker_vm_hostname (in hom-lab-hvh-02 host_vars): planned VM name label only.
+# ssh_proxy_jump_host: HOM-LAB-HVH-02
+#   Another inventory alias rendered into ~/.ssh/config as `Host HOM-LAB-HVH-02`.
+#   That SSH entry uses HostName 192.168.50.158 (Windows LAN IP), not HOM-LAB-HVH-02.
+# hyperv_ubuntu_docker_vm_hostname (in HOM-LAB-HVH-02 host_vars): planned VM name label only.
 
-physical_node: "hom-lab-hvh-02"
+physical_node: "HOM-LAB-HVH-02"
 surface_type: "ubuntu_vm"
 inventory_surface_role: docker_engine
 legacy_inventory_aliases:
@@ -33,15 +33,19 @@ host_ip: "192.168.137.10"
 ansible_user: "joshc"
 ansible_port: 22
 ansible_python_interpreter: "/usr/bin/python3"
-ssh_proxy_jump_host: "hom-lab-hvh-02"
+ansible_ssh_private_key_file: "~/.ssh/id_ed25519_ansible"
+ssh_proxy_jump_host: "HOM-LAB-HVH-02"
 docker_engine_state: present
 logging_loki_public_endpoint: >-
-  http://{{ hostvars['hom-lab-hvh-02'].host_ip | default('192.168.50.158') }}:3100/loki/api/v1/push
+  http://{{ hostvars['HOM-LAB-HVH-02'].host_ip | default('192.168.50.158') }}:3100/loki/api/v1/push
 
 # Operator /etc/hosts for hom.lab URLs (LAN publish IP via portproxy).
 homelab_hosts_file_linux_enabled: true
 # Legacy duplicate fuzlang-net stack on the GPU lane is now retired in favor of
-# the storage-lane Windows-published path on hom-lab-hvh-01 / dkr-01.
+# the storage-lane Windows-published path on HOM-LAB-HVH-01 / dkr-01.
 stacks_fuzlang_net_state: absent
 stacks_network_purge_data_on_absent: true
-ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+ansible_ssh_common_args: >-
+  -o ProxyJump=HOM-LAB-HVH-02
+  -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null

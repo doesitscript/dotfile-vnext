@@ -12,9 +12,14 @@
 # Single command (all deployed hosts):
 #   ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml
 #
+# Successful controller + Windows access convergence now continues into the
+# mac-dev operator surfaces that depend on current SSH aliases:
+#   1. mac hosts-file publication for hom.lab names
+#   2. mac Hyper-V guest routes + K3s kubeconfig refresh
+#
 # Limit to one Windows node (include execution_nodes for controller SSH keypair + config):
-#   ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit 'execution_nodes,hom-lab-hvh-02'
-#   ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit 'execution_nodes,hom-lab-hvh-01'
+#   ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit 'execution_nodes,HOM-LAB-HVH-02'
+#   ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit 'execution_nodes,HOM-LAB-HVH-01'
 #
 # Limit by group (underscore, not dash — matches inventory group name):
 #   ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml --limit 'execution_nodes,hyperv_lane_storage'
@@ -37,3 +42,9 @@
       ansible.builtin.include_role:
         name: access_identity_controller
         tasks_from: ssh_config.yml
+
+- name: Access - refresh mac homelab hosts file after SSH surface updates
+  import_playbook: homelab_hosts_file_mac.yaml
+
+- name: Access - refresh mac Hyper-V guest routes and K3s client config
+  import_playbook: k3s_mac_client.yaml

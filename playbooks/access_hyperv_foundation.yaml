@@ -1,0 +1,29 @@
+---
+# Narrow access prerequisite chain for Hyper-V guest connectivity workflows.
+#
+# This entrypoint intentionally stops short of mac hosts-file refresh, guest
+# route refresh, or K3s client config so higher-level connectivity chains can
+# control that ordering after Windows host networking and guest lifecycle work.
+#
+# Apply:
+#   ansible-playbook playbooks/access_hyperv_foundation.yaml -i inventory/inventory.yaml
+#
+# Verify:
+#   ansible-playbook playbooks/access_hyperv_foundation.yaml -i inventory/inventory.yaml --check
+#
+- name: Hyper-V access foundation - controller identity
+  ansible.builtin.import_playbook: access_controller.yaml
+
+- name: Hyper-V access foundation - Windows identity surfaces
+  ansible.builtin.import_playbook: access_windows.yaml
+
+- name: Hyper-V access foundation - update controller SSH client config
+  hosts: execution_nodes
+  connection: local
+  gather_facts: true
+
+  tasks:
+    - name: Generate SSH client config from deployed targets
+      ansible.builtin.include_role:
+        name: access_identity_controller
+        tasks_from: ssh_config.yml

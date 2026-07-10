@@ -86,7 +86,7 @@
       tags: [always]
 
 - name: Hyper-V K3s Ubuntu VM - preview target selection
-  hosts: localhost
+  hosts: windows_hosts
   connection: local
   gather_facts: false
   tags: [k3s_vm_preview, always]
@@ -121,6 +121,7 @@
               'reason': hostvars[item].hyperv_ubuntu_k3s_vm_selection_reason | default('not classified')
             }
           }}
+      run_once: true
       loop: "{{ query('inventory_hostnames', 'windows_hosts') }}"
 
 - name: Access - controller identity

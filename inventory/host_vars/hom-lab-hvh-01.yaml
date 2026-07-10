@@ -1,13 +1,13 @@
 ---
 # Windows surface: WinRM for bootstrap; OpenSSH should land directly on Windows.
-# NetBox/source-of-truth name: hom-lab-hvh-01.
+# NetBox/source-of-truth name: HOM-LAB-HVH-01.
 # Legacy inventory/control alias: network-server.
-# ai-net-server-mgmt resolves via LAN mDNS but not from Mac controller — use IP directly.
+# HOM-LAB-HVH-01 resolves via LAN mDNS but not from Mac controller — use IP directly.
 # Two Wi-Fi adapters will be active simultaneously once original adapter is restored.
 # Primary adapter (ansible_host): 192.168.50.234 — secondary Wi-Fi, currently active.
 # Secondary adapter (mgmt/fallback): 192.168.50.233 — original Wi-Fi (MAC 9c:c7:d3:10:68:5a), temporarily down.
 # Router DHCP reservations: bind each adapter MAC to its own IP.
-# Router hostname: ai-net-server-mgmt → 192.168.50.234 (current adapter).
+# Router hostname: HOM-LAB-HVH-01 → 192.168.50.234 (current adapter).
 # Revisit: when original adapter restored, decide final hostname strategy for both adapters.
 # IMPORTANT: dual Wi-Fi naming is ambiguous here. Keep the live external-switch
 # binding description pinned so preview/verification can prove the intended
@@ -23,10 +23,10 @@ ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev
 ansible_shell_type: "powershell"
 ansible_shell_executable: "powershell.exe"
 surface_type: "windows_host"
-os_hostname: "hom-lab-hvh-01"
+os_hostname: "HOM-LAB-HVH-01"
 hyperv_management_endpoint: "{{ ansible_host }}"
 host_ip: "192.168.50.234"
-physical_node: "hom-lab-hvh-01"
+physical_node: "HOM-LAB-HVH-01"
 host_kind: "physical_server"
 node_capabilities:
   - windows_server_2025
@@ -103,7 +103,7 @@ hyperv_networking_feature_prereqs_enabled: false
 
 # AI model catalog storage root on the existing public SMB share.
 # Operator decision D-4: the canonical HF root is
-# \\hom-lab-hvh-01\public\models\huggingface. This is storage-lane
+# \\HOM-LAB-HVH-01\public\models\huggingface. This is storage-lane
 # desired state, not 5090 OS-disk runtime state.
 windows_file_shares_extra_directories:
   - path: 'F:\shares\public\models'
@@ -182,11 +182,11 @@ docker_engine_ssh_context_host: "{{ hyperv_ubuntu_vm_autoinstall_network_ipv4 }}
 docker_engine_ssh_port: 22
 docker_engine_ssh_user: "joshc"
 
-# Hyper-V-native Docker Ubuntu VM companion for the hom-lab-hvh-01 physical node.
-# Inventory identity remains hom-lab-ctl-dkr-01; the live Hyper-V VM / guest
-# hostname is nsrv-dkr-01.
+# Hyper-V-native Docker Ubuntu VM companion for the HOM-LAB-HVH-01 physical node.
+# Inventory identity and desired Hyper-V VM / guest hostname are
+# hom-lab-ctl-dkr-01.
 hyperv_ubuntu_docker_vm_state: present
-hyperv_ubuntu_docker_vm_hostname: "nsrv-dkr-01"
+hyperv_ubuntu_docker_vm_hostname: "hom-lab-ctl-dkr-01"
 hyperv_ubuntu_docker_vm_inventory_host: "hom-lab-ctl-dkr-01"
 hyperv_ubuntu_vm_cpus: 4
 hyperv_ubuntu_vm_memory: "8G"
@@ -204,17 +204,16 @@ hyperv_ubuntu_vm_autoinstall_network_ipv4: "192.168.138.10"
 hyperv_ubuntu_vm_autoinstall_network_prefix_length: 24
 hyperv_ubuntu_vm_autoinstall_network_gateway4: "192.168.138.1"
 hyperv_ubuntu_vm_autoinstall_network_dns_servers:
-  - "1.1.1.1"
-  - "8.8.8.8"
+  - "192.168.50.1"
 hyperv_ubuntu_vm_quick_create_image_url: >-
   https://partner-images.canonical.com/hyper-v/desktop/noble/release/current/ubuntu-noble-hyperv-amd64-ubuntu-desktop-hyperv.vhdx.zip
 hyperv_ubuntu_vm_server_iso_url: "https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso"
 
-# Hyper-V-native K3s Ubuntu VM companion for the hom-lab-hvh-01 physical node.
-# Inventory identity remains hom-lab-ctl-k3s-01; the live Hyper-V VM / guest
-# hostname is nsrv-k3s-01.
+# Hyper-V-native K3s Ubuntu VM companion for the HOM-LAB-HVH-01 physical node.
+# Inventory identity and desired Hyper-V VM / guest hostname are
+# hom-lab-ctl-k3s-01.
 hyperv_ubuntu_k3s_vm_state: present
-hyperv_ubuntu_k3s_vm_hostname: "nsrv-k3s-01"
+hyperv_ubuntu_k3s_vm_hostname: "hom-lab-ctl-k3s-01"
 hyperv_ubuntu_k3s_vm_inventory_host: "hom-lab-ctl-k3s-01"
 hyperv_ubuntu_k3s_vm_cpus: 4
 hyperv_ubuntu_k3s_vm_memory: "8G"
@@ -229,8 +228,7 @@ hyperv_ubuntu_k3s_vm_autoinstall_network_ipv4: "192.168.138.11"
 hyperv_ubuntu_k3s_vm_autoinstall_network_prefix_length: 24
 hyperv_ubuntu_k3s_vm_autoinstall_network_gateway4: "192.168.138.1"
 hyperv_ubuntu_k3s_vm_autoinstall_network_dns_servers:
-  - "1.1.1.1"
-  - "8.8.8.8"
+  - "192.168.50.1"
 
 # OpenSSH Server: base feature on Windows hosts unless explicitly set absent.
 openssh_server_state: present
@@ -253,3 +251,73 @@ windows_ollama_runtime_model_aliases:
 # Live driver/runtime convergence on this Windows GPU host can take longer than
 # the generic Windows reboot window, especially after GPU-driver changes.
 llm_compute_windows_reboot_timeout: 1200
+
+# Additive AI host profile for playbook targeting and inventory-driven selection.
+ai_host_profile:
+  description: Storage-lane Hyper-V host with the secondary host-local review runtime.
+  tags:
+    - ai-host-profile
+    - storage-lane
+    - secondary-runtime
+    - windows
+  infrastructure_role: storage_observability_with_secondary_ai_runtime
+  compute:
+    priority: secondary
+    description: Secondary and support compute role for review workloads and storage-adjacent AI jobs.
+    tags:
+      - support
+      - secondary
+      - storage-adjacent
+  gpu:
+    ai_tier: tier2
+    role: ai_compute_secondary
+    compute_class: secondary_ai_accelerator
+    runtime_eligible: true
+    partition_source: false
+    workload_classes:
+      - reviewer_agents
+      - secondary_model_runtime
+      - storage_adjacent_ai_jobs
+    description: GTX 1060-backed secondary runtime host for the code-review lane via host-local Ollama.
+    tags:
+      - tier2
+      - nvidia
+      - ollama
+      - review-lane
+  storage:
+    class: high_capacity
+    role: primary_storage_host
+    workload_classes:
+      - minio
+      - model_cache
+      - huggingface_cache
+      - langfuse_storage
+      - artifact_storage
+    description: Canonical storage lane for shared model weights, artifacts, and observability-adjacent data.
+    tags:
+      - storage
+      - model-cache
+      - artifacts
+  ai_runtime:
+    host_local:
+      enabled: true
+      engine: ollama
+      exposure: lan_and_local
+      runtime_role: secondary_review_runtime
+      runtime_slug: ollama-secondary-hvh-01
+      api_port: 11434
+      default_model: qwen2.5-coder:3b
+      fallback_model: qwen2.5-coder:1.5b
+      purpose: secondary_local_model_serving
+      tags:
+        - host-local-runtime
+        - ollama
+        - code-review
+    routing:
+      preferred_for:
+        - medium_local_models
+        - reviewer_agents
+        - storage_adjacent_ai_jobs
+      avoid_for:
+        - largest_models
+        - latency_critical_primary_runtime

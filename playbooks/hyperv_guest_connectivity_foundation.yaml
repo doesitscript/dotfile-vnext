@@ -1,0 +1,86 @@
+---
+# Ordered Hyper-V guest connectivity foundation for reproducible guest reachability.
+#
+# This entrypoint exists for the narrow case where the AI/operator needs to
+# restore or reproduce controller-to-guest and LAN-published guest connectivity
+# without re-running the entire lab stack. It keeps the dependency order in one
+# executable chain instead of scattering it across chat or diagnostics notes.
+#
+# Preview:
+#   bin/codex-env ansible-playbook playbooks/hyperv_guest_connectivity_foundation.yaml \
+#     -i inventory/inventory.yaml --check \
+#     --tags hyperv_guest_connectivity_preview,hyperv_windows_host_preview,docker_vm_preview,k3s_vm_preview
+#
+# Apply:
+#   bin/codex-env ansible-playbook playbooks/hyperv_guest_connectivity_foundation.yaml \
+#     -i inventory/inventory.yaml
+#
+# Next layer after this foundation:
+#   bin/codex-env ansible-playbook playbooks/deploy_ai_inference_stack.yaml \
+#     -i inventory/inventory.yaml
+#
+- name: Hyper-V guest connectivity foundation - preview dependency order
+  hosts: execution_nodes
+  connection: local
+  gather_facts: false
+  tags: [hyperv_guest_connectivity_preview, always]
+
+  tasks:
+    - name: Preview Hyper-V guest connectivity foundation order
+      ansible.builtin.debug:
+        msg:
+          entrypoint: playbooks/hyperv_guest_connectivity_foundation.yaml
+          change_class: idempotent connectivity foundation convergence
+          apply: "./bin/codex-env ansible-playbook playbooks/hyperv_guest_connectivity_foundation.yaml -i inventory/inventory.yaml"
+          verify:
+            - "configure_hyperv_windows_hosts.yaml --tags hyperv_windows_host_preview"
+            - "ssh from mac-dev to guest IPs on 192.168.137.x and 192.168.138.x"
+            - "LAN-published service ports answer on 192.168.50.158 / 192.168.50.234"
+          undo:
+            - "Set state-based lifecycle vars to absent where intentional"
+            - "Remove mac guest routes with playbooks/hyperv_guest_route_mac.yaml and state=absent if retiring direct guest access"
+          dependency_order:
+            - access_hyperv_foundation.yaml
+            - configure_hyperv_windows_hosts.yaml
+            - hyperv_ubuntu_docker_vm.yaml
+            - hyperv_ubuntu_k3s_vm.yaml
+            - hyperv_guest_route_mac.yaml
+            - homelab_hosts_file_mac.yaml
+            - homelab_hosts_file_linux.yaml
+          external_dependencies:
+            - "Upstream GT6 static routes are operator-owned and must exist for NAT-disabled lanes."
+            - "HOM-LAB-HVH-02 is currently routed_private_subnet with guest_outbound_nat_enabled=false."
+            - "HOM-LAB-HVH-01 is currently routed_private_subnet with guest_outbound_nat_enabled=true."
+
+- name: Hyper-V guest connectivity foundation - access prerequisite surfaces
+  ansible.builtin.import_playbook: access_hyperv_foundation.yaml
+  tags: [hyperv_guest_connectivity, access]
+
+- name: Hyper-V guest connectivity foundation - Windows host forwarding and published guest ports
+  ansible.builtin.import_playbook: configure_hyperv_windows_hosts.yaml
+  tags: [hyperv_guest_connectivity, hyperv_networking]
+
+- name: Hyper-V guest connectivity foundation - Docker guest lifecycle
+  ansible.builtin.import_playbook: hyperv_ubuntu_docker_vm.yaml
+  tags: [hyperv_guest_connectivity, hyperv_ubuntu_docker_vm]
+  vars:
+    hyperv_ubuntu_docker_vm_manage_networking_prereqs: false
+    hyperv_guest_route_mac_state: absent
+
+- name: Hyper-V guest connectivity foundation - K3s guest lifecycle
+  ansible.builtin.import_playbook: hyperv_ubuntu_k3s_vm.yaml
+  tags: [hyperv_guest_connectivity, hyperv_ubuntu_k3s_vm]
+  vars:
+    hyperv_ubuntu_k3s_vm_manage_networking_prereqs: false
+
+- name: Hyper-V guest connectivity foundation - controller guest routes
+  ansible.builtin.import_playbook: hyperv_guest_route_mac.yaml
+  tags: [hyperv_guest_connectivity, hyperv_guest_route_mac]
+
+- name: Hyper-V guest connectivity foundation - mac hostname publication
+  ansible.builtin.import_playbook: homelab_hosts_file_mac.yaml
+  tags: [hyperv_guest_connectivity, homelab_hosts_file, homelab_hosts_file_mac]
+
+- name: Hyper-V guest connectivity foundation - Linux guest hostname publication
+  ansible.builtin.import_playbook: homelab_hosts_file_linux.yaml
+  tags: [hyperv_guest_connectivity, homelab_hosts_file, homelab_hosts_file_linux]

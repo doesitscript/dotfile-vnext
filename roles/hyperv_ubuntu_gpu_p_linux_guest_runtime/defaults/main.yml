@@ -1,6 +1,11 @@
 ---
 hyperv_ubuntu_gpu_p_linux_guest_runtime_state: present
 hyperv_ubuntu_gpu_p_linux_guest_runtime_skip_artifact_sync: false
+hyperv_ubuntu_gpu_p_linux_guest_runtime_windows_host: >-
+  {{
+    hyperv_ubuntu_gpu_p_runtime_windows_host
+    | default(parent_hypervisor | default(physical_node | default('')))
+  }}
 hyperv_ubuntu_gpu_p_linux_guest_runtime_share_host_override: ""
 hyperv_ubuntu_gpu_p_linux_guest_target_kernel: "{{ ansible_kernel }}"
 hyperv_ubuntu_gpu_p_dxgkrnl_repo_url: https://github.com/staralt/dxgkrnl-dkms.git
@@ -29,6 +34,11 @@ hyperv_ubuntu_gpu_p_guest_root_group: root
 hyperv_ubuntu_gpu_p_guest_wsl_root_mode: "0755"
 hyperv_ubuntu_gpu_p_guest_wsl_lib_mode: "0755"
 hyperv_ubuntu_gpu_p_guest_wsl_drivers_mode: "0555"
+hyperv_ubuntu_gpu_p_guest_apt_lock_timeout: 300
+hyperv_ubuntu_gpu_p_guest_apt_lock_wait_retries: 60
+hyperv_ubuntu_gpu_p_guest_apt_lock_wait_delay: 5
+hyperv_ubuntu_gpu_p_guest_update_apt_cache: false
+hyperv_ubuntu_gpu_p_guest_apt_cache_valid_time: 3600
 hyperv_ubuntu_gpu_p_guest_required_packages:
   - git
   - dkms

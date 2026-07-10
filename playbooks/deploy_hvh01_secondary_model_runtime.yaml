@@ -2,7 +2,7 @@
 - import_playbook: llm_compute_windows_hvh01.yaml
 
 - name: Deploy host-local Ollama runtime on hvh-01
-  hosts: hom-lab-hvh-01
+  hosts: HOM-LAB-HVH-01
   gather_facts: false
   roles:
     - role: windows_ollama_runtime
@@ -16,15 +16,15 @@
 - import_playbook: validate_ai_inference_stack_contracts.yaml
 
 - name: Verify hvh-01 secondary runtime and central gateway health
-  hosts: localhost
+  hosts: execution_nodes
   gather_facts: false
   vars:
     _hvh01_secondary_ollama_url: >-
       http://{{
-        hostvars['hom-lab-hvh-01'].host_ip
-        | default(hostvars['hom-lab-hvh-01'].ansible_host | default('hom-lab-hvh-01'))
+        hostvars['HOM-LAB-HVH-01'].host_ip
+        | default(hostvars['HOM-LAB-HVH-01'].ansible_host | default('HOM-LAB-HVH-01'))
       }}:{{
-        hostvars['hom-lab-hvh-01'].windows_ollama_runtime_port | default(11434)
+        hostvars['HOM-LAB-HVH-01'].windows_ollama_runtime_port | default(11434)
       }}
     _litellm_gateway_url: "{{ ai_agent_client_profiles.gateway.openai_base_url | regex_replace('/v1$', '') }}"
   vars_files:

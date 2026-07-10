@@ -6,7 +6,7 @@ Commission `HOM-LAB-HVH-01` as the first real secondary local-model host through
 
 This packet governs two related but intentionally unequal paths:
 
-1. The supported path is host-local Windows Ollama on `hvh-01`, with `qwen2.5-coder:3b` as the first `code-review` backend and `qwen2.5-coder:1.5b` as the explicit fallback.
+1. The supported path is host-local Windows Ollama on `HOM-LAB-HVH-01`, with `qwen2.5-coder:3b` as the first `code-review` backend and `qwen2.5-coder:1.5b` as the explicit fallback.
 2. The future-path probe is the existing hvh-01 GPU-P pipeline toward the `k3s-01` guest. That path remains evidence-first and may end in `blocked` without preventing the primary host-local runtime from being considered implemented.
 
 Current live truth captured for this packet:
@@ -65,8 +65,8 @@ Current live truth captured for this packet:
 
 - LiteLLM remains central on `hom-lab-ctl-k3s-02`.
 - Langfuse remains central on `hom-lab-ctl-k3s-02`.
-- No second gateway or second Langfuse stack is created on `hvh-01`.
-- The hvh-01 path gets its own dedicated deploy playbook first and is not folded into `deploy_ai_inference_stack.yaml` in this slice.
+- No second gateway or second Langfuse stack is created on `HOM-LAB-HVH-01`.
+- The `HOM-LAB-HVH-01` path gets its own dedicated deploy playbook first and is not folded into `deploy_ai_inference_stack.yaml` in this slice.
 
 ### 2. Host-local Windows Ollama becomes the supported hvh-01 runtime path
 
@@ -84,7 +84,7 @@ Current live truth captured for this packet:
 ### 3. Central LiteLLM now owns `code-review`
 
 - `code-review` is enabled in the lane contract instead of remaining blocked.
-- The route uses the Ollama provider path with the hvh-01 runtime API base.
+- The route uses the Ollama provider path with the `HOM-LAB-HVH-01` runtime API base.
 - Route metadata now records:
   - `model_lane=code-review`
   - `backend_runtime=ollama-secondary-hvh-01`
@@ -93,7 +93,7 @@ Current live truth captured for this packet:
 
 ### 4. GPU-P on hvh-01 stays evidence-first
 
-- The hvh-01 wrapper now targets the real live Hyper-V guest VM name:
+- The `HOM-LAB-HVH-01` wrapper now targets the real live Hyper-V guest VM name:
   - `nsrv-k3s-01`
 - The guest inventory host remains:
   - `hom-lab-ctl-k3s-01`
@@ -105,7 +105,7 @@ Current live truth captured for this packet:
 
 ### 5. Storage and catalog stay shared
 
-- The durable model storage root remains on the existing hvh-01 share surface.
+- The durable model storage root remains on the existing `HOM-LAB-HVH-01` share surface.
 - Add an Ollama storage path under:
   - `F:\shares\public\models\ollama`
 - The model catalog now records `code-review` as the selected secondary runtime lane with:
@@ -119,14 +119,14 @@ Current live truth captured for this packet:
   - enabled `code-review`
   - `code-review` in the local-only fallback route list
   - route metadata alignment for the hvh-01 Ollama backend
-- `roles/common/endpoint_verify` now includes the hvh-01 secondary Ollama endpoint and treats it as required when `windows_ollama_runtime_state: present`.
+- `roles/common/endpoint_verify` now includes the `HOM-LAB-HVH-01` secondary Ollama endpoint and treats it as required when `windows_ollama_runtime_state: present`.
 
 ### 7. Current implementation state in repo
 
 - The repo-native implementation surfaces now exist:
   - `roles/windows_ollama_runtime`
   - `playbooks/deploy_hvh01_secondary_model_runtime.yaml`
-  - the corrected hvh-01 GPU-P wrapper
+  - the corrected `HOM-LAB-HVH-01` GPU-P wrapper
   - central LiteLLM `code-review` route wiring
 - The packet is no longer only a design target. It is now an implementation packet with live deployment still pending.
 - Syntax-level verification has already passed for the new hvh-01 deployment playbook, the central inference-stack contract validation playbook, and the hvh-01 GPU-P wrapper when checked against the static inventory file.
@@ -201,8 +201,8 @@ flowchart LR
 - Verify the central LiteLLM route list includes `code-review`.
 - Verify the local-only fallback list also includes `code-review`.
 - Verify `code-review` route metadata points at `ollama-secondary-hvh-01`.
-- Verify the hvh-01 secondary Ollama endpoint is healthy.
-- Verify the hvh-01 GPU-P wrapper points at `nsrv-k3s-01`.
+- Verify the `HOM-LAB-HVH-01` secondary Ollama endpoint is healthy.
+- Verify the `HOM-LAB-HVH-01` GPU-P wrapper points at `nsrv-k3s-01`.
 - Verify the packet may end with GPU-P `blocked` while still considering host-local Ollama implemented.
 - Verify the new hvh-01 deployment playbook keeps importing:
   - `llm_compute_windows_hvh01.yaml`
@@ -239,9 +239,9 @@ Current verification state:
   - `llm_compute_windows_reboot_timeout` raised to `1200` in `inventory/host_vars/HOM-LAB-HVH-01.yaml`
 - Live deployment and runtime receipt are still pending after host recovery:
   - Windows Ollama install/start on `HOM-LAB-HVH-01`
-  - central LiteLLM routing to the hvh-01 Ollama backend
+  - central LiteLLM routing to the `HOM-LAB-HVH-01` Ollama backend
   - endpoint health through the real network path
-  - GPU-P hvh-01 evidence slice rerun after the host is reachable again
+  - GPU-P `HOM-LAB-HVH-01` evidence slice rerun after the host is reachable again
 
 ## Sources Checked
 
@@ -263,3 +263,8 @@ Current verification state:
 - **Naming/Modeling Diagram**: included
 - **Sequence Diagram**: not included; the routing diagram covers the ordered packet flow clearly enough for this slice
 - **State Diagram**: not included; the supported-vs-blocked split is captured by the routing and test sections
+
+## Naming Note
+
+- Host/project naming in this packet uses `HOM-LAB-HVH-01` and `HOM-LAB-HVH-02` where those hosts are referenced directly.
+- Literal repo paths remain lowercase where the repo stores them that way, including `inventory/host_vars/HOM-LAB-HVH-01.yaml`.

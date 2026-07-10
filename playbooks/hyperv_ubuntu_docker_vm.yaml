@@ -32,13 +32,13 @@
 #     Only use --limit when intentionally narrowing the otherwise scalable
 #     all-opted-in run.
 #     ansible-playbook playbooks/hyperv_ubuntu_docker_vm.yaml \
-#       -i inventory/inventory.yaml --limit hom-lab-hvh-01
+#       -i inventory/inventory.yaml --limit HOM-LAB-HVH-01
 #
 # Troubleshooting:
 #   Run with --tags collect_hyperv to trigger artifact collection alongside the
 #   normal lifecycle run:
 #     ansible-playbook playbooks/hyperv_ubuntu_docker_vm.yaml \
-#       -i inventory/inventory.yaml --limit hom-lab-hvh-01 --tags collect_hyperv
+#       -i inventory/inventory.yaml --limit HOM-LAB-HVH-01 --tags collect_hyperv
 #   Artifacts land at: artifacts/troubleshooting/hyperv_ubuntu_vm/<host>/<timestamp>/
 #
 
@@ -102,7 +102,7 @@
       tags: [always]
 
 - name: Hyper-V Docker Ubuntu VM - preview target selection
-  hosts: localhost
+  hosts: windows_hosts
   connection: local
   gather_facts: false
   tags: [docker_vm_preview, always]
@@ -133,6 +133,7 @@
               'reason': hostvars[item].hyperv_ubuntu_docker_vm_selection_reason | default('not classified')
             }
           }}
+      run_once: true
       loop: "{{ query('inventory_hostnames', 'windows_hosts') }}"
 
 - name: Access - controller identity

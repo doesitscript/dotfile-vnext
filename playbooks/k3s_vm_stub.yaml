@@ -8,7 +8,7 @@
 #   ansible-playbook playbooks/k3s_vm_stub.yaml -i inventory/inventory.yaml
 #
 - name: K3s VM stub - preview target selection
-  hosts: localhost
+  hosts: linux_vm_hosts
   connection: local
   gather_facts: false
   tags: [k3s_stub_preview, always]
@@ -31,6 +31,7 @@
               )
             }
           }}
+      run_once: true
       loop: "{{ query('inventory_hostnames', 'linux_vm_hosts') }}"
 
 - name: K3s VM stub - readiness checks

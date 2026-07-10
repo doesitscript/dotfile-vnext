@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-28  
 **Agent:** Ansible reform (WSL scope decoupling)  
-**Policy:** WSL is desktop/bootstrap only. Hyper-V server lanes (`hom-lab-ctl-hvh-*`, `hom-lab-ctl-dkr-*`, `hom-lab-ctl-k3s-*`, `hyperv_*` roles) must not use `wsl.exe` or WSL distros as automation connection paths.
+**Policy:** WSL is desktop/bootstrap only. Hyper-V server lanes (`HOM-LAB-HVH-*`, `hom-lab-ctl-dkr-*`, `hom-lab-ctl-k3s-*`, `hyperv_*` roles) must not use `wsl.exe` or WSL distros as automation connection paths.
 
 ## Executive summary
 

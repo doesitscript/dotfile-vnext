@@ -46,6 +46,15 @@
         )
       }}
 
+- name: Ensure LiteLLM namespace exists before secret and Helm operations
+  kubernetes.core.k8s:
+    name: "{{ k3s_litellm_gateway_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
 - name: Create LiteLLM provider environment secret from vault
   kubernetes.core.k8s:
     state: present
@@ -98,6 +107,7 @@
   register: _k3s_litellm_helm_status
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Remove failed or pending LiteLLM Helm release before redeploy
   ansible.builtin.command:
@@ -107,6 +117,7 @@
   changed_when: true
   when:
     - _k3s_litellm_helm_status.rc == 0
+    - (_k3s_litellm_helm_status.stdout | default('') | trim | length) > 0
     - (_k3s_litellm_helm_status.stdout | from_json).info.status | lower is search('failed|pending')
 
 - name: Deploy LiteLLM gateway with Helm OCI
@@ -123,6 +134,10 @@
         values: "{{ k3s_litellm_gateway_helm_values }}"
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: _k3s_litellm_helm_apply
+      retries: 3
+      delay: 15
+      until: _k3s_litellm_helm_apply is succeeded
   rescue:
     - name: Confirm Helm failed on immutable LiteLLM migration Job
       ansible.builtin.assert:
@@ -154,6 +169,10 @@
         values: "{{ k3s_litellm_gateway_helm_values }}"
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: _k3s_litellm_helm_retry_apply
+      retries: 3
+      delay: 15
+      until: _k3s_litellm_helm_retry_apply is succeeded
 
 - name: Wait for LiteLLM deployment to be ready
   kubernetes.core.k8s_info:
@@ -215,8 +234,8 @@
       Internal service: http://litellm.{{ k3s_litellm_gateway_namespace }}.svc.cluster.local:{{ k3s_litellm_gateway_service_port }}
       {% if k3s_litellm_gateway_lan_node_port_enabled | bool %}
       LAN NodePort: http://{{
-        hostvars['hom-lab-hvh-02'].host_ip | default('192.168.50.158')
-      }}:{{ k3s_litellm_gateway_lan_node_port }}/ (via Windows portproxy on hom-lab-hvh-02)
+        hostvars['HOM-LAB-HVH-02'].host_ip | default('192.168.50.158')
+      }}:{{ k3s_litellm_gateway_lan_node_port }}/ (via Windows portproxy on HOM-LAB-HVH-02)
       Direct guest NodePort: http://192.168.137.11:{{ k3s_litellm_gateway_lan_node_port }}/
       {% endif %}
 

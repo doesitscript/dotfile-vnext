@@ -34,6 +34,8 @@ hyperv_config:
   guest_switch_name: "Guest"
   guest_subnet_ipv4: "192.168.137.0/24"
   guest_gateway_ipv4: "192.168.137.1"
+  public_gateway_ipv4: "192.168.50.1"        # optional explicit IPv4 default gateway for the management vNIC
+  public_dns_servers_ipv4: ["192.168.50.1"]  # optional explicit IPv4 DNS list for the management vNIC
   guest_remote_access_routing_enabled: false
   internal_ics_public_adapter_name: "vEthernet (External)"
   internal_ics_private_adapter_alias: "vEthernet (Guest)"
@@ -83,7 +85,7 @@ feature taskfile so teardown remains explicit.
 On Windows hosts that are expected to stay reachable through the Hyper-V
 management OS, the safest first-pass recovery path is a temporary boot task
 that runs locally on the next reboot and applies the soft DHCP refresh sequence
-that already proved effective for `hom-lab-hvh-02`:
+that already proved effective for `HOM-LAB-HVH-02`:
 
 ```powershell
 Clear-DnsClientCache
@@ -111,6 +113,20 @@ When enabled, the role:
 
 This keeps the first implementation simple and DHCP-based. It does not force a
 static management IP.
+
+If a host has the correct management IPv4 but still loses its IPv4 default
+route or DNS after Hyper-V switch convergence, you can explicitly model the
+public management gateway/DNS in `hyperv_config`:
+
+```yaml
+hyperv_config:
+  public_gateway_ipv4: "192.168.50.1"
+  public_dns_servers_ipv4:
+    - "192.168.50.1"
+```
+
+That path is intended as a role-owned recovery/convergence surface for lab
+hosts whose management vNIC no longer keeps the expected IPv4 gateway via DHCP.
 
 ## Internal Guest Switch + ICS
 
@@ -200,7 +216,7 @@ Important routing nuance:
 - that restores true direct controller-to-guest TCP reachability, but guest
   internet egress and whole-LAN return traffic still depend on the upstream
   router learning the guest subnet through the Windows host
-- for the current `hom-lab-hvh-02` lane, that means the upstream router
+- for the current `HOM-LAB-HVH-02` lane, that means the upstream router
   needs a static route for `192.168.137.0/24` via `192.168.50.158`
 
 Router operator guide:
@@ -249,7 +265,7 @@ tasks:
 Low-level standalone validation surface:
 
 ```bash
-ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit hom-lab-hvh-02
+ansible-playbook playbooks/hyperv_networking.yaml -i inventory/inventory.yaml --limit HOM-LAB-HVH-02
 ```
 
 The legacy Multipass teardown playbook has been retired after cleanup.

@@ -1,20 +1,15 @@
----
-- name: Seed controller facts for guest-only GPU-P runtime convergence
-  hosts: localhost
-  gather_facts: false
-  tasks:
-    - name: Publish minimal host-side runtime receipt for guest-only convergence
-      ansible.builtin.set_fact:
-        hyperv_ubuntu_gpu_p_runtime_host_receipt:
-          windows_host: hom-lab-hvh-02
-          guest_vm_name: hom-lab-ctl-k3s-02
-          driver_contract_path: C:\ProgramData\Ansible\llm_compute_windows\nvidia_driver_contract.json
-          precheck_receipt_path: C:\ProgramData\Ansible\hyperv_gpu_p_host_precheck\receipt.json
-
 - name: Converge Linux guest GPU-P runtime without Windows artifact sync
   hosts: hom-lab-ctl-k3s-02
   gather_facts: true
   become: true
+  pre_tasks:
+    - name: Assert pinned troubleshoot guest still maps to the intended Hyper-V host
+      ansible.builtin.assert:
+        that:
+          - parent_hypervisor is defined
+          - parent_hypervisor == 'HOM-LAB-HVH-02'
+        fail_msg: >-
+          Guest {{ inventory_hostname }} no longer maps to the pinned Hyper-V host HOM-LAB-HVH-02.
   roles:
     - role: hyperv_ubuntu_gpu_p_linux_guest_runtime
       vars:

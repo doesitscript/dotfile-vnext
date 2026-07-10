@@ -1,6 +1,6 @@
 ---
 - name: Ensure controller stage root exists for Windows payload fetch
-  delegate_to: localhost
+  delegate_to: "{{ groups['execution_nodes'][0] }}"
   become: false
   ansible.builtin.file:
     path: "{{ hyperv_ubuntu_gpu_p_windows_payload_controller_stage_root }}"
@@ -165,7 +165,7 @@
   changed_when: false
 
 - name: Copy staged Windows payload zip to controller over SSH
-  delegate_to: localhost
+  delegate_to: "{{ groups['execution_nodes'][0] }}"
   become: false
   ansible.builtin.shell: >-
     scp

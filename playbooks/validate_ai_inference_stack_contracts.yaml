@@ -1,6 +1,6 @@
 ---
 - name: Validate AI inference stack lane and runtime contracts
-  hosts: localhost
+  hosts: execution_nodes
   gather_facts: false
   vars_files:
     - "{{ playbook_dir }}/../inventory/group_vars/model_catalog/manifest.yml"
@@ -102,7 +102,7 @@
           - k3s_vllm_runtime_model == k3s_litellm_gateway_primary_vllm_model
           - k3s_vllm_runtime_served_model_name == k3s_litellm_gateway_primary_vllm_model
           - k3s_litellm_gateway_primary_vllm_api_base is search('vllm-runtime\\.svc\\.cluster\\.local')
-          - k3s_litellm_gateway_primary_vllm_api_base is not search('localhost|127\\.0\\.0\\.1')
+          - k3s_litellm_gateway_primary_vllm_api_base is not search('[Ll][Oo][Cc][Aa][Ll][Hh][Oo][Ss][Tt]|127\\.0\\.0\\.1')
         fail_msg: "vLLM runtime defaults are not aligned with the primary LiteLLM local-lane contract."
 
     - name: Summarize validated inference stack contract

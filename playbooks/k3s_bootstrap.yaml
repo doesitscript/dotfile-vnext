@@ -35,7 +35,7 @@
 
 # --- Play 1: Single-node guard ---
 - name: Guard real k3s bootstrap target selection
-  hosts: localhost
+  hosts: k3s_cluster
   gather_facts: false
   tasks:
     - name: Refuse real k3s bootstrap unless only hom-lab-ctl-k3s-01 is selected
@@ -57,12 +57,13 @@
           data-dir on /var/lib/rancher/k3s until a real secondary Linux data
           mount is added.
         success_msg: "k3s_cluster targets only hom-lab-ctl-k3s-01; continuing real bootstrap."
+      run_once: true
       tags:
         - always
 
 # --- Play 2: Windows Firewall ---
 - name: Open k3s firewall ports on the owning Hyper-V host
-  hosts: hom-lab-hvh-01
+  hosts: HOM-LAB-HVH-01
   gather_facts: false
   roles:
     - k3s_firewall

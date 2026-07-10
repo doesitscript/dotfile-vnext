@@ -1,6 +1,6 @@
 ---
 # mac-dev host_vars — Docker client configuration.
-# The Docker engine runs on the Hyper-V Ubuntu guest on hom-lab-hvh-02.
+# The Docker engine runs on the Hyper-V Ubuntu guest on HOM-LAB-HVH-02.
 
 # Docker client — reaches the Ubuntu guest Docker engine via SSH.
 # Uses the generated SSH config alias so IdentityFile and other settings are inherited.
@@ -10,7 +10,7 @@ docker_engine_ssh_user: "joshc"
 
 # Hyper-V Ubuntu VM guest-subnet access.
 # Part 1 of the routed-private-subnet design gives mac-dev direct reachability
-# to the guest IP through hom-lab-hvh-02 before the broader router/LAN route
+# to the guest IP through HOM-LAB-HVH-02 before the broader router/LAN route
 # milestone.
 hyperv_guest_route_mac_state: present
 hyperv_guest_route_mac_network_service: "Wi-Fi"
@@ -28,11 +28,26 @@ hyperv_guest_route_gateway: "192.168.50.158"
 # Operator hostnames for Traefik + guest workaround (loz-hurst.hosts_file).
 homelab_hosts_file_mac_enabled: true
 
+# Managed K3s client contexts on mac-dev.
+k3s_mac_client_clusters:
+  - cluster_host: "hom-lab-ctl-k3s-01"
+    context_name: "hom-lab-ctl-k3s-01"
+    connection_mode: "ssh_tunnel"
+    tunnel_local_port: 16443
+  - cluster_host: "hom-lab-ctl-k3s-02"
+    context_name: "hom-lab-ctl-k3s-02"
+    connection_mode: "ssh_tunnel"
+    tunnel_local_port: 26443
+k3s_mac_client_default_context: "hom-lab-ctl-k3s-01"
+
 # Terraform CLI package-management desired state.
 terraform_cli_state: present
 
 # LiteLLM CLI package-management desired state.
 litellm_cli_state: present
+
+# GNU netcat package-management desired state.
+netcat_cli_state: present
 
 # MCP Research Collection Stack on the mac-dev controller.
 context7_mcp_state: present

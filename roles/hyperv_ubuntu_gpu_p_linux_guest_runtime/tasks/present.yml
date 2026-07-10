@@ -39,25 +39,27 @@
 - name: Build guest artifact share connection facts
   ansible.builtin.set_fact:
     hyperv_ubuntu_gpu_p_linux_guest_runtime_windows_host: >-
-      {{ hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_host_receipt.windows_host }}
+      {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_windows_host }}
     hyperv_ubuntu_gpu_p_linux_guest_runtime_share_host: >-
       {{
         hyperv_ubuntu_gpu_p_linux_guest_runtime_share_host_override
         | default(
-            hostvars[hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_host_receipt.windows_host].ansible_host,
+            hostvars[hyperv_ubuntu_gpu_p_linux_guest_runtime_windows_host].ansible_host,
             true
           )
       }}
     hyperv_ubuntu_gpu_p_linux_guest_runtime_share_user: >-
-      {{ hostvars[hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_host_receipt.windows_host].windows_file_shares_unc_validation_user }}
+      {{ hostvars[hyperv_ubuntu_gpu_p_linux_guest_runtime_windows_host].windows_file_shares_unc_validation_user }}
     hyperv_ubuntu_gpu_p_linux_guest_runtime_share_password: >-
-      {{ hostvars[hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_host_receipt.windows_host].windows_file_shares_unc_validation_password }}
+      {{ hostvars[hyperv_ubuntu_gpu_p_linux_guest_runtime_windows_host].windows_file_shares_unc_validation_password }}
   changed_when: false
   when: not (hyperv_ubuntu_gpu_p_linux_guest_runtime_skip_artifact_sync | bool)
 
 - name: Assert guest artifact share connection facts exist
   ansible.builtin.assert:
     that:
+      - hyperv_ubuntu_gpu_p_linux_guest_runtime_windows_host | length > 0
+      - hyperv_ubuntu_gpu_p_linux_guest_runtime_windows_host in hostvars
       - hyperv_ubuntu_gpu_p_linux_guest_runtime_share_host | length > 0
       - hyperv_ubuntu_gpu_p_linux_guest_runtime_share_user | length > 0
       - hyperv_ubuntu_gpu_p_linux_guest_runtime_share_password | length > 0
@@ -304,11 +306,69 @@
       No supported WSL2 kernel branch mapping exists for
       {{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}.
 
-- name: Install guest runtime prerequisite packages
+- name: Wait for APT and dpkg locks before guest runtime package work
+  ansible.builtin.shell: |
+    python3 - <<'PY'
+    import errno
+    import fcntl
+    import os
+    import sys
+
+    lock_paths = [
+        "/var/lib/apt/lists/lock",
+        "/var/cache/apt/archives/lock",
+        "/var/lib/dpkg/lock",
+        "/var/lib/dpkg/lock-frontend",
+    ]
+
+    blocked = []
+
+    for path in lock_paths:
+        if not os.path.exists(path):
+            continue
+        fd = os.open(path, os.O_RDWR)
+        try:
+            fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            if exc.errno in (errno.EACCES, errno.EAGAIN):
+                blocked.append(path)
+            else:
+                raise
+        finally:
+            os.close(fd)
+
+    if blocked:
+        print("locked:" + ",".join(blocked))
+        sys.exit(1)
+    PY
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_apt_lock_wait
+  changed_when: false
+  retries: "{{ hyperv_ubuntu_gpu_p_guest_apt_lock_wait_retries }}"
+  delay: "{{ hyperv_ubuntu_gpu_p_guest_apt_lock_wait_delay }}"
+  until: hyperv_ubuntu_gpu_p_linux_guest_runtime_apt_lock_wait.rc == 0
+
+- name: Gather installed package facts before guest runtime package work
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Derive missing guest runtime prerequisite packages
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_missing_packages: >-
+      {{
+        hyperv_ubuntu_gpu_p_guest_required_packages
+        | reject('in', (ansible_facts.packages | default({})).keys() | list)
+        | list
+      }}
+  changed_when: false
+
+- name: Install missing guest runtime prerequisite packages
   ansible.builtin.apt:
-    name: "{{ hyperv_ubuntu_gpu_p_guest_required_packages }}"
+    name: "{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_missing_packages }}"
     state: present
-    update_cache: true
+    update_cache: "{{ hyperv_ubuntu_gpu_p_guest_update_apt_cache | bool }}"
+    cache_valid_time: "{{ hyperv_ubuntu_gpu_p_guest_apt_cache_valid_time }}"
+    lock_timeout: "{{ hyperv_ubuntu_gpu_p_guest_apt_lock_timeout }}"
+  when: hyperv_ubuntu_gpu_p_linux_guest_runtime_missing_packages | length > 0
 
 - name: Ensure pinned dxgkrnl-dkms source checkout exists
   ansible.builtin.git:

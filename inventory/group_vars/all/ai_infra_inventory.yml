@@ -1,0 +1,291 @@
+---
+# Additive AI inventory metadata for playbook work.
+# This mirrors current repo truth without replacing the existing role defaults,
+# host_vars, or K3s route registry that still own the live implementation.
+ai_inventory_metadata:
+  schema: ai_inventory_metadata_v1
+  status: additive_declared
+  additive_only: true
+  source_brainstorm: docs/brainstorming_designs/2026-06-09--inventory-ai/version_1.md
+  description: >-
+    Additive AI surface metadata for playbook targeting, validation, and
+    future inventory-driven automation. This layer is intended to help
+    playbooks reason about AI services and host roles without replacing the
+    existing repo SSOT files yet.
+  tags:
+    - ai-inventory
+    - additive-contract
+    - playbook-routing
+
+  client_gateway:
+    name: shared_litellm_client_gateway
+    description: Shared OpenAI-compatible gateway used by repo-managed AI clients.
+    tags:
+      - client-gateway
+      - litellm
+      - openai-compatible
+      - shared-service
+    service_slug: litellm-k3s-gateway
+    openai_scheme: http
+    openai_api_path: /v1
+    openai_base_url: http://litellm.hom.lab/v1
+    owner_vars_file: inventory/group_vars/all/ai_agent_profiles.yml
+    owner_role_defaults: roles/k3s_litellm_gateway/defaults/main.yml
+
+  litellm_gateway:
+    name: k3s_litellm_gateway
+    description: Shared LiteLLM gateway deployed on the GPU-lane K3s guest.
+    tags:
+      - litellm
+      - gateway
+      - k3s
+      - ai-inference-stack
+    deployed_by_role: k3s_litellm_gateway
+    deploy_target:
+      description: Canonical mutating target selector for the shared LiteLLM gateway.
+      inventory_group: "container_orchestrator_k3s:&gpu_workload_nodes"
+      primary_inventory_host: hom-lab-ctl-k3s-02
+      parent_hypervisor: HOM-LAB-HVH-02
+      tags:
+        - deploy-target
+        - gpu-lane
+        - k3s
+        - shared-gateway
+    role_defaults_contract:
+      description: Inventory-side mirror of the current LiteLLM gateway defaults.
+      tags:
+        - role-defaults
+        - service-contract
+        - litellm
+      namespace: litellm
+      release_name: litellm
+      chart_repo: https://charts.litellm.ai
+      chart_name: litellm-helm
+      chart_version: latest_unpinned
+      service_type: ClusterIP
+      service_port: 4000
+      lan_node_port_enabled: true
+      lan_node_port: 30400
+      lan_service_name: litellm-lan
+      langfuse_callback_enabled: true
+      langfuse_callback_host: http://langfuse-web.langfuse.svc.cluster.local:3000
+      owner_file: roles/k3s_litellm_gateway/defaults/main.yml
+    lane_contract:
+      description: Visible lane vocabulary preserved for clients and validation playbooks.
+      tags:
+        - model-lanes
+        - gateway-routing
+        - lane-contract
+      enabled_lanes:
+        - code-deep
+        - experiment
+        - code-review
+      blocked_lanes:
+        - code-fast
+        - code-test
+        - ripi-private
+        - embeddings-local
+        - public-research
+      migration_lanes:
+        - gpt-4o-mini
+        - default
+      entries:
+        - lane: code-deep
+          state: enabled
+          backend_kind: local-vllm
+          runtime: vllm-primary
+          description: Primary local coding lane on the GPU-lane vLLM runtime.
+          tags:
+            - primary
+            - coding
+            - local-vllm
+        - lane: experiment
+          state: enabled
+          backend_kind: local-vllm
+          runtime: vllm-primary
+          description: Smoke and compatibility alias sharing the primary local vLLM runtime.
+          tags:
+            - smoke
+            - compatibility
+            - local-vllm
+        - lane: code-review
+          state: enabled
+          backend_kind: local-ollama
+          runtime: ollama-secondary-hvh-01
+          description: Secondary local review lane served from the host-local Ollama runtime on HOM-LAB-HVH-01.
+          tags:
+            - review
+            - secondary-runtime
+            - ollama
+        - lane: code-fast
+          state: blocked
+          backend_kind: pending
+          description: Fast lane exists in vocabulary but has no commissioned backend yet.
+          tags:
+            - pending
+            - fast-lane
+        - lane: code-test
+          state: blocked
+          backend_kind: pending
+          description: Test-focused lane is reserved but not backed by a declared runtime yet.
+          tags:
+            - pending
+            - test-lane
+        - lane: ripi-private
+          state: blocked
+          backend_kind: pending
+          description: Private-only lane is reserved pending dedicated backend and privacy guardrails.
+          tags:
+            - pending
+            - private
+            - guardrail-required
+        - lane: embeddings-local
+          state: blocked
+          backend_kind: pending
+          description: Local embeddings lane is reserved but not commissioned yet.
+          tags:
+            - pending
+            - embeddings
+        - lane: public-research
+          state: blocked
+          backend_kind: pending
+          description: Public web or provider-backed research lane remains a future policy slice.
+          tags:
+            - pending
+            - public-research
+
+  ai_layer_model:
+    description: Current additive inventory mirror of the AI homelab layer model.
+    tags:
+      - ai-layer-model
+      - architecture
+      - shared-vocabulary
+    source_doc: docs/reference/ai-homelab-layer-model.md
+    layers:
+      - layer: substrate
+        service_code: infra
+        description: Hyper-V, Docker guests, K3s guests, Windows GPU drivers, and storage roots.
+        tags:
+          - substrate
+          - hyperv
+          - k3s
+      - layer: runtime
+        service_code: vlm
+        description: Runtime services such as vLLM and host-local Ollama.
+        tags:
+          - runtime
+          - vllm
+          - ollama
+      - layer: gateway
+        service_code: llm
+        description: LiteLLM gateway with lane aliases and client routing.
+        tags:
+          - gateway
+          - litellm
+          - routing
+      - layer: observability
+        service_code: lfs
+        description: Langfuse traces, evaluations, and model-call observability.
+        tags:
+          - observability
+          - langfuse
+      - layer: publication
+        service_code: pub
+        description: hom.lab hostnames, hosts-file publication, and stable operator URLs.
+        tags:
+          - publication
+          - homelab-hosts-file
+          - netbox
+      - layer: catalog
+        service_code: mdl
+        description: Future durable model inventory distinct from gateway route aliases.
+        tags:
+          - model-catalog
+          - future-state
+
+  service_entrypoints_reference:
+    description: Operator-facing AI entrypoints mirrored from the current service reference doc.
+    tags:
+      - service-entrypoints
+      - operator-reference
+      - ai-surfaces
+    source_doc: docs/reference/service-entrypoints-and-ai-surfaces.md
+    services:
+      - service_key: litellm
+        description: Shared LiteLLM browser and API surface.
+        tags:
+          - litellm
+          - browser-url
+          - api-base
+        browser_url: http://litellm.hom.lab/
+        api_base_url: http://litellm.hom.lab/v1
+        alternate_urls:
+          - http://litellm.hom.lab:30400/
+          - http://192.168.50.158:30400/
+          - http://192.168.137.11:30400/
+      - service_key: langfuse
+        description: Shared Langfuse browser surface and NodePort fallback.
+        tags:
+          - langfuse
+          - browser-url
+          - observability
+        browser_url: http://langfuse.hom.lab/
+        alternate_urls:
+          - http://langfuse.hom.lab:30000/
+          - http://192.168.50.158:30000/
+          - http://192.168.137.11:30000/
+      - service_key: jupyter
+        description: Shared JupyterLab workbench on the GPU-lane K3s guest.
+        tags:
+          - jupyter
+          - browser-url
+          - workbench
+        browser_url: http://jupyter.hom.lab:8888/lab
+        alternate_urls:
+          - http://192.168.137.11:8888/lab
+
+  k3s_route_service_metadata:
+    description: Additive mirror of routed K3s AI services exposed through Traefik and NodePort fallback.
+    tags:
+      - k3s
+      - traefik
+      - route-registry
+      - service-metadata
+    owner_vars_file: inventory/group_vars/k3s_cluster.yaml
+    services:
+      - route_key: langfuse-web
+        ingress_name: langfuse-web-ingress
+        namespace: langfuse
+        hostname: langfuse.hom.lab
+        service_name: langfuse-web
+        service_port: 3000
+        path: /
+        path_type: Prefix
+        netbox_service_slug: langfuse-k3s-web
+        logical_hostname: hom-lab-ctl-lfs-01
+        deployed_by_role: k3s_langfuse_platform
+        fallback_exposure: nodeport
+        fallback_node_port: 30000
+        tags:
+          - langfuse
+          - k3s
+          - traefik-routed
+          - lan-exposed-service
+      - route_key: litellm-gateway
+        ingress_name: litellm-gateway-ingress
+        namespace: litellm
+        hostname: litellm.hom.lab
+        service_name: litellm
+        service_port: 4000
+        path: /
+        path_type: Prefix
+        netbox_service_slug: litellm-k3s-gateway
+        logical_hostname: hom-lab-ctl-llm-01
+        deployed_by_role: k3s_litellm_gateway
+        fallback_exposure: nodeport
+        fallback_node_port: 30400
+        tags:
+          - litellm
+          - k3s
+          - traefik-routed
+          - lan-exposed-service

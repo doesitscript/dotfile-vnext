@@ -7,6 +7,9 @@ resolved through the shared `fuzlang_external_*` inventory contract.
 
 - `k3s_langfuse_platform_state: present|absent` — standard lifecycle control point.
 - `k3s_langfuse_platform_fresh_install: true` — runs absent tasks before present (clean redeploy).
+- Fresh-install also resets the external Langfuse PostgreSQL database through
+  `k3s_langfuse_platform_postgres_inventory_host` when
+  `k3s_langfuse_platform_reset_external_postgres_db_on_fresh_install: true`.
 
 ## Fresh redeploy (recommended after credential or chart changes)
 

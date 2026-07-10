@@ -43,6 +43,7 @@ Use one of these statuses in each pattern:
 
 - [Plan family execution with validator](patterns/plan-family-execution-with-validator.md)
 - [Doc collection coordinator + per-page workers](patterns/doc-collection-coordinator.md)
+- [Hyper-V guest connectivity and AI stack order](patterns/hyperv-guest-connectivity-and-ai-stack-order.md)
 
 ## Rules
 

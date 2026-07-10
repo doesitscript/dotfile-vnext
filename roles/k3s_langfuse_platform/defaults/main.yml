@@ -26,6 +26,8 @@ k3s_langfuse_platform_postgres_port: "{{ fuzlang_external_postgres_port | defaul
 k3s_langfuse_platform_postgres_db: "{{ fuzlang_external_postgres_db }}"
 k3s_langfuse_platform_postgres_user: "{{ fuzlang_external_postgres_user }}"
 k3s_langfuse_platform_postgres_password: "{{ fuzlang_external_postgres_password }}"
+k3s_langfuse_platform_postgres_inventory_host: hom-lab-ctl-dkr-01
+k3s_langfuse_platform_reset_external_postgres_db_on_fresh_install: true
 
 # ClickHouse configuration
 k3s_langfuse_platform_clickhouse_enabled: true
@@ -35,6 +37,7 @@ k3s_langfuse_platform_clickhouse_http_port: "{{ fuzlang_external_clickhouse_http
 k3s_langfuse_platform_clickhouse_native_port: "{{ fuzlang_external_clickhouse_native_port }}"
 k3s_langfuse_platform_clickhouse_database: "{{ fuzlang_external_clickhouse_db }}"
 k3s_langfuse_platform_clickhouse_user: "{{ fuzlang_external_clickhouse_user }}"
+k3s_langfuse_platform_clickhouse_cluster_enabled: false
 k3s_langfuse_platform_clickhouse_cpu_request: "500m"
 k3s_langfuse_platform_clickhouse_cpu_limit: "1500m"
 k3s_langfuse_platform_clickhouse_memory_request: "1Gi"
@@ -71,10 +74,17 @@ k3s_langfuse_platform_s3_force_path_style: "{{ fuzlang_external_s3_force_path_st
 # Resource limits
 k3s_langfuse_platform_web_replicas: 1
 k3s_langfuse_platform_worker_replicas: 1
+k3s_langfuse_platform_web_cpu_request: "250m"
+k3s_langfuse_platform_web_memory_request: "512Mi"
 k3s_langfuse_platform_web_cpu_limit: "1000m"
 k3s_langfuse_platform_web_memory_limit: "2Gi"
+k3s_langfuse_platform_web_readiness_initial_delay_seconds: 60
+k3s_langfuse_platform_web_liveness_initial_delay_seconds: 300
+k3s_langfuse_platform_worker_cpu_request: "250m"
+k3s_langfuse_platform_worker_memory_request: "512Mi"
 k3s_langfuse_platform_worker_cpu_limit: "500m"
 k3s_langfuse_platform_worker_memory_limit: "1Gi"
+k3s_langfuse_platform_worker_liveness_initial_delay_seconds: 60
 # A single-node lab cannot always schedule old and new pods concurrently.
 k3s_langfuse_platform_deployment_strategy_type: "Recreate"
 

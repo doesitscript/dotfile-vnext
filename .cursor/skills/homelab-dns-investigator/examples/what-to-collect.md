@@ -69,7 +69,7 @@ nc -z -G 3 192.168.137.11 6443
 | Name | all suffixes |
 |---|---|
 | `network-server` | no resolution |
-| `ai-net-server-mgmt` | no resolution |
+| `HOM-LAB-HVH-01` | no resolution |
 
 Retired per inventory — record as **confirmed dead**, not missing DNS bug.
 

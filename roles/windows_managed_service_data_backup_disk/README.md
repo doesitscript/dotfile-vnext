@@ -1,7 +1,7 @@
 # windows_managed_service_data_backup_disk
 
 Opinionated Windows role for the rebuildable non-OS managed service disk on
-infrastructure nodes such as `hom-lab-hvh-01` and `hom-lab-hvh-02`.
+infrastructure nodes such as `HOM-LAB-HVH-01` and `HOM-LAB-HVH-02`.
 
 ## Public contract
 
@@ -21,7 +21,7 @@ infrastructure nodes such as `hom-lab-hvh-01` and `hom-lab-hvh-02`.
 - allocation unit size: `4096`
 
 Percentages are derived once from the source physical Toshiba disk on
-`hom-lab-hvh-02` and baked into the role defaults:
+`HOM-LAB-HVH-02` and baked into the role defaults:
 
 - backup: `39.313758202`
 - data: `60.685346181`
@@ -54,7 +54,7 @@ ansible-playbook playbooks/windows_managed_service_data_backup_disk.yml --tags d
 Apply only with the explicit apply tag:
 
 ```bash
-ansible-playbook playbooks/windows_managed_service_data_backup_disk.yml --tags disk_apply --limit hom-lab-hvh-01
+ansible-playbook playbooks/windows_managed_service_data_backup_disk.yml --tags disk_apply --limit HOM-LAB-HVH-01
 ```
 
 First rebuild of an already-used target disk also needs the transient rebuild
@@ -63,6 +63,6 @@ approval, for example:
 ```bash
 ansible-playbook playbooks/windows_managed_service_data_backup_disk.yml \
   --tags disk_apply \
-  --limit hom-lab-hvh-01 \
+  --limit HOM-LAB-HVH-01 \
   -e windows_managed_service_data_backup_disk_rebuild_approved=true
 ```

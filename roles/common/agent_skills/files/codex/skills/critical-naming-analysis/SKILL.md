@@ -32,7 +32,7 @@ reevaluated.
 Example:
 
 ```text
-hom-lab-hvh-01
+HOM-LAB-HVH-01
 ```
 
 Field decisions:

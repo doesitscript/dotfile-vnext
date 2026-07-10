@@ -1,8 +1,8 @@
 ---
-# Controller-local NetBox API seeding when hom-lab-ctl-dkr-02 SSH is unavailable.
-# Tasks delegate_to localhost internally; play host is localhost for vault/API access.
-- name: Seed NetBox tags and Service custom fields (localhost)
-  hosts: localhost
+# Execution-node NetBox API seeding when hom-lab-ctl-dkr-02 SSH is unavailable.
+# The included role tasks delegate API work to the execution node for vault/API access.
+- name: Seed NetBox tags and Service custom fields (execution node)
+  hosts: execution_nodes
   connection: local
   gather_facts: false
   tasks:
@@ -20,8 +20,8 @@
       tags:
         - ipam_netbox_seed_custom_fields
 
-- name: Seed hom-lab-hvh-02 NetBox model (localhost)
-  hosts: localhost
+- name: Seed HOM-LAB-HVH-02 NetBox model (execution node)
+  hosts: execution_nodes
   connection: local
   gather_facts: false
   tasks:

@@ -1,7 +1,7 @@
 # Desktop-only bootstrap (WSL)
 
 Scripts here configure **optional WSL on a development Windows desktop**. They are
-**not** used for Hyper-V server lanes (`hom-lab-ctl-hvh-*`, `hom-lab-ctl-dkr-*`,
+**not** used for Hyper-V server lanes (`HOM-LAB-HVH-*`, `hom-lab-ctl-dkr-*`,
 `hom-lab-ctl-k3s-*`).
 
 | Script | Purpose |

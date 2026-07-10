@@ -16,7 +16,7 @@ Physical Hyper-V Windows hosts and their matching Hyper-V cluster names now use:
 
 Example:
 
-`hom-lab-hvh-01`
+`HOM-LAB-HVH-01`
 
 ## Field meanings
 
@@ -42,8 +42,8 @@ Example:
 
 | Name | Type | Lane | Notes |
 |---|---|---|---|
-| `hom-lab-hvh-01` | device | `hyperv_lane_storage` | Hyper-V storage lane, LAN `192.168.50.234`, guests `192.168.138.0/24` |
-| `hom-lab-hvh-02` | device | `hyperv_lane_gpu` | Hyper-V GPU lane, LAN `192.168.50.158`, guests `192.168.137.0/24` |
+| `HOM-LAB-HVH-01` | device | `hyperv_lane_storage` | Hyper-V storage lane, LAN `192.168.50.234`, guests `192.168.138.0/24` |
+| `HOM-LAB-HVH-02` | device | `hyperv_lane_gpu` | Hyper-V GPU lane, LAN `192.168.50.158`, guests `192.168.137.0/24` |
 | `hom-lab-ctl-dkr-01` | vm | storage | Docker VM on `hvh-01`, IP `192.168.138.10` |
 | `hom-lab-ctl-dkr-02` | vm | GPU | Docker VM on `hvh-02`, IP `192.168.137.10` |
 | `hom-lab-ctl-k3s-01` | vm | storage | K3s VM on `hvh-01`, IP `192.168.138.11` |

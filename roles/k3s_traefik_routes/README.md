@@ -43,5 +43,5 @@ Default **`absent`** until operator sets `present` for apply.
 ## Related
 
 - `roles/homelab_hosts_file_mac` — mac-dev operator hostnames
-- `guest_published_tcp_ports` `k3s-traefik-http` on `hom-lab-hvh-02`
+- `guest_published_tcp_ports` `k3s-traefik-http` on `HOM-LAB-HVH-02`
 - `docs/intake/k3s-hyperv-traefik-blueprint.md`

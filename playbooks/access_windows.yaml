@@ -8,7 +8,7 @@
 #
 # Commands:
 #   Windows-only run (admin + user on Windows hosts):
-#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit hom-lab-hvh-02
+#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit HOM-LAB-HVH-02
 #
 #   Explicit troubleshooting target outside windows_hosts:
 #     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml \
@@ -18,24 +18,24 @@
 #     ansible-playbook playbooks/access.yaml -i inventory/inventory.yaml
 #
 #   Admin only (OpenSSH, sshd, firewall, shell):
-#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit hom-lab-hvh-02 --tags admin
+#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit HOM-LAB-HVH-02 --tags admin
 #
 #   User only (user SSH keys):
-#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit hom-lab-hvh-02 --tags user
+#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit HOM-LAB-HVH-02 --tags user
 #
 #   Debug diagnostics only:
-#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit hom-lab-hvh-02 --tags debug
+#     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml --limit HOM-LAB-HVH-02 --tags debug
 #
 # Troubleshooting:
 #   Run with --tags collect_windows_remote_access to trigger artifact collection
 #   (WinRM, OpenSSH, firewall) alongside the normal identity run:
 #     ansible-playbook playbooks/access_windows.yaml -i inventory/inventory.yaml \
-#       --limit hom-lab-hvh-02 --tags collect_windows_remote_access
+#       --limit HOM-LAB-HVH-02 --tags collect_windows_remote_access
 #   Artifacts land at: artifacts/troubleshooting/windows_remote_access/<host>/<timestamp>/
 #
 #   Or run the dedicated collector directly (no lifecycle side effects):
 #     ansible-playbook playbooks/troubleshoot/collect_windows_remote_access_artifacts.yaml \
-#       -i inventory/inventory.yaml --limit hom-lab-hvh-02
+#       -i inventory/inventory.yaml --limit HOM-LAB-HVH-02
 #
 # Linux guest access is partially configured here for Windows Hyper-V hosts:
 # this role ensures the Windows host has a managed outbound SSH key/config for
@@ -50,7 +50,7 @@
 
   pre_tasks:
     # WinRM was the original bootstrap transport; OpenSSH is now valid for steady-state
-    # convergence once sshd is up (see hom-lab-hvh-02, dev-workstation-win).
+    # convergence once sshd is up (see HOM-LAB-HVH-02, dev-workstation-win).
     - name: Skip hosts without a Windows remote connection (WinRM or SSH)
       ansible.builtin.meta: end_host
       when: (ansible_connection | default('ssh')) not in ['winrm', 'ssh']

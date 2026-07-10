@@ -43,7 +43,7 @@ hvh-02 lane only in hosts today; hvh-01 guests use static route `192.168.138.0/2
 
 ## Legacy — do not use
 
-`network-server`, `ai-net-server-mgmt`, `nsrv-k3s-01` — not active DNS.
+`network-server`, `HOM-LAB-HVH-01`, `nsrv-k3s-01` — not active DNS.
 
 ## Diagnosis patterns
 

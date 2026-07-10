@@ -1,0 +1,21 @@
+---
+# mac-dev persistent routes for Hyper-V guest private subnets.
+#
+# Use this narrow playbook when the goal is controller reachability to guest
+# IPs through the owning Windows Hyper-V hosts without re-running the broader
+# guest lifecycle wrappers.
+#
+# Apply:
+#   ansible-playbook playbooks/hyperv_guest_route_mac.yaml -i inventory/inventory.yaml
+#
+# Verify:
+#   netstat -rn | egrep '192.168.137|192.168.138'
+#
+- name: Manage Hyper-V guest subnet routes on mac-dev
+  hosts: mac-dev
+  gather_facts: true
+  become: false
+
+  roles:
+    - role: hyperv_guest_route_mac
+      tags: [hyperv_guest_route_mac]

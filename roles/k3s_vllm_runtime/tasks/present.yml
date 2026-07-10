@@ -80,6 +80,40 @@
         }
         | combine({k3s_vllm_runtime_gpu_resource: k3s_vllm_runtime_gpu_count})
       }}
+    _k3s_vllm_runtime_deployment_strategy: >-
+      {{
+        {
+          'type': k3s_vllm_runtime_deployment_strategy_type
+        }
+      }}
+
+- name: Query existing vLLM deployment
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ k3s_vllm_runtime_namespace }}"
+    name: "{{ k3s_vllm_runtime_name }}"
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+  register: _k3s_vllm_runtime_existing_deployment
+
+- name: Remove vLLM deployment when rollout strategy must change
+  kubernetes.core.k8s:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ k3s_vllm_runtime_namespace }}"
+    name: "{{ k3s_vllm_runtime_name }}"
+    state: absent
+    wait: true
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+  when:
+    - _k3s_vllm_runtime_existing_deployment.resources | length > 0
+    - >-
+      (
+        _k3s_vllm_runtime_existing_deployment.resources[0].spec.strategy.type
+        | default('RollingUpdate')
+      ) != k3s_vllm_runtime_deployment_strategy_type
 
 - name: Ensure vLLM deployment exists
   kubernetes.core.k8s:
@@ -96,6 +130,7 @@
           app.kubernetes.io/managed-by: ansible
       spec:
         replicas: "{{ k3s_vllm_runtime_replicas }}"
+        strategy: "{{ _k3s_vllm_runtime_deployment_strategy }}"
         selector:
           matchLabels:
             app.kubernetes.io/name: vllm

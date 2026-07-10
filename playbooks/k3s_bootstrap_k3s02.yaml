@@ -1,11 +1,48 @@
 ---
 # k3s_bootstrap_k3s02.yaml — Bootstrap K3s on hom-lab-ctl-k3s-02 (RTX 5090 GPU server)
 #
-# This installs K3s on the GPU-enabled K3s VM for AI/ML workloads.
+# This manages the K3s lifecycle on the GPU-enabled K3s VM for AI/ML workloads.
 # This is a separate single-node cluster from hom-lab-ctl-k3s-01.
 #
 # Usage:
 #   ansible-playbook playbooks/k3s_bootstrap_k3s02.yaml -i inventory/inventory.yaml
+#   ansible-playbook playbooks/k3s_bootstrap_k3s02.yaml -i inventory/inventory.yaml \
+#     --tags k3s_cluster_gpu_preview
+#   ansible-playbook playbooks/k3s_bootstrap_k3s02.yaml -i inventory/inventory.yaml \
+#     -e k3s_cluster_gpu_state=absent
+
+- name: Validate requested GPU K3s cluster lifecycle state
+  hosts: localhost
+  gather_facts: false
+  vars:
+    __k3s_cluster_gpu_state: "{{ k3s_cluster_gpu_state | default('present') }}"
+  tasks:
+    - name: Assert GPU K3s cluster state is supported
+      ansible.builtin.assert:
+        that:
+          - __k3s_cluster_gpu_state in ['present', 'absent']
+        fail_msg: "k3s_cluster_gpu_state must be present or absent."
+        success_msg: "GPU K3s cluster lifecycle state {{ __k3s_cluster_gpu_state }} accepted."
+      tags: [always]
+
+- name: Preview GPU K3s cluster target selection
+  hosts: k3s_cluster_gpu
+  gather_facts: false
+  vars:
+    __k3s_cluster_gpu_state: "{{ k3s_cluster_gpu_state | default('present') }}"
+  tags: [k3s_cluster_gpu_preview]
+  tasks:
+    - name: Preview GPU K3s cluster lifecycle target
+      ansible.builtin.debug:
+        msg:
+          host: "{{ inventory_hostname }}"
+          selected: true
+          requested_state: "{{ __k3s_cluster_gpu_state }}"
+          server_group: "{{ inventory_hostname in groups['server_gpu'] | default([]) }}"
+          agent_group: "{{ inventory_hostname in groups['agent_gpu'] | default([]) }}"
+          api_endpoint: "{{ api_endpoint | default('unset') }}"
+          ansible_host: "{{ ansible_host | default('unset') }}"
+          parent_hypervisor: "{{ parent_hypervisor | default('unset') }}"
 
 # --- Play 0: Cluster secrets ---
 - name: Load vault-backed k3s bootstrap token
@@ -13,6 +50,10 @@
   gather_facts: false
   vars_files:
     - ../vault.yml
+  pre_tasks:
+    - name: Skip token load when GPU K3s cluster state is absent
+      ansible.builtin.meta: end_play
+      when: (k3s_cluster_gpu_state | default('present')) != 'present'
   tasks:
     - name: Publish k3s token for the official k3s collection
       ansible.builtin.set_fact:
@@ -24,8 +65,12 @@
 
 # --- Play 1: Guard ---
 - name: Guard k3s-02 bootstrap target selection
-  hosts: localhost
+  hosts: k3s_cluster_gpu
   gather_facts: false
+  pre_tasks:
+    - name: Skip GPU K3s bootstrap guard when cluster state is absent
+      ansible.builtin.meta: end_play
+      when: (k3s_cluster_gpu_state | default('present')) != 'present'
   tasks:
     - name: Verify hom-lab-ctl-k3s-02 is ready for K3s bootstrap
       ansible.builtin.assert:
@@ -36,17 +81,89 @@
           - hostvars['hom-lab-ctl-k3s-02'].token | length > 0
         fail_msg: "hom-lab-ctl-k3s-02 is not properly configured for K3s bootstrap"
         success_msg: "hom-lab-ctl-k3s-02 is ready for K3s bootstrap"
+      run_once: true
       tags:
         - always
 
 # --- Play 2: Windows Firewall ---
-- name: Open k3s firewall ports on hom-lab-hvh-02
-  hosts: hom-lab-hvh-02
+- name: Open k3s firewall ports on HOM-LAB-HVH-02
+  hosts: HOM-LAB-HVH-02
   gather_facts: false
+  pre_tasks:
+    - name: Skip GPU K3s firewall apply when cluster state is absent
+      ansible.builtin.meta: end_play
+      when: (k3s_cluster_gpu_state | default('present')) != 'present'
   roles:
     - k3s_firewall
 
-# --- Play 3: Deploy k3s (official collection with GPU group override) ---
+# --- Play 3a: Destructive reset ---
+- name: Reset GPU K3s cluster on hom-lab-ctl-k3s-02
+  hosts: k3s_cluster_gpu
+  gather_facts: false
+  become: true
+  vars:
+    __k3s_gpu_server_uninstall_script: /usr/local/bin/k3s-uninstall.sh
+    __k3s_gpu_agent_uninstall_script: /usr/local/bin/k3s-agent-uninstall.sh
+  pre_tasks:
+    - name: Skip GPU K3s reset when cluster state is present
+      ansible.builtin.meta: end_play
+      when: (k3s_cluster_gpu_state | default('present')) != 'absent'
+  tasks:
+    - name: Check for K3s server uninstall script
+      ansible.builtin.stat:
+        path: "{{ __k3s_gpu_server_uninstall_script }}"
+      register: __k3s_gpu_server_uninstall
+      when: inventory_hostname in (groups['server_gpu'] | default([]))
+
+    - name: Check for K3s agent uninstall script
+      ansible.builtin.stat:
+        path: "{{ __k3s_gpu_agent_uninstall_script }}"
+      register: __k3s_gpu_agent_uninstall
+      when: inventory_hostname in (groups['agent_gpu'] | default([]))
+
+    - name: Run K3s uninstall script on GPU cluster server
+      ansible.builtin.command:
+        cmd: "{{ __k3s_gpu_server_uninstall_script }}"
+      when:
+        - inventory_hostname in (groups['server_gpu'] | default([]))
+        - __k3s_gpu_server_uninstall.stat.exists | default(false)
+
+    - name: Run K3s uninstall script on GPU cluster agent
+      ansible.builtin.command:
+        cmd: "{{ __k3s_gpu_agent_uninstall_script }}"
+      when:
+        - inventory_hostname in (groups['agent_gpu'] | default([]))
+        - __k3s_gpu_agent_uninstall.stat.exists | default(false)
+
+    - name: Remove user kubeconfig on GPU cluster node
+      ansible.builtin.file:
+        path: "~{{ ansible_user }}/.kube/config"
+        state: absent
+
+    - name: Remove K3s install script on GPU cluster node
+      ansible.builtin.file:
+        path: /usr/local/bin/k3s-install.sh
+        state: absent
+
+    - name: Remove contents of K3s server location on GPU cluster node
+      ansible.builtin.shell:
+        cmd: "rm -rf {{ k3s_server_location }}/*"
+        removes: "{{ k3s_server_location }}/*"
+      when: k3s_server_location is defined
+
+    - name: Remove K3s config on GPU cluster node
+      ansible.builtin.file:
+        path: /etc/rancher/k3s/config.yaml
+        state: absent
+
+    - name: Remove K3s shell helper lines from bashrc on GPU cluster server
+      ansible.builtin.lineinfile:
+        path: "~{{ ansible_user }}/.bashrc"
+        search_string: "Added by k3s-ansible"
+        state: absent
+      when: inventory_hostname in (groups['server_gpu'] | default([]))
+
+# --- Play 3b: Deploy k3s (official collection with GPU group override) ---
 - name: Deploy K3s cluster on GPU node
   hosts: k3s_cluster_gpu
   gather_facts: true
@@ -55,6 +172,10 @@
     server_group: server_gpu
     agent_group: agent_gpu
   pre_tasks:
+    - name: Skip GPU K3s deploy when cluster state is absent
+      ansible.builtin.meta: end_play
+      when: (k3s_cluster_gpu_state | default('present')) != 'present'
+
     - name: Ensure server_group and agent_group are set
       ansible.builtin.set_fact:
         server_group: server_gpu
@@ -71,5 +192,9 @@
 - name: Configure k3s node labels and taints for GPU
   hosts: server_gpu
   become: true
+  pre_tasks:
+    - name: Skip GPU K3s node labels when cluster state is absent
+      ansible.builtin.meta: end_play
+      when: (k3s_cluster_gpu_state | default('present')) != 'present'
   roles:
     - k3s_node_config

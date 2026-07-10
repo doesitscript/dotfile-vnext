@@ -19,6 +19,48 @@
     - k3s_nvidia_runtime_state == 'present'
     - k3s_nvidia_runtime_remove_guest_driver | bool
 
+- name: Wait for APT and DPKG locks to clear before NVIDIA runtime package operations
+  ansible.builtin.shell: |
+    python3 - <<'PY'
+    import errno
+    import fcntl
+    import os
+    import sys
+
+    lock_paths = [
+        "/var/lib/apt/lists/lock",
+        "/var/cache/apt/archives/lock",
+        "/var/lib/dpkg/lock",
+        "/var/lib/dpkg/lock-frontend",
+    ]
+
+    blocked = []
+
+    for path in lock_paths:
+        if not os.path.exists(path):
+            continue
+        fd = os.open(path, os.O_RDWR)
+        try:
+            fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            if exc.errno in (errno.EACCES, errno.EAGAIN):
+                blocked.append(path)
+            else:
+                raise
+        finally:
+            os.close(fd)
+
+    if blocked:
+        print("locked:" + ",".join(blocked))
+        sys.exit(1)
+    PY
+  register: k3s_nvidia_runtime_apt_lock_wait
+  changed_when: false
+  retries: "{{ k3s_nvidia_runtime_apt_lock_wait_retries }}"
+  delay: "{{ k3s_nvidia_runtime_apt_lock_wait_delay }}"
+  until: k3s_nvidia_runtime_apt_lock_wait.rc == 0
+  when: k3s_nvidia_runtime_state in ['present', 'absent']
+
 - name: Ensure APT prerequisites for NVIDIA runtime are present
   ansible.builtin.apt:
     name:
@@ -28,6 +70,7 @@
       - ubuntu-drivers-common
     state: present
     update_cache: true
+    lock_timeout: "{{ k3s_nvidia_runtime_apt_lock_timeout }}"
   when: k3s_nvidia_runtime_state == 'present'
 
 - name: Ensure keyrings directory exists
@@ -75,6 +118,7 @@
     name: "{{ k3s_nvidia_runtime_driver_package }}"
     state: present
     update_cache: true
+    lock_timeout: "{{ k3s_nvidia_runtime_apt_lock_timeout }}"
   register: k3s_nvidia_runtime_driver_package_result
   when:
     - k3s_nvidia_runtime_state == 'present'
@@ -94,6 +138,7 @@
     name: "{{ k3s_nvidia_runtime_toolkit_package }}"
     state: present
     update_cache: true
+    lock_timeout: "{{ k3s_nvidia_runtime_apt_lock_timeout }}"
   register: k3s_nvidia_runtime_toolkit_package_result
   when: k3s_nvidia_runtime_state == 'present'
 
@@ -143,6 +188,7 @@
     state: absent
     purge: true
     autoremove: true
+    lock_timeout: "{{ k3s_nvidia_runtime_apt_lock_timeout }}"
   when: k3s_nvidia_runtime_state == 'absent'
 
 - name: Report NVIDIA runtime readiness

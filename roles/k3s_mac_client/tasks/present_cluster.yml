@@ -1,0 +1,215 @@
+---
+- name: Resolve effective API server for {{ k3s_mac_client_cluster.context_name }}
+  ansible.builtin.set_fact:
+    k3s_mac_client_cluster_effective_api_server: >-
+      {%- if k3s_mac_client_cluster.connection_mode == 'ssh_tunnel' -%}
+      https://{{ k3s_mac_client_cluster.tunnel_bind_host }}:{{ k3s_mac_client_cluster.tunnel_local_port }}
+      {%- else -%}
+      https://{{
+        hostvars[k3s_mac_client_cluster.cluster_host].api_endpoint
+        | default(hostvars[k3s_mac_client_cluster.cluster_host].ansible_host)
+      }}:{{ k3s_mac_client_cluster.api_port }}
+      {%- endif -%}
+  changed_when: false
+
+- name: Check for existing local K3s API tunnel for {{ k3s_mac_client_cluster.context_name }}
+  ansible.builtin.wait_for:
+    host: "{{ k3s_mac_client_cluster.tunnel_bind_host }}"
+    port: "{{ k3s_mac_client_cluster.tunnel_local_port }}"
+    timeout: 1
+    state: started
+  register: k3s_mac_client_cluster_tunnel_check
+  failed_when: false
+  changed_when: false
+  when: k3s_mac_client_cluster.connection_mode == "ssh_tunnel"
+
+- name: Resolve SSH tunnel forward specification for {{ k3s_mac_client_cluster.context_name }}
+  ansible.builtin.set_fact:
+    k3s_mac_client_cluster_tunnel_forward: >-
+      {{
+        [
+          k3s_mac_client_cluster.tunnel_bind_host,
+          k3s_mac_client_cluster.tunnel_local_port,
+          k3s_mac_client_cluster.tunnel_remote_host,
+          k3s_mac_client_cluster.tunnel_remote_port
+        ] | join(':')
+      }}
+  changed_when: false
+  when: k3s_mac_client_cluster.connection_mode == "ssh_tunnel"
+
+- name: Probe existing local K3s API tunnel health for {{ k3s_mac_client_cluster.context_name }}
+  ansible.builtin.uri:
+    url: "https://{{ k3s_mac_client_cluster.tunnel_bind_host }}:{{ k3s_mac_client_cluster.tunnel_local_port }}/livez?verbose"
+    method: GET
+    validate_certs: false
+    status_code: [200, 401, 403]
+    return_content: false
+    timeout: 5
+  register: k3s_mac_client_cluster_tunnel_health_check
+  failed_when: false
+  changed_when: false
+  when:
+    - k3s_mac_client_cluster.connection_mode == "ssh_tunnel"
+    - k3s_mac_client_cluster_tunnel_check.state | default("") == "started"
+
+- name: Decide whether local K3s API tunnel needs refresh for {{ k3s_mac_client_cluster.context_name }}
+  ansible.builtin.set_fact:
+    k3s_mac_client_cluster_tunnel_needs_refresh: >-
+      {{
+        (k3s_mac_client_cluster_tunnel_check.state | default('') != 'started')
+        or ((k3s_mac_client_cluster_tunnel_health_check.status | default(0)) not in [200, 401, 403])
+      }}
+  changed_when: false
+  when: k3s_mac_client_cluster.connection_mode == "ssh_tunnel"
+
+- name: Find stale local SSH tunnel listener for {{ k3s_mac_client_cluster.context_name }}
+  ansible.builtin.command:
+    argv:
+      - lsof
+      - -tiTCP:{{ k3s_mac_client_cluster.tunnel_local_port }}
+      - -sTCP:LISTEN
+  register: k3s_mac_client_cluster_tunnel_listener_pids
+  failed_when: false
+  changed_when: false
+  when:
+    - k3s_mac_client_cluster.connection_mode == "ssh_tunnel"
+    - k3s_mac_client_cluster_tunnel_needs_refresh | default(false)
+    - k3s_mac_client_cluster_tunnel_check.state | default("") == "started"
+
+- name: Remove stale local SSH tunnel listener for {{ k3s_mac_client_cluster.context_name }}
+  ansible.builtin.command:
+    argv:
+      - kill
+      - "{{ item }}"
+  loop: "{{ (k3s_mac_client_cluster_tunnel_listener_pids.stdout_lines | default([])) | reject('equalto', '') | list }}"
+  changed_when: true
+  when:
+    - k3s_mac_client_cluster.connection_mode == "ssh_tunnel"
+    - k3s_mac_client_cluster_tunnel_needs_refresh | default(false)
+    - (k3s_mac_client_cluster_tunnel_listener_pids.stdout_lines | default([]) | reject('equalto', '') | list | length) > 0
+
+- name: Start local SSH tunnel to K3s API for {{ k3s_mac_client_cluster.context_name }}
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - -f
+      - -N
+      - -o
+      - BatchMode=yes
+      - -o
+      - ExitOnForwardFailure=yes
+      - -L
+      - "{{ k3s_mac_client_cluster_tunnel_forward }}"
+      - "{{ k3s_mac_client_cluster.tunnel_host }}"
+  changed_when: true
+  when:
+    - k3s_mac_client_cluster.connection_mode == "ssh_tunnel"
+    - k3s_mac_client_cluster_tunnel_needs_refresh | default(false)
+
+- name: Wait for local K3s API tunnel for {{ k3s_mac_client_cluster.context_name }}
+  ansible.builtin.wait_for:
+    host: "{{ k3s_mac_client_cluster.tunnel_bind_host }}"
+    port: "{{ k3s_mac_client_cluster.tunnel_local_port }}"
+    timeout: 10
+    state: started
+  when: k3s_mac_client_cluster.connection_mode == "ssh_tunnel"
+
+- name: Check remote K3s admin kubeconfig availability on {{ k3s_mac_client_cluster.cluster_host }}
+  ansible.builtin.stat:
+    path: "{{ k3s_mac_client_cluster.source_kubeconfig }}"
+  delegate_to: "{{ k3s_mac_client_cluster.cluster_host }}"
+  become: true
+  register: k3s_mac_client_cluster_source_kubeconfig_stat
+
+- name: Remove stale local kubeconfig when {{ k3s_mac_client_cluster.cluster_host }} is not bootstrapped yet
+  ansible.builtin.file:
+    path: "{{ k3s_mac_client_cluster.kubeconfig }}"
+    state: absent
+  when: not (k3s_mac_client_cluster_source_kubeconfig_stat.stat.exists | default(false))
+
+- name: Track unavailable K3s cluster on macOS when kubeconfig source is missing
+  ansible.builtin.set_fact:
+    k3s_mac_client_unavailable_clusters: >-
+      {{
+        (k3s_mac_client_unavailable_clusters | default([]))
+        + [
+          {
+            'cluster_host': k3s_mac_client_cluster.cluster_host,
+            'context_name': k3s_mac_client_cluster.context_name,
+            'reason': 'remote kubeconfig missing at ' ~ k3s_mac_client_cluster.source_kubeconfig
+          }
+        ]
+      }}
+  changed_when: false
+  when: not (k3s_mac_client_cluster_source_kubeconfig_stat.stat.exists | default(false))
+
+- block:
+    - name: Read remote K3s admin kubeconfig from {{ k3s_mac_client_cluster.cluster_host }}
+      ansible.builtin.slurp:
+        src: "{{ k3s_mac_client_cluster.source_kubeconfig }}"
+      delegate_to: "{{ k3s_mac_client_cluster.cluster_host }}"
+      become: true
+      register: k3s_mac_client_cluster_remote_kubeconfig
+      no_log: true
+
+    - name: Normalize kubeconfig object for {{ k3s_mac_client_cluster.context_name }}
+      ansible.builtin.set_fact:
+        k3s_mac_client_cluster_rendered_kubeconfig: >-
+          {{
+            {
+              'apiVersion': (_remote_kubeconfig.apiVersion | default('v1')),
+              'kind': (_remote_kubeconfig.kind | default('Config')),
+              'preferences': (_remote_kubeconfig.preferences | default({})),
+              'clusters': [
+                {
+                  'name': k3s_mac_client_cluster.cluster_name,
+                  'cluster': (
+                    (_remote_kubeconfig.clusters[0].cluster | default({}))
+                    | combine({'server': (k3s_mac_client_cluster_effective_api_server | trim)})
+                  )
+                }
+              ],
+              'contexts': [
+                {
+                  'name': k3s_mac_client_cluster.context_name,
+                  'context': (
+                    (_remote_kubeconfig.contexts[0].context | default({}))
+                    | combine(
+                        {
+                          'cluster': k3s_mac_client_cluster.cluster_name,
+                          'user': k3s_mac_client_cluster.user_name
+                        }
+                      )
+                  )
+                }
+              ],
+              'current-context': k3s_mac_client_cluster.context_name,
+              'users': [
+                {
+                  'name': k3s_mac_client_cluster.user_name,
+                  'user': (_remote_kubeconfig.users[0].user | default({}))
+                }
+              ]
+            }
+          }}
+      vars:
+        _remote_kubeconfig: "{{ k3s_mac_client_cluster_remote_kubeconfig.content | b64decode | from_yaml }}"
+      changed_when: false
+      no_log: true
+
+    - name: Install K3s kubeconfig for macOS kubectl for {{ k3s_mac_client_cluster.context_name }}
+      ansible.builtin.copy:
+        dest: "{{ k3s_mac_client_cluster.kubeconfig }}"
+        mode: "0600"
+        content: "{{ k3s_mac_client_cluster_rendered_kubeconfig | to_nice_yaml(indent=2, sort_keys=false) }}"
+      no_log: true
+
+    - name: Track available K3s cluster on macOS after kubeconfig refresh
+      ansible.builtin.set_fact:
+        k3s_mac_client_available_clusters: >-
+          {{
+            (k3s_mac_client_available_clusters | default([]))
+            + [k3s_mac_client_cluster]
+          }}
+      changed_when: false
+  when: k3s_mac_client_cluster_source_kubeconfig_stat.stat.exists | default(false)

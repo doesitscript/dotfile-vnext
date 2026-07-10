@@ -1,15 +1,15 @@
 ---
-# Controller-local NetBox API seeding when hom-lab-ctl-dkr-02 is unreachable.
-# Use: bin/codex-env ansible-playbook playbooks/troubleshoot/netbox_api_seed_localhost.yml --ask-vault-pass
+# Execution-node NetBox API seeding when hom-lab-ctl-dkr-02 is unreachable.
+# Use: bin/codex-env ansible-playbook playbooks/troubleshoot/netbox_api_seed_execution_node.yml --ask-vault-pass
 # Tags: ipam_netbox_seed_tags, ipam_netbox_seed_custom_fields, ipam_netbox_seed_hom_lab_ctl_hvh_02_model
 
 - name: Seed NetBox API objects from controller
-  hosts: localhost
+  hosts: execution_nodes
   connection: local
   gather_facts: false
   vars:
     ipam_netbox_bootstrap_api_token_on_host: false
-    ipam_netbox_api_url: "http://{{ hostvars['hom-lab-hvh-02'].host_ip }}:8000"
+    ipam_netbox_api_url: "http://{{ hostvars['HOM-LAB-HVH-02'].host_ip }}:8000"
   tasks:
     - name: Seed NetBox tags
       ansible.builtin.include_role:
@@ -25,7 +25,7 @@
       tags:
         - ipam_netbox_seed_custom_fields
 
-    - name: Seed hom-lab-hvh-02 NetBox model
+    - name: Seed HOM-LAB-HVH-02 NetBox model
       ansible.builtin.include_role:
         name: ipam_netbox
         tasks_from: seed_hom_lab_ctl_hvh_02_model.yml

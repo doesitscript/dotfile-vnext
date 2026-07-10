@@ -1,6 +1,6 @@
 # FUZLANG Infrastructure
 
-**Project version:** `0.7.0` ([VERSION](VERSION))
+**Project version:** `1.0.0` ([VERSION](VERSION))
 
 Multi-node AI product engineering homelab automation using Ansible. This repo
 is currently locked to one durable operating model:

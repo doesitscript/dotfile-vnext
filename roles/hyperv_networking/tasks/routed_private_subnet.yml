@@ -300,6 +300,116 @@
         | default(_hyperv.adapter_name | default('Wi-Fi'))
       }}
 
+- name: Ensure modeled public IPv4 gateway and DNS exist on the public interface
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+
+      $publicAlias = '{{ _hyperv_routed_public_adapter_alias }}'
+      $publicGateway = '{{ _hyperv_routed_public_gateway_ipv4 }}'
+      $desiredDns = @'
+      {{ _hyperv_routed_public_dns_servers_ipv4 | to_json }}
+      '@ | ConvertFrom-Json
+
+      $defaultRoute = Get-NetRoute `
+        -InterfaceAlias $publicAlias `
+        -DestinationPrefix '0.0.0.0/0' `
+        -AddressFamily IPv4 `
+        -ErrorAction SilentlyContinue |
+        Sort-Object RouteMetric |
+        Select-Object -First 1
+
+      if ($null -eq $defaultRoute) {
+        New-NetRoute `
+          -InterfaceAlias $publicAlias `
+          -DestinationPrefix '0.0.0.0/0' `
+          -NextHop $publicGateway `
+          -AddressFamily IPv4 `
+          -ErrorAction Stop | Out-Null
+        $Ansible.Changed = $true
+      }
+      elseif ($defaultRoute.NextHop -ne $publicGateway) {
+        Get-NetRoute `
+          -InterfaceAlias $publicAlias `
+          -DestinationPrefix '0.0.0.0/0' `
+          -AddressFamily IPv4 `
+          -ErrorAction SilentlyContinue |
+          Remove-NetRoute `
+            -Confirm:$false `
+            -ErrorAction Stop
+
+        New-NetRoute `
+          -InterfaceAlias $publicAlias `
+          -DestinationPrefix '0.0.0.0/0' `
+          -NextHop $publicGateway `
+          -AddressFamily IPv4 `
+          -ErrorAction Stop | Out-Null
+        $Ansible.Changed = $true
+      }
+
+      $currentDns = @(
+        Get-DnsClientServerAddress `
+          -InterfaceAlias $publicAlias `
+          -AddressFamily IPv4 `
+          -ErrorAction SilentlyContinue |
+        ForEach-Object { $_.ServerAddresses } |
+        Where-Object { $_ }
+      )
+
+      if (($currentDns | ConvertTo-Json -Compress) -ne ($desiredDns | ConvertTo-Json -Compress)) {
+        Set-DnsClientServerAddress `
+          -InterfaceAlias $publicAlias `
+          -ServerAddresses $desiredDns `
+          -ErrorAction Stop
+        $Ansible.Changed = $true
+        $currentDns = @(
+          Get-DnsClientServerAddress `
+            -InterfaceAlias $publicAlias `
+            -AddressFamily IPv4 `
+            -ErrorAction Stop |
+          ForEach-Object { $_.ServerAddresses } |
+          Where-Object { $_ }
+        )
+      }
+
+      $finalRoute = Get-NetRoute `
+        -InterfaceAlias $publicAlias `
+        -DestinationPrefix '0.0.0.0/0' `
+        -AddressFamily IPv4 `
+        -ErrorAction SilentlyContinue |
+        Sort-Object RouteMetric |
+        Select-Object -First 1
+
+      $Ansible.Result = @{
+        public_interface = $publicAlias
+        gateway = if ($finalRoute) { $finalRoute.NextHop } else { $null }
+        dns_servers_ipv4 = @($currentDns)
+      }
+  register: _hyperv_public_gateway_dns_state
+  ignore_unreachable: true
+  when:
+    - (_hyperv.public_gateway_ipv4 | default('')) | length > 0
+    - (_hyperv.public_dns_servers_ipv4 | default([])) | length > 0
+  vars:
+    _hyperv_routed_public_adapter_alias: >-
+      {{
+        _hyperv.internal_ics_public_adapter_name
+        | default(_hyperv.adapter_name | default('Wi-Fi'))
+      }}
+    _hyperv_routed_public_gateway_ipv4: "{{ _hyperv.public_gateway_ipv4 }}"
+    _hyperv_routed_public_dns_servers_ipv4: "{{ _hyperv.public_dns_servers_ipv4 }}"
+
+- name: Clear transient host errors after public IPv4 gateway or DNS convergence
+  ansible.builtin.meta: clear_host_errors
+  when: _hyperv_public_gateway_dns_state.unreachable | default(false)
+
+- name: Wait for host reconnect after public IPv4 gateway or DNS convergence
+  ansible.builtin.wait_for_connection:
+    timeout: 120
+    sleep: 5
+  when: _hyperv_public_gateway_dns_state.unreachable | default(false)
+
 - name: Re-probe live publish surface after management IPv4 alias convergence
   ansible.builtin.include_tasks: published_port_surface_probe.yml
   when:

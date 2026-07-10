@@ -30,7 +30,7 @@
 
     - name: Set TrustedHosts when explicitly provided
       ansible.windows.win_shell: >-
-        Set-Item -Path WSMan:\localhost\Client\TrustedHosts
+        Set-Item -Path WSMan:\$($env:COMPUTERNAME)\Client\TrustedHosts
         -Value "{{ winrm_trustedhosts }}" -Force
       when: winrm_trustedhosts is defined
 

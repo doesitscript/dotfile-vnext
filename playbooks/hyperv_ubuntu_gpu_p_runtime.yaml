@@ -1,6 +1,6 @@
 ---
-- name: Prepare controller staging for Hyper-V Ubuntu GPU-P runtime
-  hosts: localhost
+- name: Validate Hyper-V Ubuntu GPU-P runtime request
+  hosts: "{{ hyperv_ubuntu_gpu_p_runtime_windows_hosts | default('windows_server_2025:&hyperv_gpu_partition_enabled_hosts') }}"
   gather_facts: false
   vars:
     __hyperv_ubuntu_gpu_p_runtime_state: "{{ hyperv_ubuntu_gpu_p_runtime_state | default('present') }}"
@@ -10,12 +10,21 @@
         that:
           - __hyperv_ubuntu_gpu_p_runtime_state in ['present', 'absent']
         fail_msg: hyperv_ubuntu_gpu_p_runtime_state must be present or absent.
+      run_once: true
 
 - name: Build or remove Windows GPU-P runtime payload
   hosts: "{{ hyperv_ubuntu_gpu_p_runtime_windows_hosts | default('windows_server_2025:&hyperv_gpu_partition_enabled_hosts') }}"
   gather_facts: false
   vars:
     __hyperv_ubuntu_gpu_p_runtime_state: "{{ hyperv_ubuntu_gpu_p_runtime_state | default('present') }}"
+    __hyperv_ubuntu_gpu_p_runtime_windows_host_candidates: >-
+      {{
+        query(
+          'inventory_hostnames',
+          hyperv_ubuntu_gpu_p_runtime_windows_hosts
+          | default('windows_server_2025:&hyperv_gpu_partition_enabled_hosts')
+        )
+      }}
     __hyperv_ubuntu_gpu_p_runtime_guest_vm_name: >-
       {{
         hyperv_ubuntu_gpu_p_runtime_guest_vm_name
@@ -25,21 +34,18 @@
           )
       }}
   tasks:
-    - name: Publish selected Windows payload host anchor to controller
-      ansible.builtin.set_fact:
-        hyperv_ubuntu_gpu_p_runtime_windows_host_anchor: "{{ inventory_hostname }}"
-      delegate_to: localhost
-      delegate_facts: true
-      run_once: true
-    - name: Assert canonical runtime guest target is a concrete VM name
+    - name: Assert canonical runtime target selection is concrete
       ansible.builtin.assert:
         that:
+          - __hyperv_ubuntu_gpu_p_runtime_windows_host_candidates | length == 1
           - __hyperv_ubuntu_gpu_p_runtime_guest_vm_name | length > 0
           - '"," not in __hyperv_ubuntu_gpu_p_runtime_guest_vm_name'
           - '":" not in __hyperv_ubuntu_gpu_p_runtime_guest_vm_name'
         fail_msg: >-
-          hyperv_ubuntu_gpu_p_runtime_guest_vm_name must be a single concrete VM name.
-          Current value: {{ __hyperv_ubuntu_gpu_p_runtime_guest_vm_name }}
+          GPU-P runtime requires one intended Windows host and one intended guest VM name.
+          Windows hosts: {{ __hyperv_ubuntu_gpu_p_runtime_windows_host_candidates | join(', ') }}
+          Guest VM: {{ __hyperv_ubuntu_gpu_p_runtime_guest_vm_name }}
+      run_once: true
   roles:
     - role: llm_compute_windows
       when: __hyperv_ubuntu_gpu_p_runtime_state == 'present'
@@ -49,28 +55,32 @@
         - ai_ml_platform
 
 - name: Wait for Windows SSH control surface after NVIDIA contract stage
-  hosts: localhost
+  hosts: "{{ hyperv_ubuntu_gpu_p_runtime_windows_hosts | default('windows_server_2025:&hyperv_gpu_partition_enabled_hosts') }}"
   gather_facts: false
   vars:
     __hyperv_ubuntu_gpu_p_runtime_state: "{{ hyperv_ubuntu_gpu_p_runtime_state | default('present') }}"
-    hyperv_ubuntu_gpu_p_runtime_windows_host_anchor: >-
+    __hyperv_ubuntu_gpu_p_runtime_windows_host_candidates: >-
       {{
-        hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_windows_host_anchor
-        | default(
-            (
-              query(
-                'inventory_hostnames',
-                hyperv_ubuntu_gpu_p_runtime_windows_hosts
-                | default('windows_server_2025:&hyperv_gpu_partition_enabled_hosts')
-              ) | first
-            ) | default('')
-          )
+        query(
+          'inventory_hostnames',
+          hyperv_ubuntu_gpu_p_runtime_windows_hosts
+          | default('windows_server_2025:&hyperv_gpu_partition_enabled_hosts')
+        )
       }}
-    hyperv_ubuntu_gpu_p_runtime_windows_connect_host_override: >-
-      {{ hyperv_ubuntu_gpu_p_runtime_windows_connect_host_override | default('') }}
+    hyperv_ubuntu_gpu_p_runtime_windows_host_anchor: >-
+      {{ (__hyperv_ubuntu_gpu_p_runtime_windows_host_candidates | first) | default('') }}
   tasks:
+    - name: Assert Windows runtime host anchor resolves to one concrete host
+      ansible.builtin.assert:
+        that:
+          - __hyperv_ubuntu_gpu_p_runtime_windows_host_candidates | length == 1
+          - hyperv_ubuntu_gpu_p_runtime_windows_host_anchor | length > 0
+        fail_msg: >-
+          GPU-P runtime wait stage requires one intended Windows host.
+          Current hosts: {{ __hyperv_ubuntu_gpu_p_runtime_windows_host_candidates | join(', ') }}
+      run_once: true
     - name: Wait for Windows SSH port to be reachable after NVIDIA contract stage
-      ansible.builtin.wait_for:
+      ansible.windows.win_wait_for:
         host: >-
           {{
             hyperv_ubuntu_gpu_p_runtime_windows_connect_host_override
@@ -79,6 +89,7 @@
         port: "{{ hostvars[hyperv_ubuntu_gpu_p_runtime_windows_host_anchor].ansible_port | default(22) | int }}"
         timeout: 120
         sleep: 5
+      run_once: true
       when: __hyperv_ubuntu_gpu_p_runtime_state == 'present'
 
 - name: Converge Hyper-V GPU-P host runtime state and payload
@@ -110,22 +121,15 @@
         - gpu_infra
         - ai_ml_platform
   post_tasks:
-    - name: Publish host-side runtime receipt facts to controller
-      ansible.builtin.set_fact:
-        hyperv_ubuntu_gpu_p_runtime_host_receipt:
-          windows_host: "{{ inventory_hostname }}"
-          guest_vm_name: "{{ __hyperv_ubuntu_gpu_p_runtime_guest_vm_name }}"
-          driver_contract_path: >-
-            {{
-              llm_compute_windows_driver_contract_path
-              | default(
-                  hyperv_gpu_p_host_precheck_driver_contract_path
-                  | default('C:\\ProgramData\\Ansible\\llm_compute_windows\\nvidia_driver_contract.json')
-                )
-            }}
-          precheck_receipt_path: "{{ hyperv_gpu_p_host_precheck_receipt_path }}"
-      delegate_to: localhost
-      delegate_facts: true
+    - name: Assert host-side GPU-P runtime apply stays on the selected Windows host
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname in query(
+              'inventory_hostnames',
+              hyperv_ubuntu_gpu_p_runtime_windows_hosts
+              | default('windows_server_2025:&hyperv_gpu_partition_enabled_hosts')
+            )
+        fail_msg: Windows GPU-P runtime apply drifted off the selected Windows host set.
       when: __hyperv_ubuntu_gpu_p_runtime_state == 'present'
 
 - name: Verify host-side GPU-P runtime wiring
@@ -207,10 +211,20 @@
               Hyper-V GPU partition adapter is not attached to the runtime target VM
               {{ __hyperv_ubuntu_gpu_p_runtime_guest_vm_name }}.
 
-- name: Publish guest-consumed artifact routing facts
-  hosts: localhost
+- name: Validate guest-to-Windows GPU-P runtime routing
+  hosts: "{{ hyperv_ubuntu_gpu_p_runtime_guest_hosts | default('container_orchestrator_k3s:&gpu_workload_nodes') }}"
   gather_facts: false
   vars:
+    __hyperv_ubuntu_gpu_p_runtime_windows_host_candidates: >-
+      {{
+        query(
+          'inventory_hostnames',
+          hyperv_ubuntu_gpu_p_runtime_windows_hosts
+          | default('windows_server_2025:&hyperv_gpu_partition_enabled_hosts')
+        )
+      }}
+    __hyperv_ubuntu_gpu_p_runtime_windows_host_anchor: >-
+      {{ (__hyperv_ubuntu_gpu_p_runtime_windows_host_candidates | first) | default('') }}
     __hyperv_ubuntu_gpu_p_runtime_guest_vm_name: >-
       {{
         hyperv_ubuntu_gpu_p_runtime_guest_vm_name
@@ -225,12 +239,17 @@
           )
       }}
   tasks:
-    - name: Assert host-side runtime receipt matches canonical guest VM target
+    - name: Assert guest inventory maps to the selected Windows runtime host
       ansible.builtin.assert:
         that:
-          - hostvars['localhost'].hyperv_ubuntu_gpu_p_runtime_host_receipt.guest_vm_name == __hyperv_ubuntu_gpu_p_runtime_guest_vm_name
+          - __hyperv_ubuntu_gpu_p_runtime_windows_host_candidates | length == 1
+          - parent_hypervisor is defined
+          - parent_hypervisor == __hyperv_ubuntu_gpu_p_runtime_windows_host_anchor
+          - inventory_hostname == __hyperv_ubuntu_gpu_p_runtime_guest_vm_name
         fail_msg: >-
-          Host-side GPU-P runtime receipt guest target does not match the canonical guest VM name.
+          Guest {{ inventory_hostname }} does not map to the selected Windows runtime host
+          {{ __hyperv_ubuntu_gpu_p_runtime_windows_host_anchor }}.
+      run_once: true
 
 - name: Apply or remove Linux guest GPU-P runtime
   hosts: "{{ hyperv_ubuntu_gpu_p_runtime_guest_hosts | default('container_orchestrator_k3s:&gpu_workload_nodes') }}"

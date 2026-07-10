@@ -16,6 +16,10 @@ GPU-P guests must not install or hold the apt guest driver. That package blocks
 
 - `k3s_nvidia_runtime_state: present|absent`
 - `k3s_nvidia_runtime_remove_guest_driver: true` — one-time purge of conflicting apt driver packages
+- apt package mutations now wait for `apt`/`dpkg` locks to clear before proceeding;
+  tune with `k3s_nvidia_runtime_apt_lock_timeout`,
+  `k3s_nvidia_runtime_apt_lock_wait_retries`, and
+  `k3s_nvidia_runtime_apt_lock_wait_delay`
 
 ## Playbook
 

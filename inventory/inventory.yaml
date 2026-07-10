@@ -10,7 +10,7 @@
 #   - group_vars/<group>.yaml or group_vars/<group>/  (so Ansible loads the right vars)
 #   - physical Hyper-V lanes group by purpose (GPU execution vs storage/observability)
 # host_vars files are only for inventory host names such as
-# hom-lab-hvh-01, hom-lab-hvh-02, hom-lab-ctl-dkr-02, mac-dev, etc.
+# HOM-LAB-HVH-01, HOM-LAB-HVH-02, hom-lab-ctl-dkr-02, mac-dev, etc.
 
 all:
   children:
@@ -27,11 +27,11 @@ all:
     # slow unreachable-host timeouts during routine runs.
     windows_hosts:
       hosts:
-        hom-lab-hvh-02:
-          # All connection details in host_vars/hom-lab-hvh-02.yaml
+        HOM-LAB-HVH-02:
+          # All connection details in host_vars/HOM-LAB-HVH-02.yaml
 
-        hom-lab-hvh-01:
-          # All connection details in host_vars/hom-lab-hvh-01.yaml
+        HOM-LAB-HVH-01:
+          # All connection details in host_vars/HOM-LAB-HVH-01.yaml
 
     # All known Windows OS surfaces, regardless of current reachability. Use
     # this group for inventory/reporting and desired-state scope discussions,
@@ -54,39 +54,39 @@ all:
     # scoped to hosts with explicit file-share intent.
     windows_file_share_hosts:
       hosts:
-        hom-lab-hvh-02:
-        hom-lab-hvh-01:
+        HOM-LAB-HVH-02:
+        HOM-LAB-HVH-01:
 
     # Windows Server 2025 surfaces. Keep OS targeting separate from capability
     # targeting so playbooks can intersect them instead of pinning a node name.
     windows_server_2025:
       hosts:
-        hom-lab-hvh-02:
-        hom-lab-hvh-01:
+        HOM-LAB-HVH-02:
+        HOM-LAB-HVH-01:
 
     # Windows hosts with repo-managed NVIDIA GPU hardware.
     windows_nvidia_gpu_hosts:
       hosts:
-        hom-lab-hvh-02:
-        hom-lab-hvh-01:
+        HOM-LAB-HVH-02:
+        HOM-LAB-HVH-01:
 
     # Windows Hyper-V hosts where GPU partitioning is intentionally enabled.
     hyperv_gpu_partition_enabled_hosts:
       hosts:
-        hom-lab-hvh-02:
+        HOM-LAB-HVH-02:
 
     # Additive IPv6 fallback/control-plane surfaces for Windows hosts.
     # Keep these out of normal windows_hosts targeting so they remain explicit
     # operator/troubleshooting entry points instead of changing the default path.
     windows_hosts_ipv6_fallback:
       hosts:
-        hom-lab-hvh-02-ipv6:
-          # IPv6 SSH fallback for hom-lab-hvh-02
+        HOM-LAB-HVH-02-ipv6:
+          # IPv6 SSH fallback for HOM-LAB-HVH-02
 
     windows_guest_gateway_surfaces:
       hosts:
-        hom-lab-hvh-02-guest-gw:
-          # Guest-switch gateway SSH fallback for hom-lab-hvh-02
+        HOM-LAB-HVH-02-guest-gw:
+          # Guest-switch gateway SSH fallback for HOM-LAB-HVH-02
 
     # Not-yet-deployed Windows hosts. Move to windows_hosts when ready to provision.
     # Deferred hosts stay absent from active groups so they are never targeted.
@@ -99,13 +99,13 @@ all:
     linux_vm_hosts:
       hosts:
         hom-lab-ctl-dkr-02:
-          # Active Hyper-V Ubuntu guest on hom-lab-hvh-02.
+          # Active Hyper-V Ubuntu guest on HOM-LAB-HVH-02.
         hom-lab-ctl-k3s-02:
-          # Planned K3s Ubuntu guest on the RTX 5090 hom-lab-hvh-02 host.
+          # Planned K3s Ubuntu guest on the RTX 5090 HOM-LAB-HVH-02 host.
         hom-lab-ctl-dkr-01:
-          # Active Docker Ubuntu guest on hom-lab-hvh-01.
+          # Active Docker Ubuntu guest on HOM-LAB-HVH-01.
         hom-lab-ctl-k3s-01:
-          # Active K3s Ubuntu guest on hom-lab-hvh-01.
+          # Active K3s Ubuntu guest on HOM-LAB-HVH-01.
 
     # Legacy K3s VM readiness-preflight targets. Membership here does not define
     # the host identity; it only exposes optional readiness validation when a
@@ -146,19 +146,19 @@ all:
       children:
         execution_nodes: {}
       hosts:
-        hom-lab-hvh-02:
-        hom-lab-hvh-01:
+        HOM-LAB-HVH-02:
+        HOM-LAB-HVH-01:
         # dev-workstation-win: # deferred — add back when provisioned
 
     # Hyper-V physical lanes (purpose-based group_vars; see docs/reference/naming-standards/README.md)
     hyperv_lane_gpu:
       hosts:
-        hom-lab-hvh-02:
+        HOM-LAB-HVH-02:
         hom-lab-ctl-dkr-02:
 
     hyperv_lane_storage:
       hosts:
-        hom-lab-hvh-01:
+        HOM-LAB-HVH-01:
         hom-lab-ctl-dkr-01:
         hom-lab-ctl-k3s-01:
 
@@ -175,7 +175,7 @@ all:
     # prep/stub work remains available through k3s_vm_stub_hosts as preflight.
     # k3s_version, token, api_endpoint live in group_vars/k3s_cluster.yaml -- do not duplicate here.
     
-    # Storage/Network K3s cluster (hom-lab-hvh-01)
+    # Storage/Network K3s cluster (HOM-LAB-HVH-01)
     k3s_cluster_network:
       children:
         server:
@@ -187,7 +187,7 @@ all:
         server_group: server
         agent_group: agent
     
-    # GPU/Inference K3s cluster (hom-lab-hvh-02)
+    # GPU/Inference K3s cluster (HOM-LAB-HVH-02)
     k3s_cluster_gpu:
       children:
         server_gpu:

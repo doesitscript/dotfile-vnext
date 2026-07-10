@@ -72,11 +72,11 @@ checkpoint count before it requests a graceful guest shutdown.
 ```bash
 # Preview without shutting down or moving the VM
 ansible-playbook playbooks/hyperv_move_k3s_vm_storage.yaml \
-  -i inventory/inventory.yaml --limit hom-lab-hvh-02 --check
+  -i inventory/inventory.yaml --limit HOM-LAB-HVH-02 --check
 
 # Apply the controlled-outage move
 ansible-playbook playbooks/hyperv_move_k3s_vm_storage.yaml \
-  -i inventory/inventory.yaml --limit hom-lab-hvh-02
+  -i inventory/inventory.yaml --limit HOM-LAB-HVH-02
 ```
 
 - Verify: rerun the preview and confirm `source == destination`; verify the

@@ -45,5 +45,5 @@ This role is applied in `playbooks/windows_base.yml`, which targets all
 ansible-playbook playbooks/windows_base.yml
 
 # Single host
-ansible-playbook playbooks/windows_base.yml --limit hom-lab-hvh-02
+ansible-playbook playbooks/windows_base.yml --limit HOM-LAB-HVH-02
 ```

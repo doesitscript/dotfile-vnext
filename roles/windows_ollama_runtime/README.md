@@ -30,7 +30,7 @@ for reuse behind the central LiteLLM gateway.
 ## Example
 
 ```yaml
-- hosts: hom-lab-hvh-01
+- hosts: HOM-LAB-HVH-01
   gather_facts: false
   roles:
     - role: windows_ollama_runtime

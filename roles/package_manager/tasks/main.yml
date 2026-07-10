@@ -1,11 +1,32 @@
 - name: Process package manager role for Ubuntu
   ansible.builtin.import_tasks: ubuntu.yml
-  when: ansible_facts['distribution'] == "Ubuntu"
+  when:
+    - >-
+      (
+        ansible_facts.get('distribution', '')
+        if (ansible_facts | default({})) is mapping
+        else ''
+      ) == "Ubuntu"
+      or (ansible_distribution | default('')) == "Ubuntu"
 
 - name: Process package manager role for macOS
   ansible.builtin.import_tasks: mac.yml
-  when: ansible_facts['system'] == "Darwin"
+  when:
+    - >-
+      (
+        ansible_facts.get('system', '')
+        if (ansible_facts | default({})) is mapping
+        else ''
+      ) == "Darwin"
+      or (ansible_system | default('')) == "Darwin"
 
 - name: Process package manager role for Windows
   ansible.builtin.import_tasks: windows.yml
-  when: ansible_facts['system'] == "Windows"
+  when:
+    - >-
+      (
+        ansible_facts.get('system', '')
+        if (ansible_facts | default({})) is mapping
+        else ''
+      ) in ["Windows", "Win32NT"]
+      or (ansible_system | default('')) in ["Windows", "Win32NT"]

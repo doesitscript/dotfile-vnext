@@ -8,7 +8,7 @@
 # Guest VM SSH names remain in homelab_router_gt6_mac_hosts_workaround (not duplicated here).
 
 homelab_hosts_file_lan_publish_ip: >-
-  {{ hostvars['hom-lab-hvh-02'].host_ip | default('192.168.50.158') }}
+  {{ hostvars['HOM-LAB-HVH-02'].host_ip | default('192.168.50.158') }}
 
 homelab_hosts_file_dkr_guest_ip: >-
   {{ hostvars['hom-lab-ctl-dkr-02'].ansible_host | default('192.168.137.10') }}
@@ -42,7 +42,7 @@ homelab_hosts_file_web_catalog:
     mac_hosts_enabled: true
     linux_hosts_enabled: true
     windows_hosts_enabled: true
-  # LAN portproxy web UIs (guest_published_tcp_ports on hom-lab-hvh-02)
+  # LAN portproxy web UIs (guest_published_tcp_ports on HOM-LAB-HVH-02)
   - catalog_key: netbox-web
     hostname: netbox.hom.lab
     hosts_ip: "{{ homelab_hosts_file_lan_publish_ip }}"
@@ -77,6 +77,25 @@ homelab_hosts_file_web_catalog:
     verify_url: "http://grafana.hom.lab:3000/"
     source: guest_direct
     source_ref: hom-lab-ctl-dkr-02
+    mac_hosts_enabled: true
+    linux_hosts_enabled: true
+    windows_hosts_enabled: true
+  # Operator-facing Hyper-V host aliases.
+  - catalog_key: HOM-LAB-HVH-02-host
+    hostname: HOM-LAB-HVH-02
+    hosts_ip: "{{ homelab_hosts_file_lan_publish_ip }}"
+    verify_url: "ssh://HOM-LAB-HVH-02"
+    source: inventory_host
+    source_ref: HOM-LAB-HVH-02
+    mac_hosts_enabled: true
+    linux_hosts_enabled: true
+    windows_hosts_enabled: true
+  - catalog_key: HOM-LAB-HVH-01-host
+    hostname: HOM-LAB-HVH-01
+    hosts_ip: "{{ hostvars['HOM-LAB-HVH-01'].host_ip | default('192.168.50.234') }}"
+    verify_url: "ssh://HOM-LAB-HVH-01"
+    source: inventory_host
+    source_ref: HOM-LAB-HVH-01
     mac_hosts_enabled: true
     linux_hosts_enabled: true
     windows_hosts_enabled: true

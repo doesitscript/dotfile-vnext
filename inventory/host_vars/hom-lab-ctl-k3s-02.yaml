@@ -2,12 +2,12 @@
 # Inventory name: hom-lab-ctl-k3s-02
 #   Ansible/NetBox schema alias. NOT necessarily the guest OS hostname.
 # Connect target: ansible_host / host_ip (192.168.137.11)
-# physical_node: hom-lab-hvh-02 — metadata grouping key, NOT a hostname.
-# ssh_proxy_jump_host: hom-lab-hvh-02 — inventory alias for ProxyJump/SSH config.
+# physical_node: HOM-LAB-HVH-02 — metadata grouping key, NOT a hostname.
+# ssh_proxy_jump_host: HOM-LAB-HVH-02 — inventory alias for ProxyJump/SSH config.
 
-physical_node: "hom-lab-hvh-02"
+physical_node: "HOM-LAB-HVH-02"
 host_kind: "vm"
-parent_hypervisor: "hom-lab-hvh-02"
+parent_hypervisor: "HOM-LAB-HVH-02"
 workload_runtime:
   type: k3s
   role: server
@@ -42,13 +42,22 @@ host_ip: "192.168.137.11"
 ansible_user: "joshc"
 ansible_port: 22
 ansible_python_interpreter: "/usr/bin/python3"
-ssh_proxy_jump_host: "hom-lab-hvh-02"
+ansible_ssh_private_key_file: "~/.ssh/id_ed25519_ansible"
+ssh_proxy_jump_host: "HOM-LAB-HVH-02"
 # External fuzlang data-plane services now prefer the storage-lane Windows
 # published route so the path is stable from anywhere on the LAN.
-ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+ansible_ssh_common_args: >-
+  -o ProxyJump=HOM-LAB-HVH-02
+  -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null
 k3s_readiness_stub_expected_runtime: present
+k3s_vllm_runtime_cpu_request: "1200m"
 k3s_vllm_runtime_memory_request: 2Gi
 k3s_vllm_runtime_memory_limit: 8Gi
+k3s_langfuse_platform_web_cpu_request: "150m"
+k3s_langfuse_platform_web_memory_request: "512Mi"
+k3s_langfuse_platform_worker_cpu_request: "100m"
+k3s_langfuse_platform_worker_memory_request: "384Mi"
 
 # Operator /etc/hosts for hom.lab URLs (LAN publish IP via portproxy).
 homelab_hosts_file_linux_enabled: true
@@ -66,3 +75,40 @@ hyperv_ubuntu_gpu_p_linux_guest_runtime_share_host_override: >-
     | default('192.168.137.1')
     | regex_replace('/.*', '')
   }}
+
+# Additive shared-service deployment profile for AI playbook work.
+ai_service_profile:
+  description: GPU-lane K3s guest that hosts the shared AI inference stack services.
+  tags:
+    - ai-service-profile
+    - k3s
+    - gpu-lane
+    - shared-services
+  deployable_services:
+    - service_key: litellm_gateway
+      description: Shared LiteLLM gateway target for OpenAI-compatible client access.
+      deployed_by_role: k3s_litellm_gateway
+      service_slug: litellm-k3s-gateway
+      target_selector: "container_orchestrator_k3s:&gpu_workload_nodes"
+      tags:
+        - litellm
+        - gateway
+        - deploy-target
+        - ai-inference-stack
+    - service_key: langfuse_platform
+      description: Shared Langfuse observability target on the GPU-lane K3s guest.
+      deployed_by_role: k3s_langfuse_platform
+      service_slug: langfuse-k3s-web
+      target_selector: "container_orchestrator_k3s:&gpu_workload_nodes"
+      tags:
+        - langfuse
+        - observability
+        - deploy-target
+    - service_key: vllm_primary_runtime
+      description: Primary local vLLM backing runtime used by the LiteLLM code-deep lane.
+      deployed_by_role: k3s_vllm_runtime
+      target_selector: "container_orchestrator_k3s:&gpu_workload_nodes"
+      tags:
+        - vllm
+        - runtime
+        - primary

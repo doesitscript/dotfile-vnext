@@ -33,10 +33,18 @@
       } | ConvertTo-Json -Compress
   register: hyperv_gpu_partition_adapter_probe
   changed_when: false
+  check_mode: false
 
 - name: Parse Hyper-V GPU partition probe
   ansible.builtin.set_fact:
-    _hyperv_gpu_partition_adapter_probe: "{{ hyperv_gpu_partition_adapter_probe.output[0] | from_json }}"
+    _hyperv_gpu_partition_adapter_probe: >-
+      {{
+        (
+          hyperv_gpu_partition_adapter_probe.output | default([])
+          | first
+          | default(hyperv_gpu_partition_adapter_probe.stdout | default('{}'))
+        ) | from_json
+      }}
   changed_when: false
 
 - name: Validate Hyper-V host exposes a partitionable GPU
@@ -64,18 +72,27 @@
 - name: Ensure VM has GPU-partition-compatible Hyper-V settings
   when: hyperv_gpu_partition_adapter_state == 'present'
   ansible.windows.win_powershell:
+    error_action: stop
     script: |
       $hypervServer = '{{ hyperv_gpu_partition_adapter_hyperv_server }}'
       $vmName = '{{ hyperv_gpu_partition_adapter_vm_name }}'
+      $dynamicMemoryEnabled = [bool]::Parse('{{ hyperv_gpu_partition_adapter_dynamic_memory_enabled | string }}')
       Set-VM -ComputerName $hypervServer -VMName $vmName `
         -GuestControlledCacheTypes:([bool]::Parse('{{ hyperv_gpu_partition_adapter_guest_controlled_cache_types | string }}')) `
         -LowMemoryMappedIoSpace {{ hyperv_gpu_partition_adapter_low_mmio_space }} `
         -HighMemoryMappedIoSpace {{ hyperv_gpu_partition_adapter_high_mmio_space }} `
         -CheckpointType {{ hyperv_gpu_partition_adapter_checkpoint_type }}
-      Set-VMMemory -ComputerName $hypervServer -VMName $vmName `
-        -DynamicMemoryEnabled:([bool]::Parse('{{ hyperv_gpu_partition_adapter_dynamic_memory_enabled | string }}')) `
-        -StartupBytes {{ hyperv_gpu_partition_adapter_startup_memory_bytes }} `
-        -MinimumBytes {{ hyperv_gpu_partition_adapter_minimum_memory_bytes }}
+      if ($dynamicMemoryEnabled) {
+        Set-VMMemory -ComputerName $hypervServer -VMName $vmName `
+          -DynamicMemoryEnabled $true `
+          -StartupBytes {{ hyperv_gpu_partition_adapter_startup_memory_bytes }} `
+          -MinimumBytes {{ hyperv_gpu_partition_adapter_minimum_memory_bytes }}
+      }
+      else {
+        Set-VMMemory -ComputerName $hypervServer -VMName $vmName `
+          -DynamicMemoryEnabled $false `
+          -StartupBytes {{ hyperv_gpu_partition_adapter_startup_memory_bytes }}
+      }
   register: hyperv_gpu_partition_adapter_vm_settings
 
 - name: Ensure Hyper-V GPU partition adapter is attached to VM

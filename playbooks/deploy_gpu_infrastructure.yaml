@@ -1,4 +1,22 @@
 ---
+# GPU infrastructure + AI application lane chain.
+#
+# This entrypoint first converges the GPU-P guest runtime and K3s GPU
+# prerequisites, then continues into the dependent application lane in order:
+#   1. vLLM runtime
+#   2. Langfuse platform
+#   3. LiteLLM gateway
+#   4. Traefik publication
+#
+# Use `playbooks/rebuild_ai_lane_fresh.yaml` for the full destructive rebuild.
+#
+- name: Stage Hyper-V Ubuntu GPU-P guest runtime before Kubernetes GPU infra
+  ansible.builtin.import_playbook: hyperv_ubuntu_gpu_p_runtime.yaml
+  tags:
+    - hyperv_ubuntu_gpu_p_runtime
+    - gpu_infra
+    - ai_ml_platform
+
 - name: Gather required GPU-P readiness evidence on active Windows Server 2025 GPU-P hosts
   hosts: "windows_server_2025:&hyperv_gpu_partition_enabled_hosts"
   gather_facts: false
@@ -30,7 +48,7 @@
         host: "{{ ansible_host }}"
         port: "{{ ansible_port | default(22) }}"
         timeout: 5
-      delegate_to: localhost
+      delegate_to: "{{ groups['execution_nodes'][0] }}"
       register: _hyperv_gpu_optional_host_ssh_probe
       failed_when: false
       changed_when: false
@@ -185,12 +203,12 @@
             or ('*' in ansible_limit)
             or (_gpu_infrastructure_limit_mentions_guest_host | default(false))
         fail_msg: >-
-          The current Ansible limit (`{{ ansible_limit }}`) includes the Hyper-V
+          The current Ansible limit (`{{ ansible_limit | default('') }}`) includes the Hyper-V
           GPU-P host(s) but excludes the derived guest GPU workload host(s)
           {{ _gpu_infrastructure_expected_guest_hosts | default([]) }}. The guest
           inventory is current, but these plays will be skipped under that limit.
           Re-run without `--limit`, or include both layers explicitly, for example:
-          `--limit hom-lab-hvh-02,{{ (_gpu_infrastructure_expected_guest_hosts | default([])) | join(',') }}`
+          `--limit HOM-LAB-HVH-02,{{ (_gpu_infrastructure_expected_guest_hosts | default([])) | join(',') }}`
       when: (_gpu_infrastructure_expected_guest_hosts | default([]) | length) > 0
       run_once: true
   roles:
@@ -279,3 +297,46 @@
             hyperv_ubuntu_k3s_vm_hostname
             | default(hyperv_ubuntu_k3s_vm_inventory_host | default(''))
           }}
+
+- name: GPU infrastructure - deploy vLLM runtime after prerequisites converge
+  ansible.builtin.import_playbook: deploy_vllm_runtime.yaml
+  vars:
+    k3s_vllm_runtime_state: present
+  tags:
+    - k3s_vllm_runtime
+    - vllm
+    - ai_ml_platform
+
+- name: GPU infrastructure - deploy Langfuse platform after vLLM
+  ansible.builtin.import_playbook: deploy_langfuse_platform.yaml
+  vars:
+    k3s_langfuse_platform_state: present
+  tags:
+    - k3s_langfuse_platform
+    - langfuse
+    - ai_ml_platform
+
+- name: GPU infrastructure - deploy LiteLLM gateway after Langfuse
+  ansible.builtin.import_playbook: deploy_litellm_gateway.yaml
+  vars:
+    k3s_litellm_gateway_state: present
+  tags:
+    - k3s_litellm_gateway
+    - litellm
+    - ai_ml_platform
+
+- name: GPU infrastructure - publish AI application routes through Traefik
+  ansible.builtin.import_playbook: k3s_traefik_routes.yaml
+  vars:
+    k3s_traefik_routes_state: present
+  tags:
+    - k3s_traefik_routes
+    - ai_ml_platform
+
+- name: GPU infrastructure - refresh macOS K3s client surfaces after publication
+  ansible.builtin.import_playbook: k3s_mac_client.yaml
+  vars:
+    k3s_mac_client_state: present
+  tags:
+    - k3s_mac_client
+    - ai_ml_platform

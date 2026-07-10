@@ -82,7 +82,7 @@
         - always
 
 - name: Preview Windows driver backup eligibility from inventory metadata
-  hosts: localhost
+  hosts: windows_driver_backup_candidate_true
   gather_facts: false
   vars:
     windows_driver_backup_preview_hosts: >-
@@ -110,6 +110,7 @@
               (hostvars[item]['windows_driver_backup_should_manage'] | default(false))
               and (hostvars[item]['windows_driver_backup_lifecycle_ready'] | default(false))
             }}
+      run_once: true
       loop: "{{ windows_driver_backup_preview_hosts }}"
       tags:
         - driver_backup_preview

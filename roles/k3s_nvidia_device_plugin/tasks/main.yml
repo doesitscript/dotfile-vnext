@@ -23,11 +23,36 @@
     kind: DaemonSet
     namespace: "{{ k3s_nvidia_device_plugin_namespace }}"
     name: "{{ k3s_nvidia_device_plugin_release_name }}"
-    wait: true
-    wait_condition:
-      type: Available
-      status: "True"
-    wait_timeout: 600
+  register: k3s_nvidia_device_plugin_daemonset
+  retries: 120
+  delay: 5
+  until: >-
+    (
+      k3s_nvidia_device_plugin_daemonset.resources | default([]) | length
+    ) > 0
+    and
+    (
+      (
+        k3s_nvidia_device_plugin_daemonset.resources[0].status.desiredNumberScheduled
+        | default(0)
+        | int
+      ) > 0
+    )
+    and
+    (
+      (
+        k3s_nvidia_device_plugin_daemonset.resources[0].status.numberAvailable
+        | default(0)
+        | int
+      )
+      ==
+      (
+        k3s_nvidia_device_plugin_daemonset.resources[0].status.desiredNumberScheduled
+        | default(0)
+        | int
+      )
+    )
+  changed_when: false
   when:
     - k3s_nvidia_device_plugin_state == 'present'
     - k3s_nvidia_device_plugin_wait_for_daemonset | bool

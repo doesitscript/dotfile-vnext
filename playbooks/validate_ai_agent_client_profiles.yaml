@@ -1,10 +1,11 @@
 ---
 - name: Validate AI agent client profile declarations
-  hosts: localhost
+  hosts: execution_nodes
   gather_facts: false
   vars_files:
     - "{{ playbook_dir }}/../inventory/group_vars/model_catalog/manifest.yml"
     - "{{ playbook_dir }}/../inventory/group_vars/all/ai_agent_profiles.yml"
+    - "{{ playbook_dir }}/../inventory/group_vars/k3s_cluster.yaml"
   vars:
     _required_agent_roles:
       - planner
@@ -24,6 +25,37 @@
         _ai_agent_profile_lanes: "{{ model_catalog_manifest.entries | map(attribute='lane') | list }}"
       changed_when: false
 
+    - name: Resolve declared AI agent gateway route from Traefik registry
+      ansible.builtin.set_fact:
+        _ai_agent_gateway_routes: >-
+          {{
+            k3s_traefik_routes_entries
+            | selectattr('netbox_service_slug', 'equalto', ai_agent_client_profiles.gateway.service_slug)
+            | list
+          }}
+      changed_when: false
+
+    - name: Assert declared AI agent gateway service slug resolves to one published route
+      ansible.builtin.assert:
+        that:
+          - _ai_agent_gateway_routes | length == 1
+        fail_msg: >-
+          AI agent gateway service slug {{
+            ai_agent_client_profiles.gateway.service_slug
+          }} must resolve to exactly one published K3s ingress route.
+
+    - name: Derive expected AI agent gateway OpenAI base URL from published route
+      ansible.builtin.set_fact:
+        _ai_agent_gateway_route: "{{ _ai_agent_gateway_routes | first }}"
+        _ai_agent_gateway_expected_openai_base_url: >-
+          {{
+            ai_agent_client_profiles.gateway.openai_scheme
+            ~ '://'
+            ~ (_ai_agent_gateway_routes | first).hostname
+            ~ ai_agent_client_profiles.gateway.openai_api_path
+          }}
+      changed_when: false
+
     - name: Validate required agent role declarations
       ansible.builtin.assert:
         that:
@@ -38,12 +70,18 @@
         fail_msg: "Missing AI agent trace metadata key: {{ item }}"
       loop: "{{ _required_trace_metadata_keys }}"
 
-    - name: Validate client gateway targets LiteLLM
+    - name: Validate client gateway resolves to the published LiteLLM gateway contract
       ansible.builtin.assert:
         that:
-          - ai_agent_client_profiles.gateway.openai_base_url is search('litellm\\.hom\\.lab')
-          - ai_agent_client_profiles.gateway.openai_base_url is not search('vllm|localhost|127\\.0\\.0\\.1|:8000')
-        fail_msg: "AI agent clients must target the LiteLLM gateway, not a direct runtime URL."
+          - ai_agent_client_profiles.gateway.openai_scheme in ['http', 'https']
+          - ai_agent_client_profiles.gateway.openai_api_path is match('^/')
+          - _ai_agent_gateway_route.deployed_by_role == 'k3s_litellm_gateway'
+          - _ai_agent_gateway_route.namespace == 'litellm'
+          - _ai_agent_gateway_route.service_name == 'litellm'
+          - ai_agent_client_profiles.gateway.openai_base_url == _ai_agent_gateway_expected_openai_base_url
+        fail_msg: >-
+          AI agent clients must target the published LiteLLM gateway contract derived from
+          service slug {{ ai_agent_client_profiles.gateway.service_slug }}.
 
     - name: Validate every agent default and alternate lane exists in model catalog
       ansible.builtin.assert:
@@ -62,6 +100,9 @@
       ansible.builtin.debug:
         msg:
           gateway: "{{ ai_agent_client_profiles.gateway.openai_base_url }}"
+          gateway_service_slug: "{{ ai_agent_client_profiles.gateway.service_slug }}"
+          gateway_route_key: "{{ _ai_agent_gateway_route.route_key }}"
+          gateway_deployed_by_role: "{{ _ai_agent_gateway_route.deployed_by_role }}"
           roles: "{{ ai_agent_client_profiles.roles.keys() | list }}"
           lanes: "{{ _ai_agent_profile_lanes }}"
           trace_metadata_keys: "{{ ai_agent_client_profiles.trace_metadata_keys }}"

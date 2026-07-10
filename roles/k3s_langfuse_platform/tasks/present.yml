@@ -11,8 +11,18 @@
     update_cache: true
   become: true
 
+- name: Probe for existing Helm binary
+  ansible.builtin.command:
+    cmd: helm version --short
+  register: _k3s_langfuse_existing_helm
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
 - name: Install Helm
-  when: k3s_langfuse_platform_install_helm | bool
+  when:
+    - k3s_langfuse_platform_install_helm | bool
+    - _k3s_langfuse_existing_helm.rc != 0
   block:
     - name: Download Helm install script
       ansible.builtin.get_url:
@@ -36,6 +46,10 @@
     state: present
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: _k3s_langfuse_repo_add
+  retries: 3
+  delay: 15
+  until: _k3s_langfuse_repo_add is succeeded
 
 - name: Create Langfuse namespace
   kubernetes.core.k8s:
@@ -45,6 +59,54 @@
     state: present
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Reset external Langfuse PostgreSQL database on fresh install
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cid="$(docker ps -q \
+      --filter 'label=com.docker.compose.service=postgres' \
+      --filter 'label=com.docker.compose.project=fuzlang-net' | head -n1)"
+    if [ -z "$cid" ]; then
+      echo "fuzlang-net postgres container not found" >&2
+      docker ps --filter 'label=com.docker.compose.project=fuzlang-net' >&2 || true
+      exit 1
+    fi
+    docker exec "$cid" psql -U {{ k3s_langfuse_platform_resolved_postgres_user }} -d postgres -c \
+      "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{{ k3s_langfuse_platform_resolved_postgres_db }}' AND pid <> pg_backend_pid();" >/dev/null
+    docker exec "$cid" psql -U {{ k3s_langfuse_platform_resolved_postgres_user }} -d postgres -c \
+      "DROP DATABASE IF EXISTS {{ k3s_langfuse_platform_resolved_postgres_db }};"
+  args:
+    executable: /bin/bash
+  delegate_to: "{{ k3s_langfuse_platform_postgres_inventory_host }}"
+  become: true
+  changed_when: true
+  when:
+    - k3s_langfuse_platform_fresh_install | bool
+    - k3s_langfuse_platform_reset_external_postgres_db_on_fresh_install | bool
+
+- name: Ensure Langfuse external PostgreSQL database exists
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cid="$(docker ps -q \
+      --filter 'label=com.docker.compose.service=postgres' \
+      --filter 'label=com.docker.compose.project=fuzlang-net' | head -n1)"
+    if [ -z "$cid" ]; then
+      echo "fuzlang-net postgres container not found" >&2
+      docker ps --filter 'label=com.docker.compose.project=fuzlang-net' >&2 || true
+      exit 1
+    fi
+    exists="$(docker exec "$cid" psql -U {{ k3s_langfuse_platform_resolved_postgres_user }} -d postgres -tAc \
+      "SELECT 1 FROM pg_database WHERE datname='{{ k3s_langfuse_platform_resolved_postgres_db }}'")"
+    if [ "$exists" != "1" ]; then
+      docker exec "$cid" psql -U {{ k3s_langfuse_platform_resolved_postgres_user }} -d postgres -c \
+        "CREATE DATABASE {{ k3s_langfuse_platform_resolved_postgres_db }};"
+    fi
+  args:
+    executable: /bin/bash
+  delegate_to: "{{ k3s_langfuse_platform_postgres_inventory_host }}"
+  become: true
+  register: _k3s_langfuse_db_create
+  changed_when: "'CREATE DATABASE' in _k3s_langfuse_db_create.stdout"
 
 - name: Remove bundled Langfuse PostgreSQL StatefulSet when using external database
   kubernetes.core.k8s:
@@ -83,6 +145,27 @@
   register: _k3s_langfuse_orphan_ch_pvc
   failed_when: false
 
+- name: Query Langfuse Helm release status
+  ansible.builtin.command:
+    cmd: helm status {{ k3s_langfuse_platform_release_name }} -n {{ k3s_langfuse_platform_namespace }} -o json
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: _k3s_langfuse_helm_status
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Remove stuck Langfuse Helm release before redeploy
+  ansible.builtin.command:
+    cmd: helm uninstall {{ k3s_langfuse_platform_release_name }} -n {{ k3s_langfuse_platform_namespace }}
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  changed_when: true
+  when:
+    - _k3s_langfuse_helm_status.rc == 0
+    - (_k3s_langfuse_helm_status.stdout | default('') | trim | length) > 0
+    - (_k3s_langfuse_helm_status.stdout | from_json).info.status | lower is search('failed|pending')
+
 - name: Deploy Langfuse platform with Helm
   kubernetes.core.helm:
     name: "{{ k3s_langfuse_platform_release_name }}"
@@ -116,7 +199,14 @@
             value: "{{ k3s_langfuse_platform_resolved_database_url }}"
         web:
           replicas: "{{ k3s_langfuse_platform_web_replicas }}"
+          readinessProbe:
+            initialDelaySeconds: "{{ k3s_langfuse_platform_web_readiness_initial_delay_seconds }}"
+          livenessProbe:
+            initialDelaySeconds: "{{ k3s_langfuse_platform_web_liveness_initial_delay_seconds }}"
           resources:
+            requests:
+              cpu: "{{ k3s_langfuse_platform_web_cpu_request }}"
+              memory: "{{ k3s_langfuse_platform_web_memory_request }}"
             limits:
               cpu: "{{ k3s_langfuse_platform_web_cpu_limit }}"
               memory: "{{ k3s_langfuse_platform_web_memory_limit }}"
@@ -126,7 +216,12 @@
             nodePort: "{{ k3s_langfuse_platform_node_port }}"
         worker:
           replicas: "{{ k3s_langfuse_platform_worker_replicas }}"
+          livenessProbe:
+            initialDelaySeconds: "{{ k3s_langfuse_platform_worker_liveness_initial_delay_seconds }}"
           resources:
+            requests:
+              cpu: "{{ k3s_langfuse_platform_worker_cpu_request }}"
+              memory: "{{ k3s_langfuse_platform_worker_memory_request }}"
             limits:
               cpu: "{{ k3s_langfuse_platform_worker_cpu_limit }}"
               memory: "{{ k3s_langfuse_platform_worker_memory_limit }}"
@@ -148,6 +243,7 @@
         httpPort: "{{ k3s_langfuse_platform_clickhouse_http_port }}"
         nativePort: "{{ k3s_langfuse_platform_clickhouse_native_port }}"
         database: "{{ k3s_langfuse_platform_clickhouse_database }}"
+        clusterEnabled: "{{ k3s_langfuse_platform_clickhouse_cluster_enabled | bool }}"
         auth:
           username: "{{ k3s_langfuse_platform_clickhouse_user }}"
           password: "{{ k3s_langfuse_platform_resolved_clickhouse_password }}"
@@ -203,6 +299,10 @@
             size: 8Gi
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: _k3s_langfuse_helm_apply
+  retries: 3
+  delay: 15
+  until: _k3s_langfuse_helm_apply is succeeded
 
 - name: Wait for Langfuse web deployment to be ready
   kubernetes.core.k8s_info:

@@ -5,7 +5,7 @@ Date: 2026-05-19
 ## Purpose
 
 Document the bridge from the prepared Hyper-V Ubuntu VM lane to the functional
-single-node K3s server on `nsrv-k3s-01`.
+single-node K3s server on `hom-lab-ctl-k3s-01`.
 
 This blueprint is repo-local planning. It is not based on the raw internet
 intake notes as an implementation baseline. The raw notes remain reference
@@ -13,9 +13,9 @@ material only.
 
 ## Current Ground Truth
 
-- Physical Hyper-V host: `home-lab-auth-hvh-01`
-- Docker Ubuntu VM lane: `nsrv-dkr-01`
-- K3s Ubuntu VM lane: `nsrv-k3s-01`
+- Physical Hyper-V host: `HOM-LAB-HVH-01`
+- Docker Ubuntu VM lane: `hom-lab-ctl-dkr-01`
+- K3s Ubuntu VM lane: `hom-lab-ctl-k3s-01`
 - VM primitive: `roles/hyperv_ubuntu_vm`
 - K3s VM wrapper: `playbooks/hyperv_ubuntu_k3s_vm.yaml`
 - K3s readiness stub: `playbooks/k3s_vm_stub.yaml` and
@@ -25,8 +25,8 @@ material only.
   `k3s-io/k3s-ansible`
 - NetBox seed lane: `ipam_netbox_seed_network_server_vm_model`
 
-`k3s_cluster.children.server` contains only `nsrv-k3s-01`.
-`k3s_cluster.children.agent` remains empty. `nsrv-dkr-01` remains Docker-only
+`k3s_cluster.children.server` contains only `hom-lab-ctl-k3s-01`.
+`k3s_cluster.children.agent` remains empty. `hom-lab-ctl-dkr-01` remains Docker-only
 and is not a K3s target.
 
 ## Architecture/Structure Diagram
@@ -36,8 +36,8 @@ graph TB
     subgraph repo [dotfile-vnext Repository]
         subgraph inventory_layer [Inventory Layer]
             inv_main[inventory/inventory.yaml<br/>linux_vm_hosts, k3s_vm_stub_hosts, k3s_cluster.server]
-            hvh_vars[inventory/host_vars/home-lab-auth-hvh-01.yaml<br/>hyperv_ubuntu_k3s_vm_* inputs]
-            k3s_vars[inventory/host_vars/nsrv-k3s-01.yaml<br/>SSH and readiness target vars]
+            hvh_vars[inventory/host_vars/hom-lab-hvh-01.yaml<br/>hyperv_ubuntu_k3s_vm_* inputs]
+            k3s_vars[inventory/host_vars/hom-lab-ctl-k3s-01.yaml<br/>SSH and readiness target vars]
             cluster_vars[inventory/group_vars/k3s_cluster.yaml<br/>token, api_endpoint, config yaml]
         end
 
@@ -64,9 +64,9 @@ graph TB
     end
 
     subgraph hyperv_host [Hyper-V Host]
-        hvh[home-lab-auth-hvh-01<br/>Windows Server 2025 Hyper-V]
-        docker_vm[nsrv-dkr-01<br/>Ubuntu Docker VM<br/>192.168.138.10]
-        k3s_vm[nsrv-k3s-01<br/>Ubuntu K3s server<br/>192.168.138.11]
+        hvh[HOM-LAB-HVH-01<br/>Windows Server 2025 Hyper-V]
+        docker_vm[hom-lab-ctl-dkr-01<br/>Ubuntu Docker VM<br/>192.168.138.10]
+        k3s_vm[hom-lab-ctl-k3s-01<br/>Ubuntu K3s server<br/>192.168.138.11]
     end
 
     subgraph external [External Sources]
@@ -108,10 +108,10 @@ graph TB
 
     classify -->|"Prepare VM only"| vm_prep[Run hyperv_ubuntu_k3s_vm]
     classify -->|"Validate readiness only"| stub_check[Run k3s_vm_stub]
-    classify -->|"Install K3s"| install_guard{Is nsrv-k3s-01 in k3s_cluster.server?}
+    classify -->|"Install K3s"| install_guard{Is hom-lab-ctl-k3s-01 in k3s_cluster.server?}
 
     vm_prep --> vm_role[roles/hyperv_ubuntu_vm]
-    vm_role --> vm_ready[nsrv-k3s-01 exists and is SSH reachable]
+    vm_role --> vm_ready[hom-lab-ctl-k3s-01 exists and is SSH reachable]
 
     stub_check --> stub_role[roles/k3s_readiness_stub]
     stub_role --> stub_ready[Ubuntu ready, K3s absent]
@@ -134,18 +134,18 @@ graph TB
 2. Keep Docker-specific behavior in the Docker wrapper and Docker inventory
    variables only.
 3. Use `playbooks/hyperv_ubuntu_k3s_vm.yaml` to create or maintain
-   `nsrv-k3s-01`.
+   `hom-lab-ctl-k3s-01`.
 4. Use `playbooks/k3s_vm_stub.yaml` before install to prove the VM is reachable
    and suitable for a single-node K3s server.
-5. Keep only `nsrv-k3s-01` in `k3s_cluster.children.server`.
+5. Keep only `hom-lab-ctl-k3s-01` in `k3s_cluster.children.server`.
 6. Keep `k3s_cluster.children.agent` empty.
 7. Seed or preview NetBox with `ipam_netbox_seed_network_server_vm_model` so
-   `nsrv-k3s-01` is represented as an active VM with role `k3s-node`,
+   `hom-lab-ctl-k3s-01` is represented as an active VM with role `k3s-node`,
    tag `k3s`, interface `eth0`, and IP `192.168.138.11/24`.
 
 ### Expected Baseline VM State
 
-`nsrv-k3s-01` should be considered ready for the next pass when:
+`hom-lab-ctl-k3s-01` should be considered ready for the next pass when:
 
 - it is an Ubuntu 24.04 or newer VM
 - it is reachable over SSH through the repo-managed inventory path
@@ -159,8 +159,8 @@ graph TB
 
 The real K3s implementation starts only after the readiness lane is clean:
 
-1. Keep `nsrv-k3s-01` as the only member of `k3s_cluster.children.server`.
-2. Keep `nsrv-dkr-01` out of `k3s_cluster`.
+1. Keep `hom-lab-ctl-k3s-01` as the only member of `k3s_cluster.children.server`.
+2. Keep `hom-lab-ctl-dkr-01` out of `k3s_cluster`.
 3. Use vault-backed `k3s_token`.
 4. Use `api_endpoint` from `inventory/group_vars/k3s_cluster.yaml`.
 5. Run `playbooks/k3s_bootstrap.yaml`, allowing its guard to pass only when the
@@ -174,7 +174,7 @@ The real K3s implementation starts only after the readiness lane is clean:
 |---|---|
 | Apply | Run the K3s VM wrapper if needed, run the stub preflight before install, then run `playbooks/k3s_bootstrap.yaml`. |
 | Verify | Inventory graph, NetBox consistency, K3s service active, node Ready, core pods Running, and Docker VM excluded from `k3s_cluster`. |
-| Undo | Use the official `k3s.orchestration.reset` path or a follow-up absent role before removing `nsrv-k3s-01` from `k3s_cluster`. |
+| Undo | Use the official `k3s.orchestration.reset` path or a follow-up absent role before removing `hom-lab-ctl-k3s-01` from `k3s_cluster`. |
 | Change class | Idempotent VM lifecycle plus mutating K3s install on the dedicated Ubuntu VM. |
 | Lifecycle control | `hyperv_ubuntu_k3s_vm_state: present|absent`; K3s install is gated by `k3s_cluster` membership and bootstrap guards. |
 
@@ -204,7 +204,7 @@ ansible-playbook playbooks/k3s_bootstrap.yaml \
 ## Non-Goals
 
 - Do not add K3s agents in this slice.
-- Do not reuse `nsrv-dkr-01` for K3s.
+- Do not reuse `hom-lab-ctl-dkr-01` for K3s.
 - Do not use k3d or Docker-nested K3s as the infrastructure cluster.
 - Do not add GPU, HA, external datastore, monitoring, or service mesh work.
 - Do not turn the raw internet intake files into implementation authority.
@@ -227,5 +227,5 @@ ansible-playbook playbooks/k3s_bootstrap.yaml \
   server installed`.
 - **Integration Sequence**: Controller, Hyper-V host, Ubuntu VM, NetBox, and
   `k3s-ansible` interaction timeline.
-- **Network Topology**: `home-lab-auth-hvh-01`, routed guest subnet, Docker VM,
+- **Network Topology**: `HOM-LAB-HVH-01`, routed guest subnet, Docker VM,
   K3s VM, controller route, and K3s API traffic.

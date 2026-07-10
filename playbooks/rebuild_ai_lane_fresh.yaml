@@ -1,0 +1,81 @@
+---
+# Destructive fresh rebuild of the shared AI lane.
+#
+# This keeps the storage-lane shared services and the GPU K3s cluster rebuild
+# order in one owner-managed entrypoint.
+#
+# Preview first:
+#   bin/codex-env ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml \
+#     -i inventory/inventory.yaml --tags hyperv_windows_host_preview
+#   bin/codex-env ansible-playbook playbooks/k3s_bootstrap_k3s02.yaml \
+#     -i inventory/inventory.yaml --tags k3s_cluster_gpu_preview
+#
+# Apply:
+#   bin/codex-env ansible-playbook playbooks/rebuild_ai_lane_fresh.yaml \
+#     -i inventory/inventory.yaml
+
+- name: Fresh rebuild - Hyper-V host networking and publication
+  ansible.builtin.import_playbook: configure_hyperv_windows_hosts.yaml
+
+- name: Fresh rebuild - controller and Windows access surfaces
+  ansible.builtin.import_playbook: access.yaml
+
+- name: Fresh rebuild - homelab hosts file publication
+  ansible.builtin.import_playbook: homelab_hosts_file.yaml
+
+- name: Fresh rebuild - retire GPU-lane duplicate shared-services stack
+  ansible.builtin.import_playbook: deploy_network_stacks_hvh02.yaml
+  vars:
+    stacks_fuzlang_net_state: absent
+    stacks_network_purge_data_on_absent: true
+
+- name: Fresh rebuild - remove storage-lane shared-services stack
+  ansible.builtin.import_playbook: deploy_network_stacks.yaml
+  vars:
+    stacks_fuzlang_net_state: absent
+    stacks_network_purge_data_on_absent: true
+
+- name: Fresh rebuild - rebuild storage-lane shared-services stack
+  ansible.builtin.import_playbook: deploy_network_stacks.yaml
+  vars:
+    stacks_fuzlang_net_state: present
+    stacks_network_force_recreate: true
+
+- name: Fresh rebuild - reset GPU K3s cluster
+  ansible.builtin.import_playbook: k3s_bootstrap_k3s02.yaml
+  vars:
+    k3s_cluster_gpu_state: absent
+
+- name: Fresh rebuild - bootstrap GPU K3s cluster
+  ansible.builtin.import_playbook: k3s_bootstrap_k3s02.yaml
+  vars:
+    k3s_cluster_gpu_state: present
+
+- name: Fresh rebuild - GPU infrastructure prerequisites
+  ansible.builtin.import_playbook: deploy_gpu_infrastructure.yaml
+
+- name: Fresh rebuild - vLLM runtime
+  ansible.builtin.import_playbook: deploy_vllm_runtime.yaml
+  vars:
+    k3s_vllm_runtime_state: present
+
+- name: Fresh rebuild - Langfuse platform
+  ansible.builtin.import_playbook: deploy_langfuse_platform.yaml
+  vars:
+    k3s_langfuse_platform_state: present
+    k3s_langfuse_platform_fresh_install: true
+
+- name: Fresh rebuild - LiteLLM gateway
+  ansible.builtin.import_playbook: deploy_litellm_gateway.yaml
+  vars:
+    k3s_litellm_gateway_state: present
+
+- name: Fresh rebuild - Traefik routes
+  ansible.builtin.import_playbook: k3s_traefik_routes.yaml
+  vars:
+    k3s_traefik_routes_state: present
+
+- name: Fresh rebuild - macOS K3s client surfaces
+  ansible.builtin.import_playbook: k3s_mac_client.yaml
+  vars:
+    k3s_mac_client_state: present

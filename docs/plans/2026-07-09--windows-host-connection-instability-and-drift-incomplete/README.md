@@ -342,3 +342,8 @@ Current evidence obligations captured:
 - **Naming/Modeling Diagram**: included
 - **Sequence Diagram**: not included; the routing diagram captures the remediation flow for this slice
 - **State Diagram**: not included; intended vs drift vs symptom classification is sufficiently covered by the naming/modeling diagram
+
+## Naming Note
+
+- Host/project naming in this packet uses `HOM-LAB-HVH-02`.
+- Literal repo paths remain lowercase where the repo stores them that way, including `inventory/host_vars/HOM-LAB-HVH-02.yaml`.

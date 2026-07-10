@@ -45,7 +45,7 @@ Physical Hyper-V Windows hosts and their matching Hyper-V cluster names now use:
 Example:
 
 ```text
-hom-lab-hvh-01
+HOM-LAB-HVH-01
 ```
 
 Rules:
@@ -56,7 +56,7 @@ Rules:
 - `ctl` remains the current control-plane or management domain code for VM and
   service-layer naming.
 - Physical Hyper-V Windows hosts intentionally omit the domain segment and
-  render as `hom-lab-hvh-01` / `hom-lab-hvh-02`.
+  render as `HOM-LAB-HVH-01` / `HOM-LAB-HVH-02`.
 - Friendly names and descriptions may be longer; slugs, codes, and rendered
   resource names stay compact.
 - NetBox must be consulted for infrastructure facts, but live NetBox naming is
@@ -105,14 +105,14 @@ Authoritative detail: [`live-object-registry.yml`](live-object-registry.yml).
 
 | Name | Type | Lane | Guest / LAN |
 |------|------|------|-------------|
-| `hom-lab-hvh-01` | device | `hyperv_lane_storage` | LAN `192.168.50.234`, guests `192.168.138.0/24` |
-| `hom-lab-hvh-02` | device | `hyperv_lane_gpu` | LAN `192.168.50.158`, guests `192.168.137.0/24` |
+| `HOM-LAB-HVH-01` | device | `hyperv_lane_storage` | LAN `192.168.50.234`, guests `192.168.138.0/24` |
+| `HOM-LAB-HVH-02` | device | `hyperv_lane_gpu` | LAN `192.168.50.158`, guests `192.168.137.0/24` |
 | `hom-lab-ctl-dkr-01` | vm | storage | `192.168.138.10` |
 | `hom-lab-ctl-dkr-02` | vm | GPU | `192.168.137.10` |
 | `hom-lab-ctl-k3s-01` | vm | storage | `192.168.138.11` |
 | `hom-lab-ctl-k3s-02` | vm | GPU | `192.168.137.11` |
 
-Clusters: `hom-lab-hvh-01`, `hom-lab-hvh-02`.
+Clusters: `HOM-LAB-HVH-01`, `HOM-LAB-HVH-02`.
 
 IPAM prefixes: `192.168.50.0/24`, `192.168.138.0/24`, `192.168.137.0/24`.
 
@@ -154,13 +154,15 @@ Full quarantine list: `live-object-registry.yml` → `retired_aliases`.
 
 | Retired alias | Replacement |
 |---------------|-------------|
-| Retired: `server-225`, `server_225` | `hom-lab-hvh-02` / group `hyperv_lane_gpu` |
+| Retired: `server-225`, `server_225` | `HOM-LAB-HVH-02` / group `hyperv_lane_gpu` |
 | Retired: `server-225-ubuntu` | `hom-lab-ctl-dkr-02` |
-| Retired: `network_server`, `network-server`, `network-server-win` | `hom-lab-hvh-01` / group `hyperv_lane_storage` |
-| Retired: `server-225-hyperv` (NetBox cluster) | `hom-lab-hvh-02` |
+| Retired: `network_server`, `network-server`, `network-server-win` | `HOM-LAB-HVH-01` / group `hyperv_lane_storage` |
+| Retired: `nsrv-dkr-01` | `hom-lab-ctl-dkr-01` |
+| Retired: `nsrv-k3s-01` | `hom-lab-ctl-k3s-01` |
+| Retired: `server-225-hyperv` (NetBox cluster) | `HOM-LAB-HVH-02` |
 | Retired: `hvh_02` (inventory group) | `hyperv_lane_gpu` |
 | Retired: `auth`, `aut` (domain codes) | `ctl` |
-| Retired: `home-lab-auth-hvh-01`, `home-lab-auth-hvh-02` | `hom-lab-hvh-01`, `hom-lab-hvh-02` |
+| Retired: `home-lab-auth-hvh-01`, `home-lab-auth-hvh-02` | `HOM-LAB-HVH-01`, `HOM-LAB-HVH-02` |
 
 ## Diagram IDs
 
@@ -186,7 +188,7 @@ stays on the compact baseline schema.
   group by what automation is doing.
 - **Physical Hyper-V lanes** (`hyperv_lane_gpu`, `hyperv_lane_storage`) — group
   by lane purpose (GPU execution vs storage/observability), not hostname copies.
-- **Host identity** uses compact schema hostnames (`hom-lab-hvh-02`), not
+- **Host identity** uses compact schema hostnames (`HOM-LAB-HVH-02`), not
   group names.
 
 ## Schema gaps (candidate only)

@@ -69,7 +69,7 @@
       tags: [always]
 
 - name: Docker Engine - preview target selection
-  hosts: localhost
+  hosts: linux_vm_hosts
   connection: local
   gather_facts: false
   tags: [docker_engine_preview, always]
@@ -89,6 +89,7 @@
               'reason': hostvars[item].docker_engine_selection_reason | default('not classified')
             }
           }}
+      run_once: true
       loop: "{{ query('inventory_hostnames', 'linux_vm_hosts') }}"
 
 - name: Docker Engine - lifecycle

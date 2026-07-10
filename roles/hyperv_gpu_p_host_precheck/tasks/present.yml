@@ -72,10 +72,18 @@
       } | ConvertTo-Json -Depth 8 -Compress
   register: hyperv_gpu_p_host_precheck_probe
   changed_when: false
+  check_mode: false
 
 - name: Parse Hyper-V GPU-P host readiness evidence
   ansible.builtin.set_fact:
-    hyperv_gpu_p_host_precheck_probe_json: "{{ hyperv_gpu_p_host_precheck_probe.output[0] | from_json }}"
+    hyperv_gpu_p_host_precheck_probe_json: >-
+      {{
+        (
+          hyperv_gpu_p_host_precheck_probe.output | default([])
+          | first
+          | default(hyperv_gpu_p_host_precheck_probe.stdout | default('{}'))
+        ) | from_json
+      }}
   changed_when: false
 
 - name: Build Hyper-V GPU-P host precheck receipt

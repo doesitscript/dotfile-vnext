@@ -318,7 +318,7 @@ Your active registry has `bkp` (backup-server) as **candidate** but no `zrt` yet
 
 ---
 
-**Outcomes:** Cloud Posse organization fits your schema if **`tenant/environment/stage/name`** map to **`hom/lab/ctl/<role>`**, lanes replace cloud **regions**, and Zerto splits into **`modules/` (patterns) + `stacks/` (instances)** with VRAs bound to existing **`hom-lab-ctl-hvh-0x`** hosts and a shared **`hom-lab-ctl-zrt-01`** management identity.
+**Outcomes:** Cloud Posse organization fits your schema if **`tenant/environment/stage/name`** map to **`hom/lab/ctl/<role>`**, lanes replace cloud **regions**, and Zerto splits into **`modules/` (patterns) + `stacks/` (instances)** with VRAs bound to existing **`HOM-LAB-HVH-0x`** hosts and a shared **`hom-lab-ctl-zrt-01`** management identity.
 
 Follow-up offered in the original thread: draft the `terraform.yml` naming registry slice and a minimal `zrt` candidate entry for `resource-roles.yml` aligned to the capability introduction checklist.
 

@@ -43,7 +43,7 @@ The NetBox MCP Server enables AI agents and LLMs to interact with NetBox infrast
 | `netbox_mcp_install_path` | `~/.local/lib/netbox-mcp-server` | Clone destination |
 | `netbox_mcp_venv_dir` | `~/.local/lib/netbox-mcp-server/.venv` | Python venv location |
 | `netbox_mcp_entry_point` | `<venv>/bin/python` | Python interpreter path |
-| `netbox_mcp_url` | `{{ ipam_netbox_api_url }}` | NetBox API URL |
+| `netbox_mcp_url` | `{{ ipam_netbox_api_url }}` with repo fallback | NetBox API URL |
 | `netbox_mcp_token` | `{{ vault_vars.vault_netbox_api_token }}` | NetBox API token (from vault) |
 | `netbox_mcp_verify_ssl` | `false` | SSL verification (false for local HTTP) |
 
@@ -80,7 +80,8 @@ ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags netbox -e
 
 ## Integration Notes
 
-- Reuses `ipam_netbox_api_url` from the `ipam_netbox` role
+- Reuses `ipam_netbox_api_url` from the `ipam_netbox` role when present
+- Falls back to the repo's default NetBox controller route for standalone `playbooks/mac/mcp_servers.yaml` runs
 - Complements `netbox.netbox` Ansible collection (write/seed) with MCP read queries
 - Enables knowledge gate pattern: query NetBox via MCP before Ansible changes
 - Read-only by design - never modifies NetBox data

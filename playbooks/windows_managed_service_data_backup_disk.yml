@@ -65,7 +65,7 @@
         - always
 
 - name: Preview managed service disk eligibility from inventory metadata
-  hosts: localhost
+  hosts: windows_managed_service_data_backup_disk_candidate_true
   gather_facts: false
   vars:
     windows_managed_service_data_backup_disk_preview_hosts: >-
@@ -100,6 +100,7 @@
               (hostvars[item]['windows_managed_service_data_backup_disk_should_manage'] | default(false))
               and (hostvars[item]['windows_managed_service_data_backup_disk_state'] | default('unset')) == 'present'
             }}
+      run_once: true
       loop: "{{ windows_managed_service_data_backup_disk_preview_hosts }}"
       tags:
         - disk_preview

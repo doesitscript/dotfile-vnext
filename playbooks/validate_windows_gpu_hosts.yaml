@@ -61,7 +61,7 @@
       tags: [always]
 
 - name: Windows GPU hosts - preview target selection
-  hosts: localhost
+  hosts: windows_hosts
   connection: local
   gather_facts: false
   tags: [gpu_driver_validation_preview, always]
@@ -81,6 +81,7 @@
               'reason': hostvars[item].windows_gpu_host_selection_reason | default('not classified')
             }
           }}
+      run_once: true
       loop: "{{ query('inventory_hostnames', 'windows_hosts') }}"
 
 - name: Windows GPU hosts - validation

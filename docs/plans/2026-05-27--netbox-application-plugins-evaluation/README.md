@@ -7,7 +7,7 @@
 - Ansible + MCP integration (no Django plugin): [`docs/intake/netbox-jumpstart.md`](../../intake/netbox-jumpstart.md), [`docs/intake/netbox/findings_research.md`](../../intake/netbox/findings_research.md)
 - NetBox value roadmap: [`docs/intake/netbox/netbox-value-roadmap.md`](../../intake/netbox/netbox-value-roadmap.md)
 - Backup naming contract: `roles/ipam_netbox/defaults/main.yml` (`ipam_netbox_backup_*`) and `roles/ipam_netbox/README.md` (backup section)
-- Hyper-V stack (not Proxmox): `hom-lab-ctl-hvh-*`, seeds in `roles/ipam_netbox/`
+- Hyper-V stack (not Proxmox): `HOM-LAB-HVH-*`, seeds in `roles/ipam_netbox/`
 
 **Decision default:** Stay on **core NetBox + `netbox.netbox` collection + `netbox-mcp-server`**. Add a NetBox **application** plugin only when one named pain justifies custom image build, migrations, and upgrade testing (`roles/ipam_netbox` Docker path).
 
@@ -88,7 +88,7 @@ Official ecosystem reference: [NetBox Labs plugin catalog](https://netboxlabs.co
 
 | Factor | This homelab |
 |--------|----------------|
-| Hypervisor | **Hyper-V** (`hom-lab-ctl-hvh-*`) — guests are seeded by **`roles/ipam_netbox`** Ansible tasks, not Proxmox API |
+| Hypervisor | **Hyper-V** (`HOM-LAB-HVH-*`) — guests are seeded by **`roles/ipam_netbox`** Ansible tasks, not Proxmox API |
 | Proxmox present? | **No** — no Proxmox cluster in inventory or naming registry |
 | Existing automation | VM/device truth is **code-first seeds** + `ansible-managed` tag + compact hostnames (`hom-lab-ctl-dkr-02`, etc.) |
 

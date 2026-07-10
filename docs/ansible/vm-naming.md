@@ -1,41 +1,41 @@
 # VM Naming
 
-This repo follows a compact VM naming pattern for new lab VMs:
+This repo follows the compact inventory/VM naming pattern used across the
+active homelab surfaces:
 
 ```text
-<host-scope>-<role>-<nn>
+<tenant>-<env>-<domain>-<role>-<nn>
 ```
 
 Examples:
 
-- `s225-dkr-01` - Docker VM on server-225
-- `nsrv-dkr-01` - Docker VM on network-server
-- `s225-k3s-01` - future k3s VM on server-225
+- `hom-lab-ctl-dkr-01` - Docker VM on HOM-LAB-HVH-01
+- `hom-lab-ctl-k3s-01` - K3s VM on HOM-LAB-HVH-01
+- `hom-lab-ctl-dkr-02` - Docker VM on HOM-LAB-HVH-02
+- `hom-lab-ctl-k3s-02` - K3s VM on HOM-LAB-HVH-02
 
-Existing live VMs do not need to be renamed just to satisfy this convention.
-For example, `server-225-ubuntu` remains valid while it is the live Docker VM
-identity on server-225.
+Older names such as `server-225-ubuntu`, `nsrv-dkr-01`, and `nsrv-k3s-01` are
+legacy identities and should not be used for new repo references outside
+explicit migration or historical context.
 
-## Scope Codes
+## Canonical Segments
 
-- `s225` - server-225
-- `nsrv` - network-server
+- `hom` - tenant
+- `lab` - environment
+- `ctl` - control/management domain
+- `dkr` - Docker runtime role
+- `k3s` - K3s role
 
-Add new scope codes here before introducing new VM names.
-
-## Role Codes
-
-- `dkr` - Docker Engine host
-- `k3s` - k3s node
+Add or change segments only through the naming standards registry before
+introducing new VM names.
 
 Use NetBox-style metadata for operating system, platform, VM role, IP address,
-and host placement instead of encoding all of that in the VM name. The name is
-the scoped identity; inventory and NetBox-style fields carry the rest.
+and host placement instead of encoding all of that in the VM name.
 
 Optional future NetBox validation for new names:
 
 ```regex
-^(s225|nsrv)-[a-z0-9]+-[0-9]{2}$
+^hom-lab-[a-z0-9]+-[a-z0-9]+-[0-9]{2}$
 ```
 
 Do not enforce that regex against legacy names until their exceptions are

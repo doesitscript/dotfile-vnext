@@ -2,7 +2,7 @@
 # Host and surface mapping reference (documentation + bootstrap hostname detection)
 #
 # Naming layers — do not mix these up:
-# - inventory_hostname: Ansible/NetBox schema alias (hom-lab-hvh-02, hom-lab-ctl-dkr-02)
+# - inventory_hostname: Ansible/NetBox schema alias (HOM-LAB-HVH-02, hom-lab-ctl-dkr-02)
 # - os_hostname: Windows COMPUTERNAME / Linux hostname on the machine itself
 # - router_hostname: DHCP/DNS label on the LAN router (may differ from os_hostname)
 # - ansible_connect_target: value in host_vars ansible_host (what Ansible/SSH dials)
@@ -20,31 +20,31 @@
 # Bootstrap scripts (bin/bootstrap-local*.sh/ps1) auto-detect physical_node by matching
 # the local machine's hostname (case-insensitive) against `os_hostname` below.
 physical_nodes:
-  hom-lab-hvh-02:
-    os_hostname: "hom-lab-hvh-02"
-    inventory_windows_host: hom-lab-hvh-02
+  HOM-LAB-HVH-02:
+    os_hostname: "HOM-LAB-HVH-02"
+    inventory_windows_host: HOM-LAB-HVH-02
     inventory_linux_vm_host: hom-lab-ctl-dkr-02
     ip_address: "192.168.50.158"
     ipv6_address: "fdfa:7038:521c:a5fa:7c9:f4a1:90b8:1b1e"
-    # DNS hostname is now hom-lab-hvh-02; Windows still exposes a
+    # DNS hostname is now HOM-LAB-HVH-02; Windows still exposes a
     # truncated NetBIOS COMPUTERNAME that Hyper-V cmdlets must not use
     # implicitly for management resolution.
-    hostname: "hom-lab-hvh-02"
-    netbios_hostname: "HOM-LAB-CTL-HVH"
+    hostname: "HOM-LAB-HVH-02"
+    netbios_hostname: "HOM-LAB-HVH-02"
     legacy_physical_node_aliases:
       - server-225
 
-  hom-lab-hvh-01:
-    os_hostname: "hom-lab-hvh-01"
-    router_hostname: "ai-net-server-mgmt"
-    inventory_windows_host: hom-lab-hvh-01
+  HOM-LAB-HVH-01:
+    os_hostname: "HOM-LAB-HVH-01"
+    router_hostname: "HOM-LAB-HVH-01"
+    inventory_windows_host: HOM-LAB-HVH-01
     inventory_linux_vm_host: hom-lab-ctl-dkr-01
     ip_address: "192.168.50.234"
     ip_address_original: "192.168.50.233"
     legacy_aliases:
       - network-server
     # Bootstrap compatibility — must match Windows COMPUTERNAME
-    hostname: "hom-lab-hvh-01"
+    hostname: "HOM-LAB-HVH-01"
 
   dev-3090:
     os_hostname: "Gaming-Desktop"
@@ -62,8 +62,8 @@ physical_nodes:
 ansible_surfaces:
   # --- Windows control surfaces (SSH primary) ---
 
-  hom-lab-hvh-02:
-    physical_node: hom-lab-hvh-02
+  HOM-LAB-HVH-02:
+    physical_node: HOM-LAB-HVH-02
     surface_type: windows_host
     inventory_alias: true
     primary_connection: ssh
@@ -72,41 +72,41 @@ ansible_surfaces:
     connect_target_kind: ip_address
     ansible_port: 22
     host_ip: "192.168.50.158"
-    os_hostname: "hom-lab-hvh-02"
-    netbios_hostname: "HOM-LAB-CTL-HVH"
-    host_vars: inventory/host_vars/hom-lab-hvh-02.yaml
+    os_hostname: "HOM-LAB-HVH-02"
+    netbios_hostname: "HOM-LAB-HVH-02"
+    host_vars: inventory/host_vars/HOM-LAB-HVH-02.yaml
 
-  hom-lab-hvh-02-ipv6:
-    physical_node: hom-lab-hvh-02
+  HOM-LAB-HVH-02-ipv6:
+    physical_node: HOM-LAB-HVH-02
     surface_type: windows_host
     inventory_alias: true
     primary_connection: ssh
     secondary_connection: winrm
     ansible_connect_target: "fdfa:7038:521c:a5fa:7c9:f4a1:90b8:1b1e"
     connect_target_kind: ipv6_address
-    ipv6_fallback_for: hom-lab-hvh-02
+    ipv6_fallback_for: HOM-LAB-HVH-02
     host_ip: "192.168.50.158"
-    host_vars: inventory/host_vars/hom-lab-hvh-02-ipv6.yaml
+    host_vars: inventory/host_vars/HOM-LAB-HVH-02-ipv6.yaml
     notes: Explicit fallback surface — not in default windows_hosts group
 
-  hom-lab-hvh-02-guest-gw:
-    physical_node: hom-lab-hvh-02
+  HOM-LAB-HVH-02-guest-gw:
+    physical_node: HOM-LAB-HVH-02
     surface_type: windows_host
     inventory_alias: true
     primary_connection: ssh
     secondary_connection: winrm
     ansible_connect_target: "192.168.137.1"
     connect_target_kind: guest_gateway_ip
-    guest_gateway_for: hom-lab-hvh-02
+    guest_gateway_for: HOM-LAB-HVH-02
     ansible_port: 22
     host_ip: "192.168.50.158"
-    host_vars: inventory/host_vars/hom-lab-hvh-02-guest-gw.yaml
+    host_vars: inventory/host_vars/HOM-LAB-HVH-02-guest-gw.yaml
     notes: >-
       Guest-switch gateway fallback when LAN SSH on 192.168.50.158 is refused
       but mac-dev can reach 192.168.137.1 — not in default windows_hosts group
 
-  hom-lab-hvh-01:
-    physical_node: hom-lab-hvh-01
+  HOM-LAB-HVH-01:
+    physical_node: HOM-LAB-HVH-01
     surface_type: windows_host
     inventory_alias: true
     primary_connection: ssh
@@ -115,12 +115,12 @@ ansible_surfaces:
     connect_target_kind: ip_address
     ansible_port: 22
     host_ip: "192.168.50.234"
-    router_hostname: ai-net-server-mgmt
-    os_hostname: "hom-lab-hvh-01"
+    router_hostname: HOM-LAB-HVH-01
+    os_hostname: "HOM-LAB-HVH-01"
     legacy_aliases:
       - network-server
-    host_vars: inventory/host_vars/hom-lab-hvh-01.yaml
-    notes: Uses IP for ansible_host because ai-net-server-mgmt is not reliably resolvable from mac-dev
+    host_vars: inventory/host_vars/HOM-LAB-HVH-01.yaml
+    notes: Uses IP for ansible_host because HOM-LAB-HVH-01 is not reliably resolvable from mac-dev
 
   dev-3090-win:
     physical_node: dev-3090
@@ -135,50 +135,50 @@ ansible_surfaces:
   # --- Hyper-V Ubuntu guest surfaces (SSH only) ---
 
   hom-lab-ctl-dkr-02:
-    physical_node: hom-lab-hvh-02
+    physical_node: HOM-LAB-HVH-02
     surface_type: ubuntu_vm
     inventory_alias: true
     primary_connection: ssh
     ansible_connect_target: "192.168.137.10"
     connect_target_kind: guest_ip
     host_ip: "192.168.137.10"
-    ssh_proxy_jump_host: hom-lab-hvh-02
+    ssh_proxy_jump_host: HOM-LAB-HVH-02
     host_vars: inventory/host_vars/hom-lab-ctl-dkr-02.yaml
     notes: Docker engine on hvh-02 guest subnet; guest OS hostname may differ from inventory name
     legacy_inventory_aliases:
       - server-225-ubuntu
 
   hom-lab-ctl-dkr-01:
-    physical_node: hom-lab-hvh-01
+    physical_node: HOM-LAB-HVH-01
     surface_type: ubuntu_vm
     inventory_alias: true
     primary_connection: ssh
     ansible_connect_target: "192.168.138.10"
     connect_target_kind: guest_ip
     host_ip: "192.168.138.10"
-    ssh_proxy_jump_host: hom-lab-hvh-01
+    ssh_proxy_jump_host: HOM-LAB-HVH-01
     host_vars: inventory/host_vars/hom-lab-ctl-dkr-01.yaml
 
   hom-lab-ctl-k3s-01:
-    physical_node: hom-lab-hvh-01
+    physical_node: HOM-LAB-HVH-01
     surface_type: ubuntu_vm
     inventory_alias: true
     primary_connection: ssh
     ansible_connect_target: "192.168.138.11"
     connect_target_kind: guest_ip
     host_ip: "192.168.138.11"
-    ssh_proxy_jump_host: hom-lab-hvh-01
+    ssh_proxy_jump_host: HOM-LAB-HVH-01
     host_vars: inventory/host_vars/hom-lab-ctl-k3s-01.yaml
 
   hom-lab-ctl-k3s-02:
-    physical_node: hom-lab-hvh-02
+    physical_node: HOM-LAB-HVH-02
     surface_type: ubuntu_vm
     inventory_alias: true
     primary_connection: ssh
     ansible_connect_target: "192.168.137.11"
     connect_target_kind: guest_ip
     host_ip: "192.168.137.11"
-    ssh_proxy_jump_host: hom-lab-hvh-02
+    ssh_proxy_jump_host: HOM-LAB-HVH-02
     host_vars: inventory/host_vars/hom-lab-ctl-k3s-02.yaml
 
   # --- macOS controller ---

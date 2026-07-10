@@ -1,0 +1,9 @@
+---
+- name: Require macOS for netcat_cli package management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "netcat_cli currently supports macOS through Homebrew only."
+
+- name: Manage netcat on macOS
+  ansible.builtin.import_tasks: mac.yml

@@ -14,7 +14,7 @@ ensures these DWORD keys are `0` before partition work:
 - `HKLM:\SOFTWARE\Policies\Microsoft\Windows\HyperV\RequireSecureDeviceAssignment`
 - `HKLM:\SOFTWARE\Policies\Microsoft\Windows\HyperV\RequireSupportedDeviceAssignment`
 
-Set on `hom-lab-hvh-02` in host_vars. See
+Set on `HOM-LAB-HVH-02` in host_vars. See
 [ReqSecDevAssign.md](../../docs/lessons-learned/hyper-v-ubuntu-gpu/ReqSecDevAssign.md).
 
 Optional `hyperv_gpu_partition_adapter_restart_vmms_when_policy_keys_change` restarts
@@ -27,11 +27,11 @@ optimal/max values because the partitionable VRAM pool is ~1GB.
 
 ## Connection fallback
 
-When LAN SSH to `hom-lab-hvh-02` fails, target the guest-gateway surface:
+When LAN SSH to `HOM-LAB-HVH-02` fails, target the guest-gateway surface:
 
 ```bash
 ansible-playbook playbooks/deploy_gpu_infrastructure.yaml \
-  --limit hom-lab-hvh-02-guest-gw,hom-lab-ctl-k3s-02 \
+  --limit HOM-LAB-HVH-02-guest-gw,hom-lab-ctl-k3s-02 \
   --tags hyperv_gpu_partition_adapter
 ```
 

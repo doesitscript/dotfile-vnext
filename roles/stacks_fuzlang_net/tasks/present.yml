@@ -120,6 +120,30 @@
   register: docker_up_result
   changed_when: "'Started' in docker_up_result.stdout or 'Created' in docker_up_result.stdout or 'Recreated' in docker_up_result.stdout or 'Removed' in docker_up_result.stdout"
 
+- name: Wait for PostgreSQL to accept connections before password sync
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cid="$(docker ps -q \
+      --filter 'label=com.docker.compose.service=postgres' \
+      --filter 'label=com.docker.compose.project=fuzlang-net' | head -n1)"
+    if [ -z "$cid" ]; then
+      echo "fuzlang-net postgres container not found" >&2
+      exit 1
+    fi
+    docker exec "$cid" pg_isready -U "$POSTGRES_USER" -d postgres
+  args:
+    executable: /bin/bash
+  environment:
+    POSTGRES_USER: "{{ vault_network_postgres_user | default('langfuse') }}"
+  delegate_to: "{{ docker_engine_host }}"
+  become: true
+  register: stacks_network_postgres_ready
+  retries: 20
+  delay: 3
+  until: stacks_network_postgres_ready.rc == 0
+  changed_when: false
+  no_log: true
+
 - name: Sync PostgreSQL user password to vault contract on existing volume
   ansible.builtin.shell: |
     set -euo pipefail

@@ -1,24 +1,30 @@
 ---
-- name: Probe NVIDIA userspace on K3s node via WSL DriverStore path for GPU-P guests
-  ansible.builtin.command:
-    argv:
-      - /usr/lib/wsl/lib/nvidia-smi
-      - -L
-  environment:
-    PATH: "/usr/lib/wsl/lib:{{ ansible_env.PATH | default('/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin') }}"
-    LD_LIBRARY_PATH: /usr/lib/wsl/lib
-  register: _k3s_node_gpu_prereqs_nvidia_smi
+- name: Resolve NVIDIA userspace probe command for the K3s node
+  ansible.builtin.set_fact:
+    _k3s_node_gpu_prereqs_nvidia_smi_command: >-
+      {{
+        '/usr/lib/wsl/lib/nvidia-smi -L'
+        if (gpu_contract.passthrough_mode | default('')) == 'gpu_p'
+        else 'nvidia-smi -L'
+      }}
+    _k3s_node_gpu_prereqs_nvidia_smi_environment: >-
+      {{
+        {
+          'PATH': '/usr/lib/wsl/lib:' ~ (ansible_env.PATH | default('/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin')),
+          'LD_LIBRARY_PATH': '/usr/lib/wsl/lib'
+        }
+        if (gpu_contract.passthrough_mode | default('')) == 'gpu_p'
+        else {}
+      }}
   changed_when: false
-  failed_when: false
-  when: (gpu_contract.passthrough_mode | default('')) == 'gpu_p'
 
 - name: Probe NVIDIA userspace on K3s node
-  ansible.builtin.command:
-    cmd: nvidia-smi -L
+  ansible.builtin.shell: "{{ _k3s_node_gpu_prereqs_nvidia_smi_command }}"
+  environment: "{{ _k3s_node_gpu_prereqs_nvidia_smi_environment }}"
   register: _k3s_node_gpu_prereqs_nvidia_smi
   changed_when: false
   failed_when: false
-  when: (gpu_contract.passthrough_mode | default('')) != 'gpu_p'
+  check_mode: false
 
 - name: Probe PCI NVIDIA devices on K3s node
   ansible.builtin.shell: |
@@ -28,6 +34,7 @@
   register: _k3s_node_gpu_prereqs_lspci
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Probe Kubernetes advertised GPU capacity
   ansible.builtin.shell: >-
@@ -38,6 +45,7 @@
   register: _k3s_node_gpu_prereqs_capacity
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Parse Kubernetes advertised GPU capacity and allocatable values
   ansible.builtin.set_fact:
@@ -56,7 +64,7 @@
   ansible.builtin.debug:
     msg:
       node: "{{ k3s_node_gpu_prereqs_node_name }}"
-      nvidia_smi_rc: "{{ _k3s_node_gpu_prereqs_nvidia_smi.rc }}"
+      nvidia_smi_rc: "{{ _k3s_node_gpu_prereqs_nvidia_smi.rc | default('n/a') }}"
       nvidia_smi: "{{ _k3s_node_gpu_prereqs_nvidia_smi.stdout | default('') }}"
       pci_nvidia: "{{ _k3s_node_gpu_prereqs_lspci.stdout | default('') }}"
       kubernetes_gpu_capacity: "{{ _k3s_node_gpu_prereqs_capacity_value }}"
@@ -65,7 +73,7 @@
 - name: Assert K3s node has NVIDIA GPU runtime prerequisites
   ansible.builtin.assert:
     that:
-      - _k3s_node_gpu_prereqs_nvidia_smi.rc == 0
+      - (_k3s_node_gpu_prereqs_nvidia_smi.rc | default(1)) == 0
       - (_k3s_node_gpu_prereqs_capacity_value | int) >= k3s_node_gpu_prereqs_expected_count | int
       - (_k3s_node_gpu_prereqs_allocatable_value | int) >= k3s_node_gpu_prereqs_expected_count | int
     fail_msg: >-

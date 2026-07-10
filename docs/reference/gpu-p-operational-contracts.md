@@ -62,9 +62,9 @@ Each layer owns one role. Roles must not fix another layer's contract.
 
 | Surface | When |
 |---------|------|
-| Primary Windows | `hom-lab-hvh-02` → `192.168.50.158` (LAN) |
-| Guest gateway fallback | `hom-lab-hvh-02-guest-gw` → `192.168.137.1` |
-| IPv6 fallback | `hom-lab-hvh-02-ipv6` |
+| Primary Windows | `HOM-LAB-HVH-02` → `192.168.50.158` (LAN) |
+| Guest gateway fallback | `HOM-LAB-HVH-02-guest-gw` → `192.168.137.1` |
+| IPv6 fallback | `HOM-LAB-HVH-02-ipv6` |
 
 Use guest-gateway surface when LAN SSH is refused but mac-dev can reach `192.168.137.1`.
 
@@ -111,7 +111,7 @@ ansible-playbook playbooks/hyperv_ubuntu_gpu_p_runtime_artifact_pipeline_hvh02_k
 When LAN SSH to hvh-02 fails, override Windows hosts:
 
 ```yaml
-hyperv_ubuntu_gpu_p_runtime_windows_hosts: hom-lab-hvh-02-guest-gw
+hyperv_ubuntu_gpu_p_runtime_windows_hosts: HOM-LAB-HVH-02-guest-gw
 ```
 
 ### Driver purge only (P0)
@@ -143,7 +143,7 @@ ansible-playbook playbooks/troubleshoot/hyperv_ubuntu_gpu_p_guest_runtime_local_
 
 ```bash
 ansible-playbook playbooks/troubleshoot/collect_hyperv_ubuntu_gpu_p_artifacts.yaml \
-  --limit hom-lab-ctl-k3s-02,hom-lab-hvh-02-guest-gw
+  --limit hom-lab-ctl-k3s-02,HOM-LAB-HVH-02-guest-gw
 ```
 
 ---
@@ -162,6 +162,6 @@ Automated by `roles/hyperv_gpu_partition_adapter` when
 
 | Host | Key vars |
 |------|----------|
-| `hom-lab-hvh-02` | `hyperv_config.guest_gateway_ipv4`, partition VRAM sizing |
-| `hom-lab-hvh-02-guest-gw` | Fallback `ansible_host: 192.168.137.1` |
+| `HOM-LAB-HVH-02` | `hyperv_config.guest_gateway_ipv4`, partition VRAM sizing |
+| `HOM-LAB-HVH-02-guest-gw` | Fallback `ansible_host: 192.168.137.1` |
 | `hom-lab-ctl-k3s-02` | `k3s_nvidia_runtime_install_guest_driver: false`, share_host SSOT |

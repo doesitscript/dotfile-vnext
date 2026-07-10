@@ -1,0 +1,48 @@
+---
+- name: Manage netcat Homebrew formula
+  community.general.homebrew:
+    name: "{{ netcat_cli_homebrew_formula }}"
+    state: "{{ netcat_cli_state }}"
+
+- name: Check installed netcat formula
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --formula
+      - "{{ netcat_cli_homebrew_formula }}"
+  register: netcat_cli_formula_check
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - netcat_cli_verify | bool
+
+- name: Verify netcat formula is present
+  ansible.builtin.assert:
+    that:
+      - netcat_cli_formula_check.rc == 0
+    fail_msg: "Homebrew formula {{ netcat_cli_homebrew_formula }} is not installed."
+  when:
+    - not ansible_check_mode
+    - netcat_cli_verify | bool
+    - netcat_cli_state == "present"
+
+- name: Verify netcat formula is absent
+  ansible.builtin.assert:
+    that:
+      - netcat_cli_formula_check.rc != 0
+    fail_msg: "Homebrew formula {{ netcat_cli_homebrew_formula }} remains installed."
+  when:
+    - not ansible_check_mode
+    - netcat_cli_verify | bool
+    - netcat_cli_state == "absent"
+
+- name: Report netcat formula state
+  ansible.builtin.debug:
+    msg: >-
+      Homebrew formula {{ netcat_cli_homebrew_formula }} is
+      {{ 'installed' if netcat_cli_state == 'present' else 'absent' }}.
+  when:
+    - not ansible_check_mode
+    - netcat_cli_verify | bool

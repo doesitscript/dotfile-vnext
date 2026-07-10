@@ -55,7 +55,7 @@ Preview one host:
 ```bash
 ansible-playbook playbooks/windows_driver_backup.yml \
   --tags driver_backup_preview \
-  --limit hom-lab-hvh-01
+  --limit HOM-LAB-HVH-01
 ```
 
 ### Apply

@@ -12,9 +12,17 @@ netbox_scope: true
 - Keep the modeled steady state of `HOM-LAB-HVH-02 = 192.168.50.158` and `HOM-LAB-HVH-01 = 192.168.50.234` unless a read-only Windows + GT6 audit proves a different intended target.
 - Repair repo/live mismatches across Hyper-V, K3s publication, controller consumers, and NetBox naming/service metadata without introducing a new capability packet.
 - Preserve the interim `homelab_hosts_file_mac` bridge and the current router-DNS deferral model; final authoritative LAN DNS is out of scope.
+- Treat the recent `HOM-LAB-HVH-01` → `HOM-LAB-HVH-01` rename, plus `HOM-LAB-HVH-02` naming alignment, as active project truth for hostnames and plan language in this packet. Filesystem paths remain lowercase where the repo currently stores them that way.
+
+## Packet Map
+
+- Canonical plan entrypoint: [README.md](/Users/joshc/develop/dotfile-vnext/docs/plans/2026-07-09--homelab-lan-edge-drift-remediation-incomplete/README.md)
+- Correlated findings and duplicate-entry audit: [findings.md](/Users/joshc/develop/dotfile-vnext/docs/plans/2026-07-09--homelab-lan-edge-drift-remediation-incomplete/findings.md)
+- Planned and executed fix lanes: [fixes.md](/Users/joshc/develop/dotfile-vnext/docs/plans/2026-07-09--homelab-lan-edge-drift-remediation-incomplete/fixes.md)
 
 ## Current Correlation And Multiple-Entry Report
 
+- Detailed findings now live in [findings.md](/Users/joshc/develop/dotfile-vnext/docs/plans/2026-07-09--homelab-lan-edge-drift-remediation-incomplete/findings.md).
 - `HOM-LAB-HVH-02` authority remains split across `inventory/host_vars/HOM-LAB-HVH-02.yaml`, `inventory/hosts_mapping.yaml`, `inventory/group_vars/all/homelab_router_gt6.yml`, and `docs/reference/naming-standards/live-object-registry.yml`.
 - Live drift remains real on `hvh-02`: the host-side public edge moved to `192.168.50.159`, while active repo authority, router routes, controller consumers, and portproxy listeners remain modeled on `192.168.50.158`.
 - `192.168.50.158` was duplicated across both authority and consumer layers, including `inventory/netbox.yml`, `roles/mcp_servers/netbox/defaults/main.yml`, `roles/k3s_traefik_routes/defaults/main.yml`, `roles/homelab_hosts_file_mac/defaults/main.yml`, `inventory/host_vars/hom-lab-ctl-dkr-02.yaml`, and operator docs.
@@ -35,7 +43,7 @@ netbox_scope: true
 | Capability identifier | `homelab-lan-edge-drift-remediation` |
 | Owner manifest | No new manifest. Existing owners: `roles/hyperv_networking`, `roles/k3s_traefik_routes`, `roles/k3s_langfuse_platform`, `roles/k3s_litellm_gateway`, `roles/ipam_netbox`, `roles/mcp_servers/netbox` |
 | Owned files | Existing inventory, docs, role defaults/tasks, playbooks, and generated config blocks only |
-| Integration anchors | `inventory/host_vars/hom-lab-ctl-hvh-{01,02}.yaml`, `inventory/hosts_mapping.yaml`, `inventory/group_vars/all/homelab_hosts_file.yml`, `inventory/group_vars/all/homelab_router_gt6.yml`, `inventory/group_vars/k3s_cluster.yaml`, `docs/reference/naming-standards/live-object-registry.yml`, `playbooks/configure_hyperv_windows_hosts.yaml`, `playbooks/deploy_langfuse_platform.yaml`, `playbooks/deploy_litellm_gateway.yaml`, `playbooks/k3s_traefik_routes.yaml`, `playbooks/homelab_hosts_file_mac.yaml`, `playbooks/mac/mcp_servers.yaml`, `playbooks/deploy_ipam_netbox.yaml`, `playbooks/reconcile_netbox.yaml` |
+| Integration anchors | `inventory/host_vars/HOM-LAB-HVH-{01,02}.yaml`, `inventory/hosts_mapping.yaml`, `inventory/group_vars/all/homelab_hosts_file.yml`, `inventory/group_vars/all/homelab_router_gt6.yml`, `inventory/group_vars/k3s_cluster.yaml`, `docs/reference/naming-standards/live-object-registry.yml`, `playbooks/configure_hyperv_windows_hosts.yaml`, `playbooks/deploy_langfuse_platform.yaml`, `playbooks/deploy_litellm_gateway.yaml`, `playbooks/k3s_traefik_routes.yaml`, `playbooks/homelab_hosts_file_mac.yaml`, `playbooks/mac/mcp_servers.yaml`, `playbooks/deploy_ipam_netbox.yaml`, `playbooks/reconcile_netbox.yaml` |
 | Update behavior | Read-only authority/live audit first, then owner-playbook convergence on Hyper-V/K3s/controller/NetBox surfaces, then verification receipts |
 | Removal behavior | Revert repo authority edits, rerender generated MCP/hosts outputs through owner roles, and reapply prior Hyper-V/K3s state through the same playbooks |
 
@@ -55,6 +63,8 @@ netbox_scope: true
   - Generated MCP config remains owned by `roles/mcp_servers/netbox`; local rerender is allowed, hand-editing managed blocks is not.
 
 ## Implementation Changes
+
+- Detailed fix sequencing now lives in [fixes.md](/Users/joshc/develop/dotfile-vnext/docs/plans/2026-07-09--homelab-lan-edge-drift-remediation-incomplete/fixes.md).
 
 ### Slice A — authority audit and duplicate cleanup
 
@@ -304,6 +314,8 @@ flowchart TB
   - `Naming/Modeling Diagram`
   - `Plan verification receipt`
   - `Diagram gate receipt`
+  - `findings.md`
+  - `fixes.md`
 - Other available diagram types:
   - Windows interface/IP/route recovery timeline for `hvh-02`
   - Storage-lane dependency chain for `langfuse` / `litellm`
