@@ -9,7 +9,7 @@ Thin wrapper that feeds **mac-dev** `/etc/hosts` via Git-installed **`hosts_file
 |-------|--------|----------------------|
 | L1 Routing | GT6 static route Job 1 | Guest `.137.x` reachable from LAN |
 | L2 LAN DNS | GT6 DHCP domain `hom.lab` + manual rows | `langfuse.hom.lab` / `litellm.hom.lab` → `.158` |
-| L3 Portproxy | `hyperv_networking` on hvh-02 | `:80` → `192.168.137.11:80` (`k3s-traefik-http`) |
+| L3 Portproxy | `hyperv_networking` on hvh-02 | `:80` → `192.168.137.11:<k3s_traefik_routes_http_node_port>` (`k3s-traefik-http`) |
 | L4 Ingress | `k3s_traefik_routes` | Ingress CR host = registry `hostname` |
 | L5 mac hosts | **this role** | Guest VM names (`.137.x`); service names if GT6 rows missing |
 

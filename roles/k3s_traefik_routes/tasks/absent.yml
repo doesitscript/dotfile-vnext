@@ -1,6 +1,18 @@
 ---
 # k3s_traefik_routes — remove managed Ingress CRs.
 
+- name: Remove packaged Traefik HelmChartConfig override
+  kubernetes.core.k8s:
+    state: absent
+    api_version: helm.cattle.io/v1
+    kind: HelmChartConfig
+    name: "{{ k3s_traefik_routes_packaged_traefik_name }}"
+    namespace: "{{ k3s_traefik_routes_packaged_traefik_namespace }}"
+  environment:
+    KUBECONFIG: "{{ k3s_traefik_routes_kubeconfig }}"
+  when: k3s_traefik_routes_manage_packaged_traefik | bool
+  tags: [k3s_traefik_routes]
+
 - name: Remove Traefik Ingress routes from registry
   kubernetes.core.k8s:
     state: absent

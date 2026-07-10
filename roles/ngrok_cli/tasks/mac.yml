@@ -1,0 +1,48 @@
+---
+- name: Manage ngrok Homebrew cask
+  community.general.homebrew_cask:
+    name: "{{ ngrok_cli_homebrew_cask }}"
+    state: "{{ ngrok_cli_state }}"
+
+- name: Check installed ngrok cask
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --cask
+      - "{{ ngrok_cli_homebrew_cask }}"
+  register: ngrok_cli_cask_check
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - ngrok_cli_verify | bool
+
+- name: Verify ngrok cask is present
+  ansible.builtin.assert:
+    that:
+      - ngrok_cli_cask_check.rc == 0
+    fail_msg: "Homebrew cask {{ ngrok_cli_homebrew_cask }} is not installed."
+  when:
+    - not ansible_check_mode
+    - ngrok_cli_verify | bool
+    - ngrok_cli_state == "present"
+
+- name: Verify ngrok cask is absent
+  ansible.builtin.assert:
+    that:
+      - ngrok_cli_cask_check.rc != 0
+    fail_msg: "Homebrew cask {{ ngrok_cli_homebrew_cask }} remains installed."
+  when:
+    - not ansible_check_mode
+    - ngrok_cli_verify | bool
+    - ngrok_cli_state == "absent"
+
+- name: Report ngrok cask state
+  ansible.builtin.debug:
+    msg: >-
+      Homebrew cask {{ ngrok_cli_homebrew_cask }} is
+      {{ 'installed' if ngrok_cli_state == 'present' else 'absent' }}.
+  when:
+    - not ansible_check_mode
+    - ngrok_cli_verify | bool

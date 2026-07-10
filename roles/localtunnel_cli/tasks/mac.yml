@@ -1,0 +1,48 @@
+---
+- name: Manage localtunnel Homebrew formula
+  community.general.homebrew:
+    name: "{{ localtunnel_cli_homebrew_formula }}"
+    state: "{{ localtunnel_cli_state }}"
+
+- name: Check installed localtunnel formula
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --formula
+      - "{{ localtunnel_cli_homebrew_formula }}"
+  register: localtunnel_cli_formula_check
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - localtunnel_cli_verify | bool
+
+- name: Verify localtunnel formula is present
+  ansible.builtin.assert:
+    that:
+      - localtunnel_cli_formula_check.rc == 0
+    fail_msg: "Homebrew formula {{ localtunnel_cli_homebrew_formula }} is not installed."
+  when:
+    - not ansible_check_mode
+    - localtunnel_cli_verify | bool
+    - localtunnel_cli_state == "present"
+
+- name: Verify localtunnel formula is absent
+  ansible.builtin.assert:
+    that:
+      - localtunnel_cli_formula_check.rc != 0
+    fail_msg: "Homebrew formula {{ localtunnel_cli_homebrew_formula }} remains installed."
+  when:
+    - not ansible_check_mode
+    - localtunnel_cli_verify | bool
+    - localtunnel_cli_state == "absent"
+
+- name: Report localtunnel formula state
+  ansible.builtin.debug:
+    msg: >-
+      Homebrew formula {{ localtunnel_cli_homebrew_formula }} is
+      {{ 'installed' if localtunnel_cli_state == 'present' else 'absent' }}.
+  when:
+    - not ansible_check_mode
+    - localtunnel_cli_verify | bool

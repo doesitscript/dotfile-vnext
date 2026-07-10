@@ -198,6 +198,25 @@ export async function crossCheckFirecrawlPages({
 }) {
   const results = [];
   for (const page of pages) {
+    if (page.skip_context7_validation) {
+      results.push({
+        page_id: page.id,
+        url: page.url,
+        library_id: libraryId,
+        query: null,
+        firecrawl_chars: 0,
+        context7_chars: 0,
+        overlap_ratio: 0,
+        overlap_terms: [],
+        context7_only_terms: [],
+        firecrawl_only_terms: [],
+        gap_notes: ["context7_validation_skipped"],
+        status: "skipped",
+        context7_excerpt: "",
+        validated_at: new Date().toISOString(),
+      });
+      continue;
+    }
     const query =
       page.validation_query ||
       page.cross_check_query ||

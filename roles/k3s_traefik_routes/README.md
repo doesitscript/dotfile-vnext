@@ -9,7 +9,7 @@ kube-system Traefik** from the route registry.
 |-------|----------|
 | Patterns | `docs/reference/naming-standards/ansible.yml` → `k3s_traefik_routes` |
 | Reference instances | `docs/reference/naming-standards/live-object-registry.yml` → `ingress_routes` |
-| Runtime registry | `inventory/group_vars/k3s_cluster.yaml` → `k3s_traefik_routes_entries` |
+| Runtime registry | `inventory/group_vars/k3s_cluster.yaml` → `k3s_traefik_routes_entries`, `k3s_traefik_routes_http_node_port` |
 
 ## Lifecycle
 
@@ -23,9 +23,10 @@ Default **`absent`** until operator sets `present` for apply.
 
 | Does | Does not |
 |------|----------|
-| Apply/remove Ingress CRs | Install Traefik |
+| Apply/remove Ingress CRs | Install Traefik from scratch |
+| Pin packaged Traefik HTTP NodePort via `HelmChartConfig` | Manage app secrets |
 | Standard labels/annotations | Deploy Helm releases |
-| Verify backend Services exist | Manage app secrets |
+| Verify backend Services exist and live Traefik HTTP NodePort alignment | |
 
 ## Playbook
 
@@ -35,8 +36,8 @@ Default **`absent`** until operator sets `present` for apply.
 
 | | |
 |---|---|
-| **Apply** | `--tags k3s_traefik_routes_apply -e k3s_traefik_routes_state=present` on `hom-lab-ctl-k3s-02` |
-| **Verify** | `--tags k3s_traefik_routes_verify`; confirm Traefik Service and backend Services |
+| **Apply** | `--tags k3s_traefik_routes_apply -e k3s_traefik_routes_state=present` on `hom-lab-ctl-k3s-02`; packaged Traefik `web` NodePort is pinned from `k3s_traefik_routes_http_node_port` |
+| **Verify** | `--tags k3s_traefik_routes_verify`; confirm Traefik Service, declared `web` NodePort, and backend Services |
 | **Undo** | `k3s_traefik_routes_state: absent` |
 | **Class** | Idempotent config |
 

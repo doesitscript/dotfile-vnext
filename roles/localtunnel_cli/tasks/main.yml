@@ -1,0 +1,9 @@
+---
+- name: Require macOS for localtunnel_cli package management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "localtunnel_cli currently supports macOS through Homebrew only."
+
+- name: Manage localtunnel on macOS
+  ansible.builtin.import_tasks: mac.yml

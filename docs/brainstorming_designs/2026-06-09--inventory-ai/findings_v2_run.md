@@ -181,50 +181,88 @@ Origin: /Users/joshc/develop/dotfile-vnext/roles/hyperv_networking/tasks/routed_
 302
 303 - name: Ensure modeled public IPv4 gateway and DNS exist on the public interface
       ^ column 3
+The live state is fixed: HOM-LAB-HVH-02 now has 0.0.0.0/0 via 192.168.50.1, Windows can reach 1.1.1.1:443, and hom-lab-ctl-k3s-02 can curl Ubuntu successfully. I’m hardening that new task so a transient SSH drop during route installation doesn’t leave the playbook looking failed on the next run.
 
-fatal: [HOM-LAB-HVH-02]: UNREACHABLE! => {"changed": false, "msg": "Task failed: Data could not be sent to remote host \"192.168.50.158\". Make sure this host can be reached over ssh: #< CLIXML", "unreachable": true}
+# can we group the playbooks so that we can get to this point next time
+The Hyper-V side now converges cleanly with the explicit gateway/DNS in place. 
 
-PLAY RECAP *********************************************************************
-HOM-LAB-HVH-02             : ok=32   changed=0    unreachable=1'<>
+<-- right here>
+I’m resuming the rebuild at the exact blocked step: fresh k3s-02 bootstrap, then the GPU and application playbooks if that lands.
+#### end of grouping
 
-** Validating test **
-ssh -o BatchMode=yes -o ConnectTimeout=10 HOM-LAB-HVH-02 "hostname; powershell -NoProfile -Command "Get-NetIPConfiguration -InterfaceAlias 'vEthernet (External)' | Format-List InterfaceAlias,IPv4Address,IPv4DefaultGateway,DNSServer; Get-NetRoute -AddressFamily IPv4 | Where-Object DestinationPrefix -eq '0.0.0.0/0' | Format-Table ifIndex,InterfaceAlias,NextHop,RouteMetric,State -Auto; Test-NetConnection -ComputerName 1.1.1.1 -Port 443 | Format-List ComputerName,RemotePort,TcpTestSucceeded,InterfaceAlias,SourceAddress
+**** new chapter ***
+$ bin/codex-env ansible-playbook playbooks/deploy_gpu_infrastructure.yaml -i inventory/inventory.yaml
+TASK [k3s_nvidia_device_plugin : Ensure NVIDIA device plugin Helm repository is configured] ***
+TASK [k3s_nvidia_device_plugin : Ensure NVIDIA device plugin release is present] *** 
+
+# need to add more of a timeout or something
+^C[ERROR]: User interrupted execution
+because this is exactly where the cluster starts advertising usable GPU resources.
+
+```
+NAMESPACE              NAME                                      READY   STATUS      RESTARTS   AGE     IP          NODE                 NOMINATED NODE   READINESS GATES
+kube-system            coredns-796449bc5d-5dthm                  1/1     Running     0          3m53s   10.42.0.2   hom-lab-ctl-k3s-02   <none>           <none>
+kube-system            helm-install-traefik-7g8dm                0/1     Completed   1          3m53s   10.42.0.5   hom-lab-ctl-k3s-02   <none>           <none>
+kube-system            helm-install-traefik-crd-jq7zp            0/1     Completed   0          3m53s   10.42.0.6   hom-lab-ctl-k3s-02   <none>           <none>
+kube-system            local-path-provisioner-5b5f758bcf-v2w6j   1/1     Running     0          3m53s   10.42.0.3   hom-lab-ctl-k3s-02   <none>           <none>
+kube-system            metrics-server-564cb4ff68-hkc45           1/1     Running     0          3m53s   10.42.0.4   hom-lab-ctl-k3s-02   <none>           <none>
+kube-system            traefik-79f8d498fd-88vnt                  1/1     Running     0          3m45s   10.42.0.7   hom-lab-ctl-k3s-02   <none>           <none>
+nvidia-device-plugin   nvidia-device-plugin-nvr95                1/1     Running     0          3m1s    10.42.0.8   hom-lab-ctl-k3s-02   <none>           <none>
+```
+
+**The cluster itself already shows the NVIDIA device plugin pod running
+
+Note  dealing with a hang
+sudo k3s kubectl -n nvidia-device-plugin get ds nvidia-device-plugin -o yaml
+*** false negative, ITS WORKING!!!
+the device-plugin pod is already 1/1 Running, but the role waits through k8s_info wait_condition on the DaemonSet object, which appears to be stalling even after the DS is healthy.
+
+'The cluster now advertises nvidia.com/gpu=1, and the NVIDIA device plugin is running, but the prereq gate is still correctly blocking because guest userspace is incomplete: nvidia-smi is still absent inside hom-lab-ctl-k3s-02. I’m correlating the owning GPU-P guest-runtime playbook so we can fix the missing userspace layer before attempting vllm.'
+/The remaining gap is now well-bounded: deploy_gpu_infrastructure.yaml assumes the guest GPU-P userspace is already present, but that assumption isn’t encoded in the playbook order. I’m wiring hyperv_ubuntu_gpu_p_runtime.yaml into that playbook so future GPU infra runs bring up the guest runtime first instead of leaving nvidia-smi as an out-of-band prerequisite.'
+Ensure this is documented
+*** YEAH!!!
+he missing userspace is fixed now: hyperv_ubuntu_gpu_p_linux_guest_runtime reached a clean nvidia-smi success inside hom-lab-ctl-k3s-02
+
+#last command of non app layer:
+bin/codex-env ansible-playbook playbooks/deploy_gpu_infrastructure.yaml -i inventory/inventory.yaml --syntax-check
+#### form her it is the app layer: #####
+after
 
 
-HOM-LAB-HVH-02
 
 
-InterfaceAlias     : vEthernet (External)
-IPv4Address        : {192.168.50.158}
-IPv4DefaultGateway : {MSFT_NetRoute (InstanceID = ":8:8:8:9:55?55;C?8;@B8?:8;55;")}
-DNSServer          : {MSFT_DNSClientServerAddress (Name = "4", CreationClassName = "", 
-                     SystemCreationClassName = "", SystemName = "23"), 
-                     MSFT_DNSClientServerAddress (Name = "4", CreationClassName = "", 
-                     SystemCreationClassName = "", SystemName = "2")}
+starting with vllm, then langfuse, litellm, and Traefik publication.
+bin/codex-env ansible-playbook playbooks/deploy_vllm_runtime.yaml -i inventory/inventory.yaml
+
+### do we want to giv more CPU i think i have a lot
+he vllm failure is just a sizing mismatch now: hom-lab-ctl-k3s-02 only has 2 allocatable CPU
+
+# intial failure
+langfuse: Helm chart fetch hit a DNS timeout resolving github.com from the guest
+litellm: the role tries to create a secret in namespace litellm before ensuring that namespace exists
+
+?The access chain refreshed the new k3s-02 kubeconfig, but the final per-cluster reachability check hit a TLS handshake timeout
+nce I restarted the 26443 SSH tunnel, curl hit the K3s API and kubectl on k3s-02 worked immediately. I’m fixing the role so it treats “port is listening” and “API behind the tunnel is actually healthy” as two different things.
+
+
+Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex 4 | Select-Object IPAddress,PrefixLength | ConvertTo-Json -Compress; Write-Host ---; Test-NetConnection 192.168.137.11 -Port 30189 | Select-Object ComputerName,RemotePort,TcpTestSucceeded | ConvertTo-Json -Compress; Write-Host ---; Test-NetConnection 192.168.137.11 -Port 30400 | Select-Object ComputerName,RemotePort,TcpTestSucceeded | ConvertTo-Json -Compress
+
+sleep 8; bin/codex-env ssh HOM-LAB-HVH-02 "powershell -NoProfile -Command 'netsh interface portproxy show v4tov4; Write-Host ---; Test-NetConnection 192.168.137.11 -Port 30189 | Select-Object ComputerName,RemotePort,TcpTestSucceeded | ConvertTo-Json -Compress
+
+make a skill to fix LAN edge
+
+
+# Main fiexes:
+
+The main fixes were in automation, not just live state. I updated playbooks/access.yaml to chain into mac hosts/kube surfaces, extended playbooks/deploy_gpu_infrastructure.yaml to continue through vllm -> langfuse -> litellm -> traefik -> k3s_mac_client, hardened k3s_mac_client so stale SSH tunnels are detected and refreshed, taught the Langfuse role to do a true fresh-install reset of its external Postgres DB, lowered Langfuse resource requests and disabled ClickHouse cluster mode for the single-node external ClickHouse path, fixed LiteLLM’s namespace/Helm ordering, and updated the vllm role to use a Recreate rollout bridge so request changes can converge on a one-GPU node. I also corrected the stale HOM-LAB-HVH-02 publish edge: 192.168.50.158:80 was still portproxying to retired Traefik NodePort 31461; it now points at the live 30189, and that’s why the bare langfuse.hom.lab / litellm.hom.lab URLs started working from mac.
+
+
+# how can we automate or hook on this proces if it happens again:
+. I also corrected the stale HOM-LAB-HVH-02 publish edge: 192.168.50.158:80 was still portproxying to retired Traefik NodePort 31461; it now points at the live 30189, and that’s why the bare langfuse.hom.lab / litellm.hom.lab URLs started working from mac.
 
 
 
 
-ifIndex InterfaceAlias       NextHop      RouteMetric State
-------- --------------       -------      ----------- -----
-      4 vEthernet (External) 192.168.50.1         256 Alive
 
-
-
-
-ComputerName     : 1.1.1.1
-RemotePort       : 443
-TcpTestSucceeded : True
-InterfaceAlias   : vEthernet (External)
-SourceAddress    : 192.168.50.158'
-
-ssh -J HOM-LAB-HVH-02 -i ~/.ssh/id_ed25519_ansible -o IdentitiesOnly=yes -o StrictHostKeyChecking=no joshc@192.168.137.11 "timeout 8 curl -I -4 http://archive.ubuntu.com/ubuntu/; echo rc:$?
-
-
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
-HTTP/1.1 200 OK
-Date: Fri, 10 Jul 2026 01:04:54 GMT
-Server: Apache/2.4.52 (Ubuntu)
-Content-Type: text/html;charset=UTF-8
+#### the commit update ###
+The main fixes were in automation, not just live state. I updated playbooks/access.yaml to chain into mac hosts/kube surfaces, extended playbooks/deploy_gpu_infrastructure.yaml to continue through vllm -> langfuse -> litellm -> traefik -> k3s_mac_client, hardened k3s_mac_client so stale SSH tunnels are detected and refreshed, taught the Langfuse role to do a true fresh-install reset of its external Postgres DB, lowered Langfuse resource requests and disabled ClickHouse cluster mode for the single-node external ClickHouse path, fixed LiteLLM’s namespace/Helm ordering, and updated the vllm role to use a Recreate rollout bridge so request changes can converge on a one-GPU node. I also corrected the stale HOM-LAB-HVH-02 publish edge: 192.168.50.158:80 was still portproxying to retired Traefik NodePort 31461; it now points at the live 30189, and that’s why the bare langfuse.hom.lab / litellm.hom.lab URLs started working from mac.

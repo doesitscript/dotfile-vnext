@@ -1,6 +1,39 @@
 ---
 # k3s_traefik_routes — apply Ingress CRs from registry.
 
+- name: Assert declared Traefik HTTP NodePort is valid
+  ansible.builtin.assert:
+    that:
+      - (k3s_traefik_routes_http_node_port | int) >= 30000
+      - (k3s_traefik_routes_http_node_port | int) <= 32767
+    fail_msg: >-
+      k3s_traefik_routes_http_node_port must be a valid Kubernetes NodePort
+      (30000-32767). Current value: {{ k3s_traefik_routes_http_node_port }}.
+  when: k3s_traefik_routes_manage_packaged_traefik | bool
+  tags: [k3s_traefik_routes, k3s_traefik_routes_apply, k3s_traefik_routes_verify]
+
+- name: Pin packaged Traefik HTTP NodePort through HelmChartConfig
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: helm.cattle.io/v1
+      kind: HelmChartConfig
+      metadata:
+        name: "{{ k3s_traefik_routes_packaged_traefik_name }}"
+        namespace: "{{ k3s_traefik_routes_packaged_traefik_namespace }}"
+        labels:
+          app.kubernetes.io/managed-by: ansible
+          app.kubernetes.io/part-of: homelab-k3s-ingress
+      spec:
+        valuesContent: |
+          ports:
+            web:
+              nodePort: {{ k3s_traefik_routes_http_node_port | int }}
+  environment:
+    KUBECONFIG: "{{ k3s_traefik_routes_kubeconfig }}"
+  when: k3s_traefik_routes_manage_packaged_traefik | bool
+  tags: [k3s_traefik_routes, k3s_traefik_routes_apply]
+
 - name: Query kube-system Traefik Service
   kubernetes.core.k8s_info:
     api_version: v1
@@ -11,6 +44,25 @@
   environment:
     KUBECONFIG: "{{ k3s_traefik_routes_kubeconfig }}"
   register: k3s_traefik_routes_traefik_service
+  until: >-
+    (
+      k3s_traefik_routes_traefik_service.resources | default([]) | length
+    ) > 0 and (
+      (not (k3s_traefik_routes_manage_packaged_traefik | bool))
+      or (
+        (
+          (
+            k3s_traefik_routes_traefik_service.resources[0].spec.ports
+            | selectattr('port', 'equalto', 80)
+            | map(attribute='nodePort')
+            | first
+            | default(0)
+          ) | int
+        ) == (k3s_traefik_routes_http_node_port | int)
+      )
+    )
+  retries: 20
+  delay: 3
   tags: [k3s_traefik_routes, k3s_traefik_routes_apply, k3s_traefik_routes_verify, k3s_traefik_routes_preview]
 
 - name: Report Traefik Service ports for portproxy alignment
@@ -22,6 +74,35 @@
         | list
       }}
   tags: [k3s_traefik_routes_preview]
+
+- name: Resolve live Traefik HTTP node port
+  ansible.builtin.set_fact:
+    k3s_traefik_routes_live_http_node_port: >-
+      {{
+        (
+          k3s_traefik_routes_traefik_service.resources[0].spec.ports
+          | selectattr('port', 'equalto', 80)
+          | map(attribute='nodePort')
+          | first
+        ) | int
+      }}
+  when: (k3s_traefik_routes_traefik_service.resources | default([])) | length > 0
+  tags: [k3s_traefik_routes, k3s_traefik_routes_apply, k3s_traefik_routes_verify]
+
+- name: Require live Traefik HTTP node port to match declared publish authority
+  ansible.builtin.assert:
+    that:
+      - (k3s_traefik_routes_live_http_node_port | default(0) | int) == (k3s_traefik_routes_http_node_port | int)
+    fail_msg: >-
+      Live Traefik HTTP nodePort {{
+        k3s_traefik_routes_live_http_node_port | default('unset')
+      }} does not match declared k3s_traefik_routes_http_node_port {{
+        k3s_traefik_routes_http_node_port
+      }}.
+  when:
+    - k3s_traefik_routes_manage_packaged_traefik | bool
+    - (k3s_traefik_routes_traefik_service.resources | default([])) | length > 0
+  tags: [k3s_traefik_routes, k3s_traefik_routes_apply, k3s_traefik_routes_verify]
 
 - name: Apply Traefik Ingress routes from registry
   kubernetes.core.k8s:
@@ -188,14 +269,11 @@
 
 - name: Resolve Traefik HTTP node port for route probes
   ansible.builtin.set_fact:
-    k3s_traefik_routes_http_node_port: >-
+    k3s_traefik_routes_probe_http_node_port: >-
       {{
-        (
-          k3s_traefik_routes_traefik_service.resources[0].spec.ports
-          | selectattr('port', 'equalto', 80)
-          | map(attribute='nodePort')
-          | first
-        ) | int
+        k3s_traefik_routes_live_http_node_port
+        | default(k3s_traefik_routes_http_node_port)
+        | int
       }}
   when:
     - k3s_traefik_routes_verify_host_header | bool
@@ -205,7 +283,7 @@
 - name: Require Traefik HTTP node port for host-header route probes
   ansible.builtin.assert:
     that:
-      - (k3s_traefik_routes_http_node_port | default(0) | int) > 0
+      - (k3s_traefik_routes_probe_http_node_port | default(0) | int) > 0
     fail_msg: "Traefik HTTP node port could not be resolved for host-header probes."
   when: k3s_traefik_routes_verify_host_header | bool
   tags: [k3s_traefik_routes, k3s_traefik_routes_verify]
@@ -213,7 +291,7 @@
 - name: Probe each route through Traefik with the declared Host header
   ansible.builtin.uri:
     url: >-
-      http://{{ k3s_traefik_routes_probe_host }}:{{ k3s_traefik_routes_http_node_port }}{{ item.path | default('/') }}
+      http://{{ k3s_traefik_routes_probe_host }}:{{ k3s_traefik_routes_probe_http_node_port }}{{ item.path | default('/') }}
     headers:
       Host: "{{ item.hostname }}"
     method: GET

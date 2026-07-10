@@ -57,13 +57,13 @@ k3s_litellm_gateway_proxy_litellm_settings: "{{ {'success_callback': ['langfuse'
 k3s_litellm_gateway_router_settings: {}
 
 # Local vLLM backend contract for the first serious local coding lane.
-k3s_litellm_gateway_primary_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1"
+k3s_litellm_gateway_primary_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1" #FIXME: v1 is note part of the base
 k3s_litellm_gateway_primary_vllm_model: "Qwen/Qwen2.5-Coder-32B-Instruct-AWQ"
 k3s_litellm_gateway_secondary_review_runtime_host: "HOM-LAB-HVH-01"
 k3s_litellm_gateway_secondary_review_ollama_api_base: >-
   http://{{
     hostvars[k3s_litellm_gateway_secondary_review_runtime_host].host_ip
-    | default(hostvars[k3s_litellm_gateway_secondary_review_runtime_host].ansible_host | default('192.168.50.234'))
+    | default(hostvars[k3s_litellm_gateway_secondary_review_runtime_host].ansible_host | default('192.168.50.234')) # FIXME don't hardcode this
   }}:{{
     hostvars[k3s_litellm_gateway_secondary_review_runtime_host].windows_ollama_runtime_port
     | default(11434)

@@ -1,0 +1,44 @@
+
+
+export NGROK_AUTHTOKEN=NDVbpZaq1PC94CLvfVkR_7Ge8YR79MA6LG6XB2s11u
+printf '%s' "$NGROK_AUTHTOKEN" | bin/codex-env ansible-vault encrypt_string --stdin-name vault_ngrok_authtoken >> vault.yml
+ngrok config add-authtoken $NGROK_AUTHTOKEN
+ngrok http 80 --url=litellm.hom.lab.ngrok.io
+ngrok http 80 --url=litellm.ngrok.io
+ngrok http http://litellm.hom.lab # <-- forward to our kubernetes cluster
+ngrok http litellm.hom.lab # <-- forward to our kubernetes cluster
+ngrok http litellm.hom.lab:80
+ngrok http litellm:80
+ngrok http 192.168.50.158:80 <--- curent as of 11:32 and gets rsponses
+ngrok http 80
+
+https://8984-2600-1700-48fd-800f-9cf7-d4fe-56bb-bd41.ngrok-free.app/cursor
+
+litellm.hom.lab:80/v1 # ngrok should be intercpting all tracfic from port 80
+
+litellm.hom.lab
+litellm.hom.lab:80/v1
+litellm.hom.lab:80/v1
+
+https://1255-2600-1700-48fd-800f-9cf7-d4fe-56bb-bd41.ngrok-free.app
+https://1255-2600-1700-48fd-800f-9cf7-d4fe-56bb-bd41.ngrok-free.app/v1
+
+http://litellm.hom.lab/v1
+https://beb8-2600-1700-48fd-800f-9cf7-d4fe-56bb-bd41.ngrok-fre
+                              
+
+
+                              . Cursor validates the model name against an internal list of known models, and any name that is not in that list gets rejected as Model Name is Invalid. The case sensitivity tip above won’t help. The issue isn’t the casing, it’s that a custom name from your LiteLLM proxy fails validation, even when you’re using your own API key.
+
+We’re tracking this on our side, but we don’t have an exact ETA yet.
+
+A workaround that sometimes works is to map your LiteLLM model to a model name that Cursor already recognizes, like gpt-4o or claude-sonnet-4, then call it by that name from Cursor. Not ideal, but it can bypass the validation.
+<---
+Oh, hi @Grant_Godley, you should ask your moderators the exact string name of the models that are available to you via this proxy! The model name is case sensitive, meaning that even 1 wrong character and it won’t allow you to use it properly! hope this help
+
+
+curl -sS http://litellm.hom.lab/v1/models \
+  -H "Authorization: Bearer $LITELLM_API_KEY"
+
+
+  k3s_litellm_gateway_primary_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1"
