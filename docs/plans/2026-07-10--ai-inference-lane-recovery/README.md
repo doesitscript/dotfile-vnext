@@ -117,3 +117,33 @@ flowchart TB
   - K3s node pressure / recovery lifecycle detail
   - LiteLLM to vLLM service dependency detail
   - Published verification request flow
+
+curl -s -H 'Authorization: Bearer sk-Pass@w0rd1' \
+  -H 'Content-Type: application/json' \
+  http://litellm.hom.lab/v1/chat/completions \
+  -d '{"model":"deepreinforce-ai/Ornith-1.0-35B-GGUF","messages":[{"role":"user","content":"Reply with only the word READY."}],"max_tokens":8}'
+
+curl -s -H 'Authorization: Bearer sk-Pass@w0rd1' \
+  http://litellm.hom.lab/v1/models | jq '.data[]?.id'
+
+  serverAddr	192.168.50.158:80
+
+
+
+### this works and it takes me to the swagger endpoitn
+
+version: "3"
+agent:
+    authtoken: 3GKCxl41fOzNNZUenCH5PWSEfSq_2LwGiXGQBBo5RGbKXboBG
+    api_key: 3GKA0nT6tXLQYZIVu73GdLzWwk9_44Q92bUKq8mwjofDPG9Hy
+
+endpoints:
+  - name: litellm-internal
+    url: http://litellm.internal:30400
+    upstream:
+      url: http://192.168.50.158:30400
+
+  - name: litellm-public
+    url: 
+    upstream:
+      url: http://192.168.50.158:30400

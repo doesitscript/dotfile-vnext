@@ -81,6 +81,11 @@ ansible-playbook playbooks/deploy_ai_inference_stack.yaml -i inventory/inventory
 - Client profile contract: `inventory/group_vars/all/ai_agent_profiles.yml`
 - Gateway and route contract: `roles/k3s_litellm_gateway/defaults/main.yml`
 
+Important:
+- `deepreinforce-ai/Ornith-1.0-35B-GGUF` is the client-facing LiteLLM lane alias, not the literal upstream vLLM weights identifier.
+- The current primary local backend for that lane is `Qwen/Qwen2.5-Coder-32B-Instruct-AWQ`, with vLLM tool calling enabled through the `hermes` parser.
+- Context-overflow handling is now owned by LiteLLM router settings: with OpenAI configured, oversize requests fall back toward `gpt-4o-mini` and then `code-review`; without OpenAI configured, they fall back to `code-review`.
+
 Current client-facing lanes declared in the gateway contract:
 
 | Lane / model name | State | Backend |
@@ -140,3 +145,22 @@ If you just want the main AI surfaces:
 - LiteLLM gateway UI / ingress: `http://litellm.hom.lab/`
 - LiteLLM client API base: `http://litellm.hom.lab/v1`
 - Jupyter workbench: `http://jupyter.hom.lab:8888/lab`
+
+
+##### This workds and i get the swagger endpoitn
+
+version: "3"
+agent:
+    authtoken: 3GKCxl41fOzNNZUenCH5PWSEfSq_2LwGiXGQBBo5RGbKXboBG
+    api_key: 3GKA0nT6tXLQYZIVu73GdLzWwk9_44Q92bUKq8mwjofDPG9Hy
+
+endpoints:
+  - name: litellm-internal
+    url: http://litellm.internal:30400
+    upstream:
+      url: http://192.168.50.158:30400
+
+  - name: litellm-public
+    url: 
+    upstream:
+      url: http://192.168.50.158:30400

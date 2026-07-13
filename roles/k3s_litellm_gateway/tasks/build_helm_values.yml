@@ -7,6 +7,35 @@
         if (k3s_litellm_gateway_resolved_openai_api_key | default('') | length > 0)
         else k3s_litellm_gateway_model_list_without_openai
       }}
+    k3s_litellm_gateway_resolved_context_window_fallbacks: >-
+      {{
+        k3s_litellm_gateway_context_window_fallbacks_with_openai
+        if (k3s_litellm_gateway_resolved_openai_api_key | default('') | length > 0)
+        else k3s_litellm_gateway_context_window_fallbacks_without_openai
+      }}
+    k3s_litellm_gateway_resolved_router_settings: >-
+      {{
+        k3s_litellm_gateway_router_settings
+        | combine(
+          {
+            'enable_pre_call_checks': k3s_litellm_gateway_enable_pre_call_checks | bool
+          },
+          recursive=True
+        )
+      }}
+
+- name: Resolve LiteLLM proxy-level fallback settings
+  ansible.builtin.set_fact:
+    k3s_litellm_gateway_resolved_proxy_litellm_settings: >-
+      {{
+        k3s_litellm_gateway_proxy_litellm_settings
+        | combine(
+          {
+            'context_window_fallbacks': k3s_litellm_gateway_resolved_context_window_fallbacks
+          },
+          recursive=True
+        )
+      }}
 
 - name: Build LiteLLM Helm values from vault-backed configuration
   ansible.builtin.set_fact:
@@ -19,6 +48,7 @@
       image:
         repository: "{{ k3s_litellm_gateway_image_repository }}"
         tag: "{{ k3s_litellm_gateway_image_tag }}"
+      strategy: "{{ k3s_litellm_gateway_strategy }}"
       db:
         deployStandalone: false
         useExisting: true
@@ -41,7 +71,7 @@
           memory: "{{ k3s_litellm_gateway_memory_request }}"
       proxy_config:
         model_list: "{{ k3s_litellm_gateway_resolved_model_list }}"
-        router_settings: "{{ k3s_litellm_gateway_router_settings }}"
+        router_settings: "{{ k3s_litellm_gateway_resolved_router_settings }}"
         general_settings:
           master_key: os.environ/PROXY_MASTER_KEY
-        litellm_settings: "{{ k3s_litellm_gateway_proxy_litellm_settings }}"
+        litellm_settings: "{{ k3s_litellm_gateway_resolved_proxy_litellm_settings }}"
