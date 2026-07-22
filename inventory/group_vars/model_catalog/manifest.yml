@@ -54,20 +54,19 @@ model_catalog_manifest:
       notes: Requires current model research before pinning an HF repo.
     - lane: code-review
       purpose: critique, risk finding, test review
-      status: selected_for_secondary_runtime
-      candidate_family: small code-review/support model on a 6GB Windows GPU host
-      serving_runtime: ollama
-      selected_model: qwen2.5-coder:3b
-      fallback_model: qwen2.5-coder:1.5b
+      status: selected_alias_on_primary_vllm
+      candidate_family: code-review alias on shared vllm-primary until secondary runtime exists
+      serving_runtime: vllm
+      selected_model: Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
       storage_host: HOM-LAB-HVH-01
-      unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\ollama"
+      unc_path: null
       research_sources:
-        - https://ollama.com/library/qwen2.5-coder
-        - https://ollama.com/library/qwen2.5-coder/tags
+        - roles/k3s_vllm_runtime/defaults/main.yml
+        - roles/k3s_litellm_gateway/defaults/main.yml
       notes: >-
-        First secondary local-review lane on hvh-01. Central LiteLLM owns the
-        client-facing alias; Ollama stays host-local and Langfuse remains
-        centralized on k3s-02.
+        Ollama secondary-runtime path is retired. code-review is a LiteLLM
+        client alias on vllm-primary (same weights as Ornith) until a second
+        local vLLM runtime is researched and commissioned.
     - lane: code-test
       purpose: test generation and focused test repair
       status: pending_research

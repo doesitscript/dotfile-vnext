@@ -1,0 +1,158 @@
+# {{ ansible_managed }}
+# Temporary safety net: trim chat messages so local 32k vLLM backends do not
+# reject Cursor/agent prompts that sit over the context window.
+#
+# Cursor Agent payloads often add large `tools` schemas AFTER message trim, and
+# LiteLLM token_counter undercounts vs the hosted vLLM Qwen tokenizer. Budget
+# aggressively and hard-cut so vLLM never sees >32k.
+from __future__ import annotations
+
+import json
+from typing import Any, Literal, Optional
+
+from litellm.integrations.custom_logger import CustomLogger
+from litellm.utils import token_counter, trim_messages
+
+# Count with the served backend id — client aliases like Ornith are not reliable
+# tokenizers and can under-trim relative to vLLM's Qwen tokenizer.
+_TRIM_TOKENIZER_MODEL = "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
+_HARD_CONTEXT = 32768
+# Extra headroom for chat template + LiteLLM/vLLM tokenizer disagreement.
+_SAFETY_TOKENS = 2048
+_MIN_COMPLETION_TOKENS = 256
+# ~2.5 chars/token is a safer floor than 4 when hard-cutting Qwen prompts.
+_CHARS_PER_TOKEN = 2.5
+
+
+def _estimate_tools_tokens(data: dict) -> int:
+    tools = data.get("tools")
+    if not tools:
+        return 0
+    try:
+        raw = json.dumps(tools, ensure_ascii=False)
+    except (TypeError, ValueError):
+        raw = str(tools)
+    # Conservative: treat tools JSON denser than prose.
+    return max(0, int(len(raw) / 2.5))
+
+
+def _flatten_content(content: Any) -> str:
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                text = item.get("text")
+                if isinstance(text, str):
+                    parts.append(text)
+                else:
+                    parts.append(json.dumps(item, ensure_ascii=False))
+            else:
+                parts.append(str(item))
+        return "\n".join(parts)
+    if isinstance(content, dict):
+        text = content.get("text")
+        if isinstance(text, str):
+            return text
+        return json.dumps(content, ensure_ascii=False)
+    return str(content)
+
+
+def _hard_cut_messages(messages: list, max_chars: int) -> list:
+    """Keep newest message tails within a rough character budget."""
+    if max_chars < 64 or not messages:
+        return messages
+    out: list = []
+    remaining = max_chars
+    for msg in reversed(messages):
+        if remaining <= 0:
+            break
+        copied = dict(msg)
+        flat = _flatten_content(copied.get("content"))
+        if len(flat) > remaining:
+            flat = flat[-remaining:]
+        copied["content"] = flat
+        out.append(copied)
+        remaining -= len(flat)
+    out.reverse()
+    return out if out else messages[-1:]
+
+
+class MessageTrimHandler(CustomLogger):
+    """Pre-call hook that caps message tokens below the local model window."""
+
+    def __init__(
+        self,
+        max_input_tokens: int = {{ k3s_litellm_gateway_trim_messages_max_input_tokens | int }},
+    ) -> None:
+        super().__init__()
+        self.max_input_tokens = max_input_tokens
+
+    async def async_pre_call_hook(
+        self,
+        user_api_key_dict: Any,
+        cache: Any,
+        data: dict,
+        call_type: Literal[
+            "completion",
+            "text_completion",
+            "embeddings",
+            "image_generation",
+            "moderation",
+            "audio_transcription",
+        ],
+    ) -> Optional[dict]:
+        messages = data.get("messages")
+        if not isinstance(messages, list) or not messages:
+            return data
+
+        # Cursor sometimes sends max_tokens=0; vLLM rejects that and also
+        # reports "0 output tokens" when the window is already full.
+        requested_out = data.get("max_tokens")
+        try:
+            requested_out_i = int(requested_out) if requested_out is not None else 0
+        except (TypeError, ValueError):
+            requested_out_i = 0
+        if requested_out_i <= 0:
+            requested_out_i = _MIN_COMPLETION_TOKENS
+            data["max_tokens"] = requested_out_i
+
+        tools_tokens = _estimate_tools_tokens(data)
+        budget = min(
+            self.max_input_tokens,
+            _HARD_CONTEXT - requested_out_i - _SAFETY_TOKENS - tools_tokens,
+        )
+        if budget < 2048:
+            budget = 2048
+
+        try:
+            before = token_counter(model=_TRIM_TOKENIZER_MODEL, messages=messages)
+            trimmed = trim_messages(
+                messages,
+                _TRIM_TOKENIZER_MODEL,
+                max_tokens=budget,
+            )
+            after = token_counter(model=_TRIM_TOKENIZER_MODEL, messages=trimmed)
+            # Always apply a hard character cut so multimodal/tool-shaped
+            # content cannot slip past LiteLLM's tokenizer estimate.
+            max_chars = int(budget * _CHARS_PER_TOKEN)
+            trimmed = _hard_cut_messages(trimmed, max_chars)
+            after = token_counter(model=_TRIM_TOKENIZER_MODEL, messages=trimmed)
+            data["messages"] = trimmed
+            print(
+                f"litellm trim_messages hook: call_type={call_type} "
+                f"before={before} after={after} budget={budget} "
+                f"tools_est={tools_tokens} requested_out={requested_out_i}",
+                flush=True,
+            )
+        except Exception as exc:  # noqa: BLE001 - never block the request on trim failure
+            print(f"litellm trim_messages hook skipped: {exc}", flush=True)
+        return data
+
+
+proxy_handler_instance = MessageTrimHandler()

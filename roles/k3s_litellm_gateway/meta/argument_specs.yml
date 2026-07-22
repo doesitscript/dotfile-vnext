@@ -26,3 +26,21 @@ argument_specs:
         type: int
         default: 5432
         description: TCP port for the external PostgreSQL endpoint used by LiteLLM.
+      k3s_litellm_gateway_trim_messages_enabled:
+        type: bool
+        default: true
+        description: >-
+          Mount LiteLLM pre-call trim_messages at /etc/litellm/custom_callbacks.py
+          (beside config), restart the Deployment after ConfigMap apply (subPath
+          remount), and wait up to 600s for rollout under memory pressure.
+      k3s_litellm_gateway_trim_messages_max_input_tokens:
+        type: int
+        default: 24000
+        description: >-
+          Max input tokens after trim_messages. Hook also subtracts estimated
+          tools JSON, completion tokens (rewrites max_tokens 0 to 256), and a
+          safety margin; hard-cuts multimodal content for Cursor Agent payloads.
+      k3s_litellm_gateway_trim_messages_callback_configmap:
+        type: str
+        default: litellm-callback-files
+        description: ConfigMap name that holds custom_callbacks.py.

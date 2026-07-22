@@ -58,34 +58,94 @@ k3s_litellm_gateway_langfuse_secret_key: "{{ vault_shared_langfuse_secret_key | 
 k3s_litellm_gateway_proxy_litellm_settings: "{{ {'success_callback': ['langfuse']} if k3s_litellm_gateway_langfuse_enabled | bool else {} }}"
 k3s_litellm_gateway_router_settings: {}
 k3s_litellm_gateway_enable_pre_call_checks: true
+# Pre-call trim_messages hook — shrinks oversized Cursor/agent prompts to fit
+# local 32k vLLM context. Disable to remove the ConfigMap mount + callback.
+# Mount: /etc/litellm/custom_callbacks.py (beside config.yaml — not /app/).
+# Tokenize with hosted_vllm/<primary_vllm_model>; budget accounts for tools +
+# chat-template + LiteLLM vs vLLM tokenizer skew; hard-cut multimodal content.
+# subPath mounts need rollout restart; present.yml waits up to 600s.
+k3s_litellm_gateway_trim_messages_enabled: true
+k3s_litellm_gateway_trim_messages_callback_configmap: litellm-callback-files
+# Cap well below 32k — Cursor Agent tools inflate the real prompt after trim.
+k3s_litellm_gateway_trim_messages_max_input_tokens: 24000
+k3s_litellm_gateway_trim_messages_callback_ref: custom_callbacks.proxy_handler_instance
 k3s_litellm_gateway_context_window_fallbacks_with_openai:
   - deepreinforce-ai/Ornith-1.0-35B-GGUF:
       - gpt-4o-mini
-      - code-review
-k3s_litellm_gateway_context_window_fallbacks_without_openai:
-  - deepreinforce-ai/Ornith-1.0-35B-GGUF:
-      - code-review
+  - smart-router:
+      - gpt-4o-mini
+  - code-review:
+      - gpt-4o-mini
+# Local-only: Ornith and code-review share the same vLLM primary runtime (same
+# 32k context). Context-overflow fallbacks to another local alias cannot help —
+# require OpenAI/Anthropic keys for a larger-context escalation path.
+k3s_litellm_gateway_context_window_fallbacks_without_openai: []
 
-# Local vLLM backend contract for the first serious local coding lane.
+# Complexity auto-router (LiteLLM auto_router/complexity_router, requires >= v1.94.x).
+# Clients call model name `smart-router`; LiteLLM classifies SIMPLE/MEDIUM/COMPLEX/REASONING
+# and routes to the tier model names below. This is not confidence-based handoff.
+k3s_litellm_gateway_complexity_router_enabled: true
+k3s_litellm_gateway_complexity_router_model_name: smart-router
+k3s_litellm_gateway_complexity_router_default_model: deepreinforce-ai/Ornith-1.0-35B-GGUF
+# Local-first tiers. code-review shares vllm-primary until a distinct secondary
+# vLLM runtime exists; Ollama is retired from this gateway path.
+k3s_litellm_gateway_complexity_tiers_local:
+  SIMPLE: code-review
+  MEDIUM: deepreinforce-ai/Ornith-1.0-35B-GGUF
+  COMPLEX: deepreinforce-ai/Ornith-1.0-35B-GGUF
+  REASONING: deepreinforce-ai/Ornith-1.0-35B-GGUF
+# OpenAI available: keep local for SIMPLE/MEDIUM; escalate COMPLEX/REASONING to gpt-4o.
+k3s_litellm_gateway_complexity_tiers_with_openai:
+  SIMPLE: code-review
+  MEDIUM: deepreinforce-ai/Ornith-1.0-35B-GGUF
+  COMPLEX: gpt-4o
+  REASONING: gpt-4o
+# Anthropic available: escalate COMPLEX/REASONING to Claude (preferred over OpenAI escalation).
+k3s_litellm_gateway_complexity_tiers_with_anthropic:
+  SIMPLE: code-review
+  MEDIUM: deepreinforce-ai/Ornith-1.0-35B-GGUF
+  COMPLEX: claude-sonnet
+  REASONING: claude-sonnet
+k3s_litellm_gateway_complexity_router_keyword_tier_rules:
+  - keywords:
+      - hi
+      - hello
+      - thanks
+      - ping
+    tier: SIMPLE
+  - keywords:
+      - ansible
+      - playbook
+      - terraform
+      - kubernetes
+      - k3s
+      - netbox
+      - hyperv
+    tier: COMPLEX
+  - keywords:
+      - architecture
+      - design review
+      - step by step
+      - reason through
+    tier: REASONING
+k3s_litellm_gateway_complexity_router_custom_technical_keywords:
+  - ansible
+  - playbook
+  - netbox
+  - hyperv
+  - k3s
+  - winrm
+  - vault
+  - traefik
+  - langfuse
+
+# Local vLLM backend contract. Primary coding + review aliases share vllm-primary
+# until a second local vLLM runtime is commissioned.
 k3s_litellm_gateway_primary_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1" #FIXME: v1 is note part of the base
 k3s_litellm_gateway_primary_vllm_model: "Qwen/Qwen2.5-Coder-32B-Instruct-AWQ"
-k3s_litellm_gateway_secondary_review_runtime_host: "HOM-LAB-HVH-01"
-# FIXME: avoid the hard-coded secondary-review fallback IP once inventory fully
-# owns this surface.
-k3s_litellm_gateway_secondary_review_ollama_api_base: >-
-  http://{{
-    hostvars[k3s_litellm_gateway_secondary_review_runtime_host].host_ip
-    | default(hostvars[k3s_litellm_gateway_secondary_review_runtime_host].ansible_host | default('192.168.50.234'))
-  }}:{{
-    hostvars[k3s_litellm_gateway_secondary_review_runtime_host].windows_ollama_runtime_port
-    | default(11434)
-  }}
-k3s_litellm_gateway_secondary_review_ollama_model: >-
-  {{
-    hostvars[k3s_litellm_gateway_secondary_review_runtime_host].windows_ollama_runtime_default_model
-    | default('qwen2.5-coder:3b')
-  }}
-k3s_litellm_gateway_secondary_review_runtime_slug: "ollama-secondary-hvh-01"
+k3s_litellm_gateway_secondary_review_runtime_slug: "vllm-primary"
+k3s_litellm_gateway_secondary_review_api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
+k3s_litellm_gateway_secondary_review_model: "{{ k3s_litellm_gateway_primary_vllm_model }}"
 
 # Full lane vocabulary stays visible here even while only part of it is
 # runtime-enabled. Blocked/deferred rows are explicit so client and validation
@@ -107,9 +167,12 @@ k3s_litellm_gateway_lane_contract:
     reason: Awaiting a separate local or provider-backed fast lane decision.
   - lane: code-review
     state: enabled
-    backend_kind: local-ollama
-    runtime: "{{ k3s_litellm_gateway_secondary_review_runtime_slug }}"
-    reason: Secondary local review lane on the GTX 1060 6GB Windows host via host-local Ollama.
+    backend_kind: local-vllm
+    runtime: vllm-primary
+    reason: >-
+      Review lane alias on vllm-primary (same Qwen2.5-Coder-32B AWQ backend as
+      Ornith) until a distinct secondary vLLM runtime is commissioned. Ollama
+      is retired from the LiteLLM gateway path.
   - lane: code-test
     state: blocked
     backend_kind: pending
@@ -126,6 +189,13 @@ k3s_litellm_gateway_lane_contract:
     state: blocked
     backend_kind: pending
     reason: Public web/provider lane is still a future policy slice.
+  - lane: smart-router
+    state: enabled
+    backend_kind: complexity-router
+    runtime: litellm-auto-router
+    reason: >-
+      LiteLLM complexity auto-router alias. Routes SIMPLE→code-review (vLLM),
+      MEDIUM→Ornith, COMPLEX/REASONING→Claude or gpt-4o when provider keys exist.
 
 # Model routes — api_key os.environ/* keys are injected via Kubernetes Secret litellm-env-secret.
 #
@@ -163,12 +233,12 @@ k3s_litellm_gateway_model_list:
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
   - model_name: code-review
     litellm_params:
-      model: "ollama/{{ k3s_litellm_gateway_secondary_review_ollama_model }}"
-      api_base: "{{ k3s_litellm_gateway_secondary_review_ollama_api_base }}"
+      model: "hosted_vllm/{{ k3s_litellm_gateway_secondary_review_model }}"
+      api_base: "{{ k3s_litellm_gateway_secondary_review_api_base }}"
       api_key: "none"
     model_info:
       model_lane: code-review
-      routing_policy: local-secondary-review
+      routing_policy: local-review-alias
       project: ripi
       backend_runtime: "{{ k3s_litellm_gateway_secondary_review_runtime_slug }}"
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
@@ -184,6 +254,17 @@ k3s_litellm_gateway_model_list:
       project: ripi
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
+  - model_name: gpt-4o
+    litellm_params:
+      model: gpt-4o
+      api_base: https://api.openai.com/v1
+      api_key: "os.environ/OPENAI_API_KEY"
+    model_info:
+      model_lane: gpt-4o
+      routing_policy: cloud-escalation
+      project: ripi
+      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
+      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
   - model_name: default
     litellm_params:
       model: gpt-4o-mini
@@ -192,6 +273,19 @@ k3s_litellm_gateway_model_list:
     model_info:
       model_lane: default
       routing_policy: migration
+      project: ripi
+      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
+      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
+
+# Optional Anthropic route fragment — appended when vault_shared_anthropic_api_key is set.
+k3s_litellm_gateway_anthropic_model_routes:
+  - model_name: claude-sonnet
+    litellm_params:
+      model: anthropic/claude-sonnet-4-20250514
+      api_key: "os.environ/ANTHROPIC_API_KEY"
+    model_info:
+      model_lane: claude-sonnet
+      routing_policy: cloud-escalation
       project: ripi
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
@@ -224,12 +318,12 @@ k3s_litellm_gateway_model_list_without_openai:
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
   - model_name: code-review
     litellm_params:
-      model: "ollama/{{ k3s_litellm_gateway_secondary_review_ollama_model }}"
-      api_base: "{{ k3s_litellm_gateway_secondary_review_ollama_api_base }}"
+      model: "hosted_vllm/{{ k3s_litellm_gateway_secondary_review_model }}"
+      api_base: "{{ k3s_litellm_gateway_secondary_review_api_base }}"
       api_key: "none"
     model_info:
       model_lane: code-review
-      routing_policy: local-secondary-review
+      routing_policy: local-review-alias
       project: ripi
       backend_runtime: "{{ k3s_litellm_gateway_secondary_review_runtime_slug }}"
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes

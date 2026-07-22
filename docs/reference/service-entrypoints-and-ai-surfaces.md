@@ -84,7 +84,18 @@ ansible-playbook playbooks/deploy_ai_inference_stack.yaml -i inventory/inventory
 Important:
 - `deepreinforce-ai/Ornith-1.0-35B-GGUF` is the client-facing LiteLLM lane alias, not the literal upstream vLLM weights identifier.
 - The current primary local backend for that lane is `Qwen/Qwen2.5-Coder-32B-Instruct-AWQ`, with vLLM tool calling enabled through the `hermes` parser.
-- Context-overflow handling is now owned by LiteLLM router settings: with OpenAI configured, oversize requests fall back toward `gpt-4o-mini` and then `code-review`; without OpenAI configured, they fall back to `code-review`.
+- Context-overflow handling is owned by LiteLLM:
+  - **Local trim hook (default):** `k3s_litellm_gateway_trim_messages_enabled`
+    mounts `custom_callbacks.py` at `/etc/litellm/custom_callbacks.py`, counts
+    with the vLLM Qwen model, budgets ~30000 input tokens (minus output/safety)
+    with a hard-cut fallback, and restarts the pod after ConfigMap apply because
+    `subPath` mounts do not refresh in place (rollout wait **600s**). See
+    `roles/k3s_litellm_gateway/README.md` § Message trim pre-call hook.
+  - **Cloud fallback:** with OpenAI configured, oversize requests can also fall
+    back toward `gpt-4o-mini`; without OpenAI, local aliases share the same 32k
+    vLLM context so there is no larger local overflow path.
+- `smart-router` is the LiteLLM complexity auto-router alias (`auto_router/complexity_router`, LiteLLM >= v1.94.x). It classifies SIMPLE/MEDIUM/COMPLEX/REASONING before the call (not confidence handoff). SIMPLE uses `code-review` (vLLM alias); MEDIUM uses Ornith; COMPLEX/REASONING escalate to Claude or `gpt-4o` when provider keys exist.
+- `code-review` is a client-facing alias on `vllm-primary` (same Qwen2.5-Coder-32B AWQ backend as Ornith). Ollama is retired from the LiteLLM gateway path.
 
 Current client-facing lanes declared in the gateway contract:
 
@@ -92,13 +103,16 @@ Current client-facing lanes declared in the gateway contract:
 | --- | --- | --- |
 | `deepreinforce-ai/Ornith-1.0-35B-GGUF` | enabled | primary local `vLLM` |
 | `experiment` | enabled | primary local `vLLM` |
-| `code-review` | enabled | secondary local `Ollama` on `HOM-LAB-HVH-01` |
+| `code-review` | enabled | primary local `vLLM` (alias until secondary runtime) |
+| `smart-router` | enabled | LiteLLM complexity auto-router |
 | `code-fast` | blocked | pending |
 | `code-test` | blocked | pending |
 | `ripi-private` | blocked | pending |
 | `embeddings-local` | blocked | pending |
 | `public-research` | blocked | pending |
 | `gpt-4o-mini` | enabled migration route | OpenAI |
+| `gpt-4o` | enabled cloud escalation | OpenAI (when key set) |
+| `claude-sonnet` | optional cloud escalation | Anthropic (when `vault_shared_anthropic_api_key` set) |
 | `default` | enabled migration/default route | OpenAI or local-default fallback when OpenAI is absent |
 
 Where to inspect the list:

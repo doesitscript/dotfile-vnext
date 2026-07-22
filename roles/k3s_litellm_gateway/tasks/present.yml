@@ -44,6 +44,11 @@
           if (k3s_litellm_gateway_resolved_openai_api_key | default('') | length > 0)
           else {}
         )
+        | combine(
+          {'ANTHROPIC_API_KEY': k3s_litellm_gateway_resolved_anthropic_api_key}
+          if (k3s_litellm_gateway_resolved_anthropic_api_key | default('') | length > 0)
+          else {}
+        )
       }}
 
 - name: Ensure LiteLLM namespace exists before secret and Helm operations
@@ -69,6 +74,35 @@
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   no_log: true
+
+- name: Create LiteLLM trim_messages callback ConfigMap
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: "{{ k3s_litellm_gateway_trim_messages_callback_configmap }}"
+        namespace: "{{ k3s_litellm_gateway_namespace }}"
+        labels:
+          app.kubernetes.io/name: litellm
+          app.kubernetes.io/component: trim-messages-callback
+      data:
+        custom_callbacks.py: "{{ lookup('template', 'custom_callbacks.py.j2') }}"
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: k3s_litellm_gateway_trim_messages_enabled | bool
+
+- name: Remove LiteLLM trim_messages callback ConfigMap when disabled
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: ConfigMap
+    name: "{{ k3s_litellm_gateway_trim_messages_callback_configmap }}"
+    namespace: "{{ k3s_litellm_gateway_namespace }}"
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: not (k3s_litellm_gateway_trim_messages_enabled | bool)
 
 - name: Create external PostgreSQL credentials secret for LiteLLM
   kubernetes.core.k8s:
@@ -185,6 +219,36 @@
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   register: _k3s_litellm_deployment
 
+# ConfigMap subPath mounts do not refresh in-place; restart so custom_callbacks.py reloads.
+- name: Restart LiteLLM deployment to remount trim_messages callback
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - -n
+      - "{{ k3s_litellm_gateway_namespace }}"
+      - rollout
+      - restart
+      - deployment/litellm
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  changed_when: true
+  when: k3s_litellm_gateway_trim_messages_enabled | bool
+
+- name: Wait for LiteLLM rollout after trim_messages callback remount
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - -n
+      - "{{ k3s_litellm_gateway_namespace }}"
+      - rollout
+      - status
+      - deployment/litellm
+      - --timeout=600s
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  changed_when: false
+  when: k3s_litellm_gateway_trim_messages_enabled | bool
+
 - name: Query LiteLLM ClusterIP service selector
   kubernetes.core.k8s_info:
     api_version: v1
@@ -246,6 +310,15 @@
           {{ 'configured in vault'
           if (k3s_litellm_gateway_resolved_openai_api_key | default('') | length > 0)
           else 'not set — edit vault/shared.vault.yml' }}
+      - Anthropic: >-
+          {{ 'configured in vault'
+          if (k3s_litellm_gateway_resolved_anthropic_api_key | default('') | length > 0)
+          else 'not set — optional vault_shared_anthropic_api_key' }}
+      - Complexity router: >-
+          {{ k3s_litellm_gateway_complexity_router_model_name
+          if (k3s_litellm_gateway_complexity_router_enabled | bool)
+          else 'disabled' }}
+          tiers={{ k3s_litellm_gateway_resolved_complexity_tiers | default({}) }}
 
       Components deployed:
       - LiteLLM Proxy ({{ k3s_litellm_gateway_replicas }} replicas)

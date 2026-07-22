@@ -76,10 +76,13 @@ runtime_planes:
   hyperv_k3s_vm:
     enabled: true
   secondary_model_runtime:
-    enabled: true
-    runtime: ollama-secondary-hvh-01
+    enabled: false
+    runtime: null
     lane: code-review
-    capability_state: planned_apply
+    capability_state: retired
+    reason: >-
+      Ollama secondary runtime retired. code-review is a LiteLLM alias on
+      vllm-primary (k3s-02) until a distinct secondary vLLM runtime is planned.
   hyperv_gpu_partitioning:
     enabled: false
     capability_state: blocked
@@ -233,20 +236,17 @@ hyperv_ubuntu_k3s_vm_autoinstall_network_dns_servers:
 # OpenSSH Server: base feature on Windows hosts unless explicitly set absent.
 openssh_server_state: present
 
-# Secondary host-local model runtime: Windows Ollama on the GTX 1060 6GB host.
-windows_ollama_runtime_state: present
+# Secondary host-local Ollama runtime — retired from the LiteLLM gateway path.
+# code-review now aliases vllm-primary on k3s-02. Keep absent unless a future
+# plan explicitly re-commissions a non-gateway Ollama use case.
+windows_ollama_runtime_state: absent
 windows_ollama_runtime_bind_host: "0.0.0.0"
 windows_ollama_runtime_port: 11434
 windows_ollama_runtime_models_path: 'F:\shares\public\models\ollama'
 windows_ollama_runtime_default_model: "qwen2.5-coder:3b"
 windows_ollama_runtime_fallback_model: "qwen2.5-coder:1.5b"
-windows_ollama_runtime_models_present:
-  - "qwen2.5-coder:3b"
-windows_ollama_runtime_model_aliases:
-  - lane: code-review
-    runtime_slug: ollama-secondary-hvh-01
-    model: "qwen2.5-coder:3b"
-    fallback_model: "qwen2.5-coder:1.5b"
+windows_ollama_runtime_models_present: []
+windows_ollama_runtime_model_aliases: []
 
 # Live driver/runtime convergence on this Windows GPU host can take longer than
 # the generic Windows reboot window, especially after GPU-driver changes.
@@ -278,12 +278,13 @@ ai_host_profile:
       - reviewer_agents
       - secondary_model_runtime
       - storage_adjacent_ai_jobs
-    description: GTX 1060-backed secondary runtime host for the code-review lane via host-local Ollama.
+    description: >-
+      GTX 1060 host retained for storage-adjacent AI jobs; code-review no longer
+      runs host-local Ollama (retired in favor of vllm-primary alias).
     tags:
       - tier2
       - nvidia
-      - ollama
-      - review-lane
+      - storage-adjacent
   storage:
     class: high_capacity
     role: primary_storage_host
@@ -300,24 +301,25 @@ ai_host_profile:
       - artifacts
   ai_runtime:
     host_local:
-      enabled: true
-      engine: ollama
-      exposure: lan_and_local
-      runtime_role: secondary_review_runtime
-      runtime_slug: ollama-secondary-hvh-01
-      api_port: 11434
-      default_model: qwen2.5-coder:3b
-      fallback_model: qwen2.5-coder:1.5b
-      purpose: secondary_local_model_serving
+      enabled: false
+      engine: none
+      exposure: none
+      runtime_role: retired_secondary_review_runtime
+      runtime_slug: null
+      api_port: null
+      default_model: null
+      fallback_model: null
+      purpose: retired_ollama_secondary_local_model_serving
       tags:
-        - host-local-runtime
-        - ollama
-        - code-review
+        - retired
+        - ollama-removed
     routing:
       preferred_for:
-        - medium_local_models
-        - reviewer_agents
         - storage_adjacent_ai_jobs
       avoid_for:
         - largest_models
+        - primary_coding_lane
+        - reviewer_agents_requiring_gateway_alias
         - latency_critical_primary_runtime
+      notes: >-
+        Reviewer agents should use LiteLLM code-review → vllm-primary on k3s-02.

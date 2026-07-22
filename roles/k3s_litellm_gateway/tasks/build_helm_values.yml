@@ -1,7 +1,7 @@
 ---
-- name: Resolve LiteLLM model list when OpenAI key is configured in vault
+- name: Resolve LiteLLM base model list when OpenAI key is configured in vault
   ansible.builtin.set_fact:
-    k3s_litellm_gateway_resolved_model_list: >-
+    k3s_litellm_gateway_resolved_base_model_list: >-
       {{
         k3s_litellm_gateway_model_list
         if (k3s_litellm_gateway_resolved_openai_api_key | default('') | length > 0)
@@ -23,6 +23,65 @@
           recursive=True
         )
       }}
+    k3s_litellm_gateway_has_openai: >-
+      {{ (k3s_litellm_gateway_resolved_openai_api_key | default('') | length > 0) | bool }}
+    k3s_litellm_gateway_has_anthropic: >-
+      {{ (k3s_litellm_gateway_resolved_anthropic_api_key | default('') | length > 0) | bool }}
+
+- name: Resolve complexity-router tier map from available provider keys
+  ansible.builtin.set_fact:
+    k3s_litellm_gateway_resolved_complexity_tiers: >-
+      {{
+        k3s_litellm_gateway_complexity_tiers_with_anthropic
+        if (k3s_litellm_gateway_has_anthropic | bool)
+        else (
+          k3s_litellm_gateway_complexity_tiers_with_openai
+          if (k3s_litellm_gateway_has_openai | bool)
+          else k3s_litellm_gateway_complexity_tiers_local
+        )
+      }}
+
+- name: Append Anthropic model routes when Anthropic key is configured
+  ansible.builtin.set_fact:
+    k3s_litellm_gateway_resolved_model_list: >-
+      {{
+        k3s_litellm_gateway_resolved_base_model_list
+        + (
+          k3s_litellm_gateway_anthropic_model_routes
+          if (k3s_litellm_gateway_has_anthropic | bool)
+          else []
+        )
+      }}
+
+- name: Append complexity smart-router route when enabled
+  ansible.builtin.set_fact:
+    k3s_litellm_gateway_resolved_model_list: >-
+      {{
+        k3s_litellm_gateway_resolved_model_list
+        + [
+          {
+            'model_name': k3s_litellm_gateway_complexity_router_model_name,
+            'litellm_params': {
+              'model': 'auto_router/complexity_router',
+              'drop_params': true,
+              'complexity_router_config': {
+                'tiers': k3s_litellm_gateway_resolved_complexity_tiers,
+                'keyword_tier_rules': k3s_litellm_gateway_complexity_router_keyword_tier_rules,
+                'custom_technical_keywords': k3s_litellm_gateway_complexity_router_custom_technical_keywords
+              },
+              'complexity_router_default_model': k3s_litellm_gateway_complexity_router_default_model
+            },
+            'model_info': {
+              'model_lane': k3s_litellm_gateway_complexity_router_model_name,
+              'routing_policy': 'complexity-auto-router',
+              'project': 'ripi',
+              'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+              'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+            }
+          }
+        ]
+      }}
+  when: k3s_litellm_gateway_complexity_router_enabled | bool
 
 - name: Resolve LiteLLM proxy-level fallback settings
   ansible.builtin.set_fact:
@@ -35,43 +94,85 @@
           },
           recursive=True
         )
+        | combine(
+          {
+            'callbacks': k3s_litellm_gateway_trim_messages_callback_ref
+          }
+          if (k3s_litellm_gateway_trim_messages_enabled | bool)
+          else {},
+          recursive=True
+        )
       }}
 
 - name: Build LiteLLM Helm values from vault-backed configuration
   ansible.builtin.set_fact:
-    k3s_litellm_gateway_helm_values:
-      replicaCount: "{{ k3s_litellm_gateway_replicas }}"
-      masterkeySecretName: "{{ k3s_litellm_gateway_env_secret_name }}"
-      masterkeySecretKey: PROXY_MASTER_KEY
-      environmentSecrets:
-        - "{{ k3s_litellm_gateway_env_secret_name }}"
-      image:
-        repository: "{{ k3s_litellm_gateway_image_repository }}"
-        tag: "{{ k3s_litellm_gateway_image_tag }}"
-      strategy: "{{ k3s_litellm_gateway_strategy }}"
-      db:
-        deployStandalone: false
-        useExisting: true
-        endpoint: "{{ k3s_litellm_gateway_db_endpoint }}"
-        database: "{{ k3s_litellm_gateway_db_database }}"
-        url: "{{ k3s_litellm_gateway_db_url }}"
-        secret:
-          name: "{{ k3s_litellm_gateway_db_secret_name }}"
-          usernameKey: "{{ k3s_litellm_gateway_db_secret_username_key }}"
-          passwordKey: "{{ k3s_litellm_gateway_db_secret_password_key }}"
-      service:
-        type: "{{ k3s_litellm_gateway_service_type }}"
-        port: "{{ k3s_litellm_gateway_service_port }}"
-      resources:
-        limits:
-          cpu: "{{ k3s_litellm_gateway_cpu_limit }}"
-          memory: "{{ k3s_litellm_gateway_memory_limit }}"
-        requests:
-          cpu: "{{ k3s_litellm_gateway_cpu_request }}"
-          memory: "{{ k3s_litellm_gateway_memory_request }}"
-      proxy_config:
-        model_list: "{{ k3s_litellm_gateway_resolved_model_list }}"
-        router_settings: "{{ k3s_litellm_gateway_resolved_router_settings }}"
-        general_settings:
-          master_key: os.environ/PROXY_MASTER_KEY
-        litellm_settings: "{{ k3s_litellm_gateway_resolved_proxy_litellm_settings }}"
+    k3s_litellm_gateway_helm_values: >-
+      {{
+        {
+          'replicaCount': k3s_litellm_gateway_replicas,
+          'masterkeySecretName': k3s_litellm_gateway_env_secret_name,
+          'masterkeySecretKey': 'PROXY_MASTER_KEY',
+          'environmentSecrets': [k3s_litellm_gateway_env_secret_name],
+          'image': {
+            'repository': k3s_litellm_gateway_image_repository,
+            'tag': k3s_litellm_gateway_image_tag
+          },
+          'strategy': k3s_litellm_gateway_strategy,
+          'db': {
+            'deployStandalone': false,
+            'useExisting': true,
+            'endpoint': k3s_litellm_gateway_db_endpoint,
+            'database': k3s_litellm_gateway_db_database,
+            'url': k3s_litellm_gateway_db_url,
+            'secret': {
+              'name': k3s_litellm_gateway_db_secret_name,
+              'usernameKey': k3s_litellm_gateway_db_secret_username_key,
+              'passwordKey': k3s_litellm_gateway_db_secret_password_key
+            }
+          },
+          'service': {
+            'type': k3s_litellm_gateway_service_type,
+            'port': k3s_litellm_gateway_service_port
+          },
+          'resources': {
+            'limits': {
+              'cpu': k3s_litellm_gateway_cpu_limit,
+              'memory': k3s_litellm_gateway_memory_limit
+            },
+            'requests': {
+              'cpu': k3s_litellm_gateway_cpu_request,
+              'memory': k3s_litellm_gateway_memory_request
+            }
+          },
+          'proxy_config': {
+            'model_list': k3s_litellm_gateway_resolved_model_list,
+            'router_settings': k3s_litellm_gateway_resolved_router_settings,
+            'general_settings': {
+              'master_key': 'os.environ/PROXY_MASTER_KEY'
+            },
+            'litellm_settings': k3s_litellm_gateway_resolved_proxy_litellm_settings
+          }
+        }
+        | combine(
+          {
+            'volumes': [
+              {
+                'name': 'callback-files',
+                'configMap': {
+                  'name': k3s_litellm_gateway_trim_messages_callback_configmap
+                }
+              }
+            ],
+            'volumeMounts': [
+              {
+                'name': 'callback-files',
+                'mountPath': '/etc/litellm/custom_callbacks.py',
+                'subPath': 'custom_callbacks.py'
+              }
+            ]
+          }
+          if (k3s_litellm_gateway_trim_messages_enabled | bool)
+          else {},
+          recursive=True
+        )
+      }}
