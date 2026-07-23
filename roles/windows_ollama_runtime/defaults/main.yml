@@ -1,16 +1,39 @@
 ---
 # windows_ollama_runtime — managed host-local Ollama runtime for Windows GPU hosts.
+#
+# Install authority: chocolatey.chocolatey.win_chocolatey + community package
+# `ollama` (https://community.chocolatey.org/packages/ollama).
+# Model presence: Ollama HTTP /api/pull via ansible.windows.win_uri (no shell).
+# Note: Galaxy role andrewrothstein.ollama is Linux-only and is not used here.
 
 windows_ollama_runtime_state: absent
 
-windows_ollama_runtime_version: "v0.31.2"
-windows_ollama_runtime_download_url: "https://github.com/ollama/ollama/releases/download/{{ windows_ollama_runtime_version }}/ollama-windows-amd64.zip"
+# Chocolatey package contract (version without leading "v")
+windows_ollama_runtime_package_name: ollama
+windows_ollama_runtime_package_version: "0.32.1"
+windows_ollama_runtime_package_state: present
+windows_ollama_runtime_package_pinned: true
+
+# Legacy zip vars retained only as migration fallbacks; install path prefers Chocolatey.
+windows_ollama_runtime_version: "v{{ windows_ollama_runtime_package_version }}"
+windows_ollama_runtime_download_url: >-
+  https://github.com/ollama/ollama/releases/download/{{ windows_ollama_runtime_version }}/ollama-windows-amd64.zip
 windows_ollama_runtime_install_root: 'C:\Program Files\Ollama'
 windows_ollama_runtime_download_root: 'C:\ProgramData\Ansible\downloads\ollama'
 windows_ollama_runtime_archive_path: '{{ windows_ollama_runtime_download_root }}\ollama-windows-amd64.zip'
 windows_ollama_runtime_contract_root: 'C:\ProgramData\Ansible\windows_ollama_runtime'
 windows_ollama_runtime_contract_path: '{{ windows_ollama_runtime_contract_root }}\runtime_contract.json'
 windows_ollama_runtime_receipt_path: '{{ windows_ollama_runtime_contract_root }}\runtime_receipt.json'
+
+# Candidate binary locations — Chocolatey OllamaSetup path first (per-user),
+# then prior machine-wide standalone zip locations.
+windows_ollama_runtime_chocolatey_install_root: >-
+  C:\Users\joshc\AppData\Local\Programs\Ollama
+windows_ollama_runtime_exe_candidates:
+  - '{{ windows_ollama_runtime_chocolatey_install_root }}\ollama.exe'
+  - '{{ windows_ollama_runtime_install_root }}\ollama.exe'
+  - 'C:\Program Files\Ollama\ollama.exe'
+  - 'C:\Program Files (x86)\Ollama\ollama.exe'
 
 windows_ollama_runtime_bind_host: '0.0.0.0'
 windows_ollama_runtime_port: 11434
@@ -32,6 +55,8 @@ windows_ollama_runtime_listen_address: '{{ windows_ollama_runtime_bind_host }}:{
 windows_ollama_runtime_local_api_base: >-
   http://{{ windows_ollama_runtime_host_loopback }}:{{ windows_ollama_runtime_port }}
 windows_ollama_runtime_healthcheck_url: '{{ windows_ollama_runtime_local_api_base }}/api/tags'
+windows_ollama_runtime_pull_url: '{{ windows_ollama_runtime_local_api_base }}/api/pull'
+windows_ollama_runtime_pull_timeout_seconds: 3600
 windows_ollama_runtime_task_name: 'ollama-runtime'
 windows_ollama_runtime_firewall_rule_name: 'Ollama Runtime API'
 windows_ollama_runtime_task_boot_delay: PT15S

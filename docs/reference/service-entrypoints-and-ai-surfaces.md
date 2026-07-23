@@ -85,12 +85,21 @@ Important:
 - `deepreinforce-ai/Ornith-1.0-35B-GGUF` is the client-facing LiteLLM lane alias, not the literal upstream vLLM weights identifier.
 - The current primary local backend for that lane is `Qwen/Qwen2.5-Coder-32B-Instruct-AWQ`, with vLLM tool calling enabled through the `hermes` parser.
 - Context-overflow handling is owned by LiteLLM:
-  - **Local trim hook (default):** `k3s_litellm_gateway_trim_messages_enabled`
-    mounts `custom_callbacks.py` at `/etc/litellm/custom_callbacks.py`, counts
-    with the vLLM Qwen model, budgets ~30000 input tokens (minus output/safety)
-    with a hard-cut fallback, and restarts the pod after ConfigMap apply because
-    `subPath` mounts do not refresh in place (rollout wait **600s**). See
-    `roles/k3s_litellm_gateway/README.md` § Message trim pre-call hook.
+  - **Driving error (homelab):** Cursor Agent → Ornith returned
+    `ContextWindowExceededError` / `Hosted_vllmException` with
+    `maximum context length is 32768` / `input_tokens=32769` and
+    “requested 0 output tokens”; `Available Model Group Fallbacks=None`.
+    A trim budget of ~30000 still failed (`after≈29993` in hook logs vs vLLM
+    32769) because of tokenizer skew, Agent `tools` schemas, and
+    `max_tokens: 0`. Full write-up:
+    `docs/diagnostics/litellm-context-window--k3s--diagnostics.md` and
+    `roles/k3s_litellm_gateway/README.md` § Error that drove these custom values.
+  - **Local trim hook (default):** server-tuned drivers in
+    `roles/k3s_litellm_gateway/defaults/main.yml` — budget **24000**, safety
+    **2048**, rewrite `max_tokens: 0` → **256**, subtract estimated `tools`
+    size, multimodal hard-cut (**2.5** chars/token), then rollout restart
+    (subPath remount; wait **600s**). See role README § Server-tuned trim
+    drivers.
   - **Cloud fallback:** with OpenAI configured, oversize requests can also fall
     back toward `gpt-4o-mini`; without OpenAI, local aliases share the same 32k
     vLLM context so there is no larger local overflow path.

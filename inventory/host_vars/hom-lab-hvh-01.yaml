@@ -76,13 +76,13 @@ runtime_planes:
   hyperv_k3s_vm:
     enabled: true
   secondary_model_runtime:
-    enabled: false
-    runtime: null
-    lane: code-review
-    capability_state: retired
+    enabled: true
+    runtime: ollama
+    lane: code-autocomplete-1.5b
+    capability_state: present
     reason: >-
-      Ollama secondary runtime retired. code-review is a LiteLLM alias on
-      vllm-primary (k3s-02) until a distinct secondary vLLM runtime is planned.
+      GTX 1060 6GB host-local Ollama (llama.cpp) sidecar for Continue
+      autocomplete 1.5B. Not vLLM (Pascal CC 6.1). LiteLLM remains the gateway.
   hyperv_gpu_partitioning:
     enabled: false
     capability_state: blocked
@@ -141,11 +141,13 @@ hyperv_config:
   guest_switch_name: "Guest"
   guest_subnet_ipv4: "192.168.138.0/24"
   guest_gateway_ipv4: "192.168.138.1"
-  # Host-side outbound NAT gives routed lab guests internet/package access
-  # without requiring the upstream LAN router to know this private subnet.
-  guest_outbound_nat_enabled: true
-  # Publish storage-lane services through the Windows LAN IP so operators and
-  # cross-lane consumers do not have to rely on direct 192.168.138.x routing.
+  # Keep this lane in direct routed mode (same as HOM-LAB-HVH-02): controller
+  # and LAN reach guests by IP via Mac/router static routes. HyperVGuestNat is
+  # incompatible with that path — role ensures it absent when this is false.
+  # Upstream GT6 must route 192.168.138.0/24 via 192.168.50.234 for guest egress.
+  guest_outbound_nat_enabled: false
+  # Publish storage-lane services through the Windows LAN IP as a convenience
+  # portproxy surface; direct 192.168.138.x access is still the primary path.
   guest_published_tcp_ports:
     - name: "postgres-fuzlang"
       listen_address: "192.168.50.234"
@@ -236,17 +238,21 @@ hyperv_ubuntu_k3s_vm_autoinstall_network_dns_servers:
 # OpenSSH Server: base feature on Windows hosts unless explicitly set absent.
 openssh_server_state: present
 
-# Secondary host-local Ollama runtime — retired from the LiteLLM gateway path.
-# code-review now aliases vllm-primary on k3s-02. Keep absent unless a future
-# plan explicitly re-commissions a non-gateway Ollama use case.
-windows_ollama_runtime_state: absent
+# Secondary host-local Ollama runtime — Continue autocomplete 1.5B on GTX 1060.
+# Ollama is the GPU engine (llama.cpp); LiteLLM on k3s-02 remains the client gateway.
+windows_ollama_runtime_state: present
 windows_ollama_runtime_bind_host: "0.0.0.0"
 windows_ollama_runtime_port: 11434
 windows_ollama_runtime_models_path: 'F:\shares\public\models\ollama'
-windows_ollama_runtime_default_model: "qwen2.5-coder:3b"
+windows_ollama_runtime_default_model: "qwen2.5-coder:1.5b"
 windows_ollama_runtime_fallback_model: "qwen2.5-coder:1.5b"
-windows_ollama_runtime_models_present: []
-windows_ollama_runtime_model_aliases: []
+windows_ollama_runtime_models_present:
+  - "qwen2.5-coder:1.5b"
+windows_ollama_runtime_model_aliases:
+  - lane: code-autocomplete-1.5b
+    runtime_slug: ollama-autocomplete-1.5b-hvh-01
+    model: "qwen2.5-coder:1.5b"
+    fallback_model: "qwen2.5-coder:1.5b"
 
 # Live driver/runtime convergence on this Windows GPU host can take longer than
 # the generic Windows reboot window, especially after GPU-driver changes.

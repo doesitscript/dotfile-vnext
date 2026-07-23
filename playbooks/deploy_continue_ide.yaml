@@ -1,0 +1,16 @@
+---
+# Deploy Continue IDE config from the continue_ide role template.
+# Renders roles/continue_ide/templates/config.yaml.j2 → ~/.continue/config.yaml
+# (inventory: continue_ide_state: present on mac-dev).
+#
+#   ansible-playbook playbooks/deploy_continue_ide.yaml --limit mac-dev
+# Also available via:
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags continue_ide --limit mac-dev
+- name: Deploy Continue IDE LiteLLM config
+  hosts: mac-dev
+  gather_facts: true
+  become: false
+  roles:
+    - role: continue_ide
+      when: ansible_system == "Darwin"
+      tags: [continue, continue_ide]

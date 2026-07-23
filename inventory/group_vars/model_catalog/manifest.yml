@@ -47,11 +47,100 @@ model_catalog_manifest:
       notes: Small smoke example verified to exist on Hugging Face; still not downloaded or pinned.
     - lane: code-fast
       purpose: autocomplete, small edits, repo questions
-      status: pending_research
-      candidate_family: smaller coding/general model
+      status: downloaded
+      candidate_family: Qwen2.5-Coder 1.5B (Continue autocomplete default)
+      example_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B-Instruct
+      selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B-Instruct
+      license: apache-2.0
+      serving_runtime: ollama
       storage_host: HOM-LAB-HVH-01
-      unc_path: null
-      notes: Requires current model research before pinning an HF repo.
+      unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface\\Qwen--Qwen2.5-Coder-1.5B-Instruct"
+      research_sources:
+        - https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct
+        - https://docs.continue.dev/ide-extensions/autocomplete/model-setup
+        - https://docs.litellm.ai/docs/providers/vllm
+      notes: >-
+        LiteLLM lanes code-fast / code-autocomplete-1.5b. Served on HVH-01 GTX 1060
+        via Ollama (llama.cpp) OpenAI /v1 — not vLLM (Pascal CC 6.1). Not OpenRouter.
+        Do not alias onto vllm-primary 32B.
+    - lane: code-autocomplete-1.5b
+      purpose: Continue autocomplete QwenCoder2.5 1.5B
+      status: downloaded
+      candidate_family: smaller coding FIM model
+      example_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B-Instruct
+      selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B-Instruct
+      license: apache-2.0
+      serving_runtime: ollama
+      unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface\\Qwen--Qwen2.5-Coder-1.5B-Instruct"
+      notes: >-
+        Client alias for Continue autocomplete. Backend: Ollama qwen2.5-coder:1.5b
+        on HOM-LAB-HVH-01:11434/v1 via LiteLLM.
+    - lane: code-autocomplete-7b
+      purpose: Continue autocomplete QwenCoder2.5 7B
+      status: downloaded
+      candidate_family: mid coding FIM model
+      example_hf_repo_id: Qwen/Qwen2.5-Coder-7B-Instruct
+      selected_hf_repo_id: Qwen/Qwen2.5-Coder-7B-Instruct
+      license: apache-2.0
+      serving_runtime: vllm
+      unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface\\Qwen--Qwen2.5-Coder-7B-Instruct"
+      notes: Client alias for Continue autocomplete role.
+    - lane: diffusiongemma-nextedit
+      purpose: Continue Next Edit (replaces mercury-coder-nextedit)
+      status: downloading
+      candidate_family: Google DiffusionGemma MoE diffusion text
+      example_hf_repo_id: google/diffusiongemma-26B-A4B-it
+      selected_hf_repo_id: RedHatAI/diffusiongemma-26B-A4B-it-FP8-dynamic
+      license: apache-2.0
+      serving_runtime: vllm
+      unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface\\RedHatAI--diffusiongemma-26B-A4B-it-FP8-dynamic"
+      vram_notes: >-
+        BF16 recipe ~64GB; prefer FP8/NVFP4 on 32GB 5090. Serves via vLLM gemma
+        image; OpenAI-compatible once commissioned.
+      research_sources:
+        - https://huggingface.co/google/diffusiongemma-26B-A4B-it
+        - https://huggingface.co/RedHatAI/diffusiongemma-26B-A4B-it-FP8-dynamic
+        - https://docs.continue.dev/ide-extensions/autocomplete/next-edit
+      notes: >-
+        User-selected Mercury replacement for Continue Next Edit role.
+        LiteLLM alias diffusiongemma-nextedit.
+    - lane: diffucoder
+      purpose: Continue Chat Edit / code generation (diffusion)
+      status: downloaded
+      candidate_family: Apple DiffuCoder diffusion code models
+      example_hf_repo_id: apple/DiffuCoder-7B-cpGRPO
+      selected_hf_repo_id: apple/DiffuCoder-7B-cpGRPO
+      license: apple-sample-code-license
+      serving_runtime: custom-openai-wrapper
+      unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface\\apple--DiffuCoder-7B-cpGRPO"
+      research_sources:
+        - https://huggingface.co/apple/DiffuCoder-7B-cpGRPO
+        - https://docs.continue.dev/ide-extensions/chat/model-setup
+      notes: >-
+        Transformers diffusion_generate is not OpenAI chat-native. Download
+        first; commission OpenAI-compatible wrapper before LiteLLM/Continue.
+        Also maps to continue-edit default alias when ready.
+    - lane: continue-edit
+      purpose: Continue Chat Edit default
+      status: pending_backend
+      candidate_family: DiffuCoder when wrapped; else local Qwen3-Coder 30B
+      selected_hf_repo_id: apple/DiffuCoder-7B-cpGRPO
+      serving_runtime: custom-openai-wrapper
+      research_sources:
+        - https://docs.continue.dev/ide-extensions/chat/model-setup
+      notes: Prefer DiffuCoder local wrapper; qwen3-coder-30b as alternate local lane.
+    - lane: qwen3-coder-30b
+      purpose: Continue Chat Edit alternate local
+      status: pending_research
+      candidate_family: Qwen3-Coder 30B
+      serving_runtime: vllm
+      notes: Local candidate when VRAM/research matrix passes; not OpenRouter.
+    - lane: qwen3-coder-480b
+      purpose: Continue Chat Edit large open model
+      status: deferred
+      candidate_family: Qwen3-Coder 480B
+      serving_runtime: deferred-multi-gpu
+      notes: Too large for single 5090. Catalog-only; not OpenRouter.
     - lane: code-review
       purpose: critique, risk finding, test review
       status: selected_alias_on_primary_vllm

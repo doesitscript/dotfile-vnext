@@ -78,10 +78,18 @@ ai_inventory_metadata:
         - lane-contract
       enabled_lanes:
         - deepreinforce-ai/Ornith-1.0-35B-GGUF
+        - deepreinforce-ai/Ornith-1.0-35B-GGUF-no-trim
         - experiment
         - code-review
       blocked_lanes:
         - code-fast
+        - code-autocomplete-1.5b
+        - code-autocomplete-7b
+        - diffusiongemma-nextedit
+        - diffucoder
+        - continue-edit
+        - qwen3-coder-30b
+        - qwen3-coder-480b
         - code-test
         - ripi-private
         - embeddings-local
@@ -94,11 +102,25 @@ ai_inventory_metadata:
           state: enabled
           backend_kind: local-vllm
           runtime: vllm-primary
-          description: Primary local coding lane on the GPU-lane vLLM runtime.
+          description: Primary local coding lane on the GPU-lane vLLM runtime (trim_messages safety net).
           tags:
             - primary
             - coding
             - local-vllm
+            - context-hook-trim
+        - lane: deepreinforce-ai/Ornith-1.0-35B-GGUF-no-trim
+          state: enabled
+          backend_kind: local-vllm
+          runtime: vllm-primary
+          description: >-
+            Same Ornith/vllm-primary weights without LiteLLM context trim or
+            max_tokens mutation. Use to compare raw 32k behavior; overflow fails
+            at vLLM.
+          tags:
+            - coding
+            - local-vllm
+            - context-hook-none
+            - no-trim
         - lane: experiment
           state: enabled
           backend_kind: local-vllm

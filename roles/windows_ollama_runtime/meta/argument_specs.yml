@@ -3,22 +3,39 @@ argument_specs:
   main:
     short_description: Managed host-local Ollama runtime on Windows GPU hosts
     description: >-
-      Installs the official standalone Ollama Windows runtime, manages its
-      machine-scoped runtime contract, and enforces a repo-declared set of
-      locally hosted models for reuse behind the central LiteLLM gateway.
+      Installs Ollama on Windows via chocolatey.chocolatey.win_chocolatey
+      (community package ollama), manages the machine-scoped runtime contract,
+      and enforces a repo-declared set of locally hosted models for reuse
+      behind the central LiteLLM gateway.
     options:
       windows_ollama_runtime_state:
         type: str
         required: false
         description: Lifecycle control for the Windows Ollama runtime capability.
+      windows_ollama_runtime_package_name:
+        type: str
+        required: false
+        description: Chocolatey package name used to install Ollama.
+      windows_ollama_runtime_package_version:
+        type: str
+        required: false
+        description: Pinned Chocolatey package version for Ollama (no leading v).
+      windows_ollama_runtime_package_state:
+        type: str
+        required: false
+        description: Chocolatey package state passed to win_chocolatey.
+      windows_ollama_runtime_package_pinned:
+        type: bool
+        required: false
+        description: Pin the Chocolatey package after install to prevent drift.
       windows_ollama_runtime_download_url:
         type: str
         required: false
-        description: Official Ollama Windows standalone zip URL.
+        description: Legacy standalone zip URL retained for migration reference only.
       windows_ollama_runtime_version:
         type: str
         required: false
-        description: Pinned upstream Ollama release tag used to form the standalone asset URL.
+        description: Legacy upstream release tag derived from the Chocolatey package version.
       windows_ollama_runtime_install_root:
         type: str
         required: false

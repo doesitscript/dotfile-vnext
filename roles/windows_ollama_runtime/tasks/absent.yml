@@ -25,10 +25,11 @@
     - OLLAMA_MODELS
     - OLLAMA_HOST
 
-- name: Remove managed Ollama install root
-  ansible.windows.win_file:
-    path: "{{ windows_ollama_runtime_install_root }}"
+- name: Uninstall Ollama Chocolatey package
+  chocolatey.chocolatey.win_chocolatey:
+    name: "{{ windows_ollama_runtime_package_name }}"
     state: absent
+    timeout: 2700
 
 - name: Remove managed Ollama contract root
   ansible.windows.win_file:

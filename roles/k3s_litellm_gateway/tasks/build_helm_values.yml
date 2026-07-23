@@ -53,6 +53,155 @@
         )
       }}
 
+# Local Continue open-weight lanes — only when secondary vLLM api_bases are set.
+# Do not use OpenRouter/Ollama/Mercury for these aliases.
+- name: Build local Continue / diffusion LiteLLM routes from commissioned api_bases
+  ansible.builtin.set_fact:
+    k3s_litellm_gateway_resolved_local_continue_routes: >-
+      {{
+        (
+          [
+            {
+              'model_name': 'code-autocomplete-1.5b',
+              'litellm_params': {
+                'model': k3s_litellm_gateway_autocomplete_1_5b_provider ~ '/' ~ k3s_litellm_gateway_autocomplete_1_5b_model,
+                'api_base': k3s_litellm_gateway_autocomplete_1_5b_api_base,
+                'api_key': 'none'
+              },
+              'model_info': {
+                'model_lane': 'code-autocomplete-1.5b',
+                'routing_policy': 'local-continue-autocomplete',
+                'project': 'ripi',
+                'client_role': 'continue-autocomplete',
+                'backend_runtime': 'ollama-autocomplete-1.5b-hvh-01',
+                'hf_repo_id': 'Qwen/Qwen2.5-Coder-1.5B-Instruct',
+                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+              }
+            },
+            {
+              'model_name': 'code-fast',
+              'litellm_params': {
+                'model': k3s_litellm_gateway_autocomplete_1_5b_provider ~ '/' ~ k3s_litellm_gateway_autocomplete_1_5b_model,
+                'api_base': k3s_litellm_gateway_autocomplete_1_5b_api_base,
+                'api_key': 'none'
+              },
+              'model_info': {
+                'model_lane': 'code-fast',
+                'routing_policy': 'local-continue-autocomplete-default',
+                'project': 'ripi',
+                'client_role': 'continue-autocomplete',
+                'backend_runtime': 'ollama-autocomplete-1.5b-hvh-01',
+                'hf_repo_id': 'Qwen/Qwen2.5-Coder-1.5B-Instruct',
+                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+              }
+            }
+          ]
+          if (k3s_litellm_gateway_autocomplete_1_5b_api_base | default('') | length > 0)
+          else []
+        )
+        + (
+          [
+            {
+              'model_name': 'code-autocomplete-7b',
+              'litellm_params': {
+                'model': k3s_litellm_gateway_autocomplete_7b_provider ~ '/' ~ k3s_litellm_gateway_autocomplete_7b_model,
+                'api_base': k3s_litellm_gateway_autocomplete_7b_api_base,
+                'api_key': 'none'
+              },
+              'model_info': {
+                'model_lane': 'code-autocomplete-7b',
+                'routing_policy': 'local-continue-autocomplete',
+                'project': 'ripi',
+                'client_role': 'continue-autocomplete',
+                'backend_runtime': 'vllm-autocomplete-7b',
+                'hf_repo_id': k3s_litellm_gateway_autocomplete_7b_model,
+                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+              }
+            }
+          ]
+          if (k3s_litellm_gateway_autocomplete_7b_api_base | default('') | length > 0)
+          else []
+        )
+        + (
+          [
+            {
+              'model_name': 'diffusiongemma-nextedit',
+              'litellm_params': {
+                'model': 'hosted_vllm/' ~ k3s_litellm_gateway_diffusiongemma_model,
+                'api_base': k3s_litellm_gateway_diffusiongemma_api_base,
+                'api_key': 'none'
+              },
+              'model_info': {
+                'model_lane': 'diffusiongemma-nextedit',
+                'routing_policy': 'local-continue-nextedit',
+                'project': 'ripi',
+                'client_role': 'continue-nextedit',
+                'backend_runtime': 'vllm-diffusiongemma',
+                'hf_repo_id': k3s_litellm_gateway_diffusiongemma_model,
+                'replaces': 'mercury-coder-nextedit',
+                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+              }
+            }
+          ]
+          if (k3s_litellm_gateway_diffusiongemma_api_base | default('') | length > 0)
+          else []
+        )
+        + (
+          [
+            {
+              'model_name': 'diffucoder',
+              'litellm_params': {
+                'model': 'hosted_vllm/' ~ k3s_litellm_gateway_diffucoder_model,
+                'api_base': k3s_litellm_gateway_diffucoder_api_base,
+                'api_key': 'none'
+              },
+              'model_info': {
+                'model_lane': 'diffucoder',
+                'routing_policy': 'local-continue-edit',
+                'project': 'ripi',
+                'client_role': 'continue-chat-edit',
+                'backend_runtime': 'vllm-diffucoder-or-wrapper',
+                'hf_repo_id': k3s_litellm_gateway_diffucoder_model,
+                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+              }
+            },
+            {
+              'model_name': 'continue-edit',
+              'litellm_params': {
+                'model': 'hosted_vllm/' ~ k3s_litellm_gateway_diffucoder_model,
+                'api_base': k3s_litellm_gateway_diffucoder_api_base,
+                'api_key': 'none'
+              },
+              'model_info': {
+                'model_lane': 'continue-edit',
+                'routing_policy': 'local-continue-edit-default',
+                'project': 'ripi',
+                'client_role': 'continue-chat-edit',
+                'backend_runtime': 'vllm-diffucoder-or-wrapper',
+                'hf_repo_id': k3s_litellm_gateway_diffucoder_model,
+                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+              }
+            }
+          ]
+          if (k3s_litellm_gateway_diffucoder_api_base | default('') | length > 0)
+          else []
+        )
+      }}
+
+- name: Append local Continue / diffusion model routes
+  ansible.builtin.set_fact:
+    k3s_litellm_gateway_resolved_model_list: >-
+      {{
+        k3s_litellm_gateway_resolved_model_list
+        + (k3s_litellm_gateway_resolved_local_continue_routes | default([]))
+      }}
+
 - name: Append complexity smart-router route when enabled
   ansible.builtin.set_fact:
     k3s_litellm_gateway_resolved_model_list: >-

@@ -37,9 +37,35 @@ argument_specs:
         type: int
         default: 24000
         description: >-
-          Max input tokens after trim_messages. Hook also subtracts estimated
-          tools JSON, completion tokens (rewrites max_tokens 0 to 256), and a
-          safety margin; hard-cuts multimodal content for Cursor Agent payloads.
+          Homelab input budget under the 32k vLLM window (server-tuned).
+      k3s_litellm_gateway_trim_messages_safety_tokens:
+        type: int
+        default: 2048
+        description: >-
+          Extra headroom for chat-template and LiteLLM vs vLLM tokenizer skew.
+      k3s_litellm_gateway_trim_messages_min_completion_tokens:
+        type: int
+        default: 4096
+        description: >-
+          Preferred completion when the client sends max_tokens 0; adaptively
+          lowered when tools leave less room under the 32k window.
+      k3s_litellm_gateway_trim_messages_min_message_tokens:
+        type: int
+        default: 2048
+        description: >-
+          Minimum tokens reserved for chat messages after tools/completion.
+      k3s_litellm_gateway_trim_messages_chars_per_token:
+        type: float
+        default: 2.5
+        description: >-
+          Density for hard-cutting multimodal message content parts.
+      k3s_litellm_gateway_trim_messages_skip_models:
+        type: list
+        elements: str
+        required: false
+        description: >-
+          Client model aliases that skip trim_messages and max_tokens mutation
+          (e.g. deepreinforce-ai/Ornith-1.0-35B-GGUF-no-trim).
       k3s_litellm_gateway_trim_messages_callback_configmap:
         type: str
         default: litellm-callback-files

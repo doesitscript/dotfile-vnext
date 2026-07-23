@@ -216,6 +216,10 @@
   ansible.windows.win_powershell:
     error_action: stop
     script: |
+      $hypervServer = '{{ hyperv_ubuntu_vm_hyperv_server }}'
+      if ([string]::IsNullOrWhiteSpace($hypervServer)) {
+        $hypervServer = 'localhost'
+      }
       function Convert-ToBytes([string]$Value) {
         $normalized = $Value.Trim().ToUpper()
         if ($normalized -match '^\d+$') { return [UInt64]$normalized }

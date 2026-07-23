@@ -11,7 +11,7 @@ use **only LiteLLM aliases that are live** at `http://litellm.hom.lab/v1`.
 
 | | |
 | --- | --- |
-| **Apply** | `ansible-playbook playbooks/deploy_development_nodes.yaml --tags continue_ide --limit mac-dev` |
+| **Apply** | `ansible-playbook playbooks/deploy_continue_ide.yaml --limit mac-dev` (or `deploy_development_nodes.yaml --tags continue_ide`) |
 | **Verify** | Each `model:` in config returns 200 from LiteLLM `/v1/chat/completions` |
 | **Undo** | `-e continue_ide_state=absent` |
 | **Change class** | Idempotent config |

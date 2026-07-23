@@ -4,8 +4,6 @@
     path: "{{ item }}"
     state: directory
   loop:
-    - "{{ windows_ollama_runtime_download_root }}"
-    - "{{ windows_ollama_runtime_install_root }}"
     - "{{ windows_ollama_runtime_contract_root }}"
     - "{{ windows_ollama_runtime_models_path }}"
 
@@ -39,12 +37,7 @@
   changed_when: false
   when: windows_ollama_runtime_driver_contract_stat.stat.exists | bool
 
-- name: Download official standalone Ollama runtime archive
-  ansible.windows.win_get_url:
-    url: "{{ windows_ollama_runtime_download_url }}"
-    dest: "{{ windows_ollama_runtime_archive_path }}"
-
-- name: Stop scheduled Ollama runtime before refresh
+- name: Stop scheduled Ollama runtime before package refresh
   ansible.windows.win_powershell:
     error_action: continue
     script: |
@@ -55,11 +48,50 @@
       Get-Process ollama -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
   changed_when: false
 
-- name: Expand standalone Ollama runtime archive
-  community.windows.win_unzip:
-    src: "{{ windows_ollama_runtime_archive_path }}"
-    dest: "{{ windows_ollama_runtime_install_root }}"
-    delete_archive: false
+- name: Install Ollama via Chocolatey community package
+  chocolatey.chocolatey.win_chocolatey:
+    name: "{{ windows_ollama_runtime_package_name }}"
+    version: "{{ windows_ollama_runtime_package_version }}"
+    state: "{{ windows_ollama_runtime_package_state }}"
+    pinned: "{{ windows_ollama_runtime_package_pinned }}"
+    timeout: 2700
+  register: windows_ollama_runtime_choco_install
+
+- name: Discover Ollama executable candidates
+  ansible.windows.win_stat:
+    path: "{{ item }}"
+  loop: "{{ windows_ollama_runtime_exe_candidates }}"
+  register: windows_ollama_runtime_exe_stats
+
+- name: Resolve Ollama executable from discovered candidates
+  ansible.builtin.set_fact:
+    windows_ollama_runtime_exe_path: >-
+      {{
+        windows_ollama_runtime_exe_stats.results
+        | selectattr('stat.exists')
+        | map(attribute='item')
+        | list
+        | first
+        | default('')
+      }}
+
+- name: Resolve Ollama install root from executable path
+  ansible.builtin.set_fact:
+    windows_ollama_runtime_install_root: >-
+      {{
+        windows_ollama_runtime_exe_path
+        | regex_replace('[\\\\/][^\\\\/]+$', '')
+      }}
+  when: windows_ollama_runtime_exe_path | length > 0
+
+- name: Assert Ollama executable was found after Chocolatey install
+  ansible.builtin.assert:
+    that:
+      - windows_ollama_runtime_exe_path | length > 0
+    fail_msg: >-
+      Chocolatey package {{ windows_ollama_runtime_package_name }} completed but
+      ollama.exe was not found in
+      {{ windows_ollama_runtime_exe_candidates | join(', ') }}.
 
 - name: Ensure OLLAMA_MODELS machine environment variable is managed
   ansible.windows.win_environment:
@@ -116,35 +148,53 @@
   register: windows_ollama_runtime_healthcheck
   retries: 12
   delay: 10
-  until: windows_ollama_runtime_healthcheck.status == 200
+  until: >-
+    (windows_ollama_runtime_healthcheck.status_code | default(0) | int) == 200
+    or (windows_ollama_runtime_healthcheck.status | default(0) | int) == 200
 
-- name: Ensure declared Ollama models are present
-  ansible.windows.win_command: "{{ windows_ollama_runtime_exe_path }} pull {{ item }}"
-  environment:
-    OLLAMA_HOST: "{{ windows_ollama_runtime_host_loopback }}:{{ windows_ollama_runtime_port }}"
-    OLLAMA_MODELS: "{{ windows_ollama_runtime_models_path }}"
+- name: Ensure declared Ollama models are present via HTTP API
+  ansible.windows.win_uri:
+    url: "{{ windows_ollama_runtime_pull_url }}"
+    method: POST
+    body: "{{ {'name': item, 'stream': false} | to_json }}"
+    content_type: application/json
+    status_code: 200
+    timeout: "{{ windows_ollama_runtime_pull_timeout_seconds }}"
   register: windows_ollama_runtime_model_pull
   retries: "{{ windows_ollama_runtime_pull_retries }}"
   delay: "{{ windows_ollama_runtime_pull_delay }}"
-  until: windows_ollama_runtime_model_pull.rc == 0
+  until: >-
+    (windows_ollama_runtime_model_pull.status_code | default(0) | int) == 200
+    or (windows_ollama_runtime_model_pull.status | default(0) | int) == 200
   loop: "{{ windows_ollama_runtime_models_present }}"
   loop_control:
     label: "{{ item }}"
   changed_when: >-
-    'pulling manifest' in (windows_ollama_runtime_model_pull.stdout | default('') | lower)
-    or 'downloading' in (windows_ollama_runtime_model_pull.stdout | default('') | lower)
-    or 'verifying sha256 digest' in (windows_ollama_runtime_model_pull.stdout | default('') | lower)
+    'success' in (
+      (windows_ollama_runtime_model_pull.json.status | default(''))
+      | string
+      | lower
+    )
+    or 'success' in (
+      (windows_ollama_runtime_model_pull.content | default(''))
+      | string
+      | lower
+    )
 
-- name: List locally available Ollama models
-  ansible.windows.win_command: "{{ windows_ollama_runtime_exe_path }} list"
-  environment:
-    OLLAMA_HOST: "{{ windows_ollama_runtime_host_loopback }}:{{ windows_ollama_runtime_port }}"
-    OLLAMA_MODELS: "{{ windows_ollama_runtime_models_path }}"
+- name: List locally available Ollama models via HTTP API
+  ansible.windows.win_uri:
+    url: "{{ windows_ollama_runtime_healthcheck_url }}"
+    method: GET
+    status_code: 200
+    return_content: true
   register: windows_ollama_runtime_model_list
   changed_when: false
 
 - name: Capture Ollama runtime version
-  ansible.windows.win_command: "{{ windows_ollama_runtime_exe_path }} --version"
+  ansible.windows.win_command:
+    argv:
+      - "{{ windows_ollama_runtime_exe_path }}"
+      - "--version"
   register: windows_ollama_runtime_version
   changed_when: false
 
@@ -156,7 +206,10 @@
         {
           'runtime': 'ollama',
           'runtime_slug': 'ollama-secondary-hvh-01',
+          'package_name': windows_ollama_runtime_package_name,
+          'package_version': windows_ollama_runtime_package_version,
           'install_root': windows_ollama_runtime_install_root,
+          'exe_path': windows_ollama_runtime_exe_path,
           'models_path': windows_ollama_runtime_models_path,
           'api_base': windows_ollama_runtime_api_base,
           'listen_address': windows_ollama_runtime_listen_address,
@@ -179,8 +232,12 @@
         {
           'api_base': windows_ollama_runtime_api_base,
           'healthcheck_url': windows_ollama_runtime_healthcheck_url,
-          'health_status': windows_ollama_runtime_healthcheck.status,
-          'model_list_stdout': windows_ollama_runtime_model_list.stdout | default(''),
+          'health_status': (
+            windows_ollama_runtime_healthcheck.status_code
+            | default(windows_ollama_runtime_healthcheck.status)
+            | default('')
+          ),
+          'model_list_content': windows_ollama_runtime_model_list.content | default(''),
           'captured_at_utc': lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ')
         } | to_nice_json
       }}

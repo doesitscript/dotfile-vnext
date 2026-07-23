@@ -20,12 +20,21 @@
 # GPU plays are added separately after NVIDIA driver setup is confirmed.
 
 # --- Play 0: Cluster secrets ---
-- name: Load vault-backed k3s bootstrap token
-  hosts: k3s_cluster
+# k3s_token is loaded from inventory/group_vars/k3s_cluster/vault.yml
+# (inline Ansible vault) when ANSIBLE_VAULT_PASSWORD_FILE is set.
+- name: Publish vault-backed k3s bootstrap token
+  hosts: server
   gather_facts: false
-  vars_files:
-    - ../vault.yml
   tasks:
+    - name: Assert k3s_token is available from group vault
+      ansible.builtin.assert:
+        that:
+          - k3s_token is defined
+          - (k3s_token | string | length) > 0
+        fail_msg: >-
+          k3s_token is missing. Ensure inventory/group_vars/k3s_cluster/vault.yml
+          decrypts with ANSIBLE_VAULT_PASSWORD_FILE.
+
     - name: Publish k3s token for the official k3s collection
       ansible.builtin.set_fact:
         token: "{{ k3s_token }}"
@@ -35,28 +44,27 @@
 
 # --- Play 1: Single-node guard ---
 - name: Guard real k3s bootstrap target selection
-  hosts: k3s_cluster
+  hosts: server
   gather_facts: false
   tasks:
     - name: Refuse real k3s bootstrap unless only hom-lab-ctl-k3s-01 is selected
       ansible.builtin.assert:
         that:
+          - inventory_hostname == 'hom-lab-ctl-k3s-01'
           - query('ansible.builtin.inventory_hostnames', 'server') == ['hom-lab-ctl-k3s-01']
           - query('ansible.builtin.inventory_hostnames', 'agent') | length == 0
-          - "'hom-lab-ctl-dkr-01' not in query('ansible.builtin.inventory_hostnames', 'k3s_cluster')"
-          - "'hom-lab-ctl-dkr-01' not in query('ansible.builtin.inventory_hostnames', 'server')"
-          - "'hom-lab-ctl-dkr-01' not in query('ansible.builtin.inventory_hostnames', 'agent')"
-          - hostvars['hom-lab-ctl-k3s-01'].ansible_host is defined
-          - hostvars['hom-lab-ctl-k3s-01'].api_endpoint == hostvars['hom-lab-ctl-k3s-01'].ansible_host
-          - hostvars['hom-lab-ctl-k3s-01'].token is defined
-          - hostvars['hom-lab-ctl-k3s-01'].token | length > 0
-          - hostvars['hom-lab-ctl-k3s-01'].k3s_server_location == '/var/lib/rancher/k3s'
+          - "'hom-lab-ctl-dkr-01' not in query('ansible.builtin.inventory_hostnames', 'k3s_cluster_network')"
+          - hostvars['hom-lab-ctl-k3s-01']['ansible_host'] is defined
+          - hostvars['hom-lab-ctl-k3s-01']['api_endpoint'] == hostvars['hom-lab-ctl-k3s-01']['ansible_host']
+          - hostvars['hom-lab-ctl-k3s-01']['token'] is defined
+          - hostvars['hom-lab-ctl-k3s-01']['token'] | length > 0
+          - hostvars['hom-lab-ctl-k3s-01']['k3s_server_location'] == '/var/lib/rancher/k3s'
         fail_msg: >-
           Real K3s bootstrap is allowed only for the single-node hom-lab-ctl-k3s-01
-          server lane. Keep hom-lab-ctl-dkr-01 Docker-only, keep agent empty, and keep
-          data-dir on /var/lib/rancher/k3s until a real secondary Linux data
-          mount is added.
-        success_msg: "k3s_cluster targets only hom-lab-ctl-k3s-01; continuing real bootstrap."
+          server lane under k3s_cluster_network. Keep hom-lab-ctl-dkr-01 Docker-only,
+          keep agent empty, and keep data-dir on /var/lib/rancher/k3s until a real
+          secondary Linux data mount is added.
+        success_msg: "k3s_cluster_network targets only hom-lab-ctl-k3s-01; continuing real bootstrap."
       run_once: true
       tags:
         - always
