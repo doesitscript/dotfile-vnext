@@ -1,0 +1,19 @@
+# Ansible-managed by common/bash_completion.
+# Load Homebrew bash-completion so commands in {{ common_bash_completion_directory }}
+# become available in new shells.
+if [ -f "{{ common_bash_completion_profile_script }}" ]; then
+  # shellcheck disable=SC1090
+  source "{{ common_bash_completion_profile_script }}"
+fi
+
+# Homebrew's older bash-completion runtime on macOS does not always eagerly
+# register completion files for non-interactive verification shells. Source the
+# specific repo-managed completion files directly so managed CLI completions are
+# available as soon as .bashrc is loaded, without pulling in unrelated
+# third-party completion scripts from the whole directory.
+{% for completion_file in common_bash_completion_managed_files %}
+if [ -f "{{ common_bash_completion_directory }}/{{ completion_file }}" ]; then
+  # shellcheck disable=SC1090
+  source "{{ common_bash_completion_directory }}/{{ completion_file }}"
+fi
+{% endfor %}

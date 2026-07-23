@@ -1,0 +1,10 @@
+---
+- name: Dispatch continue_ide by platform
+  ansible.builtin.include_tasks: "{{ continue_ide_platform_tasks }}"
+  vars:
+    continue_ide_platform_tasks: >-
+      {{
+        'mac.yml'
+        if ansible_facts['system'] == 'Darwin'
+        else 'unsupported.yml'
+      }}

@@ -1,0 +1,229 @@
+# Stern CLI Usage Note
+
+This file is Ansible-managed by the `stern_cli` role.
+
+## What Stern Is
+
+Stern tails logs from multiple Kubernetes pods and multiple containers at the
+same time. It follows pods dynamically, color-codes pod and container names,
+and accepts either a pod-name regex or a Kubernetes resource query such as
+`deployment/nginx`.
+
+## Install Surface On This Mac
+
+- Homebrew formula: `{{ stern_cli_homebrew_formula }}`
+- Verify version: `stern --version`
+- Help: `stern --help`
+
+## Source Basis
+
+This note was written from two source-backed surfaces reviewed on July 23, 2026:
+
+1. Official Stern upstream docs: `https://github.com/stern/stern`
+2. Context7 Kubernetes docs result that surfaced Stern usage examples from the
+   Kubernetes blog, including multi-pod tailing, `--context`, and selector examples
+
+Use the official Stern upstream docs as the primary authority when this note
+and upstream docs differ.
+
+## Query Model
+
+Stern usage shape:
+
+```bash
+stern pod-query [flags]
+```
+
+The `pod-query` can be:
+
+- a regular expression, for example `web-\w`
+- a Kubernetes resource such as `deployment/nginx`
+- `.` when you want selectors or namespace filters to drive the match
+
+## Flags AI Agents And Operators Should Know
+
+- `--namespace`, `-n`
+  Target one namespace. Repeat or use comma-separated values for multiple namespaces.
+- `--all-namespaces`, `-A`
+  Tail across every namespace.
+- `--context`
+  Choose a kubeconfig context explicitly.
+- `--selector`, `-l`
+  Filter pods by label selector.
+- `--field-selector`
+  Filter by Kubernetes field selector such as node name.
+- `--container`, `-c`
+  Limit matching containers by regex.
+- `--exclude-container`, `-E`
+  Skip noisy sidecars like service mesh proxies.
+- `--exclude-pod`
+  Skip specific pods by regex.
+- `--include`, `-i`
+  Keep only matching log lines.
+- `--exclude`, `-e`
+  Drop matching log lines.
+- `--since`, `-s`
+  Relative time window such as `5m`, `15m`, or `2h`.
+- `--tail`
+  Last N lines. `--tail 0` means only new logs.
+- `--no-follow`
+  Print available logs and exit.
+- `--only-log-lines`
+  Emit just log text without Stern prefixes.
+- `--timestamps`, `-t`
+  Add timestamps. Use `--timestamps=short` for compact output.
+- `--timezone`
+  Render timestamps in a named timezone.
+- `--output`, `-o`
+  Predefined output modes: `default`, `raw`, `json`, `extjson`, `ppextjson`
+- `--template`
+  Use a custom Go template for each log line.
+- `--template-file`, `-T`
+  Load the custom template from disk.
+- `--max-log-requests`
+  Limit concurrent log requests to reduce cluster load.
+- `--verbosity`
+  Increase client-side debug output. `--verbosity 6` is a good troubleshooting start.
+- `--completion`
+  Emit shell completion code for `bash`, `zsh`, or `fish`.
+
+## Good Default Patterns
+
+Tail all logs for pods that match a deployment resource:
+
+```bash
+stern deployment/nginx
+```
+
+Tail only new logs in one namespace:
+
+```bash
+stern . -n kube-system --tail 0
+```
+
+Tail logs newer than fifteen minutes with timestamps:
+
+```bash
+stern auth -t --since 15m
+```
+
+Follow pods across all namespaces by label:
+
+```bash
+stern --all-namespaces -l app=nginx
+```
+
+Exclude noisy proxy containers:
+
+```bash
+stern -n staging --exclude-container istio-proxy .
+```
+
+Print JSON log envelopes so another tool can parse them:
+
+```bash
+stern backend -o json
+```
+
+Emit only raw message text:
+
+```bash
+stern backend -o raw
+```
+
+Show logs from the last five minutes, then exit:
+
+```bash
+stern --since=5m --no-follow -A -t .
+```
+
+## Homelab Context Hints
+
+Current managed K3s client contexts on this Mac:
+{% for cluster in k3s_mac_client_clusters | default([]) %}
+- `{{ cluster.context_name }}` via `{{ cluster.cluster_host }}`
+{% endfor %}
+
+Default context:
+
+- `{{ k3s_mac_client_default_context | default('not set') }}`
+
+Practical homelab examples:
+
+```bash
+stern --context {{ k3s_mac_client_default_context | default('hom-lab-ctl-k3s-01') }} -n kube-system --tail 0 .
+stern --context hom-lab-ctl-k3s-02 -n litellm litellm
+stern --context hom-lab-ctl-k3s-02 -n langfuse langfuse-web
+stern --context hom-lab-ctl-k3s-02 --all-namespaces -l app.kubernetes.io/instance=litellm
+```
+
+## Output And Templates
+
+Use `-o raw` when the logs are already structured and you want to pipe them
+through another tool. Use `-o json` when you want Stern to emit structured log
+records containing namespace, pod, container, and message.
+
+Use a custom template when you want a stable machine-readable or operator-tuned
+format. Example:
+
+```bash
+{% raw %}
+stern --template '{{printf "%s (%s/%s/%s/%s)\n" .Message .NodeName .Namespace .PodName .ContainerName}}' backend
+{% endraw %}
+```
+
+Useful template fields:
+
+- `Message`
+- `Timestamp`
+- `NodeName`
+- `Namespace`
+- `PodName`
+- `ContainerName`
+- `Labels`
+- `Annotations`
+
+Useful template helpers include `json`, `parseJSON`, `tryParseJSON`,
+`extractJSONParts`, `prettyJSON`, `toRFC3339Nano`, and `toTimestamp`.
+
+## Troubleshooting Guidance
+
+- Use `--verbosity 6` when Stern behavior itself needs debugging.
+- Use `--max-log-requests` when a very broad query risks too many concurrent requests.
+- Combine `--no-follow` with `--since` when you want a bounded audit rather than a live stream.
+- Use `--context` explicitly in automation or AI-driven commands so the cluster target is obvious.
+- Use `--exclude-container` or `--exclude-pod` early when sidecars or control-plane pods drown out the signal.
+
+## Shell Completion
+
+This repo manages Stern bash completion at:
+
+```text
+{{ stern_cli_bash_completion_path }}
+```
+
+The shared bash-completion loader lives at:
+
+```text
+{{ common_bash_completion_loader_path }}
+```
+
+Reload Bash after apply:
+
+```bash
+source ~/.bashrc
+```
+
+Manual generation examples from upstream:
+
+```bash
+stern --completion=bash
+stern --completion=zsh
+stern --completion=fish
+```
+
+One-shot interactive fallback:
+
+```bash
+source <(stern --completion=bash)
+```

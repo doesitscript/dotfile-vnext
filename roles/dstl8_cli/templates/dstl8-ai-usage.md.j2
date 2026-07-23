@@ -1,0 +1,192 @@
+# Dstl8 CLI Usage Note
+
+This file is Ansible-managed by the `dstl8_cli` role.
+
+## What Dstl8 Is
+
+Dstl8 is a terminal-native CLI and TUI for continuous runtime feedback. It can
+distill, detect, correlate, and explain incidents across deployment and
+observability surfaces such as Kubernetes, AWS CloudWatch, Vercel, Supabase,
+GitHub, and OpenTelemetry. It also provides an MCP server so AI coding tools
+can investigate incidents and query runtime context directly.
+
+## Install Surface On This Mac
+
+- Homebrew tap: `{{ dstl8_cli_homebrew_tap }}`
+- Homebrew formula: `{{ dstl8_cli_homebrew_formula }}`
+- Verify version: `dstl8 version`
+- Help: `dstl8 --help`
+- Managed note path: `{{ dstl8_cli_usage_note_path }}`
+
+## Source Basis
+
+This note was written from source-backed upstream surfaces reviewed on July 23, 2026:
+
+1. Official Dstl8 upstream README: `https://github.com/control-theory/dstl8`
+2. Official Dstl8 docs: `https://docs.controltheory.com/controltheory-documentation/dstl8-docs`
+3. Official Homebrew tap: `https://github.com/control-theory/homebrew-dstl8`
+
+Use the upstream README and docs as the primary authority when this note and
+upstream docs differ.
+
+## Quick Start
+
+Install and run the guided setup:
+
+```bash
+brew install control-theory/dstl8/dstl8
+dstl8 setup
+```
+
+`dstl8 setup` is the fastest path. It can create or detect your account,
+install the MCP server into detected AI coding agents, auto-detect data
+sources, and open the TUI or dashboard.
+
+## High-Value Commands
+
+- `dstl8 setup`
+  Guided onboarding for account, MCP install, sources, and dashboard
+- `dstl8 version`
+  Confirm the installed CLI version
+- `dstl8 tui`
+  Open the terminal UI
+- `dstl8 dashboard`
+  Alias for `dstl8 tui`
+- `dstl8 logs fetch -n 5`
+  Fetch a few recent log lines
+- `dstl8 sources`
+  Show connected sources
+- `dstl8 profiles`
+  Show configured login profiles
+- `dstl8 install status`
+  Show where the MCP server is installed
+
+## AI Agent Integration
+
+Install into supported clients:
+
+```bash
+dstl8 install codex
+dstl8 install claude-code
+dstl8 install --include-experimental cursor
+dstl8 install --all
+dstl8 install status
+```
+
+Useful flags:
+
+- `--project`
+  Install project-scoped MCP config instead of user-scoped config
+- `--dry-run`
+  Preview config changes without writing them
+- `--include-experimental`
+  Include experimental clients such as Cursor
+
+Restart the AI client after installation so it picks up the new MCP server.
+
+## Shell Completion
+
+This repo manages Dstl8 bash completion at:
+
+```text
+{{ dstl8_cli_bash_completion_path }}
+```
+
+The shared bash-completion loader lives at:
+
+```text
+{{ common_bash_completion_loader_path }}
+```
+
+Reload Bash after apply:
+
+```bash
+source ~/.bashrc
+```
+
+One-shot interactive fallback:
+
+```bash
+source <(dstl8 completion bash)
+```
+
+Manual MCP config shape:
+
+```json
+{
+  "mcpServers": {
+    "dstl8": {
+      "command": "dstl8",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+## Source Onboarding
+
+Interactive examples:
+
+```bash
+dstl8 sources add kubernetes
+dstl8 sources add cloudwatch
+dstl8 sources add vercel
+dstl8 sources add supabase
+dstl8 sources add github
+```
+
+Quick verification:
+
+```bash
+dstl8 sources
+dstl8 logs fetch -n 5
+```
+
+Repo-local context:
+
+{% for cluster in k3s_mac_client_clusters | default([]) %}
+- Managed K3s client context: `{{ cluster.context_name }}` via `{{ cluster.cluster_host }}`
+{% endfor %}
+- Default managed context: `{{ k3s_mac_client_default_context | default('not set') }}`
+
+## TUI Workflow
+
+Useful entrypoints:
+
+```bash
+dstl8 tui
+dstl8 tui -w myworkspace
+dstl8 dashboard
+```
+
+Common uses:
+
+- review active incidents
+- inspect workspace dashboards
+- browse sources and streams
+- spot anomalous sentiment or severity spikes
+- drill into log details before handing the case to an AI agent
+
+## How This Fits Gonzo And Stern
+
+- `stern` is the fast path for live multi-pod Kubernetes log tailing.
+- `gonzo` is strong for local, terminal-native AI explanation of streamed logs.
+- `dstl8` is broader: it adds always-on runtime feedback, source onboarding,
+  incident correlation, and MCP-backed investigation workflows for AI agents.
+
+Practical pattern on `mac-dev`:
+
+```bash
+stern --context {{ k3s_mac_client_default_context | default('hom-lab-ctl-k3s-02') }} -n kube-system --tail 0 .
+gonzo < some-log-file.log
+dstl8 tui
+dstl8 install status
+```
+
+## Troubleshooting Guidance
+
+- Run `dstl8 version` first when verifying the installed binary.
+- Run `dstl8 install status` when an AI client does not seem to detect the MCP server.
+- Re-run `dstl8 setup` when you skipped onboarding steps earlier.
+- Use `dstl8 install --dry-run` before changing MCP config by hand.
+- Use `dstl8 profiles` and `dstl8 switch <profile>` when multiple organizations exist.

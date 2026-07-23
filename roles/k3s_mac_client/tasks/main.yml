@@ -91,11 +91,38 @@
   changed_when: false
   when: k3s_mac_client_state == "present"
 
+- name: Resolve Homebrew prefix for kubectl bash completion
+  ansible.builtin.command:
+    argv:
+      - brew
+      - --prefix
+  register: k3s_mac_client_brew_prefix_cmd
+  changed_when: false
+  check_mode: false
+
+- name: Set kubectl bash completion derived paths
+  ansible.builtin.set_fact:
+    k3s_mac_client_kubectl_bash_completion_path_effective: >-
+      {{
+        k3s_mac_client_kubectl_bash_completion_path
+        if (k3s_mac_client_kubectl_bash_completion_path | default('') | length) > 0
+        else (k3s_mac_client_brew_prefix_cmd.stdout ~ '/etc/bash_completion.d/kubectl')
+      }}
+  changed_when: false
+
 - name: Remove kubectl binary from macOS
   ansible.builtin.file:
     path: "{{ k3s_mac_client_kubectl_path }}"
     state: absent
   when: k3s_mac_client_state == "absent"
+
+- name: Remove kubectl bash completion from macOS
+  ansible.builtin.file:
+    path: "{{ k3s_mac_client_kubectl_bash_completion_path_effective }}"
+    state: absent
+  when:
+    - k3s_mac_client_state == "absent"
+    - k3s_mac_client_install_bash_completion | bool
 
 - name: Remove managed K3s kubeconfigs from macOS
   ansible.builtin.file:
@@ -113,6 +140,12 @@
     - k3s_mac_client_state == "absent"
     - k3s_mac_client_manage_default_kubeconfig | bool
 
+- name: Remove K3s KUBECONFIG shell export from macOS
+  ansible.builtin.file:
+    path: "{{ k3s_mac_client_shell_kubeconfig_bashrc }}"
+    state: absent
+  when: k3s_mac_client_state == "absent"
+
 - name: Ensure kubectl install directory exists on macOS
   ansible.builtin.file:
     path: "{{ k3s_mac_client_bin_dir }}"
@@ -126,6 +159,28 @@
     dest: "{{ k3s_mac_client_kubectl_path }}"
     mode: "0755"
   when: k3s_mac_client_state == "present"
+
+- name: Generate kubectl bash completion on macOS
+  ansible.builtin.command:
+    argv:
+      - "{{ k3s_mac_client_kubectl_path }}"
+      - completion
+      - bash
+  register: k3s_mac_client_kubectl_bash_completion
+  changed_when: false
+  when:
+    - k3s_mac_client_state == "present"
+    - k3s_mac_client_install_bash_completion | bool
+
+- name: Install kubectl bash completion on macOS
+  ansible.builtin.copy:
+    dest: "{{ k3s_mac_client_kubectl_bash_completion_path_effective }}"
+    mode: "0644"
+    content: "{{ k3s_mac_client_kubectl_bash_completion.stdout }}"
+  when:
+    - k3s_mac_client_state == "present"
+    - k3s_mac_client_install_bash_completion | bool
+    - k3s_mac_client_kubectl_bash_completion.stdout | length > 0
 
 - name: Ensure kubeconfig directory exists on macOS
   ansible.builtin.file:
@@ -208,6 +263,26 @@
     - k3s_mac_client_manage_default_kubeconfig | bool
     - (k3s_mac_client_effective_default_context | default('') | length) > 0
 
+- name: Ensure bashrc.d exists before KUBECONFIG export
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.bashrc.d"
+    state: directory
+    mode: "0755"
+  when:
+    - k3s_mac_client_state == "present"
+    - k3s_mac_client_shell_kubeconfig_export | bool
+    - (k3s_mac_client_managed_kubeconfigs | default([]) | length) > 0
+
+- name: Deploy KUBECONFIG shell export for separate cluster kubeconfigs
+  ansible.builtin.template:
+    src: k3s-kubeconfig.bash.j2
+    dest: "{{ k3s_mac_client_shell_kubeconfig_bashrc }}"
+    mode: "0644"
+  when:
+    - k3s_mac_client_state == "present"
+    - k3s_mac_client_shell_kubeconfig_export | bool
+    - (k3s_mac_client_managed_kubeconfigs | default([]) | length) > 0
+
 - name: Verify kubectl client is available on macOS
   ansible.builtin.command:
     argv:
@@ -218,17 +293,43 @@
   changed_when: false
   when: k3s_mac_client_state == "present"
 
+- name: Verify kubectl bash completion exists on macOS
+  ansible.builtin.stat:
+    path: "{{ k3s_mac_client_kubectl_bash_completion_path_effective }}"
+  register: k3s_mac_client_kubectl_bash_completion_stat
+  when:
+    - not ansible_check_mode
+    - k3s_mac_client_state == "present"
+    - k3s_mac_client_install_bash_completion | bool
+
+- name: Assert kubectl bash completion exists on macOS
+  ansible.builtin.assert:
+    that:
+      - k3s_mac_client_kubectl_bash_completion_stat.stat.exists | default(false)
+    fail_msg: "Managed kubectl bash completion missing at {{ k3s_mac_client_kubectl_bash_completion_path_effective }}."
+  when:
+    - not ansible_check_mode
+    - k3s_mac_client_state == "present"
+    - k3s_mac_client_install_bash_completion | bool
+
 - name: Verify macOS kubectl contexts are available
   ansible.builtin.command:
     argv:
       - "{{ k3s_mac_client_kubectl_path }}"
       - config
       - get-contexts
-      - --kubeconfig
-      - "{{ k3s_mac_client_default_kubeconfig }}"
+  environment:
+    KUBECONFIG: >-
+      {{
+        k3s_mac_client_default_kubeconfig
+        if (k3s_mac_client_manage_default_kubeconfig | bool)
+        else (k3s_mac_client_managed_kubeconfigs | join(':'))
+      }}
   register: k3s_mac_client_contexts
   changed_when: false
-  when: k3s_mac_client_state == "present"
+  when:
+    - k3s_mac_client_state == "present"
+    - (k3s_mac_client_managed_kubeconfigs | default([]) | length) > 0
 
 - name: Verify bare kubectl can reach the default K3s context
   ansible.builtin.command:
@@ -267,6 +368,8 @@
       kubeconfigs: "{{ k3s_mac_client_managed_kubeconfigs | default([k3s_mac_client_kubeconfig]) }}"
       unavailable_clusters: "{{ k3s_mac_client_unavailable_clusters | default([]) }}"
       default_kubeconfig: "{{ k3s_mac_client_default_kubeconfig if k3s_mac_client_manage_default_kubeconfig else omit }}"
+      shell_kubeconfig_export: "{{ k3s_mac_client_shell_kubeconfig_bashrc if k3s_mac_client_shell_kubeconfig_export else omit }}"
+      connection_modes: "{{ k3s_mac_client_clusters_normalized | map(attribute='connection_mode') | list }}"
       kubectl: "{{ k3s_mac_client_kubectl_path }}"
       contexts: "{{ k3s_mac_client_contexts.stdout_lines | default([]) }}"
       kubectl_client: "{{ k3s_mac_client_kubectl_version.stdout_lines }}"

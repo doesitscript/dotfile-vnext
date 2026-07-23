@@ -1,0 +1,197 @@
+---
+- name: Manage Stern Homebrew formula
+  community.general.homebrew:
+    name: "{{ stern_cli_homebrew_formula }}"
+    state: "{{ stern_cli_state }}"
+
+- name: Check installed Stern formula for bash completion preview
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --formula
+      - "{{ stern_cli_homebrew_formula }}"
+  register: stern_cli_completion_formula_preview
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - stern_cli_state == "present"
+    - stern_cli_install_bash_completion | bool
+    - ansible_check_mode
+
+- name: Generate Stern bash completion
+  ansible.builtin.command:
+    argv:
+      - stern
+      - --completion=bash
+  register: stern_cli_bash_completion
+  changed_when: false
+  when:
+    - stern_cli_state == "present"
+    - stern_cli_install_bash_completion | bool
+    - not ansible_check_mode or stern_cli_completion_formula_preview.rc == 0
+
+- name: Install Stern bash completion
+  ansible.builtin.copy:
+    content: "{{ stern_cli_bash_completion.stdout }}"
+    dest: "{{ stern_cli_bash_completion_path }}"
+    mode: "0644"
+  when:
+    - stern_cli_state == "present"
+    - stern_cli_install_bash_completion | bool
+    - stern_cli_bash_completion.stdout | length > 0
+
+- name: Explain Stern bash completion preview limitations when the formula is absent
+  ansible.builtin.debug:
+    msg:
+      - "Check mode note: live apply will generate Stern bash completion after the formula is installed."
+      - "Planned completion path: {{ stern_cli_bash_completion_path }}"
+  when:
+    - stern_cli_state == "present"
+    - stern_cli_install_bash_completion | bool
+    - ansible_check_mode
+    - stern_cli_completion_formula_preview.rc != 0
+
+- name: Ensure Stern usage note parent directory exists
+  ansible.builtin.file:
+    path: "{{ stern_cli_usage_note_path | dirname }}"
+    state: directory
+    mode: "0755"
+  when:
+    - stern_cli_state == "present"
+    - stern_cli_install_usage_note | bool
+
+- name: Render Stern AI/operator usage note
+  ansible.builtin.template:
+    src: stern-ai-usage.md.j2
+    dest: "{{ stern_cli_usage_note_path }}"
+    mode: "0644"
+  when:
+    - stern_cli_state == "present"
+    - stern_cli_install_usage_note | bool
+
+- name: Remove Stern AI/operator usage note
+  ansible.builtin.file:
+    path: "{{ stern_cli_usage_note_path }}"
+    state: absent
+  when:
+    - stern_cli_state == "absent"
+    - stern_cli_install_usage_note | bool
+
+- name: Remove Stern bash completion
+  ansible.builtin.file:
+    path: "{{ stern_cli_bash_completion_path }}"
+    state: absent
+  when:
+    - stern_cli_state == "absent"
+    - stern_cli_install_bash_completion | bool
+
+- name: Check installed Stern formula
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --formula
+      - "{{ stern_cli_homebrew_formula }}"
+  register: stern_cli_formula_check
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - stern_cli_verify | bool
+
+- name: Verify Stern formula is present
+  ansible.builtin.assert:
+    that:
+      - stern_cli_formula_check.rc == 0
+    fail_msg: "Homebrew formula {{ stern_cli_homebrew_formula }} is not installed."
+  when:
+    - not ansible_check_mode
+    - stern_cli_verify | bool
+    - stern_cli_state == "present"
+
+- name: Verify Stern formula is absent
+  ansible.builtin.assert:
+    that:
+      - stern_cli_formula_check.rc != 0
+    fail_msg: "Homebrew formula {{ stern_cli_homebrew_formula }} remains installed."
+  when:
+    - not ansible_check_mode
+    - stern_cli_verify | bool
+    - stern_cli_state == "absent"
+
+- name: Probe Stern version
+  ansible.builtin.command:
+    argv:
+      - stern
+      - --version
+  register: stern_cli_version_probe
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - stern_cli_verify | bool
+    - stern_cli_state == "present"
+
+- name: Verify Stern usage note exists
+  ansible.builtin.stat:
+    path: "{{ stern_cli_usage_note_path }}"
+  register: stern_cli_usage_note_stat
+  when:
+    - not ansible_check_mode
+    - stern_cli_verify | bool
+    - stern_cli_state == "present"
+    - stern_cli_install_usage_note | bool
+
+- name: Verify Stern bash completion exists
+  ansible.builtin.stat:
+    path: "{{ stern_cli_bash_completion_path }}"
+  register: stern_cli_bash_completion_stat
+  when:
+    - not ansible_check_mode
+    - stern_cli_verify | bool
+    - stern_cli_install_bash_completion | bool
+
+- name: Assert Stern bash completion exists
+  ansible.builtin.assert:
+    that:
+      - stern_cli_bash_completion_stat.stat.exists | default(false)
+    fail_msg: "Managed Stern bash completion missing at {{ stern_cli_bash_completion_path }}."
+  when:
+    - not ansible_check_mode
+    - stern_cli_verify | bool
+    - stern_cli_state == "present"
+    - stern_cli_install_bash_completion | bool
+
+- name: Assert Stern bash completion is absent
+  ansible.builtin.assert:
+    that:
+      - not (stern_cli_bash_completion_stat.stat.exists | default(false))
+    fail_msg: "Managed Stern bash completion remains at {{ stern_cli_bash_completion_path }}."
+  when:
+    - not ansible_check_mode
+    - stern_cli_verify | bool
+    - stern_cli_state == "absent"
+    - stern_cli_install_bash_completion | bool
+
+- name: Assert Stern usage note exists
+  ansible.builtin.assert:
+    that:
+      - stern_cli_usage_note_stat.stat.exists | default(false)
+    fail_msg: "Managed Stern usage note missing at {{ stern_cli_usage_note_path }}."
+  when:
+    - not ansible_check_mode
+    - stern_cli_verify | bool
+    - stern_cli_state == "present"
+    - stern_cli_install_usage_note | bool
+
+- name: Report Stern formula state
+  ansible.builtin.debug:
+    msg:
+      - "Homebrew formula {{ stern_cli_homebrew_formula }} is {{ 'installed' if stern_cli_state == 'present' else 'absent' }}."
+      - "Managed bash completion: {{ stern_cli_bash_completion_path if stern_cli_install_bash_completion | bool else 'disabled' }}"
+      - "Managed usage note: {{ stern_cli_usage_note_path if stern_cli_install_usage_note | bool else 'disabled' }}"
+      - "{{ stern_cli_version_probe.stdout | default('') }}"
+  when:
+    - not ansible_check_mode
+    - stern_cli_verify | bool

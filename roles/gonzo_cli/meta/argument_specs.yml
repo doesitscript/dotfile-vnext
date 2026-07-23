@@ -1,0 +1,63 @@
+---
+argument_specs:
+  main:
+    short_description: >-
+      Manage Gonzo on macOS through the pinned upstream release binary and install AI/operator usage
+      guidance
+    options:
+      gonzo_cli_state:
+        type: str
+        default: present
+        choices:
+          - present
+          - absent
+        description:
+          - Whether the pinned Gonzo release binary should be installed or removed.
+      gonzo_cli_release_version:
+        type: str
+        default: "0.4.3"
+        description:
+          - Pinned upstream Gonzo release version to install on macOS.
+      gonzo_cli_archive_url:
+        type: str
+        default: >-
+          https://github.com/control-theory/gonzo/releases/download/v{{
+          gonzo_cli_release_version }}/{{ gonzo_cli_archive_filename }}
+        description:
+          - Download URL for the pinned Gonzo macOS release archive.
+      gonzo_cli_archive_checksum:
+        type: str
+        default: "{{ gonzo_cli_archive_checksum_map[gonzo_cli_release_arch] }}"
+        description:
+          - SHA-256 checksum for the pinned Gonzo release archive.
+      gonzo_cli_binary_path:
+        type: str
+        default: "{{ ansible_env.HOME }}/.local/bin/gonzo"
+        description:
+          - Filesystem path where the Gonzo binary is installed on macOS.
+      gonzo_cli_verify:
+        type: bool
+        default: true
+        description:
+          - Verify the requested binary state after convergence.
+      gonzo_cli_install_bash_completion:
+        type: bool
+        default: true
+        description:
+          - Whether to install the managed Gonzo bash completion file on macOS.
+      gonzo_cli_bash_completion_path:
+        type: str
+        default: >-
+          {{ (common_bash_completion_directory | default((ansible_env.HOMEBREW_PREFIX | default('/usr/local')) ~ '/etc/bash_completion.d')) ~ '/gonzo' }}
+        description:
+          - Filesystem path for the managed Gonzo bash completion file.
+      gonzo_cli_install_usage_note:
+        type: bool
+        default: true
+        description:
+          - Whether to install the managed Gonzo AI/operator usage note on macOS.
+      gonzo_cli_usage_note_path:
+        type: str
+        default: "{{ ansible_env.HOME }}/.config/dotfile-vnext/ai/tool-guides/gonzo.md"
+        description:
+          - Filesystem path for the managed Gonzo usage note rendered on macOS.

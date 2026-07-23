@@ -1,0 +1,44 @@
+---
+argument_specs:
+  main:
+    short_description: Manage Stern on macOS through Homebrew and install AI usage guidance
+    options:
+      stern_cli_state:
+        type: str
+        default: present
+        choices:
+          - present
+          - absent
+        description:
+          - Whether the Homebrew Stern formula should be installed or removed.
+      stern_cli_homebrew_formula:
+        type: str
+        default: stern
+        description:
+          - Homebrew formula name that provides the Stern CLI.
+      stern_cli_verify:
+        type: bool
+        default: true
+        description:
+          - Verify the requested formula state after convergence.
+      stern_cli_install_bash_completion:
+        type: bool
+        default: true
+        description:
+          - Whether to install the managed Stern bash completion file on macOS.
+      stern_cli_bash_completion_path:
+        type: str
+        default: >-
+          {{ (common_bash_completion_directory | default((ansible_env.HOMEBREW_PREFIX | default('/usr/local')) ~ '/etc/bash_completion.d')) ~ '/stern' }}
+        description:
+          - Filesystem path for the managed Stern bash completion file.
+      stern_cli_install_usage_note:
+        type: bool
+        default: true
+        description:
+          - Whether to install the managed Stern AI/operator usage note on macOS.
+      stern_cli_usage_note_path:
+        type: str
+        default: "{{ ansible_env.HOME }}/.config/dotfile-vnext/ai/tool-guides/stern.md"
+        description:
+          - Filesystem path for the managed Stern usage note rendered on macOS.

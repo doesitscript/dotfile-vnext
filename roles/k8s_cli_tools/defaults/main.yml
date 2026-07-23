@@ -3,6 +3,11 @@
 
 # Role lifecycle state — present or absent
 k8s_cli_tools_state: present
+k8s_cli_tools_install_bash_completion: true
+k8s_cli_tools_k9s_bash_completion_path: >-
+  {{ (common_bash_completion_directory | default((ansible_env.HOMEBREW_PREFIX | default('/usr/local')) ~ '/etc/bash_completion.d')) ~ '/k9s' }}
+k8s_cli_tools_stern_bash_completion_path: >-
+  {{ (common_bash_completion_directory | default((ansible_env.HOMEBREW_PREFIX | default('/usr/local')) ~ '/etc/bash_completion.d')) ~ '/stern' }}
 
 # Version contracts — pin via inventory/group_vars/all.yaml k8s_tooling_version_contract
 k8s_cli_tools_k9s_version: "{{ k8s_tooling_version_contract.k9s | default('') }}"

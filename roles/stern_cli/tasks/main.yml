@@ -1,0 +1,9 @@
+---
+- name: Require macOS for stern_cli package management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "stern_cli currently supports macOS through Homebrew only."
+
+- name: Manage Stern on macOS
+  ansible.builtin.import_tasks: mac.yml

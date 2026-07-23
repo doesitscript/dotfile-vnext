@@ -1,0 +1,54 @@
+---
+argument_specs:
+  main:
+    short_description: Install bash-completion on macOS and load repo-managed CLI completion files
+    options:
+      common_bash_completion_state:
+        type: str
+        default: present
+        choices:
+          - present
+          - absent
+        description:
+          - Whether the Homebrew bash-completion formula and managed loader should be installed or removed.
+      common_bash_completion_formula:
+        type: str
+        default: auto
+        description:
+          - Homebrew formula to manage, or auto to choose bash-completion@2 for Bash 4.2+ and the legacy formula for Bash 3.x based on the active Bash login shell.
+      common_bash_completion_formula_legacy:
+        type: str
+        default: bash-completion
+        description:
+          - Legacy Homebrew formula used when auto-selecting for Bash 3.x compatibility.
+      common_bash_completion_formula_modern:
+        type: str
+        default: bash-completion@2
+        description:
+          - Modern Homebrew formula used when auto-selecting for Bash 4.2+.
+      common_bash_completion_loader_path:
+        type: str
+        default: "{{ ansible_env.HOME }}/.bashrc.d/bash_completion.bash"
+        description:
+          - Loader snippet that sources the Homebrew bash-completion profile script from ~/.bashrc.d.
+      common_bash_completion_managed_files:
+        type: list
+        elements: str
+        default:
+          - gonzo
+          - dstl8
+          - kubectl
+          - kubectx
+          - kubens
+          - k9s
+          - stern
+          - helm
+          - kustomize
+          - k8sgpt
+        description:
+          - Basenames under the Homebrew bash_completion.d directory that should be sourced eagerly by the managed loader.
+      common_bash_completion_verify:
+        type: bool
+        default: true
+        description:
+          - Verify the requested bash-completion formula, profile script, managed loader, and helper-function availability after convergence.

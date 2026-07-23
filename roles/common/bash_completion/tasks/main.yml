@@ -1,0 +1,246 @@
+---
+- name: Validate common_bash_completion state
+  ansible.builtin.assert:
+    that:
+      - common_bash_completion_state in ["present", "absent"]
+    fail_msg: "common_bash_completion_state must be present or absent."
+
+- name: Require macOS for common/bash_completion package management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "common/bash_completion currently supports macOS through Homebrew only."
+
+- name: Resolve Homebrew prefix for bash completion
+  ansible.builtin.command:
+    argv:
+      - brew
+      - --prefix
+  register: common_bash_completion_prefix_cmd
+  changed_when: false
+  check_mode: false
+
+- name: Resolve bash binary used for completion runtime selection
+  ansible.builtin.set_fact:
+    common_bash_completion_shell_binary: >-
+      {{
+        ansible_env.SHELL
+        if (
+          ansible_env.SHELL is defined
+          and (ansible_env.SHELL | basename) == 'bash'
+        )
+        else 'bash'
+      }}
+  changed_when: false
+
+- name: Detect active shell Bash version for bash completion formula selection
+  ansible.builtin.command:
+    argv:
+      - "{{ common_bash_completion_shell_binary }}"
+      - -lc
+      - 'printf "%s" "${BASH_VERSINFO[0]}"'
+  register: common_bash_completion_bash_version_cmd
+  changed_when: false
+  check_mode: false
+
+- name: Parse active shell Bash major version for bash completion formula selection
+  ansible.builtin.set_fact:
+    common_bash_completion_bash_major: "{{ common_bash_completion_bash_version_cmd.stdout | trim | int }}"
+  changed_when: false
+
+- name: Set bash completion derived paths
+  ansible.builtin.set_fact:
+    common_bash_completion_prefix: "{{ common_bash_completion_prefix_cmd.stdout }}"
+    common_bash_completion_directory: "{{ common_bash_completion_prefix_cmd.stdout }}/etc/bash_completion.d"
+    common_bash_completion_profile_script: "{{ common_bash_completion_prefix_cmd.stdout }}/etc/profile.d/bash_completion.sh"
+    common_bash_completion_selected_formula: >-
+      {{
+        common_bash_completion_formula
+        if common_bash_completion_formula != 'auto'
+        else (
+          common_bash_completion_formula_modern
+          if common_bash_completion_bash_major >= 4
+          else common_bash_completion_formula_legacy
+        )
+      }}
+    common_bash_completion_conflicting_formulas: >-
+      {{
+        [common_bash_completion_formula_legacy, common_bash_completion_formula_modern]
+        | reject('equalto', (
+            common_bash_completion_formula
+            if common_bash_completion_formula != 'auto'
+            else (
+              common_bash_completion_formula_modern
+              if common_bash_completion_bash_major >= 4
+              else common_bash_completion_formula_legacy
+            )
+          ))
+        | list
+      }}
+  changed_when: false
+
+- name: Remove conflicting bash completion formulas when enabling managed runtime
+  community.general.homebrew:
+    name: "{{ item }}"
+    state: absent
+  loop: "{{ common_bash_completion_conflicting_formulas }}"
+  when: common_bash_completion_state == "present"
+
+- name: Manage bash-completion Homebrew formula
+  community.general.homebrew:
+    name: "{{ common_bash_completion_selected_formula }}"
+    state: "{{ common_bash_completion_state }}"
+
+- name: Verify expected bash-completion profile script path
+  ansible.builtin.stat:
+    path: "{{ common_bash_completion_profile_script }}"
+  register: common_bash_completion_profile_script_stat
+  when:
+    - not ansible_check_mode
+    - common_bash_completion_verify | bool
+
+- name: Remove alternative bash completion formulas when runtime is absent
+  community.general.homebrew:
+    name: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ common_bash_completion_formula_legacy }}"
+    - "{{ common_bash_completion_formula_modern }}"
+  when: common_bash_completion_state == "absent"
+
+- name: Ensure Homebrew bash completion directory exists
+  ansible.builtin.file:
+    path: "{{ common_bash_completion_directory }}"
+    state: directory
+    mode: "0755"
+  when: common_bash_completion_state == "present"
+
+- name: Ensure bash completion loader parent directory exists
+  ansible.builtin.file:
+    path: "{{ common_bash_completion_loader_path | dirname }}"
+    state: directory
+    mode: "0755"
+  when: common_bash_completion_state == "present"
+
+- name: Render bash completion loader
+  ansible.builtin.template:
+    src: bash_completion.bash.j2
+    dest: "{{ common_bash_completion_loader_path }}"
+    mode: "0644"
+  when: common_bash_completion_state == "present"
+
+- name: Remove bash completion loader
+  ansible.builtin.file:
+    path: "{{ common_bash_completion_loader_path }}"
+    state: absent
+  when: common_bash_completion_state == "absent"
+
+- name: Check installed bash-completion formula
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --formula
+      - "{{ common_bash_completion_selected_formula }}"
+  register: common_bash_completion_formula_check
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - common_bash_completion_verify | bool
+
+- name: Verify bash-completion formula is present
+  ansible.builtin.assert:
+    that:
+      - common_bash_completion_formula_check.rc == 0
+    fail_msg: "Homebrew formula {{ common_bash_completion_selected_formula }} is not installed."
+  when:
+    - not ansible_check_mode
+    - common_bash_completion_verify | bool
+    - common_bash_completion_state == "present"
+
+- name: Verify bash-completion formula is absent
+  ansible.builtin.assert:
+    that:
+      - common_bash_completion_formula_check.rc != 0
+    fail_msg: "Homebrew formula {{ common_bash_completion_selected_formula }} remains installed."
+  when:
+    - not ansible_check_mode
+    - common_bash_completion_verify | bool
+    - common_bash_completion_state == "absent"
+
+- name: Assert bash-completion profile script exists
+  ansible.builtin.assert:
+    that:
+      - common_bash_completion_profile_script_stat.stat.exists | default(false)
+    fail_msg: "Expected bash-completion profile script missing at {{ common_bash_completion_profile_script }} after installing {{ common_bash_completion_selected_formula }}."
+  when:
+    - not ansible_check_mode
+    - common_bash_completion_verify | bool
+    - common_bash_completion_state == "present"
+
+- name: Assert bash-completion profile script is absent
+  ansible.builtin.assert:
+    that:
+      - not (common_bash_completion_profile_script_stat.stat.exists | default(false))
+    fail_msg: "Bash-completion profile script remains at {{ common_bash_completion_profile_script }}."
+  when:
+    - not ansible_check_mode
+    - common_bash_completion_verify | bool
+    - common_bash_completion_state == "absent"
+
+- name: Verify bash completion loader exists
+  ansible.builtin.stat:
+    path: "{{ common_bash_completion_loader_path }}"
+  register: common_bash_completion_loader_stat
+  when:
+    - not ansible_check_mode
+    - common_bash_completion_verify | bool
+
+- name: Assert bash completion loader exists
+  ansible.builtin.assert:
+    that:
+      - common_bash_completion_loader_stat.stat.exists | default(false)
+    fail_msg: "Managed bash completion loader missing at {{ common_bash_completion_loader_path }}."
+  when:
+    - not ansible_check_mode
+    - common_bash_completion_verify | bool
+    - common_bash_completion_state == "present"
+
+- name: Assert bash completion loader is absent
+  ansible.builtin.assert:
+    that:
+      - not (common_bash_completion_loader_stat.stat.exists | default(false))
+    fail_msg: "Managed bash completion loader remains at {{ common_bash_completion_loader_path }}."
+  when:
+    - not ansible_check_mode
+    - common_bash_completion_verify | bool
+    - common_bash_completion_state == "absent"
+
+- name: Verify bash-completion helper function loads through the managed loader
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -lc
+      - >-
+        export PS1='codex$ ';
+        source "{{ common_bash_completion_loader_path }}" >/dev/null 2>&1;
+        declare -F _get_comp_words_by_ref >/dev/null
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - common_bash_completion_verify | bool
+    - common_bash_completion_state == "present"
+
+- name: Report bash completion state
+  ansible.builtin.debug:
+    msg:
+      - "Detected shell binary: {{ common_bash_completion_shell_binary }}"
+      - "Detected bash major version: {{ common_bash_completion_bash_major }}"
+      - "Homebrew formula {{ common_bash_completion_selected_formula }} is {{ 'installed' if common_bash_completion_state == 'present' else 'absent' }}."
+      - "Profile script: {{ common_bash_completion_profile_script if common_bash_completion_state == 'present' else 'removed' }}"
+      - "Completion directory: {{ common_bash_completion_directory if common_bash_completion_state == 'present' else 'removed' }}"
+      - "Managed loader: {{ common_bash_completion_loader_path if common_bash_completion_state == 'present' else 'removed' }}"
+  when:
+    - not ansible_check_mode
+    - common_bash_completion_verify | bool

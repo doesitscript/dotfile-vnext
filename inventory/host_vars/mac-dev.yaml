@@ -29,16 +29,19 @@ hyperv_guest_route_gateway: "192.168.50.158"
 homelab_hosts_file_mac_enabled: true
 
 # Managed K3s client contexts on mac-dev.
+# Direct API (no ssh -L) for both clusters once HyperVGuestNat is absent and
+# Mac guest routes exist. Separate per-cluster kubeconfigs + bash KUBECONFIG
+# export — do not merge into ~/.kube/config.
+k3s_mac_client_manage_default_kubeconfig: false
+k3s_mac_client_shell_kubeconfig_export: true
 k3s_mac_client_clusters:
   - cluster_host: "hom-lab-ctl-k3s-01"
     context_name: "hom-lab-ctl-k3s-01"
-    connection_mode: "ssh_tunnel"
-    tunnel_local_port: 16443
+    connection_mode: "direct"
   - cluster_host: "hom-lab-ctl-k3s-02"
     context_name: "hom-lab-ctl-k3s-02"
-    connection_mode: "ssh_tunnel"
-    tunnel_local_port: 26443
-k3s_mac_client_default_context: "hom-lab-ctl-k3s-01"
+    connection_mode: "direct"
+k3s_mac_client_default_context: "hom-lab-ctl-k3s-02"
 
 # Terraform CLI package-management desired state.
 terraform_cli_state: present
@@ -46,8 +49,26 @@ terraform_cli_state: present
 # LiteLLM CLI package-management desired state.
 litellm_cli_state: present
 
+# Continue IDE → LiteLLM autocomplete / next-edit / chat-edit lanes.
+continue_ide_state: present
+
 # GNU netcat package-management desired state.
 netcat_cli_state: present
+
+# Shared bash-completion substrate for repo-managed CLI completion files.
+common_bash_completion_state: present
+
+# Keep the mac-dev login shell aligned with the Homebrew Bash used interactively
+# in Terminal so shell detection, completion runtime selection, and startup
+# behavior all converge on the same Bash family.
+shell_config_manage_login_shell: true
+shell_config_login_shell_path: /usr/local/bin/bash
+
+# Gonzo AI-native log analysis TUI desired state.
+gonzo_cli_state: present
+
+# Dstl8 runtime-feedback CLI desired state.
+dstl8_cli_state: present
 
 # MCP Research Collection Stack on the mac-dev controller.
 context7_mcp_state: present

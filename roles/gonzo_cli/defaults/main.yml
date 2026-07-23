@@ -1,0 +1,30 @@
+---
+gonzo_cli_state: present
+gonzo_cli_release_version: "0.4.3"
+gonzo_cli_arch_map:
+  x86_64: amd64
+  arm64: arm64
+  aarch64: arm64
+gonzo_cli_archive_filename_map:
+  amd64: "gonzo-0.4.3-darwin-amd64.tar.gz"
+  arm64: "gonzo-0.4.3-darwin-arm64.tar.gz"
+gonzo_cli_archive_checksum_map:
+  amd64: "sha256:73ee7fba16ce5b2a916868f4560f5773ea16a12becca5c0c2785ec16698bd762"
+  arm64: "sha256:e935abde0ed0367f8cf4a87d1a77d20ab2998fed59098b4a2facf9b420c57572"
+gonzo_cli_release_arch: "{{ gonzo_cli_arch_map[ansible_architecture] }}"
+gonzo_cli_archive_filename: "{{ gonzo_cli_archive_filename_map[gonzo_cli_release_arch] }}"
+gonzo_cli_archive_checksum: "{{ gonzo_cli_archive_checksum_map[gonzo_cli_release_arch] }}"
+gonzo_cli_archive_url: >-
+  https://github.com/control-theory/gonzo/releases/download/v{{
+  gonzo_cli_release_version }}/{{ gonzo_cli_archive_filename }}
+gonzo_cli_download_dir: "{{ ansible_env.HOME }}/.cache/gonzo-cli"
+gonzo_cli_extract_dir: "{{ gonzo_cli_download_dir }}/gonzo-{{ gonzo_cli_release_version }}-{{ gonzo_cli_release_arch }}"
+gonzo_cli_archive_path: "{{ gonzo_cli_download_dir }}/{{ gonzo_cli_archive_filename }}"
+gonzo_cli_install_dir: "{{ ansible_env.HOME }}/.local/bin"
+gonzo_cli_binary_path: "{{ gonzo_cli_install_dir }}/gonzo"
+gonzo_cli_verify: true
+gonzo_cli_install_bash_completion: true
+gonzo_cli_bash_completion_path: >-
+  {{ (common_bash_completion_directory | default((ansible_env.HOMEBREW_PREFIX | default('/usr/local')) ~ '/etc/bash_completion.d')) ~ '/gonzo' }}
+gonzo_cli_install_usage_note: true
+gonzo_cli_usage_note_path: "{{ ansible_env.HOME }}/.config/dotfile-vnext/ai/tool-guides/gonzo.md"

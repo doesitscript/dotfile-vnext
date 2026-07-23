@@ -1,0 +1,56 @@
+---
+# Argument specification for the k3s_mac_client role
+argument_specs:
+  main:
+    short_description: Configure macOS kubectl access to homelab K3s clusters
+    options:
+      k3s_mac_client_state:
+        type: str
+        required: false
+        default: present
+        choices:
+          - present
+          - absent
+        description: Lifecycle for the Mac kubectl client capability.
+      k3s_mac_client_clusters:
+        type: list
+        elements: dict
+        required: false
+        description: Per-cluster context definitions (host, mode, tunnel ports).
+      k3s_mac_client_manage_default_kubeconfig:
+        type: bool
+        required: false
+        default: true
+        description: >-
+          When true, flatten managed files into ~/.kube/config. Prefer false
+          with shell KUBECONFIG export to avoid fighting other tools.
+      k3s_mac_client_shell_kubeconfig_export:
+        type: bool
+        required: false
+        default: true
+        description: Deploy ~/.bashrc.d/k3s-kubeconfig.bash with KUBECONFIG=.
+      k3s_mac_client_shell_kubeconfig_bashrc:
+        type: str
+        required: false
+        description: Destination path for the bash KUBECONFIG snippet.
+      k3s_mac_client_install_bash_completion:
+        type: bool
+        required: false
+        default: true
+        description: Generate managed kubectl bash completion into Homebrew's bash_completion.d directory.
+      k3s_mac_client_kubectl_bash_completion_path:
+        type: str
+        required: false
+        description: Optional override for the managed kubectl bash completion file path.
+      k3s_mac_client_connection_mode:
+        type: str
+        required: false
+        default: ssh_tunnel
+        choices:
+          - ssh_tunnel
+          - direct
+        description: Default connection mode when a cluster entry omits it.
+      k3s_mac_client_default_context:
+        type: str
+        required: false
+        description: Preferred kubectl context name after hydrate.

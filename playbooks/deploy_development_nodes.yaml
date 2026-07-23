@@ -2,12 +2,14 @@
 # Deploy development tooling to nodes designated as development nodes.
 #
 # Deploys: common/shell_config (.bashrc.d pattern, PATH, aliases)
+#          common/bash_completion (Homebrew bash-completion loader for managed CLI completions)
 #          direnv (installation + bash hook)
 #          git (global gitconfig, gitattributes, gitignore_global symlink)
 #          cursor (editor config, extensions, LF/UTF-8 settings)
 #          common/agent_skills (repo-owned Cursor/Codex skill symlinks)
 #          langfuse_cli (Langfuse CLI for tracing and evaluation)
 #          litellm_cli (LiteLLM CLI on macOS via pipx)
+#          continue_ide (Continue IDE config → LiteLLM autocomplete/edit lanes)
 #          terraform_cli (Terraform CLI on macOS through the official HashiCorp Homebrew tap)
 #          aws_cli (AWS CLI on macOS through Homebrew awscli formula)
 #          speech_central (Speech Central install on mac-dev via mas_cli dependency)
@@ -15,6 +17,8 @@
 #          tunnelblick_mac (macOS-only deprecated Tunnelblick install for Monterey)
 #          mac_user_niceties (macOS notification + widget quality-of-life defaults)
 #          netcat_cli (GNU netcat on macOS through the Homebrew netcat formula)
+#          gonzo_cli (Gonzo AI-native log analysis TUI on macOS through the pinned upstream release binary)
+#          dstl8_cli (Dstl8 runtime-feedback CLI and MCP installer on macOS through the upstream Homebrew tap)
 #          localtunnel_cli (localtunnel CLI on macOS through the Homebrew localtunnel formula)
 #          ngrok_cli (ngrok CLI on macOS through the Homebrew ngrok cask)
 #          k3s_mac_client (macOS kubectl + kubeconfig for the homelab K3s cluster)
@@ -28,6 +32,13 @@
 # To designate a new node as a development node: add node_purpose: development
 # to its group_vars file. No changes to this playbook are needed.
 #
+# Project-skill note:
+#   This repo is actively standardizing project-skill design around `skills/`,
+#   modeled after `/Users/joshc/develop/homelab-reference-library/skills`.
+#   Future project-skill packs for tool-capability intake, install strategy,
+#   metadata/discoverability, and rollout workflows should follow that library
+#   pattern here instead of inventing one-off layouts in playbooks or role docs.
+#
 # Usage:
 #   # All development nodes
 #   ansible-playbook playbooks/deploy_development_nodes.yaml
@@ -38,6 +49,7 @@
 #
 #   # Targeted role runs (no reinstall)
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags shell_config
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags bash_completion --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags python
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags direnv
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags git
@@ -48,6 +60,7 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags langfuse --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags langfuse_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags litellm_cli --limit mac-dev
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags continue_ide --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags terraform_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags aws_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags speech_central --limit mac-dev
@@ -57,6 +70,8 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags tunnelblick_mac --limit mac-dev -e tunnelblick_mac_state=absent
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags mac_user_niceties --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags netcat_cli --limit mac-dev
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags gonzo_cli --limit mac-dev
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags dstl8_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags localtunnel_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags ngrok_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags k3s_mac_client --limit mac-dev
@@ -114,6 +129,10 @@
       tags: [always]
   roles:
     - role: common/shell_config
+      tags: [shell_config, bash_completion, gonzo_cli, dstl8_cli]
+    - role: common/bash_completion
+      when: ansible_system == "Darwin"
+      tags: [bash_completion, gonzo_cli, dstl8_cli]
     - role: direnv
     - role: python
       tags: [python]
@@ -127,6 +146,9 @@
     - role: litellm_cli
       when: ansible_system == "Darwin"
       tags: [litellm, litellm_cli]
+    - role: continue_ide
+      when: ansible_system == "Darwin"
+      tags: [continue, continue_ide]
     - role: terraform_cli
       when: ansible_system == "Darwin"
       tags: [terraform_cli]
@@ -147,6 +169,12 @@
     - role: netcat_cli
       when: ansible_system == "Darwin"
       tags: [netcat_cli]
+    - role: gonzo_cli
+      when: ansible_system == "Darwin"
+      tags: [gonzo_cli]
+    - role: dstl8_cli
+      when: ansible_system == "Darwin"
+      tags: [dstl8_cli]
     - role: localtunnel_cli
       when: ansible_system == "Darwin"
       tags: [localtunnel_cli]

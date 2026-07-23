@@ -1,0 +1,288 @@
+---
+- name: Ensure Gonzo download cache directory exists
+  ansible.builtin.file:
+    path: "{{ gonzo_cli_download_dir }}"
+    state: directory
+    mode: "0755"
+  when: gonzo_cli_state == "present"
+
+- name: Ensure Gonzo extract directory exists
+  ansible.builtin.file:
+    path: "{{ gonzo_cli_extract_dir }}"
+    state: directory
+    mode: "0755"
+  when: gonzo_cli_state == "present"
+
+- name: Ensure Gonzo install directory exists
+  ansible.builtin.file:
+    path: "{{ gonzo_cli_install_dir }}"
+    state: directory
+    mode: "0755"
+  when: gonzo_cli_state == "present"
+
+- name: Check Gonzo cache directory state for preview mode
+  ansible.builtin.stat:
+    path: "{{ gonzo_cli_download_dir }}"
+  register: gonzo_cli_download_dir_stat
+  when:
+    - gonzo_cli_state == "present"
+    - ansible_check_mode
+
+- name: Check Gonzo cached archive state for preview mode
+  ansible.builtin.stat:
+    path: "{{ gonzo_cli_archive_path }}"
+  register: gonzo_cli_archive_stat
+  when:
+    - gonzo_cli_state == "present"
+    - ansible_check_mode
+
+- name: Check extracted Gonzo binary state for preview mode
+  ansible.builtin.stat:
+    path: "{{ gonzo_cli_extract_dir }}/gonzo"
+  register: gonzo_cli_extracted_binary_stat
+  when:
+    - gonzo_cli_state == "present"
+    - ansible_check_mode
+
+- name: Download Gonzo release archive
+  ansible.builtin.get_url:
+    url: "{{ gonzo_cli_archive_url }}"
+    dest: "{{ gonzo_cli_archive_path }}"
+    checksum: "{{ gonzo_cli_archive_checksum }}"
+    mode: "0644"
+  when:
+    - gonzo_cli_state == "present"
+    - not ansible_check_mode or (gonzo_cli_download_dir_stat.stat.exists | default(false))
+
+- name: Extract Gonzo release archive with macOS tar  # noqa: command-instead-of-module
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/tar
+      - -xzf
+      - "{{ gonzo_cli_archive_path }}"
+      - -C
+      - "{{ gonzo_cli_extract_dir }}"
+    creates: "{{ gonzo_cli_extract_dir }}/gonzo"
+  when:
+    - gonzo_cli_state == "present"
+    - not ansible_check_mode or (gonzo_cli_archive_stat.stat.exists | default(false))
+
+- name: Install Gonzo binary
+  ansible.builtin.copy:
+    src: "{{ gonzo_cli_extract_dir }}/gonzo"
+    dest: "{{ gonzo_cli_binary_path }}"
+    remote_src: true
+    mode: "0755"
+  when:
+    - gonzo_cli_state == "present"
+    - not ansible_check_mode or (gonzo_cli_extracted_binary_stat.stat.exists | default(false))
+
+- name: Explain Gonzo preview limitations when cache assets are absent
+  ansible.builtin.debug:
+    msg:
+      - "Check mode note: live apply will download {{ gonzo_cli_archive_url }}."
+      - "Archive extraction and binary copy are skipped in preview until the cached archive exists on target."
+      - "Planned install path: {{ gonzo_cli_binary_path }}"
+  when:
+    - gonzo_cli_state == "present"
+    - ansible_check_mode
+    - not (gonzo_cli_archive_stat.stat.exists | default(false))
+
+- name: Check Gonzo binary state for bash completion preview
+  ansible.builtin.stat:
+    path: "{{ gonzo_cli_binary_path }}"
+  register: gonzo_cli_completion_binary_stat
+  when:
+    - gonzo_cli_state == "present"
+    - gonzo_cli_install_bash_completion | bool
+    - ansible_check_mode
+
+- name: Generate Gonzo bash completion
+  ansible.builtin.command:
+    argv:
+      - "{{ gonzo_cli_binary_path }}"
+      - completion
+      - bash
+  register: gonzo_cli_bash_completion
+  changed_when: false
+  when:
+    - gonzo_cli_state == "present"
+    - gonzo_cli_install_bash_completion | bool
+    - not ansible_check_mode or (gonzo_cli_completion_binary_stat.stat.exists | default(false))
+
+- name: Install Gonzo bash completion
+  ansible.builtin.copy:
+    content: "{{ gonzo_cli_bash_completion.stdout }}"
+    dest: "{{ gonzo_cli_bash_completion_path }}"
+    mode: "0644"
+  when:
+    - gonzo_cli_state == "present"
+    - gonzo_cli_install_bash_completion | bool
+    - gonzo_cli_bash_completion.stdout | length > 0
+
+- name: Explain Gonzo bash completion preview limitations when the binary is absent
+  ansible.builtin.debug:
+    msg:
+      - "Check mode note: live apply will generate Gonzo bash completion after the binary is installed."
+      - "Planned completion path: {{ gonzo_cli_bash_completion_path }}"
+  when:
+    - gonzo_cli_state == "present"
+    - gonzo_cli_install_bash_completion | bool
+    - ansible_check_mode
+    - not (gonzo_cli_completion_binary_stat.stat.exists | default(false))
+
+- name: Ensure Gonzo usage note parent directory exists
+  ansible.builtin.file:
+    path: "{{ gonzo_cli_usage_note_path | dirname }}"
+    state: directory
+    mode: "0755"
+  when:
+    - gonzo_cli_state == "present"
+    - gonzo_cli_install_usage_note | bool
+
+- name: Render Gonzo AI/operator usage note
+  ansible.builtin.template:
+    src: gonzo-ai-usage.md.j2
+    dest: "{{ gonzo_cli_usage_note_path }}"
+    mode: "0644"
+  when:
+    - gonzo_cli_state == "present"
+    - gonzo_cli_install_usage_note | bool
+
+- name: Remove Gonzo AI/operator usage note
+  ansible.builtin.file:
+    path: "{{ gonzo_cli_usage_note_path }}"
+    state: absent
+  when:
+    - gonzo_cli_state == "absent"
+    - gonzo_cli_install_usage_note | bool
+
+- name: Remove Gonzo bash completion
+  ansible.builtin.file:
+    path: "{{ gonzo_cli_bash_completion_path }}"
+    state: absent
+  when:
+    - gonzo_cli_state == "absent"
+    - gonzo_cli_install_bash_completion | bool
+
+- name: Remove Gonzo binary
+  ansible.builtin.file:
+    path: "{{ gonzo_cli_binary_path }}"
+    state: absent
+  when: gonzo_cli_state == "absent"
+
+- name: Remove Gonzo extracted release directory
+  ansible.builtin.file:
+    path: "{{ gonzo_cli_extract_dir }}"
+    state: absent
+  when: gonzo_cli_state == "absent"
+
+- name: Remove Gonzo cached archive
+  ansible.builtin.file:
+    path: "{{ gonzo_cli_archive_path }}"
+    state: absent
+  when: gonzo_cli_state == "absent"
+
+- name: Check installed Gonzo binary
+  ansible.builtin.stat:
+    path: "{{ gonzo_cli_binary_path }}"
+  register: gonzo_cli_binary_stat
+  when:
+    - not ansible_check_mode
+    - gonzo_cli_verify | bool
+
+- name: Verify Gonzo binary is present
+  ansible.builtin.assert:
+    that:
+      - gonzo_cli_binary_stat.stat.exists | default(false)
+      - gonzo_cli_binary_stat.stat.executable | default(false)
+    fail_msg: "Gonzo binary is not installed at {{ gonzo_cli_binary_path }}."
+  when:
+    - not ansible_check_mode
+    - gonzo_cli_verify | bool
+    - gonzo_cli_state == "present"
+
+- name: Verify Gonzo binary is absent
+  ansible.builtin.assert:
+    that:
+      - not (gonzo_cli_binary_stat.stat.exists | default(false))
+    fail_msg: "Gonzo binary remains installed at {{ gonzo_cli_binary_path }}."
+  when:
+    - not ansible_check_mode
+    - gonzo_cli_verify | bool
+    - gonzo_cli_state == "absent"
+
+- name: Probe Gonzo version
+  ansible.builtin.command:
+    argv:
+      - "{{ gonzo_cli_binary_path }}"
+      - version
+  register: gonzo_cli_version_probe
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - gonzo_cli_verify | bool
+    - gonzo_cli_state == "present"
+
+- name: Verify Gonzo usage note exists
+  ansible.builtin.stat:
+    path: "{{ gonzo_cli_usage_note_path }}"
+  register: gonzo_cli_usage_note_stat
+  when:
+    - not ansible_check_mode
+    - gonzo_cli_verify | bool
+    - gonzo_cli_state == "present"
+    - gonzo_cli_install_usage_note | bool
+
+- name: Verify Gonzo bash completion exists
+  ansible.builtin.stat:
+    path: "{{ gonzo_cli_bash_completion_path }}"
+  register: gonzo_cli_bash_completion_stat
+  when:
+    - not ansible_check_mode
+    - gonzo_cli_verify | bool
+    - gonzo_cli_install_bash_completion | bool
+
+- name: Assert Gonzo bash completion exists
+  ansible.builtin.assert:
+    that:
+      - gonzo_cli_bash_completion_stat.stat.exists | default(false)
+    fail_msg: "Managed Gonzo bash completion missing at {{ gonzo_cli_bash_completion_path }}."
+  when:
+    - not ansible_check_mode
+    - gonzo_cli_verify | bool
+    - gonzo_cli_state == "present"
+    - gonzo_cli_install_bash_completion | bool
+
+- name: Assert Gonzo bash completion is absent
+  ansible.builtin.assert:
+    that:
+      - not (gonzo_cli_bash_completion_stat.stat.exists | default(false))
+    fail_msg: "Managed Gonzo bash completion remains at {{ gonzo_cli_bash_completion_path }}."
+  when:
+    - not ansible_check_mode
+    - gonzo_cli_verify | bool
+    - gonzo_cli_state == "absent"
+    - gonzo_cli_install_bash_completion | bool
+
+- name: Assert Gonzo usage note exists
+  ansible.builtin.assert:
+    that:
+      - gonzo_cli_usage_note_stat.stat.exists | default(false)
+    fail_msg: "Managed Gonzo usage note missing at {{ gonzo_cli_usage_note_path }}."
+  when:
+    - not ansible_check_mode
+    - gonzo_cli_verify | bool
+    - gonzo_cli_state == "present"
+    - gonzo_cli_install_usage_note | bool
+
+- name: Report Gonzo binary state
+  ansible.builtin.debug:
+    msg:
+      - "Gonzo binary path: {{ gonzo_cli_binary_path if gonzo_cli_state == 'present' else 'removed' }}"
+      - "Managed bash completion: {{ gonzo_cli_bash_completion_path if gonzo_cli_install_bash_completion | bool else 'disabled' }}"
+      - "Managed usage note: {{ gonzo_cli_usage_note_path if gonzo_cli_install_usage_note | bool else 'disabled' }}"
+      - "{{ gonzo_cli_version_probe.stdout | default('') }}"
+  when:
+    - not ansible_check_mode
+    - gonzo_cli_verify | bool

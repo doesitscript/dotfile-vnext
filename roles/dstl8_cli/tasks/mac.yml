@@ -1,0 +1,265 @@
+---
+- name: Inspect tapped Homebrew repositories
+  ansible.builtin.command:
+    argv:
+      - brew
+      - tap
+  register: dstl8_cli_tap_list
+  changed_when: false
+  check_mode: false
+  when: dstl8_cli_state == "present"
+
+- name: Inspect trusted Homebrew entries
+  ansible.builtin.command:
+    argv:
+      - brew
+      - trust
+      - --json=v1
+  register: dstl8_cli_trust_list
+  changed_when: false
+  check_mode: false
+  when: dstl8_cli_state == "present"
+
+- name: Derive Dstl8 tap preview facts
+  ansible.builtin.set_fact:
+    dstl8_cli_tap_present: "{{ dstl8_cli_homebrew_tap in (dstl8_cli_tap_list.stdout_lines | default([])) }}"
+    dstl8_cli_tap_trusted: >-
+      {{
+        dstl8_cli_homebrew_tap in ((dstl8_cli_trust_list.stdout | from_json).taps | default([]))
+        or
+        (dstl8_cli_homebrew_tap ~ '/' ~ dstl8_cli_homebrew_formula) in ((dstl8_cli_trust_list.stdout | from_json).formulae | default([]))
+      }}
+  when: dstl8_cli_state == "present"
+
+- name: Manage Dstl8 Homebrew tap
+  community.general.homebrew_tap:
+    name: "{{ dstl8_cli_homebrew_tap }}"
+    state: present
+  when:
+    - dstl8_cli_state == "present"
+
+- name: Trust Dstl8 Homebrew tap  # noqa: command-instead-of-module
+  ansible.builtin.command:
+    argv:
+      - brew
+      - trust
+      - --tap
+      - "{{ dstl8_cli_homebrew_tap }}"
+  changed_when: true
+  when:
+    - dstl8_cli_state == "present"
+    - not ansible_check_mode
+    - not dstl8_cli_tap_trusted | bool
+
+- name: Manage Dstl8 Homebrew formula
+  community.general.homebrew:
+    name: "{{ dstl8_cli_homebrew_formula }}"
+    state: "{{ dstl8_cli_state }}"
+    force_formula: true
+  when:
+    - not ansible_check_mode or (dstl8_cli_tap_present | bool and dstl8_cli_tap_trusted | bool)
+
+- name: Explain Dstl8 preview limitations when the tap is absent
+  ansible.builtin.debug:
+    msg:
+      - "Check mode note: live apply will tap {{ dstl8_cli_homebrew_tap }} if needed."
+      - "Check mode note: live apply will trust {{ dstl8_cli_homebrew_tap }} if needed."
+      - "Formula preview is skipped until the tap already exists and is trusted on target."
+      - "Planned formula install: {{ dstl8_cli_homebrew_formula }}"
+  when:
+    - dstl8_cli_state == "present"
+    - ansible_check_mode
+    - not (dstl8_cli_tap_present | bool and dstl8_cli_tap_trusted | bool)
+
+- name: Check installed Dstl8 formula for bash completion preview
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --formula
+      - "{{ dstl8_cli_verify_formula_name }}"
+  register: dstl8_cli_completion_formula_preview
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - dstl8_cli_state == "present"
+    - dstl8_cli_install_bash_completion | bool
+    - ansible_check_mode
+
+- name: Generate Dstl8 bash completion
+  ansible.builtin.command:
+    argv:
+      - dstl8
+      - completion
+      - bash
+  register: dstl8_cli_bash_completion
+  changed_when: false
+  when:
+    - dstl8_cli_state == "present"
+    - dstl8_cli_install_bash_completion | bool
+    - not ansible_check_mode or dstl8_cli_completion_formula_preview.rc == 0
+
+- name: Install Dstl8 bash completion
+  ansible.builtin.copy:
+    content: "{{ dstl8_cli_bash_completion.stdout }}"
+    dest: "{{ dstl8_cli_bash_completion_path }}"
+    mode: "0644"
+  when:
+    - dstl8_cli_state == "present"
+    - dstl8_cli_install_bash_completion | bool
+    - dstl8_cli_bash_completion.stdout | length > 0
+
+- name: Explain Dstl8 bash completion preview limitations when the formula is absent
+  ansible.builtin.debug:
+    msg:
+      - "Check mode note: live apply will generate Dstl8 bash completion after the formula is installed."
+      - "Planned completion path: {{ dstl8_cli_bash_completion_path }}"
+  when:
+    - dstl8_cli_state == "present"
+    - dstl8_cli_install_bash_completion | bool
+    - ansible_check_mode
+    - dstl8_cli_completion_formula_preview.rc != 0
+
+- name: Ensure Dstl8 usage note parent directory exists
+  ansible.builtin.file:
+    path: "{{ dstl8_cli_usage_note_path | dirname }}"
+    state: directory
+    mode: "0755"
+  when:
+    - dstl8_cli_state == "present"
+    - dstl8_cli_install_usage_note | bool
+
+- name: Render Dstl8 AI/operator usage note
+  ansible.builtin.template:
+    src: dstl8-ai-usage.md.j2
+    dest: "{{ dstl8_cli_usage_note_path }}"
+    mode: "0644"
+  when:
+    - dstl8_cli_state == "present"
+    - dstl8_cli_install_usage_note | bool
+
+- name: Remove Dstl8 AI/operator usage note
+  ansible.builtin.file:
+    path: "{{ dstl8_cli_usage_note_path }}"
+    state: absent
+  when:
+    - dstl8_cli_state == "absent"
+    - dstl8_cli_install_usage_note | bool
+
+- name: Remove Dstl8 bash completion
+  ansible.builtin.file:
+    path: "{{ dstl8_cli_bash_completion_path }}"
+    state: absent
+  when:
+    - dstl8_cli_state == "absent"
+    - dstl8_cli_install_bash_completion | bool
+
+- name: Check installed Dstl8 formula
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --formula
+      - "{{ dstl8_cli_verify_formula_name }}"
+  register: dstl8_cli_formula_check
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - dstl8_cli_verify | bool
+
+- name: Verify Dstl8 formula is present
+  ansible.builtin.assert:
+    that:
+      - dstl8_cli_formula_check.rc == 0
+    fail_msg: "Homebrew formula {{ dstl8_cli_verify_formula_name }} is not installed."
+  when:
+    - not ansible_check_mode
+    - dstl8_cli_verify | bool
+    - dstl8_cli_state == "present"
+
+- name: Verify Dstl8 formula is absent
+  ansible.builtin.assert:
+    that:
+      - dstl8_cli_formula_check.rc != 0
+    fail_msg: "Homebrew formula {{ dstl8_cli_verify_formula_name }} remains installed."
+  when:
+    - not ansible_check_mode
+    - dstl8_cli_verify | bool
+    - dstl8_cli_state == "absent"
+
+- name: Probe Dstl8 version
+  ansible.builtin.command:
+    argv:
+      - dstl8
+      - version
+  register: dstl8_cli_version_probe
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - dstl8_cli_verify | bool
+    - dstl8_cli_state == "present"
+
+- name: Verify Dstl8 usage note exists
+  ansible.builtin.stat:
+    path: "{{ dstl8_cli_usage_note_path }}"
+  register: dstl8_cli_usage_note_stat
+  when:
+    - not ansible_check_mode
+    - dstl8_cli_verify | bool
+    - dstl8_cli_state == "present"
+    - dstl8_cli_install_usage_note | bool
+
+- name: Verify Dstl8 bash completion exists
+  ansible.builtin.stat:
+    path: "{{ dstl8_cli_bash_completion_path }}"
+  register: dstl8_cli_bash_completion_stat
+  when:
+    - not ansible_check_mode
+    - dstl8_cli_verify | bool
+    - dstl8_cli_install_bash_completion | bool
+
+- name: Assert Dstl8 bash completion exists
+  ansible.builtin.assert:
+    that:
+      - dstl8_cli_bash_completion_stat.stat.exists | default(false)
+    fail_msg: "Managed Dstl8 bash completion missing at {{ dstl8_cli_bash_completion_path }}."
+  when:
+    - not ansible_check_mode
+    - dstl8_cli_verify | bool
+    - dstl8_cli_state == "present"
+    - dstl8_cli_install_bash_completion | bool
+
+- name: Assert Dstl8 bash completion is absent
+  ansible.builtin.assert:
+    that:
+      - not (dstl8_cli_bash_completion_stat.stat.exists | default(false))
+    fail_msg: "Managed Dstl8 bash completion remains at {{ dstl8_cli_bash_completion_path }}."
+  when:
+    - not ansible_check_mode
+    - dstl8_cli_verify | bool
+    - dstl8_cli_state == "absent"
+    - dstl8_cli_install_bash_completion | bool
+
+- name: Assert Dstl8 usage note exists
+  ansible.builtin.assert:
+    that:
+      - dstl8_cli_usage_note_stat.stat.exists | default(false)
+    fail_msg: "Managed Dstl8 usage note missing at {{ dstl8_cli_usage_note_path }}."
+  when:
+    - not ansible_check_mode
+    - dstl8_cli_verify | bool
+    - dstl8_cli_state == "present"
+    - dstl8_cli_install_usage_note | bool
+
+- name: Report Dstl8 formula state
+  ansible.builtin.debug:
+    msg:
+      - "Homebrew formula {{ dstl8_cli_homebrew_formula }} is {{ 'installed' if dstl8_cli_state == 'present' else 'absent' }}."
+      - "Managed bash completion: {{ dstl8_cli_bash_completion_path if dstl8_cli_install_bash_completion | bool else 'disabled' }}"
+      - "Managed usage note: {{ dstl8_cli_usage_note_path if dstl8_cli_install_usage_note | bool else 'disabled' }}"
+      - "{{ dstl8_cli_version_probe.stdout | default('') }}"
+  when:
+    - not ansible_check_mode
+    - dstl8_cli_verify | bool

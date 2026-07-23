@@ -121,7 +121,7 @@
   become: true
   register: k3s_mac_client_cluster_source_kubeconfig_stat
 
-- name: Remove stale local kubeconfig when {{ k3s_mac_client_cluster.cluster_host }} is not bootstrapped yet
+- name: Remove stale local kubeconfig for unavailable cluster {{ k3s_mac_client_cluster.cluster_host }}
   ansible.builtin.file:
     path: "{{ k3s_mac_client_cluster.kubeconfig }}"
     state: absent
@@ -143,7 +143,9 @@
   changed_when: false
   when: not (k3s_mac_client_cluster_source_kubeconfig_stat.stat.exists | default(false))
 
-- block:
+- name: Render local kubeconfig for available cluster {{ k3s_mac_client_cluster.cluster_host }}
+  when: k3s_mac_client_cluster_source_kubeconfig_stat.stat.exists | default(false)
+  block:
     - name: Read remote K3s admin kubeconfig from {{ k3s_mac_client_cluster.cluster_host }}
       ansible.builtin.slurp:
         src: "{{ k3s_mac_client_cluster.source_kubeconfig }}"
@@ -212,4 +214,3 @@
             + [k3s_mac_client_cluster]
           }}
       changed_when: false
-  when: k3s_mac_client_cluster_source_kubeconfig_stat.stat.exists | default(false)

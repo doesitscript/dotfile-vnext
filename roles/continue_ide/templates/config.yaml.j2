@@ -1,0 +1,33 @@
+# {{ ansible_managed }}
+# Continue → LiteLLM only. Every model below MUST exist on GET /v1/models.
+# Blocked / not commissioned (do not re-enable until LiteLLM route + backend live):
+#   - code-autocomplete-7b (GTX 1060 cannot host 7B usefully)
+#   - qwen3-coder-30b (no local serve commissioned)
+#   - diffucoder / continue-edit DiffuCoder (needs OpenAI wrapper; diffusion_generate only)
+#   - diffusiongemma-nextedit (needs vLLM commission of FP8 weights)
+name: {{ continue_ide_config_name }}
+version: {{ continue_ide_config_version }}
+schema: v1
+models:
+  - name: Chat Ornith (local vLLM)
+    provider: openai
+    apiBase: {{ continue_ide_gateway_api_base }}
+    model: deepreinforce-ai/Ornith-1.0-35B-GGUF
+    apiKey: {{ continue_ide_api_key | default('REPLACE_WITH_LITELLM_KEY', true) }}
+    roles:
+      - chat
+  - name: Autocomplete Qwen2.5-Coder 1.5B
+    provider: openai
+    apiBase: {{ continue_ide_gateway_api_base }}
+    model: code-autocomplete-1.5b
+    apiKey: {{ continue_ide_api_key | default('REPLACE_WITH_LITELLM_KEY', true) }}
+    roles:
+      - autocomplete
+  - name: Edit Ornith (local vLLM)
+    provider: openai
+    apiBase: {{ continue_ide_gateway_api_base }}
+    model: deepreinforce-ai/Ornith-1.0-35B-GGUF
+    apiKey: {{ continue_ide_api_key | default('REPLACE_WITH_LITELLM_KEY', true) }}
+    roles:
+      - edit
+      - apply

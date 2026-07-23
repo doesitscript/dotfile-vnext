@@ -1,0 +1,17 @@
+---
+- name: Require macOS for gonzo_cli binary install
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "gonzo_cli currently supports macOS binary installs only."
+
+- name: Require supported macOS architecture for gonzo_cli release binary
+  ansible.builtin.assert:
+    that:
+      - ansible_architecture in gonzo_cli_arch_map
+    fail_msg: >-
+      gonzo_cli has no pinned upstream macOS binary for ansible_architecture
+      {{ ansible_architecture }}.
+
+- name: Manage Gonzo on macOS
+  ansible.builtin.import_tasks: mac.yml

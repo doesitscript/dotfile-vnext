@@ -5,10 +5,16 @@ k3s_mac_client_cluster_host: hom-lab-ctl-k3s-01
 k3s_mac_client_kube_dir: "{{ ansible_env.HOME }}/.kube"
 k3s_mac_client_kubeconfig: "{{ k3s_mac_client_kube_dir }}/{{ k3s_mac_client_cluster_host }}.yaml"
 k3s_mac_client_default_kubeconfig: "{{ k3s_mac_client_kube_dir }}/config"
+# When true, merge managed cluster files into ~/.kube/config (fights Docker Desktop etc.).
+# Prefer false + shell KUBECONFIG export for separate per-cluster files.
 k3s_mac_client_manage_default_kubeconfig: true
+# Write ~/.bashrc.d/k3s-kubeconfig.bash with colon-separated KUBECONFIG paths.
+k3s_mac_client_shell_kubeconfig_export: true
+k3s_mac_client_shell_kubeconfig_bashrc: "{{ ansible_env.HOME }}/.bashrc.d/k3s-kubeconfig.bash"
 k3s_mac_client_default_context: "{{ k3s_mac_client_cluster_host }}"
 k3s_mac_client_source_kubeconfig: /etc/rancher/k3s/k3s.yaml
 k3s_mac_client_api_port: 6443
+# ssh_tunnel | direct — direct uses guest ansible_host:6443 (needs Mac routes).
 k3s_mac_client_connection_mode: ssh_tunnel
 k3s_mac_client_tunnel_host: >-
   {{
@@ -23,6 +29,8 @@ k3s_mac_client_bin_dir: "{{ ansible_env.HOME }}/.local/bin"
 k3s_mac_client_kubectl_path: "{{ k3s_mac_client_bin_dir }}/kubectl"
 k3s_mac_client_kubectl_version: "{{ hostvars[k3s_mac_client_cluster_host].k3s_version | default('v1.31.12+k3s1') | regex_replace('\\+k3s.*$', '') }}"
 k3s_mac_client_kubectl_base_url: "https://dl.k8s.io/release/{{ k3s_mac_client_kubectl_version }}/bin/darwin"
+k3s_mac_client_install_bash_completion: true
+k3s_mac_client_kubectl_bash_completion_path: ""
 k3s_mac_client_api_server: >-
   https://{{
     hostvars[k3s_mac_client_cluster_host].api_endpoint

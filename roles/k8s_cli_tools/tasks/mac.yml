@@ -24,6 +24,121 @@
   tags:
     - stern
 
+- name: Check installed K9s formula for bash completion preview
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --formula
+      - k9s
+  register: k8s_cli_tools_k9s_completion_preview
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - k8s_cli_tools_state == "present"
+    - k8s_cli_tools_install_bash_completion | bool
+    - ansible_check_mode
+  tags:
+    - k9s
+
+- name: Generate K9s bash completion
+  ansible.builtin.command:
+    argv:
+      - k9s
+      - completion
+      - bash
+  register: k8s_cli_tools_k9s_bash_completion
+  changed_when: false
+  when:
+    - k8s_cli_tools_state == "present"
+    - k8s_cli_tools_install_bash_completion | bool
+    - not ansible_check_mode or k8s_cli_tools_k9s_completion_preview.rc == 0
+  tags:
+    - k9s
+
+- name: Install K9s bash completion
+  ansible.builtin.copy:
+    content: "{{ k8s_cli_tools_k9s_bash_completion.stdout }}"
+    dest: "{{ k8s_cli_tools_k9s_bash_completion_path }}"
+    mode: "0644"
+  when:
+    - k8s_cli_tools_state == "present"
+    - k8s_cli_tools_install_bash_completion | bool
+    - k8s_cli_tools_k9s_bash_completion.stdout | length > 0
+  tags:
+    - k9s
+
+- name: Explain K9s bash completion preview limitations when the formula is absent
+  ansible.builtin.debug:
+    msg:
+      - "Check mode note: live apply will generate K9s bash completion after the formula is installed."
+      - "Planned completion path: {{ k8s_cli_tools_k9s_bash_completion_path }}"
+  when:
+    - k8s_cli_tools_state == "present"
+    - k8s_cli_tools_install_bash_completion | bool
+    - ansible_check_mode
+    - k8s_cli_tools_k9s_completion_preview.rc != 0
+  tags:
+    - k9s
+
+- name: Check installed Stern formula for bash completion preview
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --formula
+      - stern
+  register: k8s_cli_tools_stern_completion_preview
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - k8s_cli_tools_state == "present"
+    - k8s_cli_tools_install_bash_completion | bool
+    - ansible_check_mode
+  tags:
+    - stern
+
+- name: Generate Stern bash completion from k8s_cli_tools
+  ansible.builtin.command:
+    argv:
+      - stern
+      - --completion=bash
+  register: k8s_cli_tools_stern_bash_completion
+  changed_when: false
+  when:
+    - k8s_cli_tools_state == "present"
+    - k8s_cli_tools_install_bash_completion | bool
+    - not ansible_check_mode or k8s_cli_tools_stern_completion_preview.rc == 0
+  tags:
+    - stern
+
+- name: Install Stern bash completion from k8s_cli_tools
+  ansible.builtin.copy:
+    content: "{{ k8s_cli_tools_stern_bash_completion.stdout }}"
+    dest: "{{ k8s_cli_tools_stern_bash_completion_path }}"
+    mode: "0644"
+  when:
+    - k8s_cli_tools_state == "present"
+    - k8s_cli_tools_install_bash_completion | bool
+    - k8s_cli_tools_stern_bash_completion.stdout | length > 0
+  tags:
+    - stern
+
+- name: Explain Stern bash completion preview limitations when the formula is absent
+  ansible.builtin.debug:
+    msg:
+      - "Check mode note: live apply will generate Stern bash completion after the formula is installed."
+      - "Planned completion path: {{ k8s_cli_tools_stern_bash_completion_path }}"
+  when:
+    - k8s_cli_tools_state == "present"
+    - k8s_cli_tools_install_bash_completion | bool
+    - ansible_check_mode
+    - k8s_cli_tools_stern_completion_preview.rc != 0
+  tags:
+    - stern
+
 - name: Install kubectx and kubens via Homebrew
   community.general.homebrew:
     name: kubectx
@@ -31,6 +146,26 @@
   tags:
     - kubectx
     - kubens
+
+- name: Remove K9s bash completion
+  ansible.builtin.file:
+    path: "{{ k8s_cli_tools_k9s_bash_completion_path }}"
+    state: absent
+  when:
+    - k8s_cli_tools_state == "absent"
+    - k8s_cli_tools_install_bash_completion | bool
+  tags:
+    - k9s
+
+- name: Remove Stern bash completion from k8s_cli_tools
+  ansible.builtin.file:
+    path: "{{ k8s_cli_tools_stern_bash_completion_path }}"
+    state: absent
+  when:
+    - k8s_cli_tools_state == "absent"
+    - k8s_cli_tools_install_bash_completion | bool
+  tags:
+    - stern
 
 - name: Install Helm via Homebrew
   community.general.homebrew:
@@ -109,6 +244,7 @@
     msg:
       - "K8s CLI Tools State: {{ k8s_cli_tools_state }}"
       - "Core Tools: k9s, kubecolor, stern, kubectx/kubens, helm"
+      - "Managed bash completions: {{ [k8s_cli_tools_k9s_bash_completion_path, k8s_cli_tools_stern_bash_completion_path] if k8s_cli_tools_install_bash_completion | bool else ['disabled'] }}"
       - "Plugin Manager: krew"
       - "Krew Plugins: {{ k8s_cli_tools_krew_plugins | selectattr('enabled') | map(attribute='name') | list | join(', ') }}"
       - "GitOps Tools: kubeseal, kustomize"

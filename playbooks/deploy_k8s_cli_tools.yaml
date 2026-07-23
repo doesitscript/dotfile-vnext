@@ -2,11 +2,13 @@
 # Deploy Kubernetes CLI tools to macOS development machines
 #
 # Installs essential K8s tools: k9s, kubecolor, stern, kubectx/kubens, helm,
-# krew (with plugins), kubeseal, kustomize, and k8sgpt.
+# krew (with plugins), kubeseal, kustomize, and k8sgpt. Also installs the
+# shared bash-completion loader so repo-managed `k9s` and `stern` completions
+# activate cleanly on `mac-dev`.
 #
 # Usage:
 #   ansible-playbook playbooks/deploy_k8s_cli_tools.yaml
-#   ansible-playbook playbooks/deploy_k8s_cli_tools.yaml --tags k9s,stern
+#   ansible-playbook playbooks/deploy_k8s_cli_tools.yaml --tags bash_completion,k9s,stern
 #   ansible-playbook playbooks/deploy_k8s_cli_tools.yaml -e k8s_cli_tools_state=absent
 
 - name: Deploy K8s CLI tools
@@ -19,6 +21,23 @@
     - kubernetes
 
   roles:
+    - role: common/shell_config
+      tags:
+        - shell_config
+        - bash_completion
+        - k8s_cli_tools
+        - k8s
+        - kubernetes
+        - k9s
+        - stern
+    - role: common/bash_completion
+      tags:
+        - bash_completion
+        - k8s_cli_tools
+        - k8s
+        - kubernetes
+        - k9s
+        - stern
     - role: k8s_cli_tools
       tags:
         - k8s_cli_tools

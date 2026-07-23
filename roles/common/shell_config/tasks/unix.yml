@@ -1,6 +1,46 @@
 ---
 # Unix-like systems (macOS, Linux)
 
+- name: Ensure managed login shell path is configured when login-shell management is enabled
+  ansible.builtin.assert:
+    that:
+      - shell_config_login_shell_path | length > 0
+    fail_msg: "shell_config_login_shell_path must be set when shell_config_manage_login_shell=true."
+  when: shell_config_manage_login_shell | bool
+
+- name: Verify managed login shell binary exists
+  ansible.builtin.stat:
+    path: "{{ shell_config_login_shell_path }}"
+  register: shell_config_login_shell_binary_stat
+  when: shell_config_manage_login_shell | bool
+
+- name: Assert managed login shell binary exists
+  ansible.builtin.assert:
+    that:
+      - shell_config_login_shell_binary_stat.stat.exists | default(false)
+      - shell_config_login_shell_binary_stat.stat.executable | default(false)
+    fail_msg: "Managed login shell binary {{ shell_config_login_shell_path }} is missing or not executable."
+  when: shell_config_manage_login_shell | bool
+
+- name: Ensure managed login shell is listed in /etc/shells on macOS
+  ansible.builtin.lineinfile:
+    path: /etc/shells
+    line: "{{ shell_config_login_shell_path }}"
+    state: present
+  become: true
+  when:
+    - shell_config_manage_login_shell | bool
+    - ansible_facts['system'] == 'Darwin'
+
+- name: Set managed login shell for current user on macOS
+  ansible.builtin.user:
+    name: "{{ ansible_user_id }}"
+    shell: "{{ shell_config_login_shell_path }}"
+  become: true
+  when:
+    - shell_config_manage_login_shell | bool
+    - ansible_facts['system'] == 'Darwin'
+
 - name: Ensure ~/.bashrc.d directory exists
   ansible.builtin.file:
     path: "{{ ansible_env.HOME }}/.bashrc.d"

@@ -36,6 +36,7 @@ This role installs a comprehensive suite of Kubernetes CLI tools via Homebrew, i
 ### Lifecycle Control
 
 - `k8s_cli_tools_state: present` - Install (present) or remove (absent) all tools
+- `k8s_cli_tools_install_bash_completion: true` - Install managed bash completion files for K9s and Stern
 
 ### Version Contracts
 
@@ -62,7 +63,9 @@ k8s_cli_tools_krew_plugins:
 
 ## Dependencies
 
-None required. This role is independent but complements:
+For shell completion on Bash, this role expects the shared `common/bash_completion`
+role to be present in the playbook path. It otherwise remains independent and
+complements:
 - `k3s_mac_client` - Provides kubectl and kubeconfig
 - `docker_client` - Container runtime tools
 
@@ -87,7 +90,25 @@ None required. This role is independent but complements:
 - All tasks are idempotent
 - Supports `present` and `absent` states
 - Krew plugin installation detects existing plugins
+- K9s and Stern bash completion files converge into Homebrew's `etc/bash_completion.d`
 - Safe to re-run without changes
+
+## Shell Completion
+
+When `k8s_cli_tools_install_bash_completion: true`, the role generates:
+
+```text
+$(brew --prefix)/etc/bash_completion.d/k9s
+$(brew --prefix)/etc/bash_completion.d/stern
+```
+
+The shared `common/bash_completion` role loads Homebrew's
+`bash-completion` profile script from `~/.bashrc.d/bash_completion.bash`, so
+new Bash sessions pick up the K9s and Stern completions automatically after:
+
+```bash
+source ~/.bashrc
+```
 
 ## Apply / Verify / Undo / Change Class
 
@@ -109,6 +130,8 @@ kubectl krew list
 kubeseal --version
 kustomize version
 k8sgpt version
+test -f "$(brew --prefix)/etc/bash_completion.d/k9s"
+test -f "$(brew --prefix)/etc/bash_completion.d/stern"
 ```
 
 **Undo:**

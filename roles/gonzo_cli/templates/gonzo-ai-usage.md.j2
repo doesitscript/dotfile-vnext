@@ -1,0 +1,177 @@
+# Gonzo CLI Usage Note
+
+This file is Ansible-managed by the `gonzo_cli` role.
+
+## What Gonzo Is
+
+Gonzo is a terminal-native log-analysis TUI with live charts, advanced
+filtering, and AI-assisted troubleshooting. It works well when you want one
+local operator surface that can read files, stdin pipelines, Kubernetes logs,
+or OTLP log streams without building a custom prompt pipeline first.
+
+## Install Surface On This Mac
+
+- Installed binary: `{{ gonzo_cli_binary_path }}`
+- Verify version: `{{ gonzo_cli_binary_path }} version`
+- Help: `gonzo --help`
+
+## Source Basis
+
+This note was written from source-backed surfaces reviewed on July 23, 2026:
+
+1. Gonzo upstream README: `https://github.com/control-theory/gonzo`
+2. Gonzo docs: `https://docs.controltheory.com/controltheory-documentation/gonzo-docs`
+3. Gonzo Stern guide:
+   `https://github.com/control-theory/gonzo/blob/main/guides/STERN_USAGE_GUIDE.md`
+
+Use upstream docs as the primary authority when this note and upstream docs
+differ.
+
+## Why This Tool Is Worth Keeping Handy
+
+- Native AI integration with OpenAI, Claude Code, Ollama, LM Studio, and other
+  OpenAI-compatible endpoints
+- Kubernetes-native log streaming and stdin/file workflows in the same tool
+- Real-time charts and filters that make anomalies easier to spot before you
+  ask AI for help
+- Optional browser dashboard (`Dstl8.Lite`) launched from inside Gonzo with the
+  `d` key
+
+## Quick Start
+
+Analyze a file:
+
+```bash
+gonzo -f application.log
+```
+
+Follow a file:
+
+```bash
+gonzo -f /var/log/app.log --follow
+```
+
+Read from stdin:
+
+```bash
+cat application.log | gonzo
+```
+
+Use Gonzo's native Kubernetes mode:
+
+```bash
+gonzo --k8s-enabled=true
+```
+
+## AI Provider Patterns
+
+OpenAI:
+
+```bash
+export OPENAI_API_KEY="sk-..."
+gonzo -f logs.json --ai-model="gpt-4"
+```
+
+Ollama:
+
+```bash
+export OPENAI_API_KEY="ollama"
+export OPENAI_API_BASE="http://localhost:11434"
+gonzo -f logs.json --follow
+```
+
+Claude Code:
+
+```bash
+gonzo --ai-provider=claude-code -f logs.json
+gonzo --ai-provider=claude-code --ai-model=haiku -f /var/log/app.log --follow
+```
+
+Practical note:
+
+- OpenAI/Ollama/LM Studio expose models through API discovery.
+- Claude Code manages auth separately through the Claude CLI.
+- Gonzo can auto-select a sensible default model when you omit `--ai-model`.
+
+## Interactive AI Troubleshooting Flow
+
+Gonzo is especially useful when you want an interactive, terminal-first AI log
+companion instead of building custom prompt plumbing. Review the live stream,
+open the relevant log details, and use Gonzo's AI analysis flow to ask for
+pattern or anomaly explanations against the exact log context already in view.
+
+## Shell Completion
+
+This repo manages Gonzo bash completion at:
+
+```text
+{{ gonzo_cli_bash_completion_path }}
+```
+
+The shared bash-completion loader lives at:
+
+```text
+{{ common_bash_completion_loader_path }}
+```
+
+Reload Bash after apply:
+
+```bash
+source ~/.bashrc
+```
+
+One-shot interactive fallback:
+
+```bash
+source <(gonzo completion bash)
+```
+
+## Stern + Gonzo On This Repo
+
+The repo already manages Stern through the `stern_cli` role. Gonzo's upstream
+Stern guide recommends JSON output so Gonzo can retain richer attributes during
+analysis.
+
+Good examples:
+
+```bash
+stern . --all-namespaces --output json | gonzo
+stern . -n kube-system --output json | gonzo
+stern . -n kube-system --tail 100 --output json | gonzo
+stern "api-*" -n production --output json | gonzo
+stern . -n production --since 1h --output json | gonzo
+```
+
+Stern guidance for Gonzo:
+
+- Prefer `--output json` so Gonzo can populate attributes cleanly
+- Use `--tail` or `--since` to keep large streams bounded
+- Use a more specific pod pattern than `.` when performance matters
+
+## Homelab Context Hints
+
+Current managed K3s client contexts on this Mac:
+{% for cluster in k3s_mac_client_clusters | default([]) %}
+- `{{ cluster.context_name }}` via `{{ cluster.cluster_host }}`
+{% endfor %}
+
+Default context:
+
+- `{{ k3s_mac_client_default_context | default('not set') }}`
+
+Practical homelab examples:
+
+```bash
+gonzo --k8s-enabled=true
+stern --context {{ k3s_mac_client_default_context | default('hom-lab-ctl-k3s-01') }} -n kube-system --tail 0 . --output json | gonzo
+stern --context hom-lab-ctl-k3s-02 -n litellm litellm --output json | gonzo
+stern --context hom-lab-ctl-k3s-02 -n langfuse langfuse-web --output json | gonzo
+```
+
+## Useful Follow-Ups
+
+- Open the browser dashboard with `d` once Gonzo is running
+- Use `gonzo --k8s-enabled=true --k8s-namespaces=production` when you want
+  Gonzo to stream cluster logs directly
+- Use `gonzo -f logs.json` first, then layer AI provider settings once the base
+  stream is working
