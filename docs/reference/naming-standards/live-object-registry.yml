@@ -422,8 +422,20 @@ model_lanes:
       purpose: autocomplete, small edits, repo questions
       routing_policy: local-preferred
       primary_guest: null
+      primary_host: HOM-LAB-HVH-01
       catalog_lane: code-fast
-      status: pending_research
+      status: selected
+      notes: >-
+        LiteLLM alias to Ollama qwen2.5-coder:1.5b on HVH-01 GTX 1060
+        (same backend as code-autocomplete-1.5b). Not a separate 7B runtime.
+    - slug: code-autocomplete-1.5b
+      purpose: Continue autocomplete Qwen2.5-Coder 1.5B
+      routing_policy: local-continue-autocomplete
+      primary_guest: null
+      primary_host: HOM-LAB-HVH-01
+      catalog_lane: code-autocomplete-1.5b
+      status: selected
+      notes: Client alias; backend is Ollama on HVH-01 via LiteLLM openai/ route.
     - slug: code-review
       purpose: critique, risk finding, test review
       routing_policy: local-secondary-review
@@ -494,8 +506,13 @@ model_catalog_entries:
       research_sources:
         - https://huggingface.co/Qwen/Qwen3-0.6B
     - lane: code-fast
-      status: pending_research
-      candidate_family: small coding/general model
+      status: selected
+      candidate_family: Qwen2.5-Coder 1.5B via Ollama on HVH-01
+      selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B-Instruct
+    - lane: code-autocomplete-1.5b
+      status: selected
+      candidate_family: Qwen2.5-Coder 1.5B via Ollama on HVH-01
+      selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B-Instruct
     - lane: code-review
       status: selected_secondary_runtime
       candidate_family: small Ollama-hosted code-review/support model on GTX 1060 6GB

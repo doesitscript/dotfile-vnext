@@ -114,7 +114,8 @@ Current client-facing lanes declared in the gateway contract:
 | `experiment` | enabled | primary local `vLLM` |
 | `code-review` | enabled | primary local `vLLM` (alias until secondary runtime) |
 | `smart-router` | enabled | LiteLLM complexity auto-router |
-| `code-fast` | blocked | pending |
+| `code-fast` | enabled | HVH-01 Ollama `qwen2.5-coder:1.5b` (same backend as autocomplete 1.5B) |
+| `code-autocomplete-1.5b` | enabled | HVH-01 Ollama `qwen2.5-coder:1.5b` |
 | `code-test` | blocked | pending |
 | `ripi-private` | blocked | pending |
 | `embeddings-local` | blocked | pending |

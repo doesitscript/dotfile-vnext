@@ -29,7 +29,9 @@ hyperv_config:
   guest_subnet_ipv4: "192.168.137.0/24"
   guest_gateway_ipv4: "192.168.137.1"
   guest_remote_access_routing_enabled: false
-  guest_outbound_nat_enabled: true
+  # For routed_private_subnet, prefer HyperVGuestNat absent (direct guest IP path).
+  # Host NAT breaks Mac/LAN → guest TCP. Set true only as a temporary egress hack.
+  guest_outbound_nat_enabled: false
   guest_outbound_nat_name: "HyperVGuestNat"
   guest_published_tcp_ports: []
   guest_published_tcp_ports_state: present

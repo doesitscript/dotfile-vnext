@@ -163,7 +163,7 @@
         active_sessions = $natState.ActiveSessionCount
       }
   register: _hyperv_routed_private_subnet_nat
-  when: _hyperv.guest_outbound_nat_enabled | default(true) | bool
+  when: _hyperv.guest_outbound_nat_enabled | default(false) | bool
   vars:
     _hyperv_routed_nat_name: "{{ _hyperv.guest_outbound_nat_name | default('HyperVGuestNat') }}"
     _hyperv_routed_guest_subnet_prefix: "{{ _hyperv.guest_subnet_ipv4 | default('192.168.137.0/24') }}"
@@ -187,18 +187,18 @@
         present = [bool](Get-NetNat -Name $natName -ErrorAction SilentlyContinue | Select-Object -First 1)
       }
   register: _hyperv_routed_private_subnet_nat_absent
-  when: not (_hyperv.guest_outbound_nat_enabled | default(true) | bool)
+  when: not (_hyperv.guest_outbound_nat_enabled | default(false) | bool)
   vars:
     _hyperv_routed_nat_name: "{{ _hyperv.guest_outbound_nat_name | default('HyperVGuestNat') }}"
 
 - name: Report routed guest-subnet NAT status when troubleshooting
   ansible.builtin.debug:
     msg:
-      nat_enabled: "{{ _hyperv.guest_outbound_nat_enabled | default(true) | bool }}"
+      nat_enabled: "{{ _hyperv.guest_outbound_nat_enabled | default(false) | bool }}"
       nat_state: >-
         {{
           (_hyperv_routed_private_subnet_nat.result | default({}))
-          if (_hyperv.guest_outbound_nat_enabled | default(true) | bool)
+          if (_hyperv.guest_outbound_nat_enabled | default(false) | bool)
           else (_hyperv_routed_private_subnet_nat_absent.result | default({}))
         }}
   when:

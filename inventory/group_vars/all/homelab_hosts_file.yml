@@ -99,3 +99,22 @@ homelab_hosts_file_web_catalog:
     mac_hosts_enabled: true
     linux_hosts_enabled: true
     windows_hosts_enabled: true
+  # Host-local Ollama OpenAI-compatible APIs (Continue backends via LiteLLM).
+  - catalog_key: ollama-desktop
+    hostname: ollama-desktop.hom.lab
+    hosts_ip: "{{ hostvars['dev-workstation-win'].host_ip | default('192.168.50.133') }}"
+    verify_url: "http://ollama-desktop.hom.lab:11434/api/tags"
+    source: guest_direct
+    source_ref: dev-workstation-win
+    mac_hosts_enabled: true
+    linux_hosts_enabled: true
+    windows_hosts_enabled: true
+  - catalog_key: ollama-hvh01
+    hostname: ollama-hvh01.hom.lab
+    hosts_ip: "{{ hostvars['HOM-LAB-HVH-01'].host_ip | default('192.168.50.234') }}"
+    verify_url: "http://ollama-hvh01.hom.lab:11434/api/tags"
+    source: guest_direct
+    source_ref: HOM-LAB-HVH-01
+    mac_hosts_enabled: true
+    linux_hosts_enabled: true
+    windows_hosts_enabled: true

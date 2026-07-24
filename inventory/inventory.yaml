@@ -33,6 +33,10 @@ all:
         HOM-LAB-HVH-01:
           # All connection details in host_vars/HOM-LAB-HVH-01.yaml
 
+        # Family gaming desktop — commissioned for AMD Ollama Continue edit lane.
+        # Still excluded from windows_nvidia_gpu_hosts / llm_compute_windows.
+        dev-workstation-win:
+
     # All known Windows OS surfaces, regardless of current reachability. Use
     # this group for inventory/reporting and desired-state scope discussions,
     # not as the default mutation target.
@@ -46,8 +50,7 @@ all:
     # in the normal online execution set. Move hosts into windows_hosts when
     # they should participate in routine Windows desired-state applies.
     windows_hosts_offline:
-      hosts:
-        dev-workstation-win:
+      hosts: {}
 
     # Windows hosts eligible for access-only convergence such as OpenSSH,
     # controller key deployment, and SSH client alias rendering. This is
@@ -86,6 +89,12 @@ all:
       hosts:
         HOM-LAB-HVH-02:
         HOM-LAB-HVH-01:
+
+    # Windows hosts with repo-managed AMD GPU hardware (consumer Radeon).
+    # Ollama / Vulkan path — never feed llm_compute_windows (NVIDIA Studio Driver).
+    windows_amd_gpu_hosts:
+      hosts:
+        dev-workstation-win:
 
     # Windows Hyper-V hosts where GPU partitioning is intentionally enabled.
     hyperv_gpu_partition_enabled_hosts:
