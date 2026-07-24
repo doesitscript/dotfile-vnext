@@ -62,40 +62,38 @@
           Storage relocation requires enough destination free space and zero
           Hyper-V checkpoints.
 
-    - name: Request graceful K3s guest shutdown before storage relocation
-      ansible.builtin.systemd_service:
-        name: poweroff.target
-        state: started
-        no_block: true
-      become: true
-      delegate_to: "{{ hyperv_ubuntu_k3s_vm_inventory_host }}"
-      when:
-        - not ansible_check_mode
-        - _hyperv_k3s_storage_preview.result.source != _hyperv_k3s_storage_preview.result.destination
-        - _hyperv_k3s_storage_preview.result.vm_state != 'Off'
-
-    - name: Wait for Hyper-V to observe the K3s guest as off
+    # Prefer Hyper-V host-side stop. Guest ansible modules need writable /tmp;
+    # a 100% full root (common on unre-grown Azure cloud-image VMs) makes
+    # systemd_service/poweroff via SSH fail before the VHD can be relocated.
+    - name: Stop K3s guest via Hyper-V before storage relocation
       ansible.windows.win_powershell:
         error_action: stop
         script: |
           $hypervServer = '{{ hyperv_management_endpoint | default(ansible_host | default(host_ip | default(os_hostname | default(inventory_hostname)))) }}'
           $vmName = '{{ hyperv_ubuntu_k3s_vm_hostname }}'
-          $deadline = (Get-Date).AddMinutes(5)
+          $vm = Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
+          $Ansible.Changed = $false
+          if ($vm.State.ToString() -ne 'Off') {
+            # TurnOff avoids waiting on a guest that cannot write temp files.
+            Stop-VM -ComputerName $hypervServer -Name $vmName -TurnOff -Force -ErrorAction Stop
+            $Ansible.Changed = $true
+          }
+          $deadline = (Get-Date).AddMinutes(2)
           do {
             $state = (Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop).State.ToString()
             if ($state -eq 'Off') {
               break
             }
-            Start-Sleep -Seconds 2
+            Start-Sleep -Seconds 1
           } while ((Get-Date) -lt $deadline)
           if ($state -ne 'Off') {
-            throw 'VM did not shut down gracefully within five minutes; storage move not attempted.'
+            throw "VM did not reach Off after Hyper-V Stop-VM (state=$state); storage move not attempted."
           }
-          $Ansible.Changed = $false
           $Ansible.Result = @{ vm = $vmName; state = $state }
       when:
         - not ansible_check_mode
         - _hyperv_k3s_storage_preview.result.source != _hyperv_k3s_storage_preview.result.destination
+        - _hyperv_k3s_storage_preview.result.vm_state != 'Off'
 
     - name: Move K3s VM VHDX and restart the VM
       ansible.windows.win_powershell:

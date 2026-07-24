@@ -1038,12 +1038,22 @@
         root_parent="$(lsblk -no PKNAME "${root_source}" | tr -d '[:space:]')"
         root_partition="$(lsblk -no PARTN "${root_source}" | tr -d '[:space:]')"
         before_size="$(df -B1 --output=size / | tail -n 1 | tr -d '[:space:]')"
+        root_avail="$(df -B1 --output=avail / | tail -n 1 | tr -d '[:space:]')"
 
         if [[ -z "${root_parent}" || -z "${root_partition}" ]]; then
           echo "changed=false"
           echo "reason=unsupported-root-source"
           echo "root_source=${root_source}"
           exit 0
+        fi
+
+        # Azure cloud images often leave / nearly full until growpart runs.
+        # growpart needs a writable temp dir; prefer /boot when / has <8MiB free.
+        if [[ "${root_avail}" -lt 8388608 ]] && [[ -d /boot ]] && [[ -w /boot ]]; then
+          export TMPDIR=/boot
+          echo "tmpdir=/boot"
+        else
+          echo "tmpdir=${TMPDIR:-/tmp}"
         fi
 
         growpart_output="$(growpart "/dev/${root_parent}" "${root_partition}" 2>&1 || true)"
