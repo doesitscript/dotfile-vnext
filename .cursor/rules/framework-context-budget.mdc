@@ -1,0 +1,57 @@
+---
+description: Context budget policy — thin always-on boot for local LiteLLM lanes; full framework on demand for Cursor provider models.
+alwaysApply: true
+---
+
+# Framework Context Budget
+
+## Hard limit (product)
+
+Cursor injects `alwaysApply: true` rules into **every** Agent turn. It cannot
+gate rules by model ID. LiteLLM trim cannot remove rules Cursor already sent.
+
+## Token taxes observed (this repo)
+
+| Tax | Approx | Source |
+| --- | --- | --- |
+| Cursor builtin tool schemas | ~26k | Task/Shell/etc. (`logs/litellm-tools-capture/`) |
+| Former always-on framework rules | ~45k | `.cursor/rules/*` with `alwaysApply: true` |
+| Local Ornith context | 32k | vLLM behind `litellm.hom.lab` |
+
+Always-on framework + tools alone exceeds the local window.
+
+## Policy
+
+### Always-on (keep tiny)
+
+Only thin boot surfaces stay `alwaysApply: true`:
+
+- this file
+- `framework-user-interaction-style.mdc`
+- `framework-ai-agent-model-lanes.mdc`
+- `.cursorrules` (boot index)
+
+### On-demand / glob (full framework)
+
+Heavy `framework-*`, Ansible/NetBox gates, MCP briefing, troubleshooting, and
+coding standards are `alwaysApply: false` (often with `globs`). Cursor provider
+models with large context should load them when the task matches the rule
+`description` or when matching files are open.
+
+### Local LiteLLM / Ornith sessions
+
+Do **not** auto-load the full framework family. Prefer:
+
+1. User request + opened files
+2. Skills under `.cursor/skills/` / `skills/` when explicitly relevant
+3. One targeted rule via `@` mention if needed
+
+If the local model needs full partner-process / plan-governance / Ansible
+standards, say so and switch to a Cursor provider model (or `@` the specific
+rule). Do not silently re-inject the whole framework into a 32k window.
+
+### Separate from tools tax
+
+Disabling framework always-on does **not** shrink Cursor’s builtin `tools[]`
+schemas (~26k). That is a client/product cost; LiteLLM trim is only a safety
+net after the request is built.

@@ -112,6 +112,13 @@ It is:
 - an explicit researcher/steward/executor workflow
 - then reusable skills for recurring jobs
 
+When a request maps cleanly to repo-local project skills, the agent should help
+build that reusable habit without slowing execution down: do the work first,
+keep any skill suggestion brief, prefer one wrapper or default-flow skill over
+a raw three-skill list, and include one reusable prompt only when the prompt is
+stable enough to be useful. This is a gentle recall aid, not a reason to stop
+or defer the requested work.
+
 Reusable multi-agent and role-split workflows live under
 `docs/codex_framework/agent-workflows/`. Plans may select one of those patterns,
 but the reusable coordination contract should not live only inside an individual

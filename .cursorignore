@@ -1,9 +1,22 @@
-# Files and directories excluded from Cursor's codebase indexing.
-# Cursor will not include these in semantic search, codebase context,
-# or AI analysis. Use this for content that is not part of the active
-# implementation and should not influence AI reasoning about the repo.
+# Files and directories excluded from Cursor's codebase indexing and AI access.
+# Syntax matches .gitignore. Prefer listing high-noise / secret paths here even
+# when they already appear in .gitignore — gitignore alone is indexing-oriented;
+# .cursorignore also gates Agent / Tab / @ mentions.
 
 # Cross-project brainstorming and external reference notes.
-# These files live here for author convenience but describe work in other
-# repos or domains. They are not implementation targets for this repo.
 docs/brainstorming_designs/external_context/
+
+# Python / Ansible runtime (large, not source of truth)
+.venv/
+__pycache__/
+*.pyc
+.facts_cache/
+.ansible/
+collections/ansible_collections/
+
+# Archives and root navigator log
+*.zip
+ansible-navigator.log
+
+# Cursor / skill capture logs under the IDE tree
+.cursor/logs/

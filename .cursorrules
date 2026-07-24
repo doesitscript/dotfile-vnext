@@ -2,47 +2,56 @@
 
 ## Cursor-Native Boot Layer
 
-This file is the workspace boot surface for Cursor-native rule loading.
+This file is the thin workspace boot surface for Cursor-native rule loading.
 
 Do not assume Codex/OpenAI sessions natively auto-load this file. In this repo,
 Codex should rely first on `AGENTS.md` and project `.codex/config.toml`.
 
+**Context budget (local LiteLLM vs Cursor provider models):**
+
+- Cursor cannot gate rules by model. `alwaysApply: true` costs every Agent turn.
+- Keep always-on tiny: this file + `framework-context-budget.mdc` +
+  `framework-user-interaction-style.mdc` + `framework-ai-agent-model-lanes.mdc`.
+- Full `framework-*` / Ansible / NetBox / troubleshooting rules are
+  **on-demand** (`alwaysApply: false`, often with `globs`). Prefer them on
+  Cursor provider models with large context; do not force them into Ornith 32k.
+- Tool schemas (~26k Task/Shell/…) are a separate Cursor client tax; see
+  `logs/litellm-tools-capture/` and `framework-context-budget.mdc`.
+
 For Cursor-native workspace sessions:
-- read `AGENTS.md` when present
-- read `.cursorrules`
-- read every active file under `.cursor/rules/` except archive content
-- treat the `framework-*` family as the primary framework-owned rule layer
+- read this file and the thin always-on rules above
+- load heavy framework rules / skills only when the task needs them
+- treat the `framework-*` family as the framework-owned layer (on-demand)
 
-## Active Framework Rule Family
+## Active Framework Rule Family (on-demand unless noted)
 
-The current framework-owned rule surfaces are:
+Always-on:
+- `framework-context-budget.mdc`
+- `framework-user-interaction-style.mdc`
+- `framework-ai-agent-model-lanes.mdc`
+
+On-demand (description / globs / `@` mention):
 - `framework-agent-role-and-persona.mdc`
 - `framework-partner-process.mdc`
 - `framework-knowledge-and-research.mdc`
 - `framework-mcp-and-tool-usage.mdc`
 - `framework-troubleshooting-mode.mdc`
-- `framework-user-interaction-style.mdc`
 - `framework-github-issue-workflow.mdc`
 - `framework-netbox-modeling.mdc`
 - `framework-plan-governance.mdc`
-
-Supporting active rule surfaces also include:
-- `000--system-boot.mdc`
-- `02--cussorrules-mcp-briefieng-GENERATED.mdc`
-- `900--failure-and-diagnostics.mdc`
 - `ansible-coding-standards.mdc`
+- `900--failure-and-diagnostics.mdc`
+- `02--cussorrules-mcp-briefieng-GENERATED.mdc`
 
-## MCP Gates
+## MCP Gates (when loaded)
 
-Decision type classification happens before any proposal, plan, placement,
-implementation, or execution.
-
-Use:
-- `framework-mcp-and-tool-usage.mdc` for mandatory design, planning, debug, and execution gates
-- `framework-knowledge-and-research.mdc` for mandatory research and informational tool authority
+When the MCP / knowledge rules are in context:
+- use `framework-mcp-and-tool-usage.mdc` for design/planning/debug/execution gates
+- use `framework-knowledge-and-research.mdc` for research authority
 
 Do not answer from memory when an MCP tool, registered `@doc`, or active rule
-can provide the repo-specific answer.
+can provide the repo-specific answer — **if those rules are loaded for this
+session**. On local 32k lanes, prefer a skill or `@` one rule over loading all.
 
 ## Cursor Conversation Start
 
@@ -51,9 +60,9 @@ For Cursor-native workspace conversations, output a short:
 `Rules enforced this conversation:`
 
 Include:
-- `AGENTS.md` when active
 - `.cursorrules`
-- every rule file actually loaded from `.cursor/rules/`
+- every **always-on** rule actually injected
+- name any on-demand framework rules that were attached this turn
 
 ## Active Constraints For Ansible Work
 
@@ -62,6 +71,8 @@ When writing, reviewing, or modifying Ansible tasks, roles, or playbooks:
 - use `.yml`, not `.yaml`
 - do not use `set_fact` to override role defaults or vars
 - roles must include `meta/argument_specs.yml` and a README
+- load `ansible-coding-standards.mdc` when doing substantial Ansible authorship
+  on a Cursor provider model
 
 ## Failure Evidence Rule
 
@@ -69,3 +80,4 @@ When anything fails or is unreachable:
 - do not guess the cause
 - collect evidence first
 - stop after repeated failed fix cycles and switch to documented research
+- load troubleshooting/failure rules when debugging beyond a quick probe

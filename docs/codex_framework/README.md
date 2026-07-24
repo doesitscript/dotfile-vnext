@@ -321,18 +321,34 @@ These are the current files actively shaping this capability.
 
 ### Skill workflows
 
+- [skills/catalog.yaml](/Users/joshc/develop/dotfile-vnext/skills/catalog.yaml)
+  Source-of-truth skill inventory for project-owned reusable workflows.
+- [skills/README.md](/Users/joshc/develop/dotfile-vnext/skills/README.md)
+  The current project skill pattern, handoff graph, and preferred discovery
+  surface for project-local operational workflows.
 - [.cursor/skills/catalog.yml](/Users/joshc/develop/dotfile-vnext/.cursor/skills/catalog.yml)
-  Machine-readable skill inventory and first-stop discovery surface for what
-  capabilities exist.
+  Runtime-discovery mirror. Project-owned operational skills should be authored
+  under `skills/` first and bridged here second.
 - [.cursor/skills/README.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/README.md)
-  The standard skill pattern, discovery order, and update/remove guidance.
+  Legacy runtime-skill context plus manifest-backed framework capabilities.
 
 - [.cursor/skills/ansible-planner/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/ansible-planner/SKILL.md)
-  The current `Planner / Steward` workflow.
+  Transitional framework workflow surface for `Planner / Steward`.
 - [.cursor/skills/ansible-researcher/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/ansible-researcher/SKILL.md)
-  The current `Researcher` workflow. This now explicitly includes
+  Transitional framework workflow surface for `Researcher`. This now explicitly includes
   diagnostic-discovery research for questions like "where does this thing log"
   and "how do we surface more output for troubleshooting?"
+- [skills/implementation/tool-playbook-placement-advisor/SKILL.md](/Users/joshc/develop/dotfile-vnext/skills/implementation/tool-playbook-placement-advisor/SKILL.md)
+  Project-owned workflow for deciding the correct playbook and role lane before
+  implementing a tool capability.
+- [skills/validation/macos-shell-truth-and-alignment/SKILL.md](/Users/joshc/develop/dotfile-vnext/skills/validation/macos-shell-truth-and-alignment/SKILL.md)
+  Project-owned shell-runtime diagnosis and repo-alignment workflow for macOS.
+- [skills/implementation/macos-cli-completion-pack/SKILL.md](/Users/joshc/develop/dotfile-vnext/skills/implementation/macos-cli-completion-pack/SKILL.md)
+  Project-owned completion-wiring workflow for repo-managed macOS CLIs.
+- [skills/validation/interactive-shell-completion-proof/SKILL.md](/Users/joshc/develop/dotfile-vnext/skills/validation/interactive-shell-completion-proof/SKILL.md)
+  Project-owned real-PTY proof workflow for completion and shell-time behavior.
+- [skills/implementation/scoped-version-bump-commit-push/SKILL.md](/Users/joshc/develop/dotfile-vnext/skills/implementation/scoped-version-bump-commit-push/SKILL.md)
+  Project-owned closeout workflow for scoped version bumps, focused commits, and pushes.
 - [.cursor/skills/ansible-knowledge-gate/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/ansible-knowledge-gate/SKILL.md)
   The modular Ansible knowledge gate. It requires repo and Ansible authority
   checks before Ansible design or implementation.
@@ -640,8 +656,9 @@ Rules:
 - [ansible-coding-standards.mdc](/Users/joshc/develop/dotfile-vnext/.cursor/rules/ansible-coding-standards.mdc)
 
 Skills:
-- [ansible-planner](/Users/joshc/develop/dotfile-vnext/.cursor/skills/ansible-planner/SKILL.md)
-- [ansible-researcher](/Users/joshc/develop/dotfile-vnext/.cursor/skills/ansible-researcher/SKILL.md)
+- [tool-playbook-placement-advisor](/Users/joshc/develop/dotfile-vnext/skills/implementation/tool-playbook-placement-advisor/SKILL.md)
+- [interactive-shell-completion-proof](/Users/joshc/develop/dotfile-vnext/skills/validation/interactive-shell-completion-proof/SKILL.md)
+- [scoped-version-bump-commit-push](/Users/joshc/develop/dotfile-vnext/skills/implementation/scoped-version-bump-commit-push/SKILL.md)
 - [github-issue-workflow](/Users/joshc/develop/dotfile-vnext/.cursor/skills/github-issue-workflow/SKILL.md)
 
 ### Creation rule

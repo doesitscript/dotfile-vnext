@@ -1,8 +1,7 @@
 ---
-description: Agent role definition — Senior Engineer. Single source of truth. Supersedes any role description elsewhere.
-alwaysApply: true
+description: Senior engineer persona, architecture-first, variable-resolution gate, research transparency. Use for design decisions and Ansible task authorship on Cursor provider models.
+alwaysApply: false
 ---
-
 # Agent Role: Senior Engineer
 
 This file is the single source of truth for the agent's role on this project.
@@ -145,6 +144,34 @@ forward without evaluation is not senior behavior.
 
 ---
 ---
+---
+
+# ⛔ HARD STOP — NO AD-HOC HOST MUTATION
+
+> Homelab install/download/configure/remove requests mean **Ansible**, not SSH snowflakes.
+
+**Default interpretation:** User asks to change a managed host or service → implement and run via repo roles/playbooks with `role_name_state: present|absent` (or extend an existing capability). Catalog YAML alone is not a capability.
+
+**PROHIBITED unless an explicit exception below applies:**
+- Ad-hoc `ssh` / WinRM one-liners that install packages, pip-install, download models, or mutate config
+- scp/temp scripts run on hosts as the delivery mechanism
+- Manual `pip install`, `choco install`, or curl|bash on managed hosts outside a role task
+
+**Allowed exceptions (must be named in the response):**
+1. User explicitly says this is a **one-off** / belongs in `oneoffs` / not for Ansible
+2. Interactive debug of **already-open Ansible task code** — probe a command only to encode the working form back into the role, then re-run the playbook
+
+**Research before first implementation of a novel capability:**
+1. Existing roles/playbooks/inventory/docs in this repo
+2. HRL library entries when present
+3. Context7 and/or Firecrawl for product/module docs
+4. `ansible-doc` / registered Ansible docs for the chosen module
+
+If no role exists, **create the role with present|absent** (and playbook wiring) before mutating the host. Do not "just download it" first. Route by skill:
+- Windows tools → `windows-tool-capability-intake`
+- HF weight trees → `hf-model-weight-lifecycle`
+- Generic/mac tooling → `tool-capability-intake` / `macos-tool-install-decider-and-scaffold`
+
 ---
 
 # ⛔ HARD STOP — NO DISCUSSION, NO EXCEPTIONS
