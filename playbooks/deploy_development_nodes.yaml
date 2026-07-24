@@ -5,11 +5,12 @@
 #          common/bash_completion (Homebrew bash-completion loader for managed CLI completions)
 #          direnv (installation + bash hook)
 #          git (global gitconfig, gitattributes, gitignore_global symlink)
-#          cursor (editor config, extensions, LF/UTF-8 settings)
+#          cursor (editor config, extensions incl. Continue + Cline, LF/UTF-8 settings)
+#          common/vscode (VS Code + extensions incl. Continue + Cline)
 #          common/agent_skills (repo-owned Cursor/Codex skill symlinks)
 #          langfuse_cli (Langfuse CLI for tracing and evaluation)
 #          litellm_cli (LiteLLM CLI on macOS via pipx)
-#          continue_ide (Continue IDE config → LiteLLM autocomplete/edit lanes)
+#          continue_ide (Continue IDE config → LiteLLM autocomplete/edit lanes; pair with Continue.continue extension)
 #          terraform_cli (Terraform CLI on macOS through the official HashiCorp Homebrew tap)
 #          aws_cli (AWS CLI on macOS through Homebrew awscli formula)
 #          speech_central (Speech Central install on mac-dev via mas_cli dependency)
@@ -21,6 +22,7 @@
 #          dstl8_cli (Dstl8 runtime-feedback CLI and MCP installer on macOS through the upstream Homebrew tap)
 #          localtunnel_cli (localtunnel CLI on macOS through the Homebrew localtunnel formula)
 #          ngrok_cli (ngrok CLI on macOS through the Homebrew ngrok cask)
+#          openlens (OpenLens Kubernetes IDE desktop app on macOS through the Homebrew openlens cask)
 #          k3s_mac_client (macOS kubectl + kubeconfig for the homelab K3s cluster)
 #          homelab_hosts_file_mac (macOS /etc/hosts from Traefik registry + router workaround)
 #          Linux guest hosts file: playbooks/site.yaml or homelab_hosts_file.yaml (not this play)
@@ -74,6 +76,7 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags dstl8_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags localtunnel_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags ngrok_cli --limit mac-dev
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags openlens --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags k3s_mac_client --limit mac-dev
 
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags homelab_hosts_file_mac --limit mac-dev -e homelab_hosts_file_mac_enabled=true
@@ -187,6 +190,9 @@
     - role: k3s_mac_client
       when: ansible_system == "Darwin"
       tags: [k3s_mac_client]
+    - role: openlens
+      when: ansible_system == "Darwin"
+      tags: [openlens]
     - role: homelab_hosts_file_mac
       when: ansible_system == "Darwin"
       tags: [homelab_hosts_file_mac]

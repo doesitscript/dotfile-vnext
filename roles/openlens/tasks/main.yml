@@ -1,0 +1,9 @@
+---
+- name: Require macOS for openlens package management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "openlens currently supports macOS through Homebrew cask only."
+
+- name: Manage OpenLens on macOS
+  ansible.builtin.import_tasks: mac.yml

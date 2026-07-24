@@ -1,0 +1,45 @@
+---
+- name: Install or remove OpenLens Homebrew cask
+  community.general.homebrew_cask:
+    name: "{{ openlens_cask_name }}"
+    state: "{{ openlens_state }}"
+
+- name: Check OpenLens app bundle state after install
+  ansible.builtin.stat:
+    path: "{{ openlens_app_path }}"
+  register: openlens_app_bundle
+  when:
+    - not ansible_check_mode
+    - openlens_state == "present"
+    - openlens_verify_install | bool
+
+- name: Assert OpenLens app bundle exists after install
+  ansible.builtin.assert:
+    that:
+      - openlens_app_bundle.stat.exists
+    success_msg: "OpenLens app bundle is installed."
+    fail_msg: "OpenLens app bundle was not found after install."
+  when:
+    - not ansible_check_mode
+    - openlens_state == "present"
+    - openlens_verify_install | bool
+
+- name: Check OpenLens app bundle state after removal
+  ansible.builtin.stat:
+    path: "{{ openlens_app_path }}"
+  register: openlens_app_bundle_removed
+  when:
+    - not ansible_check_mode
+    - openlens_state == "absent"
+    - openlens_verify_install | bool
+
+- name: Assert OpenLens app bundle is absent after removal
+  ansible.builtin.assert:
+    that:
+      - not openlens_app_bundle_removed.stat.exists
+    success_msg: "OpenLens app bundle is absent."
+    fail_msg: "OpenLens app bundle still exists after removal."
+  when:
+    - not ansible_check_mode
+    - openlens_state == "absent"
+    - openlens_verify_install | bool
