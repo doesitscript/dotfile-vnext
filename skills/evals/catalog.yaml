@@ -1,0 +1,123 @@
+schema_version: 1
+
+evals:
+  - skill: tool-capability-intake
+    should_trigger:
+      - create a role to install this cli on mac-dev
+      - should this be a new role or an extension of an existing one
+      - switch this tool away from the old install strategy
+
+  - skill: tool-playbook-placement-advisor
+    should_trigger:
+      - should this tool live in deploy_development_nodes or deploy_k8s_cli_tools
+      - where should this role be wired before we implement it
+      - does this belong in the shell substrate instead of a new tool role
+
+  - skill: macos-tool-install-decider-and-scaffold
+    should_trigger:
+      - install this mac developer tool on mac-dev and choose the right install path first
+      - scaffold the role for this macos cli before rollout
+      - should this use brew or a pinned release binary
+
+  - skill: macos-cli-completion-pack
+    should_trigger:
+      - add bash completion for this macos cli
+      - standardize the completion wiring for this tool
+      - make this tool follow the gonzo stern dstl8 completion pattern
+
+  - skill: upstream-release-binary-installer
+    should_trigger:
+      - skip homebrew and pin the upstream macos release binary
+      - map the darwin arm64 and amd64 assets with checksums
+      - install this from a release tarball instead of building from source
+
+  - skill: github-release-binary-intake
+    should_trigger:
+      - map the github release assets and checksums for this tool
+      - capture the latest release date version and darwin asset names
+      - pin the github release binary before we write the ansible defaults
+
+  - skill: project-skill-runtime-bridge
+    should_trigger:
+      - symlink the project skills into the cursor skills folder
+      - refresh the managed runtime skill bridge
+      - replace stale copied runtime skills with symlinks
+
+  - skill: tool-usage-note-and-discoverability
+    should_trigger:
+      - add metadata and a managed usage note for this tool
+      - include the upstream docs links in the role readme
+      - document how this integrates with stern and k3s contexts
+      - build the tool role docs pack
+
+  - skill: tool-role-docs-pack
+    should_trigger:
+      - package the tool role docs pack for this install
+      - add the upstream links metadata and managed usage note
+      - build the standard docs pack for this role
+
+  - skill: macos-ansible-install-validator
+    should_trigger:
+      - validate this macos install role before apply
+      - why did unarchive fail on macos
+      - catch the check mode path issue before rollout
+
+  - skill: single-host-ansible-rollout
+    should_trigger:
+      - deploy this to mac-dev and verify it
+      - run the preview first and then apply the scoped role
+      - capture the exact ansible failure before changing strategy
+      - run single host apply and receipt
+
+  - skill: macos-shell-truth-and-alignment
+    should_trigger:
+      - diagnose the macos shell truth before we change completion config
+      - fix bash 5 alignment on mac-dev
+      - check /etc/shells and login shell drift first
+
+  - skill: single-host-apply-and-receipt
+    should_trigger:
+      - apply this only to mac-dev and capture the receipt
+      - run single host apply and receipt
+      - capture the rollout receipt after the fix
+
+  - skill: scoped-version-bump-commit-push
+    should_trigger:
+      - bump the minor version and push this slice
+      - commit just this skill library change and push it
+      - update VERSION and README for this slice only
+
+  - skill: litellm-cursor-traffic-analyzer
+    should_trigger:
+      - ornith stopped mid reply with internal server error
+      - the local model forgot the conversation after a crash
+      - diagnose cursor traffic through litellm
+
+  - skill: capture-litellm-tools-payload
+    should_trigger:
+      - dump the full cursor tools array from the litellm pod
+      - measure why task and shell cost so many tokens
+      - collect litellm tools capture under logs
+
+  - skill: analyze-litellm-observable-surfaces
+    should_trigger:
+      - what can litellm report about cursor requests
+      - where do agent prompts show up in our gateway logs
+
+  - skill: tune-litellm-context-safety-net
+    should_trigger:
+      - raise the litellm min completion tokens and redeploy
+      - enable openai context window fallbacks in vault
+      - tune the trim_messages safety net for ornith
+
+  - skill: hydrate-k3s-mac-kubeconfig-direct-api
+    should_trigger:
+      - hydrate mac kubeconfig for k3s without a tunnel
+      - use connection_mode direct for both k3s clusters
+      - set up KUBECONFIG for k9s against guest api
+
+  - skill: hydrate-k3s-mac-kubeconfig-ssh-tunnel
+    should_trigger:
+      - refresh the ssh tunnel kubeconfig hydrator
+      - kubectl tunnel died after the mac slept
+      - hydrate k3s api through ssh -L

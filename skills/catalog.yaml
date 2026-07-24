@@ -1,0 +1,993 @@
+schema_version: 2
+
+description: >
+  Registry of reusable project skills in dotfile-vnext. Paths are relative to
+  skills/. Match on description and triggers first, then load only the matched
+  SKILL.md.
+
+skills:
+  tool-capability-intake:
+    name: tool-capability-intake
+    description: "Use when adding, replacing, or refactoring a repo-managed tool capability in dotfile-vnext, especially when the work must choose between extending an existing role, creating a new role, or changing install strategy. Use for install tool X, add CLI role, convert package-manager installs to a better lifecycle contract, or when an ad-hoc host install must become present|absent Ansible first. Do not use for rollout-only execution after the design is already settled; for Windows HVH tools prefer windows-tool-capability-intake; for HF weight trees prefer hf-model-weight-lifecycle."
+    path: implementation/tool-capability-intake/SKILL.md
+    category: implementation
+    purpose: Define the repo-owned capability shape before edits and rollout
+    status: reviewed
+    triggers:
+      - install this tool on mac-dev
+      - create a role for this cli
+      - should this extend an existing role or be a new role
+      - switch this installer strategy
+      - make this ad-hoc install into ansible
+    do_not_use_when:
+      - preview apply verify is the only remaining step
+      - metadata and usage docs are the only requested change
+      - windows hvh tool install is the primary ask
+      - hf weight download or remove is the primary ask
+    handoff_from: []
+    handoff_to:
+      - windows-tool-capability-intake
+      - hf-model-weight-lifecycle
+      - macos-tool-install-decider-and-scaffold
+      - upstream-release-binary-installer
+      - tool-usage-note-and-discoverability
+      - single-host-ansible-rollout
+    complements:
+      - windows-tool-capability-intake
+      - hf-model-weight-lifecycle
+      - upstream-release-binary-installer
+      - tool-usage-note-and-discoverability
+      - single-host-ansible-rollout
+    references:
+      - implementation/tool-capability-intake/references/sources-and-precedence.md
+      - implementation/tool-capability-intake/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: tool-capability-intake
+
+  tool-playbook-placement-advisor:
+    name: tool-playbook-placement-advisor
+    description: "Use when a new or refactored tool capability needs a clear home in dotfile-vnext before implementation: deploy_development_nodes.yaml, deploy_k8s_cli_tools.yaml, another existing playbook, or a composed tag path. Use for should this tool live with k8s cli tools, where should this role be wired, or does this belong in a shared substrate role."
+    path: implementation/tool-playbook-placement-advisor/SKILL.md
+    category: implementation
+    purpose: Choose the owning playbook and role lane for a tool capability before implementation
+    status: reviewed
+    triggers:
+      - should this tool live in deploy_development_nodes or deploy_k8s_cli_tools
+      - where should this role be wired
+      - does this belong in a shared substrate role
+      - choose the playbook home before we implement this tool
+    do_not_use_when:
+      - the playbook home is already settled
+      - only install-path design is the remaining question
+    handoff_from:
+      - tool-capability-intake
+    handoff_to:
+      - tool-capability-intake
+      - macos-tool-install-decider-and-scaffold
+    complements:
+      - tool-capability-intake
+      - macos-tool-install-decider-and-scaffold
+    references:
+      - implementation/tool-playbook-placement-advisor/references/sources-and-precedence.md
+      - implementation/tool-playbook-placement-advisor/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: tool-playbook-placement-advisor
+
+  windows-tool-capability-intake:
+    name: windows-tool-capability-intake
+    description: "Use when adding or changing a Windows-host tool capability in dotfile-vnext (HVH-01/HVH-02), especially Chocolatey, py -m pip, WinRM/OpenSSH PowerShell surfaces, or present|absent role scaffolding before any host mutation. Use for install this on HOM-LAB-HVH-01, Windows pip package role, Chocolatey CLI role, or scaffold Windows tool lifecycle. Do not use for mac-dev tools (use macos-tool-install-decider-and-scaffold) or for HF weight trees (use hf-model-weight-lifecycle)."
+    path: implementation/windows-tool-capability-intake/SKILL.md
+    category: implementation
+    purpose: Shape Windows tool capabilities with present|absent before host mutation
+    status: reviewed
+    aliases:
+      - windows tool intake
+      - hvh tool role
+    target_surface:
+      - HOM-LAB-HVH-01
+      - HOM-LAB-HVH-02
+    triggers:
+      - install this on HOM-LAB-HVH-01
+      - windows pip package role
+      - chocolatey cli role
+      - scaffold windows tool lifecycle
+      - present absent for windows tool
+    do_not_use_when:
+      - mac-dev is the target host
+      - hf weight tree download or remove is the only ask
+      - rollout-only execution is the remaining work
+    handoff_from:
+      - tool-capability-intake
+      - ansible-knowledge-gate
+    handoff_to:
+      - tool-role-docs-pack
+      - single-host-ansible-rollout
+      - hf-model-weight-lifecycle
+    complements:
+      - tool-capability-intake
+      - hf-model-weight-lifecycle
+      - single-host-ansible-rollout
+    references:
+      - implementation/windows-tool-capability-intake/references/sources-and-precedence.md
+      - implementation/windows-tool-capability-intake/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: windows-tool-capability-intake
+
+  hf-model-weight-lifecycle:
+    name: hf-model-weight-lifecycle
+    description: "Use when downloading, removing, or commissioning Hugging Face model weights on the HVH-01 share in dotfile-vnext, and when those weights must be owned by Ansible present|absent rather than ad-hoc snapshot_download. Use for download this HF model to the share, remove DiffuCoder weights, model_catalog unc_path lifecycle, or commission weights before LiteLLM/Continue. Do not use for Hub client pip install alone (use windows-tool-capability-intake / huggingface_hub role) or for authoring HRL model-doc packs (use model-doc-pack-preflight + HRL)."
+    path: implementation/hf-model-weight-lifecycle/SKILL.md
+    category: implementation
+    purpose: Own HF weight trees with Ansible present|absent separate from Hub client and LiteLLM routes
+    status: reviewed
+    aliases:
+      - huggingface weights
+      - model weight lifecycle
+      - snapshot_download ansible
+    target_surface:
+      - HOM-LAB-HVH-01
+    triggers:
+      - download this hf model to the share
+      - remove DiffuCoder weights
+      - model_catalog unc_path lifecycle
+      - commission weights before litellm
+      - ansible present absent for huggingface weights
+    do_not_use_when:
+      - only the huggingface_hub pip client needs install
+      - authoring an HRL model-doc-pack is the only ask
+      - liteLLM route wiring already has live backends and weights are settled
+    handoff_from:
+      - tool-capability-intake
+      - windows-tool-capability-intake
+      - model-doc-pack-preflight
+    handoff_to:
+      - model-doc-pack-preflight
+      - windows-tool-capability-intake
+      - single-host-ansible-rollout
+    complements:
+      - model-doc-pack-preflight
+      - windows-tool-capability-intake
+      - tool-capability-intake
+      - single-host-ansible-rollout
+    references:
+      - implementation/hf-model-weight-lifecycle/references/sources-and-precedence.md
+      - implementation/hf-model-weight-lifecycle/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: hf-model-weight-lifecycle
+
+  macos-tool-install-decider-and-scaffold:
+    name: macos-tool-install-decider-and-scaffold
+    description: "Use when a macOS developer tool should be added to dotfile-vnext and the install strategy needs to be chosen before implementation, plus role/playbook surfaces scaffolded in the repo pattern. Use for install this tool on mac-dev, choose brew vs release binary, or scaffold the role before rollout."
+    path: implementation/macos-tool-install-decider-and-scaffold/SKILL.md
+    category: implementation
+    purpose: Choose the right macOS install path early and scaffold repo-aligned surfaces
+    status: reviewed
+    aliases:
+      - mac tool decider
+      - mac role scaffold
+    target_surface:
+      - mac-dev
+    part_of_flows:
+      - macos-tool-role-default-flow
+    preferred_prompt: "Use skill macos-tool-install-decider-and-scaffold to install <tool> on mac-dev, prefer brew package installation, then tool-role-docs-pack and single-host-apply-and-receipt."
+    triggers:
+      - install this tool on mac-dev
+      - choose brew or release binary before you build the role
+      - scaffold the role for this macos cli
+      - add this mac dev tool to the playbook
+    do_not_use_when:
+      - github release intake is the only missing step
+      - rollout-only execution is the remaining work
+    handoff_from: []
+    handoff_to:
+      - github-release-binary-intake
+      - tool-role-docs-pack
+      - tool-usage-note-and-discoverability
+      - macos-ansible-install-validator
+      - single-host-apply-and-receipt
+      - single-host-ansible-rollout
+    complements:
+      - tool-capability-intake
+      - github-release-binary-intake
+      - tool-role-docs-pack
+      - tool-usage-note-and-discoverability
+      - single-host-apply-and-receipt
+      - single-host-ansible-rollout
+    companion_skills:
+      - tool-role-docs-pack
+      - single-host-apply-and-receipt
+    references:
+      - implementation/macos-tool-install-decider-and-scaffold/references/sources-and-precedence.md
+      - implementation/macos-tool-install-decider-and-scaffold/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: macos-tool-install-decider-and-scaffold
+
+  macos-tool-role-default-flow:
+    name: macos-tool-role-default-flow
+    description: "Use when a macOS CLI or developer tool should follow the repo's default end-to-end workflow on mac-dev: choose the install family, scaffold the role/playbook surfaces, package the docs, then preview/apply/verify with a single-host receipt. Use for the usual mac tool stack, default mac tool flow, or install this tool the standard way."
+    path: implementation/macos-tool-role-default-flow/SKILL.md
+    category: implementation
+    purpose: One entrypoint for the repo's default macOS tool install plus docs plus single-host receipt flow
+    status: reviewed
+    aliases:
+      - default mac tool flow
+      - usual mac tool stack
+      - josh default tool flow
+    target_surface:
+      - mac-dev
+    default_for:
+      - install a macOS CLI or developer tool on mac-dev with the repo-standard role, docs pack, and single-host receipt
+    preferred_prompt: "Use skill macos-tool-role-default-flow to install <tool> on mac-dev, prefer Homebrew, then docs-pack and single-host-apply-and-receipt."
+    triggers:
+      - use the default mac tool install flow
+      - use the usual mac tool stack
+      - install this tool the standard way on mac-dev
+      - use the repo default mac tool workflow
+    do_not_use_when:
+      - only one narrow slice remains, like docs-only or rollout-only work
+      - the target host is not mac-dev
+    handoff_from: []
+    handoff_to:
+      - macos-tool-install-decider-and-scaffold
+      - tool-role-docs-pack
+      - single-host-apply-and-receipt
+    complements:
+      - macos-tool-install-decider-and-scaffold
+      - tool-role-docs-pack
+      - single-host-apply-and-receipt
+    companion_skills:
+      - macos-tool-install-decider-and-scaffold
+      - tool-role-docs-pack
+      - single-host-apply-and-receipt
+    recommended_sequence:
+      - macos-tool-install-decider-and-scaffold
+      - tool-role-docs-pack
+      - single-host-apply-and-receipt
+    references: []
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: macos-tool-role-default-flow
+
+  macos-cli-completion-pack:
+    name: macos-cli-completion-pack
+    description: "Use when a repo-managed macOS CLI should add, repair, or standardize Bash completion wiring across the shared shell substrate and the owning role. Use for Gonzo, Dstl8, Stern, K9s, Kubectl, or similar completion install paths, loader expectations, and verification hooks."
+    path: implementation/macos-cli-completion-pack/SKILL.md
+    category: implementation
+    purpose: Standardize managed Bash completion wiring for repo-owned macOS CLIs
+    status: reviewed
+    triggers:
+      - add bash completion for this macos cli
+      - standardize the completion wiring for this tool
+      - fix the shared loader and completion path for this mac tool
+      - make this tool follow the gonzo stern dstl8 completion pattern
+    do_not_use_when:
+      - only interactive proof remains
+      - the cli does not expose a bash completion surface
+    handoff_from:
+      - macos-tool-install-decider-and-scaffold
+      - tool-role-docs-pack
+    handoff_to:
+      - macos-ansible-install-validator
+      - interactive-shell-completion-proof
+      - single-host-apply-and-receipt
+    complements:
+      - macos-ansible-install-validator
+      - interactive-shell-completion-proof
+      - single-host-apply-and-receipt
+    references:
+      - implementation/macos-cli-completion-pack/references/sources-and-precedence.md
+      - implementation/macos-cli-completion-pack/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: macos-cli-completion-pack
+
+  upstream-release-binary-installer:
+    name: upstream-release-binary-installer
+    description: "Use when a repo-managed tool should install from a pinned upstream release binary instead of Homebrew, pip, or another package manager, especially on macOS where formulae may trigger long source builds. Use for release asset URL, checksum pinning, arch map, extraction path, or check-mode-safe binary install design."
+    path: implementation/upstream-release-binary-installer/SKILL.md
+    category: implementation
+    purpose: Design pinned upstream binary install paths with Ansible-safe verification
+    status: reviewed
+    triggers:
+      - install from upstream release binary
+      - skip homebrew and pin the binary asset
+      - map darwin arm64 amd64 release assets
+      - checksum and extract this release archive
+    do_not_use_when:
+      - a stable repo-native module or package-manager path already fits
+      - only rollout evidence is requested
+    handoff_from:
+      - tool-capability-intake
+    handoff_to:
+      - tool-usage-note-and-discoverability
+      - single-host-ansible-rollout
+    complements:
+      - tool-capability-intake
+      - single-host-ansible-rollout
+    references:
+      - implementation/upstream-release-binary-installer/references/sources-and-precedence.md
+      - implementation/upstream-release-binary-installer/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: upstream-release-binary-installer
+
+  github-release-binary-intake:
+    name: github-release-binary-intake
+    description: "Use when a tool should install from a pinned GitHub release asset and the repo needs version, asset, checksum, and arch details captured before Ansible tasks are finalized. Use for latest release asset mapping, checksum file discovery, or darwin arm64 and amd64 binary intake."
+    path: implementation/github-release-binary-intake/SKILL.md
+    category: implementation
+    purpose: Capture GitHub release binary metadata as a pinned install contract
+    status: reviewed
+    triggers:
+      - pin the github release binary for this tool
+      - map the latest release asset and checksums
+      - find the darwin arm64 and amd64 assets from github releases
+      - capture release date version and asset names
+    do_not_use_when:
+      - the upstream source is not github releases
+      - live rollout is the only remaining step
+    handoff_from:
+      - macos-tool-install-decider-and-scaffold
+    handoff_to:
+      - tool-usage-note-and-discoverability
+      - macos-ansible-install-validator
+      - single-host-ansible-rollout
+    complements:
+      - upstream-release-binary-installer
+      - macos-ansible-install-validator
+      - single-host-ansible-rollout
+    references:
+      - implementation/github-release-binary-intake/references/sources-and-precedence.md
+      - implementation/github-release-binary-intake/references/related-artifacts.md
+    scripts:
+      - implementation/github-release-binary-intake/scripts/inspect_github_release.py
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: github-release-binary-intake
+
+  project-skill-runtime-bridge:
+    name: project-skill-runtime-bridge
+    description: "Use when dotfile-vnext project skills under skills/ should be made runtime-discoverable in .cursor/skills through managed symlinks, or when the managed runtime catalog entries need to be refreshed after a skill update. Use for link project skills, refresh runtime skill catalog, or replace stale copied runtime skill folders with managed symlinks."
+    path: implementation/project-skill-runtime-bridge/SKILL.md
+    category: implementation
+    purpose: Bridge source-controlled project skills into runtime discovery with managed symlinks
+    status: reviewed
+    triggers:
+      - link project skills into cursor skills
+      - refresh the runtime skill bridge
+      - replace stale copied skills with symlinks
+      - sync project skills into the ide skill location
+    do_not_use_when:
+      - the request is only to design a new skill
+      - a user asks to preserve hand-edited runtime copies instead of managed links
+    handoff_from: []
+    handoff_to: []
+    complements:
+      - tool-capability-intake
+      - tool-usage-note-and-discoverability
+    references:
+      - implementation/project-skill-runtime-bridge/references/sources-and-precedence.md
+      - implementation/project-skill-runtime-bridge/references/related-artifacts.md
+    scripts:
+      - implementation/project-skill-runtime-bridge/scripts/link_project_skills_to_cursor.py
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: project-skill-runtime-bridge
+
+  scoped-version-bump-commit-push:
+    name: scoped-version-bump-commit-push
+    description: "Use when dotfile-vnext needs a scoped release-style closeout: bump version surfaces, stage only the intended files, commit with a focused message, and push without sweeping unrelated dirty-worktree changes into the same commit. Use for bump the minor version and push this slice, commit just the skill/library change, or close out a scoped tooling workflow cleanly."
+    path: implementation/scoped-version-bump-commit-push/SKILL.md
+    category: implementation
+    purpose: Close out one scoped slice with a focused version bump, commit, and push
+    status: reviewed
+    triggers:
+      - bump the minor version and push this slice
+      - commit just this skill library change and push it
+      - close out this scoped workflow cleanly
+      - update VERSION and README for this slice only
+    do_not_use_when:
+      - the user wants all dirty files grouped and committed
+      - the target version is still undecided
+    handoff_from:
+      - single-host-apply-and-receipt
+      - tool-role-docs-pack
+    handoff_to: []
+    complements:
+      - single-host-apply-and-receipt
+      - tool-role-docs-pack
+    references:
+      - implementation/scoped-version-bump-commit-push/references/sources-and-precedence.md
+      - implementation/scoped-version-bump-commit-push/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: scoped-version-bump-commit-push
+
+  tool-role-docs-pack:
+    name: tool-role-docs-pack
+    description: "Use when a tool role needs the standard documentation pack after implementation shape is settled: README links, metadata, usage note, and integration guidance. Use for build the tool role docs pack, add upstream docs links, or package the managed usage note."
+    path: documentation/tool-role-docs-pack/SKILL.md
+    category: documentation
+    purpose: Package the standard role README and metadata docs surfaces for tools
+    status: reviewed
+    aliases:
+      - docs pack
+      - tool docs pack
+    target_surface:
+      - mac-dev
+    part_of_flows:
+      - macos-tool-role-default-flow
+    preferred_prompt: "Use skill tool-role-docs-pack to package the README links, metadata, usage note, and integration guidance for this tool role."
+    triggers:
+      - build the tool role docs pack
+      - package the managed usage note for this role
+      - add the upstream docs links and metadata pack
+    do_not_use_when:
+      - install-path design is still changing
+      - rollout-only execution is the remaining work
+    handoff_from:
+      - macos-tool-install-decider-and-scaffold
+      - github-release-binary-intake
+    handoff_to:
+      - tool-usage-note-and-discoverability
+      - single-host-ansible-rollout
+    complements:
+      - tool-usage-note-and-discoverability
+      - single-host-apply-and-receipt
+    companion_skills:
+      - macos-tool-install-decider-and-scaffold
+      - single-host-apply-and-receipt
+    references:
+      - documentation/tool-role-docs-pack/references/sources-and-precedence.md
+      - documentation/tool-role-docs-pack/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: tool-role-docs-pack
+
+  tool-usage-note-and-discoverability:
+    name: tool-usage-note-and-discoverability
+    description: "Use when a tool role needs a durable docs pack: discoverability metadata, upstream links, managed usage notes, or integration context in README and Ansible role metadata. Use for meta/main.yml, meta/argument_specs.yml, README links, usage note templates, tool-role docs packs, or Stern plus Gonzo style integration guidance."
+    path: documentation/tool-usage-note-and-discoverability/SKILL.md
+    category: documentation
+    purpose: Keep tool capability metadata and operator guidance durable and searchable
+    status: reviewed
+    triggers:
+      - add role metadata for discoverability
+      - write the managed usage note
+      - add github docs and integration links
+      - document how this tool fits another repo-managed tool
+      - build the tool role docs pack
+    do_not_use_when:
+      - install-path design is the only missing piece
+      - rollout-only verification is the only remaining step
+    handoff_from:
+      - tool-capability-intake
+      - upstream-release-binary-installer
+    handoff_to:
+      - single-host-ansible-rollout
+    complements:
+      - tool-capability-intake
+      - upstream-release-binary-installer
+      - single-host-ansible-rollout
+    references:
+      - documentation/tool-usage-note-and-discoverability/references/sources-and-precedence.md
+      - documentation/tool-usage-note-and-discoverability/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: tool-usage-note-and-discoverability
+
+  macos-ansible-install-validator:
+    name: macos-ansible-install-validator
+    description: "Use when a macOS tool install role needs pre-apply validation for check-mode safety, archive extraction assumptions, target paths, and post-install verification commands. Use for why did unarchive fail on macOS, validate tar behavior, or catch check-mode path issues before rollout."
+    path: validation/macos-ansible-install-validator/SKILL.md
+    category: validation
+    purpose: Catch macOS install-role issues before or during scoped rollout
+    status: reviewed
+    triggers:
+      - validate this macos install role before apply
+      - why did unarchive fail on macos
+      - check the tar or zip behavior on mac-dev
+      - catch check mode path issues before rollout
+    do_not_use_when:
+      - install-path design is still the open question
+      - only docs and metadata are being updated
+    handoff_from:
+      - macos-tool-install-decider-and-scaffold
+      - github-release-binary-intake
+    handoff_to:
+      - single-host-ansible-rollout
+    complements:
+      - github-release-binary-intake
+      - single-host-ansible-rollout
+    references:
+      - validation/macos-ansible-install-validator/references/sources-and-precedence.md
+      - validation/macos-ansible-install-validator/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: macos-ansible-install-validator
+
+  single-host-apply-and-receipt:
+    name: single-host-apply-and-receipt
+    description: "Use when a tool role should be previewed, applied, verified, and summarized with a lightweight receipt for one host. This is the designated repo path for mac-dev apply receipts. Use for run single host apply and receipt, apply this only to mac-dev, or capture the rollout receipt after a fix."
+    path: validation/single-host-apply-and-receipt/SKILL.md
+    category: validation
+    purpose: Execute a scoped one-host apply flow with a durable lightweight receipt
+    status: reviewed
+    aliases:
+      - single host receipt
+      - apply and receipt
+      - mac dev apply receipt
+    target_surface:
+      - mac-dev
+    part_of_flows:
+      - macos-tool-role-default-flow
+    default_for:
+      - scoped mac-dev rollout after design and docs are already settled
+    preferred_prompt: "Use skill single-host-apply-and-receipt to preview, apply, verify, and summarize this change on mac-dev."
+    triggers:
+      - run single host apply and receipt
+      - apply this only to mac-dev and capture the receipt
+      - capture the rollout receipt after the fix
+      - run the mac-dev apply receipt flow
+    do_not_use_when:
+      - design or install-path strategy is still unsettled
+      - broader failure triage is the main task
+    handoff_from:
+      - macos-tool-install-decider-and-scaffold
+      - github-release-binary-intake
+      - tool-role-docs-pack
+      - macos-ansible-install-validator
+    handoff_to:
+      - single-host-ansible-rollout
+    complements:
+      - single-host-ansible-rollout
+      - macos-ansible-install-validator
+    companion_skills:
+      - macos-tool-install-decider-and-scaffold
+      - tool-role-docs-pack
+    references:
+      - validation/single-host-apply-and-receipt/references/sources-and-precedence.md
+      - validation/single-host-apply-and-receipt/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: single-host-apply-and-receipt
+
+  ansible-cli-surface-auditor:
+    name: ansible-cli-surface-auditor
+    description: "Use when dotfile-vnext needs a reusable inventory of repo-managed CLI tools, their owning Ansible roles, completion paths, verification commands, and playbook surfaces on mac-dev. Use for Gonzo, Dstl8, kubectl, kubectx, k9s, stern, or future tool-role audits before rollout or troubleshooting."
+    path: validation/ansible-cli-surface-auditor/SKILL.md
+    category: validation
+    purpose: Build a reusable CLI ownership and verification inventory from Ansible surfaces
+    status: draft
+    aliases:
+      - cli surface auditor
+      - role owns this cli
+    target_surface:
+      - mac-dev
+    triggers:
+      - which role owns this cli
+      - audit the cli surfaces from ansible
+      - find the completion path and verify command
+      - inventory repo managed cli tools
+    do_not_use_when:
+      - the user only wants live apply
+      - interactive shell proof is the only remaining ask
+    handoff_from: []
+    handoff_to:
+      - macos-cli-completion-converger
+      - single-host-apply-and-receipt
+      - single-host-ansible-rollout
+    complements:
+      - macos-cli-completion-converger
+      - single-host-apply-and-receipt
+      - single-host-ansible-rollout
+    references:
+      - validation/ansible-cli-surface-auditor/references/sources-and-precedence.md
+      - validation/ansible-cli-surface-auditor/references/related-artifacts.md
+      - validation/ansible-cli-surface-auditor/references/context7-ansible-notes.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: ansible-cli-surface-auditor
+
+  macos-cli-completion-converger:
+    name: macos-cli-completion-converger
+    description: "Use when Bash completion for repo-managed macOS CLI tools on mac-dev is missing, partial, or suspicious, especially for Gonzo, Dstl8, kubectl, kubectx, kubens, k9s, stern, and future tools that join the same shared loader path. Use to diagnose file-vs-runtime-vs-loader failures before changing shell config."
+    path: validation/macos-cli-completion-converger/SKILL.md
+    category: validation
+    purpose: Diagnose and classify repo-managed macOS CLI completion failures before rollout changes
+    status: draft
+    aliases:
+      - completion converger
+      - mac cli completion diagnosis
+    target_surface:
+      - mac-dev
+    triggers:
+      - troubleshoot completion for this mac cli
+      - why is kubectl or stern completion broken
+      - classify the completion failure
+      - fix completion for repo managed cli tools
+    do_not_use_when:
+      - only final PTY proof is needed
+      - the shell issue is clearly outside repo ownership
+    handoff_from:
+      - ansible-cli-surface-auditor
+    handoff_to:
+      - interactive-shell-completion-proof
+      - single-host-apply-and-receipt
+      - single-host-ansible-rollout
+    complements:
+      - ansible-cli-surface-auditor
+      - interactive-shell-completion-proof
+      - single-host-apply-and-receipt
+    references:
+      - validation/macos-cli-completion-converger/references/sources-and-precedence.md
+      - validation/macos-cli-completion-converger/references/related-artifacts.md
+      - validation/macos-cli-completion-converger/references/patterns.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: macos-cli-completion-converger
+
+  single-host-ansible-rollout:
+    name: single-host-ansible-rollout
+    description: "Use when a repo-managed capability needs preview-first Ansible execution against one host, with target scope proof, check-mode output, live apply, direct post-apply verification, and failure evidence. This is also the project's single-host apply-and-receipt workflow. Use for mac-dev rollout, list-hosts preview, check diff, rerun after a fix, or capture the exact failure before changing strategy."
+    path: validation/single-host-ansible-rollout/SKILL.md
+    category: validation
+    purpose: Execute preview, apply, verify, and failure triage for one host
+    status: reviewed
+    triggers:
+      - deploy this to mac-dev
+      - run the preview then apply it
+      - verify this role on one host
+      - fix the failure and rerun the rollout
+      - run single host apply and receipt
+    do_not_use_when:
+      - the request is still architecture-only
+      - metadata and docs are being written without a live apply request
+    handoff_from:
+      - tool-capability-intake
+      - macos-tool-install-decider-and-scaffold
+      - upstream-release-binary-installer
+      - github-release-binary-intake
+      - tool-usage-note-and-discoverability
+      - macos-ansible-install-validator
+      - tune-litellm-context-safety-net
+    handoff_to: []
+    complements:
+      - tool-capability-intake
+      - upstream-release-binary-installer
+      - tool-usage-note-and-discoverability
+      - tune-litellm-context-safety-net
+    references:
+      - validation/single-host-ansible-rollout/references/sources-and-precedence.md
+      - validation/single-host-ansible-rollout/references/related-artifacts.md
+      - _shared/verification-receipt-template.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: single-host-ansible-rollout
+
+  macos-shell-truth-and-alignment:
+    name: macos-shell-truth-and-alignment
+    description: "Use when macOS shell behavior is inconsistent across login shell, interactive shell, Homebrew Bash, shared completion runtime, or repo-managed shell settings. Use for bash 5.x alignment, /etc/shells drift, shell_config login shell checks, or completion-runtime mismatch before deeper troubleshooting."
+    path: validation/macos-shell-truth-and-alignment/SKILL.md
+    category: validation
+    purpose: Collect shell truth, classify macOS shell drift, and route to the repo-owned alignment path
+    status: reviewed
+    triggers:
+      - diagnose the macos shell truth before we change completion config
+      - fix bash 5 alignment on mac-dev
+      - check /etc/shells and login shell drift
+      - classify this shell runtime mismatch first
+    do_not_use_when:
+      - the issue is isolated to one tool completion body
+      - only interactive proof remains
+    handoff_from:
+      - macos-ansible-install-validator
+      - interactive-shell-completion-proof
+    handoff_to:
+      - interactive-shell-completion-proof
+      - single-host-ansible-rollout
+    complements:
+      - interactive-shell-completion-proof
+      - single-host-ansible-rollout
+    references:
+      - validation/macos-shell-truth-and-alignment/references/sources-and-precedence.md
+      - validation/macos-shell-truth-and-alignment/references/related-artifacts.md
+    scripts:
+      - validation/macos-shell-truth-and-alignment/scripts/collect_shell_truth.py
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: macos-shell-truth-and-alignment
+
+  interactive-shell-completion-proof:
+    name: interactive-shell-completion-proof
+    description: "Use when shell completion or other interactive shell behavior must be proven in a real TTY instead of inferred from installed files, completion functions, or synthetic calls. Use for stern tab-completion proof, gonzo completion proof, bash completion troubleshooting, or to confirm helper errors like _get_comp_words_by_ref are truly gone in the interactive shell the user actually runs."
+    path: validation/interactive-shell-completion-proof/SKILL.md
+    category: validation
+    purpose: Prove interactive shell completion with a real PTY transcript before changing config
+    status: reviewed
+    aliases:
+      - shell completion proof
+      - tty completion proof
+      - interactive bash proof
+    target_surface:
+      - mac-dev
+    preferred_prompt: "Use skill interactive-shell-completion-proof to prove <tool> tab completion in a real interactive shell on mac-dev."
+    triggers:
+      - prove stern tab completion in the real shell
+      - validate this completion interactively
+      - confirm the bash completion error is actually gone
+      - test this in a real tty instead of direct function calls
+    do_not_use_when:
+      - the task is only to install files without live shell validation
+      - the request is still design-only
+    handoff_from:
+      - macos-ansible-install-validator
+      - single-host-apply-and-receipt
+      - single-host-ansible-rollout
+    handoff_to:
+      - macos-ansible-install-validator
+      - single-host-apply-and-receipt
+      - single-host-ansible-rollout
+    complements:
+      - macos-ansible-install-validator
+      - single-host-apply-and-receipt
+      - single-host-ansible-rollout
+    references:
+      - validation/interactive-shell-completion-proof/references/sources-and-precedence.md
+      - validation/interactive-shell-completion-proof/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: interactive-shell-completion-proof
+
+  context7-intake-or-emulate:
+    name: context7-intake-or-emulate
+    description: "Use when documentation intake for homelab-reference-library should prefer Context7 when a valid library ID exists, but still land a durable best-effort entry when Context7 cannot resolve the library. Use for source-intake notes, fallback labeling, or honest repo-vs-Context7 routing."
+    path: documentation/context7-intake-or-emulate/SKILL.md
+    category: documentation
+    purpose: Produce durable Context7-first intake notes with an explicit emulated fallback path
+    status: draft
+    aliases:
+      - context7 fallback intake
+      - emulated context7 intake
+    triggers:
+      - do a context7 intake and fall back honestly
+      - create a source intake note when context7 has no library id
+      - mark this as best effort emulated intake
+      - create the homelab reference library intake note
+    do_not_use_when:
+      - an existing library build workflow already owns the entry
+      - no durable intake artifact is required
+    handoff_from: []
+    handoff_to: []
+    complements: []
+    references:
+      - documentation/context7-intake-or-emulate/references/sources-and-precedence.md
+      - documentation/context7-intake-or-emulate/references/related-artifacts.md
+      - documentation/context7-intake-or-emulate/references/fallback-rules.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: context7-intake-or-emulate
+
+  litellm-cursor-traffic-analyzer:
+    name: litellm-cursor-traffic-analyzer
+    description: "Use when Cursor Agent traffic through the homelab LiteLLM gateway needs diagnosis or measurement — context overflow, mid-stream Internal Server Error, lost chat context after trim, or questions about what Cursor sends vs what LiteLLM can report. Use for Ornith tool-tax analysis, trim_messages hook evidence, or routing to capture/tune sub-workflows. Do not use for DNS reachability of litellm.hom.lab alone or for generic LiteLLM vendor-doc collection."
+    path: validation/litellm-cursor-traffic-analyzer/SKILL.md
+    category: validation
+    purpose: Route Cursor-to-LiteLLM traffic failures to the right evidence workflow
+    status: reviewed
+    triggers:
+      - ornith internal server error mid reply
+      - why did the local model lose context
+      - analyze cursor tools token tax through litellm
+      - context window exceeded on ornith
+    do_not_use_when:
+      - only litellm.hom.lab dns or http reachability is requested
+      - only vendor litellm documentation packing is requested
+    handoff_from: []
+    handoff_to:
+      - capture-litellm-tools-payload
+      - analyze-litellm-observable-surfaces
+      - tune-litellm-context-safety-net
+    complements:
+      - capture-litellm-tools-payload
+      - analyze-litellm-observable-surfaces
+      - tune-litellm-context-safety-net
+    references:
+      - validation/litellm-cursor-traffic-analyzer/references/sources-and-precedence.md
+      - validation/litellm-cursor-traffic-analyzer/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: litellm-cursor-traffic-analyzer
+
+  capture-litellm-tools-payload:
+    name: capture-litellm-tools-payload
+    description: "Use when LiteLLM pre-call tools[] schemas must be measured or dumped for any OpenAI-compatible client (Cursor, Cline, Codex, etc.) — tool token tax, per-tool desc vs params split, or collecting tools-array-complete.json from the gateway pod. Use after a tools-bearing request through a published LiteLLM alias. Do not use for message/rules-only context analysis without a tools dump, or for changing trim defaults."
+    path: validation/capture-litellm-tools-payload/SKILL.md
+    category: validation
+    purpose: Dump and measure client tools[] as seen by the LiteLLM pre-call hook
+    status: reviewed
+    aliases:
+      - capture-cursor-tools-payload
+    triggers:
+      - dump the litellm tools array from the gateway
+      - measure tools token tax through litellm
+      - collect litellm tools capture under logs
+      - capture cline or cursor tools payload from litellm
+      - why is tools_est twenty six thousand
+    do_not_use_when:
+      - only trim driver values need changing
+      - no tools-bearing request will be made and no dump is expected
+    handoff_from:
+      - litellm-cursor-traffic-analyzer
+      - analyze-litellm-observable-surfaces
+    handoff_to:
+      - litellm-cursor-traffic-analyzer
+      - tune-litellm-context-safety-net
+    complements:
+      - litellm-cursor-traffic-analyzer
+      - analyze-litellm-observable-surfaces
+    references:
+      - validation/capture-litellm-tools-payload/references/sources-and-precedence.md
+      - validation/capture-litellm-tools-payload/references/related-artifacts.md
+    scripts:
+      - validation/capture-litellm-tools-payload/scripts/collect_tools_capture.sh
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: capture-litellm-tools-payload
+
+  analyze-litellm-observable-surfaces:
+    name: analyze-litellm-observable-surfaces
+    description: "Use when the question is what LiteLLM can report or observe from Cursor traffic on this homelab gateway — pre-call hooks, kubectl logs, pod dumps, Langfuse, models/health endpoints, or Postgres spend metadata. Use to inventory evidence surfaces before deeper capture or tuning. Do not use to dump tools[] (use capture-litellm-tools-payload) or to change trim defaults (use tune-litellm-context-safety-net)."
+    path: validation/analyze-litellm-observable-surfaces/SKILL.md
+    category: validation
+    purpose: Inventory LiteLLM reporting surfaces for Cursor traffic on this lab
+    status: reviewed
+    triggers:
+      - what can litellm report from cursor
+      - where do cursor requests show up in litellm
+      - litellm observability surfaces for agent traffic
+    do_not_use_when:
+      - only a tools json dump is requested
+      - only trim defaults are being changed
+    handoff_from:
+      - litellm-cursor-traffic-analyzer
+    handoff_to:
+      - capture-litellm-tools-payload
+      - tune-litellm-context-safety-net
+    complements:
+      - litellm-cursor-traffic-analyzer
+      - capture-litellm-tools-payload
+    references:
+      - validation/analyze-litellm-observable-surfaces/references/sources-and-precedence.md
+      - validation/analyze-litellm-observable-surfaces/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: analyze-litellm-observable-surfaces
+
+  tune-litellm-context-safety-net:
+    name: tune-litellm-context-safety-net
+    description: "Use when changing the LiteLLM pre-call trim_messages safety net or context-window fallbacks for Cursor on the local 32k vLLM path — max input budget, safety tokens, min completion, min messages, OpenAI vault key fallbacks, or redeploying the callback ConfigMap. Do not use for tools[] capture-only work or for DNS/service reachability."
+    path: implementation/tune-litellm-context-safety-net/SKILL.md
+    category: implementation
+    purpose: Change and redeploy LiteLLM trim/fallback drivers with verify evidence
+    status: reviewed
+    triggers:
+      - raise litellm min completion tokens
+      - enable openai context window fallback
+      - redeploy litellm trim_messages callback
+      - tune the ornith context safety net
+    do_not_use_when:
+      - only tools payload capture is requested
+      - only dns or http reachability is requested
+    handoff_from:
+      - litellm-cursor-traffic-analyzer
+      - capture-litellm-tools-payload
+      - analyze-litellm-observable-surfaces
+    handoff_to:
+      - single-host-ansible-rollout
+      - capture-litellm-tools-payload
+    complements:
+      - litellm-cursor-traffic-analyzer
+      - single-host-ansible-rollout
+    references:
+      - implementation/tune-litellm-context-safety-net/references/sources-and-precedence.md
+      - implementation/tune-litellm-context-safety-net/references/related-artifacts.md
+      - _shared/verification-receipt-template.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: tune-litellm-context-safety-net
+
+  hydrate-k3s-mac-kubeconfig-direct-api:
+    name: hydrate-k3s-mac-kubeconfig-direct-api
+    description: "Use when mac-dev kubectl/k9s/stern/gonzo access to homelab K3s should use direct guest API URLs (no ssh -L tunnel), with separate per-cluster kubeconfig files and a bash KUBECONFIG export. Use for connection_mode direct, hyperv_guest_route_mac, swap contexts between k3s-01 and k3s-02. Do not use when SSH local-forward tunnels are required."
+    path: validation/hydrate-k3s-mac-kubeconfig-direct-api/SKILL.md
+    category: validation
+    purpose: Hydrate Mac kubeconfigs for direct guest API access without tunnels
+    status: reviewed
+    triggers:
+      - hydrate k3s kubeconfig direct
+      - no tunnel kubectl on mac
+      - set connection_mode direct for k3s
+      - swap k3s-01 and k3s-02 contexts on mac
+    do_not_use_when:
+      - guest :6443 is unreachable and ssh tunnels are required
+      - only remote ansible kubectl on the node is desired
+    handoff_from:
+      - hydrate-k3s-mac-kubeconfig-ssh-tunnel
+    handoff_to:
+      - hydrate-k3s-mac-kubeconfig-ssh-tunnel
+      - single-host-ansible-rollout
+    complements:
+      - hydrate-k3s-mac-kubeconfig-ssh-tunnel
+      - single-host-ansible-rollout
+    references:
+      - validation/hydrate-k3s-mac-kubeconfig-direct-api/references/sources-and-precedence.md
+      - validation/hydrate-k3s-mac-kubeconfig-direct-api/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: hydrate-k3s-mac-kubeconfig-direct-api
+
+  hydrate-k3s-mac-kubeconfig-ssh-tunnel:
+    name: hydrate-k3s-mac-kubeconfig-ssh-tunnel
+    description: "Use when mac-dev kubectl/k9s/stern/gonzo access to homelab K3s should use SSH local-forward tunnels (ssh -L) to the API, with separate per-cluster kubeconfig files and a bash KUBECONFIG export. Use when guest :6443 is not directly reachable from the Mac. Do not use when connection_mode direct already works."
+    path: validation/hydrate-k3s-mac-kubeconfig-ssh-tunnel/SKILL.md
+    category: validation
+    purpose: Hydrate Mac kubeconfigs via temporary SSH local-forward tunnels
+    status: reviewed
+    triggers:
+      - hydrate k3s kubeconfig tunnel
+      - ssh -L for k3s api on mac
+      - kubectl tunnel died after sleep
+      - refresh kubeconfig context hydrator
+    do_not_use_when:
+      - direct guest API already works
+      - only remote ansible kubectl on the node is desired
+    handoff_from:
+      - hydrate-k3s-mac-kubeconfig-direct-api
+    handoff_to:
+      - hydrate-k3s-mac-kubeconfig-direct-api
+      - single-host-ansible-rollout
+    complements:
+      - hydrate-k3s-mac-kubeconfig-direct-api
+      - single-host-ansible-rollout
+    references:
+      - validation/hydrate-k3s-mac-kubeconfig-ssh-tunnel/references/sources-and-precedence.md
+      - validation/hydrate-k3s-mac-kubeconfig-ssh-tunnel/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: hydrate-k3s-mac-kubeconfig-ssh-tunnel
+
+  model-doc-pack-preflight:
+    name: model-doc-pack-preflight
+    description: "Use when dotfile-vnext is about to implement or change LiteLLM, vLLM, Ollama, or Continue wiring for a model and must consult the HRL model-doc-pack first, then sync inventory source_routing pointers. Use for model doc pack preflight, check HRL before model implement, or sync model_catalog source routing. Do not use to author the HRL pack itself (use global library-first-model-doc-pack) or for unrelated Ansible work."
+    path: validation/model-doc-pack-preflight/SKILL.md
+    category: validation
+    purpose: Gate model-backed implement work on HRL pack lookup and inventory source_routing sync
+    status: draft
+    triggers:
+      - model doc pack preflight
+      - check HRL before model implement
+      - sync model_catalog source routing
+      - lookup model pack before litellm change
+    do_not_use_when:
+      - authoring the HRL model pack itself
+      - unrelated ansible work with no model docs dependency
+    handoff_from: []
+    handoff_to:
+      - hf-model-weight-lifecycle
+      - single-host-ansible-rollout
+    complements:
+      - hf-model-weight-lifecycle
+      - single-host-ansible-rollout
+      - project-skill-runtime-bridge
+    references:
+      - validation/model-doc-pack-preflight/references/sources-and-precedence.md
+      - validation/model-doc-pack-preflight/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: model-doc-pack-preflight

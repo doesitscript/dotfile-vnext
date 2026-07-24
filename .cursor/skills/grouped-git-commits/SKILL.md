@@ -5,6 +5,11 @@ description: Group ALL dirty files by theme, commit each group with clear titles
 
 # Grouped Git Commits
 
+Legacy note: this is the broad dirty-worktree catch-all workflow. For scoped
+`dotfile-vnext` closeout work such as bumping `VERSION`, staging only one
+intended slice, committing it, and pushing it, prefer the project skill
+`scoped-version-bump-commit-push` under `skills/`.
+
 Use this skill when the user wants ALL current work added, committed, and **available on the remote** cleanly.
 
 This skill commits **everything** in the worktree, grouped by theme, with automatic

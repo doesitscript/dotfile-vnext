@@ -2,6 +2,13 @@
 
 This folder holds repo-local Codex/Cursor skills.
 
+Project-skill authority note:
+
+- New project skills should now be designed under `skills/`, using the library
+  pattern modeled after `/Users/joshc/develop/homelab-reference-library/skills`.
+- `.cursor/skills/` remains the runtime-discovery layer for repo-local Codex/Cursor
+  skills, not the primary design authority for future project-skill packs.
+
 Global personal-portable skills that should survive workstation rebuilds but
 are not project behavior live under `roles/common/agent_skills/` and are linked
 into the home directory by that role. Vendor/system-managed skills, such as

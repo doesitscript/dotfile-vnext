@@ -1,6 +1,6 @@
 ---
 name: ansible-knowledge-gate
-description: Ground Ansible design and implementation in repo truth, current Ansible guidance, module discovery, and validation before planning or changing roles, playbooks, inventories, or variables.
+description: Ground Ansible design and implementation in repo truth, current Ansible guidance, module discovery, and validation before planning or changing roles, playbooks, inventories, or variables. Also use when a host install/download/remove request might become ad-hoc SSH or pip — route to present|absent capability intake first (tool-capability-intake, windows-tool-capability-intake, or hf-model-weight-lifecycle).
 ---
 
 # Ansible Knowledge Gate
@@ -13,6 +13,19 @@ or troubleshooting.
 
 Do not design or implement Ansible changes from memory alone. First prove that
 the relevant repo surfaces and Ansible authority were checked.
+
+## Ansible-first / anti-ad-hoc (AGENTS.md §32)
+
+Before any host mutation (SSH, WinRM, `pip`, `choco`, scp scripts):
+
+1. Interpret install/download/remove as **Ansible capability work** unless the
+   user explicitly marked a one-off / `oneoffs` exception, or you are already
+   debugging Ansible task code interactively.
+2. If no owner role with `*_state: present|absent` exists, stop and hand off:
+   - macOS CLI → `macos-tool-install-decider-and-scaffold` / `tool-capability-intake`
+   - Windows tool/package → `windows-tool-capability-intake`
+   - HF **weights** on the share → `hf-model-weight-lifecycle`
+3. Do not “just install it” to unblock a later role.
 
 ## Required Workflow
 

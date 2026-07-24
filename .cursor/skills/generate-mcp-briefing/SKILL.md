@@ -65,7 +65,8 @@ Write to `.cursor/rules/02--cussorrules-mcp-briefieng-GENERATED.mdc` using this 
 
 ```
 ---
-alwaysApply: true
+description: Generated MCP tool mode map for Ansible/sysoperator/browser. Use when choosing MCP tools for Agent/Plan/Debug/Ask modes. Keep alwaysApply false — local LiteLLM 32k cannot afford this as always-on (see framework-context-budget).
+alwaysApply: false
 ---
 
 ## MCP Tool Knowledge Base

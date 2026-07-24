@@ -1,162 +1,396 @@
 version: 1
-
 discovery_order:
-  - .cursor/skills/catalog.yml
-  - per-skill capability.yml
-  - per-skill SKILL.md
-  - companion rule files
-  - docs/codex_framework/*
-
+- .cursor/skills/catalog.yml
+- per-skill capability.yml
+- per-skill SKILL.md
+- companion rule files
+- docs/codex_framework/*
 skills:
-  - name: ai-library-entry
-    family: framework
-    status: manifest-backed
-    skill_file: .cursor/skills/ai-library-entry/SKILL.md
-    capability_file: .cursor/skills/ai-library-entry/capability.yml
-    summary: Orchestrate durable ai-resource-library entries; delegate to library-entry-build, context7-pack, indexes-pack, cross-check, and validate skills.
-  - name: library-entry-validate
-    family: framework
-    status: manifest-backed
-    skill_file: .cursor/skills/library-entry-validate/SKILL.md
-    capability_file: .cursor/skills/library-entry-validate/capability.yml
-    summary: Validate entry-spec.yml contracts; require AI_LIBRARY_ENTRY_VALIDATION_OK before marking packs complete.
-  - name: firecrawl-context7-crosscheck
-    family: framework
-    status: manifest-backed
-    skill_file: .cursor/skills/firecrawl-context7-crosscheck/SKILL.md
-    capability_file: .cursor/skills/firecrawl-context7-crosscheck/capability.yml
-    summary: Reconcile Firecrawl vendor captures with Context7; write cross-check JSON and capture backlog.
-  - name: library-indexes-pack
-    family: framework
-    status: manifest-backed
-    skill_file: .cursor/skills/library-indexes-pack/SKILL.md
-    capability_file: .cursor/skills/library-indexes-pack/capability.yml
-    summary: Build indexes/<entry>/ routing packs — crosswalk, README, backlog defaults.
-  - name: library-context7-pack
-    family: framework
-    status: manifest-backed
-    skill_file: .cursor/skills/library-context7-pack/SKILL.md
-    capability_file: .cursor/skills/library-context7-pack/capability.yml
-    summary: Context7 SDK/API shards, version pin, OpenAPI/Swagger interpretation.
-  - name: library-entry-build
-    family: framework
-    status: manifest-backed
-    skill_file: .cursor/skills/library-entry-build/SKILL.md
-    capability_file: .cursor/skills/library-entry-build/capability.yml
-    summary: Invoke registered ai-library-entry build scripts from build-registry.yml; chain validate after build.
-  - name: ansible-coordinator
-    family: ansible
-    status: legacy-skill-only
-    skill_file: .cursor/skills/ansible-coordinator/SKILL.md
-    summary: Planning session coordinator. Dispatches planner, researcher, and observer specialists in parallel and synthesizes their outputs into one integrated response.
-  - name: ansible-maturity-observer
-    family: ansible
-    status: legacy-skill-only
-    skill_file: .cursor/skills/ansible-maturity-observer/SKILL.md
-    summary: Readonly subagent invoked by the planner or coordinator at lock-in points. Reviews Ansible artifacts in scope and appends lightweight maturity tags to plan outputs.
-  - name: ansible-planner
-    family: ansible
-    status: legacy-skill-only
-    skill_file: .cursor/skills/ansible-planner/SKILL.md
-    summary: Plan architecture moments and refine implementation shape into a durable plan.
-  - name: ansible-researcher
-    family: ansible
-    status: legacy-skill-only
-    skill_file: .cursor/skills/ansible-researcher/SKILL.md
-    summary: Research novel or under-grounded topics before planning or execution continues.
-  - name: ansible-knowledge-gate
-    family: ansible
-    status: manifest-backed
-    skill_file: .cursor/skills/ansible-knowledge-gate/SKILL.md
-    capability_file: .cursor/skills/ansible-knowledge-gate/capability.yml
-    summary: Require repo and Ansible authority checks before Ansible design or implementation.
-  - name: archive-conversation-context
-    family: framework
-    status: legacy-skill-only
-    skill_file: .cursor/skills/archive-conversation-context/SKILL.md
-    summary: Save provided conversation text into durable dated repo notes.
-  - name: container-orchestration-integration
-    family: framework
-    status: manifest-backed
-    skill_file: .cursor/skills/container-orchestration-integration/SKILL.md
-    capability_file: .cursor/skills/container-orchestration-integration/capability.yml
-    summary: Normalize imported Kubernetes and Docker guidance into repo-local K3s, Docker, NetBox, Ansible, and naming authorities.
-  - name: capture-wsl-systemctl
-    family: ansible
-    status: legacy-skill-only
-    skill_file: .cursor/skills/capture-wsl-systemctl/SKILL.md
-    summary: Capture WSL systemctl state for diagnostics and documentation.
-  - name: generate-mcp-briefing
-    family: framework
-    status: legacy-skill-only
-    skill_file: .cursor/skills/generate-mcp-briefing/SKILL.md
-    summary: Refresh the repo-local MCP briefing from current tool surfaces.
-  - name: generate-project-state-report
-    family: framework
-    status: legacy-skill-only
-    skill_file: .cursor/skills/generate-project-state-report/SKILL.md
-    summary: Build a durable project-state report from active repo surfaces.
-  - name: github-issue-workflow
-    family: github
-    status: manifest-backed
-    skill_file: .cursor/skills/github-issue-workflow/SKILL.md
-    capability_file: .cursor/skills/github-issue-workflow/capability.yml
-    summary: Turn concrete brainstorming or resumable work into single-repo or multi-repo durable GitHub issue sets.
-  - name: netbox-knowledge-gate
-    family: netbox
-    status: manifest-backed
-    skill_file: .cursor/skills/netbox-knowledge-gate/SKILL.md
-    capability_file: .cursor/skills/netbox-knowledge-gate/capability.yml
-    summary: Require repo and NetBox authority checks before NetBox modeling or source-of-truth changes.
-  - name: project-maturity-router
-    family: framework
-    status: manifest-backed
-    skill_file: .cursor/skills/project-maturity-router/SKILL.md
-    capability_file: .cursor/skills/project-maturity-router/capability.yml
-    summary: Route broad project-maturity requests to Ansible and NetBox knowledge gates without merging them.
-  - name: grouped-git-commits
-    family: framework
-    status: legacy-skill-only
-    skill_file: .cursor/skills/grouped-git-commits/SKILL.md
-    summary: Stage, commit in coherent groups, then push to origin by default.
-  - name: homelab-dns-investigator
-    family: framework
-    status: legacy-skill-only
-    skill_file: .cursor/skills/homelab-dns-investigator/SKILL.md
-    summary: Investigate homelab DNS name resolution and connection reachability from mac-dev; produces evidence artifacts and structured reports. Invokes published-endpoints subskill for service URL inventory.
-  - name: homelab-published-endpoints
-    family: framework
-    status: legacy-skill-only
-    skill_file: .cursor/skills/homelab-dns-investigator/subskills/published-endpoints/SKILL.md
-    summary: Subskill of homelab-dns-investigator — discover declared and live published endpoints from repo catalogs and Kubernetes ingress/services.
-  - name: homelab-k9s
-    family: framework
-    status: legacy-skill-only
-    skill_file: .cursor/skills/homelab-k9s/SKILL.md
-    summary: Navigate homelab K3s clusters with k9s — colon commands, context and namespace switching, and homelab namespace map for hom-lab-ctl-k3s-01/02.
-  - name: jupyter-devops-plan-implementer
-    family: framework
-    status: manifest-backed
-    skill_file: .cursor/skills/jupyter-devops-plan-implementer/SKILL.md
-    capability_file: .cursor/skills/jupyter-devops-plan-implementer/capability.yml
-    summary: Run the Jupyter DevOps intake implementation plans in order with preview-first validation and explicit stop gates.
-  - name: register-doc-sources
-    family: framework
-    status: legacy-skill-only
-    skill_file: .cursor/skills/register-doc-sources/SKILL.md
-    summary: Register repo documentation sources for later use.
-  - name: sanitize-envrc
-    family: framework
-    status: legacy-skill-only
-    skill_file: .cursor/skills/sanitize-envrc/SKILL.md
-    summary: Clean `.envrc` content into a safer and more portable form.
-  - name: zip-project-root
-    family: framework
-    status: legacy-skill-only
-    skill_file: .cursor/skills/zip-project-root/SKILL.md
-    summary: Create a zip archive of the project root.
-  - name: vendor-doc-collection
-    family: framework
-    status: legacy-skill-only
-    skill_file: .cursor/skills/vendor-doc-collection/SKILL.md
-    summary: Structured vendor-doc export helper for nav-contract trees, localized images, sidecars, and conformance checks after ai-library-entry routes a request into that shape.
+- name: ai-library-entry
+  family: framework
+  status: manifest-backed
+  skill_file: .cursor/skills/ai-library-entry/SKILL.md
+  capability_file: .cursor/skills/ai-library-entry/capability.yml
+  summary: Orchestrate durable ai-resource-library entries; delegate to library-entry-build, context7-pack,
+    indexes-pack, cross-check, and validate skills.
+- name: library-entry-validate
+  family: framework
+  status: manifest-backed
+  skill_file: .cursor/skills/library-entry-validate/SKILL.md
+  capability_file: .cursor/skills/library-entry-validate/capability.yml
+  summary: Validate entry-spec.yml contracts; require AI_LIBRARY_ENTRY_VALIDATION_OK before marking packs
+    complete.
+- name: firecrawl-context7-crosscheck
+  family: framework
+  status: manifest-backed
+  skill_file: .cursor/skills/firecrawl-context7-crosscheck/SKILL.md
+  capability_file: .cursor/skills/firecrawl-context7-crosscheck/capability.yml
+  summary: Reconcile Firecrawl vendor captures with Context7; write cross-check JSON and capture backlog.
+- name: library-indexes-pack
+  family: framework
+  status: manifest-backed
+  skill_file: .cursor/skills/library-indexes-pack/SKILL.md
+  capability_file: .cursor/skills/library-indexes-pack/capability.yml
+  summary: "Build indexes/<entry>/ routing packs \u2014 crosswalk, README, backlog defaults."
+- name: library-context7-pack
+  family: framework
+  status: manifest-backed
+  skill_file: .cursor/skills/library-context7-pack/SKILL.md
+  capability_file: .cursor/skills/library-context7-pack/capability.yml
+  summary: Context7 SDK/API shards, version pin, OpenAPI/Swagger interpretation.
+- name: library-entry-build
+  family: framework
+  status: manifest-backed
+  skill_file: .cursor/skills/library-entry-build/SKILL.md
+  capability_file: .cursor/skills/library-entry-build/capability.yml
+  summary: Invoke registered ai-library-entry build scripts from build-registry.yml; chain validate after
+    build.
+- name: ansible-coordinator
+  family: ansible
+  status: legacy-skill-only
+  skill_file: .cursor/skills/ansible-coordinator/SKILL.md
+  summary: Planning session coordinator. Dispatches planner, researcher, and observer specialists in parallel
+    and synthesizes their outputs into one integrated response.
+- name: ansible-maturity-observer
+  family: ansible
+  status: legacy-skill-only
+  skill_file: .cursor/skills/ansible-maturity-observer/SKILL.md
+  summary: Readonly subagent invoked by the planner or coordinator at lock-in points. Reviews Ansible
+    artifacts in scope and appends lightweight maturity tags to plan outputs.
+- name: ansible-planner
+  family: ansible
+  status: legacy-skill-only
+  skill_file: .cursor/skills/ansible-planner/SKILL.md
+  summary: Plan architecture moments and refine implementation shape into a durable plan.
+- name: ansible-researcher
+  family: ansible
+  status: legacy-skill-only
+  skill_file: .cursor/skills/ansible-researcher/SKILL.md
+  summary: Research novel or under-grounded topics before planning or execution continues.
+- name: ansible-knowledge-gate
+  family: ansible
+  status: manifest-backed
+  skill_file: .cursor/skills/ansible-knowledge-gate/SKILL.md
+  capability_file: .cursor/skills/ansible-knowledge-gate/capability.yml
+  summary: Require repo and Ansible authority checks before Ansible design or implementation.
+- name: archive-conversation-context
+  family: framework
+  status: legacy-skill-only
+  skill_file: .cursor/skills/archive-conversation-context/SKILL.md
+  summary: Save provided conversation text into durable dated repo notes.
+- name: container-orchestration-integration
+  family: framework
+  status: manifest-backed
+  skill_file: .cursor/skills/container-orchestration-integration/SKILL.md
+  capability_file: .cursor/skills/container-orchestration-integration/capability.yml
+  summary: Normalize imported Kubernetes and Docker guidance into repo-local K3s, Docker, NetBox, Ansible,
+    and naming authorities.
+- name: capture-wsl-systemctl
+  family: ansible
+  status: legacy-skill-only
+  skill_file: .cursor/skills/capture-wsl-systemctl/SKILL.md
+  summary: Capture WSL systemctl state for diagnostics and documentation.
+- name: generate-mcp-briefing
+  family: framework
+  status: legacy-skill-only
+  skill_file: .cursor/skills/generate-mcp-briefing/SKILL.md
+  summary: Refresh the repo-local MCP briefing from current tool surfaces.
+- name: generate-project-state-report
+  family: framework
+  status: legacy-skill-only
+  skill_file: .cursor/skills/generate-project-state-report/SKILL.md
+  summary: Build a durable project-state report from active repo surfaces.
+- name: github-issue-workflow
+  family: github
+  status: manifest-backed
+  skill_file: .cursor/skills/github-issue-workflow/SKILL.md
+  capability_file: .cursor/skills/github-issue-workflow/capability.yml
+  summary: Turn concrete brainstorming or resumable work into single-repo or multi-repo durable GitHub
+    issue sets.
+- name: netbox-knowledge-gate
+  family: netbox
+  status: manifest-backed
+  skill_file: .cursor/skills/netbox-knowledge-gate/SKILL.md
+  capability_file: .cursor/skills/netbox-knowledge-gate/capability.yml
+  summary: Require repo and NetBox authority checks before NetBox modeling or source-of-truth changes.
+- name: project-maturity-router
+  family: framework
+  status: manifest-backed
+  skill_file: .cursor/skills/project-maturity-router/SKILL.md
+  capability_file: .cursor/skills/project-maturity-router/capability.yml
+  summary: Route broad project-maturity requests to Ansible and NetBox knowledge gates without merging
+    them.
+- name: grouped-git-commits
+  family: framework
+  status: legacy-skill-only
+  skill_file: .cursor/skills/grouped-git-commits/SKILL.md
+  summary: Stage, commit in coherent groups, then push to origin by default.
+- name: homelab-dns-investigator
+  family: framework
+  status: legacy-skill-only
+  skill_file: .cursor/skills/homelab-dns-investigator/SKILL.md
+  summary: Investigate homelab DNS name resolution and connection reachability from mac-dev; produces
+    evidence artifacts and structured reports. Invokes published-endpoints subskill for service URL inventory.
+- name: homelab-published-endpoints
+  family: framework
+  status: legacy-skill-only
+  skill_file: .cursor/skills/homelab-dns-investigator/subskills/published-endpoints/SKILL.md
+  summary: "Subskill of homelab-dns-investigator \u2014 discover declared and live published endpoints\
+    \ from repo catalogs and Kubernetes ingress/services."
+- name: homelab-k9s
+  family: framework
+  status: legacy-skill-only
+  skill_file: .cursor/skills/homelab-k9s/SKILL.md
+  summary: "Navigate homelab K3s clusters with k9s \u2014 colon commands, context and namespace switching,\
+    \ and homelab namespace map for hom-lab-ctl-k3s-01/02."
+- name: jupyter-devops-plan-implementer
+  family: framework
+  status: manifest-backed
+  skill_file: .cursor/skills/jupyter-devops-plan-implementer/SKILL.md
+  capability_file: .cursor/skills/jupyter-devops-plan-implementer/capability.yml
+  summary: Run the Jupyter DevOps intake implementation plans in order with preview-first validation and
+    explicit stop gates.
+- name: register-doc-sources
+  family: framework
+  status: legacy-skill-only
+  skill_file: .cursor/skills/register-doc-sources/SKILL.md
+  summary: Register repo documentation sources for later use.
+- name: sanitize-envrc
+  family: framework
+  status: legacy-skill-only
+  skill_file: .cursor/skills/sanitize-envrc/SKILL.md
+  summary: Clean `.envrc` content into a safer and more portable form.
+- name: zip-project-root
+  family: framework
+  status: legacy-skill-only
+  skill_file: .cursor/skills/zip-project-root/SKILL.md
+  summary: Create a zip archive of the project root.
+- name: vendor-doc-collection
+  family: framework
+  status: legacy-skill-only
+  skill_file: .cursor/skills/vendor-doc-collection/SKILL.md
+  summary: Structured vendor-doc export helper for nav-contract trees, localized images, sidecars, and
+    conformance checks after ai-library-entry routes a request into that shape.
+- name: analyze-litellm-observable-surfaces
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/analyze-litellm-observable-surfaces/SKILL.md
+  summary: "Use when the question is what LiteLLM can report or observe from Cursor traffic on this homelab\
+    \ gateway \u2014 pre-call hooks, kubectl logs, pod dumps, Langfuse, models/health endpoints, or Postgres\
+    \ spend metadata. Use to inventory evidence surfaces before deeper capture or tuning. Do not use to\
+    \ dump tools[] (use capture-litellm-tools-payload) or to change trim defaults (use tune-litellm-context-safety-net)."
+- name: ansible-cli-surface-auditor
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/ansible-cli-surface-auditor/SKILL.md
+  summary: Use when dotfile-vnext needs a reusable inventory of repo-managed CLI tools, their owning Ansible
+    roles, completion paths, verification commands, and playbook surfaces on mac-dev. Use for Gonzo, Dstl8,
+    kubectl, kubectx, k9s, stern, or future tool-role audits before rollout or troubleshooting.
+- name: capture-litellm-tools-payload
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/capture-litellm-tools-payload/SKILL.md
+  summary: "Use when LiteLLM pre-call tools[] schemas must be measured or dumped for any OpenAI-compatible\
+    \ client (Cursor, Cline, Codex, etc.) \u2014 tool token tax, per-tool desc vs params split, or collecting\
+    \ tools-array-complete.json from the gateway pod. Use after a tools-bearing request through a published\
+    \ LiteLLM alias. Do not use for message/rules-only context analysis without a tools dump, or for changing\
+    \ trim defaults."
+- name: context7-intake-or-emulate
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/context7-intake-or-emulate/SKILL.md
+  summary: Use when documentation intake for homelab-reference-library should prefer Context7 when a valid
+    library ID exists, but still land a durable best-effort entry when Context7 cannot resolve the library.
+    Use for source-intake notes, fallback labeling, or honest repo-vs-Context7 routing.
+- name: github-release-binary-intake
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/github-release-binary-intake/SKILL.md
+  summary: Use when a tool should install from a pinned GitHub release asset and the repo needs version,
+    asset, checksum, and arch details captured before Ansible tasks are finalized. Use for latest release
+    asset mapping, checksum file discovery, or darwin arm64 and amd64 binary intake.
+- name: hf-model-weight-lifecycle
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/hf-model-weight-lifecycle/SKILL.md
+  summary: Use when downloading, removing, or commissioning Hugging Face model weights on the HVH-01 share
+    in dotfile-vnext, and when those weights must be owned by Ansible present|absent rather than ad-hoc
+    snapshot_download. Use for download this HF model to the share, remove DiffuCoder weights, model_catalog
+    unc_path lifecycle, or commission weights before LiteLLM/Continue. Do not use for Hub client pip install
+    alone (use windows-tool-capability-intake / huggingface_hub role) or for authoring HRL model-doc packs
+    (use model-doc-pack-preflight + HRL).
+- name: hydrate-k3s-mac-kubeconfig-direct-api
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/hydrate-k3s-mac-kubeconfig-direct-api/SKILL.md
+  summary: Use when mac-dev kubectl/k9s/stern/gonzo access to homelab K3s should use direct guest API
+    URLs (no ssh -L tunnel), with separate per-cluster kubeconfig files and a bash KUBECONFIG export.
+    Use for connection_mode direct, hyperv_guest_route_mac, swap contexts between k3s-01 and k3s-02. Do
+    not use when SSH local-forward tunnels are required.
+- name: hydrate-k3s-mac-kubeconfig-ssh-tunnel
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/hydrate-k3s-mac-kubeconfig-ssh-tunnel/SKILL.md
+  summary: Use when mac-dev kubectl/k9s/stern/gonzo access to homelab K3s should use SSH local-forward
+    tunnels (ssh -L) to the API, with separate per-cluster kubeconfig files and a bash KUBECONFIG export.
+    Use when guest :6443 is not directly reachable from the Mac. Do not use when connection_mode direct
+    already works.
+- name: interactive-shell-completion-proof
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/interactive-shell-completion-proof/SKILL.md
+  summary: Use when shell completion or other interactive shell behavior must be proven in a real TTY
+    instead of inferred from installed files, completion functions, or synthetic calls. Use for stern
+    tab-completion proof, gonzo completion proof, bash completion troubleshooting, or to confirm helper
+    errors like _get_comp_words_by_ref are truly gone in the interactive shell the user actually runs.
+- name: litellm-cursor-traffic-analyzer
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/litellm-cursor-traffic-analyzer/SKILL.md
+  summary: "Use when Cursor Agent traffic through the homelab LiteLLM gateway needs diagnosis or measurement\
+    \ \u2014 context overflow, mid-stream Internal Server Error, lost chat context after trim, or questions\
+    \ about what Cursor sends vs what LiteLLM can report. Use for Ornith tool-tax analysis, trim_messages\
+    \ hook evidence, or routing to capture/tune sub-workflows. Do not use for DNS reachability of litellm.hom.lab\
+    \ alone or for generic LiteLLM vendor-doc collection."
+- name: macos-ansible-install-validator
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/macos-ansible-install-validator/SKILL.md
+  summary: Use when a macOS tool install role needs pre-apply validation for check-mode safety, archive
+    extraction assumptions, target paths, and post-install verification commands. Use for why did unarchive
+    fail on macOS, validate tar behavior, or catch check-mode path issues before rollout.
+- name: macos-cli-completion-converger
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/macos-cli-completion-converger/SKILL.md
+  summary: Use when Bash completion for repo-managed macOS CLI tools on mac-dev is missing, partial, or
+    suspicious, especially for Gonzo, Dstl8, kubectl, kubectx, kubens, k9s, stern, and future tools that
+    join the same shared loader path. Use to diagnose file-vs-runtime-vs-loader failures before changing
+    shell config.
+- name: macos-cli-completion-pack
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/macos-cli-completion-pack/SKILL.md
+  summary: Use when a repo-managed macOS CLI should add, repair, or standardize Bash completion wiring
+    across the shared shell substrate and the owning role. Use for Gonzo, Dstl8, Stern, K9s, Kubectl,
+    or similar completion install paths, loader expectations, and verification hooks.
+- name: macos-shell-truth-and-alignment
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/macos-shell-truth-and-alignment/SKILL.md
+  summary: Use when macOS shell behavior is inconsistent across login shell, interactive shell, Homebrew
+    Bash, shared completion runtime, or repo-managed shell settings. Use for bash 5.x alignment, /etc/shells
+    drift, shell_config login shell checks, or completion-runtime mismatch before deeper troubleshooting.
+- name: macos-tool-install-decider-and-scaffold
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/macos-tool-install-decider-and-scaffold/SKILL.md
+  summary: Use when a macOS developer tool should be added to dotfile-vnext and the install strategy needs
+    to be chosen before implementation, plus role/playbook surfaces scaffolded in the repo pattern. Use
+    for install this tool on mac-dev, choose brew vs release binary, or scaffold the role before rollout.
+- name: macos-tool-role-default-flow
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/macos-tool-role-default-flow/SKILL.md
+  summary: 'Use when a macOS CLI or developer tool should follow the repo''s default end-to-end workflow
+    on mac-dev: choose the install family, scaffold the role/playbook surfaces, package the docs, then
+    preview/apply/verify with a single-host receipt. Use for the usual mac tool stack, default mac tool
+    flow, or install this tool the standard way.'
+- name: model-doc-pack-preflight
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/model-doc-pack-preflight/SKILL.md
+  summary: Use when dotfile-vnext is about to implement or change LiteLLM, vLLM, Ollama, or Continue wiring
+    for a model and must consult the HRL model-doc-pack first, then sync inventory source_routing pointers.
+    Use for model doc pack preflight, check HRL before model implement, or sync model_catalog source routing.
+    Do not use to author the HRL pack itself (use global library-first-model-doc-pack) or for unrelated
+    Ansible work.
+- name: project-skill-runtime-bridge
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/project-skill-runtime-bridge/SKILL.md
+  summary: Use when dotfile-vnext project skills under skills/ should be made runtime-discoverable in
+    .cursor/skills through managed symlinks, or when the managed runtime catalog entries need to be refreshed
+    after a skill update. Use for link project skills, refresh runtime skill catalog, or replace stale
+    copied runtime skill folders with managed symlinks.
+- name: scoped-version-bump-commit-push
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/scoped-version-bump-commit-push/SKILL.md
+  summary: 'Use when dotfile-vnext needs a scoped release-style closeout: bump version surfaces, stage
+    only the intended files, commit with a focused message, and push without sweeping unrelated dirty-worktree
+    changes into the same commit. Use for bump the minor version and push this slice, commit just the
+    skill/library change, or close out a scoped tooling workflow cleanly.'
+- name: single-host-ansible-rollout
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/single-host-ansible-rollout/SKILL.md
+  summary: Use when a repo-managed capability needs preview-first Ansible execution against one host,
+    with target scope proof, check-mode output, live apply, direct post-apply verification, and failure
+    evidence. This is also the project's single-host apply-and-receipt workflow. Use for mac-dev rollout,
+    list-hosts preview, check diff, rerun after a fix, or capture the exact failure before changing strategy.
+- name: single-host-apply-and-receipt
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/single-host-apply-and-receipt/SKILL.md
+  summary: Use when a tool role should be previewed, applied, verified, and summarized with a lightweight
+    receipt for one host. This is the designated repo path for mac-dev apply receipts. Use for run single
+    host apply and receipt, apply this only to mac-dev, or capture the rollout receipt after a fix.
+- name: tool-capability-intake
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/tool-capability-intake/SKILL.md
+  summary: Use when adding, replacing, or refactoring a repo-managed tool capability in dotfile-vnext,
+    especially when the work must choose between extending an existing role, creating a new role, or changing
+    install strategy. Use for install tool X, add CLI role, convert package-manager installs to a better
+    lifecycle contract, or when an ad-hoc host install must become present|absent Ansible first. Do not
+    use for rollout-only execution after the design is already settled; for Windows HVH tools prefer windows-tool-capability-intake;
+    for HF weight trees prefer hf-model-weight-lifecycle.
+- name: tool-playbook-placement-advisor
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/tool-playbook-placement-advisor/SKILL.md
+  summary: 'Use when a new or refactored tool capability needs a clear home in dotfile-vnext before implementation:
+    deploy_development_nodes.yaml, deploy_k8s_cli_tools.yaml, another existing playbook, or a composed
+    tag path. Use for should this tool live with k8s cli tools, where should this role be wired, or does
+    this belong in a shared substrate role.'
+- name: tool-role-docs-pack
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/tool-role-docs-pack/SKILL.md
+  summary: 'Use when a tool role needs the standard documentation pack after implementation shape is settled:
+    README links, metadata, usage note, and integration guidance. Use for build the tool role docs pack,
+    add upstream docs links, or package the managed usage note.'
+- name: tool-usage-note-and-discoverability
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/tool-usage-note-and-discoverability/SKILL.md
+  summary: 'Use when a tool role needs a durable docs pack: discoverability metadata, upstream links,
+    managed usage notes, or integration context in README and Ansible role metadata. Use for meta/main.yml,
+    meta/argument_specs.yml, README links, usage note templates, tool-role docs packs, or Stern plus Gonzo
+    style integration guidance.'
+- name: tune-litellm-context-safety-net
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/tune-litellm-context-safety-net/SKILL.md
+  summary: "Use when changing the LiteLLM pre-call trim_messages safety net or context-window fallbacks\
+    \ for Cursor on the local 32k vLLM path \u2014 max input budget, safety tokens, min completion, min\
+    \ messages, OpenAI vault key fallbacks, or redeploying the callback ConfigMap. Do not use for tools[]\
+    \ capture-only work or for DNS/service reachability."
+- name: upstream-release-binary-installer
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/upstream-release-binary-installer/SKILL.md
+  summary: Use when a repo-managed tool should install from a pinned upstream release binary instead of
+    Homebrew, pip, or another package manager, especially on macOS where formulae may trigger long source
+    builds. Use for release asset URL, checksum pinning, arch map, extraction path, or check-mode-safe
+    binary install design.
+- name: windows-tool-capability-intake
+  family: project-library
+  status: runtime-symlink
+  skill_file: .cursor/skills/windows-tool-capability-intake/SKILL.md
+  summary: Use when adding or changing a Windows-host tool capability in dotfile-vnext (HVH-01/HVH-02),
+    especially Chocolatey, py -m pip, WinRM/OpenSSH PowerShell surfaces, or present|absent role scaffolding
+    before any host mutation. Use for install this on HOM-LAB-HVH-01, Windows pip package role, Chocolatey
+    CLI role, or scaffold Windows tool lifecycle. Do not use for mac-dev tools (use macos-tool-install-decider-and-scaffold)
+    or for HF weight trees (use hf-model-weight-lifecycle).
