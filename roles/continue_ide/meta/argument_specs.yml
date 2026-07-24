@@ -13,7 +13,10 @@ argument_specs:
       continue_ide_gateway_api_base:
         type: str
         required: false
-        default: "http://litellm.hom.lab/v1"
+        default: "http://litellm.hom.lab"
+        description: >-
+          Continue apiBase without /v1. Continue probes GET {apiBase}; this
+          LiteLLM gateway 404s on bare /v1.
       continue_ide_api_key:
         type: str
         required: false
@@ -22,3 +25,29 @@ argument_specs:
         type: str
         required: false
         default: "{{ ansible_env.HOME }}/.continue/config.yaml"
+      continue_ide_config_name:
+        type: str
+        required: false
+        default: "Homelab Continue via LiteLLM"
+      continue_ide_config_version:
+        type: str
+        required: false
+        default: "1.0.0"
+      continue_ide_config_schema:
+        type: str
+        required: false
+        default: "v1"
+      continue_ide_provider:
+        type: str
+        required: false
+        default: "openai"
+      continue_ide_models:
+        type: list
+        elements: dict
+        required: false
+        description: Commissioned Continue model entries (name, model, roles).
+      continue_ide_blocked_lanes:
+        type: list
+        elements: str
+        required: false
+        description: Blocked lane notes rendered as comments in config.yaml.

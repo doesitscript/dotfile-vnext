@@ -3,21 +3,10 @@
   when:
     - continue_ide_state == "present"
     - continue_ide_api_key | default('') | length == 0
-  block:
-    - name: Include shared vault for Continue
-      ansible.builtin.include_vars:
-        file: "{{ inventory_dir }}/../vault/shared.vault.yml"
-        name: continue_ide_vault_vars
-      no_log: true
-
-    - name: Resolve Continue API key from LiteLLM master key vault var
-      ansible.builtin.set_fact:
-        continue_ide_api_key: >-
-          {{
-            continue_ide_vault_vars.vault_k3s_litellm_gateway_master_key
-            | default('')
-          }}
-      no_log: true
+  ansible.builtin.include_vars:
+    file: "{{ inventory_dir }}/../vault/shared.vault.yml"
+    name: continue_ide_vault_vars
+  no_log: true
 
 - name: Ensure Continue config directory exists
   ansible.builtin.file:
@@ -31,6 +20,17 @@
     src: config.yaml.j2
     dest: "{{ continue_ide_config_path }}"
     mode: "0600"
+  vars:
+    # Prefer explicit continue_ide_api_key; else vault master key; else placeholder.
+    continue_ide_render_api_key: >-
+      {{
+        continue_ide_api_key
+        if (continue_ide_api_key | default('') | length > 0)
+        else (
+          continue_ide_vault_vars['vault_k3s_litellm_gateway_master_key']
+          | default('REPLACE_WITH_LITELLM_KEY')
+        )
+      }}
   when: continue_ide_state == "present"
   no_log: true
 
@@ -46,4 +46,6 @@
       continue_ide_state={{ continue_ide_state }}
       config={{ continue_ide_config_path }}
       api_base={{ continue_ide_gateway_api_base }}
-      api_key_set={{ (continue_ide_api_key | default('') | length > 0) | bool }}
+      model_count={{ continue_ide_models | default([]) | length }}
+      api_key_from_inventory={{ (continue_ide_api_key | default('') | length > 0) | bool }}
+  when: continue_ide_state == "present"

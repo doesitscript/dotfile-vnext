@@ -1,0 +1,43 @@
+---
+# Continue model lanes orchestrator — hosts DNS, HVH Ollama, desktop Ollama,
+# LiteLLM gateway, Continue client. Prefer slice playbooks for first commission;
+# use this umbrella for mature drift repair / reconverge.
+#
+#   ansible-playbook playbooks/deploy_continue_model_lanes.yaml --check --diff
+#   ansible-playbook playbooks/deploy_continue_model_lanes.yaml
+
+- name: Publish homelab hosts file (mac / linux / windows surfaces)
+  import_playbook: homelab_hosts_file.yaml
+  tags:
+    - continue_model_lanes
+    - homelab_hosts_file
+
+- name: Confirm mac-dev Hyper-V guest routes
+  import_playbook: hyperv_guest_route_mac.yaml
+  tags:
+    - continue_model_lanes
+    - hyperv_guest_route_mac
+
+- name: Deploy HVH-01 secondary Ollama + NVIDIA contract + LiteLLM refresh
+  import_playbook: deploy_hvh01_secondary_model_runtime.yaml
+  tags:
+    - continue_model_lanes
+    - hvh01_secondary_runtime
+
+- name: Deploy AMD desktop Ollama runtime
+  import_playbook: deploy_dev_workstation_ollama_runtime.yaml
+  tags:
+    - continue_model_lanes
+    - windows_amd_gpu
+
+- name: Deploy LiteLLM gateway (continue-edit / continue-apply routes)
+  import_playbook: deploy_litellm_gateway.yaml
+  tags:
+    - continue_model_lanes
+    - litellm
+
+- name: Deploy Continue IDE client config on mac-dev
+  import_playbook: deploy_continue_ide.yaml
+  tags:
+    - continue_model_lanes
+    - continue_ide

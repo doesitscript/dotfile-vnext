@@ -4,8 +4,35 @@
 continue_ide_state: absent
 continue_ide_config_dir: "{{ ansible_env.HOME }}/.continue"
 continue_ide_config_path: "{{ continue_ide_config_dir }}/config.yaml"
-continue_ide_gateway_api_base: "http://litellm.hom.lab/v1"
+# Omit /v1: Continue probes GET {apiBase} and LiteLLM returns 404 on /v1
+# (OpenAI-compatible routes still work; LiteLLM also serves /chat/completions).
+# Clients that append /v1 themselves (Cursor OpenAI base) keep /v1 in their config.
+continue_ide_gateway_api_base: "http://litellm.hom.lab"
 # Prefer vault_k3s_litellm_gateway_master_key; empty leaves a placeholder for operator fill.
 continue_ide_api_key: ""
 continue_ide_config_name: "Homelab Continue via LiteLLM"
 continue_ide_config_version: "1.0.0"
+continue_ide_config_schema: "v1"
+# Provider shared by all commissioned Continue model entries.
+continue_ide_provider: "openai"
+# Commissioned lanes only — every model id MUST exist on GET /v1/models.
+continue_ide_models:
+  - name: "Chat Ornith (local vLLM)"
+    model: "deepreinforce-ai/Ornith-1.0-35B-GGUF"
+    roles:
+      - chat
+  - name: "Autocomplete Qwen2.5-Coder 1.5B"
+    model: "code-autocomplete-1.5b"
+    roles:
+      - autocomplete
+  - name: "Edit Ornith (local vLLM)"
+    model: "deepreinforce-ai/Ornith-1.0-35B-GGUF"
+    roles:
+      - edit
+      - apply
+# Documented blockers (comments in rendered config; not installed).
+continue_ide_blocked_lanes:
+  - "code-autocomplete-7b (GTX 1060 cannot host 7B usefully)"
+  - "qwen3-coder-30b (no local serve commissioned)"
+  - "diffucoder / continue-edit DiffuCoder (needs OpenAI wrapper; diffusion_generate only)"
+  - "diffusiongemma-nextedit (needs vLLM commission of FP8 weights)"
