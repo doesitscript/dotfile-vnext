@@ -57,6 +57,12 @@ one-line summary row to the index below.
 | [hyper-v-routed-subnet-needs-router-route-or-host-nat.md](networking/hyper-v-routed-subnet-needs-router-route-or-host-nat.md) | A Hyper-V guest lane cannot cleanly have both true routed guest-IP access and outbound internet at the same time unless the upstream router learns the guest subnet; otherwise choose either host NAT or a router static route |
 | [asus-gt6-guest-subnet-not-enterable-in-dhcp-manual-assign.md](networking/asus-gt6-guest-subnet-not-enterable-in-dhcp-manual-assign.md) | Stock ASUS GT6 manual DHCP assignment only accepts LAN pool IPs; `192.168.137.x` guest rows are rejected by design — use IP or mac `/etc/hosts`, not guest DNS reconfig |
 
+### `windows-desktop-wifi-github-download/` — Desktop Wi-Fi loss vs GitHub large installs
+
+| File | One-line summary |
+|---|---|
+| [README.md](windows-desktop-wifi-github-download/README.md) | `dev-workstation-win` Wi-Fi first-hop ~11–14% loss to ASUS `50.1`; `192.168.0.254` proven AT&T/ARRIS CPE (not Hyper-V); Cloudflare OK; GitHub CDN still slow |
+
 ---
 
 ## Candidates for migration
@@ -80,6 +86,7 @@ lessons-learned/
 ├── README.md          ← this file (index)
 ├── codex/             ← Codex behavior, framework design, instruction workflow
 ├── windows/           ← Windows host, WinRM, PowerShell, OpenSSH
+├── windows-desktop-wifi-github-download/  ← desktop Wi-Fi loss vs GitHub installs
 ├── ansible/           ← Ansible engine, modules, WinRM transport, lint
 ├── docker/            ← Docker Engine, contexts, Compose, daemon config
 ├── linux/             ← Linux guests and bare-metal, systemd, networking
