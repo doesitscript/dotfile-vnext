@@ -169,27 +169,79 @@
                 'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
                 'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
               }
-            },
+            }
+          ]
+          + (
+            [
+              {
+                'model_name': 'continue-edit',
+                'litellm_params': {
+                  'model': 'hosted_vllm/' ~ k3s_litellm_gateway_diffucoder_model,
+                  'api_base': k3s_litellm_gateway_diffucoder_api_base,
+                  'api_key': 'none'
+                },
+                'model_info': {
+                  'model_lane': 'continue-edit',
+                  'routing_policy': 'local-continue-edit-default',
+                  'project': 'ripi',
+                  'client_role': 'continue-chat-edit',
+                  'backend_runtime': 'vllm-diffucoder-or-wrapper',
+                  'hf_repo_id': k3s_litellm_gateway_diffucoder_model,
+                  'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+                  'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+                }
+              }
+            ]
+            if (k3s_litellm_gateway_continue_edit_api_base | default('') | length == 0)
+            else []
+          )
+          if (k3s_litellm_gateway_diffucoder_api_base | default('') | length > 0)
+          else []
+        )
+        + (
+          [
             {
               'model_name': 'continue-edit',
               'litellm_params': {
-                'model': 'hosted_vllm/' ~ k3s_litellm_gateway_diffucoder_model,
-                'api_base': k3s_litellm_gateway_diffucoder_api_base,
+                'model': k3s_litellm_gateway_continue_edit_provider ~ '/' ~ k3s_litellm_gateway_continue_edit_model,
+                'api_base': k3s_litellm_gateway_continue_edit_api_base,
                 'api_key': 'none'
               },
               'model_info': {
                 'model_lane': 'continue-edit',
-                'routing_policy': 'local-continue-edit-default',
+                'routing_policy': 'local-continue-edit-ollama-desktop',
                 'project': 'ripi',
                 'client_role': 'continue-chat-edit',
-                'backend_runtime': 'vllm-diffucoder-or-wrapper',
-                'hf_repo_id': k3s_litellm_gateway_diffucoder_model,
+                'backend_runtime': 'ollama-edit-qwen3-coder-30b-desktop',
                 'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
                 'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
               }
             }
           ]
-          if (k3s_litellm_gateway_diffucoder_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_continue_edit_api_base | default('') | length > 0)
+          else []
+        )
+        + (
+          [
+            {
+              'model_name': 'continue-apply',
+              'litellm_params': {
+                'model': k3s_litellm_gateway_continue_apply_provider ~ '/' ~ k3s_litellm_gateway_continue_apply_model,
+                'api_base': k3s_litellm_gateway_continue_apply_api_base,
+                'api_key': 'none'
+              },
+              'model_info': {
+                'model_lane': 'continue-apply',
+                'routing_policy': 'local-continue-apply-ollama-hvh01',
+                'project': 'ripi',
+                'client_role': 'continue-apply',
+                'backend_runtime': 'ollama-apply-phi4-mini-hvh-01',
+                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+              }
+            }
+          ]
+          if (k3s_litellm_gateway_continue_apply_api_base | default('') | length > 0)
           else []
         )
       }}

@@ -191,11 +191,14 @@ migration rows.
 For the current slice:
 
 - `deepreinforce-ai/Ornith-1.0-35B-GGUF` is the first real local coding lane
-  (trim_messages safety net enabled).
+  (`model_info.trim_messages: true` — safety net enabled).
 - `deepreinforce-ai/Ornith-1.0-35B-GGUF-no-trim` is the same `vllm-primary`
-  weights without LiteLLM context trim / adaptive `max_tokens`. Listed in
-  `k3s_litellm_gateway_trim_messages_skip_models`. Oversized prompts fail at
-  vLLM (32k) instead of being trimmed.
+  weights with `model_info.trim_messages: false` (callback is opt-in; this
+  alias is left untouched). Oversized prompts fail at vLLM (32k).
+- The global LiteLLM callback only mutates requests when the resolved route’s
+  `model_info.trim_messages` is true — currently only
+  `deepreinforce-ai/Ornith-1.0-35B-GGUF` (not `smart-router`, `-no-trim`, or
+  other aliases).
 - `experiment` remains visible as a smoke alias, but it currently shares the
   same `vllm-primary` backend as `deepreinforce-ai/Ornith-1.0-35B-GGUF` until a second runtime exists.
 - `gpt-4o-mini` and `default` stay present as migration rows while local-lane

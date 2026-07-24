@@ -1,0 +1,17 @@
+---
+# Load shared vault so vault_hf_token is available to this role.
+# Prefer inventory_dir so ad-hoc include_role and playbook runs resolve the same path.
+- name: Load shared vault for vLLM runtime
+  ansible.builtin.include_vars:
+    file: "{{ inventory_dir }}/../vault/shared.vault.yml"
+    name: vault_vars
+
+- name: Resolve Hugging Face token from vault for vLLM
+  ansible.builtin.set_fact:
+    k3s_vllm_runtime_resolved_hf_token: >-
+      {{
+        vault_vars.vault_hf_token
+        | default(k3s_vllm_runtime_hf_token)
+        | default('')
+      }}
+  no_log: true

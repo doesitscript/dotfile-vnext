@@ -35,7 +35,12 @@ layout.
 
 ## What it expects
 
-- a repo-managed NVIDIA driver contract from `llm_compute_windows`
+- On **NVIDIA** Windows hosts: a repo-managed NVIDIA driver contract from
+  `llm_compute_windows` when `windows_ollama_runtime_require_driver_contract`
+  is true (default)
+- On **AMD** Windows hosts (`windows_amd_gpu_hosts`): set
+  `windows_ollama_runtime_require_driver_contract: false` and rely on Adrenalin
+  + Ollama Vulkan (do not run `llm_compute_windows`)
 - a durable model path already available on the Windows host
 - Chocolatey available on the target (repo `package_manager` / existing choco)
 

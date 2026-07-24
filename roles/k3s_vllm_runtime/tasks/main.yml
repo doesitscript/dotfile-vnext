@@ -1,4 +1,8 @@
 ---
+- name: Load vault for K3s vLLM runtime
+  ansible.builtin.include_tasks: load_vault.yml
+  when: k3s_vllm_runtime_state == 'present'
+
 - name: Include present tasks for K3s vLLM runtime
   ansible.builtin.include_tasks: present.yml
   when: k3s_vllm_runtime_state == 'present'

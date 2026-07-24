@@ -81,9 +81,9 @@ ai_inventory_metadata:
         - deepreinforce-ai/Ornith-1.0-35B-GGUF-no-trim
         - experiment
         - code-review
-      blocked_lanes:
         - code-fast
         - code-autocomplete-1.5b
+      blocked_lanes:
         - code-autocomplete-7b
         - diffusiongemma-nextedit
         - diffucoder
@@ -102,24 +102,25 @@ ai_inventory_metadata:
           state: enabled
           backend_kind: local-vllm
           runtime: vllm-primary
-          description: Primary local coding lane on the GPU-lane vLLM runtime (trim_messages safety net).
+          description: >-
+            Primary local coding lane on vllm-primary with
+            model_info.trim_messages=true (LiteLLM safety net).
           tags:
             - primary
             - coding
             - local-vllm
-            - context-hook-trim
+            - trim-messages-true
         - lane: deepreinforce-ai/Ornith-1.0-35B-GGUF-no-trim
           state: enabled
           backend_kind: local-vllm
           runtime: vllm-primary
           description: >-
-            Same Ornith/vllm-primary weights without LiteLLM context trim or
-            max_tokens mutation. Use to compare raw 32k behavior; overflow fails
-            at vLLM.
+            Same Ornith/vllm-primary weights with model_info.trim_messages=false.
+            Use to compare raw 32k behavior; overflow fails at vLLM.
           tags:
             - coding
             - local-vllm
-            - context-hook-none
+            - trim-messages-false
             - no-trim
         - lane: experiment
           state: enabled
@@ -142,12 +143,29 @@ ai_inventory_metadata:
             - local-vllm
             - alias-until-secondary-runtime
         - lane: code-fast
-          state: blocked
-          backend_kind: pending
-          description: Fast lane exists in vocabulary but has no commissioned backend yet.
+          state: enabled
+          backend_kind: ollama-hvh01
+          runtime: ollama-autocomplete-1.5b-hvh-01
+          description: >-
+            Fast/autocomplete alias on HVH-01 Ollama qwen2.5-coder:1.5b via
+            LiteLLM (same backend as code-autocomplete-1.5b). Requires
+            k3s_litellm_gateway_autocomplete_1_5b_api_base on the gateway host.
           tags:
-            - pending
             - fast-lane
+            - ollama
+            - autocomplete
+            - local-open-weight
+        - lane: code-autocomplete-1.5b
+          state: enabled
+          backend_kind: ollama-hvh01
+          runtime: ollama-autocomplete-1.5b-hvh-01
+          description: >-
+            Continue autocomplete client alias for Ollama qwen2.5-coder:1.5b
+            on HOM-LAB-HVH-01:11434/v1 through LiteLLM.
+          tags:
+            - autocomplete
+            - ollama
+            - local-open-weight
         - lane: code-test
           state: blocked
           backend_kind: pending

@@ -1,0 +1,18 @@
+---
+- name: Require PowerShell connection surface for huggingface_hub
+  ansible.builtin.assert:
+    that:
+      - ansible_shell_type | default('') == "powershell"
+    fail_msg: >-
+      huggingface_hub expects a Windows PowerShell connection surface
+      (ansible_shell_type=powershell).
+
+- name: Dispatch huggingface_hub lifecycle
+  ansible.builtin.include_tasks: "{{ huggingface_hub_lifecycle_tasks }}"
+  vars:
+    huggingface_hub_lifecycle_tasks: >-
+      {{
+        'present.yml'
+        if huggingface_hub_state == 'present'
+        else 'absent.yml'
+      }}

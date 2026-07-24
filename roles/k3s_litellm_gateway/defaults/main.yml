@@ -85,10 +85,8 @@ k3s_litellm_gateway_trim_messages_min_message_tokens: 2048
 # Hard-cut density when flattening multimodal content (chars per token).
 k3s_litellm_gateway_trim_messages_chars_per_token: 2.5
 k3s_litellm_gateway_trim_messages_callback_ref: custom_callbacks.proxy_handler_instance
-# Client model aliases that skip trim_messages + max_tokens mutation entirely.
-# Same vLLM backend as Ornith; use when you want raw context (will 400 if over 32k).
-k3s_litellm_gateway_trim_messages_skip_models:
-  - deepreinforce-ai/Ornith-1.0-35B-GGUF-no-trim
+# Trim is opt-in per route via model_info.trim_messages: true (not a skip list).
+# See MessageTrimHandler in templates/custom_callbacks.py.j2.
 k3s_litellm_gateway_context_window_fallbacks_with_openai:
   - deepreinforce-ai/Ornith-1.0-35B-GGUF:
       - gpt-4o-mini
@@ -182,17 +180,21 @@ k3s_litellm_gateway_lane_contract:
     runtime: vllm-primary
     reason: Temporary smoke alias sharing the primary local runtime until a second local runtime exists.
   - lane: code-fast
-    state: blocked
-    backend_kind: pending-ollama-hvh01
+    state: enabled
+    backend_kind: ollama-hvh01
+    runtime: ollama-autocomplete-1.5b-hvh-01
     reason: >-
       Continue/code-fast alias for local Qwen2.5-Coder 1.5B on HVH-01 Ollama
-      (llama.cpp). Enabled when k3s_litellm_gateway_autocomplete_1_5b_api_base is set.
+      (llama.cpp). Published when k3s_litellm_gateway_autocomplete_1_5b_api_base
+      is set on the gateway host (hom-lab-ctl-k3s-02).
   - lane: code-autocomplete-1.5b
-    state: blocked
-    backend_kind: pending-ollama-hvh01
+    state: enabled
+    backend_kind: ollama-hvh01
+    runtime: ollama-autocomplete-1.5b-hvh-01
     reason: >-
       Local qwen2.5-coder:1.5b via Ollama on GTX 1060 (HVH-01) + LiteLLM openai/
       route. Not vLLM — Pascal CC 6.1 is below vLLM's CC >= 7.5 requirement.
+      Same api_base gate as code-fast.
   - lane: code-autocomplete-7b
     state: blocked
     backend_kind: pending-local-vllm
@@ -281,7 +283,8 @@ k3s_litellm_gateway_model_list:
       backend_runtime: vllm-primary
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-      context_hook: trim_messages
+      # Opt-in: MessageTrimHandler only mutates requests for this alias.
+      trim_messages: true
   - model_name: deepreinforce-ai/Ornith-1.0-35B-GGUF-no-trim
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
@@ -294,10 +297,11 @@ k3s_litellm_gateway_model_list:
       backend_runtime: vllm-primary
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-      context_hook: none
+      trim_messages: false
       notes: >-
-        Same vllm-primary weights as Ornith. Skips LiteLLM trim_messages and
-        adaptive max_tokens mutation. Oversized prompts fail at vLLM (32k).
+        Same vllm-primary weights as Ornith. model_info.trim_messages=false so
+        the LiteLLM callback leaves context untouched. Oversized prompts fail
+        at vLLM (32k).
   - model_name: experiment
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
@@ -390,6 +394,16 @@ k3s_litellm_gateway_diffusiongemma_model: "RedHatAI/diffusiongemma-26B-A4B-it-FP
 k3s_litellm_gateway_diffucoder_api_base: ""
 k3s_litellm_gateway_diffucoder_model: "apple/DiffuCoder-7B-cpGRPO"
 
+# Continue edit → desktop AMD Ollama (openai-compatible). When set, takes
+# continue-edit alias instead of DiffuCoder wrapper.
+k3s_litellm_gateway_continue_edit_api_base: ""
+k3s_litellm_gateway_continue_edit_model: "qwen3-coder:30b"
+k3s_litellm_gateway_continue_edit_provider: "openai"
+# Continue apply → HVH-01 Ollama Phi-4 Mini.
+k3s_litellm_gateway_continue_apply_api_base: ""
+k3s_litellm_gateway_continue_apply_model: "phi4-mini"
+k3s_litellm_gateway_continue_apply_provider: "openai"
+
 k3s_litellm_gateway_local_continue_model_routes: []
 # Built at runtime in build_helm_values.yml from the api_base vars above.
 
@@ -407,7 +421,7 @@ k3s_litellm_gateway_model_list_without_openai:
       backend_runtime: vllm-primary
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-      context_hook: trim_messages
+      trim_messages: true
   - model_name: deepreinforce-ai/Ornith-1.0-35B-GGUF-no-trim
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
@@ -420,10 +434,11 @@ k3s_litellm_gateway_model_list_without_openai:
       backend_runtime: vllm-primary
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-      context_hook: none
+      trim_messages: false
       notes: >-
-        Same vllm-primary weights as Ornith. Skips LiteLLM trim_messages and
-        adaptive max_tokens mutation. Oversized prompts fail at vLLM (32k).
+        Same vllm-primary weights as Ornith. model_info.trim_messages=false so
+        the LiteLLM callback leaves context untouched. Oversized prompts fail
+        at vLLM (32k).
   - model_name: experiment
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"

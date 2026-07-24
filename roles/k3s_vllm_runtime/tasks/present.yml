@@ -46,11 +46,11 @@
         namespace: "{{ k3s_vllm_runtime_namespace }}"
       type: Opaque
       stringData:
-        HF_TOKEN: "{{ k3s_vllm_runtime_hf_token }}"
+        HF_TOKEN: "{{ k3s_vllm_runtime_resolved_hf_token }}"
   environment:
     KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
   no_log: true
-  when: k3s_vllm_runtime_hf_token | length > 0
+  when: k3s_vllm_runtime_resolved_hf_token | default('') | length > 0
 
 - name: Build vLLM container args
   ansible.builtin.set_fact:
@@ -163,7 +163,7 @@
                 envFrom: >-
                   {{
                     [{'secretRef': {'name': k3s_vllm_runtime_name ~ '-env'}}]
-                    if k3s_vllm_runtime_hf_token | length > 0 else []
+                    if (k3s_vllm_runtime_resolved_hf_token | default('') | length > 0) else []
                   }}
                 volumeMounts:
                   - name: hf-cache

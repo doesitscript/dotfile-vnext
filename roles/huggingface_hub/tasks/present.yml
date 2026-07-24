@@ -1,0 +1,40 @@
+---
+- name: Ensure huggingface_hub is installed via py -m pip
+  ansible.windows.win_command:
+    argv: >-
+      {{
+        ['py', '-m', 'pip', 'install']
+        + (['--user'] if (huggingface_hub_pip_user_install | bool) else [])
+        + [
+            (
+              huggingface_hub_package_name
+              ~ (
+                ('==' ~ huggingface_hub_package_version)
+                if (huggingface_hub_package_version | default('') | length > 0)
+                else ''
+              )
+            )
+          ]
+      }}
+  register: huggingface_hub_pip_install
+  changed_when: >-
+    'Successfully installed' in (huggingface_hub_pip_install.stdout | default(''))
+  failed_when: huggingface_hub_pip_install.rc != 0
+
+- name: Verify huggingface_hub import
+  ansible.windows.win_command:
+    argv:
+      - py
+      - -c
+      - import huggingface_hub; print(huggingface_hub.__version__)
+  register: huggingface_hub_import_check
+  changed_when: false
+  when: huggingface_hub_verify | bool
+
+- name: Report huggingface_hub present result
+  ansible.builtin.debug:
+    msg: >-
+      huggingface_hub_state=present
+      package={{ huggingface_hub_package_name }}
+      version_pin={{ huggingface_hub_package_version | default('(unpinned)', true) }}
+      installed={{ huggingface_hub_import_check.stdout | default('unverified') | trim }}

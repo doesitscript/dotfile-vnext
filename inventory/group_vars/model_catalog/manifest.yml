@@ -8,6 +8,19 @@ model_catalog_manifest:
   source_plan: docs/plans/2026-05-29--ai-model-catalog-hf-storage-incomplete-wip/README.md
   research_required_before_download: true
   selection_status: pending_research
+  # Doc routing for HRL model-doc-packs — see SOURCE-ROUTING.md in this directory.
+  source_routing_defaults:
+    ollama:
+      primary_doc_source: ollama_library
+      url_pattern: "https://ollama.com/library/{name}"
+    vllm:
+      primary_doc_source: huggingface_model_card
+      url_pattern: "https://huggingface.co/{hf_repo_id}"
+    hf_download:
+      primary_doc_source: huggingface_model_card
+      url_pattern: "https://huggingface.co/{hf_repo_id}"
+    hrl_models_root: "/Users/joshc/develop/homelab-reference-library/models"
+    hrl_framework: "/Users/joshc/develop/homelab-reference-library/frameworks/model-doc-pack/FRAMEWORK.md"
   selection_gate:
     required_before_download_or_pin:
       - current model research matrix compares multiple candidates per lane
@@ -25,6 +38,11 @@ model_catalog_manifest:
       serving_runtime: vllm
       storage_host: HOM-LAB-HVH-01
       unc_path: null
+      source_routing:
+        primary_doc_source: huggingface_model_card
+        primary_doc_url: "https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ"
+        hrl_pack_slug: qwen-qwen2.5-coder-32b-instruct-awq
+        hrl_pack_status: missing
       research_sources:
         - https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
       selection_blockers:
@@ -55,8 +73,19 @@ model_catalog_manifest:
       serving_runtime: ollama
       storage_host: HOM-LAB-HVH-01
       unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface\\Qwen--Qwen2.5-Coder-1.5B-Instruct"
+      source_routing:
+        primary_doc_source: ollama_library
+        primary_doc_url: "https://ollama.com/library/qwen2.5-coder"
+        secondary_doc_source: huggingface_model_card
+        secondary_doc_url: "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct"
+        ollama_library_url: "https://ollama.com/library/qwen2.5-coder"
+        llms_txt_url: null
+        context7_library_id: null
+        hrl_pack_slug: qwen-qwen2.5-coder-1.5b-instruct
+        hrl_pack_status: missing
       research_sources:
         - https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct
+        - https://ollama.com/library/qwen2.5-coder
         - https://docs.continue.dev/ide-extensions/autocomplete/model-setup
         - https://docs.litellm.ai/docs/providers/vllm
       notes: >-
@@ -72,6 +101,13 @@ model_catalog_manifest:
       license: apache-2.0
       serving_runtime: ollama
       unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface\\Qwen--Qwen2.5-Coder-1.5B-Instruct"
+      source_routing:
+        primary_doc_source: ollama_library
+        primary_doc_url: "https://ollama.com/library/qwen2.5-coder"
+        secondary_doc_source: huggingface_model_card
+        secondary_doc_url: "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct"
+        hrl_pack_slug: qwen-qwen2.5-coder-1.5b-instruct
+        hrl_pack_status: missing
       notes: >-
         Client alias for Continue autocomplete. Backend: Ollama qwen2.5-coder:1.5b
         on HOM-LAB-HVH-01:11434/v1 via LiteLLM.
@@ -84,6 +120,13 @@ model_catalog_manifest:
       license: apache-2.0
       serving_runtime: vllm
       unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface\\Qwen--Qwen2.5-Coder-7B-Instruct"
+      source_routing:
+        primary_doc_source: huggingface_model_card
+        primary_doc_url: "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct"
+        llms_txt_url: null
+        context7_library_id: null
+        hrl_pack_slug: qwen-qwen2.5-coder-7b-instruct
+        hrl_pack_status: missing
       notes: Client alias for Continue autocomplete role.
     - lane: diffusiongemma-nextedit
       purpose: Continue Next Edit (replaces mercury-coder-nextedit)
@@ -97,6 +140,13 @@ model_catalog_manifest:
       vram_notes: >-
         BF16 recipe ~64GB; prefer FP8/NVFP4 on 32GB 5090. Serves via vLLM gemma
         image; OpenAI-compatible once commissioned.
+      source_routing:
+        primary_doc_source: huggingface_model_card
+        primary_doc_url: "https://huggingface.co/RedHatAI/diffusiongemma-26B-A4B-it-FP8-dynamic"
+        secondary_doc_source: huggingface_model_card
+        secondary_doc_url: "https://huggingface.co/google/diffusiongemma-26B-A4B-it"
+        hrl_pack_slug: redhatai-diffusiongemma-26b-a4b-it-fp8-dynamic
+        hrl_pack_status: missing
       research_sources:
         - https://huggingface.co/google/diffusiongemma-26B-A4B-it
         - https://huggingface.co/RedHatAI/diffusiongemma-26B-A4B-it-FP8-dynamic
@@ -113,6 +163,13 @@ model_catalog_manifest:
       license: apple-sample-code-license
       serving_runtime: custom-openai-wrapper
       unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface\\apple--DiffuCoder-7B-cpGRPO"
+      source_routing:
+        primary_doc_source: huggingface_model_card
+        primary_doc_url: "https://huggingface.co/apple/DiffuCoder-7B-cpGRPO"
+        context7_library_id: null
+        llms_txt_url: null
+        hrl_pack_slug: apple-diffucoder-7b-cpgrpo
+        hrl_pack_status: missing
       research_sources:
         - https://huggingface.co/apple/DiffuCoder-7B-cpGRPO
         - https://docs.continue.dev/ide-extensions/chat/model-setup

@@ -1,0 +1,71 @@
+---
+# Deploy host-local Ollama on AMD Windows GPU hosts (Continue edit backend).
+#
+# Reuses roles/windows_ollama_runtime. Does NOT run llm_compute_windows
+# (NVIDIA Studio Driver). Desktop host_vars set
+# windows_ollama_runtime_require_driver_contract: false for Vulkan/Adrenalin.
+#
+# Lifecycle: windows_ollama_runtime_state: present|absent (inventory).
+#
+#   ansible-playbook playbooks/deploy_dev_workstation_ollama_runtime.yaml
+#   ansible-playbook playbooks/deploy_dev_workstation_ollama_runtime.yaml --limit windows_amd_gpu_hosts
+#   ansible-playbook playbooks/deploy_dev_workstation_ollama_runtime.yaml --check --diff
+
+- name: Deploy host-local Ollama runtime on AMD Windows GPU hosts
+  hosts: windows_amd_gpu_hosts
+  gather_facts: false
+  roles:
+    - role: windows_ollama_runtime
+      tags:
+        - windows_ollama_runtime
+        - ollama
+        - ai_ml_platform
+        - windows_amd_gpu
+
+- name: Verify AMD desktop Ollama endpoints from controller
+  hosts: execution_nodes
+  gather_facts: false
+  tasks:
+    - name: Check each present AMD Ollama /api/tags
+      ansible.builtin.uri:
+        url: >-
+          http://{{
+            hostvars[item].host_ip
+            | default(hostvars[item].ansible_host | default(item))
+          }}:{{
+            hostvars[item].windows_ollama_runtime_port | default(11434)
+          }}/api/tags
+        method: GET
+        status_code: 200
+        timeout: 15
+      loop: "{{ groups['windows_amd_gpu_hosts'] | default([]) }}"
+      when:
+        - hostvars[item].windows_ollama_runtime_state | default('absent') == 'present'
+      register: _amd_ollama_tags_check
+      changed_when: false
+      failed_when: false
+      tags:
+        - windows_ollama_runtime
+        - ollama
+        - verify
+
+    - name: Summarize AMD Ollama verification
+      ansible.builtin.debug:
+        msg: >-
+          {{
+            _amd_ollama_tags_check.results
+            | default([])
+            | selectattr('item', 'defined')
+            | map(attribute='item')
+            | zip(
+              _amd_ollama_tags_check.results
+              | default([])
+              | map(attribute='status')
+              | list
+            )
+            | list
+          }}
+      tags:
+        - windows_ollama_runtime
+        - ollama
+        - verify

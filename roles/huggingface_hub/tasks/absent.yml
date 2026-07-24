@@ -1,0 +1,21 @@
+---
+- name: Ensure huggingface_hub is uninstalled via py -m pip
+  ansible.windows.win_command:
+    argv: >-
+      {{
+        ['py', '-m', 'pip', 'uninstall', '-y', huggingface_hub_package_name]
+      }}
+  register: huggingface_hub_pip_uninstall
+  changed_when: >-
+    'Successfully uninstalled' in (huggingface_hub_pip_uninstall.stdout | default(''))
+  failed_when: >-
+    huggingface_hub_pip_uninstall.rc != 0
+    and ('not installed' not in (huggingface_hub_pip_uninstall.stdout | default('') | lower))
+    and ('WARNING: Skipping' not in (huggingface_hub_pip_uninstall.stdout | default('')))
+
+- name: Report huggingface_hub absent result
+  ansible.builtin.debug:
+    msg: >-
+      huggingface_hub_state=absent
+      package={{ huggingface_hub_package_name }}
+      changed={{ huggingface_hub_pip_uninstall is changed }}

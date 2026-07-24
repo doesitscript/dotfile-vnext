@@ -23,12 +23,56 @@ _SAFETY_TOKENS = {{ k3s_litellm_gateway_trim_messages_safety_tokens | int }}
 _MIN_COMPLETION_TOKENS = {{ k3s_litellm_gateway_trim_messages_min_completion_tokens | int }}
 _MIN_MESSAGE_TOKENS = {{ k3s_litellm_gateway_trim_messages_min_message_tokens | int }}
 _CHARS_PER_TOKEN = {{ k3s_litellm_gateway_trim_messages_chars_per_token | float }}
-# Client-facing model aliases that must not be context-mutated by this hook.
-_SKIP_MODELS = {
-{% for m in k3s_litellm_gateway_trim_messages_skip_models | default([]) %}
-    "{{ m }}",
-{% endfor %}
-}
+# Opt-in gate: only mutate requests when model_list[].model_info.trim_messages
+# is true for the client-facing model alias. Loaded from the mounted config.
+_CONFIG_PATH = "/etc/litellm/config.yaml"
+
+
+def _coerce_trim_flag(info: Any) -> bool:
+    if info is None:
+        return False
+    if isinstance(info, dict):
+        return bool(info.get("trim_messages"))
+    return bool(getattr(info, "trim_messages", False))
+
+
+def _load_trim_flags_from_config() -> dict[str, bool]:
+    flags: dict[str, bool] = {}
+    try:
+        import yaml  # LiteLLM image includes PyYAML
+
+        with open(_CONFIG_PATH, encoding="utf-8") as handle:
+            cfg = yaml.safe_load(handle) or {}
+        for row in cfg.get("model_list") or []:
+            if not isinstance(row, dict):
+                continue
+            name = row.get("model_name")
+            if not name:
+                continue
+            flags[str(name)] = _coerce_trim_flag(row.get("model_info"))
+    except Exception as exc:  # noqa: BLE001 - never block import
+        print(f"litellm trim_messages metadata load failed: {exc}", flush=True)
+    return flags
+
+
+_TRIM_BY_MODEL = _load_trim_flags_from_config()
+
+
+def _model_wants_trim(model: str) -> bool:
+    """Return True only when this client alias opted into trim_messages."""
+    if model in _TRIM_BY_MODEL:
+        return _TRIM_BY_MODEL[model]
+    try:
+        from litellm.proxy.proxy_server import llm_router
+
+        if llm_router is not None:
+            for row in llm_router.model_list or []:
+                if row.get("model_name") == model:
+                    return _coerce_trim_flag(row.get("model_info"))
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
 
 # Cursor Agent built-in tool names (OpenAI tools[] entries). Matching is
 # case-insensitive; unknown names fall through to MCP/unknown classifiers.
@@ -501,12 +545,13 @@ class MessageTrimHandler(CustomLogger):
         if not isinstance(messages, list) or not messages:
             return data
 
-        # Passthrough aliases (e.g. Ornith-…-no-trim): do not trim messages or
-        # rewrite max_tokens. Oversized prompts fail at the 32k vLLM backend.
+        # Opt-in via model_list[].model_info.trim_messages. Aliases without the
+        # flag (or trim_messages: false) pass through untouched.
         requested_model = str(data.get("model") or "")
-        if requested_model in _SKIP_MODELS:
+        if not _model_wants_trim(requested_model):
             print(
-                f"litellm trim_messages hook bypass: model={requested_model}",
+                f"litellm trim_messages hook skip: model={requested_model} "
+                f"trim_messages=false",
                 flush=True,
             )
             return data
