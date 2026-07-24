@@ -1,35 +1,6 @@
-# Docker-based pyenv — runs pyenv/python/pip inside a container.
-# Installed versions persist in ~/.pyenv-docker across runs.
-pyenv() {
-	docker run --rm -it \
-		-v "${HOME}/.pyenv-docker:/root/.pyenv" \
-		-v "$(pwd):/workspace" \
-		-w /workspace \
-		pyenv-env:latest \
-		"pyenv $*"
-}
-
-python() {
-	docker run --rm -it \
-		-v "${HOME}/.pyenv-docker:/root/.pyenv" \
-		-v "$(pwd):/workspace" \
-		-w /workspace \
-		pyenv-env:latest \
-		"eval \"\$(pyenv init --path)\" && eval \"\$(pyenv init -)\" && python $*"
-}
-
-python3() { python "$@"; }
-
-pip() {
-	docker run --rm -it \
-		-v "${HOME}/.pyenv-docker:/root/.pyenv" \
-		-v "$(pwd):/workspace" \
-		-w /workspace \
-		pyenv-env:latest \
-		"eval \"\$(pyenv init --path)\" && eval \"\$(pyenv init -)\" && pip $*"
-}
-
-pip3() { pip "$@"; }
+# Native-shell Python helpers (no Docker wrappers).
+# Docker pyenv/python/pip wrappers live in roles/docker_pyenv_functions
+# (default state: absent; not enabled on hosts).
 
 # Remove python compiled byte-code in either current directory or in a
 # list of specified directories.

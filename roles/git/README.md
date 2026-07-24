@@ -1,7 +1,21 @@
 git
 ===
 
-Installs and configures git.
+Installs and configures git, including a managed global excludes file.
+
+## Global gitignore
+
+- Source of truth: `roles/git/files/gitignore_global.link`
+- Deployed to: `~/.gitignore_global` (symlink)
+- Wired by: `~/.gitconfig` → `core.excludesfile = ~/.gitignore_global`
+- Base templates: [gitignore.io](https://www.toptal.com/developers/gitignore/api/macos,windows,linux,visualstudiocode,jetbrains,vim,node,python,terraform,ansible) (macOS/Windows/Linux + IDE + Node/Python/Terraform/Ansible)
+- Homelab extensions: vault pass files, Ansible runtime dirs, `.codex-tools/`, archives, `*__local__*`
+
+Apply on mac-dev:
+
+```bash
+ansible-playbook playbooks/deploy_development_nodes.yaml --limit mac-dev --tags git
+```
 
 ## Signing commits with GPG
 

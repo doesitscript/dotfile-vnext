@@ -1,0 +1,25 @@
+---
+argument_specs:
+  main:
+    short_description: >-
+      Opt-in Docker pyenv shell wrappers via ~/.bashrc.d symlink
+    options:
+      docker_pyenv_functions_state:
+        type: str
+        default: absent
+        choices:
+          - present
+          - absent
+        description:
+          - Whether to deploy or remove the Docker pyenv functions symlink.
+          - Default is absent; this capability is not enabled unless set present.
+      docker_pyenv_functions_link_dest:
+        type: str
+        default: "{{ ansible_env.HOME }}/.bashrc.d/docker-pyenv-functions.bash"
+        description:
+          - Destination path for the managed ~/.bashrc.d symlink.
+      docker_pyenv_functions_link_src:
+        type: str
+        default: "{{ dotfiles_home }}/roles/docker_pyenv_functions/functions.bash"
+        description:
+          - Source path for the Docker pyenv functions file in this repo.

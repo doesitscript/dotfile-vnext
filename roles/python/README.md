@@ -9,6 +9,11 @@ On macOS, the role installs the requested `pyenv_global_versions` and then sets
 `pyenv global` to match the inventory order. `mac-dev` currently pins only
 `3.14.6`.
 
+Docker-based `python`/`pip`/`pyenv` shell wrappers are **not** part of this
+role. They live in `roles/docker_pyenv_functions` (default `absent`, not
+enabled). `functions.bash` here only keeps native helpers (`pyclean`,
+`fake`, `pyup`, `sphinxwatch`).
+
 ## Python Tooling Patterns
 
 This role is authoritative for Python tooling decisions in this repository.

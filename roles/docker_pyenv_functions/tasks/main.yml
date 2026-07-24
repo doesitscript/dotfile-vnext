@@ -1,0 +1,32 @@
+---
+- name: Validate docker_pyenv_functions state
+  ansible.builtin.assert:
+    that:
+      - docker_pyenv_functions_state in ["present", "absent"]
+    fail_msg: "docker_pyenv_functions_state must be present or absent."
+
+- name: Require non-Windows for docker_pyenv_functions shell deployment
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] != "Windows"
+    fail_msg: "docker_pyenv_functions deploys bashrc.d symlinks and does not support Windows."
+
+- name: Ensure ~/.bashrc.d directory exists for docker_pyenv_functions
+  ansible.builtin.file:
+    path: "{{ docker_pyenv_functions_link_dest | dirname }}"
+    state: directory
+    mode: "0755"
+  when: docker_pyenv_functions_state == "present"
+
+- name: Symlink Docker pyenv shell functions into ~/.bashrc.d
+  ansible.builtin.file:
+    src: "{{ docker_pyenv_functions_link_src }}"
+    dest: "{{ docker_pyenv_functions_link_dest }}"
+    state: link
+  when: docker_pyenv_functions_state == "present"
+
+- name: Remove Docker pyenv shell functions symlink from ~/.bashrc.d
+  ansible.builtin.file:
+    path: "{{ docker_pyenv_functions_link_dest }}"
+    state: absent
+  when: docker_pyenv_functions_state == "absent"

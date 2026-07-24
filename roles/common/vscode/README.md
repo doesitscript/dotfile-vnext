@@ -16,7 +16,7 @@ Installs Visual Studio Code and extensions on macOS and Windows.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `vscode_extensions` | `[GitHub.vscode-pull-request-github]` | List of extension IDs to install |
+| `vscode_extensions` | `[GitHub.vscode-pull-request-github, Continue.continue, saoudrizwan.claude-dev]` | List of extension IDs to install |
 
 Override in `group_vars` or `host_vars` as needed.
 
