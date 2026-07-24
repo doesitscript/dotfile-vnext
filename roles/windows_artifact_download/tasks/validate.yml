@@ -1,0 +1,84 @@
+---
+- name: Validate Windows artifact contract
+  ansible.builtin.assert:
+    that:
+      - windows_artifact is mapping
+      - (windows_artifact['id'] | default('') | length) > 0
+      - (windows_artifact['url'] | default('') | length) > 0
+      - (windows_artifact['destination'] | default('') | length) > 0
+      - (windows_artifact['checksum']['value'] | default('') | length) > 0
+      - >-
+          (windows_artifact['checksum']['algorithm'] | default('sha256'))
+          in ['md5', 'sha1', 'sha256', 'sha384', 'sha512']
+    fail_msg: >-
+      windows_artifact must define id, url, destination,
+      checksum.algorithm, and checksum.value.
+
+- name: Merge artifact contract with role defaults
+  ansible.builtin.set_fact:
+    windows_artifact: >-
+      {{
+        {
+          'resume': true,
+          'force': false,
+          'retries': 20,
+          'retry_delay_seconds': 10,
+          'connect_timeout_seconds': 30,
+          'stalled_transfer': {
+            'minimum_bytes_per_second': 1024,
+            'timeout_seconds': 120
+          },
+          'async': {
+            'enabled': true,
+            'timeout_seconds': 28800,
+            'poll_interval_seconds': 30
+          },
+          'preserve_partial_on_failure': true,
+          'create_destination_directory': true,
+          'checksum': {
+            'algorithm': 'sha256',
+            'value': ''
+          }
+        } | combine(windows_artifact, recursive=True)
+      }}
+  changed_when: false
+
+- name: Derive artifact paths and checksum algorithm
+  ansible.builtin.set_fact:
+    windows_artifact_final_path: "{{ windows_artifact['destination'] }}"
+    windows_artifact_partial_path: "{{ windows_artifact['destination'] }}.partial"
+    windows_artifact_directory: >-
+      {{ windows_artifact['destination'] | regex_replace('[\\\\/][^\\\\/]+$', '') }}
+    windows_artifact_checksum_algorithm: >-
+      {{ windows_artifact['checksum']['algorithm'] | default('sha256') }}
+    windows_artifact_checksum_value: >-
+      {{ windows_artifact['checksum']['value'] | lower }}
+  changed_when: false
+
+# Flat keys for when:/templates — dict dot notation fails on merged mappings.
+- name: Derive artifact option flags for task conditionals
+  ansible.builtin.set_fact:
+    windows_artifact_create_destination_directory: >-
+      {{ windows_artifact['create_destination_directory'] | default(true) | bool }}
+    windows_artifact_force: "{{ windows_artifact['force'] | default(false) | bool }}"
+    windows_artifact_resume: "{{ windows_artifact['resume'] | default(true) | bool }}"
+    windows_artifact_preserve_partial_on_failure: >-
+      {{ windows_artifact['preserve_partial_on_failure'] | default(true) | bool }}
+    windows_artifact_async_enabled: >-
+      {{ windows_artifact['async']['enabled'] | default(true) | bool }}
+    windows_artifact_async_timeout_seconds: >-
+      {{ windows_artifact['async']['timeout_seconds'] | default(28800) }}
+    windows_artifact_async_poll_interval_seconds: >-
+      {{ windows_artifact['async']['poll_interval_seconds'] | default(30) }}
+    windows_artifact_retries: "{{ windows_artifact['retries'] | default(20) }}"
+    windows_artifact_retry_delay_seconds: >-
+      {{ windows_artifact['retry_delay_seconds'] | default(10) }}
+    windows_artifact_connect_timeout_seconds: >-
+      {{ windows_artifact['connect_timeout_seconds'] | default(30) }}
+    windows_artifact_stalled_min_bps: >-
+      {{ windows_artifact['stalled_transfer']['minimum_bytes_per_second'] | default(1024) }}
+    windows_artifact_stalled_timeout_seconds: >-
+      {{ windows_artifact['stalled_transfer']['timeout_seconds'] | default(120) }}
+    windows_artifact_url: "{{ windows_artifact['url'] }}"
+    windows_artifact_id: "{{ windows_artifact['id'] }}"
+  changed_when: false

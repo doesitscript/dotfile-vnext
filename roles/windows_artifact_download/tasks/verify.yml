@@ -1,0 +1,38 @@
+---
+- name: Inspect downloaded partial artifact
+  ansible.windows.win_stat:
+    path: "{{ windows_artifact_partial_path }}"
+    get_checksum: true
+    checksum_algorithm: "{{ windows_artifact_checksum_algorithm }}"
+  register: windows_artifact_partial_stat
+
+- name: Verify downloaded artifact checksum
+  block:
+    - name: Assert partial artifact exists with expected checksum
+      ansible.builtin.assert:
+        that:
+          - windows_artifact_partial_stat.stat.exists | default(false)
+          - >-
+              (windows_artifact_partial_stat.stat.checksum | default('') | lower)
+              == windows_artifact_checksum_value
+        fail_msg: >-
+          Checksum verification failed for {{ windows_artifact_id }}.
+          Expected {{ windows_artifact_checksum_value }},
+          received
+          {{ windows_artifact_partial_stat.stat.checksum | default('missing') | lower }}.
+  rescue:
+    - name: Remove corrupt partial after checksum failure
+      ansible.windows.win_file:
+        path: "{{ windows_artifact_partial_path }}"
+        state: absent
+      when: not (windows_artifact_preserve_partial_on_failure | bool)
+
+    - name: Fail after checksum mismatch
+      ansible.builtin.fail:
+        msg: >-
+          Checksum verification failed for {{ windows_artifact_id }}.
+          Expected {{ windows_artifact_checksum_value }},
+          received
+          {{ windows_artifact_partial_stat.stat.checksum | default('missing') | lower }}.
+          Partial preserved={{ windows_artifact_preserve_partial_on_failure }}
+          at {{ windows_artifact_partial_path }}.

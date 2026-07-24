@@ -1,36 +1,44 @@
 ---
 # windows_ollama_runtime — managed host-local Ollama runtime for Windows GPU hosts.
 #
-# Install authority: chocolatey.chocolatey.win_chocolatey + community package
-# `ollama` (https://community.chocolatey.org/packages/ollama).
+# Install authority: pinned upstream OllamaSetup.exe via reusable
+# windows_artifact_download (resume/async/checksum) then ansible.windows.win_package.
+# Chocolatey is deprecated for Ollama in this role.
 # Model presence: Ollama HTTP /api/pull via ansible.windows.win_uri (no shell).
 # Note: Galaxy role andrewrothstein.ollama is Linux-only and is not used here.
 
 windows_ollama_runtime_state: absent
 
-# Chocolatey package contract (version without leading "v")
-windows_ollama_runtime_package_name: ollama
-windows_ollama_runtime_package_version: "0.32.1"
-windows_ollama_runtime_package_state: present
-windows_ollama_runtime_package_pinned: true
-
-# Legacy zip vars retained only as migration fallbacks; install path prefers Chocolatey.
+# Pinned upstream release (version without leading "v")
+windows_ollama_runtime_package_version: "0.32.3"
 windows_ollama_runtime_version: "v{{ windows_ollama_runtime_package_version }}"
+windows_ollama_runtime_setup_url: >-
+  https://github.com/ollama/ollama/releases/download/{{ windows_ollama_runtime_version }}/OllamaSetup.exe
+# GitHub release asset digest for OllamaSetup.exe @ v0.32.3
+windows_ollama_runtime_setup_sha256: >-
+  78bc7e1f750882fcee9948561700bf881eb7b30bec95fd37934e6285a368b8b2
+windows_ollama_runtime_setup_expected_bytes: 1562770448
+windows_ollama_runtime_download_root: 'C:\ProgramData\Ansible\artifacts\ollama'
+windows_ollama_runtime_setup_exe_path: >-
+  {{ windows_ollama_runtime_download_root }}\OllamaSetup-{{ windows_ollama_runtime_package_version }}.exe
+windows_ollama_runtime_setup_silent_args: /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+windows_ollama_runtime_setup_async_seconds: 28800
+windows_ollama_runtime_setup_async_poll: 30
+
+# Legacy zip vars retained only as migration fallbacks.
 windows_ollama_runtime_download_url: >-
   https://github.com/ollama/ollama/releases/download/{{ windows_ollama_runtime_version }}/ollama-windows-amd64.zip
 windows_ollama_runtime_install_root: 'C:\Program Files\Ollama'
-windows_ollama_runtime_download_root: 'C:\ProgramData\Ansible\downloads\ollama'
 windows_ollama_runtime_archive_path: '{{ windows_ollama_runtime_download_root }}\ollama-windows-amd64.zip'
 windows_ollama_runtime_contract_root: 'C:\ProgramData\Ansible\windows_ollama_runtime'
 windows_ollama_runtime_contract_path: '{{ windows_ollama_runtime_contract_root }}\runtime_contract.json'
 windows_ollama_runtime_receipt_path: '{{ windows_ollama_runtime_contract_root }}\runtime_receipt.json'
 
-# Candidate binary locations — Chocolatey OllamaSetup path first (per-user),
-# then prior machine-wide standalone zip locations.
-windows_ollama_runtime_chocolatey_install_root: >-
+# Candidate binary locations — per-user Setup.exe path first, then Program Files.
+windows_ollama_runtime_user_install_root: >-
   C:\Users\joshc\AppData\Local\Programs\Ollama
 windows_ollama_runtime_exe_candidates:
-  - '{{ windows_ollama_runtime_chocolatey_install_root }}\ollama.exe'
+  - '{{ windows_ollama_runtime_user_install_root }}\ollama.exe'
   - '{{ windows_ollama_runtime_install_root }}\ollama.exe'
   - 'C:\Program Files\Ollama\ollama.exe'
   - 'C:\Program Files (x86)\Ollama\ollama.exe'

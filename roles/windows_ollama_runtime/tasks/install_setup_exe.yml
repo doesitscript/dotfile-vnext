@@ -1,0 +1,51 @@
+---
+# Upstream OllamaSetup.exe via reusable windows_artifact_download + win_package.
+# Chocolatey is deprecated for this role (checksum/hang issues on large Setup.exe).
+
+- name: Clear hung Chocolatey ollama lib leftovers (migration)
+  ansible.windows.win_powershell:
+    error_action: continue
+    script: |
+      Get-Process -Name choco, chocolatey, OllamaSetup -ErrorAction SilentlyContinue |
+        Stop-Process -Force -ErrorAction SilentlyContinue
+      $lib = 'C:\ProgramData\chocolatey\lib\ollama'
+      if (Test-Path -LiteralPath $lib) {
+        Remove-Item -LiteralPath $lib -Recurse -Force -ErrorAction SilentlyContinue
+        $Ansible.Changed = $true
+      } else {
+        $Ansible.Changed = $false
+      }
+
+- name: Download pinned OllamaSetup.exe artifact
+  ansible.builtin.include_role:
+    name: windows_artifact_download
+  vars:
+    windows_artifact:
+      id: "ollama-windows-{{ windows_ollama_runtime_package_version }}"
+      url: "{{ windows_ollama_runtime_setup_url }}"
+      destination: "{{ windows_ollama_runtime_setup_exe_path }}"
+      checksum:
+        algorithm: sha256
+        value: "{{ windows_ollama_runtime_setup_sha256 }}"
+      resume: true
+      force: false
+      async:
+        enabled: true
+        timeout_seconds: "{{ windows_ollama_runtime_setup_async_seconds }}"
+        poll_interval_seconds: "{{ windows_ollama_runtime_setup_async_poll }}"
+
+- name: Install Ollama from published OllamaSetup.exe
+  ansible.windows.win_package:
+    path: "{{ windows_ollama_runtime_setup_exe_path }}"
+    arguments: >-
+      {{ windows_ollama_runtime_setup_silent_args }}
+    state: present
+    creates_path: "{{ windows_ollama_runtime_user_install_root }}\\ollama.exe"
+    expected_return_code:
+      - 0
+  async: "{{ windows_ollama_runtime_setup_async_seconds }}"
+  poll: "{{ windows_ollama_runtime_setup_async_poll }}"
+  vars:
+    ansible_ssh_args: >-
+      -o ControlMaster=no -o ServerAliveInterval=30 -o ServerAliveCountMax=120
+  register: windows_ollama_runtime_setup_install

@@ -1,0 +1,41 @@
+---
+- name: Inspect final artifact
+  ansible.windows.win_stat:
+    path: "{{ windows_artifact_final_path }}"
+    get_checksum: true
+    checksum_algorithm: "{{ windows_artifact_checksum_algorithm }}"
+  register: windows_artifact_final_stat
+
+- name: Inspect partial artifact
+  ansible.windows.win_stat:
+    path: "{{ windows_artifact_partial_path }}"
+    get_checksum: true
+    checksum_algorithm: "{{ windows_artifact_checksum_algorithm }}"
+  register: windows_artifact_partial_stat
+
+- name: Determine whether artifact download is required
+  ansible.builtin.set_fact:
+    windows_artifact_download_required: >-
+      {{
+        (windows_artifact_force | bool)
+        or (not (windows_artifact_final_stat.stat.exists | default(false)))
+        or (
+          (windows_artifact_final_stat.stat.checksum | default('') | lower)
+          != windows_artifact_checksum_value
+        )
+      }}
+    windows_artifact_partial_ready: >-
+      {{
+        (windows_artifact_partial_stat.stat.exists | default(false))
+        and (
+          (windows_artifact_partial_stat.stat.checksum | default('') | lower)
+          == windows_artifact_checksum_value
+        )
+      }}
+  changed_when: false
+
+- name: Skip curl when verified partial already matches checksum
+  ansible.builtin.set_fact:
+    windows_artifact_skip_curl: "{{ windows_artifact_partial_ready | bool }}"
+  changed_when: false
+  when: windows_artifact_download_required | bool

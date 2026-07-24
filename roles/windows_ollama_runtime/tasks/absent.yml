@@ -25,11 +25,18 @@
     - OLLAMA_MODELS
     - OLLAMA_HOST
 
-- name: Uninstall Ollama Chocolatey package
-  chocolatey.chocolatey.win_chocolatey:
-    name: "{{ windows_ollama_runtime_package_name }}"
-    state: absent
-    timeout: 2700
+- name: Stat Inno Setup uninstaller for per-user Ollama install
+  ansible.windows.win_stat:
+    path: "{{ windows_ollama_runtime_user_install_root }}\\unins000.exe"
+  register: windows_ollama_runtime_unins_stat
+
+- name: Uninstall Ollama via Inno Setup uninstaller when present
+  ansible.windows.win_command:
+    argv:
+      - "{{ windows_ollama_runtime_user_install_root }}\\unins000.exe"
+      - /VERYSILENT
+      - /NORESTART
+  when: windows_ollama_runtime_unins_stat.stat.exists | default(false)
 
 - name: Remove managed Ollama contract root
   ansible.windows.win_file:

@@ -3,47 +3,67 @@ argument_specs:
   main:
     short_description: Managed host-local Ollama runtime on Windows GPU hosts
     description: >-
-      Installs Ollama on Windows via chocolatey.chocolatey.win_chocolatey
-      (community package ollama), manages the machine-scoped runtime contract,
-      and enforces a repo-declared set of locally hosted models for reuse
-      behind the central LiteLLM gateway.
+      Installs Ollama on Windows via pinned OllamaSetup.exe
+      (windows_artifact_download + win_package), manages the machine-scoped
+      runtime contract, and enforces a repo-declared set of locally hosted
+      models for reuse behind the central LiteLLM gateway.
     options:
       windows_ollama_runtime_state:
         type: str
         required: false
         description: Lifecycle control for the Windows Ollama runtime capability.
-      windows_ollama_runtime_package_name:
-        type: str
-        required: false
-        description: Chocolatey package name used to install Ollama.
       windows_ollama_runtime_package_version:
         type: str
         required: false
-        description: Pinned Chocolatey package version for Ollama (no leading v).
-      windows_ollama_runtime_package_state:
+        description: Pinned upstream Ollama version (no leading v).
+      windows_ollama_runtime_version:
         type: str
         required: false
-        description: Chocolatey package state passed to win_chocolatey.
-      windows_ollama_runtime_package_pinned:
-        type: bool
+        description: Upstream release tag derived from package_version.
+      windows_ollama_runtime_setup_url:
+        type: str
         required: false
-        description: Pin the Chocolatey package after install to prevent drift.
+        description: HTTPS URL for the pinned OllamaSetup.exe asset.
+      windows_ollama_runtime_setup_sha256:
+        type: str
+        required: false
+        description: Expected sha256 for the pinned OllamaSetup.exe asset.
+      windows_ollama_runtime_setup_expected_bytes:
+        type: int
+        required: false
+        description: Expected byte size for operator progress checks.
+      windows_ollama_runtime_download_root:
+        type: str
+        required: false
+        description: Local artifact cache root for OllamaSetup.exe.
+      windows_ollama_runtime_setup_exe_path:
+        type: str
+        required: false
+        description: Published path for the downloaded OllamaSetup.exe.
+      windows_ollama_runtime_setup_silent_args:
+        type: str
+        required: false
+        description: Inno Setup silent arguments for win_package.
+      windows_ollama_runtime_setup_async_seconds:
+        type: int
+        required: false
+        description: Async timeout for download and install steps.
+      windows_ollama_runtime_setup_async_poll:
+        type: int
+        required: false
+        description: Async poll interval seconds.
       windows_ollama_runtime_download_url:
         type: str
         required: false
         description: Legacy standalone zip URL retained for migration reference only.
-      windows_ollama_runtime_version:
-        type: str
-        required: false
-        description: Legacy upstream release tag derived from the Chocolatey package version.
       windows_ollama_runtime_install_root:
         type: str
         required: false
-        description: Machine-wide install root for the Ollama runtime binaries.
-      windows_ollama_runtime_download_root:
+        description: Machine-wide install root candidate for Ollama binaries.
+      windows_ollama_runtime_user_install_root:
         type: str
         required: false
-        description: Local cache root for the downloaded Ollama runtime archive.
+        description: Per-user LocalAppData Programs\\Ollama install root.
       windows_ollama_runtime_archive_path:
         type: str
         required: false

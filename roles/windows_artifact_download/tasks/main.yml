@@ -1,0 +1,24 @@
+---
+- name: Validate artifact input
+  ansible.builtin.include_tasks: validate.yml
+
+- name: Ensure artifact directory exists
+  ansible.windows.win_file:
+    path: "{{ windows_artifact_directory }}"
+    state: directory
+  when: windows_artifact_create_destination_directory | bool
+
+- name: Inspect artifact state
+  ansible.builtin.include_tasks: inspect.yml
+
+- name: Download artifact
+  ansible.builtin.include_tasks: download.yml
+  when: windows_artifact_download_required | bool
+
+- name: Verify artifact
+  ansible.builtin.include_tasks: verify.yml
+  when: windows_artifact_download_required | bool
+
+- name: Publish artifact
+  ansible.builtin.include_tasks: publish.yml
+  when: windows_artifact_download_required | bool

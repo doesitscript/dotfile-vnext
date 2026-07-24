@@ -1,0 +1,12 @@
+---
+- name: Download artifact asynchronously
+  ansible.builtin.include_tasks: download_async.yml
+  when:
+    - not (windows_artifact_skip_curl | default(false) | bool)
+    - windows_artifact_async_enabled | bool
+
+- name: Download artifact synchronously
+  ansible.builtin.include_tasks: download_sync.yml
+  when:
+    - not (windows_artifact_skip_curl | default(false) | bool)
+    - not (windows_artifact_async_enabled | bool)

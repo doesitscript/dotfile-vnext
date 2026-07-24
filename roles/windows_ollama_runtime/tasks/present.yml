@@ -7,10 +7,11 @@
     - "{{ windows_ollama_runtime_contract_root }}"
     - "{{ windows_ollama_runtime_models_path }}"
 
-- name: Stat repo-managed NVIDIA driver contract
+- name: Stat repo-managed NVIDIA driver contract when required
   ansible.windows.win_stat:
     path: "{{ windows_ollama_runtime_driver_contract_path }}"
   register: windows_ollama_runtime_driver_contract_stat
+  when: windows_ollama_runtime_require_driver_contract | bool
 
 - name: Assert repo-managed NVIDIA driver contract exists when required
   ansible.builtin.assert:
@@ -29,13 +30,17 @@
       Get-Content -LiteralPath '{{ windows_ollama_runtime_driver_contract_path }}' -Raw
   register: windows_ollama_runtime_driver_contract_raw
   changed_when: false
-  when: windows_ollama_runtime_driver_contract_stat.stat.exists | bool
+  when:
+    - windows_ollama_runtime_require_driver_contract | bool
+    - windows_ollama_runtime_driver_contract_stat.stat.exists | default(false) | bool
 
 - name: Set parsed NVIDIA driver contract
   ansible.builtin.set_fact:
     windows_ollama_runtime_driver_contract: "{{ windows_ollama_runtime_driver_contract_raw.output[0] | from_json }}"
   changed_when: false
-  when: windows_ollama_runtime_driver_contract_stat.stat.exists | bool
+  when:
+    - windows_ollama_runtime_require_driver_contract | bool
+    - windows_ollama_runtime_driver_contract_stat.stat.exists | default(false) | bool
 
 - name: Stop scheduled Ollama runtime before package refresh
   ansible.windows.win_powershell:
@@ -48,14 +53,27 @@
       Get-Process ollama -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
   changed_when: false
 
-- name: Install Ollama via Chocolatey community package
-  chocolatey.chocolatey.win_chocolatey:
-    name: "{{ windows_ollama_runtime_package_name }}"
-    version: "{{ windows_ollama_runtime_package_version }}"
-    state: "{{ windows_ollama_runtime_package_state }}"
-    pinned: "{{ windows_ollama_runtime_package_pinned }}"
-    timeout: 2700
-  register: windows_ollama_runtime_choco_install
+- name: Discover existing Ollama executable candidates before package install
+  ansible.windows.win_stat:
+    path: "{{ item }}"
+  loop: "{{ windows_ollama_runtime_exe_candidates }}"
+  register: windows_ollama_runtime_exe_stats_pre
+
+- name: Resolve existing Ollama executable before package install
+  ansible.builtin.set_fact:
+    windows_ollama_runtime_exe_path_pre: >-
+      {{
+        windows_ollama_runtime_exe_stats_pre.results
+        | selectattr('stat.exists')
+        | map(attribute='item')
+        | list
+        | first
+        | default('')
+      }}
+
+- name: Install Ollama via windows_artifact_download + win_package
+  ansible.builtin.include_tasks: install_setup_exe.yml
+  when: (windows_ollama_runtime_exe_path_pre | length) == 0
 
 - name: Discover Ollama executable candidates
   ansible.windows.win_stat:
@@ -84,13 +102,12 @@
       }}
   when: windows_ollama_runtime_exe_path | length > 0
 
-- name: Assert Ollama executable was found after Chocolatey install
+- name: Assert Ollama executable was found after install path
   ansible.builtin.assert:
     that:
       - windows_ollama_runtime_exe_path | length > 0
     fail_msg: >-
-      Chocolatey package {{ windows_ollama_runtime_package_name }} completed but
-      ollama.exe was not found in
+      OllamaSetup.exe install completed but ollama.exe was not found in
       {{ windows_ollama_runtime_exe_candidates | join(', ') }}.
 
 - name: Ensure OLLAMA_MODELS machine environment variable is managed
@@ -206,8 +223,10 @@
         {
           'runtime': 'ollama',
           'runtime_slug': 'ollama-secondary-hvh-01',
-          'package_name': windows_ollama_runtime_package_name,
+          'install_method': 'windows_artifact_download+win_package',
           'package_version': windows_ollama_runtime_package_version,
+          'setup_url': windows_ollama_runtime_setup_url,
+          'setup_sha256': windows_ollama_runtime_setup_sha256,
           'install_root': windows_ollama_runtime_install_root,
           'exe_path': windows_ollama_runtime_exe_path,
           'models_path': windows_ollama_runtime_models_path,

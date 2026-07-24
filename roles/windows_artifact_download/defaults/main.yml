@@ -1,0 +1,37 @@
+---
+# windows_artifact_download — reusable large-file download for Windows hosts.
+#
+# Callers (Ollama installer, NVIDIA packages, ZIPs, MSIs, firmware, etc.) supply
+# only the artifact contract. This role owns resume, retries, stall detection,
+# checksum verification, async polling, and atomic publish.
+#
+# Do not use this role for application-native flows (e.g. `ollama pull`); those
+# stay with the owning product role.
+
+windows_artifact:
+  id: ""
+  url: ""
+  destination: ""
+
+  checksum:
+    algorithm: sha256
+    value: ""
+
+  resume: true
+  force: false
+
+  retries: 20
+  retry_delay_seconds: 10
+  connect_timeout_seconds: 30
+
+  stalled_transfer:
+    minimum_bytes_per_second: 1024
+    timeout_seconds: 120
+
+  async:
+    enabled: true
+    timeout_seconds: 28800
+    poll_interval_seconds: 30
+
+  preserve_partial_on_failure: true
+  create_destination_directory: true

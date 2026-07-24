@@ -1,0 +1,75 @@
+---
+argument_specs:
+  main:
+    short_description: Resume-safe Windows artifact download with checksum publish
+    description: >-
+      Downloads a pinned HTTP(S) artifact to a .partial path with curl.exe
+      resume/retries/stall limits, optionally under Ansible async, verifies
+      checksum, then atomically publishes to destination.
+    options:
+      windows_artifact:
+        type: dict
+        required: true
+        description: Artifact contract supplied by the calling product role.
+        options:
+          id:
+            type: str
+            required: true
+            description: Stable artifact identifier for logs and receipts.
+          url:
+            type: str
+            required: true
+            description: HTTPS download URL.
+          destination:
+            type: str
+            required: true
+            description: Final absolute Windows path for the published artifact.
+          checksum:
+            type: dict
+            required: true
+            description: Expected checksum for the published artifact.
+            options:
+              algorithm:
+                type: str
+                required: false
+                description: Hash algorithm (md5, sha1, sha256, sha384, sha512).
+              value:
+                type: str
+                required: true
+                description: Expected checksum hex digest.
+          resume:
+            type: bool
+            required: false
+            description: Pass curl --continue-at - when true.
+          force:
+            type: bool
+            required: false
+            description: Redownload even when destination checksum already matches.
+          retries:
+            type: int
+            required: false
+            description: curl --retry count.
+          retry_delay_seconds:
+            type: int
+            required: false
+            description: curl --retry-delay seconds.
+          connect_timeout_seconds:
+            type: int
+            required: false
+            description: curl --connect-timeout seconds.
+          stalled_transfer:
+            type: dict
+            required: false
+            description: curl speed-limit / speed-time stall detection.
+          async:
+            type: dict
+            required: false
+            description: Ansible async window and poll interval for long transfers.
+          preserve_partial_on_failure:
+            type: bool
+            required: false
+            description: Keep .partial after checksum failure for operator inspection.
+          create_destination_directory:
+            type: bool
+            required: false
+            description: Create the destination parent directory when missing.

@@ -1,0 +1,20 @@
+---
+- name: Publish verified artifact
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $source = {{ windows_artifact_partial_path | ansible.builtin.to_json }}
+      $destination = {{ windows_artifact_final_path | ansible.builtin.to_json }}
+      if (-not (Test-Path -LiteralPath $source)) {
+        throw "Partial artifact missing at $source"
+      }
+      $destDir = Split-Path -Parent $destination
+      if (-not (Test-Path -LiteralPath $destDir)) {
+        New-Item -ItemType Directory -Force -Path $destDir | Out-Null
+      }
+      Move-Item -LiteralPath $source -Destination $destination -Force
+      $Ansible.Changed = $true
+      $Ansible.Result = @{
+        id = {{ windows_artifact_id | ansible.builtin.to_json }}
+        destination = $destination
+      }

@@ -1,0 +1,50 @@
+---
+- name: Start async Windows artifact download
+  ansible.windows.win_command:
+    argv:
+      - curl.exe
+      - --fail
+      - --location
+      - --continue-at
+      - "{{ '-' if (windows_artifact_resume | bool) else '0' }}"
+      - --retry
+      - "{{ windows_artifact_retries | string }}"
+      - --retry-delay
+      - "{{ windows_artifact_retry_delay_seconds | string }}"
+      - --retry-all-errors
+      - --connect-timeout
+      - "{{ windows_artifact_connect_timeout_seconds | string }}"
+      - --speed-limit
+      - "{{ windows_artifact_stalled_min_bps | string }}"
+      - --speed-time
+      - "{{ windows_artifact_stalled_timeout_seconds | string }}"
+      - --output
+      - "{{ windows_artifact_partial_path }}"
+      - --stderr
+      - "{{ windows_artifact_partial_path }}.curl.log"
+      - --verbose
+      - "{{ windows_artifact_url }}"
+  async: "{{ windows_artifact_async_timeout_seconds }}"
+  poll: 0
+  register: windows_artifact_download_job
+  vars:
+    ansible_ssh_args: >-
+      -o ControlMaster=no -o ServerAliveInterval=30 -o ServerAliveCountMax=120
+
+- name: Wait for async Windows artifact download
+  ansible.builtin.async_status:
+    jid: "{{ windows_artifact_download_job.ansible_job_id }}"
+  register: windows_artifact_download_async
+  until: windows_artifact_download_async is finished
+  retries: >-
+    {{
+      (
+        (windows_artifact_async_timeout_seconds | int)
+        /
+        (windows_artifact_async_poll_interval_seconds | int)
+      ) | int
+    }}
+  delay: "{{ windows_artifact_async_poll_interval_seconds }}"
+  vars:
+    ansible_ssh_args: >-
+      -o ControlMaster=no -o ServerAliveInterval=30 -o ServerAliveCountMax=120
