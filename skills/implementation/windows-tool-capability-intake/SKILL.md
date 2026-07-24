@@ -14,6 +14,7 @@ document_type: skill
 status: reviewed
 authority: internal
 source_type: internal
+skill_scope: project
 last_reviewed_at: "2026-07-23"
 applies_to:
   - ansible
@@ -57,13 +58,22 @@ pattern (`roles/huggingface_hub`).
 
 1. Run `ansible-knowledge-gate` / inspect repo Windows roles before proposing structure.
 2. Decide extend vs new role vs playbook composition with tags.
-3. Choose install family:
+3. Choose install family (module matrix — no invented scripts first):
    - `chocolatey.chocolatey.win_chocolatey` when a stable community package exists
-   - `py -m pip` via `ansible.windows.win_command` when the tool is a PyPI package (see `roles/huggingface_hub`)
-   - upstream release binary only when package-manager paths are wrong
+     and is healthy on the target
+   - `ansible.windows.win_get_url` + `ansible.windows.win_package` for pinned
+     upstream Setup.exe / MSI (checksum, long timeout, silent args, `creates_path`)
+   - `py -m pip` via `ansible.windows.win_command` when the tool is a PyPI
+     package (see `roles/huggingface_hub`)
+   - custom shell/PowerShell download+install only after the matrix shows no
+     module fit, and only inside the owning role (never `_tmp_` playbooks)
 4. Require `*_state: present|absent`, `meta/argument_specs.yml`, README Apply/Verify/Undo.
 5. Wire playbook + host_vars gate to `present` when commissioned.
 6. Hand off to `tool-role-docs-pack` then `single-host-ansible-rollout`.
+
+## Entry
+
+For new install/mutate requests, enter via `homelab-ansible-first-entry` first.
 
 ## Handoffs
 

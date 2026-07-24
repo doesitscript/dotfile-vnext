@@ -10,6 +10,7 @@ skills:
     name: tool-capability-intake
     description: "Use when adding, replacing, or refactoring a repo-managed tool capability in dotfile-vnext, especially when the work must choose between extending an existing role, creating a new role, or changing install strategy. Use for install tool X, add CLI role, convert package-manager installs to a better lifecycle contract, or when an ad-hoc host install must become present|absent Ansible first. Do not use for rollout-only execution after the design is already settled; for Windows HVH tools prefer windows-tool-capability-intake; for HF weight trees prefer hf-model-weight-lifecycle."
     path: implementation/tool-capability-intake/SKILL.md
+    scope: project
     category: implementation
     purpose: Define the repo-owned capability shape before edits and rollout
     status: reviewed
@@ -49,6 +50,7 @@ skills:
     name: tool-playbook-placement-advisor
     description: "Use when a new or refactored tool capability needs a clear home in dotfile-vnext before implementation: deploy_development_nodes.yaml, deploy_k8s_cli_tools.yaml, another existing playbook, or a composed tag path. Use for should this tool live with k8s cli tools, where should this role be wired, or does this belong in a shared substrate role."
     path: implementation/tool-playbook-placement-advisor/SKILL.md
+    scope: project
     category: implementation
     purpose: Choose the owning playbook and role lane for a tool capability before implementation
     status: reviewed
@@ -79,6 +81,7 @@ skills:
     name: windows-tool-capability-intake
     description: "Use when adding or changing a Windows-host tool capability in dotfile-vnext (HVH-01/HVH-02), especially Chocolatey, py -m pip, WinRM/OpenSSH PowerShell surfaces, or present|absent role scaffolding before any host mutation. Use for install this on HOM-LAB-HVH-01, Windows pip package role, Chocolatey CLI role, or scaffold Windows tool lifecycle. Do not use for mac-dev tools (use macos-tool-install-decider-and-scaffold) or for HF weight trees (use hf-model-weight-lifecycle)."
     path: implementation/windows-tool-capability-intake/SKILL.md
+    scope: project
     category: implementation
     purpose: Shape Windows tool capabilities with present|absent before host mutation
     status: reviewed
@@ -120,6 +123,7 @@ skills:
     name: hf-model-weight-lifecycle
     description: "Use when downloading, removing, or commissioning Hugging Face model weights on the HVH-01 share in dotfile-vnext, and when those weights must be owned by Ansible present|absent rather than ad-hoc snapshot_download. Use for download this HF model to the share, remove DiffuCoder weights, model_catalog unc_path lifecycle, or commission weights before LiteLLM/Continue. Do not use for Hub client pip install alone (use windows-tool-capability-intake / huggingface_hub role) or for authoring HRL model-doc packs (use model-doc-pack-preflight + HRL)."
     path: implementation/hf-model-weight-lifecycle/SKILL.md
+    scope: project
     category: implementation
     purpose: Own HF weight trees with Ansible present|absent separate from Hub client and LiteLLM routes
     status: reviewed
@@ -163,6 +167,7 @@ skills:
     name: macos-tool-install-decider-and-scaffold
     description: "Use when a macOS developer tool should be added to dotfile-vnext and the install strategy needs to be chosen before implementation, plus role/playbook surfaces scaffolded in the repo pattern. Use for install this tool on mac-dev, choose brew vs release binary, or scaffold the role before rollout."
     path: implementation/macos-tool-install-decider-and-scaffold/SKILL.md
+    scope: project
     category: implementation
     purpose: Choose the right macOS install path early and scaffold repo-aligned surfaces
     status: reviewed
@@ -211,6 +216,7 @@ skills:
     name: macos-tool-role-default-flow
     description: "Use when a macOS CLI or developer tool should follow the repo's default end-to-end workflow on mac-dev: choose the install family, scaffold the role/playbook surfaces, package the docs, then preview/apply/verify with a single-host receipt. Use for the usual mac tool stack, default mac tool flow, or install this tool the standard way."
     path: implementation/macos-tool-role-default-flow/SKILL.md
+    scope: project
     category: implementation
     purpose: One entrypoint for the repo's default macOS tool install plus docs plus single-host receipt flow
     status: reviewed
@@ -257,6 +263,7 @@ skills:
     name: macos-cli-completion-pack
     description: "Use when a repo-managed macOS CLI should add, repair, or standardize Bash completion wiring across the shared shell substrate and the owning role. Use for Gonzo, Dstl8, Stern, K9s, Kubectl, or similar completion install paths, loader expectations, and verification hooks."
     path: implementation/macos-cli-completion-pack/SKILL.md
+    scope: project
     category: implementation
     purpose: Standardize managed Bash completion wiring for repo-owned macOS CLIs
     status: reviewed
@@ -290,6 +297,7 @@ skills:
     name: upstream-release-binary-installer
     description: "Use when a repo-managed tool should install from a pinned upstream release binary instead of Homebrew, pip, or another package manager, especially on macOS where formulae may trigger long source builds. Use for release asset URL, checksum pinning, arch map, extraction path, or check-mode-safe binary install design."
     path: implementation/upstream-release-binary-installer/SKILL.md
+    scope: project
     category: implementation
     purpose: Design pinned upstream binary install paths with Ansible-safe verification
     status: reviewed
@@ -320,6 +328,7 @@ skills:
     name: github-release-binary-intake
     description: "Use when a tool should install from a pinned GitHub release asset and the repo needs version, asset, checksum, and arch details captured before Ansible tasks are finalized. Use for latest release asset mapping, checksum file discovery, or darwin arm64 and amd64 binary intake."
     path: implementation/github-release-binary-intake/SKILL.md
+    scope: project
     category: implementation
     purpose: Capture GitHub release binary metadata as a pinned install contract
     status: reviewed
@@ -354,6 +363,7 @@ skills:
     name: project-skill-runtime-bridge
     description: "Use when dotfile-vnext project skills under skills/ should be made runtime-discoverable in .cursor/skills through managed symlinks, or when the managed runtime catalog entries need to be refreshed after a skill update. Use for link project skills, refresh runtime skill catalog, or replace stale copied runtime skill folders with managed symlinks."
     path: implementation/project-skill-runtime-bridge/SKILL.md
+    scope: project
     category: implementation
     purpose: Bridge source-controlled project skills into runtime discovery with managed symlinks
     status: reviewed
@@ -379,10 +389,41 @@ skills:
       enabled: true
       cursor_skill_name: project-skill-runtime-bridge
 
+  legacy-runtime-skill-migration:
+    name: legacy-runtime-skill-migration
+    description: "Use when an old .cursor/skills workflow should be migrated into dotfile-vnext's project skill library under skills/, then bridged back into runtime discovery. Use for move this legacy runtime skill into the project store, replace runtime-only authoring with project-owned skills, or de-emphasize a legacy .cursor operational skill after a replacement exists."
+    path: implementation/legacy-runtime-skill-migration/SKILL.md
+    scope: project
+    category: implementation
+    purpose: Migrate narrow legacy runtime-only skill authoring into the project skill library
+    status: reviewed
+    triggers:
+      - move this legacy runtime skill into the project store
+      - replace runtime only authoring with a project owned skill
+      - de-emphasize this old .cursor operational skill
+      - migrate this legacy runtime workflow into skills
+    do_not_use_when:
+      - the surface is still an active framework workflow with no replacement
+      - the request is only to audit current surfaces
+    handoff_from:
+      - project-capability-surface-audit
+    handoff_to:
+      - project-skill-runtime-bridge
+    complements:
+      - project-capability-surface-audit
+      - project-skill-runtime-bridge
+    references:
+      - implementation/legacy-runtime-skill-migration/references/sources-and-precedence.md
+      - implementation/legacy-runtime-skill-migration/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: legacy-runtime-skill-migration
+
   scoped-version-bump-commit-push:
     name: scoped-version-bump-commit-push
     description: "Use when dotfile-vnext needs a scoped release-style closeout: bump version surfaces, stage only the intended files, commit with a focused message, and push without sweeping unrelated dirty-worktree changes into the same commit. Use for bump the minor version and push this slice, commit just the skill/library change, or close out a scoped tooling workflow cleanly."
     path: implementation/scoped-version-bump-commit-push/SKILL.md
+    scope: project
     category: implementation
     purpose: Close out one scoped slice with a focused version bump, commit, and push
     status: reviewed
@@ -412,6 +453,7 @@ skills:
     name: tool-role-docs-pack
     description: "Use when a tool role needs the standard documentation pack after implementation shape is settled: README links, metadata, usage note, and integration guidance. Use for build the tool role docs pack, add upstream docs links, or package the managed usage note."
     path: documentation/tool-role-docs-pack/SKILL.md
+    scope: project
     category: documentation
     purpose: Package the standard role README and metadata docs surfaces for tools
     status: reviewed
@@ -453,6 +495,7 @@ skills:
     name: tool-usage-note-and-discoverability
     description: "Use when a tool role needs a durable docs pack: discoverability metadata, upstream links, managed usage notes, or integration context in README and Ansible role metadata. Use for meta/main.yml, meta/argument_specs.yml, README links, usage note templates, tool-role docs packs, or Stern plus Gonzo style integration guidance."
     path: documentation/tool-usage-note-and-discoverability/SKILL.md
+    scope: project
     category: documentation
     purpose: Keep tool capability metadata and operator guidance durable and searchable
     status: reviewed
@@ -485,6 +528,7 @@ skills:
     name: macos-ansible-install-validator
     description: "Use when a macOS tool install role needs pre-apply validation for check-mode safety, archive extraction assumptions, target paths, and post-install verification commands. Use for why did unarchive fail on macOS, validate tar behavior, or catch check-mode path issues before rollout."
     path: validation/macos-ansible-install-validator/SKILL.md
+    scope: project
     category: validation
     purpose: Catch macOS install-role issues before or during scoped rollout
     status: reviewed
@@ -515,6 +559,7 @@ skills:
     name: single-host-apply-and-receipt
     description: "Use when a tool role should be previewed, applied, verified, and summarized with a lightweight receipt for one host. This is the designated repo path for mac-dev apply receipts. Use for run single host apply and receipt, apply this only to mac-dev, or capture the rollout receipt after a fix."
     path: validation/single-host-apply-and-receipt/SKILL.md
+    scope: project
     category: validation
     purpose: Execute a scoped one-host apply flow with a durable lightweight receipt
     status: reviewed
@@ -561,6 +606,7 @@ skills:
     name: ansible-cli-surface-auditor
     description: "Use when dotfile-vnext needs a reusable inventory of repo-managed CLI tools, their owning Ansible roles, completion paths, verification commands, and playbook surfaces on mac-dev. Use for Gonzo, Dstl8, kubectl, kubectx, k9s, stern, or future tool-role audits before rollout or troubleshooting."
     path: validation/ansible-cli-surface-auditor/SKILL.md
+    scope: project
     category: validation
     purpose: Build a reusable CLI ownership and verification inventory from Ansible surfaces
     status: draft
@@ -598,6 +644,7 @@ skills:
     name: macos-cli-completion-converger
     description: "Use when Bash completion for repo-managed macOS CLI tools on mac-dev is missing, partial, or suspicious, especially for Gonzo, Dstl8, kubectl, kubectx, kubens, k9s, stern, and future tools that join the same shared loader path. Use to diagnose file-vs-runtime-vs-loader failures before changing shell config."
     path: validation/macos-cli-completion-converger/SKILL.md
+    scope: project
     category: validation
     purpose: Diagnose and classify repo-managed macOS CLI completion failures before rollout changes
     status: draft
@@ -636,6 +683,7 @@ skills:
     name: single-host-ansible-rollout
     description: "Use when a repo-managed capability needs preview-first Ansible execution against one host, with target scope proof, check-mode output, live apply, direct post-apply verification, and failure evidence. This is also the project's single-host apply-and-receipt workflow. Use for mac-dev rollout, list-hosts preview, check diff, rerun after a fix, or capture the exact failure before changing strategy."
     path: validation/single-host-ansible-rollout/SKILL.md
+    scope: project
     category: validation
     purpose: Execute preview, apply, verify, and failure triage for one host
     status: reviewed
@@ -670,10 +718,49 @@ skills:
       enabled: true
       cursor_skill_name: single-host-ansible-rollout
 
+  deploy-dev-workstation-ollama-runtime:
+    name: deploy-dev-workstation-ollama-runtime
+    description: "Use when applying the AMD desktop Ollama runtime playbook (deploy_dev_workstation_ollama_runtime.yaml) on dev-workstation-win, or when replacing ad-hoc ansible-playbook | tee /tmp/... with a project logs/runs capture. Prefer this over inventing /tmp log paths for desktop Ollama apply."
+    path: validation/deploy-dev-workstation-ollama-runtime/SKILL.md
+    scope: project
+    category: validation
+    purpose: Apply desktop Ollama playbook with durable logs/runs capture
+    status: reviewed
+    triggers:
+      - apply desktop ollama
+      - deploy ollama on dev-workstation-win
+      - run deploy_dev_workstation_ollama_runtime
+      - tee ollama apply into project logs
+      - replace /tmp desktop ollama log with logs/runs
+    do_not_use_when:
+      - HVH-01 ollama is the only target
+      - LiteLLM gateway apply is the only remaining work
+      - install method design is still undecided
+    handoff_from:
+      - homelab-ansible-first-entry
+      - windows-tool-capability-intake
+      - single-host-ansible-rollout
+    handoff_to:
+      - single-host-ansible-rollout
+      - homelab-ssh-alias-connect
+    complements:
+      - single-host-ansible-rollout
+      - single-host-apply-and-receipt
+      - homelab-ssh-alias-connect
+    references:
+      - validation/deploy-dev-workstation-ollama-runtime/references/sources-and-precedence.md
+      - validation/deploy-dev-workstation-ollama-runtime/references/related-artifacts.md
+    scripts:
+      - validation/deploy-dev-workstation-ollama-runtime/scripts/apply_with_project_log.py
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: deploy-dev-workstation-ollama-runtime
+
   macos-shell-truth-and-alignment:
     name: macos-shell-truth-and-alignment
     description: "Use when macOS shell behavior is inconsistent across login shell, interactive shell, Homebrew Bash, shared completion runtime, or repo-managed shell settings. Use for bash 5.x alignment, /etc/shells drift, shell_config login shell checks, or completion-runtime mismatch before deeper troubleshooting."
     path: validation/macos-shell-truth-and-alignment/SKILL.md
+    scope: project
     category: validation
     purpose: Collect shell truth, classify macOS shell drift, and route to the repo-owned alignment path
     status: reviewed
@@ -703,10 +790,138 @@ skills:
       enabled: true
       cursor_skill_name: macos-shell-truth-and-alignment
 
+  project-capability-surface-audit:
+    name: project-capability-surface-audit
+    description: "Use when dotfile-vnext should be audited for overlap or drift across AGENTS.md, framework rules, project skills, runtime-bridged skills, and legacy .cursor/skills surfaces. Use for capability surface audit, what should be a rule vs project skill vs global skill, or evaluate duplicate operational patterns before migration."
+    path: validation/project-capability-surface-audit/SKILL.md
+    scope: project
+    category: validation
+    purpose: Inventory and classify the repo's capability surfaces before governance or migration changes
+    status: reviewed
+    triggers:
+      - capability surface audit for this repo
+      - what should be a rule vs project skill vs global skill
+      - evaluate duplicate operational patterns before migration
+      - audit the current skill and framework surfaces
+    do_not_use_when:
+      - only one concrete tool role is in scope
+      - the ownership decision is already settled and only migration remains
+    handoff_from: []
+    handoff_to:
+      - legacy-runtime-skill-migration
+      - project-skill-runtime-bridge
+    complements:
+      - legacy-runtime-skill-migration
+      - project-skill-runtime-bridge
+    references:
+      - validation/project-capability-surface-audit/references/sources-and-precedence.md
+      - validation/project-capability-surface-audit/references/related-artifacts.md
+    scripts:
+      - validation/project-capability-surface-audit/scripts/inventory_capability_surfaces.py
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: project-capability-surface-audit
+
+  framework-skill-routing-auditor:
+    name: framework-skill-routing-auditor
+    description: "Use when dotfile-vnext needs a repeatable audit of AGENTS.md, framework docs, and framework rules to find repeated operational procedure that should route to project skills instead of living as bulky prose. Use for framework reduction eval, what should become skill routing, or audit framework docs before another reduction pass."
+    path: validation/framework-skill-routing-auditor/SKILL.md
+    scope: project
+    category: validation
+    purpose: Audit framework surfaces for repeated procedure that should route to existing project skills
+    status: reviewed
+    triggers:
+      - run another framework reduction eval
+      - what should become skill routing in the framework
+      - audit framework docs before another reduction pass
+      - check whether this framework prose should route to a project skill
+    do_not_use_when:
+      - the question is broader capability-surface ownership or runtime migration
+      - only one specific skill placement decision is in scope
+    handoff_from:
+      - project-capability-surface-audit
+    handoff_to: []
+    complements:
+      - project-capability-surface-audit
+    references:
+      - validation/framework-skill-routing-auditor/references/sources-and-precedence.md
+      - validation/framework-skill-routing-auditor/references/related-artifacts.md
+      - validation/framework-skill-routing-auditor/references/procedure-families.md
+    scripts:
+      - validation/framework-skill-routing-auditor/scripts/audit_framework_skill_routing.py
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: framework-skill-routing-auditor
+
+  framework-bulk-reduction-patcher:
+    name: framework-bulk-reduction-patcher
+    description: "Use when dotfile-vnext should apply a framework-reduction pass after the routing audit: keep governance in AGENTS.md, framework docs, and framework rules, but trim repeated operator procedure into short routing anchors that point at project skills. Use for apply the framework reduction, patch the bulky framework prose, or do the routing-anchor pass."
+    path: implementation/framework-bulk-reduction-patcher/SKILL.md
+    scope: project
+    category: implementation
+    purpose: Apply framework reductions by replacing repeated operator procedure with project-skill routing anchors
+    status: reviewed
+    triggers:
+      - apply the framework reduction
+      - patch the bulky framework prose
+      - do the routing anchor pass
+      - reduce framework bulk using the routing audit
+    do_not_use_when:
+      - the repo still needs the routing audit first
+      - the question is whether a workflow should become a skill at all
+    handoff_from:
+      - framework-skill-routing-auditor
+    handoff_to:
+      - framework-change-receipt
+    complements:
+      - framework-skill-routing-auditor
+      - framework-change-receipt
+    references:
+      - implementation/framework-bulk-reduction-patcher/references/sources-and-precedence.md
+      - implementation/framework-bulk-reduction-patcher/references/related-artifacts.md
+      - implementation/framework-bulk-reduction-patcher/references/patterns.md
+    scripts:
+      - implementation/framework-bulk-reduction-patcher/scripts/summarize_framework_reduction_targets.py
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: framework-bulk-reduction-patcher
+
+  framework-change-receipt:
+    name: framework-change-receipt
+    description: "Use when framework docs, AGENTS.md, or framework rules were edited and dotfile-vnext needs a lightweight receipt that checks the changed surfaces still point at the right skills and still look governance-safe. Use for framework change receipt, verify the framework reduction patch, or summarize routing-anchor changes."
+    path: validation/framework-change-receipt/SKILL.md
+    scope: project
+    category: validation
+    purpose: Verify changed framework surfaces still carry governance signals and point at the expected project skills
+    status: reviewed
+    triggers:
+      - framework change receipt
+      - verify the framework reduction patch
+      - summarize routing anchor changes
+      - check the changed framework files after the reduction
+    do_not_use_when:
+      - there were no framework-file edits
+      - the request is still only about broad capability ownership
+    handoff_from:
+      - framework-bulk-reduction-patcher
+    handoff_to: []
+    complements:
+      - framework-skill-routing-auditor
+      - framework-bulk-reduction-patcher
+    references:
+      - validation/framework-change-receipt/references/sources-and-precedence.md
+      - validation/framework-change-receipt/references/related-artifacts.md
+    scripts:
+      - validation/framework-change-receipt/scripts/build_framework_change_receipt.py
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: framework-change-receipt
+
   interactive-shell-completion-proof:
     name: interactive-shell-completion-proof
     description: "Use when shell completion or other interactive shell behavior must be proven in a real TTY instead of inferred from installed files, completion functions, or synthetic calls. Use for stern tab-completion proof, gonzo completion proof, bash completion troubleshooting, or to confirm helper errors like _get_comp_words_by_ref are truly gone in the interactive shell the user actually runs."
     path: validation/interactive-shell-completion-proof/SKILL.md
+    scope: project
     category: validation
     purpose: Prove interactive shell completion with a real PTY transcript before changing config
     status: reviewed
@@ -748,6 +963,7 @@ skills:
     name: context7-intake-or-emulate
     description: "Use when documentation intake for homelab-reference-library should prefer Context7 when a valid library ID exists, but still land a durable best-effort entry when Context7 cannot resolve the library. Use for source-intake notes, fallback labeling, or honest repo-vs-Context7 routing."
     path: documentation/context7-intake-or-emulate/SKILL.md
+    scope: project
     category: documentation
     purpose: Produce durable Context7-first intake notes with an explicit emulated fallback path
     status: draft
@@ -777,6 +993,7 @@ skills:
     name: litellm-cursor-traffic-analyzer
     description: "Use when Cursor Agent traffic through the homelab LiteLLM gateway needs diagnosis or measurement — context overflow, mid-stream Internal Server Error, lost chat context after trim, or questions about what Cursor sends vs what LiteLLM can report. Use for Ornith tool-tax analysis, trim_messages hook evidence, or routing to capture/tune sub-workflows. Do not use for DNS reachability of litellm.hom.lab alone or for generic LiteLLM vendor-doc collection."
     path: validation/litellm-cursor-traffic-analyzer/SKILL.md
+    scope: project
     category: validation
     purpose: Route Cursor-to-LiteLLM traffic failures to the right evidence workflow
     status: reviewed
@@ -808,6 +1025,7 @@ skills:
     name: capture-litellm-tools-payload
     description: "Use when LiteLLM pre-call tools[] schemas must be measured or dumped for any OpenAI-compatible client (Cursor, Cline, Codex, etc.) — tool token tax, per-tool desc vs params split, or collecting tools-array-complete.json from the gateway pod. Use after a tools-bearing request through a published LiteLLM alias. Do not use for message/rules-only context analysis without a tools dump, or for changing trim defaults."
     path: validation/capture-litellm-tools-payload/SKILL.md
+    scope: project
     category: validation
     purpose: Dump and measure client tools[] as seen by the LiteLLM pre-call hook
     status: reviewed
@@ -844,6 +1062,7 @@ skills:
     name: analyze-litellm-observable-surfaces
     description: "Use when the question is what LiteLLM can report or observe from Cursor traffic on this homelab gateway — pre-call hooks, kubectl logs, pod dumps, Langfuse, models/health endpoints, or Postgres spend metadata. Use to inventory evidence surfaces before deeper capture or tuning. Do not use to dump tools[] (use capture-litellm-tools-payload) or to change trim defaults (use tune-litellm-context-safety-net)."
     path: validation/analyze-litellm-observable-surfaces/SKILL.md
+    scope: project
     category: validation
     purpose: Inventory LiteLLM reporting surfaces for Cursor traffic on this lab
     status: reviewed
@@ -873,6 +1092,7 @@ skills:
     name: tune-litellm-context-safety-net
     description: "Use when changing the LiteLLM pre-call trim_messages safety net or context-window fallbacks for Cursor on the local 32k vLLM path — max input budget, safety tokens, min completion, min messages, OpenAI vault key fallbacks, or redeploying the callback ConfigMap. Do not use for tools[] capture-only work or for DNS/service reachability."
     path: implementation/tune-litellm-context-safety-net/SKILL.md
+    scope: project
     category: implementation
     purpose: Change and redeploy LiteLLM trim/fallback drivers with verify evidence
     status: reviewed
@@ -906,6 +1126,7 @@ skills:
     name: hydrate-k3s-mac-kubeconfig-direct-api
     description: "Use when mac-dev kubectl/k9s/stern/gonzo access to homelab K3s should use direct guest API URLs (no ssh -L tunnel), with separate per-cluster kubeconfig files and a bash KUBECONFIG export. Use for connection_mode direct, hyperv_guest_route_mac, swap contexts between k3s-01 and k3s-02. Do not use when SSH local-forward tunnels are required."
     path: validation/hydrate-k3s-mac-kubeconfig-direct-api/SKILL.md
+    scope: project
     category: validation
     purpose: Hydrate Mac kubeconfigs for direct guest API access without tunnels
     status: reviewed
@@ -936,6 +1157,7 @@ skills:
     name: hydrate-k3s-mac-kubeconfig-ssh-tunnel
     description: "Use when mac-dev kubectl/k9s/stern/gonzo access to homelab K3s should use SSH local-forward tunnels (ssh -L) to the API, with separate per-cluster kubeconfig files and a bash KUBECONFIG export. Use when guest :6443 is not directly reachable from the Mac. Do not use when connection_mode direct already works."
     path: validation/hydrate-k3s-mac-kubeconfig-ssh-tunnel/SKILL.md
+    scope: project
     category: validation
     purpose: Hydrate Mac kubeconfigs via temporary SSH local-forward tunnels
     status: reviewed
@@ -966,6 +1188,7 @@ skills:
     name: model-doc-pack-preflight
     description: "Use when dotfile-vnext is about to implement or change LiteLLM, vLLM, Ollama, or Continue wiring for a model and must consult the HRL model-doc-pack first, then sync inventory source_routing pointers. Use for model doc pack preflight, check HRL before model implement, or sync model_catalog source routing. Do not use to author the HRL pack itself (use global library-first-model-doc-pack) or for unrelated Ansible work."
     path: validation/model-doc-pack-preflight/SKILL.md
+    scope: project
     category: validation
     purpose: Gate model-backed implement work on HRL pack lookup and inventory source_routing sync
     status: draft

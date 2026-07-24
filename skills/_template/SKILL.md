@@ -14,6 +14,7 @@ document_type: skill
 status: draft
 authority: internal
 source_type: internal
+skill_scope: project
 last_reviewed_at: "2026-07-23"
 applies_to: []
 related: []
@@ -65,3 +66,4 @@ Do not use when:
 ## Progressive disclosure
 
 - Operator escalation: `skills/_shared/human-escalation.md`
+- Companion runtime metadata belongs in `agents/<provider>.yaml`; the current implemented provider target is `agents/openai.yaml`.

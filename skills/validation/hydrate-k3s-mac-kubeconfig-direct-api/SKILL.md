@@ -14,6 +14,7 @@ document_type: skill
 status: reviewed
 authority: internal
 source_type: internal
+skill_scope: project
 last_reviewed_at: "2026-07-23"
 applies_to:
   - k3s

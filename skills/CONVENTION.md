@@ -15,12 +15,14 @@ Pattern source: `/Users/joshc/develop/homelab-reference-library/skills`.
 3. Routable — the catalog should encode handoffs instead of duplicating them in prose everywhere.
 4. Honest — `status` and workflow limits must match reality.
 5. Safe — no secrets in skill files, and no repo-wrapper bypass for Python or Ansible work.
+6. Adaptable — runtime-specific companion metadata can evolve by provider without changing the core skill contract.
 
 ## Pack layout
 
 ```text
 skills/<category>/<skill-name>/
   SKILL.md
+  agents/                  # optional provider-specific companion metadata
   references/              # optional
   scripts/                 # optional
   assets/                  # optional
@@ -52,6 +54,7 @@ Required:
 - `status`
 - `authority`
 - `source_type`
+- `skill_scope`
 
 Recommended:
 
@@ -67,6 +70,39 @@ Recommended:
 - `related`
 - `tags`
 
+## Catalog contract
+
+`skills/catalog.yaml` uses:
+
+- `schema_version: 2`
+- top-level `description`
+- `skills.<skill-name>` entries with routing, scope, and handoff metadata
+
+Scope contract:
+
+- project skill frontmatter must declare `skill_scope: project`
+- project catalog entries must declare `scope: project`
+- the project schema lives at `skills/schemas/skills-catalog.v2.json`
+- validate with:
+  - `bin/codex-env python skills/scripts/validate_metadata.py`
+  - `bin/codex-env python skills/scripts/validate_skills_catalog.py`
+
+Each skill should declare:
+
+- `name`
+- `description`
+- `path`
+- `scope`
+- `category`
+- `purpose`
+- `status`
+- `triggers`
+- `do_not_use_when`
+- `handoff_from`
+- `handoff_to`
+- `complements`
+- `references`
+
 Catalog-only optional routing fields:
 
 - `aliases`
@@ -76,6 +112,37 @@ Catalog-only optional routing fields:
 - `recommended_sequence`
 - `companion_skills`
 - `part_of_flows`
+
+## Provider companion metadata
+
+The portable source of truth for skill behavior is still:
+
+1. `SKILL.md`
+2. `skills/catalog.yaml`
+
+Provider- or IDE-specific invocation metadata may live under:
+
+- `agents/<provider>.yaml`
+
+Current implemented provider target:
+
+- `agents/openai.yaml` for OpenAI/Codex-aware runtimes
+
+Contract:
+
+- draft skills may omit provider companion metadata
+- reviewed skills should include `agents/openai.yaml`
+- `agents/openai.yaml` is companion metadata, not the primary behavior contract
+- future provider files may be added alongside it without changing the core `SKILL.md` or catalog pattern
+
+For `agents/openai.yaml`, include:
+
+- `interface.display_name`
+- `interface.short_description`
+- `interface.default_prompt`
+
+`interface.default_prompt` should explicitly mention the skill name in `$skill-name`
+form so supported runtimes can invoke it directly.
 
 ## Body skeleton
 
