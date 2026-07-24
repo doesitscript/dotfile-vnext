@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: hvh01-nvidia-apply
     content: HVH-01 llm_compute_windows + Phi-4 Mini via deploy_hvh01_secondary_model_runtime
-    status: pending
+    status: completed
   - id: litellm-continue
     content: LiteLLM continue-edit/apply via DNS names; Continue split; verify end-to-end
     status: completed
@@ -23,6 +23,9 @@ todos:
   - id: lifecycle-present-absent
     content: Prove each capability owner exposes *_state present|absent; playbooks pass state through; undo path re-applies absent and removes route/catalog anchors
     status: pending
+  - id: desktop-setup-exe-apply
+    content: "Desktop install_method=setup_exe via role (not temp playbook); finish OllamaSetup + qwen3-coder:30b + Vulkan verify"
+    status: in_progress
 isProject: false
 ---
 
@@ -75,7 +78,28 @@ Both agree: do **not** build a Windows ROCm/amd-smi Ansible path for this box. D
 
 ### Desktop Ollama playbook reuse
 
-Thin playbook **`playbooks/deploy_dev_workstation_ollama_runtime.yaml`** (or target `windows_amd_gpu_hosts`) **reuses** [`roles/windows_ollama_runtime`](roles/windows_ollama_runtime/) — same as HVH-01 (Chocolatey Ollama, bind, firewall, boot task, model pull). It does **not** invent parallel install logic. It does **not** call `llm_compute_windows`. LiteLLM / hosts / Continue stay separate playbooks (and the orchestrator below).
+Thin playbook **`playbooks/deploy_dev_workstation_ollama_runtime.yaml`** (hosts: `windows_amd_gpu_hosts`) **reuses** [`roles/windows_ollama_runtime`](roles/windows_ollama_runtime/) — same role as HVH-01 for bind, firewall, boot task, model pull. It does **not** invent parallel install logic outside the role. It does **not** call `llm_compute_windows`. LiteLLM / hosts / Continue stay separate playbooks (and the orchestrator below).
+
+### Install method (durable inventory — not a one-off skip)
+
+`windows_ollama_runtime_install_method` is a **first-class role switch** (`chocolatey` | `setup_exe`), not an ad-hoc “skip Chocolatey this once”:
+
+| Host | `install_method` | Why |
+| --- | --- | --- |
+| HVH-01 (default) | `chocolatey` | `win_chocolatey` works; keep default |
+| `dev-workstation-win` | `setup_exe` | Evidence: `win_chocolatey` hangs over SSH (`.chocolateyPending`, no `ollama.exe`). Same upstream `OllamaSetup.exe` + silent args, via role `tasks/install_setup_exe.yml` + `files/install_setup_exe.ps1` |
+
+- Role **branches** on inventory: Chocolatey task runs only when `install_method == chocolatey`; setup_exe path runs only when `install_method == setup_exe` and `ollama.exe` is missing.
+- Desktop host_vars set `windows_ollama_runtime_install_method: setup_exe` — **commissioned desired state**, re-applied by the same thin playbook.
+- **PROHIBITED:** `playbooks/troubleshoot/_tmp_*` or other one-off install playbooks that bypass the role.
+
+### Execution corrections (user-locked, 2026-07-24)
+
+1. **Playbook/role first** — Chocolatey install was always `deploy_dev_workstation_ollama_runtime.yaml` → `chocolatey.chocolatey.win_chocolatey` in the role. Never hand-run `choco install` on SSH as the install path.
+2. **Acceptable carve-out** — Ad-hoc Ansible (`win_shell` / `win_powershell`) to **stop hung `choco` / clear `.chocolateyPending`** is OK recovery; it is not a substitute for install.
+3. **Observable terminals** — Run slice playbooks with live `-vv` in a Cursor terminal the operator can watch; do not bury sole progress in `/tmp` redirects.
+4. **Interactive SSH when quoting fails** — Prefer `ssh` + `powershell -File` on a **role-staged** script (`install_setup_exe.ps1`) over misquoted remote one-liners. Still converges via the role on the next playbook apply.
+5. **Temp recovery playbooks are a plan failure** — deleted `_tmp_silent_ollama_desktop.yaml`; install logic lives only in `windows_ollama_runtime`.
 
 ---
 
@@ -292,7 +316,9 @@ Ansible for this packet must stay state-based. Prefer a single control point per
 1. New thin playbooks must preserve `present|absent` — invoke roles without forcing `state: present` only.
 2. Desktop host_vars ship `windows_ollama_runtime_state: present` for commission; documented undo is flip to `absent` + re-run desktop Ollama playbook.
 3. Model list edits (Phi-4 add/remove) are inventory desired-state; re-apply Ollama role to converge.
-4. Do not use one-off SSH/Chocolatey outside these lifecycle paths.
+4. Do **not** use one-off SSH/`choco install` as the install path. Install only via role (`chocolatey` or `setup_exe`).
+5. **Allowed:** ad-hoc Ansible to kill hung Chocolatey / clear `.chocolateyPending`; interactive SSH `-File` on role-staged scripts when quoting breaks.
+6. Desktop uses inventory `windows_ollama_runtime_install_method: setup_exe` (durable). HVH keeps default `chocolatey`. Not a temporary skip of an unimplemented step.
 
 ---
 
@@ -346,11 +372,13 @@ Simple candidates from this thread — park for future skill-library eval; do **
 
 | Working name | Trigger / when | One-line job |
 | --- | --- | --- |
+| `homelab-ansible-first-entry` | **DONE 2026-07-24** — wide install/mutate door | `print_entry_doors.py` → intake skill; blocks invented `_tmp_` / curl installers |
 | `windows-amd-ollama-commission` | AMD Windows host needs LAN Ollama behind LiteLLM | host_vars + `windows_amd_gpu_hosts` + `windows_ollama_runtime` with `require_driver_contract: false` + Vulkan verify |
 | `continue-litellm-lane-split` | Continue edit/apply/chat/autocomplete need distinct LiteLLM aliases | inventory models + gateway api_base rows + `deploy_continue_ide` |
 | `homelab-ollama-dns-catalog` | New Ollama backend needs `*.hom.lab` interim DNS | add `homelab_hosts_file_web_catalog` rows + mac/linux hosts apply |
 | `ollama-library-preflight` | Before Windows/Linux Ollama mutate | consult HRL `ollama` pack + Context7 `/websites/ollama` + pin tags from library/docs |
 | `createplan-diagram-gate` | Before Cursor `CreatePlan` / Plan card | enforce Architecture + conditionals + receipt + Diagram Inventory (closes `~/.cursor/plans` escape hatch) |
 | `continue-model-lanes-orchestrator` | Drift repair across Continue stack | run `deploy_continue_model_lanes.yaml` import chain with preview-first |
+| `windows-upstream-exe-installer` | Pinned Setup.exe when Chocolatey wrong/hung | Role path: `win_get_url` + `win_package`; replace invented `.ps1` downloaders |
 
-Eval later: promote at most 1–2 if reuse repeats; prefer wrapping existing playbooks over new scripts.
+Eval later: promote at most 1–2 if reuse repeats; prefer wrapping existing playbooks over new scripts. Next hardening: refactor `windows_ollama_runtime` `setup_exe` to `win_get_url`+`win_package` and delete `files/install_setup_exe.ps1`.
