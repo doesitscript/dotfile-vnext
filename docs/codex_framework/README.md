@@ -345,8 +345,23 @@ These are the current files actively shaping this capability.
   Project-owned shell-runtime diagnosis and repo-alignment workflow for macOS.
 - [skills/implementation/macos-cli-completion-pack/SKILL.md](/Users/joshc/develop/dotfile-vnext/skills/implementation/macos-cli-completion-pack/SKILL.md)
   Project-owned completion-wiring workflow for repo-managed macOS CLIs.
+- [skills/validation/ansible-cli-surface-auditor/SKILL.md](/Users/joshc/develop/dotfile-vnext/skills/validation/ansible-cli-surface-auditor/SKILL.md)
+  Project-owned inventory workflow for mapping repo-managed CLIs back to their
+  Ansible owner, playbook lane, completion path, and verify command.
+- [skills/validation/macos-cli-completion-converger/SKILL.md](/Users/joshc/develop/dotfile-vnext/skills/validation/macos-cli-completion-converger/SKILL.md)
+  Project-owned diagnosis workflow for classifying macOS CLI completion issues
+  before changing shell config or role wiring.
 - [skills/validation/interactive-shell-completion-proof/SKILL.md](/Users/joshc/develop/dotfile-vnext/skills/validation/interactive-shell-completion-proof/SKILL.md)
   Project-owned real-PTY proof workflow for completion and shell-time behavior.
+- [skills/validation/single-host-apply-and-receipt/SKILL.md](/Users/joshc/develop/dotfile-vnext/skills/validation/single-host-apply-and-receipt/SKILL.md)
+  Project-owned one-host preview/apply/verify workflow with a lightweight
+  receipt, especially for `mac-dev`.
+- [skills/validation/single-host-ansible-rollout/SKILL.md](/Users/joshc/develop/dotfile-vnext/skills/validation/single-host-ansible-rollout/SKILL.md)
+  Project-owned scoped rollout workflow for preview-first execution, direct
+  verification, and failure evidence.
+- [skills/documentation/context7-intake-or-emulate/SKILL.md](/Users/joshc/develop/dotfile-vnext/skills/documentation/context7-intake-or-emulate/SKILL.md)
+  Project-owned Context7-first intake workflow that falls back to an explicitly
+  labeled best-effort emulated entry when no valid library ID exists.
 - [skills/implementation/scoped-version-bump-commit-push/SKILL.md](/Users/joshc/develop/dotfile-vnext/skills/implementation/scoped-version-bump-commit-push/SKILL.md)
   Project-owned closeout workflow for scoped version bumps, focused commits, and pushes.
 - [.cursor/skills/ansible-knowledge-gate/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/ansible-knowledge-gate/SKILL.md)
@@ -358,6 +373,9 @@ These are the current files actively shaping this capability.
 - [.cursor/skills/project-maturity-router/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/project-maturity-router/SKILL.md)
   The composition skill for broad project-improvement requests. It routes to
   the Ansible gate, NetBox gate, or both while keeping the gates separate.
+- [/Users/joshc/develop/global-skills/skills/implementation/global-skill-runtime-bridge/SKILL.md](/Users/joshc/develop/global-skills/skills/implementation/global-skill-runtime-bridge/SKILL.md)
+  Global reusable workflow for bridging portable skills into the home-directory
+  runtime surfaces without restating that linking procedure in repo docs.
 - [.cursor/skills/container-orchestration-integration/SKILL.md](/Users/joshc/develop/dotfile-vnext/.cursor/skills/container-orchestration-integration/SKILL.md)
   The modular runtime-guidance integration workflow. It keeps imported
   Kubernetes and Docker guidance in separable packets and maps each source item
@@ -388,6 +406,26 @@ These still affect behavior in the repo, but they are not the main home of this 
 - global Cursor rules such as boot and failure diagnostics
 
 Those are background, support, or historical surfaces unless explicitly promoted into the active framework layer above.
+
+## Procedure Routing Shortcuts
+
+Keep framework prose focused on governance and routing. For repeated operator
+procedure, prefer these skill entrypoints instead of re-explaining the same
+steps in every rule or doc:
+
+- Scoped one-host preview/apply/verify/receipt:
+  [single-host-apply-and-receipt](/Users/joshc/develop/dotfile-vnext/skills/validation/single-host-apply-and-receipt/SKILL.md)
+  or
+  [single-host-ansible-rollout](/Users/joshc/develop/dotfile-vnext/skills/validation/single-host-ansible-rollout/SKILL.md)
+- Repo-managed CLI ownership, verify-command, or playbook-lane discovery:
+  [ansible-cli-surface-auditor](/Users/joshc/develop/dotfile-vnext/skills/validation/ansible-cli-surface-auditor/SKILL.md)
+- macOS CLI completion repair and proof:
+  [macos-cli-completion-converger](/Users/joshc/develop/dotfile-vnext/skills/validation/macos-cli-completion-converger/SKILL.md),
+  [macos-cli-completion-pack](/Users/joshc/develop/dotfile-vnext/skills/implementation/macos-cli-completion-pack/SKILL.md),
+  and
+  [interactive-shell-completion-proof](/Users/joshc/develop/dotfile-vnext/skills/validation/interactive-shell-completion-proof/SKILL.md)
+- Context7-first library intake with an honest no-library-ID fallback:
+  [context7-intake-or-emulate](/Users/joshc/develop/dotfile-vnext/skills/documentation/context7-intake-or-emulate/SKILL.md)
 
 ## Separation Of Concerns Goal
 

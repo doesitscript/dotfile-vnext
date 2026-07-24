@@ -78,6 +78,19 @@ packet instead of absorbing scattered capability-specific instructions.
 7. Pushback is part of the job. The agent should surface hidden cost, mismatch, or risk without treating the user as junior to the process.
 8. When the repo already points to a more scalable pattern, the agent should recommend that pattern plainly instead of softening it into a merely optional suggestion.
 
+For repeated repo-local operating procedure, prefer skill routing over restating
+the same steps in framework prose:
+
+- one-host preview/apply/verify/receipt:
+  `single-host-apply-and-receipt` or `single-host-ansible-rollout`
+- repo-managed CLI ownership/completion discovery:
+  `ansible-cli-surface-auditor`
+- macOS CLI completion diagnosis and PTY proof:
+  `macos-cli-completion-converger`, `macos-cli-completion-pack`, and
+  `interactive-shell-completion-proof`
+- Context7-first library intake with honest no-ID fallback:
+  `context7-intake-or-emulate`
+
 ## Operating Stack
 
 In Codex terms, this repo should be built in layers:
@@ -499,6 +512,10 @@ real upstream, live-state, or operator-decision prerequisite. The independent
 validator can send the packet back when the coordinator stops at a missing
 resource without this research/scaffold/probe loop.
 
+When the missing procedure is already covered by a project or global skill,
+route to that skill instead of re-documenting the operator sequence inside the
+plan or summary.
+
 When a plan family uses a coordinator/validator pattern, the validator is a
 release gate, not advisory commentary. A coordinator summary is not complete
 until the selected workflow pattern's validator and release-gate conditions are
@@ -672,6 +689,11 @@ That preview should show:
 selection explicit. In those cases, prefer a true read-only preview path such
 as a preview tag, inventory summary, task listing, or explicit discovery-only
 tasks.
+
+Do not restate the full preview/apply/receipt sequence every time. For
+repeatable one-host execution, route to `single-host-apply-and-receipt` or
+`single-host-ansible-rollout` and keep this framework layer focused on the
+governance requirement itself.
 
 The agent should say what it verified and what remains unverified.
 If syntax checks, lint, idempotence checks, or runtime verification were not run, the agent should say that explicitly and state why.

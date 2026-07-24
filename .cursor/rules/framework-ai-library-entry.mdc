@@ -33,13 +33,17 @@ This rule applies to work targeting:
    resolution, topic-sharded SDK notes, **OpenAPI/Swagger interpretation**,
    page-coverage validation, **Firecrawl cross-checks**, and `library_indexes`
    packs under `indexes/<entry>/`.
-6. When `vendor_docs` and `context7_required` are both true, also produce
+6. If Context7 cannot resolve a usable library ID, do not present the result as
+   normal Context7 output. Record the failure plainly and route the intake note
+   through `context7-intake-or-emulate` or an equivalent governed emulated
+   intake path before continuing with best-effort fallback sources.
+7. When `vendor_docs` and `context7_required` are both true, also produce
    `indexes/<entry>/` (README, crosswalk, Firecrawl↔Context7 cross-check,
    capture backlog) and update those indexes when adding new pages or API
    surfaces.
-7. Use `vendor-doc-collection` only as the narrower helper when the routed
+8. Use `vendor-doc-collection` only as the narrower helper when the routed
    output needs a structured vendor-doc export tree.
-8. Do not mark the entry complete until:
+9. Do not mark the entry complete until:
    - `library-entry-validate` passes for `entry-spec.yml`
    - required outputs exist in their declared target roots
    - required provenance and asset declarations are satisfied
