@@ -117,16 +117,21 @@ ai_service_profile:
 
 # Continue autocomplete 1.5B → HVH-01 Ollama OpenAI-compatible API (GTX 1060).
 # LiteLLM stays the gateway; Ollama/llama.cpp is only the GPU engine on Pascal.
-k3s_litellm_gateway_autocomplete_1_5b_api_base: "http://ollama-hvh01.hom.lab:11434/v1"
+# Use inventory IPs (not *.hom.lab): LiteLLM pods do not inherit node /etc/hosts,
+# so ollama-hvh01.hom.lab / ollama-desktop.hom.lab fail DNS inside the cluster.
+k3s_litellm_gateway_autocomplete_1_5b_api_base: >-
+  http://{{ hostvars['HOM-LAB-HVH-01'].host_ip | default('192.168.50.234') }}:11434/v1
 k3s_litellm_gateway_autocomplete_1_5b_model: "qwen2.5-coder:1.5b"
 k3s_litellm_gateway_autocomplete_1_5b_provider: "openai"
 
 # Continue edit → desktop AMD Ollama (qwen3-coder:30b / Vulkan).
-k3s_litellm_gateway_continue_edit_api_base: "http://ollama-desktop.hom.lab:11434/v1"
+k3s_litellm_gateway_continue_edit_api_base: >-
+  http://{{ hostvars['dev-workstation-win'].host_ip | default('192.168.50.133') }}:11434/v1
 k3s_litellm_gateway_continue_edit_model: "qwen3-coder:30b"
 k3s_litellm_gateway_continue_edit_provider: "openai"
 
 # Continue apply → HVH-01 Ollama Phi-4 Mini (co-resident with autocomplete).
-k3s_litellm_gateway_continue_apply_api_base: "http://ollama-hvh01.hom.lab:11434/v1"
+k3s_litellm_gateway_continue_apply_api_base: >-
+  http://{{ hostvars['HOM-LAB-HVH-01'].host_ip | default('192.168.50.234') }}:11434/v1
 k3s_litellm_gateway_continue_apply_model: "phi4-mini"
 k3s_litellm_gateway_continue_apply_provider: "openai"

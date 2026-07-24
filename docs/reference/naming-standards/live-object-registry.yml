@@ -548,6 +548,11 @@ ansible_inventory_groups:
     members:
       - HOM-LAB-HVH-01
       - HOM-LAB-HVH-02
+      - dev-workstation-win
+  windows_amd_gpu_hosts:
+    group_kind: capability
+    members:
+      - dev-workstation-win
   linux_vm_hosts:
     group_kind: capability
     members:
@@ -623,8 +628,16 @@ not_in_netbox:
     plan: docs/plans/2026-05-27--edge-dev-host-naming-netbox-incomplete/README.md
   dev-workstation-win:
     inventory_key: dev-workstation-win
-    reason: offline; windows_hosts_offline only
+    reason: >-
+      Edge interactive desktop (OS hostname DESKTOP-C1ACPUM). In inventory
+      windows_hosts + windows_amd_gpu_hosts for Continue edit Ollama; not yet
+      modeled in NetBox (naming candidate hom-lab-dev-wks-01).
     plan: docs/plans/2026-05-27--edge-dev-host-naming-netbox-incomplete/README.md
+    connection:
+      ansible_connect_target: "192.168.50.133"
+      os_hostname: DESKTOP-C1ACPUM
+      host_vars: inventory/host_vars/dev-workstation-win.yaml
+      hosts_mapping: inventory/hosts_mapping.yaml
 
 candidates:
   hom-lab-exe-mac-01:

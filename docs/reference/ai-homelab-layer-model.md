@@ -63,8 +63,11 @@ use compact schema hostnames per `live-object-registry.yml`.
   (reviewer, embeddings) — not an equal peer; currently inventory-selected and
   GPU-labeled, but blocked for guest GPU partitioning until the Hyper-V host
   capability gap is resolved.
-- **Edge desktops** (`dev-3090-win`, `dev-workstation-win`): deferred; see
-  `edge-dev-host-naming-netbox-incomplete`.
+- **Edge desktops:** `dev-3090-win` remains deferred (naming/NetBox).
+  `dev-workstation-win` (`DESKTOP-C1ACPUM`, AMD RX 9060 XT 16GB) is
+  **commissioned** in `windows_hosts` + `windows_amd_gpu_hosts` for the
+  Continue edit Ollama lane; NetBox device naming is still pending
+  (`edge-dev-host-naming-netbox-incomplete`).
 
 ## Intake name map (do not implement `ai_*` blindly)
 

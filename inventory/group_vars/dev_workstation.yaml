@@ -36,8 +36,11 @@ bios_version: "1.A0"
 bios_date: "07/04/2018"
 architecture: "x86_64"
 gpu: "AMD Radeon RX 9060 XT"
-gpu_vram_bytes: 4293918720
-gpu_driver_version: "32.0.23017.1001"
+# Registry HardwareInformation.qwMemorySize (2026-07-24). WMI AdapterRAM is
+# capped/wrong (~4 GiB) on this host — do not trust Win32_VideoController.AdapterRAM.
+gpu_vram_bytes: 17095983104
+gpu_vram_gib: 16
+gpu_driver_version: "32.0.31019.2002"
 persistent_data_allowed: user_managed
 
 # --- OS details ---
@@ -47,12 +50,17 @@ os_install_date: "2024-11-02"
 powershell_version: 5
 windows_domain: "WORKGROUP"
 domain_member: false
+os_hostname: "DESKTOP-C1ACPUM"
+netbios_hostname: "DESKTOP-C1ACPUM"
 
 # --- Network ---
-# Primary NIC: ASUS USB-BE92 Nano (Wi-Fi) -- carries LAN IP
-# Secondary NIC: Intel I219-V Ethernet -- currently APIPA (no DHCP)
-primary_mac: "CC:28:AA:6C:D0:57"
+# Primary LAN path (2026-07-24): TP-Link Wi-Fi 6 PCIe @ 192.168.50.133
+# Ethernet Intel I219-V disconnected / APIPA. Former ASUS USB Wi-Fi MAC
+# CC:28:AA:6C:D0:57 is not present; remove stale GT6 reservation at .70.
+primary_mac: "9C:C7:D3:88:BB:F0"
+wifi_mac: "9C:C7:D3:88:BB:F0"
 ethernet_mac: "4C:CC:6A:63:AF:16"
+stale_usb_wifi_mac: "CC:28:AA:6C:D0:57"
 
 # Storage paths (TBD -- depends on disk layout)
 # windows_data_root: "D:\\ai"

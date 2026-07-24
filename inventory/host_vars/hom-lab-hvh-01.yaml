@@ -223,8 +223,15 @@ hyperv_ubuntu_k3s_vm_inventory_host: "hom-lab-ctl-k3s-01"
 hyperv_ubuntu_k3s_vm_cpus: 4
 hyperv_ubuntu_k3s_vm_memory: "8G"
 hyperv_ubuntu_k3s_vm_disk: "60G"
+# Keep sustained K3s/container/PVC I/O off the Windows system disk (same
+# workload-disk contract as HVH-02 / k3s-02). Moving an existing VHDX is a
+# controlled outage via playbooks/hyperv_move_k3s_vm_storage.yaml.
+hyperv_ubuntu_k3s_vm_host_vhdx_path: 'D:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-k3s-01\hom-lab-ctl-k3s-01.vhdx'
 hyperv_ubuntu_k3s_vm_bootstrap_user: "joshc"
 hyperv_ubuntu_k3s_vm_ssh_port: 22
+# Azure cloud-image path: offline seed disabled on server lanes (no wsl.exe --mount).
+hyperv_ubuntu_k3s_vm_cloud_image_offline_seed_enabled: false
+hyperv_ubuntu_k3s_vm_cloud_image_offline_seed_mount_provider: disabled
 hyperv_ubuntu_k3s_vm_source_mode: "azure_cloud_image"
 hyperv_ubuntu_k3s_vm_secure_boot_enabled: false
 hyperv_ubuntu_k3s_vm_publish_connection_facts: false

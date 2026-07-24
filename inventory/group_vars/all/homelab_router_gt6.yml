@@ -41,17 +41,26 @@ homelab_router_gt6_manual_assignments:
     notes: "Purpose unverified in inventory"
     router_gt6_ui_status: on_router
     router_gt6_ui_verified_at: "2026-05-27"
+  # Active inventory path for DESKTOP-C1ACPUM / dev-workstation-win.
+  - client_name: DESKTOP-C1ACPUM
+    mac: "9C:C7:D3:88:BB:F0"
+    ip: "192.168.50.133"
+    inventory_host: dev-workstation-win
+    router_enterable: true
+    router_action: keep
+    notes: "TP-Link Wi-Fi 6 PCIe; matches inventory ansible_host / host_ip. Verified live 2026-07-24."
+    router_gt6_ui_status: on_router
+    router_gt6_ui_verified_at: "2026-07-24"
+  # Stale dual DHCP row — same NetBIOS name, different MAC/IP. Delete in GT6 UI.
   - client_name: DESKTOP-C1ACPUM
     mac: "CC:28:AA:6C:D0:57"
     ip: "192.168.50.70"
-    inventory_host: dev-workstation-win
+    inventory_host: null
     router_enterable: true
-    router_action: rename
-    # FIXME: live SSH/NetBIOS/mDNS probes on 2026-06-25 show 192.168.50.133;
-    # reconcile this stale ASUS GT6/DNS assignment before relying on .hom.lab.
-    notes: "IP mismatch: router row still .70, inventory/live host is .132"
+    router_action: delete
+    notes: "Former ASUS USB Wi-Fi reservation. MAC absent on host 2026-07-24 (live NICs: Wi-Fi 9C:C7:D3:88:BB:F0, Ethernet 4C:CC:6A:63:AF:16). Dual hostname rows confuse LAN DNS for DESKTOP-C1ACPUM."
     router_gt6_ui_status: on_router
-    router_gt6_ui_verified_at: "2026-05-27"
+    router_gt6_ui_verified_at: "2026-07-24"
   - client_name: HOM-LAB-HVH-02
     mac: "B4:B5:B6:94:5A:BD"
     ip: "192.168.50.158"

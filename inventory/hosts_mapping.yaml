@@ -58,6 +58,18 @@ physical_nodes:
     ip_address: "192.168.50.33"
     hostname: "Joshs-MBP"
 
+  # Family gaming desktop (AMD RX 9060 XT 16GB). Inventory hostname is
+  # dev-workstation-win; Windows COMPUTERNAME / NetBIOS is DESKTOP-C1ACPUM.
+  dev-workstation:
+    os_hostname: "DESKTOP-C1ACPUM"
+    router_hostname: "DESKTOP-C1ACPUM"
+    inventory_windows_host: dev-workstation-win
+    ip_address: "192.168.50.133"
+    hostname: "DESKTOP-C1ACPUM"
+    netbios_hostname: "DESKTOP-C1ACPUM"
+    wifi_mac: "9C:C7:D3:88:BB:F0"
+    ethernet_mac: "4C:CC:6A:63:AF:16"
+
 # Ansible surface mappings — one entry per inventory hostname
 ansible_surfaces:
   # --- Windows control surfaces (SSH primary) ---
@@ -131,6 +143,26 @@ ansible_surfaces:
     state: deferred
     host_vars: inventory/host_vars/dev-3090-win.yaml
     notes: Placeholder — no active ansible_host until provisioned
+
+  # Online Windows desktop — Continue edit Ollama (AMD / Vulkan). Not Hyper-V.
+  # Prefer SSH alias `dev-workstation-win` (homelab-ssh-alias-connect), not NetBIOS.
+  dev-workstation-win:
+    physical_node: dev-workstation
+    surface_type: windows_host
+    inventory_alias: true
+    primary_connection: ssh
+    secondary_connection: winrm
+    ansible_connect_target: "192.168.50.133"
+    connect_target_kind: ip_address
+    ansible_port: 22
+    host_ip: "192.168.50.133"
+    os_hostname: "DESKTOP-C1ACPUM"
+    netbios_hostname: "DESKTOP-C1ACPUM"
+    router_hostname: "DESKTOP-C1ACPUM"
+    host_vars: inventory/host_vars/dev-workstation-win.yaml
+    notes: >-
+      In windows_hosts + windows_amd_gpu_hosts. Connect via Wi-Fi .133
+      (9C:C7:D3:88:BB:F0). Do not treat DESKTOP-C1ACPUM as inventory hostname.
 
   # --- Hyper-V Ubuntu guest surfaces (SSH only) ---
 
