@@ -1,51 +1,57 @@
 # IN-PROGRESS
 
-This machine cannot complete the target runtime setup (Python/Linux shell based wrapper execution) reliably.
-Complete the following on the target Mac.
+## Later — mac-dev brew roles (Ansible)
 
-## Work completed here
+Track as new/extended roles wired through `playbooks/deploy_development_nodes.yaml`
+(`--limit mac-dev`). Prefer native Homebrew when it works; expect macOS 12 /
+security / trust friction (see below). Manual brew testing is exploratory only.
 
-- Updated `bin/codex-env` to support automatic `.venv` bootstrap for:
-  - `python*`
-  - `pip*`
-  - `ansible*`
-- Added fallback dependency discovery:
-  - `requirements.txt`
-  - `scripts/requirements.txt`
-- Updated docs:
-  - `skills/README.md`
-  - `docs/tool_access/README.md`
+| Capability | Brew formula(s) | Intended role / tag (draft) | Why |
+| --- | --- | --- | --- |
+| Graphviz render runtime (`dot`) | `graphviz` (+ brew deps such as `netpbm`, possibly `svn` on this host) | `graphviz_cli` (or `diagrams_graphviz_runtime`) | OS dependency for Mingrammer `diagrams` render; PATH historically expected `/usr/local/opt/graphviz/bin` |
+| (optional) diagrams Python env | *not* brew — project/home venv + `pip install diagrams` | out of brew role scope; `create-diagrams` skill | Authoring is PyPI |
 
-## Work intentionally not completed here
+### Role design notes — security / unsupported tooling / whitelist
 
-- Project runtime bridge verification should be confirmed on Mac.
+When implementing these roles, document (README + defaults comments) that:
 
-## Finish on Mac
+1. **Missing Graphviz may be intentional.** Older or unsupported Homebrew
+   formulae / dep chains can disappear after cleanup, OS upgrades, or security
+   policy — not only operator error. Same class of problem as other Monterey
+   special-cases (`tunnelblick_mac` deprecated DMG, `aws_cli` avoiding broken
+   Homebrew `awscli`, Docker wrappers in `common/shell_config` /
+   `ansible_dev_tools` for tools that cannot compile natively).
+2. **May need an explicit allowlist / trust step**, similar to older tools we
+   already handle:
+   - Homebrew tap trust (`brew trust …`; avoid blanket
+     `HOMEBREW_NO_REQUIRE_TAP_TRUST`)
+   - Pinned deprecated upstreams with documented CVE/compatibility tradeoffs
+     (Tunnelblick pattern)
+   - Docker fallback when native brew is blocked or too costly to build on
+     macOS 12
+3. **Role should support dual delivery:**
+   - `present` via brew when formula installs cleanly
+   - documented Docker fallback for render-only Graphviz (skill-owned), so
+     agents are not blocked when brew is unavailable
+4. Do **not** silently reinstall security-rejected packages without operator
+   acknowledgment in the role README / change class notes.
 
-1. Verify wrapper bootstrap:
-   - `bin/codex-env python -V`
-2. Verify Ansible/venv path via wrapper:
-   - `bin/codex-env ansible --version`
-3. Refresh project runtime skill links:
-   - `bin/codex-env python skills/implementation/project-skill-runtime-bridge/scripts/link_project_skills_to_cursor.py`
-4. Optionally run project skill validations if you want a full health pass.
+Playbook entry remains `deploy_development_nodes` / mac-dev lane.
 
-## Follow-up: post-brainstorm-skill evaluation loop
+## Manual brew test (this session)
 
-After creating a brainstorm-design skill, run these skills to find where reusable
-skills can cut repeated instructions and framework token load:
+- [x] Attempted `brew install graphviz` (heavy macOS 12 compile; stopped when
+      pivoting to Docker)
+- [ ] `dot -V` local — still deferred
+- [x] Render `skill_eval/account_isolation.py` via Docker fallback →
+      `account-isolation.png` + `RECEIPT.md`
 
-- `generate-project-state-report` — Instruction Repetition Hotspots inventory
-- `project-maturity-router` — skill replacements across Ansible/NetBox guidance
-- `ansible-coordinator` — skill-first reduction map for Ansible process load
-- `generate-mcp-briefing` — MCP/tool-selection prose that can become entry doors
-- `create-skill` — scaffold 2–3 micro-skills from the highest-frequency findings
+## Active — create-diagrams Docker fallback
 
-Detailed purpose, prompt examples, shared output contract, and token-reduction
-levers:
+- [x] Skill wired for Docker when local `dot`/`diagrams` missing
+      (`references/docker-render.md`, `scripts/render_with_docker.sh`)
+- [x] Skill-eval PNG produced under
+      `oneoffs/issue/zic-integration/docs/diagrams/skill_eval/`
 
-- `docs/brainstorming_designs/2026-07-28--skill-instruction-reduction-patterns/`
-
-## Linked brainstorm packet
-
-- `docs/brainstorming_designs/2026-07-28--cross-repo-skill-evaluation-loop/`
+Deferred (unchanged): full `generate-project-state-report` / `ansible-coordinator` /
+`generate-mcp-briefing` measurement runs.
