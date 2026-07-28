@@ -171,3 +171,8 @@ flowchart LR
 
 For repo-local Python and Ansible work, use `bin/codex-env` instead of ambient
 interpreters or PATH assumptions. This matches `AGENTS.md`.
+
+`bin/codex-env` is self-bootstrapping for venv-backed commands (`python*`,
+`pip*`, `ansible*`): when `.venv` is missing it creates it, installs
+requirements from `requirements.txt` or `scripts/requirements.txt`, then runs
+the requested command.

@@ -115,6 +115,8 @@ Repo safety note:
 - for repo-local Python-, Ansible-, and WinRM-sensitive work on macOS, prefer
   `bin/codex-env ...` over a separate MCP-owned Python runtime when both can
   answer the same question
+- `bin/codex-env` self-bootstraps the repo `.venv` for venv-backed commands
+  (`python*`, `pip*`, `ansible*`) when that venv is missing
 - `ansible-mcp` is a separate Python runtime and must be explicitly wrapped or
   environment-hardened if it is expected to behave like the repo shell
 

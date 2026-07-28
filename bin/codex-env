@@ -25,6 +25,44 @@ fi
 
 cd "${REPO_ROOT}"
 
+ensure_repo_venv() {
+  if [ -x "${REPO_ROOT}/.venv/bin/python3" ]; then
+    return 0
+  fi
+
+  local pybin
+  pybin="$(command -v python3 || command -v python || true)"
+  if [ -z "${pybin}" ]; then
+    echo "codex-env: python3/python not found; cannot bootstrap .venv" >&2
+    return 1
+  fi
+
+  local req_file=""
+  if [ -f "${REPO_ROOT}/requirements.txt" ]; then
+    req_file="${REPO_ROOT}/requirements.txt"
+  elif [ -f "${REPO_ROOT}/scripts/requirements.txt" ]; then
+    req_file="${REPO_ROOT}/scripts/requirements.txt"
+  fi
+
+  echo "codex-env: creating .venv (${pybin})" >&2
+  "${pybin}" -m venv "${REPO_ROOT}/.venv"
+  "${REPO_ROOT}/.venv/bin/python3" -m pip install --upgrade pip >/dev/null
+
+  if [ -n "${req_file}" ]; then
+    echo "codex-env: installing ${req_file}" >&2
+    "${REPO_ROOT}/.venv/bin/python3" -m pip install -r "${req_file}" >/dev/null
+  else
+    echo "codex-env: no requirements file found; created empty .venv" >&2
+  fi
+}
+
+command_name="$(basename "$1")"
+case "${command_name}" in
+  python|python3|pip|pip3|ansible|ansible-*)
+    ensure_repo_venv
+    ;;
+esac
+
 if [ -f "${REPO_ROOT}/.envrc" ]; then
   set +u
   # shellcheck source=/dev/null
@@ -46,7 +84,6 @@ if [ -f "${REPO_ROOT}/.venv/bin/activate" ]; then
   set -u
 fi
 
-command_name="$(basename "$1")"
 case "${command_name}" in
   ansible|ansible-*)
     if [ "$(uname -s)" = "Darwin" ]; then
