@@ -2,36 +2,31 @@
 
 > **Status: brainstorming / design exploration - NOT repo work**
 >
-> This packet captures where existing skills should be applied across
-> `dotfile-vnext`, `global-skills`, and `homelab-reference-library`, plus a
-> repeatable evaluation loop to identify gaps and improve existing skills before
-> creating new ones.
+> Where existing skills should be applied across `dotfile-vnext`,
+> `global-skills`, and `homelab-reference-library`, plus a repeatable loop to
+> improve existing skills before creating new ones.
 
 ## Why This Packet Exists
 
-User guidance captured:
-
-- evaluate where current skills can be used across projects, framework surfaces,
-  and related workflows
-- prefer existing skills for evaluation first
-- improve existing skills when needed, instead of adding one-off process
-- keep this reproducible for new computers and new projects
+- Evaluate where current skills apply across projects and framework surfaces
+- Prefer existing skills first; improve them when gaps appear
+- Avoid one-off process sprawl
 
 ## Packet Artifacts
 
 | File | Role |
 |------|------|
-| [`cross-repo-skill-evaluation-loop-plan.md`](./cross-repo-skill-evaluation-loop-plan.md) | Findings, evaluation map, and skill-improvement loop |
+| [`cross-repo-skill-evaluation-loop-plan.md`](./cross-repo-skill-evaluation-loop-plan.md) | Evaluation map and improvement loop |
+| [`first-pass-receipt-2026-07-28.md`](./first-pass-receipt-2026-07-28.md) | First execution receipt |
 | [`.aiignore`](./.aiignore) | Local advisory context boundary |
 
-## Linked IN-PROGRESS Receipts
+## Linked tracking
+
+Optional remaining items may appear in:
 
 - [`dotfile-vnext/IN-PROGRESS.md`](../../../../IN-PROGRESS.md)
 - [`global-skills/IN-PROGRESS.md`](../../../../../global-skills/IN-PROGRESS.md)
 - [`homelab-reference-library/IN-PROGRESS.md`](../../../../../homelab-reference-library/IN-PROGRESS.md)
-
-These IN-PROGRESS files include Mac-side completion steps and should remain in
-sync with this brainstorm packet.
 
 ## Promotion Path
 

@@ -198,4 +198,5 @@ Speaking generally (not project-locked):
 
 - Brainstorm packet conventions: `docs/brainstorming_designs/README.md`
 - Context budget policy: `.cursor/rules/framework-context-budget.mdc`
-- Tracking note: `IN-PROGRESS.md` (skill follow-up checklist)
+- Sibling packet: `docs/brainstorming_designs/2026-07-28--cross-repo-skill-evaluation-loop/`
+- Optional tracking: repo-root `IN-PROGRESS.md`
