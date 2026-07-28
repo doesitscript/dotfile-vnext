@@ -1,0 +1,40 @@
+---
+- name: Skip runtime_plane when absent
+  ansible.builtin.meta: end_host
+  when: runtime_plane_state | default('absent') != 'present'
+  tags: [runtime_plane]
+
+- name: Require prior classify_host facts
+  ansible.builtin.assert:
+    that:
+      - host_runtime_planes is defined
+    fail_msg: >-
+      Run classify_host before runtime_plane on {{ inventory_hostname }}.
+  when: runtime_plane_require_classification | bool
+  tags: [runtime_plane]
+
+- name: Load runtime_planes policy catalog
+  ansible.builtin.include_vars:
+    file: "{{ runtime_plane_policy_root }}/runtime_planes.yml"
+    name: runtime_plane_policy_catalog
+  tags: [runtime_plane]
+
+- name: Report enabled runtime planes
+  ansible.builtin.debug:
+    msg:
+      host: "{{ inventory_hostname }}"
+      mode: "{{ 'apply' if (runtime_plane_apply | bool) else 'report' }}"
+      enabled: "{{ host_runtime_planes | default([]) }}"
+      unknown: "{{ host_classification.unknown_runtime_planes | default([]) }}"
+      catalog_keys: "{{ (runtime_plane_policy_catalog.runtime_planes | default({})).keys() | list }}"
+      note: >-
+        Plane enforcement delegates to owning roles (docker_engine, hyperv_*,
+        windows_ollama_runtime, …). This role does not install runtimes.
+  tags: [runtime_plane]
+
+- name: Block accidental apply until orchestrator wiring exists
+  ansible.builtin.fail:
+    msg: >-
+      runtime_plane_apply=true is not implemented yet. Use report mode.
+  when: runtime_plane_apply | bool
+  tags: [runtime_plane]

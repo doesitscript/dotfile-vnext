@@ -1,0 +1,17 @@
+---
+# Publish homelab_hosts_file_web_catalog *.hom.lab names into K3s CoreDNS
+# (coredns-custom ConfigMap) so pods resolve the same interim DNS as hosts files.
+#
+#   ansible-playbook playbooks/deploy_k3s_coredns_homelab_hosts.yaml
+#   ansible-playbook playbooks/homelab_hosts_file.yaml  # imports this
+
+- name: Deploy CoreDNS hom.lab hosts from catalog
+  hosts: "container_orchestrator_k3s:&ai_inference_stack_nodes"
+  gather_facts: true
+  become: false
+  roles:
+    - role: k3s_coredns_homelab_hosts
+      tags:
+        - k3s_coredns_homelab_hosts
+        - homelab_hosts_file
+        - coredns

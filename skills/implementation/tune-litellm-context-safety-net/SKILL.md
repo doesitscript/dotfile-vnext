@@ -1,6 +1,6 @@
 ---
 name: tune-litellm-context-safety-net
-description: "Use when changing the LiteLLM pre-call trim_messages safety net or context-window fallbacks for Cursor on the local 32k vLLM path — max input budget, safety tokens, min completion, min messages, OpenAI vault key fallbacks, or redeploying the callback ConfigMap. Do not use for tools[] capture-only work or for DNS/service reachability."
+description: "Use when changing LiteLLM Request Inspector thresholds or context-window fallbacks for Cursor on the local 32k vLLM path — max_window, warn percentages, dump-on-warn, OpenAI vault key fallbacks, or redeploying the callback ConfigMap. The former trim_messages mutate path is archived under roles/k3s_litellm_gateway/archive/trim-messages-callback-2026-07/. Do not use for tools[] capture-only work or for DNS/service reachability."
 license: MIT
 version: "0.1.0"
 author: "dotfile-vnext"
@@ -35,8 +35,13 @@ tags:
 
 # Skill: Tune LiteLLM Context Safety Net
 
-Change and redeploy the gateway’s context safety net with an explicit
+Change and redeploy gateway context observability / fallbacks with an explicit
 Apply / Verify / Undo contract.
+
+**Note (2026-07):** Live callback is **Request Inspector** (observe-only). The
+former `trim_messages` mutate path lives under
+`roles/k3s_litellm_gateway/archive/trim-messages-callback-2026-07/`. This skill
+still owns inspector threshold vars and `context_window_fallbacks`.
 
 ## When to use / not use
 

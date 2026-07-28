@@ -1,9 +1,25 @@
 ---
 name: ai-library-entry
-description: Orchestrate new or refreshed ai-resource-library entries — plan packet, entry-spec contract, content-family routing, and delegation to the library skill family. Use when adding durable library content; delegate build, Context7, indexes, cross-check, and validate to child skills.
+description: "DEPRECATED. Do not use for new work. Former orchestrator for ai-resource-library entries. Prefer library-first-project-handoff, library-first-model-doc-pack, or library-first-troubleshooting-intake; call child library skills directly when the family is already known."
+status: deprecated
 ---
 
-# Skill: AI Library Entry (Orchestrator)
+# Skill: AI Library Entry (Orchestrator) — DEPRECATED
+
+> **DEPRECATED — do not use as a front door.**
+>
+> This skill is retained only as a historical contract/reference surface
+> (`entry-spec`, validators, shared scripts). Do not kick off new library
+> intakes through it.
+>
+> **Use instead:**
+>
+> | Need | Replacement |
+> |------|-------------|
+> | Durable HRL artifact then project handoff | `library-first-project-handoff` |
+> | Model doc pack before runtime wiring | `library-first-model-doc-pack` |
+> | Error / troubleshooting → HRL first | `library-first-troubleshooting-intake` |
+> | Known single family already classified | call the child skill directly (`vendor-doc-collection`, `library-entry-build`, `library-context7-pack`, `library-indexes-pack`, `firecrawl-context7-crosscheck`, `library-entry-validate`) |
 
 Primary **kickoff and routing** capability for durable `ai-resource-library`
 entries. Does not execute collection itself — delegates to the skill family
@@ -11,7 +27,7 @@ documented in `references/skill-family-map.md`.
 
 ## When to use this skill
 
-Use when:
+**Do not use for new work.** Historical guidance only:
 
 - adding a new library entry or major refresh
 - outputs span `vendors/`, `sdk-context/`, `indexes/`, or `prompts/`

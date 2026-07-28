@@ -1,0 +1,154 @@
+---
+- name: Skip classify_host when absent
+  ansible.builtin.meta: end_host
+  when: classify_host_state | default('present') != 'present'
+  tags: [classify_host]
+
+- name: Load hardware_classes policy
+  ansible.builtin.include_vars:
+    file: "{{ classify_host_policy_root }}/hardware_classes.yml"
+    name: classify_host_policy_hardware
+  tags: [classify_host]
+
+- name: Load execution_roles policy
+  ansible.builtin.include_vars:
+    file: "{{ classify_host_policy_root }}/execution_roles.yml"
+    name: classify_host_policy_execution
+  tags: [classify_host]
+
+- name: Load runtime_planes policy
+  ansible.builtin.include_vars:
+    file: "{{ classify_host_policy_root }}/runtime_planes.yml"
+    name: classify_host_policy_runtime
+  tags: [classify_host]
+
+- name: Load k8s_mapping policy
+  ansible.builtin.include_vars:
+    file: "{{ classify_host_policy_root }}/k8s_mapping.yml"
+    name: classify_host_policy_k8s
+  tags: [classify_host]
+
+- name: Build host field map for classifier
+  ansible.builtin.set_fact:
+    classify_host_input:
+      inventory_surface_role: "{{ inventory_surface_role | default('') }}"
+      surface_type: "{{ surface_type | default('') }}"
+      classification_status: "{{ classification_status | default('') }}"
+      node_classes: "{{ node_classes | default([]) }}"
+      hardware_classes: "{{ hardware_classes | default([]) }}"
+      policy_classes: "{{ policy_classes | default([]) }}"
+      runtime_planes: "{{ runtime_planes | default({}) }}"
+  tags: [classify_host]
+
+- name: Classify host from policy data
+  ansible.builtin.set_fact:
+    host_classification: >-
+      {{
+        inventory_hostname
+        | classify_homelab_host(
+            classify_host_input,
+            classify_host_policy_hardware,
+            classify_host_policy_execution,
+            classify_host_policy_runtime,
+            classify_host_policy_k8s
+          )
+      }}
+  tags: [classify_host]
+
+- name: Publish convenience classification facts
+  ansible.builtin.set_fact:
+    host_execution_role: "{{ host_classification.host_execution_role }}"
+    host_execution_roles: "{{ host_classification.execution_roles }}"
+    host_k8s_labels: "{{ host_classification.host_k8s_labels }}"
+    host_k8s_taints: "{{ host_classification.host_k8s_taints }}"
+    host_k8s_selectors: "{{ host_classification.host_k8s_selectors }}"
+    host_runtime_planes: "{{ host_classification.host_runtime_planes }}"
+    host_policy_tags: "{{ host_classification.policy_tags }}"
+    host_allow_workloads: "{{ host_classification.allow_workloads }}"
+    host_deny_workloads: "{{ host_classification.deny_workloads }}"
+  tags: [classify_host]
+
+- name: Fail on unknown hardware_classes
+  ansible.builtin.assert:
+    that:
+      - host_classification.unknown_hardware_classes | length == 0
+    fail_msg: >-
+      Unknown hardware_classes {{ host_classification.unknown_hardware_classes }}
+      on {{ inventory_hostname }}. Add to policy/hardware_classes.yml or fix host_vars.
+  when: classify_host_fail_on_unknown_hardware | bool
+  tags: [classify_host]
+
+- name: Fail on mutually exclusive hardware_classes
+  ansible.builtin.assert:
+    that:
+      - host_classification.hardware_exclusive_violations | length == 0
+    fail_msg: >-
+      Hardware class conflicts on {{ inventory_hostname }}:
+      {{ host_classification.hardware_exclusive_violations }}
+  when: classify_host_fail_on_exclusive_hardware | bool
+  tags: [classify_host]
+
+- name: Fail on unknown runtime planes
+  ansible.builtin.assert:
+    that:
+      - host_classification.unknown_runtime_planes | length == 0
+    fail_msg: >-
+      Unknown runtime_planes {{ host_classification.unknown_runtime_planes }}
+      on {{ inventory_hostname }}. Add to policy/runtime_planes.yml or fix host_vars.
+  when: classify_host_fail_on_unknown_planes | bool
+  tags: [classify_host]
+
+- name: Detect whether host offered selector structure
+  ansible.builtin.set_fact:
+    classify_host_has_structure: >-
+      {{
+        (hardware_classes | default([]) | length > 0)
+        or (node_classes | default([]) | length > 0)
+        or (policy_classes | default([]) | length > 0)
+        or (runtime_planes | default({}) | length > 0)
+        or ((classification_status | default('')) | length > 0)
+      }}
+  tags: [classify_host]
+
+- name: Fail when structure/status exists but no execution role matched
+  ansible.builtin.assert:
+    that:
+      - host_execution_roles | length > 0
+    fail_msg: >-
+      {{ inventory_hostname }} has selector structure/status but matched zero
+      execution_roles. Capture it in policy/execution_roles.yml match rules or
+      policy/coverage.yml notes — do not leave offered structure unclassified.
+  when:
+    - classify_host_fail_on_unmatched_roles | bool
+    - classify_host_has_structure | bool
+  tags: [classify_host]
+
+- name: Fail when host has neither structure nor classification_status
+  ansible.builtin.assert:
+    that:
+      - classify_host_has_structure | bool
+    fail_msg: >-
+      {{ inventory_hostname }} is in the classify play with no hardware_classes,
+      node_classes, policy_classes, runtime_planes, or classification_status.
+      Add inventory structure or mark classification_status (alias_surface /
+      deferred / controller) per policy/coverage.yml.
+  when: classify_host_fail_on_missing_structure | bool
+  tags: [classify_host]
+
+- name: Show host classification summary
+  ansible.builtin.debug:
+    msg:
+      host: "{{ inventory_hostname }}"
+      classification_status: "{{ classification_status | default('') }}"
+      execution_roles: "{{ host_execution_roles }}"
+      primary_role: "{{ host_execution_role }}"
+      hardware_classes: "{{ host_classification.hardware_classes }}"
+      runtime_planes: "{{ host_runtime_planes }}"
+      k8s_labels: "{{ host_k8s_labels }}"
+      k8s_taints: "{{ host_k8s_taints }}"
+      k8s_selectors: "{{ host_k8s_selectors }}"
+      allow_workloads: "{{ host_allow_workloads }}"
+      deny_workloads: "{{ host_deny_workloads }}"
+      policy_ok: "{{ host_classification.policy_ok }}"
+  when: classify_host_print_summary | bool
+  tags: [classify_host]

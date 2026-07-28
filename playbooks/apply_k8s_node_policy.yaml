@@ -1,0 +1,30 @@
+---
+# Apply K8s node labels/taints from classify_host output (k3s runtimes only).
+#
+# depends_on (policy/process_order.yml → k8s_node_policy):
+#   - classify_host
+#   - k3s_cluster_ready
+#
+# Preview: ansible-playbook playbooks/apply_k8s_node_policy.yaml -e k8s_node_policy_apply=false
+# Apply:   ansible-playbook playbooks/apply_k8s_node_policy.yaml -e k8s_node_policy_apply=true
+# Undo:    remove labels manually / revert policy and re-label (documented later)
+# Change class: idempotent node metadata (kubectl label --overwrite)
+
+- name: Classify before K8s node policy
+  hosts: linux_vm_hosts
+  gather_facts: false
+  tags: [classify_host, k8s_node_policy]
+  roles:
+    - role: classify_host
+      tags: [classify_host, k8s_node_policy]
+
+- name: Apply or report K8s node policy on classified linux VMs
+  hosts: linux_vm_hosts
+  gather_facts: false
+  tags: [k8s_node_policy]
+  roles:
+    - role: k8s_node_policy
+      vars:
+        k8s_node_policy_state: present
+        k8s_node_policy_apply: "{{ k8s_node_policy_apply | default(false) }}"
+      tags: [k8s_node_policy]

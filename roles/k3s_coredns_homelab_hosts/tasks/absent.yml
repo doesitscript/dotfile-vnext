@@ -1,0 +1,81 @@
+---
+# Remove only this role's server key from coredns-custom; delete CM if empty.
+
+- name: Read existing coredns-custom ConfigMap for absent path
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ConfigMap
+    name: "{{ k3s_coredns_homelab_hosts_configmap_name }}"
+    namespace: "{{ k3s_coredns_homelab_hosts_namespace }}"
+  environment:
+    KUBECONFIG: "{{ k3s_coredns_homelab_hosts_kubeconfig }}"
+  register: k3s_coredns_homelab_hosts_existing_cm_absent
+
+- name: Skip absent when coredns-custom ConfigMap does not exist
+  ansible.builtin.meta: end_host
+  when: (k3s_coredns_homelab_hosts_existing_cm_absent.resources | default([]) | length) == 0
+
+- name: Drop catalog server key from coredns-custom data
+  ansible.builtin.set_fact:
+    k3s_coredns_homelab_hosts_cm_data_absent: >-
+      {{
+        (
+          (
+            k3s_coredns_homelab_hosts_existing_cm_absent.resources
+            | first
+          ).data
+          | default({})
+        )
+        | dict2items
+        | rejectattr('key', 'equalto', k3s_coredns_homelab_hosts_server_key)
+        | items2dict
+      }}
+
+- name: Delete coredns-custom ConfigMap when no keys remain
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: ConfigMap
+    name: "{{ k3s_coredns_homelab_hosts_configmap_name }}"
+    namespace: "{{ k3s_coredns_homelab_hosts_namespace }}"
+  environment:
+    KUBECONFIG: "{{ k3s_coredns_homelab_hosts_kubeconfig }}"
+  when: (k3s_coredns_homelab_hosts_cm_data_absent | length) == 0
+  register: k3s_coredns_homelab_hosts_cm_delete
+
+- name: Update coredns-custom ConfigMap without catalog server key
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: "{{ k3s_coredns_homelab_hosts_configmap_name }}"
+        namespace: "{{ k3s_coredns_homelab_hosts_namespace }}"
+        labels:
+          app.kubernetes.io/managed-by: ansible
+          app.kubernetes.io/name: k3s-coredns-homelab-hosts
+          app.kubernetes.io/part-of: homelab-dns
+      data: "{{ k3s_coredns_homelab_hosts_cm_data_absent }}"
+  environment:
+    KUBECONFIG: "{{ k3s_coredns_homelab_hosts_kubeconfig }}"
+  when: (k3s_coredns_homelab_hosts_cm_data_absent | length) > 0
+  register: k3s_coredns_homelab_hosts_cm_update_absent
+
+- name: Restart CoreDNS after catalog key removal
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ k3s_coredns_homelab_hosts_kubeconfig }}"
+      - -n
+      - "{{ k3s_coredns_homelab_hosts_namespace }}"
+      - rollout
+      - restart
+      - deploy/coredns
+  when:
+    - k3s_coredns_homelab_hosts_restart_coredns | bool
+    - >
+      (k3s_coredns_homelab_hosts_cm_delete is changed)
+      or (k3s_coredns_homelab_hosts_cm_update_absent is changed)
+  changed_when: true

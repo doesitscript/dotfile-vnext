@@ -1,0 +1,51 @@
+---
+# Inventory coverage for capability classification.
+# Every inventory host that agents may target must either:
+#   1) declare selector structure (hardware/node/policy/runtime classes), or
+#   2) declare classification_status (alias_surface|deferred|controller), or
+#   3) be listed here under intentionally_out_of_classify_play with a reason.
+#
+# classify_host fails when structure/status is missing or when structure exists
+# but zero execution_roles match (offered structure must become policy data).
+schema_version: 1
+updated_at: "2026-07-24"
+
+required_in_classify_play:
+  - HOM-LAB-HVH-01
+  - HOM-LAB-HVH-02
+  - hom-lab-ctl-dkr-01
+  - hom-lab-ctl-dkr-02
+  - hom-lab-ctl-k3s-01
+  - hom-lab-ctl-k3s-02
+  - dev-workstation-win
+  - mac-dev
+  - HOM-LAB-HVH-02-guest-gw
+  - HOM-LAB-HVH-02-ipv6
+  - dev-3090-win
+
+host_notes:
+  HOM-LAB-HVH-02-guest-gw:
+    classification_status: alias_surface
+    note: Guest-switch SSH fallback for HVH-02; not a separate workload host.
+  HOM-LAB-HVH-02-ipv6:
+    classification_status: alias_surface
+    note: IPv6 fallback connection surface for HVH-02.
+  dev-3090-win:
+    classification_status: deferred
+    note: Gaming desktop inventory present; not commissioned into AI lanes yet.
+  mac-dev:
+    classification_status: controller
+    note: Ansible/controller Mac; client of Docker/K3s, not Compose UI host.
+
+intentionally_out_of_classify_play: []
+
+anti_patterns:
+  - inventing hosts: HOM-LAB-HVH-02 targeting without classify/policy research
+  - leaving host_vars with partial selector fields and no matching execution_role
+  - inventing placement before policy/*.yml + classify_homelab_hosts preview
+  - leaving process/dependency order only in prose (use policy/process_order.yml)
+
+depends_on:
+  - policy/hardware_classes.yml
+  - policy/execution_roles.yml
+  - policy/process_order.yml

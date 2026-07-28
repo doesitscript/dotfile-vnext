@@ -21,6 +21,10 @@ DOORS = [
         "hf-model-weight-lifecycle",
     ),
     (
+        "New product capability (Open WebUI-class): library→plan→apply",
+        "homelab-product-capability-flow",
+    ),
+    (
         "Generic / unclear-OS tool capability",
         "tool-capability-intake",
     ),
@@ -36,10 +40,12 @@ DOORS = [
 
 PROHIBITED = [
     "playbooks/troubleshoot/_tmp_* install playbooks",
-    "New role files/*.ps1 curl/BITS download+install when win_get_url+win_package apply",
+    "New role files/*.ps1 curl/BITS download+install when windows_artifact_download / win_package apply",
     "Ad-hoc choco/pip/scp install as the primary install path",
     "Skipping module discovery (ansible-doc / Context7) before shell",
     "Invented ssh user@ip/-i/-p — use ssh <inventory_hostname> (homelab-ssh-alias-connect)",
+    "Invented hosts: HOM-LAB-HVH-02 (or any bare hostname) before research + policy/*.yml + classify_homelab_hosts",
+    "Inventing placement/when: without checking execution_roles / coverage.yml for unclassified structure",
 ]
 
 SSH = [
@@ -50,8 +56,8 @@ SSH = [
 
 WINDOWS_EXE = [
     "1) chocolatey.chocolatey.win_chocolatey when healthy",
-    "2) ansible.windows.win_get_url (checksum + long timeout)",
-    "3) ansible.windows.win_package (silent args + creates_path)",
+    "2) Large/pinned Setup.exe: roles/windows_artifact_download + win_package (skill windows-artifact-download-apply)",
+    "3) Smaller/simple: ansible.windows.win_get_url (checksum + long timeout) + win_package",
     "4) Owning role + inventory install_method — never a temp playbook",
 ]
 

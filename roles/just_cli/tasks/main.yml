@@ -1,0 +1,9 @@
+---
+- name: Require macOS for just_cli package management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "just_cli currently supports macOS through Homebrew only."
+
+- name: Manage just on macOS
+  ansible.builtin.import_tasks: mac.yml

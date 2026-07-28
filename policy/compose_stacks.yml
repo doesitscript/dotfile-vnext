@@ -1,0 +1,23 @@
+---
+# Salvaged from contracts/fuzlang.contract.yaml promoted_patterns.compose_stack_contract
+# Authority: pattern guidance. Runtime layout vars live in inventory group_vars.
+schema_version: 1
+updated_at: "2026-07-24"
+depends_on:
+  - inventory linux_stacks_root / linux_data_root
+
+compose_stack:
+  module: community.docker.docker_compose_v2
+  required_params:
+    - project_src
+    - state
+  optional_params:
+    - project_name
+    - files
+  project_dir: "{{ linux_stacks_root }}/<compose_project>"
+  data_dir: "{{ linux_data_root }}/<service>"
+  reference_role: roles/stacks_fuzlang_net
+  avoid:
+    - Galaxy role default /home/dockerusr/<project> layout
+    - unpinned :latest as steady-state image tag
+    - ad-hoc docker compose up outside Ansible as SSOT

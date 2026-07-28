@@ -1,0 +1,30 @@
+---
+# open_webui — Compose Open WebUI (OpenAI-compatible client → LiteLLM).
+# Defaults conservative; commission via host_vars open_webui_state: present.
+
+open_webui_state: absent
+
+open_webui_compose_project: openwebui
+open_webui_project_src: "{{ linux_stacks_root }}/openwebui"
+open_webui_data_src: "{{ linux_data_root }}/openwebui"
+
+open_webui_image_repo: ghcr.io/open-webui/open-webui
+# Pin deliberately; bump via inventory when upgrading.
+open_webui_image_tag: "v0.6.18"
+
+open_webui_host_port: 3080
+open_webui_container_port: 8080
+
+open_webui_enable_openai_api: true
+open_webui_openai_api_base_url: "http://litellm.hom.lab/v1"
+# Prefer vault_open_webui_openai_api_key; fall back to LiteLLM master only for bootstrap.
+open_webui_openai_api_key: >-
+  {{ vault_open_webui_openai_api_key
+     | default(vault_k3s_litellm_gateway_master_key)
+     | default(k3s_litellm_gateway_master_key)
+     | default('sk-Pass@w0rd1') }}
+open_webui_enable_openai_api_passthrough: false
+open_webui_enable_ollama_api: false
+
+open_webui_require_ai_client_ui_role: true
+open_webui_docker_engine_host: "{{ inventory_hostname }}"

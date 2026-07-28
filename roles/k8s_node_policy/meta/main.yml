@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: k8s_node_policy
+  description: Enforce or report Kubernetes node labels/taints from capability policy.
+  license: MIT
+  min_ansible_version: "2.14"
+# Process order: classify before report/apply (policy/process_order.yml).
+dependencies:
+  - role: classify_host
+    when:
+      - k8s_node_policy_require_classification | default(true) | bool
+      - host_classification is not defined

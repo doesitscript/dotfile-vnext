@@ -1,10 +1,14 @@
 ---
-# homelab_hosts_file_* — interim DNS SSOT for /etc/hosts and verify matrices (DNS-3b).
+# homelab_hosts_file_* — interim DNS SSOT for /etc/hosts, K3s CoreDNS, and
+# verify matrices (DNS-3b).
 # Mirror: docs/reference/naming-standards/live-object-registry.yml ingress_routes,
 # guest_direct_operator_services, guest_portproxy_catalog,
 # homelab_router_gt6_mac_hosts_workaround.
 #
-# hosts_ip = IP written to /etc/hosts (name resolution only — port lives in verify_url).
+# hosts_ip = IP written to /etc/hosts and to K3s CoreDNS (coredns-custom
+#   hom.lab.server via role k3s_coredns_homelab_hosts). Name resolution only —
+#   port lives in verify_url.
+# Opt out of CoreDNS with coredns_hosts_enabled: false on a catalog row.
 # Guest VM SSH names remain in homelab_router_gt6_mac_hosts_workaround (not duplicated here).
 
 homelab_hosts_file_lan_publish_ip: >-
@@ -67,6 +71,15 @@ homelab_hosts_file_web_catalog:
     verify_url: "http://loki.hom.lab:3100/ready"
     source: guest_published_tcp_ports
     source_ref: loki
+    mac_hosts_enabled: true
+    linux_hosts_enabled: true
+    windows_hosts_enabled: true
+  - catalog_key: openwebui-web
+    hostname: openwebui.hom.lab
+    hosts_ip: "{{ homelab_hosts_file_lan_publish_ip }}"
+    verify_url: "http://openwebui.hom.lab:3080/"
+    source: guest_published_tcp_ports
+    source_ref: openwebui
     mac_hosts_enabled: true
     linux_hosts_enabled: true
     windows_hosts_enabled: true

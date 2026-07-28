@@ -174,6 +174,22 @@ Include:
     and operational fit, and links the live probe evidence. Plans produced from
     such intake must show the research/probe receipt or explicitly keep the
     slice blocked/pending.
+13. **No invented host targeting before research + classify.** Before writing
+    `hosts:` patterns, `when:` placement, or playbook limits for a new/changed
+    capability: (a) research existing inventory groups, `policy/*.yml`, and HRL
+    capability-selector docs; (b) run or cite
+    `playbooks/classify_homelab_hosts.yaml` for in-scope hosts; (c) place via
+    matched `execution_roles` / `hardware_classes` / `*_state`, never bare
+    hostnames such as `HOM-LAB-HVH-02`. If a host has selector structure but
+    matches no role, extend `policy/execution_roles.yml` or
+    `policy/coverage.yml` — do not invent around the gap.
+14. **Product capabilities (Open WebUI-class):** use skill
+    `homelab-product-capability-flow`. Library vendor scrape defaults to
+    **task-scoped** (goal-only); full/complete vendor clone only when the user
+    asks. Plan after library evidence. Mental model:
+    `policy/execution_roles.yml` = match vocabulary; inventory = thin host
+    facts + `*_state`; `classify_host` derives roles; `*_state: present`
+    commissions.
 
 ## Framework Rule Adherence
 

@@ -1,0 +1,16 @@
+name: {{ open_webui_compose_project }}
+services:
+  open-webui:
+    image: {{ open_webui_image_repo }}:{{ open_webui_image_tag }}
+    container_name: open-webui
+    restart: unless-stopped
+    ports:
+      - "{{ open_webui_host_port }}:{{ open_webui_container_port }}"
+    volumes:
+      - {{ open_webui_data_src }}:/app/backend/data
+    env_file:
+      - .env
+    labels:
+      com.homelab.stack: "openwebui"
+      com.homelab.deployed-by: "open_webui"
+      com.homelab.role: "ai-client-ui"

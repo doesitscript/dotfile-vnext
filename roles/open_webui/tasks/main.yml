@@ -1,0 +1,10 @@
+---
+- name: Include present tasks for Open WebUI
+  ansible.builtin.include_tasks: present.yml
+  when: open_webui_state | default('absent') == 'present'
+  tags: [open_webui]
+
+- name: Include absent tasks for Open WebUI
+  ansible.builtin.include_tasks: absent.yml
+  when: open_webui_state | default('absent') == 'absent'
+  tags: [open_webui]

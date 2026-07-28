@@ -1,0 +1,282 @@
+---
+# Logical execution roles (personas). Matched from inventory fields — never from
+# bare hostnames. K8s block is shared vocabulary for Compose today / pods later.
+schema_version: 1
+updated_at: "2026-07-24"
+
+# Match operators (all keys under match are AND; lists use any/all/none as named):
+#   inventory_surface_role: string equality
+#   classification_status / classification_status_empty / surface_type
+#   node_classes_any / node_classes_all / node_classes_none
+#   hardware_classes_any / hardware_classes_all / hardware_classes_none
+#   policy_classes_any / policy_classes_all / policy_classes_none
+#   runtime_planes_enabled_any  # plane key enabled: true on host
+#
+# depends_on: runtime/process prerequisites for workloads on this role
+#   (see also policy/process_order.yml).
+
+execution_roles:
+  ai-client-ui:
+    description: >-
+      Human OpenAI-compatible client surface (e.g. Open WebUI Compose).
+      Models via LiteLLM — no local GPU requirement on the UI host.
+    capability_tags:
+      - openai-compatible-edge
+      - companion-ui
+    depends_on:
+      - runtime_plane:docker_engine
+      - service:litellm_gateway
+    soft_depends_on:
+      - process:netbox_capability_tags
+      - process:hyperv_portproxy_openwebui_lan
+    allow_workloads:
+      - open_webui
+    deny_workloads:
+      - vllm
+      - ollama_sidecar_required
+    match:
+      classification_status_empty: true
+      inventory_surface_role: docker_engine
+      hardware_classes_any:
+        - high_vram
+      policy_classes_none:
+        - authoritative_data
+    k8s:
+      labels:
+        homelab.role: ui
+        homelab.workload/openai-compatible-edge: "true"
+      taints: []
+      selectors:
+        gpu: false
+
+  authoritative-storage:
+    description: Owns durable DB/object data (Postgres, MinIO, …)
+    capability_tags:
+      - authoritative-storage
+    depends_on:
+      - runtime_plane:docker_engine
+    soft_depends_on:
+      - process:netbox_capability_tags
+    allow_workloads:
+      - postgres
+      - minio
+      - redis
+      - clickhouse
+    deny_workloads:
+      - open_webui_primary
+    match:
+      classification_status_empty: true
+      policy_classes_any:
+        - authoritative_data
+    k8s:
+      labels:
+        homelab.role: storage
+        homelab.workload/authoritative-storage: "true"
+      taints:
+        - key: homelab.taint/no-ui
+          effect: NoSchedule
+      selectors:
+        gpu: false
+
+  low-tier-gpu:
+    description: Small local models / autocomplete only — not primary UI lane
+    capability_tags:
+      - low-tier-gpu
+    depends_on:
+      - hardware:nvidia_gpu|amd_gpu
+    allow_workloads:
+      - ollama_small
+    deny_workloads:
+      - open_webui_primary
+      - large_local_coding_models
+    match:
+      classification_status_empty: true
+      hardware_classes_any:
+        - nvidia_gpu
+        - amd_gpu
+      hardware_classes_none:
+        - high_vram
+      node_classes_none:
+        - windows_desktop
+    k8s:
+      labels:
+        homelab.role: gpu
+        homelab.workload/low-tier-gpu: "true"
+      taints: []
+      selectors:
+        gpu: true
+
+  primary-ai-compute:
+    description: Flagship Hyper-V / GPU-P primary inference lane
+    capability_tags:
+      - primary-ai-compute
+      - gpu-lane
+    depends_on:
+      - runtime_plane:hyperv_host
+      - hardware:nvidia_gpu
+      - hardware:high_vram
+    allow_workloads:
+      - hyperv_gpu_partition
+      - k3s_gpu_lane
+    match:
+      classification_status_empty: true
+      node_classes_any:
+        - hyperv_host
+      hardware_classes_all:
+        - nvidia_gpu
+        - high_vram
+    k8s:
+      labels:
+        homelab.role: ai-compute
+        homelab.workload/primary-ai: "true"
+      taints: []
+      selectors:
+        gpu: true
+
+  desktop-amd-runtime:
+    description: Windows AMD desktop host-local Ollama (Vulkan) — Continue edit
+    capability_tags:
+      - desktop-amd-runtime
+    depends_on:
+      - hardware:amd_gpu
+      - workload:windows_ollama_runtime
+    allow_workloads:
+      - windows_ollama_runtime
+    deny_workloads:
+      - nvidia_gpu_driver
+      - llm_compute_windows
+    match:
+      classification_status_empty: true
+      hardware_classes_all:
+        - amd_gpu
+    k8s:
+      labels:
+        homelab.role: desktop-gpu
+        homelab.hardware/gpu-vendor: amd
+      taints: []
+      selectors:
+        gpu: true
+
+  k3s-ai-plane:
+    description: K3s control/worker for LiteLLM / planned LangGraph (no UI Compose)
+    capability_tags:
+      - k3s-ai-plane
+    depends_on:
+      - runtime_plane:k3s_node
+      - prerequisite:k3s_cluster_ready
+    soft_depends_on:
+      - service:litellm_gateway
+    allow_workloads:
+      - litellm_gateway
+      - langgraph_runtime
+      - vllm
+    match:
+      classification_status_empty: true
+      node_classes_any:
+        - k3s_runtime
+        - k3s_node
+        - k3s_control
+      runtime_planes_enabled_any:
+        - k3s
+        - k3s_node
+      hardware_classes_any:
+        - nvidia_gpu
+        - high_vram
+      policy_classes_none:
+        - authoritative_data
+    k8s:
+      labels:
+        homelab.role: k3s-ai
+        homelab.plane: ai
+      taints: []
+      selectors:
+        gpu: optional
+
+  k3s-storage-plane:
+    description: Storage-lane K3s (control/services adjacent to authoritative data)
+    capability_tags:
+      - k3s-storage-plane
+    depends_on:
+      - runtime_plane:k3s_node
+      - prerequisite:k3s_cluster_ready
+      - policy_class:authoritative_data
+    allow_workloads:
+      - k3s_control
+      - storage_adjacent_services
+    deny_workloads:
+      - open_webui_primary
+      - vllm_primary
+    match:
+      classification_status_empty: true
+      node_classes_any:
+        - k3s_runtime
+        - k3s_node
+      runtime_planes_enabled_any:
+        - k3s
+        - k3s_node
+      policy_classes_any:
+        - authoritative_data
+    k8s:
+      labels:
+        homelab.role: k3s-storage
+        homelab.plane: storage
+      taints:
+        - key: homelab.taint/no-ui
+          effect: NoSchedule
+      selectors:
+        gpu: false
+
+  connection-alias:
+    description: Alternate connection surface for an existing physical host (not a workload persona)
+    capability_tags:
+      - connection-alias
+    depends_on: []
+    allow_workloads: []
+    deny_workloads:
+      - open_webui_primary
+    match:
+      classification_status: alias_surface
+    k8s:
+      labels:
+        homelab.role: connection-alias
+      taints: []
+      selectors:
+        gpu: false
+
+  deferred-windows-gpu:
+    description: Windows GPU host inventory present but not yet commissioned into steady-state AI lanes
+    capability_tags:
+      - deferred
+    depends_on: []
+    allow_workloads: []
+    deny_workloads:
+      - open_webui_primary
+      - litellm_gateway
+    match:
+      classification_status: deferred
+    k8s:
+      labels:
+        homelab.role: deferred
+      taints: []
+      selectors:
+        gpu: false
+
+  controller-macos:
+    description: Mac Ansible/controller workstation (not a Compose/K3s workload host)
+    capability_tags:
+      - controller
+    depends_on: []
+    allow_workloads:
+      - ansible_controller
+      - k3s_mac_client
+    deny_workloads:
+      - open_webui_primary
+    match:
+      classification_status: controller
+      surface_type: macos
+    k8s:
+      labels:
+        homelab.role: controller
+      taints: []
+      selectors:
+        gpu: false

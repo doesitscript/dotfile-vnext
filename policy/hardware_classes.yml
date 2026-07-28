@@ -1,0 +1,44 @@
+---
+# Controlled vocabulary for inventory host_vars: hardware_classes: [...]
+# Peer of inventory groups windows_nvidia_gpu_hosts / windows_amd_gpu_hosts.
+# depends_on: none (leaf vocabulary). Consumed by execution_roles + classify_host.
+# See policy/process_order.yml.
+schema_version: 1
+updated_at: "2026-07-24"
+
+hardware_classes:
+  nvidia_gpu:
+    description: NVIDIA CUDA / driver / GPU Operator path
+    vendor: nvidia
+    inventory_groups_example:
+      - windows_nvidia_gpu_hosts
+    mutually_exclusive_with:
+      - amd_gpu
+    k8s:
+      labels:
+        homelab.hardware/gpu-vendor: nvidia
+      resource_hint: nvidia.com/gpu
+
+  amd_gpu:
+    description: AMD Vulkan (or ROCm when commissioned) path; never feed NVIDIA roles
+    vendor: amd
+    inventory_groups_example:
+      - windows_amd_gpu_hosts
+    mutually_exclusive_with:
+      - nvidia_gpu
+    k8s:
+      labels:
+        homelab.hardware/gpu-vendor: amd
+      resource_hint: amd.com/gpu
+
+  high_vram:
+    description: Enough VRAM for primary local coding / large models
+    k8s:
+      labels:
+        homelab.hardware/vram-tier: high
+
+  bulk_storage:
+    description: Storage-authoritative disks / NAS role
+    k8s:
+      labels:
+        homelab.hardware/storage: bulk

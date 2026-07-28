@@ -1,0 +1,94 @@
+---
+# Open WebUI present path — Compose under linux_stacks_root (no Docker install).
+
+- name: Require ai-client-ui classification before Open WebUI present
+  ansible.builtin.assert:
+    that:
+      - >-
+        ('ai-client-ui' in (host_execution_roles | default([])))
+        or ('open_webui' in (host_allow_workloads | default([])))
+    fail_msg: >-
+      open_webui_state=present on {{ inventory_hostname }} but host is not
+      classified ai-client-ui / open_webui. Run classify_host first; do not
+      invent hostname targeting.
+  when: open_webui_require_ai_client_ui_role | bool
+  tags: [open_webui]
+
+- name: Load shared vault when present (optional keys)
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vault/shared.vault.yml"
+  failed_when: false
+  no_log: true
+  tags: [open_webui]
+
+- name: Ensure Open WebUI data directory
+  ansible.builtin.file:
+    path: "{{ open_webui_data_src }}"
+    state: directory
+    mode: "0755"
+  become: true
+  tags: [open_webui]
+
+- name: Ensure Open WebUI compose project directory
+  ansible.builtin.file:
+    path: "{{ open_webui_project_src }}"
+    state: directory
+    mode: "0755"
+  become: true
+  tags: [open_webui]
+
+- name: Render Open WebUI docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ open_webui_project_src }}/docker-compose.yml"
+    mode: "0644"
+  become: true
+  register: open_webui_compose_template
+  tags: [open_webui]
+
+- name: Render Open WebUI .env
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ open_webui_project_src }}/.env"
+    mode: "0640"
+    owner: root
+    group: docker
+  become: true
+  no_log: true
+  register: open_webui_env_template
+  tags: [open_webui]
+
+- name: Ensure admin user is in docker group
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: true
+  become: true
+  tags: [open_webui]
+
+- name: Validate Open WebUI compose config
+  ansible.builtin.command:
+    cmd: docker compose config --quiet
+    chdir: "{{ open_webui_project_src }}"
+  become: true
+  changed_when: false
+  tags: [open_webui]
+
+- name: Deploy Open WebUI compose stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ open_webui_project_src }}"
+    project_name: "{{ open_webui_compose_project }}"
+    state: present
+    pull: "{{ open_webui_compose_pull | default('missing') }}"
+  become: true
+  register: open_webui_compose
+  tags: [open_webui]
+
+- name: Report Open WebUI deploy result
+  ansible.builtin.debug:
+    msg:
+      host: "{{ inventory_hostname }}"
+      project_src: "{{ open_webui_project_src }}"
+      changed: "{{ open_webui_compose.changed | default(false) }}"
+      openai_base: "{{ open_webui_openai_api_base_url }}"
+  tags: [open_webui]

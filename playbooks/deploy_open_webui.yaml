@@ -1,0 +1,36 @@
+---
+# Deploy Open WebUI (Option A) — capability-selected Compose client → LiteLLM.
+#
+# depends_on (policy/process_order.yml → open_webui):
+#   - classify_host (role meta dependency if facts missing)
+#   - litellm_gateway
+#   - docker_engine on ai-client-ui host
+# soft_depends_on: hyperv_portproxy_openwebui_lan, netbox_capability_tags
+#
+# Apply:   ansible-playbook playbooks/deploy_open_webui.yaml
+# Verify:  container + HTTP + LiteLLM models list
+# Undo:    open_webui_state=absent on the commissioned host + re-run
+# Change class: idempotent Compose config
+#
+# PROHIBITED: hosts: HOM-LAB-HVH-02 — classify first, then open_webui_state.
+
+- name: Classify hosts before Open WebUI targeting
+  hosts: linux_vm_hosts
+  gather_facts: false
+  tags: [classify_host, open_webui]
+  roles:
+    - role: classify_host
+      tags: [classify_host, open_webui]
+
+- name: Deploy Open WebUI where commissioned
+  hosts: linux_vm_hosts
+  gather_facts: false
+  tags: [open_webui]
+  roles:
+    - role: open_webui
+      when:
+        - open_webui_state | default('absent') == 'present'
+        - >-
+          ('ai-client-ui' in (host_execution_roles | default([])))
+          or ('open_webui' in (host_allow_workloads | default([])))
+      tags: [open_webui]

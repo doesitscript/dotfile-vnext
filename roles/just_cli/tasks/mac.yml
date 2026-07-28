@@ -1,0 +1,212 @@
+---
+- name: Validate just_cli completion shells
+  ansible.builtin.assert:
+    that:
+      - just_cli_state in ["present", "absent"]
+      - (just_cli_completion_shells | difference(["bash", "zsh"])) | length == 0
+    fail_msg: "just_cli_state must be present or absent, and just_cli_completion_shells may contain only bash and zsh."
+
+- name: Resolve Homebrew prefix for just_cli package and completion paths
+  ansible.builtin.command:
+    argv:
+      - brew
+      - --prefix
+  register: just_cli_brew_prefix_cmd
+  changed_when: false
+  check_mode: false
+
+- name: Wait for any in-progress just Homebrew build to release its lock
+  ansible.builtin.wait_for:
+    path: "{{ just_cli_brew_prefix_cmd.stdout }}/var/homebrew/locks/{{ just_cli_homebrew_formula }}.formula.lock"
+    state: absent
+    timeout: 3600
+  when: not ansible_check_mode
+
+- name: Set just_cli completion paths
+  ansible.builtin.set_fact:
+    just_cli_completion_path_map:
+      bash: >-
+        {{
+          just_cli_bash_completion_path
+          if (just_cli_bash_completion_path | default('') | length) > 0
+          else (just_cli_brew_prefix_cmd.stdout ~ '/etc/bash_completion.d/just')
+        }}
+      zsh: >-
+        {{
+          just_cli_zsh_completion_path
+          if (just_cli_zsh_completion_path | default('') | length) > 0
+          else (just_cli_brew_prefix_cmd.stdout ~ '/share/zsh/site-functions/_just')
+        }}
+  changed_when: false
+  when: just_cli_install_completions | bool
+
+- name: Manage just Homebrew formula
+  community.general.homebrew:
+    name: "{{ just_cli_homebrew_formula }}"
+    state: "{{ just_cli_state }}"
+
+- name: Check installed just formula for completion preview
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --formula
+      - "{{ just_cli_homebrew_formula }}"
+  register: just_cli_completion_formula_preview
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - just_cli_state == "present"
+    - just_cli_install_completions | bool
+    - ansible_check_mode
+
+- name: Generate just completion scripts
+  ansible.builtin.command:
+    argv:
+      - just
+      - --completions
+      - "{{ item }}"
+  register: just_cli_completion_generation
+  changed_when: false
+  loop: "{{ just_cli_completion_shells }}"
+  when:
+    - just_cli_state == "present"
+    - just_cli_install_completions | bool
+    - not ansible_check_mode or just_cli_completion_formula_preview.rc == 0
+
+- name: Ensure just completion parent directories exist
+  ansible.builtin.file:
+    path: "{{ just_cli_completion_path_map[item] | dirname }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ just_cli_completion_shells }}"
+  when:
+    - just_cli_state == "present"
+    - just_cli_install_completions | bool
+
+- name: Install just completion scripts
+  ansible.builtin.copy:
+    content: "{{ item.stdout }}\n"
+    dest: "{{ just_cli_completion_path_map[item.item] }}"
+    mode: "0644"
+  loop: >-
+    {{
+      just_cli_completion_generation.results | default([])
+      | selectattr('stdout', 'defined')
+      | list
+    }}
+  when:
+    - just_cli_state == "present"
+    - just_cli_install_completions | bool
+    - item.stdout | length > 0
+
+- name: Explain just completion preview limitations when the formula is absent
+  ansible.builtin.debug:
+    msg:
+      - "Check mode note: live apply will generate just completions after the formula is installed."
+      - "Planned completion shells: {{ just_cli_completion_shells | join(', ') }}"
+  when:
+    - just_cli_state == "present"
+    - just_cli_install_completions | bool
+    - ansible_check_mode
+    - just_cli_completion_formula_preview.rc != 0
+
+- name: Remove just completion scripts
+  ansible.builtin.file:
+    path: "{{ just_cli_completion_path_map[item] }}"
+    state: absent
+  loop: "{{ just_cli_completion_shells }}"
+  when:
+    - just_cli_state == "absent"
+    - just_cli_install_completions | bool
+
+- name: Check installed just formula
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --formula
+      - "{{ just_cli_homebrew_formula }}"
+  register: just_cli_formula_check
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - just_cli_verify | bool
+
+- name: Verify just formula is present
+  ansible.builtin.assert:
+    that:
+      - just_cli_formula_check.rc == 0
+    fail_msg: "Homebrew formula {{ just_cli_homebrew_formula }} is not installed."
+  when:
+    - not ansible_check_mode
+    - just_cli_verify | bool
+    - just_cli_state == "present"
+
+- name: Verify just formula is absent
+  ansible.builtin.assert:
+    that:
+      - just_cli_formula_check.rc != 0
+    fail_msg: "Homebrew formula {{ just_cli_homebrew_formula }} remains installed."
+  when:
+    - not ansible_check_mode
+    - just_cli_verify | bool
+    - just_cli_state == "absent"
+
+- name: Probe just version
+  ansible.builtin.command:
+    argv:
+      - just
+      - --version
+  register: just_cli_version_probe
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - just_cli_verify | bool
+    - just_cli_state == "present"
+
+- name: Verify just completion scripts exist
+  ansible.builtin.stat:
+    path: "{{ just_cli_completion_path_map[item] }}"
+  register: just_cli_completion_stats
+  loop: "{{ just_cli_completion_shells }}"
+  when:
+    - not ansible_check_mode
+    - just_cli_verify | bool
+    - just_cli_install_completions | bool
+
+- name: Assert just completion scripts exist
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists | default(false)
+    fail_msg: "Managed just {{ item.item }} completion missing at {{ item.stat.path | default(just_cli_completion_path_map[item.item]) }}."
+  loop: "{{ just_cli_completion_stats.results | default([]) }}"
+  when:
+    - not ansible_check_mode
+    - just_cli_verify | bool
+    - just_cli_state == "present"
+    - just_cli_install_completions | bool
+
+- name: Assert just completion scripts are absent
+  ansible.builtin.assert:
+    that:
+      - not (item.stat.exists | default(false))
+    fail_msg: "Managed just {{ item.item }} completion remains at {{ item.stat.path | default(just_cli_completion_path_map[item.item]) }}."
+  loop: "{{ just_cli_completion_stats.results | default([]) }}"
+  when:
+    - not ansible_check_mode
+    - just_cli_verify | bool
+    - just_cli_state == "absent"
+    - just_cli_install_completions | bool
+
+- name: Report just formula state
+  ansible.builtin.debug:
+    msg:
+      - "Homebrew formula {{ just_cli_homebrew_formula }} is {{ 'installed' if just_cli_state == 'present' else 'absent' }}."
+      - "Managed completion shells: {{ just_cli_completion_shells | join(', ') if just_cli_install_completions | bool else 'disabled' }}"
+      - "{{ just_cli_version_probe.stdout | default('') }}"
+  when:
+    - not ansible_check_mode
+    - just_cli_verify | bool

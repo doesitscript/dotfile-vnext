@@ -1,0 +1,628 @@
+# {{ ansible_managed }}
+# Temporary safety net: trim chat messages so local 32k vLLM backends do not
+# reject Cursor/agent prompts that sit over the context window.
+#
+# Cursor Agent payloads often add large `tools` schemas AFTER message trim, and
+# LiteLLM token_counter undercounts vs the hosted vLLM Qwen tokenizer. Budget
+# aggressively and hard-cut so vLLM never sees >32k.
+from __future__ import annotations
+
+import json
+import os
+from typing import Any, Literal, Optional
+
+from litellm.integrations.custom_logger import CustomLogger
+from litellm.utils import token_counter, trim_messages
+
+# Count with the served backend id — client aliases like Ornith are not reliable
+# tokenizers and can under-trim relative to vLLM's Qwen tokenizer.
+_TRIM_TOKENIZER_MODEL = "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
+_HARD_CONTEXT = 32768
+# From role defaults — server-tuned drivers for this homelab cluster.
+_SAFETY_TOKENS = {{ k3s_litellm_gateway_trim_messages_safety_tokens | int }}
+_MIN_COMPLETION_TOKENS = {{ k3s_litellm_gateway_trim_messages_min_completion_tokens | int }}
+_MIN_MESSAGE_TOKENS = {{ k3s_litellm_gateway_trim_messages_min_message_tokens | int }}
+_CHARS_PER_TOKEN = {{ k3s_litellm_gateway_trim_messages_chars_per_token | float }}
+# Opt-in gate: only mutate requests when model_list[].model_info.trim_messages
+# is true for the client-facing model alias. Loaded from the mounted config.
+_CONFIG_PATH = "/etc/litellm/config.yaml"
+
+
+def _coerce_trim_flag(info: Any) -> bool:
+    if info is None:
+        return False
+    if isinstance(info, dict):
+        return bool(info.get("trim_messages"))
+    return bool(getattr(info, "trim_messages", False))
+
+
+def _load_trim_flags_from_config() -> dict[str, bool]:
+    flags: dict[str, bool] = {}
+    try:
+        import yaml  # LiteLLM image includes PyYAML
+
+        with open(_CONFIG_PATH, encoding="utf-8") as handle:
+            cfg = yaml.safe_load(handle) or {}
+        for row in cfg.get("model_list") or []:
+            if not isinstance(row, dict):
+                continue
+            name = row.get("model_name")
+            if not name:
+                continue
+            flags[str(name)] = _coerce_trim_flag(row.get("model_info"))
+    except Exception as exc:  # noqa: BLE001 - never block import
+        print(f"litellm trim_messages metadata load failed: {exc}", flush=True)
+    return flags
+
+
+_TRIM_BY_MODEL = _load_trim_flags_from_config()
+
+
+def _model_wants_trim(model: str) -> bool:
+    """Return True only when this client alias opted into trim_messages."""
+    if model in _TRIM_BY_MODEL:
+        return _TRIM_BY_MODEL[model]
+    try:
+        from litellm.proxy.proxy_server import llm_router
+
+        if llm_router is not None:
+            for row in llm_router.model_list or []:
+                if row.get("model_name") == model:
+                    return _coerce_trim_flag(row.get("model_info"))
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
+
+# Cursor Agent built-in tool names (OpenAI tools[] entries). Matching is
+# case-insensitive; unknown names fall through to MCP/unknown classifiers.
+_CURSOR_BUILTIN_TOOL_NAMES = {
+    "read",
+    "write",
+    "streplace",
+    "delete",
+    "shell",
+    "grep",
+    "glob",
+    "todowrite",
+    "editnotebook",
+    "task",
+    "awaitshell",
+    "generateimage",
+    "readlints",
+    "switchmode",
+    "fetchmcresource",
+    "fetchmcpresource",
+    "callmcptool",
+    "getmcptools",
+    "websearch",
+    "webfetch",
+    "askquestion",
+    "streplace",
+    "read_file",
+    "edit_file",
+    "delete_file",
+    "run_terminal_command",
+    "list_dir",
+    "file_search",
+    "grep_search",
+    "search_replace",
+    "write_file",
+    "apply_patch",
+    "run_terminal_cmd",
+    "list_mcp_resources",
+    "fetch_mcp_resource",
+}
+
+
+def _chars_to_tokens(raw: str) -> int:
+    # Conservative: treat tools JSON denser than prose.
+    return max(0, int(len(raw) / 2.5))
+
+
+def _tool_entry_name(tool: Any) -> str:
+    if not isinstance(tool, dict):
+        return "unknown"
+    fn = tool.get("function")
+    if isinstance(fn, dict) and isinstance(fn.get("name"), str) and fn["name"]:
+        return fn["name"]
+    name = tool.get("name")
+    if isinstance(name, str) and name:
+        return name
+    return "unknown"
+
+
+def _classify_tool(name: str) -> str:
+    """Map a tools[] name into a coarse ownership bucket for logging."""
+    n = (name or "").strip()
+    key = n.lower().replace("-", "_")
+    compact = key.replace("_", "")
+
+    if key in _CURSOR_BUILTIN_TOOL_NAMES or compact in _CURSOR_BUILTIN_TOOL_NAMES:
+        return "cursor_builtin_tokens"
+    # Cursor often prefixes MCP tools with server or mcp_ markers.
+    if "context7" in key or key in {"resolve_library_id", "query_docs"}:
+        return "mcp_context7_tokens"
+    if (
+        "ansible" in key
+        or key.startswith("zen_of_ansible")
+        or key.startswith("inventory_")
+        or key.startswith("ade_")
+        or key.startswith("adt_")
+        or key.startswith("galaxy_")
+        or key.startswith("project_")
+        or key.startswith("vault_")
+        or key in {"list_tasks", "list_inventory", "run_ad_hoc", "run_playbook", "check_syntax"}
+        or key.startswith("sysoperator")
+    ):
+        return "mcp_ansible_tokens"
+    if (
+        key.startswith("mcp_")
+        or key.startswith("browser_")
+        or key.startswith("firecrawl_")
+        or key.startswith("openai_")
+        or "playwright" in key
+        or "netbox" in key
+        or "codex" in key
+        or key.startswith("fetch_")
+    ):
+        return "mcp_other_tokens"
+    return "unknown_tokens"
+
+
+def _tool_function_body(tool: Any) -> dict:
+    if not isinstance(tool, dict):
+        return {}
+    fn = tool.get("function")
+    if isinstance(fn, dict):
+        return fn
+    return tool
+
+
+def _param_property_stats(parameters: Any) -> dict[str, Any]:
+    """Summarize JSON-schema parameters: property count, enum sizes, nesting."""
+    if not isinstance(parameters, dict):
+        return {
+            "param_keys": 0,
+            "param_key_names": "",
+            "enum_values_total": 0,
+            "largest_enum_key": "",
+            "largest_enum_count": 0,
+        }
+    props = parameters.get("properties")
+    if not isinstance(props, dict):
+        return {
+            "param_keys": 0,
+            "param_key_names": "",
+            "enum_values_total": 0,
+            "largest_enum_key": "",
+            "largest_enum_count": 0,
+        }
+    enum_total = 0
+    largest_key = ""
+    largest_count = 0
+
+    def _walk(node: Any, path: str) -> None:
+        nonlocal enum_total, largest_key, largest_count
+        if isinstance(node, dict):
+            enum = node.get("enum")
+            if isinstance(enum, list):
+                enum_total += len(enum)
+                if len(enum) > largest_count:
+                    largest_count = len(enum)
+                    largest_key = path or "enum"
+            for key, val in node.items():
+                child = f"{path}.{key}" if path else str(key)
+                _walk(val, child)
+        elif isinstance(node, list):
+            for idx, val in enumerate(node):
+                _walk(val, f"{path}[{idx}]")
+
+    _walk(props, "")
+    names = sorted(str(k) for k in props.keys())
+    return {
+        "param_keys": len(props),
+        "param_key_names": ",".join(names[:40]),
+        "enum_values_total": enum_total,
+        "largest_enum_key": largest_key,
+        "largest_enum_count": largest_count,
+    }
+
+
+def _analyze_one_tool(tool: Any) -> dict[str, Any]:
+    name = _tool_entry_name(tool)
+    group = _classify_tool(name)
+    body = _tool_function_body(tool)
+    description = body.get("description") if isinstance(body, dict) else None
+    parameters = body.get("parameters") if isinstance(body, dict) else None
+    try:
+        raw_all = json.dumps(tool, ensure_ascii=False)
+    except (TypeError, ValueError):
+        raw_all = str(tool)
+    try:
+        raw_desc = description if isinstance(description, str) else json.dumps(description or "", ensure_ascii=False)
+    except (TypeError, ValueError):
+        raw_desc = str(description)
+    try:
+        raw_params = json.dumps(parameters, ensure_ascii=False) if parameters is not None else ""
+    except (TypeError, ValueError):
+        raw_params = str(parameters)
+    tokens_all = _chars_to_tokens(raw_all)
+    tokens_desc = _chars_to_tokens(raw_desc)
+    tokens_params = _chars_to_tokens(raw_params)
+    tokens_other = max(0, tokens_all - tokens_desc - tokens_params)
+    stats = _param_property_stats(parameters)
+    return {
+        "name": name,
+        "group": group,
+        "tokens": tokens_all,
+        "desc_tokens": tokens_desc,
+        "params_tokens": tokens_params,
+        "other_tokens": tokens_other,
+        "desc_chars": len(raw_desc),
+        "params_chars": len(raw_params),
+        "desc_preview": (raw_desc[:180] + "…") if len(raw_desc) > 180 else raw_desc,
+        **stats,
+        "raw": tool,
+    }
+
+
+def _analyze_tools(data: dict) -> dict[str, Any]:
+    """Per-tool and grouped token estimates for the request tools[] array."""
+    tools = data.get("tools")
+    empty = {
+        "tool_count_total": 0,
+        "tool_tokens_total": 0,
+        "per_tool": [],
+        "groups": {
+            "cursor_builtin_tokens": 0,
+            "mcp_context7_tokens": 0,
+            "mcp_ansible_tokens": 0,
+            "mcp_other_tokens": 0,
+            "unknown_tokens": 0,
+        },
+        "tools_raw": tools if tools else [],
+    }
+    if not tools:
+        return empty
+    if not isinstance(tools, list):
+        try:
+            raw = json.dumps(tools, ensure_ascii=False)
+        except (TypeError, ValueError):
+            raw = str(tools)
+        total = _chars_to_tokens(raw)
+        empty["tool_count_total"] = 1
+        empty["tool_tokens_total"] = total
+        empty["groups"]["unknown_tokens"] = total
+        empty["per_tool"] = [{"name": "tools_blob", "tokens": total, "group": "unknown_tokens"}]
+        empty["tools_raw"] = tools
+        return empty
+
+    per_tool: list[dict[str, Any]] = []
+    groups = {
+        "cursor_builtin_tokens": 0,
+        "mcp_context7_tokens": 0,
+        "mcp_ansible_tokens": 0,
+        "mcp_other_tokens": 0,
+        "unknown_tokens": 0,
+    }
+    total = 0
+    for tool in tools:
+        row = _analyze_one_tool(tool)
+        groups[row["group"]] = groups.get(row["group"], 0) + int(row["tokens"])
+        total += int(row["tokens"])
+        per_tool.append(row)
+
+    per_tool.sort(key=lambda row: (-int(row["tokens"]), str(row["name"])))
+    return {
+        "tool_count_total": len(per_tool),
+        "tool_tokens_total": total,
+        "per_tool": per_tool,
+        "groups": groups,
+        "tools_raw": tools,
+    }
+
+
+def _find_raw_tool(analysis: dict[str, Any], wanted: str) -> Any:
+    target = wanted.lower()
+    for row in analysis.get("per_tool") or []:
+        if str(row.get("name") or "").lower() == target:
+            return row.get("raw")
+    return None
+
+
+def _write_tools_dump(analysis: dict[str, Any], top_n: int = 5) -> None:
+    """Write full tools[] plus Task/Shell definitions to the pod filesystem."""
+    rows = list(analysis.get("per_tool") or [])
+    if not rows:
+        return
+    top_rows = rows[:top_n]
+    tools_raw = analysis.get("tools_raw")
+    task_raw = _find_raw_tool(analysis, "Task")
+    shell_raw = _find_raw_tool(analysis, "Shell")
+    summary = {
+        "tool_count_total": analysis.get("tool_count_total"),
+        "tool_tokens_total": analysis.get("tool_tokens_total"),
+        "groups": analysis.get("groups"),
+        "per_tool_summary": [
+            {
+                "name": r.get("name"),
+                "group": r.get("group"),
+                "tokens": r.get("tokens"),
+                "desc_tokens": r.get("desc_tokens"),
+                "params_tokens": r.get("params_tokens"),
+                "other_tokens": r.get("other_tokens"),
+                "desc_chars": r.get("desc_chars"),
+                "params_chars": r.get("params_chars"),
+                "param_keys": r.get("param_keys"),
+                "param_key_names": r.get("param_key_names"),
+                "enum_values_total": r.get("enum_values_total"),
+                "largest_enum_key": r.get("largest_enum_key"),
+                "largest_enum_count": r.get("largest_enum_count"),
+            }
+            for r in rows
+        ],
+        "top_tools": [
+            {
+                "name": r.get("name"),
+                "group": r.get("group"),
+                "tokens": r.get("tokens"),
+                "desc_tokens": r.get("desc_tokens"),
+                "params_tokens": r.get("params_tokens"),
+                "other_tokens": r.get("other_tokens"),
+                "desc_chars": r.get("desc_chars"),
+                "params_chars": r.get("params_chars"),
+                "param_keys": r.get("param_keys"),
+                "param_key_names": r.get("param_key_names"),
+                "enum_values_total": r.get("enum_values_total"),
+                "largest_enum_key": r.get("largest_enum_key"),
+                "largest_enum_count": r.get("largest_enum_count"),
+                "desc_preview": r.get("desc_preview"),
+                "raw": r.get("raw"),
+            }
+            for r in top_rows
+        ],
+    }
+    try:
+        base = "/tmp/litellm-tools-capture"
+        os.makedirs(base, exist_ok=True)
+        paths = {
+            "summary": f"{base}/summary.json",
+            "tools_array": f"{base}/tools-array-complete.json",
+            "task": f"{base}/tool-Task.json",
+            "shell": f"{base}/tool-Shell.json",
+            "legacy_dump": "/tmp/litellm-tools-structure-dump.json",
+        }
+        with open(paths["summary"], "w", encoding="utf-8") as handle:
+            json.dump(summary, handle, ensure_ascii=False, indent=2)
+        with open(paths["tools_array"], "w", encoding="utf-8") as handle:
+            json.dump(tools_raw, handle, ensure_ascii=False, indent=2)
+        with open(paths["task"], "w", encoding="utf-8") as handle:
+            json.dump(task_raw, handle, ensure_ascii=False, indent=2)
+        with open(paths["shell"], "w", encoding="utf-8") as handle:
+            json.dump(shell_raw, handle, ensure_ascii=False, indent=2)
+        # Keep prior single-file dump for compatibility.
+        with open(paths["legacy_dump"], "w", encoding="utf-8") as handle:
+            json.dump(
+                {
+                    **summary,
+                    "tools_array_complete": tools_raw,
+                    "task_tool": task_raw,
+                    "shell_tool": shell_raw,
+                },
+                handle,
+                ensure_ascii=False,
+                indent=2,
+            )
+        print(
+            "litellm trim_messages tools_dump_path="
+            f"{paths['legacy_dump']} capture_dir={base} "
+            f"files=summary,tools-array-complete,tool-Task,tool-Shell",
+            flush=True,
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"litellm trim_messages tools_dump_failed: {exc}", flush=True)
+
+
+def _log_tools_breakdown(analysis: dict[str, Any]) -> None:
+    if int(analysis.get("tool_count_total") or 0) <= 0:
+        return
+    groups = analysis.get("groups") or {}
+    print(
+        "litellm trim_messages tools_breakdown: "
+        f"tool_count_total={analysis['tool_count_total']} "
+        f"tool_tokens_total={analysis['tool_tokens_total']} "
+        f"cursor_builtin_tokens={groups.get('cursor_builtin_tokens', 0)} "
+        f"mcp_context7_tokens={groups.get('mcp_context7_tokens', 0)} "
+        f"mcp_ansible_tokens={groups.get('mcp_ansible_tokens', 0)} "
+        f"mcp_other_tokens={groups.get('mcp_other_tokens', 0)} "
+        f"unknown_tokens={groups.get('unknown_tokens', 0)}",
+        flush=True,
+    )
+    for row in analysis.get("per_tool") or []:
+        print(
+            f"litellm trim_messages tool: tool={row['name']} "
+            f"tokens={row['tokens']} "
+            f"desc_tokens={row.get('desc_tokens', 0)} "
+            f"params_tokens={row.get('params_tokens', 0)} "
+            f"other_tokens={row.get('other_tokens', 0)} "
+            f"param_keys={row.get('param_keys', 0)} "
+            f"enum_values_total={row.get('enum_values_total', 0)} "
+            f"largest_enum={row.get('largest_enum_key', '')}:{row.get('largest_enum_count', 0)} "
+            f"group={row['group']}",
+            flush=True,
+        )
+        if row.get("param_key_names"):
+            print(
+                f"litellm trim_messages tool_params: tool={row['name']} "
+                f"keys={row['param_key_names']}",
+                flush=True,
+            )
+        preview = row.get("desc_preview") or ""
+        if preview:
+            # Single-line preview for kubectl grep friendliness.
+            preview_one_line = " ".join(str(preview).split())
+            print(
+                f"litellm trim_messages tool_desc_preview: tool={row['name']} "
+                f"text={preview_one_line}",
+                flush=True,
+            )
+    _write_tools_dump(analysis, top_n=5)
+
+
+def _flatten_content(content: Any) -> str:
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                text = item.get("text")
+                if isinstance(text, str):
+                    parts.append(text)
+                else:
+                    parts.append(json.dumps(item, ensure_ascii=False))
+            else:
+                parts.append(str(item))
+        return "\n".join(parts)
+    if isinstance(content, dict):
+        text = content.get("text")
+        if isinstance(text, str):
+            return text
+        return json.dumps(content, ensure_ascii=False)
+    return str(content)
+
+
+def _hard_cut_messages(messages: list, max_chars: int) -> list:
+    """Keep newest message tails within a rough character budget."""
+    if max_chars < 64 or not messages:
+        return messages
+    out: list = []
+    remaining = max_chars
+    for msg in reversed(messages):
+        if remaining <= 0:
+            break
+        copied = dict(msg)
+        flat = _flatten_content(copied.get("content"))
+        if len(flat) > remaining:
+            flat = flat[-remaining:]
+        copied["content"] = flat
+        out.append(copied)
+        remaining -= len(flat)
+    out.reverse()
+    return out if out else messages[-1:]
+
+
+class MessageTrimHandler(CustomLogger):
+    """Pre-call hook that caps message tokens below the local model window."""
+
+    def __init__(
+        self,
+        max_input_tokens: int = {{ k3s_litellm_gateway_trim_messages_max_input_tokens | int }},
+    ) -> None:
+        super().__init__()
+        self.max_input_tokens = max_input_tokens
+
+    async def async_pre_call_hook(
+        self,
+        user_api_key_dict: Any,
+        cache: Any,
+        data: dict,
+        call_type: Literal[
+            "completion",
+            "text_completion",
+            "embeddings",
+            "image_generation",
+            "moderation",
+            "audio_transcription",
+        ],
+    ) -> Optional[dict]:
+        messages = data.get("messages")
+        if not isinstance(messages, list) or not messages:
+            return data
+
+        # Opt-in via model_list[].model_info.trim_messages. Aliases without the
+        # flag (or trim_messages: false) pass through untouched.
+        requested_model = str(data.get("model") or "")
+        if not _model_wants_trim(requested_model):
+            print(
+                f"litellm trim_messages hook skip: model={requested_model} "
+                f"trim_messages=false",
+                flush=True,
+            )
+            return data
+
+        # Cursor Agent often sends max_tokens=0. Forcing a tiny floor (256)
+        # made streams stop mid-reply (finish_reason=length) while still
+        # returning HTTP 200 — Cursor surfaces that as Internal Server Error.
+        # Prefer a larger completion budget, but shrink it when tools/messages
+        # leave little room under the 32k vLLM window.
+        requested_out = data.get("max_tokens")
+        try:
+            requested_out_i = int(requested_out) if requested_out is not None else 0
+        except (TypeError, ValueError):
+            requested_out_i = 0
+
+        tools_analysis = _analyze_tools(data)
+        tools_tokens = int(tools_analysis.get("tool_tokens_total") or 0)
+        _log_tools_breakdown(tools_analysis)
+
+        available_for_prompt_and_out = _HARD_CONTEXT - _SAFETY_TOKENS - tools_tokens
+        if available_for_prompt_and_out < (_MIN_MESSAGE_TOKENS + 256):
+            # Pathological tool schemas: keep a small completion and min messages.
+            available_for_prompt_and_out = _MIN_MESSAGE_TOKENS + 256
+
+        preferred_out = requested_out_i if requested_out_i > 0 else _MIN_COMPLETION_TOKENS
+        max_out_allowed = max(256, available_for_prompt_and_out - _MIN_MESSAGE_TOKENS)
+        requested_out_i = min(preferred_out, max_out_allowed)
+        data["max_tokens"] = requested_out_i
+
+        budget = min(
+            self.max_input_tokens,
+            available_for_prompt_and_out - requested_out_i,
+        )
+        if budget < _MIN_MESSAGE_TOKENS:
+            budget = _MIN_MESSAGE_TOKENS
+
+        try:
+            # Normalize multimodal content to strings first. LiteLLM trim_messages
+            # has failed with "can only concatenate list (not \"str\") to list"
+            # when Cursor mixes str and list content parts.
+            messages = [
+                {**dict(m), "content": _flatten_content(m.get("content"))}
+                if isinstance(m, dict)
+                else m
+                for m in messages
+            ]
+            data["messages"] = messages
+            before = token_counter(model=_TRIM_TOKENIZER_MODEL, messages=messages)
+            trimmed = trim_messages(
+                messages,
+                _TRIM_TOKENIZER_MODEL,
+                max_tokens=budget,
+            )
+            after = token_counter(model=_TRIM_TOKENIZER_MODEL, messages=trimmed)
+            # Always apply a hard character cut so multimodal/tool-shaped
+            # content cannot slip past LiteLLM's tokenizer estimate.
+            max_chars = int(budget * _CHARS_PER_TOKEN)
+            trimmed = _hard_cut_messages(trimmed, max_chars)
+            after = token_counter(model=_TRIM_TOKENIZER_MODEL, messages=trimmed)
+            data["messages"] = trimmed
+            print(
+                f"litellm trim_messages hook: call_type={call_type} "
+                f"before={before} after={after} budget={budget} "
+                f"tools_est={tools_tokens} "
+                f"tool_count_total={tools_analysis.get('tool_count_total', 0)} "
+                f"requested_out={requested_out_i}",
+                flush=True,
+            )
+        except Exception as exc:  # noqa: BLE001 - never block the request on trim failure
+            print(f"litellm trim_messages hook skipped: {exc}", flush=True)
+        return data
+
+
+proxy_handler_instance = MessageTrimHandler()

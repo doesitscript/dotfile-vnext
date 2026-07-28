@@ -1,0 +1,108 @@
+---
+# Process / dependency / order for capability-selector automation.
+# SSOT for depends_on chains. Playbooks and roles must honor this order —
+# do not leave dependency order only in prose (AGENTS.md §26).
+schema_version: 1
+updated_at: "2026-07-24"
+
+# Ordered phases (earlier index must complete before later).
+process_order:
+  - id: policy_data
+    artifact: policy/*.yml
+    depends_on: []
+  - id: inventory_structure
+    artifact: inventory/host_vars + classification_status
+    depends_on:
+      - policy_data
+  - id: classify_host
+    artifact: roles/classify_host + playbooks/classify_homelab_hosts.yaml
+    depends_on:
+      - policy_data
+      - inventory_structure
+  - id: runtime_plane_report
+    artifact: roles/runtime_plane
+    depends_on:
+      - classify_host
+  - id: k8s_node_policy
+    artifact: roles/k8s_node_policy + playbooks/apply_k8s_node_policy.yaml
+    depends_on:
+      - classify_host
+      - k3s_cluster_ready
+  - id: open_webui
+    artifact: roles/open_webui + playbooks/deploy_open_webui.yaml
+    depends_on:
+      - classify_host
+      - docker_engine_on_ai_client_ui_host
+      - litellm_gateway
+    soft_depends_on:
+      - hyperv_portproxy_openwebui_lan  # LAN publish; guest :3080 works without it
+      - netbox_capability_tags          # tagging SoT; not required to start container
+  - id: netbox_capability_tags
+    artifact: roles/ipam_netbox/tasks/seed_tags.yml
+    depends_on:
+      - netbox_api_reachable
+      - vault_yml_decryptable
+  - id: hyperv_portproxy_openwebui_lan
+    artifact: HOM-LAB-HVH-02 hyperv_config.guest_published_tcp_ports.openwebui
+    depends_on:
+      - open_webui
+      - hyperv_networking_apply
+
+# Named prerequisites (not always Ansible roles).
+prerequisites:
+  k3s_cluster_ready:
+    evidence: kubectl get nodes Ready on target k3s inventory host
+  docker_engine_on_ai_client_ui_host:
+    evidence: host matched ai-client-ui + docker_engine_state present
+  litellm_gateway:
+    evidence: http://litellm.hom.lab/v1 reachable; roles/k3s_litellm_gateway present
+  netbox_api_reachable:
+    evidence: ipam_netbox_api_url responds; vault_netbox_api_token available
+  vault_yml_decryptable:
+    evidence: ansible-vault view vault.yml --vault-password-file vault_pass.sh
+    blocked_note: "2026-07-24 root vault.yml failed Vault format unhexlify with current password"
+  hyperv_networking_apply:
+    evidence: hyperv guest_published_tcp_ports converged on HVH-02
+
+# Playbook → role depends_on (executable order).
+playbooks:
+  classify_homelab_hosts.yaml:
+    depends_on: []
+    steps:
+      - classify_host
+      - runtime_plane  # depends_on classify_host (same playbook, later play)
+      - k8s_node_policy  # report; depends_on classify_host
+  apply_k8s_node_policy.yaml:
+    depends_on:
+      - classify_homelab_hosts.yaml  # or inline classify play
+    steps:
+      - classify_host
+      - k8s_node_policy
+  deploy_open_webui.yaml:
+    depends_on:
+      - classify_homelab_hosts.yaml  # or inline classify play
+      - litellm_gateway
+    steps:
+      - classify_host
+      - open_webui
+  deploy_ipam_netbox.yaml--tags-ipam_netbox_seed_tags:
+    depends_on:
+      - netbox_api_reachable
+      - vault_yml_decryptable
+
+# Role soft contracts (mirror meta/main.yml where Ansible dependencies apply).
+roles:
+  classify_host:
+    depends_on:
+      - policy/*.yml
+  runtime_plane:
+    depends_on:
+      - classify_host
+  k8s_node_policy:
+    depends_on:
+      - classify_host
+  open_webui:
+    depends_on:
+      - classify_host
+      - litellm_gateway
+      - docker_engine

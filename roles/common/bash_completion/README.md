@@ -29,7 +29,7 @@ ansible-playbook playbooks/deploy_k8s_cli_tools.yaml -i inventory/inventory.yaml
 | `common_bash_completion_formula_legacy` | `bash-completion` | Formula used for Bash 3.x compatibility |
 | `common_bash_completion_formula_modern` | `bash-completion@2` | Formula used for Bash 4.2+ |
 | `common_bash_completion_loader_path` | `~/.bashrc.d/bash_completion.bash` | Managed shell loader path |
-| `common_bash_completion_managed_files` | `['gonzo', 'dstl8', 'kubectl', 'kubectx', 'kubens', 'k9s', 'stern', 'helm', 'kustomize', 'k8sgpt']` | Completion files sourced eagerly by the loader |
+| `common_bash_completion_managed_files` | `['gonzo', 'dstl8', 'just', 'kubectl', 'kubectx', 'kubens', 'k9s', 'stern', 'helm', 'kustomize', 'k8sgpt']` | Completion files sourced eagerly by the loader |
 | `common_bash_completion_verify` | `true` | Verify requested formula and loader state after convergence |
 
 ## Managed Surfaces

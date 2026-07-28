@@ -1,0 +1,55 @@
+---
+# Catalog of runtime_planes keys hosts may set under host_vars.runtime_planes.
+# Hosts enable planes with: runtime_planes.<key>.enabled: true
+# depends_on: hardware_classes.yml (for requires_hardware_any checks in docs).
+# See policy/process_order.yml.
+schema_version: 1
+updated_at: "2026-07-24"
+
+runtime_planes:
+  hyperv_host:
+    description: Windows Hyper-V host control plane
+    typical_surfaces:
+      - windows_host
+
+  hyperv_docker_vm:
+    description: Hyper-V Ubuntu Docker engine guest desired
+    typical_surfaces:
+      - windows_host
+
+  hyperv_k3s_vm:
+    description: Hyper-V Ubuntu K3s guest desired
+    typical_surfaces:
+      - windows_host
+
+  hyperv_gpu_partitioning:
+    description: GPU-P partition source / adapter path
+    requires_hardware_any:
+      - nvidia_gpu
+
+  docker_engine:
+    description: Linux Docker engine (Compose stacks)
+    typical_surfaces:
+      - ubuntu_vm
+
+  k3s:
+    description: K3s node runtime (generic key)
+    typical_surfaces:
+      - ubuntu_vm
+
+  k3s_node:
+    description: K3s node runtime (inventory key used on ctl-k3s guests)
+    typical_surfaces:
+      - ubuntu_vm
+
+  secondary_model_runtime:
+    description: Host-local small model sidecar (e.g. Ollama autocomplete)
+    requires_hardware_any:
+      - nvidia_gpu
+      - amd_gpu
+
+  windows_ollama:
+    description: Windows Ollama runtime plane (desktop or HVH)
+    requires_hardware_any:
+      - nvidia_gpu
+      - amd_gpu

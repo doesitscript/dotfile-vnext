@@ -203,3 +203,10 @@ Lead with the outcome. Include only the sections relevant to the request:
 - Validation evidence.
 
 - Remaining manual action, uncertainty, or blocker.
+
+When mentioning an environment or build ID in chat, use a markdown hyperlink whose link text is the ID — never a bare ID:
+
+- Environment: `[<environmentPublicId>](https://cursor.com/dashboard/cloud-agents/environments/e/<environmentPublicId>)`
+- Build: `[<buildId>](https://cursor.com/dashboard/cloud-agents/builds/<buildId>)`
+
+Prefer the environment `url` from environment-info when present; otherwise construct the environment link with the format above.

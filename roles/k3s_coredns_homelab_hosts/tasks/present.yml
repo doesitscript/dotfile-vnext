@@ -1,0 +1,154 @@
+---
+# Build and merge coredns-custom ConfigMap key for hom.lab hosts plugin.
+
+- name: Initialize CoreDNS catalog entry list
+  ansible.builtin.set_fact:
+    k3s_coredns_homelab_hosts_entries: []
+
+- name: Select *.hom.lab catalog entries for CoreDNS
+  ansible.builtin.set_fact:
+    k3s_coredns_homelab_hosts_entries: "{{ k3s_coredns_homelab_hosts_entries + [item] }}"
+  loop: "{{ k3s_coredns_homelab_hosts_web_catalog }}"
+  loop_control:
+    label: "{{ item.catalog_key | default(item.hostname | default('entry')) }}"
+  when:
+    - item.hostname is defined
+    - item.hosts_ip is defined
+    - item.hostname is search('\.hom\.lab$')
+    - item.coredns_hosts_enabled | default(true) | bool
+
+- name: Assert at least one CoreDNS catalog entry is selected
+  ansible.builtin.assert:
+    that:
+      - k3s_coredns_homelab_hosts_entries | length > 0
+    fail_msg: >-
+      No *.hom.lab entries selected from homelab_hosts_file_web_catalog for
+      CoreDNS. Check catalog hostnames and coredns_hosts_enabled flags.
+
+- name: Render CoreDNS hom.lab.server content
+  ansible.builtin.set_fact:
+    k3s_coredns_homelab_hosts_server_content: >-
+      {{ lookup('template', 'hom.lab.server.j2') }}
+
+- name: Read existing coredns-custom ConfigMap
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ConfigMap
+    name: "{{ k3s_coredns_homelab_hosts_configmap_name }}"
+    namespace: "{{ k3s_coredns_homelab_hosts_namespace }}"
+  environment:
+    KUBECONFIG: "{{ k3s_coredns_homelab_hosts_kubeconfig }}"
+  register: k3s_coredns_homelab_hosts_existing_cm
+
+- name: Merge catalog server block into coredns-custom data
+  ansible.builtin.set_fact:
+    k3s_coredns_homelab_hosts_cm_data: >-
+      {{
+        (
+          (
+            k3s_coredns_homelab_hosts_existing_cm.resources
+            | default([])
+            | first
+            | default({})
+          ).data
+          | default({})
+        )
+        | combine({
+            k3s_coredns_homelab_hosts_server_key: k3s_coredns_homelab_hosts_server_content
+          })
+      }}
+
+- name: Apply coredns-custom ConfigMap with catalog hosts
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: "{{ k3s_coredns_homelab_hosts_configmap_name }}"
+        namespace: "{{ k3s_coredns_homelab_hosts_namespace }}"
+        labels:
+          app.kubernetes.io/managed-by: ansible
+          app.kubernetes.io/name: k3s-coredns-homelab-hosts
+          app.kubernetes.io/part-of: homelab-dns
+      data: "{{ k3s_coredns_homelab_hosts_cm_data }}"
+  environment:
+    KUBECONFIG: "{{ k3s_coredns_homelab_hosts_kubeconfig }}"
+  register: k3s_coredns_homelab_hosts_cm_apply
+
+- name: Restart CoreDNS to pick up coredns-custom volume
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ k3s_coredns_homelab_hosts_kubeconfig }}"
+      - -n
+      - "{{ k3s_coredns_homelab_hosts_namespace }}"
+      - rollout
+      - restart
+      - deploy/coredns
+  when:
+    - k3s_coredns_homelab_hosts_restart_coredns | bool
+    - k3s_coredns_homelab_hosts_cm_apply is changed
+  register: k3s_coredns_homelab_hosts_restart
+  changed_when: true
+
+- name: Wait for CoreDNS rollout after catalog apply
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ k3s_coredns_homelab_hosts_kubeconfig }}"
+      - -n
+      - "{{ k3s_coredns_homelab_hosts_namespace }}"
+      - rollout
+      - status
+      - deploy/coredns
+      - "--timeout={{ k3s_coredns_homelab_hosts_rollout_timeout }}"
+  when:
+    - k3s_coredns_homelab_hosts_restart_coredns | bool
+    - k3s_coredns_homelab_hosts_cm_apply is changed
+  changed_when: false
+
+- name: Verify catalog hostname resolves inside the cluster
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ k3s_coredns_homelab_hosts_kubeconfig }}"
+      - -n
+      - "{{ k3s_coredns_homelab_hosts_namespace }}"
+      - run
+      - coredns-homelab-hosts-verify
+      - --rm
+      - -i
+      - --restart=Never
+      - "--image={{ k3s_coredns_homelab_hosts_verify_image }}"
+      - --
+      - nslookup
+      - "{{ k3s_coredns_homelab_hosts_verify_hostname }}"
+  register: k3s_coredns_homelab_hosts_verify_result
+  changed_when: false
+  when: k3s_coredns_homelab_hosts_verify | bool
+  retries: 5
+  delay: 5
+  until: k3s_coredns_homelab_hosts_verify_result.rc == 0
+  vars:
+    ansible_ssh_args: >-
+      -o ControlMaster=no -o ServerAliveInterval=30 -o ServerAliveCountMax=20
+
+- name: Report CoreDNS catalog hosts apply
+  ansible.builtin.debug:
+    msg:
+      configmap: >-
+        {{ k3s_coredns_homelab_hosts_namespace }}/{{ k3s_coredns_homelab_hosts_configmap_name }}
+      server_key: "{{ k3s_coredns_homelab_hosts_server_key }}"
+      entry_count: "{{ k3s_coredns_homelab_hosts_entries | length }}"
+      entries: >-
+        {{
+          k3s_coredns_homelab_hosts_entries
+          | map(attribute='hostname')
+          | list
+        }}
+      verify_hostname: "{{ k3s_coredns_homelab_hosts_verify_hostname }}"
+      verify_ok: "{{ (k3s_coredns_homelab_hosts_verify_result.rc | default(1)) == 0 }}"

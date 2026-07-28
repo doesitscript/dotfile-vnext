@@ -1,0 +1,24 @@
+---
+# Salvaged from contracts/fuzlang.contract.yaml promoted_patterns.legacy_node_to_inventory
+# Historical main_node / network_node → inventory mapping. Prefer execution_roles
+# + classify_host for new targeting — do not grow hostname lists here.
+schema_version: 1
+updated_at: "2026-07-24"
+depends_on:
+  - policy/execution_roles.yml
+  - policy/process_order.yml
+
+legacy_node_to_inventory:
+  main_node:
+    windows_host: HOM-LAB-HVH-02
+    compose_engine_host: hom-lab-ctl-dkr-02
+    note: Hyper-V Ubuntu Docker guest on GPU lane (ai-client-ui / open_webui)
+  network_node:
+    windows_host: HOM-LAB-HVH-01
+    compose_engine_host: hom-lab-ctl-dkr-01
+    stacks_example: "{{ linux_stacks_root }}/network"
+  k3s_ai_plane:
+    inventory_host: hom-lab-ctl-k3s-02
+    services:
+      - litellm_gateway
+      - planned_langgraph_runtime

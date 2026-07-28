@@ -1,0 +1,17 @@
+---
+# classify_host — interpret policy/*.yml against inventory host fields.
+# Read-only by default (report). Does not mutate hosts or Kubernetes.
+
+classify_host_state: present
+
+classify_host_policy_root: "{{ playbook_dir | dirname }}/policy"
+
+classify_host_fail_on_unknown_hardware: true
+classify_host_fail_on_exclusive_hardware: true
+classify_host_fail_on_unknown_planes: false
+# When host declares selector fields (or classification_status), require ≥1 role match.
+classify_host_fail_on_unmatched_roles: true
+# When host is in the classify play but has neither structure nor status, fail.
+classify_host_fail_on_missing_structure: true
+
+classify_host_print_summary: true

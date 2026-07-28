@@ -100,8 +100,10 @@ addressing_rule:
 # naming. Until then, keep this map only as a rough historical scaffold.
 service_placement:
   ollama: main_node
-  litellm_gateway: main_node  # migration_candidate: true
-  openwebui: main_node
+  # LiteLLM gateway live home is K3s (hom-lab-ctl-k3s-02 / litellm.hom.lab).
+  # Legacy main_node placement retained as historical; see promoted_patterns.
+  litellm_gateway: k3s_ai_plane  # was main_node; migrated
+  openwebui: main_node  # Compose UI client; models via OpenAI-compatible → LiteLLM
   langfuse_web: network_node
   langfuse_worker: network_node  # if separated
   postgres: network_node
@@ -149,20 +151,35 @@ service_properties:
     data_persistent: true
     rebuild_ok_without_data_loss: false
     classification: production
+  openwebui:
+    needs_gpu: false
+    data_persistent: true
+    rebuild_ok_without_data_loss: false
+    classification: production
+    role_in_stack: openai_compatible_human_client
+    primary_upstream: litellm_gateway
+    why_main_node: >-
+      Human chat UI on GPU-lane Compose guest; models served via LiteLLM
+      OpenAI-compatible API (not because LiteLLM still co-resides on main_node).
 
 migration_candidates:
   litellm_gateway:
-    may_move_to_network_node_later: true
+    may_move_to_network_node_later: false
+    migrated_to: k3s_ai_plane
+    published_url: http://litellm.hom.lab/v1
 
 # ============================================================================
 # 3. CROSS-NODE ENDPOINTS (CANONICAL BASE URLS)
 # ============================================================================
 endpoint_map:
-  langfuse_base_url: "http://HOM-LAB-HVH-01:3000"
+  langfuse_base_url: "http://langfuse.hom.lab"
   minio_api_url: "http://HOM-LAB-HVH-01:9000"
   minio_console_url: "http://HOM-LAB-HVH-01:9001"
   ollama_base_url: "http://hom-lab-ctl-dkr-02:11434"
-  litellm_base_url: "http://hom-lab-ctl-dkr-02:4000"
+  # Canonical LiteLLM client URL (K3s). Do not point new clients at dkr-02:4000.
+  litellm_base_url: "http://litellm.hom.lab/v1"
+  # Stale scaffold URL — live Open WebUI is :3080; see contracts/open-webui.yaml
+  openwebui_base_url: "http://hom-lab-ctl-dkr-02:3080"
   dev_ollama_base_url: "http://dev-3090:11434"  # optional
   dev_litellm_base_url: "http://dev-3090:4000"  # optional
 
@@ -334,6 +351,7 @@ naming:
     main: fuzlang-main
     network: fuzlang-net
     dev: fuzlang-dev
+    openwebui: openwebui
 
   docker_network_names:
     internal_network_main: fuzlang_main_net
@@ -343,6 +361,15 @@ naming:
   bucket_names:
     artifacts_bucket: fuzlang-artifacts
     optional_trace_bucket: fuzlang-traces  # only if traces stored as objects
+
+  # Linux Compose layout on Hyper-V Ubuntu guests (inventory SSOT vars).
+  linux_compose_layout:
+    stacks_root_var: linux_stacks_root  # typically /srv/stacks
+    data_root_var: linux_data_root      # typically /srv/data
+    project_dir_pattern: "{{ linux_stacks_root }}/<compose_project>"
+    data_dir_pattern: "{{ linux_data_root }}/<service>"
+    engine_host_var: docker_engine_host
+    module: community.docker.docker_compose_v2
 
 # ============================================================================
 # 8. TRUST BOUNDARIES + FIREWALL RULES
@@ -550,3 +577,32 @@ missing_inputs:
   - exact disk letters for dev_node (stacks/data)
   - final exposure choice for litellm and ollama (localhost vs lan vs allowlist)
   - network_node docker runtime choice (current direction: Hyper-V Ubuntu companion VM)
+
+# ============================================================================
+# 16. PROMOTED PATTERNS — MIGRATED (do not grow this section)
+# ============================================================================
+# 2026-07-24: promoted_patterns were salvaged out of this legacy scaffold.
+# Do NOT add new product intent here. Use:
+#   policy/                 — capability vocabulary, compose layout, process order
+#   contracts/<product>.yaml — intentional per-product contracts (open-webui, litellm, …)
+#   contracts/README.md     — authority rules
+#
+# Migration map (salvaged content):
+#   capability_selectors     → policy/*.yml + policy/process_order.yml
+#   compose_stack_contract   → policy/compose_stacks.yml
+#   legacy_node_to_inventory → policy/legacy_node_map.yml
+#   openwebui_option_a       → contracts/open-webui.yaml
+#   litellm / endpoint intent→ contracts/litellm.yaml
+#   netbox_service_metadata  → policy/netbox_service_metadata.yml
+#
+# This file remains a historical archive only.
+promoted_patterns_migrated_at: "2026-07-24"
+promoted_patterns_see:
+  - policy/README.md
+  - contracts/README.md
+  - contracts/open-webui.yaml
+  - contracts/litellm.yaml
+  - policy/compose_stacks.yml
+  - policy/legacy_node_map.yml
+  - policy/netbox_service_metadata.yml
+  - policy/process_order.yml

@@ -61,8 +61,12 @@ pattern (`roles/huggingface_hub`).
 3. Choose install family (module matrix — no invented scripts first):
    - `chocolatey.chocolatey.win_chocolatey` when a stable community package exists
      and is healthy on the target
-   - `ansible.windows.win_get_url` + `ansible.windows.win_package` for pinned
-     upstream Setup.exe / MSI (checksum, long timeout, silent args, `creates_path`)
+   - Large/pinned Setup.exe / multi‑GB assets → skill
+     `windows-artifact-download-apply` (`roles/windows_artifact_download` +
+     `win_package`)
+   - Smaller/simple pinned Setup.exe / MSI → `ansible.windows.win_get_url` +
+     `ansible.windows.win_package` (checksum, long timeout, silent args,
+     `creates_path`)
    - `py -m pip` via `ansible.windows.win_command` when the tool is a PyPI
      package (see `roles/huggingface_hub`)
    - custom shell/PowerShell download+install only after the matrix shows no
@@ -77,6 +81,7 @@ For new install/mutate requests, enter via `homelab-ansible-first-entry` first.
 
 ## Handoffs
 
+- `windows-artifact-download-apply` (large pinned Windows HTTP(S) artifacts)
 - `tool-capability-intake` (generic shape when OS-agnostic)
 - `tool-role-docs-pack`
 - `single-host-ansible-rollout`

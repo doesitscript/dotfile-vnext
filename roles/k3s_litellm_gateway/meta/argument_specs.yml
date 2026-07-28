@@ -26,40 +26,42 @@ argument_specs:
         type: int
         default: 5432
         description: TCP port for the external PostgreSQL endpoint used by LiteLLM.
-      k3s_litellm_gateway_trim_messages_enabled:
+      k3s_litellm_gateway_request_inspector_enabled:
         type: bool
         default: true
         description: >-
-          Mount LiteLLM pre-call trim_messages at /etc/litellm/custom_callbacks.py
+          Mount LiteLLM Request Inspector at /etc/litellm/custom_callbacks.py
           (beside config), restart the Deployment after ConfigMap apply (subPath
           remount), and wait up to 600s for rollout under memory pressure.
-      k3s_litellm_gateway_trim_messages_max_input_tokens:
+          Observe-only — does not trim messages. Archived trim path:
+          archive/trim-messages-callback-2026-07/.
+      k3s_litellm_gateway_request_inspector_max_window:
         type: int
-        default: 24000
-        description: >-
-          Homelab input budget under the 32k vLLM window (server-tuned).
-      k3s_litellm_gateway_trim_messages_safety_tokens:
-        type: int
-        default: 2048
-        description: >-
-          Extra headroom for chat-template and LiteLLM vs vLLM tokenizer skew.
-      k3s_litellm_gateway_trim_messages_min_completion_tokens:
-        type: int
-        default: 4096
-        description: >-
-          Preferred completion when the client sends max_tokens 0; adaptively
-          lowered when tools leave less room under the 32k window.
-      k3s_litellm_gateway_trim_messages_min_message_tokens:
+        default: 32768
+        description: Context window used for budget warnings and report fields.
+      k3s_litellm_gateway_request_inspector_safety_tokens:
         type: int
         default: 2048
-        description: >-
-          Minimum tokens reserved for chat messages after tools/completion.
-      k3s_litellm_gateway_trim_messages_chars_per_token:
+        description: Safety headroom field included in inspector reports.
+      k3s_litellm_gateway_request_inspector_chars_per_token:
         type: float
         default: 2.5
+        description: Density estimate for tools[] and message content sizing.
+      k3s_litellm_gateway_request_inspector_warn_tools_pct:
+        type: float
+        default: 0.75
+        description: Warn when tools estimate exceeds this fraction of max_window.
+      k3s_litellm_gateway_request_inspector_warn_conversation_pct:
+        type: float
+        default: 0.05
         description: >-
-          Density for hard-cutting multimodal message content parts.
-      k3s_litellm_gateway_trim_messages_callback_configmap:
+          Warn when conversation share is below this fraction of max_window
+          while tools dominate.
+      k3s_litellm_gateway_request_inspector_dump_tools_on_warn:
+        type: bool
+        default: true
+        description: Write a small summary JSON dump when warnings fire.
+      k3s_litellm_gateway_request_inspector_callback_configmap:
         type: str
         default: litellm-callback-files
         description: ConfigMap name that holds custom_callbacks.py.

@@ -155,6 +155,13 @@ steady-state work.
 - See [docs/ansible/quality-gate.md](docs/ansible/quality-gate.md) for the
   repo-local Ansible lint and syntax gate.
 
-## Contract
+## Contract / policy / inventory
 
-All configuration is driven by `contracts/fuzlang.contract.yaml`.
+| Layer | Path | Role |
+| --- | --- | --- |
+| Policy | [`policy/`](policy/) | Capability vocabulary + `depends_on` order |
+| Inventory | [`inventory/`](inventory/) | Who/what is commissioned |
+| Product contracts | [`contracts/<product>.yaml`](contracts/) | Intentional per-product patterns |
+| Legacy archive | [`contracts/fuzlang.contract.yaml`](contracts/fuzlang.contract.yaml) | Historical scaffold — **do not grow** |
+
+See [`contracts/README.md`](contracts/README.md).

@@ -75,34 +75,34 @@
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   no_log: true
 
-- name: Create LiteLLM trim_messages callback ConfigMap
+- name: Create LiteLLM request inspector callback ConfigMap
   kubernetes.core.k8s:
     state: present
     definition:
       apiVersion: v1
       kind: ConfigMap
       metadata:
-        name: "{{ k3s_litellm_gateway_trim_messages_callback_configmap }}"
+        name: "{{ k3s_litellm_gateway_request_inspector_callback_configmap }}"
         namespace: "{{ k3s_litellm_gateway_namespace }}"
         labels:
           app.kubernetes.io/name: litellm
-          app.kubernetes.io/component: trim-messages-callback
+          app.kubernetes.io/component: request-inspector-callback
       data:
         custom_callbacks.py: "{{ lookup('template', 'custom_callbacks.py.j2') }}"
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-  when: k3s_litellm_gateway_trim_messages_enabled | bool
+  when: k3s_litellm_gateway_request_inspector_enabled | bool
 
-- name: Remove LiteLLM trim_messages callback ConfigMap when disabled
+- name: Remove LiteLLM request inspector callback ConfigMap when disabled
   kubernetes.core.k8s:
     state: absent
     api_version: v1
     kind: ConfigMap
-    name: "{{ k3s_litellm_gateway_trim_messages_callback_configmap }}"
+    name: "{{ k3s_litellm_gateway_request_inspector_callback_configmap }}"
     namespace: "{{ k3s_litellm_gateway_namespace }}"
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-  when: not (k3s_litellm_gateway_trim_messages_enabled | bool)
+  when: not (k3s_litellm_gateway_request_inspector_enabled | bool)
 
 - name: Create external PostgreSQL credentials secret for LiteLLM
   kubernetes.core.k8s:
@@ -220,7 +220,7 @@
   register: _k3s_litellm_deployment
 
 # ConfigMap subPath mounts do not refresh in-place; restart so custom_callbacks.py reloads.
-- name: Restart LiteLLM deployment to remount trim_messages callback
+- name: Restart LiteLLM deployment to remount request inspector callback
   ansible.builtin.command:
     argv:
       - kubectl
@@ -232,9 +232,9 @@
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   changed_when: true
-  when: k3s_litellm_gateway_trim_messages_enabled | bool
+  when: k3s_litellm_gateway_request_inspector_enabled | bool
 
-- name: Wait for LiteLLM rollout after trim_messages callback remount
+- name: Wait for LiteLLM rollout after request inspector callback remount
   ansible.builtin.command:
     argv:
       - kubectl
@@ -247,7 +247,7 @@
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   changed_when: false
-  when: k3s_litellm_gateway_trim_messages_enabled | bool
+  when: k3s_litellm_gateway_request_inspector_enabled | bool
 
 - name: Query LiteLLM ClusterIP service selector
   kubernetes.core.k8s_info:

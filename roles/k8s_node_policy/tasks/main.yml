@@ -1,0 +1,92 @@
+---
+- name: Skip k8s_node_policy when absent
+  ansible.builtin.meta: end_host
+  when: k8s_node_policy_state | default('absent') != 'present'
+  tags: [k8s_node_policy]
+
+- name: Require prior classify_host facts
+  ansible.builtin.assert:
+    that:
+      - host_k8s_labels is defined
+    fail_msg: >-
+      Run classify_host before k8s_node_policy on {{ inventory_hostname }}.
+  when: k8s_node_policy_require_classification | bool
+  tags: [k8s_node_policy]
+
+- name: Report desired K8s node policy
+  ansible.builtin.debug:
+    msg:
+      host: "{{ inventory_hostname }}"
+      mode: "{{ 'apply' if (k8s_node_policy_apply | bool) else 'report' }}"
+      desired_labels: "{{ host_k8s_labels | default({}) }}"
+      desired_taints: "{{ host_k8s_taints | default([]) }}"
+      desired_selectors: "{{ host_k8s_selectors | default({}) }}"
+  tags: [k8s_node_policy]
+
+- name: Skip label mutate unless apply gated and this is a k3s runtime host
+  ansible.builtin.meta: end_host
+  when: >-
+    not (k8s_node_policy_apply | bool)
+    or ('k3s_runtime' not in (node_classes | default([]))
+        and 'k3s_node' not in (node_classes | default([])))
+  tags: [k8s_node_policy]
+
+- name: Resolve kubeconfig for local node label mutate
+  ansible.builtin.set_fact:
+    k8s_node_policy_kubeconfig: "{{ k8s_node_policy_kubeconfig_path | default('/etc/rancher/k3s/k3s.yaml') }}"
+    k8s_node_policy_node_name: "{{ k8s_node_policy_node_name | default(inventory_hostname) }}"
+  tags: [k8s_node_policy]
+
+- name: Apply desired labels to local K3s node (overwrite)
+  ansible.builtin.command: >-
+    /usr/local/bin/kubectl --kubeconfig {{ k8s_node_policy_kubeconfig }}
+    label node {{ k8s_node_policy_node_name }}
+    {% for label in host_k8s_labels | dict2items %}{{ label.key }}={{ label.value }} {% endfor %}
+    --overwrite
+  become: true
+  register: k8s_node_policy_label_result
+  changed_when: >-
+    'labeled' in (k8s_node_policy_label_result.stdout | default(''))
+    and 'not labeled' not in (k8s_node_policy_label_result.stdout | default(''))
+  when: (host_k8s_labels | default({}) | length) > 0
+  tags: [k8s_node_policy]
+
+- name: Apply desired taints to local K3s node
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/kubectl
+      - --kubeconfig
+      - "{{ k8s_node_policy_kubeconfig }}"
+      - taint
+      - node
+      - "{{ k8s_node_policy_node_name }}"
+      - "{{ item.key }}={{ item.value | default('true') }}:{{ item.effect }}"
+      - --overwrite
+  become: true
+  loop: "{{ host_k8s_taints | default([]) }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: k8s_node_policy_taint_result
+  changed_when: "'tainted' in (k8s_node_policy_taint_result.stdout | default(''))"
+  when: (host_k8s_taints | default([]) | length) > 0
+  tags: [k8s_node_policy]
+
+- name: Verify node labels after apply
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/kubectl
+      - --kubeconfig
+      - "{{ k8s_node_policy_kubeconfig }}"
+      - get
+      - node
+      - "{{ k8s_node_policy_node_name }}"
+      - --show-labels
+  become: true
+  register: k8s_node_policy_verify
+  changed_when: false
+  tags: [k8s_node_policy]
+
+- name: Show node label verify output
+  ansible.builtin.debug:
+    var: k8s_node_policy_verify.stdout_lines
+  tags: [k8s_node_policy]

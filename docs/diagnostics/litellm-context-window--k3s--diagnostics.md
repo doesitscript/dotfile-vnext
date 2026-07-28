@@ -5,6 +5,11 @@ local `hosted_vllm` / `vllm-primary` (32k Qwen AWQ).
 
 OS / runtime: Linux (K3s on `hom-lab-ctl-k3s-02`).
 
+**2026-07 update:** Live callback is **Request Inspector** (observe-only). The
+former `trim_messages` mutate safety net is archived at
+`roles/k3s_litellm_gateway/archive/trim-messages-callback-2026-07/`. This note
+still documents the overflow evidence that created that path.
+
 ## Error that drove homelab custom trim values
 
 Seen from Cursor Agent via the gateway (Ornith lane):

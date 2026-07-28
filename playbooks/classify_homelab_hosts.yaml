@@ -1,0 +1,44 @@
+---
+# Classify inventory hosts from policy/*.yml (capability selectors).
+# Read-only: prints host_classification. No bare-hostname targeting.
+#
+# depends_on: policy/*.yml + inventory structure (policy/process_order.yml)
+# Later plays depend_on classify_host (runtime_plane, k8s_node_policy).
+#
+# Apply:   ansible-playbook playbooks/classify_homelab_hosts.yaml
+# Limit:   ansible-playbook playbooks/classify_homelab_hosts.yaml --limit 'hom-lab-ctl-dkr-02,HOM-LAB-HVH-01'
+# Verify:  each host shows execution_roles + k8s_* + policy_ok
+# Undo:    N/A (no mutation)
+# Change class: idempotent report / derived facts
+
+- name: Classify homelab hosts from capability policy
+  hosts: >-
+    windows_hosts:windows_hosts_offline:windows_hosts_deferred:windows_hosts_ipv6_fallback:windows_guest_gateway_surfaces:linux_vm_hosts:dev_workstation:mac_dev
+  gather_facts: false
+  tags: [classify_host]
+  roles:
+    - role: classify_host
+      tags: [classify_host]
+
+- name: Report runtime planes (no mutate)
+  hosts: >-
+    windows_hosts:windows_hosts_offline:windows_hosts_deferred:windows_hosts_ipv6_fallback:windows_guest_gateway_surfaces:linux_vm_hosts:dev_workstation:mac_dev
+  gather_facts: false
+  tags: [runtime_plane]
+  roles:
+    - role: runtime_plane
+      vars:
+        runtime_plane_state: present
+        runtime_plane_apply: false
+      tags: [runtime_plane]
+
+- name: Report K8s node policy intent (no mutate by default)
+  hosts: linux_vm_hosts
+  gather_facts: false
+  tags: [k8s_node_policy]
+  roles:
+    - role: k8s_node_policy
+      vars:
+        k8s_node_policy_state: present
+        k8s_node_policy_apply: false
+      tags: [k8s_node_policy]

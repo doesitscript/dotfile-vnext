@@ -1,0 +1,40 @@
+---
+# Kubernetes shared vocabulary. Principle: request resources + affinity/labels,
+# never schedule by bare hostname (including Hyper-V NetBIOS names).
+# depends_on: hardware_classes.yml, execution_roles.yml (label merge inputs).
+# See policy/process_order.yml.
+schema_version: 1
+updated_at: "2026-07-24"
+
+principles:
+  - select_by_labels_and_affinity_not_hostname
+  - gpu_workloads_request_resources_plus_affinity
+  - ui_workloads_must_not_require_gpu_selectors
+
+label_keys:
+  role: homelab.role
+  gpu_vendor: homelab.hardware/gpu-vendor
+  vram_tier: homelab.hardware/vram-tier
+  openai_edge: homelab.workload/openai-compatible-edge
+  storage: homelab.workload/authoritative-storage
+  low_tier_gpu: homelab.workload/low-tier-gpu
+  primary_ai: homelab.workload/primary-ai
+
+taint_keys:
+  no_ui: homelab.taint/no-ui
+
+# How classify_host merges hardware → node labels (in addition to execution_roles)
+hardware_to_labels:
+  nvidia_gpu:
+    homelab.hardware/gpu-vendor: nvidia
+  amd_gpu:
+    homelab.hardware/gpu-vendor: amd
+  high_vram:
+    homelab.hardware/vram-tier: high
+  bulk_storage:
+    homelab.hardware/storage: bulk
+
+# Compose / non-K8s note: same selectors drive Ansible when: predicates.
+compose_note: >-
+  Open WebUI is Compose today; still use openai-compatible-edge / ai-client-ui
+  selectors. Do not place UI via hosts: HOM-LAB-HVH-02.

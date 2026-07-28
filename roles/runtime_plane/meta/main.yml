@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: runtime_plane
+  description: Report or enforce runtime_planes from policy catalog + host_vars.
+  license: MIT
+  min_ansible_version: "2.14"
+# Process order: classify before report/apply (policy/process_order.yml).
+dependencies:
+  - role: classify_host
+    when:
+      - runtime_plane_require_classification | default(true) | bool
+      - host_classification is not defined

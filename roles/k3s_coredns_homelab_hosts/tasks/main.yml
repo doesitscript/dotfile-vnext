@@ -1,0 +1,14 @@
+---
+- name: Validate k3s_coredns_homelab_hosts_state
+  ansible.builtin.assert:
+    that:
+      - k3s_coredns_homelab_hosts_state in ["present", "absent"]
+    fail_msg: k3s_coredns_homelab_hosts_state must be "present" or "absent".
+
+- name: Apply CoreDNS hom.lab hosts from catalog
+  ansible.builtin.include_tasks: present.yml
+  when: k3s_coredns_homelab_hosts_state == "present"
+
+- name: Remove CoreDNS hom.lab hosts catalog block
+  ansible.builtin.include_tasks: absent.yml
+  when: k3s_coredns_homelab_hosts_state == "absent"

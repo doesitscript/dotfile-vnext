@@ -1,0 +1,45 @@
+---
+argument_specs:
+  main:
+    short_description: Manage just on macOS through Homebrew and install managed shell completions
+    options:
+      just_cli_state:
+        type: str
+        default: present
+        choices:
+          - present
+          - absent
+        description:
+          - Whether the Homebrew just formula should be installed or removed.
+      just_cli_homebrew_formula:
+        type: str
+        default: just
+        description:
+          - Homebrew formula name that provides the just CLI.
+      just_cli_verify:
+        type: bool
+        default: true
+        description:
+          - Verify the requested formula state after convergence.
+      just_cli_install_completions:
+        type: bool
+        default: true
+        description:
+          - Whether to generate and install managed completion files from the just CLI.
+      just_cli_completion_shells:
+        type: list
+        elements: str
+        default:
+          - bash
+        description:
+          - Completion shells to manage. Supported values are bash and zsh.
+      just_cli_bash_completion_path:
+        type: str
+        default: ""
+        description:
+          - Optional override for the managed just Bash completion file path. Empty uses $(brew --prefix)/etc/bash_completion.d/just.
+      just_cli_zsh_completion_path:
+        type: str
+        default: ""
+        description:
+          - Optional override for the managed just Zsh completion file path. Empty uses $(brew --prefix)/share/zsh/site-functions/_just.

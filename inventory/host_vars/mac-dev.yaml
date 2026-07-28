@@ -2,6 +2,15 @@
 # mac-dev host_vars — Docker client configuration.
 # The Docker engine runs on the Hyper-V Ubuntu guest on HOM-LAB-HVH-02.
 
+# Capability selectors — Ansible/controller Mac (not a Compose/K3s workload host).
+classification_status: controller
+surface_type: macos
+node_classes:
+  - controller
+  - macos_dev
+policy_classes:
+  - controller
+
 # Docker client — reaches the Ubuntu guest Docker engine via SSH.
 # Uses the generated SSH config alias so IdentityFile and other settings are inherited.
 docker_engine_ssh_host: "hom-lab-ctl-dkr-02"
@@ -86,6 +95,9 @@ continue_ide_blocked_lanes:
 
 # GNU netcat package-management desired state.
 netcat_cli_state: present
+
+# just command runner package-management desired state.
+just_cli_state: present
 
 # Shared bash-completion substrate for repo-managed CLI completion files.
 common_bash_completion_state: present

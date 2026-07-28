@@ -34,17 +34,22 @@
 
 # Seed canonical NetBox object tags via the NetBox API.
 #
+# depends_on (policy/process_order.yml → netbox_capability_tags):
+#   - netbox_api_reachable
+#   - vault_yml_decryptable  (ansible-vault view vault.yml)
+# soft: capability_selectors vocabulary already defined in policy/execution_roles.yml
+#
 # These tags are applied to objects WITHIN NetBox (devices, prefixes, IPs, VMs, etc.)
 # to identify resources by ownership, environment, and managing role.
 # This is separate from Ansible play tags (--tags on the CLI).
 #
 # Requirements:
 #   - netbox.netbox collection: ansible-galaxy collection install netbox.netbox
-#   - vault_netbox_api_token must be defined in Ansible Vault
+#   - vault_netbox_api_token must be defined in vault.yml
 #   - connection: local / delegate_to: localhost — the API call runs from the control node
 #
 # Run standalone:
-#   ansible-playbook playbooks/deploy_ipam_netbox.yaml --ask-vault-pass \
+#   ansible-playbook playbooks/deploy_ipam_netbox.yaml --vault-password-file vault_pass.sh \
 #     --tags ipam_netbox_seed_tags
 #
 - name: Seed canonical NetBox object tags
@@ -87,6 +92,39 @@
       slug: "k3s"
       description: "Kubernetes (K3s) runtime layer"
       color: "326ce5"
+    # Capability-selector vocabulary (policy/execution_roles.yml) — tag before CF.
+    - name: "openai-compatible-edge"
+      slug: "openai-compatible-edge"
+      description: "May host OpenAI-compatible human clients (e.g. Open WebUI)"
+      color: "0dcaf0"
+    - name: "companion-ui"
+      slug: "companion-ui"
+      description: "Chat/companion UI role (not agent runtime)"
+      color: "6610f2"
+    - name: "authoritative-storage"
+      slug: "authoritative-storage"
+      description: "Owns durable DB/object data (Postgres, MinIO, …)"
+      color: "dc3545"
+    - name: "low-tier-gpu"
+      slug: "low-tier-gpu"
+      description: "Small local models / autocomplete only"
+      color: "adb5bd"
+    - name: "primary-ai-compute"
+      slug: "primary-ai-compute"
+      description: "Flagship GPU / primary local inference lane"
+      color: "212529"
+    - name: "desktop-amd-runtime"
+      slug: "desktop-amd-runtime"
+      description: "Windows AMD desktop host-local Ollama (Vulkan)"
+      color: "ed1c24"
+    - name: "k3s-ai-plane"
+      slug: "k3s-ai-plane"
+      description: "K3s AI plane (LiteLLM / LangGraph / vLLM)"
+      color: "326ce5"
+    - name: "k3s-storage-plane"
+      slug: "k3s-storage-plane"
+      description: "Storage-lane K3s (not primary UI / large GPU)"
+      color: "6c757d"
   delegate_to: localhost
   tags:
     - ipam_netbox

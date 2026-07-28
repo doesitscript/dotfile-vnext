@@ -1,7 +1,8 @@
 ---
-# Interim hom.lab name resolution via hosts file (DNS-3).
+# Interim hom.lab name resolution via hosts file (DNS-3) + K3s CoreDNS.
 #
-# Umbrella for mac-dev, Hyper-V Linux guests, and optional Windows desktops.
+# Umbrella for mac-dev, Hyper-V Linux guests, optional Windows desktops, and
+# K3s CoreDNS (coredns-custom) so pods resolve the same catalog names.
 # Consumes SSOT: inventory/group_vars/all/homelab_hosts_file.yml
 #
 # The canonical full-stack entrypoint is playbooks/site.yaml (imports this
@@ -14,6 +15,7 @@
 #   --tags homelab_hosts_file_mac --limit mac-dev
 #   --tags homelab_hosts_file_linux --limit hom-lab-ctl-k3s-02,hom-lab-ctl-dkr-02
 #   --tags homelab_hosts_file_windows --limit dev-workstation-win
+#   --tags k3s_coredns_homelab_hosts --limit hom-lab-ctl-k3s-02
 
 - name: Homelab hosts file - mac-dev operator surface
   import_playbook: homelab_hosts_file_mac.yaml
@@ -26,3 +28,7 @@
 - name: Homelab hosts file - Windows interactive desktops
   import_playbook: homelab_hosts_file_windows.yaml
   tags: [homelab_hosts_file, homelab_hosts_file_windows, site_homelab_hosts_file]
+
+- name: Homelab hosts - K3s CoreDNS catalog for pods
+  import_playbook: deploy_k3s_coredns_homelab_hosts.yaml
+  tags: [homelab_hosts_file, k3s_coredns_homelab_hosts, site_homelab_hosts_file]

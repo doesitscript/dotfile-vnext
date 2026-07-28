@@ -1,0 +1,96 @@
+---
+# Product contract: LiteLLM gateway
+# Authority: pattern guidance (not inventory SSOT).
+# Runtime SSOT: inventory + roles/k3s_litellm_gateway (+ Traefik/DNS for litellm.hom.lab).
+# Capability targeting: policy/execution_roles.yml → k3s-ai-plane
+# Process order: policy/process_order.yml (open_webui depends_on this service)
+#
+# YAML comments (#) below are intentional examples — uncomment / adapt when needed.
+# Active keys (uncommented) are salvageable gateway intent from the legacy scaffold.
+
+contract_version: 1
+product: litellm
+updated_at: "2026-07-24"
+authority: pattern_guidance_not_inventory_ssot
+
+depends_on:
+  - execution_role:k3s-ai-plane
+  - prerequisite:k3s_cluster_ready
+  # - postgres_or_managed_db   # when using LiteLLM DB features beyond defaults
+
+soft_depends_on:
+  - service:langfuse           # observability optional for core gateway
+  - process:netbox_capability_tags
+
+# --- active current intent ---
+
+ansible:
+  role: k3s_litellm_gateway
+  # playbook: playbooks/deploy_…  # use the repo's existing LiteLLM deploy entrypoint
+  state_var: k3s_litellm_gateway_state  # confirm exact var in role defaults when changing
+  role_prefix: k3s_litellm_gateway_
+
+placement:
+  execution_role: k3s-ai-plane
+  inventory_host_example: hom-lab-ctl-k3s-02
+  # Do NOT schedule by bare Hyper-V hostname.
+
+endpoints:
+  public_base_url: "http://litellm.hom.lab/v1"
+  # lan_nodeport_example: "http://192.168.50.158:30400"  # HVH-02 portproxy → k3s
+
+auth:
+  master_key_vault: vault_k3s_litellm_gateway_master_key
+  # Virtual / product keys for clients (prefer least privilege over master):
+  open_webui_key_vault: vault_open_webui_openai_api_key
+  # continue_ide_key_vault: vault_…   # when split from master
+
+clients_should_use:
+  - open_webui          # OPENAI_API_BASE_URL → litellm.hom.lab/v1
+  - continue_ide        # via LiteLLM lanes
+  # - langgraph_runtime
+  # - cursor_via_litellm
+
+status: live_k3s_ai_plane
+
+# --- commented examples (shape for future fields) ---
+
+# model_lanes:
+#   code-fast:
+#     status: selected
+#     backend_note: "HVH-01 / desktop Ollama via LiteLLM — see model catalog"
+#   ornith-local:
+#     status: pending_research
+#     context_window: 32768
+#   code-review:
+#     status: pending_research
+
+# routing_policy:
+#   prefer_gateway: true
+#   avoid_direct_vllm_urls_for_clients: true
+#   avoid_openwebui_pointing_at_ollama_sidecar: true
+
+# observability:
+#   langfuse:
+#     enabled: true
+#     vault_public_key: vault_shared_langfuse_public_key
+#     vault_secret_key: vault_shared_langfuse_secret_key
+
+# healthchecks:
+#   - kind: http
+#     url: "http://litellm.hom.lab/v1/models"
+#     auth: master_or_virtual_key
+#     expect_status: 200
+
+# netbox:
+#   model: ipam.service
+#   tags:
+#     - k3s-ai-plane
+#     - traefik-routed
+#   custom_fields:
+#     deployed_by_role: k3s_litellm_gateway
+
+# related:
+#   policy: policy/execution_roles.yml (k3s-ai-plane)
+#   process_order: policy/process_order.yml
+#   hrl: (add when LiteLLM library entry is primary)

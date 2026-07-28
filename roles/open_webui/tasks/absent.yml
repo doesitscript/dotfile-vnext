@@ -1,0 +1,17 @@
+---
+- name: Tear down Open WebUI compose stack when present on disk
+  community.docker.docker_compose_v2:
+    project_src: "{{ open_webui_project_src }}"
+    project_name: "{{ open_webui_compose_project }}"
+    state: absent
+  become: true
+  when: open_webui_project_src is defined
+  failed_when: false
+  tags: [open_webui]
+
+- name: Remove Open WebUI compose project directory
+  ansible.builtin.file:
+    path: "{{ open_webui_project_src }}"
+    state: absent
+  become: true
+  tags: [open_webui]

@@ -64,6 +64,9 @@ k3s_langfuse_platform_worker_memory_request: "384Mi"
 # Operator /etc/hosts for hom.lab URLs (LAN publish IP via portproxy).
 homelab_hosts_file_linux_enabled: true
 
+# Pod DNS: publish catalog *.hom.lab into K3s CoreDNS (coredns-custom).
+k3s_coredns_homelab_hosts_state: present
+
 # Hyper-V GPU-P guests use the Windows DriverStore via
 # hyperv_ubuntu_gpu_p_linux_guest_runtime — not apt nvidia-driver-*.
 k3s_nvidia_runtime_install_guest_driver: false
@@ -117,21 +120,17 @@ ai_service_profile:
 
 # Continue autocomplete 1.5B → HVH-01 Ollama OpenAI-compatible API (GTX 1060).
 # LiteLLM stays the gateway; Ollama/llama.cpp is only the GPU engine on Pascal.
-# Use inventory IPs (not *.hom.lab): LiteLLM pods do not inherit node /etc/hosts,
-# so ollama-hvh01.hom.lab / ollama-desktop.hom.lab fail DNS inside the cluster.
-k3s_litellm_gateway_autocomplete_1_5b_api_base: >-
-  http://{{ hostvars['HOM-LAB-HVH-01'].host_ip | default('192.168.50.234') }}:11434/v1
+# Names resolve inside pods via k3s_coredns_homelab_hosts (catalog → CoreDNS).
+k3s_litellm_gateway_autocomplete_1_5b_api_base: "http://ollama-hvh01.hom.lab:11434/v1"
 k3s_litellm_gateway_autocomplete_1_5b_model: "qwen2.5-coder:1.5b"
 k3s_litellm_gateway_autocomplete_1_5b_provider: "openai"
 
 # Continue edit → desktop AMD Ollama (qwen3-coder:30b / Vulkan).
-k3s_litellm_gateway_continue_edit_api_base: >-
-  http://{{ hostvars['dev-workstation-win'].host_ip | default('192.168.50.133') }}:11434/v1
+k3s_litellm_gateway_continue_edit_api_base: "http://ollama-desktop.hom.lab:11434/v1"
 k3s_litellm_gateway_continue_edit_model: "qwen3-coder:30b"
 k3s_litellm_gateway_continue_edit_provider: "openai"
 
 # Continue apply → HVH-01 Ollama Phi-4 Mini (co-resident with autocomplete).
-k3s_litellm_gateway_continue_apply_api_base: >-
-  http://{{ hostvars['HOM-LAB-HVH-01'].host_ip | default('192.168.50.234') }}:11434/v1
+k3s_litellm_gateway_continue_apply_api_base: "http://ollama-hvh01.hom.lab:11434/v1"
 k3s_litellm_gateway_continue_apply_model: "phi4-mini"
 k3s_litellm_gateway_continue_apply_provider: "openai"

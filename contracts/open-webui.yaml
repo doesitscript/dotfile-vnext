@@ -1,0 +1,101 @@
+---
+# Product contract: Open WebUI
+# Authority: pattern guidance (not inventory SSOT).
+# Runtime SSOT: inventory host_vars (open_webui_state) + roles/open_webui.
+# Capability targeting: policy/execution_roles.yml → ai-client-ui
+# Process order: policy/process_order.yml
+#
+# YAML comments (#) below are intentional examples — uncomment / adapt when needed.
+# Active keys (uncommented) are the current salvageable product intent.
+
+contract_version: 1
+product: open-webui
+updated_at: "2026-07-24"
+authority: pattern_guidance_not_inventory_ssot
+
+depends_on:
+  - process:classify_host
+  - service:litellm_gateway
+  - runtime_plane:docker_engine
+  - execution_role:ai-client-ui
+
+soft_depends_on:
+  - process:hyperv_portproxy_openwebui_lan
+  - process:netbox_capability_tags
+
+# --- active current intent (salvaged from fuzlang promoted_patterns) ---
+
+ansible:
+  role: open_webui
+  playbook: playbooks/deploy_open_webui.yaml
+  state_var: open_webui_state
+  lifecycle: present|absent
+  role_prefix: open_webui_
+
+placement:
+  # Capability-selected — do NOT encode hosts: HOM-LAB-HVH-02
+  execution_role: ai-client-ui
+  # Documented current engine (inventory may move; classify stays the gate)
+  compose_engine_host_example: hom-lab-ctl-dkr-02
+  compose_project: openwebui
+  project_src: "{{ linux_stacks_root }}/openwebui"
+  data_src: "{{ linux_data_root }}/openwebui"
+
+image:
+  repo: ghcr.io/open-webui/open-webui
+  tag_policy: pin_in_inventory_or_role_defaults
+  # tag_example: "v0.6.18"
+
+ports:
+  host: 3080
+  container: 8080
+  note: "Guest :3000 is Grafana on dkr-02; Open WebUI uses 3080"
+
+openai_compatible_wiring:
+  ENABLE_OPENAI_API: true
+  OPENAI_API_BASE_URL: "http://litellm.hom.lab/v1"
+  OPENAI_API_KEY_vault: vault_open_webui_openai_api_key
+  ENABLE_OPENAI_API_PASSTHROUGH: false
+  ENABLE_OLLAMA_API: false
+
+status: applied_guest_compose_2026-07-24
+
+published_urls:
+  guest: "http://192.168.137.10:3080"
+  lan_via_portproxy: "http://192.168.50.158:3080"
+  hosts_name: "http://openwebui.hom.lab:3080/"
+  note: >-
+    openai_base in deploy reports is LiteLLM (http://litellm.hom.lab/v1), not the UI.
+    LAN URL requires hyperv_networking portproxy row openwebui on HOM-LAB-HVH-02.
+    hosts_name resolves via homelab_hosts_file_web_catalog → 192.168.50.158.
+
+# --- commented examples (shape for future fields) ---
+
+# preferred_dns: "http://openwebui.hom.lab"  # when Traefik/DNS commissioned
+
+# netbox:
+#   model: ipam.service
+#   on_vm: hom-lab-ctl-dkr-02
+#   custom_fields:
+#     compose_project: openwebui
+#     deployed_by_role: open_webui
+#   tags:
+#     - companion-ui
+#     - openai-compatible-edge
+
+# healthchecks:
+#   - kind: http
+#     url: "http://127.0.0.1:3080/"
+#     expect_status: 200
+#   - kind: openai_models
+#     url: "http://litellm.hom.lab/v1/models"
+#     auth: vault_open_webui_openai_api_key
+
+# undo:
+#   - set open_webui_state: absent
+#   - ansible-playbook playbooks/deploy_open_webui.yaml
+
+# related:
+#   hrl: homelab-reference-library/implementation-guides/open-webui/ansible-compose-option-a.md
+#   policy: policy/process_order.yml
+#   compose_layout: policy/compose_stacks.yml

@@ -58,35 +58,24 @@ k3s_litellm_gateway_langfuse_secret_key: "{{ vault_shared_langfuse_secret_key | 
 k3s_litellm_gateway_proxy_litellm_settings: "{{ {'success_callback': ['langfuse']} if k3s_litellm_gateway_langfuse_enabled | bool else {} }}"
 k3s_litellm_gateway_router_settings: {}
 k3s_litellm_gateway_enable_pre_call_checks: true
-# Pre-call trim_messages hook — shrinks oversized Cursor/agent prompts to fit
-# local 32k vLLM context. Disable to remove the ConfigMap mount + callback.
+# AI Request Inspector — observe-only LiteLLM callback (no message mutation).
 # Mount: /etc/litellm/custom_callbacks.py (beside config.yaml — not /app/).
-# Tokenize with hosted_vllm/<primary_vllm_model>; budget accounts for tools +
-# chat-template + LiteLLM vs vLLM tokenizer skew; hard-cut multimodal content.
+# Emits structured JSON lines: litellm request_inspector {...}
+# Former trim_messages mutate path archived at:
+#   archive/trim-messages-callback-2026-07/
 # subPath mounts need rollout restart; present.yml waits up to 600s.
-#
-# Server-tuned drivers (homelab 32k Qwen/vLLM + Cursor Agent) — these custom
-# values are why Ornith works under fat Cursor prompts on this cluster. Driven
-# by ContextWindowExceededError input_tokens=32769 / "0 output tokens" with
-# Fallbacks=None; see README § Error that drove these custom values and
-# docs/diagnostics/litellm-context-window--k3s--diagnostics.md.
-k3s_litellm_gateway_trim_messages_enabled: true
-k3s_litellm_gateway_trim_messages_callback_configmap: litellm-callback-files
-# Cap well below 32k — Cursor Agent tools inflate the real prompt after trim.
-k3s_litellm_gateway_trim_messages_max_input_tokens: 24000
-# Headroom for chat template + LiteLLM vs vLLM tokenizer disagreement.
-k3s_litellm_gateway_trim_messages_safety_tokens: 2048
-# Preferred completion size when Cursor sends max_tokens: 0. Adaptive hook
-# lowers this when tools/messages leave less room under 32768 (was 256 —
-# that cut Agent streams mid-reply while LiteLLM still returned HTTP 200).
-k3s_litellm_gateway_trim_messages_min_completion_tokens: 4096
-# Always leave at least this many tokens for message content after tools.
-k3s_litellm_gateway_trim_messages_min_message_tokens: 2048
-# Hard-cut density when flattening multimodal content (chars per token).
-k3s_litellm_gateway_trim_messages_chars_per_token: 2.5
-k3s_litellm_gateway_trim_messages_callback_ref: custom_callbacks.proxy_handler_instance
-# Trim is opt-in per route via model_info.trim_messages: true (not a skip list).
-# See MessageTrimHandler in templates/custom_callbacks.py.j2.
+k3s_litellm_gateway_request_inspector_enabled: true
+k3s_litellm_gateway_request_inspector_callback_configmap: litellm-callback-files
+k3s_litellm_gateway_request_inspector_callback_ref: custom_callbacks.proxy_handler_instance
+k3s_litellm_gateway_request_inspector_max_window: 32768
+k3s_litellm_gateway_request_inspector_safety_tokens: 2048
+k3s_litellm_gateway_request_inspector_chars_per_token: 2.5
+# Warn when tools[] estimate exceeds this fraction of max_window.
+k3s_litellm_gateway_request_inspector_warn_tools_pct: 0.75
+# Warn when conversation share is below this fraction (and tools dominate).
+k3s_litellm_gateway_request_inspector_warn_conversation_pct: 0.05
+# On warning, dump a small summary JSON under /tmp/litellm-request-inspector.
+k3s_litellm_gateway_request_inspector_dump_tools_on_warn: true
 k3s_litellm_gateway_context_window_fallbacks_with_openai:
   - deepreinforce-ai/Ornith-1.0-35B-GGUF:
       - gpt-4o-mini
@@ -283,8 +272,7 @@ k3s_litellm_gateway_model_list:
       backend_runtime: vllm-primary
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-      # Opt-in: MessageTrimHandler only mutates requests for this alias.
-      trim_messages: true
+      # request_inspector observes all aliases; mutate/trim archived 2026-07.
   - model_name: deepreinforce-ai/Ornith-1.0-35B-GGUF-no-trim
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
@@ -297,11 +285,10 @@ k3s_litellm_gateway_model_list:
       backend_runtime: vllm-primary
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-      trim_messages: false
       notes: >-
-        Same vllm-primary weights as Ornith. model_info.trim_messages=false so
-        the LiteLLM callback leaves context untouched. Oversized prompts fail
-        at vLLM (32k).
+        Historical alias from the trim era. Live callback is observe-only for
+        all aliases; oversized prompts fail at vLLM (32k). See
+        archive/trim-messages-callback-2026-07/.
   - model_name: experiment
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
@@ -421,7 +408,7 @@ k3s_litellm_gateway_model_list_without_openai:
       backend_runtime: vllm-primary
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-      trim_messages: true
+      # request_inspector observes all aliases; mutate/trim archived 2026-07.
   - model_name: deepreinforce-ai/Ornith-1.0-35B-GGUF-no-trim
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
@@ -434,11 +421,10 @@ k3s_litellm_gateway_model_list_without_openai:
       backend_runtime: vllm-primary
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-      trim_messages: false
       notes: >-
-        Same vllm-primary weights as Ornith. model_info.trim_messages=false so
-        the LiteLLM callback leaves context untouched. Oversized prompts fail
-        at vLLM (32k).
+        Historical alias from the trim era. Live callback is observe-only for
+        all aliases; oversized prompts fail at vLLM (32k). See
+        archive/trim-messages-callback-2026-07/.
   - model_name: experiment
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"

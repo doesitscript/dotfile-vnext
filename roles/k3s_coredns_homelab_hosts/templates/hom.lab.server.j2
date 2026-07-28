@@ -1,0 +1,12 @@
+# CoreDNS server block for interim hom.lab names (K3s coredns-custom *.server).
+# Generated from homelab_hosts_file_web_catalog — do not edit by hand.
+{{ k3s_coredns_homelab_hosts_zone }}:53 {
+    errors
+    cache 30
+    hosts {
+{% for item in k3s_coredns_homelab_hosts_entries %}
+        {{ item.hosts_ip }} {{ item.hostname }}
+{% endfor %}
+        fallthrough
+    }
+}

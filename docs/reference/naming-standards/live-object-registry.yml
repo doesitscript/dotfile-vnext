@@ -356,6 +356,24 @@ guest_portproxy_catalog:
       listen_port: 30400
       connect_port: 30400
       purpose: LiteLLM gateway NodePort fallback
+    - name: loki
+      listen_port: 3100
+      connect_port: 3100
+      purpose: Loki HTTP on dkr-02
+    - name: netbox
+      listen_port: 8000
+      connect_port: 8000
+      purpose: NetBox web on dkr-02
+    - name: semaphore
+      listen_port: 3001
+      connect_port: 3001
+      purpose: Semaphore UI on dkr-02
+    - name: openwebui
+      listen_ip: "192.168.50.158"
+      listen_port: 3080
+      connect_vm: hom-lab-ctl-dkr-02
+      connect_port: 3080
+      purpose: Open WebUI Compose UI on dkr-02 (guest :3000 is Grafana)
 
 router_dns_deferred_traefik:
   dhcp_domain: hom.lab
@@ -378,6 +396,7 @@ netbox_services:
         - semaphore-web
         - loki-http
         - grafana-web
+        - openwebui-web
         - postgres-fuzlang
         - minio-api
         - minio-console

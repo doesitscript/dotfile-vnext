@@ -12,7 +12,7 @@ version: "0.1.0"
 author: "dotfile-vnext"
 compatibility: "Project skills for Codex/Cursor workflows"
 modes: "agent, ask, plan, debug"
-depends_on_skills: "ansible-knowledge-gate, tool-capability-intake, windows-tool-capability-intake, macos-tool-install-decider-and-scaffold, hf-model-weight-lifecycle, homelab-ssh-alias-connect"
+depends_on_skills: "ansible-knowledge-gate, tool-capability-intake, windows-tool-capability-intake, windows-artifact-download-apply, macos-tool-install-decider-and-scaffold, hf-model-weight-lifecycle, homelab-ssh-alias-connect"
 requires_summary: "AGENTS.md §32 Ansible-first; skills/catalog.yml routing"
 title: Homelab Ansible-First Entry
 technology: ansible
@@ -86,6 +86,11 @@ ssh <inventory_hostname>
 - Ad-hoc `choco install`, `pip install`, `scp` of installers, interactive
   one-liner installers as the **primary** install path
 - Skipping `ansible-knowledge-gate` module discovery when choosing install tech
+- **Inventing host targeting** (`hosts: HOM-LAB-HVH-02`, ad-hoc hostname lists,
+  or `when:` placement) **before** research of `policy/*.yml` + existing
+  inventory groups and a `classify_homelab_hosts` preview for in-scope hosts.
+  If structure exists but no role matches, extend policy/coverage — do not
+  invent around the gap (AGENTS.md Research Expectations §13).
 
 **Allowed carve-outs (not install substitutes):** stop hung processes / clear
 `.chocolateyPending` via Ansible ad-hoc; interactive SSH `-File` on a
@@ -104,8 +109,9 @@ ssh <inventory_hostname>
 
 Windows upstream `.exe` install default after Chocolatey is wrong/hung:
 
-1. `ansible.windows.win_get_url` (checksum + long timeout)
-2. `ansible.windows.win_package` (silent args + `creates_path`)
+1. Large/pinned Setup.exe → skill `windows-artifact-download-apply`
+   (`roles/windows_artifact_download` + `win_package`)
+2. Smaller/simple → `ansible.windows.win_get_url` + `win_package`
 3. Inside the **owning role**, inventory `install_method` — never a temp playbook
 
 ## Minimal entry receipt (required before mutate)

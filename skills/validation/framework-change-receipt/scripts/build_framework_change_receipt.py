@@ -10,6 +10,9 @@ import sys
 ROUTING_SKILLS = [
     "single-host-apply-and-receipt",
     "single-host-ansible-rollout",
+    "homelab-product-capability-flow",
+    "homelab-ansible-first-entry",
+    "hrl-library-index-entry",
     "ansible-cli-surface-auditor",
     "macos-cli-completion-converger",
     "macos-cli-completion-pack",

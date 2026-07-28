@@ -13,6 +13,7 @@ bin/codex-env python .cursor/skills/homelab-ansible-first-entry/scripts/print_en
 | Windows tool / Chocolatey / Setup.exe / HVH / AMD desktop | `windows-tool-capability-intake` |
 | macOS CLI | `macos-tool-install-decider-and-scaffold` → `tool-capability-intake` |
 | HF model weights on share | `hf-model-weight-lifecycle` |
+| New product capability needing library→plan→apply (Open WebUI-class) | `homelab-product-capability-flow` (then nested doors) |
 | Generic / unclear OS tool | `tool-capability-intake` |
 | Ansible authorship already scoped | `ansible-knowledge-gate` |
 | Broad maturity | `project-maturity-router` |
@@ -22,8 +23,10 @@ bin/codex-env python .cursor/skills/homelab-ansible-first-entry/scripts/print_en
 Preferred modules (in order):
 
 1. `chocolatey.chocolatey.win_chocolatey` when package is healthy
-2. `ansible.windows.win_get_url` + `ansible.windows.win_package` for pinned Setup.exe
-3. Inventory `install_method` on the owning role — never `playbooks/troubleshoot/_tmp_*`
+2. Large/pinned Setup.exe → skill `windows-artifact-download-apply`
+   (`roles/windows_artifact_download` + `win_package`)
+3. Smaller/simple → `ansible.windows.win_get_url` + `win_package`
+4. Inventory `install_method` on the owning role — never `playbooks/troubleshoot/_tmp_*`
 
 ## Prohibited as primary install
 

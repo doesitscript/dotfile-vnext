@@ -1,15 +1,20 @@
 # Related Artifacts
 
-## Driver variables (`roles/k3s_litellm_gateway/defaults/main.yml`)
+## Live Request Inspector vars (`roles/k3s_litellm_gateway/defaults/main.yml`)
 
-- `k3s_litellm_gateway_trim_messages_enabled`
-- `k3s_litellm_gateway_trim_messages_max_input_tokens`
-- `k3s_litellm_gateway_trim_messages_safety_tokens`
-- `k3s_litellm_gateway_trim_messages_min_completion_tokens`
-- `k3s_litellm_gateway_trim_messages_min_message_tokens`
-- `k3s_litellm_gateway_trim_messages_chars_per_token`
+- `k3s_litellm_gateway_request_inspector_enabled`
+- `k3s_litellm_gateway_request_inspector_max_window`
+- `k3s_litellm_gateway_request_inspector_safety_tokens`
+- `k3s_litellm_gateway_request_inspector_chars_per_token`
+- `k3s_litellm_gateway_request_inspector_warn_tools_pct`
+- `k3s_litellm_gateway_request_inspector_warn_conversation_pct`
+- `k3s_litellm_gateway_request_inspector_dump_tools_on_warn`
 - `k3s_litellm_gateway_context_window_fallbacks_with_openai`
 - `k3s_litellm_gateway_context_window_fallbacks_without_openai`
+
+## Archived trim mutate path
+
+- `roles/k3s_litellm_gateway/archive/trim-messages-callback-2026-07/`
 
 ## Vault (cloud fallback)
 
@@ -25,9 +30,8 @@ bin/codex-env ansible-vault edit vault/shared.vault.yml
 bin/codex-env ansible-playbook playbooks/deploy_litellm_gateway.yaml -l hom-lab-ctl-k3s-02
 ```
 
-## Verify callback constants on pod
+## Verify callback on pod
 
 ```bash
-bin/codex-env ansible hom-lab-ctl-k3s-02 -m shell -a \
-  'kubectl -n litellm exec deploy/litellm -- grep -E "_MIN_COMPLETION|_MIN_MESSAGE|_SAFETY|_HARD" /etc/litellm/custom_callbacks.py'
+kubectl -n litellm logs deploy/litellm --tail=200 | grep request_inspector
 ```

@@ -1,0 +1,26 @@
+---
+# Publish homelab_hosts_file_web_catalog *.hom.lab names into K3s CoreDNS
+# via the optional coredns-custom ConfigMap (import *.server).
+
+k3s_coredns_homelab_hosts_state: absent
+
+k3s_coredns_homelab_hosts_namespace: kube-system
+k3s_coredns_homelab_hosts_configmap_name: coredns-custom
+# K3s Corefile: import /etc/coredns/custom/*.server
+k3s_coredns_homelab_hosts_server_key: hom.lab.server
+k3s_coredns_homelab_hosts_zone: hom.lab
+
+k3s_coredns_homelab_hosts_kubeconfig: /etc/rancher/k3s/k3s.yaml
+
+# Catalog SSOT (same as hosts-file roles).
+k3s_coredns_homelab_hosts_web_catalog: "{{ homelab_hosts_file_web_catalog | default([]) }}"
+
+# Restart CoreDNS after ConfigMap change so optional volume remounts.
+k3s_coredns_homelab_hosts_restart_coredns: true
+k3s_coredns_homelab_hosts_coredns_label_selector: k8s-app=kube-dns
+k3s_coredns_homelab_hosts_rollout_timeout: 120s
+
+# Optional post-apply probe from an ephemeral pod.
+k3s_coredns_homelab_hosts_verify: true
+k3s_coredns_homelab_hosts_verify_hostname: ollama-desktop.hom.lab
+k3s_coredns_homelab_hosts_verify_image: busybox:1.36
