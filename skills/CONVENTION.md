@@ -6,7 +6,16 @@ Authority for project-skill layout in this repo:
 2. `skills/catalog.yaml`
 3. this file
 
-Pattern source: `/Users/joshc/develop/homelab-reference-library/skills`.
+**Format authority:** Agent Skills ([agentskills.io](https://agentskills.io)).
+
+**Scaffold / contract sync:** Prefer creating and aligning project skills via
+`global-skills` (schema, `_template/`, scaffold skills). Soft provenance fields
+(`based_on_library`, `based_on_library_version`, `library_contract_version`)
+come from `global-skills/skills/library_contract.yaml`. Mismatch or absence is
+advisory only — do not hard-fail validation on version skew today.
+
+Pattern source: `/Users/joshc/develop/homelab-reference-library/skills` and
+`/Users/joshc/develop/global-skills/skills`.
 
 ## Goals
 

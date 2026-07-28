@@ -16,6 +16,10 @@ authority: internal
 source_type: internal
 skill_scope: project
 last_reviewed_at: "2026-07-23"
+# Soft provenance from global-skills (optional; do not hard-fail on skew)
+based_on_library: global-skills
+based_on_library_version: "0.2.0"
+library_contract_version: "2"
 applies_to: []
 related: []
 tags:
