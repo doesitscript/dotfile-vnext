@@ -57,7 +57,7 @@ Current imported personal-portable skills:
   - `update-cli-config`
   - `update-cursor-settings`
 - Cursor personal global skills:
-  - `create-diagrams`
+  - _(none currently — `create-diagrams` promoted to `global-skills`)_
 - Codex personal global skills:
   - `critical-naming-analysis`
   - `gemini-free-tier-model-chooser`
