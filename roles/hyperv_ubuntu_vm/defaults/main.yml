@@ -120,7 +120,12 @@ hyperv_ubuntu_vm_autoinstall_network_gateway4: "{{ ((hyperv_config | default({})
 hyperv_ubuntu_vm_autoinstall_network_dns_servers:
   - "192.168.50.1"
 
-hyperv_ubuntu_vm_host_root_dir: "C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\{{ hyperv_ubuntu_vm_name }}"
+hyperv_ubuntu_vm_host_storage_root: >-
+  {{
+    windows_hyperv_vm_storage_root
+    | default('C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm')
+  }}
+hyperv_ubuntu_vm_host_root_dir: "{{ hyperv_ubuntu_vm_host_storage_root }}\\{{ hyperv_ubuntu_vm_name }}"
 hyperv_ubuntu_vm_host_vm_dir: "{{ hyperv_ubuntu_vm_host_root_dir }}\\vm"
 hyperv_ubuntu_vm_host_archive_path: "{{ hyperv_ubuntu_vm_host_root_dir }}\\{{ hyperv_ubuntu_vm_cloud_image_filename }}"
 hyperv_ubuntu_vm_host_image_path: "{{ hyperv_ubuntu_vm_host_archive_path }}"

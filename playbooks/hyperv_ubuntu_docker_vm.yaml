@@ -233,6 +233,27 @@
             hyperv_ubuntu_docker_vm_inventory_host
             | default(hyperv_ubuntu_docker_vm_hostname)
           }}
+        hyperv_ubuntu_vm_host_vhdx_path: >-
+          {{
+            hyperv_ubuntu_docker_vm_host_vhdx_path
+            | default(
+              (
+                windows_hyperv_vm_storage_root
+                | default('C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm')
+              )
+              ~ '\\'
+              ~ (
+                hyperv_ubuntu_docker_vm_name
+                | default(hyperv_ubuntu_docker_vm_hostname)
+              )
+              ~ '\\'
+              ~ (
+                hyperv_ubuntu_docker_vm_name
+                | default(hyperv_ubuntu_docker_vm_hostname)
+              )
+              ~ '.vhdx'
+            )
+          }}
       when: hyperv_ubuntu_docker_vm_should_manage | default(false) | bool
 
 - name: Hyper-V Docker Ubuntu VM - troubleshooting collection
