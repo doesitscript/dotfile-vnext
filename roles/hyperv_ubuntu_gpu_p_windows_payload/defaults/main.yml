@@ -4,11 +4,22 @@ hyperv_ubuntu_gpu_p_windows_payload_wsl_exe_path: C:\Windows\System32\wsl.exe
 hyperv_ubuntu_gpu_p_windows_payload_programfiles_wsl_lib_path: C:\Program Files\WSL\lib
 hyperv_ubuntu_gpu_p_windows_payload_lxss_lib_path: C:\Windows\System32\lxss\lib
 hyperv_ubuntu_gpu_p_windows_payload_driverstore_root: C:\Windows\System32\DriverStore\FileRepository
-hyperv_ubuntu_gpu_p_windows_payload_temp_root: C:\ProgramData\Ansible\hyperv_ubuntu_gpu_p_runtime\windows_payload
+hyperv_ubuntu_gpu_p_windows_payload_temp_root: >-
+  {{
+    (windows_hyperv_ansible_root | default('C:\\ProgramData\\Ansible'))
+    ~ '\\hyperv_ubuntu_gpu_p_runtime\\windows_payload'
+  }}
 hyperv_ubuntu_gpu_p_windows_payload_export_root: "{{ hyperv_ubuntu_gpu_p_windows_payload_temp_root }}\\payload"
 hyperv_ubuntu_gpu_p_windows_payload_zip_path: "{{ hyperv_ubuntu_gpu_p_windows_payload_temp_root }}\\windows-payload.zip"
 hyperv_ubuntu_gpu_p_windows_payload_expected_driver_version: "{{ llm_compute_windows_studio_driver_version | default('') }}"
-hyperv_ubuntu_gpu_p_windows_payload_driver_contract_path: "{{ llm_compute_windows_driver_contract_path | default('C:\\ProgramData\\Ansible\\llm_compute_windows\\nvidia_driver_contract.json') }}"
+hyperv_ubuntu_gpu_p_windows_payload_driver_contract_path: >-
+  {{
+    llm_compute_windows_driver_contract_path
+    | default(
+      (windows_hyperv_ansible_root | default('C:\\ProgramData\\Ansible'))
+      ~ '\\llm_compute_windows\\nvidia_driver_contract.json'
+    )
+  }}
 hyperv_ubuntu_gpu_p_windows_payload_controller_stage_root: >-
   {{ (lookup('env', 'TMPDIR') | default('/tmp', true)).rstrip('/') }}/hyperv-ubuntu-gpu-p-runtime
 hyperv_ubuntu_gpu_p_windows_payload_controller_zip_path: "{{ hyperv_ubuntu_gpu_p_windows_payload_controller_stage_root }}/windows-payload.zip"
