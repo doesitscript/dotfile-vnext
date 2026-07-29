@@ -2,6 +2,8 @@
 
 **Canonical checklist:** [docs/plans/README.md](../plans/README.md) — section **Required Diagram Checklist**
 
+**Architecture diagram medium / tooling:** [architecture-diagram-routing.md](architecture-diagram-routing.md) — Option 2: `create-diagrams` + SVG default; Mermaid fences when preferred
+
 **Diagram gate receipt template:** [.cursor/rules/framework-partner-process.mdc](../../.cursor/rules/framework-partner-process.mdc) — Mandatory Diagram Requirements
 
 **Plan verification receipt (execute/complete):** [plan-verification-receipt.md](plan-verification-receipt.md) — obligation inventory + evidence for the full plan packet, not checklist-only

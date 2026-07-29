@@ -3,20 +3,31 @@ lifecycle: implemented
 scope: doc-only
 implemented_date: 2026-07-08
 archive_candidate: true
+superseded_by: docs/codex_framework/architecture-diagram-routing.md
+procedure_status: retired
 ---
 
-# Diagrams tool — AI library and skill setup
+# Diagrams tool — AI library and skill setup (RETIRED PROCEDURE)
+
+> **Do not follow Step 3 brew/pip Graphviz install, YAML-as-intermediate, or
+> project-local skill authoring from this packet.** Diagramming procedure for
+> this repo is
+> [architecture-diagram-routing.md](../../codex_framework/architecture-diagram-routing.md)
+> and the global **`create-diagrams`** pack (SVG default here; Mermaid fences
+> when Mermaid is preferred). Vendor Firecrawl under `ai-resource-library` may
+> remain as **reference docs only**, not as the how-to-diagram path.
 
 Add a new entry to the AI Library for the `diagrams` Python tool so an AI can
 generate diagrams from instructions, Terraform, and product documentation with
 less iteration.
 
-## Status: implemented (2026-07-08)
+## Status: implemented (2026-07-08) — procedure superseded (2026-07-28)
 
 | Deliverable | Location |
 |-------------|----------|
-| Vendor documentation pack | `/Users/joshc/develop/ai-resource-library/vendors/diagrams/firecrawl/` |
-| Cursor skill | `roles/common/agent_skills/files/cursor/skills/create-diagrams/SKILL.md` |
+| Vendor documentation pack | `/Users/joshc/develop/ai-resource-library/vendors/diagrams/firecrawl/` (reference only) |
+| Diagramming skill (current) | global-skills `create-diagrams` (+ exporters); runtime via home/bridge |
+| Project routing | `docs/codex_framework/architecture-diagram-routing.md` |
 | Original intake note | Promoted from `docs/ai-library/diagrams_tool_install_plan.md` |
 
 ## AI-library-entry backfill (2026-07-08)
@@ -52,7 +63,11 @@ should use the tool.
 
 ## Step 3. Best-practice setup
 
-The diagrams package itself is Python-based. The practical setup is:
+> **RETIRED.** Do not `brew install graphviz` / `pip install diagrams` as the
+> project procedure. Use global `create-diagrams` (Docker / project venv per that
+> skill). See `docs/codex_framework/architecture-diagram-routing.md`.
+
+Historical text (do not execute as guidance):
 
 1. Install Graphviz with Homebrew on macOS:
    - `brew install graphviz`

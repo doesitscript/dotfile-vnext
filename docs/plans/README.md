@@ -127,13 +127,25 @@ directories or asking future agents to rediscover every related file.
 
 ## Required Diagram Checklist
 
+Authority for medium and tooling:
+[docs/codex_framework/architecture-diagram-routing.md](../codex_framework/architecture-diagram-routing.md).
+
 Every stored plan must include these sections before it is considered complete:
 
-- `Architecture/Structure Diagram`: required for every stored plan. Show the repo files, roles, inventories, playbooks, external systems, and managed targets that the plan changes or depends on.
-- `Capability Routing Diagram`: required when the plan has runtime branching, multiple systems, preview/apply/verify paths, lifecycle state, conditional execution, or target selection.
-- `Naming/Modeling Diagram`: required when the plan changes names, aliases, object hierarchy, source-of-truth metadata, or naming standards.
+- `Architecture/Structure Diagram`: required for every stored plan. Show the repo
+  files, roles, inventories, playbooks, external systems, and managed targets
+  that the plan changes or depends on. **Medium:** prefer global
+  `create-diagrams` with **SVG** default (link pack artifacts); **or** fenced
+  Mermaid when Mermaid is preferred / already established for that diagram.
+- `Capability Routing Diagram`: required when the plan has runtime branching,
+  multiple systems, preview/apply/verify paths, lifecycle state, conditional
+  execution, or target selection (same medium rules).
+- `Naming/Modeling Diagram`: required when the plan changes names, aliases,
+  object hierarchy, source-of-truth metadata, or naming standards (same medium
+  rules).
 - `Other Available Diagram Types` or `Diagram Inventory`: required at the end
-  of every plan so reviewers can see which optional diagrams were considered.
+  of every plan so reviewers can see which optional diagrams were considered
+  and which medium was used (`pack-svg`, `pack-drawio`, `mermaid-fence`, …).
 
 If a diagram is truly not applicable, include the section anyway with an explicit
 `N/A` reason. Do not omit the section silently.

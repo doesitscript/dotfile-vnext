@@ -3,6 +3,22 @@
 This folder holds project diagrams that are durable enough to be referenced by
 docs, plans, and troubleshooting notes.
 
+## Tooling (required)
+
+New architecture / topology / estate diagrams use the global **`create-diagrams`**
+pack. Project policy:
+[docs/codex_framework/architecture-diagram-routing.md](../codex_framework/architecture-diagram-routing.md).
+
+| Preference | Choice |
+| --- | --- |
+| Intermediate model | Mingrammer `diagrams` `.py` via `create-diagrams` |
+| Default render | **SVG** (not PNG) |
+| Mermaid fences | OK when Mermaid is preferred or already established |
+| draw.io | `create-diagrams-drawio` |
+| Mermaid `.mmd` from model | `create-diagrams-mermaid` |
+
+Do not invent a project-local diagrams skill or brew/pip Graphviz install path.
+
 ## Naming convention
 
 Diagram files in this folder use a schema-shaped documentation pattern derived
@@ -28,6 +44,10 @@ Where:
 - `<topic>` = short diagram topic
 - `<idx>` = two-digit ordinal
 
+Pack products may sit beside the same stem as `.py` / `.svg` / `.drawio` /
+`.mmd` (caller-owned). Prefer linking those from plans rather than only embedding
+Mermaid when migrating diagrams.
+
 ## Current diagrams
 
 | File | Purpose |
@@ -43,6 +63,10 @@ Where:
 
 ## Notes
 
-- These are Markdown documents containing Mermaid diagrams.
+- Existing entries are Markdown documents containing Mermaid diagrams
+  (established Mermaid corpus — valid under Option 2).
+- **New** durable architecture diagrams should prefer `create-diagrams` + SVG
+  (and exporters as needed); regenerate Mermaid-only files via the pack when
+  touched for major updates.
 - The existing `logging-architecture.html` remains as a legacy standalone
-  artifact; new durable diagrams should prefer this Markdown + Mermaid shape.
+  artifact; prefer pack SVG/drawio or Markdown companions for new work.

@@ -271,25 +271,33 @@ planning or research question. If they are skipped, say why.
    - brief summary
    - `Capability Packet Boundary` when grouped capability work is proposed
    - `Apply / Verify / Undo / Change class`
-   - an `Architecture/Structure Diagram` in Mermaid
-   - a `Capability Routing Diagram` when routing or branching matters
+   - an `Architecture/Structure Diagram` via the project diagram routing
+     ([docs/codex_framework/architecture-diagram-routing.md](docs/codex_framework/architecture-diagram-routing.md)):
+     prefer global skill `create-diagrams` with **SVG** default; fenced Mermaid
+     allowed when Mermaid is preferred or already established for that diagram
+   - a `Capability Routing Diagram` when routing or branching matters (same
+     medium rules)
    - a `Naming/Modeling Diagram` when names, routes, targets, or ownership
-     change
+     change (same medium rules)
    - `Diagram Inventory`
    - explicit assumptions/defaults
    - enough implementation detail to be decision-complete
 6. Before emitting a conversational `<proposed_plan>` or saving a plan under
    `docs/plans/`, run the plan diagram gate:
-   - the plan contains a fenced Mermaid `Architecture/Structure Diagram`
+   - Architecture/Structure is present as **pack artifacts** (linked `.py` +
+     SVG, optional drawio/mmd via exporter skills) **or** a fenced Mermaid
+     diagram when Mermaid is the intentional medium
    - the diagram shows repo structure, external resources, data/control flow,
      naming schemes, variable sources, tags, and playbook/file organization
      relevant to the plan
    - any conditional diagrams required by the active framework rule are present
    - the final section is `Diagram Inventory` or `Other Available Diagram
      Types`
-   - that final section lists diagrams included and other diagrams that could
-     be created
+   - that final section lists diagrams included, medium used, and other
+     diagrams that could be created
    If this gate fails, do not emit or save the plan. Fix the plan first.
+   Authority: `docs/codex_framework/architecture-diagram-routing.md` and
+   `docs/plans/README.md` Required Diagram Checklist.
 7. Refine the draft until agreement instead of treating planning as one-shot.
 8. Keep draft plans in the conversation until they are accepted. Store approved plans under `docs/plans/` as the canonical durable artifact and mirror them to a GitHub issue as a higher-level roadmap when GitHub is available. New approved plans must be stored as folder packets: `docs/plans/YYYY-MM-DD--short-slug/README.md`. Do not create new single-file plan artifacts.
 9. At meaningful role transitions, briefly label the active framework surface when it helps the user track the work:

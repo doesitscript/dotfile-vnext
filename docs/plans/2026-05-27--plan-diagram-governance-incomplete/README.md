@@ -21,10 +21,12 @@ scope: governance
 - [ ] **CI:** fail if new `docs/plans/**/README.md` lacks `## Diagram gate receipt`
 - [ ] **Skill:** `complete-plan-lifecycle` requires gate receipt before `-implemented` rename
 - [x] **Spec:** comprehensive Plan verification receipt — [plan-verification-receipt.md](../../codex_framework/plan-verification-receipt.md); wired in AGENTS.md §20, `docs/plans/README.md`, `framework-partner-process.mdc`, `framework-plan-governance.mdc`
+- [x] **Medium:** Option 2 — pack (`create-diagrams` + SVG default) or Mermaid fences — [architecture-diagram-routing.md](../../codex_framework/architecture-diagram-routing.md); `complete-plan-lifecycle` pack-aware
 - [ ] **CI:** fail if `lifecycle: implemented` without `## Plan verification receipt` + obligation inventory
 - [ ] **Skill:** `complete-plan-lifecycle` rejects checklist-only receipts (skill text updated; enforce in workflow)
 - [ ] **Audit:** scan existing `docs/plans/*-incomplete/` for missing Naming/Modeling; backfill as touched
 - [ ] **Audit:** migrate checklist-only execute receipts to obligation inventory when plans are touched
+- [ ] **Audit:** when touching durable `docs/diagrams/*`, prefer regenerating via `create-diagrams` + SVG
 
 ## Diagram gate receipt
 

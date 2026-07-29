@@ -31,6 +31,8 @@ NetBox seeds, complete
 
 Plan diagram enforcement: [plan-governance-dependencies.md](plan-governance-dependencies.md)
 (see also `.cursor/rules/framework-plan-governance.mdc`).
+Architecture diagram medium (`create-diagrams` + SVG default, Mermaid when preferred):
+[architecture-diagram-routing.md](architecture-diagram-routing.md).
 Plan execute/complete verification: [plan-verification-receipt.md](plan-verification-receipt.md)
 (full obligation inventory — not checklist-only).
 Reusable multi-agent and role-split execution patterns:

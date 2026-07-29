@@ -60,6 +60,19 @@ Before rename or `lifecycle: implemented`, the plan packet must include
 Reject completion if the only verification artifact is a short execute-receipt table
 without the full inventory.
 
+## Plan diagram gate (mandatory)
+
+Also confirm `## Diagram gate receipt` and Required Diagram Checklist medium rules
+per [architecture-diagram-routing.md](../../../docs/codex_framework/architecture-diagram-routing.md):
+
+- Architecture diagrams may be **pack artifacts** (`create-diagrams` + **SVG**
+  default, optional drawio/mmd) **or** fenced Mermaid when Mermaid is preferred
+- `Diagram Inventory` must record the medium used
+- Do not require Mermaid fences only; do not reject pack SVG/drawio evidence
+
+Reject completion if the diagram gate is Mermaid-only-required against a plan that
+correctly used pack artifacts (or vice versa without inventory note).
+
 ## Workflow
 
 ### Step 1: Verify plan file exists

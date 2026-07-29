@@ -35,6 +35,24 @@ PROCEDURE_FAMILIES = [
         "min_hits": 2,
         "skills": ["context7-intake-or-emulate"],
     },
+    {
+        "name": "architecture-diagramming",
+        "keywords": [
+            "architecture/structure diagram",
+            "diagram inventory",
+            "required diagram checklist",
+            "create-diagrams",
+            "architecture-diagram-routing",
+            "fenced mermaid",
+        ],
+        "min_hits": 1,
+        "skills": [
+            "create-diagrams",
+            "create-diagrams-dot",
+            "create-diagrams-drawio",
+            "create-diagrams-mermaid",
+        ],
+    },
 ]
 
 

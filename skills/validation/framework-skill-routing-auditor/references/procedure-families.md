@@ -15,6 +15,12 @@ The bundled helper currently audits these repeatable procedure families:
 4. Context7 no-library-ID fallback handling
    Replacement skill:
    `context7-intake-or-emulate`
+5. Architecture diagramming / plan diagram gate
+   Replacement skills (global pack):
+   `create-diagrams`, `create-diagrams-dot`, `create-diagrams-drawio`,
+   `create-diagrams-mermaid`
+   Project policy:
+   `docs/codex_framework/architecture-diagram-routing.md`
 
 Add new families only when the replacement skill already exists or is being
 created in the same slice.

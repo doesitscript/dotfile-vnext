@@ -4,6 +4,20 @@ Installs the active draw.io MCP server from npm and manages repo-local MCP
 client config for Cursor, Codex, and VS Code. The `openapi` target is present
 as an explicit v1 stub and fails fast if selected.
 
+## Boundary vs create-diagrams pack
+
+This role is **interactive MCP editing** of draw.io diagrams.
+
+For **reproducible architecture diagrams** from a Mingrammer model, use the
+global skill pack instead:
+
+- `create-diagrams` (author `.py`; this project defaults to **SVG**)
+- `create-diagrams-drawio` (`.py` → `.drawio`)
+- Policy: `docs/codex_framework/architecture-diagram-routing.md`
+
+Do not treat this MCP role as the authoring source of truth for new durable
+architecture diagrams.
+
 ## Classification
 
 - Runtime: Node.js

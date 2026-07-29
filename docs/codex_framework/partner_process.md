@@ -602,10 +602,13 @@ Official plans are more than lightweight draft notes. Conversational
 - brief summary
 - `Capability Packet Boundary` when grouped capability work is proposed
 - `Apply / Verify / Undo / Change class`
-- baseline Mermaid `Architecture/Structure Diagram`
-- `Capability Routing Diagram` when routing or branching matters
+- baseline `Architecture/Structure Diagram` per
+  [architecture-diagram-routing.md](architecture-diagram-routing.md) (prefer
+  global `create-diagrams` + **SVG**; Mermaid fences when Mermaid is preferred)
+- `Capability Routing Diagram` when routing or branching matters (same medium)
 - `Naming/Modeling Diagram` when names, routes, targets, or ownership change
-- `Diagram Inventory`
+  (same medium)
+- `Diagram Inventory` (include medium used)
 - explicit assumptions/defaults
 - decision-complete implementation detail
 
@@ -623,15 +626,18 @@ path rather than prose alone:
 
 Before emitting or saving an official plan, perform the plan diagram gate:
 
-1. Confirm a fenced Mermaid `Architecture/Structure Diagram` is present.
+1. Confirm an `Architecture/Structure Diagram` is present as pack artifacts
+   (`create-diagrams` + SVG default, optional exporters) **or** fenced Mermaid
+   when Mermaid is the intentional medium
+   ([architecture-diagram-routing.md](architecture-diagram-routing.md)).
 2. Confirm the diagram shows the repository surfaces being changed, external
    integrations, data/control flow, naming schemes, variable sources, tag
    hierarchy, and playbook/file organization relevant to the plan.
 3. Confirm conditional diagrams required by active framework rules are present.
 4. Confirm the plan ends with `Diagram Inventory` or `Other Available Diagram
    Types`.
-5. Confirm that final section lists both diagrams included and additional
-   diagrams that could be created.
+5. Confirm that final section lists diagrams included, medium used, and
+   additional diagrams that could be created.
 
 If any item fails, the planner must revise the plan before presenting it to the
 user or writing it to `docs/plans/`.
