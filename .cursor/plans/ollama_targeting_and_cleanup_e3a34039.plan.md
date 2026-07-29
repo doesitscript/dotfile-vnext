@@ -141,8 +141,11 @@ todos:
     content: "Part D research: live disk probe k3s-02 + HVH-02; Context7 eviction docs; HRL persist; rewrite Part D with managed vs unmanaged + capacity options"
     status: completed
   - id: d-capacity-followon
-    content: "Sibling plan: F: data-drive root for Ansible/Hyper-V VHDX on all Windows hosts with F:data; migrate HVH VHDXs; grow k3s-02; no Jupyter changes"
-    status: pending
+    content: "Wave 0: F: Hyper-V storage roots + hyperv_move_vm_storage for recommended VHDXs; guest grow/HF later"
+    status: in_progress
+  - id: wave0-f-storage
+    content: "Wave 0 apply: preview+move VHDXs to F: on HVH-01/02 via hyperv_move_vm_storage.yaml"
+    status: in_progress
   - id: e1-hvh01-metadata-fix
     content: Reconcile HVH-01 ai_host_profile with absent state
     status: pending
@@ -844,7 +847,7 @@ Check if `secondary_model_runtime` in HVH-01's runtime_planes is solely for Olla
 
 ## Apply / Verify / Undo / Change class
 
-- **Apply**: Part A (after approval) → B0 role (PT0S + ROCm/standalone pins + NSSM) → desktop present → hosts/CoreDNS converge → verify tags → LiteLLM repoint; HRL already seeded; Part D capacity mutations deferred to follow-on (research done)
-- **Verify**: Ansible uri/health tags for `ollama-desktop.hom.lab`; HVH absent surfaces gone; LiteLLM routes; no one-off curl as completion proof alone; Part D: HRL investigation + Context7 pack present; FreeDiskSpaceFailed still expected until capacity follow-on
-- **Undo**: inventory state flips + LiteLLM api_base restore + role absent
-- **Change class**: idempotent inventory/role/playbook + destructive HVH absent (approval) + additive HRL/skills; Part D follow-on may include VHDX grow / storage relocate (bootstrap-ish capacity)
+- **Apply**: **Wave 0** F: Hyper-V roots + `hyperv_move_vm_storage.yaml` → Part A (after approval) → B0 role → desktop present → hosts/CoreDNS → LiteLLM repoint; Jupyter untouched
+- **Verify**: VHDX attached on F:; guests back after move; Ollama/LiteLLM health; no one-off curl as sole proof
+- **Undo**: inventory path flip + re-run move playbook toward prior drive; LiteLLM/Ollama inventory restore
+- **Change class**: idempotent inventory/role defaults + controlled-outage VHDX relocate (Wave 0) + HVH Ollama absent (approval) + additive HRL/skills
