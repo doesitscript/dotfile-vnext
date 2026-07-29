@@ -1,0 +1,181 @@
+---
+# Controlled-outage Hyper-V VHDX relocation onto the desired inventory path
+# (typically F:\ProgramData\Ansible\hyperv_ubuntu_vm\... on hosts with F: data).
+#
+# Host declares a list:
+#   hyperv_vm_storage_move_targets:
+#     - vm_name: <Hyper-V VM name>
+#       vhdx_path: <desired absolute .vhdx path>
+#       start_after: true|false   # default true
+#
+# Preview:
+#   ansible-playbook playbooks/hyperv_move_vm_storage.yaml \
+#     -i inventory/inventory.yaml --limit HOM-LAB-HVH-02 --check
+#
+# Apply:
+#   ansible-playbook playbooks/hyperv_move_vm_storage.yaml \
+#     -i inventory/inventory.yaml --limit HOM-LAB-HVH-02
+#
+- name: Hyper-V VM storage relocation (F: data pattern)
+  hosts: windows_hosts
+  gather_facts: false
+
+  tasks:
+    - name: Skip hosts without storage move targets
+      ansible.builtin.debug:
+        msg: >-
+          No hyperv_vm_storage_move_targets on {{ inventory_hostname }}; skip.
+      when: (hyperv_vm_storage_move_targets | default([]) | length) == 0
+
+    - name: Preview Hyper-V VM storage relocation targets
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $hypervServer = '{{ hyperv_management_endpoint | default(ansible_host | default(host_ip | default(os_hostname | default(inventory_hostname)))) }}'
+          $vmName = '{{ item.vm_name }}'
+          $destination = '{{ item.vhdx_path }}'
+          $vm = Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
+          $disk = Get-VMHardDiskDrive -ComputerName $hypervServer -VMName $vmName -ErrorAction Stop | Select-Object -First 1
+          $source = $disk.Path
+          $sourceItem = Get-Item -LiteralPath $source -ErrorAction Stop
+          $destRoot = [System.IO.Path]::GetPathRoot($destination)
+          $destLetter = $destRoot.Substring(0, 1)
+          $destinationDrive = Get-Volume -DriveLetter $destLetter -ErrorAction Stop
+          $Ansible.Changed = $false
+          $Ansible.Result = @{
+            vm = $vmName
+            vm_state = $vm.State.ToString()
+            source = $source
+            source_file_gb = [math]::Round($sourceItem.Length / 1GB, 2)
+            destination = $destination
+            destination_exists = (Test-Path -LiteralPath $destination)
+            destination_free_gb = [math]::Round($destinationDrive.SizeRemaining / 1GB, 2)
+            enough_space = ($destinationDrive.SizeRemaining -gt $sourceItem.Length)
+            already_at_destination = ($source -eq $destination)
+            checkpoints = @(Get-VMSnapshot -ComputerName $hypervServer -VMName $vmName -ErrorAction SilentlyContinue).Count
+            start_after = '{{ item.start_after | default(true) | bool | lower }}'
+          }
+      loop: "{{ hyperv_vm_storage_move_targets | default([]) }}"
+      loop_control:
+        label: "{{ item.vm_name }}"
+      register: _hyperv_vm_storage_preview
+      check_mode: false
+      when: (hyperv_vm_storage_move_targets | default([]) | length) > 0
+
+    - name: Verify Hyper-V VM storage relocation is safe to start
+      ansible.builtin.assert:
+        that:
+          - item.result.checkpoints | int == 0
+          - item.result.already_at_destination | bool or item.result.enough_space | bool
+        fail_msg: >-
+          {{ item.result.vm }}: need zero checkpoints and enough free space on
+          destination (or already at destination). Preview={{ item.result }}
+      loop: "{{ _hyperv_vm_storage_preview.results | default([]) }}"
+      loop_control:
+        label: "{{ item.result.vm | default(item.item.vm_name) }}"
+      when:
+        - (hyperv_vm_storage_move_targets | default([]) | length) > 0
+        - item.result is defined
+
+    - name: Stop guest via Hyper-V before storage relocation
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $hypervServer = '{{ hyperv_management_endpoint | default(ansible_host | default(host_ip | default(os_hostname | default(inventory_hostname)))) }}'
+          $vmName = '{{ item.item.vm_name }}'
+          $vm = Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
+          $Ansible.Changed = $false
+          if ($vm.State.ToString() -ne 'Off') {
+            Stop-VM -ComputerName $hypervServer -Name $vmName -TurnOff -Force -ErrorAction Stop
+            $Ansible.Changed = $true
+          }
+          $deadline = (Get-Date).AddMinutes(2)
+          $state = $null
+          do {
+            $state = (Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop).State.ToString()
+            if ($state -eq 'Off') { break }
+            Start-Sleep -Seconds 1
+          } while ((Get-Date) -lt $deadline)
+          if ($state -ne 'Off') {
+            throw "VM did not reach Off after Hyper-V Stop-VM (state=$state); storage move not attempted."
+          }
+          $Ansible.Result = @{ vm = $vmName; state = $state }
+      loop: "{{ _hyperv_vm_storage_preview.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item.vm_name }}"
+      when:
+        - not ansible_check_mode
+        - (hyperv_vm_storage_move_targets | default([]) | length) > 0
+        - item.result is defined
+        - not (item.result.already_at_destination | bool)
+        - item.result.vm_state != 'Off'
+
+    - name: Move Hyper-V VHDX to desired path
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $hypervServer = '{{ hyperv_management_endpoint | default(ansible_host | default(host_ip | default(os_hostname | default(inventory_hostname)))) }}'
+          $vmName = '{{ item.item.vm_name }}'
+          $destination = '{{ item.item.vhdx_path }}'
+          $startAfter = '{{ item.item.start_after | default(true) | bool | lower }}' -eq 'true'
+          $destinationDir = Split-Path -LiteralPath $destination
+          $destinationDriveLetter = [System.IO.Path]::GetPathRoot($destination).Substring(0, 1)
+          $vm = Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
+          $disk = Get-VMHardDiskDrive -ComputerName $hypervServer -VMName $vmName -ErrorAction Stop | Select-Object -First 1
+          $source = $disk.Path
+          $Ansible.Changed = $false
+
+          if ($source -ne $destination) {
+            if ($vm.State.ToString() -ne 'Off') {
+              throw 'VM must be off before storage relocation.'
+            }
+            New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+            $mapping = @(@{
+              SourceFilePath = $source
+              DestinationFilePath = $destination
+            })
+            Move-VMStorage -ComputerName $hypervServer -VMName $vmName -Vhds $mapping -ErrorAction Stop
+            $Ansible.Changed = $true
+          }
+
+          $attachedPath = (Get-VMHardDiskDrive -ComputerName $hypervServer -VMName $vmName -ErrorAction Stop | Select-Object -First 1).Path
+          if ($attachedPath -ne $destination) {
+            throw "Hyper-V disk attachment is not at desired path: $attachedPath"
+          }
+
+          $state = (Get-VM -ComputerName $hypervServer -Name $vmName).State.ToString()
+          if ($startAfter -and $state -ne 'Running') {
+            Start-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
+            $Ansible.Changed = $true
+            $state = 'Running'
+          }
+
+          $Ansible.Result = @{
+            vm = $vmName
+            state = $state
+            source_exists = (Test-Path -LiteralPath $source)
+            destination_exists = (Test-Path -LiteralPath $destination)
+            attached_path = $attachedPath
+            destination_file_gb = [math]::Round((Get-Item -LiteralPath $destination).Length / 1GB, 2)
+            destination_free_gb = [math]::Round((Get-Volume -DriveLetter $destinationDriveLetter).SizeRemaining / 1GB, 2)
+            start_after = $startAfter
+          }
+      loop: "{{ _hyperv_vm_storage_preview.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item.vm_name }}"
+      register: _hyperv_vm_storage_move
+      when:
+        - not ansible_check_mode
+        - (hyperv_vm_storage_move_targets | default([]) | length) > 0
+        - item.result is defined
+        - not (item.result.already_at_destination | bool)
+
+    - name: Show Hyper-V VM storage relocation results
+      ansible.builtin.debug:
+        msg: >-
+          {{
+            (_hyperv_vm_storage_move.results | default([]) | map(attribute='result') | select('defined') | list)
+            if (_hyperv_vm_storage_move is defined)
+            else (_hyperv_vm_storage_preview.results | default([]) | map(attribute='result') | select('defined') | list)
+          }}
+      when: (hyperv_vm_storage_move_targets | default([]) | length) > 0
