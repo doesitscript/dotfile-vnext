@@ -78,27 +78,39 @@ The task is to:
 The primary focus is understanding intent, not preserving the exact spoken
 string.
 
-## Skill Suggestion Footer
+## Unnamed skill use — required closeout
 
-When a request maps cleanly to project skills in `skills/catalog.yaml`, keep
-executing the work normally and include a small "next time" skill suggestion
-when it would genuinely help build a reusable habit.
+When this turn **used** one or more skills (project or global) and the user did
+**not** name those skills in the request, end the response with a short footer
+so the same or similar task can be re-run deliberately next time.
 
-Do not pause implementation first just to explain the alternative workflow.
+Required footer contents:
+
+1. **Skills used** — every skill actually followed this turn
+2. **Prompt** — one copy-paste prompt that names those skills and restates the
+   task at a reusable level
+
+Do the work first. Do not pause only to explain the skill workflow.
 
 Prefer:
 
 - one wrapper or default-flow skill when one exists
-- otherwise at most three directly relevant skills
-- one reusable prompt when the prompt is stable enough to be worth repeating
+- otherwise at most three skills in the suggested prompt
+- a prompt stable enough to paste into a future turn
 
-Skip the footer when there is no clean skill match, when it would add noise, or
-when the user clearly does not want process suggestions.
+Skip the footer only when:
+
+- the user already named the skills in the request, or
+- no skill was actually used, or
+- the user clearly does not want process suggestions
+
+Optional (soft): if no skill was used but a clean catalog match exists, you may
+still suggest one skill + prompt as a habit aid.
 
 Example:
 
 ```markdown
 Next time:
-- Skill: `skill-name`
-- Prompt: `Use skill skill-name to ...`
+- Skills used: `skill-a`, `skill-b`
+- Prompt: `Use skill skill-a on <target>, then skill-b for ...`
 ```
