@@ -20,21 +20,30 @@ Before decision-complete planning or implementation:
 3. Check Ansible authority:
    - `ansible.zen_of_ansible`
    - `ansible_content_best_practices`
-   - `ansible-doc` or official module docs when selecting modules
+   - Context7 / `ansible-doc` / official module docs when selecting modules
 4. Discover module or collection capability before reaching for shell or
-   PowerShell.
-5. Produce an Ansible knowledge receipt.
-6. Treat install/download/remove on managed hosts as Ansible
+   PowerShell. **Unknown module is not permission for `win_shell`.**
+5. Run intent → Context7 → module matrix (skill
+   `ansible-knowledge-gate`):
+   - list operational surfaces in plain language
+   - Context7 intent search (`resolve-library-id` + `query-docs`)
+   - matrix with Fit yes/partial/no before any shell helper
+6. Produce an Ansible knowledge receipt (include passes + matrix).
+7. Treat install/download/remove on managed hosts as Ansible
    `present|absent` work per AGENTS.md §32. Enter
    `homelab-ansible-first-entry` first (run
    `.cursor/skills/homelab-ansible-first-entry/scripts/print_entry_doors.py`),
    then route missing owners to `tool-capability-intake`,
    `windows-tool-capability-intake`, or `hf-model-weight-lifecycle` instead of
    ad-hoc SSH/pip/scp.
-7. Before inventing download/install shell or role `files/*.ps1`, produce a
-   module matrix (`win_chocolatey` / `win_get_url` / `win_package` / …).
-   Custom install scripts and `playbooks/troubleshoot/_tmp_*` installers are
-   prohibited when those modules fit.
+8. Before inventing download/install shell or role `files/*.ps1`, produce a
+   module matrix (`win_chocolatey` / `win_get_url` / `win_package` /
+   `win_service` / `win_nssm` / `win_scheduled_task` / `win_firewall_rule` /
+   `win_environment` / …). Custom install scripts and
+   `playbooks/troubleshoot/_tmp_*` installers are prohibited when those
+   modules fit.
+9. When research findings must not die in chat, use plan intermission + global
+   skill `conversation-research-to-library` before locking build steps.
 
 ## Knowledge Receipt
 
@@ -42,6 +51,9 @@ Required fields:
 
 - Repo surfaces checked
 - Ansible authority checked
+- Operational surfaces (plain language)
+- Context7 / docs passes
+- Module matrix
 - Module/tool discovery
 - Design impact
 - Open gaps
