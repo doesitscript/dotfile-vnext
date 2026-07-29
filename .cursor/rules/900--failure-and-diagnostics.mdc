@@ -1,8 +1,38 @@
 ---
-description: No-assumptions-on-failure evidence collection, two-attempt research gate, diagnostics discovery. Use when hosts/tasks fail or debugging.
+description: Shell/terminal error hard gate (3 informed fixes then alternate path), no-assumptions-on-failure evidence collection, two-attempt research gate, diagnostics discovery. Use when hosts/tasks fail, shell commands error, or debugging.
 alwaysApply: false
 ---
 CURSOR RULE — NO ASSUMPTIONS ON FAILURE + REQUIRED EVIDENCE COLLECTION (UNIVERSAL)
+
+## SHELL / TERMINAL ERROR HARD GATE (NO PASS)
+
+Applies to **any** shell or terminal command — local Shell tool, SSH, WinRM
+remote shell, `ansible-playbook`, ad-hoc Ansible, scripts, wrappers
+(`bin/codex-env`, etc.). If the output shows an error (non-zero exit, stderr
+failure text, traceback, Ansible FAILED/UNREACHABLE, or equivalent), this gate
+fires. Host-unreachable rules below still apply when the failure is reachability.
+
+Contract:
+
+1. **Read the full error output.** Do not skim or skip stderr / traceback /
+   exception text.
+2. **Say what the error means** in plain language. Cite the line(s).
+3. **Fix that failing step** from the error plus task context. Do not ignore
+   what the error said.
+4. **Up to three informed fix attempts** on that same failing step. Each
+   attempt = read error → change something based on it → re-run. Blind re-runs
+   of the identical command with no change are prohibited and still count.
+5. **After three failed fix attempts**, stop that approach. Summarize the three
+   errors, then use a **different path** to keep the overall work moving
+   (different module/flag/ordering, skip-and-revisit, or research mode —
+   RULE 8). No fourth attempt on the same approach without user approval or
+   new research evidence.
+
+Authority: `AGENTS.md` §9a. RULE 8 research mode is the escalation when three
+fix attempts are exhausted and no alternate path is clear.
+
+---
+
 INTENT
 When a host is unreachable or a task fails, the agent must not assume the cause.
 The agent must collect real system evidence using all available connection methods:

@@ -61,6 +61,26 @@ Include:
 7. When corrected, update the repo guidance so the correction persists.
 8. At architecture moments, offer a concise draft plan instead of waiting indefinitely for an explicit planning request.
 9. When commands, playbooks, or tools produce output, inspect that output before guessing at failure causes. Do not make speculative retry or tuning changes unless the available evidence supports them.
+9a. **Shell/terminal error hard gate (no pass).** Any command that runs
+   through a shell or terminal — local Shell tool, SSH, WinRM remote shell,
+   `ansible-playbook`, ad-hoc Ansible, scripts, wrappers (`bin/codex-env`,
+   etc.) — must follow this when the output shows an error (non-zero exit,
+   stderr failure text, traceback, Ansible FAILED/UNREACHABLE, or equivalent):
+   1. **Read the full error output.** Do not skim or skip stderr / traceback /
+      exception text.
+   2. **Say what the error means** in plain language, citing the line(s).
+   3. **Fix that failing step** using the error plus task context (vars,
+      inventory, module docs, prior successful steps). Do not ignore what the
+      error said.
+   4. **Up to three informed fix attempts** on that same failing step. Each
+      attempt = read error → change something based on it → re-run. Blind
+      re-runs of the identical command with no change are prohibited and still
+      count as an attempt.
+   5. **After three failed fix attempts**, stop that approach. Summarize the
+      three errors, then use a different path to keep the overall work moving
+      (different module/flag/ordering, skip-and-revisit, or research mode per
+      `900--failure-and-diagnostics.mdc` RULE 8). Do not make a fourth attempt
+      on the same approach without user approval or new research evidence.
 10. One-off remote teardown or cleanup commands against provisioned hosts require explicit user approval and must be treated as a scoped exception, not the default automation path.
 11. When syntax checks, lint, idempotence checks, or runtime verification are not run, say so explicitly in the final output and state why they were skipped or unavailable.
 12. During active implementation, required live state queries against the target system should be treated as normal execution, not as optional permission checkpoints. Ask only when the action is destructive, carries hidden side effects, or depends on unresolved user intent.

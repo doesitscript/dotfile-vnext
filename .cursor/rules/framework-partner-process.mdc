@@ -245,7 +245,38 @@ patterns belong under `docs/codex_framework/agent-workflows/`. A plan may select
 one of those patterns, but reusable role boundaries, gates, fallback behavior,
 and completion rules must not live only inside an individual plan packet.
 
+### Shell/terminal error hard gate (AGENTS.md §9a)
+
+Any shell or terminal command (local Shell, SSH, WinRM shell, ansible-playbook,
+scripts, wrappers): if the output shows an error, the agent must:
+
+1. Read the full error output (do not skim).
+2. Say what it means; cite the line(s).
+3. Fix that failing step from the error + task context.
+4. Make up to **three informed fix attempts** on that step (each attempt
+   changes something based on the error). Blind identical re-runs are
+   prohibited and still count.
+5. After three failed fixes, switch to a different path to keep the overall
+   work moving (or research mode per `900--failure-and-diagnostics` RULE 8).
+   No fourth attempt on the same approach without user approval or new
+   research evidence.
+
 If the topic is too novel or under-researched, the agent may summarize current direction but must escalate to research before producing a decision-complete plan.
+
+### Plan research intermission (pause → library → revise)
+
+For non-trivial Ansible / product plans, do **not** lock build steps from chat
+memory. Insert a research intermission:
+
+1. Pause build / Phase 3 edits
+2. Research (prefer Context7 when available; vendor-primary before module folklore)
+3. Persist findings via global skill `conversation-research-to-library`
+4. Revise the plan from library evidence
+5. Only then execute build
+
+Authority: `docs/codex_framework/plan-research-intermission.md`.
+Unknown FQCNs still require project skill `ansible-knowledge-gate` (intent →
+Context7 → module matrix) before any `win_shell`.
 
 ### Mandatory Diagram Requirements
 

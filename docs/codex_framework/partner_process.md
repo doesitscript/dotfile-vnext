@@ -179,7 +179,18 @@ The Steward must:
   supports it
 - offer a concise draft plan at architecture moments
 - refine that draft until agreement
+- **shell/terminal error hard gate (AGENTS.md §9a):** any shell or terminal
+  command whose output shows an error — read it, say what it means, fix that
+  step using the error. Up to three informed fix attempts; then switch to a
+  different path (or research mode) to keep the overall work moving. No blind
+  identical re-runs. No skipping the error text.
 - escalate to research first when the topic is too novel for a decision-complete plan
+- for non-trivial Ansible/product plans, use a **research intermission**
+  (pause → research → persist via `conversation-research-to-library` → revise
+  plan → then build). See
+  [plan-research-intermission.md](plan-research-intermission.md).
+  Unknown modules still require `ansible-knowledge-gate` intent → Context7 →
+  module matrix before `win_shell`.
 - reject partial compliance that weakens the user's target, such as preserving
   only one model lane when the user asked for a full lane family
 - keep exact resource picks as research-pending unless current source-backed

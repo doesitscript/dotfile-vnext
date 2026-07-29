@@ -64,7 +64,13 @@ Do not use for mutating hosts — use `homelab-ansible-first-entry`.
 7. For multi-topic library ingest / “is this in good shape?” completion gates,
    hand off to HRL skill `library-intake-good-shape` (do not stop after opening
    indexes alone).
-8. When the next step is vendor scrape before planning a product build:
+8. When coverage is thin or zero, emit the HRL thin/zero Exists/Missing/
+   Research Needed receipt (`homelab-reference-library/AGENTS.md`) before
+   inventing answers.
+9. When chat/plan research must land in HRL before build: hand off to global
+   skill `conversation-research-to-library`. Plan habit:
+   `docs/codex_framework/plan-research-intermission.md`.
+10. When the next step is vendor scrape before planning a product build:
    hand off to `vendor-doc-collection` with **task-scoped** pages by default
    (only what the goal needs). Full/complete vendor clone only when the user
    explicitly asks. Then plan — do not invent Ansible placement first.
