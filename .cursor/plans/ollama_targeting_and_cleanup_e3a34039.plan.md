@@ -141,7 +141,7 @@ todos:
     content: "Part D research: live disk probe k3s-02 + HVH-02; Context7 eviction docs; HRL persist; rewrite Part D with managed vs unmanaged + capacity options"
     status: completed
   - id: d-capacity-followon
-    content: "After Ollama A/B: sibling capacity plan — grow/relocate VHDX and/or move HF cache off local-path; GPU-P cache prune role; Jupyter off GPU node"
+    content: "Sibling plan: F: data-drive root for Ansible/Hyper-V VHDX on all Windows hosts with F:data; migrate HVH VHDXs; grow k3s-02; no Jupyter changes"
     status: pending
   - id: e1-hvh01-metadata-fix
     content: Reconcile HVH-01 ai_host_profile with absent state
@@ -583,6 +583,41 @@ The HRL Ollama agent’s Exists / Missing / Research Needed receipt was good. It
 
 **Hard rule (user 2026-07-29):** Nothing one-off to the side. ROCm zips, NSSM, DNS verify/fix, and runtime install all land in **roles + playbooks** (checksum-pinned artifacts, verify tags, hosts/CoreDNS converge). Manual curl/scp/`oneoffs` only if you explicitly say so.
 
+### Build wave order (dependencies)
+
+```text
+Wave 0 — F:`data` Hyper-V storage (shared + unique recommended moves)
+         BEFORE Part A: code/inventory first; live VHDX migrate is controlled outage
+         (k3s/LiteLLM/Docker brief downtime). Does not depend on Ollama Part A/B.
+Wave 1 — Part A HVH-01 Ollama absent + LiteLLM blank/block (needs approval)
+Wave 2 — Part B0 role (PT0S/ROCm/NSSM) then B1–B3 desktop Ollama
+Wave 3 — Part C tighten HRL after evidence; Part E metadata
+         (guest HF grow / prune after Wave 0 host VHDX on F:)
+```
+
+**Why Wave 0 first:** Moving VHDXs to F: does not require Ollama teardown; putting it after Part A would leave k3s-02 disk pressure during LiteLLM work. Jupyter: **no change**.
+
+### Wave 0 — F:`data` Hyper-V storage (build now)
+
+**Shared (all Hyper-V Windows hosts with F:`data` — `hyperv_lane_*`):**
+
+1. Inventory: `windows_hyperv_ansible_root` / `windows_hyperv_vm_storage_root` → `F:\ProgramData\Ansible\...`
+2. Role defaults: `hyperv_ubuntu_vm` roots off that var (C: fallback only if unset)
+3. Playbooks: k3s/docker VHDX defaults use F: root; generalize `hyperv_move_vm_storage.yaml`
+4. GPU-P Windows payload temp under `F:\ProgramData\Ansible\...` (not C:)
+
+**Unique recommended migrates (same playbook, host-specific `hyperv_vm_storage_move_targets`):**
+
+| Host | VM | From → F: | start_after |
+| --- | --- | --- | --- |
+| HVH-02 | `hom-lab-ctl-k3s-02` | D: → F: | true (primary capacity) |
+| HVH-02 | `hom-lab-ctl-dkr-02` | C: → F: | true |
+| HVH-01 | `hom-lab-ctl-k3s-01` | D: → F: | true |
+| HVH-01 | `nsrv-dkr-01` | C: → F: | true (live Docker VM name) |
+| HVH-01 | `nsrv-k3s-01` | C: → F: | **false** (Off / legacy) |
+
+**Not automated:** Steam/Games on D:, Jupyter on guest.
+
 ### Findability efficiencies applied to this build (r11–r13 done)
 
 | Efficiency | How this build uses it |
@@ -703,79 +738,96 @@ Windows headless section already expanded from Context7 — append deploy-verifi
 
 Created: `q-and-a/ollama/windows-headless-scheduled-task-vs-nssm.md` (draft). Promote to reviewed when role matches preferred pattern.
 
-## Part D — Stabilize k3s-02 capacity (research-first; updated knowledge)
+## Part D — Stabilize capacity via F:`data` (research-first; updated knowledge)
 
-**Intent:** As the lab gets more stable, Part D is **not** “delete a stale pod and move on.” It is research the remote system’s disk story, separate **project-managed** vs **misplaced/semi-managed** consumers, persist findings to HRL, and propose **Ansible/plan options** to move or reclaim space. No one-off deletes of live model weights during Ollama A/B.
+**Intent:** Research disk pressure, then encode **shared Windows data-drive placement** so the same playbook pattern applies to **all Windows servers that have an F:`data` volume**. Do not one-off move files. **Do not touch Jupyter** on k3s-02 (explicit user decision).
 
 ### D0. Research done this pass (2026-07-29) — evidence
 
-**Hosts probed:** `hom-lab-ctl-k3s-02` (guest), `HOM-LAB-HVH-02` (Hyper-V host / VHDX).
+**Hosts probed:** `hom-lab-ctl-k3s-02` (guest), `HOM-LAB-HVH-01`, `HOM-LAB-HVH-02`.
 
 | Fact | Evidence |
 | --- | --- |
-| Root ~**87%** full (77G FS, ~11G free) | `df -hT` on k3s-02 |
-| VHDX **80G**; inventory `hyperv_ubuntu_k3s_vm_disk: "80G"` | VHDX length on D:; host_vars HVH-02 |
-| `FreeDiskSpaceFailed` ×1618 / ~5d — wants ~5.4Gi image GC, **0 bytes eligible** | `kubectl describe node` / events |
-| `DiskPressure` currently **False** | same describe |
-| Images ~**32G** (all in use; `vllm/vllm-openai:latest` ~8.8G) | `du` + `k3s crictl images` |
-| HF PVC claim **120Gi**, used ~**19G** on same root (local-path) | `kubectl get pvc` + `du` under k3s storage |
-| GPU-P work tree ~**8.1G** under `/var/lib/ansible/hyperv_ubuntu_gpu_p_runtime` | role-owned caches |
-| Jupyter path ~**1.7G** `/home/joshc/jupyterlab-workbench` | present on GPU node; not in k3s-02 host_vars |
-| HVH-02 free: D:~**29G**, F:`data` ~**1TB**, E:backups ~**215G** | `Get-Volume` |
+| k3s-02 root ~**87%** full; VHDX **80G** on HVH-02 **D:** | guest `df`; host VHDX |
+| `FreeDiskSpaceFailed` — wants ~5.4Gi unused images, finds **0** | kubelet image GC; all images in use |
+| HF PVC claim **120Gi**, used ~**19G** on guest root | local-path under k3s storage |
+| Guest GPU-P caches ~**8.1G** | `/var/lib/ansible/hyperv_ubuntu_gpu_p_runtime` |
+| Jupyter on guest | **out of scope — leave alone** |
+| Both HVHs have labeled **F: `data`** with large free space | Get-Volume probe |
 
-**Context7:** `/kubernetes/website` — node-pressure eviction: kubelet reclaims unused images before pod eviction; `FreeDiskSpaceFailed` = reclaim request unmet.
+**Free space (2026-07-29):**
 
-**HRL persisted:**
+| Host | C: free | D: free | F:`data` free | Notes |
+| --- | --- | --- | --- | --- |
+| HVH-01 | ~180G | ~782G | ~487G | F: already used for `shares` |
+| HVH-02 | ~61G | ~29G | ~1013G | D: nearly full (Steam + k3s VHDX); F: best expand target |
 
-- `generated/context7/kubernetes/node-disk-pressure-freediskspacefailed/`
-- `notes/investigations/2026-07-29--k3s-02-disk-pressure-freediskspacefailed.md`
-- `q-and-a/kubernetes/k3s-02-disk-capacity-vs-image-gc.md`
+**HRL:** Context7 disk-pressure pack + investigation + Q&A; PowerShell SSH quoting pack. Indexes rebuilt.
 
-**Library topic check — k3s-02 disk / FreeDiskSpaceFailed**
+### D1. Common playbook pattern (all Windows hosts with F:`data`)
 
-Exists:
+Repo already treats F: as the managed data volume (`windows_file_shares_expected_volumes`, `windows_managed_service_data_backup_disk` data letter **F**, HVH-01 artifact paths under `F:\shares\public\...`).
 
-- Context7 pack + investigation + Q&A above
-- Lessons-learned: K3s VHDX should stay off Windows C: (already on D:)
+**Target convention (encode once, apply everywhere that has F:`data`):**
 
-Missing / Research Needed (follow-on, not Ollama A/B blockers):
+```text
+windows_data_drive_letter: F          # when volume label == data (or inventory fact)
+windows_ansible_data_root: F:\ProgramData\Ansible
+hyperv_vhdx_root:          F:\ProgramData\Ansible\hyperv_ubuntu_vm
+# Keep F:\shares\public as SMB/public share root (already managed)
+```
 
-- Exact target VHDX size after HF-cache placement decision
-- Whether HF cache moves to F: share vs HVH-01 storage-lane (existing incomplete plans)
-- Role task to prune GPU-P guest caches after share publish
+**Shared move candidates (both servers — same role/playbook logic):**
 
-### D1. Managed vs not (classification for moves)
+| Candidate | Why move to F: | Playbook shape |
+| --- | --- | --- |
+| **Hyper-V VHDX files** currently on C: or D: under `*\ProgramData\Ansible\hyperv_ubuntu_vm\**\*.vhdx` | Sustained VM I/O + growth; lessons-learned already say keep K3s off C:; D: on HVH-02 is full of games | Inventory `*_host_vhdx_path` → `F:\...`; offline VM → move/attach via Hyper-V modules; both hosts |
+| **Hyper-V VM config/working trees** still under `C:\ProgramData\Ansible\hyperv_ubuntu_vm\` (tens of GB even when VHDX already on D:) | Config+diff disks inflate C:; same tree layout on both hosts | Default Ansible Hyper-V root → F:; migrate with role |
+| **Ansible download/cache trees** (`...\Ansible\downloads`, GPU-P windows payload/temp under ProgramData\Ansible) | Rebuildable caches; F: already holds published artifacts on shares | Stage/cache roots → `F:\ProgramData\Ansible\...` or `F:\staging\...` |
+| **Published artifacts** | Already on `F:\shares\public\artifacts\...` (HVH-01) | Keep; make HVH-02 match same layout |
 
-| Consumer | ~Size | Under project? | Action class |
+**Do not put on F: via this pattern:** Windows OS, NVIDIA driver ProgramData, Chocolatey (unless separately decided), user profile OS trees, **Jupyter**.
+
+Gate: only hosts where `F:` exists and label/`windows_file_shares_expected_volumes` says `data` (same idea as file-share hosts).
+
+### D2. Unique-to-host move candidates (probe 2026-07-29)
+
+#### HOM-LAB-HVH-01 (storage lane)
+
+| Item | ~Size / location | Unique note | Suggest |
 | --- | --- | --- | --- |
-| K3s/containerd images | 32G | Yes | Keep; pin vLLM image tag (stop `:latest`) |
-| HF cache local-path PVC | 19G used / 120Gi claim | Yes (`k3s_vllm_runtime`) | **Mis-sized claim** on 80G disk — relocate or grow |
-| GPU-P `/var/lib/ansible/...` | 8.1G | Yes (work dirs) | **Reclaim candidate** after artifacts on share |
-| jupyterlab-workbench on GPU VM | 1.7G | Role exists; **not** commissioned in k3s-02 inventory | **Misplaced** — move off GPU node |
-| OS / apt / journal | small | Distro | Leave |
-| Orphan one-offs | none large found | No | N/A this probe |
+| `nsrv-dkr-01.vhdx` | **40G** on **C:** | Legacy/alternate Docker VM still on system disk | Move VHDX (+ prefer VM tree) → **F:** |
+| `nsrv-k3s-01.vhdx` | **60G** on **C:** | Off VM; still consuming C: | Move → **F:** or retire if unused |
+| `hom-lab-ctl-k3s-01` VHDX | **60G** on **D:** | Already off C:; D: has lots of free | Optional: also standardize onto **F:** for one root |
+| `C:\...\hyperv_ubuntu_vm\nsrv-*` trees | ~**90G + 82G** under C: Ansible | Dominates **212G** C:\ProgramData\Ansible | Move with VHDX to F: |
+| `F:\shares\public` | ~78G already | Good — keep as share root | No move; grow usage here |
 
-Replicas: `k3s_vllm_runtime_replicas: 1` already correct. Stale admission pods were a symptom of capacity stress, not the primary fix.
+HVH-01 C: is not critically full (~180G free) but **~100G+ of VM disks still on C:** — highest-value common-pattern cleanup.
 
-### D2. Options to propose (sibling plan / later wave — Ansible only)
+#### HOM-LAB-HVH-02 (GPU / primary compute)
 
-Do **not** treat these as ad-hoc SSH cleanup during Part A/B. Encode in inventory/roles/playbooks or a named follow-on plan.
+| Item | ~Size / location | Unique note | Suggest |
+| --- | --- | --- | --- |
+| `hom-lab-ctl-k3s-02.vhdx` | **80G** on **D:** | D: only **~29G free**; guest disk pressure | **Primary:** move to **F:** then grow VHDX (fixes k3s-02 FreeDiskSpaceFailed capacity path) |
+| `hom-lab-ctl-dkr-02` VHDX | **~30G** on **C:** | Docker companion still on C: | Move → **F:** |
+| `C:\...\hyperv_ubuntu_vm\` trees | ~**90G** total on C: | VM working dirs + dkr | Move with VHDXs to F: |
+| Host GPU-P `C:\...\hyperv_ubuntu_gpu_p_runtime` | **~7G** | Host-side build/payload | Prefer **F:\ProgramData\Ansible\...** or existing `F:\shares\public\artifacts\...` |
+| `D:\SteamLibrary` / Games / recordings | **~730G+** on D: | Personal/gaming — **not** Ansible | Out of automation scope unless you later ask; explains why D: cannot absorb VHDX growth |
+| `F:\Games` | ~89G already on F: | Non-repo | Leave; proves F: is fine for bulk data |
 
-1. **Grow in place (modest):** raise `hyperv_ubuntu_k3s_vm_disk` and expand VHDX on D: (headroom limited by ~29G free on D:).
-2. **Relocate VHDX to F:`data` then grow:** D: tight; F: has ~1TB — best physical capacity path for the GPU VM.
-3. **Move HF cache off local-path** onto storage-lane / public share (aligns with model-catalog + storage-lane incomplete plans); keep inference on k3s-02 GPU.
-4. **GPU-P cache prune role path:** after artifacts published to share, clear guest `repo-cache`/`artifact` under `/var/lib/ansible/hyperv_ubuntu_gpu_p_runtime` (~8G).
-5. **Jupyter off GPU node:** present/absent `dev_jupyterlab_workbench` on a non-GPU host; remove tree from k3s-02.
-6. **Pin vLLM image digest/tag** in `k3s_vllm_runtime` defaults (operational hygiene).
+### D3. Guest (k3s-02) options after host VHDX is on F:
 
-**Recommended sequencing after Ollama A/B:** prefer **(4)+(5)** for quick managed reclaim, then **(3) or (2)** for durable capacity; **(1)** only if staying on D: with a small bump.
+1. Grow guest disk (inventory `hyperv_ubuntu_k3s_vm_disk`) once VHDX lives on F: with headroom.
+2. Optionally move HF cache off local-path onto storage share (separate storage-lane plan).
+3. Prune guest GPU-P `/var/lib/ansible/...` caches after publish (~8G).
+4. Pin vLLM image tag.
+5. **Jupyter: no action.**
 
-### D3. Part D exit for *this* Ollama plan packet
+### D4. Part D exit for *this* Ollama plan packet
 
-- Research + HRL persist: **done**
-- Live capacity mutation (grow VHDX / move HF): **out of Ollama A/B execute scope** → track as `d-capacity-followon` / sibling plan
-- Optional small in-scope tweak if executing later waves: pin vLLM image tag in role defaults (no disk grow)
-
+- Research (guest + both Windows hosts + F: candidates): **done**
+- Live VHDX migrate / F: re-root: **follow-on sibling plan** (`d-capacity-followon`) — Ansible-only, applies to all F:`data` Windows hosts
+- Ollama A/B execute does **not** require F: moves first; HVH-02 k3s capacity remains a stability follow-on
 ## Part E — Metadata Reconciliation
 
 ### E1. Fix HVH-01 metadata contradiction
