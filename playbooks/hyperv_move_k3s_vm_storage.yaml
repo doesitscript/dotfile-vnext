@@ -6,25 +6,19 @@
 #   ansible-playbook playbooks/hyperv_move_k3s_vm_storage.yaml \
 #     -i inventory/inventory.yaml --limit HOM-LAB-HVH-02 [--check]
 #
-- name: Hyper-V K3s VM storage relocation (wrapper)
+- name: Hyper-V K3s VM storage relocation (wrapper seed)
   hosts: windows_hosts
   gather_facts: false
 
   tasks:
     - name: Seed K3s-only move target when list unset
       ansible.builtin.set_fact:
-        hyperv_vm_storage_move_targets: >-
-          {{
-            hyperv_vm_storage_move_targets
-            | default([
-              {
-                'vm_name': hyperv_ubuntu_k3s_vm_hostname,
-                'vhdx_path': hyperv_ubuntu_k3s_vm_host_vhdx_path,
-                'start_after': true
-              }
-            ], true)
-          }}
+        hyperv_vm_storage_move_targets:
+          - vm_name: "{{ hyperv_ubuntu_k3s_vm_hostname }}"
+            vhdx_path: "{{ hyperv_ubuntu_k3s_vm_host_vhdx_path }}"
+            start_after: true
       when:
+        - (hyperv_vm_storage_move_targets | default([]) | length) == 0
         - hyperv_ubuntu_k3s_vm_hostname | default('') | length > 0
         - hyperv_ubuntu_k3s_vm_host_vhdx_path | default('') | length > 0
 
