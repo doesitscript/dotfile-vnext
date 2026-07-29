@@ -223,10 +223,23 @@ hyperv_ubuntu_k3s_vm_inventory_host: "hom-lab-ctl-k3s-01"
 hyperv_ubuntu_k3s_vm_cpus: 4
 hyperv_ubuntu_k3s_vm_memory: "8G"
 hyperv_ubuntu_k3s_vm_disk: "60G"
-# Keep sustained K3s/container/PVC I/O off the Windows system disk (same
-# workload-disk contract as HVH-02 / k3s-02). Moving an existing VHDX is a
-# controlled outage via playbooks/hyperv_move_k3s_vm_storage.yaml.
-hyperv_ubuntu_k3s_vm_host_vhdx_path: 'D:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-k3s-01\hom-lab-ctl-k3s-01.vhdx'
+# Keep sustained K3s/container/PVC I/O on the F: data volume (not C:/D:).
+# Relocate existing VHDXs with playbooks/hyperv_move_vm_storage.yaml.
+hyperv_ubuntu_k3s_vm_host_vhdx_path: 'F:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-k3s-01\hom-lab-ctl-k3s-01.vhdx'
+# Live Docker companion Hyper-V name is still nsrv-dkr-01 (legacy); inventory
+# hostname remains hom-lab-ctl-dkr-01 for guest identity. VHDX move uses live name.
+hyperv_ubuntu_docker_vm_host_vhdx_path: 'F:\ProgramData\Ansible\hyperv_ubuntu_vm\nsrv-dkr-01\nsrv-dkr-01.vhdx'
+# Wave 0 storage moves (shared F: pattern + unique legacy VMs on this host).
+hyperv_vm_storage_move_targets:
+  - vm_name: nsrv-k3s-01
+    vhdx_path: 'F:\ProgramData\Ansible\hyperv_ubuntu_vm\nsrv-k3s-01\nsrv-k3s-01.vhdx'
+    start_after: false
+  - vm_name: nsrv-dkr-01
+    vhdx_path: 'F:\ProgramData\Ansible\hyperv_ubuntu_vm\nsrv-dkr-01\nsrv-dkr-01.vhdx'
+    start_after: true
+  - vm_name: "{{ hyperv_ubuntu_k3s_vm_hostname }}"
+    vhdx_path: "{{ hyperv_ubuntu_k3s_vm_host_vhdx_path }}"
+    start_after: true
 hyperv_ubuntu_k3s_vm_bootstrap_user: "joshc"
 hyperv_ubuntu_k3s_vm_ssh_port: 22
 # Azure cloud-image path: offline seed disabled on server lanes (no wsl.exe --mount).
