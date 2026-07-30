@@ -68,8 +68,10 @@ When `k3s_litellm_gateway_request_inspector_enabled` is true (default), the role
 2. Mounts it at `/etc/litellm/custom_callbacks.py` on the LiteLLM pod
    (beside `config.yaml` so LiteLLM can import `custom_callbacks` — not `/app/`)
 3. Sets `litellm_settings.callbacks: custom_callbacks.proxy_handler_instance`
-4. After Helm apply, restarts the LiteLLM Deployment so the ConfigMap `subPath`
-   remounts the callback file, then waits up to **600s** for rollout
+4. After Helm apply, restarts the LiteLLM Deployment only when the callback
+   ConfigMap or LiteLLM env/database secrets changed, or when the deployment is
+   still unhealthy after converge; otherwise it verifies rollout status without
+   forcing a restart
 
 The inspector **does not trim or rewrite messages**. It emits one JSON line per
 phase:

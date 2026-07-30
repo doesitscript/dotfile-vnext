@@ -7,6 +7,13 @@
     - "{{ windows_ollama_runtime_contract_root }}"
     - "{{ windows_ollama_runtime_models_path }}"
 
+- name: Assert windows_ollama_runtime_model_pull_mode is supported
+  ansible.builtin.assert:
+    that:
+      - windows_ollama_runtime_model_pull_mode in ["inline", "background"]
+    fail_msg: >-
+      windows_ollama_runtime_model_pull_mode must be "inline" or "background".
+
 - name: Stat repo-managed NVIDIA driver contract when required
   ansible.windows.win_stat:
     path: "{{ windows_ollama_runtime_driver_contract_path }}"
@@ -164,6 +171,12 @@
     state: present
     enabled: true
 
+- name: Remove background model pull task when inline mode is selected
+  community.windows.win_scheduled_task:
+    name: "{{ windows_ollama_runtime_pull_task_name }}"
+    state: absent
+  when: windows_ollama_runtime_model_pull_mode != 'background'
+
 - name: Start Ollama runtime scheduled task
   ansible.windows.win_powershell:
     error_action: stop
@@ -212,7 +225,100 @@
       | string
       | lower
     )
-  when: not ansible_check_mode
+  when:
+    - not ansible_check_mode
+    - windows_ollama_runtime_model_pull_mode == 'inline'
+
+- name: Render background model pull worker
+  ansible.windows.win_template:
+    src: pull_models.ps1.j2
+    dest: "{{ windows_ollama_runtime_pull_script_path }}"
+  when:
+    - not ansible_check_mode
+    - windows_ollama_runtime_model_pull_mode == 'background'
+
+- name: Persist background model pull request
+  ansible.windows.win_copy:
+    dest: "{{ windows_ollama_runtime_pull_request_path }}"
+    content: >-
+      {{
+        {
+          'models_present': windows_ollama_runtime_models_present,
+          'local_api_base': windows_ollama_runtime_local_api_base,
+          'healthcheck_url': windows_ollama_runtime_healthcheck_url,
+          'pull_url': windows_ollama_runtime_pull_url,
+          'ollama_exe_path': windows_ollama_runtime_exe_path,
+          'pull_timeout_seconds': windows_ollama_runtime_pull_timeout_seconds,
+          'queued_at_utc': lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ')
+        } | to_nice_json
+      }}
+  when:
+    - not ansible_check_mode
+    - windows_ollama_runtime_model_pull_mode == 'background'
+
+- name: Configure background model pull task
+  community.windows.win_scheduled_task:
+    name: "{{ windows_ollama_runtime_pull_task_name }}"
+    description: Durable background Ollama model pull managed by the windows_ollama_runtime role
+    actions:
+      - path: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+        arguments: >-
+          -NoProfile -NonInteractive -ExecutionPolicy Bypass
+          -File "{{ windows_ollama_runtime_pull_script_path }}"
+        working_directory: "{{ windows_ollama_runtime_contract_root }}"
+    triggers:
+      - type: boot
+        delay: "{{ windows_ollama_runtime_pull_task_boot_delay }}"
+    username: SYSTEM
+    logon_type: service_account
+    run_level: highest
+    allow_demand_start: true
+    start_when_available: true
+    run_only_if_network_available: true
+    state: present
+    enabled: true
+  when:
+    - not ansible_check_mode
+    - windows_ollama_runtime_model_pull_mode == 'background'
+
+- name: Start or observe background model pull task
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $taskName = '{{ windows_ollama_runtime_pull_task_name }}'
+      $task = Get-ScheduledTask -TaskName $taskName -ErrorAction Stop
+      if ($task.State -ne 'Running') {
+        Start-ScheduledTask -TaskName $taskName
+        Start-Sleep -Seconds 2
+        $task = Get-ScheduledTask -TaskName $taskName -ErrorAction Stop
+      }
+      $taskInfo = Get-ScheduledTaskInfo -TaskName $taskName -ErrorAction Stop
+      [pscustomobject]@{
+        task_name = $taskName
+        state = [string]$task.State
+        last_task_result = $taskInfo.LastTaskResult
+        last_run_time = if ($taskInfo.LastRunTime) { $taskInfo.LastRunTime.ToString('o') } else { '' }
+        next_run_time = if ($taskInfo.NextRunTime) { $taskInfo.NextRunTime.ToString('o') } else { '' }
+      } | ConvertTo-Json -Compress
+  register: windows_ollama_runtime_pull_task_status_raw
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - windows_ollama_runtime_model_pull_mode == 'background'
+
+- name: Parse background model pull task status
+  ansible.builtin.set_fact:
+    windows_ollama_runtime_pull_task_status: >-
+      {{
+        (
+          windows_ollama_runtime_pull_task_status_raw.output | default([])
+        )[0] | from_json
+      }}
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - windows_ollama_runtime_model_pull_mode == 'background'
+    - (windows_ollama_runtime_pull_task_status_raw.output | default([]) | length) > 0
 
 - name: List locally available Ollama models via HTTP API
   ansible.windows.win_uri:
@@ -252,6 +358,11 @@
           'default_model': windows_ollama_runtime_default_model,
           'fallback_model': windows_ollama_runtime_fallback_model,
           'models_present': windows_ollama_runtime_models_present,
+          'model_pull_mode': windows_ollama_runtime_model_pull_mode,
+          'model_pull_task_name': windows_ollama_runtime_pull_task_name,
+          'model_pull_request_path': windows_ollama_runtime_pull_request_path,
+          'model_pull_receipt_path': windows_ollama_runtime_pull_receipt_path,
+          'model_pull_log_path': windows_ollama_runtime_pull_log_path,
           'model_aliases': windows_ollama_runtime_model_aliases,
           'driver_contract_path': windows_ollama_runtime_driver_contract_path,
           'driver_contract': windows_ollama_runtime_driver_contract | default({}),
@@ -273,6 +384,10 @@
             | default(windows_ollama_runtime_healthcheck.status)
             | default('')
           ),
+          'model_pull_mode': windows_ollama_runtime_model_pull_mode,
+          'model_pull_task_status': windows_ollama_runtime_pull_task_status | default({}),
+          'model_pull_receipt_path': windows_ollama_runtime_pull_receipt_path,
+          'model_pull_log_path': windows_ollama_runtime_pull_log_path,
           'model_list_content': windows_ollama_runtime_model_list.content | default(''),
           'captured_at_utc': lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ')
         } | to_nice_json

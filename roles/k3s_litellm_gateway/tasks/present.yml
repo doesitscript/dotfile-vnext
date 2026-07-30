@@ -73,6 +73,7 @@
       stringData: "{{ _k3s_litellm_gateway_env_secret_map }}"
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: _k3s_litellm_env_secret
   no_log: true
 
 - name: Create LiteLLM request inspector callback ConfigMap
@@ -91,6 +92,7 @@
         custom_callbacks.py: "{{ lookup('template', 'custom_callbacks.py.j2') }}"
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: _k3s_litellm_callback_configmap
   when: k3s_litellm_gateway_request_inspector_enabled | bool
 
 - name: Remove LiteLLM request inspector callback ConfigMap when disabled
@@ -119,6 +121,7 @@
         password: "{{ k3s_litellm_gateway_postgres_password }}"
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: _k3s_litellm_db_secret
   no_log: true
 
 - name: Remove bundled LiteLLM PostgreSQL StatefulSet when using external database
@@ -208,19 +211,38 @@
       delay: 15
       until: _k3s_litellm_helm_retry_apply is succeeded
 
-- name: Wait for LiteLLM deployment to be ready
+- name: Read LiteLLM deployment status after Helm converge
   kubernetes.core.k8s_info:
     kind: Deployment
     namespace: "{{ k3s_litellm_gateway_namespace }}"
     name: litellm
-    wait: true
-    wait_timeout: 300
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   register: _k3s_litellm_deployment
 
-# ConfigMap subPath mounts do not refresh in-place; restart so custom_callbacks.py reloads.
-- name: Restart LiteLLM deployment to remount request inspector callback
+- name: Derive LiteLLM rollout health from deployment status
+  ansible.builtin.set_fact:
+    _k3s_litellm_deployment_desired_replicas: "{{ (((_k3s_litellm_deployment.resources | first | default({})).spec | default({})).replicas | default(k3s_litellm_gateway_replicas)) | int }}"
+    _k3s_litellm_deployment_ready_replicas: "{{ (((_k3s_litellm_deployment.resources | first | default({})).status | default({})).readyReplicas | default(0)) | int }}"
+    _k3s_litellm_deployment_available_replicas: "{{ (((_k3s_litellm_deployment.resources | first | default({})).status | default({})).availableReplicas | default(0)) | int }}"
+
+- name: Decide whether LiteLLM needs a post-converge rollout restart
+  ansible.builtin.set_fact:
+    _k3s_litellm_rollout_restart_required: >-
+      {{
+        (_k3s_litellm_env_secret is changed)
+        or (_k3s_litellm_db_secret is changed)
+        or (
+          k3s_litellm_gateway_request_inspector_enabled | bool
+          and (_k3s_litellm_callback_configmap is defined)
+          and (_k3s_litellm_callback_configmap is changed)
+        )
+        or (_k3s_litellm_deployment_ready_replicas < _k3s_litellm_deployment_desired_replicas)
+        or (_k3s_litellm_deployment_available_replicas < _k3s_litellm_deployment_desired_replicas)
+      }}
+
+# Secret-backed env vars and subPath callback mounts need a restart to refresh in-place.
+- name: Restart LiteLLM deployment when mounted data changed or deployment is unhealthy
   ansible.builtin.command:
     argv:
       - kubectl
@@ -232,9 +254,9 @@
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   changed_when: true
-  when: k3s_litellm_gateway_request_inspector_enabled | bool
+  when: _k3s_litellm_rollout_restart_required | bool
 
-- name: Wait for LiteLLM rollout after request inspector callback remount
+- name: Wait for LiteLLM rollout after restart
   ansible.builtin.command:
     argv:
       - kubectl
@@ -247,7 +269,22 @@
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   changed_when: false
-  when: k3s_litellm_gateway_request_inspector_enabled | bool
+  when: _k3s_litellm_rollout_restart_required | bool
+
+- name: Verify LiteLLM rollout status when no restart is required
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - -n
+      - "{{ k3s_litellm_gateway_namespace }}"
+      - rollout
+      - status
+      - deployment/litellm
+      - --timeout=600s
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  changed_when: false
+  when: not (_k3s_litellm_rollout_restart_required | bool)
 
 - name: Query LiteLLM ClusterIP service selector
   kubernetes.core.k8s_info:

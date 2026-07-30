@@ -1,0 +1,133 @@
+$ErrorActionPreference = 'Stop'
+
+$RequestPath = '{{ windows_ollama_runtime_pull_request_path }}'
+$LogPath = '{{ windows_ollama_runtime_pull_log_path }}'
+$ReceiptPath = '{{ windows_ollama_runtime_pull_receipt_path }}'
+
+function Get-UtcStamp {
+    return [DateTime]::UtcNow.ToString('o')
+}
+
+function Write-Log {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Message
+    )
+
+    $line = '{0} {1}' -f (Get-UtcStamp), $Message
+    Add-Content -LiteralPath $LogPath -Value $line
+}
+
+function Write-Receipt {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Status,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Message,
+
+        [Parameter()]
+        [hashtable]$Extra = @{}
+    )
+
+    $payload = [ordered]@{
+        status = $Status
+        message = $Message
+        updated_at_utc = Get-UtcStamp
+    }
+
+    foreach ($entry in $Extra.GetEnumerator()) {
+        $payload[$entry.Key] = $entry.Value
+    }
+
+    $payload | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $ReceiptPath -Encoding UTF8
+}
+
+try {
+    if (-not (Test-Path -LiteralPath $RequestPath)) {
+        throw "Missing model pull request file: $RequestPath"
+    }
+
+    if (-not (Test-Path -LiteralPath $LogPath)) {
+        New-Item -ItemType File -Path $LogPath -Force | Out-Null
+    }
+
+    $request = Get-Content -LiteralPath $RequestPath -Raw | ConvertFrom-Json
+    $models = @($request.models_present)
+    $healthUrl = [string]$request.healthcheck_url
+    $pullUrl = [string]$request.pull_url
+    $timeoutSeconds = [int]$request.pull_timeout_seconds
+
+    Write-Log "Loaded request for $($models.Count) models."
+
+    $healthy = $false
+    for ($attempt = 1; $attempt -le 30; $attempt++) {
+        try {
+            $null = Invoke-RestMethod -Method Get -Uri $healthUrl -TimeoutSec 15
+            $healthy = $true
+            break
+        }
+        catch {
+            Write-Log "Ollama API not ready yet (attempt $attempt/30): $($_.Exception.Message)"
+            Start-Sleep -Seconds 5
+        }
+    }
+
+    if (-not $healthy) {
+        throw "Ollama API never became healthy at $healthUrl"
+    }
+
+    $currentTags = Invoke-RestMethod -Method Get -Uri $healthUrl -TimeoutSec 30
+    $currentNames = @()
+    if ($null -ne $currentTags.models) {
+        $currentNames = @($currentTags.models | ForEach-Object { [string]$_.name })
+    }
+
+    $missingModels = @($models | Where-Object { $_ -notin $currentNames })
+    if ($missingModels.Count -eq 0) {
+        Write-Log "All requested models already present."
+        Write-Receipt -Status 'already_present' -Message 'All requested models were already present.' -Extra @{
+            models_present = $models
+            available_models = $currentNames
+        }
+        exit 0
+    }
+
+    foreach ($model in $missingModels) {
+        Write-Log "Pulling model $model"
+        $body = @{ model = $model; stream = $false } | ConvertTo-Json -Compress
+        $pullResult = Invoke-RestMethod -Method Post -Uri $pullUrl -Body $body -ContentType 'application/json' -TimeoutSec $timeoutSeconds
+        $status = if ($null -ne $pullResult.status) { [string]$pullResult.status } else { 'completed' }
+        Write-Log "Pull result for ${model}: $status"
+    }
+
+    $finalTags = Invoke-RestMethod -Method Get -Uri $healthUrl -TimeoutSec 30
+    $finalNames = @()
+    if ($null -ne $finalTags.models) {
+        $finalNames = @($finalTags.models | ForEach-Object { [string]$_.name })
+    }
+
+    $stillMissing = @($models | Where-Object { $_ -notin $finalNames })
+    if ($stillMissing.Count -gt 0) {
+        $message = 'One or more requested models are still missing after the queued pull.'
+        Write-Log $message
+        Write-Receipt -Status 'incomplete' -Message $message -Extra @{
+            models_present = $models
+            missing_models = $stillMissing
+            available_models = $finalNames
+        }
+        exit 1
+    }
+
+    Write-Log 'Background model pull completed successfully.'
+    Write-Receipt -Status 'success' -Message 'Queued model pull completed successfully.' -Extra @{
+        models_present = $models
+        available_models = $finalNames
+    }
+}
+catch {
+    $message = $_.Exception.Message
+    Write-Log "ERROR: $message"
+    Write-Receipt -Status 'failed' -Message $message
+    throw
+}

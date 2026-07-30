@@ -5,6 +5,7 @@
 # windows_artifact_download (resume/async/checksum) then ansible.windows.win_package.
 # Chocolatey is deprecated for Ollama in this role.
 # Model presence: Ollama HTTP /api/pull via ansible.windows.win_uri (no shell).
+# Desktop hosts can queue large pulls into a durable background scheduled task.
 # Note: Galaxy role andrewrothstein.ollama is Linux-only and is not used here.
 
 windows_ollama_runtime_state: absent
@@ -65,6 +66,17 @@ windows_ollama_runtime_local_api_base: >-
 windows_ollama_runtime_healthcheck_url: '{{ windows_ollama_runtime_local_api_base }}/api/tags'
 windows_ollama_runtime_pull_url: '{{ windows_ollama_runtime_local_api_base }}/api/pull'
 windows_ollama_runtime_pull_timeout_seconds: 3600
+windows_ollama_runtime_model_pull_mode: inline
+windows_ollama_runtime_pull_task_name: 'ollama-model-prefetch'
+windows_ollama_runtime_pull_task_boot_delay: PT45S
+windows_ollama_runtime_pull_script_path: >-
+  {{ windows_ollama_runtime_contract_root }}\pull_models.ps1
+windows_ollama_runtime_pull_request_path: >-
+  {{ windows_ollama_runtime_contract_root }}\model_pull_request.json
+windows_ollama_runtime_pull_receipt_path: >-
+  {{ windows_ollama_runtime_contract_root }}\model_pull_receipt.json
+windows_ollama_runtime_pull_log_path: >-
+  {{ windows_ollama_runtime_contract_root }}\model_pull.log
 windows_ollama_runtime_task_name: 'ollama-runtime'
 windows_ollama_runtime_firewall_rule_name: 'Ollama Runtime API'
 windows_ollama_runtime_task_boot_delay: PT15S

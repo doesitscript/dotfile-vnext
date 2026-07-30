@@ -13,6 +13,9 @@ for reuse behind the central LiteLLM gateway.
   Setup.exe checksum/hang failures on interactive SSH desktops).
 - **Model presence:** Ollama HTTP `POST /api/pull` via `ansible.windows.win_uri`
   (application-native; not routed through `windows_artifact_download`).
+- **Large desktop model pulls:** optional background scheduled-task queue via
+  `windows_ollama_runtime_model_pull_mode: background` so Ansible does not wait
+  for a 30+ GB pull to finish.
 - **Not used:** Galaxy role
   [`andrewrothstein.ollama`](https://galaxy.ansible.com/ui/standalone/roles/andrewrothstein/ollama/)
   — Linux-only.
@@ -30,6 +33,7 @@ the boot scheduled task at that discovered binary.
 - boot-triggered scheduled task for `ollama serve`
 - Windows Firewall rule for the managed API port
 - declared model presence through the Ollama pull API
+- optional durable background queue for large model prefetch on desktop hosts
 - local runtime contract and health receipt under `C:\ProgramData\Ansible\windows_ollama_runtime`
 
 ## What it expects
@@ -53,6 +57,7 @@ the boot scheduled task at that discovered binary.
 - `windows_ollama_runtime_models_path`
 - `windows_ollama_runtime_default_model`
 - `windows_ollama_runtime_models_present`
+- `windows_ollama_runtime_model_pull_mode`
 
 ## Example
 

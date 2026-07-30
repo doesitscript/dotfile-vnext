@@ -4,6 +4,11 @@
     name: "{{ windows_ollama_runtime_task_name }}"
     state: absent
 
+- name: Remove background Ollama model pull scheduled task
+  community.windows.win_scheduled_task:
+    name: "{{ windows_ollama_runtime_pull_task_name }}"
+    state: absent
+
 - name: Stop Ollama process if it is still running
   ansible.windows.win_powershell:
     error_action: continue

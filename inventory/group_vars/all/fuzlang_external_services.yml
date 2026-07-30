@@ -3,7 +3,12 @@
 # These connect addresses are the preferred operator/runtime paths and should
 # stay on the Windows LAN-published route for the storage lane unless the user
 # explicitly changes that preference. They are NOT Ansible inventory hostnames.
-fuzlang_storage_windows_publish_host: "192.168.50.234"
+fuzlang_storage_windows_publish_inventory_host: "HOM-LAB-HVH-01"
+fuzlang_storage_windows_publish_host: >-
+  {{
+    hostvars[fuzlang_storage_windows_publish_inventory_host].host_ip
+    | default(hostvars[fuzlang_storage_windows_publish_inventory_host].ansible_host)
+  }}
 
 # External PostgreSQL
 fuzlang_external_postgres_connect_address: "{{ fuzlang_storage_windows_publish_host }}"
