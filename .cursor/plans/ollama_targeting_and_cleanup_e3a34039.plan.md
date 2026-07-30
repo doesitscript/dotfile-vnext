@@ -141,10 +141,13 @@ todos:
     content: "Part D research: live disk probe k3s-02 + HVH-02; Context7 eviction docs; HRL persist; rewrite Part D with managed vs unmanaged + capacity options"
     status: completed
   - id: d-capacity-followon
-    content: "Wave 0: F: Hyper-V storage roots + hyperv_move_vm_storage for recommended VHDXs; guest grow/HF later"
-    status: in_progress
+    content: "Wave 0b Ansible F: roots + hyperv_move_vm_storage after HVH-02 robocopy seed; dkr-02 offline cutover; HVH-01 unique VHDXs; no Jupyter"
+    status: pending
   - id: wave0-f-storage
     content: "Wave 0 apply: preview+move VHDXs to F: on HVH-01/02 via hyperv_move_vm_storage.yaml"
+    status: pending
+  - id: wave0a-hvh02-robocopy-seed
+    content: "Wave 0a oneoffs robocopy seed on HOM-LAB-HVH-02 to F:\\ProgramData\\Ansible (unlocked trees); k3s VHDX already on F"
     status: in_progress
   - id: e1-hvh01-metadata-fix
     content: Reconcile HVH-01 ai_host_profile with absent state
@@ -602,6 +605,15 @@ Wave 3 — Part C tighten HRL after evidence; Part E metadata
 
 ### Wave 0 — F:`data` Hyper-V storage (build now)
 
+**Wave 0a — HVH-02 one-off robocopy seed (explicit `oneoffs` exception, user 2026-07-29):**
+
+- Pack: `oneoffs/homelab/2026-07-29--hvh02-f-data-drive-robocopy-seed/`
+- Tool: built-in **`robocopy.exe`** via PowerShell/SSH (not rsync; Chocolatey not required)
+- Seeds unlocked trees to `F:\ProgramData\Ansible\...`; defers locked VHDX cutover
+- Live fact: `hom-lab-ctl-k3s-02.vhdx` **already on F:** — inventory path update only
+
+**Wave 0b — Ansible (shared + unique) after seed proves layout:**
+
 **Shared (all Hyper-V Windows hosts with F:`data` — `hyperv_lane_*`):**
 
 1. Inventory: `windows_hyperv_ansible_root` / `windows_hyperv_vm_storage_root` → `F:\ProgramData\Ansible\...`
@@ -613,8 +625,8 @@ Wave 3 — Part C tighten HRL after evidence; Part E metadata
 
 | Host | VM | From → F: | start_after |
 | --- | --- | --- | --- |
-| HVH-02 | `hom-lab-ctl-k3s-02` | D: → F: | true (primary capacity) |
-| HVH-02 | `hom-lab-ctl-dkr-02` | C: → F: | true |
+| HVH-02 | `hom-lab-ctl-k3s-02` | already F: — **inventory sync** | n/a |
+| HVH-02 | `hom-lab-ctl-dkr-02` | C: → F: | true (offline cutover after seed) |
 | HVH-01 | `hom-lab-ctl-k3s-01` | D: → F: | true |
 | HVH-01 | `nsrv-dkr-01` | C: → F: | true (live Docker VM name) |
 | HVH-01 | `nsrv-k3s-01` | C: → F: | **false** (Off / legacy) |
