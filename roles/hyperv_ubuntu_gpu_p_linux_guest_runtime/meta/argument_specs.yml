@@ -96,3 +96,30 @@ argument_specs:
       hyperv_ubuntu_gpu_p_guest_wsl_drivers_mode:
         type: str
         default: "0555"
+      hyperv_ubuntu_gpu_p_guest_kernel_package_autorepair:
+        type: bool
+        default: false
+        description: >-
+          When true, attempt dpkg --configure -a and apt-get install -f -y if
+          kernel package probe results show unpacked or failed-config packages
+          before DKMS work starts.
+      hyperv_ubuntu_gpu_p_guest_kernel_package_probe_names:
+        type: list
+        elements: str
+        required: false
+        description: >-
+          Packages to inspect with dpkg-query before DKMS work. Any package not
+          in the fully configured ii state is treated as a blocking anomaly.
+      hyperv_ubuntu_gpu_p_guest_dkms_failure_log_tail_lines:
+        type: int
+        default: 80
+        description: >-
+          Number of lines to surface from DKMS make.log files when module build
+          or install fails.
+      hyperv_ubuntu_gpu_p_guest_dxgkrnl_upstream_fallback:
+        type: bool
+        default: true
+        description: >-
+          When true, fall back to the upstream repo install.sh clean/install
+          path if the repo-assembled dxgkrnl DKMS build does not produce a
+          module for the target kernel.

@@ -1,0 +1,17 @@
+---
+# Windows Server evaluation licensing — operator tracking only (not automated).
+#
+# These hosts need real product keys (licenses). Until keys are installed,
+# rearm the evaluation timer every few months with:
+#   slmgr.vbs /rearm
+# Then bump each host's windows_eval_last_rearm_date (ISO YYYY-MM-DD) in host_vars.
+#
+# Cadence: roughly every 2–3 months, before the eval grace period expires.
+# Rearm count is finite; product keys replace this stopgap.
+
+windows_eval_license_status: needs_product_key
+windows_eval_rearm_command: "slmgr.vbs /rearm"
+windows_eval_rearm_interval_months: 3
+windows_eval_rearm_notes: >-
+  Needs product keys/licenses. Until licensed, run slmgr.vbs /rearm every few
+  months and update windows_eval_last_rearm_date on the host after each rearm.

@@ -58,22 +58,23 @@
         name: "{{ item }}"
         groups: hyperv_gpu_p_host_precheck_reachable
         hyperv_gpu_p_management_preflight_ssh_state: >-
-          {{ _hyperv_gpu_p_host_precheck_ssh_probe.results[ansible_loop.index0].state | default('down') }}
+          {{ _hyperv_gpu_p_host_precheck_ssh_probe.results[precheck_idx].state | default('down') }}
         hyperv_gpu_p_management_preflight_winrm_state: >-
-          {{ _hyperv_gpu_p_host_precheck_winrm_probe.results[ansible_loop.index0].state | default('down') }}
+          {{ _hyperv_gpu_p_host_precheck_winrm_probe.results[precheck_idx].state | default('down') }}
       loop: "{{ _hyperv_gpu_p_host_precheck_targets }}"
       loop_control:
         label: "{{ item }}"
+        index_var: precheck_idx
       when:
         - _hyperv_gpu_p_host_precheck_run_management_preflight
         - >-
           (
-            _hyperv_gpu_p_host_precheck_ssh_probe.results[ansible_loop.index0].state
+            _hyperv_gpu_p_host_precheck_ssh_probe.results[precheck_idx].state
             | default('')
           ) == 'started'
           or
           (
-            _hyperv_gpu_p_host_precheck_winrm_probe.results[ansible_loop.index0].state
+            _hyperv_gpu_p_host_precheck_winrm_probe.results[precheck_idx].state
             | default('')
           ) == 'started'
 
@@ -82,22 +83,23 @@
         name: "{{ item }}"
         groups: hyperv_gpu_p_host_precheck_unreachable
         hyperv_gpu_p_management_preflight_ssh_state: >-
-          {{ _hyperv_gpu_p_host_precheck_ssh_probe.results[ansible_loop.index0].state | default('down') }}
+          {{ _hyperv_gpu_p_host_precheck_ssh_probe.results[precheck_idx].state | default('down') }}
         hyperv_gpu_p_management_preflight_winrm_state: >-
-          {{ _hyperv_gpu_p_host_precheck_winrm_probe.results[ansible_loop.index0].state | default('down') }}
+          {{ _hyperv_gpu_p_host_precheck_winrm_probe.results[precheck_idx].state | default('down') }}
       loop: "{{ _hyperv_gpu_p_host_precheck_targets }}"
       loop_control:
         label: "{{ item }}"
+        index_var: precheck_idx
       when:
         - _hyperv_gpu_p_host_precheck_run_management_preflight
         - >-
           (
-            _hyperv_gpu_p_host_precheck_ssh_probe.results[ansible_loop.index0].state
+            _hyperv_gpu_p_host_precheck_ssh_probe.results[precheck_idx].state
             | default('')
           ) != 'started'
           and
           (
-            _hyperv_gpu_p_host_precheck_winrm_probe.results[ansible_loop.index0].state
+            _hyperv_gpu_p_host_precheck_winrm_probe.results[precheck_idx].state
             | default('')
           ) != 'started'
 

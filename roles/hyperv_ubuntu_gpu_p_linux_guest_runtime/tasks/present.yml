@@ -370,6 +370,176 @@
     lock_timeout: "{{ hyperv_ubuntu_gpu_p_guest_apt_lock_timeout }}"
   when: hyperv_ubuntu_gpu_p_linux_guest_runtime_missing_packages | length > 0
 
+- name: Probe dpkg state for active kernel packages before DKMS work
+  ansible.builtin.shell: |
+    set -o pipefail
+    for pkg in {{ hyperv_ubuntu_gpu_p_guest_kernel_package_probe_names | map('quote') | join(' ') }}; do
+      status="$(dpkg-query -W -f='${db:Status-Abbrev}' "$pkg" 2>/dev/null || true)"
+      if [ -n "$status" ]; then
+        printf '%s\t%s\n' "$pkg" "$status"
+      else
+        printf '%s\tmissing\n' "$pkg"
+      fi
+    done
+  args:
+    executable: /bin/bash
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_kernel_package_probe
+  changed_when: false
+
+- name: Collect kernel package anomalies before DKMS work
+  ansible.builtin.set_fact:
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_kernel_package_anomalies: >-
+      {%- set anomalies = [] -%}
+      {%- for line in hyperv_ubuntu_gpu_p_linux_guest_runtime_kernel_package_probe.stdout_lines | default([]) -%}
+      {%- set parts = line.split('\t', 1) -%}
+      {%- if (parts | length) < 2 or (parts[1] | trim) != 'ii' -%}
+      {%- set _ = anomalies.append(line) -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {{ anomalies }}
+  changed_when: false
+
+- name: Repair broken kernel package state before DKMS work
+  when:
+    - hyperv_ubuntu_gpu_p_guest_kernel_package_autorepair | bool
+    - hyperv_ubuntu_gpu_p_linux_guest_runtime_kernel_package_anomalies | length > 0
+  block:
+    - name: Capture current DKMS status before kernel package repair
+      ansible.builtin.command:
+        argv:
+          - dkms
+          - status
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_repair_dkms_status
+      changed_when: false
+      failed_when: false
+
+    - name: Collect stale DKMS registrations blocking kernel package repair
+      ansible.builtin.set_fact:
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_repair_dxg_modules: >-
+          {{
+            (
+              hyperv_ubuntu_gpu_p_linux_guest_runtime_repair_dkms_status.stdout_lines
+              | default([])
+              | select('match', '^dxgkrnl/')
+              | map('regex_replace', ',.*$', '')
+              | unique
+              | list
+            )
+          }}
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_repair_vgem_modules: >-
+          {{
+            (
+              hyperv_ubuntu_gpu_p_linux_guest_runtime_repair_dkms_status.stdout_lines
+              | default([])
+              | select('match', '^vgem/')
+              | map('regex_replace', ',.*$', '')
+              | unique
+              | list
+            )
+          }}
+      changed_when: false
+
+    - name: Remove stale dxgkrnl DKMS registrations before kernel package repair
+      ansible.builtin.command:
+        argv:
+          - dkms
+          - remove
+          - "{{ item }}"
+          - --all
+      loop: "{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_repair_dxg_modules }}"
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_repair_remove_dxg
+      changed_when: hyperv_ubuntu_gpu_p_linux_guest_runtime_repair_remove_dxg.rc == 0
+      failed_when: false
+
+    - name: Remove stale vgem DKMS registrations before kernel package repair
+      ansible.builtin.command:
+        argv:
+          - dkms
+          - remove
+          - "{{ item }}"
+          - --all
+      loop: "{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_repair_vgem_modules }}"
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_repair_remove_vgem
+      changed_when: hyperv_ubuntu_gpu_p_linux_guest_runtime_repair_remove_vgem.rc == 0
+      failed_when: false
+      when: hyperv_ubuntu_gpu_p_linux_guest_runtime_repair_vgem_modules | length > 0
+
+    - name: Run dpkg configure pass for broken kernel package state
+      ansible.builtin.command:
+        argv:
+          - dpkg
+          - --configure
+          - -a
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dpkg_configure
+      changed_when: true
+
+    - name: Run apt dependency repair for broken kernel package state
+      ansible.builtin.command:
+        argv:
+          - apt-get
+          - install
+          - -f
+          - -y
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_apt_fix
+      changed_when: true
+
+    - name: Re-probe dpkg state after kernel package repair
+      ansible.builtin.shell: |
+        set -o pipefail
+        for pkg in {{ hyperv_ubuntu_gpu_p_guest_kernel_package_probe_names | map('quote') | join(' ') }}; do
+          status="$(dpkg-query -W -f='${db:Status-Abbrev}' "$pkg" 2>/dev/null || true)"
+          if [ -n "$status" ]; then
+            printf '%s\t%s\n' "$pkg" "$status"
+          else
+            printf '%s\tmissing\n' "$pkg"
+          fi
+        done
+      args:
+        executable: /bin/bash
+      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_kernel_package_probe
+      changed_when: false
+
+    - name: Refresh kernel package anomalies after repair
+      ansible.builtin.set_fact:
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_kernel_package_anomalies: >-
+          {%- set anomalies = [] -%}
+          {%- for line in hyperv_ubuntu_gpu_p_linux_guest_runtime_kernel_package_probe.stdout_lines | default([]) -%}
+          {%- set parts = line.split('\t', 1) -%}
+          {%- if (parts | length) < 2 or (parts[1] | trim) != 'ii' -%}
+          {%- set _ = anomalies.append(line) -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ anomalies }}
+      changed_when: false
+
+- name: Assert active kernel packages are fully configured before DKMS work
+  ansible.builtin.assert:
+    that:
+      - hyperv_ubuntu_gpu_p_linux_guest_runtime_kernel_package_anomalies | length == 0
+    fail_msg: >-
+      Broken kernel package state blocks GPU-P runtime converge before DKMS:
+      {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_kernel_package_anomalies | join('; ') }}.
+      Set hyperv_ubuntu_gpu_p_guest_kernel_package_autorepair=true to run
+      dpkg --configure -a and apt-get install -f -y before retrying.
+
+- name: Stat active kernel header build directory
+  ansible.builtin.stat:
+    path: "/lib/modules/{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}/build"
+    follow: true
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_kernel_build_dir
+
+- name: Assert active kernel header build directory exists
+  ansible.builtin.assert:
+    that:
+      - hyperv_ubuntu_gpu_p_linux_guest_runtime_kernel_build_dir.stat.exists | bool
+      - hyperv_ubuntu_gpu_p_linux_guest_runtime_kernel_build_dir.stat.isdir | bool
+    fail_msg: >-
+      Active kernel header build directory is missing for
+      {{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }} at
+      /lib/modules/{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}/build.
+
 - name: Ensure pinned dxgkrnl-dkms source checkout exists
   ansible.builtin.git:
     repo: "{{ hyperv_ubuntu_gpu_p_dxgkrnl_repo_url }}"
@@ -551,13 +721,23 @@
   ansible.builtin.set_fact:
     hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_installed: >-
       {{
-        hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version
-        in hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_dxg_versions
+        (
+          'dxgkrnl/'
+          ~ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version
+          ~ ', '
+          ~ hyperv_ubuntu_gpu_p_linux_guest_target_kernel
+          ~ ','
+        ) in (hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_status.stdout | default(''))
       }}
     hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_installed: >-
       {{
-        hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version
-        in hyperv_ubuntu_gpu_p_linux_guest_runtime_existing_vgem_versions
+        (
+          'vgem/'
+          ~ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version
+          ~ ', '
+          ~ hyperv_ubuntu_gpu_p_linux_guest_target_kernel
+          ~ ','
+        ) in (hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_status.stdout | default(''))
       }}
   changed_when: false
 
@@ -726,31 +906,143 @@
           - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
           - "dxgkrnl/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
       register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_add
-      changed_when: true
+      changed_when: hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_add.rc == 0
+      failed_when: >-
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_add.rc != 0
+        and
+        (
+          'You cannot add the same module/version combo more than once.'
+          not in (hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_add.stderr | default(''))
+        )
 
-    - name: Build dxgkrnl dkms module
-      ansible.builtin.command:
-        argv:
-          - dkms
-          - build
-          - "-k"
-          - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
-          - "dxgkrnl/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
-          - --force
-      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_build
-      changed_when: true
+    - name: Build and install dxgkrnl dkms module
+      block:
+        - name: Build dxgkrnl dkms module
+          ansible.builtin.command:
+            argv:
+              - dkms
+              - build
+              - "-k"
+              - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+              - "dxgkrnl/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+              - --force
+          register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_build
+          changed_when: true
 
-    - name: Install dxgkrnl dkms module
-      ansible.builtin.command:
-        argv:
-          - dkms
-          - install
-          - "-k"
-          - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
-          - "dxgkrnl/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
-          - --force
-      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_install
-      changed_when: true
+        - name: Install dxgkrnl dkms module
+          ansible.builtin.command:
+            argv:
+              - dkms
+              - install
+              - "-k"
+              - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+              - "dxgkrnl/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+              - --force
+          register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_install
+          changed_when: true
+      rescue:
+        - name: Find dxgkrnl DKMS logs after failure
+          ansible.builtin.find:
+            paths: "/var/lib/dkms/dxgkrnl/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+            patterns: make.log
+            recurse: true
+            file_type: file
+          register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_dkms_logs
+          failed_when: false
+
+        - name: Tail dxgkrnl DKMS logs after failure
+          ansible.builtin.shell: |
+            set -o pipefail
+            printf '==> %s <==\n' "{{ item.path }}"
+            tail -n {{ hyperv_ubuntu_gpu_p_guest_dkms_failure_log_tail_lines | int }} "{{ item.path }}"
+          args:
+            executable: /bin/bash
+          loop: >-
+            {{
+              (hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_dkms_logs.files | default([]) | sort(attribute='path'))[:3]
+            }}
+          register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_dkms_log_tail
+          changed_when: false
+          failed_when: false
+
+        - name: Stop dxgkrnl DKMS reapply with surfaced diagnostics
+          when: not (hyperv_ubuntu_gpu_p_guest_dxgkrnl_upstream_fallback | bool)
+          ansible.builtin.fail:
+            msg: |-
+              dxgkrnl DKMS build/install failed for kernel {{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}.
+              build stderr:
+              {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_build.stderr | default('') | trim }}
+              install stderr:
+              {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_install.stderr | default('not reached') | trim }}
+              dkms log excerpts:
+              {{
+                (
+                  hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_dkms_log_tail.results
+                  | default([])
+                  | map(attribute='stdout')
+                  | reject('equalto', '')
+                  | list
+                  | join('\n\n')
+                )
+                if (hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_dkms_log_tail is defined)
+                else 'No make.log files found under /var/lib/dkms/dxgkrnl.'
+              }}
+
+        - name: Reset dxgkrnl via upstream clean path after custom DKMS failure
+          when: hyperv_ubuntu_gpu_p_guest_dxgkrnl_upstream_fallback | bool
+          ansible.builtin.command:
+            argv:
+              - bash
+              - "{{ hyperv_ubuntu_gpu_p_guest_repo_cache_root }}/dxgkrnl-dkms/install.sh"
+              - clean
+              - all
+          register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_upstream_clean
+          changed_when: >-
+            'Ignored. There is no modules to clean.'
+            not in (hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_upstream_clean.stdout | default(''))
+
+        - name: Reinstall dxgkrnl via upstream installer fallback
+          when: hyperv_ubuntu_gpu_p_guest_dxgkrnl_upstream_fallback | bool
+          ansible.builtin.command:
+            argv:
+              - bash
+              - "{{ hyperv_ubuntu_gpu_p_guest_repo_cache_root }}/dxgkrnl-dkms/install.sh"
+              - -f
+              - --kernel
+              - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+          register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_upstream_install
+          changed_when: true
+
+        - name: Refresh dkms status after upstream installer fallback
+          when: hyperv_ubuntu_gpu_p_guest_dxgkrnl_upstream_fallback | bool
+          ansible.builtin.command:
+            argv:
+              - dkms
+              - status
+          register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_status
+          changed_when: false
+
+        - name: Assert upstream installer fallback produced target dxgkrnl module
+          when: hyperv_ubuntu_gpu_p_guest_dxgkrnl_upstream_fallback | bool
+          ansible.builtin.assert:
+            that:
+              - >-
+                (
+                  'dxgkrnl/'
+                  ~ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version
+                  ~ ', '
+                  ~ hyperv_ubuntu_gpu_p_linux_guest_target_kernel
+                  ~ ','
+                ) in (hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_status.stdout | default(''))
+            fail_msg: |-
+              dxgkrnl fallback via upstream install.sh also failed for kernel
+              {{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}.
+              custom build stderr:
+              {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_build.stderr | default('') | trim }}
+              upstream install stderr:
+              {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_upstream_install.stderr | default('') | trim }}
+              upstream install stdout:
+              {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_upstream_install.stdout | default('') | trim }}
 
 - name: Rebuild vgem source tree when enabled and install is needed
   when:
@@ -840,31 +1132,86 @@
           - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
           - "vgem/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
       register: hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_add
-      changed_when: true
+      changed_when: hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_add.rc == 0
+      failed_when: >-
+        hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_add.rc != 0
+        and
+        (
+          'You cannot add the same module/version combo more than once.'
+          not in (hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_add.stderr | default(''))
+        )
 
-    - name: Build vgem dkms module
-      ansible.builtin.command:
-        argv:
-          - dkms
-          - build
-          - "-k"
-          - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
-          - "vgem/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
-          - --force
-      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_build
-      changed_when: true
+    - name: Build and install vgem dkms module
+      block:
+        - name: Build vgem dkms module
+          ansible.builtin.command:
+            argv:
+              - dkms
+              - build
+              - "-k"
+              - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+              - "vgem/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+              - --force
+          register: hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_build
+          changed_when: true
 
-    - name: Install vgem dkms module
-      ansible.builtin.command:
-        argv:
-          - dkms
-          - install
-          - "-k"
-          - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
-          - "vgem/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
-          - --force
-      register: hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_install
-      changed_when: true
+        - name: Install vgem dkms module
+          ansible.builtin.command:
+            argv:
+              - dkms
+              - install
+              - "-k"
+              - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+              - "vgem/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+              - --force
+          register: hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_install
+          changed_when: true
+      rescue:
+        - name: Find vgem DKMS logs after failure
+          ansible.builtin.find:
+            paths: "/var/lib/dkms/vgem/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}"
+            patterns: make.log
+            recurse: true
+            file_type: file
+          register: hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_dkms_logs
+          failed_when: false
+
+        - name: Tail vgem DKMS logs after failure
+          ansible.builtin.shell: |
+            set -o pipefail
+            printf '==> %s <==\n' "{{ item.path }}"
+            tail -n {{ hyperv_ubuntu_gpu_p_guest_dkms_failure_log_tail_lines | int }} "{{ item.path }}"
+          args:
+            executable: /bin/bash
+          loop: >-
+            {{
+              (hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_dkms_logs.files | default([]) | sort(attribute='path'))[:3]
+            }}
+          register: hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_dkms_log_tail
+          changed_when: false
+          failed_when: false
+
+        - name: Stop vgem DKMS reapply with surfaced diagnostics
+          ansible.builtin.fail:
+            msg: |-
+              vgem DKMS build/install failed for kernel {{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}.
+              build stderr:
+              {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_build.stderr | default('') | trim }}
+              install stderr:
+              {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_install.stderr | default('not reached') | trim }}
+              dkms log excerpts:
+              {{
+                (
+                  hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_dkms_log_tail.results
+                  | default([])
+                  | map(attribute='stdout')
+                  | reject('equalto', '')
+                  | list
+                  | join('\n\n')
+                )
+                if (hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_dkms_log_tail is defined)
+                else 'No make.log files found under /var/lib/dkms/vgem.'
+              }}
 
 - name: Ensure exact managed DriverStore destination exists
   ansible.builtin.file:

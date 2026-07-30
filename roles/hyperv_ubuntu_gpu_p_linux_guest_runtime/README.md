@@ -29,6 +29,26 @@ When artifact sync is blocked, set `hyperv_ubuntu_gpu_p_linux_guest_runtime_skip
 and seed `publish-receipt.json` locally (see troubleshoot converge playbook).
 No controller-side runtime receipt seed is required.
 
+## Reapply hardening
+
+The present path now probes dpkg state for the active kernel packages before
+running DKMS. If packages for the running kernel are unpacked or half-configured,
+the role fails early with the package list instead of proceeding into a noisy
+DKMS error.
+
+Set `hyperv_ubuntu_gpu_p_guest_kernel_package_autorepair: true` to let the role
+run `dpkg --configure -a` and `apt-get install -f -y` before re-checking package
+health.
+
+When DKMS still fails, the role now surfaces tailed `make.log` content in the
+Ansible failure so reapply diagnostics stay in the play output.
+
+If the repo-assembled `dxgkrnl` DKMS path still fails, the role can fall back
+to the upstream `dxgkrnl-dkms` `install.sh` workflow via
+`hyperv_ubuntu_gpu_p_guest_dxgkrnl_upstream_fallback: true`. This uses the
+sanctioned `clean all` reset path before reinstalling against the current
+target kernel.
+
 ## Tags
 
 - `hyperv_ubuntu_gpu_p_linux_guest_runtime`
