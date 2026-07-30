@@ -11,7 +11,7 @@
         - ai_ml_platform
         - hvh01_secondary_runtime
 
-- name: Deploy host-local Ollama runtime on hvh-01
+- name: Converge host-local Ollama runtime lifecycle on hvh-01
   hosts: HOM-LAB-HVH-01
   gather_facts: false
   roles:
@@ -29,6 +29,8 @@
   hosts: execution_nodes
   gather_facts: false
   vars:
+    _hvh01_secondary_ollama_state: >-
+      {{ hostvars['HOM-LAB-HVH-01'].windows_ollama_runtime_state | default('absent') }}
     _hvh01_secondary_ollama_url: >-
       http://{{
         hostvars['HOM-LAB-HVH-01'].host_ip
@@ -48,6 +50,7 @@
         timeout: 10
       register: _hvh01_secondary_ollama_check
       changed_when: false
+      when: _hvh01_secondary_ollama_state == 'present'
 
     - name: Check central LiteLLM gateway health
       ansible.builtin.uri:
@@ -61,7 +64,13 @@
     - name: Summarize hvh-01 secondary runtime verification
       ansible.builtin.debug:
         msg:
+          hvh01_secondary_ollama_state: "{{ _hvh01_secondary_ollama_state }}"
           hvh01_secondary_ollama_url: "{{ _hvh01_secondary_ollama_url }}"
-          hvh01_secondary_ollama_status: "{{ _hvh01_secondary_ollama_check.status }}"
+          hvh01_secondary_ollama_status: >-
+            {{
+              _hvh01_secondary_ollama_check.status
+              if _hvh01_secondary_ollama_state == 'present'
+              else 'skipped (state absent)'
+            }}
           litellm_gateway_url: "{{ _litellm_gateway_url }}"
           litellm_gateway_status: "{{ _litellm_gateway_check.status }}"

@@ -30,6 +30,19 @@
       Get-Content -LiteralPath '{{ windows_ollama_runtime_driver_contract_path }}' -Raw
   register: windows_ollama_runtime_driver_contract_raw
   changed_when: false
+  check_mode: false
+  when:
+    - windows_ollama_runtime_require_driver_contract | bool
+    - windows_ollama_runtime_driver_contract_stat.stat.exists | default(false) | bool
+
+- name: Assert parsed NVIDIA driver contract content was returned
+  ansible.builtin.assert:
+    that:
+      - (windows_ollama_runtime_driver_contract_raw.output | default([]) | length) > 0
+    fail_msg: >-
+      Managed NVIDIA driver contract read returned no output from
+      {{ windows_ollama_runtime_driver_contract_path }}.
+  changed_when: false
   when:
     - windows_ollama_runtime_require_driver_contract | bool
     - windows_ollama_runtime_driver_contract_stat.stat.exists | default(false) | bool
@@ -156,6 +169,7 @@
     error_action: stop
     script: |
       Start-ScheduledTask -TaskName '{{ windows_ollama_runtime_task_name }}'
+  when: not ansible_check_mode
 
 - name: Wait for Ollama runtime API health
   ansible.windows.win_uri:
@@ -168,6 +182,7 @@
   until: >-
     (windows_ollama_runtime_healthcheck.status_code | default(0) | int) == 200
     or (windows_ollama_runtime_healthcheck.status | default(0) | int) == 200
+  when: not ansible_check_mode
 
 - name: Ensure declared Ollama models are present via HTTP API
   ansible.windows.win_uri:
@@ -197,6 +212,7 @@
       | string
       | lower
     )
+  when: not ansible_check_mode
 
 - name: List locally available Ollama models via HTTP API
   ansible.windows.win_uri:
@@ -206,6 +222,7 @@
     return_content: true
   register: windows_ollama_runtime_model_list
   changed_when: false
+  when: not ansible_check_mode
 
 - name: Capture Ollama runtime version
   ansible.windows.win_command:
