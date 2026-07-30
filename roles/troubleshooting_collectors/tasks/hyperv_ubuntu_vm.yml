@@ -22,16 +22,41 @@
 
 - name: Define Hyper-V Ubuntu VM troubleshooting target paths
   ansible.builtin.set_fact:
+    _hyperv_ubuntu_vm_collector_storage_root: >-
+      {{
+        hyperv_ubuntu_vm_host_storage_root
+        | default(
+          windows_hyperv_vm_storage_root
+          | default('C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm')
+        )
+      }}
     _hyperv_ubuntu_vm_collector_root_dir: >-
       {{
         hyperv_ubuntu_vm_host_root_dir
-        | default('C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\' ~ _hyperv_ubuntu_vm_collector_vm_name)
+        | default(
+          (
+            hyperv_ubuntu_vm_host_storage_root
+            | default(
+              windows_hyperv_vm_storage_root
+              | default('C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm')
+            )
+          )
+          ~ '\\'
+          ~ _hyperv_ubuntu_vm_collector_vm_name
+        )
       }}
     _hyperv_ubuntu_vm_collector_archive_path: >-
       {{
         hyperv_ubuntu_vm_host_archive_path
         | default(
-          'C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\'
+          (
+            hyperv_ubuntu_vm_host_storage_root
+            | default(
+              windows_hyperv_vm_storage_root
+              | default('C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm')
+            )
+          )
+          ~ '\\'
           ~ _hyperv_ubuntu_vm_collector_vm_name
           ~ '\\ubuntu-24.04-server-cloudimg-amd64-azure.vhd.tar.gz'
         )
@@ -40,7 +65,14 @@
       {{
         hyperv_ubuntu_vm_host_source_vhd_path
         | default(
-          'C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\'
+          (
+            hyperv_ubuntu_vm_host_storage_root
+            | default(
+              windows_hyperv_vm_storage_root
+              | default('C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm')
+            )
+          )
+          ~ '\\'
           ~ _hyperv_ubuntu_vm_collector_vm_name
           ~ '\\livecd.ubuntu-cpc.azure.vhd'
         )
@@ -49,7 +81,14 @@
       {{
         hyperv_ubuntu_vm_host_vhdx_path
         | default(
-          'C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\'
+          (
+            hyperv_ubuntu_vm_host_storage_root
+            | default(
+              windows_hyperv_vm_storage_root
+              | default('C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm')
+            )
+          )
+          ~ '\\'
           ~ _hyperv_ubuntu_vm_collector_vm_name
           ~ '\\'
           ~ _hyperv_ubuntu_vm_collector_vm_name
@@ -60,7 +99,14 @@
       {{
         hyperv_ubuntu_vm_host_seed_iso_path
         | default(
-          'C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm\\'
+          (
+            hyperv_ubuntu_vm_host_storage_root
+            | default(
+              windows_hyperv_vm_storage_root
+              | default('C:\\ProgramData\\Ansible\\hyperv_ubuntu_vm')
+            )
+          )
+          ~ '\\'
           ~ _hyperv_ubuntu_vm_collector_vm_name
           ~ '\\'
           ~ _hyperv_ubuntu_vm_collector_vm_name

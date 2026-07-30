@@ -1,6 +1,6 @@
 ---
 # Controlled-outage Hyper-V VHDX relocation onto the desired inventory path
-# (typically F:\ProgramData\Ansible\hyperv_ubuntu_vm\... on hosts with F: data).
+# (host_vars windows_hyperv_vm_storage_root / explicit vhdx_path; HVH-02 uses D:).
 #
 # Host declares a list:
 #   hyperv_vm_storage_move_targets:
@@ -85,9 +85,22 @@
           $vmName = '{{ item.item.vm_name }}'
           $vm = Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
           $Ansible.Changed = $false
+          # Prefer graceful guest shutdown (Stop-VM without -TurnOff). Hard
+          # power-off is a last resort only if the guest ignores soft stop.
+          # Operator preference: restart/cycle hosts gently; do not default to
+          # TurnOff for planned storage moves.
           if ($vm.State.ToString() -ne 'Off') {
-            Stop-VM -ComputerName $hypervServer -Name $vmName -TurnOff -Force -ErrorAction Stop
+            Stop-VM -ComputerName $hypervServer -Name $vmName -Force -ErrorAction Stop
             $Ansible.Changed = $true
+            $softDeadline = (Get-Date).AddMinutes(3)
+            do {
+              $softState = (Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop).State.ToString()
+              if ($softState -eq 'Off') { break }
+              Start-Sleep -Seconds 2
+            } while ((Get-Date) -lt $softDeadline)
+            if ($softState -ne 'Off') {
+              Stop-VM -ComputerName $hypervServer -Name $vmName -TurnOff -Force -ErrorAction Stop
+            }
           }
           $deadline = (Get-Date).AddMinutes(2)
           $state = $null
@@ -130,6 +143,13 @@
               throw 'VM must be off before storage relocation.'
             }
             New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+            # Prestaged robocopy copies can occupy the destination path while the
+            # live VHDX is still attached elsewhere. Move-VMStorage needs a free
+            # destination, so park the stale prestage aside (cleanup later).
+            if ((Test-Path -LiteralPath $destination) -and ($source -ne $destination)) {
+              $aside = "$destination.prestage-aside-$(Get-Date -Format 'yyyyMMddHHmmss')"
+              Move-Item -LiteralPath $destination -Destination $aside -ErrorAction Stop
+            }
             $mapping = @(@{
               SourceFilePath = $source
               DestinationFilePath = $destination
