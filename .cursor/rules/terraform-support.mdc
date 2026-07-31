@@ -1,0 +1,22 @@
+---
+description: Terraform MCP and docs gates — inspect state/registry only; never apply via MCP. Use for Terraform/HCL, state, plan, or provider/module questions.
+globs: "**/*.{tf,tfvars,tf.json,terraform.lock.hcl}"
+alwaysApply: false
+---
+# Terraform Support
+
+## MCP / tool gate
+
+- **terraform** → inspect state and registry docs. Never `terraform apply` via MCP.
+
+Allowed via MCP (read / inspect only), when the `sysoperator` `terraform` tool is used:
+- `init`, `plan`, `validate`, `output`, `workspace` (list/show/select as needed for inspection)
+- state inspection paths that do not mutate cloud resources
+
+Forbidden via MCP:
+- `apply`
+- Do not set `autoApprove: true` for mutating actions
+
+Prefer official registry / provider docs (Context7, Firecrawl, HashiCorp registry) for module and provider truth before inventing resource arguments.
+
+Mutating apply/destroy belongs outside MCP: operator-run CLI in the owning workspace, with explicit user approval for apply.
