@@ -1,0 +1,145 @@
+digraph "smart-router route" {
+	graph [bb="0,0,783,640",
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=15,
+		label="smart-router route",
+		lheight=0.24,
+		lp="391.5,12.5",
+		lwidth=1.93,
+		nodesep=0.45,
+		pad=0.35,
+		rankdir=LR,
+		ranksep=0.6,
+		splines=ortho
+	];
+	node [fixedsize=true,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		height=1.4,
+		imagescale=true,
+		label="\N",
+		labelloc=b,
+		shape=box,
+		style=rounded,
+		width=1.4
+	];
+	edge [color="#7B8894"];
+	subgraph "cluster_LiteLLM complexity_router" {
+		graph [bb="284,33,629,632",
+			bgcolor="#E5F5FD",
+			fontname="Sans-Serif",
+			fontsize=12,
+			label="LiteLLM complexity_router",
+			labeljust=l,
+			lheight=0.18,
+			lp="371,621.5",
+			lwidth=2.19,
+			pencolor="#AEB6BE",
+			rankdir=LR,
+			shape=box,
+			style=rounded
+		];
+		"9a0135a060cb442b836c4da99cd9fc81"	[height=1.9028,
+			image="/usr/local/lib/python3.12/site-packages/resources/onprem/container/docker.png",
+			label="smart-router",
+			pos="342.5,322",
+			shape=none,
+			width=1.4028];
+		"846f6573051b45118c1095cfc3702af8"	[height=2.3056,
+			image="/usr/local/lib/python3.12/site-packages/resources/onprem/compute/server.png",
+			label="SIMPLE
+→ code-review",
+			pos="570.5,322",
+			shape=none,
+			width=1.4028];
+		"9a0135a060cb442b836c4da99cd9fc81" -> "846f6573051b45118c1095cfc3702af8"	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,519.65,322 393.1,322 393.1,322 509.65,322 509.65,322"];
+		"08f7e876d28f4e38b15badc61ae0cf92"	[height=2.3056,
+			image="/usr/local/lib/python3.12/site-packages/resources/onprem/compute/server.png",
+			label="MEDIUM+
+→ Ornith",
+			pos="570.5,124",
+			shape=none,
+			width=1.4028];
+		"9a0135a060cb442b836c4da99cd9fc81" -> "08f7e876d28f4e38b15badc61ae0cf92"	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,519.73,124 343,253.3 343,196.12 343,124 343,124 343,124 509.73,124 509.73,124"];
+		e9d6051384b14a42b2b56713565d1378	[height=2.3056,
+			image="/usr/local/lib/python3.12/site-packages/resources/onprem/compute/server.png",
+			label="COMPLEX*
+→ gpt-4o/Claude",
+			pos="570.5,520",
+			shape=none,
+			width=1.4028];
+		"9a0135a060cb442b836c4da99cd9fc81" -> e9d6051384b14a42b2b56713565d1378	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			label="if cloud keys",
+			lp="456.5,447",
+			pos="e,519.73,520 343,390.7 343,447.88 343,520 343,520 343,520 509.73,520 509.73,520",
+			style=dashed];
+	}
+	subgraph "cluster_k3s-02 vLLM" {
+		graph [bb="658,165,775,340",
+			bgcolor="#E5F5FD",
+			fontname="Sans-Serif",
+			fontsize=12,
+			label="k3s-02 vLLM",
+			labeljust=l,
+			lheight=0.18,
+			lp="703.5,329.5",
+			lwidth=1.04,
+			pencolor="#AEB6BE",
+			rankdir=LR,
+			shape=box,
+			style=rounded
+		];
+		"1e1ce0e1bf7846d696d4c08d5cb09e8d"	[height=1.9028,
+			image="/usr/local/lib/python3.12/site-packages/resources/onprem/container/docker.png",
+			label="vllm-primary",
+			pos="716.5,242",
+			shape=none,
+			width=1.4028];
+	}
+	cfc3dfff9ae04684a408cdda075ffe22	[height=1.9028,
+		image="/usr/local/lib/python3.12/site-packages/resources/aws/general/user.png",
+		label=Operator,
+		pos="50.5,322",
+		shape=none,
+		width=1.4028];
+	"8c693eade3734e8ca1d557de890b71f1"	[height=2.3056,
+		image="/usr/local/lib/python3.12/site-packages/resources/onprem/client/client.png",
+		label="Client
+model=smart-router",
+		pos="196.5,322",
+		shape=none,
+		width=1.4028];
+	cfc3dfff9ae04684a408cdda075ffe22 -> "8c693eade3734e8ca1d557de890b71f1"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		pos="e,145.94,322 101.15,322 101.15,322 135.94,322 135.94,322"];
+	"8c693eade3734e8ca1d557de890b71f1" -> "9a0135a060cb442b836c4da99cd9fc81"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		pos="e,291.94,322 247.15,322 247.15,322 281.94,322 281.94,322"];
+	"846f6573051b45118c1095cfc3702af8" -> "1e1ce0e1bf7846d696d4c08d5cb09e8d"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		pos="e,665.94,274.75 621.15,274.75 621.15,274.75 655.94,274.75 655.94,274.75"];
+	"08f7e876d28f4e38b15badc61ae0cf92" -> "1e1ce0e1bf7846d696d4c08d5cb09e8d"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		pos="e,665.94,190.25 621.15,190.25 621.15,190.25 655.94,190.25 655.94,190.25"];
+}

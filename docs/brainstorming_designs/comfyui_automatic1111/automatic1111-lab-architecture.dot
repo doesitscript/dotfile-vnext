@@ -1,0 +1,140 @@
+digraph "Lab Automatic1111 — HVH-01 Phase A" {
+	graph [bb="0,0,814,640",
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=15,
+		label="Lab Automatic1111 — HVH-01 Phase A",
+		lheight=0.24,
+		lp="407,12.5",
+		lwidth=4.08,
+		nodesep=0.55,
+		pad=0.4,
+		rankdir=LR,
+		ranksep=0.7,
+		splines=ortho
+	];
+	node [fixedsize=true,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		height=1.4,
+		imagescale=true,
+		label="\N",
+		labelloc=b,
+		shape=box,
+		style=rounded,
+		width=1.4
+	];
+	edge [color="#7B8894"];
+	subgraph "cluster_hom-lab-ctl-dkr-02" {
+		graph [bb="275,429,403,632",
+			bgcolor="#E5F5FD",
+			fontname="Sans-Serif",
+			fontsize=12,
+			label="hom-lab-ctl-dkr-02",
+			labeljust=l,
+			lheight=0.18,
+			lp="339,621.5",
+			lwidth=1.56,
+			pencolor="#AEB6BE",
+			rankdir=LR,
+			shape=box,
+			style=rounded
+		];
+		"062f3161f201457eb9d70865a3dc75c1"	[height=2.3056,
+			image="/usr/local/lib/python3.12/site-packages/resources/onprem/container/docker.png",
+			label="Open WebUI
+:3080 Images",
+			pos="338.5,520",
+			shape=none,
+			width=1.4028];
+	}
+	subgraph "cluster_HOM-LAB-HVH-01 · GTX 1060" {
+		graph [bb="537,223,806,426",
+			bgcolor="#E5F5FD",
+			fontname="Sans-Serif",
+			fontsize=12,
+			label="HOM-LAB-HVH-01 · GTX 1060",
+			labeljust=l,
+			lheight=0.18,
+			lp="634,415.5",
+			lwidth=2.47,
+			pencolor="#AEB6BE",
+			rankdir=LR,
+			shape=box,
+			style=rounded
+		];
+		"52ab5ea9c3b547238ecfb55db2b0d143"	[height=2.3056,
+			image="/usr/local/lib/python3.12/site-packages/resources/onprem/compute/server.png",
+			label="Automatic1111
+a1111-hvh01.hom.lab:7860",
+			pos="595.5,314",
+			shape=none,
+			width=1.4028];
+		a2604a541c424d3e9947d9bc67474f43	[height=2.3056,
+			image="/usr/local/lib/python3.12/site-packages/resources/onprem/compute/server.png",
+			label="Model files
+CyberRealistic + OpenPose",
+			pos="747.5,314",
+			shape=none,
+			width=1.4028];
+		"52ab5ea9c3b547238ecfb55db2b0d143" -> a2604a541c424d3e9947d9bc67474f43	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,696.85,314 646.11,314 646.11,314 686.85,314 686.85,314"];
+	}
+	da92b702297c444fae4d44d2ea3cab4d	[height=1.9028,
+		image="/usr/local/lib/python3.12/site-packages/resources/aws/general/user.png",
+		label=Operator,
+		pos="50.5,416",
+		shape=none,
+		width=1.4028];
+	da92b702297c444fae4d44d2ea3cab4d -> "062f3161f201457eb9d70865a3dc75c1"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="Image button",
+		lp="192,490",
+		pos="e,287.7,460.75 101.33,460.75 101.33,460.75 277.7,460.75 277.7,460.75"];
+	"3894482928094b7d8fc61358078a116d"	[height=2.3056,
+		image="/usr/local/lib/python3.12/site-packages/resources/aws/general/client.png",
+		label="A1111 Web UI
+(direct)",
+		pos="338.5,314",
+		shape=none,
+		width=1.4028];
+	da92b702297c444fae4d44d2ea3cab4d -> "3894482928094b7d8fc61358078a116d"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="denoise / OpenPose",
+		lp="192,394",
+		pos="e,287.7,372.25 101.33,372.25 101.33,372.25 277.7,372.25 277.7,372.25"];
+	"062f3161f201457eb9d70865a3dc75c1" -> "52ab5ea9c3b547238ecfb55db2b0d143"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label=sdapi,
+		lp="470,457",
+		pos="e,596,397.19 389.07,520 464.06,520 596,520 596,520 596,520 596,407.19 596,407.19"];
+	c01480393b884b6d88dbeb82f185e273	[height=2.3056,
+		image="/usr/local/lib/python3.12/site-packages/resources/onprem/compute/server.png",
+		label="Ansible
+deploy_automatic1111",
+		pos="338.5,108",
+		shape=none,
+		width=1.4028];
+	c01480393b884b6d88dbeb82f185e273 -> "52ab5ea9c3b547238ecfb55db2b0d143"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="present|absent",
+		lp="470,115",
+		pos="e,596,230.81 389.07,108 464.06,108 596,108 596,108 596,108 596,220.81 596,220.81"];
+	"3894482928094b7d8fc61358078a116d" -> "52ab5ea9c3b547238ecfb55db2b0d143"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		pos="e,544.83,314 389.27,314 389.27,314 534.83,314 534.83,314"];
+}
