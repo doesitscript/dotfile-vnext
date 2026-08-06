@@ -30,7 +30,9 @@ the boot scheduled task at that discovered binary.
 
 - Ollama install via `windows_artifact_download` + `win_package`
 - machine-scoped `OLLAMA_MODELS` / `OLLAMA_HOST`
-- boot-triggered scheduled task for `ollama serve`
+- boot-triggered scheduled task for `ollama serve` with
+  `execution_time_limit: PT0S` (unlimited) so Task Scheduler does not kill the
+  daemon after the Windows default of 72 hours
 - Windows Firewall rule for the managed API port
 - declared model presence through the Ollama pull API
 - optional durable background queue for large model prefetch on desktop hosts
@@ -58,6 +60,8 @@ the boot scheduled task at that discovered binary.
 - `windows_ollama_runtime_default_model`
 - `windows_ollama_runtime_models_present`
 - `windows_ollama_runtime_model_pull_mode`
+- `windows_ollama_runtime_task_execution_time_limit` (default `PT0S`)
+- `windows_ollama_runtime_pull_task_execution_time_limit` (default `PT0S`)
 
 ## Example
 

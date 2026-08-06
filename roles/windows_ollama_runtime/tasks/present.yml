@@ -168,6 +168,8 @@
     username: SYSTEM
     logon_type: service_account
     run_level: highest
+    # Unlimited: default PT72H terminates long-lived ollama serve and does not restart.
+    execution_time_limit: "{{ windows_ollama_runtime_task_execution_time_limit }}"
     state: present
     enabled: true
 
@@ -275,6 +277,7 @@
     allow_demand_start: true
     start_when_available: true
     run_only_if_network_available: true
+    execution_time_limit: "{{ windows_ollama_runtime_pull_task_execution_time_limit }}"
     state: present
     enabled: true
   when:
