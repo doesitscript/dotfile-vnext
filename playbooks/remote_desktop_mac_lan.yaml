@@ -44,6 +44,7 @@
       ansible.builtin.set_fact:
         remote_desktop_mac_connections: []
         remote_desktop_mac_trust_labels: []
+        remote_desktop_mac_cn_map: {}
 
     - name: Discover exported RDP certificate CN sidecars
       ansible.builtin.find:
@@ -52,28 +53,45 @@
         recurse: true
       register: remote_desktop_mac_cn_files
 
-    - name: Build standard named RDP connections from exported CNs
+    - name: Build exported CN lookup by inventory hostname
+      ansible.builtin.set_fact:
+        remote_desktop_mac_cn_map: >-
+          {{
+            remote_desktop_mac_cn_map
+            | combine({
+                (item.path | basename | replace('.cn.txt', '')):
+                (lookup('ansible.builtin.file', item.path) | trim)
+              })
+          }}
+      loop: "{{ remote_desktop_mac_cn_files.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+
+    - name: Build standard named RDP connections from active Windows inventory
       ansible.builtin.set_fact:
         remote_desktop_mac_connections: >-
           {{
             remote_desktop_mac_connections
             + [{
-                'name': item.path | basename | replace('.cn.txt', ''),
-                'hostname': lookup('ansible.builtin.file', item.path) | trim,
+                'name': item,
+                'hostname': (
+                  remote_desktop_mac_cn_map[item]
+                  | default(hostvars[item].os_hostname | default(item))
+                ),
                 'address': (
-                  hostvars[item.path | basename | replace('.cn.txt', '')].host_ip
+                  hostvars[item].host_ip
                   | default(
-                      hostvars[item.path | basename | replace('.cn.txt', '')].ansible_host
+                      hostvars[item].ansible_host
                       | default('')
                     )
                 )
               }]
           }}
-      loop: "{{ remote_desktop_mac_cn_files.files }}"
+      loop: "{{ groups['windows_hosts'] | default([]) }}"
       loop_control:
-        label: "{{ item.path | basename }}"
+        label: "{{ item }}"
       when:
-        - (item.path | basename | replace('.cn.txt', '')) in hostvars
+        - item in hostvars
 
     - name: Build trust labels from connection names, CNs, and LAN IPs
       ansible.builtin.set_fact:

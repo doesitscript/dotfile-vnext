@@ -61,18 +61,15 @@
 
 - name: Store joshc RDP password in login Keychain for MSRDC credential
   ansible.builtin.command:
-    argv:
-      - security
-      - add-generic-password
-      - -U
-      - -s
-      - "{{ remote_desktop_mac_keychain_service }}"
-      - -a
-      - "{{ remote_desktop_mac_credential_id }}"
-      - -l
-      - "{{ remote_desktop_mac_username }}"
-      - -w
-      - "{{ remote_desktop_mac_password }}"
+    cmd: >-
+      security add-generic-password -U
+      -s {{ remote_desktop_mac_keychain_service | quote }}
+      -a {{ remote_desktop_mac_credential_id | quote }}
+      -l {{ remote_desktop_mac_username | quote }}
+      {% for trusted_app in remote_desktop_mac_keychain_trusted_apps %}
+      -T {{ trusted_app | quote }}
+      {% endfor %}
+      -w {{ remote_desktop_mac_password | quote }}
   no_log: true
   register: remote_desktop_mac_keychain
   changed_when: remote_desktop_mac_keychain.rc == 0

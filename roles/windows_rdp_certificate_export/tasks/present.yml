@@ -38,6 +38,7 @@
       {{ windows_rdp_certificate_export_remote_dir }}\{{ inventory_hostname }}.cer
     windows_rdp_certificate_export_remote_cn: >-
       {{ windows_rdp_certificate_export_remote_dir }}\{{ inventory_hostname }}.cn.txt
+  when: windows_rdp_certificate_export_discover.result is defined
 
 - name: Export Remote Desktop TLS leaf certificate (public)
   ansible.windows.win_certificate_store:
@@ -47,11 +48,13 @@
     store_location: "{{ windows_rdp_certificate_export_store_location }}"
     store_name: "{{ windows_rdp_certificate_export_store_name }}"
     thumbprint: "{{ windows_rdp_certificate_export_thumbprint }}"
+  when: windows_rdp_certificate_export_discover.result is defined
 
 - name: Write CN sidecar for Mac connection hostname
   ansible.windows.win_copy:
     dest: "{{ windows_rdp_certificate_export_remote_cn }}"
     content: "{{ windows_rdp_certificate_export_cn }}\n"
+  when: windows_rdp_certificate_export_discover.result is defined
 
 - name: Report CN sidecar write
   ansible.builtin.debug:
@@ -59,6 +62,7 @@
       Written: {{ windows_rdp_certificate_export_remote_cn }}
       Encoding: win_copy content (CN sidecar; LF normalized by module)
       CN: {{ windows_rdp_certificate_export_cn }}
+  when: windows_rdp_certificate_export_discover.result is defined
 
 - name: Ensure controller fetch destination exists
   ansible.builtin.file:
@@ -67,15 +71,18 @@
     mode: "0750"
   delegate_to: localhost
   become: false
+  when: windows_rdp_certificate_export_discover.result is defined
 
 - name: Fetch Remote Desktop certificate to controller cache
   ansible.builtin.fetch:
     src: "{{ windows_rdp_certificate_export_remote_cer }}"
     dest: "{{ windows_rdp_certificate_export_fetch_dest }}/{{ inventory_hostname }}/{{ inventory_hostname }}.cer"
     flat: true
+  when: windows_rdp_certificate_export_discover.result is defined
 
 - name: Fetch CN sidecar to controller cache
   ansible.builtin.fetch:
     src: "{{ windows_rdp_certificate_export_remote_cn }}"
     dest: "{{ windows_rdp_certificate_export_fetch_dest }}/{{ inventory_hostname }}/{{ inventory_hostname }}.cn.txt"
     flat: true
+  when: windows_rdp_certificate_export_discover.result is defined

@@ -20,9 +20,30 @@
           {
             'hostname': item.hostname,
             'add_short_name': false,
-            'ipv4': {'address': item.hosts_ip}
+            'ipv4': {'address': item.hosts_ip},
+            'verify_url': item.verify_url | default(''),
+            'line': (
+              item.hosts_ip
+              ~ ' '
+              ~ item.hostname
+              ~ (
+                ' # port '
+                ~ homelab_hosts_file_mac_verify_port
+                if (homelab_hosts_file_mac_verify_port | length > 0)
+                else ''
+              )
+            )
           }
         ]
+      }}
+  vars:
+    homelab_hosts_file_mac_verify_url_tail: >-
+      {{ (item.verify_url | default('')).split(':')[-1].split('/')[0] }}
+    homelab_hosts_file_mac_verify_port: >-
+      {{
+        homelab_hosts_file_mac_verify_url_tail
+        if (homelab_hosts_file_mac_verify_url_tail is regex('^[0-9]+$'))
+        else ''
       }}
   loop: "{{ homelab_hosts_file_mac_web_catalog | rejectattr('mac_hosts_enabled', 'equalto', false) | list }}"
   loop_control:
@@ -38,7 +59,8 @@
           {
             'hostname': item.hostname,
             'add_short_name': false,
-            'ipv4': {'address': item.ip}
+            'ipv4': {'address': item.ip},
+            'line': item.ip ~ ' ' ~ item.hostname
           }
         ]
       }}
@@ -53,10 +75,11 @@
   tags: [homelab_hosts_file_mac]
 
 - name: Ensure mac-dev hosts file entries per hostname
+  become: true
   ansible.builtin.lineinfile:
     path: "/private/etc/hosts"
-    regexp: '.*\s{{ item.hostname | regex_escape }}\s*$'
-    line: "{{ item.ipv4.address }} {{ item.hostname }}"
+    regexp: '^.*\s{{ item.hostname | regex_escape }}(?:\s+#.*)?$'
+    line: "{{ item.line }}"
     state: present
   loop: "{{ homelab_hosts_file_mac_hosts_file_hosts }}"
   loop_control:
