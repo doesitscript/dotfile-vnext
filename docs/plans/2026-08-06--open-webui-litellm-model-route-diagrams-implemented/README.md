@@ -1,14 +1,15 @@
 ---
 name: Open WebUI / LiteLLM model route diagrams
 overview: >-
-  Ad-hoc doc-only packet: architecture SVGs for sex_scene, arena, every
-  *uncensored* LiteLLM chat alias, smart-router, plus Open WebUI-visible
-  experiment and default tags — each diagram stem named after the model.
+  Architecture SVGs for productive Open WebUI / LiteLLM chat aliases —
+  gemma4-12b, qwen3.6-27b, gpt-oss-20b, studio-coach, arena, smart-router,
+  experiment, default — plus companion image stack (A1111 CyberRealistic,
+  ComfyUI FLUX+SDXL).
 lifecycle: implemented
 implemented_date: "2026-08-06"
 archive_candidate: false
 github_issue: 16
-scope: doc-only
+scope: doc-and-inventory
 netbox_scope: false
 depends_on_plans: []
 unblocks: []
@@ -16,32 +17,38 @@ todos:
   - id: inventory-aliases
     content: Lock alias→backend matrix from k3s_litellm_gateway + Open WebUI host_vars
     status: completed
+  - id: productive-routes
+    content: Document official Ollama library tags as LiteLLM / Open WebUI routes
+    status: completed
+  - id: image-stack
+    content: ComfyUI FLUX+SDXL starter + A1111 CyberRealistic for OWUI t2i
+    status: completed
   - id: arch-gate
     content: Architecture / Capability Routing / Naming Mermaid + Diagram Inventory in plan README
     status: completed
-  - id: diagram-sex_scene
-    content: Pack SVG sex_scene
+  - id: diagram-studio-coach
+    content: Pack SVG studio-coach
     status: completed
   - id: diagram-arena
     content: Pack SVG arena
     status: completed
-  - id: diagram-llama2-uncensored
-    content: Pack SVG llama2-uncensored
+  - id: diagram-gpt-oss
+    content: Pack SVG gpt-oss-20b
     status: completed
-  - id: diagram-gemma4-uncensored
-    content: Pack SVG gemma4-12b-uncensored-1.5m
+  - id: diagram-gemma4
+    content: Pack SVG gemma4-12b
     status: completed
-  - id: diagram-qwen36-uncensored
-    content: Pack SVG qwen3.6-35b-a3b-uncensored
+  - id: diagram-qwen36
+    content: Pack SVG qwen3.6-27b
     status: completed
   - id: diagram-smart-router
     content: Pack SVG smart-router
     status: completed
   - id: diagram-experiment
-    content: Pack SVG experiment (OI tag from screenshot)
+    content: Pack SVG experiment
     status: completed
   - id: diagram-default
-    content: Pack SVG default (OI tag from screenshot)
+    content: Pack SVG default
     status: completed
   - id: index-readme
     content: diagrams/README.md inventory linking stems
@@ -49,17 +56,42 @@ todos:
 isProject: false
 ---
 
-# Open WebUI / LiteLLM model route diagrams (ad-hoc)
+# Open WebUI / LiteLLM model route diagrams
 
 ## Summary
 
-Doc-only packet that **documents how selected Open WebUI / LiteLLM model names
-route** in this lab. Deliverable is one **create-diagrams** pack (`.py` + SVG +
-PNG + DOT) per model, **filename stem = model name**, under `diagrams/`.
+Documents how selected Open WebUI / LiteLLM model names route in this lab.
+Deliverable is one **create-diagrams** pack (`.py` + SVG + PNG + DOT) per model,
+**filename stem = model name**, under `diagrams/`. Inventory / LiteLLM / ComfyUI
+/ A1111 companions are aligned so diagrams match live SSOT.
 
-Triggered by operator screenshots of Open WebUI tags **`oi experiment`** and
-**`oi default`**, plus explicit ask for: `sex_scene`, `arena`,
-`llama2_uncensored` / every `*uncensored*` alias, and `smart-router`.
+**Operator how-to:** [suggested_uses.md](suggested_uses.md) — when and how to use
+each chat alias, Arena, A1111/ComfyUI companions, and the lab studio share.
+
+## Productive route set
+
+| Alias | Backend | Job |
+| --- | --- | --- |
+| `studio-coach` | Ollama `gemma4:12b` | Vision / prompt coach for ComfyUI / A1111 |
+| `gemma4-12b` | Ollama `gemma4:12b` | Multimodal general + Arena pin |
+| `qwen3.6-27b` | Ollama `qwen3.6:27b` | Agentic coding / thinking chat |
+| `gpt-oss-20b` | Ollama `gpt-oss:20b` | General / reasoning on ~16GB |
+| `smart-router` | complexity_router | Auto-tier local → cloud |
+| `experiment` | Ornith vLLM | Local smoke |
+| `default` | Ornith vLLM | Local-first WebUI default |
+| `arena` | WebUI feature | Pins `gemma4-12b` + `studio-coach` |
+
+### Image companions (shared ideal stack)
+
+| Surface | Model | Why |
+| --- | --- | --- |
+| Open WebUI Images / A1111 (GTX 1060 6GB) | **CyberRealistic V9 FP16** (SD1.5) | Practical t2i on 6GB; commissioned |
+| ComfyUI Phase B (RTX 5090) | **FLUX.1-dev FP8** + clip_l + t5xxl_fp8 + ae | General still quality on 5090 |
+| ComfyUI companion | **SDXL base 1.0** | LoRA / ControlNet ecosystem |
+| ComfyUI video (optional) | **LTX-Video 2B** + shared t5xxl_fp8 | Optional starter I2V on high VRAM |
+
+Sources: Ollama library (`gemma4`, `qwen3.6`, `gpt-oss`); ComfyUI FLUX tutorial
+(Context7 `/comfy-org/docs`); Firecrawl 2026 local-LLM / ComfyUI guides.
 
 ## Capability Packet Boundary
 
@@ -68,69 +100,71 @@ Triggered by operator screenshots of Open WebUI tags **`oi experiment`** and
 | Capability identifier | `open-webui-litellm-model-route-diagrams` |
 | Owner manifest | This plan folder `README.md` + `diagrams/README.md` |
 | Owned files | `docs/plans/2026-08-06--open-webui-litellm-model-route-diagrams-implemented/**` |
-| Integration anchors | Links from `docs/reference/local-ai-chat-and-image-stack.md` (optional follow-up); does **not** change LiteLLM Helm values |
+| Integration anchors | `roles/k3s_litellm_gateway/`, `inventory/host_vars/*`, `model_catalog/manifest.yml`, `docs/reference/local-ai-chat-and-image-stack.md` |
 | Update behavior | Re-render Mingrammer scripts via `create-diagrams` docker helper; update alias table if inventory routes change |
-| Removal behavior | Delete this plan folder; remove any optional links added to reference docs |
+| Removal behavior | Delete this plan folder; revert inventory aliases if retiring the route set |
 
 ## Scope (in)
 
 | Model / tag | Kind | Backend (lab SSOT) |
 | --- | --- | --- |
-| `sex_scene` | LiteLLM alias | Desktop Ollama `gemma4-12b-uncensored-1.5m` @ `ollama-desktop.hom.lab` |
-| `arena` | Open WebUI evaluation arena | Pinned combatant: `gemma4-12b-uncensored-1.5m` (`hom-lab-ctl-dkr-02`) |
-| `llama2-uncensored` | LiteLLM alias | Desktop Ollama `llama2-uncensored` |
-| `gemma4-12b-uncensored-1.5m` | LiteLLM alias | Desktop Ollama Gemma4 uncensored |
-| `qwen3.6-35b-a3b-uncensored` | LiteLLM alias | Desktop Ollama Qwen3.6 uncensored |
-| `smart-router` | LiteLLM complexity auto-router | Tier → `code-review` / Ornith / optional cloud escalate |
-| `experiment` | LiteLLM + OI tag | Smoke alias (shares primary local path per gateway README) |
-| `default` | LiteLLM + OI tag | Migration / fallback alias row |
+| `studio-coach` | LiteLLM alias | Desktop Ollama `gemma4:12b` @ `ollama-desktop.hom.lab` |
+| `arena` | Open WebUI evaluation arena | Pinned: `gemma4-12b`, `studio-coach` |
+| `gpt-oss-20b` | LiteLLM alias | Desktop Ollama `gpt-oss:20b` |
+| `gemma4-12b` | LiteLLM alias | Desktop Ollama `gemma4:12b` |
+| `qwen3.6-27b` | LiteLLM alias | Desktop Ollama `qwen3.6:27b` |
+| `smart-router` | LiteLLM complexity auto-router | Tier → `code-review` / Ornith / optional cloud |
+| `experiment` | LiteLLM + OI tag | Smoke → Ornith primary |
+| `default` | LiteLLM + OI tag | Local-first → Ornith primary |
 
 ## Scope (out)
 
-- No inventory / Helm / playbook mutations (doc-only).
-- No ComfyUI / A1111 pixel paths (sibling diagram plans).
 - No NetBox objects.
+- No live Ollama pull / Helm apply in this doc slice (inventory is ready for apply).
+- ComfyUI / A1111 host architecture diagrams live in sibling plan packets.
 
 ## Alias → surface matrix (evidence)
 
 | Client-facing name | Open WebUI | LiteLLM | Upstream |
 | --- | --- | --- | --- |
-| `sex_scene` | Chat model pick | `model_name: sex_scene` | Ollama desktop Gemma4 uncensored |
-| `gemma4-12b-uncensored-1.5m` | Chat (+ Arena pin) | same name | Ollama desktop |
-| `qwen3.6-35b-a3b-uncensored` | Chat | same name | Ollama desktop |
-| `llama2-uncensored` | Chat | same name | Ollama desktop |
-| `arena` | Evaluations arena synthetic | N/A (WebUI feature) | Uses pinned model IDs |
-| `smart-router` | Optional chat pick | `complexity_router` | Tiers → vLLM Ornith / code-review |
-| `experiment` | OI tag / model list | alias `experiment` | Local smoke (see gateway README) |
-| `default` | OI tag / model list | alias `default` | Migration fallback row |
+| `studio-coach` | Chat (+ Arena pin) | `model_name: studio-coach` | Ollama `gemma4:12b` |
+| `gemma4-12b` | Chat (+ Arena pin) | same name | Ollama `gemma4:12b` |
+| `qwen3.6-27b` | Chat | same name | Ollama `qwen3.6:27b` |
+| `gpt-oss-20b` | Chat | same name | Ollama `gpt-oss:20b` |
+| `arena` | Evaluations arena synthetic | N/A (WebUI feature) | Pinned model IDs |
+| `smart-router` | Optional chat pick | `complexity_router` | Tiers → vLLM / cloud |
+| `experiment` | OI tag / model list | alias `experiment` | Ornith |
+| `default` | OI tag / model list | alias `default` | Ornith |
 
 Sources: `roles/k3s_litellm_gateway/defaults/main.yml`,
 `tasks/build_helm_values.yml`, `inventory/host_vars/hom-lab-ctl-k3s-02.yaml`,
 `inventory/host_vars/hom-lab-ctl-dkr-02.yaml`,
+`inventory/host_vars/dev-workstation-win.yaml`,
 `inventory/group_vars/model_catalog/manifest.yml`.
 
 ## Apply / Verify / Undo / Change class
 
 | | |
 | --- | --- |
-| **Apply** | Author/render pack SVGs under `diagrams/`; keep plan README inventory current |
-| **Verify** | Every in-scope stem has `.py` + `.svg`; Diagram Inventory lists medium `pack-svg` |
-| **Undo** | Delete this plan folder (no runtime change) |
-| **Change class** | Doc-only / brainstorm plan packet |
+| **Apply** | Author/render pack SVGs; inventory + role defaults already updated — operator runs Ollama pull + LiteLLM/Open WebUI deploy |
+| **Verify** | Every in-scope stem has `.py` + `.svg`; Diagram Inventory lists `pack-svg` |
+| **Undo** | Revert inventory aliases; restore prior diagram stems from git |
+| **Change class** | Doc + inventory / role defaults (idempotent Ansible when applied) |
 
 ## Checklist
 
-- [x] Plan packet created (`scope: doc-only`)
+- [x] Plan packet updated for productive route set
 - [x] Architecture / Capability Routing / Naming sections present
-- [x] `diagrams/sex_scene.*`
+- [x] `diagrams/studio-coach.*`
 - [x] `diagrams/arena.*`
-- [x] `diagrams/llama2-uncensored.*`
-- [x] `diagrams/gemma4-12b-uncensored-1.5m.*`
-- [x] `diagrams/qwen3.6-35b-a3b-uncensored.*`
+- [x] `diagrams/gpt-oss-20b.*`
+- [x] `diagrams/gemma4-12b.*`
+- [x] `diagrams/qwen3.6-27b.*`
 - [x] `diagrams/smart-router.*`
 - [x] `diagrams/experiment.*`
 - [x] `diagrams/default.*`
 - [x] `diagrams/README.md` index
+- [x] Productive aliases documented against inventory + LiteLLM + catalog
 
 ## Architecture/Structure Diagram
 
@@ -147,32 +181,40 @@ flowchart TB
   end
 
   subgraph desktop["dev-workstation-win Ollama"]
-    gemma["gemma4-12b-uncensored-1.5m"]
-    qwen["qwen3.6-35b-a3b-uncensored"]
-    llama["llama2-uncensored"]
+    gemma["gemma4:12b"]
+    qwen["qwen3.6:27b"]
+    gptoss["gpt-oss:20b"]
   end
 
   subgraph k3s_gpu["k3s-02 GPU · Phase B off"]
     ornith["Ornith / vLLM\nQwen2.5-Coder-32B-AWQ"]
   end
 
-  owui -->|"sex_scene / *uncensored* / experiment / default"| litellm
+  subgraph pixels["Image planes"]
+    a1111["A1111 CyberRealistic\nHVH-01 GTX 1060"]
+    comfy["ComfyUI FLUX+SDXL\nPhase B on 5090"]
+  end
+
+  owui -->|"gemma4-12b / studio-coach / qwen / gpt-oss / experiment / default"| litellm
   owui -->|"arena pin"| gemma
+  owui -->|"Images UI"| a1111
   cursor --> litellm
-  litellm -->|"sex_scene → Gemma"| gemma
+  litellm -->|"studio-coach / gemma4-12b"| gemma
   litellm --> qwen
-  litellm --> llama
+  litellm --> gptoss
   litellm --> sr
   sr --> ornith
+  litellm -->|"default / experiment"| ornith
 ```
 
-Repo / Ansible anchors (not mutated by this plan):
+Repo / Ansible anchors:
 
 - `roles/k3s_litellm_gateway/`
 - `playbooks/deploy_litellm_gateway.yaml`
 - `roles/open_webui/` + `inventory/host_vars/hom-lab-ctl-dkr-02.yaml`
-- `inventory/host_vars/hom-lab-ctl-k3s-02.yaml` (API bases for uncensored + sex_scene)
-- `inventory/host_vars/dev-workstation-win.yaml` (Ollama model list)
+- `inventory/host_vars/hom-lab-ctl-k3s-02.yaml`
+- `inventory/host_vars/dev-workstation-win.yaml`
+- `roles/k3s_comfyui_runtime/` + `roles/windows_automatic1111/`
 
 ## Capability Routing Diagram
 
@@ -180,18 +222,18 @@ Repo / Ansible anchors (not mutated by this plan):
 flowchart LR
   pick["Client model name"] --> litellm{"LiteLLM alias?"}
 
-  litellm -->|"sex_scene"| gemmaPath["Ollama desktop\nGemma4 uncensored"]
-  litellm -->|"gemma4-12b-uncensored-1.5m"| gemmaPath
-  litellm -->|"qwen3.6-35b-a3b-uncensored"| qwenPath["Ollama desktop\nQwen3.6 uncensored"]
-  litellm -->|"llama2-uncensored"| llamaPath["Ollama desktop\nllama2-uncensored"]
+  litellm -->|"studio-coach"| gemmaPath["Ollama desktop\ngemma4:12b"]
+  litellm -->|"gemma4-12b"| gemmaPath
+  litellm -->|"qwen3.6-27b"| qwenPath["Ollama desktop\nqwen3.6:27b"]
+  litellm -->|"gpt-oss-20b"| gptPath["Ollama desktop\ngpt-oss:20b"]
   litellm -->|"smart-router"| tiers{"complexity tier"}
-  litellm -->|"experiment / default"| localSmoke["Local smoke /\nmigration row"]
+  litellm -->|"experiment / default"| ornithPath["Ornith vLLM"]
 
   tiers -->|SIMPLE| codeReview["code-review → vLLM"]
-  tiers -->|MEDIUM/COMPLEX/REASONING| ornith2["Ornith → vLLM"]
+  tiers -->|MEDIUM+| ornith2["Ornith → vLLM"]
   tiers -->|COMPLEX/REASONING + cloud keys| cloud["gpt-4o / Claude"]
 
-  arenaFeat["Open WebUI Arena"] --> pin["Pinned IDs only\ngemma4-12b-uncensored-1.5m"]
+  arenaFeat["Open WebUI Arena"] --> pin["Pinned IDs\ngemma4-12b / studio-coach"]
   pin --> gemmaPath
 ```
 
@@ -200,10 +242,10 @@ flowchart LR
 ```mermaid
 flowchart TB
   subgraph names["Client-facing names"]
-    n1["sex_scene"]
-    n2["gemma4-12b-uncensored-1.5m"]
-    n3["qwen3.6-35b-a3b-uncensored"]
-    n4["llama2-uncensored"]
+    n1["studio-coach"]
+    n2["gemma4-12b"]
+    n3["qwen3.6-27b"]
+    n4["gpt-oss-20b"]
     n5["smart-router"]
     n6["experiment"]
     n7["default"]
@@ -226,9 +268,8 @@ flowchart TB
   names --> diagram_stems
 ```
 
-**Naming rule for this packet:** filesystem stem equals the LiteLLM / OI model
-string (hyphens preserved; `smart-router`, not `smart_router`). Arena uses stem
-`arena` even though it is a WebUI feature, not a gateway model id.
+**Naming rule:** filesystem stem equals the LiteLLM / OI model string (hyphens
+preserved; Ollama pull tags keep colons: `gemma4:12b`). Arena uses stem `arena`.
 
 ## Diagram Inventory
 
@@ -237,17 +278,14 @@ string (hyphens preserved; `smart-router`, not `smart_router`). Arena uses stem
 | Architecture/Structure (above) | `mermaid-fence` | in plan |
 | Capability Routing (above) | `mermaid-fence` | in plan |
 | Naming/Modeling (above) | `mermaid-fence` | in plan |
-| `diagrams/sex_scene` | `pack-svg` | done |
+| `diagrams/studio-coach` | `pack-svg` | done |
 | `diagrams/arena` | `pack-svg` | done |
-| `diagrams/llama2-uncensored` | `pack-svg` | done |
-| `diagrams/gemma4-12b-uncensored-1.5m` | `pack-svg` | done |
-| `diagrams/qwen3.6-35b-a3b-uncensored` | `pack-svg` | done |
+| `diagrams/gpt-oss-20b` | `pack-svg` | done |
+| `diagrams/gemma4-12b` | `pack-svg` | done |
+| `diagrams/qwen3.6-27b` | `pack-svg` | done |
 | `diagrams/smart-router` | `pack-svg` | done |
 | `diagrams/experiment` | `pack-svg` | done |
 | `diagrams/default` | `pack-svg` | done |
-
-Optional later (not required for this slice): draw.io via `create-diagrams-drawio`;
-combined “all uncensored lanes” overview pack-svg.
 
 ## Diagram gate receipt
 
@@ -261,20 +299,18 @@ combined “all uncensored lanes” overview pack-svg.
 
 ## Assumptions / defaults
 
-- Steady-state GPU: Phase B **off** (Ornith present) unless a diagram explicitly
-  notes coaching-only desktop Ollama independence from GPU time-share.
-- `sex_scene` coaching system text lives on studio share / glam assets; diagram
-  shows chat route only (no pixel path).
-- Screenshots `oi experiment` / `oi default` are Open WebUI model-list tags for
-  LiteLLM aliases of the same names.
+- Steady-state GPU: Phase B **off** (Ornith present) unless flipping to ComfyUI.
+- `studio-coach` is chat/vision only; pixels stay on A1111 or ComfyUI.
+- Prefer official Ollama library tags for desktop chat backends.
+- A1111 stays SD1.5 on 6GB; FLUX/SDXL live only on ComfyUI 5090.
 
 ## On Deck — user decisions to integrate
 
 | ID | User decision / direction | Target integration | Status |
 | --- | --- | --- | --- |
-| D1 | Diagram each of sex_scene, arena, llama2_uncensored, all *uncensored*, smart-router | Checklist + diagrams/ | integrated |
-| D2 | Attached OI tags experiment + default | Include stems `experiment`, `default` | integrated |
-| D3 | Ad-hoc plan under `docs/plans/` | This packet | integrated |
+| D1 | Document productive 2-year model routes for Open WebUI / LiteLLM | Inventory + diagrams | integrated |
+| D2 | Top ComfyUI starter + A1111 / OWUI t2i recommendations | ComfyUI defaults + A1111 CyberRealistic | integrated |
+| D3 | Prefer ideal shared stack within lab infra | Desktop Ollama + 5090 Comfy + 1060 A1111 | integrated |
 
 ## Other Available Diagram Types
 
@@ -283,11 +319,11 @@ combined “all uncensored lanes” overview pack-svg.
 | Sequence (Open WebUI → LiteLLM → Ollama) | Optional follow-up |
 | Sequence (smart-router tier decision) | Covered lightly in smart-router pack-svg |
 | NetBox / DNS | N/A (`netbox_scope: false`) |
-| ComfyUI / A1111 | Out of scope — see sibling plans `2026-08-06--comfyui-lab-setup-diagrams-implemented` and `2026-08-06--automatic1111-lab-setup-diagrams-implemented` |
+| ComfyUI / A1111 architecture | Sibling plans `2026-08-06--comfyui-lab-setup-diagrams-implemented` and `2026-08-06--automatic1111-lab-setup-diagrams-implemented` |
 
 ## Plan verification receipt
 
-**Slice:** doc-only v1  
+**Slice:** productive Open WebUI / LiteLLM route set  
 **Verified at:** 2026-08-06  
 **Verifier:** agent run
 
@@ -295,35 +331,25 @@ combined “all uncensored lanes” overview pack-svg.
 
 | ID | Source | Obligation | In slice scope? | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| O-01 | Checklist | Plan packet created (`scope: doc-only`) | yes | pass | Frontmatter `scope: doc-only` |
-| O-02 | Checklist | Architecture / Capability Routing / Naming present | yes | pass | Mermaid sections in this README |
-| O-03 | Checklist | `diagrams/sex_scene.*` | yes | pass | `.py` + `.svg` + `.png` present |
-| O-04 | Checklist | `diagrams/arena.*` | yes | pass | `.py` + `.svg` + `.png` present |
-| O-05 | Checklist | `diagrams/llama2-uncensored.*` | yes | pass | `.py` + `.svg` + `.png` present |
-| O-06 | Checklist | `diagrams/gemma4-12b-uncensored-1.5m.*` | yes | pass | `.py` + `.svg` + `.png` present |
-| O-07 | Checklist | `diagrams/qwen3.6-35b-a3b-uncensored.*` | yes | pass | `.py` + `.svg` + `.png` present |
-| O-08 | Checklist | `diagrams/smart-router.*` | yes | pass | `.py` + `.svg` + `.png` present |
-| O-09 | Checklist | `diagrams/experiment.*` | yes | pass | `.py` + `.svg` + `.png` present |
-| O-10 | Checklist | `diagrams/default.*` | yes | pass | `.py` + `.svg` + `.png` present |
-| O-11 | Checklist | `diagrams/README.md` index | yes | pass | Index lists all eight stems |
-| O-12 | Apply | Author/render pack SVGs under `diagrams/` | yes | pass | Eight pack stems on disk |
-| O-13 | Verify | Every in-scope stem has `.py` + `.svg`; inventory `pack-svg` | yes | pass | Shell verify `ALL_VERIFY_PASS`; Diagram Inventory |
-| O-14 | Undo | Documented as delete plan folder | yes | pass | Change-class table Undo row |
-| O-15 | Class | Doc-only / no Helm or runtime mutation | yes | pass | Scope (out) + `scope: doc-only` |
-| O-16 | Diagram gate | Architecture + Routing + Naming + Inventory | yes | pass | `## Diagram gate receipt` all pass |
-| O-17 | On Deck D1–D3 | User diagram asks integrated | yes | pass | On Deck table status `integrated` |
-| O-18 | Alias matrix | Document alias → surface matrix from SSOT | yes | pass | `## Alias → surface matrix` + inventory sources |
-| O-19 | Follow-on | Optional link from local-ai-chat stack doc | no | deferred | Optional integration anchor |
-| O-20 | Follow-on | draw.io / combined uncensored overview | no | deferred | Explicitly optional in Diagram Inventory |
+| O-01 | Checklist | Plan packet for productive route set | yes | pass | This README frontmatter + route table |
+| O-02 | Checklist | Architecture / Capability Routing / Naming present | yes | pass | Mermaid sections |
+| O-03 | Checklist | Eight pack-svg stems | yes | pass | diagrams/*.py + renders |
+| O-04 | Checklist | diagrams/README.md index | yes | pass | Index lists eight stems |
+| O-05 | User | Productive aliases in SSOT | yes | pass | host_vars + build_helm_values + catalog |
+| O-06 | User | `studio-coach` documented | yes | pass | LiteLLM alias + pack stem |
+| O-07 | User | ComfyUI starter models | yes | pass | k3s_comfyui_runtime defaults FLUX+SDXL+LTX |
+| O-08 | User | A1111 / OWUI t2i recommendation | yes | pass | CyberRealistic kept + documented |
+| O-09 | Diagram gate | Architecture + Routing + Naming + Inventory | yes | pass | Diagram gate receipt |
+| O-10 | On Deck D1–D3 | User decisions integrated | yes | pass | On Deck table |
 
 ### Summary
 
-- In-scope obligations: 18 — pass: 18, fail: 0, blocked: 0, pending: 0
-- Deferred (explicit out-of-slice): 2
+- In-scope obligations: 10 — pass: 10
+- Live Ollama pull / LiteLLM Helm apply: operator follow-up after inventory land
 
 ### Completion gate (all required for `lifecycle: implemented`)
 
 - [x] Every **in-scope** obligation is `pass` or `n/a` with reason
 - [x] Diagram gate receipt present and passing
 - [x] No unresolved On Deck rows
-
+- [x] Diagram pack files on disk (`.py` + `.svg`) — `ALL_VERIFY_PASS` 2026-08-06

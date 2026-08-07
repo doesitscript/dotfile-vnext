@@ -1,4 +1,4 @@
-"""arena — Open WebUI evaluation arena pinned to Gemma4 uncensored."""
+"""arena — Open WebUI evaluation arena pinned to gemma4-12b."""
 
 from diagrams import Cluster, Diagram, Edge
 from diagrams.aws.general import User
@@ -16,8 +16,8 @@ with Diagram(
     op = User("Operator")
     with Cluster("hom-lab-ctl-dkr-02"):
         owui = Docker("Open WebUI\nArena enabled")
-        pin = Client("Pinned ID\ngemma4-12b-uncensored-1.5m")
+        pin = Client("Pinned IDs\ngemma4-12b\nstudio-coach")
     with Cluster("LiteLLM + desktop"):
         gw = Docker("litellm.hom.lab")
-        ollama = Server("Ollama desktop\nGemma4 uncensored")
+        ollama = Server("Ollama desktop\ngemma4:12b")
     op >> owui >> pin >> gw >> ollama

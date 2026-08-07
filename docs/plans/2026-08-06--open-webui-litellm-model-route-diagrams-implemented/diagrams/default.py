@@ -1,4 +1,4 @@
-"""default — LiteLLM migration/fallback alias (OI tag default)."""
+"""default — LiteLLM local-first default alias → Ornith (vLLM)."""
 
 from diagrams import Cluster, Diagram, Edge
 from diagrams.aws.general import User
@@ -15,6 +15,7 @@ with Diagram(
     op = User("Operator")
     oi = Client("Open WebUI\nOI tag default")
     with Cluster("k3s-02 LiteLLM"):
-        gw = Docker("alias default\nmigration row")
-        policy = Docker("routing_policy\nlocal-default-fallback")
-    op >> oi >> Edge(label="model=default") >> gw >> policy
+        gw = Docker("alias default\nlocal-primary")
+    with Cluster("k3s-02 vLLM"):
+        vllm = Docker("Ornith\nvllm-primary")
+    op >> oi >> Edge(label="model=default") >> gw >> vllm

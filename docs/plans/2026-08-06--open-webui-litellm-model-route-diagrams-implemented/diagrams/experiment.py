@@ -1,4 +1,4 @@
-"""experiment — LiteLLM smoke alias (OI tag experiment)."""
+"""experiment — LiteLLM smoke alias → Ornith primary (OI tag experiment)."""
 
 from diagrams import Cluster, Diagram, Edge
 from diagrams.aws.general import User
@@ -16,5 +16,6 @@ with Diagram(
     oi = Client("Open WebUI\nOI tag experiment")
     with Cluster("k3s-02 LiteLLM"):
         gw = Docker("alias experiment\nlocal smoke")
-        backend = Docker("shares primary\nlocal path")
-    op >> oi >> Edge(label="model=experiment") >> gw >> backend
+    with Cluster("k3s-02 vLLM"):
+        vllm = Docker("shares Ornith\nvllm-primary")
+    op >> oi >> Edge(label="model=experiment") >> gw >> vllm

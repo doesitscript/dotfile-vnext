@@ -4,11 +4,11 @@ Each stem matches the Open WebUI / LiteLLM model (or Arena feature) name.
 
 | Model | SVG |
 | --- | --- |
-| `sex_scene` | [sex_scene.svg](sex_scene.svg) |
+| `studio-coach` | [studio-coach.svg](studio-coach.svg) |
 | `arena` | [arena.svg](arena.svg) |
-| `llama2-uncensored` | [llama2-uncensored.svg](llama2-uncensored.svg) |
-| `gemma4-12b-uncensored-1.5m` | [gemma4-12b-uncensored-1.5m.svg](gemma4-12b-uncensored-1.5m.svg) |
-| `qwen3.6-35b-a3b-uncensored` | [qwen3.6-35b-a3b-uncensored.svg](qwen3.6-35b-a3b-uncensored.svg) |
+| `gpt-oss-20b` | [gpt-oss-20b.svg](gpt-oss-20b.svg) |
+| `gemma4-12b` | [gemma4-12b.svg](gemma4-12b.svg) |
+| `qwen3.6-27b` | [qwen3.6-27b.svg](qwen3.6-27b.svg) |
 | `smart-router` | [smart-router.svg](smart-router.svg) |
 | `experiment` | [experiment.svg](experiment.svg) |
 | `default` | [default.svg](default.svg) |

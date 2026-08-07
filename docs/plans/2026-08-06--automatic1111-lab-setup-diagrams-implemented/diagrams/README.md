@@ -3,10 +3,13 @@
 | Stem | What it shows |
 | --- | --- |
 | [automatic1111-lab-architecture](automatic1111-lab-architecture.svg) | Phase A host / Open WebUI Images / direct UI |
-| [automatic1111-studio-setup](automatic1111-studio-setup.svg) | Whole studio surfaces; A1111 as still bootstrap |
-| [automatic1111-resources-dependencies](automatic1111-resources-dependencies.svg) | Generic resource kinds → A1111 dependencies |
+| [automatic1111-e2e-lab-doc-still](automatic1111-e2e-lab-doc-still.svg) | E2E 1 — lab-doc still via Open WebUI Images |
+| [automatic1111-e2e-controlnet-mock](automatic1111-e2e-controlnet-mock.svg) | E2E 2 — ControlNet reference-locked mock |
 
 Artifacts per stem: `.py` · `.svg` · `.png` · `.dot` · `.instructions.md`
+
+**Removed:** `automatic1111-studio-setup`, `automatic1111-resources-dependencies`
+(prior prior studio framing).
 
 ## Re-render all
 
