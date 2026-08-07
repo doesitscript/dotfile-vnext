@@ -20,9 +20,25 @@ The [`junian/homebrew-mirrors`](https://github.com/junian/homebrew-mirrors) tap 
 1. Taps `junian/homebrew-mirrors` via `community.general.homebrew_tap`.
 2. Uses `brew fetch --cask` as the normal user to obtain the pkg-backed installer artifact.
 3. Runs the macOS `installer` command with Ansible privilege escalation for the actual pkg install step.
-3. Prints a colorful notice to the console before installing so the operator is aware of the community-mirror origin.
+4. Prints a colorful notice to the console before installing so the operator is aware of the community-mirror origin.
+5. Optionally imports exported Windows Remote Desktop leaf certs into the System keychain (stops the LAN cert nag).
+6. Optionally upserts standard-named MSRDC bookmarks + Keychain password for `joshc` (from `vault_windows_house_remoting_password`).
 
 This role is **macOS-only**. It skips on all other platforms.
+
+### LAN connections + cert trust
+
+Use the dedicated playbook (Windows export play + Mac configure play):
+
+```bash
+ansible-playbook playbooks/remote_desktop_mac_lan.yaml \
+  -i inventory/inventory.yaml \
+  --ask-become-pass
+```
+
+Bookmark names match inventory hostnames (`HOM-LAB-HVH-02`, …). Connection
+hostnames use the RDP certificate CN so name checks match. `/etc/hosts` aliases
+are added for CN → LAN IP when needed.
 
 This app is a special case:
 - community-maintained source

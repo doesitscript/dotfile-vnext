@@ -1,0 +1,48 @@
+---
+# Stage exported Windows Remote Desktop leaf certs on mac-dev.
+#
+# The Microsoft Remote Desktop app also tracks trusted labels in its SQLite
+# store. Headless `security add-trusted-cert` automation can block indefinitely
+# on macOS trust authorization, so this task keeps the certs locally available
+# for the app workflow without hanging the playbook.
+
+- name: Ensure work directory for RDP trust certs exists
+  ansible.builtin.file:
+    path: "{{ remote_desktop_mac_work_dir }}/certs"
+    state: directory
+    mode: "0750"
+
+- name: Collect exported RDP certificate files from controller cache
+  ansible.builtin.find:
+    paths: "{{ remote_desktop_mac_cert_cache_dir }}"
+    patterns: "*.cer"
+    recurse: true
+  register: remote_desktop_mac_cert_files
+  delegate_to: localhost
+  become: false
+
+- name: Assert at least one RDP certificate was exported
+  ansible.builtin.assert:
+    that:
+      - remote_desktop_mac_cert_files.files | length > 0
+    fail_msg: >-
+      No .cer files under {{ remote_desktop_mac_cert_cache_dir }}.
+      Run the windows_rdp_certificate_export play first.
+
+- name: Copy RDP certificates into Mac work directory
+  ansible.builtin.copy:
+    src: "{{ item.path }}"
+    dest: "{{ remote_desktop_mac_work_dir }}/certs/{{ item.path | basename }}"
+    mode: "0644"
+  loop: "{{ remote_desktop_mac_cert_files.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+
+- name: Report staged RDP certificate set for app-side trust workflow
+  ansible.builtin.debug:
+    msg: >-
+      staged_cert={{ item.path | basename }}
+      staged_path={{ remote_desktop_mac_work_dir }}/certs/{{ item.path | basename }}
+  loop: "{{ remote_desktop_mac_cert_files.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"

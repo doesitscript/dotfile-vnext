@@ -8,3 +8,31 @@ remote_desktop_mac_verify_install: true
 remote_desktop_mac_attempt_stabilization: false
 remote_desktop_mac_enforce_stabilization: false
 remote_desktop_mac_stabilization_become: false
+
+# Lifecycle for install + LAN bookmarks/trust.
+remote_desktop_mac_state: present
+
+# LAN connection + trust management (Microsoft Remote Desktop on macOS).
+remote_desktop_mac_manage_connections: true
+remote_desktop_mac_trust_certs: true
+remote_desktop_mac_deploy_rdp_files: true
+remote_desktop_mac_manage_hosts_aliases: true
+
+remote_desktop_mac_username: "{{ windows_remoting_fallback_user | default('joshc') }}"
+# Loaded from inventory/group_vars/windows_os_hosts/vault.yml in connections tasks.
+remote_desktop_mac_password: ""
+remote_desktop_mac_credential_friendly_name: "joshc (homelab)"
+# uuid5(NAMESPACE_DNS, 'homelab.rdp.joshc') — stable Keychain account id
+remote_desktop_mac_credential_id: "EB8E9193-2C1A-5A92-9BAA-8BF2D5C03D73"
+remote_desktop_mac_keychain_service: com.microsoft.rdc.macos
+
+remote_desktop_mac_app_support_dir: >-
+  {{ ansible_env.HOME }}/Library/Containers/com.microsoft.rdc.macos/Data/Library/Application Support/com.microsoft.rdc.macos
+remote_desktop_mac_work_dir: "{{ ansible_env.HOME }}/.cache/homelab/remote_desktop_mac"
+remote_desktop_mac_rdp_dir: "{{ ansible_env.HOME }}/Documents/Homelab Remote Desktop"
+remote_desktop_mac_cert_cache_dir: "{{ playbook_dir }}/../.cache/rdp-certs"
+
+# Populated by playbooks/remote_desktop_mac_lan.yaml from inventory + exported CNs.
+# Each item: {name, hostname, address}
+remote_desktop_mac_connections: []
+remote_desktop_mac_trust_labels: []

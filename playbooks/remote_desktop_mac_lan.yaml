@@ -1,0 +1,98 @@
+---
+# LAN Microsoft Remote Desktop on mac-dev:
+# 1) Export each Windows host's Remote Desktop TLS leaf cert
+# 2) Install/trust those certs on mac-dev + create standard named bookmarks
+#
+# Password: vault_windows_house_remoting_password (joshc) from
+# inventory/group_vars/windows_os_hosts/vault.yml
+#
+# Example:
+#   ansible-playbook playbooks/remote_desktop_mac_lan.yaml \
+#     -i inventory/inventory.yaml \
+#     --ask-become-pass
+
+- name: Export Windows Remote Desktop TLS certificates for Mac trust
+  hosts: windows_hosts
+  gather_facts: false
+  ignore_unreachable: true
+  tags: [windows_rdp_certificate_export, remote_desktop_mac_lan]
+
+  roles:
+    - role: windows_rdp_certificate_export
+      tags: [windows_rdp_certificate_export]
+
+- name: Configure Microsoft Remote Desktop LAN connections on mac-dev
+  hosts: mac-dev
+  connection: local
+  gather_facts: true
+  become: false
+  tags: [remote_desktop_mac, remote_desktop_mac_lan]
+
+  pre_tasks:
+    - name: Load mac-dev vault for controller-local secrets
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../vault/mac_dev.vault.yml"
+      no_log: true
+
+    - name: Set mac-dev become password from vault
+      ansible.builtin.set_fact:
+        ansible_become_password: "{{ vault_mac_dev_become_password }}"
+      no_log: true
+      when: vault_mac_dev_become_password is defined
+
+    - name: Initialize managed RDP connection lists
+      ansible.builtin.set_fact:
+        remote_desktop_mac_connections: []
+        remote_desktop_mac_trust_labels: []
+
+    - name: Discover exported RDP certificate CN sidecars
+      ansible.builtin.find:
+        paths: "{{ playbook_dir }}/../.cache/rdp-certs"
+        patterns: "*.cn.txt"
+        recurse: true
+      register: remote_desktop_mac_cn_files
+
+    - name: Build standard named RDP connections from exported CNs
+      ansible.builtin.set_fact:
+        remote_desktop_mac_connections: >-
+          {{
+            remote_desktop_mac_connections
+            + [{
+                'name': item.path | basename | replace('.cn.txt', ''),
+                'hostname': lookup('ansible.builtin.file', item.path) | trim,
+                'address': (
+                  hostvars[item.path | basename | replace('.cn.txt', '')].host_ip
+                  | default(
+                      hostvars[item.path | basename | replace('.cn.txt', '')].ansible_host
+                      | default('')
+                    )
+                )
+              }]
+          }}
+      loop: "{{ remote_desktop_mac_cn_files.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      when:
+        - (item.path | basename | replace('.cn.txt', '')) in hostvars
+
+    - name: Build trust labels from connection names, CNs, and LAN IPs
+      ansible.builtin.set_fact:
+        remote_desktop_mac_trust_labels: >-
+          {{
+            (
+              remote_desktop_mac_connections | map(attribute='name') | list
+              + remote_desktop_mac_connections | map(attribute='hostname') | list
+              + remote_desktop_mac_connections | map(attribute='address') | list
+            )
+            | unique
+            | reject('equalto', '')
+            | list
+          }}
+
+    - name: Show managed RDP connection plan
+      ansible.builtin.debug:
+        var: remote_desktop_mac_connections
+
+  roles:
+    - role: remote_desktop_mac
+      tags: [remote_desktop_mac]

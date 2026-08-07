@@ -1,0 +1,81 @@
+---
+# Encoding rule: WriteAllText + UTF8Encoding($false) — Rule 2 (102--ansible-powershell-encoding)
+
+- name: Ensure remote RDP cert export directory exists
+  ansible.windows.win_file:
+    path: "{{ windows_rdp_certificate_export_remote_dir }}"
+    state: directory
+
+- name: Discover Remote Desktop TLS leaf thumbprint and CN
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $certs = @(Get-ChildItem -LiteralPath 'Cert:\LocalMachine\Remote Desktop' -ErrorAction Stop)
+      if ($certs.Count -lt 1) {
+        throw 'No certificates found in Cert:\LocalMachine\Remote Desktop'
+      }
+      $cert = $certs | Sort-Object NotAfter -Descending | Select-Object -First 1
+      $cn = ($cert.GetNameInfo([System.Security.Cryptography.X509Certificates.X509NameType]::SimpleName, $false))
+      if ([string]::IsNullOrWhiteSpace($cn)) {
+        $cn = ($cert.Subject -replace '^CN=', '' -split ',')[0]
+      }
+      $Ansible.Result = @{
+        thumbprint = $cert.Thumbprint
+        cn = $cn
+        subject = $cert.Subject
+        not_after = $cert.NotAfter.ToString('o')
+      }
+      $Ansible.Changed = $false
+  register: windows_rdp_certificate_export_discover
+
+- name: Set RDP certificate export facts
+  ansible.builtin.set_fact:
+    windows_rdp_certificate_export_thumbprint: >-
+      {{ windows_rdp_certificate_export_discover.result.thumbprint }}
+    windows_rdp_certificate_export_cn: >-
+      {{ windows_rdp_certificate_export_discover.result.cn }}
+    windows_rdp_certificate_export_remote_cer: >-
+      {{ windows_rdp_certificate_export_remote_dir }}\{{ inventory_hostname }}.cer
+    windows_rdp_certificate_export_remote_cn: >-
+      {{ windows_rdp_certificate_export_remote_dir }}\{{ inventory_hostname }}.cn.txt
+
+- name: Export Remote Desktop TLS leaf certificate (public)
+  ansible.windows.win_certificate_store:
+    path: "{{ windows_rdp_certificate_export_remote_cer }}"
+    state: exported
+    file_type: "{{ windows_rdp_certificate_export_file_type }}"
+    store_location: "{{ windows_rdp_certificate_export_store_location }}"
+    store_name: "{{ windows_rdp_certificate_export_store_name }}"
+    thumbprint: "{{ windows_rdp_certificate_export_thumbprint }}"
+
+- name: Write CN sidecar for Mac connection hostname
+  ansible.windows.win_copy:
+    dest: "{{ windows_rdp_certificate_export_remote_cn }}"
+    content: "{{ windows_rdp_certificate_export_cn }}\n"
+
+- name: Report CN sidecar write
+  ansible.builtin.debug:
+    msg: >-
+      Written: {{ windows_rdp_certificate_export_remote_cn }}
+      Encoding: win_copy content (CN sidecar; LF normalized by module)
+      CN: {{ windows_rdp_certificate_export_cn }}
+
+- name: Ensure controller fetch destination exists
+  ansible.builtin.file:
+    path: "{{ windows_rdp_certificate_export_fetch_dest }}/{{ inventory_hostname }}"
+    state: directory
+    mode: "0750"
+  delegate_to: localhost
+  become: false
+
+- name: Fetch Remote Desktop certificate to controller cache
+  ansible.builtin.fetch:
+    src: "{{ windows_rdp_certificate_export_remote_cer }}"
+    dest: "{{ windows_rdp_certificate_export_fetch_dest }}/{{ inventory_hostname }}/{{ inventory_hostname }}.cer"
+    flat: true
+
+- name: Fetch CN sidecar to controller cache
+  ansible.builtin.fetch:
+    src: "{{ windows_rdp_certificate_export_remote_cn }}"
+    dest: "{{ windows_rdp_certificate_export_fetch_dest }}/{{ inventory_hostname }}/{{ inventory_hostname }}.cn.txt"
+    flat: true

@@ -1,0 +1,109 @@
+---
+# Manage Microsoft Remote Desktop bookmarks, Keychain password, and /etc/hosts CN aliases.
+
+- name: Resolve Microsoft Remote Desktop application support database
+  ansible.builtin.set_fact:
+    remote_desktop_mac_db_path: >-
+      {{ remote_desktop_mac_app_support_dir }}/com.microsoft.rdc.application-data.sqlite
+
+- name: Stat Microsoft Remote Desktop database
+  ansible.builtin.stat:
+    path: "{{ remote_desktop_mac_db_path }}"
+  register: remote_desktop_mac_db_stat
+
+- name: Fail when MSRDC database is missing and connections are required
+  ansible.builtin.assert:
+    that:
+      - remote_desktop_mac_db_stat.stat.exists
+    fail_msg: >-
+      Microsoft Remote Desktop database not found at
+      {{ remote_desktop_mac_db_path }}. Launch the app once, then re-run.
+
+- name: Quit Microsoft Remote Desktop before bookmark edits
+  ansible.builtin.command:
+    argv:
+      - osascript
+      - -e
+      - 'tell application "Microsoft Remote Desktop" to if it is running then quit'
+  register: remote_desktop_mac_quit
+  changed_when: remote_desktop_mac_quit.rc == 0
+  failed_when: false
+
+- name: Wait for Microsoft Remote Desktop to release SQLite locks
+  ansible.builtin.pause:
+    seconds: 2
+
+- name: Stage MSRDC bookmark manager script
+  ansible.builtin.copy:
+    src: manage_msrdc_bookmarks.py
+    dest: "{{ remote_desktop_mac_work_dir }}/manage_msrdc_bookmarks.py"
+    mode: "0755"
+
+- name: Upsert MSRDC bookmarks, credential, and trust labels
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ remote_desktop_mac_work_dir }}/manage_msrdc_bookmarks.py"
+      - --db
+      - "{{ remote_desktop_mac_db_path }}"
+      - --credential-id
+      - "{{ remote_desktop_mac_credential_id }}"
+      - --username
+      - "{{ remote_desktop_mac_username }}"
+      - --credential-friendly-name
+      - "{{ remote_desktop_mac_credential_friendly_name }}"
+      - --connections-json
+      - "{{ remote_desktop_mac_connections | to_json }}"
+      - --trust-labels-json
+      - "{{ remote_desktop_mac_trust_labels | to_json }}"
+  register: remote_desktop_mac_bookmark_manage
+  changed_when: true
+
+- name: Store joshc RDP password in login Keychain for MSRDC credential
+  ansible.builtin.command:
+    argv:
+      - security
+      - add-generic-password
+      - -U
+      - -s
+      - "{{ remote_desktop_mac_keychain_service }}"
+      - -a
+      - "{{ remote_desktop_mac_credential_id }}"
+      - -l
+      - "{{ remote_desktop_mac_username }}"
+      - -w
+      - "{{ remote_desktop_mac_password }}"
+  no_log: true
+  register: remote_desktop_mac_keychain
+  changed_when: remote_desktop_mac_keychain.rc == 0
+
+- name: Ensure Documents folder for managed .rdp files
+  ansible.builtin.file:
+    path: "{{ remote_desktop_mac_rdp_dir }}"
+    state: directory
+    mode: "0750"
+  when: remote_desktop_mac_deploy_rdp_files | bool
+
+- name: Deploy managed .rdp connection files
+  ansible.builtin.template:
+    src: connection.rdp.j2
+    dest: "{{ remote_desktop_mac_rdp_dir }}/{{ item.name }}.rdp"
+    mode: "0640"
+  loop: "{{ remote_desktop_mac_connections }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: remote_desktop_mac_deploy_rdp_files | bool
+
+- name: Ensure /etc/hosts aliases for RDP certificate CN names
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} ANSIBLE MANAGED remote_desktop_mac"
+    block: |
+      {% for item in remote_desktop_mac_connections %}
+      {% if item.address | default('') | length > 0 %}
+      {{ item.address }} {{ item.hostname }} {{ item.name }}
+      {% endif %}
+      {% endfor %}
+    state: present
+  become: true
+  when: remote_desktop_mac_manage_hosts_aliases | bool

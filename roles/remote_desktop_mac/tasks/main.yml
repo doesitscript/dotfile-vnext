@@ -3,4 +3,54 @@
 
 - name: Install Microsoft Remote Desktop on macOS
   ansible.builtin.import_tasks: mac.yml
-  when: ansible_facts['system'] == "Darwin"
+  when:
+    - ansible_facts['system'] == "Darwin"
+    - remote_desktop_mac_state | default('present') == 'present'
+
+- name: Ensure work directory exists
+  ansible.builtin.file:
+    path: "{{ remote_desktop_mac_work_dir }}"
+    state: directory
+    mode: "0750"
+  when:
+    - ansible_facts['system'] == "Darwin"
+    - remote_desktop_mac_state | default('present') == 'present'
+    - remote_desktop_mac_manage_connections | bool
+      or remote_desktop_mac_trust_certs | bool
+
+- name: Load house Windows remoting vault for RDP password
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../inventory/group_vars/windows_os_hosts/vault.yml"
+    name: remote_desktop_mac_vault
+  when:
+    - ansible_facts['system'] == "Darwin"
+    - remote_desktop_mac_state | default('present') == 'present'
+    - remote_desktop_mac_manage_connections | bool
+    - (remote_desktop_mac_password | default('') | length) == 0
+
+- name: Set RDP password from house remoting vault
+  ansible.builtin.set_fact:
+    remote_desktop_mac_password: >-
+      {{ remote_desktop_mac_vault.vault_windows_house_remoting_password }}
+  when:
+    - ansible_facts['system'] == "Darwin"
+    - remote_desktop_mac_state | default('present') == 'present'
+    - remote_desktop_mac_manage_connections | bool
+    - (remote_desktop_mac_password | default('') | length) == 0
+    - remote_desktop_mac_vault is defined
+  no_log: true
+
+- name: Trust exported Windows Remote Desktop certificates
+  ansible.builtin.import_tasks: trust_certs.yml
+  when:
+    - ansible_facts['system'] == "Darwin"
+    - remote_desktop_mac_state | default('present') == 'present'
+    - remote_desktop_mac_trust_certs | bool
+
+- name: Manage Microsoft Remote Desktop LAN connections
+  ansible.builtin.import_tasks: connections.yml
+  when:
+    - ansible_facts['system'] == "Darwin"
+    - remote_desktop_mac_state | default('present') == 'present'
+    - remote_desktop_mac_manage_connections | bool
+    - remote_desktop_mac_connections | length > 0
