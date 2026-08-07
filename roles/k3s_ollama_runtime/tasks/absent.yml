@@ -1,0 +1,21 @@
+---
+- name: Remove Ollama deployment and service
+  kubernetes.core.k8s:
+    state: absent
+    definition:
+      apiVersion: "{{ item.api_version }}"
+      kind: "{{ item.kind }}"
+      metadata:
+        name: "{{ item.name }}"
+        namespace: "{{ k3s_ollama_runtime_namespace }}"
+  loop:
+    - api_version: apps/v1
+      kind: Deployment
+      name: "{{ k3s_ollama_runtime_name }}"
+    - api_version: v1
+      kind: Service
+      name: "{{ k3s_ollama_runtime_name }}"
+  loop_control:
+    label: "{{ item.kind }}/{{ item.name }}"
+  environment:
+    KUBECONFIG: "{{ k3s_ollama_runtime_kubeconfig }}"

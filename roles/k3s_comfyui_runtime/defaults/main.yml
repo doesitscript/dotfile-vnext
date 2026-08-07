@@ -1,0 +1,75 @@
+---
+# k3s_comfyui_runtime — ComfyUI on the GPU-lane K3s guest (RTX 5090).
+# Phase B lab stills (ops change-card / agent storyboard). Time-share with
+# k3s_vllm_runtime: only one should hold nvidia.com/gpu on a single-GPU node.
+# Default absent.
+
+k3s_comfyui_runtime_state: absent
+
+k3s_comfyui_runtime_namespace: comfyui-runtime
+k3s_comfyui_runtime_name: comfyui
+# CUDA 13 / Blackwell-capable slim (RTX 5090 = sm_120). cu124 cannot run 5090.
+k3s_comfyui_runtime_image: "yanwk/comfyui-boot:cu130-slim-v2"
+
+k3s_comfyui_runtime_replicas: 1
+k3s_comfyui_runtime_deployment_strategy_type: Recreate
+k3s_comfyui_runtime_service_port: 8188
+k3s_comfyui_runtime_container_port: 8188
+k3s_comfyui_runtime_node_port: 30188
+
+k3s_comfyui_runtime_runtime_class_name: nvidia
+k3s_comfyui_runtime_gpu_resource: nvidia.com/gpu
+k3s_comfyui_runtime_gpu_count: 1
+
+k3s_comfyui_runtime_cpu_request: "500m"
+k3s_comfyui_runtime_memory_request: 2Gi
+k3s_comfyui_runtime_cpu_limit: "4"
+# Guest RAM on k3s-02 is ~10Gi; keep limit under that.
+k3s_comfyui_runtime_memory_limit: 8Gi
+k3s_comfyui_runtime_tolerations: []
+
+# Models + output PVC (local-path). Not resizeable after create.
+k3s_comfyui_runtime_models_pvc_size: 200Gi
+k3s_comfyui_runtime_kubeconfig: /etc/rancher/k3s/k3s.yaml
+
+k3s_comfyui_runtime_ready_timeout_seconds: 900
+# Guest RAM on k3s-02 is ~10Gi. --highvram enables ~9Gi pinned host RAM and
+# gets the pod memory-evicted when LTX+T5 load. Prefer lowvram on this guest;
+# the 5090 still holds weights in VRAM as capacity allows.
+k3s_comfyui_runtime_extra_args:
+  - "--lowvram"
+
+# When true, refuse present if vLLM deployment has ready replicas > 0.
+k3s_comfyui_runtime_require_vllm_absent: true
+k3s_comfyui_runtime_vllm_namespace: vllm-runtime
+k3s_comfyui_runtime_vllm_name: vllm-primary
+
+# ComfyUI starter weights into PVC (/mnt/comfy-models) — FLUX.1-dev FP8 + SDXL base.
+# Shared text encoder (t5xxl_fp8) serves FLUX; SDXL checkpoint covers LoRA / ControlNet ecosystem.
+# A1111 on HVH-01 stays on SD1.5 CyberRealistic for Open WebUI t2i (6GB VRAM).
+k3s_comfyui_runtime_download_models: true
+k3s_comfyui_runtime_models:
+  - name: flux1-dev-fp8.safetensors
+    dest_subdir: diffusion_models
+    url: >-
+      https://huggingface.co/Comfy-Org/flux1-dev/resolve/main/flux1-dev-fp8.safetensors
+  - name: clip_l.safetensors
+    dest_subdir: text_encoders
+    url: >-
+      https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors
+  - name: t5xxl_fp8_e4m3fn.safetensors
+    dest_subdir: text_encoders
+    url: >-
+      https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors
+  - name: ae.safetensors
+    dest_subdir: vae
+    url: >-
+      https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors
+  - name: sd_xl_base_1.0.safetensors
+    dest_subdir: checkpoints
+    url: >-
+      https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors
+  - name: ltx-video-2b-v0.9.5.safetensors
+    dest_subdir: checkpoints
+    url: >-
+      https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltx-video-2b-v0.9.5.safetensors

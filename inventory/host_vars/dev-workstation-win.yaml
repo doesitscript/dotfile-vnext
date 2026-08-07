@@ -31,24 +31,44 @@ gpu_diagnostics_windows_enable_scheduled_logging: true
 gpu_diagnostics_windows_logging_user: ericc
 gpu_diagnostics_windows_enable_presentmon_cli: false
 
-# Host-local Ollama — Continue edit backend (AMD RX 9060 XT / Vulkan).
-# Group sets require_driver_contract=false. Install uses reusable
-# windows_artifact_download + win_package (Chocolatey deprecated).
+# Host-local Ollama — Continue edit + Open WebUI desktop chat models
+# (AMD RX 9060 XT / Vulkan). Group sets require_driver_contract=false.
 # Do not run llm_compute_windows here (NVIDIA Studio Driver).
+# Large chat models live here so k3s-02 RTX 5090 can keep Ornith (vLLM).
+# Official library tags (2026): gemma4 vision, qwen3.6 reasoning, gpt-oss general.
 windows_ollama_runtime_state: present
 windows_ollama_runtime_bind_host: "0.0.0.0"
 windows_ollama_runtime_port: 11434
-windows_ollama_runtime_models_path: 'D:\ai\models\ollama'
+windows_ollama_runtime_models_path: 'E:\ai\models\ollama'
 windows_ollama_runtime_default_model: "qwen3-coder:30b"
 windows_ollama_runtime_fallback_model: "qwen3-coder:30b"
 windows_ollama_runtime_model_pull_mode: background
 windows_ollama_runtime_models_present:
   - "qwen3-coder:30b"
+  - "gemma4:12b"
+  - "qwen3.6:27b"
+  - "gpt-oss:20b"
 windows_ollama_runtime_model_aliases:
   - lane: continue-edit
     runtime_slug: ollama-edit-qwen3-coder-30b-desktop
     model: "qwen3-coder:30b"
     fallback_model: "qwen3-coder:30b"
+  - lane: open-webui-gemma4
+    runtime_slug: ollama-gemma4-12b-desktop
+    model: "gemma4:12b"
+    fallback_model: "gemma4:12b"
+  - lane: open-webui-qwen36
+    runtime_slug: ollama-qwen36-27b-desktop
+    model: "qwen3.6:27b"
+    fallback_model: "qwen3.6:27b"
+  - lane: open-webui-gpt-oss
+    runtime_slug: ollama-gpt-oss-20b-desktop
+    model: "gpt-oss:20b"
+    fallback_model: "gpt-oss:20b"
+  - lane: open-webui-studio-coach
+    runtime_slug: ollama-studio-coach-gemma4-desktop
+    model: "gemma4:12b"
+    fallback_model: "gemma4:12b"
 
 # Publish interim *.hom.lab names on this Windows desktop too.
 homelab_hosts_file_windows_enabled: true
@@ -66,6 +86,13 @@ runtime_planes:
 policy_classes:
   - experimental
   - non_authoritative_data
+
+# IMAGE/VIDEO PIXELS DO NOT RUN HERE.
+# Phase A stills → HOM-LAB-HVH-01 Automatic1111 (a1111-hvh01.hom.lab:7860)
+# Phase B Comfy/I2V → hom-lab-ctl-k3s-02 ComfyUI (comfyui.hom.lab:30188)
+# This desktop = Ollama chat coaching only (Open WebUI / Continue).
+# Lab studio assets live on HVH-01 share: F:\shares\public\studio
+windows_comfyui_amd_state: absent
 
 # Legacy WinRM (bootstrap/troubleshooting fallback)
 # ansible_connection: winrm

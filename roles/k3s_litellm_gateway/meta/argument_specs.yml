@@ -22,6 +22,23 @@ argument_specs:
         type: str
         default: litellm-env-secret
         description: Kubernetes Secret name exported via Helm environmentSecrets.
+      k3s_litellm_gateway_pillow_bootstrap_enabled:
+        type: bool
+        default: true
+        description: >-
+          Override container command/args to ensurepip + pip install Pillow
+          before starting litellm. Required for Ollama vision/image conversion
+          while upstream images omit Pillow (BerriAI/litellm#27183).
+      k3s_litellm_gateway_command:
+        type: list
+        elements: str
+        required: false
+        description: Helm command override used when pillow bootstrap is enabled.
+      k3s_litellm_gateway_args:
+        type: list
+        elements: str
+        required: false
+        description: Helm args override used when pillow bootstrap is enabled.
       k3s_litellm_gateway_db_port:
         type: int
         default: 5432

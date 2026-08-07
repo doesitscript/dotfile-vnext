@@ -1,0 +1,33 @@
+---
+- name: Stop Automatic1111 scheduled task and processes
+  ansible.windows.win_powershell:
+    error_action: continue
+    script: |
+      $task = Get-ScheduledTask -TaskName '{{ windows_automatic1111_task_name }}' -ErrorAction SilentlyContinue
+      if ($task) {
+        Stop-ScheduledTask -TaskName '{{ windows_automatic1111_task_name }}' -ErrorAction SilentlyContinue
+      }
+      Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object {
+          $_.CommandLine -and (
+            $_.CommandLine -like '*stable-diffusion-webui*' -or
+            $_.CommandLine -like '*launch.py*'
+          )
+        } |
+        ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+  changed_when: false
+
+- name: Remove Automatic1111 boot scheduled task
+  community.windows.win_scheduled_task:
+    name: "{{ windows_automatic1111_task_name }}"
+    state: absent
+
+- name: Remove Automatic1111 firewall rule
+  community.windows.win_firewall_rule:
+    name: "{{ windows_automatic1111_firewall_rule_name }}"
+    state: absent
+
+- name: Remove Automatic1111 contract directory
+  ansible.windows.win_file:
+    path: "{{ windows_automatic1111_contract_root }}"
+    state: absent

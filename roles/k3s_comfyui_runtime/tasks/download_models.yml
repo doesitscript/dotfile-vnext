@@ -1,0 +1,108 @@
+---
+# Download selected Phase B weights into the ComfyUI models PVC.
+# Module matrix: kubernetes.core.k8s_info + ansible.builtin.command (kubectl exec).
+
+- name: Resolve ComfyUI pod name for model download
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: "{{ k3s_comfyui_runtime_namespace }}"
+    label_selectors:
+      - "app.kubernetes.io/name=comfyui"
+      - "app.kubernetes.io/instance={{ k3s_comfyui_runtime_name }}"
+  register: k3s_comfyui_runtime_pods
+  environment:
+    KUBECONFIG: "{{ k3s_comfyui_runtime_kubeconfig }}"
+
+- name: Assert ComfyUI pod exists before model download
+  ansible.builtin.assert:
+    that:
+      - (k3s_comfyui_runtime_pods.resources | default([]) | length) > 0
+      - >-
+        (k3s_comfyui_runtime_pods.resources[0].status.phase | default('')) == 'Running'
+    fail_msg: ComfyUI pod must be Running before PVC model download.
+
+- name: Set ComfyUI pod name fact for downloads
+  ansible.builtin.set_fact:
+    _k3s_comfyui_runtime_pod: "{{ k3s_comfyui_runtime_pods.resources[0].metadata.name }}"
+
+- name: Ensure PVC model subdirectories exist
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig={{ k3s_comfyui_runtime_kubeconfig }}
+      - -n
+      - "{{ k3s_comfyui_runtime_namespace }}"
+      - exec
+      - "{{ _k3s_comfyui_runtime_pod }}"
+      - -c
+      - comfyui
+      - --
+      - mkdir
+      - -p
+      - /mnt/comfy-models/checkpoints
+      - /mnt/comfy-models/diffusion_models
+      - /mnt/comfy-models/text_encoders
+      - /mnt/comfy-models/vae
+      - /mnt/comfy-models/input
+      - /mnt/comfy-models/output
+      - /mnt/comfy-models/workflows
+  changed_when: false
+
+- name: Download each Phase B weight into the ComfyUI PVC
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig={{ k3s_comfyui_runtime_kubeconfig }}
+      - -n
+      - "{{ k3s_comfyui_runtime_namespace }}"
+      - exec
+      - "{{ _k3s_comfyui_runtime_pod }}"
+      - -c
+      - comfyui
+      - --
+      - bash
+      - -lc
+      - >-
+        DEST="/mnt/comfy-models/{{ item.dest_subdir }}/{{ item.name }}";
+        PART="${DEST}.partial";
+        mkdir -p "/mnt/comfy-models/{{ item.dest_subdir }}";
+        if [ -f "$DEST" ] && [ -s "$DEST" ]; then echo already_present; exit 0; fi;
+        curl -fL --retry 5 --retry-delay 10 -C - -o "$PART" "{{ item.url }}";
+        mv -f "$PART" "$DEST";
+        ls -lah "$DEST"
+  register: k3s_comfyui_runtime_model_dl
+  changed_when: >-
+    'already_present' not in (k3s_comfyui_runtime_model_dl.stdout | default(''))
+  loop: "{{ k3s_comfyui_runtime_models }}"
+  loop_control:
+    label: "{{ item.name }}"
+  async: 7200
+  poll: 30
+
+- name: Relink PVC models into ComfyUI model dirs
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig={{ k3s_comfyui_runtime_kubeconfig }}
+      - -n
+      - "{{ k3s_comfyui_runtime_namespace }}"
+      - exec
+      - "{{ _k3s_comfyui_runtime_pod }}"
+      - -c
+      - comfyui
+      - --
+      - bash
+      - -lc
+      - |
+        for sub in checkpoints diffusion_models text_encoders vae; do
+          mkdir -p "/mnt/comfy-models/$sub" "/root/ComfyUI/models/$sub"
+          for f in /mnt/comfy-models/$sub/*; do
+            [ -e "$f" ] || continue
+            base=$(basename "$f")
+            case "$base" in *.partial|put_*) continue ;; esac
+            ln -sfn "$f" "/root/ComfyUI/models/$sub/$base"
+          done
+        done
+        ls -lah /root/ComfyUI/models/checkpoints/ /root/ComfyUI/models/diffusion_models/ /root/ComfyUI/models/text_encoders/ /root/ComfyUI/models/vae/
+  changed_when: true

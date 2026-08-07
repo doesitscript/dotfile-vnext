@@ -1,0 +1,38 @@
+---
+- name: Stop ComfyUI AMD scheduled task if present
+  community.windows.win_scheduled_task:
+    name: "{{ windows_comfyui_amd_task_name }}"
+    state: absent
+  failed_when: false
+
+- name: Remove ComfyUI AMD firewall rule
+  community.windows.win_firewall_rule:
+    name: "{{ windows_comfyui_amd_firewall_rule_name }}"
+    state: absent
+  failed_when: false
+
+- name: Kill ComfyUI python processes under install root
+  ansible.windows.win_shell: |
+    $root = '{{ windows_comfyui_amd_install_root }}'
+    Get-CimInstance Win32_Process |
+      Where-Object {
+        $_.CommandLine -and ($_.CommandLine -like ("*" + $root + "*"))
+      } |
+      ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+  changed_when: false
+  failed_when: false
+
+- name: Remove ComfyUI AMD install tree
+  ansible.windows.win_file:
+    path: "{{ windows_comfyui_amd_install_root }}"
+    state: absent
+
+- name: Remove leftover desktop studio pixel root (moved off AMD desktop)
+  ansible.windows.win_file:
+    path: "{{ windows_comfyui_amd_studio_root }}"
+    state: absent
+
+- name: Remove ComfyUI AMD contract root
+  ansible.windows.win_file:
+    path: "{{ windows_comfyui_amd_contract_root }}"
+    state: absent

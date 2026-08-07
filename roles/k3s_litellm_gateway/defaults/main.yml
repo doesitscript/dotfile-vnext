@@ -14,6 +14,21 @@ k3s_litellm_gateway_strategy:
 k3s_litellm_gateway_image_repository: docker.litellm.ai/berriai/litellm
 k3s_litellm_gateway_image_tag: main-latest
 
+# Upstream LiteLLM images omit Pillow; Ollama vision/image payloads fail with:
+#   ModuleNotFoundError: No module named 'PIL'
+#   ollama image conversion failed please run `pip install Pillow`
+# Bootstrap on container start until the image includes Pillow (BerriAI/litellm#27183).
+k3s_litellm_gateway_pillow_bootstrap_enabled: true
+k3s_litellm_gateway_command:
+  - /bin/bash
+  - -lc
+k3s_litellm_gateway_args:
+  - >-
+    set -euo pipefail;
+    /app/.venv/bin/python -m ensurepip --upgrade >/dev/null 2>&1 || true;
+    /app/.venv/bin/python -m pip install -q 'Pillow';
+    exec /app/.venv/bin/litellm --config /etc/litellm/config.yaml
+
 # LiteLLM master key — override via vault/k3s_litellm_gateway_master_key at deploy time.
 k3s_litellm_gateway_master_key: "sk-Pass@w0rd1"
 k3s_litellm_gateway_env_secret_name: litellm-env-secret
@@ -337,15 +352,19 @@ k3s_litellm_gateway_model_list:
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
   - model_name: default
     litellm_params:
-      model: gpt-4o-mini
-      api_base: https://api.openai.com/v1
-      api_key: "os.environ/OPENAI_API_KEY"
+      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
+      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
+      api_key: "none"
     model_info:
       model_lane: default
-      routing_policy: migration
+      routing_policy: local-primary-compat
       project: ripi
+      backend_runtime: vllm-primary
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
+      notes: >-
+        Local-first Open WebUI / client default alias → Ornith (vLLM primary).
+        Cloud escalation remains on smart-router COMPLEX/REASONING tiers.
 
 # Optional Anthropic route fragment — appended when vault_shared_anthropic_api_key is set.
 k3s_litellm_gateway_anthropic_model_routes:
@@ -390,6 +409,27 @@ k3s_litellm_gateway_continue_edit_provider: "openai"
 k3s_litellm_gateway_continue_apply_api_base: ""
 k3s_litellm_gateway_continue_apply_model: "phi4-mini"
 k3s_litellm_gateway_continue_apply_provider: "openai"
+
+# Open WebUI chat → desktop Ollama (official library tags).
+# Set api_base when the desktop Ollama route should be listed in LiteLLM.
+# LiteLLM model_name uses hyphenated aliases; Ollama pull tags keep the colon.
+k3s_litellm_gateway_gemma4_chat_api_base: ""
+k3s_litellm_gateway_gemma4_chat_model: "gemma4:12b"
+k3s_litellm_gateway_gemma4_chat_provider: "ollama"
+
+k3s_litellm_gateway_qwen36_chat_api_base: ""
+k3s_litellm_gateway_qwen36_chat_model: "qwen3.6:27b"
+k3s_litellm_gateway_qwen36_chat_provider: "ollama"
+
+k3s_litellm_gateway_gpt_oss_chat_api_base: ""
+k3s_litellm_gateway_gpt_oss_chat_model: "gpt-oss:20b"
+k3s_litellm_gateway_gpt_oss_chat_provider: "ollama"
+
+# Studio / image-prompt coaching alias (pixels stay on ComfyUI / A1111).
+# Defaults empty; host_vars pin to desktop Ollama (same engine as gemma4-12b).
+k3s_litellm_gateway_studio_coach_chat_api_base: ""
+k3s_litellm_gateway_studio_coach_chat_model: "gemma4:12b"
+k3s_litellm_gateway_studio_coach_chat_provider: "ollama"
 
 k3s_litellm_gateway_local_continue_model_routes: []
 # Built at runtime in build_helm_values.yml from the api_base vars above.

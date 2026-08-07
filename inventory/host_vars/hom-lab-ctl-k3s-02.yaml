@@ -134,3 +134,58 @@ k3s_litellm_gateway_continue_edit_provider: "openai"
 k3s_litellm_gateway_continue_apply_api_base: "http://ollama-hvh01.hom.lab:11434/v1"
 k3s_litellm_gateway_continue_apply_model: "phi4-mini"
 k3s_litellm_gateway_continue_apply_provider: "openai"
+
+# ---------------------------------------------------------------------------
+# GPU time-share on this host (single nvidia.com/gpu) — Phase B on vs off
+# Doc: docs/reference/k3s-02-gpu-timeshare-phase-b.md
+#
+# Exactly one of vLLM / ComfyUI / Ollama should be present on the GPU.
+# LiteLLM gateway stays up either way; only the Ornith (vLLM) backend moves.
+#
+# --- Phase B OFF (default steady-state: Ornith for LiteLLM) ---
+#   k3s_vllm_runtime_state: present
+#   k3s_comfyui_runtime_state: absent
+#   k3s_ollama_runtime_state: absent
+# Playbooks (order matters — tear down Comfy before bringing Ornith up):
+#   ansible-playbook playbooks/deploy_comfyui_runtime.yaml --limit hom-lab-ctl-k3s-02
+#   ansible-playbook playbooks/deploy_vllm_runtime.yaml --limit hom-lab-ctl-k3s-02
+#
+# --- Phase B ON (ComfyUI holds the 5090; Ornith paused) ---
+#   k3s_vllm_runtime_state: absent
+#   k3s_comfyui_runtime_state: present
+#   k3s_ollama_runtime_state: absent
+# Playbooks (order matters — tear down Ornith before bringing Comfy up):
+#   ansible-playbook playbooks/deploy_vllm_runtime.yaml --limit hom-lab-ctl-k3s-02
+#   ansible-playbook playbooks/deploy_comfyui_runtime.yaml --limit hom-lab-ctl-k3s-02
+#
+# Current values below = Phase B OFF.
+# ---------------------------------------------------------------------------
+k3s_vllm_runtime_state: present
+k3s_ollama_runtime_state: absent
+k3s_comfyui_runtime_state: absent
+
+# ComfyUI pod memory (used only when k3s_comfyui_runtime_state: present).
+k3s_comfyui_runtime_memory_request: 4Gi
+k3s_comfyui_runtime_memory_limit: 20Gi
+
+# Open WebUI Gemma4 → Windows desktop Ollama (not k3s-02).
+# Use native ollama provider (not openai/*) so think:false reaches Ollama —
+# otherwise Gemma fills reasoning and leaves content empty in WebUI.
+k3s_litellm_gateway_gemma4_chat_api_base: "http://ollama-desktop.hom.lab:11434"
+k3s_litellm_gateway_gemma4_chat_model: "gemma4:12b"
+k3s_litellm_gateway_gemma4_chat_provider: "ollama"
+
+# Open WebUI Qwen3.6 27B → same desktop Ollama (agentic / thinking).
+k3s_litellm_gateway_qwen36_chat_api_base: "http://ollama-desktop.hom.lab:11434"
+k3s_litellm_gateway_qwen36_chat_model: "qwen3.6:27b"
+k3s_litellm_gateway_qwen36_chat_provider: "ollama"
+
+# Open WebUI gpt-oss 20B → same desktop Ollama (general / reasoning).
+k3s_litellm_gateway_gpt_oss_chat_api_base: "http://ollama-desktop.hom.lab:11434"
+k3s_litellm_gateway_gpt_oss_chat_model: "gpt-oss:20b"
+k3s_litellm_gateway_gpt_oss_chat_provider: "ollama"
+
+# Studio / image-prompt coaching alias (Open WebUI / LiteLLM) → Gemma4 vision.
+k3s_litellm_gateway_studio_coach_chat_api_base: "http://ollama-desktop.hom.lab:11434"
+k3s_litellm_gateway_studio_coach_chat_model: "gemma4:12b"
+k3s_litellm_gateway_studio_coach_chat_provider: "ollama"

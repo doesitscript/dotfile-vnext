@@ -1,0 +1,24 @@
+---
+- name: Remove ComfyUI deployment, service, and user-scripts ConfigMap
+  kubernetes.core.k8s:
+    state: absent
+    definition:
+      apiVersion: "{{ item.api_version }}"
+      kind: "{{ item.kind }}"
+      metadata:
+        name: "{{ item.name }}"
+        namespace: "{{ k3s_comfyui_runtime_namespace }}"
+  loop:
+    - api_version: apps/v1
+      kind: Deployment
+      name: "{{ k3s_comfyui_runtime_name }}"
+    - api_version: v1
+      kind: Service
+      name: "{{ k3s_comfyui_runtime_name }}"
+    - api_version: v1
+      kind: ConfigMap
+      name: "{{ k3s_comfyui_runtime_name }}-user-scripts"
+  loop_control:
+    label: "{{ item.kind }}/{{ item.name }}"
+  environment:
+    KUBECONFIG: "{{ k3s_comfyui_runtime_kubeconfig }}"

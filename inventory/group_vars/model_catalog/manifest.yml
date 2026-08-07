@@ -198,6 +198,153 @@ model_catalog_manifest:
       candidate_family: Qwen3-Coder 480B
       serving_runtime: deferred-multi-gpu
       notes: Too large for single 5090. Catalog-only; not OpenRouter.
+    - lane: gemma4-12b
+      purpose: Open WebUI chat — Gemma 4 12B official (vision + tools + thinking)
+      status: commissioned
+      candidate_family: Gemma 4 12B (Google / Ollama library)
+      selected_ollama_tag: gemma4:12b
+      serving_runtime: ollama
+      storage_host: dev-workstation-win
+      unc_path: null
+      source_routing:
+        primary_doc_source: ollama_library
+        primary_doc_url: "https://ollama.com/library/gemma4"
+        secondary_doc_source: null
+        secondary_doc_url: null
+        hrl_pack_slug: gemma4-12b
+        hrl_pack_status: missing
+      research_sources:
+        - https://ollama.com/library/gemma4
+        - https://docs.ollama.com/
+      notes: >-
+        Served on dev-workstation-win (AMD RX 9060 XT) via windows_ollama_runtime
+        at ollama-desktop.hom.lab. LiteLLM alias gemma4-12b for Open WebUI.
+        Official Gemma4 12B library tag. Arena-pinned.
+    - lane: qwen3.6-27b
+      purpose: Open WebUI chat — Qwen3.6 27B (agentic coding + thinking)
+      status: commissioned
+      candidate_family: Qwen3.6 27B dense (Alibaba / Ollama library)
+      selected_ollama_tag: "qwen3.6:27b"
+      serving_runtime: ollama
+      storage_host: dev-workstation-win
+      unc_path: null
+      source_routing:
+        primary_doc_source: ollama_library
+        primary_doc_url: "https://ollama.com/library/qwen3.6"
+        secondary_doc_source: null
+        secondary_doc_url: null
+        hrl_pack_slug: qwen36-27b
+        hrl_pack_status: missing
+      research_sources:
+        - https://ollama.com/library/qwen3.6
+      notes: >-
+        ~17GB Q4 on desktop AMD Ollama. LiteLLM alias qwen3.6-27b.
+        Official Qwen3.6 27B library tag for agentic / thinking chat. Text-first; not Arena.
+    - lane: gpt-oss-20b
+      purpose: Open WebUI chat — gpt-oss 20B (OpenAI open weights, general/reasoning)
+      status: commissioned
+      candidate_family: gpt-oss 20B MoE (OpenAI / Ollama library)
+      selected_ollama_tag: gpt-oss:20b
+      serving_runtime: ollama
+      storage_host: dev-workstation-win
+      unc_path: null
+      source_routing:
+        primary_doc_source: ollama_library
+        primary_doc_url: "https://ollama.com/library/gpt-oss"
+        secondary_doc_source: null
+        secondary_doc_url: null
+        hrl_pack_slug: gpt-oss-20b
+        hrl_pack_status: missing
+      research_sources:
+        - https://ollama.com/library/gpt-oss
+      notes: >-
+        ~14GB MXFP4; strong 16GB-class general lane. LiteLLM alias gpt-oss-20b.
+        Official gpt-oss 20B library tag for general chat.
+    - lane: studio-coach
+      purpose: Open WebUI — vision prompt coach for ComfyUI / A1111 studio work
+      status: commissioned
+      candidate_family: Gemma 4 12B (alias over gemma4:12b)
+      selected_ollama_tag: gemma4:12b
+      serving_runtime: ollama
+      storage_host: dev-workstation-win
+      unc_path: null
+      source_routing:
+        primary_doc_source: ollama_library
+        primary_doc_url: "https://ollama.com/library/gemma4"
+        secondary_doc_source: null
+        secondary_doc_url: null
+        hrl_pack_slug: studio-coach-gemma4
+        hrl_pack_status: missing
+      research_sources:
+        - https://ollama.com/library/gemma4
+      notes: >-
+        LiteLLM alias studio-coach → same desktop Gemma4 as gemma4-12b.
+        Vision prompt coach for lab-doc / ComfyUI / A1111 stills. Attach reference images in chat.
+    - lane: a1111-cyberrealistic-v9
+      purpose: Open WebUI / A1111 stills — photoreal SD1.5 on GTX 1060 6GB
+      status: commissioned
+      candidate_family: CyberRealistic V9 FP16 (SD1.5)
+      selected_hf_repo_id: cyberdelia/CyberRealistic
+      selected_hf_file: CyberRealistic_V9_FP16.safetensors
+      serving_runtime: automatic1111
+      storage_host: HOM-LAB-HVH-01
+      unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\stable-diffusion\\Stable-diffusion\\CyberRealistic_V9_FP16.safetensors"
+      source_routing:
+        primary_doc_source: huggingface_model_card
+        primary_doc_url: "https://huggingface.co/cyberdelia/CyberRealistic"
+        secondary_doc_source: null
+        secondary_doc_url: null
+        hrl_pack_slug: cyberdelia-cyberrealistic-v9-fp16
+        hrl_pack_status: missing
+      research_sources:
+        - https://huggingface.co/cyberdelia/CyberRealistic
+        - https://github.com/Mikubill/sd-webui-controlnet
+        - https://huggingface.co/comfyanonymous/ControlNet-v1-1_fp16_safetensors
+      notes: >-
+        Top A1111 / Open WebUI t2i pick for 6GB VRAM. Paired with ControlNet
+        OpenPose fp16 for pose edits. Share SDXL/FLUX quality path is ComfyUI on 5090.
+    - lane: comfyui-flux1-dev-fp8
+      purpose: ComfyUI primary stills — FLUX.1-dev FP8 on RTX 5090
+      status: commissioned
+      candidate_family: FLUX.1-dev FP8 (Black Forest Labs / Comfy-Org)
+      selected_hf_repo_id: Comfy-Org/flux1-dev
+      selected_hf_file: flux1-dev-fp8.safetensors
+      serving_runtime: comfyui
+      storage_host: HOM-LAB-HVH-02
+      unc_path: null
+      source_routing:
+        primary_doc_source: huggingface_model_card
+        primary_doc_url: "https://huggingface.co/Comfy-Org/flux1-dev"
+        secondary_doc_source: comfyui_docs
+        secondary_doc_url: "https://docs.comfy.org/tutorials/flux/flux-1-text-to-image"
+        hrl_pack_slug: comfy-org-flux1-dev-fp8
+        hrl_pack_status: missing
+      research_sources:
+        - https://huggingface.co/Comfy-Org/flux1-dev
+        - https://docs.comfy.org/tutorials/flux/flux-1-text-to-image
+      notes: >-
+        ComfyUI starter primary on k3s-02 5090. Needs clip_l + t5xxl_fp8 + ae.
+        Phase B still primary on ComfyUI 5090.
+    - lane: comfyui-sdxl-base-1.0
+      purpose: ComfyUI SDXL base — LoRA / ControlNet ecosystem on RTX 5090
+      status: commissioned
+      candidate_family: Stable Diffusion XL 1.0 base
+      selected_hf_repo_id: stabilityai/stable-diffusion-xl-base-1.0
+      selected_hf_file: sd_xl_base_1.0.safetensors
+      serving_runtime: comfyui
+      storage_host: HOM-LAB-HVH-02
+      unc_path: null
+      source_routing:
+        primary_doc_source: huggingface_model_card
+        primary_doc_url: "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0"
+        secondary_doc_source: null
+        secondary_doc_url: null
+        hrl_pack_slug: sdxl-base-1.0
+        hrl_pack_status: missing
+      research_sources:
+        - https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0
+      notes: >-
+        Companion checkpoint for LoRA-heavy / ControlNet workflows beside FLUX.
     - lane: code-review
       purpose: critique, risk finding, test review
       status: selected_alias_on_primary_vllm

@@ -1,0 +1,41 @@
+---
+# k3s_ollama_runtime — Ollama on the GPU-lane K3s guest.
+# Default absent: only one of vLLM / Ollama should hold nvidia.com/gpu on a
+# single-GPU node. Commission via host_vars when swapping off vLLM.
+
+k3s_ollama_runtime_state: absent
+
+k3s_ollama_runtime_namespace: ollama-runtime
+k3s_ollama_runtime_name: ollama
+k3s_ollama_runtime_image: ollama/ollama:latest
+
+k3s_ollama_runtime_replicas: 1
+k3s_ollama_runtime_deployment_strategy_type: Recreate
+k3s_ollama_runtime_service_port: 11434
+k3s_ollama_runtime_container_port: 11434
+
+k3s_ollama_runtime_runtime_class_name: nvidia
+k3s_ollama_runtime_gpu_resource: nvidia.com/gpu
+k3s_ollama_runtime_gpu_count: 1
+
+k3s_ollama_runtime_cpu_request: "500m"
+k3s_ollama_runtime_memory_request: 2Gi
+k3s_ollama_runtime_cpu_limit: "2"
+# Keep under guest RAM; oversized limits do not help and confuse ops.
+k3s_ollama_runtime_memory_limit: 6Gi
+# Optional extra tolerations (e.g. memory-pressure on small lab guests).
+k3s_ollama_runtime_tolerations: []
+
+# local-path PVCs are not resizeable; keep this aligned with any existing claim.
+k3s_ollama_runtime_models_pvc_size: 40Gi
+k3s_ollama_runtime_kubeconfig: /etc/rancher/k3s/k3s.yaml
+
+# Ollama library tags to ensure present (POST /api/pull).
+k3s_ollama_runtime_models_present: []
+
+# Optional short aliases created with `ollama cp` after pull (LiteLLM-friendly).
+# Example: [{ source: gemma4:12b, name: gemma4-12b }]
+k3s_ollama_runtime_model_aliases: []
+
+k3s_ollama_runtime_pull_timeout_seconds: 7200
+k3s_ollama_runtime_ready_timeout_seconds: 600

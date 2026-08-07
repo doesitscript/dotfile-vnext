@@ -1,0 +1,69 @@
+---
+# windows_automatic1111 — AUTOMATIC1111 SD WebUI on Windows GPU hosts.
+# Local image engine for Open WebUI (no cloud). Default absent.
+
+windows_automatic1111_state: absent
+
+windows_automatic1111_install_root: 'F:\shares\public\apps\stable-diffusion-webui'
+windows_automatic1111_install_parent: 'F:\shares\public\apps'
+windows_automatic1111_models_root: 'F:\shares\public\models\stable-diffusion'
+windows_automatic1111_outputs_root: 'F:\shares\public\models\stable-diffusion\outputs'
+windows_automatic1111_contract_root: 'C:\ProgramData\Ansible\windows_automatic1111'
+# Extension default search path for ControlNet weights.
+windows_automatic1111_controlnet_models_root: >-
+  {{ windows_automatic1111_install_root }}\models\ControlNet
+windows_automatic1111_extensions_root: >-
+  {{ windows_automatic1111_install_root }}\extensions
+
+windows_automatic1111_repo_url: "https://github.com/AUTOMATIC1111/stable-diffusion-webui.git"
+windows_automatic1111_repo_version: "v1.10.1"
+# Stability-AI/stablediffusion returns 404; community mirror keeps A1111 working.
+windows_automatic1111_stable_diffusion_repo: "https://github.com/w-e-w/stablediffusion.git"
+
+windows_automatic1111_bind_host: "0.0.0.0"
+windows_automatic1111_port: 7860
+windows_automatic1111_firewall_rule_name: Ansible-Automatic1111-API
+windows_automatic1111_task_name: Ansible-Automatic1111-WebUI
+
+# GTX 1060 6GB: medvram. Pascal: skip xformers.
+# Forward-slash --ckpt-dir (mixed \ / breaks Windows A1111 path parsing).
+windows_automatic1111_ckpt_dir_cli: "F:/shares/public/models/stable-diffusion/Stable-diffusion"
+windows_automatic1111_commandline_args: >-
+  --api --listen --port {{ windows_automatic1111_port }}
+  --medvram --opt-split-attention
+  --skip-python-version-check
+  --ckpt-dir {{ windows_automatic1111_ckpt_dir_cli }}
+
+# Photoreal SD1.5 checkpoint for local A1111 / Open WebUI Images.
+# CyberRealistic is a strong photoreal SD1.5 default; FP16 for 6GB.
+windows_automatic1111_model_hf_repo: "cyberdelia/CyberRealistic"
+windows_automatic1111_model_hf_file: "CyberRealistic_V9_FP16.safetensors"
+windows_automatic1111_model_local_name: "CyberRealistic_V9_FP16.safetensors"
+
+# ControlNet OpenPose (Mikubill extension + fp16 OpenPose weights).
+windows_automatic1111_controlnet_enabled: true
+windows_automatic1111_controlnet_extension_repo: >-
+  https://github.com/Mikubill/sd-webui-controlnet.git
+windows_automatic1111_controlnet_extension_name: sd-webui-controlnet
+windows_automatic1111_controlnet_model_hf_repo: >-
+  comfyanonymous/ControlNet-v1-1_fp16_safetensors
+windows_automatic1111_controlnet_model_hf_file: >-
+  control_v11p_sd15_openpose_fp16.safetensors
+windows_automatic1111_controlnet_model_local_name: >-
+  control_v11p_sd15_openpose_fp16.safetensors
+
+# Recommended generation defaults applied via /sdapi/v1/options after boot.
+windows_automatic1111_default_width: 768
+windows_automatic1111_default_height: 768
+windows_automatic1111_default_steps: 35
+windows_automatic1111_default_cfg_scale: 8
+# img2img start denoise (identity keep). Raise to ~0.65 in UI when changing pose.
+windows_automatic1111_default_denoising_strength: 0.4
+
+# Prefer explicit 3.10 when present; fall back to py launcher.
+windows_automatic1111_python_package: "python"
+windows_automatic1111_python_version: "3.10.11"
+windows_automatic1111_python_exe: 'C:\Python310\python.exe'
+
+windows_automatic1111_require_driver_contract: true
+windows_automatic1111_driver_contract_path: 'C:\ProgramData\Ansible\llm_compute_windows\nvidia_driver_contract.json'

@@ -1,0 +1,42 @@
+---
+# windows_comfyui_amd — DEPRECATED for desktop Phase B stills.
+# Phase B pixels run on k3s ComfyUI (hom-lab-ctl-k3s-02 / comfyui.hom.lab:30188).
+# Keep this role for absent cleanup of leftover AMD desktop installs only.
+# Default absent.
+
+windows_comfyui_amd_state: absent
+
+windows_comfyui_amd_install_root: 'E:\ai\comfyui'
+windows_comfyui_amd_repo_dir: '{{ windows_comfyui_amd_install_root }}\ComfyUI'
+windows_comfyui_amd_venv_dir: '{{ windows_comfyui_amd_install_root }}\venv'
+windows_comfyui_amd_python_exe: 'C:\Python312\python.exe'
+windows_comfyui_amd_venv_python: '{{ windows_comfyui_amd_venv_dir }}\Scripts\python.exe'
+windows_comfyui_amd_venv_pip: '{{ windows_comfyui_amd_venv_dir }}\Scripts\pip.exe'
+
+windows_comfyui_amd_git_exe: 'C:\Program Files\Git\cmd\git.exe'
+
+# Pin lightly; bump deliberately after smoke.
+windows_comfyui_amd_repo_url: "https://github.com/comfyanonymous/ComfyUI.git"
+windows_comfyui_amd_repo_version: "master"
+
+windows_comfyui_amd_rocm_rel: "7.2.1"
+windows_comfyui_amd_rocm_base: "https://repo.radeon.com/rocm/windows/rocm-rel-{{ windows_comfyui_amd_rocm_rel }}"
+
+windows_comfyui_amd_bind_host: "0.0.0.0"
+windows_comfyui_amd_port: 8188
+windows_comfyui_amd_firewall_rule_name: Ansible-ComfyUI-AMD-API
+windows_comfyui_amd_task_name: Ansible-ComfyUI-AMD
+
+# Low VRAM flags recommended by AMD for consumer cards.
+windows_comfyui_amd_extra_args: "--listen {{ windows_comfyui_amd_bind_host }} --port {{ windows_comfyui_amd_port }} --lowvram --disable-pinned-memory"
+
+# Smoke checkpoint (SD1.5-class). FLUX/Wan remain pending_research until GPU torch proves out.
+windows_comfyui_amd_model_hf_repo: "Lykon/DreamShaper"
+windows_comfyui_amd_model_hf_file: "DreamShaper_8_pruned.safetensors"
+windows_comfyui_amd_model_local_name: "DreamShaper_8_pruned.safetensors"
+
+windows_comfyui_amd_studio_root: 'E:\ai\studio'
+windows_comfyui_amd_contract_root: 'C:\ProgramData\Ansible\windows_comfyui_amd'
+
+# Driver gate (AMD docs: Adrenalin 26.2.2+ for ROCm 7.2.1 Windows). Soft by default.
+windows_comfyui_amd_require_driver_hint: true

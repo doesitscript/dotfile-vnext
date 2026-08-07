@@ -84,6 +84,56 @@
   register: open_webui_compose
   tags: [open_webui]
 
+- name: Wait for Open WebUI HTTP before arena config
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ open_webui_host_port }}/api/config"
+    method: GET
+    status_code: 200
+  register: open_webui_ready
+  retries: 30
+  delay: 2
+  until: (open_webui_ready.status | default(0) | int) == 200
+  when: open_webui_enable_evaluation_arena_models | bool
+  tags: [open_webui, open_webui_arena]
+
+- name: Sign in to Open WebUI admin for arena config
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ open_webui_host_port }}/api/v1/auths/signin"
+    method: POST
+    body_format: json
+    body:
+      email: "{{ open_webui_evaluation_arena_admin_email }}"
+      password: "{{ open_webui_evaluation_arena_admin_password }}"
+    status_code: 200
+  register: open_webui_arena_signin
+  no_log: true
+  when: open_webui_enable_evaluation_arena_models | bool
+  tags: [open_webui, open_webui_arena]
+
+- name: Pin Open WebUI Arena Model combatants
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ open_webui_host_port }}/api/v1/evaluations/config"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ open_webui_arena_signin.json.token }}"
+    body_format: json
+    body:
+      ENABLE_EVALUATION_ARENA_MODELS: true
+      EVALUATION_ARENA_MODELS:
+        - id: arena-model
+          name: Arena Model
+          meta:
+            profile_image_url: /favicon.png
+            description: >-
+              Local arena pinned to gemma4-12b (vision). Text-only lanes stay out of Arena.
+            model_ids: "{{ open_webui_evaluation_arena_model_ids }}"
+    status_code: 200
+  no_log: true
+  when:
+    - open_webui_enable_evaluation_arena_models | bool
+    - (open_webui_arena_signin.json.token | default('') | length) > 0
+  tags: [open_webui, open_webui_arena]
+
 - name: Report Open WebUI deploy result
   ansible.builtin.debug:
     msg:
@@ -91,4 +141,5 @@
       project_src: "{{ open_webui_project_src }}"
       changed: "{{ open_webui_compose.changed | default(false) }}"
       openai_base: "{{ open_webui_openai_api_base_url }}"
+      arena_models: "{{ open_webui_evaluation_arena_model_ids }}"
   tags: [open_webui]

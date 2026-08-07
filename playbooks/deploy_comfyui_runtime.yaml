@@ -1,0 +1,16 @@
+---
+# Deploy ComfyUI on K3s GPU lane (Phase B — RTX 5090 time-share).
+# Prerequisite: release the GPU from vLLM/Ollama first
+#   (k3s_vllm_runtime_state: absent on hom-lab-ctl-k3s-02).
+- name: Deploy ComfyUI runtime on K3s GPU lane
+  hosts: "container_orchestrator_k3s:&gpu_workload_nodes"
+  gather_facts: false
+  become: false
+
+  roles:
+    - role: k3s_comfyui_runtime
+      tags:
+        - k3s_comfyui_runtime
+        - comfyui
+        - ai_ml_platform
+        - phase_b

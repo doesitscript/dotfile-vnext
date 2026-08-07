@@ -1,0 +1,25 @@
+---
+argument_specs:
+  main:
+    short_description: Deploy Ollama OpenAI-compatible runtime on K3s GPU lane
+    options:
+      k3s_ollama_runtime_state:
+        type: str
+        default: absent
+        choices:
+          - present
+          - absent
+        description: Lifecycle state for the Ollama runtime.
+      k3s_ollama_runtime_namespace:
+        type: str
+        default: ollama-runtime
+        description: Kubernetes namespace for Ollama.
+      k3s_ollama_runtime_models_present:
+        type: list
+        elements: str
+        default: []
+        description: Ollama library model tags to pull when present.
+      k3s_ollama_runtime_gpu_count:
+        type: int
+        default: 1
+        description: Number of NVIDIA GPUs requested by the runtime pod.

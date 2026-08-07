@@ -1,0 +1,262 @@
+---
+- name: Validate GPU prerequisites before Ollama mutation
+  ansible.builtin.include_role:
+    name: k3s_node_gpu_prereqs
+  vars:
+    k3s_node_gpu_prereqs_expected_resource: "{{ k3s_ollama_runtime_gpu_resource }}"
+    k3s_node_gpu_prereqs_expected_count: "{{ k3s_ollama_runtime_gpu_count }}"
+
+- name: Ensure Ollama namespace exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ k3s_ollama_runtime_namespace }}"
+  environment:
+    KUBECONFIG: "{{ k3s_ollama_runtime_kubeconfig }}"
+
+- name: Ensure Ollama models PVC exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: "{{ k3s_ollama_runtime_name }}-models"
+        namespace: "{{ k3s_ollama_runtime_namespace }}"
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: "{{ k3s_ollama_runtime_models_pvc_size }}"
+  environment:
+    KUBECONFIG: "{{ k3s_ollama_runtime_kubeconfig }}"
+
+- name: Build Ollama resource maps
+  ansible.builtin.set_fact:
+    _k3s_ollama_runtime_resource_requests: >-
+      {{
+        {
+          'cpu': k3s_ollama_runtime_cpu_request,
+          'memory': k3s_ollama_runtime_memory_request
+        }
+        | combine({k3s_ollama_runtime_gpu_resource: k3s_ollama_runtime_gpu_count})
+      }}
+    _k3s_ollama_runtime_resource_limits: >-
+      {{
+        {
+          'cpu': k3s_ollama_runtime_cpu_limit,
+          'memory': k3s_ollama_runtime_memory_limit
+        }
+        | combine({k3s_ollama_runtime_gpu_resource: k3s_ollama_runtime_gpu_count})
+      }}
+    _k3s_ollama_runtime_api_base: >-
+      http://{{ k3s_ollama_runtime_name }}.{{ k3s_ollama_runtime_namespace }}.svc.cluster.local:{{ k3s_ollama_runtime_service_port }}
+
+- name: Ensure Ollama deployment exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ k3s_ollama_runtime_name }}"
+        namespace: "{{ k3s_ollama_runtime_namespace }}"
+        labels:
+          app.kubernetes.io/name: ollama
+          app.kubernetes.io/instance: "{{ k3s_ollama_runtime_name }}"
+          app.kubernetes.io/managed-by: ansible
+      spec:
+        replicas: "{{ k3s_ollama_runtime_replicas }}"
+        strategy:
+          type: "{{ k3s_ollama_runtime_deployment_strategy_type }}"
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: ollama
+            app.kubernetes.io/instance: "{{ k3s_ollama_runtime_name }}"
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/name: ollama
+              app.kubernetes.io/instance: "{{ k3s_ollama_runtime_name }}"
+          spec:
+            runtimeClassName: "{{ k3s_ollama_runtime_runtime_class_name }}"
+            tolerations: "{{ k3s_ollama_runtime_tolerations }}"
+            containers:
+              - name: ollama
+                image: "{{ k3s_ollama_runtime_image }}"
+                ports:
+                  - name: http
+                    containerPort: "{{ k3s_ollama_runtime_container_port }}"
+                env:
+                  - name: OLLAMA_HOST
+                    value: "0.0.0.0:{{ k3s_ollama_runtime_container_port }}"
+                volumeMounts:
+                  - name: ollama-models
+                    mountPath: /root/.ollama
+                resources:
+                  requests: "{{ _k3s_ollama_runtime_resource_requests }}"
+                  limits: "{{ _k3s_ollama_runtime_resource_limits }}"
+                readinessProbe:
+                  httpGet:
+                    path: /
+                    port: http
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                livenessProbe:
+                  httpGet:
+                    path: /
+                    port: http
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+            volumes:
+              - name: ollama-models
+                persistentVolumeClaim:
+                  claimName: "{{ k3s_ollama_runtime_name }}-models"
+  environment:
+    KUBECONFIG: "{{ k3s_ollama_runtime_kubeconfig }}"
+
+- name: Ensure Ollama service exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "{{ k3s_ollama_runtime_name }}"
+        namespace: "{{ k3s_ollama_runtime_namespace }}"
+      spec:
+        type: ClusterIP
+        selector:
+          app.kubernetes.io/name: ollama
+          app.kubernetes.io/instance: "{{ k3s_ollama_runtime_name }}"
+        ports:
+          - name: http
+            port: "{{ k3s_ollama_runtime_service_port }}"
+            targetPort: "{{ k3s_ollama_runtime_container_port }}"
+            protocol: TCP
+  environment:
+    KUBECONFIG: "{{ k3s_ollama_runtime_kubeconfig }}"
+
+- name: Wait for Ollama deployment to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ k3s_ollama_runtime_namespace }}"
+    name: "{{ k3s_ollama_runtime_name }}"
+    wait: true
+    wait_timeout: "{{ k3s_ollama_runtime_ready_timeout_seconds }}"
+  environment:
+    KUBECONFIG: "{{ k3s_ollama_runtime_kubeconfig }}"
+
+- name: List models already present in Ollama
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ k3s_ollama_runtime_kubeconfig }}"
+      - exec
+      - -n
+      - "{{ k3s_ollama_runtime_namespace }}"
+      - "deploy/{{ k3s_ollama_runtime_name }}"
+      - --
+      - ollama
+      - list
+  register: k3s_ollama_runtime_list
+  changed_when: false
+
+- name: Build set of present Ollama model names
+  ansible.builtin.set_fact:
+    _k3s_ollama_runtime_present_names: >-
+      {{
+        k3s_ollama_runtime_list.stdout_lines | default([])
+        | reject('match', '^NAME')
+        | map('regex_replace', '\\s+.*$', '')
+        | reject('equalto', '')
+        | list
+      }}
+
+- name: Pull declared Ollama models when missing
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ k3s_ollama_runtime_kubeconfig }}"
+      - exec
+      - -n
+      - "{{ k3s_ollama_runtime_namespace }}"
+      - "deploy/{{ k3s_ollama_runtime_name }}"
+      - --
+      - ollama
+      - pull
+      - "{{ item }}"
+  loop: "{{ k3s_ollama_runtime_models_present }}"
+  when: >-
+    item not in _k3s_ollama_runtime_present_names
+    and (item ~ ':latest') not in _k3s_ollama_runtime_present_names
+  async: "{{ k3s_ollama_runtime_pull_timeout_seconds }}"
+  poll: 15
+
+- name: Refresh Ollama model list after pulls
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ k3s_ollama_runtime_kubeconfig }}"
+      - exec
+      - -n
+      - "{{ k3s_ollama_runtime_namespace }}"
+      - "deploy/{{ k3s_ollama_runtime_name }}"
+      - --
+      - ollama
+      - list
+  register: k3s_ollama_runtime_list_after_pull
+  changed_when: false
+  when: k3s_ollama_runtime_models_present | length > 0
+
+- name: Rebuild present Ollama model names after pulls
+  ansible.builtin.set_fact:
+    _k3s_ollama_runtime_present_names: >-
+      {{
+        k3s_ollama_runtime_list_after_pull.stdout_lines | default([])
+        | reject('match', '^NAME')
+        | map('regex_replace', '\\s+.*$', '')
+        | reject('equalto', '')
+        | list
+      }}
+  when: k3s_ollama_runtime_list_after_pull is defined
+
+- name: Create Ollama model aliases for LiteLLM-friendly names
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ k3s_ollama_runtime_kubeconfig }}"
+      - exec
+      - -n
+      - "{{ k3s_ollama_runtime_namespace }}"
+      - "deploy/{{ k3s_ollama_runtime_name }}"
+      - --
+      - ollama
+      - cp
+      - "{{ item.source }}"
+      - "{{ item.name }}"
+  loop: "{{ k3s_ollama_runtime_model_aliases }}"
+  loop_control:
+    label: "{{ item.source }} -> {{ item.name }}"
+  register: k3s_ollama_runtime_alias_results
+  changed_when: true
+  when:
+    - k3s_ollama_runtime_model_aliases | length > 0
+    - item.name not in _k3s_ollama_runtime_present_names
+    - (item.name ~ ':latest') not in _k3s_ollama_runtime_present_names
+
+- name: Report Ollama runtime service URL
+  ansible.builtin.debug:
+    msg: >-
+      Ollama runtime deployed at
+      {{ _k3s_ollama_runtime_api_base }}/v1
+      (models={{ k3s_ollama_runtime_models_present }})

@@ -244,6 +244,108 @@
           if (k3s_litellm_gateway_continue_apply_api_base | default('') | length > 0)
           else []
         )
+        + (
+          [
+            {
+              'model_name': 'gemma4-12b',
+              'litellm_params': {
+                'model': k3s_litellm_gateway_gemma4_chat_provider ~ '/' ~ k3s_litellm_gateway_gemma4_chat_model,
+                'api_base': k3s_litellm_gateway_gemma4_chat_api_base,
+                'api_key': 'none',
+                'think': false
+              },
+              'model_info': {
+                'model_lane': 'gemma4-12b',
+                'routing_policy': 'local-open-webui-chat-ollama-desktop',
+                'project': 'ripi',
+                'client_role': 'open-webui-chat',
+                'backend_runtime': 'ollama-gemma4-dev-workstation-win',
+                'ollama_library': 'gemma4:12b',
+                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+              }
+            }
+          ]
+          if (k3s_litellm_gateway_gemma4_chat_api_base | default('') | length > 0)
+          else []
+        )
+        + (
+          [
+            {
+              'model_name': 'qwen3.6-27b',
+              'litellm_params': {
+                'model': k3s_litellm_gateway_qwen36_chat_provider ~ '/' ~ k3s_litellm_gateway_qwen36_chat_model,
+                'api_base': k3s_litellm_gateway_qwen36_chat_api_base,
+                'api_key': 'none',
+                'think': false
+              },
+              'model_info': {
+                'model_lane': 'qwen3.6-27b',
+                'routing_policy': 'local-open-webui-chat-ollama-desktop',
+                'project': 'ripi',
+                'client_role': 'open-webui-chat',
+                'backend_runtime': 'ollama-qwen36-dev-workstation-win',
+                'ollama_library': 'qwen3.6:27b',
+                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+              }
+            }
+          ]
+          if (k3s_litellm_gateway_qwen36_chat_api_base | default('') | length > 0)
+          else []
+        )
+        + (
+          [
+            {
+              'model_name': 'gpt-oss-20b',
+              'litellm_params': {
+                'model': k3s_litellm_gateway_gpt_oss_chat_provider ~ '/' ~ k3s_litellm_gateway_gpt_oss_chat_model,
+                'api_base': k3s_litellm_gateway_gpt_oss_chat_api_base,
+                'api_key': 'none',
+                'think': false
+              },
+              'model_info': {
+                'model_lane': 'gpt-oss-20b',
+                'routing_policy': 'local-open-webui-chat-ollama-desktop',
+                'project': 'ripi',
+                'client_role': 'open-webui-chat',
+                'backend_runtime': 'ollama-gpt-oss-dev-workstation-win',
+                'ollama_library': 'gpt-oss:20b',
+                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+              }
+            }
+          ]
+          if (k3s_litellm_gateway_gpt_oss_chat_api_base | default('') | length > 0)
+          else []
+        )
+        + (
+          [
+            {
+              'model_name': 'studio-coach',
+              'litellm_params': {
+                'model': k3s_litellm_gateway_studio_coach_chat_provider ~ '/' ~ k3s_litellm_gateway_studio_coach_chat_model,
+                'api_base': k3s_litellm_gateway_studio_coach_chat_api_base,
+                'api_key': 'none',
+                'think': false
+              },
+              'model_info': {
+                'model_lane': 'studio-coach',
+                'routing_policy': 'local-open-webui-chat-ollama-desktop',
+                'project': 'ripi',
+                'client_role': 'studio-prompt-coaching',
+                'backend_runtime': 'ollama-gemma4-dev-workstation-win',
+                'ollama_library': k3s_litellm_gateway_studio_coach_chat_model,
+                'coaching_asset': 'coaching/r_lab_visual_system.txt',
+                'source_routing': 'vision-capable prompt coach for ComfyUI / A1111',
+                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+              }
+            }
+          ]
+          if (k3s_litellm_gateway_studio_coach_chat_api_base | default('') | length > 0)
+          else []
+        )
       }}
 
 - name: Append local Continue / diffusion model routes
@@ -373,6 +475,15 @@
             ]
           }
           if (k3s_litellm_gateway_request_inspector_enabled | bool)
+          else {},
+          recursive=True
+        )
+        | combine(
+          {
+            'command': k3s_litellm_gateway_command,
+            'args': k3s_litellm_gateway_args
+          }
+          if (k3s_litellm_gateway_pillow_bootstrap_enabled | bool)
           else {},
           recursive=True
         )

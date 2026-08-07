@@ -170,6 +170,12 @@ hyperv_config:
       listen_port: 3080
       connect_address: "192.168.137.10"
       connect_port: 3080
+    # ComfyUI on k3s-02 (roles/k3s_comfyui_runtime) — Phase B 5090 time-share
+    - name: "comfyui-k3s"
+      listen_address: "192.168.50.158"
+      listen_port: 30188
+      connect_address: "192.168.137.11"
+      connect_port: 30188
   internal_ics_public_adapter_name: "vEthernet (External)"
 
 # OpenSSH Server: base feature on Windows hosts unless explicitly set absent.
@@ -213,7 +219,9 @@ hyperv_ubuntu_k3s_vm_state: present
 hyperv_ubuntu_k3s_vm_hostname: "hom-lab-ctl-k3s-02"
 hyperv_ubuntu_k3s_vm_inventory_host: "hom-lab-ctl-k3s-02"
 hyperv_ubuntu_k3s_vm_cpus: 4
-hyperv_ubuntu_k3s_vm_memory: "16G"
+# Sized for Phase B ComfyUI I2V (LTX+T5) co-resident with LiteLLM/Langfuse.
+# Live apply requires VM Off (static memory); see resize on HOM-LAB-HVH-02.
+hyperv_ubuntu_k3s_vm_memory: "28G"
 hyperv_ubuntu_k3s_vm_disk: "80G"
 # Host-specific: keep bulky Hyper-V VM VHDXs on internal D: (not C:, not F: share disk).
 # windows_hyperv_ansible_root stays F:\ProgramData\Ansible (lane/group) for oneoffs/artifacts.

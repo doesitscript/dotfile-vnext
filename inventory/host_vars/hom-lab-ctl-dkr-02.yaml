@@ -49,6 +49,23 @@ stacks_network_purge_data_on_absent: true
 # Open WebUI Option A — OpenAI-compatible client → LiteLLM (capability ai-client-ui).
 open_webui_state: present
 
+# Local image generation — A1111 on HVH-01 (GTX 1060 / CyberRealistic SD1.5).
+# Phase B quality stills: point at ComfyUI on k3s-02 when time-share is active
+# (IMAGE_GENERATION_ENGINE=comfyui + COMFYUI_BASE_URL). Default remains A1111
+# for Open WebUI Image button (simple t2i); ComfyUI for FLUX / SDXL workflows.
+open_webui_enable_image_generation: true
+open_webui_image_generation_engine: automatic1111
+open_webui_automatic1111_base_url: "http://a1111-hvh01.hom.lab:7860"
+open_webui_comfyui_base_url: "http://comfyui.hom.lab:30188"
+open_webui_image_size: "768x768"
+open_webui_image_steps: 35
+
+# Arena: vision-capable combatants only (Ornith / gpt-oss / qwen text-only reject images).
+open_webui_enable_evaluation_arena_models: true
+open_webui_evaluation_arena_model_ids:
+  - gemma4-12b
+  - studio-coach
+
 ansible_ssh_common_args: >-
   -o ProxyJump=HOM-LAB-HVH-02
   -o StrictHostKeyChecking=no

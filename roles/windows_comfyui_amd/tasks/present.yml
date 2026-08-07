@@ -1,0 +1,285 @@
+---
+# Module matrix:
+# - win_chocolatey: python312, git
+# - win_file: directories
+# - win_command / win_shell: venv + AMD ROCm pip wheels (multi-URL wheels; no module fit)
+# - win_copy / win_template: launch bat + receipt
+# - win_firewall_rule / win_scheduled_task: LAN API
+# - huggingface_hub via python (same pattern as windows_automatic1111)
+
+- name: Ensure ComfyUI AMD directories exist
+  ansible.windows.win_file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ windows_comfyui_amd_install_root }}"
+    - "{{ windows_comfyui_amd_contract_root }}"
+    - "{{ windows_comfyui_amd_studio_root }}"
+    - "{{ windows_comfyui_amd_studio_root }}\\images\\input"
+    - "{{ windows_comfyui_amd_studio_root }}\\images\\output"
+    - "{{ windows_comfyui_amd_studio_root }}\\prompts\\lab_doc_still"
+    - "{{ windows_comfyui_amd_studio_root }}\\prompts\\controlnet_mock"
+    - "{{ windows_comfyui_amd_studio_root }}\\prompts\\ops_change_card"
+    - "{{ windows_comfyui_amd_studio_root }}\\prompts\\agent_storyboard"
+
+- name: Install Python 3.12 via Chocolatey (AMD ROCm Windows wheels require 3.12)
+  chocolatey.chocolatey.win_chocolatey:
+    name: python312
+    state: present
+    package_params: /InstallDir:C:\Python312
+
+- name: Install Git via Chocolatey
+  chocolatey.chocolatey.win_chocolatey:
+    name: git
+    state: present
+
+- name: Stat Python 3.12 executable
+  ansible.windows.win_stat:
+    path: "{{ windows_comfyui_amd_python_exe }}"
+  register: windows_comfyui_amd_python_stat
+
+- name: Assert Python 3.12 exists
+  ansible.builtin.assert:
+    that:
+      - windows_comfyui_amd_python_stat.stat.exists | bool
+    fail_msg: >-
+      Expected {{ windows_comfyui_amd_python_exe }} after python312 Chocolatey install.
+
+- name: Stat ComfyUI venv python
+  ansible.windows.win_stat:
+    path: "{{ windows_comfyui_amd_venv_python }}"
+  register: windows_comfyui_amd_venv_stat
+
+- name: Create ComfyUI venv if absent
+  ansible.windows.win_command: >-
+    {{ windows_comfyui_amd_python_exe }} -m venv {{ windows_comfyui_amd_venv_dir }}
+  when: not (windows_comfyui_amd_venv_stat.stat.exists | default(false))
+
+- name: Upgrade pip in ComfyUI venv
+  ansible.windows.win_command: >-
+    {{ windows_comfyui_amd_venv_python }} -m pip install --upgrade pip wheel
+  register: windows_comfyui_amd_pip_upgrade
+  changed_when: >-
+    'Successfully installed' in (windows_comfyui_amd_pip_upgrade.stdout | default(''))
+
+- name: Check whether ROCm SDK is already installed in ComfyUI venv
+  ansible.windows.win_command: >-
+    {{ windows_comfyui_amd_venv_python }} -m pip show rocm-sdk-core
+  register: windows_comfyui_amd_rocm_sdk_show
+  changed_when: false
+  failed_when: false
+
+- name: Install AMD ROCm SDK wheels into ComfyUI venv
+  ansible.windows.win_command: >-
+    {{ windows_comfyui_amd_venv_python }} -m pip install --no-cache-dir
+    {{ windows_comfyui_amd_rocm_base }}/rocm_sdk_core-{{ windows_comfyui_amd_rocm_rel }}-py3-none-win_amd64.whl
+    {{ windows_comfyui_amd_rocm_base }}/rocm_sdk_devel-{{ windows_comfyui_amd_rocm_rel }}-py3-none-win_amd64.whl
+    {{ windows_comfyui_amd_rocm_base }}/rocm_sdk_libraries_custom-{{ windows_comfyui_amd_rocm_rel }}-py3-none-win_amd64.whl
+    {{ windows_comfyui_amd_rocm_base }}/rocm-{{ windows_comfyui_amd_rocm_rel }}.tar.gz
+  async: 7200
+  poll: 20
+  register: windows_comfyui_amd_rocm_sdk
+  when: (windows_comfyui_amd_rocm_sdk_show.rc | default(1) | int) != 0
+
+- name: Check whether ROCm PyTorch is already installed in ComfyUI venv
+  ansible.windows.win_command: >-
+    {{ windows_comfyui_amd_venv_python }} -m pip show torch
+  register: windows_comfyui_amd_torch_show
+  changed_when: false
+  failed_when: false
+
+- name: Install AMD ROCm PyTorch wheels into ComfyUI venv
+  ansible.windows.win_command: >-
+    {{ windows_comfyui_amd_venv_python }} -m pip install --no-cache-dir
+    {{ windows_comfyui_amd_rocm_base }}/torch-2.9.1%2Brocm{{ windows_comfyui_amd_rocm_rel }}-cp312-cp312-win_amd64.whl
+    {{ windows_comfyui_amd_rocm_base }}/torchaudio-2.9.1%2Brocm{{ windows_comfyui_amd_rocm_rel }}-cp312-cp312-win_amd64.whl
+    {{ windows_comfyui_amd_rocm_base }}/torchvision-0.24.1%2Brocm{{ windows_comfyui_amd_rocm_rel }}-cp312-cp312-win_amd64.whl
+  async: 7200
+  poll: 20
+  register: windows_comfyui_amd_torch
+  when: >-
+    (windows_comfyui_amd_torch_show.rc | default(1) | int) != 0
+    or ('rocm' not in (windows_comfyui_amd_torch_show.stdout | default('') | lower))
+
+- name: Stat ComfyUI main.py
+  ansible.windows.win_stat:
+    path: "{{ windows_comfyui_amd_repo_dir }}\\main.py"
+  register: windows_comfyui_amd_repo_stat
+
+- name: Clone ComfyUI repository
+  ansible.windows.win_command: >-
+    "{{ windows_comfyui_amd_git_exe }}" clone --depth 1 {{ windows_comfyui_amd_repo_url }} "{{ windows_comfyui_amd_repo_dir }}"
+  when: not (windows_comfyui_amd_repo_stat.stat.exists | default(false))
+
+- name: Stat ComfyUI requirements stamp
+  ansible.windows.win_stat:
+    path: "{{ windows_comfyui_amd_contract_root }}\\requirements.ok"
+  register: windows_comfyui_amd_reqs_stamp
+
+- name: Install ComfyUI requirements (may pull CPU torch; re-pin ROCm next)
+  ansible.windows.win_command: >-
+    {{ windows_comfyui_amd_venv_python }} -m pip install -r "{{ windows_comfyui_amd_repo_dir }}\requirements.txt"
+  args:
+    chdir: "{{ windows_comfyui_amd_repo_dir }}"
+  async: 3600
+  poll: 20
+  register: windows_comfyui_amd_reqs
+  when: not (windows_comfyui_amd_reqs_stamp.stat.exists | default(false))
+
+- name: Check whether torch is still the AMD ROCm build after requirements
+  ansible.windows.win_command: >-
+    {{ windows_comfyui_amd_venv_python }} -m pip show torch
+  register: windows_comfyui_amd_torch_after_reqs
+  changed_when: false
+  failed_when: false
+
+- name: Re-pin AMD ROCm stack + PyTorch after requirements install
+  ansible.windows.win_command: >-
+    {{ windows_comfyui_amd_venv_python }} -m pip install --no-cache-dir --force-reinstall
+    {{ windows_comfyui_amd_rocm_base }}/rocm_sdk_core-{{ windows_comfyui_amd_rocm_rel }}-py3-none-win_amd64.whl
+    {{ windows_comfyui_amd_rocm_base }}/rocm_sdk_devel-{{ windows_comfyui_amd_rocm_rel }}-py3-none-win_amd64.whl
+    {{ windows_comfyui_amd_rocm_base }}/rocm_sdk_libraries_custom-{{ windows_comfyui_amd_rocm_rel }}-py3-none-win_amd64.whl
+    {{ windows_comfyui_amd_rocm_base }}/rocm-{{ windows_comfyui_amd_rocm_rel }}.tar.gz
+    {{ windows_comfyui_amd_rocm_base }}/torch-2.9.1%2Brocm{{ windows_comfyui_amd_rocm_rel }}-cp312-cp312-win_amd64.whl
+    {{ windows_comfyui_amd_rocm_base }}/torchaudio-2.9.1%2Brocm{{ windows_comfyui_amd_rocm_rel }}-cp312-cp312-win_amd64.whl
+    {{ windows_comfyui_amd_rocm_base }}/torchvision-0.24.1%2Brocm{{ windows_comfyui_amd_rocm_rel }}-cp312-cp312-win_amd64.whl
+  async: 7200
+  poll: 20
+  when: >-
+    (windows_comfyui_amd_torch_after_reqs.rc | default(1) | int) != 0
+    or ('rocm' not in (windows_comfyui_amd_torch_after_reqs.stdout | default('') | lower))
+
+- name: Write ComfyUI requirements stamp
+  ansible.windows.win_copy:
+    dest: "{{ windows_comfyui_amd_contract_root }}\\requirements.ok"
+    content: |
+      ok
+    newline_sequence: '\n'
+  when: >-
+    (windows_comfyui_amd_reqs is changed)
+    or (windows_comfyui_amd_reqs_stamp.stat.exists | default(false))
+    or ('rocm' in (windows_comfyui_amd_torch_after_reqs.stdout | default('') | lower))
+
+- name: Verify ROCm PyTorch sees a GPU
+  ansible.windows.win_shell: |
+    & "{{ windows_comfyui_amd_venv_python }}" -c "import torch; print('cuda', torch.cuda.is_available()); print('name', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'none')"
+  register: windows_comfyui_amd_gpu_probe
+  changed_when: false
+  failed_when: false
+
+- name: Assert GPU visible to ROCm PyTorch
+  ansible.builtin.assert:
+    that:
+      - "'cuda True' in (windows_comfyui_amd_gpu_probe.stdout | default(''))"
+    fail_msg: >-
+      ROCm PyTorch did not see a GPU. stdout={{ windows_comfyui_amd_gpu_probe.stdout | default('') }}
+      stderr={{ windows_comfyui_amd_gpu_probe.stderr | default('') }}.
+      AMD docs require Adrenalin 26.2.2+ for ROCm {{ windows_comfyui_amd_rocm_rel }} Windows.
+      RX 9060 XT native Windows support is still evolving; see design research matrix.
+
+- name: Ensure ComfyUI checkpoints directory exists
+  ansible.windows.win_file:
+    path: "{{ windows_comfyui_amd_repo_dir }}\\models\\checkpoints"
+    state: directory
+
+- name: Stat smoke checkpoint
+  ansible.windows.win_stat:
+    path: >-
+      {{ windows_comfyui_amd_repo_dir }}\models\checkpoints\{{
+      windows_comfyui_amd_model_local_name }}
+  register: windows_comfyui_amd_model_stat
+
+- name: Install huggingface_hub into venv for checkpoint download
+  ansible.windows.win_command: >-
+    {{ windows_comfyui_amd_venv_python }} -m pip install huggingface_hub
+  when: not (windows_comfyui_amd_model_stat.stat.exists | default(false))
+
+- name: Download smoke checkpoint via huggingface_hub
+  ansible.windows.win_shell: >-
+    & "{{ windows_comfyui_amd_venv_python }}" -c
+    "from huggingface_hub import hf_hub_download; p=hf_hub_download(repo_id='{{ windows_comfyui_amd_model_hf_repo }}', filename='{{ windows_comfyui_amd_model_hf_file }}', local_dir=r'{{ windows_comfyui_amd_repo_dir }}\models\checkpoints', local_dir_use_symlinks=False); print(p)"
+  when: not (windows_comfyui_amd_model_stat.stat.exists | default(false))
+  async: 7200
+  poll: 20
+
+- name: Deploy ComfyUI AMD launch script
+  ansible.windows.win_template:
+    src: run_comfyui_amd.bat.j2
+    dest: "{{ windows_comfyui_amd_install_root }}\\run_comfyui_amd.bat"
+    newline_sequence: '\n'
+
+- name: Deploy lab studio prompt assets beside ComfyUI
+  ansible.windows.win_copy:
+    src: "{{ role_path }}/../windows_lab_studio/files/studio/"
+    dest: "{{ windows_comfyui_amd_studio_root }}\\"
+    newline_sequence: '\n'
+
+- name: Ensure ComfyUI AMD firewall rule allows LAN API
+  community.windows.win_firewall_rule:
+    name: "{{ windows_comfyui_amd_firewall_rule_name }}"
+    localport: "{{ windows_comfyui_amd_port }}"
+    action: allow
+    direction: in
+    protocol: tcp
+    state: present
+    enabled: true
+
+- name: Ensure ComfyUI AMD boot scheduled task
+  community.windows.win_scheduled_task:
+    name: "{{ windows_comfyui_amd_task_name }}"
+    description: Start ComfyUI (AMD ROCm) — deprecated desktop path
+    actions:
+      - path: cmd.exe
+        arguments: >-
+          /c "{{ windows_comfyui_amd_install_root }}\run_comfyui_amd.bat"
+        working_directory: "{{ windows_comfyui_amd_repo_dir }}"
+    triggers:
+      - type: boot
+        delay: PT3M
+    username: SYSTEM
+    logon_type: service_account
+    run_level: highest
+    state: present
+    enabled: true
+
+- name: Start ComfyUI AMD scheduled task now
+  ansible.windows.win_command: >-
+    schtasks /Run /TN "{{ windows_comfyui_amd_task_name }}"
+  changed_when: true
+
+- name: Wait for ComfyUI API to become ready
+  ansible.windows.win_uri:
+    url: "http://127.0.0.1:{{ windows_comfyui_amd_port }}/system_stats"
+    method: GET
+    return_content: true
+    status_code:
+      - 200
+  register: windows_comfyui_amd_ready
+  failed_when: false
+  retries: 60
+  delay: 20
+  until: >-
+    (windows_comfyui_amd_ready.status_code | default(0) | int) == 200
+
+- name: Write ComfyUI AMD contract receipt
+  ansible.windows.win_copy:
+    dest: "{{ windows_comfyui_amd_contract_root }}\\receipt.json"
+    content: "{{ {
+      'role': 'windows_comfyui_amd',
+      'state': 'present',
+      'install_root': windows_comfyui_amd_install_root,
+      'repo_dir': windows_comfyui_amd_repo_dir,
+      'port': windows_comfyui_amd_port | int,
+      'rocm': windows_comfyui_amd_rocm_rel,
+      'gpu_probe_stdout': (windows_comfyui_amd_gpu_probe.stdout | default('') | trim),
+      'api_status_code': (windows_comfyui_amd_ready.status_code | default(0) | int),
+      'model': windows_comfyui_amd_model_local_name,
+      'studio_root': windows_comfyui_amd_studio_root
+    } | to_nice_json }}\n"
+
+- name: Report ComfyUI AMD endpoint
+  ansible.builtin.debug:
+    msg: >-
+      ComfyUI AMD API http://{{ host_ip | default(ansible_host) }}:{{ windows_comfyui_amd_port }}/
+      gpu_probe={{ windows_comfyui_amd_gpu_probe.stdout | default('') | trim }}
+      ready={{ (windows_comfyui_amd_ready.status_code | default(0) | int) == 200 }}

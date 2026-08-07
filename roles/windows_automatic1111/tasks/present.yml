@@ -1,0 +1,272 @@
+---
+- name: Stat NVIDIA driver contract when required
+  ansible.windows.win_stat:
+    path: "{{ windows_automatic1111_driver_contract_path }}"
+  register: windows_automatic1111_driver_contract_stat
+  when: windows_automatic1111_require_driver_contract | bool
+
+- name: Assert NVIDIA driver contract exists when required
+  ansible.builtin.assert:
+    that:
+      - windows_automatic1111_driver_contract_stat.stat.exists | bool
+    fail_msg: >-
+      Managed NVIDIA driver contract missing at
+      {{ windows_automatic1111_driver_contract_path }}.
+  when: windows_automatic1111_require_driver_contract | bool
+
+- name: Ensure Automatic1111 directories exist
+  ansible.windows.win_file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ windows_automatic1111_contract_root }}"
+    - "{{ windows_automatic1111_install_parent }}"
+    - "{{ windows_automatic1111_models_root }}\\Stable-diffusion"
+    - "{{ windows_automatic1111_outputs_root }}"
+    - "{{ windows_automatic1111_extensions_root }}"
+    - "{{ windows_automatic1111_controlnet_models_root }}"
+
+- name: Install Python 3.10 for Automatic1111 via Chocolatey
+  chocolatey.chocolatey.win_chocolatey:
+    name: "{{ windows_automatic1111_python_package }}"
+    version: "{{ windows_automatic1111_python_version }}"
+    state: present
+    package_params: /InstallDir:C:\Python310
+  register: windows_automatic1111_python_install
+
+- name: Stat Automatic1111 Python 3.10 executable
+  ansible.windows.win_stat:
+    path: "{{ windows_automatic1111_python_exe }}"
+  register: windows_automatic1111_python_stat
+
+- name: Assert Automatic1111 Python 3.10 executable exists
+  ansible.builtin.assert:
+    that:
+      - windows_automatic1111_python_stat.stat.exists | bool
+    fail_msg: >-
+      Expected Python at {{ windows_automatic1111_python_exe }} after Chocolatey
+      install of {{ windows_automatic1111_python_package }}
+      {{ windows_automatic1111_python_version }}.
+
+- name: Stat Automatic1111 install directory
+  ansible.windows.win_stat:
+    path: "{{ windows_automatic1111_install_root }}\\launch.py"
+  register: windows_automatic1111_launch_stat
+
+- name: Clone Automatic1111 stable-diffusion-webui
+  ansible.windows.win_shell: >
+    git clone --branch {{ windows_automatic1111_repo_version }}
+    --depth 1
+    {{ windows_automatic1111_repo_url }}
+    "{{ windows_automatic1111_install_root }}"
+  args:
+    executable: cmd
+  when: not (windows_automatic1111_launch_stat.stat.exists | default(false))
+
+- name: Deploy Automatic1111 webui-user.bat
+  ansible.windows.win_template:
+    src: webui-user.bat.j2
+    dest: "{{ windows_automatic1111_install_root }}\\webui-user.bat"
+    newline_sequence: '\n'
+
+- name: Stat declared Automatic1111 checkpoint
+  ansible.windows.win_stat:
+    path: >-
+      {{ windows_automatic1111_models_root }}\Stable-diffusion\{{
+      windows_automatic1111_model_local_name }}
+  register: windows_automatic1111_model_stat
+
+- name: Download Automatic1111 checkpoint via huggingface_hub Python API
+  ansible.windows.win_shell: >-
+    py -3 -c "from huggingface_hub import hf_hub_download; p=hf_hub_download(repo_id='{{ windows_automatic1111_model_hf_repo }}', filename='{{ windows_automatic1111_model_hf_file }}', local_dir=r'{{ windows_automatic1111_models_root }}\Stable-diffusion', local_dir_use_symlinks=False); print(p)"
+  args:
+    executable: cmd
+  when: not (windows_automatic1111_model_stat.stat.exists | default(false))
+  async: 7200
+  poll: 15
+
+# Also place a copy under the WebUI default models dir so the UI finds it even if
+# --ckpt-dir is ignored on a given boot.
+- name: Ensure Automatic1111 default models directory exists
+  ansible.windows.win_file:
+    path: "{{ windows_automatic1111_install_root }}\\models\\Stable-diffusion"
+    state: directory
+
+- name: Mirror checkpoint into Automatic1111 default models directory
+  ansible.windows.win_copy:
+    src: >-
+      {{ windows_automatic1111_models_root }}\Stable-diffusion\{{
+      windows_automatic1111_model_local_name }}
+    dest: >-
+      {{ windows_automatic1111_install_root }}\models\Stable-diffusion\{{
+      windows_automatic1111_model_local_name }}
+    remote_src: true
+    newline_sequence: '\n'
+  # Encoding rule exception: binary safetensors — newline_sequence required by
+  # project encoding rule on Windows copy tasks; harmless for binary files.
+
+- name: Stat ControlNet extension
+  ansible.windows.win_stat:
+    path: >-
+      {{ windows_automatic1111_extensions_root }}\{{
+      windows_automatic1111_controlnet_extension_name }}\install.py
+  register: windows_automatic1111_controlnet_ext_stat
+  when: windows_automatic1111_controlnet_enabled | bool
+
+- name: Clone ControlNet extension for Automatic1111
+  ansible.windows.win_shell: >
+    git clone --depth 1
+    {{ windows_automatic1111_controlnet_extension_repo }}
+    "{{ windows_automatic1111_extensions_root }}\{{ windows_automatic1111_controlnet_extension_name }}"
+  args:
+    executable: cmd
+  when:
+    - windows_automatic1111_controlnet_enabled | bool
+    - not (windows_automatic1111_controlnet_ext_stat.stat.exists | default(false))
+
+- name: Stat ControlNet OpenPose weights
+  ansible.windows.win_stat:
+    path: >-
+      {{ windows_automatic1111_controlnet_models_root }}\{{
+      windows_automatic1111_controlnet_model_local_name }}
+  register: windows_automatic1111_controlnet_model_stat
+  when: windows_automatic1111_controlnet_enabled | bool
+
+- name: Download ControlNet OpenPose weights via huggingface_hub
+  ansible.windows.win_shell: >-
+    py -3 -c "from huggingface_hub import hf_hub_download; p=hf_hub_download(repo_id='{{ windows_automatic1111_controlnet_model_hf_repo }}', filename='{{ windows_automatic1111_controlnet_model_hf_file }}', local_dir=r'{{ windows_automatic1111_controlnet_models_root }}', local_dir_use_symlinks=False); print(p)"
+  args:
+    executable: cmd
+  when:
+    - windows_automatic1111_controlnet_enabled | bool
+    - not (windows_automatic1111_controlnet_model_stat.stat.exists | default(false))
+  async: 7200
+  poll: 15
+
+- name: Ensure Automatic1111 firewall rule allows LAN API access
+  community.windows.win_firewall_rule:
+    name: "{{ windows_automatic1111_firewall_rule_name }}"
+    localport: "{{ windows_automatic1111_port }}"
+    action: allow
+    direction: in
+    protocol: tcp
+    state: present
+    enabled: true
+
+- name: Ensure Automatic1111 boot scheduled task
+  community.windows.win_scheduled_task:
+    name: "{{ windows_automatic1111_task_name }}"
+    description: Start AUTOMATIC1111 WebUI API for Open WebUI image generation
+    actions:
+      - path: cmd.exe
+        arguments: >-
+          /c "{{ windows_automatic1111_install_root }}\webui-user.bat"
+        working_directory: "{{ windows_automatic1111_install_root }}"
+    triggers:
+      - type: boot
+        delay: PT2M
+    username: SYSTEM
+    logon_type: service_account
+    run_level: highest
+    state: present
+    enabled: true
+
+# Restart so new ControlNet extension / ckpt are loaded (running process ignores new extensions).
+- name: Stop Automatic1111 processes before restart
+  ansible.windows.win_powershell:
+    error_action: continue
+    script: |
+      $task = Get-ScheduledTask -TaskName '{{ windows_automatic1111_task_name }}' -ErrorAction SilentlyContinue
+      if ($task) {
+        Stop-ScheduledTask -TaskName '{{ windows_automatic1111_task_name }}' -ErrorAction SilentlyContinue
+      }
+      Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object {
+          $_.CommandLine -and (
+            $_.CommandLine -like '*stable-diffusion-webui*' -or
+            $_.CommandLine -like '*launch.py*'
+          )
+        } |
+        ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+      Start-Sleep -Seconds 3
+  changed_when: true
+
+- name: Start Automatic1111 scheduled task now
+  ansible.windows.win_shell: >
+    schtasks /Run /TN "{{ windows_automatic1111_task_name }}"
+  args:
+    executable: cmd
+  changed_when: true
+
+- name: Pin NumPy below 2 for Automatic1111 torch compatibility
+  ansible.windows.win_shell: >
+    "{{ windows_automatic1111_install_root }}\venv\Scripts\python.exe"
+    -m pip install "numpy<2"
+  args:
+    executable: cmd
+  register: windows_automatic1111_numpy_pin
+  changed_when: >-
+    'Successfully installed' in (windows_automatic1111_numpy_pin.stdout | default(''))
+  failed_when: false
+  when: windows_automatic1111_launch_stat.stat.exists | default(false)
+
+- name: Wait for Automatic1111 API to become ready
+  ansible.windows.win_uri:
+    url: "http://127.0.0.1:{{ windows_automatic1111_port }}/sdapi/v1/sd-models"
+    method: GET
+    return_content: true
+    status_code:
+      - 200
+  register: windows_automatic1111_ready
+  failed_when: false
+  retries: 90
+  delay: 30
+  until: >-
+    (windows_automatic1111_ready.status_code | default(0) | int) == 200
+
+- name: Apply Automatic1111 default generation options
+  ansible.windows.win_uri:
+    url: "http://127.0.0.1:{{ windows_automatic1111_port }}/sdapi/v1/options"
+    method: POST
+    body_format: json
+    status_code:
+      - 200
+    body:
+      sd_model_checkpoint: "{{ windows_automatic1111_model_local_name }}"
+      samples_format: png
+  register: windows_automatic1111_options
+  failed_when: false
+  when: >-
+    (windows_automatic1111_ready.status_code | default(0) | int) == 200
+
+- name: Write Automatic1111 contract receipt
+  ansible.windows.win_copy:
+    dest: "{{ windows_automatic1111_contract_root }}\\receipt.json"
+    content: |
+      {
+        "role": "windows_automatic1111",
+        "state": "present",
+        "install_root": "{{ windows_automatic1111_install_root | replace('\\', '\\\\') }}",
+        "models_root": "{{ windows_automatic1111_models_root | replace('\\', '\\\\') }}",
+        "controlnet_models_root": "{{ windows_automatic1111_controlnet_models_root | replace('\\', '\\\\') }}",
+        "port": {{ windows_automatic1111_port }},
+        "model": "{{ windows_automatic1111_model_local_name }}",
+        "controlnet_enabled": {{ windows_automatic1111_controlnet_enabled | bool | lower }},
+        "controlnet_model": "{{ windows_automatic1111_controlnet_model_local_name }}",
+        "default_size": "{{ windows_automatic1111_default_width }}x{{ windows_automatic1111_default_height }}",
+        "default_steps": {{ windows_automatic1111_default_steps }},
+        "default_cfg_scale": {{ windows_automatic1111_default_cfg_scale }},
+        "default_denoising_strength": {{ windows_automatic1111_default_denoising_strength }},
+        "api": "http://127.0.0.1:{{ windows_automatic1111_port }}/sdapi/v1"
+      }
+    newline_sequence: '\n'
+
+- name: Report Automatic1111 API endpoint
+  ansible.builtin.debug:
+    msg: >-
+      Automatic1111 API listening for Open WebUI at
+      http://{{ host_ip | default(ansible_host) }}:{{ windows_automatic1111_port }}/
+      model={{ windows_automatic1111_model_local_name }}
+      controlnet_openpose={{ windows_automatic1111_controlnet_model_local_name }}
+      tip=Use A1111 UI for denoise/OpenPose pose tweaks; Open WebUI Image button
+      stays for quick gens without ControlNet controls.
