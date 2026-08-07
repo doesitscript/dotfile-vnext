@@ -33,7 +33,7 @@ k3s_litellm_gateway_diffucoder_api_base: "http://diffucoder-openai-wrapper....:8
 
 Lane aliases: `code-fast`, `code-autocomplete-1.5b`/`7b`, `diffusiongemma-nextedit`
 `diffucoder`, `continue-edit`/`continue-apply`, `gemma4-12b`, `qwen3.6-27b`,
-`gpt-oss-20b`, `studio-coach` (Open WebUI chat via desktop Ollama when the
+`gpt-oss-20b`, `positive-negative-prompt-assist` (Open WebUI chat via desktop Ollama when the
 matching `k3s_litellm_gateway_*_chat_api_base` is set).
 (replaces Mercury), `diffucoder`, `continue-edit`. DiffuCoder needs an
 OpenAI-compatible wrapper (`diffusion_generate` is not chat-native).

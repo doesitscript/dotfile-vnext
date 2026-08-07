@@ -1,0 +1,105 @@
+digraph "code-review route" {
+	graph [bb="0,0,699,244",
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=15,
+		label="code-review route",
+		lheight=0.24,
+		lp="349.5,12.5",
+		lwidth=1.89,
+		nodesep=0.5,
+		pad=0.35,
+		rankdir=LR,
+		ranksep=0.65,
+		splines=ortho
+	];
+	node [fixedsize=true,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		height=1.4,
+		imagescale=true,
+		label="\N",
+		labelloc=b,
+		shape=box,
+		style=rounded,
+		width=1.4
+	];
+	edge [color="#7B8894"];
+	subgraph "cluster_k3s-02 LiteLLM" {
+		graph [bb="424,33,541,236",
+			bgcolor="#E5F5FD",
+			fontname="Sans-Serif",
+			fontsize=12,
+			label="k3s-02 LiteLLM",
+			labeljust=l,
+			lheight=0.18,
+			lp="477,225.5",
+			lwidth=1.25,
+			pencolor="#AEB6BE",
+			rankdir=LR,
+			shape=box,
+			style=rounded
+		];
+		"34da7f9f02b443b494f787661afa2b30"	[height=2.3056,
+			image="assets/onprem/container/docker.png",
+			label="alias code-review
+local review",
+			pos="482.5,124",
+			shape=none,
+			width=1.4028];
+	}
+	subgraph "cluster_k3s-02 vLLM" {
+		graph [bb="574,33,691,236",
+			bgcolor="#E5F5FD",
+			fontname="Sans-Serif",
+			fontsize=12,
+			label="k3s-02 vLLM",
+			labeljust=l,
+			lheight=0.18,
+			lp="619.5,225.5",
+			lwidth=1.04,
+			pencolor="#AEB6BE",
+			rankdir=LR,
+			shape=box,
+			style=rounded
+		];
+		"4696a3d537e241c9a5ccb3f2ad53c6e9"	[height=2.3056,
+			image="assets/onprem/container/docker.png",
+			label="Ornith
+vllm-primary",
+			pos="632.5,124",
+			shape=none,
+			width=1.4028];
+	}
+	f1c7a8e3fffa49fc929518bdd28982da	[height=1.9028,
+		image="assets/aws/general/user.png",
+		label=Operator,
+		pos="50.5,124",
+		shape=none,
+		width=1.4028];
+	"16e4deea840d4128bccc183ad098919e"	[height=2.3056,
+		image="assets/onprem/client/client.png",
+		label="Codex / Continue
+review flow",
+		pos="200.5,124",
+		shape=none,
+		width=1.4028];
+	f1c7a8e3fffa49fc929518bdd28982da -> "16e4deea840d4128bccc183ad098919e"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		pos="e,149.77,124 101.28,124 101.28,124 139.77,124 139.77,124"];
+	"16e4deea840d4128bccc183ad098919e" -> "34da7f9f02b443b494f787661afa2b30"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="model=code-review",
+		lp="341.5,131",
+		pos="e,431.69,124 251.24,124 251.24,124 421.69,124 421.69,124"];
+	"34da7f9f02b443b494f787661afa2b30" -> "4696a3d537e241c9a5ccb3f2ad53c6e9"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		pos="e,581.77,124 533.28,124 533.28,124 571.77,124 571.77,124"];
+}

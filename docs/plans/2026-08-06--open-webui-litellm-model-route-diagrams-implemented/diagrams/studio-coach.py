@@ -1,4 +1,4 @@
-"""studio-coach — LiteLLM coaching alias → desktop Gemma4 vision."""
+"""positive-negative-prompt-assist — LiteLLM prompt-assist alias → desktop Gemma4 vision."""
 
 from diagrams import Cluster, Diagram, Edge
 from diagrams.aws.general import User
@@ -7,7 +7,7 @@ from diagrams.onprem.compute import Server
 from diagrams.onprem.container import Docker
 
 with Diagram(
-    "studio-coach route",
+    "positive-negative-prompt-assist route",
     filename="studio-coach",
     show=False,
     outformat=["png", "svg", "dot"],
@@ -16,7 +16,7 @@ with Diagram(
     op = User("Operator")
     owui = Client("Open WebUI\nprompt coach")
     with Cluster("k3s-02 LiteLLM"):
-        gw = Docker("litellm\nstudio-coach")
+        gw = Docker("litellm\npositive-negative-prompt-assist")
     with Cluster("dev-workstation-win"):
         ollama = Server("Ollama\ngemma4:12b")
     with Cluster("Pixels (not this route)"):

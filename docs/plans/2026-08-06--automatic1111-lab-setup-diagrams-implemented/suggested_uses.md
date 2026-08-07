@@ -2,7 +2,7 @@
 
 How I’d use each **usable surface** this packet documents. Entry points:
 Open WebUI Images + A1111 at `http://a1111-hvh01.hom.lab:7860`, optional
-`studio-coach` for briefs, lab share for presets/outputs.
+`positive-negative-prompt-assist` for briefs, lab share for presets/outputs.
 
 Diagrams: [`diagrams/`](diagrams/). Sibling chat routes:
 [`../2026-08-06--open-webui-litellm-model-route-diagrams-implemented/suggested_uses.md`](../2026-08-06--open-webui-litellm-model-route-diagrams-implemented/suggested_uses.md).
@@ -16,11 +16,11 @@ Images pointed at A1111. No GPU flip needed (independent of k3s-02 Ornith).
 
 ## Shared surfaces (use with both E2E solutions)
 
-### Open WebUI chat + `studio-coach`
+### Open WebUI chat + `positive-negative-prompt-assist`
 
 **Use when:** turning runbook / NetBox / plan notes into a still brief.
 
-**How I’d use it:** pick `studio-coach` in Open WebUI; attach an optional sketch;
+**How I’d use it:** pick `positive-negative-prompt-assist` in Open WebUI; attach an optional sketch;
 ask for positive + negative prompts for a **documentation still** (topology,
 badge, UI mock). Paste into Images or into A1111’s prompt boxes.
 
@@ -33,7 +33,7 @@ that (see Open WebUI suggested uses).
 
 **Use when:** fastest path from brief → PNG without opening A1111’s full UI.
 
-**How I’d use it:** after `studio-coach`, open Images, paste the prompt, generate
+**How I’d use it:** after `positive-negative-prompt-assist`, open Images, paste the prompt, generate
 on HVH-01 CyberRealistic. Good for E2E 1 (lab-doc still). Weak for ControlNet
 knobs — switch to direct A1111 UI for E2E 2.
 
@@ -85,7 +85,7 @@ screenshot/wireframe.
 **How I’d use it end-to-end:**
 
 1. Write 3–5 bullets about the thing to illustrate (hosts, services, before/after).
-2. Open WebUI → `studio-coach` → “produce a lab-doc still prompt; flat diagram
+2. Open WebUI → `positive-negative-prompt-assist` → “produce a lab-doc still prompt; flat diagram
    style; no people.”
 3. Optionally merge with `prompts/lab_doc_still/r_topology_vignette.txt` and
    `r_negative.txt`.
@@ -109,7 +109,7 @@ Diagram: [diagrams/automatic1111-e2e-lab-doc-still.svg](diagrams/automatic1111-e
 
 1. Drop a UI screenshot or topology sketch into `images/input/mocks/` (or upload
    in A1111).
-2. Optional: `studio-coach` to polish the positive prompt (“homelab dashboard
+2. Optional: `positive-negative-prompt-assist` to polish the positive prompt (“homelab dashboard
    mock, readable panels”).
 3. Open A1111 Web UI → **img2img** + ControlNet (OpenPose or softedge) using the
    reference image.
@@ -130,7 +130,7 @@ Diagram: [diagrams/automatic1111-e2e-controlnet-mock.svg](diagrams/automatic1111
 ## Suggested day flow
 
 1. Keep A1111 up on HVH-01 for any doc illustration work (no GPU flip).
-2. Draft with `studio-coach`.
+2. Draft with `positive-negative-prompt-assist`.
 3. Prefer **Images → A1111** for simple vignettes (E2E 1).
 4. Escalate to **A1111 UI + ControlNet** only when layout lock matters (E2E 2).
 5. Use ComfyUI Phase B only when you need FLUX/graph quality (sibling plan).

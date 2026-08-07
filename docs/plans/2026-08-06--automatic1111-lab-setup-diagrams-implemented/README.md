@@ -92,7 +92,7 @@ the lowest-friction path: chat writes the brief; Open WebUI Images hits A1111
 | Stage | What happens |
 | --- | --- |
 | Input | Runbook / NetBox / plan notes |
-| Coach | Open WebUI → LiteLLM → desktop Ollama (`studio-coach`) turns notes into a still brief |
+| Coach | Open WebUI → LiteLLM → desktop Ollama (`positive-negative-prompt-assist`) turns notes into a still brief |
 | Generate | Open WebUI **Images** → Automatic1111 `txt2img` (CyberRealistic on HVH-01) |
 | Output | PNG on lab share → embed in plan / issue / runbook |
 
@@ -130,7 +130,7 @@ Pack: [diagrams/automatic1111-e2e-controlnet-mock.svg](diagrams/automatic1111-e2
 | CyberRealistic (+ ControlNet packs) | Local checkpoints used by both E2E paths |
 | Open WebUI | Chat surface + Images button for E2E 1 |
 | LiteLLM | Chat gateway only (coaching, not pixels) |
-| Desktop Ollama | Preferred coaching backend (`studio-coach` / general aliases) |
+| Desktop Ollama | Preferred coaching backend (`positive-negative-prompt-assist` / general aliases) |
 | Lab share | Landing zone for docs stills and mocks |
 | Direct A1111 Web UI | ControlNet / denoise path for E2E 2 |
 | ComfyUI (sibling) | Phase B advanced stills — not this packet’s runtime |
@@ -198,8 +198,8 @@ flowchart LR
 flowchart TB
   s1["solution: lab-doc-still"]
   s2["solution: controlnet-mock"]
-  alias1["chat alias: studio-coach"]
-  alias2["chat alias: studio-coach (optional)"]
+  alias1["chat alias: positive-negative-prompt-assist"]
+  alias2["chat alias: positive-negative-prompt-assist (optional)"]
   path1["Images → AUTOMATIC1111_BASE_URL"]
   path2["direct UI → OpenPose / softedge"]
   out1["share path: docs/stills/out"]

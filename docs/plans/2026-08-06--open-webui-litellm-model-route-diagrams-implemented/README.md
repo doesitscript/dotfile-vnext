@@ -1,10 +1,11 @@
 ---
 name: Open WebUI / LiteLLM model route diagrams
 overview: >-
-  Architecture SVGs for productive Open WebUI / LiteLLM chat aliases —
-  gemma4-12b, qwen3.6-27b, gpt-oss-20b, studio-coach, arena, smart-router,
-  experiment, default — plus companion image stack (A1111 CyberRealistic,
-  ComfyUI FLUX+SDXL).
+  Architecture SVGs for commissioned LiteLLM aliases in this lab —
+  code-review, code-fast, code-autocomplete-1.5b, continue-edit,
+  continue-apply, gemma4-12b, qwen3.6-27b, gpt-oss-20b, positive-negative-prompt-assist,
+  arena, smart-router, experiment, default — plus companion image stack
+  (A1111 CyberRealistic, ComfyUI FLUX+SDXL).
 lifecycle: implemented
 implemented_date: "2026-08-06"
 archive_candidate: false
@@ -50,6 +51,21 @@ todos:
   - id: diagram-default
     content: Pack SVG default
     status: completed
+  - id: diagram-code-review
+    content: Pack SVG code-review
+    status: completed
+  - id: diagram-code-fast
+    content: Pack SVG code-fast
+    status: completed
+  - id: diagram-code-autocomplete-1.5b
+    content: Pack SVG code-autocomplete-1.5b
+    status: completed
+  - id: diagram-continue-edit
+    content: Pack SVG continue-edit
+    status: completed
+  - id: diagram-continue-apply
+    content: Pack SVG continue-apply
+    status: completed
   - id: index-readme
     content: diagrams/README.md inventory linking stems
     status: completed
@@ -60,7 +76,7 @@ isProject: false
 
 ## Summary
 
-Documents how selected Open WebUI / LiteLLM model names route in this lab.
+Documents how commissioned LiteLLM model names route in this lab.
 Deliverable is one **create-diagrams** pack (`.py` + SVG + PNG + DOT) per model,
 **filename stem = model name**, under `diagrams/`. Inventory / LiteLLM / ComfyUI
 / A1111 companions are aligned so diagrams match live SSOT.
@@ -72,14 +88,19 @@ each chat alias, Arena, A1111/ComfyUI companions, and the lab studio share.
 
 | Alias | Backend | Job |
 | --- | --- | --- |
-| `studio-coach` | Ollama `gemma4:12b` | Vision / prompt coach for ComfyUI / A1111 |
+| `positive-negative-prompt-assist` | Ollama `gemma4:12b` | Positive/negative prompt assist for ComfyUI / A1111 |
 | `gemma4-12b` | Ollama `gemma4:12b` | Multimodal general + Arena pin |
 | `qwen3.6-27b` | Ollama `qwen3.6:27b` | Agentic coding / thinking chat |
 | `gpt-oss-20b` | Ollama `gpt-oss:20b` | General / reasoning on ~16GB |
+| `code-review` | Ornith vLLM | Review / critique alias on primary vLLM |
+| `code-fast` | Ollama `qwen2.5-coder:1.5b` | Default Continue autocomplete |
+| `code-autocomplete-1.5b` | Ollama `qwen2.5-coder:1.5b` | Explicit autocomplete route |
+| `continue-edit` | Ollama `qwen3-coder:30b` | Continue chat + edit on desktop AMD |
+| `continue-apply` | Ollama `phi4-mini` | Continue apply helper on HVH-01 |
 | `smart-router` | complexity_router | Auto-tier local → cloud |
 | `experiment` | Ornith vLLM | Local smoke |
 | `default` | Ornith vLLM | Local-first WebUI default |
-| `arena` | WebUI feature | Pins `gemma4-12b` + `studio-coach` |
+| `arena` | WebUI feature | Pins `gemma4-12b` + `positive-negative-prompt-assist` |
 
 ### Image companions (shared ideal stack)
 
@@ -108,10 +129,15 @@ Sources: Ollama library (`gemma4`, `qwen3.6`, `gpt-oss`); ComfyUI FLUX tutorial
 
 | Model / tag | Kind | Backend (lab SSOT) |
 | --- | --- | --- |
-| `studio-coach` | LiteLLM alias | Desktop Ollama `gemma4:12b` @ `ollama-desktop.hom.lab` |
-| `arena` | Open WebUI evaluation arena | Pinned: `gemma4-12b`, `studio-coach` |
+| `positive-negative-prompt-assist` | LiteLLM alias | Desktop Ollama `gemma4:12b` @ `ollama-desktop.hom.lab` |
+| `arena` | Open WebUI evaluation arena | Pinned: `gemma4-12b`, `positive-negative-prompt-assist` |
 | `gpt-oss-20b` | LiteLLM alias | Desktop Ollama `gpt-oss:20b` |
 | `gemma4-12b` | LiteLLM alias | Desktop Ollama `gemma4:12b` |
+| `code-review` | LiteLLM alias | vLLM primary Ornith on k3s-02 |
+| `code-fast` | LiteLLM alias | HVH-01 Ollama `qwen2.5-coder:1.5b` |
+| `code-autocomplete-1.5b` | LiteLLM alias | HVH-01 Ollama `qwen2.5-coder:1.5b` |
+| `continue-edit` | LiteLLM alias | Desktop Ollama `qwen3-coder:30b` |
+| `continue-apply` | LiteLLM alias | HVH-01 Ollama `phi4-mini` |
 | `qwen3.6-27b` | LiteLLM alias | Desktop Ollama `qwen3.6:27b` |
 | `smart-router` | LiteLLM complexity auto-router | Tier → `code-review` / Ornith / optional cloud |
 | `experiment` | LiteLLM + OI tag | Smoke → Ornith primary |
@@ -127,8 +153,13 @@ Sources: Ollama library (`gemma4`, `qwen3.6`, `gpt-oss`); ComfyUI FLUX tutorial
 
 | Client-facing name | Open WebUI | LiteLLM | Upstream |
 | --- | --- | --- | --- |
-| `studio-coach` | Chat (+ Arena pin) | `model_name: studio-coach` | Ollama `gemma4:12b` |
+| `positive-negative-prompt-assist` | Chat (+ Arena pin) | `model_name: positive-negative-prompt-assist` | Ollama `gemma4:12b` |
 | `gemma4-12b` | Chat (+ Arena pin) | same name | Ollama `gemma4:12b` |
+| `code-review` | Dev / agent review clients | same name | Ornith on vLLM primary |
+| `code-fast` | Continue autocomplete default | same name | Ollama `qwen2.5-coder:1.5b` |
+| `code-autocomplete-1.5b` | Continue autocomplete explicit | same name | Ollama `qwen2.5-coder:1.5b` |
+| `continue-edit` | Continue chat + edit | same name | Ollama `qwen3-coder:30b` |
+| `continue-apply` | Continue apply | same name | Ollama `phi4-mini` |
 | `qwen3.6-27b` | Chat | same name | Ollama `qwen3.6:27b` |
 | `gpt-oss-20b` | Chat | same name | Ollama `gpt-oss:20b` |
 | `arena` | Evaluations arena synthetic | N/A (WebUI feature) | Pinned model IDs |
@@ -157,6 +188,11 @@ Sources: `roles/k3s_litellm_gateway/defaults/main.yml`,
 - [x] Architecture / Capability Routing / Naming sections present
 - [x] `diagrams/studio-coach.*`
 - [x] `diagrams/arena.*`
+- [x] `diagrams/code-review.*`
+- [x] `diagrams/code-fast.*`
+- [x] `diagrams/code-autocomplete-1.5b.*`
+- [x] `diagrams/continue-edit.*`
+- [x] `diagrams/continue-apply.*`
 - [x] `diagrams/gpt-oss-20b.*`
 - [x] `diagrams/gemma4-12b.*`
 - [x] `diagrams/qwen3.6-27b.*`
@@ -184,10 +220,16 @@ flowchart TB
     gemma["gemma4:12b"]
     qwen["qwen3.6:27b"]
     gptoss["gpt-oss:20b"]
+    qwenCoder["qwen3-coder:30b"]
   end
 
   subgraph k3s_gpu["k3s-02 GPU · Phase B off"]
     ornith["Ornith / vLLM\nQwen2.5-Coder-32B-AWQ"]
+  end
+
+  subgraph hvh01_ollama["HOM-LAB-HVH-01 Ollama"]
+    auto15["qwen2.5-coder:1.5b"]
+    phi4["phi4-mini"]
   end
 
   subgraph pixels["Image planes"]
@@ -195,16 +237,19 @@ flowchart TB
     comfy["ComfyUI FLUX+SDXL\nPhase B on 5090"]
   end
 
-  owui -->|"gemma4-12b / studio-coach / qwen / gpt-oss / experiment / default"| litellm
+  owui -->|"gemma4-12b / positive-negative-prompt-assist / qwen / gpt-oss / experiment / default"| litellm
   owui -->|"arena pin"| gemma
   owui -->|"Images UI"| a1111
-  cursor --> litellm
-  litellm -->|"studio-coach / gemma4-12b"| gemma
+  cursor -->|"code-review / code-fast / code-autocomplete-1.5b / continue-edit / continue-apply"| litellm
+  litellm -->|"positive-negative-prompt-assist / gemma4-12b"| gemma
   litellm --> qwen
   litellm --> gptoss
+  litellm --> qwenCoder
+  litellm -->|"code-review / experiment / default"| ornith
+  litellm -->|"code-fast / code-autocomplete-1.5b"| auto15
+  litellm -->|"continue-apply"| phi4
   litellm --> sr
   sr --> ornith
-  litellm -->|"default / experiment"| ornith
 ```
 
 Repo / Ansible anchors:
@@ -222,10 +267,14 @@ Repo / Ansible anchors:
 flowchart LR
   pick["Client model name"] --> litellm{"LiteLLM alias?"}
 
-  litellm -->|"studio-coach"| gemmaPath["Ollama desktop\ngemma4:12b"]
+  litellm -->|"positive-negative-prompt-assist"| gemmaPath["Ollama desktop\ngemma4:12b"]
   litellm -->|"gemma4-12b"| gemmaPath
   litellm -->|"qwen3.6-27b"| qwenPath["Ollama desktop\nqwen3.6:27b"]
   litellm -->|"gpt-oss-20b"| gptPath["Ollama desktop\ngpt-oss:20b"]
+  litellm -->|"code-review"| reviewPath["Ornith vLLM"]
+  litellm -->|"code-fast / code-autocomplete-1.5b"| acPath["HVH-01 Ollama\nqwen2.5-coder:1.5b"]
+  litellm -->|"continue-edit"| editPath["Desktop Ollama\nqwen3-coder:30b"]
+  litellm -->|"continue-apply"| applyPath["HVH-01 Ollama\nphi4-mini"]
   litellm -->|"smart-router"| tiers{"complexity tier"}
   litellm -->|"experiment / default"| ornithPath["Ornith vLLM"]
 
@@ -233,7 +282,7 @@ flowchart LR
   tiers -->|MEDIUM+| ornith2["Ornith → vLLM"]
   tiers -->|COMPLEX/REASONING + cloud keys| cloud["gpt-4o / Claude"]
 
-  arenaFeat["Open WebUI Arena"] --> pin["Pinned IDs\ngemma4-12b / studio-coach"]
+  arenaFeat["Open WebUI Arena"] --> pin["Pinned IDs\ngemma4-12b / positive-negative-prompt-assist"]
   pin --> gemmaPath
 ```
 
@@ -242,14 +291,19 @@ flowchart LR
 ```mermaid
 flowchart TB
   subgraph names["Client-facing names"]
-    n1["studio-coach"]
+    n1["positive-negative-prompt-assist"]
     n2["gemma4-12b"]
     n3["qwen3.6-27b"]
     n4["gpt-oss-20b"]
-    n5["smart-router"]
-    n6["experiment"]
-    n7["default"]
-    n8["arena\nWebUI feature not LiteLLM model"]
+    n5["code-review"]
+    n6["code-fast"]
+    n7["code-autocomplete-1.5b"]
+    n8["continue-edit"]
+    n9["continue-apply"]
+    n10["smart-router"]
+    n11["experiment"]
+    n12["default"]
+    n13["arena\nWebUI feature not LiteLLM model"]
   end
 
   subgraph ssot["SSOT"]
@@ -264,12 +318,14 @@ flowchart TB
 
   names --> helm
   names --> cat
-  n8 --> owui_cfg
+  n13 --> owui_cfg
   names --> diagram_stems
 ```
 
 **Naming rule:** filesystem stem equals the LiteLLM / OI model string (hyphens
 preserved; Ollama pull tags keep colons: `gemma4:12b`). Arena uses stem `arena`.
+Raw upstream backend IDs such as `deepreinforce-ai/Ornith-1.0-35B-GGUF` remain
+represented by commissioned aliases rather than separate filesystem stems.
 
 ## Diagram Inventory
 
@@ -280,6 +336,11 @@ preserved; Ollama pull tags keep colons: `gemma4:12b`). Arena uses stem `arena`.
 | Naming/Modeling (above) | `mermaid-fence` | in plan |
 | `diagrams/studio-coach` | `pack-svg` | done |
 | `diagrams/arena` | `pack-svg` | done |
+| `diagrams/code-review` | `pack-svg` | done |
+| `diagrams/code-fast` | `pack-svg` | done |
+| `diagrams/code-autocomplete-1.5b` | `pack-svg` | done |
+| `diagrams/continue-edit` | `pack-svg` | done |
+| `diagrams/continue-apply` | `pack-svg` | done |
 | `diagrams/gpt-oss-20b` | `pack-svg` | done |
 | `diagrams/gemma4-12b` | `pack-svg` | done |
 | `diagrams/qwen3.6-27b` | `pack-svg` | done |
@@ -300,7 +361,7 @@ preserved; Ollama pull tags keep colons: `gemma4:12b`). Arena uses stem `arena`.
 ## Assumptions / defaults
 
 - Steady-state GPU: Phase B **off** (Ornith present) unless flipping to ComfyUI.
-- `studio-coach` is chat/vision only; pixels stay on A1111 or ComfyUI.
+- `positive-negative-prompt-assist` is chat/vision only; pixels stay on A1111 or ComfyUI.
 - Prefer official Ollama library tags for desktop chat backends.
 - A1111 stays SD1.5 on 6GB; FLUX/SDXL live only on ComfyUI 5090.
 
@@ -333,10 +394,10 @@ preserved; Ollama pull tags keep colons: `gemma4:12b`). Arena uses stem `arena`.
 | --- | --- | --- | --- | --- | --- |
 | O-01 | Checklist | Plan packet for productive route set | yes | pass | This README frontmatter + route table |
 | O-02 | Checklist | Architecture / Capability Routing / Naming present | yes | pass | Mermaid sections |
-| O-03 | Checklist | Eight pack-svg stems | yes | pass | diagrams/*.py + renders |
-| O-04 | Checklist | diagrams/README.md index | yes | pass | Index lists eight stems |
+| O-03 | Checklist | Thirteen pack-svg stems | yes | pass | diagrams/*.py + renders |
+| O-04 | Checklist | diagrams/README.md index | yes | pass | Index lists thirteen stems |
 | O-05 | User | Productive aliases in SSOT | yes | pass | host_vars + build_helm_values + catalog |
-| O-06 | User | `studio-coach` documented | yes | pass | LiteLLM alias + pack stem |
+| O-06 | User | `positive-negative-prompt-assist` documented | yes | pass | LiteLLM alias + pack stem |
 | O-07 | User | ComfyUI starter models | yes | pass | k3s_comfyui_runtime defaults FLUX+SDXL+LTX |
 | O-08 | User | A1111 / OWUI t2i recommendation | yes | pass | CyberRealistic kept + documented |
 | O-09 | Diagram gate | Architecture + Routing + Naming + Inventory | yes | pass | Diagram gate receipt |

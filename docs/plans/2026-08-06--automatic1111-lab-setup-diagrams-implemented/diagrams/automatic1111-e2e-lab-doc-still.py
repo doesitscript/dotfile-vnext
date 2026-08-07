@@ -19,7 +19,7 @@ with Diagram(
 
     with Cluster("Brief"):
         notes = Server("Runbook / NetBox\n/ plan notes")
-        webui = Docker("Open WebUI chat\nstudio-coach")
+        webui = Docker("Open WebUI chat\npositive-negative-prompt-assist")
         litellm = Docker("LiteLLM\ncoaching only")
         ollama = Server("Desktop Ollama\nbrief writer")
 

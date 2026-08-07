@@ -16,7 +16,7 @@ with Diagram(
     op = User("Operator")
     with Cluster("hom-lab-ctl-dkr-02"):
         owui = Docker("Open WebUI\nArena enabled")
-        pin = Client("Pinned IDs\ngemma4-12b\nstudio-coach")
+        pin = Client("Pinned IDs\ngemma4-12b\npositive-negative-prompt-assist")
     with Cluster("LiteLLM + desktop"):
         gw = Docker("litellm.hom.lab")
         ollama = Server("Ollama desktop\ngemma4:12b")

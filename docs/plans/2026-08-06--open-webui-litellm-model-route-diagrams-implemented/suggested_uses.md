@@ -22,7 +22,7 @@ Companion still solutions (not owned by this folder):
 notes, and short Ansible/doc drafts. It is the local-first Ornith path — treat it
 as the always-on house model, not a specialist.
 
-**Avoid:** long multimodal / vision work (prefer `gemma4-12b` or `studio-coach`);
+**Avoid:** long multimodal / vision work (prefer `gemma4-12b` or `positive-negative-prompt-assist`);
 heavy agentic coding (prefer `qwen3.6-27b`).
 
 Diagram: [diagrams/default.svg](diagrams/default.svg)
@@ -50,7 +50,7 @@ Diagram: [diagrams/experiment.svg](diagrams/experiment.svg)
 
 **How I’d use it:** paste a screenshot of a K9s pane, Grafana board, or A1111
 preview and ask “what am I looking at / what should I change?” Also fine for
-Arena A-side. Same weights as `studio-coach`, but without the studio coaching
+Arena A-side. Same weights as `positive-negative-prompt-assist`, but without the prompt-assist
 persona — use this when you want a normal assistant with eyes.
 
 **Avoid:** treating it as the 5090 Ornith coder; that is `default` / `experiment`
@@ -60,23 +60,24 @@ Diagram: [diagrams/gemma4-12b.svg](diagrams/gemma4-12b.svg)
 
 ---
 
-### `studio-coach`
+### `positive-negative-prompt-assist`
 
-**Use when:** turning messy notes + a reference image into a still brief for
-A1111 or ComfyUI.
+**Use when:** turning messy notes + a reference image into a positive prompt and
+negative prompt for A1111 or ComfyUI.
 
 **How I’d use it:**
 
 1. Attach a topology sketch, UI mock, or prior still.
-2. Ask for a **positive prompt**, **negative prompt**, and **denoise / sampler
-   hints** aimed at lab-doc content (hosts, services, cards — not portraits).
+2. Ask for a **positive prompt** and **negative prompt** ready to paste into an
+   image UI.
 3. Paste the brief into Open WebUI Images (A1111) or a ComfyUI text node.
-4. Iterate once: “tighten labels, flatter colors, less clutter.”
+4. Use the listed services at the end to choose the next hop: Automatic1111 or
+   ComfyUI.
 
 Optional system text on the studio share:
 `F:\shares\public\studio\coaching\r_lab_visual_system.txt`.
 
-**Avoid:** open-ended creative chat; use `gemma4-12b` for that.
+**Avoid:** open-ended general chat; use `gemma4-12b` for that.
 
 Diagram: [diagrams/studio-coach.svg](diagrams/studio-coach.svg)
 
@@ -91,7 +92,7 @@ recap”, “draft a checklist from this README section.” Prefer it over `defa
 when you want stronger structured reasoning on the AMD box without burning the
 5090 Ornith lane.
 
-**Avoid:** vision-heavy studio briefs (`studio-coach`); Arena comparisons that
+**Avoid:** vision-heavy prompt assist work (`positive-negative-prompt-assist`); Arena comparisons that
 should stay on the pinned Gemma pair.
 
 Diagram: [diagrams/qwen3.6-27b.svg](diagrams/qwen3.6-27b.svg)
@@ -106,7 +107,7 @@ Diagram: [diagrams/qwen3.6-27b.svg](diagrams/qwen3.6-27b.svg)
 “explain this error in plain language” when Gemma feels too chatty and Qwen is
 overkill. Good spare lane if one of the other Ollama tags is busy or unloading.
 
-**Avoid:** relying on it as the Arena pin (Arena uses Gemma + studio-coach).
+**Avoid:** relying on it as the Arena pin (Arena uses Gemma + positive-negative-prompt-assist).
 
 Diagram: [diagrams/gpt-oss-20b.svg](diagrams/gpt-oss-20b.svg)
 
@@ -135,7 +136,7 @@ Diagram: [diagrams/smart-router.svg](diagrams/smart-router.svg)
 **Use when:** A/B comparing two pinned chat models side by side.
 
 **How I’d use it:** open Evaluations → Arena with pins `gemma4-12b` and
-`studio-coach`. Same prompt twice — e.g. “coach this topology vignette” vs a
+`positive-negative-prompt-assist`. Same prompt twice — e.g. “coach this topology vignette” vs a
 neutral rewrite — then keep the better brief for Images. Useful after prompt or
 system-text changes to see if the coach persona still helps.
 
@@ -156,7 +157,7 @@ in the sibling packets linked above.
 
 **How I’d use it:**
 
-1. Draft with `studio-coach` (+ optional reference image).
+1. Draft with `positive-negative-prompt-assist` (+ optional reference image).
 2. Open WebUI **Images** → generate on HVH-01 A1111.
 3. For pose / layout lock, leave WebUI and use A1111 UI + ControlNet OpenPose
    (ControlNet mock E2E in the A1111 plan).
@@ -171,7 +172,7 @@ in the sibling packets linked above.
 **How I’d use it:**
 
 1. Flip GPU time-share to ComfyUI ([k3s-02 GPU flip](../../reference/k3s-02-gpu-timeshare-phase-b.md)).
-2. Coach briefs with `studio-coach`, then run ops change-card or agent
+2. Coach briefs with `positive-negative-prompt-assist`, then run ops change-card or agent
    storyboard graphs (ComfyUI plan).
 3. Flip back to vLLM/Ornith when chat coding needs the 5090 again.
 
@@ -189,9 +190,9 @@ On HVH-01 after `deploy_glam_studio.yaml` (legacy role name; lab-doc content):
 | `prompts/controlnet_mock/` | A1111 ControlNet UI/topology mock briefs |
 | `prompts/ops_change_card/` | ComfyUI change-card still prompts |
 | `prompts/agent_storyboard/` | ComfyUI storyboard frame prompts |
-| `coaching/r_lab_visual_system.txt` | Optional system text when chatting as `studio-coach` |
+| `coaching/r_lab_visual_system.txt` | Optional system text when chatting as `positive-negative-prompt-assist` |
 
-Copy a prompt file → refine with `studio-coach` → generate on A1111 or ComfyUI.
+Copy a prompt file → refine with `positive-negative-prompt-assist` → generate on A1111 or ComfyUI.
 
 ---
 
@@ -199,7 +200,7 @@ Copy a prompt file → refine with `studio-coach` → generate on A1111 or Comfy
 
 1. Smoke with `experiment` if the GPU lane just flipped.
 2. Daily text on `default` or `qwen3.6-27b`.
-3. For a doc illustration: `studio-coach` (+ studio share prompt) → Open WebUI
+3. For a doc illustration: `positive-negative-prompt-assist` (+ studio share prompt) → Open WebUI
    Images (A1111) or ComfyUI.
 4. If two coach styles fight, settle it in `arena`.
 5. Only open `smart-router` when you want auto-tiering, not a named receipt.

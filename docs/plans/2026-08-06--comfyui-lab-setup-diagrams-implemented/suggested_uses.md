@@ -2,7 +2,7 @@
 
 How I’d use each **usable surface** this packet documents. Entry points:
 ComfyUI at `http://comfyui.hom.lab:30188/` (Phase B on), Open WebUI +
-`studio-coach` for briefs, lab share for outputs.
+`positive-negative-prompt-assist` for briefs, lab share for outputs.
 
 Diagrams: [`diagrams/`](diagrams/). Sibling chat routes:
 [`../2026-08-06--open-webui-litellm-model-route-diagrams-implemented/suggested_uses.md`](../2026-08-06--open-webui-litellm-model-route-diagrams-implemented/suggested_uses.md).
@@ -21,7 +21,7 @@ Sibling Phase A stills:
 **Use when:** you need a node-graph still on the high-VRAM host.
 
 **How I’d use it:** open the UI after the flip; load or build a single-still
-graph; paste a brief from `studio-coach`; save PNG to the lab share (or Comfy
+graph; paste a brief from `positive-negative-prompt-assist`; save PNG to the lab share (or Comfy
 output → copy to `F:\shares\public\studio\images\output\…`). Prefer API
 `/prompt` later when graphs are packaged.
 
@@ -32,7 +32,7 @@ Diagram: [diagrams/comfyui-lab-architecture.svg](diagrams/comfyui-lab-architectu
 
 ---
 
-### `studio-coach` (Open WebUI → LiteLLM → desktop Ollama)
+### `positive-negative-prompt-assist` (Open WebUI → LiteLLM → desktop Ollama)
 
 **Use when:** turning plan/PR/session notes into a Comfy-ready still brief.
 
@@ -55,7 +55,7 @@ coach on desktop Ollama via this alias.
 | --- | --- |
 | `prompts/ops_change_card/` | Positive preset for change-card stills |
 | `prompts/agent_storyboard/` | Frame preset for storyboard stills |
-| `coaching/r_lab_visual_system.txt` | System text behind `studio-coach` |
+| `coaching/r_lab_visual_system.txt` | System text behind `positive-negative-prompt-assist` |
 | `images/output/cards/` | Change-card PNG landing zone |
 | `images/output/storyboards/` | Storyboard frame landing zone |
 
@@ -83,7 +83,7 @@ issue, or Ansible write-up.
 **How I’d use it end-to-end:**
 
 1. Draft the change in a plan README or PR (Apply / Verify / Undo sketch).
-2. In Open WebUI, pick `studio-coach`. Paste the notes; ask for a **single
+2. In Open WebUI, pick `positive-negative-prompt-assist`. Paste the notes; ask for a **single
    change-card brief** (title, before/after panels, flat icon style).
 3. Optionally open `prompts/ops_change_card/r_change_card.txt` on the share and
    merge the coach output with that preset.
@@ -93,7 +93,7 @@ issue, or Ansible write-up.
 6. Drop the PNG into `images/output/cards/` and attach it to the plan or issue.
 
 **Good first prompts:** “HVH-01 A1111 present vs absent”, “Phase B on vs off”,
-“LiteLLM alias studio-coach added”.
+“LiteLLM alias positive-negative-prompt-assist added”.
 
 **Avoid:** video/I2V; multi-frame storyboards (that is E2E 2); burning time on
 portrait aesthetics.
@@ -111,7 +111,7 @@ researcher → executor) for demos and retros.
 
 1. Capture a session summary (chat export, plan receipt, or optional Langfuse
    role timeline).
-2. In Open WebUI with `studio-coach`, ask for **N frame prompts** (one per role
+2. In Open WebUI with `positive-negative-prompt-assist`, ask for **N frame prompts** (one per role
    or step), documentation-illustration style, labeled boxes.
 3. Merge with `prompts/agent_storyboard/r_frame.txt` if useful.
 4. On ComfyUI, generate **one still per frame** (same graph, new seed/prompt each
@@ -132,7 +132,7 @@ Diagram: [diagrams/comfyui-e2e-agent-storyboard.svg](diagrams/comfyui-e2e-agent-
 
 1. Confirm you actually need Phase B stills (else stay on A1111 Phase A).
 2. Flip GPU → ComfyUI; smoke the UI (`/system_stats` or load a tiny graph).
-3. Coach on `studio-coach` (desktop Ollama).
+3. Coach on `positive-negative-prompt-assist` (desktop Ollama).
 4. Run **one** change-card **or** a 3-frame storyboard — not both in one sitting
    until graphs are packaged.
 5. Flip GPU back to Ornith when Cursor needs the 5090.

@@ -5,7 +5,7 @@ Concise plan of the Open WebUI / LiteLLM / Ollama / vLLM / Automatic1111 / Comfy
 ## Goal
 
 - Chat in Open WebUI via LiteLLM (`gemma4-12b`, `qwen3.6-27b`, `gpt-oss-20b`,
-  `studio-coach`, Ornith, code lanes, `smart-router`).
+  `positive-negative-prompt-assist`, Ornith, code lanes, `smart-router`).
 - Open WebUI **Images** t2i → Automatic1111 (CyberRealistic SD1.5 on GTX 1060).
 - Quality stills / FLUX / SDXL → ComfyUI on k3s-02 RTX 5090 (Phase B time-share).
 - Keep single-GPU roles separate on **steady-state**: k3s-02 = Ornith (vLLM);
@@ -23,15 +23,15 @@ Concise plan of the Open WebUI / LiteLLM / Ollama / vLLM / Automatic1111 / Comfy
 | ComfyUI | k3s-02 (`comfyui.hom.lab:30188`) | FLUX.1-dev FP8 + SDXL base starter — see [k3s-02-gpu-timeshare-phase-b.md](k3s-02-gpu-timeshare-phase-b.md) |
 | Gemma4 / Qwen3.6 / gpt-oss | `dev-workstation-win` Ollama (`E:\ai\models\ollama`) | Chat (+ Gemma4 vision; others text-first) |
 | A1111 | `HOM-LAB-HVH-01` :7860 (`a1111-hvh01.hom.lab`) | Open WebUI t2i / img2img (CyberRealistic + OpenPose) |
-| Arena | Open WebUI synthetic model | Pinned combatants (vision-safe: `gemma4-12b` / `studio-coach`) |
+| Arena | Open WebUI synthetic model | Pinned combatants (vision-safe: `gemma4-12b` / `positive-negative-prompt-assist`) |
 
 ## Operator flow
 
 1. Open WebUI — pick a **chat** model (`gemma4-12b` / `qwen3.6-27b` / `gpt-oss-20b` / Ornith / `smart-router` / …).
-2. Vision / describe a picture → **`gemma4-12b`** or **`studio-coach`** + attach image.
+2. Vision / describe a picture → **`gemma4-12b`** or **`positive-negative-prompt-assist`** + attach image.
 3. Quick pictures → WebUI **Images** (A1111 CyberRealistic). Quality FLUX/SDXL → ComfyUI UI.
 4. Arena + images → Gemma4 only (Ornith / Qwen / gpt-oss reject multimodal).
-5. Prompt engineering for stills → **`studio-coach`** (vision coach alias).
+5. Prompt engineering for stills → **`positive-negative-prompt-assist`**.
 
 ## Apply / Verify / Undo
 
@@ -112,7 +112,7 @@ They solve different problems and combine cleanly:
 | Layer | Owns | Homelab use |
 | --- | --- | --- |
 | **LangGraph** (or similar agent graph) | Reasoning, planning, tool calls, loops | Decide *what* still to generate next (change-card text, storyboard step) |
-| **LiteLLM** | Model routing | Chat / `studio-coach` / Ornith lanes |
+| **LiteLLM** | Model routing | Chat / `positive-negative-prompt-assist` / Ornith lanes |
 | **ComfyUI / A1111** | Pixels | Actually render the still |
 
 ComfyUI is the camera department (deterministic media graphs). LangGraph is the
