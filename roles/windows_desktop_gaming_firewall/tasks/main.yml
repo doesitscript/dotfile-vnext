@@ -1,0 +1,14 @@
+---
+- name: Validate windows_desktop_gaming_firewall_state
+  ansible.builtin.assert:
+    that:
+      - windows_desktop_gaming_firewall_state in ['present', 'absent']
+    fail_msg: windows_desktop_gaming_firewall_state must be present or absent
+
+- name: Include present tasks
+  ansible.builtin.include_tasks: present.yml
+  when: windows_desktop_gaming_firewall_state == 'present'
+
+- name: Include absent tasks
+  ansible.builtin.include_tasks: absent.yml
+  when: windows_desktop_gaming_firewall_state == 'absent'

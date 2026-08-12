@@ -1,0 +1,8 @@
+---
+- name: Remove explicit gaming firewall rules
+  community.windows.win_firewall_rule:
+    name: "{{ item.name }}"
+    state: absent
+  loop: "{{ windows_desktop_gaming_firewall_rules }}"
+  loop_control:
+    label: "{{ item.name }}"

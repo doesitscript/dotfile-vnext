@@ -9,7 +9,7 @@ environments:
 ---
 # Migrate an Environment to Builds
 
-Use this skill when the user wants to test that the current Cloud Agent environment will work with environment builds, or asks to migrate to builds. Do not enable builds yourself; the user enables them on the Builds tab after review.
+Use this skill when the user wants to test that the current Cloud Agent environment will work with environment builds, or asks to migrate to builds. Do not enable builds yourself; the user enables them on the environment page after review.
 
 ## Resources
 
@@ -87,12 +87,11 @@ Lead with the outcome. Include only the sections relevant to the request:
 - Effective configuration source and whether it is repository-managed or DB-managed.
 - What was inspected or changed.
 - Build and fresh-agent validation evidence.
-- Remaining manual action: usually enabling builds on the Builds tab.
+- Remaining manual action: usually enabling builds on the environment page.
 
 When mentioning an environment or build ID in chat, use a markdown hyperlink whose link text is the ID — never a bare ID:
 
-- Environment: `[<environmentPublicId>](https://cursor.com/dashboard/cloud-agents/environments/e/<environmentPublicId>)`
-- Environment Builds tab (when directing the user to enable builds or review build status): `[<environmentPublicId>](https://cursor.com/dashboard/cloud-agents/environments/e/<environmentPublicId>#builds)` or an "environment dashboard" link to the same URL
+- Environment / environment dashboard (when directing the user to enable builds or review build status): `[<environmentPublicId>](https://cursor.com/dashboard/cloud-agents/environments/e/<environmentPublicId>)`
 - Build: `[<buildId>](https://cursor.com/dashboard/cloud-agents/builds/<buildId>)`
 
-Prefer the environment `url` from environment-info when present; otherwise construct the environment link with the format above. When the user should land on the Builds tab, append `#builds` to that URL if it has no hash yet.
+Prefer the environment `url` from environment-info when present; otherwise construct the environment link with the format above. Do not append `#builds` — build settings and the builds list live on the default environment detail page.

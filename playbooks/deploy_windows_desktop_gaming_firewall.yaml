@@ -1,0 +1,43 @@
+---
+# Deploy explicit gaming firewall program-path rules on interactive Windows desktops.
+#
+# Preview:
+#   bin/codex-env ansible-playbook playbooks/deploy_windows_desktop_gaming_firewall.yaml \
+#     -i inventory/inventory.yaml --tags preview
+#
+# Apply:
+#   bin/codex-env ansible-playbook playbooks/deploy_windows_desktop_gaming_firewall.yaml \
+#     -i inventory/inventory.yaml
+#
+# One-off note (2026-08-08):
+# Xbox Game Bar / Game DVR / GameBarPresenceWriter were disabled directly on
+# dev-workstation-win by explicit user request as a one-off task, outside this
+# playbook. Current one-off surfaces:
+#   - HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR AllowGameDVR=0
+#   - loaded user hives for ericc + joshc:
+#       GameDVR_Enabled=0, AppCaptureEnabled=0, AudioCaptureEnabled=0,
+#       UseNexusForGameBarEnabled=0, ShowStartupPanel=0
+# Keep this note so future gaming troubleshooting does not assume those
+# settings are Ansible-managed desired state from this role/playbook.
+
+- name: Preview Windows desktop gaming firewall targets
+  hosts: dev_workstation
+  gather_facts: false
+  tasks:
+    - name: Preview target host and declared gaming firewall rules
+      ansible.builtin.debug:
+        msg:
+          inventory_hostname: "{{ inventory_hostname }}"
+          ansible_host: "{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}"
+          state: "{{ windows_desktop_gaming_firewall_state | default('absent') }}"
+          rules: "{{ windows_desktop_gaming_firewall_rules | default([]) }}"
+      tags: [preview]
+
+- name: Deploy explicit gaming firewall rules on dev_workstation hosts
+  hosts: dev_workstation
+  gather_facts: false
+  roles:
+    - role: windows_desktop_gaming_firewall
+      tags:
+        - windows_desktop_gaming_firewall
+        - gaming_firewall

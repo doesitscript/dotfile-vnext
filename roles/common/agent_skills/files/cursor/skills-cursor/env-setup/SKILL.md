@@ -188,7 +188,7 @@ This Node example assumes `package.json` pins pnpm with `packageManager` and def
 
 Read only the reference that matches the request:
 
-- **Create or fully set up an environment:** [Set up a new environment](references/create-environment.md). When build tools are available, that reference includes snapshot → put that snapshot in the built `environment_json` → build → fresh-agent verify → propose with `build_id` before the user Saves.
+- **Create or fully set up an environment:** [Set up a new environment](references/create-environment.md). When build tools are available, that reference includes snapshot → build with `environmentJson` snapshot + install/start → fresh-agent verify → propose with `buildId` before the user Saves.
 - **Update a repository-managed environment:** after environment-info confirms a non-empty `environmentJsonPath`, use [Update a repository-managed environment](references/update-repo-managed-environment.md).
 - **Update a DB-managed environment:** after environment-info confirms a null or absent `environmentJsonPath`, use [Update a DB-managed environment](references/update-db-managed-environment.md).
 - **Migrate the current environment to prebuilt baselines:** use [Migrate an environment to builds](references/migrate-to-builds.md).
@@ -210,7 +210,7 @@ After calling environment-info:
 - A non-empty `environmentJsonPath` means repository-managed. Read [Update a repository-managed environment](references/update-repo-managed-environment.md).
 - A null or absent `environmentJsonPath` means DB-managed. Read [Update a DB-managed environment](references/update-db-managed-environment.md).
 
-Update flows require an environment ID. For a greenfield create with no linked environment, follow [Set up a new environment](references/create-environment.md) and pass complete `environment_json` to `trigger-environment-build` so it can create a personal transitional draft.
+Update flows require an environment ID. For a greenfield create with no linked environment, follow [Set up a new environment](references/create-environment.md) and pass `environmentJson` with optional `snapshot`, `install`, and/or `start` to `trigger-environment-build` so it can create a personal transitional draft.
 
 
 ## Troubleshooting
@@ -244,8 +244,7 @@ Lead with the outcome. Include only the sections relevant to the request:
 
 Only include dashboard links when `environment-info` returns a non-empty environment `url`. Use a markdown hyperlink whose link text is the complete ID:
 
-- Environment: `[<environmentPublicId>](https://cursor.com/dashboard/cloud-agents/environments/e/<environmentPublicId>)`
-- Environment Builds tab (when directing the user to enable builds or review build status): `[<environmentPublicId>](https://cursor.com/dashboard/cloud-agents/environments/e/<environmentPublicId>#builds)` or an "environment dashboard" link to the same URL
+- Environment / environment dashboard (when directing the user to enable builds or review build status): `[<environmentPublicId>](https://cursor.com/dashboard/cloud-agents/environments/e/<environmentPublicId>)`
 - Build: `[<buildId>](https://cursor.com/dashboard/cloud-agents/builds/<buildId>)`
 
-Use the returned environment `url` for the environment link; builds belonging to that environment may use their build-detail URLs. If `url` is absent—including for a transitional greenfield draft—do not construct links from IDs. When the user should land on the Builds tab, append `#builds` to the returned environment URL if it has no hash yet.
+Use the returned environment `url` for the environment link; builds belonging to that environment may use their build-detail URLs. If `url` is absent—including for a transitional greenfield draft—do not construct links from IDs. Do not append `#builds` — build settings and the builds list live on the default environment detail page.

@@ -1,0 +1,48 @@
+---
+- name: Require at least one gaming firewall rule when state is present
+  ansible.builtin.assert:
+    that:
+      - (windows_desktop_gaming_firewall_rules | length) > 0
+    fail_msg: windows_desktop_gaming_firewall_rules must declare at least one rule when state is present
+
+- name: Stat declared gaming program paths
+  ansible.windows.win_stat:
+    path: "{{ item.program }}"
+  loop: "{{ windows_desktop_gaming_firewall_rules }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: windows_desktop_gaming_firewall_program_stats
+
+- name: Require declared gaming program paths to exist
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists | default(false)
+    fail_msg: >-
+      Declared gaming firewall program path missing on {{ inventory_hostname }}:
+      {{ item.item.program }}
+  loop: "{{ windows_desktop_gaming_firewall_program_stats.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+
+- name: Ensure explicit gaming firewall rules exist
+  community.windows.win_firewall_rule:
+    name: "{{ item.name }}"
+    display_name: "{{ item.display_name | default(item.name) }}"
+    program: "{{ item.program }}"
+    action: allow
+    direction: "{{ item.direction | default('in') }}"
+    protocol: "{{ item.protocol | default('tcp') }}"
+    state: present
+    enabled: "{{ item.enabled | default(true) }}"
+    description: "{{ item.description | default(omit) }}"
+  loop: "{{ windows_desktop_gaming_firewall_rules }}"
+  loop_control:
+    label: "{{ item.name }} ({{ item.protocol | default('tcp') }})"
+
+- name: Report explicit gaming firewall rules applied
+  ansible.builtin.debug:
+    msg: >-
+      Gaming firewall rules managed on {{ inventory_hostname }}:
+      {% for rule in windows_desktop_gaming_firewall_rules %}
+        {{ rule.name }} -> {{ rule.program }} ({{ rule.protocol | default('tcp') }})
+      {% endfor %}
