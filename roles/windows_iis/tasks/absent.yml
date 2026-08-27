@@ -1,0 +1,37 @@
+---
+- name: Gather IIS Web Server feature state
+  ansible.windows.win_feature_info:
+    name: "{{ windows_iis_feature_name }}"
+  register: windows_iis_feature_info
+
+- name: Remove default IIS website and port 80 binding
+  community.windows.win_iis_website:
+    name: "{{ windows_iis_default_site_name }}"
+    state: absent
+  when:
+    - windows_iis_feature_info.features | length > 0
+    - windows_iis_feature_info.features[0].installed | default(false) | bool
+
+- name: Remove IIS Web Server feature
+  ansible.windows.win_feature:
+    name: "{{ windows_iis_feature_name }}"
+    state: absent
+  register: windows_iis_feature_remove
+  when:
+    - windows_iis_feature_info.features | length > 0
+    - windows_iis_feature_info.features[0].installed | default(false) | bool
+
+- name: Reboot after IIS feature removal when required
+  ansible.windows.win_reboot:
+    msg: Ansible reboot after IIS Web-Server feature removal
+    reboot_timeout: "{{ windows_iis_reboot_timeout }}"
+  when:
+    - windows_iis_feature_remove is defined
+    - windows_iis_feature_remove.reboot_required | default(false)
+
+- name: Wait for host after IIS removal reboot
+  ansible.builtin.wait_for_connection:
+    timeout: "{{ windows_iis_reboot_timeout }}"
+  when:
+    - windows_iis_feature_remove is defined
+    - windows_iis_feature_remove.reboot_required | default(false)

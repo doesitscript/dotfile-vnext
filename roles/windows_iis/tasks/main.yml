@@ -1,0 +1,10 @@
+---
+- name: Validate windows_iis lifecycle state
+  ansible.builtin.assert:
+    that:
+      - windows_iis_state in ['present', 'absent']
+    fail_msg: windows_iis_state must be present or absent.
+
+- name: Remove IIS when absent
+  ansible.builtin.include_tasks: absent.yml
+  when: windows_iis_state == 'absent'

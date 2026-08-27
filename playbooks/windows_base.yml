@@ -1,8 +1,9 @@
 ---
 # Apply shared Windows base configuration to all managed Windows hosts.
-# Enables Windows features, configures power, data directories, Defender exclusions,
-# registry settings (long paths, Secure Boot update suppression), and base
-# firewall rules (ICMP ping response).
+# Enables Windows features (including ensuring IIS is absent on servers),
+# configures power, data directories, Defender exclusions, registry settings
+# (long paths, Secure Boot update suppression), and base firewall rules
+# (ICMP ping response).
 #
 # This is the canonical playbook for ALL common Windows base setup.
 # Node-specific roles live in playbooks/provision_<node>.yaml.
@@ -25,11 +26,6 @@
   gather_facts: false
 
   pre_tasks:
-    - name: Skip hosts without WinRM connection configuration
-      ansible.builtin.meta: end_host
-      when: (ansible_connection | default('ssh')) != 'winrm'
-      tags: [always]
-
     - name: Set Windows OS identity facts without SMBIOS collection
       ansible.builtin.set_fact:
         ansible_os_family: "Windows"
@@ -38,6 +34,12 @@
       tags: [always]
 
   tasks:
+    - name: Ensure accidental IIS is absent
+      ansible.builtin.include_role:
+        name: windows_iis
+      when: windows_iis_state | default('absent') == 'absent'
+      tags: [windows_iis]
+
     - name: Apply shared Windows base configuration
       ansible.builtin.include_role:
         name: windows_base
