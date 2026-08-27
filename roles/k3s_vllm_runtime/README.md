@@ -37,6 +37,18 @@ Then query the OpenAI-compatible models endpoint:
 curl http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1/models
 ```
 
+## Memory policy
+
+KV-cache pressure is **GPU VRAM**, not guest system RAM.
+
+When vLLM fails with insufficient KV cache:
+
+1. Prefer raising `--gpu-memory-utilization` within measured free VRAM.
+2. Reduce competing GPU workloads (for example ComfyUI time-share).
+3. Do **not** trim model context length unless the operator explicitly asks.
+
+Host-specific tuning: `inventory/host_vars/hom-lab-ctl-k3s-02.yaml`.
+
 ## References
 
 - vLLM Docker deployment: https://docs.vllm.ai/en/latest/deployment/docker.html

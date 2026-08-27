@@ -56,6 +56,18 @@ k3s_vllm_runtime_memory_request: 2Gi
 k3s_vllm_runtime_memory_limit: 8Gi
 k3s_vllm_runtime_enable_auto_tool_choice: true
 k3s_vllm_runtime_tool_call_parser: hermes
+# --- vLLM memory policy (operator + agent) ---
+# KV-cache pressure is GPU VRAM, not guest system RAM.
+# Allowed lever: --gpu-memory-utilization (raise within measured free VRAM).
+# Do not trim model context length unless the operator explicitly requests it.
+# Preferred recovery order:
+#   1. raise --gpu-memory-utilization within free VRAM (probe evidence first)
+#   2. reduce competing GPU consumers (ComfyUI time-share, etc.)
+# Default util 0.90 left ~80MiB short of full native context on this GPU-P slice.
+# 0.95 overshoots free VRAM (~30.2/31.84 GiB free). 0.93 fits with full context.
+k3s_vllm_runtime_extra_args:
+  - --gpu-memory-utilization
+  - "0.93"
 k3s_langfuse_platform_web_cpu_request: "150m"
 k3s_langfuse_platform_web_memory_request: "512Mi"
 k3s_langfuse_platform_worker_cpu_request: "100m"
