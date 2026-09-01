@@ -1,17 +1,26 @@
 ---
 # Windows surface: WinRM for bootstrap; OpenSSH should land directly on Windows.
 # NetBox/source-of-truth name: HOM-LAB-HVH-01.
+#
+# Hardware facts (2026-09-01 — no comparative capacity claims):
+#   Role: storage lane Hyper-V host only (hyperv_lane_storage).
+#   GPU: GTX 1060 6 GB (gpu: gtx-1060-6gb).
+#   System RAM total: NOT recorded in repo — live probe required when host online.
+#   Recorded disks (2026-07-29 Get-Volume): C: 476.15 GB; D: 952.92 GB;
+#   F: data volume ~487 GB free. Do not assert "more RAM/storage" vs HVH-02.
+#   Receipt: docs/plans/2026-09-01--hvh01-network-uplink-current-state-incomplete/findings.md
 # Legacy inventory/control alias: network-server.
 # HOM-LAB-HVH-01 resolves via LAN mDNS but not from Mac controller — use IP directly.
-# Two Wi-Fi adapters will be active simultaneously once original adapter is restored.
-# Primary adapter (ansible_host): 192.168.50.234 — secondary Wi-Fi, currently active.
-# Secondary adapter (mgmt/fallback): 192.168.50.233 — original Wi-Fi (MAC 9c:c7:d3:10:68:5a), temporarily down.
-# Router DHCP reservations: bind each adapter MAC to its own IP.
-# Router hostname: HOM-LAB-HVH-01 → 192.168.50.234 (current adapter).
-# Revisit: when original adapter restored, decide final hostname strategy for both adapters.
-# IMPORTANT: dual Wi-Fi naming is ambiguous here. Keep the live external-switch
-# binding description pinned so preview/verification can prove the intended
-# uplink before any recreate path.
+#
+# Wi-Fi uplink (2026-09-01 operator decision): commission **onboard Broadcom**
+# for Hyper-V External and management LAN. TP-Link PCIe Wi-Fi 6 is deferred
+# (hardware Disconnected / PnP problem 45) — do not target it in hyperv_config.
+# Live adapter: Broadcom 802.11ac, alias Wi-Fi 2, MAC B8:86:87:F7:C8:6F @ .234.
+# Legacy onboard MAC 9c:c7:d3:10:68:5a (.233) remains stale until GT6 row deleted.
+# Router hostname: HOM-LAB-HVH-01 → 192.168.50.234 (Broadcom reservation).
+#
+# IMPORTANT: keep external-switch adapter selectors pinned to the commissioned
+# uplink so preview/verification can prove intent before any recreate path.
 #
 # Licensing: needs product key. Until then rearm with slmgr.vbs /rearm every few
 # months (see group_vars/windows_server_2025.yml). Update date after each rearm.
@@ -132,8 +141,10 @@ windows_file_shares_extra_directories:
 hyperv_config:
   external_switch_enabled: true
   switch_name: "External"
-  adapter_interface_description: "TP-Link Wi-Fi 6 PCIe Adapter"
-  adapter_name: "Wi-Fi"
+  # Onboard ASUS/Broadcom — commissioned uplink (TP-Link PCIe deferred).
+  adapter_interface_description: "Broadcom 802.11ac Network Adapter"
+  adapter_mac_address: "B8-86-87-F7-C8-6F"
+  adapter_name: "Wi-Fi 2"
   allow_management_os: true
   management_os_boot_recovery_state: present
   internal_ics_switch_enabled: true
@@ -232,12 +243,15 @@ hyperv_ubuntu_k3s_vm_disk: "60G"
 hyperv_ubuntu_k3s_vm_host_vhdx_path: 'F:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-k3s-01\hom-lab-ctl-k3s-01.vhdx'
 # Live Docker companion Hyper-V name is still nsrv-dkr-01 (legacy); inventory
 # hostname remains hom-lab-ctl-dkr-01 for guest identity. VHDX move uses live name.
+#
+# TODO (operator / follow-up): align Hyper-V VM name nsrv-dkr-01 → hom-lab-ctl-dkr-01
+# using roles/hyperv_ubuntu_vm/tasks/align_legacy_vm_identity.yml (same pattern as
+# HVH-02 server-225-ubuntu → hom-lab-ctl-dkr-02). Set
+# hyperv_ubuntu_docker_vm_legacy_hyperv_name: "nsrv-dkr-01" before apply; do not
+# delete the running Docker guest.
 hyperv_ubuntu_docker_vm_host_vhdx_path: 'F:\ProgramData\Ansible\hyperv_ubuntu_vm\nsrv-dkr-01\nsrv-dkr-01.vhdx'
-# Wave 0 storage moves (shared F: pattern + unique legacy VMs on this host).
+# Wave 0 storage moves (shared F: pattern + legacy Docker VM on this host).
 hyperv_vm_storage_move_targets:
-  - vm_name: nsrv-k3s-01
-    vhdx_path: 'F:\ProgramData\Ansible\hyperv_ubuntu_vm\nsrv-k3s-01\nsrv-k3s-01.vhdx'
-    start_after: false
   - vm_name: nsrv-dkr-01
     vhdx_path: 'F:\ProgramData\Ansible\hyperv_ubuntu_vm\nsrv-dkr-01\nsrv-dkr-01.vhdx'
     start_after: true
@@ -274,8 +288,12 @@ windows_ollama_runtime_port: 11434
 windows_ollama_runtime_models_path: 'F:\shares\public\models\ollama'
 windows_ollama_runtime_default_model: "qwen2.5-coder:1.5b"
 windows_ollama_runtime_fallback_model: "qwen2.5-coder:1.5b"
+# Inline on HVH-01: small tags; Ansible parallelizes across hosts with desktop pulls.
+windows_ollama_runtime_model_pull_mode: inline
 windows_ollama_runtime_models_present:
+  # Kilo autocomplete pragmatic lane (below Kilo 7b floor; lowest latency on Pascal 6 GB).
   - "qwen2.5-coder:1.5b"
+  # Continue apply / small patch lane (co-resident with autocomplete).
   - "phi4-mini"
 windows_ollama_runtime_model_aliases:
   - lane: code-autocomplete-1.5b
@@ -325,7 +343,7 @@ ai_host_profile:
       - nvidia
       - storage-adjacent
   storage:
-    class: high_capacity
+    class: storage_lane
     role: primary_storage_host
     workload_classes:
       - minio
@@ -333,7 +351,10 @@ ai_host_profile:
       - huggingface_cache
       - langfuse_storage
       - artifact_storage
-    description: Canonical storage lane for shared model weights, artifacts, and observability-adjacent data.
+    description: >-
+      Storage lane host for shared model weights, artifacts, and
+      observability-adjacent data. Capacity is probe-defined only — not assumed
+      larger than HVH-02.
     tags:
       - storage
       - model-cache

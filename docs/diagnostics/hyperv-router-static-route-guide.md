@@ -17,21 +17,18 @@ Use this guide when:
 
 Current lane already switched to direct routed mode:
 
-| Lane | Windows host | Host LAN IP | Guest subnet | Guest gateway | Current NAT setting |
+| Lane | Windows host | Host LAN IP | Guest subnet | Guest gateway | NAT setting |
 |---|---|---|---|---|---|
 | GPU lane | `HOM-LAB-HVH-02` | `192.168.50.158` | `192.168.137.0/24` | `192.168.137.1` | `false` |
+| Storage lane | `HOM-LAB-HVH-01` | `192.168.50.234` | `192.168.138.0/24` | `192.168.138.1` | `false` |
 
-Parallel lane that still keeps host NAT enabled today:
+Both lanes require upstream GT6 static routes (operator-applied; see
+[`inventory/group_vars/all/homelab_router_gt6.yml`](../../inventory/group_vars/all/homelab_router_gt6.yml)):
 
-| Lane | Windows host | Host LAN IP | Guest subnet | Guest gateway | Current NAT setting |
-|---|---|---|---|---|---|
-| Storage lane | `HOM-LAB-HVH-01` | `192.168.50.234` | `192.168.138.0/24` | `192.168.138.1` | `true` |
-
-If the storage lane is later switched to direct routed mode too, it will need
-the same router pattern:
-
-- destination: `192.168.138.0/24`
-- next hop: `192.168.50.234`
+| Destination | Next hop |
+|---|---|
+| `192.168.137.0/24` | `192.168.50.158` |
+| `192.168.138.0/24` | `192.168.50.234` |
 
 ## What Was Missing
 
@@ -181,7 +178,11 @@ flowchart LR
 
 ## Exact Router Change
 
-On the upstream router, add a static route with these values:
+On the upstream ASUS GT6 (`LAN → Route`), enable static routes with these values.
+**Both rows are operator-applied** (verified 2026-08-31). SSOT:
+[`inventory/group_vars/all/homelab_router_gt6.yml`](../../inventory/group_vars/all/homelab_router_gt6.yml).
+
+### GPU lane (`192.168.137.0/24`)
 
 | Field | Value |
 |---|---|
@@ -190,11 +191,7 @@ On the upstream router, add a static route with these values:
 | Gateway / next hop | `192.168.50.158` |
 | Interface | LAN / main home network |
 
-Current operator-applied status for the GPU lane is tracked separately here:
-
-- [asus-gt6-gpu-lane-router-current-state.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/asus-gt6-gpu-lane-router-current-state.md)
-
-If the storage lane later moves to the same model, add:
+### Storage lane (`192.168.138.0/24`)
 
 | Field | Value |
 |---|---|
@@ -202,6 +199,9 @@ If the storage lane later moves to the same model, add:
 | Netmask / prefix | `255.255.255.0` or `/24` |
 | Gateway / next hop | `192.168.50.234` |
 | Interface | LAN / main home network |
+
+Current operator status and verification notes:
+[asus-gt6-gpu-lane-router-current-state.md](asus-gt6-gpu-lane-router-current-state.md).
 
 ## Generic Router UI Steps
 

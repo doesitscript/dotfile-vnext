@@ -20,8 +20,8 @@ It does not claim that router SSH access is enabled yet.
 
 ## Current manual router change
 
-The upstream router now has a manually added static route for the GPU lane guest
-subnet.
+The upstream router has manually added static routes for **both** Hyper-V guest
+subnets (verified GT6 UI 2026-08-31).
 
 ### ASUS GT6 row entered
 
