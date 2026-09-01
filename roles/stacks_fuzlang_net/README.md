@@ -22,8 +22,13 @@ should prefer the Windows-published LAN surface on `HOM-LAB-HVH-01`
 
 That publication path is declared in:
 
-- `inventory/group_vars/all/fuzlang_external_services.yml`
+- `inventory/group_vars/all/langfuse_platform_external_services.yml`
 - `inventory/host_vars/HOM-LAB-HVH-01.yaml`
+
+> **Naming:** `stacks_fuzlang_net` and `fuzlang_*` variables are legacy misspellings.
+> Prefer **Langfuse platform** / `langfuse_platform_*` in new docs and code.
+> Docker compose project `fuzlang-net` is unchanged on live hosts until a planned
+> runtime identity migration.
 
 The guest-direct VM address remains valid for SSH and maintenance, but it is
 not the preferred shared service endpoint.

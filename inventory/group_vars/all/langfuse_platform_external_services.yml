@@ -1,0 +1,46 @@
+---
+# Langfuse platform external data-plane contract (Postgres, Redis, ClickHouse, MinIO).
+#
+# Shared backing services for Langfuse and LiteLLM on the storage lane. Connect
+# addresses use the Windows LAN-published route unless explicitly overridden.
+# They are NOT Ansible inventory hostnames.
+langfuse_platform_storage_windows_publish_inventory_host: "HOM-LAB-HVH-01"
+langfuse_platform_storage_windows_publish_host: >-
+  {{
+    hostvars[langfuse_platform_storage_windows_publish_inventory_host].host_ip
+    | default(hostvars[langfuse_platform_storage_windows_publish_inventory_host].ansible_host)
+  }}
+
+# External PostgreSQL
+langfuse_platform_external_postgres_connect_address: "{{ langfuse_platform_storage_windows_publish_host }}"
+langfuse_platform_external_postgres_host: "{{ langfuse_platform_external_postgres_connect_address }}"
+langfuse_platform_external_postgres_port: 5432
+langfuse_platform_external_postgres_user: langfuse
+langfuse_platform_external_postgres_password: Pass@w0rd1
+langfuse_platform_external_postgres_db: langfuse
+
+# External Redis
+langfuse_platform_external_redis_connect_address: "{{ langfuse_platform_storage_windows_publish_host }}"
+langfuse_platform_external_redis_host: "{{ langfuse_platform_external_redis_connect_address }}"
+langfuse_platform_external_redis_port: 6379
+langfuse_platform_external_redis_password: Pass@w0rd1
+langfuse_platform_external_redis_db: 0
+
+# External ClickHouse
+langfuse_platform_external_clickhouse_connect_address: "{{ langfuse_platform_storage_windows_publish_host }}"
+langfuse_platform_external_clickhouse_host: "{{ langfuse_platform_external_clickhouse_connect_address }}"
+langfuse_platform_external_clickhouse_http_port: 8123
+langfuse_platform_external_clickhouse_native_port: 9004
+langfuse_platform_external_clickhouse_user: default
+langfuse_platform_external_clickhouse_password: Pass@w0rd1
+langfuse_platform_external_clickhouse_db: default
+
+# External S3 / MinIO
+langfuse_platform_external_s3_connect_address: "{{ langfuse_platform_storage_windows_publish_host }}"
+langfuse_platform_external_s3_host: "{{ langfuse_platform_external_s3_connect_address }}"
+langfuse_platform_external_s3_port: 9000
+langfuse_platform_external_s3_console_port: 9001
+langfuse_platform_external_s3_endpoint: "http://{{ langfuse_platform_external_s3_host }}:{{ langfuse_platform_external_s3_port }}"
+langfuse_platform_external_s3_bucket: langfuse
+langfuse_platform_external_s3_region: auto
+langfuse_platform_external_s3_force_path_style: true

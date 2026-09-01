@@ -241,9 +241,9 @@
         Services deployed: postgres, redis, clickhouse, minio{{
         ', langfuse' if stacks_network_langfuse_compose_enabled | bool
         else ' (langfuse compose disabled)' }}
-      - "PostgreSQL endpoint: {{ fuzlang_external_postgres_host | default(hostvars[docker_engine_host].host_ip) }}:5432"
-      - "Redis endpoint: {{ fuzlang_external_redis_host | default(hostvars[docker_engine_host].host_ip) }}:6379"
-      - "ClickHouse HTTP endpoint: http://{{ fuzlang_external_clickhouse_host | default(hostvars[docker_engine_host].host_ip) }}:{{ fuzlang_external_clickhouse_http_port | default(8123) }}/"
-      - "MinIO API: {{ fuzlang_external_s3_endpoint | default('http://' ~ (hostvars[docker_engine_host].host_ip) ~ ':9000') }}"
+      - "PostgreSQL endpoint: {{ langfuse_platform_external_postgres_host | default(hostvars[docker_engine_host].host_ip) }}:5432"
+      - "Redis endpoint: {{ langfuse_platform_external_redis_host | default(hostvars[docker_engine_host].host_ip) }}:6379"
+      - "ClickHouse HTTP endpoint: http://{{ langfuse_platform_external_clickhouse_host | default(hostvars[docker_engine_host].host_ip) }}:{{ langfuse_platform_external_clickhouse_http_port | default(8123) }}/"
+      - "MinIO API: {{ langfuse_platform_external_s3_endpoint | default('http://' ~ (hostvars[docker_engine_host].host_ip) ~ ':9000') }}"
       - "Service status:"
       - "{{ docker_ps_result.stdout }}"

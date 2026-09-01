@@ -329,6 +329,22 @@ planning or research question. If they are skipped, say why.
 11. Treat Ansible task states such as `changed`, `ok`, and play recap counts as outcomes, not evidence, unless the underlying output, exception text, registered result, log/event entry, or saved artifact is also shown.
 12. Use those labels at transition points and decision points, not on every message.
 
+## Naming — Langfuse vs legacy `fuzlang`
+
+**`fuzlang` is a deprecated misspelling.** Do not use it in new prose, variables,
+or docs. The product is **Langfuse**; the shared Postgres/Redis/ClickHouse/MinIO
+stack is the **Langfuse platform external data plane**.
+
+| Use | Do not use |
+| --- | --- |
+| `langfuse_platform_external_*` | `fuzlang_external_*` |
+| `inventory/group_vars/all/langfuse_platform_external_services.yml` | `fuzlang_external_services.yml` (aliases only) |
+| Langfuse platform stack / storage-lane data plane | "fuzlang stack" |
+
+Legacy role `stacks_fuzlang_net` and Docker project `fuzlang-net` remain on live
+hosts until a separate runtime rename. See
+`docs/brainstorming_designs/2026-07-29--fuzlang-contract-deprecation-and-rename/README.md`.
+
 ## Implementation Shape
 
 Prefer, in order:

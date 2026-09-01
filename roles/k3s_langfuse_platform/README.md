@@ -1,7 +1,7 @@
 # k3s_langfuse_platform
 
 Deploy Langfuse on K3s with external PostgreSQL, Redis, ClickHouse, and MinIO
-resolved through the shared `fuzlang_external_*` inventory contract.
+resolved through the shared `langfuse_platform_external_*` inventory contract.
 
 ## Lifecycle
 
@@ -34,11 +34,11 @@ ansible-playbook playbooks/deploy_langfuse_platform.yaml \
 ## Secrets
 
 Secrets load from `vault/network.vault.yml` and `vault/shared.vault.yml` via `tasks/load_vault.yml`.
-External data-plane connect addresses must use the `fuzlang_external_*_connect_address`
+External data-plane connect addresses must use the `langfuse_platform_external_*_connect_address`
 inventory contract values, not inventory hostnames.
 
 The Langfuse web and worker workloads live on K3s. External data-plane targets
-are owned by `inventory/group_vars/all/fuzlang_external_services.yml`; change
+are owned by `inventory/group_vars/all/langfuse_platform_external_services.yml`; change
 that shared contract first if the backing PostgreSQL/Redis/ClickHouse/MinIO
 placement moves in a later governed packet.
 

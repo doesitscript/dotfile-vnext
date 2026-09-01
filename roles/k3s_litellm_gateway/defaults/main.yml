@@ -10,7 +10,7 @@ k3s_litellm_gateway_replicas: 1
 k3s_litellm_gateway_strategy:
   type: Recreate
 
-# Standard proxy image — external Postgres on fuzlang stack; not litellm-database.
+# Standard proxy image — external Postgres on langfuse platform stack; not litellm-database.
 k3s_litellm_gateway_image_repository: docker.litellm.ai/berriai/litellm
 k3s_litellm_gateway_image_tag: main-latest
 
@@ -34,11 +34,11 @@ k3s_litellm_gateway_master_key: "sk-Pass@w0rd1"
 k3s_litellm_gateway_env_secret_name: litellm-env-secret
 
 # External PostgreSQL — Bitnami subchart disabled via db.deployStandalone.
-# db.endpoint/db.url must use fuzlang_external_postgres_connect_address (IP), never inventory_hostname.
+# db.endpoint/db.url must use langfuse_platform_external_postgres_connect_address (IP), never inventory_hostname.
 k3s_litellm_gateway_db_deploy_standalone: false
 k3s_litellm_gateway_db_use_existing: true
-k3s_litellm_gateway_db_endpoint: "{{ fuzlang_external_postgres_connect_address }}"
-k3s_litellm_gateway_db_port: "{{ fuzlang_external_postgres_port | default(5432) }}"
+k3s_litellm_gateway_db_endpoint: "{{ langfuse_platform_external_postgres_connect_address }}"
+k3s_litellm_gateway_db_port: "{{ langfuse_platform_external_postgres_port | default(5432) }}"
 k3s_litellm_gateway_db_database: litellm
 # Ansible inventory host for delegate_to DB prep tasks — NOT a TCP connect target.
 k3s_litellm_gateway_postgres_inventory_host: hom-lab-ctl-dkr-01
@@ -48,8 +48,8 @@ k3s_litellm_gateway_db_secret_username_key: username
 k3s_litellm_gateway_db_secret_password_key: password
 # Overwritten from vault in tasks/load_vault.yml at deploy time.
 k3s_litellm_gateway_db_url: >-
-  postgresql://{{ fuzlang_external_postgres_user }}:{{ fuzlang_external_postgres_password | urlencode
-  }}@{{ fuzlang_external_postgres_connect_address }}:{{ k3s_litellm_gateway_db_port }}/{{ k3s_litellm_gateway_db_database }}
+  postgresql://{{ langfuse_platform_external_postgres_user }}:{{ langfuse_platform_external_postgres_password | urlencode
+  }}@{{ langfuse_platform_external_postgres_connect_address }}:{{ k3s_litellm_gateway_db_port }}/{{ k3s_litellm_gateway_db_database }}
 
 # Service exposure
 k3s_litellm_gateway_service_type: ClusterIP

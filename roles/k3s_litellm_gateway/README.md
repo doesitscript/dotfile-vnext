@@ -170,8 +170,8 @@ reviewer, documenter, and steward traffic can share the same gateway.
 ansible-playbook playbooks/deploy_litellm_gateway.yaml
 ```
 
-Requires the shared fuzlang external data-plane declared in
-`inventory/group_vars/all/fuzlang_external_services.yml` so external
+Requires the shared Langfuse platform external data-plane declared in
+`inventory/group_vars/all/langfuse_platform_external_services.yml` so external
 PostgreSQL and the vault-aligned `.env` exist.
 
 ## Lifecycle

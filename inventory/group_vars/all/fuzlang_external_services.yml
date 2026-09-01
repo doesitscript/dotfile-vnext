@@ -1,45 +1,32 @@
 ---
-# External fuzlang data-plane contract
-# These connect addresses are the preferred operator/runtime paths and should
-# stay on the Windows LAN-published route for the storage lane unless the user
-# explicitly changes that preference. They are NOT Ansible inventory hostnames.
-fuzlang_storage_windows_publish_inventory_host: "HOM-LAB-HVH-01"
-fuzlang_storage_windows_publish_host: >-
-  {{
-    hostvars[fuzlang_storage_windows_publish_inventory_host].host_ip
-    | default(hostvars[fuzlang_storage_windows_publish_inventory_host].ansible_host)
-  }}
-
-# External PostgreSQL
-fuzlang_external_postgres_connect_address: "{{ fuzlang_storage_windows_publish_host }}"
-fuzlang_external_postgres_host: "{{ fuzlang_external_postgres_connect_address }}"
-fuzlang_external_postgres_port: 5432
-fuzlang_external_postgres_user: langfuse
-fuzlang_external_postgres_password: Pass@w0rd1
-fuzlang_external_postgres_db: langfuse
-
-# External Redis
-fuzlang_external_redis_connect_address: "{{ fuzlang_storage_windows_publish_host }}"
-fuzlang_external_redis_host: "{{ fuzlang_external_redis_connect_address }}"
-fuzlang_external_redis_port: 6379
-fuzlang_external_redis_password: Pass@w0rd1
-fuzlang_external_redis_db: 0
-
-# External ClickHouse
-fuzlang_external_clickhouse_connect_address: "{{ fuzlang_storage_windows_publish_host }}"
-fuzlang_external_clickhouse_host: "{{ fuzlang_external_clickhouse_connect_address }}"
-fuzlang_external_clickhouse_http_port: 8123
-fuzlang_external_clickhouse_native_port: 9004
-fuzlang_external_clickhouse_user: default
-fuzlang_external_clickhouse_password: Pass@w0rd1
-fuzlang_external_clickhouse_db: default
-
-# External S3 / MinIO
-fuzlang_external_s3_connect_address: "{{ fuzlang_storage_windows_publish_host }}"
-fuzlang_external_s3_host: "{{ fuzlang_external_s3_connect_address }}"
-fuzlang_external_s3_port: 9000
-fuzlang_external_s3_console_port: 9001
-fuzlang_external_s3_endpoint: "http://{{ fuzlang_external_s3_host }}:{{ fuzlang_external_s3_port }}"
-fuzlang_external_s3_bucket: langfuse
-fuzlang_external_s3_region: auto
-fuzlang_external_s3_force_path_style: true
+# DEPRECATED — misspelled early-project name. Use langfuse_platform_external_services.yml.
+#
+# Compatibility aliases only. Do not add new references to fuzlang_* variables.
+fuzlang_storage_windows_publish_inventory_host: "{{ langfuse_platform_storage_windows_publish_inventory_host }}"
+fuzlang_storage_windows_publish_host: "{{ langfuse_platform_storage_windows_publish_host }}"
+fuzlang_external_postgres_connect_address: "{{ langfuse_platform_external_postgres_connect_address }}"
+fuzlang_external_postgres_host: "{{ langfuse_platform_external_postgres_host }}"
+fuzlang_external_postgres_port: "{{ langfuse_platform_external_postgres_port }}"
+fuzlang_external_postgres_user: "{{ langfuse_platform_external_postgres_user }}"
+fuzlang_external_postgres_password: "{{ langfuse_platform_external_postgres_password }}"
+fuzlang_external_postgres_db: "{{ langfuse_platform_external_postgres_db }}"
+fuzlang_external_redis_connect_address: "{{ langfuse_platform_external_redis_connect_address }}"
+fuzlang_external_redis_host: "{{ langfuse_platform_external_redis_host }}"
+fuzlang_external_redis_port: "{{ langfuse_platform_external_redis_port }}"
+fuzlang_external_redis_password: "{{ langfuse_platform_external_redis_password }}"
+fuzlang_external_redis_db: "{{ langfuse_platform_external_redis_db }}"
+fuzlang_external_clickhouse_connect_address: "{{ langfuse_platform_external_clickhouse_connect_address }}"
+fuzlang_external_clickhouse_host: "{{ langfuse_platform_external_clickhouse_host }}"
+fuzlang_external_clickhouse_http_port: "{{ langfuse_platform_external_clickhouse_http_port }}"
+fuzlang_external_clickhouse_native_port: "{{ langfuse_platform_external_clickhouse_native_port }}"
+fuzlang_external_clickhouse_user: "{{ langfuse_platform_external_clickhouse_user }}"
+fuzlang_external_clickhouse_password: "{{ langfuse_platform_external_clickhouse_password }}"
+fuzlang_external_clickhouse_db: "{{ langfuse_platform_external_clickhouse_db }}"
+fuzlang_external_s3_connect_address: "{{ langfuse_platform_external_s3_connect_address }}"
+fuzlang_external_s3_host: "{{ langfuse_platform_external_s3_host }}"
+fuzlang_external_s3_port: "{{ langfuse_platform_external_s3_port }}"
+fuzlang_external_s3_console_port: "{{ langfuse_platform_external_s3_console_port }}"
+fuzlang_external_s3_endpoint: "{{ langfuse_platform_external_s3_endpoint }}"
+fuzlang_external_s3_bucket: "{{ langfuse_platform_external_s3_bucket }}"
+fuzlang_external_s3_region: "{{ langfuse_platform_external_s3_region }}"
+fuzlang_external_s3_force_path_style: "{{ langfuse_platform_external_s3_force_path_style }}"

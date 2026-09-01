@@ -22,5 +22,5 @@ ansible-playbook playbooks/deploy_development_nodes.yaml --limit mac-dev --tags 
 ## Notes
 
 Use `psql` against **connect addresses** (`host_ip`, `ansible_host`, or
-`fuzlang_external_postgres_connect_address`). Do not pass Ansible inventory
+`langfuse_platform_external_postgres_connect_address`). Do not pass Ansible inventory
 hostnames into connection strings unless they are also resolvable SSH/DNS names.

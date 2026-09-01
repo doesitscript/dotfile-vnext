@@ -8,7 +8,10 @@ branded monolith.
 | `policy/` | Executable capability vocabulary + `depends_on` order |
 | `inventory/` | Who/what is commissioned (`*_state`, host classes) |
 | `contracts/<product>.yaml` | Product intent: endpoints, wiring, role ownership, depends_on |
-| `contracts/fuzlang.contract.yaml` | **Legacy archive only** — do not grow |
+| `contracts/fuzlang.contract.yaml` | **Legacy archive only** — do not grow; do not cite as SSOT |
+
+**Do not call Langfuse or its backing services "fuzlang".** Use `langfuse_platform_*`
+variables from `inventory/group_vars/all/langfuse_platform_external_services.yml`.
 
 ## Mental model
 

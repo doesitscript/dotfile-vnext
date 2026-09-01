@@ -63,7 +63,7 @@ Exiting...
 
 **Service impact:** `langfuse-web` Service has **no endpoints**.
 
-**Diagnosis:** External storage-lane fuzlang data plane is not reachable from the cluster. Inventory contract: `fuzlang_storage_windows_publish_host: 192.168.50.234` → hvh-01 portproxy → dkr-01 (`192.168.138.10`). Legacy GPU-lane Postgres on `192.168.137.10` is retired (`stacks_fuzlang_net_state: absent` on dkr-02).
+**Diagnosis:** External storage-lane Langfuse platform data plane is not reachable from the cluster. Inventory contract: `langfuse_platform_storage_windows_publish_host` (alias: `fuzlang_storage_windows_publish_host`) → `192.168.50.234` → hvh-01 portproxy → dkr-01 (`192.168.138.10`). Legacy GPU-lane Postgres on `192.168.137.10` is retired (`stacks_fuzlang_net_state: absent` on dkr-02).
 
 **Network probe from cluster (2026-07-09):**
 ```
@@ -248,7 +248,7 @@ graph TB
 
 | Order | Track | Action | Unblocks |
 |-------|-------|--------|----------|
-| 1 | Data plane | Deploy `stacks_fuzlang_net` on storage lane (`playbooks/deploy_network_stacks.yaml` → hvh-01/dkr-01) | langfuse-web, langfuse-worker, litellm |
+| 1 | Data plane | Deploy Langfuse platform stack on storage lane (`playbooks/deploy_network_stacks.yaml` → hvh-01/dkr-01, role `stacks_fuzlang_net`) | langfuse-web, langfuse-worker, litellm |
 | 1b | Data plane | Ensure k3s-02 guest can route to `192.168.50.234` (or override connect address to guest-reachable IP) | same |
 | 2 | GPU host | Attach GPU partition on hvh-02; complete GPU-P guest runtime (`dxgkrnl`, `/dev/dxg`, `nvidia-smi`) | nvidia-device-plugin |
 | 3 | GPU plugin | Re-run `k3s_nvidia_device_plugin` after host GPU works | `nvidia.com/gpu` capacity |
@@ -260,7 +260,7 @@ graph TB
 
 | Component | Repo surface |
 |-----------|--------------|
-| Fuzlang connect contract | `inventory/group_vars/all/fuzlang_external_services.yml` |
+| Fuzlang connect contract | `inventory/group_vars/all/langfuse_platform_external_services.yml` |
 | Langfuse Helm | `roles/k3s_langfuse_platform`, `playbooks/deploy_langfuse_platform.yaml` |
 | LiteLLM Helm | `roles/k3s_litellm_gateway`, `playbooks/deploy_litellm_gateway.yaml` |
 | NVIDIA device plugin | `roles/k3s_nvidia_device_plugin`, `playbooks/deploy_gpu_infrastructure.yaml` |
