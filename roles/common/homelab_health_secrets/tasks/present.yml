@@ -1,0 +1,33 @@
+---
+- name: Load shared vault for homelab health probe secrets
+  ansible.builtin.include_vars:
+    file: "{{ inventory_dir }}/../vault/shared.vault.yml"
+  no_log: true
+
+- name: Load LiteLLM gateway defaults for health secret fallback
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../../roles/k3s_litellm_gateway/defaults/main.yml"
+
+- name: Resolve LiteLLM API key for health probes
+  ansible.builtin.set_fact:
+    homelab_health_secrets_litellm_api_key: >-
+      {{
+        vault_k3s_litellm_gateway_master_key
+        | default(k3s_litellm_gateway_master_key | default(''))
+      }}
+  no_log: true
+
+- name: Assert LiteLLM API key is available for health probe env rendering
+  ansible.builtin.assert:
+    that:
+      - homelab_health_secrets_litellm_api_key | length > 0
+    fail_msg: >-
+      vault_k3s_litellm_gateway_master_key (or k3s_litellm_gateway_master_key fallback)
+      is required before rendering homelab health probe secrets.
+
+- name: Render homelab health LiteLLM env file
+  ansible.builtin.include_tasks: "{{ role_path }}/../../mcp_servers/_shared/tasks/render_env_file.yml"
+  vars:
+    _mcp_env_file_path: "{{ homelab_health_secrets_litellm_env_file }}"
+    _mcp_env_vars:
+      LITELLM_API_KEY: "{{ homelab_health_secrets_litellm_api_key }}"
