@@ -67,3 +67,21 @@ Rules:
 
 Going forward, use this suffix for executed brainstorm plans in new packet
 folders unless a packet README defines a different convention.
+
+## Partially-implemented marking
+
+When a brainstorm design is **started in repo and live** but not fully converged
+(docs, catalog, optional follow-up migrations), use:
+
+```text
+<topic>.partially-implemented.md
+```
+
+Example packet: `2026-09-01--litellm-model-client-id-patterns/`.
+
+## Active packet index (recent)
+
+| Packet | Status |
+| --- | --- |
+| [2026-09-01--homelab-routing-layer-flint-openwrt/](2026-09-01--homelab-routing-layer-flint-openwrt/) | packet-active |
+| [2026-09-01--litellm-model-client-id-patterns/](2026-09-01--litellm-model-client-id-patterns/) | partially-implemented (gateway live) |
