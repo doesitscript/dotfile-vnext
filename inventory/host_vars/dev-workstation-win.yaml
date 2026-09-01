@@ -31,10 +31,9 @@ gpu_diagnostics_windows_enable_scheduled_logging: true
 gpu_diagnostics_windows_logging_user: ericc
 gpu_diagnostics_windows_enable_presentmon_cli: false
 
-# Host-local Ollama — Continue edit + Open WebUI + Kilo Code desktop lanes
-# (AMD RX 9060 XT / Vulkan). Group sets require_driver_contract=false.
-# Do not run llm_compute_windows here (NVIDIA Studio Driver).
-# Large chat models live here so k3s-02 RTX 5090 can keep Ornith (vLLM).
+# Host-local Ollama — Continue edit, Open WebUI, and Kilo **fallback** only
+# (AMD RX 9060 XT / Vulkan). Kilo **primary** coding is 5090 vLLM via LiteLLM:
+#   qwen2.5-coder-32b@k3s02-vllm~kilo-main
 windows_ollama_runtime_state: present
 windows_ollama_runtime_bind_host: "0.0.0.0"
 windows_ollama_runtime_port: 11434
@@ -44,9 +43,9 @@ windows_ollama_runtime_fallback_model: "ministral-3:8b"
 # Background + parallel: large pulls do not block Ansible; worker can fan out missing tags.
 windows_ollama_runtime_model_pull_mode: background
 windows_ollama_runtime_models_present:
-  # Kilo Code primary agent (docs/providers/ollama → `ollama pull devstral:24b`).
+  # Open WebUI / optional local coder (NOT Kilo primary — too slow vs 5090 vLLM).
   - "devstral:24b"
-  # Kilo Mistral table: ministral-8b — fast in-band lane for autocomplete / light agent turns.
+  # Kilo fallback + light turns when 5090 path is down.
   - "ministral-3:8b"
   # Continue edit + heavy code (outside Kilo 24b ceiling but commissioned).
   - "qwen3-coder:30b"
@@ -77,11 +76,11 @@ windows_ollama_runtime_model_aliases:
     runtime_slug: ollama-positive-negative-prompt-assist-gemma4-desktop
     model: "gemma4:12b"
     fallback_model: "gemma4:12b"
-  - lane: kilo-docs-devstral
+  - lane: open-webui-devstral
     runtime_slug: ollama-devstral-24b-desktop
     model: "devstral:24b"
     fallback_model: "devstral:24b"
-  - lane: kilo-fast-ministral
+  - lane: kilo-fallback-ministral
     runtime_slug: ollama-ministral-8b-desktop
     model: "ministral-3:8b"
     fallback_model: "ministral-3:8b"

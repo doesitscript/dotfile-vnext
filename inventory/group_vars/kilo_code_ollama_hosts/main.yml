@@ -1,15 +1,15 @@
 ---
-# Kilo Code ↔ homelab Ollama placement contract.
+# Kilo Code ↔ homelab GPU placement contract (coding only).
 #
-# Kilo docs (providers/ollama): pick models with tools, 32k+ context, 7b–24b params.
-# Explicit pull example: `ollama pull devstral:24b`.
-# Mistral provider table also lists devstral + ministral-8b for agent/autocomplete-class work.
+# Client model_name syntax: <real-model>@<host>~<purpose-suffix>
+# Dropdown shows the full string; only the ~suffix is an invented homelab label.
 #
-# Host placement:
-# - dev-workstation-win (AMD RX 9060 XT, 16 GB): agent/conversation band (7b–24b+).
-# - hom-lab-hvh-01 (GTX 1060, 6 GB): fast autocomplete sidecar (smaller than Kilo band;
-#   still exposed as code-fast for pragmatic latency).
+# Kilo PRIMARY (5090): not Ollama — use LiteLLM vLLM route:
+#   qwen2.5-coder-32b@k3s02-vllm~kilo-main
+# Kilo AUTOCOMPLETE (1060): Ollama on hom-lab-hvh-01:
+#   qwen2.5-coder-1.5b@hvh01~kilo-autocomplete
+# Kilo FALLBACK (desktop): ministral only when 5090 path is down:
+#   ministral-3-8b@desktop~kilo-fast
 #
-# Parallel pull test: Ansible runs both hosts concurrently; optional per-host parallel
-# pulls when windows_ollama_runtime_model_pull_parallel is true (background worker).
+# This group is for Ollama prefetch on desktop + HVH-01 only (not the 5090 vLLM brain).
 windows_ollama_runtime_model_pull_parallel: true
