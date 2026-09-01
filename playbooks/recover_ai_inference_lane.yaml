@@ -25,13 +25,15 @@
   connection: local
   gather_facts: false
   tags: [ai_inference_lane_recovery_preview, always]
+  vars_files:
+    - "{{ playbook_dir }}/../roles/k3s_litellm_gateway/defaults/main/model_client_ids.yml"
   vars:
     ai_inference_lane_recovery_target_node: hom-lab-ctl-k3s-02
     ai_inference_lane_recovery_required_gateway_models:
-      - deepreinforce-ai/Ornith-1.0-35B-GGUF
-      - experiment
-      - code-review
-      - default
+      - "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
+      - "{{ k3s_litellm_gateway_client_model_id_experiment }}"
+      - "{{ k3s_litellm_gateway_client_model_id_code_review }}"
+      - "{{ k3s_litellm_gateway_client_model_id_default }}"
 
   tasks:
     - name: Preview AI inference lane recovery entrypoint
@@ -44,7 +46,7 @@
             - node Ready and DiskPressure=False on hom-lab-ctl-k3s-02
             - vllm-primary / litellm / langfuse rollouts succeed
             - litellm.hom.lab/v1/models exposes the expected route aliases
-            - deepreinforce-ai/Ornith-1.0-35B-GGUF completion probe succeeds
+            - ornith-35b@k3s02-vllm~coder-primary completion probe succeeds
           undo:
             - rerun owner playbooks after restoring prior repo truth
             - repeat the node cleanup/restart slice only when disk-pressure or rollout churn returns
@@ -220,14 +222,15 @@
   connection: local
   gather_facts: false
   vars_files:
+    - "{{ playbook_dir }}/../roles/k3s_litellm_gateway/defaults/main/model_client_ids.yml"
     - "{{ playbook_dir }}/../roles/k3s_litellm_gateway/defaults/main.yml"
   vars:
     ai_inference_lane_recovery_required_gateway_models:
-      - deepreinforce-ai/Ornith-1.0-35B-GGUF
-      - experiment
-      - code-review
-      - default
-    ai_inference_lane_recovery_completion_probe_model: deepreinforce-ai/Ornith-1.0-35B-GGUF
+      - "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
+      - "{{ k3s_litellm_gateway_client_model_id_experiment }}"
+      - "{{ k3s_litellm_gateway_client_model_id_code_review }}"
+      - "{{ k3s_litellm_gateway_client_model_id_default }}"
+    ai_inference_lane_recovery_completion_probe_model: "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
     ai_inference_lane_recovery_completion_probe_prompt: Reply with only the word READY.
     ai_inference_lane_recovery_completion_probe_expected_text: READY
   tags: [ai_inference_lane_recovery, ai_inference_lane_recovery_verify]

@@ -31,14 +31,49 @@ k3s_litellm_gateway_diffusiongemma_api_base: "http://vllm-diffusiongemma....:800
 k3s_litellm_gateway_diffucoder_api_base: "http://diffucoder-openai-wrapper....:8000/v1"
 ```
 
-Lane aliases: `code-fast`, `code-autocomplete-1.5b`/`7b`, `diffusiongemma-nextedit`
-`diffucoder`, `continue-edit`/`continue-apply`, `gemma4-12b`, `qwen3.6-27b`,
-`gpt-oss-20b`, `positive-negative-prompt-assist` (Open WebUI chat via desktop Ollama when the
+Lane client IDs (structured `model_name` values): see **Client model ID syntax**
+above. Short catalog lanes: `code-fast`, `continue-autocomplete`, `diffusiongemma-nextedit`,
+`diffucoder`, `continue-edit`/`continue-apply`, `open-webui-chat`, `architect`,
+`open-webui-general`, `prompt-assist`, `kilo-main`, `kilo-fast` (Open WebUI / Kilo via desktop Ollama when the
 matching `k3s_litellm_gateway_*_chat_api_base` is set).
-(replaces Mercury), `diffucoder`, `continue-edit`. DiffuCoder needs an
-OpenAI-compatible wrapper (`diffusion_generate` is not chat-native).
 
-## Complexity auto-router (`smart-router`)
+## Client model ID syntax
+
+LiteLLM `model_list[].model_name` values use structured client IDs defined in
+`defaults/main/model_client_ids.yml`:
+
+```text
+<model-slug>@<host-slug>~<friendly-lane>
+```
+
+| Segment | Meaning |
+| --- | --- |
+| `model-slug` | Backend weight id (`:` and `/` → `-`) |
+| `@` | Separates model from host |
+| `host-slug` | Homelab surface (`desktop`, `hvh01`, `k3s02-vllm`, `openai`, `anthropic`, `litellm`) |
+| `~` | Separates host from purpose lane |
+| `friendly-lane` | Invented client purpose name (`code-fast`, `kilo-main`, `smart-router`, …) |
+
+Entry kinds (also in `model_info.client_model_id_kind` when set):
+
+- **FRIENDLY ALIAS** — one backend `model` + `api_base` (most routes).
+- **MODEL GROUP** — router entry; fans out to other client `model_name` targets.
+  Example: `complexity-router@litellm~smart-router` (LiteLLM complexity auto-router).
+
+`model_info.model_lane` keeps the short catalog-friendly slug for tracing
+(`code-fast`, `deepreinforce-ai/Ornith-1.0-35B-GGUF`, …) even when the client
+`model_name` uses the structured form.
+
+### Examples
+
+| Client `model_name` | Kind | Backend |
+| --- | --- | --- |
+| `ornith-35b@k3s02-vllm~coder-primary` | FRIENDLY ALIAS | vLLM Ornith on k3s-02 |
+| `qwen2.5-coder-1.5b@hvh01~code-fast` | FRIENDLY ALIAS | Ollama on HVH-01 |
+| `devstral-24b@desktop~kilo-main` | FRIENDLY ALIAS | Desktop Ollama |
+| `complexity-router@litellm~smart-router` | MODEL GROUP | Tier router |
+
+## Complexity auto-router (`complexity-router@litellm~smart-router`)
 
 Requires LiteLLM **>= v1.94.x** (`auto_router/complexity_router`). The role keeps
 `image_tag: main-latest` by default so the gateway can pick up that surface.
@@ -46,17 +81,17 @@ Requires LiteLLM **>= v1.94.x** (`auto_router/complexity_router`). The role keep
 Clients call:
 
 ```text
-model: smart-router
+model: complexity-router@litellm~smart-router
 ```
 
-Tier map (local-first; Ollama retired — code-review aliases vllm-primary):
+Tier map (local-first; Ollama retired — SIMPLE tier aliases vllm-primary review lane):
 
 | Tier | Without cloud keys | With OpenAI | With Anthropic |
 | --- | --- | --- | --- |
-| SIMPLE | `code-review` (vLLM) | `code-review` (vLLM) | `code-review` (vLLM) |
-| MEDIUM | Ornith | Ornith | Ornith |
-| COMPLEX | Ornith | `gpt-4o` | `claude-sonnet` |
-| REASONING | Ornith | `gpt-4o` | `claude-sonnet` |
+| SIMPLE | `ornith-35b@k3s02-vllm~code-review` | same | same |
+| MEDIUM | `ornith-35b@k3s02-vllm~coder-primary` | same | same |
+| COMPLEX | `ornith-35b@k3s02-vllm~coder-primary` | `gpt-4o@openai~cloud-chat` | `claude-sonnet-4@anthropic~cloud-escalation` |
+| REASONING | `ornith-35b@k3s02-vllm~coder-primary` | `gpt-4o@openai~cloud-chat` | `claude-sonnet-4@anthropic~cloud-escalation` |
 
 This is **pre-request complexity classification**, not post-response confidence
 handoff. Keyword rules for ansible/k3s/netbox escalate to COMPLEX/REASONING.
@@ -128,21 +163,21 @@ External PostgreSQL uses `k3s_litellm_gateway_db_endpoint` plus
 
 ## Model routes vs model catalog
 
-`k3s_litellm_gateway_model_list` is the LiteLLM gateway route list. It defines
-client-facing aliases such as `deepreinforce-ai/Ornith-1.0-35B-GGUF`, `experiment`, and the preserved
-migration rows.
+`k3s_litellm_gateway_model_list` is the LiteLLM gateway route list. Client-facing
+`model_name` values use the structured syntax in `defaults/model_client_ids.yml`
+(`<model-slug>@<host-slug>~<friendly-lane>`).
 
 For the current slice:
 
-- `deepreinforce-ai/Ornith-1.0-35B-GGUF` is the first real local coding lane.
+- `ornith-35b@k3s02-vllm~coder-primary` is the primary local coding lane (Ornith on vLLM).
   The live LiteLLM callback is the **Request Inspector** (observe-only).
-- `deepreinforce-ai/Ornith-1.0-35B-GGUF-no-trim` is a historical alias from the
+- `ornith-35b@k3s02-vllm~coder-no-trim` is a historical alias from the
   trim era; both aliases now pass through unmutated. Oversized prompts fail at
   vLLM (32k). Archived mutate path:
   `roles/k3s_litellm_gateway/archive/trim-messages-callback-2026-07/`.
-- `experiment` remains visible as a smoke alias, but it currently shares the
-  same `vllm-primary` backend as `deepreinforce-ai/Ornith-1.0-35B-GGUF` until a second runtime exists.
-- `gpt-4o-mini` and `default` stay present as migration rows while local-lane
+- `ornith-35b@k3s02-vllm~experiment` remains visible as a smoke alias, but it currently shares the
+  same `vllm-primary` backend as coder-primary until a second runtime exists.
+- `gpt-4o-mini@openai~cloud-fast` and `ornith-35b@k3s02-vllm~default` stay present as migration rows while local-lane
   verification is still maturing.
 
 The durable Hugging Face/storage catalog is separate:

@@ -1,0 +1,60 @@
+---
+# LiteLLM client-facing model_name syntax (gateway `model_list[].model_name`).
+#
+#   <model-slug>@<host-slug>~<friendly-lane>
+#
+# - model-slug: backend weight id with `:` and `/` replaced by `-`
+# - host-slug: homelab server surface (desktop, hvh01, k3s02-vllm, openai, anthropic, litellm)
+# - friendly-lane: invented purpose name (code-fast, kilo-main, smart-router, …)
+#
+# Entry kinds:
+# - FRIENDLY ALIAS — one backend model + api_base (not a model group).
+# - MODEL GROUP — router entry; LiteLLM fans out to tier model_name targets.
+#
+# `model_info.model_lane` keeps the short friendly-lane slug for tracing/catalog.
+
+k3s_litellm_gateway_client_model_id_syntax: "<model-slug>@<host-slug>~<friendly-lane>"
+
+# Host slugs (documented; referenced in client model_name strings).
+k3s_litellm_gateway_client_model_host_desktop: desktop
+k3s_litellm_gateway_client_model_host_hvh01: hvh01
+k3s_litellm_gateway_client_model_host_k3s02_vllm: k3s02-vllm
+k3s_litellm_gateway_client_model_host_openai: openai
+k3s_litellm_gateway_client_model_host_anthropic: anthropic
+k3s_litellm_gateway_client_model_host_litellm: litellm
+
+# --- k3s-02 vLLM (Ornith primary) — FRIENDLY ALIAS ---
+k3s_litellm_gateway_client_model_id_coder_primary: "ornith-35b@k3s02-vllm~coder-primary"
+k3s_litellm_gateway_client_model_id_coder_no_trim: "ornith-35b@k3s02-vllm~coder-no-trim"
+k3s_litellm_gateway_client_model_id_experiment: "ornith-35b@k3s02-vllm~experiment"
+k3s_litellm_gateway_client_model_id_default: "ornith-35b@k3s02-vllm~default"
+# Shares vllm-primary until a distinct secondary review runtime exists.
+k3s_litellm_gateway_client_model_id_code_review: "ornith-35b@k3s02-vllm~code-review"
+
+# --- Cloud provider routes — FRIENDLY ALIAS (remote api_base) ---
+k3s_litellm_gateway_client_model_id_gpt4o: "gpt-4o@openai~cloud-chat"
+k3s_litellm_gateway_client_model_id_gpt4o_mini: "gpt-4o-mini@openai~cloud-fast"
+k3s_litellm_gateway_client_model_id_claude_sonnet: "claude-sonnet-4@anthropic~cloud-escalation"
+
+# --- HVH-01 Ollama — FRIENDLY ALIAS ---
+k3s_litellm_gateway_client_model_id_code_fast: "qwen2.5-coder-1.5b@hvh01~code-fast"
+k3s_litellm_gateway_client_model_id_continue_autocomplete: "qwen2.5-coder-1.5b@hvh01~continue-autocomplete"
+k3s_litellm_gateway_client_model_id_continue_apply: "phi4-mini@hvh01~continue-apply"
+
+# --- Desktop Ollama — FRIENDLY ALIAS ---
+k3s_litellm_gateway_client_model_id_continue_edit: "qwen3-coder-30b@desktop~continue-edit"
+k3s_litellm_gateway_client_model_id_open_webui_gemma4: "gemma4-12b@desktop~open-webui-chat"
+k3s_litellm_gateway_client_model_id_architect: "qwen3.6-27b@desktop~architect"
+k3s_litellm_gateway_client_model_id_open_webui_gpt_oss: "gpt-oss-20b@desktop~open-webui-general"
+k3s_litellm_gateway_client_model_id_prompt_assist: "gemma4-12b@desktop~prompt-assist"
+k3s_litellm_gateway_client_model_id_kilo_main: "devstral-24b@desktop~kilo-main"
+k3s_litellm_gateway_client_model_id_kilo_fast: "ministral-3-8b@desktop~kilo-fast"
+
+# --- Optional k3s-02 secondary vLLM lanes — FRIENDLY ALIAS (gated by api_base) ---
+k3s_litellm_gateway_client_model_id_continue_autocomplete_7b: "qwen2.5-coder-7b@k3s02-vllm~continue-autocomplete-7b"
+k3s_litellm_gateway_client_model_id_diffusiongemma_nextedit: "diffusiongemma-26b-fp8@k3s02-vllm~continue-nextedit"
+k3s_litellm_gateway_client_model_id_diffucoder: "diffucoder-7b@k3s02-vllm~continue-edit-legacy"
+k3s_litellm_gateway_client_model_id_continue_edit_diffucoder: "diffucoder-7b@k3s02-vllm~continue-edit"
+
+# --- MODEL GROUP (complexity auto-router) ---
+k3s_litellm_gateway_client_model_id_smart_router: "complexity-router@litellm~smart-router"

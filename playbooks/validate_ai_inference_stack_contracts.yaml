@@ -5,6 +5,7 @@
   vars_files:
     - "{{ playbook_dir }}/../inventory/group_vars/model_catalog/manifest.yml"
     - "{{ playbook_dir }}/../inventory/group_vars/all/ai_agent_profiles.yml"
+    - "{{ playbook_dir }}/../roles/k3s_litellm_gateway/defaults/main/model_client_ids.yml"
     - "{{ playbook_dir }}/../roles/k3s_litellm_gateway/defaults/main.yml"
     - "{{ playbook_dir }}/../roles/k3s_vllm_runtime/defaults/main.yml"
   vars:
@@ -19,13 +20,13 @@
       - experiment
       - smart-router
     _required_enabled_gateway_routes:
-      - deepreinforce-ai/Ornith-1.0-35B-GGUF
-      - experiment
-      - code-review
+      - "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
+      - "{{ k3s_litellm_gateway_client_model_id_experiment }}"
+      - "{{ k3s_litellm_gateway_client_model_id_code_review }}"
     _required_migration_gateway_routes:
-      - gpt-4o-mini
-      - gpt-4o
-      - default
+      - "{{ k3s_litellm_gateway_client_model_id_gpt4o_mini }}"
+      - "{{ k3s_litellm_gateway_client_model_id_gpt4o }}"
+      - "{{ k3s_litellm_gateway_client_model_id_default }}"
   tasks:
     - name: Collect gateway and lane contract names
       ansible.builtin.set_fact:
@@ -58,11 +59,13 @@
     - name: Validate local-only fallback list still exposes useful lanes
       ansible.builtin.assert:
         that:
-          - "'deepreinforce-ai/Ornith-1.0-35B-GGUF' in _gateway_no_openai_route_names"
-          - "'experiment' in _gateway_no_openai_route_names"
-          - "'code-review' in _gateway_no_openai_route_names"
-          - "'default' in _gateway_no_openai_route_names"
-        fail_msg: "LiteLLM local-only fallback must still expose deepreinforce-ai/Ornith-1.0-35B-GGUF, experiment, code-review, and default."
+          - k3s_litellm_gateway_client_model_id_coder_primary in _gateway_no_openai_route_names
+          - k3s_litellm_gateway_client_model_id_experiment in _gateway_no_openai_route_names
+          - k3s_litellm_gateway_client_model_id_code_review in _gateway_no_openai_route_names
+          - k3s_litellm_gateway_client_model_id_default in _gateway_no_openai_route_names
+        fail_msg: >-
+          LiteLLM local-only fallback must still expose coder-primary, experiment,
+          code-review, and default client model IDs.
 
     - name: Validate every main gateway route carries required model metadata
       ansible.builtin.assert:
@@ -78,11 +81,11 @@
       loop_control:
         label: "{{ item.model_name }}"
 
-    - name: Resolve main deepreinforce-ai/Ornith-1.0-35B-GGUF gateway row
+    - name: Resolve primary Ornith gateway row
       ansible.builtin.set_fact:
-        _code_deep_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', 'deepreinforce-ai/Ornith-1.0-35B-GGUF') | list | first) }}"
-        _experiment_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', 'experiment') | list | first) }}"
-        _code_review_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', 'code-review') | list | first) }}"
+        _code_deep_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', k3s_litellm_gateway_client_model_id_coder_primary) | list | first) }}"
+        _experiment_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', k3s_litellm_gateway_client_model_id_experiment) | list | first) }}"
+        _code_review_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', k3s_litellm_gateway_client_model_id_code_review) | list | first) }}"
       changed_when: false
 
     - name: Validate local coding lane points at the declared primary vLLM backend
@@ -128,11 +131,11 @@
       ansible.builtin.assert:
         that:
           - k3s_litellm_gateway_complexity_router_enabled | bool
-          - k3s_litellm_gateway_complexity_router_model_name == 'smart-router'
-          - k3s_litellm_gateway_complexity_tiers_local.SIMPLE == 'code-review'
-          - k3s_litellm_gateway_complexity_tiers_local.MEDIUM == 'deepreinforce-ai/Ornith-1.0-35B-GGUF'
-          - k3s_litellm_gateway_complexity_tiers_with_anthropic.COMPLEX == 'claude-sonnet'
-          - k3s_litellm_gateway_complexity_tiers_with_openai.COMPLEX == 'gpt-4o'
+          - k3s_litellm_gateway_complexity_router_model_name == k3s_litellm_gateway_client_model_id_smart_router
+          - k3s_litellm_gateway_complexity_tiers_local.SIMPLE == k3s_litellm_gateway_client_model_id_code_review
+          - k3s_litellm_gateway_complexity_tiers_local.MEDIUM == k3s_litellm_gateway_client_model_id_coder_primary
+          - k3s_litellm_gateway_complexity_tiers_with_anthropic.COMPLEX == k3s_litellm_gateway_client_model_id_claude_sonnet
+          - k3s_litellm_gateway_complexity_tiers_with_openai.COMPLEX == k3s_litellm_gateway_client_model_id_gpt4o
           - "'smart-router' in _lane_contract_names"
         fail_msg: "Complexity smart-router contract is missing or not local-first."
 
