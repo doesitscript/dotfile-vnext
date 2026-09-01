@@ -1,0 +1,64 @@
+---
+- name: Export driver package on source host when staging folder is empty
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $exportRoot = '{{ windows_pnp_driver_install_source_export_root }}'
+      $packageName = '{{ windows_pnp_driver_install_package_name }}'
+      $published = '{{ windows_pnp_driver_install_source_export_published_name }}'
+      $staging = Join-Path $exportRoot $packageName
+      $inf = Get-ChildItem -LiteralPath $staging -Recurse -Filter '*.inf' -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+      if ($inf) {
+        $Ansible.Result = @{
+          changed = $false
+          staging = $staging
+          inf_path = $inf.FullName
+          status = 'already_exported'
+        }
+        return
+      }
+      if (-not (Test-Path -LiteralPath $exportRoot)) {
+        New-Item -ItemType Directory -Force -Path $exportRoot | Out-Null
+      }
+      if (Test-Path -LiteralPath $staging) {
+        Remove-Item -LiteralPath $staging -Recurse -Force
+      }
+      New-Item -ItemType Directory -Force -Path $staging | Out-Null
+      & pnputil.exe /export-driver $published $staging
+      if ($LASTEXITCODE -ne 0) {
+        throw "pnputil /export-driver failed for $published with exit code $LASTEXITCODE"
+      }
+      $inf = Get-ChildItem -LiteralPath $staging -Recurse -Filter '*.inf' -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+      if (-not $inf) {
+        throw "No .inf found under $staging after export"
+      }
+      $Ansible.Result = @{
+        changed = $true
+        staging = $staging
+        inf_path = $inf.FullName
+        status = 'exported'
+      }
+  delegate_to: "{{ windows_pnp_driver_install_source_host }}"
+  register: windows_pnp_driver_install_export_result
+
+- name: Build driver package zip on source host
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $exportRoot = '{{ windows_pnp_driver_install_source_export_root }}'
+      $packageName = '{{ windows_pnp_driver_install_package_name }}'
+      $staging = Join-Path $exportRoot $packageName
+      $zip = "$staging.zip"
+      if (Test-Path -LiteralPath $zip) {
+        Remove-Item -LiteralPath $zip -Force
+      }
+      Compress-Archive -Path (Join-Path $staging '*') -DestinationPath $zip -Force
+      $Ansible.Result = @{
+        changed = $true
+        zip_path = $zip
+        zip_size = (Get-Item -LiteralPath $zip).Length
+      }
+  delegate_to: "{{ windows_pnp_driver_install_source_host }}"
+  register: windows_pnp_driver_install_source_zip

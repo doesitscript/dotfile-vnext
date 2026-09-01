@@ -1,0 +1,21 @@
+---
+- name: Detect whether install host is Windows Server
+  ansible.windows.win_powershell:
+    script: |
+      $os = Get-CimInstance Win32_OperatingSystem
+      $productType = [int]$os.ProductType   # 1 workstation, 2 DC, 3 server
+      $Ansible.Result = @{
+        product_type = $productType
+        is_windows_server = ($productType -ge 2)
+        caption = $os.Caption
+        version = $os.Version
+        build_number = $os.BuildNumber
+      }
+  register: windows_pnp_driver_install_target_os
+
+- name: Show target OS facts for driver install
+  ansible.builtin.debug:
+    msg:
+      - "OS: {{ windows_pnp_driver_install_target_os.result.caption }}"
+      - "Build: {{ windows_pnp_driver_install_target_os.result.build_number }}"
+      - "Windows Server: {{ windows_pnp_driver_install_target_os.result.is_windows_server }}"

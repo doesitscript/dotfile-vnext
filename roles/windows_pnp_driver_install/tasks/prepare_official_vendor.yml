@@ -1,0 +1,116 @@
+---
+- name: Ensure controller vendor cache directory exists
+  ansible.builtin.file:
+    path: "{{ windows_pnp_driver_install_controller_cache_dir }}/vendor"
+    state: directory
+    mode: "0750"
+  delegate_to: localhost
+  run_once: true
+
+- name: Download official vendor driver archive to controller
+  ansible.builtin.get_url:
+    url: "{{ windows_pnp_driver_install_official_vendor_zip_url }}"
+    dest: "{{ windows_pnp_driver_install_controller_cache_dir }}/vendor/{{ windows_pnp_driver_install_official_vendor_zip_filename }}"
+    mode: "0640"
+    force: false
+  delegate_to: localhost
+  run_once: true
+  register: windows_pnp_driver_install_vendor_download
+
+- name: Ensure controller vendor expanded directory exists
+  ansible.builtin.file:
+    path: "{{ windows_pnp_driver_install_controller_cache_dir }}/vendor/expanded"
+    state: directory
+    mode: "0750"
+  delegate_to: localhost
+  run_once: true
+
+- name: Expand official vendor outer archive on controller
+  ansible.builtin.unarchive:
+    src: "{{ windows_pnp_driver_install_controller_cache_dir }}/vendor/{{ windows_pnp_driver_install_official_vendor_zip_filename }}"
+    dest: "{{ windows_pnp_driver_install_controller_cache_dir }}/vendor/expanded"
+    remote_src: false
+    creates: "{{ windows_pnp_driver_install_controller_cache_dir }}/vendor/expanded/.outer_expanded"
+  delegate_to: localhost
+  run_once: true
+
+- name: Mark vendor outer archive expanded
+  ansible.builtin.file:
+    path: "{{ windows_pnp_driver_install_controller_cache_dir }}/vendor/expanded/.outer_expanded"
+    state: touch
+    mode: "0640"
+  delegate_to: localhost
+  run_once: true
+
+- name: Find nested vendor payload archive
+  ansible.builtin.find:
+    paths: "{{ windows_pnp_driver_install_controller_cache_dir }}/vendor/expanded"
+    patterns: "{{ windows_pnp_driver_install_official_vendor_inner_zip_glob }}"
+    recurse: false
+  delegate_to: localhost
+  run_once: true
+  register: windows_pnp_driver_install_vendor_inner_zip_find
+
+- name: Require nested vendor payload archive
+  ansible.builtin.assert:
+    that:
+      - windows_pnp_driver_install_vendor_inner_zip_find.matched > 0
+    fail_msg: >-
+      No nested {{ windows_pnp_driver_install_official_vendor_inner_zip_glob }}
+      archive found inside {{ windows_pnp_driver_install_official_vendor_zip_url }}.
+
+- name: Ensure nested vendor payload directory exists
+  ansible.builtin.file:
+    path: "{{ windows_pnp_driver_install_controller_cache_dir }}/vendor/expanded/payload"
+    state: directory
+    mode: "0750"
+  delegate_to: localhost
+  run_once: true
+
+- name: Expand nested vendor payload archive on controller
+  ansible.builtin.unarchive:
+    src: "{{ windows_pnp_driver_install_vendor_inner_zip_find.files[0].path }}"
+    dest: "{{ windows_pnp_driver_install_controller_cache_dir }}/vendor/expanded/payload"
+    remote_src: false
+    creates: "{{ windows_pnp_driver_install_controller_cache_dir }}/vendor/expanded/payload/.inner_expanded"
+  delegate_to: localhost
+  run_once: true
+
+- name: Mark nested vendor payload archive expanded
+  ansible.builtin.file:
+    path: "{{ windows_pnp_driver_install_controller_cache_dir }}/vendor/expanded/payload/.inner_expanded"
+    state: touch
+    mode: "0640"
+  delegate_to: localhost
+  run_once: true
+
+- name: Find vendor INF on controller
+  ansible.builtin.find:
+    paths: "{{ windows_pnp_driver_install_controller_cache_dir }}/vendor/expanded/payload"
+    patterns: "{{ windows_pnp_driver_install_official_vendor_inf_name }}"
+    recurse: true
+  delegate_to: localhost
+  run_once: true
+  register: windows_pnp_driver_install_vendor_inf_find
+
+- name: Require vendor INF in official archive
+  ansible.builtin.assert:
+    that:
+      - windows_pnp_driver_install_vendor_inf_find.matched > 0
+    fail_msg: >-
+      No {{ windows_pnp_driver_install_official_vendor_inf_name }} found in
+      {{ windows_pnp_driver_install_official_vendor_zip_url }}.
+
+- name: Remember preferred vendor INF directory on controller
+  ansible.builtin.set_fact:
+    windows_pnp_driver_install_vendor_inf_dir: >-
+      {{
+        (
+          windows_pnp_driver_install_vendor_inf_find.files
+          | selectattr('path', 'search', windows_pnp_driver_install_official_vendor_wifi_path_preference)
+          | list
+          | first
+          | default(windows_pnp_driver_install_vendor_inf_find.files[0])
+        ).path | dirname
+      }}
+  run_once: true

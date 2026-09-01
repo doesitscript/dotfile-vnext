@@ -1,0 +1,64 @@
+---
+- name: Validate windows_pnp_driver_install_state
+  ansible.builtin.assert:
+    that:
+      - windows_pnp_driver_install_state in ["present", "absent"]
+    fail_msg: windows_pnp_driver_install_state must be "present" or "absent".
+
+- name: Install PnP driver package
+  when: windows_pnp_driver_install_state == "present"
+  block:
+    - name: Validate source mode
+      ansible.builtin.assert:
+        that:
+          - windows_pnp_driver_install_source_mode in ["official_vendor_zip", "host_export"]
+        fail_msg: >-
+          windows_pnp_driver_install_source_mode must be official_vendor_zip or host_export.
+
+    - name: Detect target OS family before staging
+      ansible.builtin.include_tasks: detect_target_os.yml
+
+    - name: Stage official vendor driver package
+      when: windows_pnp_driver_install_source_mode == "official_vendor_zip"
+      block:
+        - name: Download and expand official vendor archive
+          ansible.builtin.include_tasks: prepare_official_vendor.yml
+
+        - name: Copy vendor package to install host
+          ansible.builtin.include_tasks: stage_vendor_via_controller.yml
+
+    - name: Stage driver package exported from another Windows host
+      when: windows_pnp_driver_install_source_mode == "host_export"
+      block:
+        - name: Require source host for driver export
+          ansible.builtin.assert:
+            that:
+              - windows_pnp_driver_install_source_host | length > 0
+              - windows_pnp_driver_install_source_export_published_name | length > 0
+            fail_msg: >-
+              host_export requires windows_pnp_driver_install_source_host and
+              windows_pnp_driver_install_source_export_published_name.
+
+        - name: Warn that host_export is a fallback for Server targets
+          ansible.builtin.debug:
+            msg: >-
+              WARNING: host_export copies a driver already installed on another
+              Windows host. For Windows Server targets prefer official_vendor_zip
+              plus Server INF patch. Desktop exports may omit Server decorations
+              and are not vendor-authoritative.
+
+        - name: Export driver package on source host
+          ansible.builtin.include_tasks: export_source.yml
+
+        - name: Stage exported package via controller cache
+          ansible.builtin.include_tasks: stage_via_controller.yml
+
+    - name: Patch INF for Windows Server when required
+      ansible.builtin.include_tasks: patch_inf_for_windows_server.yml
+
+    - name: Install driver package with pnputil
+      ansible.builtin.include_tasks: present.yml
+
+    - name: Verify installed network adapter
+      ansible.builtin.include_tasks: verify.yml
+      when: windows_pnp_driver_install_verify_interface_description | length > 0

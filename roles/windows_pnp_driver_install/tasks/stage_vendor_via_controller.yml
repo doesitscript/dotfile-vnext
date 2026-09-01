@@ -1,0 +1,15 @@
+---
+- name: Ensure target staging parent exists
+  ansible.windows.win_file:
+    path: "{{ windows_pnp_driver_install_target_staging_dir | regex_replace('\\\\[^\\\\]+$', '') }}"
+    state: directory
+
+- name: Remove previous target staging directory
+  ansible.windows.win_file:
+    path: "{{ windows_pnp_driver_install_target_staging_dir }}"
+    state: absent
+
+- name: Copy official vendor driver package to install host
+  ansible.windows.win_copy:
+    src: "{{ windows_pnp_driver_install_vendor_inf_dir }}/"
+    dest: "{{ windows_pnp_driver_install_target_staging_dir }}\\"

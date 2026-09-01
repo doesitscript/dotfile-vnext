@@ -1,0 +1,51 @@
+---
+# Install TP-Link Wi-Fi 6 PCIe (MediaTek MT7922 / Archer TX3000E-class) driver on
+# HOM-LAB-HVH-01 (Windows Server 2025 Hyper-V host).
+#
+# Vendor truth: TP-Link publishes Win10/Win11 x64 only — no Windows Server package.
+# This playbook uses the official vendor ZIP, then patches mtkwl6ex.inf for Server.
+#
+# Preview:
+#   ansible-playbook playbooks/install_tplink_wifi6_driver_hvh01.yml --tags driver_install_preview
+#
+# Apply (after reboot / card reseat):
+#   ansible-playbook playbooks/install_tplink_wifi6_driver_hvh01.yml --tags driver_install_apply
+#
+- name: Preview TP-Link Wi-Fi 6 driver install for HVH-01
+  hosts: HOM-LAB-HVH-01
+  gather_facts: false
+  tags:
+    - driver_install_preview
+    - never
+  tasks:
+    - name: Show planned driver install inputs
+      ansible.builtin.debug:
+        msg:
+          - "Target host: {{ inventory_hostname }} (Windows Server 2025 Hyper-V)"
+          - "Source mode: official_vendor_zip (TP-Link Archer TX3000E V4.60)"
+          - "Vendor URL: https://static.tp-link.com/upload/driver/2024/202411/20241104/00.034_240620.zip"
+          - "Vendor OS support: win10x64, win11x64 only — no Windows Server driver published"
+          - "Server workaround: patch mtkwl6ex.inf decorations + pnputil /force"
+          - "Hardware ID on HVH-01: PCI\\VEN_14C3&DEV_7922&SUBSYS_59161A3B (TP-Link section in INF)"
+          - "Target staging: F:\\shares\\public\\driver-staging\\tplink-wifi6-mediatek"
+          - "Operator manual path: C:\\Temp\\Windows_11_64bit (must include inf+sys+dll+dat+cat)"
+          - "Admin share browse: \\\\HOM-LAB-HVH-01\\C$\\Temp\\Windows_11_64bit"
+          - "Verify interface: TP-Link Wi-Fi 6 PCIe Adapter"
+          - "If PnP problem 45 / IsPresent=false after install: hardware reseat — not INF/OS"
+          - "Fallback only: host_export from dev-workstation-win (not used by default)"
+
+- name: Install TP-Link Wi-Fi 6 driver on HOM-LAB-HVH-01
+  hosts: HOM-LAB-HVH-01
+  gather_facts: false
+  tags:
+    - driver_install_apply
+  vars:
+    windows_pnp_driver_install_state: present
+    windows_pnp_driver_install_source_mode: official_vendor_zip
+    windows_pnp_driver_install_package_name: tplink-wifi6-mediatek
+    windows_pnp_driver_install_target_staging_dir: 'F:\shares\public\driver-staging\tplink-wifi6-mediatek'
+    windows_pnp_driver_install_patch_inf_for_windows_server: false
+    windows_pnp_driver_install_pnputil_force: false
+    windows_pnp_driver_install_verify_interface_description: TP-Link Wi-Fi 6 PCIe Adapter
+  roles:
+    - role: windows_pnp_driver_install

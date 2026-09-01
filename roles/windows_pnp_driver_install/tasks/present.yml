@@ -1,0 +1,35 @@
+---
+- name: Install driver package with pnputil
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $staging = '{{ windows_pnp_driver_install_target_staging_dir }}'
+      $infPattern = Join-Path $staging '{{ windows_pnp_driver_install_inf_name }}'
+      $useForce = $true
+      if ('{{ windows_pnp_driver_install_pnputil_force | string | lower }}' -eq 'false') {
+        $useForce = $false
+      }
+      $args = @('/add-driver', $infPattern, '/subdirs', '/install')
+      if ($useForce) {
+        $args += '/force'
+      }
+      $output = & pnputil.exe @args 2>&1 | Out-String
+      if ($LASTEXITCODE -ne 0) {
+        throw "pnputil /add-driver failed with exit code $LASTEXITCODE`n$output"
+      }
+      $Ansible.Result = @{
+        changed = $true
+        output = $output
+        exit_code = $LASTEXITCODE
+        force = $useForce
+      }
+  register: windows_pnp_driver_install_pnputil
+
+- name: Rescan Plug and Play devices
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'SilentlyContinue'
+      pnputil.exe /scan-devices | Out-Null
+      Start-Sleep -Seconds 5
+      $Ansible.Result = @{ changed = $true }
+  register: windows_pnp_driver_install_rescan

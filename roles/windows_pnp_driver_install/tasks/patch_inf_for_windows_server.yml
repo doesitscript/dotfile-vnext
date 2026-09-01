@@ -1,0 +1,77 @@
+---
+- name: Skip Server INF patch on client Windows
+  ansible.builtin.debug:
+    msg: Target is client Windows; leaving vendor INF unchanged.
+  when: not (windows_pnp_driver_install_target_os.result.is_windows_server | bool)
+
+- name: Patch vendor INF for Windows Server compatibility
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $StagingDir = '{{ windows_pnp_driver_install_target_staging_dir }}'
+      $InfName = '{{ windows_pnp_driver_install_official_vendor_inf_name }}'
+      $infPath = Get-ChildItem -LiteralPath $StagingDir -Recurse -Filter $InfName -ErrorAction Stop |
+          Select-Object -First 1
+      if (-not $infPath) {
+          throw "INF '$InfName' not found under $StagingDir"
+      }
+      $original = Get-Content -LiteralPath $infPath.FullName -Raw -Encoding Unicode
+      $content = $original
+      $changes = New-Object System.Collections.Generic.List[string]
+      $lines = $content -split "`r?`n"
+      $patchedLines = foreach ($line in $lines) {
+          if ($line -match 'NTAMD64\.10\.0\.\.\.16299' -and $line -notmatch ',\s*NTAMD64\.10\.0\s*$') {
+              $changes.Add('manufacturer_decoration_extended')
+              $line + ', NTAMD64.10.0'
+          }
+          elseif ($line -match '^(?i)CatalogFile\s*=') {
+              $changes.Add('catalog_file_disabled')
+              '; CatalogFile disabled after Server INF patch (catalog no longer matches edited INF)'
+          }
+          else {
+              $line
+          }
+      }
+      $content = ($patchedLines -join "`r`n")
+      $sectionPattern = '(?ms)\[(?<name>\w+\.NTAMD64\.10\.0\.\.\.16299)\](?<body>.*?)(?=\r?\n\[|\z)'
+      foreach ($match in [regex]::Matches($content, $sectionPattern)) {
+          $shortName = $match.Groups['name'].Value -replace '\.\.\.16299$', ''
+          if ($content -notmatch "(?ms)\[$([regex]::Escape($shortName))\]") {
+              $changes.Add("duplicated_section:$shortName")
+              $content += "`r`n[$shortName]$($match.Groups['body'].Value)"
+          }
+      }
+      if ($content -eq $original) {
+          $Ansible.Changed = $false
+          $Ansible.Result = @{
+              changed = $false
+              inf_path = $infPath.FullName
+              changes = @()
+              status = 'no_changes_needed'
+          }
+      }
+      else {
+          Set-Content -LiteralPath $infPath.FullName -Value $content -Encoding Unicode -NoNewline
+          $Ansible.Changed = $true
+          $Ansible.Result = @{
+              changed = $true
+              inf_path = $infPath.FullName
+              changes = @($changes)
+              status = 'patched'
+          }
+      }
+  register: windows_pnp_driver_install_patch_raw
+  when:
+    - windows_pnp_driver_install_patch_inf_for_windows_server | bool
+    - windows_pnp_driver_install_target_os.result.is_windows_server | bool
+
+- name: Show Server INF patch result
+  ansible.builtin.debug:
+    msg:
+      - "Patch status: {{ windows_pnp_driver_install_patch_raw.result.status }}"
+      - "Patch changes: {{ windows_pnp_driver_install_patch_raw.result.changes }}"
+      - "INF path: {{ windows_pnp_driver_install_patch_raw.result.inf_path }}"
+  when:
+    - windows_pnp_driver_install_patch_raw is defined
+    - windows_pnp_driver_install_patch_raw.result is defined
+    - windows_pnp_driver_install_patch_raw.result.status is defined

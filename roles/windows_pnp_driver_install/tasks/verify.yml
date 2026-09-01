@@ -1,0 +1,75 @@
+---
+- name: Verify expected network adapter is present
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $expected = '{{ windows_pnp_driver_install_verify_interface_description }}'
+      $adapter = Get-NetAdapter -IncludeHidden -ErrorAction SilentlyContinue |
+        Where-Object { $_.InterfaceDescription -like "*$expected*" -and $_.Status -ne 'Not Present' } |
+        Where-Object { $_.InterfaceDescription -notmatch '#\d+$' -or $_.MacAddress } |
+        Select-Object -First 1
+      $pciDevices = @(Get-PnpDevice -ErrorAction SilentlyContinue |
+        Where-Object { $_.InstanceId -match 'VEN_14C3&DEV_7922' })
+      $presentPci = @()
+      foreach ($dev in $pciDevices) {
+        $isPresent = Get-PnpDeviceProperty -InstanceId $dev.InstanceId `
+          -KeyName 'DEVPKEY_Device_IsPresent' -ErrorAction SilentlyContinue
+        $presentPci += @{
+          instance_id = $dev.InstanceId
+          friendly_name = $dev.FriendlyName
+          status = $dev.Status.ToString()
+          problem = $dev.Problem
+          is_present = if ($isPresent) { [bool]$isPresent.Data } else { $null }
+        }
+      }
+      $tpPnp = $presentPci | Where-Object { $_.is_present -eq $true } | Select-Object -First 1
+      if (-not $tpPnp) {
+        $tpPnp = $pciDevices | Select-Object -First 1
+      }
+      $Ansible.Result = @{
+        adapter_found = [bool]$adapter
+        adapter_status = if ($adapter) { $adapter.Status.ToString() } else { 'missing' }
+        adapter_mac = if ($adapter) { $adapter.MacAddress } else { '' }
+        pnp_status = if ($tpPnp) { $tpPnp.Status.ToString() } else { 'missing' }
+        pnp_problem = if ($tpPnp) { $tpPnp.Problem.ToString() } else { '' }
+        pci_7922_count = $pciDevices.Count
+        pci_7922_present_count = @($presentPci | Where-Object { $_.is_present -eq $true }).Count
+        pci_7922 = $presentPci
+        hardware_present = (@($presentPci | Where-Object { $_.is_present -eq $true }).Count -gt 0)
+      }
+  register: windows_pnp_driver_install_verify_raw
+  failed_when: false
+
+- name: Report driver install verification
+  ansible.builtin.debug:
+    msg:
+      - "Adapter found: {{ windows_pnp_driver_install_verify_raw.result.adapter_found }}"
+      - "Adapter status: {{ windows_pnp_driver_install_verify_raw.result.adapter_status }}"
+      - "Adapter MAC: {{ windows_pnp_driver_install_verify_raw.result.adapter_mac }}"
+      - "PnP status: {{ windows_pnp_driver_install_verify_raw.result.pnp_status }}"
+      - "PnP problem: {{ windows_pnp_driver_install_verify_raw.result.pnp_problem }}"
+      - "PCI 7922 instances: {{ windows_pnp_driver_install_verify_raw.result.pci_7922_count }}"
+      - "PCI 7922 present: {{ windows_pnp_driver_install_verify_raw.result.pci_7922_present_count }}"
+      - "Hardware present: {{ windows_pnp_driver_install_verify_raw.result.hardware_present }}"
+
+- name: Warn when driver store is OK but PCIe hardware is not present
+  ansible.builtin.debug:
+    msg: >-
+      Signed driver is in the driver store, but the TP-Link PCIe function reports
+      IsPresent=false (PnP problem 45 / phantom). This is not fixed by reinstalling
+      Windows_11_64bit from C:\Temp — reseat the card, confirm BIOS PCIe power,
+      remove stale ghost adapters, reboot, then re-run pnputil /scan-devices.
+      Live LAN may be on onboard Broadcom until the PCIe card is detected.
+  when:
+    - not (windows_pnp_driver_install_verify_raw.result.hardware_present | default(false) | bool)
+    - windows_pnp_driver_install_verify_raw.result.pci_7922_count | default(0) | int > 0
+
+- name: Warn when hardware still missing after driver install
+  ansible.builtin.debug:
+    msg: >-
+      Driver package installed but no working NetAdapter matched
+      '{{ windows_pnp_driver_install_verify_interface_description }}'.
+      PnP status={{ windows_pnp_driver_install_verify_raw.result.pnp_status }},
+      problem={{ windows_pnp_driver_install_verify_raw.result.pnp_problem }}.
+      If problem is CM_PROB_PHANTOM (45), reseat or reinstall the PCIe card.
+  when: not (windows_pnp_driver_install_verify_raw.result.adapter_found | bool)

@@ -1,0 +1,48 @@
+---
+- name: Ensure controller cache directory exists
+  ansible.builtin.file:
+    path: "{{ windows_pnp_driver_install_controller_cache_dir }}"
+    state: directory
+    mode: "0750"
+  delegate_to: localhost
+  run_once: true
+
+- name: Fetch driver package zip from source host to controller
+  ansible.builtin.fetch:
+    src: >-
+      {{ windows_pnp_driver_install_source_export_root }}\{{ windows_pnp_driver_install_package_name }}.zip
+    dest: "{{ windows_pnp_driver_install_controller_cache_dir }}/"
+    flat: true
+  delegate_to: "{{ windows_pnp_driver_install_source_host }}"
+  register: windows_pnp_driver_install_fetched_zip
+
+- name: Ensure target staging parent exists
+  ansible.windows.win_file:
+    path: "{{ windows_pnp_driver_install_target_staging_dir | regex_replace('\\\\[^\\\\]+$', '') }}"
+    state: directory
+
+- name: Copy driver package zip to install host
+  ansible.windows.win_copy:
+    src: "{{ windows_pnp_driver_install_fetched_zip.dest }}"
+    dest: "{{ windows_pnp_driver_install_target_staging_dir }}.zip"
+
+- name: Expand driver package on install host
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $zip = '{{ windows_pnp_driver_install_target_staging_dir }}.zip'
+      $dest = '{{ windows_pnp_driver_install_target_staging_dir }}'
+      if (Test-Path -LiteralPath $dest) {
+        Remove-Item -LiteralPath $dest -Recurse -Force
+      }
+      New-Item -ItemType Directory -Force -Path $dest | Out-Null
+      Expand-Archive -LiteralPath $zip -DestinationPath $dest -Force
+      $inf = Get-ChildItem -LiteralPath $dest -Recurse -Filter '*.inf' | Select-Object -First 1
+      if (-not $inf) {
+        throw "No .inf found under $dest after expand"
+      }
+      $Ansible.Result = @{
+        changed = $true
+        inf_path = $inf.FullName
+      }
+  register: windows_pnp_driver_install_expanded
