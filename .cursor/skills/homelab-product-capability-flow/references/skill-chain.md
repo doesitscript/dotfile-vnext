@@ -35,7 +35,7 @@ Ordered nested skills. Stop and plan only after Phase 1 evidence (or explicit de
 | Skill | Why |
 | --- | --- |
 | `framework-change-receipt` | After AGENTS / `policy/` / `contracts/` moves |
-| `project-capability-surface-audit` | Catch fuzlang vs policy vs inventory overlap |
+| `project-capability-surface-audit` | Catch Langfuse platform contract vs policy vs inventory overlap |
 | `operational-pattern-to-skill-extractor` | If this flow needs another narrower skill later |
 
 ## Operator prompts

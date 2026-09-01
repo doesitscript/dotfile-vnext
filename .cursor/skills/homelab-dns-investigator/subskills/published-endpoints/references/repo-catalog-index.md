@@ -54,8 +54,8 @@ SSOT: `inventory/host_vars/HOM-LAB-HVH-02.yaml`
 
 | name | listen | → guest |
 |---|---|---|
-| postgres-fuzlang | :5432 | 138.10:5432 |
-| redis-fuzlang | :6379 | 138.10:6379 |
+| postgres-langfuse-platform | :5432 | 138.10:5432 |
+| redis-langfuse-platform | :6379 | 138.10:6379 |
 | clickhouse-http | :8123 | 138.10:8123 |
 | clickhouse-native | :9004 | 138.10:9004 |
 | minio-api | :9000 | 138.10:9000 |

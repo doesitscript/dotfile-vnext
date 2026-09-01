@@ -122,7 +122,7 @@ evidence or an explicit deferral.
 ## Phase 5 — Process hygiene
 
 1. **`framework-change-receipt`** after AGENTS / `policy/` / `contracts/` moves.
-2. **`project-capability-surface-audit`** if fuzlang vs policy vs inventory
+2. **`project-capability-surface-audit`** if Langfuse platform contract vs policy vs inventory
    overlap is suspected.
 3. **`operational-pattern-to-skill-extractor`** only if this flow needs another
    narrower skill later.

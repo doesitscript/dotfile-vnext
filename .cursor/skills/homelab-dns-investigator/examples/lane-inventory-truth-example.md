@@ -35,12 +35,12 @@ hyperv_ubuntu_k3s_vm_inventory_host: "hom-lab-ctl-k3s-01"
 Source: `inventory/host_vars/HOM-LAB-HVH-01.yaml` → `hyperv_config.guest_published_tcp_ports`
 
 ```yaml
-    - name: "postgres-fuzlang"
+    - name: "postgres-langfuse-platform"
       listen_address: "192.168.50.234"
       listen_port: 5432
       connect_address: "192.168.138.10"
       connect_port: 5432
-    - name: "redis-fuzlang"
+    - name: "redis-langfuse-platform"
       listen_address: "192.168.50.234"
       listen_port: 6379
       connect_address: "192.168.138.10"
@@ -171,7 +171,7 @@ Save raw output to `lane-inventory-truth-hvh-01.txt` / `lane-inventory-truth-hvh
 | name | declared listen → connect | verified | status |
 |---|---|---|---|
 | `loki` | `50.158:3100` → `137.10:3100` | nc OK on listen; backend OK | MATCH |
-| `postgres-fuzlang` | `50.234:5432` → `138.10:5432` | not probed (hvh-01 down) | BLOCKED_UPSTREAM |
+| `postgres-langfuse-platform` | `50.234:5432` → `138.10:5432` | not probed (hvh-01 down) | BLOCKED_UPSTREAM |
 | `HOM-LAB-HVH-01` | `192.168.50.234` | ping/SSH fail | DOWN |
 
 Status: `MATCH`, `MISMATCH`, `DOWN`, `BLOCKED_UPSTREAM`, `NOT_PROBED`.
