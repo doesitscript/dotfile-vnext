@@ -21,6 +21,7 @@
       - smart-router
     _required_enabled_gateway_routes:
       - "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
+      - "{{ k3s_litellm_gateway_client_model_id_kilo_main }}"
       - "{{ k3s_litellm_gateway_client_model_id_experiment }}"
       - "{{ k3s_litellm_gateway_client_model_id_code_review }}"
     _required_migration_gateway_routes:
@@ -84,9 +85,18 @@
     - name: Resolve primary Ornith gateway row
       ansible.builtin.set_fact:
         _code_deep_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', k3s_litellm_gateway_client_model_id_coder_primary) | list | first) }}"
+        _kilo_main_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', k3s_litellm_gateway_client_model_id_kilo_main) | list | first) }}"
         _experiment_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', k3s_litellm_gateway_client_model_id_experiment) | list | first) }}"
         _code_review_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', k3s_litellm_gateway_client_model_id_code_review) | list | first) }}"
       changed_when: false
+
+    - name: Validate Kilo main lane points at 5090 vLLM primary
+      ansible.builtin.assert:
+        that:
+          - _kilo_main_route.litellm_params.api_base == k3s_litellm_gateway_primary_vllm_api_base
+          - _kilo_main_route.litellm_params.model == 'hosted_vllm/' ~ k3s_litellm_gateway_primary_vllm_model
+          - _kilo_main_route.model_info.routing_policy == 'local-kilo-primary'
+        fail_msg: "Kilo main must route to vLLM primary on 5090, not desktop Ollama."
 
     - name: Validate local coding lane points at the declared primary vLLM backend
       ansible.builtin.assert:
@@ -110,6 +120,7 @@
           - k3s_litellm_gateway_primary_vllm_api_base is search('vllm-runtime\\.svc\\.cluster\\.local')
           - k3s_litellm_gateway_primary_vllm_api_base is not search('[Ll][Oo][Cc][Aa][Ll][Hh][Oo][Ss][Tt]|127\\.0\\.0\\.1')
         fail_msg: "vLLM runtime defaults are not aligned with the primary LiteLLM local-lane contract."
+      when: not (hostvars['hom-lab-ctl-k3s-02'].k3s_vllm_runtime_kilo_testing_active | default(false) | bool)
 
     - name: Validate tool-calling support is enabled for the primary vLLM lane
       ansible.builtin.assert:
