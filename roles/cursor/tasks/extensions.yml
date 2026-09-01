@@ -5,13 +5,20 @@
 
 - name: Install Cursor extensions via CLI
   ansible.builtin.command:
-    cmd: >-
-      cursor --install-extension
-      {{ '--force' if (cursor_extensions_force_reinstall | default(true) | bool) else '' }}
-      {{ item }}
+    argv: >-
+      {{
+        ['cursor', '--install-extension', item]
+        + (
+          ['--force']
+          if (cursor_extensions_force_reinstall | default(true) | bool)
+          else []
+        )
+      }}
   loop: "{{ cursor_extensions }}"
   register: _cursor_ext_result
   changed_when: (_cursor_ext_result.stdout | default('')) is search('was successfully installed')
-  failed_when: false
+  failed_when: >-
+    _cursor_ext_result.rc != 0
+    or ((_cursor_ext_result.stderr | default('')) is search("requires a non empty value"))
   when: (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
   tags: cursor_extensions

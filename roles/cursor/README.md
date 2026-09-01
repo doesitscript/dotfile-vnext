@@ -11,6 +11,10 @@ into Cursor's settings.json.
 - **Installs Cursor extensions** via CLI
 - **Renders project AI agent/profile contracts** for Cursor and Codex-compatible clients from `inventory/group_vars/all/ai_agent_profiles.yml`
 
+Kilo Code note:
+- The editor extension is managed here as `kilocode.Kilo-Code` through `cursor_extensions`.
+- Upstream Kilo also publishes a standalone `kilo` CLI. If this repo commissions that CLI, manage it in a dedicated lifecycle role instead of piggybacking it onto the Cursor editor role.
+
 ### macOS Hosts
 - **Installs or upgrades Cursor IDE** via Homebrew cask `cursor`
 - **Installs Cursor CLI** (`cursor-cli` cask; binary is **`cursor-agent`** at `/usr/local/bin/cursor-agent`, not `cursor-cli`) with version contract pinning and `brew pin`
@@ -79,7 +83,7 @@ This role handles the infrastructure side:
 | `cursor_settings_enabled` | `true` | Set to `false` to skip settings.json merge for this node |
 | `cursor_settings_path` | *(platform auto-detected)* | Full path to Cursor's settings.json |
 | `cursor_settings_lf_utf8` | *(see defaults)* | Settings dict merged idempotently into settings.json |
-| `cursor_extensions` | *(see defaults)* | List of extension IDs to install via CLI (includes `Continue.continue`, `saoudrizwan.claude-dev` / Cline, Python, YAML, OpenAI Codex) |
+| `cursor_extensions` | *(see defaults)* | List of extension IDs to install via CLI (includes `Continue.continue`, `saoudrizwan.claude-dev` / Cline, Kilo Code, Python, YAML, OpenAI Codex) |
 | `cursor_extensions_force_reinstall` | `true` | Reinstall extensions with `--force` so Cursor converges to the latest marketplace release |
 | `cursor_remote_ssh_hosts` | *(see defaults)* | List of SSH Host entries for Remote-SSH config |
 | `cursor_cli_enabled` | `true` | Set to `false` to skip Cursor CLI (Homebrew `cursor-cli`) install |
