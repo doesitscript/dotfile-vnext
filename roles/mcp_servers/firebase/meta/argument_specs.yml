@@ -1,0 +1,52 @@
+---
+argument_specs:
+  main:
+    short_description: Configure the official Firebase MCP server for repo-local Cursor, VS Code, and Codex targets.
+    description: >
+      Configures the official Firebase MCP server using the upstream
+      firebase-tools MCP command over stdio, with repo-managed Cursor, VS Code,
+      and Codex client config targets.
+    options:
+      firebase_mcp_state:
+        type: str
+        default: present
+        choices: [present, absent]
+        description: Ensure the Firebase MCP config is present or absent.
+      firebase_mcp_targets:
+        type: list
+        elements: str
+        default: [cursor]
+        description: Target client configs to manage.
+      firebase_mcp_dir:
+        type: str
+        default: ""
+        description: Optional project root passed as --dir to firebase mcp.
+      firebase_mcp_only:
+        type: str
+        default: ""
+        description: Optional comma-separated Firebase feature groups passed as --only.
+      firebase_mcp_tools:
+        type: str
+        default: ""
+        description: Optional comma-separated explicit tool names passed as --tools.
+      firebase_mcp_mode:
+        type: str
+        default: stdio
+        choices: [stdio, sse]
+        description: MCP transport mode. stdio is the default for IDE clients.
+      firebase_mcp_port:
+        type: int
+        default: 3000
+        description: Port used only when firebase_mcp_mode is sse.
+      firebase_mcp_service_account_json:
+        type: str
+        default: ""
+        description: Optional Google service-account JSON used through GOOGLE_APPLICATION_CREDENTIALS.
+      firebase_mcp_firebase_token:
+        type: str
+        default: ""
+        description: Optional legacy Firebase CLI token passed through FIREBASE_TOKEN. Deprecated upstream.
+      firebase_mcp_extra_env:
+        type: dict
+        default: {}
+        description: Optional extra environment variables passed to the Firebase MCP process.

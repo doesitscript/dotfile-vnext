@@ -1,0 +1,20 @@
+---
+- name: Check for Firebase MCP vault file
+  ansible.builtin.stat:
+    path: "{{ firebase_mcp_vault_file_path }}"
+  register: _firebase_mcp_vault_file_stat
+  no_log: true
+
+- name: Include Firebase MCP vault variables when present
+  ansible.builtin.include_vars:
+    file: "{{ firebase_mcp_vault_file_path }}"
+    name: vault_vars
+  when: _firebase_mcp_vault_file_stat.stat.exists
+  no_log: true
+
+- name: Set optional Firebase MCP auth inputs from vault
+  ansible.builtin.set_fact:
+    firebase_mcp_service_account_json: "{{ vault_vars.vault_firebase_mcp_service_account_json | default(firebase_mcp_service_account_json | default('')) }}"
+    firebase_mcp_firebase_token: "{{ vault_vars.vault_firebase_mcp_firebase_token | default(firebase_mcp_firebase_token | default('')) }}"
+    firebase_mcp_extra_env: "{{ vault_vars.vault_firebase_mcp_extra_env | default(firebase_mcp_extra_env | default({})) }}"
+  no_log: true

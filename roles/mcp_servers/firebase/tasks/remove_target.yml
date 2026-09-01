@@ -1,0 +1,29 @@
+---
+- name: Check whether mcp.json exists for {{ _firebase_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _firebase_target_config_path }}"
+  register: _firebase_remove_target_mcp_json_stat
+
+- name: Remove Firebase entry from mcp.json for {{ _firebase_target_name }}
+  when: _firebase_remove_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _firebase_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _firebase_target_config_path }}"
+      register: _firebase_remove_target_mcp_json_raw
+
+    - name: Write mcp.json without the Firebase entry for {{ _firebase_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _firebase_target_config_path }}"
+        content: "{{ _firebase_remove_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _firebase_remove_target_existing: "{{ _firebase_remove_target_mcp_json_raw.content | b64decode | from_json }}"
+        _firebase_remove_target_filtered_servers: >-
+          {{
+            (_firebase_remove_target_existing.mcpServers | default({}))
+            | dict2items
+            | rejectattr('key', 'equalto', firebase_mcp_server_key)
+            | items2dict
+          }}
+        _firebase_remove_target_merged: "{{ _firebase_remove_target_existing | combine({'mcpServers': _firebase_remove_target_filtered_servers}) }}"

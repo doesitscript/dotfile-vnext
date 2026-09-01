@@ -1,0 +1,54 @@
+---
+firebase_mcp_state: present
+firebase_mcp_server_key: "firebase"
+
+firebase_mcp_project_root: "{{ dotfiles_home | default(playbook_dir | dirname | dirname) }}"
+firebase_mcp_targets:
+  - cursor
+firebase_mcp_supported_targets:
+  - cursor
+  - vscode
+  - codex
+  - openapi
+
+firebase_mcp_cursor_config_path: "{{ firebase_mcp_project_root }}/.cursor/mcp.json"
+firebase_mcp_vscode_config_path: "{{ firebase_mcp_project_root }}/.vscode/mcp.json"
+firebase_mcp_codex_config_path: "{{ firebase_mcp_project_root }}/.codex/config.toml"
+firebase_mcp_role_path: "roles/mcp_servers/firebase"
+firebase_mcp_wrapper_path: "{{ firebase_mcp_project_root }}/bin/mcp-server-env-wrapper"
+firebase_mcp_vault_file_path: "{{ firebase_mcp_project_root }}/vault/{{ inventory_hostname | replace('-', '_') }}.vault.yml"
+firebase_mcp_env_file_path: "{{ ansible_env.HOME }}/.config/dotfile-vnext/mcp/env.d/firebase.env"
+firebase_mcp_credentials_file_path: "{{ ansible_env.HOME }}/.config/dotfile-vnext/mcp/credentials/firebase-service-account.json"
+
+firebase_mcp_cli_package_name: "firebase-tools@latest"
+firebase_mcp_command: ""
+firebase_mcp_dir: ""
+firebase_mcp_only: ""
+firebase_mcp_tools: ""
+firebase_mcp_mode: "stdio"
+firebase_mcp_port: 3000
+firebase_mcp_required: false
+firebase_mcp_service_account_json: ""
+firebase_mcp_firebase_token: ""
+firebase_mcp_extra_env: {}
+
+firebase_mcp_args: >-
+  {{
+    ['-y', firebase_mcp_cli_package_name, 'mcp']
+    + ([] if (firebase_mcp_dir | default('') | length) == 0 else ['--dir', firebase_mcp_dir])
+    + ([] if (firebase_mcp_only | default('') | length) == 0 else ['--only', firebase_mcp_only])
+    + ([] if (firebase_mcp_tools | default('') | length) == 0 else ['--tools', firebase_mcp_tools])
+    + ([] if firebase_mcp_mode == 'stdio' else ['--mode', firebase_mcp_mode])
+    + ([] if firebase_mcp_mode != 'sse' or (firebase_mcp_port | int) == 3000 else ['--port', (firebase_mcp_port | string)])
+  }}
+firebase_mcp_env:
+  _MCP_ANSIBLE_ROLE_PATH: "{{ firebase_mcp_role_path }}"
+firebase_mcp_client_entry:
+  command: "{{ firebase_mcp_command }}"
+  args: "{{ firebase_mcp_args }}"
+  env: "{{ firebase_mcp_env }}"
+firebase_mcp_codex_entry:
+  command: "{{ firebase_mcp_command }}"
+  args: "{{ firebase_mcp_args }}"
+  env: "{{ firebase_mcp_env }}"
+  required: "{{ firebase_mcp_required }}"

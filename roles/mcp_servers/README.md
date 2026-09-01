@@ -22,6 +22,7 @@ you explicitly add them back.
 | `firecrawl` | Firecrawl web scraping, crawling, search, and extraction MCP | Node.js (npm) | launcher | Cursor, Codex | [firecrawl/firecrawl-mcp-server](https://github.com/firecrawl/firecrawl-mcp-server) |
 | `playwright` | Browser-rendered pages, login flows, screenshots, and browser state | Node.js (npm) | launcher/browser | Cursor, Codex | [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp) |
 | `fetch` | Lightweight webpage fetching fallback | Node.js (npm) | launcher | Cursor, Codex | [zcaceres/fetch-mcp](https://github.com/zcaceres/fetch-mcp) |
+| `firebase` | Official Firebase MCP server via Firebase CLI | Node.js (`npx` launcher) | launcher | Cursor, VS Code, Codex | [Firebase MCP server](https://firebase.google.com/docs/ai-assistance/mcp-server) |
 
 ## MCP Research Collection Stack
 
@@ -72,6 +73,7 @@ under `~/.config/dotfile-vnext/mcp/env.d/` and point client config at
 - `roles/mcp_servers/firecrawl/` is the secret-safe documentation ingestion example.
 - `roles/mcp_servers/playwright/` is the browser-rendered fallback example.
 - `roles/mcp_servers/fetch/` is the lightweight fetch fallback example.
+- `roles/mcp_servers/firebase/` is the official Firebase CLI-backed MCP example.
 - `playbooks/mac/mcp_servers.yaml` is the focused controller-side control surface for local MCP convergence on the Mac.
 
 ### Frozen snapshots
@@ -133,6 +135,7 @@ ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags context7
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags firecrawl
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags playwright
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags fetch
+ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags firebase
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags langfuse-docs
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags huggingface
 ansible-playbook playbooks/mac/mcp_servers.yaml --limit mac-dev --tags mcp-sysoperator

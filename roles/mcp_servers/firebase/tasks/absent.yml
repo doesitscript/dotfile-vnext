@@ -1,0 +1,31 @@
+---
+- name: Remove Firebase entry from Cursor mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _firebase_target_name: "cursor"
+    _firebase_target_config_path: "{{ firebase_mcp_cursor_config_path }}"
+  when: _firebase_target_cursor_selected | bool
+
+- name: Remove Firebase entry from VS Code mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _firebase_target_name: "vscode"
+    _firebase_target_config_path: "{{ firebase_mcp_vscode_config_path }}"
+  when: _firebase_target_vscode_selected | bool
+
+- name: Remove Firebase entry from Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ firebase_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ firebase_mcp_server_key }}"
+  when: _firebase_target_codex_selected | bool
+
+- name: Remove Firebase MCP runtime env file
+  ansible.builtin.file:
+    path: "{{ firebase_mcp_env_file_path }}"
+    state: absent
+
+- name: Remove Firebase MCP service account credentials file
+  ansible.builtin.file:
+    path: "{{ firebase_mcp_credentials_file_path }}"
+    state: absent

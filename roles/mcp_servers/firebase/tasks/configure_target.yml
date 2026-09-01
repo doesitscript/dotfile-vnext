@@ -1,0 +1,43 @@
+---
+- name: Ensure target directory exists for {{ _firebase_target_name }}
+  ansible.builtin.file:
+    path: "{{ _firebase_target_config_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Check whether mcp.json exists for {{ _firebase_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _firebase_target_config_path }}"
+  register: _firebase_target_mcp_json_stat
+
+- name: Create mcp.json with Firebase entry for {{ _firebase_target_name }}
+  ansible.builtin.copy:
+    dest: "{{ _firebase_target_config_path }}"
+    mode: "0644"
+    content: "{{ {'mcpServers': {(firebase_mcp_server_key): _firebase_entry}} | to_nice_json }}\n"
+  vars:
+    _firebase_entry: "{{ firebase_mcp_client_entry }}"
+  when: not _firebase_target_mcp_json_stat.stat.exists
+
+- name: Merge Firebase entry into existing mcp.json for {{ _firebase_target_name }}
+  when: _firebase_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _firebase_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _firebase_target_config_path }}"
+      register: _firebase_target_mcp_json_raw
+
+    - name: Write merged mcp.json for {{ _firebase_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _firebase_target_config_path }}"
+        content: "{{ _firebase_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _firebase_target_existing: "{{ _firebase_target_mcp_json_raw.content | b64decode | from_json }}"
+        _firebase_entry: "{{ firebase_mcp_client_entry }}"
+        _firebase_target_servers: >-
+          {{
+            (_firebase_target_existing.mcpServers | default({}))
+            | combine({(firebase_mcp_server_key): _firebase_entry})
+          }}
+        _firebase_target_merged: "{{ _firebase_target_existing | combine({'mcpServers': _firebase_target_servers}) }}"

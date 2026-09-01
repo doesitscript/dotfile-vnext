@@ -1,0 +1,30 @@
+---
+- name: Resolve Firebase MCP npx command on Ubuntu
+  ansible.builtin.shell: |
+    set -euo pipefail
+    candidate="{{ ((node_npm_executable | default('') | trim) | dirname) ~ '/npx' if (node_npm_executable | default('') | trim) else '' }}"
+    if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      exit 0
+    fi
+    if [ -f "{{ dotfiles_user_home }}/.nvm/nvm.sh" ]; then
+      export NVM_DIR="{{ dotfiles_user_home }}/.nvm"
+      . "$NVM_DIR/nvm.sh"
+    fi
+    command -v npx
+  args:
+    executable: /bin/bash
+  register: _firebase_mcp_npx_command_ubuntu
+  changed_when: false
+  check_mode: false
+
+- name: Set Firebase MCP command path for MCP clients on Ubuntu
+  ansible.builtin.set_fact:
+    firebase_mcp_command: "{{ _firebase_mcp_npx_command_ubuntu.stdout | trim }}"
+
+- name: Fail if Firebase MCP npx command was not found on Ubuntu
+  ansible.builtin.fail:
+    msg: >-
+      Firebase MCP could not resolve an npx executable from node_npm_executable
+      or the user's nvm-managed shell environment on Ubuntu.
+  when: not (firebase_mcp_command | default(''))

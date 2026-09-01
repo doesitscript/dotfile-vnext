@@ -1,0 +1,134 @@
+---
+- name: Resolve node_npm_executable if not already set by common/node
+  ansible.builtin.include_role:
+    name: common/node
+    tasks_from: resolve_npm.yml
+    apply:
+      tags:
+        - mcp
+        - firebase
+        - mcp_target_cursor
+        - mcp_target_vscode
+        - mcp_target_codex
+        - mcp_target_openapi
+  when:
+    - node_npm_executable is not defined
+    - firebase_mcp_state == "absent" or not (firebase_mcp_command | default(''))
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+  tags:
+    - mcp
+    - firebase
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Capture requested Firebase MCP target tags
+  ansible.builtin.set_fact:
+    _firebase_requested_target_tags: >-
+      {{
+        (ansible_run_tags | default([]))
+        | intersect(['mcp_target_cursor', 'mcp_target_vscode', 'mcp_target_codex', 'mcp_target_openapi'])
+      }}
+  tags:
+    - mcp
+    - firebase
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Validate configured Firebase MCP targets
+  ansible.builtin.assert:
+    that:
+      - (firebase_mcp_targets | difference(firebase_mcp_supported_targets)) | length == 0
+    fail_msg: >-
+      firebase_mcp_targets contains unsupported values:
+      {{ firebase_mcp_targets | difference(firebase_mcp_supported_targets) | to_json }}
+  tags:
+    - mcp
+    - firebase
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Determine active Firebase MCP client targets
+  ansible.builtin.set_fact:
+    _firebase_target_cursor_selected: >-
+      {{
+        ('mcp_target_cursor' in _firebase_requested_target_tags)
+        or
+        (
+          (_firebase_requested_target_tags | length) == 0
+          and ('cursor' in firebase_mcp_targets)
+        )
+      }}
+    _firebase_target_vscode_selected: >-
+      {{
+        ('mcp_target_vscode' in _firebase_requested_target_tags)
+        or
+        (
+          (_firebase_requested_target_tags | length) == 0
+          and ('vscode' in firebase_mcp_targets)
+        )
+      }}
+    _firebase_target_codex_selected: >-
+      {{
+        ('mcp_target_codex' in _firebase_requested_target_tags)
+        or
+        (
+          (_firebase_requested_target_tags | length) == 0
+          and ('codex' in firebase_mcp_targets)
+        )
+      }}
+    _firebase_target_openapi_selected: >-
+      {{
+        ('mcp_target_openapi' in _firebase_requested_target_tags)
+        or
+        (
+          (_firebase_requested_target_tags | length) == 0
+          and ('openapi' in firebase_mcp_targets)
+        )
+      }}
+  tags:
+    - mcp
+    - firebase
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Fail fast for the Firebase OpenAPI target stub
+  ansible.builtin.import_tasks: openapi_stub.yml
+  when: _firebase_target_openapi_selected | bool
+  tags:
+    - mcp
+    - firebase
+    - mcp_target_openapi
+
+- name: Ensure Firebase MCP server is present
+  ansible.builtin.import_tasks: present.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - firebase_mcp_state == "present"
+  tags:
+    - mcp
+    - firebase
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Ensure Firebase MCP server is absent
+  ansible.builtin.import_tasks: absent.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - firebase_mcp_state == "absent"
+  tags:
+    - mcp
+    - firebase
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi

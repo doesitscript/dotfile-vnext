@@ -1,0 +1,120 @@
+---
+- name: Load optional Firebase MCP auth material from vault
+  ansible.builtin.import_tasks: load_vault.yml
+
+- name: Resolve Firebase MCP command path on macOS
+  ansible.builtin.import_tasks: mac.yml
+  when:
+    - not (firebase_mcp_command | default(''))
+    - ansible_facts['system'] == "Darwin"
+
+- name: Resolve Firebase MCP command path on Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when:
+    - not (firebase_mcp_command | default(''))
+    - ansible_facts['distribution'] == "Ubuntu"
+
+- name: Fail if Firebase MCP command could not be resolved
+  ansible.builtin.fail:
+    msg: >-
+      Firebase MCP command is empty after runtime resolution. This role expects
+      Node/npm on macOS or Ubuntu, with npx available beside
+      node_npm_executable.
+  when: not (firebase_mcp_command | default(''))
+
+- name: Parse Firebase service account JSON when configured
+  ansible.builtin.set_fact:
+    _firebase_mcp_service_account_object: "{{ firebase_mcp_service_account_json | from_json }}"
+  when: (firebase_mcp_service_account_json | default('') | length) > 0
+  no_log: true
+
+- name: Render Firebase service account credentials file when configured
+  ansible.builtin.copy:
+    dest: "{{ firebase_mcp_credentials_file_path }}"
+    mode: "0600"
+    content: "{{ _firebase_mcp_service_account_object | to_nice_json }}\n"
+  when: (firebase_mcp_service_account_json | default('') | length) > 0
+  no_log: true
+
+- name: Remove Firebase service account credentials file when not configured
+  ansible.builtin.file:
+    path: "{{ firebase_mcp_credentials_file_path }}"
+    state: absent
+  when: (firebase_mcp_service_account_json | default('') | length) == 0
+
+- name: Determine whether Firebase MCP needs a local env wrapper
+  ansible.builtin.set_fact:
+    _firebase_mcp_use_env_wrapper: >-
+      {{
+        (firebase_mcp_service_account_json | default('') | length) > 0
+        or (firebase_mcp_firebase_token | default('') | length) > 0
+        or ((firebase_mcp_extra_env | default({})) | length) > 0
+      }}
+  no_log: true
+
+- name: Render Firebase MCP runtime env file when auth overrides are configured
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/render_env_file.yml"
+  vars:
+    _mcp_env_file_path: "{{ firebase_mcp_env_file_path }}"
+    _mcp_env_vars: >-
+      {{
+        (
+          {'GOOGLE_APPLICATION_CREDENTIALS': firebase_mcp_credentials_file_path}
+          if (firebase_mcp_service_account_json | default('') | length) > 0
+          else (
+            {'FIREBASE_TOKEN': firebase_mcp_firebase_token}
+            if (firebase_mcp_firebase_token | default('') | length) > 0
+            else {}
+          )
+        )
+        | combine(firebase_mcp_extra_env | default({}), recursive=True)
+      }}
+  when: _firebase_mcp_use_env_wrapper | bool
+  no_log: true
+
+- name: Remove Firebase MCP runtime env file when auth overrides are not configured
+  ansible.builtin.file:
+    path: "{{ firebase_mcp_env_file_path }}"
+    state: absent
+  when: not (_firebase_mcp_use_env_wrapper | bool)
+
+- name: Set Firebase client entry after command and auth resolution
+  ansible.builtin.set_fact:
+    firebase_mcp_client_entry: "{{ _firebase_mcp_wrapped_entry if (_firebase_mcp_use_env_wrapper | bool) else _firebase_mcp_direct_entry }}"
+  vars:
+    _firebase_mcp_wrapped_entry:
+      command: "{{ firebase_mcp_wrapper_path }}"
+      args: "{{ [firebase_mcp_env_file_path, firebase_mcp_command] + firebase_mcp_args }}"
+      env: "{{ firebase_mcp_env }}"
+    _firebase_mcp_direct_entry:
+      command: "{{ firebase_mcp_command }}"
+      args: "{{ firebase_mcp_args }}"
+      env: "{{ firebase_mcp_env }}"
+  no_log: true
+
+- name: Set Firebase Codex MCP entry after command resolution
+  ansible.builtin.set_fact:
+    firebase_mcp_codex_entry: "{{ firebase_mcp_client_entry | combine({'required': firebase_mcp_required}) }}"
+  no_log: true
+
+- name: Ensure Firebase entry exists in Cursor mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _firebase_target_name: "cursor"
+    _firebase_target_config_path: "{{ firebase_mcp_cursor_config_path }}"
+  when: _firebase_target_cursor_selected | bool
+
+- name: Ensure Firebase entry exists in VS Code mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _firebase_target_name: "vscode"
+    _firebase_target_config_path: "{{ firebase_mcp_vscode_config_path }}"
+  when: _firebase_target_vscode_selected | bool
+
+- name: Ensure Firebase entry exists in Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ firebase_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ firebase_mcp_server_key }}"
+    _mcp_codex_entry: "{{ firebase_mcp_codex_entry }}"
+  when: _firebase_target_codex_selected | bool
