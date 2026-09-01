@@ -104,7 +104,7 @@ k3s_litellm_gateway_context_window_fallbacks_with_openai:
 k3s_litellm_gateway_context_window_fallbacks_without_openai: []
 
 # Complexity auto-router (LiteLLM auto_router/complexity_router, requires >= v1.94.x).
-# MODEL GROUP — client model_name is complexity-router@litellm~smart-router; tiers
+# MODEL GROUP — client model_name is litellm-complexity-auto-router@litellm~smart-router; tiers
 # reference other client model_name values below (not raw backend ids).
 k3s_litellm_gateway_complexity_router_enabled: true
 k3s_litellm_gateway_complexity_router_model_name: "{{ k3s_litellm_gateway_client_model_id_smart_router }}"
@@ -271,7 +271,7 @@ k3s_litellm_gateway_lane_contract:
 #   and used by Langfuse/client tracing. Per-request `agent_role` and
 #   `context_class` still come from the IDE/agent client metadata.
 k3s_litellm_gateway_model_list:
-  # FRIENDLY ALIAS — Ornith primary on k3s-02 vLLM.
+  # FRIENDLY ALIAS — Qwen2.5-Coder-32B AWQ primary on k3s-02 vLLM (5090).
   - model_name: "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
@@ -285,7 +285,7 @@ k3s_litellm_gateway_model_list:
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
       # request_inspector observes all aliases; mutate/trim archived 2026-07.
-  # FRIENDLY ALIAS — historical no-trim Ornith lane (observe-only callback era).
+  # FRIENDLY ALIAS — historical no-trim lane (observe-only callback era).
   - model_name: "{{ k3s_litellm_gateway_client_model_id_coder_no_trim }}"
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
@@ -302,7 +302,7 @@ k3s_litellm_gateway_model_list:
         Historical alias from the trim era. Live callback is observe-only for
         all aliases; oversized prompts fail at vLLM (32k). See
         archive/trim-messages-callback-2026-07/.
-  # FRIENDLY ALIAS — smoke / experiment lane over Ornith primary.
+  # FRIENDLY ALIAS — smoke / experiment lane over vLLM primary.
   - model_name: "{{ k3s_litellm_gateway_client_model_id_experiment }}"
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
@@ -326,6 +326,21 @@ k3s_litellm_gateway_model_list:
       routing_policy: local-review-alias
       project: ripi
       backend_runtime: "{{ k3s_litellm_gateway_secondary_review_runtime_slug }}"
+      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
+      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
+  # FRIENDLY ALIAS — Kilo Code main on k3s-02 vLLM (same weights as coder-primary).
+  - model_name: "{{ k3s_litellm_gateway_client_model_id_kilo_main }}"
+    litellm_params:
+      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
+      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
+      api_key: "none"
+    model_info:
+      model_lane: kilo-main
+      routing_policy: local-kilo-primary
+      project: ripi
+      backend_runtime: vllm-primary
+      client_model_id_kind: friendly_alias
+      notes: FRIENDLY ALIAS — qwen2.5-coder-32b@k3s02-vllm~kilo-main (5090 vLLM)
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
   # FRIENDLY ALIAS — OpenAI cloud escalation.
@@ -352,7 +367,7 @@ k3s_litellm_gateway_model_list:
       project: ripi
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-  # FRIENDLY ALIAS — Open WebUI / client default over Ornith primary.
+  # FRIENDLY ALIAS — Open WebUI / client default over vLLM primary.
   - model_name: "{{ k3s_litellm_gateway_client_model_id_default }}"
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
@@ -366,7 +381,7 @@ k3s_litellm_gateway_model_list:
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
       notes: >-
-        Local-first Open WebUI / client default alias → Ornith (vLLM primary).
+        Local-first Open WebUI / client default alias → Qwen2.5-Coder-32B (vLLM primary).
         Cloud escalation remains on smart-router COMPLEX/REASONING tiers.
 
 # Optional Anthropic route fragment — appended when vault_shared_anthropic_api_key is set.
@@ -398,6 +413,14 @@ k3s_litellm_gateway_autocomplete_1_5b_provider: "openai"
 k3s_litellm_gateway_autocomplete_7b_api_base: ""
 k3s_litellm_gateway_autocomplete_7b_model: "Qwen/Qwen2.5-Coder-7B-Instruct"
 k3s_litellm_gateway_autocomplete_7b_provider: "hosted_vllm"
+# Kilo optional 5090 vLLM smoke lanes (mutually exclusive with 32B primary on single GPU).
+# Official Qwen AWQ quants — faster cold start / lower VRAM than 32B AWQ.
+k3s_litellm_gateway_kilo_lite_vllm_api_base: ""
+k3s_litellm_gateway_kilo_lite_vllm_model: "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ"
+k3s_litellm_gateway_kilo_lite_vllm_provider: "hosted_vllm"
+k3s_litellm_gateway_kilo_smoke_vllm_api_base: ""
+k3s_litellm_gateway_kilo_smoke_vllm_model: "Qwen/Qwen2.5-Coder-7B-Instruct-AWQ"
+k3s_litellm_gateway_kilo_smoke_vllm_provider: "hosted_vllm"
 # Prefer FP8/NVFP4 quantized DiffusionGemma on 32GB GPUs; BF16 recipe expects ~64GB.
 k3s_litellm_gateway_diffusiongemma_api_base: ""
 k3s_litellm_gateway_diffusiongemma_model: "RedHatAI/diffusiongemma-26B-A4B-it-FP8-dynamic"
@@ -435,7 +458,7 @@ k3s_litellm_gateway_positive_negative_prompt_assist_chat_api_base: ""
 k3s_litellm_gateway_positive_negative_prompt_assist_chat_model: "gemma4:12b"
 k3s_litellm_gateway_positive_negative_prompt_assist_chat_provider: "ollama"
 
-# Kilo Code / documentation conversation lane (see Kilo docs/providers/ollama).
+# Open WebUI coder lane on desktop Ollama (devstral:24b — not Kilo primary).
 k3s_litellm_gateway_devstral_chat_api_base: ""
 k3s_litellm_gateway_devstral_chat_model: "devstral:24b"
 k3s_litellm_gateway_devstral_chat_provider: "ollama"
@@ -449,7 +472,7 @@ k3s_litellm_gateway_local_continue_model_routes: []
 
 # Fallback when vault_shared_openai_api_key is unset — proxy still starts; OpenAI routes omitted.
 k3s_litellm_gateway_model_list_without_openai:
-  # FRIENDLY ALIAS — Ornith primary on k3s-02 vLLM.
+  # FRIENDLY ALIAS — Qwen2.5-Coder-32B AWQ primary on k3s-02 vLLM (5090).
   - model_name: "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
@@ -463,7 +486,7 @@ k3s_litellm_gateway_model_list_without_openai:
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
       # request_inspector observes all aliases; mutate/trim archived 2026-07.
-  # FRIENDLY ALIAS — historical no-trim Ornith lane (observe-only callback era).
+  # FRIENDLY ALIAS — historical no-trim lane (observe-only callback era).
   - model_name: "{{ k3s_litellm_gateway_client_model_id_coder_no_trim }}"
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
@@ -480,7 +503,7 @@ k3s_litellm_gateway_model_list_without_openai:
         Historical alias from the trim era. Live callback is observe-only for
         all aliases; oversized prompts fail at vLLM (32k). See
         archive/trim-messages-callback-2026-07/.
-  # FRIENDLY ALIAS — smoke / experiment lane over Ornith primary.
+  # FRIENDLY ALIAS — smoke / experiment lane over vLLM primary.
   - model_name: "{{ k3s_litellm_gateway_client_model_id_experiment }}"
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
@@ -506,7 +529,22 @@ k3s_litellm_gateway_model_list_without_openai:
       backend_runtime: "{{ k3s_litellm_gateway_secondary_review_runtime_slug }}"
       source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
       model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-  # FRIENDLY ALIAS — Open WebUI / client default over Ornith primary.
+  # FRIENDLY ALIAS — Kilo Code main on k3s-02 vLLM (same weights as coder-primary).
+  - model_name: "{{ k3s_litellm_gateway_client_model_id_kilo_main }}"
+    litellm_params:
+      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
+      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
+      api_key: "none"
+    model_info:
+      model_lane: kilo-main
+      routing_policy: local-kilo-primary
+      project: ripi
+      backend_runtime: vllm-primary
+      client_model_id_kind: friendly_alias
+      notes: FRIENDLY ALIAS — qwen2.5-coder-32b@k3s02-vllm~kilo-main (5090 vLLM)
+      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
+      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
+  # FRIENDLY ALIAS — Open WebUI / client default over vLLM primary.
   - model_name: "{{ k3s_litellm_gateway_client_model_id_default }}"
     litellm_params:
       model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"

@@ -34,7 +34,8 @@ k3s_litellm_gateway_diffucoder_api_base: "http://diffucoder-openai-wrapper....:8
 Lane client IDs (structured `model_name` values): see **Client model ID syntax**
 above. Short catalog lanes: `code-fast`, `continue-autocomplete`, `diffusiongemma-nextedit`,
 `diffucoder`, `continue-edit`/`continue-apply`, `open-webui-chat`, `architect`,
-`open-webui-general`, `prompt-assist`, `kilo-main`, `kilo-fast` (Open WebUI / Kilo via desktop Ollama when the
+`open-webui-general`, `prompt-assist`, `kilo-main` (5090 vLLM), `kilo-autocomplete` (HVH-01 Ollama),
+`kilo-fast` (desktop Ollama fallback when the
 matching `k3s_litellm_gateway_*_chat_api_base` is set).
 
 ## Client model ID syntax
@@ -48,17 +49,17 @@ LiteLLM `model_list[].model_name` values use structured client IDs defined in
 
 | Segment | Meaning |
 | --- | --- |
-| `model-slug` | Backend weight id (`:` and `/` → `-`) |
+| `model-slug` | **Real** backend weight id (`:` and `/` → `-`). Never invented names (`kilo-coder`, `ornith-35b`). |
 | `@` | Separates model from host |
 | `host-slug` | Homelab surface (`desktop`, `hvh01`, `k3s02-vllm`, `openai`, `anthropic`, `litellm`) |
 | `~` | Separates host from purpose lane |
-| `friendly-lane` | Invented client purpose name (`code-fast`, `kilo-main`, `smart-router`, …) |
+| `friendly-lane` | **Only** invented homelab suffix (`kilo-main`, `code-fast`, …) — appears at end of dropdown string |
 
 Entry kinds (also in `model_info.client_model_id_kind` when set):
 
 - **FRIENDLY ALIAS** — one backend `model` + `api_base` (most routes).
 - **MODEL GROUP** — router entry; fans out to other client `model_name` targets.
-  Example: `complexity-router@litellm~smart-router` (LiteLLM complexity auto-router).
+  Example: `litellm-complexity-auto-router@litellm~smart-router` (LiteLLM complexity auto-router).
 
 `model_info.model_lane` keeps the short catalog-friendly slug for tracing
 (`code-fast`, `deepreinforce-ai/Ornith-1.0-35B-GGUF`, …) even when the client
@@ -68,12 +69,13 @@ Entry kinds (also in `model_info.client_model_id_kind` when set):
 
 | Client `model_name` | Kind | Backend |
 | --- | --- | --- |
-| `ornith-35b@k3s02-vllm~coder-primary` | FRIENDLY ALIAS | vLLM Ornith on k3s-02 |
-| `qwen2.5-coder-1.5b@hvh01~code-fast` | FRIENDLY ALIAS | Ollama on HVH-01 |
-| `devstral-24b@desktop~kilo-main` | FRIENDLY ALIAS | Desktop Ollama |
-| `complexity-router@litellm~smart-router` | MODEL GROUP | Tier router |
+| `qwen2.5-coder-32b@k3s02-vllm~coder-primary` | FRIENDLY ALIAS | vLLM Qwen2.5-Coder-32B AWQ on k3s-02 (5090) |
+| `qwen2.5-coder-32b@k3s02-vllm~kilo-main` | FRIENDLY ALIAS | Same 5090 backend — **Kilo primary** |
+| `qwen2.5-coder-1.5b@hvh01~kilo-autocomplete` | FRIENDLY ALIAS | Ollama on HVH-01 (1060) |
+| `devstral-24b@desktop~open-webui-coder` | FRIENDLY ALIAS | Desktop Ollama (not Kilo main) |
+| `litellm-complexity-auto-router@litellm~smart-router` | MODEL GROUP | Tier router |
 
-## Complexity auto-router (`complexity-router@litellm~smart-router`)
+## Complexity auto-router (`litellm-complexity-auto-router@litellm~smart-router`)
 
 Requires LiteLLM **>= v1.94.x** (`auto_router/complexity_router`). The role keeps
 `image_tag: main-latest` by default so the gateway can pick up that surface.
@@ -81,17 +83,17 @@ Requires LiteLLM **>= v1.94.x** (`auto_router/complexity_router`). The role keep
 Clients call:
 
 ```text
-model: complexity-router@litellm~smart-router
+model: litellm-complexity-auto-router@litellm~smart-router
 ```
 
 Tier map (local-first; Ollama retired — SIMPLE tier aliases vllm-primary review lane):
 
 | Tier | Without cloud keys | With OpenAI | With Anthropic |
 | --- | --- | --- | --- |
-| SIMPLE | `ornith-35b@k3s02-vllm~code-review` | same | same |
-| MEDIUM | `ornith-35b@k3s02-vllm~coder-primary` | same | same |
-| COMPLEX | `ornith-35b@k3s02-vllm~coder-primary` | `gpt-4o@openai~cloud-chat` | `claude-sonnet-4@anthropic~cloud-escalation` |
-| REASONING | `ornith-35b@k3s02-vllm~coder-primary` | `gpt-4o@openai~cloud-chat` | `claude-sonnet-4@anthropic~cloud-escalation` |
+| SIMPLE | `qwen2.5-coder-32b@k3s02-vllm~code-review` | same | same |
+| MEDIUM | `qwen2.5-coder-32b@k3s02-vllm~coder-primary` | same | same |
+| COMPLEX | `qwen2.5-coder-32b@k3s02-vllm~coder-primary` | `gpt-4o@openai~cloud-chat` | `claude-sonnet-4@anthropic~cloud-escalation` |
+| REASONING | `qwen2.5-coder-32b@k3s02-vllm~coder-primary` | `gpt-4o@openai~cloud-chat` | `claude-sonnet-4@anthropic~cloud-escalation` |
 
 This is **pre-request complexity classification**, not post-response confidence
 handoff. Keyword rules for ansible/k3s/netbox escalate to COMPLEX/REASONING.
@@ -169,15 +171,16 @@ External PostgreSQL uses `k3s_litellm_gateway_db_endpoint` plus
 
 For the current slice:
 
-- `ornith-35b@k3s02-vllm~coder-primary` is the primary local coding lane (Ornith on vLLM).
-  The live LiteLLM callback is the **Request Inspector** (observe-only).
-- `ornith-35b@k3s02-vllm~coder-no-trim` is a historical alias from the
+- `qwen2.5-coder-32b@k3s02-vllm~coder-primary` is the primary local coding lane
+  (`Qwen/Qwen2.5-Coder-32B-Instruct-AWQ` on vLLM / 5090).
+- `qwen2.5-coder-32b@k3s02-vllm~kilo-main` is the **Kilo Code** alias over the same backend.
+- `qwen2.5-coder-32b@k3s02-vllm~coder-no-trim` is a historical alias from the
   trim era; both aliases now pass through unmutated. Oversized prompts fail at
   vLLM (32k). Archived mutate path:
   `roles/k3s_litellm_gateway/archive/trim-messages-callback-2026-07/`.
-- `ornith-35b@k3s02-vllm~experiment` remains visible as a smoke alias, but it currently shares the
+- `qwen2.5-coder-32b@k3s02-vllm~experiment` remains visible as a smoke alias, but it currently shares the
   same `vllm-primary` backend as coder-primary until a second runtime exists.
-- `gpt-4o-mini@openai~cloud-fast` and `ornith-35b@k3s02-vllm~default` stay present as migration rows while local-lane
+- `gpt-4o-mini@openai~cloud-fast` and `qwen2.5-coder-32b@k3s02-vllm~default` stay present as migration rows while local-lane
   verification is still maturing.
 
 The durable Hugging Face/storage catalog is separate:
