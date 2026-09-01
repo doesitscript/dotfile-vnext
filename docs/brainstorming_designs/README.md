@@ -40,3 +40,30 @@ Each packet should start with:
 
 Additional files should be added only when they help preserve the idea without
 turning it into active project direction.
+
+## Executed plan marking
+
+**Started:** 2026-09-01 (packet
+`2026-09-01--homelab-routing-layer-flint-openwrt`).
+
+When a brainstorm **executable plan** in a packet folder is fully carried out
+and verified, mark it executed:
+
+1. **Frontmatter:** set `execution_status: executed` and `executed_at: YYYY-MM-DD`.
+2. **Rename:** insert `.executed` before the extension:
+   - `my-topic-plan.md` → `my-topic-plan.executed.md`
+   - `my-topic-ai-brief.md` → `my-topic-ai-brief.executed.md`
+
+Rules:
+
+- Do **not** rename until all phases in that file are verified (or explicitly
+  deferred with a note in the packet README).
+- **Reference / supplement** docs may stay unsuffixed unless the whole packet is
+  archived.
+- Update the packet `README.md` status table when renaming.
+- Promoting to `docs/plans/` is separate; the `.executed.md` suffix means
+  “operator/agent completed this brainstorm plan,” not “governed plan lifecycle
+  implemented.”
+
+Going forward, use this suffix for executed brainstorm plans in new packet
+folders unless a packet README defines a different convention.
