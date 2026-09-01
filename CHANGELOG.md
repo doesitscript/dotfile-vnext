@@ -6,7 +6,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## [6.1.1] - 2026-08-31
+## [6.1.2] - 2026-09-01
+
+Pre-release channel: `v6.1.2-alpha` (Kilo Code homelab lanes).
+
+### Added
+
+- LiteLLM friendly client IDs for Kilo (`kilo-main`, `kilo-lite`, `kilo-autocomplete`,
+  `kilo-fast`) and `kilo-lite` vLLM route on k3s-02.
+- Kilo 14B AWQ testing lane on vLLM primary with 32k context for code-agent headroom.
+- Brainstorm packets for Kilo GPU placement and structured LiteLLM client IDs.
+
+### Changed
+
+- Recovery and validation playbooks honor `kilo_testing_active` on k3s-02.
+- Agent lane profiles and Continue IDE defaults aligned to structured model client IDs.
+
 
 Pre-release channel: `v6.1.1-alpha` (partial stable closeout).
 
