@@ -6,6 +6,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [6.1.1] - 2026-08-31
+
+Pre-release channel: `v6.1.1-alpha` (partial stable closeout).
+
 ### Removed
 
 - IIS (`Web-Server`) from Windows Server hypervisors — not used by this project;
@@ -16,6 +20,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - IIS removal lives in `windows_base` only (no separate site/provision phase).
 - Removed stale WinRM-only gate from `playbooks/windows_base.yml` so OpenSSH
   Windows hosts receive the full baseline.
+- Canonical Langfuse platform data-plane vars (`langfuse_platform_external_*`);
+  `fuzlang_*` retained as deprecated aliases only (`AGENTS.md` naming gate).
 
 ## [6.1.0] - 2026-08-27
 
