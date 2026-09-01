@@ -40,15 +40,23 @@ Expected resource categories:
 
 ## Target Servers
 
+**Update 2026-09-01:** Do not assert comparative capacity (for example “more
+storage and RAM” than the 5090 host). Use inventory role + dated live probes
+only. See `docs/plans/2026-09-01--hvh01-network-uplink-current-state-incomplete/findings.md`
+§ *Physical host — storage and memory* for recorded HVH-01 disk facts; system
+RAM total is **pending live probe** while the host is offline.
+
 ```text
-storage/network server
-  - more storage and RAM
+storage/network server (HOM-LAB-HVH-01 — storage lane)
+  - role: storage lane Hyper-V host; SMB model/artifact roots; dkr-01 + k3s-01 guests
+  - recorded disks (2026-07-29 probe): C: ~476 GB, D: ~953 GB, F: data volume ~487 GB free
+  - system RAM total: not recorded in repo — probe when host is online
   - intended home for platform services where appropriate:
     Langfuse, MinIO, Postgres, ClickHouse, Redis/Valkey, LiteLLM,
     JupyterLab workbench, model cache, and backups
 
-RTX 5090 server
-  - stronger GPU/inference host
+RTX 5090 server (HOM-LAB-HVH-02 — GPU lane)
+  - stronger GPU/inference host (RTX 5090 ~32 GB VRAM class)
   - intended home for GPU-enabled k3s and vLLM runtime work
   - expected Hyper-V + Ubuntu VM split:
     one Ubuntu VM for Kubernetes/k3s and one Ubuntu VM for Docker/services

@@ -663,6 +663,13 @@ message time: 2026-05-19 12:35:31
 
 i wanted to deploy this on my storage/network serverver with has an identical setup to my 5090 server but has more storage and ram. I hope htat works. caution me if you disagress.
 
+> **Editor note (2026-09-01):** Original operator wording preserved. Repo
+> SSOT now states HVH-01 as **storage lane by role only** — do not treat “more
+> storage and RAM” as fact. Recorded HVH-01 disks (2026-07-29 probe): C:
+> 476.15 GB, D: 952.92 GB, F: ~487 GB free. System RAM total: **not recorded**
+> until live probe. See
+> `docs/plans/2026-09-01--hvh01-network-uplink-current-state-incomplete/findings.md`.
+
 Laso, breakdown the vllm deployments. I don't know aht this would mean enough to define deploying what you said in ansible... so break that down( you can give me oppinoinated setup to help get my hands direty or on things  since thats were i'm at in this process for models and vllm.  
 
 also breakdown ' Hugging Face'* enough for me to get an oppionioinated, setup defined in my ansible project and to  setup with a few things i can play with 

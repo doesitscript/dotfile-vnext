@@ -31,6 +31,22 @@ Use **inventory host names** in repo work. Intake phrases “5090 lane” / “s
 | `dev-workstation-win` | **AMD Radeon RX 9060 XT** | ~16 GB (WMI `AdapterRAM` unreliable) | `inventory/group_vars/dev_workstation.yaml`, troubleshooting docs | high |
 | `dev-3090-win` | **NVIDIA RTX 3090** (planned) | ~24 GB class | `inventory/group_vars/dev_3090.yaml` | medium (host deferred) |
 
+### System RAM and storage (physical hosts — factual only)
+
+**Update 2026-09-01:** Do **not** claim HVH-01 has more system RAM or disk than
+HVH-02 without dated probes on both hosts. HVH-01 is the **storage lane** by
+role, not by assumed capacity.
+
+| Host | System RAM (total) | Recorded local disks | Source | As-of |
+|------|-------------------|----------------------|--------|-------|
+| `hom-lab-ctl-hvh-01` | **Not recorded** | `C:` 476.15 GB (279.60 GB free); `D:` 952.92 GB (842.49 GB free); `F:` data ~487 GB free | Get-Volume probe | 2026-07-29 |
+| `hom-lab-ctl-hvh-01` | — | Hyper-V static: dkr-01 **8 GB**, k3s-01 **8 GB** | `hom-lab-hvh-01.yaml` | inventory |
+| `hom-lab-ctl-hvh-02` | **Not recorded** | See `continue_ollama_health_fix` plan § July 2026 storage refresh | Get-Volume probe | 2026-07-29 |
+
+Host offline 2026-09-01 — re-probe RAM and volumes when `HOM-LAB-HVH-01` is
+reachable; append rows here. Receipt:
+`docs/plans/2026-09-01--hvh01-network-uplink-current-state-incomplete/findings.md`.
+
 ### Evidence paths
 
 - `hom-lab-ctl-hvh-02`: `hyperv_lane_gpu`, `llm_compute_windows` target
