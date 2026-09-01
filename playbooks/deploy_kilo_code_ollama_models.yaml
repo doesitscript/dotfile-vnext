@@ -1,0 +1,34 @@
+---
+# Prefetch Ollama models for Kilo Code lanes across desktop + HVH-01 in parallel.
+#
+# Apply:
+#   ansible-playbook playbooks/deploy_kilo_code_ollama_models.yaml
+#
+# Verify:
+#   curl http://ollama-desktop.hom.lab:11434/api/tags
+#   curl http://ollama-hvh01.hom.lab:11434/api/tags
+#   curl -H "Authorization: Bearer $LITELLM_KEY" http://litellm.hom.lab/v1/models
+#
+# Undo: remove tags from inventory host_vars models_present lists and re-run.
+
+- name: Prefetch Kilo Code Ollama models (parallel across hosts)
+  hosts: kilo_code_ollama_hosts
+  gather_facts: false
+  strategy: free
+  roles:
+    - role: windows_ollama_runtime
+      tags:
+        - kilo_code
+        - ollama
+        - windows_ollama_runtime
+
+- name: Publish Kilo Code LiteLLM aliases
+  hosts: hom-lab-ctl-k3s-02
+  gather_facts: true
+  become: false
+  roles:
+    - role: k3s_litellm_gateway
+      tags:
+        - kilo_code
+        - k3s_litellm_gateway
+        - litellm

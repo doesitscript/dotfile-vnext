@@ -93,12 +93,41 @@ try {
         exit 0
     }
 
-    foreach ($model in $missingModels) {
-        Write-Log "Pulling model $model"
-        $body = @{ model = $model; stream = $false } | ConvertTo-Json -Compress
-        $pullResult = Invoke-RestMethod -Method Post -Uri $pullUrl -Body $body -ContentType 'application/json' -TimeoutSec $timeoutSeconds
-        $status = if ($null -ne $pullResult.status) { [string]$pullResult.status } else { 'completed' }
-        Write-Log "Pull result for ${model}: $status"
+    $pullParallel = $false
+    if ($null -ne $request.pull_parallel) {
+        $pullParallel = [bool]$request.pull_parallel
+    }
+
+    if ($pullParallel -and $missingModels.Count -gt 1) {
+        Write-Log "Pulling $($missingModels.Count) models in parallel."
+        $jobs = @()
+        foreach ($model in $missingModels) {
+            $jobs += Start-Job -ScriptBlock {
+                param($PullUrl, $ModelName, $TimeoutSeconds)
+                $body = @{ name = $ModelName; stream = $false } | ConvertTo-Json -Compress
+                Invoke-RestMethod -Method Post -Uri $PullUrl -Body $body -ContentType 'application/json' -TimeoutSec $TimeoutSeconds
+            } -ArgumentList $pullUrl, $model, $timeoutSeconds
+        }
+        $jobs | Wait-Job -Timeout $timeoutSeconds | Out-Null
+        foreach ($job in $jobs) {
+            $modelName = ($job.ChildJobs[0].ArgumentList | Select-Object -Last 2 | Select-Object -First 1)
+            if ($job.State -eq 'Failed') {
+                Write-Log "Parallel pull failed for job $($job.Id): $($job.ChildJobs[0].JobStateInfo.Reason)"
+            }
+            else {
+                Write-Log "Parallel pull completed for job $($job.Id)"
+            }
+            Remove-Job -Job $job -Force
+        }
+    }
+    else {
+        foreach ($model in $missingModels) {
+            Write-Log "Pulling model $model"
+            $body = @{ name = $model; stream = $false } | ConvertTo-Json -Compress
+            $pullResult = Invoke-RestMethod -Method Post -Uri $pullUrl -Body $body -ContentType 'application/json' -TimeoutSec $timeoutSeconds
+            $status = if ($null -ne $pullResult.status) { [string]$pullResult.status } else { 'completed' }
+            Write-Log "Pull result for ${model}: $status"
+        }
     }
 
     $finalTags = Invoke-RestMethod -Method Get -Uri $healthUrl -TimeoutSec 30

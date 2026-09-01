@@ -1,0 +1,15 @@
+---
+# Kilo Code ↔ homelab Ollama placement contract.
+#
+# Kilo docs (providers/ollama): pick models with tools, 32k+ context, 7b–24b params.
+# Explicit pull example: `ollama pull devstral:24b`.
+# Mistral provider table also lists devstral + ministral-8b for agent/autocomplete-class work.
+#
+# Host placement:
+# - dev-workstation-win (AMD RX 9060 XT, 16 GB): agent/conversation band (7b–24b+).
+# - hom-lab-hvh-01 (GTX 1060, 6 GB): fast autocomplete sidecar (smaller than Kilo band;
+#   still exposed as code-fast for pragmatic latency).
+#
+# Parallel pull test: Ansible runs both hosts concurrently; optional per-host parallel
+# pulls when windows_ollama_runtime_model_pull_parallel is true (background worker).
+windows_ollama_runtime_model_pull_parallel: true
