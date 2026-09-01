@@ -42,7 +42,14 @@ hyperv_config:
   internal_ics_psmodule_state: present
   management_os_boot_recovery_state: present  # stage one-time DHCP refresh on next boot
   management_os_boot_recovery_trigger_delay: "PT45S"
+  management_os_ipv4_mode: dhcp                # dhcp | static — use static to pin host_ip
+  management_os_ipv4_address: "{{ host_ip }}"  # used when management_os_ipv4_mode is static
+  management_os_ipv4_prefix_length: 24
 ```
+
+Hosts commissioned for static management IPv4 join inventory group
+`windows_management_static_ipv4_hosts` and set `management_os_ipv4_mode: static`
+with `management_os_boot_recovery_state: absent`.
 
 Set in `host_vars` or `group_vars`. The role provides safe defaults in
 `defaults/main.yml`.
@@ -57,6 +64,11 @@ Selector precedence for the external-switch create path is:
 The role never picks the "first" substring match. If a substring selector
 matches more than one physical adapter, the role fails and shows the candidate
 pool in preview/debug output.
+
+When an External switch already exists but inventory selectors resolve to a
+different physical adapter, the role removes and recreates the switch on the
+intended adapter (brief management-network disconnect; boot recovery applies
+when `management_os_boot_recovery_state: present`).
 
 The Hyper-V prerequisite features are also lifecycle-driven:
 
@@ -113,6 +125,19 @@ When enabled, the role:
 
 This keeps the first implementation simple and DHCP-based. It does not force a
 static management IP.
+
+### Static management IPv4
+
+When `management_os_ipv4_mode: static`, the role disables DHCP on the External
+switch management vNIC, pins `management_os_ipv4_address` (default `host_ip`),
+and converges gateway/DNS via `management_os_public_gateway_dns.yml`
+(`ansible.windows.win_powershell` for IP/route; `ansible.windows.win_dns_client`
+for DNS). There is no upstream Ansible module for Windows host IP assignment.
+
+Join `windows_management_static_ipv4_hosts` for inventory targeting. Group membership
+sets `windows_management_static_ipv4_commissioned: true` and enables the static
+path on `site.yaml` / `configure_hyperv_windows_hosts.yaml` runs without
+applying static IP to every `windows_hosts` member.
 
 If a host has the correct management IPv4 but still loses its IPv4 default
 route or DNS after Hyper-V switch convergence, you can explicitly model the

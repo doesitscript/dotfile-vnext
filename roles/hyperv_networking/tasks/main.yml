@@ -19,6 +19,24 @@
   ansible.builtin.set_fact:
     _hyperv: "{{ hyperv_config | default({}) }}"
 
+- name: Resolve effective management OS IPv4 mode from inventory group and hyperv_config
+  ansible.builtin.set_fact:
+    _hyperv_management_os_ipv4_mode_effective: >-
+      {{
+        'static'
+        if (windows_management_static_ipv4_commissioned | default(false) | bool)
+        else (_hyperv.management_os_ipv4_mode | default('dhcp'))
+      }}
+    _hyperv_management_os_boot_recovery_state_effective: >-
+      {{
+        'absent'
+        if (
+          (windows_management_static_ipv4_commissioned | default(false) | bool)
+          or ((_hyperv.management_os_ipv4_mode | default('dhcp')) == 'static')
+        )
+        else (_hyperv.management_os_boot_recovery_state | default('absent'))
+      }}
+
 - name: Determine whether Hyper-V networking changes are requested
   ansible.builtin.set_fact:
     _hyperv_networking_requested: >-
@@ -35,7 +53,7 @@
     - _hyperv_networking_requested | bool
     - hyperv_feature_state == 'present'
     - (_hyperv.allow_management_os | default(true) | bool)
-    - (_hyperv.management_os_boot_recovery_state | default('absent')) == 'present'
+    - (_hyperv_management_os_boot_recovery_state_effective | default('absent')) == 'present'
 
 - name: Manage Hyper-V networking lifecycle
   block:
@@ -54,6 +72,15 @@
       when:
         - hyperv_feature_state == 'present'
         - (_hyperv.external_switch_enabled | default(false) | bool)
+
+    # --- Phase 2b: Static management OS IPv4 when commissioned ---
+    - name: Converge static management OS IPv4 when commissioned
+      ansible.builtin.include_tasks: management_os_static_ipv4.yml
+      when:
+        - hyperv_feature_state == 'present'
+        - (_hyperv.external_switch_enabled | default(false) | bool)
+        - (_hyperv.allow_management_os | default(true) | bool)
+        - (_hyperv_management_os_ipv4_mode_effective | default('dhcp')) == 'static'
 
     # --- Phase 3: Create or verify the Internal VMSwitch and ICS pair ---
     - name: Create Internal Hyper-V guest switch and ICS sharing pair
@@ -76,4 +103,4 @@
         - _hyperv_networking_requested | bool
         - hyperv_feature_state == 'present'
         - (_hyperv.allow_management_os | default(true) | bool)
-        - (_hyperv.management_os_boot_recovery_state | default('absent')) == 'present'
+        - (_hyperv_management_os_boot_recovery_state_effective | default('absent')) == 'present'

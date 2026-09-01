@@ -1,0 +1,87 @@
+---
+# management_os_public_gateway_dns.yml — interface-scoped default route + DNS on the
+# management/public vNIC. Shared by static IPv4 and routed_private_subnet paths.
+
+- name: Ensure modeled public IPv4 default gateway exists on the management interface
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+
+      $publicAlias = '{{ _hyperv_management_public_adapter_alias }}'
+      $publicGateway = '{{ _hyperv_management_public_gateway_ipv4 }}'
+
+      $defaultRoute = Get-NetRoute `
+        -InterfaceAlias $publicAlias `
+        -DestinationPrefix '0.0.0.0/0' `
+        -AddressFamily IPv4 `
+        -ErrorAction SilentlyContinue |
+        Sort-Object RouteMetric |
+        Select-Object -First 1
+
+      if ($null -eq $defaultRoute) {
+        New-NetRoute `
+          -InterfaceAlias $publicAlias `
+          -DestinationPrefix '0.0.0.0/0' `
+          -NextHop $publicGateway `
+          -AddressFamily IPv4 `
+          -ErrorAction Stop | Out-Null
+        $Ansible.Changed = $true
+      }
+      elseif ($defaultRoute.NextHop -ne $publicGateway) {
+        Get-NetRoute `
+          -InterfaceAlias $publicAlias `
+          -DestinationPrefix '0.0.0.0/0' `
+          -AddressFamily IPv4 `
+          -ErrorAction SilentlyContinue |
+          Remove-NetRoute `
+            -Confirm:$false `
+            -ErrorAction Stop
+
+        New-NetRoute `
+          -InterfaceAlias $publicAlias `
+          -DestinationPrefix '0.0.0.0/0' `
+          -NextHop $publicGateway `
+          -AddressFamily IPv4 `
+          -ErrorAction Stop | Out-Null
+        $Ansible.Changed = $true
+      }
+
+      $finalRoute = Get-NetRoute `
+        -InterfaceAlias $publicAlias `
+        -DestinationPrefix '0.0.0.0/0' `
+        -AddressFamily IPv4 `
+        -ErrorAction SilentlyContinue |
+        Sort-Object RouteMetric |
+        Select-Object -First 1
+
+      $Ansible.Result = @{
+        public_interface = $publicAlias
+        gateway = if ($finalRoute) { $finalRoute.NextHop } else { $null }
+      }
+  register: _hyperv_public_gateway_state
+  ignore_unreachable: true
+  when:
+    - (_hyperv_management_public_gateway_ipv4 | default('')) | length > 0
+
+- name: Ensure modeled public IPv4 DNS servers exist on the management interface
+  ansible.windows.win_dns_client:
+    adapter_names: "{{ _hyperv_management_public_adapter_alias }}"
+    dns_servers: "{{ _hyperv_management_public_dns_servers_ipv4 }}"
+  register: _hyperv_public_dns_state
+  when:
+    - (_hyperv_management_public_dns_servers_ipv4 | default([])) | length > 0
+
+- name: Clear transient host errors after public IPv4 gateway or DNS convergence
+  ansible.builtin.meta: clear_host_errors
+  when: >-
+    _hyperv_public_gateway_state.unreachable | default(false)
+    or _hyperv_public_dns_state.unreachable | default(false)
+
+- name: Wait for host reconnect after public IPv4 gateway or DNS convergence
+  ansible.builtin.wait_for_connection:
+    timeout: 120
+    sleep: 5
+  when: >-
+    _hyperv_public_gateway_state.unreachable | default(false)
+    or _hyperv_public_dns_state.unreachable | default(false)

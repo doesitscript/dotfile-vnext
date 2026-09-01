@@ -1,0 +1,28 @@
+---
+# windows_management_static_ipv4_hosts — inventory targeting for static
+# management IPv4 on Hyper-V Windows hosts (External-switch vNIC).
+#
+# Playbook pattern (same family as windows_hosts / windows_server_2025):
+#   ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml \
+#     -i inventory/inventory.yaml --limit windows_management_static_ipv4_hosts
+#
+#   ansible-playbook playbooks/configure_hyperv_windows_hosts.yaml \
+#     -i inventory/inventory.yaml --limit windows_management_static_ipv4_hosts
+#
+# Static management IPv4 is commissioned per host via inventory group
+# windows_management_static_ipv4_hosts (included automatically when site.yaml
+# runs the hyperv_windows_host phase). Non-commissioned windows_hosts members
+# keep DHCP management IPv4 (default hyperv_config.management_os_ipv4_mode).
+#
+# Per-host hyperv_config must still declare the static contract because Ansible
+# does not deep-merge nested hyperv_config dicts across group/host precedence.
+
+# Documented commissioning contract — set on each host's hyperv_config:
+#   management_os_ipv4_mode: static
+#   management_os_ipv4_address: "{{ host_ip }}"
+#   management_os_ipv4_prefix_length: 24
+#   management_os_boot_recovery_state: absent
+#   public_gateway_ipv4: "192.168.50.1"        # when explicit gateway needed
+#   public_dns_servers_ipv4: ["192.168.50.1"]  # when explicit DNS needed
+
+windows_management_static_ipv4_commissioned: true

@@ -58,15 +58,23 @@
             - hyperv_ubuntu_k3s_vm
             - docker_engine_client_verify
             - homelab_hosts_file
+          hyperv_windows_host_includes:
+            - Hyper-V switches, guest routed subnet, portproxy publish surface
+            - Static management IPv4 for hosts in windows_management_static_ipv4_hosts
           active_inventory_surfaces:
             execution_nodes: "{{ query('inventory_hostnames', 'execution_nodes') }}"
             windows_hosts: "{{ query('inventory_hostnames', 'windows_hosts') }}"
+            windows_management_static_ipv4_hosts: "{{ query('inventory_hostnames', 'windows_management_static_ipv4_hosts') }}"
             linux_vm_hosts: "{{ query('inventory_hostnames', 'linux_vm_hosts') }}"
             docker_clients: "{{ query('inventory_hostnames', 'docker_clients') }}"
           selection_model: >-
             This entrypoint runs active inventory groups, while capability
             playbooks derive runtime groups from host intent such as
-            runtime_planes and lifecycle state variables.
+            runtime_planes and lifecycle state variables. Static management IPv4
+            is not applied to every windows_hosts member; only hosts in
+            windows_management_static_ipv4_hosts (or with hyperv_config
+            management_os_ipv4_mode static) receive the static-IP converge path
+            inside hyperv_networking during the hyperv_windows_host phase.
 
 - name: Site - Windows base
   import_playbook: windows_base.yml

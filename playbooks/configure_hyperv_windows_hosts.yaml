@@ -60,6 +60,24 @@
             )
             and (hyperv_feature_state | default('present')) in ['present', 'absent']
           }}
+        hyperv_management_static_ipv4_commissioned: >-
+          {{
+            (windows_management_static_ipv4_commissioned | default(false) | bool)
+            or (
+              (hyperv_config | default({})).management_os_ipv4_mode | default('dhcp')
+            ) == 'static'
+          }}
+        hyperv_management_os_ipv4_mode_effective: >-
+          {{
+            'static'
+            if (
+              (windows_management_static_ipv4_commissioned | default(false) | bool)
+              or (
+                (hyperv_config | default({})).management_os_ipv4_mode | default('dhcp')
+              ) == 'static'
+            )
+            else ((hyperv_config | default({})).management_os_ipv4_mode | default('dhcp'))
+          }}
         hyperv_windows_host_selection_reason: >-
           {% if (surface_type | default('')) != 'windows_host' %}
           not selected: not a Windows host surface
@@ -118,6 +136,15 @@
                 (hostvars[item].hyperv_config | default({})).adapter_interface_description | default('unset')
               ),
               'adapter_name': (hostvars[item].hyperv_config | default({})).adapter_name | default('unset'),
+              'management_os_ipv4_mode': (
+                (hostvars[item].hyperv_config | default({})).management_os_ipv4_mode | default('dhcp')
+              ),
+              'management_os_ipv4_mode_effective': (
+                hostvars[item].hyperv_management_os_ipv4_mode_effective | default('dhcp')
+              ),
+              'management_static_ipv4_commissioned': (
+                hostvars[item].hyperv_management_static_ipv4_commissioned | default(false)
+              ),
               'guest_subnet': (hostvars[item].hyperv_config | default({})).guest_subnet_ipv4 | default('unset'),
               'reason': hostvars[item].hyperv_windows_host_selection_reason | default('not classified')
             }

@@ -1,0 +1,168 @@
+---
+# management_os_static_ipv4.yml — disable DHCP and pin management OS IPv4 on the
+# External-switch management vNIC (typically vEthernet (External)).
+
+- name: Resolve management public adapter alias for static IPv4
+  ansible.builtin.set_fact:
+    _hyperv_management_public_adapter_alias: >-
+      {{
+        _hyperv.internal_ics_public_adapter_name
+        | default('vEthernet (' ~ (_hyperv.switch_name | default('External')) ~ ')')
+      }}
+    _hyperv_management_static_ipv4_address: >-
+      {{
+        _hyperv.management_os_ipv4_address
+        | default(host_ip | default(''))
+      }}
+    _hyperv_management_static_ipv4_prefix_length: >-
+      {{ _hyperv.management_os_ipv4_prefix_length | default(24) | int }}
+    _hyperv_management_public_gateway_ipv4: "{{ _hyperv.public_gateway_ipv4 | default('') }}"
+    _hyperv_management_public_dns_servers_ipv4: "{{ _hyperv.public_dns_servers_ipv4 | default([]) }}"
+
+- name: Assert static management IPv4 inputs are declared
+  ansible.builtin.assert:
+    that:
+      - (_hyperv_management_static_ipv4_address | default('')) | length > 0
+      - (_hyperv_management_static_ipv4_prefix_length | default(0) | int) > 0
+    fail_msg: >-
+      management_os_ipv4_mode is static but management_os_ipv4_address/host_ip
+      or management_os_ipv4_prefix_length is missing on {{ inventory_hostname }}.
+
+- name: Converge static management IPv4 on the public interface
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+
+      $publicAlias = '{{ _hyperv_management_public_adapter_alias }}'
+      $expectedIp = '{{ _hyperv_management_static_ipv4_address }}'
+      $prefixLength = {{ _hyperv_management_static_ipv4_prefix_length }}
+      $publicGateway = '{{ _hyperv_management_public_gateway_ipv4 }}'
+
+      $ipInterface = Get-NetIPInterface `
+        -InterfaceAlias $publicAlias `
+        -AddressFamily IPv4 `
+        -ErrorAction Stop
+
+      if ($ipInterface.Dhcp -ne 'Disabled') {
+        Set-NetIPInterface `
+          -InterfaceAlias $publicAlias `
+          -AddressFamily IPv4 `
+          -Dhcp Disabled `
+          -ErrorAction Stop | Out-Null
+        $Ansible.Changed = $true
+      }
+
+      $liveAddresses = @(
+        Get-NetIPAddress `
+          -InterfaceAlias $publicAlias `
+          -AddressFamily IPv4 `
+          -ErrorAction SilentlyContinue |
+        Where-Object {
+          $_.IPAddress -notlike '169.254.*' -and
+          $_.IPAddress -ne '127.0.0.1'
+        }
+      )
+
+      foreach ($address in $liveAddresses) {
+        if ($address.IPAddress -ne $expectedIp) {
+          Remove-NetIPAddress `
+            -IPAddress $address.IPAddress `
+            -InterfaceAlias $publicAlias `
+            -Confirm:$false `
+            -ErrorAction Stop | Out-Null
+          $Ansible.Changed = $true
+        }
+      }
+
+      $matching = @(
+        Get-NetIPAddress `
+          -InterfaceAlias $publicAlias `
+          -AddressFamily IPv4 `
+          -ErrorAction SilentlyContinue |
+        Where-Object { $_.IPAddress -eq $expectedIp } |
+        Select-Object -First 1
+      )
+
+      if (-not $matching) {
+        if ($publicGateway) {
+          New-NetIPAddress `
+            -InterfaceAlias $publicAlias `
+            -IPAddress $expectedIp `
+            -PrefixLength $prefixLength `
+            -DefaultGateway $publicGateway `
+            -ErrorAction Stop | Out-Null
+        }
+        else {
+          New-NetIPAddress `
+            -InterfaceAlias $publicAlias `
+            -IPAddress $expectedIp `
+            -PrefixLength $prefixLength `
+            -ErrorAction Stop | Out-Null
+        }
+        $Ansible.Changed = $true
+      }
+      elseif ($matching.PrefixLength -ne $prefixLength) {
+        Remove-NetIPAddress `
+          -IPAddress $expectedIp `
+          -InterfaceAlias $publicAlias `
+          -Confirm:$false `
+          -ErrorAction Stop | Out-Null
+
+        if ($publicGateway) {
+          New-NetIPAddress `
+            -InterfaceAlias $publicAlias `
+            -IPAddress $expectedIp `
+            -PrefixLength $prefixLength `
+            -DefaultGateway $publicGateway `
+            -ErrorAction Stop | Out-Null
+        }
+        else {
+          New-NetIPAddress `
+            -InterfaceAlias $publicAlias `
+            -IPAddress $expectedIp `
+            -PrefixLength $prefixLength `
+            -ErrorAction Stop | Out-Null
+        }
+        $Ansible.Changed = $true
+      }
+
+      $final = Get-NetIPAddress `
+        -InterfaceAlias $publicAlias `
+        -AddressFamily IPv4 `
+        -ErrorAction SilentlyContinue |
+        Where-Object { $_.IPAddress -eq $expectedIp } |
+        Select-Object -First 1
+
+      $Ansible.Result = @{
+        public_interface = $publicAlias
+        expected_host_ip = $expectedIp
+        prefix_length = $prefixLength
+        prefix_origin = if ($final) { $final.PrefixOrigin.ToString() } else { $null }
+        dhcp_disabled = $true
+        live_public_interface_ipv4 = @(
+          Get-NetIPAddress `
+            -InterfaceAlias $publicAlias `
+            -AddressFamily IPv4 `
+            -ErrorAction SilentlyContinue |
+          ForEach-Object { $_.IPAddress }
+        )
+      }
+  register: _hyperv_management_static_ipv4_state
+  ignore_unreachable: true
+
+- name: Clear transient host errors after static management IPv4 convergence
+  ansible.builtin.meta: clear_host_errors
+  when: _hyperv_management_static_ipv4_state.unreachable | default(false)
+
+- name: Wait for host reconnect after static management IPv4 convergence
+  ansible.builtin.wait_for_connection:
+    timeout: 120
+    sleep: 5
+  when: _hyperv_management_static_ipv4_state.unreachable | default(false)
+
+- name: Converge public gateway and DNS for static management IPv4
+  ansible.builtin.include_tasks: management_os_public_gateway_dns.yml
+  when:
+    - (_hyperv_management_public_gateway_ipv4 | default('')) | length > 0
+      or (_hyperv_management_public_dns_servers_ipv4 | default([])) | length > 0
