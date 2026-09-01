@@ -96,3 +96,17 @@ When anything fails or is unreachable:
 - collect evidence first
 - stop after repeated failed fix cycles and switch to documented research
 - load troubleshooting/failure rules when debugging beyond a quick probe
+
+## Windows Remote PowerShell (agents)
+
+For managed Windows hosts, **do not** run multi-line
+`ssh <inventory_hostname> powershell -Command "..."` probes (quoting breaks).
+
+Use, in order:
+
+1. `bin/codex-env ansible <host> -i inventory/inventory.yaml -m ansible.windows.win_powershell`
+2. `bin/codex-env python .cursor/skills/homelab-ssh-alias-connect/scripts/run_remote_command.py --host <host> --shell powershell --stdin-file <local.ps1>`
+
+On `ParserError` / missing-brace shell errors: fix the invocation (up to three
+attempts per `AGENTS.md` §9a) before switching probe approach. Skill:
+`homelab-ssh-alias-connect`.

@@ -9,3 +9,6 @@ ssh dev-workstation-win
 ```
 
 Do not invent `user@ip` / `-i` / `-p` from inventory fields by hand.
+
+Windows probes: use `run_remote_command.py` or `ansible.windows.win_powershell`
+— not `ssh ... powershell -Command "..."` one-liners. See `SKILL.md`.

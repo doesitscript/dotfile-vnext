@@ -104,13 +104,23 @@ Exit non-zero if `Host <inventory_hostname>` is missing from `~/.ssh/config`
 
 When you need to run commands on the target:
 
-1. **Preferred:** write a local `.ps1` / `.sh`, `scp` it to the host, then
-   `ssh <inventory_hostname> powershell -File ...` (or `bash ...`).
-2. **Long-running work** (multi‑GB curl, installs): start via Ansible
-   `async`/`poll: 0` or a session-detached process so Windows OpenSSH does
-   **not** kill children when the SSH session ends.
-3. **Last resort only:** nested `ansible -m win_shell -a "..."` with heavy
-   quoting. Do not invent `user@ip` / `-i` / `-p`.
+1. **Windows probes (preferred):** `bin/codex-env ansible <inventory_hostname> -i inventory/inventory.yaml -m ansible.windows.win_powershell` with a `script:` block in JSON `-a`.
+2. **Windows over SSH:** `run_remote_command.py` with a **local `.ps1` file**
+   (`--stdin-file`). Example probe:
+   ```bash
+   bin/codex-env python .cursor/skills/homelab-ssh-alias-connect/scripts/run_remote_command.py \
+     --host HOM-LAB-HVH-01 --shell powershell --stdin-file \
+     .cursor/skills/homelab-ssh-alias-connect/scripts/probe_hyperv_network_adapters.ps1
+   ```
+3. **Interactive SSH:** `ssh <inventory_hostname>` for human shells only.
+4. **Long-running work** (multi‑GB curl, installs): Ansible `async`/`poll: 0`
+   or session-detached process so Windows OpenSSH does not kill children when
+   the SSH session ends.
+5. **Prohibited default:** nested `ssh ... powershell -NoProfile -Command "..."`
+   with inline multi-line PowerShell — local bash + remote PowerShell quoting
+   will break. If that fails with `ParserError`, fix the invocation (use 1 or
+   2); do not switch probes until three informed syntax fixes fail (AGENTS.md
+   §9a, `900--failure-and-diagnostics.mdc`).
 
 Helper:
 

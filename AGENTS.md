@@ -81,6 +81,14 @@ Include:
       (different module/flag/ordering, skip-and-revisit, or research mode per
       `900--failure-and-diagnostics.mdc` RULE 8). Do not make a fourth attempt
       on the same approach without user approval or new research evidence.
+   6. **Syntax / quoting errors are not alternate-path triggers.** When stderr
+      shows a parser error (`ParserError`, `Missing closing '}'`, `unexpected
+      token`, shell quoting failure, or equivalent), treat the invocation as
+      broken — fix quoting or switch to the repo wrapper for that transport
+      (`run_remote_command.py`, `ansible.windows.win_powershell` via
+      `bin/codex-env ansible`, role-staged `-File` scripts). Re-run up to
+      three informed fixes on **that same probe/command intent** before trying
+      a different diagnostic approach.
 10. One-off remote teardown or cleanup commands against provisioned hosts require explicit user approval and must be treated as a scoped exception, not the default automation path.
 11. When syntax checks, lint, idempotence checks, or runtime verification are not run, say so explicitly in the final output and state why they were skipped or unavailable.
 12. During active implementation, required live state queries against the target system should be treated as normal execution, not as optional permission checkpoints. Ask only when the action is destructive, carries hidden side effects, or depends on unresolved user intent.
@@ -121,7 +129,7 @@ Include:
 8. Bootstrap docs, bootstrap playbooks, and bootstrap helper scripts are first-touch machine-setup material by default. Do not treat them as the default source for steady-state operation, troubleshooting, or day-2 implementation unless the task is explicitly about initial setup, rebuild, or bootstrap-path changes.
 9. For repo-local Python, Ansible, and WinRM-sensitive shell work, use `bin/codex-env <command> ...` or another repo-owned wrapper that explicitly loads the same environment. Do not invoke those commands through raw shell, raw Python, or ambient PATH assumptions. `bin/codex-env` is a **general command** runner (`codex-env python …`, `codex-env ansible …`). Do not assume other repos' `bin/*-env` wrappers share that shape — `gs-env` / `hrl-env` are python-only (see global skill `repo-env-wrapper-contract`).
 10. On macOS, if a repo-local query would launch Python or Ansible in a separate MCP/runtime path that does not provably load the repo `.envrc` and project `.venv`, treat that path as unsafe by default. Prefer a `bin/codex-env` shell command or another repo-owned wrapper instead. This guard exists to avoid WinRM worker-dead failures and Python fork crashes from missing environment variables.
-11. For controller-side manual SSH to managed hosts, prefer the repo-managed SSH alias that matches the inventory host name, such as `HOM-LAB-HVH-02` or `dev-workstation-win`, instead of jumping straight to raw `ansible_host`, physical hostname, or machine NetBIOS name. In this repo, `ansible_host` may be a WinRM/control-plane target while the SSH alias carries the intended OpenSSH path and client options. **Required skill:** `homelab-ssh-alias-connect` — run `bin/codex-env python .cursor/skills/homelab-ssh-alias-connect/scripts/resolve_ssh_alias.py --host <inventory_hostname>` then `ssh <inventory_hostname>`. Do not invent `user@ip` / `-i` / `-p` connection strings.
+11. For controller-side manual SSH to managed hosts, prefer the repo-managed SSH alias that matches the inventory host name, such as `HOM-LAB-HVH-02` or `dev-workstation-win`, instead of jumping straight to raw `ansible_host`, physical hostname, or machine NetBIOS name. In this repo, `ansible_host` may be a WinRM/control-plane target while the SSH alias carries the intended OpenSSH path and client options. **Required skill:** `homelab-ssh-alias-connect` — run `bin/codex-env python .cursor/skills/homelab-ssh-alias-connect/scripts/resolve_ssh_alias.py --host <inventory_hostname>` then `ssh <inventory_hostname>`. Do not invent `user@ip` / `-i` / `-p` connection strings. **Windows remote PowerShell probes:** do not use nested `ssh ... powershell -Command "..."` one-liners (quoting breaks). Prefer, in order: `bin/codex-env ansible <host> -m ansible.windows.win_powershell`, or `bin/codex-env python .cursor/skills/homelab-ssh-alias-connect/scripts/run_remote_command.py --host <host> --shell powershell --stdin-file <local.ps1>`.
 12. When showing commands for the user/operator to run, present the canonical
     project command form such as `ansible-playbook ...`. Keep Codex-specific
     wrappers, sandbox temp vars, or local runtime workarounds out of

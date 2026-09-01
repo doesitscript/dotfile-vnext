@@ -28,7 +28,25 @@ Contract:
    RULE 8). No fourth attempt on the same approach without user approval or
    new research evidence.
 
-Authority: `AGENTS.md` §9a. RULE 8 research mode is the escalation when three
+### Syntax / quoting errors (same step — fix before alternate path)
+
+When stderr shows a **parser or quoting failure** (examples: PowerShell
+`ParserError`, `Missing closing '}'`, `unexpected token`; bash `syntax error`;
+nested `ssh ... powershell -Command "..."` failures), the command never reached
+the target system meaningfully.
+
+1. Treat this as a **broken invocation**, not a host/runtime failure.
+2. **Fix quoting or use the repo wrapper** for that transport:
+   - Windows: `bin/codex-env ansible <host> -m ansible.windows.win_powershell`
+   - Windows over SSH: `run_remote_command.py --stdin-file <local.ps1>` (skill
+     `homelab-ssh-alias-connect`)
+   - **Prohibited default:** multi-line `ssh ... powershell -Command "..."`.
+3. Re-run up to **three informed fix attempts** on the **same diagnostic
+   intent** before switching to a different probe path.
+4. Only after three syntax-fix failures may you escalate to an alternate
+   transport (still the same intent, different wrapper).
+
+Authority: `AGENTS.md` §9a item 6. RULE 8 research mode is the escalation when three
 fix attempts are exhausted and no alternate path is clear.
 
 ---

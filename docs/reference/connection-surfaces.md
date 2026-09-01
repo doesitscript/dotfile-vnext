@@ -27,6 +27,21 @@ Agents must **not** assume WSL, `wsl.exe`, `bash.exe`, or `*-wsl` inventory name
 
 Full fields: `inventory/hosts_mapping.yaml`.
 
+## Windows remote PowerShell (controller probes)
+
+Do **not** use `ssh <host> powershell -Command "..."` with inline multi-line
+scripts — quoting fails in bash before PowerShell runs.
+
+| Priority | Path |
+| --- | --- |
+| 1 | `bin/codex-env ansible <host> -i inventory/inventory.yaml -m ansible.windows.win_powershell` |
+| 2 | `run_remote_command.py --host <host> --shell powershell --stdin-file <local.ps1>` |
+| 3 | Role-staged script + `ssh <host> powershell -File C:\...` after playbook apply |
+
+On `ParserError` / missing-brace errors: fix the invocation and retry (up to
+three attempts) before changing the diagnostic goal. See `AGENTS.md` §9a and
+`900--failure-and-diagnostics.mdc`.
+
 ## Controller SSH aliases
 
 Prefer inventory hostname in `~/.ssh/config` (e.g. `HOM-LAB-HVH-02`), with `HostName` set to **ansible_connect_target** from hosts_mapping — not legacy NetBIOS names that fail DNS from the Mac.

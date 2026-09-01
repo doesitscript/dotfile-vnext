@@ -60,9 +60,8 @@ def main() -> int:
         return 2
 
     if args.shell == "powershell":
-        # Windows OpenSSH: pipe script via stdin to powershell -File -
-        # (-Command - is unreliable). Script is written to a remote temp file
-        # through a here-string-free path: ssh + powershell reading stdin bytes.
+        # Windows OpenSSH: pipe the script on stdin; -Command - reads stdin as script text.
+        # Do not use an inline bootstrap with $variables — local shells may strip $p.
         remote = [
             "ssh",
             "-o",
@@ -76,12 +75,7 @@ def main() -> int:
             "-ExecutionPolicy",
             "Bypass",
             "-Command",
-            (
-                "$p = Join-Path $env:TEMP ('agent-remote-' + [guid]::NewGuid().ToString() + '.ps1'); "
-                "$input | Set-Content -LiteralPath $p -Encoding UTF8; "
-                "& powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $p; "
-                "$rc = $LASTEXITCODE; Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue; exit $rc"
-            ),
+            "-",
         ]
     elif args.shell == "bash":
         remote = [
