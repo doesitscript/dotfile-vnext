@@ -6,6 +6,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [6.1.11] - 2026-09-02
+
+Pre-release channel: `v6.1.11-beta` (fzf Tab cycles options).
+
+### Changed
+
+- `FZF_COMPLETION_OPTS` — `tab:down` / `shift-tab:up` inside the fzf picker; Enter accepts
+  (replaces `tab:accept` which closed fzf on first Tab).
+
 ## [6.1.10] - 2026-09-02
 
 Pre-release channel: `v6.1.10-beta` (fzf-tab-completion upstream install gate).

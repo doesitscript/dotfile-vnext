@@ -247,7 +247,7 @@ docs/one_off_tasks/codex-multi-terminal-workflow/deploy/scripts/verify_fzf_tab_c
 | `FZF_COMPLETION_AUTO_COMMON_PREFIX` | `true` | complete longest shared prefix before fzf |
 | `FZF_COMPLETION_AUTO_COMMON_PREFIX_PART` | `true` | also complete partial common prefixes |
 | `FZF_TAB_COMPLETION_PROMPT` | `'> '` | fzf picker prompt (upstream default) |
-| `FZF_COMPLETION_OPTS` | `--layout=reverse --border --height=40%` | picker UI |
+| `FZF_COMPLETION_OPTS` | `--layout=reverse --border --height=40% --bind tab:down,…` | Tab cycles in fzf; Enter accepts |
 
 ### Behavior examples
 

@@ -29,7 +29,7 @@ shopt -s progcomp 2>/dev/null || true
 export FZF_COMPLETION_AUTO_COMMON_PREFIX="${FZF_COMPLETION_AUTO_COMMON_PREFIX:-true}"
 export FZF_COMPLETION_AUTO_COMMON_PREFIX_PART="${FZF_COMPLETION_AUTO_COMMON_PREFIX_PART:-true}"
 export FZF_TAB_COMPLETION_PROMPT="${FZF_TAB_COMPLETION_PROMPT:-'> '}"
-export FZF_COMPLETION_OPTS="${FZF_COMPLETION_OPTS:---layout=reverse --border --height=40% --bind tab:accept}"
+export FZF_COMPLETION_OPTS="${FZF_COMPLETION_OPTS:---layout=reverse --border --height=40% --bind tab:down,shift-tab:up,enter:accept}"
 
 # shellcheck disable=SC1090
 source "${_FZF_TAB_COMPLETION_DIR}/bash/fzf-bash-completion.sh"
