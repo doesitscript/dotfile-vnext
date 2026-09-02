@@ -144,6 +144,21 @@
     value: "{{ windows_ollama_runtime_listen_address }}"
     level: machine
 
+- name: Ensure requested Ollama context length is managed
+  ansible.windows.win_environment:
+    state: present
+    name: OLLAMA_CONTEXT_LENGTH
+    value: "{{ windows_ollama_runtime_context_length | string }}"
+    level: machine
+  when: windows_ollama_runtime_context_length | int > 0
+
+- name: Remove managed Ollama context length when no override is requested
+  ansible.windows.win_environment:
+    state: absent
+    name: OLLAMA_CONTEXT_LENGTH
+    level: machine
+  when: windows_ollama_runtime_context_length | int <= 0
+
 - name: Ensure Windows Firewall rule exists for Ollama runtime API
   community.windows.win_firewall_rule:
     name: "{{ windows_ollama_runtime_firewall_rule_name }}"
@@ -359,6 +374,7 @@
           'models_path': windows_ollama_runtime_models_path,
           'api_base': windows_ollama_runtime_api_base,
           'listen_address': windows_ollama_runtime_listen_address,
+          'context_length': windows_ollama_runtime_context_length | int,
           'default_model': windows_ollama_runtime_default_model,
           'fallback_model': windows_ollama_runtime_fallback_model,
           'models_present': windows_ollama_runtime_models_present,
@@ -383,6 +399,7 @@
         {
           'api_base': windows_ollama_runtime_api_base,
           'healthcheck_url': windows_ollama_runtime_healthcheck_url,
+          'context_length': windows_ollama_runtime_context_length | int,
           'health_status': (
             windows_ollama_runtime_healthcheck.status_code
             | default(windows_ollama_runtime_healthcheck.status)

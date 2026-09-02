@@ -29,7 +29,8 @@ the boot scheduled task at that discovered binary.
 ## What it manages
 
 - Ollama install via `windows_artifact_download` + `win_package`
-- machine-scoped `OLLAMA_MODELS` / `OLLAMA_HOST`
+- machine-scoped `OLLAMA_MODELS` / `OLLAMA_HOST` and an optional bounded
+  `OLLAMA_CONTEXT_LENGTH`
 - boot-triggered scheduled task for `ollama serve` with
   `execution_time_limit: PT0S` (unlimited) so Task Scheduler does not kill the
   daemon after the Windows default of 72 hours
@@ -56,6 +57,7 @@ the boot scheduled task at that discovered binary.
 - `windows_ollama_runtime_setup_sha256`
 - `windows_ollama_runtime_bind_host`
 - `windows_ollama_runtime_port`
+- `windows_ollama_runtime_context_length` (zero preserves Ollama's default)
 - `windows_ollama_runtime_models_path`
 - `windows_ollama_runtime_default_model`
 - `windows_ollama_runtime_models_present`
