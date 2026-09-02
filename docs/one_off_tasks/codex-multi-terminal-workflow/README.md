@@ -207,42 +207,62 @@ docs/one_off_tasks/codex-multi-terminal-workflow/
 ## Tab completion (fzf-tab-completion)
 
 **Upstream:** [lincheney/fzf-tab-completion](https://github.com/lincheney/fzf-tab-completion) — Tab
-completion using fzf with bash’s existing completion mechanisms (not a separate `**` trigger).
+completion using fzf **with** bash’s existing completion mechanisms (not a separate `**` trigger).
+Distinct from [junegunn/fzf](https://github.com/junegunn/fzf) `eval "$(fzf --bash)"`, which only adds
+`**<Tab>` fuzzy path completion.
 
-**Deployed:** `~/.bashrc.d/shell-completion_one_off_tasks.bash`
+### Context7 / upstream install order
 
-**Behavior** (with `FZF_COMPLETION_AUTO_COMMON_PREFIX=true` and
-`FZF_COMPLETION_AUTO_COMMON_PREFIX_PART=true`):
+Per [installation](https://github.com/lincheney/fzf-tab-completion#installation) and
+[bash setup](https://github.com/lincheney/fzf-tab-completion#bash):
 
-| Input | Result |
-| --- | --- |
-| `ls <Tab>` | fzf lists all files |
-| `ls a<Tab>` | completes to `ls abc`; Tab again → fzf with remaining `a*` matches |
-| `ls abcd<Tab>` | fzf with matches, or auto-prefix to `abcdef-` when `_PART=true` |
-| `cx-de<Tab>` | completes toward `cx-deep`; Tab again → fzf with other `cx-*` aliases |
-
-**Setup** (matches upstream bash instructions):
+1. **fzf** — `brew install fzf` ([junegunn/fzf](https://github.com/junegunn/fzf))
+2. **macOS GNU tools** — `brew install gawk grep gnu-sed coreutils` (script uses `gawk`, `gsed`, `ggrep`)
+3. **Clone** — `git clone https://github.com/lincheney/fzf-tab-completion.git ~/.local/share/fzf-tab-completion`
+4. **bash-completion / progcomp** — already loaded via Ansible `bash_completion.bash` in `~/.bashrc.d/`
+5. **Source + bind** (in `shell-completion_one_off_tasks.bash`):
 
 ```bash
 source ~/.local/share/fzf-tab-completion/bash/fzf-bash-completion.sh
 bind -x '"\t": fzf_bash_completion'
 ```
 
-**Deps** (`install_one_off_tasks.sh`):
+6. **Optional `**` trigger** — add `eval "$(fzf --bash)"` to `~/.bashrc` separately if wanted
+7. **Optional Python REPL** — see [python3](https://github.com/lincheney/fzf-tab-completion#python3) and
+   `deploy/python/usercustomize_one_off_tasks.py.example`
+
+### One-off installers
 
 ```bash
-brew install fzf gawk grep gnu-sed coreutils
-git clone https://github.com/lincheney/fzf-tab-completion.git ~/.local/share/fzf-tab-completion
+docs/one_off_tasks/codex-multi-terminal-workflow/deploy/scripts/install_fzf_tab_completion_one_off_tasks.sh
+docs/one_off_tasks/codex-multi-terminal-workflow/deploy/scripts/verify_fzf_tab_completion_one_off_tasks.sh
 ```
+
+`install_one_off_tasks.sh` calls the fzf-tab-completion installer automatically.
+
+### Env vars (trial defaults)
+
+| Variable | Value | Effect |
+| --- | --- | --- |
+| `FZF_COMPLETION_AUTO_COMMON_PREFIX` | `true` | complete longest shared prefix before fzf |
+| `FZF_COMPLETION_AUTO_COMMON_PREFIX_PART` | `true` | also complete partial common prefixes |
+| `FZF_TAB_COMPLETION_PROMPT` | `'> '` | fzf picker prompt (upstream default) |
+| `FZF_COMPLETION_OPTS` | `--layout=reverse --border --height=40%` | picker UI |
+
+### Behavior examples
+
+| Input | Result |
+| --- | --- |
+| `ls <Tab>` | fzf lists all files |
+| `ls a<Tab>` | completes to `ls abc`; Tab again → fzf with remaining `a*` matches |
+| `ls abcd<Tab>` | fzf or auto-prefix to `abcdef-` when `_PART=true` |
+| `cx-de<Tab>` | completes toward `cx-deep`; Tab again → fzf with other `cx-*` aliases |
 
 Reload:
 
 ```bash
 source ~/.bashrc.d/shell-completion_one_off_tasks.bash
 ```
-
-Optional: enable [junegunn/fzf](https://github.com/junegunn/fzf) `**` path trigger separately via
-`eval "$(fzf --bash)"` in `~/.bashrc` — not required for plain Tab.
 
 **Promote permanently:** fold into `roles/common/shell_config/files/bashrc.d/` after trial.
 

@@ -6,6 +6,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [6.1.10] - 2026-09-02
+
+Pre-release channel: `v6.1.10-beta` (fzf-tab-completion upstream install gate).
+
+### Added
+
+- `install_fzf_tab_completion_one_off_tasks.sh` / `verify_fzf_tab_completion_one_off_tasks.sh` —
+  upstream-ordered deps (fzf, gawk, gnu-sed, …), clone, progcomp/bash-completion checks.
+- `usercustomize_one_off_tasks.py.example` for optional Python REPL tab completion.
+
+### Changed
+
+- `shell-completion_one_off_tasks.bash` — prereq gates, `progcomp`, upstream loading-message hook.
+
 ## [6.1.9] - 2026-09-02
 
 Pre-release channel: `v6.1.9-beta` (fzf-tab-completion vanilla Tab).

@@ -46,22 +46,10 @@ install -m 0755 "${deploy_root}/scripts/render_local_model_catalog_one_off_tasks
 
 "${HOME}/bin/render_local_model_catalog_one_off_tasks"
 
-# --- Tab completion deps: fzf + lincheney/fzf-tab-completion ------------------
-if command -v brew >/dev/null 2>&1; then
-  for formula in fzf gawk grep gnu-sed coreutils; do
-    if ! brew list "$formula" >/dev/null 2>&1; then
-      printf '%s\n' "Installing brew formula: $formula"
-      brew install "$formula" || printf 'Warning: brew install %s failed — continue manually.\n' "$formula" >&2
-    fi
-  done
-fi
-
-FZF_TAB_DIR="${HOME}/.local/share/fzf-tab-completion"
-if [[ ! -f "${FZF_TAB_DIR}/bash/fzf-bash-completion.sh" ]]; then
-  mkdir -p "${HOME}/.local/share"
-  git clone --depth 1 https://github.com/lincheney/fzf-tab-completion.git "${FZF_TAB_DIR}" \
-    || printf 'Warning: could not clone fzf-tab-completion — Tab completion will not load.\n' >&2
-fi
+# --- Tab completion: fzf + lincheney/fzf-tab-completion (upstream installer) ---
+chmod +x "${deploy_root}/scripts/install_fzf_tab_completion_one_off_tasks.sh"
+chmod +x "${deploy_root}/scripts/verify_fzf_tab_completion_one_off_tasks.sh"
+"${deploy_root}/scripts/install_fzf_tab_completion_one_off_tasks.sh"
 
 printf '\n%s\n' 'Installed. Open a new shell or run:'
 printf '  source ~/.bashrc.d/codex-multi-terminal_one_off_tasks.bash\n'
