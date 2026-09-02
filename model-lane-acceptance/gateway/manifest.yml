@@ -1,0 +1,120 @@
+# dotfile-vnext SSOT — LiteLLM gateway acceptance criteria.
+# Consumed by: LITELLM_MODEL_LANE_MANIFEST
+# Harness: global-skills/skills/validation/homelab-litellm-model-lane-pytest
+#
+# Each scenario is a user journey with EXPECTED behavior (ATDD).
+# `title` + `user_story` print on human receipts as JOURNEY / WHY.
+
+x-read-hosts-execute: &read_hosts_execute
+  tool_execute_path: /etc/hosts
+  tool_result_expect_any_substrings:
+    - "127.0.0.1"
+    - localhost
+
+x-read-hosts-followup: &read_hosts_followup
+  tool_followup_prompt: >-
+    You just read /etc/hosts. Reply with one short line that includes a hostname
+    or IP address from that file.
+  tool_followup_expect_any_substrings:
+    - "127.0.0.1"
+    - localhost
+
+x-smoke-ping-pong: &smoke_ping_pong
+  id: ping-pong
+  title: "Can the model hear you and answer with one exact word?"
+  user_story: >-
+    Like saying ping in chat and expecting pong — proves basic communication
+    works end-to-end, not random tokens or a refusal.
+  group: smoke
+  type: chat
+  user: "Reply with exactly the word: pong"
+  expect_exact: pong
+  http_status: 200
+
+x-chat-explain-add: &chat_explain_add
+  id: explain-add-function
+  title: "Can the model explain simple code to a teammate?"
+  user_story: >-
+    You paste a tiny Python function; the model should describe what it does
+    in plain language — the way you'd expect in Continue or Kilo chat.
+  group: chat
+  type: chat
+  user: |
+    In one short sentence, explain what this Python does:
+    def add(a, b):
+        return a + b
+  expect_any_substrings:
+    - sum
+    - add
+  http_status: 200
+
+x-tools-read-hosts-base: &tools_read_hosts_base
+  id: read-hosts-tool
+  title: "Can the agent read a real file and report what it found?"
+  user_story: >-
+    You ask the agent to read /etc/hosts. It must request the tool, the harness
+    must execute the read, and (when the lane supports it) cite a hostname or IP
+    from the actual file — a full round trip, not a pretend JSON blob.
+  group: tools
+  type: tools
+  user: "Use the read_file tool to read /etc/hosts. Do not explain — just call the tool."
+  tool_name: read_file
+  http_status: 200
+  <<: *read_hosts_execute
+
+x-fim-add-function: &fim_add_function
+  id: autocomplete-add-fim
+  title: "Can autocomplete finish a function body while you type?"
+  user_story: >-
+    Like Tab-complete in an IDE: given a partial `def add(a, b):`, the model
+    should insert a sensible middle chunk (typically `return a + b`).
+  group: autocomplete
+  type: fim
+  requires_capabilities: [fim]
+  user: "Fill in the middle of the Python function (FIM)."
+  completion:
+    endpoint: completions
+    prompt: "<|fim_prefix|>def add(a, b):\n    <|fim_suffix|>\n\nprint(add(1,2))<|fim_middle|>"
+  expect_substrings:
+    - return
+  http_status: 200
+
+lanes:
+  - id: qwen2.5-coder-32b@k3s02-vllm
+    label: "5090 vLLM 32B AWQ — Continue quality chat + Codex deep"
+    capabilities: [chat, tools]
+    usage:
+      - <<: *smoke_ping_pong
+      - <<: *chat_explain_add
+      - <<: *tools_read_hosts_base
+        expect_mode: tool_calls
+        <<: *read_hosts_followup
+
+  - id: qwen2.5-coder-7b@desktop
+    label: "Desktop Ollama 7B — edit / OpenCode"
+    capabilities: [chat, tools]
+    usage:
+      - <<: *smoke_ping_pong
+      - <<: *chat_explain_add
+      - <<: *tools_read_hosts_base
+        expect_mode: json_in_content
+
+  - id: qwen2.5-coder-1.5b@hvh01
+    label: "HVH-01 Ollama 1.5B — autocomplete"
+    capabilities: [chat, tools, fim]
+    usage:
+      - <<: *smoke_ping_pong
+      - <<: *chat_explain_add
+      - <<: *tools_read_hosts_base
+        expect_mode: json_in_content
+      - <<: *fim_add_function
+
+  - id: ministral-3-8b@desktop
+    label: "Desktop Ministral 8B — Kilo fast agent"
+    capabilities: [chat, tools]
+    usage:
+      - <<: *smoke_ping_pong
+      - <<: *chat_explain_add
+      - <<: *tools_read_hosts_base
+        expect_mode: tool_calls
+        <<: *read_hosts_followup

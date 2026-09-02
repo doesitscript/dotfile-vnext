@@ -1,0 +1,36 @@
+# dotfile-vnext SSOT — Codex CLI profiles that passed live acceptance probes.
+# Consumed by: CODEX_CLI_MODEL_PROFILE_MANIFEST
+# Harness: global-skills/.../homelab-litellm-model-lane-pytest (--suite codex)
+#
+# Shell tool-loop contracts belong in pending/ until receipts are green.
+
+profiles:
+  - id: local-deep
+    launcher_profile: deep
+    model_lane: qwen2.5-coder-32b@k3s02-vllm
+    working_directory: /tmp
+    scenarios:
+      - id: ping-pong-communication
+        title: "Can Codex hear you and answer with one exact word?"
+        user_story: >-
+          Like ping→pong through codex-homelab — proves the CLI profile can
+          complete a bounded chat turn.
+        group: smoke
+        prompt: "Reply with exactly the word: pong"
+        expect_exact: pong
+        timeout_seconds: 180
+
+      - id: explain-add-function
+        title: "Can Codex explain simple code in one sentence?"
+        user_story: >-
+          Paste a function; Codex should describe it the way you'd expect in a
+          real coding session.
+        group: chat
+        prompt: >-
+          In one short sentence, explain what this Python does:
+          def add(a, b):
+              return a + b
+        expect_any_substrings:
+          - sum
+          - add
+        timeout_seconds: 180

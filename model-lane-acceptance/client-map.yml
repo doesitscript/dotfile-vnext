@@ -1,0 +1,58 @@
+# dotfile-vnext: which local AI client uses which LiteLLM model@host lane.
+# Acceptance manifests in gateway/ and codex/ must align with this map.
+#
+# Status: approved | experimental | pending_research
+# See: docs/plans/2026-09-01--homelab-local-ai-clients-codex/implementor_output/role_implementor__client-model-map.md
+
+clients:
+  continue:
+    product: Continue IDE (VS Code-compatible)
+    host: mac-dev
+    lanes:
+      - role: chat_quality
+        lane: qwen2.5-coder-32b@k3s02-vllm
+        status: approved
+        acceptance: gateway/manifest.yml
+      - role: edit_apply
+        lane: qwen2.5-coder-7b@desktop
+        status: approved
+        acceptance: gateway/manifest.yml
+      - role: autocomplete_fim
+        lane: qwen2.5-coder-1.5b@hvh01
+        status: approved
+        acceptance: gateway/manifest.yml
+
+  kilo:
+    product: Kilo Code (fast agent)
+    lanes:
+      - role: agent_tools
+        lane: ministral-3-8b@desktop
+        status: approved
+        acceptance: gateway/manifest.yml
+
+  codex_cli:
+    product: codex-homelab terminal profiles
+    profiles:
+      - profile: deep
+        config: docs/plans/2026-09-01--homelab-local-ai-clients-codex/templates/local-deep.config.toml
+        lane: qwen2.5-coder-32b@k3s02-vllm
+        status: approved
+        acceptance: codex/profiles-approved.yml
+        notes: Response/reasoning approved; shell tool loop is pending ATDD.
+      - profile: fast
+        lane: qwen2.5-coder-7b@desktop
+        status: experimental
+      - profile: tools
+        lane: ministral-3-8b@desktop
+        status: experimental
+      - profile: hom-lab
+        lane: qwen2.5-coder-7b@desktop
+        status: experimental
+
+  opencode:
+    product: OpenCode CLI
+    lanes:
+      - role: edit
+        lane: qwen2.5-coder-7b@desktop
+        status: approved
+        acceptance: gateway/manifest.yml

@@ -39,6 +39,7 @@ skill: `homelab-product-capability-flow`.
 
 - [`open-webui.yaml`](open-webui.yaml) — OpenAI-compatible UI → LiteLLM
 - [`litellm.yaml`](litellm.yaml) — gateway / model lanes
+- [`../model-lane-acceptance/`](../model-lane-acceptance/README.md) — ATDD acceptance YAML + client map (executable probes via global-skills harness)
 
 Add more only when a product has durable cross-cutting intent
 (e.g. `langfuse.yaml`, `langgraph.yaml`) — not for every Ansible role.

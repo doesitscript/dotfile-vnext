@@ -1,0 +1,29 @@
+# ATDD pending — Codex shell tool round trip on local-deep (32B).
+# Expect FAIL until Codex actually executes shell and returns PROJECT_STATUS.
+# Do not promote to profiles-approved.yml while final-answer receipts show FAIL.
+#
+# Run:
+#   ./model-lane-acceptance/scripts/run-codex-acceptance.sh pending/tool-loop.yml -v -s
+
+profiles:
+  - id: local-deep-tool-candidate
+    launcher_profile: deep
+    model_lane: qwen2.5-coder-32b@k3s02-vllm
+    working_directory: /tmp
+    scenarios:
+      - id: teammate-handoff-roundtrip
+        title: "Can Codex read a teammate handoff file and return only PROJECT_STATUS?"
+        user_story: >-
+          A teammate leaves handoff-note.txt; Codex must use shell to read it
+          and reply with the value — not print an exec JSON blob.
+        group: tools
+        prompt: >-
+          A teammate left handoff-note.txt in this project. Use the available
+          shell tool to read that file, then reply exactly with its
+          PROJECT_STATUS value. Do not guess and do not explain.
+        expect_exact: ready-for-review
+        timeout_seconds: 180
+        expect_no_unexecuted_exec_request: true
+        workspace_files:
+          - path: handoff-note.txt
+            content: "PROJECT_STATUS=ready-for-review\n"
