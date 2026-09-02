@@ -1,0 +1,19 @@
+- name: Show hello world targeting message
+  ansible.builtin.debug:
+    msg:
+      - "Hello from the work laptop export packet."
+      - "Inventory host: {{ inventory_hostname }}"
+      - "Local hostname: {{ ansible_hostname }}"
+      - "Playbook dir: {{ playbook_dir }}"
+      - "Target scope: {{ work_laptop_packet_scope | join(', ') }}"
+
+- name: Create local marker file for targeting verification
+  ansible.builtin.copy:
+    dest: "{{ work_laptop_hello_marker_path }}"
+    mode: "0644"
+    content: |
+      work_laptop_export_packet=ok
+      inventory_host={{ inventory_hostname }}
+      ansible_hostname={{ ansible_hostname }}
+      playbook_dir={{ playbook_dir }}
+      expected_local_hostname={{ expected_local_hostname }}

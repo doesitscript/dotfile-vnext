@@ -1,0 +1,27 @@
+name: work-laptop-ai-tools-export-packet
+status: pilot
+scope: implementation
+owner_type: export_packet
+owner_doc: exports/work-laptop-ai-tools/README.md
+owned_files:
+  - exports/work-laptop-ai-tools/README.md
+  - exports/work-laptop-ai-tools/capability.yml
+  - exports/work-laptop-ai-tools/export-manifest.yml
+  - exports/work-laptop-ai-tools/playbook.yaml
+  - exports/work-laptop-ai-tools/inventory.yaml
+  - exports/work-laptop-ai-tools/host_vars/work-laptop.yaml
+  - exports/work-laptop-ai-tools/roles/work_laptop_hello/tasks/main.yml
+integration_files:
+  - docs/plans/2026-09-02--work-laptop-export-pilot/README.md
+update_behavior: >-
+  Keep the packet export-only and local-run. Add shared roles only after the
+  target packet shape is stable without requiring broad inventory integration.
+removal_behavior: >-
+  Remove the packet files listed in owned_files and the linked plan packet. No
+  main inventory or host-mapping cleanup is required because this pilot does
+  not integrate with those surfaces.
+lifecycle:
+  apply: local ansible-playbook run on the exported work laptop against inventory.yaml
+  verify: list-hosts, list-tasks, then a local hello-world targeting apply on the work laptop
+  undo: delete the marker file and remove the packet files
+  change_class: idempotent config pilot

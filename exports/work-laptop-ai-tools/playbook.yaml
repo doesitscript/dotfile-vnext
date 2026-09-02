@@ -1,0 +1,30 @@
+- name: Export-only work laptop AI tools target packet
+  hosts: work-laptop
+  gather_facts: true
+  become: false
+
+  pre_tasks:
+    - name: Require explicit export mode
+      ansible.builtin.assert:
+        that:
+          - work_laptop_export_mode | default(false) | bool
+        fail_msg: >-
+          This packet is export-only. Re-run with
+          work_laptop_export_mode=true in the packet inventory or extra vars.
+
+    - name: Require local execution
+      ansible.builtin.assert:
+        that:
+          - ansible_connection == "local"
+        fail_msg: This packet must run locally on the target MacBook.
+
+    - name: Require expected local hostname
+      ansible.builtin.assert:
+        that:
+          - ansible_hostname == expected_local_hostname
+        fail_msg: >-
+          Hostname mismatch. Expected {{ expected_local_hostname }}, got
+          {{ ansible_hostname }}.
+
+  roles:
+    - role: work_laptop_hello
