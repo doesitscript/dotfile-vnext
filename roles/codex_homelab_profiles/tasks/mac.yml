@@ -1,0 +1,57 @@
+---
+- name: Ensure isolated Codex desktop home exists
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0700"
+  loop:
+    - "{{ codex_homelab_profiles_home_root }}"
+    - "{{ codex_homelab_profiles_desktop_home }}"
+    - "{{ codex_homelab_profiles_bin_dir }}"
+  when: codex_homelab_profiles_state == 'present'
+
+- name: Render isolated desktop Codex configuration
+  ansible.builtin.template:
+    src: desktop-config.toml.j2
+    dest: "{{ codex_homelab_profiles_desktop_config_path }}"
+    mode: "0600"
+  when: codex_homelab_profiles_state == 'present'
+
+- name: Render isolated desktop Codex model catalog
+  ansible.builtin.template:
+    src: desktop-model-catalog.json.j2
+    dest: "{{ codex_homelab_profiles_desktop_catalog_path }}"
+    mode: "0600"
+  when: codex_homelab_profiles_state == 'present'
+
+- name: Render desktop Codex instructions
+  ansible.builtin.template:
+    src: instructions.md.j2
+    dest: "{{ codex_homelab_profiles_instructions_path }}"
+    mode: "0600"
+  when: codex_homelab_profiles_state == 'present'
+
+- name: Render Codex homelab launcher
+  ansible.builtin.template:
+    src: codex-homelab.sh.j2
+    dest: "{{ codex_homelab_profiles_launcher_path }}"
+    mode: "0755"
+  when: codex_homelab_profiles_state == 'present'
+
+- name: Manage multi-terminal Codex profiles and cx-* helpers
+  ansible.builtin.include_tasks: multi_terminal.yml
+  when:
+    - codex_homelab_profiles_state == 'present'
+    - codex_homelab_profiles_multi_terminal_state == 'present'
+
+- name: Remove Codex homelab launcher
+  ansible.builtin.file:
+    path: "{{ codex_homelab_profiles_launcher_path }}"
+    state: absent
+  when: codex_homelab_profiles_state == 'absent'
+
+- name: Remove isolated Codex desktop home
+  ansible.builtin.file:
+    path: "{{ codex_homelab_profiles_desktop_home }}"
+    state: absent
+  when: codex_homelab_profiles_state == 'absent'

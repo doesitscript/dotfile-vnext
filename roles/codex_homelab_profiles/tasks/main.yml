@@ -1,0 +1,12 @@
+---
+- name: Validate codex_homelab_profiles state
+  ansible.builtin.assert:
+    that:
+      - codex_homelab_profiles_state in ['present', 'absent']
+    fail_msg: codex_homelab_profiles_state must be present or absent.
+
+- name: Dispatch Codex homelab profile management by platform
+  ansible.builtin.include_tasks: "{{ codex_homelab_profiles_platform_tasks }}"
+  vars:
+    codex_homelab_profiles_platform_tasks: >-
+      {{ 'mac.yml' if ansible_facts['system'] == 'Darwin' else 'unsupported.yml' }}

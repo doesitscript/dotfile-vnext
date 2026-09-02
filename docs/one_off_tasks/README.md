@@ -1,32 +1,84 @@
-# One-off Tasks
+# One-off tasks (`docs/one_off_tasks/`)
 
-This folder is for narrowly scoped, operator-approved exceptions.
+**Authority:** temporary, discardable, low-trust work. Not steady-state automation.
 
-Use it when work is:
-- intentionally one-time
-- semi-manual or bootstrap-like
-- too irregular or risky to present as normal repeatable automation
-- specific enough that future agents should not assume it is reusable by default
+## Purpose
 
-This folder is not the place for:
-- general runbooks
-- normal Ansible role behavior
-- generic framework guidance
-- cleanup logic that should really be made idempotent
+This folder holds **snowflake experiments** — work that is:
 
-## Rule of thumb
+- intentionally temporary
+- try-before-commit on a live machine
+- allowed to bypass normal Ansible / plan gates **only while it stays here**
+- discardable without regret if it fails
 
-If a task needs ad-hoc remote commands because the original implementation was not cleanly reversible, document it here as an exception and keep the scope explicit.
+**Default value:** very low. Agents and humans should assume nothing here is production truth.
 
-Future agents should read these notes as:
-- allowed only for the specific situation described
-- not a standing permission to improvise remote cleanup
-- something to confirm with the user before execution
+## What belongs here
 
-## Subfolders
+| In scope | Out of scope |
+| --- | --- |
+| Trial scripts with explicit install/uninstall | Normal roles, playbooks, inventory |
+| Operator notes for semi-manual probes | Framework rules, runbooks, plan packets |
+| Short-lived troubleshooting write-ups | Anything that should survive the next converge |
 
-- **[codex-multi-terminal-workflow/](./codex-multi-terminal-workflow/)** — one-off trial for
-  four distributed local Codex terminals (`cx-deep`, `cx-desktop`, `cx-skills`, `cx-hvh01`)
-  plus cloud `cx-research`. Deploy with
-  `codex-multi-terminal-workflow/deploy/install_one_off_tasks.sh`.
-- **[on-offs/](./on-offs/)** — setting on/off timelines and tool matrices for active troubleshooting (e.g. GPU/FPS). Tables use **What we got** for raw pulse evidence in that column; see [on-offs/README.md](./on-offs/README.md).
+## Governance rules (mandatory)
+
+### 1. Package layout
+
+Each trial lives in its own subfolder:
+
+```text
+docs/one_off_tasks/<short-slug>/
+  README.md              # what, why, how to try, how to remove
+  deploy/                # files copied to the laptop (optional)
+  evolution.md           # now → promote or discard (optional)
+```
+
+### 2. Naming on the laptop
+
+Every deployed path, filename, and shell function introduced by a one-off **must** include a
+discriminator until promoted, e.g. `*_one_off_tasks` or `codex-homelab_one_off_tasks`.
+
+### 3. Header comment on every deployed file
+
+First lines of every file installed on a managed or operator host:
+
+```bash
+# ONE-OFF TRIAL (non-permanent) — source: docs/one_off_tasks/<slug>/deploy/...
+# Discardable. Overwritable. Remove via <slug>/deploy/uninstall_*.sh or promotion plan.
+```
+
+### 4. No silent persistence
+
+- Do **not** fold one-off behavior into `roles/` without a **plan packet** under `docs/plans/`.
+- Do **not** leave one-off installers as the long-term path after the user approves promotion.
+
+### 5. End states (operator decides)
+
+| Outcome | Action |
+| --- | --- |
+| **Promote** | Plan under `docs/plans/`, implement via Ansible roles/playbooks, **remove** live one-off folder, keep **backup only** inside the plan packet |
+| **Discard** | Run uninstall script, delete subfolder, remove host traces |
+
+Promotion means: evaluate piece-by-piece, match existing roles (`shell_config`, `bash_completion`,
+`codex_homelab_profiles`, tool install roles), drop `_one_off_tasks` suffixes, converge with
+`ansible-playbook`, update docs — **no more wild-west install scripts**.
+
+## Agent instructions
+
+1. Read this file before creating or extending anything under `one_off_tasks/`.
+2. Never treat content here as reusable framework guidance.
+3. When the user approves promotion, **stop** extending the one-off tree; open or continue the
+   promotion plan and implement in `roles/` / `playbooks/`.
+4. **Never** implement from `docs/plans/*/backup/one-off-source/` — that tree is archival only.
+
+## Related project surfaces
+
+- Plan promotion rules: `docs/plans/README.md`
+- Partner process (Apply / Verify / Undo): `docs/codex_framework/partner_process.md`
+- Shell drop pattern: `roles/SHELL-CONFIG-PATTERN.md`
+- Promoted example: `docs/plans/2026-09-02--codex-multi-terminal-promotion/`
+
+## Subfolders (active)
+
+- **[on-offs/](./on-offs/)** — troubleshooting timelines and tool matrices (not Codex trial).

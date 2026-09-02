@@ -8,6 +8,9 @@ Approved plans belong here.
 
 - Store the full approved plan in this directory.
 - Treat the repo plan as the canonical durable artifact.
+- **One-off trials** (`docs/one_off_tasks/`) are discardable; promotion **must** land here
+  with a `backup/one-off-source/` archive and Ansible implementation — see
+  `docs/one_off_tasks/README.md`.
 - Mirror the work into a GitHub issue as a higher-level roadmap when GitHub is available.
 - Keep the GitHub issue shorter than the repo plan and link the two when that improves pickup.
 - **Include Mermaid diagrams** visualizing architecture, implementation flow, and naming standards (see `.cursor/rules/framework-partner-process.mdc` for full requirements). The same baseline applies to official conversational `<proposed_plan>` plans or rendered `Plan` cards, but not to ordinary prose planning.

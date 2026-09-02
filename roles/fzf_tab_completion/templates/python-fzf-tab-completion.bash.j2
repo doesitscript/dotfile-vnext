@@ -1,0 +1,15 @@
+# Managed by Ansible role fzf_tab_completion.
+
+if [[ -z "${BASH_VERSION:-}" ]]; then
+  return 0 2>/dev/null || exit 0
+fi
+
+_FZF_PYTHON_TAB_PATH="{{ fzf_tab_completion_pythonpath_dir }}"
+if [[ -f "${_FZF_PYTHON_TAB_PATH}/usercustomize.py" ]]; then
+  case ":${PYTHONPATH:-}:" in
+    *:"${_FZF_PYTHON_TAB_PATH}":*) ;;
+    *)
+      export PYTHONPATH="${_FZF_PYTHON_TAB_PATH}${PYTHONPATH:+:${PYTHONPATH}}"
+      ;;
+  esac
+fi

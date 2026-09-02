@@ -1,0 +1,41 @@
+---
+- name: Ensure shared Codex config directory exists
+  ansible.builtin.file:
+    path: "{{ codex_homelab_profiles_codex_home }}"
+    state: directory
+    mode: "0700"
+
+- name: Deploy shared local Codex profile configs
+  ansible.builtin.copy:
+    src: "codex-profiles/{{ item }}"
+    dest: "{{ codex_homelab_profiles_codex_home }}/{{ item }}"
+    mode: "0600"
+  loop:
+    - local-deep.config.toml
+    - local-fast.config.toml
+    - local-hvh01.config.toml
+
+- name: Deploy lane-specific Codex instruction files
+  ansible.builtin.copy:
+    src: "codex-instructions/{{ item }}"
+    dest: "{{ codex_homelab_profiles_codex_home }}/{{ item }}"
+    mode: "0644"
+  loop:
+    - instructions-navigation.md
+    - instructions-implement.md
+    - instructions-skills.md
+    - instructions-hvh01.md
+
+- name: Deploy local model catalog renderer
+  ansible.builtin.copy:
+    src: render_local_model_catalog.sh
+    dest: "{{ codex_homelab_profiles_catalog_renderer_path }}"
+    mode: "0755"
+
+- name: Render local Codex model catalog when cache exists
+  ansible.builtin.command:
+    argv:
+      - "{{ codex_homelab_profiles_catalog_renderer_path }}"
+  register: codex_homelab_profiles_catalog_render
+  changed_when: codex_homelab_profiles_catalog_render.rc == 0
+  failed_when: false

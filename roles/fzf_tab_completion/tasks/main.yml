@@ -1,0 +1,20 @@
+---
+- name: Validate fzf_tab_completion state
+  ansible.builtin.assert:
+    that:
+      - fzf_tab_completion_state in ["present", "absent"]
+    fail_msg: "fzf_tab_completion_state must be present or absent."
+
+- name: Require macOS for fzf_tab_completion
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "fzf_tab_completion currently supports macOS (Homebrew) only."
+
+- name: Apply fzf tab completion
+  ansible.builtin.include_tasks: present.yml
+  when: fzf_tab_completion_state == "present"
+
+- name: Remove fzf tab completion
+  ansible.builtin.include_tasks: absent.yml
+  when: fzf_tab_completion_state == "absent"

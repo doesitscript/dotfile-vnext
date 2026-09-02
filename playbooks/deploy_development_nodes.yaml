@@ -12,6 +12,7 @@
 #          litellm_cli (LiteLLM CLI on macOS via pipx)
 #          continue_ide (Continue IDE config → LiteLLM autocomplete/edit lanes; pair with Continue.continue extension)
 #          opencode_cli (OpenCode CLI + homelab LiteLLM opencode.jsonc)
+#          codex_homelab_profiles (isolated local Codex homes + launcher)
 #          terraform_cli (Terraform CLI on macOS through the official HashiCorp Homebrew tap)
 #          aws_cli (AWS CLI on macOS through Homebrew awscli formula)
 #          speech_central (Speech Central install on mac-dev via mas_cli dependency)
@@ -66,6 +67,7 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags litellm_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags continue_ide --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags opencode_cli --limit mac-dev
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags codex_homelab_profiles --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags terraform_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags aws_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags speech_central --limit mac-dev
@@ -140,6 +142,9 @@
     - role: common/bash_completion
       when: ansible_system == "Darwin"
       tags: [bash_completion, gonzo_cli, dstl8_cli]
+    - role: fzf_tab_completion
+      when: ansible_system == "Darwin"
+      tags: [fzf_tab_completion, shell_config, bash_completion]
     - role: direnv
     - role: python
       tags: [python]
@@ -159,6 +164,9 @@
     - role: opencode_cli
       when: ansible_system == "Darwin"
       tags: [opencode, opencode_cli]
+    - role: codex_homelab_profiles
+      when: ansible_system == "Darwin"
+      tags: [codex, codex_homelab_profiles]
     - role: terraform_cli
       when: ansible_system == "Darwin"
       tags: [terraform_cli]

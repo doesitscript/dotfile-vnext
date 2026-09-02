@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Managed by Ansible role codex_homelab_profiles. Do not store gateway secrets here.
+
+set -euo pipefail
+
+profile_name="${1:-}"
+if [[ -z "$profile_name" ]]; then
+  printf '%s\n' 'Usage: codex-homelab <fast|desktop|tools|deep> [codex arguments...]' >&2
+  exit 2
+fi
+shift
+
+case "$profile_name" in
+  fast) codex_profile="local-fast" ;;
+  desktop)
+    export CODEX_HOME="{{ codex_homelab_profiles_desktop_home }}"
+    codex_profile=""
+    ;;
+  hvh01) codex_profile="local-hvh01" ;;
+  tools) codex_profile="local-tools" ;;
+  deep) codex_profile="local-deep" ;;
+  *)
+    printf 'Unknown managed local profile: %s\n' "$profile_name" >&2
+    printf '%s\n' 'Choose: fast, desktop, tools, deep, hvh01.' >&2
+    exit 2
+    ;;
+esac
+
+gateway_key="$({
+  ssh -o BatchMode=yes {{ codex_homelab_profiles_gateway_secret_host }} \
+    "kubectl -n {{ codex_homelab_profiles_gateway_secret_namespace }} get secret {{ codex_homelab_profiles_gateway_secret_name }} -o jsonpath='{.data.{{ codex_homelab_profiles_gateway_secret_key }}}' | base64 -d"
+} )"
+
+if [[ -z "$gateway_key" ]]; then
+  printf '%s\n' 'LiteLLM returned an empty gateway key.' >&2
+  exit 1
+fi
+
+export LITELLM_API_KEY="$gateway_key"
+
+if [[ "${1:-}" == "exec" ]]; then
+  shift
+  if [[ -n "$codex_profile" ]]; then
+    exec codex --profile "$codex_profile" exec "$@"
+  fi
+  exec codex exec "$@"
+fi
+
+if [[ -n "$codex_profile" ]]; then
+  exec codex --profile "$codex_profile" "$@"
+fi
+exec codex "$@"

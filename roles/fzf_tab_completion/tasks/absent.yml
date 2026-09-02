@@ -1,0 +1,20 @@
+---
+- name: Remove PYTHONPATH hook for Python REPL fzf completion
+  ansible.builtin.file:
+    path: "{{ fzf_tab_completion_user_home }}/.bashrc.d/python-fzf-tab-completion.bash"
+    state: absent
+
+- name: Remove Python usercustomize for REPL tab completion
+  ansible.builtin.file:
+    path: "{{ fzf_tab_completion_pythonpath_dir }}/usercustomize.py"
+    state: absent
+
+- name: Remove rl_custom_complete helper symlink
+  ansible.builtin.file:
+    path: "{{ fzf_tab_completion_bin_dir }}/rl_custom_complete"
+    state: absent
+
+- name: Remove fzf-tab-completion clone
+  ansible.builtin.file:
+    path: "{{ fzf_tab_completion_clone_dir }}"
+    state: absent

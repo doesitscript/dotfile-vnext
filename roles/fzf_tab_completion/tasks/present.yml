@@ -1,0 +1,50 @@
+---
+- name: Install brew packages for fzf-tab-completion
+  community.general.homebrew:
+    name: "{{ fzf_tab_completion_brew_packages }}"
+    state: present
+
+- name: Ensure fzf-tab-completion clone directory parent exists
+  ansible.builtin.file:
+    path: "{{ fzf_tab_completion_clone_dir | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Clone lincheney/fzf-tab-completion
+  ansible.builtin.git:
+    repo: "{{ fzf_tab_completion_clone_repo }}"
+    dest: "{{ fzf_tab_completion_clone_dir }}"
+    depth: 1
+    version: master
+  register: fzf_tab_completion_clone
+
+- name: Ensure launcher bin directory exists
+  ansible.builtin.file:
+    path: "{{ fzf_tab_completion_bin_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Symlink rl_custom_complete helper into PATH
+  ansible.builtin.file:
+    src: "{{ fzf_tab_completion_clone_dir }}/python/rl_custom_complete"
+    dest: "{{ fzf_tab_completion_bin_dir }}/rl_custom_complete"
+    state: link
+    force: true
+
+- name: Ensure Python usercustomize directory exists
+  ansible.builtin.file:
+    path: "{{ fzf_tab_completion_pythonpath_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Deploy Python usercustomize for REPL tab completion
+  ansible.builtin.copy:
+    src: usercustomize.py
+    dest: "{{ fzf_tab_completion_pythonpath_dir }}/usercustomize.py"
+    mode: "0644"
+
+- name: Deploy PYTHONPATH hook for Python REPL fzf completion
+  ansible.builtin.template:
+    src: python-fzf-tab-completion.bash.j2
+    dest: "{{ fzf_tab_completion_user_home }}/.bashrc.d/python-fzf-tab-completion.bash"
+    mode: "0644"
