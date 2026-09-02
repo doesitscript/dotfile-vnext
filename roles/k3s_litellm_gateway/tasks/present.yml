@@ -49,6 +49,11 @@
           if (k3s_litellm_gateway_resolved_anthropic_api_key | default('') | length > 0)
           else {}
         )
+        | combine(
+          {'GEMINI_API_KEY': k3s_litellm_gateway_resolved_gemini_api_key}
+          if (k3s_litellm_gateway_resolved_gemini_api_key | default('') | length > 0)
+          else {}
+        )
       }}
 
 - name: Ensure LiteLLM namespace exists before secret and Helm operations
@@ -351,6 +356,12 @@
           {{ 'configured in vault'
           if (k3s_litellm_gateway_resolved_anthropic_api_key | default('') | length > 0)
           else 'not set — optional vault_shared_anthropic_api_key' }}
+      - Gemini: >-
+          {{ 'configured in vault — '
+            ~ (k3s_litellm_gateway_gemini_model_routes | length)
+            ~ ' routes'
+          if (k3s_litellm_gateway_resolved_gemini_api_key | default('') | length > 0)
+          else 'not set — vault_shared_gemini_api_key' }}
       - Complexity router: >-
           {{ k3s_litellm_gateway_complexity_router_model_name
           if (k3s_litellm_gateway_complexity_router_enabled | bool)

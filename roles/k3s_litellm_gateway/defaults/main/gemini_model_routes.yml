@@ -1,0 +1,66 @@
+---
+# Google Gemini Developer API routes — appended when vault_shared_gemini_api_key is set.
+# LiteLLM env: GEMINI_API_KEY (litellm-env-secret via present.yml).
+# Operator guide: docs/reference/models/gemini-litellm-lanes.md
+#
+# Client model_name values use model@google~friendly-purpose (cloud host slug).
+k3s_litellm_gateway_gemini_model_routes:
+  - model_name: "{{ k3s_litellm_gateway_client_model_id_gemini_long_context }}"
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+    model_info:
+      model_lane: gemini-long-context
+      routing_policy: azure-allowed
+      context_class: public-research
+      provider: google-gemini
+      notes: "1M ctx — repo dumps, plans, multi-file homelab context; primary long-context lane"
+      free_tier_verified: "2026-09-01"
+
+  - model_name: "{{ k3s_litellm_gateway_client_model_id_gemini_deep_reasoning }}"
+    litellm_params:
+      model: gemini/gemini-2.5-pro
+      api_key: os.environ/GEMINI_API_KEY
+    model_info:
+      model_lane: gemini-deep-reasoning
+      routing_policy: azure-allowed
+      context_class: review
+      provider: google-gemini
+      notes: "Hardest problems — research synthesis, architecture critique; not max-context"
+      free_tier_verified: "2026-09-01"
+
+  - model_name: "{{ k3s_litellm_gateway_client_model_id_gemini_public_research }}"
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+    model_info:
+      model_lane: public-research
+      routing_policy: azure-allowed
+      context_class: public-research
+      provider: google-gemini
+      notes: "Default cloud fast lane — tools, MCP, daily homelab Q&A (~250 RPD class)"
+      free_tier_verified: "2026-09-01"
+
+  - model_name: "{{ k3s_litellm_gateway_client_model_id_gemini_bulk }}"
+    litellm_params:
+      model: gemini/gemini-2.5-flash-lite
+      api_key: os.environ/GEMINI_API_KEY
+    model_info:
+      model_lane: gemini-bulk
+      routing_policy: azure-allowed
+      context_class: validation
+      provider: google-gemini
+      notes: "High-volume cheap work — Langfuse tagging, summaries, classification (~1000 RPD class)"
+      free_tier_verified: "2026-09-01"
+
+  - model_name: "{{ k3s_litellm_gateway_client_model_id_gemini_embeddings }}"
+    litellm_params:
+      model: gemini/gemini-embedding-001
+      api_key: os.environ/GEMINI_API_KEY
+    model_info:
+      model_lane: gemini-embeddings
+      routing_policy: azure-allowed
+      context_class: embeddings
+      provider: google-gemini
+      notes: "Text embeddings for RAG — not a chat completion lane"
+      free_tier_verified: "2026-09-01"

@@ -6,7 +6,7 @@ Deploys the LiteLLM proxy on K3s using the official `litellm-helm` chart. Secret
 
 | Vault file | Variables |
 |------------|-----------|
-| `vault/shared.vault.yml` | `vault_shared_openai_api_key`, `vault_shared_anthropic_api_key`, `vault_hf_token`, `vault_shared_openrouter_api_key` (research/catalog; not LiteLLM route wiring by default), `vault_k3s_litellm_gateway_master_key`, Langfuse and Minio shared keys |
+| `vault/shared.vault.yml` | `vault_shared_openai_api_key`, `vault_shared_anthropic_api_key`, `vault_shared_gemini_api_key`, `vault_shared_azure_ai_api_key` (prep), `vault_hf_token`, `vault_shared_openrouter_api_key` (research/catalog; not LiteLLM route wiring by default), `vault_k3s_litellm_gateway_master_key`, Langfuse and Minio shared keys |
 | `vault/network.vault.yml` | `vault_network_postgres_*` (same credentials as `/srv/stacks/network/.env`) |
 
 Set a real OpenAI key before using the migration/provider routes:
@@ -15,7 +15,27 @@ Set a real OpenAI key before using the migration/provider routes:
 ansible-vault edit vault/shared.vault.yml
 # vault_shared_openai_api_key: "sk-..."
 # vault_shared_anthropic_api_key: "sk-ant-..."   # optional; enables Claude COMPLEX/REASONING tiers
+# vault_shared_gemini_api_key: "AIza..."         # optional; enables Gemini free-tier routes (see below)
 ```
+
+### Google Gemini cloud lanes (free tier)
+
+When `vault_shared_gemini_api_key` is set, the role appends five routes from
+`defaults/main/gemini_model_routes.yml` and injects `GEMINI_API_KEY` into
+`litellm-env-secret`.
+
+**Operator runbook:** [docs/reference/models/gemini-litellm-lanes.md](../../docs/reference/models/gemini-litellm-lanes.md)
+
+| Client `model_name` | Backend | Highlight |
+| --- | --- | --- |
+| `gemini-2.5-flash@google~long-context` | `gemini/gemini-2.5-flash` | **1M ctx** — primary long-context lane |
+| `gemini-2.5-pro@google~deep-reasoning` | `gemini/gemini-2.5-pro` | Hard reasoning — **not** max-context |
+| `gemini-2.5-flash@google~public-research` | `gemini/gemini-2.5-flash` | Daily fast lane / tools |
+| `gemini-2.5-flash-lite@google~bulk` | `gemini/gemini-2.5-flash-lite` | Bulk / Langfuse evals |
+| `gemini-embedding-001@google~embeddings` | `gemini/gemini-embedding-001` | Text embeddings |
+
+Tip: use **long-context** for volume; use **deep-reasoning** for quality on hard
+problems — both may share Flash/Pro backends but client IDs preserve intent in traces.
 
 ### Continue open-weight lanes (local only — not OpenRouter / Mercury)
 
@@ -66,7 +86,7 @@ LiteLLM `model_list[].model_name` values use structured client IDs defined in
 | --- | --- |
 | `model-slug` | **Real** backend weight id (`:` and `/` → `-`). Never invented names (`kilo-coder`, `ornith-35b`). |
 | `@` | Separates model from host |
-| `host-slug` | Homelab surface (`desktop`, `hvh01`, `k3s02-vllm`, `openai`, `anthropic`, `litellm`) |
+| `host-slug` | Homelab surface (`desktop`, `hvh01`, `k3s02-vllm`, `google`, `openai`, `anthropic`, `litellm`) |
 | `~` | Separates host from purpose lane |
 | `friendly-lane` | **Only** invented homelab suffix (`kilo-main`, `code-fast`, …) — appears at end of dropdown string |
 
@@ -170,7 +190,7 @@ drove those drivers remains in
 
 | Secret | Keys |
 |--------|------|
-| `litellm-env-secret` | `PROXY_MASTER_KEY`, `OPENAI_API_KEY` (when set), `ANTHROPIC_API_KEY` (when set), `LANGFUSE_*` |
+| `litellm-env-secret` | `PROXY_MASTER_KEY`, `OPENAI_API_KEY` (when set), `ANTHROPIC_API_KEY` (when set), `GEMINI_API_KEY` (when set), `LANGFUSE_*` |
 | `litellm-external-postgres` | `username`, `password` |
 
 Helm `environmentSecrets` mounts `litellm-env-secret` into the pod; `proxy_config` uses `os.environ/OPENAI_API_KEY` and `os.environ/PROXY_MASTER_KEY`.

@@ -59,9 +59,11 @@ When `k3s_vllm_runtime_kilo_testing_active: true` on k3s-02, primary vLLM serves
 `message.content` (`<tools>` JSON) with `tool_calls: null`. vLLM hermes parser does
 not extract this format.
 
-**Fix (homelab):** use the community `qwen2_5_coder` parser plugin
-(`roles/k3s_vllm_runtime/files/qwen2_5_coder_tool_parser.py`) with
-`k3s_vllm_runtime_tool_parser_plugin_enabled: true`. Runbook:
+**Fix (homelab):** use the `qwen2_5_coder` parser plugin *and* its companion
+chat template. The parser only recognizes `<tools>...</tools>` output; the
+template supplies the few-shot examples that make Qwen2.5-Coder produce that
+format. Enable both `k3s_vllm_runtime_tool_parser_plugin_enabled: true` and
+`k3s_vllm_runtime_tool_parser_plugin_chat_template_enabled: true`. Runbook:
 `docs/reference/models/5090-qwen25-coder-14b-vs-32b.md`.
 
 | Action | Playbook |

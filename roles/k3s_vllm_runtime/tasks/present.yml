@@ -53,6 +53,7 @@
   when: k3s_vllm_runtime_resolved_hf_token | default('') | length > 0
 
 - name: Ensure vLLM tool parser plugin ConfigMap exists when enabled
+  # Codex-owned tool-call repair; Cursor: preserve this parser/template pairing.
   kubernetes.core.k8s:
     state: present
     definition:
@@ -63,9 +64,12 @@
         namespace: "{{ k3s_vllm_runtime_namespace }}"
       data:
         qwen2_5_coder_tool_parser.py: "{{ lookup('file', role_path + '/files/qwen2_5_coder_tool_parser.py') }}"
+        tool_chat_template_qwen2_5_coder.jinja: "{{ lookup('file', role_path + '/files/tool_chat_template_qwen2_5_coder.jinja') }}"
   environment:
     KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
-  when: k3s_vllm_runtime_tool_parser_plugin_enabled | bool
+  when: >-
+    k3s_vllm_runtime_tool_parser_plugin_enabled | bool
+    or k3s_vllm_runtime_tool_parser_plugin_chat_template_enabled | bool
 
 - name: Build vLLM container args
   ansible.builtin.set_fact:
@@ -94,6 +98,13 @@
             k3s_vllm_runtime_enable_auto_tool_choice | bool
             and (k3s_vllm_runtime_tool_call_parser | length > 0)
           ) else []
+        )
+        + (
+          [
+            '--chat-template',
+            k3s_vllm_runtime_tool_parser_plugin_chat_template_mount_path
+          ]
+          if k3s_vllm_runtime_tool_parser_plugin_chat_template_enabled | bool else []
         )
         + k3s_vllm_runtime_extra_args
       }}
@@ -135,7 +146,10 @@
               'readOnly': true
             }
           ]
-          if k3s_vllm_runtime_tool_parser_plugin_enabled | bool else []
+          if (
+            k3s_vllm_runtime_tool_parser_plugin_enabled | bool
+            or k3s_vllm_runtime_tool_parser_plugin_chat_template_enabled | bool
+          ) else []
         )
       }}
     _k3s_vllm_runtime_volumes: >-
@@ -157,7 +171,10 @@
               }
             }
           ]
-          if k3s_vllm_runtime_tool_parser_plugin_enabled | bool else []
+          if (
+            k3s_vllm_runtime_tool_parser_plugin_enabled | bool
+            or k3s_vllm_runtime_tool_parser_plugin_chat_template_enabled | bool
+          ) else []
         )
       }}
 

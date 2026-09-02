@@ -32,6 +32,7 @@ When you complete a tuning or research pass:
 
 | Model / lane | Doc | Host | Status |
 | --- | --- | --- | --- |
+| Google Gemini free-tier (LiteLLM cloud) | [gemini-litellm-lanes.md](./gemini-litellm-lanes.md) | `litellm.hom.lab` | **Implemented** — gated on `vault_shared_gemini_api_key` |
 | Qwen2.5-Coder 14B vs 32B AWQ on 5090 | [5090-qwen25-coder-14b-vs-32b.md](./5090-qwen25-coder-14b-vs-32b.md) | `hom-lab-ctl-k3s-02` | **32B selected**; 14B rejected |
 
 ## Related

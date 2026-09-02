@@ -27,8 +27,10 @@
       {{ (k3s_litellm_gateway_resolved_openai_api_key | default('') | length > 0) | bool }}
     k3s_litellm_gateway_has_anthropic: >-
       {{ (k3s_litellm_gateway_resolved_anthropic_api_key | default('') | length > 0) | bool }}
+    k3s_litellm_gateway_has_gemini: >-
+      {{ (k3s_litellm_gateway_resolved_gemini_api_key | default('') | length > 0) | bool }}
 
-- name: Append Anthropic model routes when Anthropic key is configured
+- name: Append cloud provider model routes when vault keys are configured
   ansible.builtin.set_fact:
     k3s_litellm_gateway_resolved_model_list: >-
       {{
@@ -36,6 +38,11 @@
         + (
           k3s_litellm_gateway_anthropic_model_routes
           if (k3s_litellm_gateway_has_anthropic | bool)
+          else []
+        )
+        + (
+          k3s_litellm_gateway_gemini_model_routes
+          if (k3s_litellm_gateway_has_gemini | bool)
           else []
         )
       }}
@@ -91,6 +98,30 @@
             }
           ]
           if (k3s_litellm_gateway_continue_edit_api_base | default('') | length > 0)
+          else []
+        )
+        + (
+          [
+            {
+              'model_name': k3s_litellm_gateway_client_model_id_desktop_implement,
+              'litellm_params': {
+                'model': k3s_litellm_gateway_desktop_implement_provider ~ '/' ~ k3s_litellm_gateway_desktop_implement_model,
+                'api_base': k3s_litellm_gateway_desktop_implement_api_base,
+                'api_key': 'none'
+              },
+              'model_info': {
+                'model_lane': k3s_litellm_gateway_client_model_id_desktop_implement,
+                'routing_policy': 'local-codex-desktop-implement-ollama',
+                'project': 'ripi',
+                'backend_runtime': 'ollama-qwen25-coder-14b-desktop',
+                'ollama_library': k3s_litellm_gateway_desktop_implement_model,
+                'notes': 'Codex desktop implementation/review; no fallback group',
+                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+              }
+            }
+          ]
+          if (k3s_litellm_gateway_desktop_implement_api_base | default('') | length > 0)
           else []
         )
         + (
