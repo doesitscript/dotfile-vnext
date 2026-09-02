@@ -54,6 +54,20 @@ Expected flow:
 2. fetch the relevant official page
 3. answer from that source and cite it
 
+## Marketplace Plugins And Skills Are Not Shell Tools
+
+When the question is whether a Cursor/Codex marketplace plugin, skill pack, or
+connector is installed or enabled:
+- verify through the client plugin surface, plugin manifests/cache, or client logs
+- treat plugin state and MCP server state as separate checks
+- do not use shell-tool probes such as `sysoperator.check_tool` for plugin presence
+
+Reason:
+- marketplace plugins are not PATH executables
+- `sysoperator.check_tool` can only answer shell-tool availability, not plugin enablement
+- a model that substitutes a shell-tool check for a plugin-state query is using
+  the wrong capability category
+
 ## Repo-Local Runtime Safety Override
 
 For this repo on macOS, do not treat a separate MCP-owned Python runtime as the
