@@ -6,6 +6,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [7.0.0] - 2026-09-02
+
+Stable release channel: `v7.0.0`.
+
+### Added
+
+- Paired evaluator/implementer workflow package, plan-local documentation
+  packet, and machine-readable capability manifest for reusable multi-agent
+  plan correction work.
+- Reviewed `one-off-*` skill family and new `multi-agent-implementer*` skill
+  family for promotion, verification, and closeout flows.
+- Work-laptop export pack expansion for local Codex/Continue bootstrap and
+  packet-contained automation.
+
+### Changed
+
+- Promoted the codex multi-terminal one-off into managed Ansible roles with
+  truthful absent/present behavior, archival backup, and durable plan receipts.
+- Moved reusable workflow registry content under
+  `docs/codex_framework/multi-agent/` and updated framework references.
+- Expanded Cursor marketplace and local model evaluation documentation surfaces.
+
 ## [6.1.12] - 2026-09-02
 
 Pre-release channel: `v6.1.12-beta` (Python REPL fzf tab completion).
