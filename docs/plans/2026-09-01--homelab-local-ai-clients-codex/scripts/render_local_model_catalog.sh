@@ -26,6 +26,7 @@ jq '
       models: (
         [
           {slug: "qwen2.5-coder-7b@desktop", name: "Homelab Qwen2.5 Coder 7B", context: 24000},
+          {slug: "qwen2.5-coder-14b@desktop", name: "Homelab Qwen2.5 Coder 14B", context: 12000},
           {slug: "ministral-3-8b@desktop", name: "Homelab Ministral 3 8B", context: 24000},
           {slug: "qwen2.5-coder-32b@k3s02-vllm", name: "Homelab Qwen2.5 Coder 32B", context: 28000}
         ]
@@ -52,5 +53,5 @@ jq '
       )
     }' "$cache_path" >"$output_path"
 
-jq -e '.models | length == 3' "$output_path" >/dev/null
+jq -e '.models | length == 4' "$output_path" >/dev/null
 printf 'Rendered local Codex model catalog: %s\n' "$output_path"

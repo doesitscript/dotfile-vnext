@@ -1,11 +1,13 @@
 # Local AI chat + image stack
 
+<!-- Concurrent editing note: Codex updated the desktop coding/vision boundary; Cursor should preserve this correction. -->
+
 Concise plan of the Open WebUI / LiteLLM / Ollama / vLLM / Automatic1111 / ComfyUI layout.
 
 ## Goal
 
-- Chat in Open WebUI via LiteLLM (`gemma4-12b`, `qwen3.6-27b`, `gpt-oss-20b`,
-  `positive-negative-prompt-assist`, Ornith, code lanes, `smart-router`).
+- Chat in Open WebUI via LiteLLM (desktop coding lanes, Ornith, code lanes,
+  and `smart-router`).
 - Open WebUI **Images** t2i → Automatic1111 (CyberRealistic SD1.5 on GTX 1060).
 - Quality stills / FLUX / SDXL → ComfyUI on k3s-02 RTX 5090 (Phase B time-share).
 - Keep single-GPU roles separate on **steady-state**: k3s-02 = Ornith (vLLM);
@@ -23,16 +25,17 @@ Concise plan of the Open WebUI / LiteLLM / Ollama / vLLM / Automatic1111 / Comfy
 | LiteLLM | k3s on `hom-lab-ctl-k3s-02` → http://litellm.hom.lab:30400/v1 | Chat gateway |
 | Ornith / `default` | k3s-02 vLLM (RTX 5090) | Local-first text chat (paused while Phase B ComfyUI is present) |
 | ComfyUI | k3s-02 (`comfyui.hom.lab:30188`) | FLUX.1-dev FP8 + SDXL base starter — see [k3s-02-gpu-timeshare-phase-b.md](k3s-02-gpu-timeshare-phase-b.md) |
-| Gemma4 / Qwen3.6 / gpt-oss | `dev-workstation-win` Ollama (`E:\ai\models\ollama`) | Chat (+ Gemma4 vision; others text-first) |
+| Desktop coding Ollama | `dev-workstation-win` Ollama (`E:\ai\models\ollama`) | `qwen2.5-coder:7b`, `qwen2.5-coder:14b`, and Ministral routes; the 14B route is a bounded Codex coding-chat lane |
 | A1111 | `HOM-LAB-HVH-01` :7860 (`a1111-hvh01.hom.lab`) | Open WebUI t2i / img2img (CyberRealistic + OpenPose) |
-| Arena | Open WebUI synthetic model | Pinned combatants (vision-safe: `gemma4-12b` / `positive-negative-prompt-assist`) |
+| Arena | Open WebUI synthetic model | Separate evaluation surface; do not assume a desktop vision model is qualified |
 
 ## Operator flow
 
-1. Open WebUI — pick a **chat** model (`gemma4-12b` / `qwen3.6-27b` / `gpt-oss-20b` / Ornith / `smart-router` / …).
-2. Vision / describe a picture → **`gemma4-12b`** or **`positive-negative-prompt-assist`** + attach image.
+1. Open WebUI — pick a published **chat** model or Ornith / `smart-router`.
+2. The desktop `gemma4:12b` artifact was removed. Keep vision work on its
+   dedicated image surfaces until a replacement model is researched and qualified.
 3. Quick pictures → WebUI **Images** (A1111 CyberRealistic). Quality FLUX/SDXL → ComfyUI UI.
-4. Arena + images → Gemma4 only (Ornith / Qwen / gpt-oss reject multimodal).
+4. Do not use Arena as evidence that a desktop vision route is configured.
 5. Prompt engineering for stills → **`positive-negative-prompt-assist`**.
 
 ## Apply / Verify / Undo
@@ -40,7 +43,7 @@ Concise plan of the Open WebUI / LiteLLM / Ollama / vLLM / Automatic1111 / Comfy
 | | |
 | --- | --- |
 | **Apply** | `deploy_open_webui.yaml`, `deploy_litellm_gateway.yaml`, `deploy_dev_workstation_ollama_runtime.yaml`, `deploy_automatic1111.yaml`, `deploy_vllm_runtime.yaml` as needed; Phase B flip: [k3s-02-gpu-timeshare-phase-b.md](k3s-02-gpu-timeshare-phase-b.md) |
-| **Verify** | LiteLLM `/v1/models`; WebUI model list; Ollama `:11434`; A1111 `:7860`; Gemma4+image 200; Ornith+image 400 expected |
+| **Verify** | LiteLLM `/v1/models`; WebUI model list; Ollama `:11434`; A1111 `:7860`; validate any future vision model with a separate image round trip |
 | **Undo** | Role `*_state: absent` / stop scheduled tasks; Arena pin revert in WebUI evaluations config |
 | **Change class** | Idempotent Ansible for most; A1111/Ollama boot tasks are host services |
 
@@ -61,7 +64,7 @@ flowchart LR
 
   subgraph chat_backends ["Chat backends"]
     ornith["Ornith vLLM - k3s-02"]
-    ollama["Ollama desktop - gemma4 / qwen3.6 / gpt-oss"]
+    ollama["Ollama desktop - coding lanes"]
   end
 
   subgraph img ["Image backends"]
@@ -84,6 +87,7 @@ flowchart LR
 - `inventory/host_vars/hom-lab-ctl-k3s-02.yaml` — LiteLLM routes; GPU time-share
   (`k3s_vllm_runtime_state` / `k3s_comfyui_runtime_state`)
 - `inventory/host_vars/dev-workstation-win.yaml` — Ollama models path on `E:`
+  and the measured desktop `OLLAMA_CONTEXT_LENGTH` contract
 - `roles/k3s_litellm_gateway` — Pillow bootstrap for Ollama image conversion
 - `roles/windows_automatic1111` — CyberRealistic / scheduled task
 - `roles/k3s_comfyui_runtime` — FLUX FP8 + SDXL + LTX starter weights
@@ -92,7 +96,10 @@ flowchart LR
 
 ## Known limits
 
-- `qwen3.6-27b` + Ornith + `gpt-oss-20b`: **not** multimodal (text-first).
+- `gemma4:12b` was removed; the desktop vision deployment code is retained as
+  about 90 percent ready pending a separately researched replacement.
+- `qwen2.5-coder-14b@desktop` is for concise Codex coding chat, not inline
+  completion or autonomous shell work.
 - LiteLLM image = chat vision path (needs Pillow); A1111 = simple pixel path; ComfyUI = FLUX/SDXL.
 - Desktop Ollama / A1111 are scheduled tasks — may need start after host sleep.
 

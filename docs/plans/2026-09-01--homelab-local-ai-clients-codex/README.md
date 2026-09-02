@@ -12,11 +12,11 @@ suffix: codex
 
 ## Summary
 
-Provide an opt-in, user-scoped Codex **custom model-provider profile** for the
-homelab LiteLLM gateway. The profile is a template for
-`~/.codex/hom-lab.config.toml`; it selects a published `model@host` route and
-gets the gateway key from `LITELLM_API_KEY`. It does not replace the operator's
-normal OpenAI-backed Codex configuration.
+Provide opt-in, user-scoped Codex **custom model-provider configurations** for
+the homelab LiteLLM gateway. Named profiles layer onto `~/.codex`, while the
+constrained desktop coding lane uses a separate `CODEX_HOME` to avoid inheriting
+the normal cloud configuration and plugin state. Both select a published
+`model@host` route and get the gateway key from `LITELLM_API_KEY`.
 
 **Concurrent-work note:** Codex owns this packet and its `templates/` subtree;
 do not let Cursor rewrite or delete those files while the sibling Cursor plan is
@@ -27,9 +27,34 @@ superseded by the live [execution receipt](codex-execution-receipt.md),
 [model research matrix](codex-model-research-matrix.md), and
 [limitations and follow-up](limitations-and-follow-up.md). The limitations
 record is the canonical place for incomplete, blocked, and deferred work; this
-plan deliberately does not duplicate that operational detail. Codex has one
-current large response/reasoning lane and no dependency on Cursor or other
-IDE-client configuration.
+plan deliberately does not duplicate that operational detail. The local deep
+and desktop profiles are independent, explicit terminal choices with no
+dependency on Cursor or other IDE-client configuration. No local Codex
+shell-tool lane is approved until it passes while visibly using its local
+provider; the authoritative boundary is in the limitations record.
+
+**Plain-language visual:** [Why Codex Could Chat But Not Read A File](before-after-tool-loop-explained.md)
+shows the broken and repaired tool-call handoff for a new AI user. The durable
+Context7 research record is in
+`homelab-reference-library/notes/investigations/2026-09-02--codex-vllm-tool-call-template-context7.md`.
+The desktop context-length and local-model qualification is separately recorded
+in `homelab-reference-library/notes/investigations/2026-09-02--ollama-desktop-codex-context-length.md`.
+
+**Infrastructure visual (v2):** [Serving Layer Before And After](serving-layer-infrastructure-explained.md)
+uses rendered server diagrams to show the same repair across Codex, LiteLLM,
+and the vLLM serving pod. Its runnable Python source is
+[`serving_layer_before_after.py`](serving_layer_before_after.py).
+
+**Desktop coding lane:** `codex-homelab desktop` uses the installed
+`~/.codex-homelab/desktop/config.toml`, rendered from
+[`desktop-isolated-home.config.toml`](templates/desktop-isolated-home.config.toml).
+It preserves the normal `~/.codex` configuration for cloud and shared-skill
+work. The route is for concise, bounded code review or implementation chat;
+the authoritative latency/tool limitations remain in the limitations record.
+The deployable source of truth is now the Ansible
+[`codex_homelab_profiles`](../../../roles/codex_homelab_profiles/README.md)
+role and [`deploy_codex_homelab_profiles.yaml`](../../../playbooks/deploy_codex_homelab_profiles.yaml),
+not the originally hand-installed files.
 
 **Sibling plan (ATDD coordination):** Acceptance-author workflow and future
 coordinator skill — [`2026-09-01--homelab-model-lane-atdd-coordination`](../2026-09-01--homelab-model-lane-atdd-coordination/README.md).
@@ -99,6 +124,7 @@ codex exec --profile hom-lab --ephemeral 'Reply with exactly: homelab profile re
 | Codex profile smoke test | `qwen2.5-coder-1.5b@hvh01` | Selected | Only currently selected local coding route in the gateway contract; low-risk gateway proof |
 | Larger coding model | `qwen2.5-coder-14b@k3s02-vllm` | Candidate | Published route, but Codex Responses compatibility and runtime suitability require a separate probe |
 | Desktop agent model | `ministral-3-8b@desktop` | Candidate | Published route; no Codex-specific Responses evidence yet |
+| Desktop implementation/review | `qwen2.5-coder-14b@desktop` | Experimental: exact CLI and direct review proved | Dedicated 12K local coding chat lane; a richer Codex review prompt exceeded two minutes, so no autonomous/tool claim is made |
 
 No model is selected for sustained autonomous coding until its `/v1/responses`
 probe and Codex profile invocation both pass. This is intentionally stricter
@@ -111,7 +137,7 @@ than proving `/v1/chat/completions` compatibility.
 | Apply | Copy the template to `~/.codex/hom-lab.config.toml` and export `LITELLM_API_KEY` in the launching shell |
 | Verify | `GET /v1/models`, `POST /v1/responses`, then isolated `codex exec --profile hom-lab --ephemeral` against the selected route |
 | Undo | Remove only `~/.codex/hom-lab.config.toml` and unset `LITELLM_API_KEY`; no gateway mutation occurs |
-| Change class | Bootstrap/semi-manual user configuration; live tests are read-only model-inference requests |
+| Change class | IaC-managed runtime, LiteLLM route, and user-side Codex desktop profile; live tests are model-inference requests that temporarily load the desktop model |
 
 ## Checklist
 

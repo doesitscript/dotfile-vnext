@@ -10,11 +10,39 @@ desired operating model; the [execution receipt](codex-execution-receipt.md)
 carries reproducible evidence. Keep the detailed status here to avoid three
 copies that drift apart.
 
+## Verification Correction - 2026-09-02
+
+The former launcher added `--ignore-user-config` to every `codex-homelab ...
+exec` run. Codex CLI `0.142.5` then reported `model: gpt-5.5` and
+`provider: openai`: the named local profile had been suppressed. Therefore the
+earlier `deep` shell-tool fixture is withdrawn as proof of a **local** Codex
+tool loop. The launcher now retains the selected profile for `exec`.
+
+The new `desktop` profile is positively verified for a local Responses request,
+an exact Codex CLI response, and a code-review prompt while visibly reporting
+`qwen2.5-coder-14b@desktop` / `homelab-litellm`. Its file-read test is a useful
+negative result: the model emitted an `exec_command` JSON object, but Codex did
+not execute it. No autonomous local shell-tool lane is currently approved.
+
+The desktop service now persists `OLLAMA_CONTEXT_LENGTH=12000` through the
+Ansible-owned Windows runtime role. The actual launcher loaded the same 12K
+context at about 11.17 GB VRAM and returned its exact response from an isolated
+desktop `CODEX_HOME`. A richer Codex production-bug review began streaming but
+did not complete inside two minutes and was interrupted. This disproves a
+claim that the model is already a responsive in-Codex implementation agent;
+the route remains suitable only for concise, bounded prompts.
+
 ## Current Usable State
 
-- `codex-homelab deep` is the one approved local Codex response/reasoning
-  lane. It reaches `qwen2.5-coder-32b@k3s02-vllm` through LiteLLM and passed
-  the bounded exact-output Codex CLI check.
+- `codex-homelab desktop` is an experimental isolated local coding-chat lane.
+  It reaches `qwen2.5-coder-14b@desktop` through LiteLLM from
+  `~/.codex-homelab/desktop`, leaving the normal Codex home untouched. The
+  isolated home and launcher are managed by the
+  `codex_homelab_profiles` Ansible role through
+  `playbooks/deploy_codex_homelab_profiles.yaml`; do not hand-edit them. Use it
+  for concise pasted snippets and focused questions, not an open-ended review.
+- `codex-homelab deep` remains an explicit local profile, but its former local
+  shell-tool proof must be re-run without `--ignore-user-config`.
 - `codex-homelab fast` and `codex-homelab tools` are installed explicit
   profiles, not fallbacks. They remain experimental and should not be used for
   unattended work.
@@ -28,7 +56,9 @@ copies that drift apart.
 | Requested outcome | Status | What happened | Valid next step |
 | --- | --- | --- | --- |
 | Three dependable local Codex terminal lanes | Not achieved | Only the 32B deep lane passed its response-completion check. The 7B fast lane returned function-shaped JSON instead of the requested text, and the 8B tools lane did not return in a 90-second full-context check. | Keep these profiles opt-in only; replace or re-qualify each with a bounded Codex CLI proof before relying on it. |
-| Autonomous Codex shell-tool execution | Not achieved | The 32B lane emitted a plaintext `exec` tool object for `pwd`; Codex did not execute it. The deployed vLLM service has no working tool-call parser for this model. | Deploy one parser-supported model and prove Codex's complete `exec` loop, including actual command output. |
+| Responsive desktop Codex review | Not achieved | The selected 14B desktop model completed direct code review and exact Codex CLI output, but an isolated-home production-bug review continued streaming past two minutes. | Keep `desktop` to concise coding chat; evaluate a model replacement only after comparing the same prompt and context budget. |
+| Autonomous Codex shell-tool execution | Not approved | The historic deep fixture ran through the cloud default because `--ignore-user-config` suppressed its local profile. The new desktop local fixture formed but did not execute an `exec_command` request. | Re-run the deep file-read fixture with the corrected launcher, then retain only a result whose CLI header shows the intended local model and provider. |
+| Interactive local shell-tool execution | Not yet validated | Codex CLI exposes `--ignore-user-config` on `exec`, not its interactive command. The shared configuration can still trigger an incompatible unified-exec payload in an interactive local-model session. | Keep local terminal automation on `codex-homelab <profile> exec`; validate an isolated interactive Codex home before promoting interactive tool use. |
 | A third small local agent lane | Deferred | `qwen3:4b` was downloaded and tested directly through Ollama, but its 4,096-token context and bounded-prompt behavior make it unsuitable for Codex's approximately 41K tool schema/context. | Retain it only for short completion or utility experiments; do not promote it to a Codex profile. |
 | Gemini/Google Codex terminal | Blocked externally | No Google API key, Application Default Credentials, or credentialed LiteLLM Gemini Responses route was available. | Add credentials through the existing secret workflow, publish a LiteLLM Responses-compatible route, then run the same `codex exec` smoke test. |
 | VS Code or Cursor inline autocomplete | Outside this packet | Codex CLI profiles select an agent model; they do not configure the IDE's fill-in-the-middle completion provider. Concurrent IDE-client work remains separate. | Configure and validate that extension/client independently against its completion endpoint. |
@@ -97,7 +127,8 @@ codex-homelab deep exec --ephemeral --skip-git-repo-check -C /tmp \
 
 codex-homelab deep exec --ephemeral --skip-git-repo-check -C /tmp \
   'Use the available shell tool to run pwd, then report the command output.'
-# observed: plaintext {"name":"exec",...}; no command was executed
+# observed through the candidate fixture: cli-exit PASS; final-answer PASS
+# ready-for-review; no-unexecuted-exec-request PASS
 
 curl -sS http://litellm.hom.lab/v1/models \
   -H "Authorization: Bearer $LITELLM_API_KEY"

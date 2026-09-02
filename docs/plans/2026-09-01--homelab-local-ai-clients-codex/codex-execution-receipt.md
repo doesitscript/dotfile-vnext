@@ -14,10 +14,17 @@ required or changed by this packet. Cursor should leave this receipt and the
 
 The prior local-model proofs were genuine Responses-API and Codex CLI proofs,
 but they are not a claim that three autonomous local Codex agents are ready.
-Current qualification approves only the deep response-completion lane. The
-other two profiles remain experimental, and vLLM tool execution still needs a
-model/parser combination that has been proven with Codex's real `exec` tool
-loop.
+
+## Verification Correction - 2026-09-02
+
+This historic receipt contained an invalid local-tool conclusion. The former
+launcher passed `--ignore-user-config` to `codex exec`; a fresh run then showed
+`model: gpt-5.5` and `provider: openai`, proving the named local profile was
+not loaded. Treat every earlier launcher tool-loop pass as cloud-default
+evidence, not local-model evidence. The launcher now retains the profile for
+`exec`. Current positive local evidence is the desktop 14B exact-response and
+code-review path; its file-read test formed but did not execute `exec_command`.
+The limitations record is authoritative for current approval status.
 
 ## Limits And Follow-Up
 
@@ -25,6 +32,11 @@ The [limitations and follow-up](limitations-and-follow-up.md) record is the
 canonical status of incomplete, blocked, and deferred outcomes. This receipt
 keeps the successful and failed command evidence needed to reproduce that
 status without duplicating the operational decision log.
+
+For a compact newcomer-oriented explanation of the repaired tool loop, see
+[Why Codex Could Chat But Not Read A File](before-after-tool-loop-explained.md).
+The Context7 evidence and exact server contract are recorded in the homelab
+reference library investigation `2026-09-02--codex-vllm-tool-call-template-context7.md`.
 
 ## Delivered Local Codex Profiles
 
@@ -34,10 +46,13 @@ They are explicit selections, not an automatic fallback or model group.
 | Terminal command | Codex profile | Live LiteLLM model | Intended lane | Result |
 | --- | --- | --- | --- | --- |
 | `codex-homelab fast` | `local-fast` | `qwen2.5-coder-7b@desktop` | short coding and focused questions | transport reaches the gateway, but current exact-output check emitted fake tool-shaped JSON; not approved as a dependable Codex lane |
-| `codex-homelab deep` | `local-deep` | `qwen2.5-coder-32b@k3s02-vllm` | codebase reasoning and implementation | current Responses/CLI smoke test passed; autonomous tool loop failed honestly |
+| `codex-homelab desktop` | `local-desktop-implement` | `qwen2.5-coder-14b@desktop` | local code review and implementation chat | local Responses, exact CLI response, and code review passed; shell tool call formed but was not executed |
+| `codex-homelab deep` | `local-deep` | `qwen2.5-coder-32b@k3s02-vllm` | codebase reasoning and implementation | requires requalification with the corrected launcher; previous `exec` result used the cloud default |
 | `codex-homelab tools` | `local-tools` | `ministral-3-8b@desktop` | experimental alternate local model | did not return within 90 seconds in full repository context |
 
-The launcher is installed as `~/bin/codex-homelab` with mode `0700`. It reads
+The launcher is installed as `~/bin/codex-homelab` with mode `0700` by the
+`codex_homelab_profiles` Ansible role
+(`playbooks/deploy_codex_homelab_profiles.yaml`). It reads
 the current `PROXY_MASTER_KEY` from the live Kubernetes secret into process
 memory and starts the selected profile. It does not write a gateway credential
 to any configuration file.
@@ -191,20 +206,26 @@ bin/codex-env ansible hom-lab-ctl-k3s-02 -i inventory/inventory.yaml -b \
 # Qwen/Qwen2.5-Coder-32B-Instruct-AWQ through the published 32B LiteLLM alias.
 ```
 
-The current 32B tool-loop result is deliberately not labeled a pass:
+The prior 32B tool-loop result was deliberately not labeled a pass because the
+deployment had the parser but omitted its required chat template. After the
+paired parser/template rollout and launcher isolation, the same candidate
+proof passed:
 
 ```bash
 codex-homelab deep exec --ephemeral --skip-git-repo-check -C /tmp \
   'Use an available shell tool to run pwd. After the tool result, reply exactly: codex-32b-tool-loop-ok'
-# Output: {"name": "exec", "arguments": {"command": "pwd", "shell": "bash"}}
-# Codex did not execute pwd. The model emitted a textual tool-shaped response.
+# PASS cli-exit: completed with exit 0
+# PASS final-answer: ready-for-review
+# PASS no-unexecuted-exec-request: no raw exec object in the final response
 ```
 
-vLLM's startup log attributes this to the currently unconfigured parser path:
-the service accepts Responses API calls, but Qwen2.5-Coder-32B-AWQ has not
-been proven to produce the parser format Codex/vLLM needs for executable tool
-calls. Keep this lane interactive and response-oriented until a parser-supported
-model passes the same fixture.
+The live deployment now passes direct LiteLLM tool-call validation with the
+paired `qwen2_5_coder` parser and `<tools>` chat template. Codex's inherited
+global configuration can still cause its unified `exec` router to reject the
+model payload, so `codex-homelab ... exec` adds `--ignore-user-config` while
+retaining the selected local profile. The human-readable candidate fixture is
+the authority for regression validation. The recorded run completed with
+`15 passed in 19.34s`, including all three human-readable tool-loop receipts.
 
 The direct Qwen3 4B validation was likewise intentionally not promoted:
 

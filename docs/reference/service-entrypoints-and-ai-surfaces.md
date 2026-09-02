@@ -104,7 +104,7 @@ Important:
     back toward `gpt-4o-mini`; without OpenAI, local aliases share the same 32k
     vLLM context so there is no larger local overflow path.
 - `smart-router` is the LiteLLM complexity auto-router alias (`auto_router/complexity_router`, LiteLLM >= v1.94.x). It classifies SIMPLE/MEDIUM/COMPLEX/REASONING before the call (not confidence handoff). SIMPLE uses `code-review` (vLLM alias); MEDIUM uses Ornith; COMPLEX/REASONING escalate to Claude or `gpt-4o` when provider keys exist.
-- `code-review` is a client-facing alias on `vllm-primary` (same Qwen2.5-Coder-32B AWQ backend as Ornith). Ollama is retired from the LiteLLM gateway path.
+- `code-review` is a client-facing alias on `vllm-primary` (same Qwen2.5-Coder-32B AWQ backend as Ornith). Desktop Ollama is also published through LiteLLM for explicit, separate coding lanes; it is not an automatic fallback group.
 
 Current client-facing lanes declared in the gateway contract:
 
@@ -116,6 +116,13 @@ Current client-facing lanes declared in the gateway contract:
 | `smart-router` | enabled | LiteLLM complexity auto-router |
 | `code-fast` | enabled | HVH-01 Ollama `qwen2.5-coder:1.5b` (same backend as autocomplete 1.5B) |
 | `code-autocomplete-1.5b` | enabled | HVH-01 Ollama `qwen2.5-coder:1.5b` |
+| `qwen2.5-coder-14b@desktop` | experimental | desktop Ollama `qwen2.5-coder:14b`, 12K context; concise Codex coding chat only |
+
+The desktop model and context are declared through
+`windows_ollama_runtime` host variables, its LiteLLM publication is declared
+through `k3s_litellm_gateway` host variables, and the macOS Codex entrypoint is
+rendered by `playbooks/deploy_codex_homelab_profiles.yaml`. The launcher looks
+up its gateway secret at invocation time rather than placing it in inventory.
 | `code-test` | blocked | pending |
 | `ripi-private` | blocked | pending |
 | `embeddings-local` | blocked | pending |

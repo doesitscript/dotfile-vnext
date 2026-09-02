@@ -35,6 +35,7 @@ one-line summary row to the index below.
 | File | One-line summary |
 |---|---|
 | [deprecated-or-disproven-paths-must-be-replaced-not-extended.md](codex/deprecated-or-disproven-paths-must-be-replaced-not-extended.md) | Once a path is deprecated, disproven, or already replaced, the framework should switch to replacement-path research or implementation instead of layering more workarounds on top |
+| [local-profiles-must-prove-provider-and-runtime.md](codex/local-profiles-must-prove-provider-and-runtime.md) | A local Codex result is valid only when the CLI header, LiteLLM route, backend runtime, and any requested tool execution all prove the same local path |
 | [research-should-surface-existing-building-blocks-before-custom-orchestration.md](codex/research-should-surface-existing-building-blocks-before-custom-orchestration.md) | Research should identify native modules, community resources, and DSC building blocks before settling on custom Windows/Hyper-V orchestration |
 
 ### `docker/` — Docker Engine, contexts, Compose, daemon config
