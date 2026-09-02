@@ -1,9 +1,26 @@
+{% set desktop_model_catalog = {
+  'qwen2.5-coder-14b@desktop': {
+    'display_name': 'Homelab Qwen2.5 Coder 14B Desktop',
+    'description': 'Explicit local desktop coding-chat model routed through LiteLLM. Experimental chat lane only; not approved for shell-tool execution.'
+  },
+  'ministral-3-8b@desktop': {
+    'display_name': 'Homelab Ministral 3 8B Desktop',
+    'description': 'Explicit local desktop coding model routed through LiteLLM. Experimental, but aligned with the repo tool-call acceptance surface.'
+  }
+} %}
+{% set desktop_model = desktop_model_catalog.get(
+  codex_homelab_profiles_model,
+  {
+    'display_name': codex_homelab_profiles_model,
+    'description': 'Explicit local desktop coding model routed through LiteLLM.'
+  }
+) %}
 {
   "models": [
     {
       "slug": "{{ codex_homelab_profiles_model }}",
-      "display_name": "Homelab Qwen2.5 Coder 14B Desktop",
-      "description": "Explicit local desktop coding-chat model routed through LiteLLM.",
+      "display_name": "{{ desktop_model.display_name }}",
+      "description": "{{ desktop_model.description }}",
       "default_reasoning_level": "low",
       "supported_reasoning_levels": [{"effort": "low", "description": "Bounded local coding chat"}],
       "shell_type": "unified_exec",

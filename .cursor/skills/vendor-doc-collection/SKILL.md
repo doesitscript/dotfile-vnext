@@ -151,7 +151,7 @@ change — never leave them split.
 ## Delegation model
 
 Coordinator (strong model) + cheap-lane workers, per
-`docs/codex_framework/agent-workflows/patterns/doc-collection-coordinator.md`:
+`docs/codex_framework/multi-agent/agent-workflow-registry/patterns/doc-collection-coordinator.md`:
 
 - Scripts do the scraping/downloading — deterministic work stays out of models.
 - Contract decisions, skill/QA work: coordinator.

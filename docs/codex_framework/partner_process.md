@@ -136,7 +136,8 @@ skill + prompt. Authoritative Cursor wording lives in
 `.cursor/rules/framework-user-interaction-style.mdc`.
 
 Reusable multi-agent and role-split workflows live under
-`docs/codex_framework/agent-workflows/`. Plans may select one of those patterns,
+`docs/codex_framework/multi-agent/agent-workflow-registry/` (capability index:
+`docs/codex_framework/multi-agent/README.md`). Plans may select one of those patterns,
 but the reusable coordination contract should not live only inside an individual
 plan packet.
 

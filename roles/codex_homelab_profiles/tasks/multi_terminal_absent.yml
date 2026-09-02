@@ -1,0 +1,36 @@
+---
+- name: Remove multi-terminal bashrc drop-in (codex-multi-terminal.bash)
+  ansible.builtin.file:
+    path: "{{ codex_homelab_profiles_user_home }}/.bashrc.d/codex-multi-terminal.bash"
+    state: absent
+
+- name: Remove shared local Codex profile configs (multi-terminal)
+  ansible.builtin.file:
+    path: "{{ codex_homelab_profiles_codex_home }}/{{ item }}"
+    state: absent
+  loop:
+    - local-deep.config.toml
+    - local-fast.config.toml
+    - local-hvh01.config.toml
+    - local-tools.config.toml
+
+- name: Remove lane-specific Codex instruction files (multi-terminal)
+  ansible.builtin.file:
+    path: "{{ codex_homelab_profiles_codex_home }}/{{ item }}"
+    state: absent
+  loop:
+    - instructions-navigation.md
+    - instructions-implement.md
+    - instructions-skills.md
+    - instructions-hvh01.md
+    - local-model-instructions.md
+
+- name: Remove local model catalog renderer (multi-terminal)
+  ansible.builtin.file:
+    path: "{{ codex_homelab_profiles_catalog_renderer_path }}"
+    state: absent
+
+- name: Remove rendered local Codex model catalog (multi-terminal)
+  ansible.builtin.file:
+    path: "{{ codex_homelab_profiles_local_catalog_path }}"
+    state: absent

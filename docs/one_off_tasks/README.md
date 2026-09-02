@@ -78,6 +78,15 @@ Promotion means: evaluate piece-by-piece, match existing roles (`shell_config`, 
 - Partner process (Apply / Verify / Undo): `docs/codex_framework/partner_process.md`
 - Shell drop pattern: `roles/SHELL-CONFIG-PATTERN.md`
 - Promoted example: `docs/plans/2026-09-02--codex-multi-terminal-promotion/`
+- **Draft skills** (agent workflows — `status: draft`):
+  - `one-off-trial-scaffold` — start a compliant trial
+  - `one-off-promotion` — promote to Ansible + plan packet
+  - `one-off-discard-cleanup` — discard and remove traces
+  - `one-off-promotion-verify` — execute-complete verification
+
+Multi-agent implementer family (evaluator loops): `skills/multi-agent/README.md`
+
+See `skills/one-off/README.md` for the one-off skill family index.
 
 ## Subfolders (active)
 

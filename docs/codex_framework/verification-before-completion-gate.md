@@ -70,6 +70,7 @@ defer verification.
 | Work type | Also required |
 | --- | --- |
 | Plan execute or complete | [plan-verification-receipt.md](plan-verification-receipt.md) obligation inventory |
+| One-off promotion closeout | `one-off-promotion-verify` (draft skill under `skills/one-off/`) |
 | Ansible capability | `homelab-ansible-first-entry` for apply path; playbook output in evidence |
 | Multi-plan / lanes | Independent validator pass per ATDD coordinator pattern |
 | Plan lifecycle close | `complete-plan-lifecycle` skill only after full receipt |

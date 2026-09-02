@@ -6,16 +6,19 @@ short-lived value only when it starts a local Codex session.
 
 ## Current Managed Lane
 
-`codex-homelab desktop` uses `qwen2.5-coder-14b@desktop` with the measured
-12K context window. It is a concise coding-chat lane, not an autocomplete or
-autonomous shell-agent claim.
+`codex-homelab desktop` follows `codex_homelab_profiles_model`. On `mac-dev`
+the host override now points that isolated desktop lane at
+`ministral-3-8b@desktop` with a 24K context contract because the prior
+`qwen2.5-coder-14b@desktop` path formed JSON-like tool requests without
+executing them in Codex. Keep the lane experimental; this change removes the
+known parser mismatch from the default laptop path.
 
 ## Multi-terminal (`codex_homelab_profiles_multi_terminal_state: present`)
 
 When enabled on `mac-dev`:
 
-- `files/bashrc.d/codex-multi-terminal.bash` — `cx-deep`, `cx-desktop`, `cx-skills`, `cx-hvh01`, `cx-research`
-- Shared `~/.codex/local-{deep,fast,hvh01}.config.toml` and lane instructions
+- `~/.bashrc.d/codex-multi-terminal.bash` — role-owned deploy (`multi_terminal.yml`)
+- Shared `~/.codex/local-{deep,fast,hvh01,tools}.config.toml` and lane instructions
 - `~/bin/render_local_model_catalog` and `codex-homelab` launcher (`deep|fast|desktop|hvh01`)
 
 Promotion plan: `docs/plans/2026-09-02--codex-multi-terminal-promotion/`
@@ -24,6 +27,7 @@ Promotion plan: `docs/plans/2026-09-02--codex-multi-terminal-promotion/`
 
 | | Contract |
 | --- | --- |
-| Apply | `ansible-playbook playbooks/deploy_codex_homelab_profiles.yaml --limit mac-dev` |
+| Apply | `ansible-playbook playbooks/deploy_development_nodes.yaml --tags shell_config,bash_completion,codex_homelab_profiles --limit mac-dev` |
 | Verify | `codex-homelab desktop exec --ephemeral --skip-git-repo-check -C /tmp 'Reply with exactly: desktop-managed-profile-ok'` |
-| Undo | Set `codex_homelab_profiles_state: absent`, then rerun the playbook |
+| Undo (multi-terminal only) | `codex_homelab_profiles_multi_terminal_state: absent` + same Apply command — runs `multi_terminal_absent.yml` |
+| Undo (full role) | `codex_homelab_profiles_state: absent` + same Apply command |

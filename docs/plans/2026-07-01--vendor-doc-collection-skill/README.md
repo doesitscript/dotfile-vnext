@@ -85,7 +85,7 @@ capability manifest `integration_files`.
 
 ### Stage 3b — Reusable agent workflow (AGENTS.md §31)
 
-`docs/codex_framework/agent-workflows/patterns/doc-collection-coordinator.md`:
+`docs/codex_framework/multi-agent/agent-workflow-registry/patterns/doc-collection-coordinator.md`:
 coordinator + per-page workers pattern per the delegation model below.
 
 ### Stage 4 — Verification
@@ -128,7 +128,7 @@ coordinator + scripts; workers process files on disk only.
 |-------|-------|
 | Capability identifier | `vendor_doc_collection` (skill capability, composes with `mcp_research_collection_stack`) |
 | Owner manifest | This packet (skill family is doc-owned; no Ansible manifest — controller-local skill) |
-| Owned files | `.cursor/skills/vendor-doc-collection/**`, `docs/codex_framework/agent-workflows/patterns/doc-collection-coordinator.md`, this packet |
+| Owned files | `.cursor/skills/vendor-doc-collection/**`, `docs/codex_framework/multi-agent/agent-workflow-registry/patterns/doc-collection-coordinator.md`, this packet |
 | Integration anchors | `docs/codex_framework/mcp-research-collection-stack.md` (skill anchor line), `docs/codex_framework/capabilities/mcp-research-collection-stack.yml` (`integration_files` row) |
 | Update behavior | Update skill + workflow doc as a unit; keep stack-doc anchor to one line |
 | Removal behavior | Delete owned files; remove the anchor line and manifest row; oneoffs export content is project data, not part of this capability |
@@ -177,7 +177,7 @@ flowchart TD
 
   subgraph framework [dotfile-vnext - repeatable deliverable]
     skill[".cursor/skills/vendor-doc-collection/SKILL.md"]
-    workflow["docs/codex_framework/agent-workflows/patterns/doc-collection-coordinator.md"]
+    workflow["docs/codex_framework/multi-agent/agent-workflow-registry/patterns/doc-collection-coordinator.md"]
     stackdoc["mcp-research-collection-stack.md anchor"]
     manifest["capability manifest integration_files row"]
   end
@@ -241,7 +241,7 @@ Executed 2026-07-01. Export root:
 | S2b | Image descriptions + backfill | pass | 3 parallel mid-tier multimodal workers (files-on-disk only, per delegation model); coverage check: 9/9 `images/` dirs have README, 33/33 images described (`## sections == png count` for every dir); coordinator QA sample: Keycloak `002-*.png` description verified against actual image (URL `10.179.72.183`, realms Keycloak/Zerto/Zssp, Create realm button all match); CMK page transcribed real key ARN `arn:aws:kms:eu-central-1:190366208080:key/mrk-00f1...` |
 | S2c | Export README conventions | pass | export root `README.md`: images-local convention replaces "screenshots stay as vendor URLs"; status table updated to 2026-07-01; regenerate runbook gains image step + slug filter + waitFor note; `ZIC.HTML/README.md` TOC updated (01-Introduction section, full 02 branch, images row) |
 | S3 | Skill + anchors | pass | `.cursor/skills/vendor-doc-collection/SKILL.md` (3 modes, output contract, pipeline, delegation, script templates, not-a-webcrawl boundary); anchor added to `docs/codex_framework/mcp-research-collection-stack.md` (Firecrawl Collection Shape section); manifest row added to `capabilities/mcp-research-collection-stack.yml` `integration_files` |
-| S3b | Agent-workflow doc | pass | `docs/codex_framework/agent-workflows/patterns/doc-collection-coordinator.md` (schema-conformant: roles, gates, parallel/serialized, completion + failure rules, status `trial`); registry README pattern list updated |
+| S3b | Agent-workflow doc | pass | `docs/codex_framework/multi-agent/agent-workflow-registry/patterns/doc-collection-coordinator.md` (schema-conformant: roles, gates, parallel/serialized, completion + failure rules, status `trial`); registry README pattern list updated |
 | V1 | Tree completeness | pass | contract-vs-disk script: 11 exported nodes with export_path, `missing page.md: none`; full inventory = 19 `page.md` files covering Introduction top page + entire Installation branch + prior member/scale/tag pages |
 | V2 | Image resolution + description coverage | pass | `rg '!\[..\](https?://)'` across tree: no unlocalized vendor image links (provenance kept in HTML comments); 9/9 dirs description coverage above |
 | V3 | Skill dry-run | pass | regenerate-one-page path exercised end-to-end on `Resetting_ZIC_User_Password_Keycloak`: fetch -> stub detected -> MCP waitFor re-scrape -> slug-filtered re-export (other pages untouched) -> image localization -> descriptions |

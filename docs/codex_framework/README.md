@@ -40,7 +40,8 @@ Plan execute/complete verification: [plan-verification-receipt.md](plan-verifica
 Fresh verification before any pass/complete claim (Superpowers mandatory, no brief-handoff
 exemption): [verification-before-completion-gate.md](verification-before-completion-gate.md).
 Reusable multi-agent and role-split execution patterns:
-[agent-workflows/](agent-workflows/README.md).
+[multi-agent/](multi-agent/README.md) (registry:
+[multi-agent/agent-workflow-registry/](multi-agent/agent-workflow-registry/README.md)).
 Patterns belong in `docs/reference/naming-standards/`; instances in
 `live-object-registry.yml` — not duplicated in plan bodies.
 
@@ -76,7 +77,8 @@ Today the working stack is:
 5. skill discovery via `.cursor/skills/catalog.yml` and per-skill manifests
 6. MCP and live environment tools
 7. multi-agent delegation via reusable patterns under
-   `docs/codex_framework/agent-workflows/`, only after the first six are stable
+   `docs/codex_framework/multi-agent/agent-workflow-registry/`, only after the
+   first six are stable
 
 The current startup default is a stable single-agent Codex profile.
 Experimental multi-agent behavior remains available, but it is no longer the
@@ -138,13 +140,17 @@ Implemented now:
 - explicit lifecycle-state modeling for Ansible capabilities as a preferred pattern
 - reusable agent workflow registry for coordinator/validator/release-gate
   patterns
+- paired evaluator/implementer correction-loop capability for plan packets,
+  with repo-local implementer skill family, durable role docs, and reference
+  plan evidence
 - lightweight GitHub-issue workflow support for concrete brainstorming or
   resumable work that should outlive local notes once it becomes durable enough
   to preserve
 
 Planned next:
 - quality comparison workflow for the next 2-3 efforts
-- one real repo problem taken through the framework end to end
+- a second real repo run of the evaluator/implementer loop before calling the
+  workflow pattern `active`
 - runtime validation of the effective Codex instruction stack:
   - confirm which surfaces are actually injected into Codex sessions
   - confirm whether `.cursor/rules/*.mdc` files are enforced, advisory, or inactive

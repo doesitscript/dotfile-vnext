@@ -1324,3 +1324,353 @@ skills:
     runtime_bridge:
       enabled: true
       cursor_skill_name: model-doc-pack-preflight
+  one-off-trial-scaffold:
+    name: one-off-trial-scaffold
+    description: Use when starting or extending a try-before-commit experiment under docs/one_off_tasks/.
+      Scaffolds package layout, *_one_off_tasks naming, deployed-file headers, and install/uninstall scripts.
+      Do not use when promotion is already approved — use one-off-promotion.
+    path: one-off/one-off-trial-scaffold/SKILL.md
+    scope: project
+    category: implementation
+    purpose: Governed snowflake trial scaffolding before Ansible commitment
+    status: reviewed
+    aliases:
+    - draft-one-off-trial-scaffold
+    triggers:
+    - start a one-off trial
+    - scaffold docs/one_off_tasks
+    - try before ansible commit
+    - one off experiment install
+    do_not_use_when:
+    - user approved promotion to ansible
+    - discard only without trial extension
+    handoff_from: []
+    handoff_to:
+    - one-off-promotion
+    - one-off-discard-cleanup
+    complements:
+    - tool-capability-intake
+    references:
+    - one-off/one-off-trial-scaffold/references/sources-and-precedence.md
+    - one-off/one-off-trial-scaffold/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: one-off-trial-scaffold
+  one-off-promotion:
+    name: one-off-promotion
+    description: Use when promoting a docs/one_off_tasks trial into Ansible with a plan packet, backup/one-off-source
+      archive, promotion map, roles/playbooks, and legacy host cleanup script. Do not use for discard-only
+      or active trial iteration.
+    path: one-off/one-off-promotion/SKILL.md
+    scope: project
+    category: implementation
+    purpose: One-off trial to idempotent Ansible promotion coordinator
+    status: reviewed
+    aliases:
+    - draft-one-off-promotion
+    triggers:
+    - promote one-off to ansible
+    - convert one_off_tasks to role
+    - one-off promotion plan
+    do_not_use_when:
+    - trial still iterating
+    - discard without promotion
+    - verify-only after promotion landed
+    handoff_from:
+    - one-off-trial-scaffold
+    handoff_to:
+    - one-off-promotion-verify
+    - tool-capability-intake
+    - homelab-ansible-first-entry
+    complements:
+    - tool-playbook-placement-advisor
+    - single-host-ansible-rollout
+    references:
+    - one-off/one-off-promotion/references/sources-and-precedence.md
+    - one-off/one-off-promotion/references/related-artifacts.md
+    - one-off/one-off-promotion/references/promotion-map-template.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: one-off-promotion
+  one-off-discard-cleanup:
+    name: one-off-discard-cleanup
+    description: Use when rejecting a one-off trial — run uninstall, remove host traces, delete the
+      docs/one_off_tasks folder, record discard evidence. Do not use when promoting to Ansible.
+    path: one-off/one-off-discard-cleanup/SKILL.md
+    scope: project
+    category: implementation
+    purpose: Complete removal of a discarded one-off trial
+    status: reviewed
+    aliases:
+    - draft-one-off-discard-cleanup
+    triggers:
+    - discard one-off trial
+    - remove one_off_tasks experiment
+    - tear down snowflake trial
+    do_not_use_when:
+    - user approved promotion
+    - legacy cleanup after promotion only
+    handoff_from:
+    - one-off-trial-scaffold
+    handoff_to:
+    - one-off-trial-scaffold
+    complements:
+    - one-off-promotion
+    - one-off-promotion-verify
+    references:
+    - one-off/one-off-discard-cleanup/references/sources-and-precedence.md
+    - one-off/one-off-discard-cleanup/references/related-artifacts.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: one-off-discard-cleanup
+  one-off-promotion-verify:
+    name: one-off-promotion-verify
+    description: Use after one-off promotion Ansible lands for execute-complete — playbook apply, fresh
+      smoke probes, plan verification receipt, legacy *_one_off_tasks cleanup. Requires Superpowers
+      verification-before-completion. Do not use for discard-only.
+    path: one-off/one-off-promotion-verify/SKILL.md
+    scope: project
+    category: validation
+    purpose: Live verification closeout for one-off promotions
+    status: reviewed
+    aliases:
+    - draft-one-off-promotion-verify
+    triggers:
+    - verify one-off promotion
+    - execute-complete promotion plan
+    - converge and verify one-off ansible
+    do_not_use_when:
+    - promotion design not done
+    - discard only
+    handoff_from:
+    - one-off-promotion
+    handoff_to:
+    - complete-plan-lifecycle
+    - single-host-ansible-rollout
+    complements:
+    - homelab-ansible-first-entry
+    references:
+    - one-off/one-off-promotion-verify/references/sources-and-precedence.md
+    - one-off/one-off-promotion-verify/references/related-artifacts.md
+    - one-off/one-off-promotion-verify/references/obligation-inventory-example.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: one-off-promotion-verify
+  one-off-lifecycle:
+    name: one-off-lifecycle
+    description: Router for the one-off skill family — scaffold, promote, discard, or verify.
+      Use when the one_off_tasks lifecycle phase is unclear. Lists all four members for pack audits.
+    path: one-off/one-off-lifecycle/SKILL.md
+    scope: project
+    category: documentation
+    purpose: Entry router and pack anchor for one-off lifecycle skills
+    status: reviewed
+    aliases:
+    - draft-one-off-lifecycle
+    triggers:
+    - one-off lifecycle
+    - which one-off skill
+    - one-off skill family
+    do_not_use_when:
+    - phase is already explicit and a member skill is named
+    handoff_from: []
+    handoff_to:
+    - one-off-trial-scaffold
+    - one-off-promotion
+    - one-off-discard-cleanup
+    - one-off-promotion-verify
+    complements:
+    - one-off-trial-scaffold
+    - one-off-promotion
+    - one-off-discard-cleanup
+    - one-off-promotion-verify
+    references:
+    - one-off/README.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: one-off-lifecycle
+  multi-agent-implementer:
+    name: multi-agent-implementer
+    description: Conversation entry point for evaluator-loop implementer work on a docs/plans packet.
+      Resolves plan_dir (explicit or auto-detect via resolve_plan_dir.py), reads partition + good/bad examples,
+      boots correcting-implementer role, applies corrections with live verify, watches evaluator files only,
+      loops until evaluator-authored ready_for_review sign-off. Never run evaluator_simple_loop.sh.
+    path: multi-agent/multi-agent-implementer/SKILL.md
+    scope: project
+    category: documentation
+    purpose: Default bootstrap for multi-agent implementer loops
+    status: reviewed
+    default_for:
+    - multi-agent implementer
+    - evaluator loop implementer
+    - be the implementer
+    - wait for evaluator sign-off
+    preferred_prompt: "Use $multi-agent-implementer on docs/plans/<slug>/ (or auto-detect). Read good/bad examples + partition. Implementer only — loop until evaluator-authored ready_for_review sign-off; never run evaluator_simple_loop.sh."
+    triggers:
+    - multi-agent implementer
+    - implementer agent evaluator loop
+    - bootstrap implementer plan folder
+    - evaluator folder wake
+    - correcting implementer
+    do_not_use_when:
+    - you are the evaluator
+    - asked to run evaluator_simple_loop.sh
+    handoff_from: []
+    handoff_to:
+    - multi-agent-implementer-lifecycle
+    - multi-agent-implementer-corrections
+    - multi-agent-implementer-folder-watch
+    - multi-agent-implementer-closeout
+    complements:
+    - multi-agent-implementer-lifecycle
+    - multi-agent-implementer-corrections
+    - multi-agent-implementer-folder-watch
+    - multi-agent-implementer-closeout
+    references:
+    - multi-agent/references/evaluator-implementer-partition.md
+    - multi-agent/references/implementer-good-bad-examples.md
+    - multi-agent/references/hrl-influences.md
+    - multi-agent/README.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: multi-agent-implementer
+  multi-agent-implementer-lifecycle:
+    name: multi-agent-implementer-lifecycle
+    description: Router for the implementer role when a separate evaluator owns feedback and sign-off on
+      a plan packet. Routes to corrections, folder watch, or closeout. Do not run evaluator_simple_loop.sh.
+    path: multi-agent/multi-agent-implementer-lifecycle/SKILL.md
+    scope: project
+    category: documentation
+    purpose: Multi-agent implementer entry router
+    status: reviewed
+    triggers:
+    - evaluator implementer loop
+    - wait for evaluator sign-off
+    - multi-agent implementer loop
+    do_not_use_when:
+    - no evaluator surface on plan packet
+    - implementer asked to run evaluator_simple_loop.sh
+    handoff_from:
+    - multi-agent-implementer
+    handoff_to:
+    - multi-agent-implementer-corrections
+    - multi-agent-implementer-folder-watch
+    - multi-agent-implementer-closeout
+    complements:
+    - multi-agent-implementer
+    - multi-agent-implementer-corrections
+    - multi-agent-implementer-folder-watch
+    - multi-agent-implementer-closeout
+    references:
+    - multi-agent/references/evaluator-implementer-partition.md
+    - multi-agent/references/implementer-good-bad-examples.md
+    - multi-agent/references/hrl-influences.md
+    - multi-agent/README.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: multi-agent-implementer-lifecycle
+  multi-agent-implementer-corrections:
+    name: multi-agent-implementer-corrections
+    description: Apply evaluator feedback and AI-CORRECTION findings — P1 first, live verify, update
+      EXECUTION-RECEIPT.md, wait for evaluator. Implementer must not write ready_for_review files.
+    path: multi-agent/multi-agent-implementer-corrections/SKILL.md
+    scope: project
+    category: implementation
+    purpose: Implementer corrections after evaluator feedback
+    status: reviewed
+    triggers:
+    - evaluator feedback blockers
+    - AI-CORRECTION-EVALUATION
+    - apply evaluator findings
+    do_not_use_when:
+    - ready_for_review sign-off already approved
+    handoff_from:
+    - multi-agent-implementer
+    - multi-agent-implementer-lifecycle
+    - multi-agent-implementer-folder-watch
+    handoff_to:
+    - one-off-promotion-verify
+    complements:
+    - multi-agent-implementer
+    - one-off-promotion
+    references:
+    - multi-agent/references/evaluator-implementer-partition.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: multi-agent-implementer-corrections
+  multi-agent-implementer-folder-watch:
+    name: multi-agent-implementer-folder-watch
+    description: Run watch_evaluator_folder.sh only — wake implementer on evaluator markdown changes.
+      Never run or drive evaluator_simple_loop.sh.
+    path: multi-agent/multi-agent-implementer-folder-watch/SKILL.md
+    scope: project
+    category: validation
+    purpose: Background watch for evaluator file drops
+    status: reviewed
+    triggers:
+    - watch evaluator folder
+    - evaluator folder wake
+    handoff_from:
+    - multi-agent-implementer-lifecycle
+    handoff_to:
+    - multi-agent-implementer-corrections
+    - multi-agent-implementer-closeout
+    complements:
+    - multi-agent-implementer-corrections
+    - multi-agent-implementer-closeout
+    do_not_use_when:
+    - asked to run evaluator_simple_loop.sh
+    references:
+    - multi-agent/references/evaluator-implementer-partition.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: multi-agent-implementer-folder-watch
+  multi-agent-implementer-closeout:
+    name: multi-agent-implementer-closeout
+    description: Close implementer loop when ready_for_review_by_evaluator_* shows decision approved —
+      update EVALUATOR-WAIT-STATE.md, stop folder watch, hand off to complete-plan-lifecycle.
+    path: multi-agent/multi-agent-implementer-closeout/SKILL.md
+    scope: project
+    category: documentation
+    purpose: Implementer closeout after evaluator sign-off
+    status: reviewed
+    triggers:
+    - evaluator signed off
+    - ready_for_review_by_evaluator
+    do_not_use_when:
+    - no ready_for_review sign-off file
+    handoff_from:
+    - multi-agent-implementer-lifecycle
+    - multi-agent-implementer-folder-watch
+    handoff_to:
+    - complete-plan-lifecycle
+    complements:
+    - complete-plan-lifecycle
+    references:
+    - multi-agent/references/evaluator-implementer-partition.md
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: multi-agent-implementer-closeout
+  complete-plan-lifecycle:
+    name: complete-plan-lifecycle
+    description: Mark a plan as implemented, create tracking issue, rename with -implemented suffix,
+      and optionally mark as archive candidate after full plan verification receipt.
+    path: documentation/complete-plan-lifecycle/SKILL.md
+    scope: project
+    category: documentation
+    purpose: Formal plan lifecycle closeout after verification receipt
+    status: reviewed
+    triggers:
+    - mark plan implemented
+    - complete plan lifecycle
+    - plan implemented suffix
+    do_not_use_when:
+    - plan verification receipt incomplete
+    handoff_from:
+    - one-off-promotion-verify
+    handoff_to: []
+    complements: []
+    references: []
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: complete-plan-lifecycle

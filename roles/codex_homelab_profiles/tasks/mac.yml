@@ -44,6 +44,12 @@
     - codex_homelab_profiles_state == 'present'
     - codex_homelab_profiles_multi_terminal_state == 'present'
 
+- name: Remove multi-terminal Codex profiles and cx-* helpers
+  ansible.builtin.include_tasks: multi_terminal_absent.yml
+  when:
+    - codex_homelab_profiles_multi_terminal_state == 'absent'
+    - codex_homelab_profiles_state == 'present'
+
 - name: Remove Codex homelab launcher
   ansible.builtin.file:
     path: "{{ codex_homelab_profiles_launcher_path }}"
@@ -54,4 +60,8 @@
   ansible.builtin.file:
     path: "{{ codex_homelab_profiles_desktop_home }}"
     state: absent
+  when: codex_homelab_profiles_state == 'absent'
+
+- name: Remove multi-terminal artifacts when full role is absent
+  ansible.builtin.include_tasks: multi_terminal_absent.yml
   when: codex_homelab_profiles_state == 'absent'

@@ -13,12 +13,14 @@ controller hosts (`mac-dev`).
 
 - Homebrew: `fzf`, `gawk`, `grep`, `gnu-sed`, `coreutils`
 - Git clone: `~/.local/share/fzf-tab-completion`
-- `roles/fzf_tab_completion/files/bashrc.d/shell-completion.bash` via `common/shell_config`
+- `~/.bashrc.d/shell-completion.bash` — deployed by **this role** (`present.yml`), removed by `absent.yml`
 - `~/.bashrc.d/python-fzf-tab-completion.bash` + `usercustomize.py` on PYTHONPATH
 - `~/bin/rl_custom_complete` symlink
 
 ## Apply / Verify / Undo
 
-- **Apply:** `ansible-playbook playbooks/deploy_development_nodes.yaml --tags fzf_tab_completion --limit mac-dev`
+Requires `common/shell_config` (`.bashrc.d` directory + sourcing) before this role's bashrc drop.
+
+- **Apply:** `ansible-playbook playbooks/deploy_development_nodes.yaml --tags shell_config,bash_completion,fzf_tab_completion,codex_homelab_profiles --limit mac-dev`
 - **Verify:** `command -v fzf rl_custom_complete`; Tab in bash and `python3` REPL
-- **Undo:** `fzf_tab_completion_state: absent` and re-run playbook
+- **Undo:** set `fzf_tab_completion_state: absent` in host_vars and re-run the same Apply command. `absent.yml` removes `~/.bashrc.d/shell-completion.bash`, python hook, clone, and `rl_custom_complete`.

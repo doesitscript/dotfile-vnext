@@ -85,28 +85,6 @@
     dest: "{{ ansible_env.HOME }}/.bashrc.d/aliases.bash"
     mode: "0644"
 
-# Central deploy mechanism — finds all roles/*/files/bashrc.d/*.bash on the
-# control machine and copies them to ~/.bashrc.d/ on the target host.
-# Roles contribute shell config by placing static *.bash files at:
-#   roles/<rolename>/files/bashrc.d/<name>.bash
-# No per-role deploy task needed for static files.
-- name: Find bashrc.d files contributed by roles
-  ansible.builtin.find:
-    # Derive the repo roles root from this role's own location so nested
-    # playbook paths (for example playbooks/mac/*.yaml) do not produce a
-    # bogus playbooks/roles lookup.
-    paths: "{{ role_path | dirname | dirname }}"
-    patterns: "*.bash"
-    recurse: true
-    file_type: file
-  register: _shell_config_bashrc_contributions
-  delegate_to: localhost
-  become: false
-
-- name: Deploy contributed bashrc.d files to ~/.bashrc.d/
-  ansible.builtin.copy:
-    src: "{{ item.path }}"
-    dest: "{{ ansible_env.HOME }}/.bashrc.d/{{ item.path | basename }}"
-    mode: "0644"
-  loop: "{{ _shell_config_bashrc_contributions.files }}"
-  when: "'files/bashrc.d' in item.path"
+# Role-owned ~/.bashrc.d/*.bash files are deployed and removed by their owning
+# roles (present/absent tasks). shell_config only manages the directory, sourcing
+# block, path.bash, and aliases.bash. See roles/SHELL-CONFIG-PATTERN.md.

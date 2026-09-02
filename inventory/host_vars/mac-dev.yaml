@@ -68,10 +68,19 @@ continue_ide_state: present
 opencode_cli_state: present
 opencode_cli_default_model: "homelab-litellm/qwen2.5-coder-7b@desktop"
 
-# Codex-owned local desktop coding lane. The role renders a separate CODEX_HOME
-# and launcher; its runtime key is fetched from LiteLLM rather than stored here.
+# Cursor marketplace plugins use Cursor's plugin subsystem, not
+# `cursor --install-extension`. Track required slugs here and let `roles/cursor`
+# verify the installed plugin manifest on this Mac.
+cursor_marketplace_plugins_required:
+  - superpowers
+
+# Codex-owned local desktop implementation lane on this Mac. The prior 14B
+# desktop route emitted unexecuted tool JSON in Codex and remains a chat-only
+# experimental lane until it is re-qualified.
 codex_homelab_profiles_state: present
 codex_homelab_profiles_multi_terminal_state: present
+codex_homelab_profiles_model: "ministral-3-8b@desktop"
+codex_homelab_profiles_context_window: 24000
 
 # fzf-tab-completion for bash + Python REPL (promoted from one-off trial).
 fzf_tab_completion_state: present
