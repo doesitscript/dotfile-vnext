@@ -14,9 +14,17 @@ required or changed by this packet. Cursor should leave this receipt and the
 
 The prior local-model proofs were genuine Responses-API and Codex CLI proofs,
 but they are not a claim that three autonomous local Codex agents are ready.
-Two response-completion lanes passed. The third lane stalled, and vLLM tool
-execution still needs a model/parser combination that has been proven with
-Codex's real `exec` tool loop.
+Current qualification approves only the deep response-completion lane. The
+other two profiles remain experimental, and vLLM tool execution still needs a
+model/parser combination that has been proven with Codex's real `exec` tool
+loop.
+
+## Limits And Follow-Up
+
+The [limitations and follow-up](limitations-and-follow-up.md) record is the
+canonical status of incomplete, blocked, and deferred outcomes. This receipt
+keeps the successful and failed command evidence needed to reproduce that
+status without duplicating the operational decision log.
 
 ## Delivered Local Codex Profiles
 
@@ -25,7 +33,7 @@ They are explicit selections, not an automatic fallback or model group.
 
 | Terminal command | Codex profile | Live LiteLLM model | Intended lane | Result |
 | --- | --- | --- | --- | --- |
-| `codex-homelab fast` | `local-fast` | `qwen2.5-coder-7b@desktop` | short coding and focused questions | full repository smoke test passed |
+| `codex-homelab fast` | `local-fast` | `qwen2.5-coder-7b@desktop` | short coding and focused questions | transport reaches the gateway, but current exact-output check emitted fake tool-shaped JSON; not approved as a dependable Codex lane |
 | `codex-homelab deep` | `local-deep` | `qwen2.5-coder-32b@k3s02-vllm` | codebase reasoning and implementation | current Responses/CLI smoke test passed; autonomous tool loop failed honestly |
 | `codex-homelab tools` | `local-tools` | `ministral-3-8b@desktop` | experimental alternate local model | did not return within 90 seconds in full repository context |
 
@@ -116,12 +124,23 @@ pending rather than being falsely marked passed. That re-test subsequently
 passed after the LiteLLM source deployment reconciled the stale live backend
 mapping from 14B to 32B.
 
-No additional model download was performed. The desktop already had eight
-candidate artifacts, including Qwen2.5-Coder 7B, Ministral 3 8B, Qwen3-Coder
-30B, Devstral 24B, and GPT-OSS 20B. Downloading another large model before the
-vLLM disk-pressure recovery and a real Codex tool-loop test would consume
-storage without creating a verified third agent lane. The current model
-recommendation and realistic terminal roles are in
+After the current 18 GiB 32B checkpoint completed and vLLM created its runtime
+cache, the closeout check reported 13 GiB free on the 77 GiB guest disk with
+`DiskPressure=False`. This is stable for the current single-model service, but
+there is not enough headroom for another large vLLM artifact on that VM.
+
+The desktop already had eight candidate artifacts, including Qwen2.5-Coder 7B,
+Ministral 3 8B, Qwen3-Coder 30B, Devstral 24B, and GPT-OSS 20B. The researched
+Qwen3 4B artifact was then installed through the Ansible-owned
+`windows_ollama_runtime` role on HVH-01. Ollama reports a 3.18 GiB Q4_K_M
+resident model with 4,096-token context and 370.5 GiB host storage remaining.
+It fits the GTX 1060, but it does not fit Codex's approximately 41K-token tool
+schema. Its first direct tool probe did not complete in the allowed window, and
+a bounded non-thinking exact-output probe stopped at length after producing
+reasoning text. It is retained as a local short utility/autocomplete candidate,
+not installed as a third Codex agent profile.
+
+The current model recommendation and realistic terminal roles are in
 [`codex-model-research-matrix.md`](codex-model-research-matrix.md).
 
 ## Gemini Fourth Window
@@ -154,8 +173,9 @@ endpoint.
 
 ```bash
 codex-homelab fast exec --ephemeral --skip-git-repo-check -C /tmp \
-  'Reply exactly: local-fast-catalog-ok'
-# Output: local-fast-catalog-ok
+  'Reply exactly: codex-fast-recovery-ok'
+# Result: emitted {"name":"codex-fast-recovery-ok","arguments":{}} instead
+# of the requested text. Transport passed; behavioral contract did not.
 
 codex-homelab deep exec --ephemeral --skip-git-repo-check -C /tmp \
   'Reply exactly: codex-32b-recovery-ok'
@@ -167,7 +187,7 @@ codex --profile local-tools exec --ephemeral --skip-git-repo-check -C /tmp \
 
 bin/codex-env ansible hom-lab-ctl-k3s-02 -i inventory/inventory.yaml -b \
   -m ansible.builtin.shell -a 'df -h /; kubectl get node; kubectl get pod -n vllm-runtime'
-# Current evidence: 24 GiB free; DiskPressure=False; vLLM is ready and serves
+# Current evidence: 13 GiB free; DiskPressure=False; vLLM is ready and serves
 # Qwen/Qwen2.5-Coder-32B-Instruct-AWQ through the published 32B LiteLLM alias.
 ```
 
@@ -185,3 +205,12 @@ the service accepts Responses API calls, but Qwen2.5-Coder-32B-AWQ has not
 been proven to produce the parser format Codex/vLLM needs for executable tool
 calls. Keep this lane interactive and response-oriented until a parser-supported
 model passes the same fixture.
+
+The direct Qwen3 4B validation was likewise intentionally not promoted:
+
+```text
+Ollama /api/ps: qwen3:4b, Q4_K_M, 3.18 GiB VRAM, context_length=4096
+Ollama tool probe: did not complete inside the first-load validation window
+Ollama exact-output probe: done_reason=length; returned reasoning text rather
+than qwen3-4b-ok within a 24-token cap
+```

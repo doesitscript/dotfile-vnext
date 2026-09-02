@@ -23,10 +23,13 @@ do not let Cursor rewrite or delete those files while the sibling Cursor plan is
 in progress.
 
 **Current execution update (Codex-owned):** the bootstrap tables below are
-superseded by the live [execution receipt](codex-execution-receipt.md) and
-[model research matrix](codex-model-research-matrix.md). Codex has two
-historically passing Responses/CLI lanes, no approved autonomous local tool
-lane yet, and no dependency on Cursor or other IDE-client configuration.
+superseded by the live [execution receipt](codex-execution-receipt.md),
+[model research matrix](codex-model-research-matrix.md), and
+[limitations and follow-up](limitations-and-follow-up.md). The limitations
+record is the canonical place for incomplete, blocked, and deferred work; this
+plan deliberately does not duplicate that operational detail. Codex has one
+current large response/reasoning lane and no dependency on Cursor or other
+IDE-client configuration.
 
 ## Research findings and terminology corrections
 

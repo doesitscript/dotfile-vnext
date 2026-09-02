@@ -10,7 +10,7 @@ is no automatic fallback or model group.
 
 | Terminal | Intended model class | Realistic homelab work | Current status |
 | --- | --- | --- | --- |
-| `fast` | small local code responder | Explain a failed Ansible task after its output is pasted; draft a small YAML or shell correction; review one skill's metadata. | Response completion passed. Not proven to execute tools autonomously. |
+| `fast` | small local code responder | Explain a failed Ansible task after its output is pasted; draft a small YAML or shell correction; review one skill's metadata. | Gateway transport works, but current exact-output test emitted fake tool-shaped JSON. Do not use for dependable work. |
 | `deep` | one large local code/repository responder | Investigate the LiteLLM/vLLM role, trace a deployment failure, or prepare a scoped implementation in `dotfile-vnext`. | Current 32B Responses/CLI completion passed. It is not an autonomous tool agent: `pwd` was emitted as text and not executed. |
 | `tools` | independent utility/tool agent | Classify test logs, synthesize a change receipt, or run a bounded file inspection after parser proof. | Not approved: full-context test exceeded 90 seconds and tool loop is unproven. |
 | future Gemini window | cloud large-context research | Compare broad evidence across repositories or reason over a user-selected large corpus. | Not installed: a LiteLLM Gemini Responses route and real Google credential are required. |
@@ -23,7 +23,7 @@ that three large GPU models can coexist in 32 GiB of VRAM.
 
 | Candidate | Why it is relevant | Do not select until | Decision |
 | --- | --- | --- | --- |
-| Qwen3 4B via Ollama on HVH-01 | Current Ollama docs list a 2.5 GB artifact with tools/thinking support. It is a plausible small utility lane. | Ansible-owned pull, LiteLLM publication, Responses probe, and a real Codex `exec` tool-loop test all pass. | Best next new-model experiment, not downloaded yet. |
+| Qwen3 4B via Ollama on HVH-01 | Current Ollama docs list a small tool/thinking artifact, and the model now runs as 3.18 GiB Q4_K_M on the GTX 1060. | A context window large enough for Codex's tool schema and a real Codex `exec` tool-loop test both pass. | Downloaded and direct-tested. Retain only as a short utility/autocomplete candidate; reject as a Codex terminal at 4K context. |
 | Qwen3-Coder 30B A3B | Official model card presents agentic coding and function-call formatting; a quantized desktop artifact already exists. | GPU/host-RAM residency and vLLM parser preflight show it is fast enough for interactive use. | Research candidate only; current desktop runtime is CPU/memory-heavy. |
 | Devstral Small 2 24B | Official vLLM guidance documents Mistral parser-based tool calling and the model is agent-focused. | Exact quantization, VRAM budget, and a single-GPU vLLM launch are measured. | Strong future 5090 replacement candidate, not a parallel model. |
 | Qwen3 14B | Official card identifies tool-calling support and vLLM integration. | A quantized 32 GiB deployment leaves enough KV cache for the required context and passes Codex tool execution. | Candidate only; full precision is not right-sized with usable cache headroom. |
