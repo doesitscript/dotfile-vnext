@@ -52,6 +52,21 @@
   no_log: true
   when: k3s_vllm_runtime_resolved_hf_token | default('') | length > 0
 
+- name: Ensure vLLM tool parser plugin ConfigMap exists when enabled
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: "{{ k3s_vllm_runtime_name }}-tool-parser"
+        namespace: "{{ k3s_vllm_runtime_namespace }}"
+      data:
+        qwen2_5_coder_tool_parser.py: "{{ lookup('file', role_path + '/files/qwen2_5_coder_tool_parser.py') }}"
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+  when: k3s_vllm_runtime_tool_parser_plugin_enabled | bool
+
 - name: Build vLLM container args
   ansible.builtin.set_fact:
     _k3s_vllm_runtime_args: >-
@@ -65,6 +80,13 @@
         + (
           ['--enable-auto-tool-choice']
           if k3s_vllm_runtime_enable_auto_tool_choice | bool else []
+        )
+        + (
+          ['--tool-parser-plugin', k3s_vllm_runtime_tool_parser_plugin_mount_path]
+          if (
+            k3s_vllm_runtime_enable_auto_tool_choice | bool
+            and k3s_vllm_runtime_tool_parser_plugin_enabled | bool
+          ) else []
         )
         + (
           ['--tool-call-parser', k3s_vllm_runtime_tool_call_parser]
@@ -96,6 +118,47 @@
         {
           'type': k3s_vllm_runtime_deployment_strategy_type
         }
+      }}
+    _k3s_vllm_runtime_volume_mounts: >-
+      {{
+        [
+          {
+            'name': 'hf-cache',
+            'mountPath': '/root/.cache/huggingface'
+          }
+        ]
+        + (
+          [
+            {
+              'name': 'tool-parser',
+              'mountPath': '/tool-parsers',
+              'readOnly': true
+            }
+          ]
+          if k3s_vllm_runtime_tool_parser_plugin_enabled | bool else []
+        )
+      }}
+    _k3s_vllm_runtime_volumes: >-
+      {{
+        [
+          {
+            'name': 'hf-cache',
+            'persistentVolumeClaim': {
+              'claimName': k3s_vllm_runtime_name ~ '-hf-cache'
+            }
+          }
+        ]
+        + (
+          [
+            {
+              'name': 'tool-parser',
+              'configMap': {
+                'name': k3s_vllm_runtime_name ~ '-tool-parser'
+              }
+            }
+          ]
+          if k3s_vllm_runtime_tool_parser_plugin_enabled | bool else []
+        )
       }}
 
 - name: Query existing vLLM deployment
@@ -165,16 +228,11 @@
                     [{'secretRef': {'name': k3s_vllm_runtime_name ~ '-env'}}]
                     if (k3s_vllm_runtime_resolved_hf_token | default('') | length > 0) else []
                   }}
-                volumeMounts:
-                  - name: hf-cache
-                    mountPath: /root/.cache/huggingface
+                volumeMounts: "{{ _k3s_vllm_runtime_volume_mounts }}"
                 resources:
                   requests: "{{ _k3s_vllm_runtime_resource_requests }}"
                   limits: "{{ _k3s_vllm_runtime_resource_limits }}"
-            volumes:
-              - name: hf-cache
-                persistentVolumeClaim:
-                  claimName: "{{ k3s_vllm_runtime_name }}-hf-cache"
+            volumes: "{{ _k3s_vllm_runtime_volumes }}"
   environment:
     KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
 

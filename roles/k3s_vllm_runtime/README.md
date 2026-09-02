@@ -55,10 +55,14 @@ When `k3s_vllm_runtime_kilo_testing_active: true` on k3s-02, primary vLLM serves
 `Qwen/Qwen2.5-Coder-14B-Instruct-AWQ` with `--max-model-len 32768` and
 `--tool-call-parser hermes`.
 
-**Known limitation:** Qwen2.5-Coder-14B emits tool intent in `message.content`
-(`<tools>` JSON) with `tool_calls: null`. vLLM hermes parser does not extract
-this format. LiteLLM route `kilo-lite` is valid for smoke/chat; **not** for Kilo
-code agent tool execution.
+**Known limitation (Qwen2.5-Coder + hermes):** Qwen2.5-Coder emits tool intent in
+`message.content` (`<tools>` JSON) with `tool_calls: null`. vLLM hermes parser does
+not extract this format.
+
+**Fix (homelab):** use the community `qwen2_5_coder` parser plugin
+(`roles/k3s_vllm_runtime/files/qwen2_5_coder_tool_parser.py`) with
+`k3s_vllm_runtime_tool_parser_plugin_enabled: true`. Runbook:
+`docs/reference/models/5090-qwen25-coder-14b-vs-32b.md`.
 
 | Action | Playbook |
 | --- | --- |
