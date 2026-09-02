@@ -6,6 +6,25 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [6.1.3] - 2026-09-02
+
+Pre-release channel: `v6.1.3-alpha` (pre-multi-agent ATDD coordination).
+
+### Added
+
+- `model-lane-acceptance/` project-owned acceptance YAML for gateway and Codex CLI
+  lanes, with client-map, approved vs pending manifests, and run scripts wired to
+  global-skills pytest harnesses.
+- Global skill symlinks for homelab validation skills (codex-cli pytest, litellm
+  lane pytest, local-ai-client validation pack).
+- Draft multi-agent plan work (`00`–`02`) for acceptance-author vs implementer
+  role boundaries and evaluator feedback on ATDD coordination wording.
+
+### Changed
+
+- ATDD developer-flow diagram and codex ATDD plan scaffolding in draft plan folder.
+- Agent skills sync manifest refreshed after skills-cursor bridge updates.
+
 ## [6.1.2] - 2026-09-01
 
 Pre-release channel: `v6.1.2-alpha` (Kilo Code homelab lanes).
