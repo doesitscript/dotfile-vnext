@@ -6,6 +6,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [6.1.8] - 2026-09-02
+
+Pre-release channel: `v6.1.8-beta` (tab completion cycle-through fix).
+
+### Fixed
+
+- `shell-completion_one_off_tasks.bash` — repeat Tab keeps cycling the original `cx-de`
+  match set after the line expands (`cx-deep`, `cx-deep-smoke`, …) instead of resetting
+  the session; menu redraw uses `1A`/`2K`/`1B` instead of save/restore cursor.
+
 ## [6.1.7] - 2026-09-02
 
 Pre-release channel: `v6.1.7-beta` (tab completion first-match + no wrap spill).

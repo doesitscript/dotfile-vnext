@@ -3,8 +3,7 @@
 #
 # Tab UX trial:
 #   - command menu on ONE line ABOVE the prompt (width-bounded; no wrap spill)
-#   - 1st Tab on a query inserts first match + highlights first option
-#   - repeat Tab on same query cycles; typing more chars resets to first match
+#   - 1st Tab inserts first match; repeat Tab cycles the original match set
 #   - optional blank line before each new prompt (PROMPT_COMMAND breathe)
 #
 # Paths/flags: lincheney/fzf-tab-completion when fzf is installed.
@@ -50,9 +49,19 @@ _one_off_tab_term_width() {
   fi
 }
 
+_one_off_tab_goto_menu_row() {
+  printf '\033[1A\r'
+}
+
+_one_off_tab_goto_input_row() {
+  printf '\033[1B'
+}
+
 _one_off_tab_clear_menu_line() {
   if (( _ONE_OFF_TAB_MENU_DRAWN )); then
-    printf '\033[?7l\033[s\033[1A\033[2K\r\033[u\033[?7h'
+    _one_off_tab_goto_menu_row
+    printf '\033[2K'
+    _one_off_tab_goto_input_row
     _ONE_OFF_TAB_MENU_DRAWN=0
   fi
 }
@@ -76,9 +85,25 @@ _one_off_tab_collect_matches() {
   )
 }
 
+_one_off_tab_in_active_session() {
+  local word="$1" match
+
+  (( _ONE_OFF_TAB_MENU_ACTIVE )) || return 1
+  ((${#_ONE_OFF_TAB_MENU_MATCHES[@]} == 0)) && return 1
+
+  for match in "${_ONE_OFF_TAB_MENU_MATCHES[@]}"; do
+    [[ "$word" == "$match" ]] && return 0
+  done
+
+  [[ "$word" == "$_ONE_OFF_TAB_MENU_QUERY" ]] && return 0
+  [[ "$word" == "$_ONE_OFF_TAB_MENU_QUERY"* ]] && return 0
+  [[ "$_ONE_OFF_TAB_MENU_QUERY" == "$word"* ]] && return 0
+  return 1
+}
+
 _one_off_tab_print_horizontal_menu() {
   local cols width item index total start end
-  local used=0 plain_len piece
+  local used=0 plain_len
   local left_ellipsis=0 right_ellipsis=0
 
   width="$(_one_off_tab_term_width)"
@@ -86,7 +111,6 @@ _one_off_tab_print_horizontal_menu() {
   total=${#_ONE_OFF_TAB_MENU_MATCHES[@]}
   (( total == 0 )) && return 0
 
-  # Window around the active selection so the row never wraps onto the prompt line.
   start=${_ONE_OFF_TAB_MENU_INDEX}
   end=$(( start + 1 ))
   used=$(( ${#_ONE_OFF_TAB_MENU_MATCHES[start]} + 2 ))
@@ -116,10 +140,10 @@ _one_off_tab_print_horizontal_menu() {
   done
 
   printf '\033[?7l'
-  printf '\033[s'
-  printf '\033[1A\033[2K\r'
+  _one_off_tab_goto_menu_row
+  printf '\033[2K'
 
-  (( left_ellipsis )) && printf '…  '
+  (( left_ellipsis )) && printf '...  '
 
   for (( index = start; index < end; index++ )); do
     item="${_ONE_OFF_TAB_MENU_MATCHES[index]}"
@@ -130,8 +154,9 @@ _one_off_tab_print_horizontal_menu() {
     fi
   done
 
-  (( right_ellipsis )) && printf '…'
-  printf '\033[u\033[?7h'
+  (( right_ellipsis )) && printf '...'
+  _one_off_tab_goto_input_row
+  printf '\033[?7h'
   _ONE_OFF_TAB_MENU_DRAWN=1
 }
 
@@ -157,18 +182,18 @@ _one_off_tab_in_command_position() {
 
 _one_off_tab_inline_command_menu() {
   local line="${READLINE_LINE}" point="${READLINE_POINT}"
-  local query suffix choice direction="${1:-forward}"
+  local query word suffix choice rest direction="${1:-forward}"
 
   if ! _one_off_tab_in_command_position "$line" "$point"; then
     return 1
   fi
 
-  query="$(_one_off_tab_first_word "$line" "$point")"
-  [[ -n "$query" ]] || return 1
+  word="${line%% *}"
+  [[ -n "$word" ]] || return 1
+  [[ "$line" == *" "* ]] && rest="${line#"$word"}"
 
-  # Cycle only when Tab is pressed again on the *same* query. Prefix overlap from a
-  # prior session (e.g. stored "cx" while typing "cx-de") must reset to first match.
-  if (( _ONE_OFF_TAB_MENU_ACTIVE )) && [[ "$query" == "$_ONE_OFF_TAB_MENU_QUERY" ]]; then
+  # Keep cycling the original match set after the line expands (cx-de -> cx-deep -> …).
+  if _one_off_tab_in_active_session "$word"; then
     if ((${#_ONE_OFF_TAB_MENU_MATCHES[@]} > 1)); then
       if [[ "$direction" == backward ]]; then
         _ONE_OFF_TAB_MENU_INDEX=$(( (_ONE_OFF_TAB_MENU_INDEX - 1 + ${#_ONE_OFF_TAB_MENU_MATCHES[@]}) % ${#_ONE_OFF_TAB_MENU_MATCHES[@]} ))
@@ -178,6 +203,8 @@ _one_off_tab_inline_command_menu() {
     fi
   else
     _one_off_tab_clear_menu_line
+    query="$(_one_off_tab_first_word "$line" "$point")"
+    [[ -n "$query" ]] || return 1
     _ONE_OFF_TAB_MENU_QUERY="$query"
     _one_off_tab_collect_matches "$query"
     _ONE_OFF_TAB_MENU_INDEX=0
@@ -190,12 +217,7 @@ _one_off_tab_inline_command_menu() {
   fi
 
   choice="${_ONE_OFF_TAB_MENU_MATCHES[_ONE_OFF_TAB_MENU_INDEX]}"
-  if [[ "$line" == *" "* ]]; then
-    suffix="${line#"$query"}"
-    READLINE_LINE="${choice}${suffix}"
-  else
-    READLINE_LINE="$choice"
-  fi
+  READLINE_LINE="${choice}${rest}"
   READLINE_POINT="${#READLINE_LINE}"
 
   if ((${#_ONE_OFF_TAB_MENU_MATCHES[@]} > 1)); then
