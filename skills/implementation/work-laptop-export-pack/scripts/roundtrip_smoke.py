@@ -12,7 +12,7 @@ import subprocess
 import sys
 import zipfile
 
-import yaml
+from packet_manifest import load_manifest, resolve_with_repo_root
 
 
 def parse_args() -> argparse.Namespace:
@@ -22,7 +22,16 @@ def parse_args() -> argparse.Namespace:
         "--packet-manifest",
         default="exports/work-laptop-ai-tools/export-manifest.yml",
     )
-    parser.add_argument("--archive-path", default="")
+    parser.add_argument(
+        "--packet-dir",
+        default="",
+        help="External sibling-repo or extracted packet directory to validate.",
+    )
+    parser.add_argument(
+        "--archive-path",
+        default="",
+        help="Explicit zip archive path for opt-in archive-mode validation.",
+    )
     parser.add_argument("--destination-root", default="")
     parser.add_argument("--ansible-command", default="")
     parser.add_argument("--inventory-file", default="inventory.yaml")
@@ -32,20 +41,6 @@ def parse_args() -> argparse.Namespace:
         help="Run the extracted playbook apply step. Leave off for preview-only proof.",
     )
     return parser.parse_args()
-
-
-def resolve_with_repo_root(repo_root: Path, value: str) -> Path:
-    candidate = Path(value).expanduser()
-    if candidate.is_absolute():
-        return candidate.resolve()
-    return (repo_root / candidate).resolve()
-
-
-def load_manifest(path: Path) -> dict[str, object]:
-    data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
-        raise ValueError(f"Manifest is not a mapping: {path}")
-    return data
 
 
 def timestamp_label() -> str:
@@ -83,31 +78,41 @@ def main() -> int:
     manifest_path = resolve_with_repo_root(repo_root, args.packet_manifest)
     manifest = load_manifest(manifest_path)
     packet_name = str(manifest.get("packet_name") or manifest_path.parent.name)
+    archive_path: Path | None = None
+    run_root: Path | None = None
 
-    if args.archive_path:
-        archive_path = resolve_with_repo_root(repo_root, args.archive_path)
+    if args.packet_dir:
+        packet_dir = Path(args.packet_dir).expanduser().resolve()
+        ensure_outside_repo(packet_dir, repo_root)
+        if not packet_dir.is_dir():
+            raise FileNotFoundError(f"Packet directory not found: {packet_dir}")
     else:
-        archive_name = str(manifest.get("archive_name") or f"{packet_name}.zip")
-        archive_path = (manifest_path.parent / "dist" / archive_name).resolve()
+        if not args.archive_path:
+            raise ValueError(
+                "No validation target provided. Use --packet-dir for the default sibling-repo path, "
+                "or pass --archive-path explicitly for the opt-in archive branch."
+            )
 
-    if not archive_path.is_file():
-        raise FileNotFoundError(f"Archive not found: {archive_path}")
+        archive_path = resolve_with_repo_root(repo_root, args.archive_path)
 
-    destination_root = (
-        Path(args.destination_root).expanduser().resolve()
-        if args.destination_root
-        else (Path.home() / "develop" / "work-laptop-export-roundtrip").resolve()
-    )
-    ensure_outside_repo(destination_root, repo_root)
+        if not archive_path.is_file():
+            raise FileNotFoundError(f"Archive not found: {archive_path}")
 
-    run_root = destination_root / timestamp_label()
-    run_root.mkdir(parents=True, exist_ok=False)
-    with zipfile.ZipFile(archive_path) as handle:
-        handle.extractall(run_root)
+        destination_root = (
+            Path(args.destination_root).expanduser().resolve()
+            if args.destination_root
+            else (Path.home() / "develop" / "work-laptop-export-roundtrip").resolve()
+        )
+        ensure_outside_repo(destination_root, repo_root)
 
-    packet_dir = (run_root / packet_name).resolve()
-    if not packet_dir.is_dir():
-        raise FileNotFoundError(f"Extracted packet directory is missing: {packet_dir}")
+        run_root = destination_root / timestamp_label()
+        run_root.mkdir(parents=True, exist_ok=False)
+        with zipfile.ZipFile(archive_path) as handle:
+            handle.extractall(run_root)
+
+        packet_dir = (run_root / packet_name).resolve()
+        if not packet_dir.is_dir():
+            raise FileNotFoundError(f"Extracted packet directory is missing: {packet_dir}")
 
     ansible_command = args.ansible_command or f"{repo_root / 'bin' / 'codex-env'} ansible-playbook"
     ansible_parts = shlex.split(ansible_command)
@@ -146,9 +151,9 @@ def main() -> int:
         print(f"Marker: {marker_path}")
         print(f"Verified marker line: {expected_line}")
 
-    print(f"Archive: {archive_path}")
-    print(f"Round-trip root: {run_root}")
-    print(f"Extracted packet: {packet_dir}")
+    print(f"Archive: {archive_path if archive_path else '(not used)'}")
+    print(f"Round-trip root: {run_root if run_root else '(not used)'}")
+    print(f"Packet directory: {packet_dir}")
     print(f"Apply run: {'yes' if args.apply else 'no'}")
     return 0
 

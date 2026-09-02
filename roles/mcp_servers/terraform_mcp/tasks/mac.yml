@@ -1,0 +1,76 @@
+---
+- name: Ensure Terraform MCP state directory exists
+  ansible.builtin.file:
+    path: "{{ terraform_mcp_state_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Ensure Terraform MCP public bin directory exists
+  ansible.builtin.file:
+    path: "{{ terraform_mcp_bin_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Ensure Homebrew Go is installed for Terraform MCP
+  community.general.homebrew:
+    name: "{{ terraform_mcp_homebrew_go_formula }}"
+    state: present
+
+- name: Resolve Homebrew prefix for Go
+  ansible.builtin.command:
+    argv:
+      - brew
+      - --prefix
+      - "{{ terraform_mcp_homebrew_go_formula }}"
+  register: terraform_mcp_go_prefix
+  changed_when: false
+
+- name: Set Terraform MCP Go binary path
+  ansible.builtin.set_fact:
+    terraform_mcp_go_binary: "{{ terraform_mcp_go_prefix.stdout | trim }}/bin/go"
+    terraform_mcp_command: "{{ terraform_mcp_bin_dir }}/terraform-mcp-server"
+
+- name: Check current Terraform MCP binary
+  ansible.builtin.stat:
+    path: "{{ terraform_mcp_command }}"
+  register: terraform_mcp_existing_binary
+
+- name: Check current Terraform MCP installed version marker
+  ansible.builtin.stat:
+    path: "{{ terraform_mcp_version_file }}"
+  register: terraform_mcp_version_marker
+
+- name: Read current Terraform MCP installed version marker
+  ansible.builtin.slurp:
+    src: "{{ terraform_mcp_version_file }}"
+  register: terraform_mcp_version_raw
+  when: terraform_mcp_version_marker.stat.exists | default(false)
+
+- name: Determine whether Terraform MCP install needs refresh
+  ansible.builtin.set_fact:
+    terraform_mcp_install_required: >-
+      {{
+        (terraform_mcp_force_reinstall | bool)
+        or not (terraform_mcp_existing_binary.stat.exists | default(false))
+        or not (terraform_mcp_version_marker.stat.exists | default(false))
+        or ((terraform_mcp_version_raw.content | default('') | b64decode | trim) != terraform_mcp_repo_version)
+      }}
+
+- name: Install Terraform MCP server from HashiCorp release
+  ansible.builtin.command:
+    argv:
+      - "{{ terraform_mcp_go_binary }}"
+      - install
+      - "{{ terraform_mcp_go_package }}@{{ terraform_mcp_repo_version }}"
+  environment:
+    GOBIN: "{{ terraform_mcp_bin_dir }}"
+    GOPATH: "{{ terraform_mcp_go_path }}"
+  changed_when: true
+  when: terraform_mcp_install_required | bool
+
+- name: Record installed Terraform MCP version
+  ansible.builtin.copy:
+    dest: "{{ terraform_mcp_version_file }}"
+    mode: "0644"
+    content: "{{ terraform_mcp_repo_version }}\n"
+  when: terraform_mcp_install_required | bool

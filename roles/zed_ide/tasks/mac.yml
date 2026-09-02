@@ -1,0 +1,148 @@
+---
+- name: Validate zed_ide inputs
+  ansible.builtin.assert:
+    that:
+      - zed_ide_state in ['present', 'absent']
+      - zed_ide_gateway_api_url | length > 0
+    fail_msg: "zed_ide configuration is invalid."
+
+- name: Load shared vault for Zed LiteLLM API key when unset
+  when:
+    - zed_ide_state == "present"
+    - zed_ide_api_key | default('') | length == 0
+  ansible.builtin.include_vars:
+    file: "{{ inventory_dir }}/../vault/shared.vault.yml"
+    name: zed_ide_vault_vars
+  no_log: true
+
+- name: Install Zed with Homebrew cask
+  community.general.homebrew_cask:
+    name: "{{ zed_ide_cask_name }}"
+    state: "{{ 'present' if zed_ide_state == 'present' else 'absent' }}"
+  when: zed_ide_install_cask | bool
+
+- name: Ensure Zed config directory exists
+  ansible.builtin.file:
+    path: "{{ zed_ide_config_dir }}"
+    state: directory
+    mode: "0700"
+  when: zed_ide_state == "present"
+
+- name: Ensure Zed launcher directory exists
+  ansible.builtin.file:
+    path: "{{ zed_ide_launcher_path | dirname }}"
+    state: directory
+    mode: "0700"
+  when: zed_ide_state == "present"
+
+- name: Build managed Zed settings payload
+  ansible.builtin.set_fact:
+    _zed_ide_settings_payload: >-
+      {{
+        {
+          'language_models': {
+            'openai': {
+              'api_url': zed_ide_gateway_api_url,
+              'available_models': zed_ide_models
+            }
+          },
+          'agent': {
+            'default_model': zed_ide_default_model,
+            'inline_assistant_model': zed_ide_inline_assistant_model,
+            'commit_message_model': zed_ide_commit_message_model,
+            'thread_summary_model': zed_ide_thread_summary_model,
+            'compaction_model': zed_ide_compaction_model,
+            'subagent_model': zed_ide_subagent_model,
+            'inline_alternatives': zed_ide_inline_alternatives,
+            'auto_compact': zed_ide_auto_compact,
+            'model_parameters': zed_ide_model_parameters
+          },
+          'context_servers': zed_ide_context_servers
+        }
+        | combine(
+            {
+              'agent': {
+                'commit_message_instructions': zed_ide_commit_message_instructions
+              }
+            }
+            if (zed_ide_commit_message_instructions | default('') | length > 0)
+            else {},
+            recursive=True
+          )
+        | combine(
+            {
+              'edit_predictions': zed_ide_edit_predictions
+            }
+            if (zed_ide_edit_predictions_enabled | default(false))
+            else {},
+            recursive=True
+          )
+      }}
+  when: zed_ide_state == "present"
+
+- name: Deploy Zed settings.json
+  ansible.builtin.copy:
+    dest: "{{ zed_ide_settings_path }}"
+    content: "{{ _zed_ide_settings_payload | to_nice_json }}\n"
+    mode: "0600"
+  when: zed_ide_state == "present"
+
+- name: Deploy Zed OpenAI environment file
+  ansible.builtin.copy:
+    dest: "{{ zed_ide_env_path }}"
+    content: |
+      # {{ ansible_managed | default('Managed by Ansible') }}
+      OPENAI_API_KEY={{ zed_ide_render_api_key | quote }}
+    mode: "0600"
+  vars:
+    zed_ide_render_api_key: >-
+      {{
+        zed_ide_api_key
+        if (zed_ide_api_key | default('') | length > 0)
+        else (
+          zed_ide_vault_vars['vault_k3s_litellm_gateway_master_key']
+          | default('REPLACE_WITH_LITELLM_KEY')
+        )
+      }}
+  when: zed_ide_state == "present"
+  no_log: true
+
+- name: Deploy Zed homelab launcher
+  ansible.builtin.copy:
+    dest: "{{ zed_ide_launcher_path }}"
+    mode: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+      if [[ -f {{ zed_ide_env_path | quote }} ]]; then
+        set -a
+        # shellcheck disable=SC1090
+        . {{ zed_ide_env_path | quote }}
+        set +a
+      fi
+      exec zed "$@"
+  when: zed_ide_state == "present"
+
+- name: Remove Zed settings managed by this role
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ zed_ide_settings_path }}"
+    - "{{ zed_ide_env_path }}"
+    - "{{ zed_ide_launcher_path }}"
+  when: zed_ide_state == "absent"
+
+- name: Report Zed IDE config path
+  ansible.builtin.debug:
+    msg: >-
+      zed_ide_state={{ zed_ide_state }}
+      settings={{ zed_ide_settings_path }}
+      env={{ zed_ide_env_path }}
+      launcher={{ zed_ide_launcher_path }}
+      model_count={{ zed_ide_models | default([]) | length }}
+      context_server_count={{ zed_ide_context_servers | default({}) | length }}
+      edit_predictions_enabled={{ zed_ide_edit_predictions_enabled | default(false) | bool }}
+      api_key_from_inventory={{ (zed_ide_api_key | default('') | length > 0) | bool }}
+  when: zed_ide_state == "present"

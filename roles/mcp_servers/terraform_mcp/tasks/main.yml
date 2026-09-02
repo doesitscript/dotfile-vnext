@@ -1,0 +1,91 @@
+---
+- name: Capture requested Terraform MCP target tags
+  ansible.builtin.set_fact:
+    _terraform_mcp_requested_target_tags: >-
+      {{
+        (ansible_run_tags | default([]))
+        | intersect(['mcp_target_cursor', 'mcp_target_vscode', 'mcp_target_codex', 'mcp_target_openapi'])
+      }}
+  tags:
+    - mcp
+    - terraform
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Validate configured Terraform MCP targets
+  ansible.builtin.assert:
+    that:
+      - terraform_mcp_state in ['present', 'absent']
+      - (terraform_mcp_targets | difference(terraform_mcp_supported_targets)) | length == 0
+    fail_msg: >-
+      terraform_mcp configuration is invalid. Unsupported targets:
+      {{ terraform_mcp_targets | difference(terraform_mcp_supported_targets) | to_json }}
+  tags:
+    - mcp
+    - terraform
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Determine active Terraform MCP client targets
+  ansible.builtin.set_fact:
+    _terraform_mcp_target_cursor_selected: >-
+      {{
+        ('mcp_target_cursor' in _terraform_mcp_requested_target_tags)
+        or ((_terraform_mcp_requested_target_tags | length) == 0 and ('cursor' in terraform_mcp_targets))
+      }}
+    _terraform_mcp_target_vscode_selected: >-
+      {{
+        ('mcp_target_vscode' in _terraform_mcp_requested_target_tags)
+        or ((_terraform_mcp_requested_target_tags | length) == 0 and ('vscode' in terraform_mcp_targets))
+      }}
+    _terraform_mcp_target_codex_selected: >-
+      {{
+        ('mcp_target_codex' in _terraform_mcp_requested_target_tags)
+        or ((_terraform_mcp_requested_target_tags | length) == 0 and ('codex' in terraform_mcp_targets))
+      }}
+    _terraform_mcp_target_openapi_selected: >-
+      {{
+        ('mcp_target_openapi' in _terraform_mcp_requested_target_tags)
+        or ((_terraform_mcp_requested_target_tags | length) == 0 and ('openapi' in terraform_mcp_targets))
+      }}
+  tags:
+    - mcp
+    - terraform
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Fail fast for the Terraform MCP OpenAPI target stub
+  ansible.builtin.import_tasks: openapi_stub.yml
+  when: _terraform_mcp_target_openapi_selected | bool
+  tags:
+    - mcp
+    - terraform
+    - mcp_target_openapi
+
+- name: Ensure Terraform MCP config is present
+  ansible.builtin.import_tasks: present.yml
+  when: terraform_mcp_state == "present"
+  tags:
+    - mcp
+    - terraform
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Ensure Terraform MCP config is absent
+  ansible.builtin.import_tasks: absent.yml
+  when: terraform_mcp_state == "absent"
+  tags:
+    - mcp
+    - terraform
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi

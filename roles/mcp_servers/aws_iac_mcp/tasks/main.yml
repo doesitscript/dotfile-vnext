@@ -1,0 +1,101 @@
+---
+- name: Capture requested AWS IaC MCP target tags
+  ansible.builtin.set_fact:
+    _aws_iac_mcp_requested_target_tags: >-
+      {{
+        (ansible_run_tags | default([]))
+        | intersect(['mcp_target_cursor', 'mcp_target_vscode', 'mcp_target_codex', 'mcp_target_openapi'])
+      }}
+  tags:
+    - mcp
+    - aws_iac
+    - aws_iac_mcp
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Validate configured AWS IaC MCP targets
+  ansible.builtin.assert:
+    that:
+      - aws_iac_mcp_state in ['present', 'absent']
+      - (aws_iac_mcp_targets | difference(aws_iac_mcp_supported_targets)) | length == 0
+    fail_msg: >-
+      aws_iac_mcp configuration is invalid. Unsupported targets:
+      {{ aws_iac_mcp_targets | difference(aws_iac_mcp_supported_targets) | to_json }}
+  tags:
+    - mcp
+    - aws_iac
+    - aws_iac_mcp
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Determine active AWS IaC MCP client targets
+  ansible.builtin.set_fact:
+    _aws_iac_mcp_target_cursor_selected: >-
+      {{
+        ('mcp_target_cursor' in _aws_iac_mcp_requested_target_tags)
+        or ((_aws_iac_mcp_requested_target_tags | length) == 0 and ('cursor' in aws_iac_mcp_targets))
+      }}
+    _aws_iac_mcp_target_vscode_selected: >-
+      {{
+        ('mcp_target_vscode' in _aws_iac_mcp_requested_target_tags)
+        or ((_aws_iac_mcp_requested_target_tags | length) == 0 and ('vscode' in aws_iac_mcp_targets))
+      }}
+    _aws_iac_mcp_target_codex_selected: >-
+      {{
+        ('mcp_target_codex' in _aws_iac_mcp_requested_target_tags)
+        or ((_aws_iac_mcp_requested_target_tags | length) == 0 and ('codex' in aws_iac_mcp_targets))
+      }}
+    _aws_iac_mcp_target_openapi_selected: >-
+      {{
+        ('mcp_target_openapi' in _aws_iac_mcp_requested_target_tags)
+        or ((_aws_iac_mcp_requested_target_tags | length) == 0 and ('openapi' in aws_iac_mcp_targets))
+      }}
+  tags:
+    - mcp
+    - aws_iac
+    - aws_iac_mcp
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Fail fast for the AWS IaC MCP OpenAPI target stub
+  ansible.builtin.import_tasks: openapi_stub.yml
+  when: _aws_iac_mcp_target_openapi_selected | bool
+  tags:
+    - mcp
+    - aws_iac
+    - aws_iac_mcp
+    - mcp_target_openapi
+
+- name: Ensure AWS IaC MCP server is present
+  ansible.builtin.import_tasks: present.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - aws_iac_mcp_state == "present"
+  tags:
+    - mcp
+    - aws_iac
+    - aws_iac_mcp
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Ensure AWS IaC MCP server is absent
+  ansible.builtin.import_tasks: absent.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - aws_iac_mcp_state == "absent"
+  tags:
+    - mcp
+    - aws_iac
+    - aws_iac_mcp
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi

@@ -1,0 +1,50 @@
+---
+- name: Install AWS IaC MCP on macOS
+  ansible.builtin.import_tasks: mac.yml
+  when:
+    - not (aws_iac_mcp_command | default(''))
+    - ansible_facts['system'] == "Darwin"
+
+- name: Fail if AWS IaC MCP command could not be resolved
+  ansible.builtin.fail:
+    msg: >-
+      aws_iac_mcp_command is empty after runtime resolution. This role expects
+      Homebrew uv on macOS, or an explicit aws_iac_mcp_command override.
+  when: not (aws_iac_mcp_command | default(''))
+
+- name: Set AWS IaC MCP client entry after command resolution
+  ansible.builtin.set_fact:
+    aws_iac_mcp_client_entry:
+      command: "{{ aws_iac_mcp_command }}"
+      args: "{{ aws_iac_mcp_args }}"
+      env: "{{ aws_iac_mcp_env | dict2items | rejectattr('value', 'equalto', '') | items2dict }}"
+
+- name: Set AWS IaC Codex MCP entry after command resolution
+  ansible.builtin.set_fact:
+    aws_iac_mcp_codex_entry:
+      command: "{{ aws_iac_mcp_command }}"
+      args: "{{ aws_iac_mcp_args }}"
+      env: "{{ aws_iac_mcp_env | dict2items | rejectattr('value', 'equalto', '') | items2dict }}"
+      required: false
+
+- name: Ensure AWS IaC MCP entry exists in Cursor mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _aws_iac_target_name: "cursor"
+    _aws_iac_target_config_path: "{{ aws_iac_mcp_cursor_config_path }}"
+  when: _aws_iac_mcp_target_cursor_selected | bool
+
+- name: Ensure AWS IaC MCP entry exists in VS Code mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _aws_iac_target_name: "vscode"
+    _aws_iac_target_config_path: "{{ aws_iac_mcp_vscode_config_path }}"
+  when: _aws_iac_mcp_target_vscode_selected | bool
+
+- name: Ensure AWS IaC MCP entry exists in Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ aws_iac_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ aws_iac_mcp_server_key }}"
+    _mcp_codex_entry: "{{ aws_iac_mcp_codex_entry }}"
+  when: _aws_iac_mcp_target_codex_selected | bool

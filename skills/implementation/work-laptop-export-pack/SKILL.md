@@ -1,13 +1,13 @@
 ---
 name: work-laptop-export-pack
-description: "Use when the isolated work-laptop export packet under exports/work-laptop-ai-tools should be sliced into a zip, unpacked outside the repo, and smoke-tested from the extracted copy. Use for build the work-laptop export zip, validate that the packet still matches repo work-laptop packet conventions, or verify the extracted packet still runs."
+description: "Use when the isolated work-laptop packet under exports/work-laptop-ai-tools should be synced into the sibling build-target repo and validated there. Use the archive branch only when the user explicitly asks for zip output or zip-based smoke proof."
 license: MIT
 version: "0.1.0"
 author: "dotfile-vnext"
 compatibility: "Project skills for Codex/Cursor workflows"
 modes: "agent, ask, plan, debug"
 depends_on_skills: "project-skill-runtime-bridge"
-requires_summary: "exports/work-laptop-ai-tools/export-manifest.yml; external extraction destination; ansible command for smoke verification"
+requires_summary: "exports/work-laptop-ai-tools/export-manifest.yml; sibling build-target repo checkout; ansible command for smoke verification"
 title: Work Laptop Export Pack
 technology: ansible
 document_type: skill
@@ -34,6 +34,7 @@ tags:
   - ansible
   - export
   - zip
+  - sibling-repo
 ---
 
 # Skill: Work Laptop Export Pack
@@ -44,8 +45,10 @@ host into the repo's normal playbooks or inventories.
 ## When to use / not use
 
 Use when the repo-owned packet under `exports/work-laptop-ai-tools` should be
-packaged as a portable zip for the work laptop, or when the extracted packet
-needs an external smoke proof during development.
+synced into the generated sibling build-target repo and validated there.
+
+Use the archive branch only when the user explicitly asks for zip output or
+zip-based smoke proof.
 
 Do not use when the task is to broaden the capability into main inventory lanes
 or when only the packet role logic itself is changing.
@@ -53,8 +56,9 @@ or when only the packet role logic itself is changing.
 ## Inputs
 
 - `exports/work-laptop-ai-tools/export-manifest.yml`
-- external destination root for extracted smoke runs
+- sibling build-target repo checkout outside the source repo
 - ansible command to use for local verification
+- optional explicit archive path only when the archive branch is requested
 
 ## Workflow
 
@@ -67,28 +71,45 @@ bin/codex-env python \
   skills/implementation/work-laptop-export-pack/scripts/validate_export_contract.py
 ```
 
-3. Build the archive with:
+3. Sync the sibling build-target repo with:
+
+```bash
+bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/sync_sibling_repo.py
+```
+
+4. Verify the sibling repo from outside the source repo with:
+
+```bash
+bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/roundtrip_smoke.py \
+  --packet-dir /Users/joshc/develop/work-laptop-ai-tools \
+  --ansible-command "$PWD/bin/codex-env ansible-playbook"
+```
+
+5. Build the optional archive with:
+
+Only do this when the user explicitly requests the archive branch.
 
 ```bash
 bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/build_export_archive.py
 ```
 
-4. When development still needs an external proof run, unpack and verify from a
-   non-repo location with the preview-only default:
+6. When development still needs zip-based proof, unpack and verify from a
+   non-repo location only when an explicit archive path is provided:
 
 ```bash
 bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/roundtrip_smoke.py \
+  --archive-path exports/work-laptop-ai-tools/dist/work-laptop-ai-tools.zip \
   --ansible-command "$PWD/bin/codex-env ansible-playbook"
 ```
 
-5. Add `--apply` only when the extracted packet is being run on the real work
+7. Add `--apply` only when the external packet copy is being run on the real work
    laptop and a mutating apply is intended.
-6. If the extracted proof path uses a non-default inventory, pass
+8. If the external proof path uses a non-default inventory, pass
    `--inventory-file <name>`.
-7. Verify the extracted preview commands run from the unpacked `playbook_dir`,
-   not the repo copy. When `--apply` is used, also verify the marker file
-   proves the extracted `playbook_dir`.
-8. Hand off to `project-skill-runtime-bridge` when the skill should be
+9. Verify the preview commands run from the external `playbook_dir`, not the
+   repo copy. When `--apply` is used, also verify the marker file proves the
+   external `playbook_dir`.
+10. Hand off to `project-skill-runtime-bridge` when the skill should be
    discoverable under `.cursor/skills`.
 
 ## Handoffs
@@ -97,35 +118,39 @@ bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/round
 
 ## Outputs
 
-- zip archive rooted at `work-laptop-ai-tools/`
-- extracted smoke-run folder outside the repo
+- synced sibling build-target repo outside the source repo
 - validation output showing the packet still matches repo work-laptop packet conventions
-- command output proving extracted bootstrap preview plus extracted syntax,
+- command output proving external bootstrap preview plus external syntax,
   host, and task previews
-- optional apply proof from the extracted packet when `--apply` is used on the
+- optional apply proof from the external packet when `--apply` is used on the
   real work laptop
+- optional zip archive and archive-based smoke proof only when explicitly requested
 
 ## Validation
 
 - The packet contract matches the current repo values for the work-laptop
   packet Python path, packet `.venv`, public `~/.local/bin` Ansible shims,
   and vendored bootstrap roles
-- Only manifest-owned packet files are included in the archive
-- The extracted packet lives outside the repo
-- Preview proof uses the extracted bootstrap script and extracted playbook paths
-- The marker file records the extracted `playbook_dir` when `--apply` is used
+- The sibling build-target repo contains only manifest-owned files
+- The external packet copy lives outside the repo
+- Preview proof uses the external bootstrap script and external playbook paths
+- The marker file records the external `playbook_dir` when `--apply` is used
+- Only manifest-owned packet files are included in the archive when the archive
+  branch is explicitly requested
 
 ## Failure boundaries
 
 - Stop when the manifest references missing files
-- Stop when the archive cannot be unpacked into an external destination
-- Stop when the extracted packet fails its guarded local smoke run
+- Stop when the sibling repo cannot be synced into an external git checkout
+- Stop when the external packet copy fails its guarded local smoke run
+- Stop when an explicitly requested archive path is missing or cannot be unpacked
 
 ## Prohibited behavior
 
 - Expanding the archive scope beyond the manifest include list
-- Extracting the smoke run back into this repo
-- Treating repo-local playbook success as proof of extracted-packet success
+- Syncing or extracting the smoke run back into this repo
+- Treating repo-local playbook success as proof of sibling-repo success
+- Building or validating the archive branch unless the user explicitly asked for it
 
 ## Progressive disclosure
 

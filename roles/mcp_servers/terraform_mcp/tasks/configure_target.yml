@@ -1,0 +1,40 @@
+---
+- name: Ensure target directory exists for {{ _terraform_target_name }}
+  ansible.builtin.file:
+    path: "{{ _terraform_target_config_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Check whether mcp.json exists for {{ _terraform_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _terraform_target_config_path }}"
+  register: _terraform_target_mcp_json_stat
+
+- name: Create mcp.json with Terraform MCP entry for {{ _terraform_target_name }}
+  ansible.builtin.copy:
+    dest: "{{ _terraform_target_config_path }}"
+    mode: "0644"
+    content: "{{ {'mcpServers': {(terraform_mcp_server_key): terraform_mcp_client_entry}} | to_nice_json }}\n"
+  when: not _terraform_target_mcp_json_stat.stat.exists
+
+- name: Merge Terraform MCP entry into existing mcp.json for {{ _terraform_target_name }}
+  when: _terraform_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _terraform_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _terraform_target_config_path }}"
+      register: _terraform_target_mcp_json_raw
+
+    - name: Write merged mcp.json for {{ _terraform_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _terraform_target_config_path }}"
+        content: "{{ _terraform_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _terraform_target_existing: "{{ _terraform_target_mcp_json_raw.content | b64decode | from_json }}"
+        _terraform_target_servers: >-
+          {{
+            (_terraform_target_existing.mcpServers | default({}))
+            | combine({(terraform_mcp_server_key): terraform_mcp_client_entry})
+          }}
+        _terraform_target_merged: "{{ _terraform_target_existing | combine({'mcpServers': _terraform_target_servers}) }}"

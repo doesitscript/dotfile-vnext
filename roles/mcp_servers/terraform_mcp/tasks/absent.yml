@@ -1,0 +1,31 @@
+---
+- name: Remove Terraform MCP binary
+  ansible.builtin.file:
+    path: "{{ terraform_mcp_bin_dir }}/terraform-mcp-server"
+    state: absent
+
+- name: Remove Terraform MCP version marker
+  ansible.builtin.file:
+    path: "{{ terraform_mcp_version_file }}"
+    state: absent
+
+- name: Remove Terraform MCP entry from Cursor mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _terraform_target_name: "cursor"
+    _terraform_target_config_path: "{{ terraform_mcp_cursor_config_path }}"
+  when: _terraform_mcp_target_cursor_selected | bool
+
+- name: Remove Terraform MCP entry from VS Code mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _terraform_target_name: "vscode"
+    _terraform_target_config_path: "{{ terraform_mcp_vscode_config_path }}"
+  when: _terraform_mcp_target_vscode_selected | bool
+
+- name: Remove Terraform MCP entry from Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ terraform_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ terraform_mcp_server_key }}"
+  when: _terraform_mcp_target_codex_selected | bool

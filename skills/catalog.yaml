@@ -416,23 +416,24 @@ skills:
       cursor_skill_name: project-skill-runtime-bridge
   work-laptop-export-pack:
     name: work-laptop-export-pack
-    description: Use when the isolated work-laptop export packet under exports/work-laptop-ai-tools should
-      be sliced into a zip, unpacked outside the repo, and smoke-tested from the extracted copy. Use
-      for build the work-laptop export zip, round-trip this packet outside the repo, or verify the extracted
-      hello-world packet still runs.
+    description: Use when the isolated work-laptop packet under exports/work-laptop-ai-tools should be
+      synced into the sibling build-target repo outside this source repo and validated there. Use
+      the archive branch only when the user explicitly asks for zip output or zip-based smoke proof.
     path: implementation/work-laptop-export-pack/SKILL.md
     scope: project
     category: implementation
-    purpose: Package and externally smoke-test the isolated work-laptop export packet
+    purpose: Sync and externally validate the isolated work-laptop build-target packet
     status: reviewed
     triggers:
-    - build the work-laptop export zip
+    - sync the work-laptop sibling repo
     - round-trip this packet outside the repo
-    - verify the extracted hello-world packet still runs
-    - slice and compress the work-laptop playbook
+    - verify the external packet still runs
+    - slice and package the work-laptop playbook
+    - build the work-laptop export zip
     do_not_use_when:
     - the task is to expand the packet into broad repo inventory or playbook lanes
     - only the role logic inside the packet is changing
+    - the only reason to touch the archive branch is habit rather than an explicit request
     handoff_from: []
     handoff_to:
     - project-skill-runtime-bridge
@@ -442,6 +443,7 @@ skills:
     - implementation/work-laptop-export-pack/references/sources-and-precedence.md
     - implementation/work-laptop-export-pack/references/related-artifacts.md
     scripts:
+    - implementation/work-laptop-export-pack/scripts/sync_sibling_repo.py
     - implementation/work-laptop-export-pack/scripts/build_export_archive.py
     - implementation/work-laptop-export-pack/scripts/roundtrip_smoke.py
     runtime_bridge:

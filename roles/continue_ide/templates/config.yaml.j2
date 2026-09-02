@@ -1,6 +1,8 @@
 # {{ ansible_managed }}
 # Continue → LiteLLM only. Every model below MUST exist on GET /v1/models.
 # apiBase omits /v1 (Continue probes GET {apiBase}; /v1 alone 404s on this gateway).
+# Remote autocomplete is intentionally disabled by default; re-enable only for a
+# deliberately local-only client model after validation.
 # Blocked / not commissioned:
 {% for lane in continue_ide_blocked_lanes %}
 #   - {{ lane }}
@@ -10,11 +12,19 @@ version: {{ continue_ide_config_version | to_json }}
 schema: {{ continue_ide_config_schema | to_json }}
 models:
 {% for entry in continue_ide_models %}
+{% set entry_roles = entry.roles | default([]) %}
+{% if continue_ide_autocomplete_enabled | default(false) or 'autocomplete' not in entry_roles %}
   - name: {{ entry.name | to_json }}
     provider: {{ (entry.provider | default(continue_ide_provider)) | to_json }}
     apiBase: {{ (entry.api_base | default(continue_ide_gateway_api_base)) | to_json }}
     model: {{ entry.model | to_json }}
     apiKey: {{ continue_ide_render_api_key | to_json }}
+{% if entry.capabilities is defined %}
+    capabilities:
+{% for capability in entry.capabilities %}
+      - {{ capability | to_json }}
+{% endfor %}
+{% endif %}
     roles:
 {% for role in entry.roles %}
       - {{ role | to_json }}
@@ -42,4 +52,47 @@ models:
       {{ tmpl_key }}: {{ tmpl_val | to_json }}
 {% endfor %}
 {% endif %}
+{% endif %}
 {% endfor %}
+{% if (continue_ide_mcp_servers | default([]) | length) > 0 %}
+mcpServers:
+{% for server in continue_ide_mcp_servers %}
+  - name: {{ server.name | to_json }}
+{% if server.type is defined %}
+    type: {{ server.type | to_json }}
+{% endif %}
+{% if server.command is defined %}
+    command: {{ server.command | to_json }}
+{% endif %}
+{% if server.args is defined %}
+    args:
+{% for arg in server.args %}
+      - {{ arg | to_json }}
+{% endfor %}
+{% endif %}
+{% if server.url is defined %}
+    url: {{ server.url | to_json }}
+{% endif %}
+{% if server.cwd is defined %}
+    cwd: {{ server.cwd | to_json }}
+{% endif %}
+{% if server.env is defined %}
+    env:
+{% for env_key, env_val in server.env.items() %}
+      {{ env_key }}: {{ env_val | to_json }}
+{% endfor %}
+{% endif %}
+{% if server.api_key is defined %}
+    apiKey: {{ server.api_key | to_json }}
+{% endif %}
+{% if server.connection_timeout is defined %}
+    connectionTimeout: {{ server.connection_timeout }}
+{% endif %}
+{% if server.request_options is defined %}
+    requestOptions:
+{% for req_key, req_val in server.request_options.items() %}
+      {{ req_key }}: {{ req_val | to_json }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}

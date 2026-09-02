@@ -1,0 +1,55 @@
+---
+- name: Validate codex_user_config state
+  ansible.builtin.assert:
+    that:
+      - codex_user_config_state in ["present", "absent"]
+    fail_msg: codex_user_config_state must be present or absent.
+
+- name: Ensure Codex user config home exists
+  ansible.builtin.file:
+    path: "{{ codex_user_config_home }}"
+    state: directory
+    mode: "0700"
+  when: codex_user_config_state == "present"
+
+- name: Check whether Codex user config already exists
+  ansible.builtin.stat:
+    path: "{{ codex_user_config_path }}"
+  register: codex_user_config_stat
+  when: codex_user_config_state == "present"
+
+- name: Back up existing Codex user config before forced overwrite
+  ansible.builtin.copy:
+    src: "{{ codex_user_config_path }}"
+    dest: "{{ codex_user_config_path }}{{ codex_user_config_backup_suffix }}"
+    remote_src: true
+    mode: preserve
+  when:
+    - codex_user_config_state == "present"
+    - codex_user_config_force | bool
+    - codex_user_config_stat.stat.exists | default(false)
+
+- name: Render Codex user config baseline
+  ansible.builtin.template:
+    src: config.toml.j2
+    dest: "{{ codex_user_config_path }}"
+    mode: "0644"
+  when:
+    - codex_user_config_state == "present"
+    - codex_user_config_force | bool or not (codex_user_config_stat.stat.exists | default(false))
+
+- name: Report preserved Codex user config
+  ansible.builtin.debug:
+    msg: >-
+      Preserving existing Codex user config at {{ codex_user_config_path }}
+      because codex_user_config_force=false.
+  when:
+    - codex_user_config_state == "present"
+    - codex_user_config_stat.stat.exists | default(false)
+    - not (codex_user_config_force | bool)
+
+- name: Remove Codex user config
+  ansible.builtin.file:
+    path: "{{ codex_user_config_path }}"
+    state: absent
+  when: codex_user_config_state == "absent"

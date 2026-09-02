@@ -1,0 +1,64 @@
+---
+- name: Install Terraform MCP on macOS when command is not overridden
+  ansible.builtin.import_tasks: mac.yml
+  when:
+    - not (terraform_mcp_command | default(''))
+    - ansible_facts['system'] == "Darwin"
+
+- name: Fail if Terraform MCP command could not be resolved
+  ansible.builtin.fail:
+    msg: >-
+      terraform_mcp_command is empty. This role currently supports macOS via
+      Homebrew Go + go install, or an explicit terraform_mcp_command override.
+  when: not (terraform_mcp_command | default(''))
+
+- name: Ensure Terraform MCP binary exists
+  ansible.builtin.stat:
+    path: "{{ terraform_mcp_command }}"
+  register: terraform_mcp_binary_stat
+
+- name: Require Terraform MCP binary to exist
+  ansible.builtin.assert:
+    that:
+      - terraform_mcp_binary_stat.stat.exists | default(false)
+      - terraform_mcp_binary_stat.stat.executable | default(false)
+    fail_msg: >-
+      Terraform MCP binary is missing or not executable at
+      {{ terraform_mcp_command }}.
+
+- name: Set Terraform MCP client entry after command resolution
+  ansible.builtin.set_fact:
+    terraform_mcp_client_entry:
+      command: "{{ terraform_mcp_command }}"
+      args: "{{ terraform_mcp_args }}"
+      env: "{{ terraform_mcp_env }}"
+
+- name: Set Terraform Codex MCP entry after command resolution
+  ansible.builtin.set_fact:
+    terraform_mcp_codex_entry:
+      command: "{{ terraform_mcp_command }}"
+      args: "{{ terraform_mcp_args }}"
+      env: "{{ terraform_mcp_env }}"
+      required: false
+
+- name: Ensure Terraform MCP entry exists in Cursor mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _terraform_target_name: "cursor"
+    _terraform_target_config_path: "{{ terraform_mcp_cursor_config_path }}"
+  when: _terraform_mcp_target_cursor_selected | bool
+
+- name: Ensure Terraform MCP entry exists in VS Code mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _terraform_target_name: "vscode"
+    _terraform_target_config_path: "{{ terraform_mcp_vscode_config_path }}"
+  when: _terraform_mcp_target_vscode_selected | bool
+
+- name: Ensure Terraform MCP entry exists in Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ terraform_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ terraform_mcp_server_key }}"
+    _mcp_codex_entry: "{{ terraform_mcp_codex_entry }}"
+  when: _terraform_mcp_target_codex_selected | bool

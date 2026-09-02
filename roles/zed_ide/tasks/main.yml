@@ -1,0 +1,10 @@
+---
+- name: Dispatch zed_ide by platform
+  ansible.builtin.include_tasks: "{{ zed_ide_platform_tasks }}"
+  vars:
+    zed_ide_platform_tasks: >-
+      {{
+        'mac.yml'
+        if ansible_facts['system'] == 'Darwin'
+        else 'unsupported.yml'
+      }}

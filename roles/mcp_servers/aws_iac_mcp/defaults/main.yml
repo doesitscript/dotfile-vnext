@@ -1,0 +1,37 @@
+---
+aws_iac_mcp_state: present
+aws_iac_mcp_server_key: "aws-iac"
+aws_iac_mcp_package_name: "awslabs.aws-iac-mcp-server@latest"
+aws_iac_mcp_project_root: "{{ dotfiles_home | default(playbook_dir | dirname | dirname) }}"
+aws_iac_mcp_targets:
+  - cursor
+aws_iac_mcp_supported_targets:
+  - cursor
+  - vscode
+  - codex
+  - openapi
+aws_iac_mcp_cursor_config_path: "{{ aws_iac_mcp_project_root }}/.cursor/mcp.json"
+aws_iac_mcp_vscode_config_path: "{{ aws_iac_mcp_project_root }}/.vscode/mcp.json"
+aws_iac_mcp_codex_config_path: "{{ aws_iac_mcp_project_root }}/.codex/config.toml"
+aws_iac_mcp_role_path: "roles/mcp_servers/aws_iac_mcp"
+aws_iac_mcp_homebrew_uv_formula: "uv"
+aws_iac_mcp_command: ""
+aws_iac_mcp_args:
+  - "{{ aws_iac_mcp_package_name }}"
+aws_iac_mcp_log_level: "ERROR"
+aws_iac_mcp_aws_profile: ""
+aws_iac_mcp_aws_region: ""
+aws_iac_mcp_env:
+  _MCP_ANSIBLE_ROLE_PATH: "{{ aws_iac_mcp_role_path }}"
+  FASTMCP_LOG_LEVEL: "{{ aws_iac_mcp_log_level }}"
+  AWS_PROFILE: "{{ aws_iac_mcp_aws_profile }}"
+  AWS_REGION: "{{ aws_iac_mcp_aws_region }}"
+aws_iac_mcp_client_entry:
+  command: "{{ aws_iac_mcp_command }}"
+  args: "{{ aws_iac_mcp_args }}"
+  env: "{{ aws_iac_mcp_env | dict2items | rejectattr('value', 'equalto', '') | items2dict }}"
+aws_iac_mcp_codex_entry:
+  command: "{{ aws_iac_mcp_command }}"
+  args: "{{ aws_iac_mcp_args }}"
+  env: "{{ aws_iac_mcp_env | dict2items | rejectattr('value', 'equalto', '') | items2dict }}"
+  required: false

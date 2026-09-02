@@ -1,9 +1,14 @@
 # continue_ide
 
 Deploys Continue IDE `~/.continue/config.yaml` from
-`templates/config.yaml.j2` so Chat, Autocomplete, and Edit use **only LiteLLM
+`templates/config.yaml.j2` so Chat and Edit use **only LiteLLM
 `model@host` routes** via Continue `apiBase` `http://litellm.hom.lab`
 (no `/v1` — Continue probes `GET {apiBase}`; `/v1` alone 404s on this gateway).
+
+Remote autocomplete is intentionally disabled by default as of `2026-09-02`
+because remote autocomplete lanes have been observed to destabilize editors and
+remote inference backends. Only re-enable autocomplete with a deliberately
+local-only model on the client machine after explicit validation.
 
 The **Continue editor extension** (`Continue.continue`) is installed by
 `roles/cursor` / `roles/common/vscode` — not by this role.
@@ -21,13 +26,19 @@ The **Continue editor extension** (`Continue.continue`) is installed by
 | **Undo** | `-e continue_ide_state=absent` |
 | **Change class** | Idempotent config |
 
-## Functional lanes (2026-09-01)
+## Functional lanes (2026-09-02)
 
 | Continue role | Display name | LiteLLM `model` | GPU |
 | --- | --- | --- | --- |
-| Chat | Chat Qwen2.5 Coder 14B | `qwen2.5-coder-14b@k3s02-vllm` | 5090 vLLM AWQ |
-| Edit / Apply | Edit Ministral 3 8B | `ministral-3-8b@desktop` | RX 9060 XT Ollama |
-| Autocomplete | Autocomplete 1.5B | `qwen2.5-coder-1.5b@hvh01` | GTX 1060 Ollama |
+| Chat | Chat Qwen2.5 Coder 32B | `qwen2.5-coder-32b@k3s02-vllm` | 5090 vLLM AWQ |
+| Edit / Apply | Edit Qwen2.5 Coder 7B | `qwen2.5-coder-7b@desktop` | RX 9060 XT Ollama |
+
+Autocomplete policy:
+
+- `continue_ide_autocomplete_enabled: false` by default
+- keep remote autocomplete lanes out of the rendered config
+- if a future local-only autocomplete lane is proven stable on the client Mac,
+  enable it explicitly and document the exact local model/runtime
 
 Set `defaultCompletionOptions.contextLength: 32768` and `maxTokens: 4096` on
 chat/edit lanes (Continue docs; aligns with vLLM `--max-model-len`).

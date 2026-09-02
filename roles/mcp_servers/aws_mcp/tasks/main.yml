@@ -1,0 +1,91 @@
+---
+- name: Capture requested AWS MCP target tags
+  ansible.builtin.set_fact:
+    _aws_mcp_requested_target_tags: >-
+      {{
+        (ansible_run_tags | default([]))
+        | intersect(['mcp_target_cursor', 'mcp_target_vscode', 'mcp_target_codex', 'mcp_target_openapi'])
+      }}
+  tags:
+    - mcp
+    - aws-mcp
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Validate configured AWS MCP targets
+  ansible.builtin.assert:
+    that:
+      - aws_mcp_state in ['present', 'absent']
+      - (aws_mcp_targets | difference(aws_mcp_supported_targets)) | length == 0
+    fail_msg: >-
+      aws_mcp configuration is invalid. Unsupported targets:
+      {{ aws_mcp_targets | difference(aws_mcp_supported_targets) | to_json }}
+  tags:
+    - mcp
+    - aws-mcp
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Determine active AWS MCP client targets
+  ansible.builtin.set_fact:
+    _aws_mcp_target_cursor_selected: >-
+      {{
+        ('mcp_target_cursor' in _aws_mcp_requested_target_tags)
+        or ((_aws_mcp_requested_target_tags | length) == 0 and ('cursor' in aws_mcp_targets))
+      }}
+    _aws_mcp_target_vscode_selected: >-
+      {{
+        ('mcp_target_vscode' in _aws_mcp_requested_target_tags)
+        or ((_aws_mcp_requested_target_tags | length) == 0 and ('vscode' in aws_mcp_targets))
+      }}
+    _aws_mcp_target_codex_selected: >-
+      {{
+        ('mcp_target_codex' in _aws_mcp_requested_target_tags)
+        or ((_aws_mcp_requested_target_tags | length) == 0 and ('codex' in aws_mcp_targets))
+      }}
+    _aws_mcp_target_openapi_selected: >-
+      {{
+        ('mcp_target_openapi' in _aws_mcp_requested_target_tags)
+        or ((_aws_mcp_requested_target_tags | length) == 0 and ('openapi' in aws_mcp_targets))
+      }}
+  tags:
+    - mcp
+    - aws-mcp
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Fail fast for the AWS MCP OpenAPI target stub
+  ansible.builtin.import_tasks: openapi_stub.yml
+  when: _aws_mcp_target_openapi_selected | bool
+  tags:
+    - mcp
+    - aws-mcp
+    - mcp_target_openapi
+
+- name: Ensure AWS MCP config is present
+  ansible.builtin.import_tasks: present.yml
+  when: aws_mcp_state == "present"
+  tags:
+    - mcp
+    - aws-mcp
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Ensure AWS MCP config is absent
+  ansible.builtin.import_tasks: absent.yml
+  when: aws_mcp_state == "absent"
+  tags:
+    - mcp
+    - aws-mcp
+    - mcp_target_cursor
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi

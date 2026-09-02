@@ -23,6 +23,7 @@ you explicitly add them back.
 | `playwright` | Browser-rendered pages, login flows, screenshots, and browser state | Node.js (npm) | launcher/browser | Cursor, Codex | [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp) |
 | `fetch` | Lightweight webpage fetching fallback | Node.js (npm) | launcher | Cursor, Codex | [zcaceres/fetch-mcp](https://github.com/zcaceres/fetch-mcp) |
 | `firebase` | Official Firebase MCP server via Firebase CLI | Node.js (`npx` launcher) | launcher | Cursor, VS Code, Codex | [Firebase MCP server](https://firebase.google.com/docs/ai-assistance/mcp-server) |
+| `aws_iac_mcp` | AWS Labs AWS IaC MCP server for AWS infrastructure guidance | Python (`uvx` launcher) | launcher | Cursor, VS Code, Codex, OpenAPI stub | [awslabs.aws-iac-mcp-server](https://github.com/awslabs/mcp) |
 
 ## MCP Research Collection Stack
 

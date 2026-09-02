@@ -1,0 +1,18 @@
+---
+- name: Ensure Homebrew uv is installed for AWS IaC MCP
+  community.general.homebrew:
+    name: "{{ aws_iac_mcp_homebrew_uv_formula }}"
+    state: present
+
+- name: Resolve Homebrew prefix for uv
+  ansible.builtin.command:
+    argv:
+      - brew
+      - --prefix
+      - "{{ aws_iac_mcp_homebrew_uv_formula }}"
+  register: aws_iac_mcp_uv_prefix
+  changed_when: false
+
+- name: Set AWS IaC MCP command path
+  ansible.builtin.set_fact:
+    aws_iac_mcp_command: "{{ aws_iac_mcp_uv_prefix.stdout | trim }}/bin/uvx"

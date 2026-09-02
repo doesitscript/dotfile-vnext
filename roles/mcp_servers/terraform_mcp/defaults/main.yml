@@ -1,0 +1,33 @@
+---
+terraform_mcp_state: present
+terraform_mcp_server_key: "terraform"
+terraform_mcp_repo_version: "v1.3.0"
+terraform_mcp_go_package: "github.com/hashicorp/terraform-mcp-server/cmd/terraform-mcp-server"
+terraform_mcp_project_root: "{{ dotfiles_home | default(playbook_dir | dirname | dirname) }}"
+terraform_mcp_targets:
+  - cursor
+terraform_mcp_supported_targets:
+  - cursor
+  - vscode
+  - codex
+  - openapi
+terraform_mcp_cursor_config_path: "{{ terraform_mcp_project_root }}/.cursor/mcp.json"
+terraform_mcp_vscode_config_path: "{{ terraform_mcp_project_root }}/.vscode/mcp.json"
+terraform_mcp_codex_config_path: "{{ terraform_mcp_project_root }}/.codex/config.toml"
+terraform_mcp_role_path: "roles/mcp_servers/terraform_mcp"
+terraform_mcp_bin_dir: "{{ dotfiles_user_home | default(ansible_env.HOME) }}/.local/bin"
+terraform_mcp_state_dir: "{{ dotfiles_user_home | default(ansible_env.HOME) }}/.local/lib/terraform-mcp-server"
+terraform_mcp_version_file: "{{ terraform_mcp_state_dir }}/version.txt"
+terraform_mcp_go_path: "{{ dotfiles_user_home | default(ansible_env.HOME) }}/go"
+terraform_mcp_homebrew_go_formula: "go"
+terraform_mcp_force_reinstall: false
+terraform_mcp_command: ""
+terraform_mcp_args:
+  - "stdio"
+terraform_mcp_env:
+  _MCP_ANSIBLE_ROLE_PATH: "{{ terraform_mcp_role_path }}"
+terraform_mcp_codex_entry:
+  command: "{{ terraform_mcp_bin_dir }}/terraform-mcp-server"
+  args: "{{ terraform_mcp_args }}"
+  env: "{{ terraform_mcp_env }}"
+  required: false

@@ -1,0 +1,29 @@
+---
+- name: Check whether mcp.json exists for {{ _aws_iac_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _aws_iac_target_config_path }}"
+  register: _aws_iac_target_mcp_json_remove_stat
+
+- name: Remove AWS IaC MCP entry from existing mcp.json for {{ _aws_iac_target_name }}
+  when: _aws_iac_target_mcp_json_remove_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _aws_iac_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _aws_iac_target_config_path }}"
+      register: _aws_iac_target_mcp_json_remove_raw
+
+    - name: Write mcp.json without AWS IaC MCP entry for {{ _aws_iac_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _aws_iac_target_config_path }}"
+        content: "{{ _aws_iac_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _aws_iac_target_existing: "{{ _aws_iac_target_mcp_json_remove_raw.content | b64decode | from_json }}"
+        _aws_iac_target_servers: >-
+          {{
+            (_aws_iac_target_existing.mcpServers | default({}))
+            | dict2items
+            | rejectattr('key', 'equalto', aws_iac_mcp_server_key)
+            | items2dict
+          }}
+        _aws_iac_target_merged: "{{ _aws_iac_target_existing | combine({'mcpServers': _aws_iac_target_servers}) }}"

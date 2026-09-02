@@ -1,17 +1,35 @@
-# Work Laptop AI Tools Export Packet
+# Work Laptop AI Tools Build Target
 
 This packet is intentionally isolated from the repo's normal shared playbooks
 and development-node automation. It exists to export a minimal, explicit,
 local-run Ansible slice for a work MacBook.
+
+Primary delivery model:
+
+- `dotfile-vnext` remains the source of truth
+- `../work-laptop-ai-tools` is the generated sibling build target repo
+- the zip archive is optional and secondary
+- the sibling repo is replaceable and should never become the design authority
 
 Current scope:
 
 - target-local execution on the exported work laptop only
 - guarded `ansible_connection: local`
 - Codex CLI install through `nvm` + npm
+- baseline `~/.codex/config.toml` creation for Codex CLI on the work laptop
 - Codex local profile/config export for the current homelab model lanes
 - `/private/etc/hosts` entries for current homelab names
-- VS Code install + `Continue.continue` extension + `~/.continue/config.yaml`
+- VS Code install + `Continue.continue`, `redhat.ansible`, `redhat.vscode-yaml`,
+  and `hashicorp.terraform`
+- VS Code `.vscode/mcp.json` entries for HashiCorp Terraform MCP and the
+  official AWS MCP Server plus AWS IaC MCP
+- `~/.continue/config.yaml` with the existing LiteLLM chat/edit lanes plus
+  Terraform MCP, AWS MCP, and AWS IaC MCP server entries
+- Zed install plus `~/.config/zed/settings.json` for Zed Agent model routing,
+  inline assistant, commit messages, thread summaries, and
+  Zed `context_servers` for Terraform MCP, AWS MCP, and AWS IaC MCP
+- local HashiCorp Terraform CLI and Terraform MCP server install
+- Homebrew `uv` install as needed for `awslabs.aws-iac-mcp-server@latest`
 - minimal shared bash startup scaffolding required by the Node/Codex path
 
 Safety posture:
@@ -21,6 +39,7 @@ Safety posture:
 - no participation in `playbooks/deploy_development_nodes.yaml`
 - explicit `work_laptop_export_mode=true` gate
 - explicit local hostname match gate
+- remote autocomplete and remote edit-prediction lanes stay disabled by default
 
 Primary files:
 
@@ -37,7 +56,7 @@ Primary files:
 - `roles/work_laptop_packet_receipt/tasks/main.yml`
 - `export-manifest.yml`
 
-Canonical run on the exported work laptop:
+Canonical run on the generated sibling repo checkout on the work laptop:
 
 Fresh-machine bootstrap:
 
@@ -88,28 +107,61 @@ Project skill helpers:
 
 ```bash
 bin/codex-env python \
-  skills/implementation/work-laptop-export-pack/scripts/build_export_archive.py \
-  --overwrite
+  skills/implementation/work-laptop-export-pack/scripts/sync_sibling_repo.py
 ```
 
 ```bash
 bin/codex-env python \
   skills/implementation/work-laptop-export-pack/scripts/roundtrip_smoke.py \
+  --packet-dir /Users/joshc/develop/work-laptop-ai-tools \
   --ansible-command "$PWD/bin/codex-env ansible-playbook"
 ```
 
-The round-trip helper is for packet-development proof only and now defaults to
-preview-only checks from the extracted packet: extracted bootstrap `--help`,
-extracted bootstrap `--dry-run --bootstrap-only`, extracted playbook
-`--syntax-check`, `--list-hosts`, and `--list-tasks`. Add `--apply` only when
-the extracted packet is running on the real work laptop and a mutating apply is
-intended. The normal path is to export the zip and run
-`ansible-playbook playbook.yaml -i inventory.yaml` on the work laptop itself.
+Default workflow stops there. Do not rebuild or validate the archive branch
+unless you explicitly want zip output or zip-based proof.
+
+Explicit opt-in archive helper:
+
+```bash
+bin/codex-env python \
+  skills/implementation/work-laptop-export-pack/scripts/build_export_archive.py \
+  --overwrite
+```
+
+The round-trip helper is for build-target proof only and supports both paths:
+
+- sibling repo proof with `--packet-dir <external checkout>`
+- zip proof only when `--archive-path <zip>` is supplied explicitly
+
+Preview mode runs bootstrap `--help`, bootstrap `--dry-run --bootstrap-only`,
+playbook `--syntax-check`, `--list-hosts`, and `--list-tasks`. Add `--apply`
+only when the external checkout or extracted packet is running on the real work
+laptop and a mutating apply is intended.
+
+Remote autocomplete policy:
+
+- Continue autocomplete is intentionally disabled in this packet
+- Zed edit predictions are intentionally disabled in this packet
+- do not point editor autocomplete-style features at remote LiteLLM, vLLM, or
+  remote Ollama infrastructure from this laptop
+- only revisit this with a deliberately local-only small model running on the
+  Mac itself after validation
 
 Secret and access boundaries:
 
 - `continue_ide` ships `REPLACE_WITH_LITELLM_KEY` by design; supply the real gateway key on the work laptop before relying on Continue.
+- `continue_ide` intentionally renders no autocomplete lane unless
+  `continue_ide_autocomplete_enabled=true` is set for a local-only future path.
+- `zed_ide` ships `REPLACE_WITH_LITELLM_KEY` in `~/.config/zed/openai.env`;
+  use `zed-homelab` or save the key in Zed's provider UI before relying on
+  Zed Agent model access.
+- `zed_ide` intentionally leaves `edit_predictions` disabled unless
+  `zed_ide_edit_predictions_enabled=true` is set for a local-only future path.
+- AWS MCP uses OAuth against the official managed AWS endpoint on first use; no
+  AWS secrets are exported in this packet.
 - `codex-homelab` fetches the LiteLLM gateway key from `hom-lab-ctl-k3s-02` at launch time, so the work laptop still needs the expected SSH access path.
+- AWS IaC MCP uses the local AWS CLI/profile context on the work laptop; no
+  AWS secrets are exported in this packet.
 
 Bootstrap behavior:
 
@@ -119,7 +171,21 @@ Bootstrap behavior:
 - packet Ansible lives at `.venv/bin/ansible-playbook` and the repo-style public entrypoint is `~/.local/bin/ansible-playbook`
 - existing Homebrew, packet `.venv`, packet collections, and packet tooling are left alone unless a `--force-*` flag is passed
 - a newly installed Homebrew gets its `shellenv` line appended once to the active login-shell profile
-- the packet carries a local contract file so the export skill can validate path and method drift before zipping
+- the packet carries a local contract file so the export skill can validate path and method drift before sibling-repo sync or zipping
+- the Terraform MCP role installs Homebrew `go` if needed, then publishes
+  `terraform-mcp-server` to `~/.local/bin`
+- the AWS IaC MCP role installs Homebrew `uv` if needed, then configures
+  `uvx awslabs.aws-iac-mcp-server@latest`
+
+Safeguards:
+
+- the target repo must live outside this repo
+- the sync helper requires a real git checkout by default
+- the playbook still fails closed unless `work_laptop_export_mode=true`,
+  `ansible_connection=local`, and the short hostname matches
+- the sibling repo is generated from the manifest include list only
+- the sync helper tracks managed files in `.build-target-sync-state.json` so
+  later refreshes can remove stale generated files without touching `.git/`
 
 Current target facts:
 

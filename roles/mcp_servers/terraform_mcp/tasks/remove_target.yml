@@ -1,0 +1,29 @@
+---
+- name: Check whether mcp.json exists for {{ _terraform_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _terraform_target_config_path }}"
+  register: _terraform_target_mcp_json_remove_stat
+
+- name: Remove Terraform MCP entry from existing mcp.json for {{ _terraform_target_name }}
+  when: _terraform_target_mcp_json_remove_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _terraform_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _terraform_target_config_path }}"
+      register: _terraform_target_mcp_json_remove_raw
+
+    - name: Write mcp.json without Terraform MCP entry for {{ _terraform_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _terraform_target_config_path }}"
+        content: "{{ _terraform_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _terraform_target_existing: "{{ _terraform_target_mcp_json_remove_raw.content | b64decode | from_json }}"
+        _terraform_target_servers: >-
+          {{
+            (_terraform_target_existing.mcpServers | default({}))
+            | dict2items
+            | rejectattr('key', 'equalto', terraform_mcp_server_key)
+            | items2dict
+          }}
+        _terraform_target_merged: "{{ _terraform_target_existing | combine({'mcpServers': _terraform_target_servers}) }}"

@@ -1,0 +1,40 @@
+---
+- name: Ensure target directory exists for {{ _aws_target_name }}
+  ansible.builtin.file:
+    path: "{{ _aws_target_config_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Check whether mcp.json exists for {{ _aws_target_name }}
+  ansible.builtin.stat:
+    path: "{{ _aws_target_config_path }}"
+  register: _aws_target_mcp_json_stat
+
+- name: Create mcp.json with AWS MCP entry for {{ _aws_target_name }}
+  ansible.builtin.copy:
+    dest: "{{ _aws_target_config_path }}"
+    mode: "0644"
+    content: "{{ {'mcpServers': {(aws_mcp_server_key): aws_mcp_client_entry}} | to_nice_json }}\n"
+  when: not _aws_target_mcp_json_stat.stat.exists
+
+- name: Merge AWS MCP entry into existing mcp.json for {{ _aws_target_name }}
+  when: _aws_target_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing mcp.json for {{ _aws_target_name }}
+      ansible.builtin.slurp:
+        src: "{{ _aws_target_config_path }}"
+      register: _aws_target_mcp_json_raw
+
+    - name: Write merged mcp.json for {{ _aws_target_name }}
+      ansible.builtin.copy:
+        dest: "{{ _aws_target_config_path }}"
+        content: "{{ _aws_target_merged | to_nice_json }}\n"
+        mode: "0644"
+      vars:
+        _aws_target_existing: "{{ _aws_target_mcp_json_raw.content | b64decode | from_json }}"
+        _aws_target_servers: >-
+          {{
+            (_aws_target_existing.mcpServers | default({}))
+            | combine({(aws_mcp_server_key): aws_mcp_client_entry})
+          }}
+        _aws_target_merged: "{{ _aws_target_existing | combine({'mcpServers': _aws_target_servers}) }}"

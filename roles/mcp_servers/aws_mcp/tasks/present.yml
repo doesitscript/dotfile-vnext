@@ -1,0 +1,22 @@
+---
+- name: Ensure AWS MCP entry exists in Cursor mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _aws_target_name: "cursor"
+    _aws_target_config_path: "{{ aws_mcp_cursor_config_path }}"
+  when: _aws_mcp_target_cursor_selected | bool
+
+- name: Ensure AWS MCP entry exists in VS Code mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _aws_target_name: "vscode"
+    _aws_target_config_path: "{{ aws_mcp_vscode_config_path }}"
+  when: _aws_mcp_target_vscode_selected | bool
+
+- name: Ensure AWS MCP entry exists in Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ aws_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ aws_mcp_server_key }}"
+    _mcp_codex_entry: "{{ aws_mcp_codex_entry }}"
+  when: _aws_mcp_target_codex_selected | bool

@@ -11,10 +11,12 @@ continue_ide_config_name: "Homelab Continue via LiteLLM"
 continue_ide_config_version: "1.0.0"
 continue_ide_config_schema: "v1"
 continue_ide_provider: "openai"
+continue_ide_mcp_servers: []
 # Shared completion caps — align with vLLM --max-model-len 32768 on 5090.
 continue_ide_default_context_length: 32768
 continue_ide_default_max_tokens: 4096
 continue_ide_autocomplete_debounce_delay: 250
+continue_ide_autocomplete_enabled: false
 # Commissioned lanes — model@host only; must exist on GET /v1/models.
 continue_ide_models:
   - name: "Chat Qwen2.5 Coder 32B (5090 vLLM)"
@@ -34,14 +36,6 @@ continue_ide_models:
       contextLength: 32768
       maxTokens: 4096
       temperature: 0.2
-  - name: "Autocomplete Qwen2.5 Coder 1.5B (hvh01)"
-    model: "qwen2.5-coder-1.5b@hvh01"
-    roles:
-      - autocomplete
-    use_legacy_completions_endpoint: true
-    autocomplete_options:
-      debounceDelay: 250
-      maxPromptTokens: 1024
-      onlyMyCode: true
 continue_ide_blocked_lanes:
   - "qwen2.5-coder-14b@k3s02-vllm (undersized for 5090 — use 32B AWQ + fp8 KV)"
+  - "Remote autocomplete lanes are disabled by default as of 2026-09-02; only re-enable with a deliberately local-only model on the client Mac after validation."

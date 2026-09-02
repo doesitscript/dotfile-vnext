@@ -13,6 +13,8 @@ Packet source of truth:
 
 Skill-owned helpers:
 
+- `skills/implementation/work-laptop-export-pack/scripts/packet_manifest.py`
+- `skills/implementation/work-laptop-export-pack/scripts/sync_sibling_repo.py`
 - `skills/implementation/work-laptop-export-pack/scripts/build_export_archive.py`
 - `skills/implementation/work-laptop-export-pack/scripts/validate_export_contract.py`
 - `skills/implementation/work-laptop-export-pack/scripts/roundtrip_smoke.py`
