@@ -4,35 +4,44 @@
 continue_ide_state: absent
 continue_ide_config_dir: "{{ ansible_env.HOME }}/.continue"
 continue_ide_config_path: "{{ continue_ide_config_dir }}/config.yaml"
-# Omit /v1: Continue probes GET {apiBase} and LiteLLM returns 404 on /v1
-# (OpenAI-compatible routes still work; LiteLLM also serves /chat/completions).
-# Clients that append /v1 themselves (Cursor OpenAI base) keep /v1 in their config.
+# Omit /v1: Continue probes GET {apiBase}; LiteLLM returns 404 on bare /v1.
 continue_ide_gateway_api_base: "http://litellm.hom.lab"
-# Prefer vault_k3s_litellm_gateway_master_key; empty leaves a placeholder for operator fill.
 continue_ide_api_key: ""
 continue_ide_config_name: "Homelab Continue via LiteLLM"
 continue_ide_config_version: "1.0.0"
 continue_ide_config_schema: "v1"
-# Provider shared by all commissioned Continue model entries.
 continue_ide_provider: "openai"
-# Commissioned lanes only — every model id MUST exist on GET /v1/models.
+# Shared completion caps — align with vLLM --max-model-len 32768 on 5090.
+continue_ide_default_context_length: 32768
+continue_ide_default_max_tokens: 4096
+continue_ide_autocomplete_debounce_delay: 250
+# Commissioned lanes — model@host only; must exist on GET /v1/models.
 continue_ide_models:
-  - name: "Chat Ornith (local vLLM)"
-    model: "qwen2.5-coder-32b@k3s02-vllm~coder-primary"
+  - name: "Chat Qwen2.5 Coder 32B (5090 vLLM)"
+    model: "qwen2.5-coder-32b@k3s02-vllm"
     roles:
       - chat
-  - name: "Autocomplete Qwen2.5-Coder 1.5B"
-    model: "qwen2.5-coder-1.5b@hvh01~continue-autocomplete"
-    roles:
-      - autocomplete
-  - name: "Edit Qwen3-Coder 30B (desktop Ollama)"
-    model: "qwen3-coder-30b@desktop~continue-edit"
+    default_completion_options:
+      contextLength: 32768
+      maxTokens: 4096
+      temperature: 0.3
+  - name: "Edit Qwen2.5 Coder 7B (desktop Ollama)"
+    model: "qwen2.5-coder-7b@desktop"
     roles:
       - edit
       - apply
-# Documented blockers (comments in rendered config; not installed).
+    default_completion_options:
+      contextLength: 32768
+      maxTokens: 4096
+      temperature: 0.2
+  - name: "Autocomplete Qwen2.5 Coder 1.5B (hvh01)"
+    model: "qwen2.5-coder-1.5b@hvh01"
+    roles:
+      - autocomplete
+    use_legacy_completions_endpoint: true
+    autocomplete_options:
+      debounceDelay: 250
+      maxPromptTokens: 1024
+      onlyMyCode: true
 continue_ide_blocked_lanes:
-  - "qwen2.5-coder-7b@k3s02-vllm~continue-autocomplete-7b (GTX 1060 cannot host 7B usefully)"
-  - "qwen3-coder-30b (no local serve commissioned)"
-  - "diffucoder / continue-edit DiffuCoder (needs OpenAI wrapper; diffusion_generate only)"
-  - "diffusiongemma-nextedit (needs vLLM commission of FP8 weights)"
+  - "qwen2.5-coder-14b@k3s02-vllm (undersized for 5090 — use 32B AWQ + fp8 KV)"

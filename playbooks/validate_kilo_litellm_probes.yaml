@@ -1,0 +1,112 @@
+---
+# Agent-style LiteLLM probes for Kilo Code lanes (read-only).
+#
+# Apply:
+#   ansible-playbook playbooks/validate_kilo_litellm_probes.yaml -i inventory/inventory.yaml
+
+- name: Validate Kilo LiteLLM agent probes
+  hosts: mac-dev
+  gather_facts: false
+  vars_files:
+    - "{{ playbook_dir }}/../roles/k3s_litellm_gateway/defaults/main/model_client_ids.yml"
+  vars:
+    _litellm_key: "{{ lookup('env', 'LITELLM_API_KEY') | default('sk-Pass@w0rd1', true) }}"
+    _probe_tools:
+      - type: function
+        function:
+          name: glob
+          description: Find files by glob pattern
+          parameters:
+            type: object
+            properties:
+              pattern:
+                type: string
+            required:
+              - pattern
+  tasks:
+    - name: Probe code-agent model returns tool_calls (ministral desktop)
+      ansible.builtin.uri:
+        url: http://litellm.hom.lab/v1/chat/completions
+        method: POST
+        headers:
+          Authorization: "Bearer {{ _litellm_key }}"
+        body_format: json
+        body:
+          model: "{{ k3s_litellm_gateway_client_model_id_kilo_fast }}"
+          messages:
+            - role: user
+              content: "Use glob to find README.md under /Users/joshc/develop/global-skills"
+          tools: "{{ _probe_tools }}"
+          tool_choice: auto
+          max_tokens: 256
+        status_code: 200
+        return_content: true
+      register: _kilo_fast_probe
+
+    - name: Assert ministral lane exposes tool_calls
+      ansible.builtin.assert:
+        that:
+          - _kilo_fast_probe.json.choices[0].finish_reason == 'tool_calls'
+          - _kilo_fast_probe.json.choices[0].message.tool_calls is defined
+          - _kilo_fast_probe.json.choices[0].message.tool_calls | length > 0
+        fail_msg: >-
+          {{ k3s_litellm_gateway_client_model_id_kilo_fast }} must return tool_calls for Kilo code agent.
+
+    - name: Probe 5090 vLLM lane chat smoke
+      ansible.builtin.uri:
+        url: http://litellm.hom.lab/v1/chat/completions
+        method: POST
+        headers:
+          Authorization: "Bearer {{ _litellm_key }}"
+        body_format: json
+        body:
+          model: "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
+          messages:
+            - role: user
+              content: Reply with exactly OK
+          max_tokens: 8
+        status_code: 200
+        return_content: true
+      register: _kilo_vllm_probe
+
+    - name: Assert 5090 vLLM lane responds
+      ansible.builtin.assert:
+        that:
+          - _kilo_vllm_probe.json.choices[0].message.content | trim == 'OK'
+        fail_msg: "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }} chat probe failed."
+
+    - name: Probe 5090 vLLM lane does not return tool_calls (known limitation)
+      ansible.builtin.uri:
+        url: http://litellm.hom.lab/v1/chat/completions
+        method: POST
+        headers:
+          Authorization: "Bearer {{ _litellm_key }}"
+        body_format: json
+        body:
+          model: "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
+          messages:
+            - role: user
+              content: glob *.md
+          tools: "{{ _probe_tools }}"
+          tool_choice: auto
+          max_tokens: 128
+        status_code: 200
+        return_content: true
+      register: _kilo_vllm_tool_probe
+
+    - name: Assert 14B vLLM is not used for Kilo code agent tools
+      ansible.builtin.assert:
+        that:
+          - _kilo_vllm_tool_probe.json.choices[0].message.tool_calls is not defined or _kilo_vllm_tool_probe.json.choices[0].message.tool_calls is none
+        fail_msg: >-
+          Unexpected tool_calls on {{ k3s_litellm_gateway_client_model_id_kilo_vllm }} —
+          re-evaluate Kilo code agent routing.
+
+    - name: Summarize Kilo LiteLLM probes
+      ansible.builtin.debug:
+        msg:
+          code_agent_model: "{{ k3s_litellm_gateway_client_model_id_kilo_fast }}"
+          vllm_ask_plan_model: "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
+          autocomplete_model: "{{ k3s_litellm_gateway_client_model_id_kilo_autocomplete }}"
+          ministral_tool_call: "{{ _kilo_fast_probe.json.choices[0].message.tool_calls[0].function.name }}"
+          vllm_chat: "{{ _kilo_vllm_probe.json.choices[0].message.content | trim }}"

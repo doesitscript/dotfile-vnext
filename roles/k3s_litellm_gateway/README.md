@@ -38,6 +38,21 @@ above. Short catalog lanes: `code-fast`, `continue-autocomplete`, `diffusiongemm
 `kilo-fast` (desktop Ollama fallback when the
 matching `k3s_litellm_gateway_*_chat_api_base` is set).
 
+### Kilo lanes — operator notes (2026-09-01)
+
+| Client ID | Backend | Kilo code agent |
+| --- | --- | --- |
+| `qwen2.5-coder-32b@k3s02-vllm~kilo-main` | 5090 vLLM 32B AWQ | **Primary** when 32B restored |
+| `qwen2.5-coder-14b@k3s02-vllm~kilo-lite` | 5090 vLLM 14B AWQ (testing) | **Smoke/chat only** — tool_calls broken (hermes vs `<tools>` format) |
+| `ministral-3-8b@desktop~kilo-fast` | Desktop Ollama | **Interim fallback** — API tool_calls OK |
+| `qwen2.5-coder-1.5b@hvh01~kilo-autocomplete` | HVH-01 Ollama | Autocomplete lane |
+
+Do not invest in fixing 14B tool parsing. Restore 32B or upgrade to Qwen3-Coder /
+Qwen 3.6 27B on vLLM. See HRL investigation note and
+`docs/brainstorming_designs/2026-09-01--homelab-routing-layer-flint-openwrt/re-evaluate-models-and_distribution.partially-implemented.md`.
+
+Operator `kilo.jsonc` must set `limit` and `tool_call` per model — not managed by Ansible.
+
 ## Client model ID syntax
 
 LiteLLM `model_list[].model_name` values use structured client IDs defined in

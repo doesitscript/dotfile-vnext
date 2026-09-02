@@ -10,24 +10,13 @@
     - "{{ playbook_dir }}/../roles/k3s_vllm_runtime/defaults/main.yml"
   vars:
     _required_lane_contract_names:
-      - deepreinforce-ai/Ornith-1.0-35B-GGUF
-      - code-fast
-      - code-review
-      - code-test
-      - ripi-private
-      - embeddings-local
-      - public-research
-      - experiment
-      - smart-router
+      - qwen2.5-coder-32b@k3s02-vllm
+      - qwen2.5-coder-1.5b@hvh01
+      - ministral-3-8b@desktop
     _required_enabled_gateway_routes:
-      - "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
-      - "{{ k3s_litellm_gateway_client_model_id_kilo_main }}"
-      - "{{ k3s_litellm_gateway_client_model_id_experiment }}"
-      - "{{ k3s_litellm_gateway_client_model_id_code_review }}"
-    _required_migration_gateway_routes:
-      - "{{ k3s_litellm_gateway_client_model_id_gpt4o_mini }}"
-      - "{{ k3s_litellm_gateway_client_model_id_gpt4o }}"
-      - "{{ k3s_litellm_gateway_client_model_id_default }}"
+      - "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
+      - "{{ k3s_litellm_gateway_client_model_id_kilo_autocomplete }}"
+      - "{{ k3s_litellm_gateway_client_model_id_kilo_fast }}"
   tasks:
     - name: Collect gateway and lane contract names
       ansible.builtin.set_fact:
@@ -36,130 +25,36 @@
         _lane_contract_names: "{{ k3s_litellm_gateway_lane_contract | map(attribute='lane') | list }}"
       changed_when: false
 
-    - name: Validate full lane vocabulary remains visible
+    - name: Validate Kilo lane vocabulary
       ansible.builtin.assert:
         that:
           - item in _lane_contract_names
         fail_msg: "Missing LiteLLM lane contract entry: {{ item }}"
       loop: "{{ _required_lane_contract_names }}"
 
-    - name: Validate explicitly enabled local gateway routes exist
+    - name: Validate complexity smart-router is disabled
       ansible.builtin.assert:
         that:
-          - item in _gateway_route_names
-        fail_msg: "Missing enabled LiteLLM gateway route: {{ item }}"
-      loop: "{{ _required_enabled_gateway_routes }}"
+          - not (k3s_litellm_gateway_complexity_router_enabled | bool)
+        fail_msg: "MODEL GROUP smart-router must stay disabled in Kilo clean setup."
 
-    - name: Validate migration rows are preserved in the main gateway list
+    - name: Validate Kilo 14B testing override when active
       ansible.builtin.assert:
         that:
-          - item in _gateway_route_names
-        fail_msg: "Missing preserved migration gateway route: {{ item }}"
-      loop: "{{ _required_migration_gateway_routes }}"
-
-    - name: Validate local-only fallback list still exposes useful lanes
-      ansible.builtin.assert:
-        that:
-          - k3s_litellm_gateway_client_model_id_coder_primary in _gateway_no_openai_route_names
-          - k3s_litellm_gateway_client_model_id_experiment in _gateway_no_openai_route_names
-          - k3s_litellm_gateway_client_model_id_code_review in _gateway_no_openai_route_names
-          - k3s_litellm_gateway_client_model_id_default in _gateway_no_openai_route_names
+          - hostvars['hom-lab-ctl-k3s-02'].k3s_vllm_runtime_model is search('14B')
+          - hostvars['hom-lab-ctl-k3s-02'].k3s_litellm_gateway_kilo_lite_vllm_api_base | default('') | length > 0
         fail_msg: >-
-          LiteLLM local-only fallback must still expose coder-primary, experiment,
-          code-review, and default client model IDs.
+          k3s_vllm_runtime_kilo_testing_active requires 14B vLLM + kilo_lite api_base on k3s-02.
+      when: hostvars['hom-lab-ctl-k3s-02'].k3s_vllm_runtime_kilo_testing_active | default(false) | bool
 
-    - name: Validate every main gateway route carries required model metadata
-      ansible.builtin.assert:
-        that:
-          - item.model_info is defined
-          - item.model_info.model_lane is defined
-          - item.model_info.routing_policy is defined
-          - item.model_info.project is defined
-          - item.model_info.source_registry is defined
-          - item.model_info.model_catalog_manifest is defined
-        fail_msg: "Gateway route {{ item.model_name }} is missing required model_info metadata."
-      loop: "{{ k3s_litellm_gateway_model_list }}"
-      loop_control:
-        label: "{{ item.model_name }}"
-
-    - name: Resolve primary Ornith gateway row
-      ansible.builtin.set_fact:
-        _code_deep_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', k3s_litellm_gateway_client_model_id_coder_primary) | list | first) }}"
-        _kilo_main_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', k3s_litellm_gateway_client_model_id_kilo_main) | list | first) }}"
-        _experiment_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', k3s_litellm_gateway_client_model_id_experiment) | list | first) }}"
-        _code_review_route: "{{ (k3s_litellm_gateway_model_list | selectattr('model_name', 'equalto', k3s_litellm_gateway_client_model_id_code_review) | list | first) }}"
-      changed_when: false
-
-    - name: Validate Kilo main lane points at 5090 vLLM primary
-      ansible.builtin.assert:
-        that:
-          - _kilo_main_route.litellm_params.api_base == k3s_litellm_gateway_primary_vllm_api_base
-          - _kilo_main_route.litellm_params.model == 'hosted_vllm/' ~ k3s_litellm_gateway_primary_vllm_model
-          - _kilo_main_route.model_info.routing_policy == 'local-kilo-primary'
-        fail_msg: "Kilo main must route to vLLM primary on 5090, not desktop Ollama."
-
-    - name: Validate local coding lane points at the declared primary vLLM backend
-      ansible.builtin.assert:
-        that:
-          - _code_deep_route.litellm_params.api_base == k3s_litellm_gateway_primary_vllm_api_base
-          - _code_deep_route.litellm_params.model == 'hosted_vllm/' ~ k3s_litellm_gateway_primary_vllm_model
-          - _code_deep_route.model_info.routing_policy == 'local-primary'
-          - _experiment_route.litellm_params.api_base == k3s_litellm_gateway_primary_vllm_api_base
-          - _code_review_route.litellm_params.api_base == k3s_litellm_gateway_secondary_review_api_base
-          - _code_review_route.litellm_params.model == 'hosted_vllm/' ~ k3s_litellm_gateway_secondary_review_model
-          - _code_review_route.model_info.routing_policy == 'local-review-alias'
-          - _code_review_route.model_info.backend_runtime == k3s_litellm_gateway_secondary_review_runtime_slug
-          - k3s_litellm_gateway_secondary_review_runtime_slug == 'vllm-primary'
-        fail_msg: "Local LiteLLM lanes are not aligned to the declared primary vLLM backend."
-
-    - name: Validate vLLM defaults match the declared primary local model
-      ansible.builtin.assert:
-        that:
-          - k3s_vllm_runtime_model == k3s_litellm_gateway_primary_vllm_model
-          - k3s_vllm_runtime_served_model_name == k3s_litellm_gateway_primary_vllm_model
-          - k3s_litellm_gateway_primary_vllm_api_base is search('vllm-runtime\\.svc\\.cluster\\.local')
-          - k3s_litellm_gateway_primary_vllm_api_base is not search('[Ll][Oo][Cc][Aa][Ll][Hh][Oo][Ss][Tt]|127\\.0\\.0\\.1')
-        fail_msg: "vLLM runtime defaults are not aligned with the primary LiteLLM local-lane contract."
-      when: not (hostvars['hom-lab-ctl-k3s-02'].k3s_vllm_runtime_kilo_testing_active | default(false) | bool)
-
-    - name: Validate tool-calling support is enabled for the primary vLLM lane
-      ansible.builtin.assert:
-        that:
-          - hostvars['hom-lab-ctl-k3s-02'].k3s_vllm_runtime_enable_auto_tool_choice | default(false) | bool
-          - hostvars['hom-lab-ctl-k3s-02'].k3s_vllm_runtime_tool_call_parser | default('') == 'hermes'
-        fail_msg: "Primary vLLM lane must enable auto tool choice with the hermes parser for Qwen2.5-backed Cursor tool calls."
-
-    - name: Validate local-only context-window fallbacks do not pretend same-vLLM aliases help
-      ansible.builtin.assert:
-        that:
-          - k3s_litellm_gateway_enable_pre_call_checks | bool
-          - k3s_litellm_gateway_context_window_fallbacks_without_openai | length == 0
-        fail_msg: >-
-          Without OpenAI/Anthropic, local context-overflow fallbacks must stay empty —
-          code-review shares vllm-primary with Ornith and cannot enlarge context.
-
-    - name: Validate complexity smart-router contract is declared
-      ansible.builtin.assert:
-        that:
-          - k3s_litellm_gateway_complexity_router_enabled | bool
-          - k3s_litellm_gateway_complexity_router_model_name == k3s_litellm_gateway_client_model_id_smart_router
-          - k3s_litellm_gateway_complexity_tiers_local.SIMPLE == k3s_litellm_gateway_client_model_id_code_review
-          - k3s_litellm_gateway_complexity_tiers_local.MEDIUM == k3s_litellm_gateway_client_model_id_coder_primary
-          - k3s_litellm_gateway_complexity_tiers_with_anthropic.COMPLEX == k3s_litellm_gateway_client_model_id_claude_sonnet
-          - k3s_litellm_gateway_complexity_tiers_with_openai.COMPLEX == k3s_litellm_gateway_client_model_id_gpt4o
-          - "'smart-router' in _lane_contract_names"
-        fail_msg: "Complexity smart-router contract is missing or not local-first."
-
-    - name: Summarize validated inference stack contract
+    - name: Summarize validated Kilo inference contract
       ansible.builtin.debug:
         msg:
-          enabled_gateway_routes: "{{ _gateway_route_names }}"
-          local_only_gateway_routes: "{{ _gateway_no_openai_route_names }}"
           lane_contract_names: "{{ _lane_contract_names }}"
-          primary_vllm_model: "{{ k3s_vllm_runtime_model }}"
-          primary_vllm_tool_call_parser: "{{ hostvars['hom-lab-ctl-k3s-02'].k3s_vllm_runtime_tool_call_parser | default('') }}"
-          primary_context_window_fallbacks_with_openai: "{{ k3s_litellm_gateway_context_window_fallbacks_with_openai }}"
-          primary_context_window_fallbacks_without_openai: "{{ k3s_litellm_gateway_context_window_fallbacks_without_openai }}"
-          secondary_review_runtime: "{{ k3s_litellm_gateway_secondary_review_runtime_slug }}"
-          secondary_review_api_base: "{{ k3s_litellm_gateway_secondary_review_api_base }}"
+          static_gateway_routes: "{{ _gateway_route_names }}"
+          kilo_client_ids:
+            vllm: "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
+            autocomplete: "{{ k3s_litellm_gateway_client_model_id_kilo_autocomplete }}"
+            fast: "{{ k3s_litellm_gateway_client_model_id_kilo_fast }}"
+          primary_vllm_model: "{{ k3s_litellm_gateway_primary_vllm_model }}"
           gateway_url: "{{ ai_agent_client_profiles.gateway.openai_base_url }}"

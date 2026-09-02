@@ -1,0 +1,26 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "{{ opencode_cli_default_model }}",
+  "provider": {
+    "{{ opencode_cli_provider_id }}": {
+      "npm": "{{ opencode_cli_provider_npm }}",
+      "name": "{{ opencode_cli_provider_display_name }}",
+      "options": {
+        "baseURL": "{{ opencode_cli_gateway_api_base }}",
+        "apiKey": "{env:{{ opencode_cli_api_key_env }}}"
+      },
+      "models": {
+{% for m in opencode_cli_models %}
+        "{{ m.id }}": {
+          "name": {{ m.name | to_json }},
+          "limit": {
+            "context": {{ opencode_cli_context_limit }},
+            "output": {{ opencode_cli_output_limit }}
+          }
+        }{% if not loop.last %},{% endif %}
+
+{% endfor %}
+      }
+    }
+  }
+}

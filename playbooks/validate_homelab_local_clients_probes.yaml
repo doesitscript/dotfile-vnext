@@ -1,0 +1,30 @@
+---
+# Extension-faithful CLI probes for Continue + OpenCode via homelab LiteLLM.
+#
+# Simulates Continue chat/edit/apply/autocomplete (FIM + stream + context budget)
+# and OpenCode non-interactive runs per model lane.
+#
+#   ansible-playbook playbooks/validate_homelab_local_clients_probes.yaml -i inventory/inventory.yaml
+
+- name: Validate homelab local client extension CLI probes
+  hosts: mac-dev
+  gather_facts: false
+  vars:
+    _probe_script: "{{ playbook_dir }}/../scripts/validate_continue_extension_cli_probes.py"
+    _litellm_key: "{{ lookup('env', 'LITELLM_API_KEY') | default('sk-Pass@w0rd1', true) }}"
+  environment:
+    LITELLM_API_KEY: "{{ _litellm_key }}"
+    LITELLM_GATEWAY_ROOT: "http://litellm.hom.lab"
+  tasks:
+    - name: Run Continue/OpenCode extension CLI probe script
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ _probe_script }}"
+      register: _extension_cli_probes
+      changed_when: false
+      failed_when: _extension_cli_probes.rc != 0
+
+    - name: Show probe JSON summary
+      ansible.builtin.debug:
+        msg: "{{ _extension_cli_probes.stdout | from_json }}"

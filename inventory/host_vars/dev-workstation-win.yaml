@@ -38,52 +38,16 @@ windows_ollama_runtime_state: present
 windows_ollama_runtime_bind_host: "0.0.0.0"
 windows_ollama_runtime_port: 11434
 windows_ollama_runtime_models_path: 'E:\ai\models\ollama'
-windows_ollama_runtime_default_model: "devstral:24b"
+windows_ollama_runtime_default_model: "ministral-3:8b"
 windows_ollama_runtime_fallback_model: "ministral-3:8b"
 # Background + parallel: large pulls do not block Ansible; worker can fan out missing tags.
 windows_ollama_runtime_model_pull_mode: background
 windows_ollama_runtime_models_present:
-  # Open WebUI / optional local coder (NOT Kilo primary — too slow vs 5090 vLLM).
-  - "devstral:24b"
-  # Kilo fallback + light turns when 5090 path is down.
   - "ministral-3:8b"
-  # Continue edit + heavy code (outside Kilo 24b ceiling but commissioned).
-  - "qwen3-coder:30b"
-  # Plain chat / vision (thinking disabled at LiteLLM with think:false).
-  - "gemma4:12b"
-  # Architect / HRL documentation synthesis (agentic; use fresh chats).
-  - "qwen3.6:27b"
-  # General open-weights chat (commissioned; verify output before relying on it).
-  - "gpt-oss:20b"
-windows_ollama_runtime_model_aliases:
-  - lane: continue-edit
-    runtime_slug: ollama-edit-qwen3-coder-30b-desktop
-    model: "qwen3-coder:30b"
-    fallback_model: "qwen3-coder:30b"
-  - lane: open-webui-gemma4
-    runtime_slug: ollama-gemma4-12b-desktop
-    model: "gemma4:12b"
-    fallback_model: "gemma4:12b"
-  - lane: open-webui-qwen36
-    runtime_slug: ollama-qwen36-27b-desktop
-    model: "qwen3.6:27b"
-    fallback_model: "qwen3.6:27b"
-  - lane: open-webui-gpt-oss
-    runtime_slug: ollama-gpt-oss-20b-desktop
-    model: "gpt-oss:20b"
-    fallback_model: "gpt-oss:20b"
-  - lane: open-webui-positive-negative-prompt-assist
-    runtime_slug: ollama-positive-negative-prompt-assist-gemma4-desktop
-    model: "gemma4:12b"
-    fallback_model: "gemma4:12b"
-  - lane: open-webui-devstral
-    runtime_slug: ollama-devstral-24b-desktop
-    model: "devstral:24b"
-    fallback_model: "devstral:24b"
-  - lane: kilo-fallback-ministral
-    runtime_slug: ollama-ministral-8b-desktop
-    model: "ministral-3:8b"
-    fallback_model: "ministral-3:8b"
+  - "qwen2.5-coder:7b"
+# RETIRED (Kilo clean setup) — removed from disk via deploy_kilo_code_ollama_models.yaml:
+#   devstral:24b, qwen3-coder:30b, gemma4:12b, qwen3.6:27b, gpt-oss:20b
+windows_ollama_runtime_model_aliases: []
 
 # Publish interim *.hom.lab names on this Windows desktop too.
 homelab_hosts_file_windows_enabled: true

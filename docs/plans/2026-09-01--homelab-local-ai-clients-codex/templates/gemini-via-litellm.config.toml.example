@@ -1,0 +1,18 @@
+# Concurrent editing note: Codex owns this example; Cursor should not rewrite it.
+# Do not install until a credential-backed Gemini LiteLLM route is published and tested.
+# Codex custom providers require the Responses API; Google direct OpenAI compatibility is Chat Completions only.
+
+model = "REPLACE_WITH_PUBLISHED_GEMINI_ROUTE"
+model_provider = "homelab-litellm"
+model_reasoning_effort = "low"
+model_context_window = 96000
+model_auto_compact_token_limit = 80000
+
+[model_providers.homelab-litellm]
+name = "Homelab LiteLLM"
+base_url = "http://litellm.hom.lab/v1"
+env_key = "LITELLM_API_KEY"
+wire_api = "responses"
+request_max_retries = 1
+stream_max_retries = 1
+stream_idle_timeout_ms = 120000

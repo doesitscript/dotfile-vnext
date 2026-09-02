@@ -54,35 +54,23 @@ k3s_readiness_stub_expected_runtime: present
 k3s_vllm_runtime_cpu_request: "1200m"
 k3s_vllm_runtime_memory_request: 2Gi
 k3s_vllm_runtime_memory_limit: 8Gi
-k3s_vllm_runtime_enable_auto_tool_choice: true
-k3s_vllm_runtime_tool_call_parser: hermes
-# ---------------------------------------------------------------------------
-# Kilo testing — 14B AWQ on vLLM primary (swap from 32B; not concurrent).
-# Kilo dropdown: qwen2.5-coder-14b@k3s02-vllm~kilo-lite
-# Revert: comment/remove this block; restore role defaults (32B AWQ); redeploy
-#   playbooks/deploy_vllm_runtime.yaml + deploy_litellm_gateway.yaml
-# Role defaults + kilo-main route still target Qwen2.5-Coder-32B-Instruct-AWQ.
-# ---------------------------------------------------------------------------
-k3s_vllm_runtime_model: Qwen/Qwen2.5-Coder-14B-Instruct-AWQ
-k3s_vllm_runtime_served_model_name: Qwen/Qwen2.5-Coder-14B-Instruct-AWQ
-k3s_vllm_runtime_kilo_testing_active: true
-k3s_litellm_gateway_kilo_lite_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1"
-# --- vLLM memory policy (operator + agent) ---
-# KV-cache pressure is GPU VRAM, not guest system RAM.
-# Allowed lever: --gpu-memory-utilization (raise within measured free VRAM).
-# Do not trim model context length unless the operator explicitly requests it.
-# Preferred recovery order:
-#   1. raise --gpu-memory-utilization within free VRAM (probe evidence first)
-#   2. reduce competing GPU consumers (ComfyUI time-share, etc.)
-# Default util 0.90 left ~80MiB short of full native context on this GPU-P slice.
-# 0.95 overshoots free VRAM (~30.2/31.84 GiB free). 0.93 fits with full context.
-# Kilo Code agent baseline is ~14k input tokens before user text; 16k max-model-len
-# cannot fit code-agent + output. 32k fits 14B AWQ on 5090 with headroom.
+k3s_vllm_runtime_enable_auto_tool_choice: false
+k3s_vllm_runtime_tool_call_parser: ""
+# 5090 vLLM — Qwen2.5-Coder-32B AWQ @ 32k context.
+# Memory tuning (vLLM docs): fp8 KV cache shrinks KV pool ~50% without lowering
+# --max-model-len; gpu-memory-utilization sets KV budget from free VRAM after weights.
+# Prior 32B deploy failed during K3s apiserver restart — not confirmed OOM.
+k3s_vllm_runtime_model: Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
+k3s_vllm_runtime_served_model_name: Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
 k3s_vllm_runtime_extra_args:
   - --gpu-memory-utilization
-  - "0.90"
+  - "0.92"
   - --max-model-len
   - "32768"
+  - --kv-cache-dtype
+  - "fp8"
+  - --max-num-seqs
+  - "4"
 k3s_langfuse_platform_web_cpu_request: "150m"
 k3s_langfuse_platform_web_memory_request: "512Mi"
 k3s_langfuse_platform_worker_cpu_request: "100m"
@@ -137,7 +125,7 @@ ai_service_profile:
         - observability
         - deploy-target
     - service_key: vllm_primary_runtime
-      description: Primary local vLLM backing runtime used by the LiteLLM deepreinforce-ai/Ornith-1.0-35B-GGUF lane.
+      description: Primary local vLLM for qwen2.5-coder-32b@k3s02-vllm (Continue chat).
       deployed_by_role: k3s_vllm_runtime
       target_selector: "container_orchestrator_k3s:&gpu_workload_nodes"
       tags:
@@ -145,29 +133,37 @@ ai_service_profile:
         - runtime
         - primary
 
-# Continue autocomplete 1.5B → HVH-01 Ollama OpenAI-compatible API (GTX 1060).
-# LiteLLM stays the gateway; Ollama/llama.cpp is only the GPU engine on Pascal.
-# Names resolve inside pods via k3s_coredns_homelab_hosts (catalog → CoreDNS).
+# Continue edit (desktop Ollama qwen2.5-coder:7b).
+k3s_litellm_gateway_primary_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1"
+k3s_litellm_gateway_primary_vllm_model: "Qwen/Qwen2.5-Coder-32B-Instruct-AWQ"
+k3s_litellm_gateway_continue_edit_api_base: "http://ollama-desktop.hom.lab:11434/v1"
+k3s_litellm_gateway_continue_edit_model: "qwen2.5-coder:7b"
+k3s_litellm_gateway_continue_edit_provider: "openai"
+
+# Kilo autocomplete (HVH-01 Ollama).
 k3s_litellm_gateway_autocomplete_1_5b_api_base: "http://ollama-hvh01.hom.lab:11434/v1"
 k3s_litellm_gateway_autocomplete_1_5b_model: "qwen2.5-coder:1.5b"
 k3s_litellm_gateway_autocomplete_1_5b_provider: "openai"
 
-# Continue edit → desktop AMD Ollama (qwen3-coder:30b / Vulkan).
-k3s_litellm_gateway_continue_edit_api_base: "http://ollama-desktop.hom.lab:11434/v1"
-k3s_litellm_gateway_continue_edit_model: "qwen3-coder:30b"
-k3s_litellm_gateway_continue_edit_provider: "openai"
+# RETIRED (Kilo clean setup) — Continue / Open WebUI / non-Kilo desktop models:
+# k3s_litellm_gateway_continue_edit_api_base: "http://ollama-desktop.hom.lab:11434/v1"
+# k3s_litellm_gateway_continue_apply_api_base: "http://ollama-hvh01.hom.lab:11434/v1"
+# k3s_litellm_gateway_gemma4_chat_api_base: "http://ollama-desktop.hom.lab:11434"
+# k3s_litellm_gateway_qwen36_chat_api_base: "http://ollama-desktop.hom.lab:11434"
+# k3s_litellm_gateway_gpt_oss_chat_api_base: "http://ollama-desktop.hom.lab:11434"
+# k3s_litellm_gateway_devstral_chat_api_base: "http://ollama-desktop.hom.lab:11434"
 
-# Continue apply → HVH-01 Ollama Phi-4 Mini (co-resident with autocomplete).
-k3s_litellm_gateway_continue_apply_api_base: "http://ollama-hvh01.hom.lab:11434/v1"
-k3s_litellm_gateway_continue_apply_model: "phi4-mini"
-k3s_litellm_gateway_continue_apply_provider: "openai"
+# Kilo fallback (desktop Ollama).
+k3s_litellm_gateway_kilo_fast_chat_api_base: "http://ollama-desktop.hom.lab:11434"
+k3s_litellm_gateway_kilo_fast_chat_model: "ministral-3:8b"
+k3s_litellm_gateway_kilo_fast_chat_provider: "ollama"
 
 # ---------------------------------------------------------------------------
 # GPU time-share on this host (single nvidia.com/gpu) — Phase B on vs off
 # Doc: docs/reference/k3s-02-gpu-timeshare-phase-b.md
 #
 # Exactly one of vLLM / ComfyUI / Ollama should be present on the GPU.
-# LiteLLM gateway stays up either way; only the Ornith (vLLM) backend moves.
+# LiteLLM gateway stays up either way; only the vLLM primary backend moves.
 #
 # --- Phase B OFF (default steady-state: Ornith for LiteLLM) ---
 #   k3s_vllm_runtime_state: present
@@ -195,32 +191,12 @@ k3s_comfyui_runtime_state: absent
 k3s_comfyui_runtime_memory_request: 4Gi
 k3s_comfyui_runtime_memory_limit: 20Gi
 
-# Open WebUI Gemma4 → Windows desktop Ollama (not k3s-02).
-# Use native ollama provider (not openai/*) so think:false reaches Ollama —
-# otherwise Gemma fills reasoning and leaves content empty in WebUI.
-k3s_litellm_gateway_gemma4_chat_api_base: "http://ollama-desktop.hom.lab:11434"
-k3s_litellm_gateway_gemma4_chat_model: "gemma4:12b"
-k3s_litellm_gateway_gemma4_chat_provider: "ollama"
-
-# Open WebUI Qwen3.6 27B → same desktop Ollama (agentic / thinking).
-k3s_litellm_gateway_qwen36_chat_api_base: "http://ollama-desktop.hom.lab:11434"
-k3s_litellm_gateway_qwen36_chat_model: "qwen3.6:27b"
-k3s_litellm_gateway_qwen36_chat_provider: "ollama"
-
-# Open WebUI gpt-oss 20B → same desktop Ollama (general / reasoning).
-k3s_litellm_gateway_gpt_oss_chat_api_base: "http://ollama-desktop.hom.lab:11434"
-k3s_litellm_gateway_gpt_oss_chat_model: "gpt-oss:20b"
-k3s_litellm_gateway_gpt_oss_chat_provider: "ollama"
-
-# Positive/negative prompt assist alias (Open WebUI / LiteLLM) → Gemma4 vision.
-k3s_litellm_gateway_positive_negative_prompt_assist_chat_api_base: "http://ollama-desktop.hom.lab:11434"
-k3s_litellm_gateway_positive_negative_prompt_assist_chat_model: "gemma4:12b"
-k3s_litellm_gateway_positive_negative_prompt_assist_chat_provider: "ollama"
-
-# Open WebUI coder lane on desktop Ollama (devstral:24b — not Kilo primary).
-k3s_litellm_gateway_devstral_chat_api_base: "http://ollama-desktop.hom.lab:11434"
-k3s_litellm_gateway_devstral_chat_model: "devstral:24b"
-k3s_litellm_gateway_devstral_chat_provider: "ollama"
+# RETIRED (Kilo clean setup) — Open WebUI / prompt-assist / devstral gateway rows:
+# k3s_litellm_gateway_gemma4_chat_api_base: "http://ollama-desktop.hom.lab:11434"
+# k3s_litellm_gateway_qwen36_chat_api_base: "http://ollama-desktop.hom.lab:11434"
+# k3s_litellm_gateway_gpt_oss_chat_api_base: "http://ollama-desktop.hom.lab:11434"
+# k3s_litellm_gateway_positive_negative_prompt_assist_chat_api_base: "http://ollama-desktop.hom.lab:11434"
+# k3s_litellm_gateway_devstral_chat_api_base: "http://ollama-desktop.hom.lab:11434"
 
 # Kilo fallback when 5090 vLLM path is down (ministral on desktop Ollama).
 k3s_litellm_gateway_kilo_fast_chat_api_base: "http://ollama-desktop.hom.lab:11434"

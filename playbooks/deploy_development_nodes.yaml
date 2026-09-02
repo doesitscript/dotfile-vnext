@@ -11,6 +11,7 @@
 #          langfuse_cli (Langfuse CLI for tracing and evaluation)
 #          litellm_cli (LiteLLM CLI on macOS via pipx)
 #          continue_ide (Continue IDE config → LiteLLM autocomplete/edit lanes; pair with Continue.continue extension)
+#          opencode_cli (OpenCode CLI + homelab LiteLLM opencode.jsonc)
 #          terraform_cli (Terraform CLI on macOS through the official HashiCorp Homebrew tap)
 #          aws_cli (AWS CLI on macOS through Homebrew awscli formula)
 #          speech_central (Speech Central install on mac-dev via mas_cli dependency)
@@ -64,6 +65,7 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags langfuse_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags litellm_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags continue_ide --limit mac-dev
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags opencode_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags terraform_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags aws_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags speech_central --limit mac-dev
@@ -154,6 +156,9 @@
     - role: continue_ide
       when: ansible_system == "Darwin"
       tags: [continue, continue_ide]
+    - role: opencode_cli
+      when: ansible_system == "Darwin"
+      tags: [opencode, opencode_cli]
     - role: terraform_cli
       when: ansible_system == "Darwin"
       tags: [terraform_cli]

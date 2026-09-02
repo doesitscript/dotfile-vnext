@@ -1,0 +1,10 @@
+---
+- name: Dispatch opencode_cli by platform
+  ansible.builtin.include_tasks: "{{ opencode_cli_platform_tasks }}"
+  vars:
+    opencode_cli_platform_tasks: >-
+      {{
+        'mac.yml'
+        if ansible_facts['system'] == 'Darwin'
+        else 'unsupported.yml'
+      }}

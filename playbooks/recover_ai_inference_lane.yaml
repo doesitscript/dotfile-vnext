@@ -30,10 +30,9 @@
   vars:
     ai_inference_lane_recovery_target_node: hom-lab-ctl-k3s-02
     ai_inference_lane_recovery_required_gateway_models:
-      - "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
-      - "{{ k3s_litellm_gateway_client_model_id_experiment }}"
-      - "{{ k3s_litellm_gateway_client_model_id_code_review }}"
-      - "{{ k3s_litellm_gateway_client_model_id_default }}"
+      - "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
+      - "{{ k3s_litellm_gateway_client_model_id_kilo_autocomplete }}"
+      - "{{ k3s_litellm_gateway_client_model_id_kilo_fast }}"
 
   tasks:
     - name: Preview AI inference lane recovery entrypoint
@@ -226,16 +225,10 @@
     - "{{ playbook_dir }}/../roles/k3s_litellm_gateway/defaults/main.yml"
   vars:
     ai_inference_lane_recovery_required_gateway_models:
-      - "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
-      - "{{ k3s_litellm_gateway_client_model_id_experiment }}"
-      - "{{ k3s_litellm_gateway_client_model_id_code_review }}"
-      - "{{ k3s_litellm_gateway_client_model_id_default }}"
-    ai_inference_lane_recovery_completion_probe_model: >-
-      {{
-        k3s_litellm_gateway_client_model_id_kilo_lite
-        if (hostvars['hom-lab-ctl-k3s-02'].k3s_vllm_runtime_kilo_testing_active | default(false) | bool)
-        else k3s_litellm_gateway_client_model_id_coder_primary
-      }}
+      - "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
+      - "{{ k3s_litellm_gateway_client_model_id_kilo_autocomplete }}"
+      - "{{ k3s_litellm_gateway_client_model_id_kilo_fast }}"
+    ai_inference_lane_recovery_completion_probe_model: "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
     ai_inference_lane_recovery_completion_probe_prompt: Reply with only the word READY.
     ai_inference_lane_recovery_completion_probe_expected_text: READY
   tags: [ai_inference_lane_recovery, ai_inference_lane_recovery_verify]
@@ -282,7 +275,7 @@
         fail_msg: "Published LiteLLM model route missing after recovery: {{ item }}"
       loop: "{{ ai_inference_lane_recovery_required_gateway_models }}"
 
-    - name: Run published Ornith lane completion probe
+    - name: Run published Kilo vLLM lane completion probe
       ansible.builtin.uri:
         url: http://litellm.hom.lab/v1/chat/completions
         method: POST
@@ -300,7 +293,7 @@
         timeout: 300
       register: _ai_inference_lane_recovery_completion
 
-    - name: Assert published Ornith lane returns the expected probe answer
+    - name: Assert published Kilo vLLM lane returns the expected probe answer
       ansible.builtin.assert:
         that:
           - _ai_inference_lane_recovery_completion.json.choices[0].message.content | trim == ai_inference_lane_recovery_completion_probe_expected_text

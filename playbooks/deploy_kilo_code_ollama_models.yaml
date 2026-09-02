@@ -1,15 +1,60 @@
 ---
-# Prefetch Ollama models for Kilo Code lanes across desktop + HVH-01 in parallel.
+# Prefetch Kilo Code Ollama models + purge retired tags + publish LiteLLM Kilo routes.
 #
 # Apply:
 #   ansible-playbook playbooks/deploy_kilo_code_ollama_models.yaml
 #
-# Verify:
-#   curl http://ollama-desktop.hom.lab:11434/api/tags
-#   curl http://ollama-hvh01.hom.lab:11434/api/tags
-#   curl -H "Authorization: Bearer $LITELLM_KEY" http://litellm.hom.lab/v1/models
-#
-# Undo: remove tags from inventory host_vars models_present lists and re-run.
+# Retired Ollama tags are removed from disk when absent from models_present.
+
+- name: Purge retired Ollama models (desktop)
+  hosts: dev-workstation-win
+  gather_facts: false
+  vars:
+    _kilo_retired_ollama_models:
+      - "devstral:24b"
+      - "qwen3-coder:30b"
+      - "gemma4:12b"
+      - "qwen3.6:27b"
+      - "gpt-oss:20b"
+  tasks:
+    - name: Remove retired Ollama model tags from desktop
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $exe = '{{ windows_ollama_runtime_exe_path | default("C:\\Program Files\\Ollama\\ollama.exe") }}'
+          $tag = '{{ item }}'
+          if (-not (Test-Path -LiteralPath $exe)) { throw "ollama.exe not found: $exe" }
+          & $exe rm $tag 2>&1 | ForEach-Object { $_.ToString() }
+          exit $LASTEXITCODE
+      loop: "{{ _kilo_retired_ollama_models }}"
+      register: _desktop_ollama_rm
+      failed_when: false
+      changed_when: >-
+        (_desktop_ollama_rm.output | default([]) | join(' '))
+        is not search('not found|does not exist', ignorecase=True)
+
+- name: Purge retired Ollama models (HVH-01)
+  hosts: HOM-LAB-HVH-01
+  gather_facts: false
+  vars:
+    _kilo_retired_ollama_models_hvh01:
+      - "phi4-mini"
+  tasks:
+    - name: Remove retired Ollama model tags from HVH-01
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $exe = '{{ windows_ollama_runtime_exe_path | default("C:\\Program Files\\Ollama\\ollama.exe") }}'
+          $tag = '{{ item }}'
+          if (-not (Test-Path -LiteralPath $exe)) { throw "ollama.exe not found: $exe" }
+          & $exe rm $tag 2>&1 | ForEach-Object { $_.ToString() }
+          exit $LASTEXITCODE
+      loop: "{{ _kilo_retired_ollama_models_hvh01 }}"
+      register: _hvh01_ollama_rm
+      failed_when: false
+      changed_when: >-
+        (_hvh01_ollama_rm.output | default([]) | join(' '))
+        is not search('not found|does not exist', ignorecase=True)
 
 - name: Prefetch Kilo Code Ollama models (parallel across hosts)
   hosts: kilo_code_ollama_hosts

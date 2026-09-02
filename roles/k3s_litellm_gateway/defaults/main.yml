@@ -91,71 +91,11 @@ k3s_litellm_gateway_request_inspector_warn_tools_pct: 0.75
 k3s_litellm_gateway_request_inspector_warn_conversation_pct: 0.05
 # On warning, dump a small summary JSON under /tmp/litellm-request-inspector.
 k3s_litellm_gateway_request_inspector_dump_tools_on_warn: true
-k3s_litellm_gateway_context_window_fallbacks_with_openai:
-  - "{{ k3s_litellm_gateway_client_model_id_coder_primary }}":
-      - "{{ k3s_litellm_gateway_client_model_id_gpt4o_mini }}"
-  - "{{ k3s_litellm_gateway_client_model_id_smart_router }}":
-      - "{{ k3s_litellm_gateway_client_model_id_gpt4o_mini }}"
-  - "{{ k3s_litellm_gateway_client_model_id_code_review }}":
-      - "{{ k3s_litellm_gateway_client_model_id_gpt4o_mini }}"
-# Local-only: Ornith and code-review share the same vLLM primary runtime (same
-# 32k context). Context-overflow fallbacks to another local alias cannot help —
-# require OpenAI/Anthropic keys for a larger-context escalation path.
+k3s_litellm_gateway_context_window_fallbacks_with_openai: []
 k3s_litellm_gateway_context_window_fallbacks_without_openai: []
 
-# Complexity auto-router (LiteLLM auto_router/complexity_router, requires >= v1.94.x).
-# MODEL GROUP — client model_name is litellm-complexity-auto-router@litellm~smart-router; tiers
-# reference other client model_name values below (not raw backend ids).
-k3s_litellm_gateway_complexity_router_enabled: true
-k3s_litellm_gateway_complexity_router_model_name: "{{ k3s_litellm_gateway_client_model_id_smart_router }}"
-k3s_litellm_gateway_complexity_router_default_model: "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
-k3s_litellm_gateway_complexity_tiers_local:
-  SIMPLE: "{{ k3s_litellm_gateway_client_model_id_code_review }}"
-  MEDIUM: "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
-  COMPLEX: "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
-  REASONING: "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
-k3s_litellm_gateway_complexity_tiers_with_openai:
-  SIMPLE: "{{ k3s_litellm_gateway_client_model_id_code_review }}"
-  MEDIUM: "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
-  COMPLEX: "{{ k3s_litellm_gateway_client_model_id_gpt4o }}"
-  REASONING: "{{ k3s_litellm_gateway_client_model_id_gpt4o }}"
-k3s_litellm_gateway_complexity_tiers_with_anthropic:
-  SIMPLE: "{{ k3s_litellm_gateway_client_model_id_code_review }}"
-  MEDIUM: "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
-  COMPLEX: "{{ k3s_litellm_gateway_client_model_id_claude_sonnet }}"
-  REASONING: "{{ k3s_litellm_gateway_client_model_id_claude_sonnet }}"
-k3s_litellm_gateway_complexity_router_keyword_tier_rules:
-  - keywords:
-      - hi
-      - hello
-      - thanks
-      - ping
-    tier: SIMPLE
-  - keywords:
-      - ansible
-      - playbook
-      - terraform
-      - kubernetes
-      - k3s
-      - netbox
-      - hyperv
-    tier: COMPLEX
-  - keywords:
-      - architecture
-      - design review
-      - step by step
-      - reason through
-    tier: REASONING
-k3s_litellm_gateway_complexity_router_custom_technical_keywords:
-  - ansible
-  - playbook
-  - netbox
-  - hyperv
-  - k3s
-  - winrm
-  - vault
-  - traefik
-  - langfuse
+# Complexity auto-router (MODEL GROUP) — disabled for Kilo clean setup.
+k3s_litellm_gateway_complexity_router_enabled: false
 
 # Local vLLM backend contract. Primary coding + review aliases share vllm-primary
 # until a second local vLLM runtime is commissioned.
@@ -165,101 +105,33 @@ k3s_litellm_gateway_secondary_review_runtime_slug: "vllm-primary"
 k3s_litellm_gateway_secondary_review_api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
 k3s_litellm_gateway_secondary_review_model: "{{ k3s_litellm_gateway_primary_vllm_model }}"
 
-# Full lane vocabulary stays visible here even while only part of it is
-# runtime-enabled. Blocked/deferred rows are explicit so client and validation
-# surfaces can preserve the intended contract without inventing backends.
+# Homelab local routes — Continue + Kilo (model@host only).
 k3s_litellm_gateway_lane_contract:
-  - lane: deepreinforce-ai/Ornith-1.0-35B-GGUF
+  - lane: qwen2.5-coder-32b@k3s02-vllm
     state: enabled
     backend_kind: local-vllm
     runtime: vllm-primary
-    reason: Primary local coding lane on the 5090-backed vLLM service.
-  - lane: experiment
+    reason: Continue chat on 5090 — 32B AWQ @ 32k with fp8 KV cache (gpu-memory-utilization 0.92).
+  - lane: qwen2.5-coder-7b@desktop
     state: enabled
-    backend_kind: local-vllm
-    runtime: vllm-primary
-    reason: Temporary smoke alias sharing the primary local runtime until a second local runtime exists.
-  - lane: code-fast
+    backend_kind: ollama-desktop
+    runtime: ollama-qwen25-coder-7b-desktop
+    reason: Continue edit/apply on desktop Ollama.
+  - lane: qwen2.5-coder-1.5b@hvh01
     state: enabled
     backend_kind: ollama-hvh01
     runtime: ollama-autocomplete-1.5b-hvh-01
-    reason: >-
-      Continue/code-fast alias for local Qwen2.5-Coder 1.5B on HVH-01 Ollama
-      (llama.cpp). Published when k3s_litellm_gateway_autocomplete_1_5b_api_base
-      is set on the gateway host (hom-lab-ctl-k3s-02).
-  - lane: code-autocomplete-1.5b
+    reason: Continue autocomplete on HVH-01 (GTX 1060).
+  - lane: ministral-3-8b@desktop
     state: enabled
-    backend_kind: ollama-hvh01
-    runtime: ollama-autocomplete-1.5b-hvh-01
-    reason: >-
-      Local qwen2.5-coder:1.5b via Ollama on GTX 1060 (HVH-01) + LiteLLM openai/
-      route. Not vLLM — Pascal CC 6.1 is below vLLM's CC >= 7.5 requirement.
-      Same api_base gate as code-fast.
-  - lane: code-autocomplete-7b
-    state: blocked
-    backend_kind: pending-local-vllm
-    reason: Local Qwen/Qwen2.5-Coder-7B-Instruct via secondary vLLM + LiteLLM.
-  - lane: diffusiongemma-nextedit
-    state: blocked
-    backend_kind: pending-local-vllm
-    reason: >-
-      Continue Next Edit replacement for mercury-coder-nextedit. Local
-      google/diffusiongemma-26B-A4B-it (prefer FP8/NVFP4 on 32GB GPUs) via
-      vLLM gemma image + LiteLLM hosted_vllm.
-  - lane: diffucoder
-    state: blocked
-    backend_kind: pending-research
-    reason: >-
-      apple/DiffuCoder-7B-cpGRPO — catalog + download candidate. Serving is not
-      OpenAI chat-native today (transformers diffusion_generate); needs a
-      dedicated OpenAI-compatible wrapper before LiteLLM can route Continue.
-  - lane: continue-edit
-    state: blocked
-    backend_kind: pending-local
-    reason: >-
-      Continue chat+edit default. Prefer DiffuCoder when OpenAI-compatible;
-      until then may alias a local coding vLLM once commissioned.
-  - lane: qwen3-coder-30b
-    state: blocked
-    backend_kind: pending-local-vllm
-    reason: Local Qwen3-Coder 30B candidate for Continue Chat Edit — VRAM/research gate.
-  - lane: qwen3-coder-480b
-    state: blocked
-    backend_kind: deferred
-    reason: >-
-      Too large for single 5090 local serve. Not OpenRouter. Deferred until
-      multi-GPU / alternate host; stay catalog-only.
-  - lane: code-review
-    state: enabled
-    backend_kind: local-vllm
-    runtime: vllm-primary
-    reason: >-
-      Review lane alias on vllm-primary (same Qwen2.5-Coder-32B AWQ backend as
-      Ornith) until a distinct secondary vLLM runtime is commissioned. Ollama
-      is retired from the LiteLLM gateway path.
-  - lane: code-test
-    state: blocked
-    backend_kind: pending
-    reason: Test-focused backend and retry policy are not declared yet.
-  - lane: ripi-private
-    state: blocked
-    backend_kind: pending
-    reason: Private-only lane needs a dedicated backend and privacy guardrails.
-  - lane: embeddings-local
-    state: blocked
-    backend_kind: pending
-    reason: Local embeddings service is not commissioned yet.
-  - lane: public-research
-    state: blocked
-    backend_kind: pending
-    reason: Public web/provider lane is still a future policy slice.
-  - lane: smart-router
-    state: enabled
-    backend_kind: complexity-router
-    runtime: litellm-auto-router
-    reason: >-
-      LiteLLM complexity auto-router alias. Routes SIMPLE→code-review (vLLM),
-      MEDIUM→Ornith, COMPLEX/REASONING→Claude or gpt-4o when provider keys exist.
+    backend_kind: ollama-desktop
+    runtime: ollama-ministral-8b-desktop
+    reason: Kilo agent fallback on desktop Ollama.
+
+# RETIRED lane vocabulary — blocked; see git history before re-enabling.
+# - lane: smart-router  (MODEL GROUP — removed)
+# - lane: coder-primary / code-review / experiment / default  (duplicate vLLM aliases)
+# - lane: code-fast / continue-* / open-webui-* / gpt-oss-20b  (non-Kilo downloads)
 
 # Model routes — api_key os.environ/* keys are injected via Kubernetes Secret litellm-env-secret.
 #
@@ -270,133 +142,12 @@ k3s_litellm_gateway_lane_contract:
 # - `model_info` below carries route metadata exposed by LiteLLM `/model/info`
 #   and used by Langfuse/client tracing. Per-request `agent_role` and
 #   `context_class` still come from the IDE/agent client metadata.
-k3s_litellm_gateway_model_list:
-  # FRIENDLY ALIAS — Qwen2.5-Coder-32B AWQ primary on k3s-02 vLLM (5090).
-  - model_name: "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
-    litellm_params:
-      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
-      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
-      api_key: "none"
-    model_info:
-      model_lane: deepreinforce-ai/Ornith-1.0-35B-GGUF
-      routing_policy: local-primary
-      project: ripi
-      backend_runtime: vllm-primary
-      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
-      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-      # request_inspector observes all aliases; mutate/trim archived 2026-07.
-  # FRIENDLY ALIAS — historical no-trim lane (observe-only callback era).
-  - model_name: "{{ k3s_litellm_gateway_client_model_id_coder_no_trim }}"
-    litellm_params:
-      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
-      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
-      api_key: "none"
-    model_info:
-      model_lane: deepreinforce-ai/Ornith-1.0-35B-GGUF-no-trim
-      routing_policy: local-primary-no-trim
-      project: ripi
-      backend_runtime: vllm-primary
-      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
-      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-      notes: >-
-        Historical alias from the trim era. Live callback is observe-only for
-        all aliases; oversized prompts fail at vLLM (32k). See
-        archive/trim-messages-callback-2026-07/.
-  # FRIENDLY ALIAS — smoke / experiment lane over vLLM primary.
-  - model_name: "{{ k3s_litellm_gateway_client_model_id_experiment }}"
-    litellm_params:
-      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
-      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
-      api_key: "none"
-    model_info:
-      model_lane: experiment
-      routing_policy: local-smoke-compat
-      project: ripi
-      backend_runtime: vllm-primary
-      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
-      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-  # FRIENDLY ALIAS — review lane (vllm-primary until secondary review runtime exists).
-  - model_name: "{{ k3s_litellm_gateway_client_model_id_code_review }}"
-    litellm_params:
-      model: "hosted_vllm/{{ k3s_litellm_gateway_secondary_review_model }}"
-      api_base: "{{ k3s_litellm_gateway_secondary_review_api_base }}"
-      api_key: "none"
-    model_info:
-      model_lane: code-review
-      routing_policy: local-review-alias
-      project: ripi
-      backend_runtime: "{{ k3s_litellm_gateway_secondary_review_runtime_slug }}"
-      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
-      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-  # FRIENDLY ALIAS — Kilo Code main on k3s-02 vLLM (same weights as coder-primary).
-  - model_name: "{{ k3s_litellm_gateway_client_model_id_kilo_main }}"
-    litellm_params:
-      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
-      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
-      api_key: "none"
-    model_info:
-      model_lane: kilo-main
-      routing_policy: local-kilo-primary
-      project: ripi
-      backend_runtime: vllm-primary
-      client_model_id_kind: friendly_alias
-      notes: FRIENDLY ALIAS — qwen2.5-coder-32b@k3s02-vllm~kilo-main (5090 vLLM)
-      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
-      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-  # FRIENDLY ALIAS — OpenAI cloud escalation.
-  - model_name: "{{ k3s_litellm_gateway_client_model_id_gpt4o_mini }}"
-    litellm_params:
-      model: gpt-4o-mini
-      api_base: https://api.openai.com/v1
-      api_key: "os.environ/OPENAI_API_KEY"
-    model_info:
-      model_lane: gpt-4o-mini
-      routing_policy: migration
-      project: ripi
-      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
-      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-  # FRIENDLY ALIAS — OpenAI cloud chat escalation.
-  - model_name: "{{ k3s_litellm_gateway_client_model_id_gpt4o }}"
-    litellm_params:
-      model: gpt-4o
-      api_base: https://api.openai.com/v1
-      api_key: "os.environ/OPENAI_API_KEY"
-    model_info:
-      model_lane: gpt-4o
-      routing_policy: cloud-escalation
-      project: ripi
-      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
-      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-  # FRIENDLY ALIAS — Open WebUI / client default over vLLM primary.
-  - model_name: "{{ k3s_litellm_gateway_client_model_id_default }}"
-    litellm_params:
-      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
-      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
-      api_key: "none"
-    model_info:
-      model_lane: default
-      routing_policy: local-primary-compat
-      project: ripi
-      backend_runtime: vllm-primary
-      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
-      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-      notes: >-
-        Local-first Open WebUI / client default alias → Qwen2.5-Coder-32B (vLLM primary).
-        Cloud escalation remains on smart-router COMPLEX/REASONING tiers.
+# Kilo clean setup: static model_list is empty — routes are appended in
+# build_helm_values.yml when host_vars commission api_bases (vLLM + Ollama).
+k3s_litellm_gateway_model_list: []
 
-# Optional Anthropic route fragment — appended when vault_shared_anthropic_api_key is set.
-k3s_litellm_gateway_anthropic_model_routes:
-  # FRIENDLY ALIAS — Anthropic cloud escalation.
-  - model_name: "{{ k3s_litellm_gateway_client_model_id_claude_sonnet }}"
-    litellm_params:
-      model: anthropic/claude-sonnet-4-20250514
-      api_key: "os.environ/ANTHROPIC_API_KEY"
-    model_info:
-      model_lane: claude-sonnet
-      routing_policy: cloud-escalation
-      project: ripi
-      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
-      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
+# Cloud / Anthropic fragments disabled for Kilo clean setup.
+k3s_litellm_gateway_anthropic_model_routes: []
 
 # -----------------------------------------------------------------------------
 # Continue / local open-weight lanes (NOT OpenRouter, NOT Mercury).
@@ -430,7 +181,7 @@ k3s_litellm_gateway_diffucoder_model: "apple/DiffuCoder-7B-cpGRPO"
 # Continue edit → desktop AMD Ollama (openai-compatible). When set, takes
 # continue-edit alias instead of DiffuCoder wrapper.
 k3s_litellm_gateway_continue_edit_api_base: ""
-k3s_litellm_gateway_continue_edit_model: "qwen3-coder:30b"
+k3s_litellm_gateway_continue_edit_model: "qwen2.5-coder:7b"
 k3s_litellm_gateway_continue_edit_provider: "openai"
 # Continue apply → HVH-01 Ollama Phi-4 Mini.
 k3s_litellm_gateway_continue_apply_api_base: ""
@@ -471,89 +222,4 @@ k3s_litellm_gateway_local_continue_model_routes: []
 # Built at runtime in build_helm_values.yml from the api_base vars above.
 
 # Fallback when vault_shared_openai_api_key is unset — proxy still starts; OpenAI routes omitted.
-k3s_litellm_gateway_model_list_without_openai:
-  # FRIENDLY ALIAS — Qwen2.5-Coder-32B AWQ primary on k3s-02 vLLM (5090).
-  - model_name: "{{ k3s_litellm_gateway_client_model_id_coder_primary }}"
-    litellm_params:
-      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
-      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
-      api_key: "none"
-    model_info:
-      model_lane: deepreinforce-ai/Ornith-1.0-35B-GGUF
-      routing_policy: local-primary
-      project: ripi
-      backend_runtime: vllm-primary
-      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
-      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-      # request_inspector observes all aliases; mutate/trim archived 2026-07.
-  # FRIENDLY ALIAS — historical no-trim lane (observe-only callback era).
-  - model_name: "{{ k3s_litellm_gateway_client_model_id_coder_no_trim }}"
-    litellm_params:
-      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
-      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
-      api_key: "none"
-    model_info:
-      model_lane: deepreinforce-ai/Ornith-1.0-35B-GGUF-no-trim
-      routing_policy: local-primary-no-trim
-      project: ripi
-      backend_runtime: vllm-primary
-      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
-      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-      notes: >-
-        Historical alias from the trim era. Live callback is observe-only for
-        all aliases; oversized prompts fail at vLLM (32k). See
-        archive/trim-messages-callback-2026-07/.
-  # FRIENDLY ALIAS — smoke / experiment lane over vLLM primary.
-  - model_name: "{{ k3s_litellm_gateway_client_model_id_experiment }}"
-    litellm_params:
-      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
-      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
-      api_key: "none"
-    model_info:
-      model_lane: experiment
-      routing_policy: local-smoke-compat
-      project: ripi
-      backend_runtime: vllm-primary
-      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
-      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-  # FRIENDLY ALIAS — review lane (vllm-primary until secondary review runtime exists).
-  - model_name: "{{ k3s_litellm_gateway_client_model_id_code_review }}"
-    litellm_params:
-      model: "hosted_vllm/{{ k3s_litellm_gateway_secondary_review_model }}"
-      api_base: "{{ k3s_litellm_gateway_secondary_review_api_base }}"
-      api_key: "none"
-    model_info:
-      model_lane: code-review
-      routing_policy: local-review-alias
-      project: ripi
-      backend_runtime: "{{ k3s_litellm_gateway_secondary_review_runtime_slug }}"
-      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
-      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-  # FRIENDLY ALIAS — Kilo Code main on k3s-02 vLLM (same weights as coder-primary).
-  - model_name: "{{ k3s_litellm_gateway_client_model_id_kilo_main }}"
-    litellm_params:
-      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
-      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
-      api_key: "none"
-    model_info:
-      model_lane: kilo-main
-      routing_policy: local-kilo-primary
-      project: ripi
-      backend_runtime: vllm-primary
-      client_model_id_kind: friendly_alias
-      notes: FRIENDLY ALIAS — qwen2.5-coder-32b@k3s02-vllm~kilo-main (5090 vLLM)
-      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
-      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
-  # FRIENDLY ALIAS — Open WebUI / client default over vLLM primary.
-  - model_name: "{{ k3s_litellm_gateway_client_model_id_default }}"
-    litellm_params:
-      model: "hosted_vllm/{{ k3s_litellm_gateway_primary_vllm_model }}"
-      api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
-      api_key: "none"
-    model_info:
-      model_lane: default
-      routing_policy: local-default-fallback
-      project: ripi
-      backend_runtime: vllm-primary
-      source_registry: docs/reference/naming-standards/live-object-registry.yml#model_lanes
-      model_catalog_manifest: inventory/group_vars/model_catalog/manifest.yml
+k3s_litellm_gateway_model_list_without_openai: []

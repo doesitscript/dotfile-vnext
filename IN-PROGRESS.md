@@ -1,5 +1,22 @@
 # IN-PROGRESS
 
+## Beta — homelab local AI clients (Continue + OpenCode + 5090 32B)
+
+**Status:** `incomplete-wip` / **beta** — live on homelab; extension CLI probes pass.
+
+**Plan:** `docs/plans/2026-09-01--homelab-local-ai-clients-cursor-kilo/README.md`
+
+**Promote to stable only after:** Kilo Code evaluation on restored
+`qwen2.5-coder-32b@k3s02-vllm` lane — tool_calls, agent routing, `kilo.jsonc`
+limits, and `playbooks/validate_kilo_litellm_probes.yaml` with operator sign-off.
+Continue/OpenCode paths are ahead of Kilo validation.
+
+**Sibling (not started):** Codex CLI homelab profile
+(`docs/plans/2026-09-01--homelab-local-ai-clients-codex/`).
+
+# SMB Between host is blocked
+When installing drivers to HPH – 01, said that SMB was blocked. This should not be the case. I do have S&P already solved to an extent so I wanna make sure this is a simple fix like firewall issues or something like that first and need to make sure that the AI doesn't try to reinvent or blindly try to resolve this.
+
 ## Later — mac-dev brew roles (Ansible)
 
 Track as new/extended roles wired through `playbooks/deploy_development_nodes.yaml`

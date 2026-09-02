@@ -1,0 +1,34 @@
+---
+# Continue IDE + OpenCode — download right-sized models, deploy vLLM/LiteLLM routes, config.
+#
+# Order: Ollama prefetch (desktop 7B + HVH 1.5B) → vLLM 14B AWQ → LiteLLM → client config → probes
+#
+#   ansible-playbook playbooks/deploy_continue_ide_models.yaml
+
+- name: Prefetch Continue Ollama models (parallel)
+  hosts: kilo_code_ollama_hosts
+  gather_facts: false
+  strategy: free
+  roles:
+    - role: windows_ollama_runtime
+      tags: [continue, ollama, windows_ollama_runtime]
+
+- name: Deploy vLLM primary (14B AWQ for Continue chat)
+  import_playbook: deploy_vllm_runtime.yaml
+  tags: [continue, vllm, k3s_vllm_runtime]
+
+- name: Publish Continue LiteLLM routes
+  import_playbook: deploy_litellm_gateway.yaml
+  tags: [continue, litellm, k3s_litellm_gateway]
+
+- name: Deploy Continue + OpenCode client config on mac-dev
+  import_playbook: deploy_continue_ide.yaml
+  tags: [continue, continue_ide]
+
+- name: Deploy OpenCode CLI config on mac-dev
+  import_playbook: deploy_opencode_cli.yaml
+  tags: [continue, opencode_cli]
+
+- name: Validate Continue extension CLI probes
+  import_playbook: validate_homelab_local_clients_probes.yaml
+  tags: [continue, validate]

@@ -1,0 +1,49 @@
+---
+# Continue IDE + OpenCode model research matrix (2026-09-02)
+#
+# Sources:
+# - Context7 /websites/vllm_ai_en_stable — gpu-memory-utilization, kv-cache-dtype fp8,
+#   memory profiling, max-model-len without context trim
+# - draft_vllm_considerations.md — FP8/AWQ > GGUF on vLLM; ~0.90–0.92 util
+# - inventory GPU contracts (5090 32GB GPU-P slice, RX 9060 XT, GTX 1060 6GB)
+# - Live probe 2026-09-02: 14B AWQ @ 32k used 29096/32607 MiB (~89% VRAM)
+
+continue_ide_model_research:
+  chat:
+    client_id: qwen2.5-coder-32b@k3s02-vllm
+    weights: Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
+    runtime: vllm-primary
+    gpu: RTX 5090 32GB (GPU-P slice, nvidia-smi 32607 MiB total)
+    memory_budget:
+      weights_awq_4bit_gb: "~18–20"
+      kv_cache_32k_fp8_gb: "~4–6 (fp8 halves KV vs bf16)"
+      activation_cuda_graph_gb: "~2–3"
+      target_utilization: "0.92 gpu-memory-utilization"
+      vllm_tuning_without_context_trim:
+        - "--kv-cache-dtype fp8"
+        - "--max-num-seqs 4"
+        - "--gpu-memory-utilization 0.92"
+    rationale: >-
+      Catalog-selected coder for 5090 (manifest code-review lane). 14B was
+      under-capacity on parameters (not VRAM — 14B already consumed ~29GB at 32k).
+      Prior 32B deploy failure correlated with K3s apiserver 503 during cluster
+      restart, not confirmed weight OOM. fp8 KV preserves --max-model-len 32768.
+    rejected:
+      - id: qwen2.5-coder-14b@k3s02-vllm
+        reason: User-rejected — wrong size class for 32GB 5090 primary lane
+      - id: Qwen3-Coder-30B-A3B
+        reason: pending_research — MoE; tool parser path not validated on homelab
+  edit_apply:
+    client_id: qwen2.5-coder-7b@desktop
+    weights: qwen2.5-coder:7b
+    runtime: desktop Ollama (Vulkan)
+    gpu: RX 9060 XT
+    rationale: >-
+      Coder model for edit/apply; Ollama ~6GB class — fits 16GB desktop.
+  autocomplete:
+    client_id: qwen2.5-coder-1.5b@hvh01
+    weights: qwen2.5-coder:1.5b
+    runtime: HVH-01 Ollama
+    gpu: GTX 1060 6GB
+    rationale: >-
+      FIM-trained small coder; commissioned on HVH-01.

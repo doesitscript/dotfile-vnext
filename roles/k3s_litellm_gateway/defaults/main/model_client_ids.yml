@@ -1,66 +1,35 @@
 ---
-# LiteLLM client-facing model_name syntax (gateway `model_list[].model_name`).
-# This string is what clients show in model dropdowns (Kilo, Continue, Open WebUI).
+# LiteLLM client-facing model_name values (gateway model_list[].model_name).
 #
-#   <model-slug>@<host-slug>~<friendly-lane>
+# ACTIVE RULE: model@host only — real weight slug + homelab host surface.
+# Friendly purpose suffix (~kilo-main, ~code-fast, …) is COMMENTS / model_info.notes ONLY.
 #
-# Rules:
-# - model-slug: REAL backend weight id (`:` and `/` → `-`). Never an invented product
-#   name (no ornith-35b, kilo-coder, complexity-router as model-slug).
-# - host-slug: homelab server surface (desktop, hvh01, k3s02-vllm, openai, …)
-# - friendly-lane: optional homelab purpose suffix ONLY — the only invented segment.
+#   qwen2.5-coder-32b@k3s02-vllm     # friendly: ~kilo-main / ~coder-primary
+#   qwen2.5-coder-1.5b@hvh01        # friendly: ~kilo-autocomplete
+#   ministral-3-8b@desktop          # friendly: ~kilo-fast
 #
-# Entry kinds:
-# - FRIENDLY ALIAS — one backend model + api_base (not a model group).
-# - MODEL GROUP — router entry; model-slug names the router capability on litellm host.
-#
-# `model_info.model_lane` keeps catalog/trace slug separate from client model_name.
+# Do not invent model slugs (ornith-35b, coder-primary, kilo-coder, …).
+# MODEL GROUP / router entries are removed from the Kilo clean setup.
 
-k3s_litellm_gateway_client_model_id_syntax: "<model-slug>@<host-slug>~<friendly-lane>"
+k3s_litellm_gateway_client_model_id_syntax: "<model-slug>@<host-slug>"
 
 k3s_litellm_gateway_client_model_host_desktop: desktop
 k3s_litellm_gateway_client_model_host_hvh01: hvh01
 k3s_litellm_gateway_client_model_host_k3s02_vllm: k3s02-vllm
-k3s_litellm_gateway_client_model_host_openai: openai
-k3s_litellm_gateway_client_model_host_anthropic: anthropic
-k3s_litellm_gateway_client_model_host_litellm: litellm
 
-# --- k3s-02 vLLM (Qwen2.5-Coder-32B AWQ primary) — FRIENDLY ALIAS ---
-k3s_litellm_gateway_client_model_id_coder_primary: "qwen2.5-coder-32b@k3s02-vllm~coder-primary"
-k3s_litellm_gateway_client_model_id_coder_no_trim: "qwen2.5-coder-32b@k3s02-vllm~coder-no-trim"
-k3s_litellm_gateway_client_model_id_experiment: "qwen2.5-coder-32b@k3s02-vllm~experiment"
-k3s_litellm_gateway_client_model_id_default: "qwen2.5-coder-32b@k3s02-vllm~default"
-k3s_litellm_gateway_client_model_id_code_review: "qwen2.5-coder-32b@k3s02-vllm~code-review"
-k3s_litellm_gateway_client_model_id_kilo_main: "qwen2.5-coder-32b@k3s02-vllm~kilo-main"
-# Optional 5090 smoke lanes (gated until secondary vLLM api_base is set — see plan doc).
-k3s_litellm_gateway_client_model_id_kilo_lite: "qwen2.5-coder-14b@k3s02-vllm~kilo-lite"
-k3s_litellm_gateway_client_model_id_kilo_smoke: "qwen2.5-coder-7b@k3s02-vllm~kilo-smoke"
+# --- Active homelab client model ids (model@host only) ---
+k3s_litellm_gateway_client_model_id_continue_chat: "qwen2.5-coder-32b@k3s02-vllm"
+k3s_litellm_gateway_client_model_id_continue_edit: "qwen2.5-coder-7b@desktop"
+k3s_litellm_gateway_client_model_id_continue_autocomplete: "qwen2.5-coder-1.5b@hvh01"
 
-# --- Cloud provider routes — FRIENDLY ALIAS (remote api_base) ---
-k3s_litellm_gateway_client_model_id_gpt4o: "gpt-4o@openai~cloud-chat"
-k3s_litellm_gateway_client_model_id_gpt4o_mini: "gpt-4o-mini@openai~cloud-fast"
-k3s_litellm_gateway_client_model_id_claude_sonnet: "claude-sonnet-4@anthropic~cloud-escalation"
+# Kilo lanes (may share backends with Continue when testing separately).
+k3s_litellm_gateway_client_model_id_kilo_vllm: "{{ k3s_litellm_gateway_client_model_id_continue_chat }}"
+k3s_litellm_gateway_client_model_id_kilo_autocomplete: "{{ k3s_litellm_gateway_client_model_id_continue_autocomplete }}"
+k3s_litellm_gateway_client_model_id_kilo_fast: "ministral-3-8b@desktop"
 
-# --- HVH-01 Ollama — FRIENDLY ALIAS ---
-k3s_litellm_gateway_client_model_id_code_fast: "qwen2.5-coder-1.5b@hvh01~code-fast"
-k3s_litellm_gateway_client_model_id_continue_autocomplete: "qwen2.5-coder-1.5b@hvh01~continue-autocomplete"
-k3s_litellm_gateway_client_model_id_continue_apply: "phi4-mini@hvh01~continue-apply"
-k3s_litellm_gateway_client_model_id_kilo_autocomplete: "qwen2.5-coder-1.5b@hvh01~kilo-autocomplete"
-
-# --- Desktop Ollama — FRIENDLY ALIAS ---
-k3s_litellm_gateway_client_model_id_continue_edit: "qwen3-coder-30b@desktop~continue-edit"
-k3s_litellm_gateway_client_model_id_open_webui_gemma4: "gemma4-12b@desktop~open-webui-chat"
-k3s_litellm_gateway_client_model_id_architect: "qwen3.6-27b@desktop~architect"
-k3s_litellm_gateway_client_model_id_open_webui_gpt_oss: "gpt-oss-20b@desktop~open-webui-general"
-k3s_litellm_gateway_client_model_id_prompt_assist: "gemma4-12b@desktop~prompt-assist"
-k3s_litellm_gateway_client_model_id_devstral_desktop: "devstral-24b@desktop~open-webui-coder"
-k3s_litellm_gateway_client_model_id_kilo_fast: "ministral-3-8b@desktop~kilo-fast"
-
-# --- Optional k3s-02 secondary vLLM lanes — FRIENDLY ALIAS (gated by api_base) ---
-k3s_litellm_gateway_client_model_id_continue_autocomplete_7b: "qwen2.5-coder-7b@k3s02-vllm~continue-autocomplete-7b"
-k3s_litellm_gateway_client_model_id_diffusiongemma_nextedit: "diffusiongemma-26b-fp8@k3s02-vllm~continue-nextedit"
-k3s_litellm_gateway_client_model_id_diffucoder: "diffucoder-7b@k3s02-vllm~continue-edit-legacy"
-k3s_litellm_gateway_client_model_id_continue_edit_diffucoder: "diffucoder-7b@k3s02-vllm~continue-edit"
-
-# --- MODEL GROUP (complexity auto-router) ---
-k3s_litellm_gateway_client_model_id_smart_router: "litellm-complexity-auto-router@litellm~smart-router"
+# --- RETIRED (2026-09-01 Kilo clean setup) — do not publish without re-commissioning ---
+# Duplicate vLLM aliases, Continue/Open WebUI lanes, cloud rows, and group routers
+# lived here as ~friendly-suffix client IDs. See git history / archive if needed.
+# k3s_litellm_gateway_client_model_id_coder_primary: "qwen2.5-coder-32b@k3s02-vllm~coder-primary"
+# k3s_litellm_gateway_client_model_id_kilo_main: "qwen2.5-coder-32b@k3s02-vllm~kilo-main"
+# k3s_litellm_gateway_client_model_id_smart_router: "litellm-complexity-auto-router@litellm~smart-router"

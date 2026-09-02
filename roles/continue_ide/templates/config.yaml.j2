@@ -1,7 +1,7 @@
 # {{ ansible_managed }}
 # Continue → LiteLLM only. Every model below MUST exist on GET /v1/models.
 # apiBase omits /v1 (Continue probes GET {apiBase}; /v1 alone 404s on this gateway).
-# Blocked / not commissioned (do not re-enable until LiteLLM route + backend live):
+# Blocked / not commissioned:
 {% for lane in continue_ide_blocked_lanes %}
 #   - {{ lane }}
 {% endfor %}
@@ -19,4 +19,27 @@ models:
 {% for role in entry.roles %}
       - {{ role | to_json }}
 {% endfor %}
+{% if entry.default_completion_options is defined %}
+    defaultCompletionOptions:
+{% for opt_key, opt_val in entry.default_completion_options.items() %}
+      {{ opt_key }}: {{ opt_val }}
+{% endfor %}
+{% endif %}
+{% if entry.autocomplete_options is defined %}
+    autocompleteOptions:
+{% for opt_key, opt_val in entry.autocomplete_options.items() %}
+      {{ opt_key }}: {{ opt_val }}
+{% endfor %}
+{% endif %}
+{% if entry.use_legacy_completions_endpoint | default(false) %}
+    useLegacyCompletionsEndpoint: true
+    promptTemplates:
+      autocomplete: {{ '<|fim_prefix|>{{{prefix}}}<|fim_suffix|>{{{suffix}}}<|fim_middle|>' | to_json }}
+{% endif %}
+{% if entry.prompt_templates is defined %}
+    promptTemplates:
+{% for tmpl_key, tmpl_val in entry.prompt_templates.items() %}
+      {{ tmpl_key }}: {{ tmpl_val | to_json }}
+{% endfor %}
+{% endif %}
 {% endfor %}

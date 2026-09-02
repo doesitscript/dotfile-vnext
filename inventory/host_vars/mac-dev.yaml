@@ -61,34 +61,12 @@ terraform_cli_state: present
 # LiteLLM CLI package-management desired state.
 litellm_cli_state: present
 
-# Continue IDE → LiteLLM autocomplete / next-edit / chat-edit lanes.
-# apiBase intentionally omits /v1 (Continue probes GET {apiBase}; /v1 → 404).
-# Desired-state values below feed roles/continue_ide/templates/config.yaml.j2.
+# Continue IDE → LiteLLM (model lanes: roles/continue_ide/defaults/main.yml).
 continue_ide_state: present
-continue_ide_gateway_api_base: "http://litellm.hom.lab"
-continue_ide_config_name: "Homelab Continue via LiteLLM"
-continue_ide_config_version: "1.0.0"
-continue_ide_config_schema: "v1"
-continue_ide_provider: "openai"
-continue_ide_models:
-  - name: "Chat Ornith (local vLLM)"
-    model: "qwen2.5-coder-32b@k3s02-vllm~coder-primary"
-    roles:
-      - chat
-  - name: "Autocomplete Qwen2.5-Coder 1.5B"
-    model: "qwen2.5-coder-1.5b@hvh01~continue-autocomplete"
-    roles:
-      - autocomplete
-  - name: "Edit Qwen3-Coder 30B (desktop Ollama)"
-    model: "qwen3-coder-30b@desktop~continue-edit"
-    roles:
-      - edit
-      - apply
-continue_ide_blocked_lanes:
-  - "qwen2.5-coder-7b@k3s02-vllm~continue-autocomplete-7b (GTX 1060 cannot host 7B usefully)"
-  - "qwen3-coder-30b (no local serve commissioned)"
-  - "diffucoder / continue-edit DiffuCoder (needs OpenAI wrapper; diffusion_generate only)"
-  - "diffusiongemma-nextedit (needs vLLM commission of FP8 weights)"
+
+# OpenCode CLI → homelab LiteLLM (see roles/opencode_cli).
+opencode_cli_state: present
+opencode_cli_default_model: "homelab-litellm/qwen2.5-coder-7b@desktop"
 
 # GNU netcat package-management desired state.
 netcat_cli_state: present

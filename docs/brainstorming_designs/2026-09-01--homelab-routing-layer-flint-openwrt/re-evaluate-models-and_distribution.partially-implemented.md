@@ -150,15 +150,30 @@ duplicates** over the same vLLM weights — they do not add disk use. Use
 ---
 
 While troubleshooting 32B `kilo-main`, vLLM primary on k3s-02 serves
-`Qwen/Qwen2.5-Coder-14B-Instruct-AWQ` at **16k** context (`hom-lab-ctl-k3s-02.yaml`).
+`Qwen/Qwen2.5-Coder-14B-Instruct-AWQ` at **32k** context (`hom-lab-ctl-k3s-02.yaml`).
 
 | Kilo setting | Value |
 | --- | --- |
-| Default model | `qwen2.5-coder-14b@k3s02-vllm~kilo-lite` |
+| Default model (interim agent) | `ministral-3-8b@desktop~kilo-fast` |
+| 5090 smoke / chat only | `qwen2.5-coder-14b@k3s02-vllm~kilo-lite` (`tool_call: false` in kilo.jsonc) |
 | Weights | `Qwen/Qwen2.5-Coder-14B-Instruct-AWQ` (official HF) |
 | Revert | Remove `k3s_vllm_runtime_kilo_testing_active` block; redeploy vLLM + gateway |
 
 `kilo-main` / 32B gateway rows stay in repo — they fail until 32B vLLM is restored.
+
+### Tool calling (2026-09-01 — do not fix 14B)
+
+| Route | Kilo code agent tools | Notes |
+| --- | --- | --- |
+| `kilo-lite` (14B vLLM) | **Broken** | Tool JSON in `content`; `tool_calls: null` |
+| `kilo-fast` (Ministral Ollama) | **API OK** | Interim operator default; raw JSON in UI may be Kilo subagent display |
+| `kilo-main` (32B vLLM) | **Restore target** | Primary 5090 lane when HF cache re-downloaded |
+
+**Recommendation:** Stop debugging 14B parser mismatch. Next 5090 agent path:
+restore **32B `kilo-main`**, or v2 **Qwen 3.6 27B**, or v3 **Qwen3-Coder** with
+`qwen3_coder` parser.
+
+HRL: `homelab-reference-library/notes/investigations/2026-09-01--kilo-code-litellm-vllm-context-limits.md`.
 
 ---
 
@@ -225,6 +240,8 @@ If agent mode hits 32k context limits:
 - [x] `kilo-autocomplete` probe — **~3.8 s** (HVH-01 Ollama / 1060)
 - [x] Disk cleanup — removed 32B HF cache from vLLM PVC (~19GB freed; 32B repo config kept)
 - [x] `kilo-lite` warm probe — **READY** after vLLM bring-up
+- [x] Context limits — 32k `max-model-len` + kilo.jsonc `limit` (Kilo code agent overhead)
+- [x] Tool-calling probe — **14B broken** (do not fix); **Ministral API OK**; operator interim default `kilo-fast`
 
 ### v1 — Operator Kilo UI (manual)
 
@@ -234,7 +251,8 @@ In Kilo Code → Settings → Providers → OpenAI Compatible:
 | --- | --- |
 | Base URL | `http://litellm.hom.lab/v1` |
 | API key | `sk-Pass@w0rd1` |
-| Default model | `qwen2.5-coder-32b@k3s02-vllm~kilo-main` |
+| Default model (interim) | `ministral-3-8b@desktop~kilo-fast` |
+| 5090 when 32B restored | `qwen2.5-coder-32b@k3s02-vllm~kilo-main` |
 | Autocomplete model | `qwen2.5-coder-1.5b@hvh01~kilo-autocomplete` |
 
 - [ ] Operator confirms Kilo UI picks (cannot be automated from Ansible)

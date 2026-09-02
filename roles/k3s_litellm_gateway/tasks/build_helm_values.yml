@@ -28,19 +28,6 @@
     k3s_litellm_gateway_has_anthropic: >-
       {{ (k3s_litellm_gateway_resolved_anthropic_api_key | default('') | length > 0) | bool }}
 
-- name: Resolve complexity-router tier map from available provider keys
-  ansible.builtin.set_fact:
-    k3s_litellm_gateway_resolved_complexity_tiers: >-
-      {{
-        k3s_litellm_gateway_complexity_tiers_with_anthropic
-        if (k3s_litellm_gateway_has_anthropic | bool)
-        else (
-          k3s_litellm_gateway_complexity_tiers_with_openai
-          if (k3s_litellm_gateway_has_openai | bool)
-          else k3s_litellm_gateway_complexity_tiers_local
-        )
-      }}
-
 - name: Append Anthropic model routes when Anthropic key is configured
   ansible.builtin.set_fact:
     k3s_litellm_gateway_resolved_model_list: >-
@@ -53,225 +40,33 @@
         )
       }}
 
-# Local Continue open-weight lanes — only when secondary vLLM api_bases are set.
-# Do not use OpenRouter/Ollama/Mercury for these aliases.
-- name: Build local Continue / diffusion LiteLLM routes from commissioned api_bases
+# Homelab local routes — model@host client ids; friendly labels in notes only.
+- name: Build homelab LiteLLM routes from commissioned api_bases
   ansible.builtin.set_fact:
     k3s_litellm_gateway_resolved_local_continue_routes: >-
       {{
         (
           [
             {
-              'model_name': k3s_litellm_gateway_client_model_id_kilo_autocomplete,
+              'model_name': k3s_litellm_gateway_client_model_id_continue_chat,
               'litellm_params': {
-                'model': k3s_litellm_gateway_autocomplete_1_5b_provider ~ '/' ~ k3s_litellm_gateway_autocomplete_1_5b_model,
-                'api_base': k3s_litellm_gateway_autocomplete_1_5b_api_base,
+                'model': 'hosted_vllm/' ~ k3s_litellm_gateway_primary_vllm_model,
+                'api_base': k3s_litellm_gateway_primary_vllm_api_base,
                 'api_key': 'none'
               },
               'model_info': {
-                'model_lane': 'code-autocomplete-1.5b',
-                'routing_policy': 'local-kilo-autocomplete',
+                'model_lane': k3s_litellm_gateway_client_model_id_continue_chat,
+                'routing_policy': 'local-continue-chat-vllm',
                 'project': 'ripi',
-                'client_role': 'kilo-autocomplete',
-                'backend_runtime': 'ollama-autocomplete-1.5b-hvh-01',
-                'hf_repo_id': 'Qwen/Qwen2.5-Coder-1.5B-Instruct',
-                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
-                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml',
-                'client_model_id_kind': 'friendly_alias',
-                'notes': 'FRIENDLY ALIAS — qwen2.5-coder-1.5b@hvh01~kilo-autocomplete'
-              }
-            },
-            {
-              'model_name': k3s_litellm_gateway_client_model_id_continue_autocomplete,
-              'litellm_params': {
-                'model': k3s_litellm_gateway_autocomplete_1_5b_provider ~ '/' ~ k3s_litellm_gateway_autocomplete_1_5b_model,
-                'api_base': k3s_litellm_gateway_autocomplete_1_5b_api_base,
-                'api_key': 'none'
-              },
-              'model_info': {
-                'model_lane': 'code-autocomplete-1.5b',
-                'routing_policy': 'local-continue-autocomplete',
-                'project': 'ripi',
-                'client_role': 'continue-autocomplete',
-                'backend_runtime': 'ollama-autocomplete-1.5b-hvh-01',
-                'hf_repo_id': 'Qwen/Qwen2.5-Coder-1.5B-Instruct',
-                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
-                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml',
-                'client_model_id_kind': 'friendly_alias',
-                'notes': 'FRIENDLY ALIAS — qwen2.5-coder:1.5b@hvh01~continue-autocomplete'
-              }
-            },
-            {
-              'model_name': k3s_litellm_gateway_client_model_id_code_fast,
-              'litellm_params': {
-                'model': k3s_litellm_gateway_autocomplete_1_5b_provider ~ '/' ~ k3s_litellm_gateway_autocomplete_1_5b_model,
-                'api_base': k3s_litellm_gateway_autocomplete_1_5b_api_base,
-                'api_key': 'none'
-              },
-              'model_info': {
-                'model_lane': 'code-fast',
-                'routing_policy': 'local-continue-autocomplete-default',
-                'project': 'ripi',
-                'client_role': 'continue-autocomplete',
-                'backend_runtime': 'ollama-autocomplete-1.5b-hvh-01',
-                'hf_repo_id': 'Qwen/Qwen2.5-Coder-1.5B-Instruct',
-                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
-                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml',
-                'client_model_id_kind': 'friendly_alias',
-                'notes': 'FRIENDLY ALIAS — qwen2.5-coder:1.5b@hvh01~code-fast'
-              }
-            }
-          ]
-          if (k3s_litellm_gateway_autocomplete_1_5b_api_base | default('') | length > 0)
-          else []
-        )
-        + (
-          [
-            {
-              'model_name': k3s_litellm_gateway_client_model_id_continue_autocomplete_7b,
-              'litellm_params': {
-                'model': k3s_litellm_gateway_autocomplete_7b_provider ~ '/' ~ k3s_litellm_gateway_autocomplete_7b_model,
-                'api_base': k3s_litellm_gateway_autocomplete_7b_api_base,
-                'api_key': 'none'
-              },
-              'model_info': {
-                'model_lane': 'code-autocomplete-7b',
-                'routing_policy': 'local-continue-autocomplete',
-                'project': 'ripi',
-                'client_role': 'continue-autocomplete',
-                'backend_runtime': 'vllm-autocomplete-7b',
-                'hf_repo_id': k3s_litellm_gateway_autocomplete_7b_model,
+                'backend_runtime': 'vllm-primary',
+                'hf_repo_id': k3s_litellm_gateway_primary_vllm_model,
+                'notes': 'Continue chat + Kilo ask/plan (5090 vLLM 32B AWQ)',
                 'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
                 'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
               }
             }
           ]
-          if (k3s_litellm_gateway_autocomplete_7b_api_base | default('') | length > 0)
-          else []
-        )
-        + (
-          [
-            {
-              'model_name': k3s_litellm_gateway_client_model_id_kilo_lite,
-              'litellm_params': {
-                'model': k3s_litellm_gateway_kilo_lite_vllm_provider ~ '/' ~ k3s_litellm_gateway_kilo_lite_vllm_model,
-                'api_base': k3s_litellm_gateway_kilo_lite_vllm_api_base,
-                'api_key': 'none'
-              },
-              'model_info': {
-                'model_lane': 'kilo-lite',
-                'routing_policy': 'local-kilo-lite-vllm',
-                'project': 'ripi',
-                'client_role': 'kilo-smoke',
-                'backend_runtime': 'vllm-kilo-lite',
-                'hf_repo_id': k3s_litellm_gateway_kilo_lite_vllm_model,
-                'client_model_id_kind': 'friendly_alias',
-                'notes': 'FRIENDLY ALIAS — qwen2.5-coder-14b@k3s02-vllm~kilo-lite (5090 AWQ smoke; ~16k context recommended)',
-                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
-                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
-              }
-            }
-          ]
-          if (k3s_litellm_gateway_kilo_lite_vllm_api_base | default('') | length > 0)
-          else []
-        )
-        + (
-          [
-            {
-              'model_name': k3s_litellm_gateway_client_model_id_kilo_smoke,
-              'litellm_params': {
-                'model': k3s_litellm_gateway_kilo_smoke_vllm_provider ~ '/' ~ k3s_litellm_gateway_kilo_smoke_vllm_model,
-                'api_base': k3s_litellm_gateway_kilo_smoke_vllm_api_base,
-                'api_key': 'none'
-              },
-              'model_info': {
-                'model_lane': 'kilo-smoke',
-                'routing_policy': 'local-kilo-smoke-vllm',
-                'project': 'ripi',
-                'client_role': 'kilo-smoke',
-                'backend_runtime': 'vllm-kilo-smoke',
-                'hf_repo_id': k3s_litellm_gateway_kilo_smoke_vllm_model,
-                'client_model_id_kind': 'friendly_alias',
-                'notes': 'FRIENDLY ALIAS — qwen2.5-coder-7b@k3s02-vllm~kilo-smoke (5090 AWQ fastest cold start)',
-                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
-                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
-              }
-            }
-          ]
-          if (k3s_litellm_gateway_kilo_smoke_vllm_api_base | default('') | length > 0)
-          else []
-        )
-        + (
-          [
-            {
-              'model_name': k3s_litellm_gateway_client_model_id_diffusiongemma_nextedit,
-              'litellm_params': {
-                'model': 'hosted_vllm/' ~ k3s_litellm_gateway_diffusiongemma_model,
-                'api_base': k3s_litellm_gateway_diffusiongemma_api_base,
-                'api_key': 'none'
-              },
-              'model_info': {
-                'model_lane': 'diffusiongemma-nextedit',
-                'routing_policy': 'local-continue-nextedit',
-                'project': 'ripi',
-                'client_role': 'continue-nextedit',
-                'backend_runtime': 'vllm-diffusiongemma',
-                'hf_repo_id': k3s_litellm_gateway_diffusiongemma_model,
-                'replaces': 'mercury-coder-nextedit',
-                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
-                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
-              }
-            }
-          ]
-          if (k3s_litellm_gateway_diffusiongemma_api_base | default('') | length > 0)
-          else []
-        )
-        + (
-          [
-            {
-              'model_name': k3s_litellm_gateway_client_model_id_diffucoder,
-              'litellm_params': {
-                'model': 'hosted_vllm/' ~ k3s_litellm_gateway_diffucoder_model,
-                'api_base': k3s_litellm_gateway_diffucoder_api_base,
-                'api_key': 'none'
-              },
-              'model_info': {
-                'model_lane': 'diffucoder',
-                'routing_policy': 'local-continue-edit',
-                'project': 'ripi',
-                'client_role': 'continue-chat-edit',
-                'backend_runtime': 'vllm-diffucoder-or-wrapper',
-                'hf_repo_id': k3s_litellm_gateway_diffucoder_model,
-                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
-                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
-              }
-            }
-          ]
-          + (
-            [
-              {
-                'model_name': k3s_litellm_gateway_client_model_id_continue_edit_diffucoder,
-                'litellm_params': {
-                  'model': 'hosted_vllm/' ~ k3s_litellm_gateway_diffucoder_model,
-                  'api_base': k3s_litellm_gateway_diffucoder_api_base,
-                  'api_key': 'none'
-                },
-                'model_info': {
-                  'model_lane': 'continue-edit',
-                  'routing_policy': 'local-continue-edit-default',
-                  'project': 'ripi',
-                  'client_role': 'continue-chat-edit',
-                  'backend_runtime': 'vllm-diffucoder-or-wrapper',
-                  'hf_repo_id': k3s_litellm_gateway_diffucoder_model,
-                  'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
-                  'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
-                }
-              }
-            ]
-            if (k3s_litellm_gateway_continue_edit_api_base | default('') | length == 0)
-            else []
-          )
-          if (k3s_litellm_gateway_diffucoder_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_primary_vllm_api_base | default('') | length > 0)
           else []
         )
         + (
@@ -284,11 +79,12 @@
                 'api_key': 'none'
               },
               'model_info': {
-                'model_lane': 'continue-edit',
+                'model_lane': k3s_litellm_gateway_client_model_id_continue_edit,
                 'routing_policy': 'local-continue-edit-ollama-desktop',
                 'project': 'ripi',
-                'client_role': 'continue-chat-edit',
-                'backend_runtime': 'ollama-edit-qwen3-coder-30b-desktop',
+                'backend_runtime': 'ollama-qwen25-coder-7b-desktop',
+                'ollama_library': k3s_litellm_gateway_continue_edit_model,
+                'notes': 'Continue edit/apply (desktop Ollama)',
                 'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
                 'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
               }
@@ -300,153 +96,26 @@
         + (
           [
             {
-              'model_name': k3s_litellm_gateway_client_model_id_continue_apply,
+              'model_name': k3s_litellm_gateway_client_model_id_continue_autocomplete,
               'litellm_params': {
-                'model': k3s_litellm_gateway_continue_apply_provider ~ '/' ~ k3s_litellm_gateway_continue_apply_model,
-                'api_base': k3s_litellm_gateway_continue_apply_api_base,
+                'model': k3s_litellm_gateway_autocomplete_1_5b_provider ~ '/' ~ k3s_litellm_gateway_autocomplete_1_5b_model,
+                'api_base': k3s_litellm_gateway_autocomplete_1_5b_api_base,
                 'api_key': 'none'
               },
               'model_info': {
-                'model_lane': 'continue-apply',
-                'routing_policy': 'local-continue-apply-ollama-hvh01',
+                'model_lane': k3s_litellm_gateway_client_model_id_continue_autocomplete,
+                'routing_policy': 'local-continue-autocomplete',
                 'project': 'ripi',
-                'client_role': 'continue-apply',
-                'backend_runtime': 'ollama-apply-phi4-mini-hvh-01',
+                'backend_runtime': 'ollama-autocomplete-1.5b-hvh-01',
+                'hf_repo_id': 'Qwen/Qwen2.5-Coder-1.5B-Instruct',
+                'ollama_library': 'qwen2.5-coder:1.5b',
+                'notes': 'friendly: ~kilo-autocomplete',
                 'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
                 'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
               }
             }
           ]
-          if (k3s_litellm_gateway_continue_apply_api_base | default('') | length > 0)
-          else []
-        )
-        + (
-          [
-            {
-              'model_name': k3s_litellm_gateway_client_model_id_open_webui_gemma4,
-              'litellm_params': {
-                'model': k3s_litellm_gateway_gemma4_chat_provider ~ '/' ~ k3s_litellm_gateway_gemma4_chat_model,
-                'api_base': k3s_litellm_gateway_gemma4_chat_api_base,
-                'api_key': 'none',
-                'think': false
-              },
-              'model_info': {
-                'model_lane': 'gemma4-12b',
-                'routing_policy': 'local-open-webui-chat-ollama-desktop',
-                'project': 'ripi',
-                'client_role': 'open-webui-chat',
-                'backend_runtime': 'ollama-gemma4-dev-workstation-win',
-                'ollama_library': 'gemma4:12b',
-                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
-                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
-              }
-            }
-          ]
-          if (k3s_litellm_gateway_gemma4_chat_api_base | default('') | length > 0)
-          else []
-        )
-        + (
-          [
-            {
-              'model_name': k3s_litellm_gateway_client_model_id_architect,
-              'litellm_params': {
-                'model': k3s_litellm_gateway_qwen36_chat_provider ~ '/' ~ k3s_litellm_gateway_qwen36_chat_model,
-                'api_base': k3s_litellm_gateway_qwen36_chat_api_base,
-                'api_key': 'none',
-                'think': false
-              },
-              'model_info': {
-                'model_lane': 'qwen3.6-27b',
-                'routing_policy': 'local-open-webui-chat-ollama-desktop',
-                'project': 'ripi',
-                'client_role': 'open-webui-chat',
-                'backend_runtime': 'ollama-qwen36-dev-workstation-win',
-                'ollama_library': 'qwen3.6:27b',
-                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
-                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
-              }
-            }
-          ]
-          if (k3s_litellm_gateway_qwen36_chat_api_base | default('') | length > 0)
-          else []
-        )
-        + (
-          [
-            {
-              'model_name': k3s_litellm_gateway_client_model_id_open_webui_gpt_oss,
-              'litellm_params': {
-                'model': k3s_litellm_gateway_gpt_oss_chat_provider ~ '/' ~ k3s_litellm_gateway_gpt_oss_chat_model,
-                'api_base': k3s_litellm_gateway_gpt_oss_chat_api_base,
-                'api_key': 'none',
-                'think': false
-              },
-              'model_info': {
-                'model_lane': 'gpt-oss-20b',
-                'routing_policy': 'local-open-webui-chat-ollama-desktop',
-                'project': 'ripi',
-                'client_role': 'open-webui-chat',
-                'backend_runtime': 'ollama-gpt-oss-dev-workstation-win',
-                'ollama_library': 'gpt-oss:20b',
-                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
-                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
-              }
-            }
-          ]
-          if (k3s_litellm_gateway_gpt_oss_chat_api_base | default('') | length > 0)
-          else []
-        )
-        + (
-          [
-            {
-              'model_name': k3s_litellm_gateway_client_model_id_prompt_assist,
-              'litellm_params': {
-                'model': k3s_litellm_gateway_positive_negative_prompt_assist_chat_provider ~ '/' ~ k3s_litellm_gateway_positive_negative_prompt_assist_chat_model,
-                'api_base': k3s_litellm_gateway_positive_negative_prompt_assist_chat_api_base,
-                'api_key': 'none',
-                'think': false
-              },
-              'model_info': {
-                'model_lane': 'positive-negative-prompt-assist',
-                'routing_policy': 'local-open-webui-chat-ollama-desktop',
-                'project': 'ripi',
-                'client_role': 'positive-negative-prompt-assist',
-                'backend_runtime': 'ollama-gemma4-dev-workstation-win',
-                'ollama_library': k3s_litellm_gateway_positive_negative_prompt_assist_chat_model,
-                'coaching_asset': 'coaching/r_lab_visual_system.txt',
-                'source_routing': 'vision-capable positive/negative prompt assist for ComfyUI / A1111',
-                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
-                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
-              }
-            }
-          ]
-          if (k3s_litellm_gateway_positive_negative_prompt_assist_chat_api_base | default('') | length > 0)
-          else []
-        )
-        + (
-          [
-            {
-              'model_name': k3s_litellm_gateway_client_model_id_devstral_desktop,
-              'litellm_params': {
-                'model': k3s_litellm_gateway_devstral_chat_provider ~ '/' ~ k3s_litellm_gateway_devstral_chat_model,
-                'api_base': k3s_litellm_gateway_devstral_chat_api_base,
-                'api_key': 'none',
-                'think': false
-              },
-              'model_info': {
-                'model_lane': 'devstral-24b',
-                'routing_policy': 'local-open-webui-ollama-desktop',
-                'project': 'ripi',
-                'client_role': 'open-webui-coder',
-                'backend_runtime': 'ollama-devstral-dev-workstation-win',
-                'ollama_library': 'devstral:24b',
-                'client_model_id_kind': 'friendly_alias',
-                'notes': 'FRIENDLY ALIAS — devstral-24b@desktop~open-webui-coder (not Kilo primary)',
-                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
-                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
-              }
-            }
-          ]
-          if (k3s_litellm_gateway_devstral_chat_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_autocomplete_1_5b_api_base | default('') | length > 0)
           else []
         )
         + (
@@ -456,16 +125,15 @@
               'litellm_params': {
                 'model': k3s_litellm_gateway_kilo_fast_chat_provider ~ '/' ~ k3s_litellm_gateway_kilo_fast_chat_model,
                 'api_base': k3s_litellm_gateway_kilo_fast_chat_api_base,
-                'api_key': 'none',
-                'think': false
+                'api_key': 'none'
               },
               'model_info': {
-                'model_lane': 'kilo-fast',
+                'model_lane': k3s_litellm_gateway_client_model_id_kilo_fast,
                 'routing_policy': 'local-kilo-fast-ollama-desktop',
                 'project': 'ripi',
-                'client_role': 'kilo-autocomplete',
                 'backend_runtime': 'ollama-ministral-dev-workstation-win',
                 'ollama_library': 'ministral-3:8b',
+                'notes': 'friendly: ~kilo-fast',
                 'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
                 'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
               }
@@ -476,45 +144,13 @@
         )
       }}
 
-- name: Append local Continue / diffusion model routes
+- name: Append homelab local model routes
   ansible.builtin.set_fact:
     k3s_litellm_gateway_resolved_model_list: >-
       {{
         k3s_litellm_gateway_resolved_model_list
         + (k3s_litellm_gateway_resolved_local_continue_routes | default([]))
       }}
-
-- name: Append complexity smart-router route when enabled
-  ansible.builtin.set_fact:
-    k3s_litellm_gateway_resolved_model_list: >-
-      {{
-        k3s_litellm_gateway_resolved_model_list
-        + [
-          {
-            'model_name': k3s_litellm_gateway_complexity_router_model_name,
-            'litellm_params': {
-              'model': 'auto_router/complexity_router',
-              'drop_params': true,
-              'complexity_router_config': {
-                'tiers': k3s_litellm_gateway_resolved_complexity_tiers,
-                'keyword_tier_rules': k3s_litellm_gateway_complexity_router_keyword_tier_rules,
-                'custom_technical_keywords': k3s_litellm_gateway_complexity_router_custom_technical_keywords
-              },
-              'complexity_router_default_model': k3s_litellm_gateway_complexity_router_default_model
-            },
-            'model_info': {
-              'model_lane': k3s_litellm_gateway_complexity_router_model_name,
-              'routing_policy': 'complexity-auto-router',
-              'project': 'ripi',
-              'client_model_id_kind': 'model_group',
-              'notes': 'MODEL GROUP — litellm-complexity-auto-router@litellm~smart-router; tier values are other client model_name aliases.',
-              'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
-              'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
-            }
-          }
-        ]
-      }}
-  when: k3s_litellm_gateway_complexity_router_enabled | bool
 
 - name: Resolve LiteLLM proxy-level fallback settings
   ansible.builtin.set_fact:

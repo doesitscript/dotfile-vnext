@@ -77,7 +77,8 @@ Do not collapse these three layers without an explicit migration plan.
 | `qwen2.5-coder-32b@k3s02-vllm~kilo-main` | FRIENDLY ALIAS | Same 5090 backend — Kilo Code primary |
 | `qwen2.5-coder-1.5b@hvh01~kilo-autocomplete` | FRIENDLY ALIAS | Ollama on HVH-01 (1060) |
 | `devstral-24b@desktop~open-webui-coder` | FRIENDLY ALIAS | Desktop Ollama — Open WebUI, not Kilo |
-| `ministral-3-8b@desktop~kilo-fast` | FRIENDLY ALIAS | Desktop fallback when 5090 down |
+| `qwen2.5-coder-14b@k3s02-vllm~kilo-lite` | FRIENDLY ALIAS | 5090 vLLM 14B AWQ — **smoke/chat only** (Kilo agent tools broken) |
+| `ministral-3-8b@desktop~kilo-fast` | FRIENDLY ALIAS | Desktop Ollama — interim Kilo agent fallback; API tool_calls OK |
 | `litellm-complexity-auto-router@litellm~smart-router` | MODEL GROUP | Complexity auto-router |
 
 Full list: `roles/k3s_litellm_gateway/defaults/main/model_client_ids.yml`.

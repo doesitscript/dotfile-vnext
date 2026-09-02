@@ -49,6 +49,24 @@ When vLLM fails with insufficient KV cache:
 
 Host-specific tuning: `inventory/host_vars/hom-lab-ctl-k3s-02.yaml`.
 
+## Kilo testing lane (14B AWQ)
+
+When `k3s_vllm_runtime_kilo_testing_active: true` on k3s-02, primary vLLM serves
+`Qwen/Qwen2.5-Coder-14B-Instruct-AWQ` with `--max-model-len 32768` and
+`--tool-call-parser hermes`.
+
+**Known limitation:** Qwen2.5-Coder-14B emits tool intent in `message.content`
+(`<tools>` JSON) with `tool_calls: null`. vLLM hermes parser does not extract
+this format. LiteLLM route `kilo-lite` is valid for smoke/chat; **not** for Kilo
+code agent tool execution.
+
+| Action | Playbook |
+| --- | --- |
+| Apply / change vLLM | `playbooks/deploy_vllm_runtime.yaml` |
+| Revert to 32B | Remove testing block in host_vars; redeploy vLLM + gateway |
+
+Investigation: `homelab-reference-library/notes/investigations/2026-09-01--kilo-code-litellm-vllm-context-limits.md`.
+
 ## References
 
 - vLLM Docker deployment: https://docs.vllm.ai/en/latest/deployment/docker.html
