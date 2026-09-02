@@ -219,11 +219,12 @@ docs/one_off_tasks/codex-multi-terminal-workflow/
 
 **Hybrid behavior:**
 
-1. **Command names** (`cx-de<Tab>`): custom inline horizontal menu
+1. **Command names** (`cx-de<Tab>`): custom inline horizontal menu **above** the prompt
    - 1st Tab → inserts **first match immediately** (`cx-deep`)
-   - horizontal list below with **highlighted** active option
-   - Tab again → cycles on the **same prompt line**; menu row **redraws in place** (no stack)
+   - one menu row above PS1; highlight moves on Tab (redraws in place)
+   - Tab again → cycles on the **same prompt line**
 2. **Paths / flags** (after a space): `fzf-tab-completion` when fzf is installed
+3. **Prompt spacing (trial):** blank line before each new prompt via `PROMPT_COMMAND`
 
 **Deps** (`install_one_off_tasks.sh` installs when missing):
 
@@ -239,9 +240,8 @@ source ~/.bashrc.d/shell-completion_one_off_tasks.bash
 ```
 
 ```text
-cx-de<Tab>   → cx-deep on prompt + horizontal list below (cx-deep highlighted)
-<Tab>        → cx-deep-smoke on prompt, highlight moves
-<Shift-Tab>  → backward
+cx-de<Tab>   → cx-deep on prompt; menu row ABOVE prompt (cx-deep highlighted)
+<Tab>        → cycles highlight on same menu row; prompt line unchanged
 ```
 
 **Promote permanently:** fold into `roles/common/shell_config/files/bashrc.d/` after trial.

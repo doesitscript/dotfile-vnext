@@ -6,6 +6,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [6.1.6] - 2026-09-02
+
+Pre-release channel: `v6.1.6-beta` (Codex tab completion menu above prompt).
+
+### Changed
+
+- `shell-completion_one_off_tasks.bash` — render horizontal completion menu on the line
+  **above** the prompt (save/restore cursor) instead of left of PS1; optional blank line
+  before each prompt via `PROMPT_COMMAND` trial spacing.
+
 ## [6.1.5] - 2026-09-02
 
 Pre-release channel: `v6.1.5-beta` (Codex tab completion in-place menu redraw).

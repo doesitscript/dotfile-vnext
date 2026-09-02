@@ -1,15 +1,12 @@
 # ONE-OFF TRIAL (non-permanent) — source: docs/one_off_tasks/codex-multi-terminal-workflow/deploy/bashrc.d/
 # Auto-sourced by ~/.bashrc.d loop (Ansible common/shell_config). Remove via uninstall_one_off_tasks.sh.
 #
-# Research (Context7 + blogs):
-#   - GNU bash menu-complete: inserts one match per Tab; poor list UX alone.
-#   - junegunn/fzf: ** trigger completion; not plain Tab.
-#   - lincheney/fzf-tab-completion (Matt Duck 2021): bind -x '"\t": fzf_bash_completion'
-#     hooks Tab into fzf while reusing bash completion — best for paths/flags.
-#   - This file: inline horizontal command menu (cx-de → cx-deep + list below);
-#     fzf-tab-completion for everything else when installed.
+# Tab UX trial:
+#   - command menu renders on the line ABOVE the prompt (save/restore cursor)
+#   - 1st Tab inserts first match; menu redraws in place on repeat Tab
+#   - optional blank line before each new prompt (PROMPT_COMMAND breathe)
 #
-# macOS deps (install_one_off_tasks.sh): brew install fzf gawk grep gnu-sed coreutils
+# Paths/flags: lincheney/fzf-tab-completion when fzf is installed.
 
 if [[ -z "${BASH_VERSION:-}" ]]; then
   return 0 2>/dev/null || exit 0
@@ -26,18 +23,34 @@ export FZF_COMPLETION_OPTS="${FZF_COMPLETION_OPTS:---layout=reverse --border --h
 export FZF_TAB_COMPLETION_PROMPT="${FZF_TAB_COMPLETION_PROMPT:-> }"
 export FZF_COMPLETION_AUTO_COMMON_PREFIX="${FZF_COMPLETION_AUTO_COMMON_PREFIX:-true}"
 
-# --- Inline horizontal command menu (first Tab = first match + list below) ----
+# --- Optional: blank line before each prompt (trial spacing) ----------------
+_one_off_prompt_breathe() {
+  printf '\n'
+}
+if [[ -z "${_ONE_OFF_PROMPT_BREATHE_LOADED:-}" ]]; then
+  _ONE_OFF_PROMPT_BREATHE_LOADED=1
+  PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND; }_one_off_prompt_breathe"
+fi
+
+# --- Inline horizontal command menu -----------------------------------------
 declare -g _ONE_OFF_TAB_MENU_ACTIVE=0
 declare -g _ONE_OFF_TAB_MENU_QUERY=""
 declare -g _ONE_OFF_TAB_MENU_INDEX=0
 declare -g _ONE_OFF_TAB_MENU_DRAWN=0
 declare -ga _ONE_OFF_TAB_MENU_MATCHES=()
 
+_one_off_tab_clear_menu_line() {
+  if (( _ONE_OFF_TAB_MENU_DRAWN )); then
+    printf '\033[s\033[1A\033[2K\r\033[u'
+    _ONE_OFF_TAB_MENU_DRAWN=0
+  fi
+}
+
 _one_off_tab_menu_reset() {
+  _one_off_tab_clear_menu_line
   _ONE_OFF_TAB_MENU_ACTIVE=0
   _ONE_OFF_TAB_MENU_QUERY=""
   _ONE_OFF_TAB_MENU_INDEX=0
-  _ONE_OFF_TAB_MENU_DRAWN=0
   _ONE_OFF_TAB_MENU_MATCHES=()
 }
 
@@ -55,13 +68,9 @@ _one_off_tab_collect_matches() {
 _one_off_tab_print_horizontal_menu() {
   local item index
 
-  if (( _ONE_OFF_TAB_MENU_DRAWN )); then
-    # Redraw in place — do not stack another menu line on each Tab.
-    printf '\033[1A\033[2K\r'
-  else
-    printf '\n'
-    _ONE_OFF_TAB_MENU_DRAWN=1
-  fi
+  # Draw on the line above the prompt; restore cursor so options never sit left of PS1.
+  printf '\033[s'
+  printf '\033[1A\033[2K\r'
 
   for index in "${!_ONE_OFF_TAB_MENU_MATCHES[@]}"; do
     item="${_ONE_OFF_TAB_MENU_MATCHES[$index]}"
@@ -71,6 +80,9 @@ _one_off_tab_print_horizontal_menu() {
       printf '%s  ' "$item"
     fi
   done
+
+  printf '\033[u'
+  _ONE_OFF_TAB_MENU_DRAWN=1
 }
 
 _one_off_tab_first_word() {
@@ -114,9 +126,7 @@ _one_off_tab_inline_command_menu() {
       fi
     fi
   else
-    if (( _ONE_OFF_TAB_MENU_DRAWN )); then
-      _ONE_OFF_TAB_MENU_DRAWN=0
-    fi
+    _one_off_tab_clear_menu_line
     _ONE_OFF_TAB_MENU_QUERY="$query"
     _one_off_tab_collect_matches "$query"
     _ONE_OFF_TAB_MENU_INDEX=0
@@ -139,6 +149,8 @@ _one_off_tab_inline_command_menu() {
 
   if ((${#_ONE_OFF_TAB_MENU_MATCHES[@]} > 1)); then
     _one_off_tab_print_horizontal_menu
+  else
+    _one_off_tab_clear_menu_line
   fi
   return 0
 }
@@ -170,8 +182,3 @@ _one_off_tab_complete_backward() {
 bind 'set bell-style none' 2>/dev/null || true
 bind -x '"\t": _one_off_tab_complete' 2>/dev/null || true
 bind -x '"\e[Z": _one_off_tab_complete_backward' 2>/dev/null || true
-
-# Ensure cx-* shell functions are visible to compgen/bash completion.
-if declare -F cx-deep >/dev/null 2>&1; then
-  :
-fi
