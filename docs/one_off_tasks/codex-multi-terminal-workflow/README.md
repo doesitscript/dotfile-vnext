@@ -204,33 +204,35 @@ docs/one_off_tasks/codex-multi-terminal-workflow/
 
 ---
 
-## Tab completion (inline + fzf)
+## Tab completion (fzf-tab-completion)
 
-**Research sources (Context7 / blogs):**
-
-| Source | Finding |
-| --- | --- |
-| GNU Bash manual | `menu-complete` inserts one match per Tab; `show-all-if-ambiguous` lists without inserting |
-| [junegunn/fzf](https://github.com/junegunn/fzf) | `eval "$(fzf --bash)"` uses `**` trigger — not plain Tab |
-| [lincheney/fzf-tab-completion](https://github.com/lincheney/fzf-tab-completion) | `bind -x '"\t": fzf_bash_completion'` for paths/flags ([Matt Duck, 2021](https://www.mattduck.com/2021-05-fzf-tab-completion)) |
-| [aloxaf/fzf-tab](https://github.com/aloxaf/fzf-tab) | zsh only |
+**Upstream:** [lincheney/fzf-tab-completion](https://github.com/lincheney/fzf-tab-completion) — Tab
+completion using fzf with bash’s existing completion mechanisms (not a separate `**` trigger).
 
 **Deployed:** `~/.bashrc.d/shell-completion_one_off_tasks.bash`
 
-**Hybrid behavior:**
+**Behavior** (with `FZF_COMPLETION_AUTO_COMMON_PREFIX=true` and
+`FZF_COMPLETION_AUTO_COMMON_PREFIX_PART=true`):
 
-1. **Command names** (`cx-de<Tab>`): custom inline horizontal menu **above** the prompt
-   - 1st Tab on a query → inserts **first match** (`cx-deep`) and highlights **first** option
-   - menu row is width-bounded (sliding window + `…`) so it never wraps onto the prompt line
-   - repeat Tab cycles through the **original** match set (even after line expands to `cx-deep`)
-2. **Paths / flags** (after a space): `fzf-tab-completion` when fzf is installed
-3. **Prompt spacing (trial):** blank line before each new prompt via `PROMPT_COMMAND`
+| Input | Result |
+| --- | --- |
+| `ls <Tab>` | fzf lists all files |
+| `ls a<Tab>` | completes to `ls abc`; Tab again → fzf with remaining `a*` matches |
+| `ls abcd<Tab>` | fzf with matches, or auto-prefix to `abcdef-` when `_PART=true` |
+| `cx-de<Tab>` | completes toward `cx-deep`; Tab again → fzf with other `cx-*` aliases |
 
-**Deps** (`install_one_off_tasks.sh` installs when missing):
+**Setup** (matches upstream bash instructions):
+
+```bash
+source ~/.local/share/fzf-tab-completion/bash/fzf-bash-completion.sh
+bind -x '"\t": fzf_bash_completion'
+```
+
+**Deps** (`install_one_off_tasks.sh`):
 
 ```bash
 brew install fzf gawk grep gnu-sed coreutils
-# cloned to ~/.local/share/fzf-tab-completion by install script
+git clone https://github.com/lincheney/fzf-tab-completion.git ~/.local/share/fzf-tab-completion
 ```
 
 Reload:
@@ -239,10 +241,8 @@ Reload:
 source ~/.bashrc.d/shell-completion_one_off_tasks.bash
 ```
 
-```text
-cx-de<Tab>   → cx-deep on prompt; menu row ABOVE prompt (cx-deep highlighted)
-<Tab>        → cycles highlight on same menu row; prompt line unchanged
-```
+Optional: enable [junegunn/fzf](https://github.com/junegunn/fzf) `**` path trigger separately via
+`eval "$(fzf --bash)"` in `~/.bashrc` — not required for plain Tab.
 
 **Promote permanently:** fold into `roles/common/shell_config/files/bashrc.d/` after trial.
 

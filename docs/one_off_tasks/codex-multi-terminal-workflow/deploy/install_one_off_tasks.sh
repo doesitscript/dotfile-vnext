@@ -60,17 +60,17 @@ FZF_TAB_DIR="${HOME}/.local/share/fzf-tab-completion"
 if [[ ! -f "${FZF_TAB_DIR}/bash/fzf-bash-completion.sh" ]]; then
   mkdir -p "${HOME}/.local/share"
   git clone --depth 1 https://github.com/lincheney/fzf-tab-completion.git "${FZF_TAB_DIR}" \
-    || printf 'Warning: could not clone fzf-tab-completion — inline cx-* Tab still works.\n' >&2
+    || printf 'Warning: could not clone fzf-tab-completion — Tab completion will not load.\n' >&2
 fi
 
 printf '\n%s\n' 'Installed. Open a new shell or run:'
 printf '  source ~/.bashrc.d/codex-multi-terminal_one_off_tasks.bash\n'
 printf '  source ~/.bashrc.d/shell-completion_one_off_tasks.bash\n\n'
-printf '%s\n' 'Tab completion (cx-de<Tab>):'
-printf '%s\n' '  • 1st Tab → inserts cx-deep immediately'
-printf '%s\n' '  • horizontal list of all matches below (highlighted = active)'
-printf '%s\n' '  • Tab again → cycles cx-deep-smoke, cx-desktop, … on same line'
-printf '%s\n\n' '  • paths/flags → fzf-tab-completion when fzf is installed'
+printf '%s\n' 'Tab completion (fzf-tab-completion):'
+printf '%s\n' '  • Tab completes longest common prefix when possible'
+printf '%s\n' '  • Tab again opens fzf with remaining matches'
+printf '%s\n' '  • cx-de<Tab> → cx-deep; Tab → fzf with cx-deep-smoke, cx-desktop, …'
+printf '%s\n\n' '  • paths/flags use the same fzf picker'
 printf '%s\n' 'Try:'
 printf '  cx-deep       # 32B @ 5090 — dotfile-vnext\n'
 printf '  cx-desktop    # 14B @ desktop — dotfile-vnext\n'

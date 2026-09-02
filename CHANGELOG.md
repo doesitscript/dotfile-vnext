@@ -6,6 +6,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [6.1.9] - 2026-09-02
+
+Pre-release channel: `v6.1.9-beta` (fzf-tab-completion vanilla Tab).
+
+### Changed
+
+- `shell-completion_one_off_tasks.bash` — drop custom inline horizontal menu; use upstream
+  [fzf-tab-completion](https://github.com/lincheney/fzf-tab-completion) with
+  `FZF_COMPLETION_AUTO_COMMON_PREFIX=true` and `FZF_COMPLETION_AUTO_COMMON_PREFIX_PART=true`.
+
 ## [6.1.8] - 2026-09-02
 
 Pre-release channel: `v6.1.8-beta` (tab completion cycle-through fix).
