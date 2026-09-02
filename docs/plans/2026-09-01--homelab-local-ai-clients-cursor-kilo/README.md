@@ -34,7 +34,7 @@ tuning that preserves full 32k context.
 
 | Role | `model@host` | GPU | Continue roles | OpenCode |
 | --- | --- | --- | --- | --- |
-| Quality chat | `qwen2.5-coder-32b@k3s02-vllm` | 5090 vLLM 32B AWQ + fp8 KV | chat | **not listed** (tool_calls broken) |
+| Quality chat | `qwen2.5-coder-32b@k3s02-vllm` | 5090 vLLM 32B AWQ + fp8 KV | chat | optional (tools work with `qwen2_5_coder` parser) |
 | Edit / apply / agent | `qwen2.5-coder-7b@desktop` | RX 9060 XT Ollama | edit, apply | **default** + agent probe |
 | Fast / autocomplete | `qwen2.5-coder-1.5b@hvh01` | GTX 1060 Ollama | autocomplete | small tasks |
 
@@ -73,7 +73,7 @@ HRL note: `homelab-reference-library/notes/investigations/2026-09-02--5090-vllm-
 | --- | --- |
 | `qwen2.5-coder-14b@k3s02-vllm` | **Rejected** — undersized for primary 5090 lane |
 | `Qwen3-Coder-*` on vLLM | `pending_research` — native tool parser not validated |
-| OpenCode on 32B vLLM | **Blocked** — Qwen2.5 tool format in `content`, not `tool_calls` |
+| OpenCode on 32B vLLM | **Unblocked (beta)** — `qwen2_5_coder` parser plugin; verify before promoting OpenCode default |
 
 ## Architecture
 
@@ -171,6 +171,8 @@ operator reload + interactive agent smoke).
 | Architecture / routing | Mermaid | this README |
 | Naming / model lanes | table | this README |
 | Memory budget | table | this README + HRL note |
+| **5090 VRAM before/after tuning** | SVG + remedial prose | [diagrams/5090-vram-tuning-before-after.md](./diagrams/5090-vram-tuning-before-after.md) |
+| **5090 model runbook (14B vs 32B)** | Markdown | [docs/reference/models/5090-qwen25-coder-14b-vs-32b.md](../../reference/models/5090-qwen25-coder-14b-vs-32b.md) |
 
 ## On Deck — user decisions to integrate
 

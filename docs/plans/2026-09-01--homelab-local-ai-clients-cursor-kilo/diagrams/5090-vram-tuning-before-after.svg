@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 980" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+  <defs>
+    <style>
+      .title { font-size: 22px; font-weight: 700; fill: #111; }
+      .subtitle { font-size: 14px; fill: #444; }
+      .panel-title { font-size: 17px; font-weight: 700; fill: #111; }
+      .label { font-size: 12px; fill: #222; }
+      .small { font-size: 11px; fill: #555; }
+      .tiny { font-size: 10px; fill: #666; }
+      .callout { font-size: 12px; fill: #7a1f1f; font-weight: 600; }
+      .good { font-size: 12px; fill: #14532d; font-weight: 600; }
+      .bar-stroke { stroke: #333; stroke-width: 1.5; }
+      .weights { fill: #3b82f6; }
+      .kv { fill: #f59e0b; }
+      .other { fill: #94a3b8; }
+      .free { fill: #f8fafc; }
+      .arrow { stroke: #16a34a; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .box { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1; rx: 8; }
+    </style>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#16a34a"/>
+    </marker>
+  </defs>
+
+  <text x="460" y="34" text-anchor="middle" class="title">RTX 5090 VRAM: before vs after tuning</text>
+  <text x="460" y="58" text-anchor="middle" class="subtitle">Same GPU (32 GB). Same context window (32k). Different model size + KV cache settings.</text>
+
+  <!-- BEFORE panel -->
+  <rect x="30" y="80" width="410" height="430" class="box"/>
+  <text x="235" y="108" text-anchor="middle" class="panel-title">BEFORE &#8212; 14B (untuned thinking)</text>
+  <text x="235" y="128" text-anchor="middle" class="small">Qwen2.5-Coder-14B-Instruct-AWQ @ 32k context</text>
+
+  <text x="50" y="155" class="label">GPU VRAM bar (32,607 MiB total)</text>
+  <rect x="120" y="165" width="90" height="300" class="bar-stroke free"/>
+  <rect x="120" y="382" width="90" height="83" class="bar-stroke weights"/>
+  <rect x="120" y="198" width="90" height="184" class="bar-stroke kv"/>
+  <rect x="120" y="189" width="90" height="9" class="bar-stroke other"/>
+  <rect x="120" y="165" width="90" height="24" class="bar-stroke free"/>
+
+  <text x="225" y="190" class="label">KV cache (~20 GB)</text>
+  <text x="225" y="205" class="tiny">Remembers your long chat / code context</text>
+  <text x="225" y="250" class="small">Default KV storage (bf16/fp16)</text>
+  <text x="225" y="265" class="tiny">Big memory per token at 32k window</text>
+
+  <text x="225" y="410" class="label">Model weights (~9 GB)</text>
+  <text x="225" y="425" class="tiny">The 14B &#8220;brain&#8221; (AWQ compressed)</text>
+
+  <text x="225" y="175" class="label">Small free slice (~3 GB)</text>
+
+  <text x="50" y="490" class="callout">Common mistake:</text>
+  <text x="50" y="508" class="small">&#8220;14B is half of 32B, so half the GPU must be empty.&#8221;</text>
+  <text x="50" y="526" class="small">Wrong. At 32k context, KV cache dominates.</text>
+  <text x="50" y="544" class="small">Live use: ~29 GB / 32 GB (~89% full).</text>
+
+  <text x="50" y="575" class="label">Settings (before)</text>
+  <text x="50" y="593" class="tiny">&#8226; --max-model-len 32768</text>
+  <text x="50" y="608" class="tiny">&#8226; --gpu-memory-utilization 0.90</text>
+  <text x="50" y="623" class="tiny">&#8226; KV cache dtype: default (not fp8)</text>
+  <text x="50" y="638" class="tiny">&#8226; Smaller model, but not &#8220;room&#8221; for 32B</text>
+
+  <!-- AFTER panel -->
+  <rect x="480" y="80" width="410" height="430" class="box"/>
+  <text x="685" y="108" text-anchor="middle" class="panel-title">AFTER &#8212; 32B (tuned to fit)</text>
+  <text x="685" y="128" text-anchor="middle" class="small">Qwen2.5-Coder-32B-Instruct-AWQ @ 32k context</text>
+
+  <text x="500" y="155" class="label">GPU VRAM bar (32,607 MiB total)</text>
+  <rect x="570" y="165" width="90" height="300" class="bar-stroke free"/>
+  <rect x="570" y="281" width="90" height="184" class="bar-stroke weights"/>
+  <rect x="570" y="207" width="90" height="74" class="bar-stroke kv"/>
+  <rect x="570" y="189" width="90" height="18" class="bar-stroke other"/>
+  <rect x="570" y="165" width="90" height="24" class="bar-stroke free"/>
+
+  <text x="675" y="190" class="label">Activations + overhead (~2 GB)</text>
+  <text x="675" y="235" class="label">KV cache (~8 GB) &#8212; fp8</text>
+  <text x="675" y="250" class="good">TUNED: --kv-cache-dtype fp8</text>
+  <text x="675" y="265" class="tiny">~half the KV bytes vs default</text>
+  <text x="675" y="280" class="tiny">Context length unchanged (32k)</text>
+
+  <text x="675" y="360" class="label">Model weights (~20 GB)</text>
+  <text x="675" y="375" class="good">TUNED: 32B AWQ (bigger brain)</text>
+
+  <text x="675" y="175" class="label">Small free slice (~2 GB)</text>
+
+  <text x="500" y="490" class="good">What changed (without cutting context):</text>
+  <text x="500" y="508" class="small">1. Bigger model (14B &#8594; 32B AWQ)</text>
+  <text x="500" y="526" class="small">2. KV cache storage: default &#8594; fp8</text>
+  <text x="500" y="544" class="small">3. gpu-memory-utilization: 0.90 &#8594; 0.92</text>
+  <text x="500" y="562" class="small">4. max-num-seqs capped at 4 (less peak KV)</text>
+  <text x="500" y="580" class="small">5. max-model-len 32768 &#8212; NOT reduced</text>
+  <text x="500" y="605" class="small">Live use: ~30 GB / 32 GB (~92% full)</text>
+
+  <!-- Legend -->
+  <rect x="30" y="660" width="860" height="90" class="box"/>
+  <text x="50" y="685" class="label">Legend</text>
+  <rect x="50" y="695" width="18" height="18" class="weights bar-stroke"/>
+  <text x="75" y="709" class="small">Model weights &#8212; the neural network parameters (bigger model = bigger block)</text>
+  <rect x="50" y="720" width="18" height="18" class="kv bar-stroke"/>
+  <text x="75" y="734" class="small">KV cache &#8212; memory that remembers prior tokens (grows with context length)</text>
+  <rect x="430" y="695" width="18" height="18" class="other bar-stroke"/>
+  <text x="455" y="709" class="small">Runtime overhead &#8212; activations, CUDA graphs, buffers</text>
+  <rect x="430" y="720" width="18" height="18" class="free bar-stroke"/>
+  <text x="455" y="734" class="small">Free / headroom &#8212; safety margin to avoid OOM</text>
+
+  <!-- Beginner cheat sheet -->
+  <rect x="30" y="770" width="860" height="185" class="box"/>
+  <text x="50" y="798" class="label">Beginner cheat sheet &#8212; three ideas</text>
+  <text x="50" y="822" class="small"><tspan font-weight="700">Parameters (weights):</tspan> how smart the model is. 32B &gt; 14B. Stored once at load time.</text>
+  <text x="50" y="844" class="small"><tspan font-weight="700">KV cache:</tspan> working memory for the current session. Longer context (32k tokens) needs more KV cache.</text>
+  <text x="50" y="866" class="small"><tspan font-weight="700">Tuning without shrinking context:</tspan> fp8 KV stores the same 32k window using less memory per token.</text>
+  <text x="50" y="888" class="small">We did <tspan font-weight="700">not</tspan> fix fit by lowering --max-model-len. We changed KV storage efficiency + concurrency cap.</text>
+  <text x="50" y="918" class="tiny">Homelab source: live nvidia-smi + vLLM logs on hom-lab-ctl-k3s-02 (2026-09-02).</text>
+
+  <path d="M 445 290 L 475 290" class="arrow"/>
+  <text x="460" y="278" text-anchor="middle" class="good" font-size="11">tune</text>
+</svg>

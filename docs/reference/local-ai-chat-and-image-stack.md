@@ -12,6 +12,8 @@ Concise plan of the Open WebUI / LiteLLM / Ollama / vLLM / Automatic1111 / Comfy
   desktop = Ollama chat; HVH-01 = A1111.
 - Optional **Phase B**: time-share the k3s-02 5090 with ComfyUI (pauses Ornith).
   Flip guide: [k3s-02-gpu-timeshare-phase-b.md](k3s-02-gpu-timeshare-phase-b.md).
+- **5090 vLLM model tuning runbooks:** [models/README.md](models/README.md)
+  (14B vs 32B AWQ, VRAM knobs, tool-parser notes).
 
 ## Surfaces
 
