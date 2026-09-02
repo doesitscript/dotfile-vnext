@@ -21,6 +21,8 @@ this order:
    referenced supporting rule files
 7. `docs/codex_framework/plan-governance-dependencies.md` and `docs/plans/README.md`
    Required Diagram Checklist when writing or promoting under `docs/plans/`
+8. `docs/codex_framework/verification-before-completion-gate.md` before any pass /
+   complete / execute-complete claim (load Superpowers `verification-before-completion`)
 
 For this repo, framework docs and the referenced `framework-*` rule family are
 not optional background reading in Codex/OpenAI conversations. This file
@@ -112,6 +114,7 @@ Include:
 30. **Research quality for candidate resources:** For brainstorm/intake imports, exact model IDs, provider routes, hardware placement, NetBox object additions, and download plans require a current research matrix and live probe evidence before they are treated as selected. Without that, use `pending_research` or `provisional_example`, keep candidate families visible, and do not download, pin, or mark the row stronger than research-pending.
 31. **Reusable multi-agent workflows live in the framework registry:** When the user asks for a coordinator, validator, permission grantor, multi-agent split, or reusable working pattern, document the reusable workflow under `docs/codex_framework/agent-workflows/` instead of burying it only in a plan packet. A plan may select a workflow pattern, but the pattern owns the role boundaries, gates, fallback behavior, and completion rule.
 32. **Ansible-first interpretation (default):** Treat user requests to install, download, configure, deploy, remove, or verify homelab resources as requests to do that work **through this repo's Ansible framework** (roles with `present|absent`, playbooks, inventory). Do **not** use ad-hoc SSH/WinRM one-liners, scp'd temp scripts, or manual `pip install` on managed hosts unless the user explicitly says the change is a **one-off** / `oneoffs` exception, **or** you are already debugging Ansible task code interactively to discover a working command that will be placed into the role. Before any novel implementation, research via Context7, Firecrawl, pre-downloaded HRL library entries, Ansible module docs, and existing repo roles/playbooks. For install/mutate work, enter via skill `homelab-ansible-first-entry` (`bin/codex-env python .cursor/skills/homelab-ansible-first-entry/scripts/print_entry_doors.py`) before inventing an approach. **Entry door:** for install/mutate work, run `bin/codex-env python .cursor/skills/homelab-ansible-first-entry/scripts/print_entry_doors.py` and follow skill `homelab-ansible-first-entry` before inventing an approach. For install/mutate starts, enter skill `homelab-ansible-first-entry` first (`bin/codex-env python .cursor/skills/homelab-ansible-first-entry/scripts/print_entry_doors.py`) so routing happens before inventing an approach.
+33. **Fresh verification before completion (Superpowers mandatory):** Before any pass / complete / working / done / execute-complete claim — including brief handoff or status-only turns — load Superpowers skill `verification-before-completion`, run the proving command(s) **in the current turn**, and attach output. Prior-turn evidence and system "briefly inform" prompts do **not** waive this gate. See `docs/codex_framework/verification-before-completion-gate.md`. Pair with `docs/codex_framework/plan-verification-receipt.md` for plan work. Only explicit per-obligation user deferral may skip re-verification; generic brevity requests may not.
 
 ## Repo Truths
 
@@ -171,9 +174,14 @@ Include:
 1. Inspect existing playbooks, roles, docs, inventory, and rules before proposing new structure.
 2. Check official docs for Codex/OpenAI, Ansible, or other primary systems when the task is new, unstable, or easy to get wrong.
 3. When the task involves the OpenAI API, ChatGPT Apps SDK, Codex, Codex configuration, `AGENTS.md` customization, MCP usage, or subagents, use the `openaiDeveloperDocs` MCP server by default without waiting for the user to ask explicitly.
-4. Look for a real module, collection, or role before falling back to scripting.
-5. If a topic is too novel or under-researched, stop short of a decision-complete plan and escalate to research first.
-6. The research output should be a concise evidence summary with:
+4. When the question is whether a Cursor/Codex marketplace plugin, skill pack,
+   or connector is installed or enabled, verify plugin state through the client
+   plugin surface, plugin manifests/cache, or client logs. Do not use shell-tool
+   checks such as `sysoperator.check_tool` for that question; marketplace
+   plugins are not PATH executables.
+5. Look for a real module, collection, or role before falling back to scripting.
+6. If a topic is too novel or under-researched, stop short of a decision-complete plan and escalate to research first.
+7. The research output should be a concise evidence summary with:
    - what already exists
    - what sources were checked
    - viable options
@@ -183,12 +191,12 @@ Include:
    `Sources checked:` listing each consulted repo file, MCP/doc source, or
    external URL with a short label. This final section is required for both
    research-only answers and implementation summaries that relied on sources.
-7. Keep research in the conversation by default unless the user explicitly wants a durable artifact or the result is itself a durable process change.
-8. When repeated implementation attempts stop producing new evidence, stop iterating blindly and switch to documentation/source-backed research before changing strategy.
-9. When password passing, privilege escalation, or installer flow behaves unexpectedly, inspect the actual module/tool documentation or source before changing escalation strategy.
-10. When gathering repo context for a non-bootstrap task, prefer steady-state roles, deploy/verify playbooks, diagnostics notes, and active framework guidance before bootstrap docs or first-touch setup paths. Pull bootstrap material only when the task is explicitly about initial machine setup, bootstrap recovery, or replacing a bootstrap path.
-11. When the repo already documents a required runtime wrapper or environment-loading path for Python, Ansible, WinRM, or MCP-adjacent work, follow that documented path instead of calling the underlying interpreter directly.
-12. When importing brainstormed, AI-generated, or externally drafted work where
+8. Keep research in the conversation by default unless the user explicitly wants a durable artifact or the result is itself a durable process change.
+9. When repeated implementation attempts stop producing new evidence, stop iterating blindly and switch to documentation/source-backed research before changing strategy.
+10. When password passing, privilege escalation, or installer flow behaves unexpectedly, inspect the actual module/tool documentation or source before changing escalation strategy.
+11. When gathering repo context for a non-bootstrap task, prefer steady-state roles, deploy/verify playbooks, diagnostics notes, and active framework guidance before bootstrap docs or first-touch setup paths. Pull bootstrap material only when the task is explicitly about initial machine setup, bootstrap recovery, or replacing a bootstrap path.
+12. When the repo already documents a required runtime wrapper or environment-loading path for Python, Ansible, WinRM, or MCP-adjacent work, follow that documented path instead of calling the underlying interpreter directly.
+13. When importing brainstormed, AI-generated, or externally drafted work where
     capabilities/needs are defined but exact resources are not, treat the gap as
     a required research-and-probe slice before implementation. Do not pin model
     IDs, runtime placement, hardware assumptions, NetBox metadata, download
@@ -202,7 +210,7 @@ Include:
     and operational fit, and links the live probe evidence. Plans produced from
     such intake must show the research/probe receipt or explicitly keep the
     slice blocked/pending.
-13. **No invented host targeting before research + classify.** Before writing
+14. **No invented host targeting before research + classify.** Before writing
     `hosts:` patterns, `when:` placement, or playbook limits for a new/changed
     capability: (a) research existing inventory groups, `policy/*.yml`, and HRL
     capability-selector docs; (b) run or cite
@@ -211,7 +219,7 @@ Include:
     hostnames such as `HOM-LAB-HVH-02`. If a host has selector structure but
     matches no role, extend `policy/execution_roles.yml` or
     `policy/coverage.yml` — do not invent around the gap.
-14. **Product capabilities (Open WebUI-class):** use skill
+15. **Product capabilities (Open WebUI-class):** use skill
     `homelab-product-capability-flow`. Library vendor scrape defaults to
     **task-scoped** (goal-only); full/complete vendor clone only when the user
     asks. Plan after library evidence. Mental model:

@@ -37,6 +37,8 @@ Architecture diagram medium (`create-diagrams` + SVG default, Mermaid when prefe
 [architecture-diagram-routing.md](architecture-diagram-routing.md).
 Plan execute/complete verification: [plan-verification-receipt.md](plan-verification-receipt.md)
 (full obligation inventory — not checklist-only).
+Fresh verification before any pass/complete claim (Superpowers mandatory, no brief-handoff
+exemption): [verification-before-completion-gate.md](verification-before-completion-gate.md).
 Reusable multi-agent and role-split execution patterns:
 [agent-workflows/](agent-workflows/README.md).
 Patterns belong in `docs/reference/naming-standards/`; instances in

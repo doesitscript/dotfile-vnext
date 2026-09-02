@@ -154,6 +154,8 @@ row, the verification is incomplete.
 | `framework-plan-governance.mdc` | Reminder on save and on complete |
 | `complete-plan-lifecycle` skill | Full receipt before `-implemented` rename |
 | `AGENTS.md` Working Contract | Execute-complete requires comprehensive verification |
+| `verification-before-completion-gate.md` | Fresh probes this turn; Superpowers skill mandatory |
+| Superpowers `verification-before-completion` | Process skill — load before pass/complete claims |
 
 ## Optional future enforcement
 

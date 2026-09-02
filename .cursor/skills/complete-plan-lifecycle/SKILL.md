@@ -47,15 +47,18 @@ Do not use when:
 
 ## Plan verification receipt (mandatory)
 
-Before rename or `lifecycle: implemented`, the plan packet must include
-`## Plan verification receipt` per
-[docs/codex_framework/plan-verification-receipt.md](../../../docs/codex_framework/plan-verification-receipt.md):
+Before rename or `lifecycle: implemented`:
 
-1. **Obligation inventory** — every testable requirement from the full plan (checklist,
-   change contract Apply/Verify/Undo/Class, frontmatter dependencies, prose gates,
-   reference tables for the slice) — not only `## Checklist` rows
-2. **Evidence** per in-scope obligation (`pass` with proof, or `blocked`/`fail` with proof)
-3. **Completion gate** checkboxes satisfied
+1. Load Superpowers skill `verification-before-completion` and run fresh proving
+   commands in the **current** turn (see
+   [verification-before-completion-gate.md](../../../docs/codex_framework/verification-before-completion-gate.md)).
+2. Ensure the plan packet includes `## Plan verification receipt` per
+   [plan-verification-receipt.md](../../../docs/codex_framework/plan-verification-receipt.md):
+   - **Obligation inventory** — every testable requirement from the full plan (checklist,
+     change contract Apply/Verify/Undo/Class, frontmatter dependencies, prose gates,
+     reference tables for the slice) — not only `## Checklist` rows
+   - **Evidence** per in-scope obligation (`pass` with proof, or `blocked`/`fail` with proof)
+   - **Completion gate** checkboxes satisfied
 
 Reject completion if the only verification artifact is a short execute-receipt table
 without the full inventory.
