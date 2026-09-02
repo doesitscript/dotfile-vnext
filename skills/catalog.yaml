@@ -414,6 +414,39 @@ skills:
     runtime_bridge:
       enabled: true
       cursor_skill_name: project-skill-runtime-bridge
+  work-laptop-export-pack:
+    name: work-laptop-export-pack
+    description: Use when the isolated work-laptop export packet under exports/work-laptop-ai-tools should
+      be sliced into a zip, unpacked outside the repo, and smoke-tested from the extracted copy. Use
+      for build the work-laptop export zip, round-trip this packet outside the repo, or verify the extracted
+      hello-world packet still runs.
+    path: implementation/work-laptop-export-pack/SKILL.md
+    scope: project
+    category: implementation
+    purpose: Package and externally smoke-test the isolated work-laptop export packet
+    status: reviewed
+    triggers:
+    - build the work-laptop export zip
+    - round-trip this packet outside the repo
+    - verify the extracted hello-world packet still runs
+    - slice and compress the work-laptop playbook
+    do_not_use_when:
+    - the task is to expand the packet into broad repo inventory or playbook lanes
+    - only the role logic inside the packet is changing
+    handoff_from: []
+    handoff_to:
+    - project-skill-runtime-bridge
+    complements:
+    - project-skill-runtime-bridge
+    references:
+    - implementation/work-laptop-export-pack/references/sources-and-precedence.md
+    - implementation/work-laptop-export-pack/references/related-artifacts.md
+    scripts:
+    - implementation/work-laptop-export-pack/scripts/build_export_archive.py
+    - implementation/work-laptop-export-pack/scripts/roundtrip_smoke.py
+    runtime_bridge:
+      enabled: true
+      cursor_skill_name: work-laptop-export-pack
   legacy-runtime-skill-migration:
     name: legacy-runtime-skill-migration
     description: Use when an old .cursor/skills workflow should be migrated into dotfile-vnext's project
