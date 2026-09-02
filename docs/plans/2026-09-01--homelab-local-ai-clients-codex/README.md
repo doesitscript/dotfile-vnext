@@ -31,6 +31,11 @@ plan deliberately does not duplicate that operational detail. Codex has one
 current large response/reasoning lane and no dependency on Cursor or other
 IDE-client configuration.
 
+**Sibling plan (ATDD coordination):** Acceptance-author workflow and future
+coordinator skill — [`2026-09-01--homelab-model-lane-atdd-coordination`](../2026-09-01--homelab-model-lane-atdd-coordination/README.md).
+This Codex packet is an **example in-progress implementer campaign**; implementer
+agent and model selections will differ in future work.
+
 ## Research findings and terminology corrections
 
 - A Codex profile is a separate `$CODEX_HOME/<name>.config.toml` overlay,
