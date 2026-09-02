@@ -220,9 +220,9 @@ docs/one_off_tasks/codex-multi-terminal-workflow/
 **Hybrid behavior:**
 
 1. **Command names** (`cx-de<Tab>`): custom inline horizontal menu **above** the prompt
-   - 1st Tab → inserts **first match immediately** (`cx-deep`)
-   - one menu row above PS1; highlight moves on Tab (redraws in place)
-   - Tab again → cycles on the **same prompt line**
+   - 1st Tab on a query → inserts **first match** (`cx-deep`) and highlights **first** option
+   - menu row is width-bounded (sliding window + `…`) so it never wraps onto the prompt line
+   - repeat Tab on the **same** query cycles highlight; typing more chars resets to first match
 2. **Paths / flags** (after a space): `fzf-tab-completion` when fzf is installed
 3. **Prompt spacing (trial):** blank line before each new prompt via `PROMPT_COMMAND`
 

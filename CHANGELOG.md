@@ -6,6 +6,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [6.1.7] - 2026-09-02
+
+Pre-release channel: `v6.1.7-beta` (tab completion first-match + no wrap spill).
+
+### Fixed
+
+- `shell-completion_one_off_tasks.bash` — first Tab on a query always selects index 0
+  (exact-query cycle gate; prefix overlap no longer resumes a stale middle index).
+- Menu row is terminal-width bounded with a sliding window and ellipses so long `cx-*`
+  lists do not wrap onto the prompt line.
+
 ## [6.1.6] - 2026-09-02
 
 Pre-release channel: `v6.1.6-beta` (Codex tab completion menu above prompt).
