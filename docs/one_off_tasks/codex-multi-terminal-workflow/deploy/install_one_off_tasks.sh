@@ -51,6 +51,11 @@ chmod +x "${deploy_root}/scripts/install_fzf_tab_completion_one_off_tasks.sh"
 chmod +x "${deploy_root}/scripts/verify_fzf_tab_completion_one_off_tasks.sh"
 "${deploy_root}/scripts/install_fzf_tab_completion_one_off_tasks.sh"
 
+# --- Python REPL tab completion (optional upstream python3 path) --------------
+chmod +x "${deploy_root}/scripts/install_python_repl_fzf_tab_completion_one_off_tasks.sh"
+chmod +x "${deploy_root}/scripts/verify_python_repl_fzf_tab_completion_one_off_tasks.sh"
+"${deploy_root}/scripts/install_python_repl_fzf_tab_completion_one_off_tasks.sh"
+
 printf '\n%s\n' 'Installed. Open a new shell or run:'
 printf '  source ~/.bashrc.d/codex-multi-terminal_one_off_tasks.bash\n'
 printf '  source ~/.bashrc.d/shell-completion_one_off_tasks.bash\n\n'
@@ -59,6 +64,9 @@ printf '%s\n' '  • Tab completes longest common prefix when possible'
 printf '%s\n' '  • Tab again opens fzf with remaining matches'
 printf '%s\n' '  • cx-de<Tab> → cx-deep; Tab → fzf with cx-deep-smoke, cx-desktop, …'
 printf '%s\n\n' '  • paths/flags use the same fzf picker'
+printf '%s\n' 'Python REPL:'
+printf '%s\n' '  • source ~/.bashrc.d/python-fzf-tab-completion_one_off_tasks.bash'
+printf '%s\n' '  • python3 — Tab uses fzf in the interactive REPL'
 printf '%s\n' 'Try:'
 printf '  cx-deep       # 32B @ 5090 — dotfile-vnext\n'
 printf '  cx-desktop    # 14B @ desktop — dotfile-vnext\n'

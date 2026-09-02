@@ -13,11 +13,15 @@ rm -f \
   "${HOME}/.codex/instructions-skills_one_off_tasks.md" \
   "${HOME}/.codex/instructions-hvh01_one_off_tasks.md" \
   "${HOME}/.bashrc.d/codex-multi-terminal_one_off_tasks.bash" \
+  "${HOME}/.bashrc.d/python-fzf-tab-completion_one_off_tasks.bash" \
   "${HOME}/.bashrc.d/shell-completion_one_off_tasks.bash" \
   "${HOME}/bin/codex-homelab_one_off_tasks" \
-  "${HOME}/bin/render_local_model_catalog_one_off_tasks"
+  "${HOME}/bin/render_local_model_catalog_one_off_tasks" \
+  "${HOME}/bin/rl_custom_complete"
 
-rm -rf "${HOME}/.codex-homelab/desktop_one_off_tasks"
+rm -rf \
+  "${HOME}/.local/share/dotfile-vnext-one-off-tasks/pythonpath" \
+  "${HOME}/.codex-homelab/desktop_one_off_tasks"
 
 printf '%s\n' 'Removed Codex multi-terminal one-off trial artifacts.'
 printf '%s\n' 'Open a new shell to drop cx-* functions.'

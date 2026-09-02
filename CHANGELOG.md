@@ -6,6 +6,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [6.1.12] - 2026-09-02
+
+Pre-release channel: `v6.1.12-beta` (Python REPL fzf tab completion).
+
+### Added
+
+- Python REPL fzf-tab-completion install: `usercustomize.py` on PYTHONPATH,
+  `rl_custom_complete` in `~/bin`, `python-fzf-tab-completion_one_off_tasks.bash`.
+
 ## [6.1.11] - 2026-09-02
 
 Pre-release channel: `v6.1.11-beta` (fzf Tab cycles options).

@@ -228,14 +228,19 @@ bind -x '"\t": fzf_bash_completion'
 ```
 
 6. **Optional `**` trigger** — add `eval "$(fzf --bash)"` to `~/.bashrc` separately if wanted
-7. **Optional Python REPL** — see [python3](https://github.com/lincheney/fzf-tab-completion#python3) and
-   `deploy/python/usercustomize_one_off_tasks.py.example`
+7. **Python REPL** — installed by `install_python_repl_fzf_tab_completion_one_off_tasks.sh`:
+   - `~/.local/share/dotfile-vnext-one-off-tasks/pythonpath/usercustomize.py`
+   - `~/bin/rl_custom_complete` → fzf-tab-completion helper
+   - `~/.bashrc.d/python-fzf-tab-completion_one_off_tasks.bash` sets `PYTHONPATH`
+   - Upstream: [python3](https://github.com/lincheney/fzf-tab-completion#python3)
 
 ### One-off installers
 
 ```bash
 docs/one_off_tasks/codex-multi-terminal-workflow/deploy/scripts/install_fzf_tab_completion_one_off_tasks.sh
 docs/one_off_tasks/codex-multi-terminal-workflow/deploy/scripts/verify_fzf_tab_completion_one_off_tasks.sh
+docs/one_off_tasks/codex-multi-terminal-workflow/deploy/scripts/install_python_repl_fzf_tab_completion_one_off_tasks.sh
+docs/one_off_tasks/codex-multi-terminal-workflow/deploy/scripts/verify_python_repl_fzf_tab_completion_one_off_tasks.sh
 ```
 
 `install_one_off_tasks.sh` calls the fzf-tab-completion installer automatically.
@@ -262,6 +267,8 @@ Reload:
 
 ```bash
 source ~/.bashrc.d/shell-completion_one_off_tasks.bash
+source ~/.bashrc.d/python-fzf-tab-completion_one_off_tasks.bash
+python3   # Tab in REPL opens fzf picker (inherits FZF_COMPLETION_OPTS from bash)
 ```
 
 **Promote permanently:** fold into `roles/common/shell_config/files/bashrc.d/` after trial.
