@@ -17,6 +17,28 @@
     - agent_skills_manage | bool
     - ansible_facts['system'] != "Windows"
   block:
+    - name: Check legacy agent skill destinations
+      ansible.builtin.stat:
+        path: "{{ item.dest }}"
+        follow: false
+      register: agent_skills_legacy_destination_stats
+      loop: "{{ agent_skills_legacy_cleanup_links | default([]) }}"
+      loop_control:
+        label: "{{ item.dest }}"
+      when: agent_skills_state == "present"
+
+    - name: Remove legacy agent skill links now owned elsewhere
+      ansible.builtin.file:
+        path: "{{ item.item.dest }}"
+        state: absent
+      when:
+        - agent_skills_state == "present"
+        - item.stat.islnk | default(false)
+        - (item.stat.lnk_source | default('')) == item.item.src
+      loop: "{{ agent_skills_legacy_destination_stats.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item.dest }}"
+
     - name: Ensure agent skill parent directories exist
       ansible.builtin.file:
         path: "{{ item.dest | dirname }}"

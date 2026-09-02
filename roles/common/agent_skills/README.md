@@ -84,8 +84,6 @@ Managed links:
 
 - `~/.cursor/skills-cursor` ->
   `roles/common/agent_skills/files/cursor/skills-cursor`
-- `~/.cursor/skills` ->
-  `roles/common/agent_skills/files/cursor/skills`
 - `~/.codex/skills/gemini-free-tier-model-chooser` ->
   `roles/common/agent_skills/files/codex/skills/gemini-free-tier-model-chooser`
 - `~/.codex/skills/critical-naming-analysis` ->
@@ -94,6 +92,10 @@ Managed links:
 Codex gets an individual skill link instead of replacing all of
 `~/.codex/skills` so the tool-managed `.system` directory remains outside repo
 ownership.
+
+`~/.cursor/skills` is no longer owned by this role. That home path is the
+personal/global Cursor skill surface and should be populated by the
+`global-skills` runtime bridge instead of linking back into this repo.
 
 ## Lifecycle
 
@@ -104,6 +106,10 @@ Linux companions unless a host explicitly opts in.
 `agent_skills_state: present` creates the links. If an unmanaged destination
 already exists, the role moves it aside with a timestamped
 `.before-agent-skills-link-*` suffix before creating the link.
+
+On macOS, the role also removes the legacy `~/.cursor/skills` symlink when it
+still points at `roles/common/agent_skills/files/cursor/skills`, because that
+path is now owned by the `global-skills` runtime bridge.
 
 `agent_skills_state: absent` removes only symlinks managed by this role. It does
 not delete repo-owned skill sources and does not restore backup directories

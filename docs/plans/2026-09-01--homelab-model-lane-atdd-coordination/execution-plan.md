@@ -1,7 +1,7 @@
 # Execution plan — homelab model-lane ATDD coordination
 
 **Plan packet:** [README.md](README.md) (frontmatter, capability boundary, diagrams)  
-**Lifecycle:** `incomplete-wip` — prep done; **execute Phase 1–2 below**  
+**Lifecycle:** `implemented` — Phase 1–2 complete; see [execution-receipt.md](execution-receipt.md)  
 **Last updated:** 2026-09-02
 
 Use this file if the conversation thread is lost. Do not re-brainstorm; execute
@@ -20,7 +20,7 @@ these steps against existing artifacts.
 | Stack implementer intake prompt | **Done** | [references/stack-implementer-intake-request.md](references/stack-implementer-intake-request.md) |
 | Stack implementer role contract | **Done** | [references/stack-implementer-instructions.md](references/stack-implementer-instructions.md) |
 | Stack implementer handoff templates | **Done** | [references/stack-implementer-handoff-template.md](references/stack-implementer-handoff-template.md) |
-| Coordinator skill | **Not started** | global-skills (Phase 1) |
+| Coordinator skill | **Done** | global-skills `homelab-model-lane-atdd-coordinator` |
 | Live multi-agent coordination | **Out of scope** for first execute slice |
 
 Draft folder `draft-multi-agent-vnext-plan-work/` under the Codex plan was **consolidated and removed**.
@@ -153,12 +153,12 @@ policy:
 
 | ID | Source | Obligation | Status |
 | --- | --- | --- | --- |
-| O-01 | Phase 1.1 | Coordinator skill directory exists in global-skills | pending |
-| O-02 | Phase 1.2 | SKILL.md complete per section list | pending |
-| O-03 | Phase 1.3 | Four reference files present | pending |
-| O-04 | Phase 1.4 | agents/openai.yaml | pending |
-| O-05 | Phase 1.5 | catalog.yaml + validation-pack link | pending |
-| O-06 | Phase 2 | V-1–V-4 evidence recorded | pending |
+| O-01 | Phase 1.1 | Coordinator skill directory exists in global-skills | done |
+| O-02 | Phase 1.2 | SKILL.md complete per section list | done |
+| O-03 | Phase 1.3 | Four reference files present | done |
+| O-04 | Phase 1.4 | agents/openai.yaml | done |
+| O-05 | Phase 1.5 | catalog.yaml + validation-pack link | done |
+| O-06 | Phase 2 | V-1–V-4 evidence recorded | done |
 | O-07 | Deferred | Multi-day/multi-group result layout | deferred |
 
 ---

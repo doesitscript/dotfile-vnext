@@ -1,5 +1,5 @@
 ---
-lifecycle: incomplete-wip
+lifecycle: implemented
 scope: implementation
 depends_on_plans:
   - 2026-09-01--homelab-local-ai-clients-codex
@@ -21,9 +21,8 @@ Bootstrap a **two-role ATDD workflow** for qualifying homelab model lanes after 
 | **Acceptance author** | Write EXPECTED criteria, run probes, receipts, promote when green |
 | **Stack implementer** | Deploy/runtime/gateway/client config from FAIL evidence — **agent varies by campaign** |
 
-**This plan packet is prep complete.** Execute from **[execution-plan.md](execution-plan.md)** —
-the durable runbook if this thread is lost. Execution creates the global skill
-`homelab-model-lane-atdd-coordinator` (handoffs, stack-implementer templates, coordinator workflow).
+**This plan packet is execute-complete for Phase 1–2.** See **[execution-receipt.md](execution-receipt.md)**.
+Execute further campaigns via skill **`homelab-model-lane-atdd-coordinator`** and **[execution-plan.md](execution-plan.md)**.
 
 **Stack implementer is not fixed to Codex.** The sibling [Codex CLI plan](../2026-09-01--homelab-local-ai-clients-codex/README.md)
 is the **current in-progress example**. Future campaigns may target other CLIs, IDE
@@ -93,21 +92,21 @@ See [example](examples/stack-implementer-intake-client-model-map.example.md) and
 
 ### Phase 1 — Global skill (`global-skills`)
 
-- [ ] Create `skills/validation/homelab-model-lane-atdd-coordinator/SKILL.md`
-- [ ] Add `references/coordinator-checklist.md` (8-step loop)
-- [ ] Add `references/stack-implementer-handoff-template.md` (inbox/outbox markdown templates)
-- [ ] Add `references/stack-implementer-instructions.md` (static role contract)
-- [ ] Copy/adapt [stack-implementer-intake-request.md](references/stack-implementer-intake-request.md) into skill references
-- [ ] Add `agents/openai.yaml` — human receipts; inbox on FAIL
-- [ ] Register in `skills/catalog.yaml`
-- [ ] Link from `homelab-local-ai-client-validation-pack`
+- [x] Create `skills/validation/homelab-model-lane-atdd-coordinator/SKILL.md`
+- [x] Add `references/coordinator-checklist.md` (8-step loop)
+- [x] Add `references/stack-implementer-handoff-template.md` (inbox/outbox markdown templates)
+- [x] Add `references/stack-implementer-instructions.md` (static role contract)
+- [x] Copy/adapt [stack-implementer-intake-request.md](references/stack-implementer-intake-request.md) into skill references
+- [x] Add `agents/openai.yaml` — human receipts; inbox on FAIL
+- [x] Register in `skills/catalog.yaml`
+- [x] Link from `homelab-local-ai-client-validation-pack`
 
 ### Phase 2 — Verify
 
-- [ ] Skill loads diagram + `model-lane-acceptance/` paths via `PROJECT_ROOT`
-- [ ] Diff example map → `client-map.yml` documented in skill
-- [ ] Metadata validation passes
-- [ ] No live multi-agent run required for plan sign-off
+- [x] Skill loads diagram + `model-lane-acceptance/` paths via `PROJECT_ROOT`
+- [x] Diff example map → `client-map.yml` documented in skill
+- [x] Metadata validation passes
+- [x] No live multi-agent run required for plan sign-off
 
 ## Deferred
 
@@ -123,6 +122,7 @@ Multi-day / multi-group result layout — see [references/acceptance-artifacts-l
 ## References
 
 - **[Execution plan (runbook)](execution-plan.md)**
+- **[Execution receipt](execution-receipt.md)**
 - [Acceptance artifacts layout](references/acceptance-artifacts-layout.md)
 - [Stack implementer intake request](references/stack-implementer-intake-request.md)
 - [Stack implementer instructions](references/stack-implementer-instructions.md)
