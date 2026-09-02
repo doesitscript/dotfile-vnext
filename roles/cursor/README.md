@@ -10,10 +10,15 @@ into Cursor's settings.json.
 - **Merges LF + UTF-8 settings** into `settings.json` — prevents BOM and CRLF contamination in all files edited with Cursor (see [Settings](#settings) below)
 - **Installs Cursor extensions** via CLI
 - **Renders project AI agent/profile contracts** for Cursor and Codex-compatible clients from `inventory/group_vars/all/ai_agent_profiles.yml`
+- **Renders a project contract for required Cursor marketplace plugins** and verifies their installed manifests on macOS
 
 Kilo Code note:
 - The editor extension is managed here as `kilocode.Kilo-Code` through `cursor_extensions`.
 - Upstream Kilo also publishes a standalone `kilo` CLI. If this repo commissions that CLI, manage it in a dedicated lifecycle role instead of piggybacking it onto the Cursor editor role.
+
+Marketplace plugin note:
+- Cursor marketplace plugins such as `superpowers` are not normal extension IDs and are not installed with `cursor --install-extension`.
+- This role records required plugin slugs in repo-managed contract files and verifies the installed `.cursor-plugin/plugin.json` manifest on macOS.
 
 ### macOS Hosts
 - **Installs or upgrades Cursor IDE** via Homebrew cask `cursor`
@@ -85,11 +90,13 @@ This role handles the infrastructure side:
 | `cursor_settings_lf_utf8` | *(see defaults)* | Settings dict merged idempotently into settings.json |
 | `cursor_extensions` | *(see defaults)* | List of extension IDs to install via CLI (includes `Continue.continue`, `saoudrizwan.claude-dev` / Cline, Kilo Code, Python, YAML, OpenAI Codex) |
 | `cursor_extensions_force_reinstall` | `true` | Reinstall extensions with `--force` so Cursor converges to the latest marketplace release |
+| `cursor_marketplace_plugins_required` | `[]` | Required Cursor marketplace plugin slugs for this host, such as `superpowers` |
 | `cursor_remote_ssh_hosts` | *(see defaults)* | List of SSH Host entries for Remote-SSH config |
 | `cursor_cli_enabled` | `true` | Set to `false` to skip Cursor CLI (Homebrew `cursor-cli`) install |
 | `cursor_cli_version` | `{{ codex_tooling_version_contract.cursor_cli }}` | Pinned CLI version; bump in inventory to trigger upgrade |
 | `cursor_cli_cask_state` | `present` | `present` or `absent` (remove CLI) |
 | `cursor_ai_agent_profiles_enabled` | `true` | Render project-scoped Cursor and Codex AI agent/profile contract files |
+| `cursor_marketplace_plugins_enabled` | `true` | Render project plugin contract files and verify required macOS plugin manifests |
 
 The default Codex/OpenAI extension entry is assembled as
 `{{ cursor_openai_extension_id }}@{{ cursor_openai_extension_version }}` when a
@@ -125,6 +132,7 @@ cursor_remote_ssh_hosts:
 | `cursor_extensions` | Extension installation only |
 | `cursor_settings` | settings.json LF/UTF-8 merge only |
 | `cursor_ai_profiles` | Project AI agent/model-lane contract only |
+| `cursor_marketplace_plugins` | Project plugin contract plus macOS installed-plugin verification |
 
 ---
 
@@ -151,6 +159,9 @@ ansible-playbook playbooks/deploy_development_nodes.yaml -i inventory/inventory.
 # AI agent/profile contract only (project-scoped Cursor + Codex files)
 ansible-playbook playbooks/deploy_development_nodes.yaml -i inventory/inventory.yaml --limit mac-dev --tags cursor_ai_profiles
 
+# Cursor marketplace plugin contract + verification only
+ansible-playbook playbooks/deploy_development_nodes.yaml -i inventory/inventory.yaml --limit mac-dev --tags cursor_marketplace_plugins
+
 # Windows tasks only
 ansible-playbook playbooks/deploy_shell_config.yaml --tags cursor_windows --limit HOM-LAB-HVH-02
 ```
@@ -167,5 +178,7 @@ ansible-playbook playbooks/deploy_shell_config.yaml --tags cursor_windows --limi
 | All | `<platform settings.json path>` | LF + UTF-8-no-BOM settings (merged) |
 | Project | `.cursor/ai-agent-profiles.json` | Machine-readable Cursor agent role and model-lane contract |
 | Project | `.cursor/rules/framework-ai-agent-model-lanes.mdc` | Cursor rule that keeps agents on LiteLLM model lanes |
+| Project | `.cursor/marketplace-plugins.json` | Machine-readable Cursor marketplace plugin contract |
 | Project | `.codex/ai-agent-profiles.json` | Machine-readable Codex-compatible copy of the same contract |
 | Project | `.codex/AI_AGENT_PROFILES.md` | Human-readable Codex companion note |
+| Project | `.codex/CURSOR_MARKETPLACE_PLUGINS.md` | Human-readable Cursor marketplace plugin note |

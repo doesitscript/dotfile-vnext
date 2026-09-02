@@ -1,0 +1,17 @@
+# Cursor Marketplace Plugins
+
+Managed by `roles/cursor`.
+
+These entries are **Cursor marketplace plugins**, not normal VS Code/Cursor
+extension IDs. Do not try to manage them with `cursor --install-extension`.
+
+## Required On `{{ inventory_hostname }}`
+
+{% if (cursor_marketplace_plugins_required | length) == 0 -%}
+No marketplace plugins are currently required for this host.
+{% else -%}
+{% for plugin in cursor_marketplace_plugins_required -%}
+- `{{ plugin }}` — install in Cursor with `/add-plugin {{ plugin }}`; macOS manifest probe:
+  `{{ cursor_marketplace_plugins_cache_root }}/{{ plugin }}/*/.cursor-plugin/plugin.json`
+{% endfor -%}
+{% endif %}

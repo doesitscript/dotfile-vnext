@@ -116,7 +116,9 @@ Current client-facing lanes declared in the gateway contract:
 | `smart-router` | enabled | LiteLLM complexity auto-router |
 | `code-fast` | enabled | HVH-01 Ollama `qwen2.5-coder:1.5b` (same backend as autocomplete 1.5B) |
 | `code-autocomplete-1.5b` | enabled | HVH-01 Ollama `qwen2.5-coder:1.5b` |
-| `qwen2.5-coder-14b@desktop` | experimental | desktop Ollama `qwen2.5-coder:14b`, 12K context; concise Codex coding chat only |
+| `ministral-3-8b@desktop` | experimental | desktop Ollama `ministral`, 24K context; current `codex-homelab desktop` target on mac-dev because it aligns with the repo tool-call surface |
+| `qwen2.5-coder-14b@desktop` | experimental | desktop Ollama `qwen2.5-coder:14b`, 12K context; retained only as a concise coding-chat lane because prior Codex runs formed unexecuted tool JSON |
+| `gpt-oss-20b` | commissioned in catalog | desktop Ollama `gpt-oss:20b`, ~14GB class; selected in the 2026-09-02 EVAL note for host presence on `dev-workstation-win`, but not yet published as a separate Codex client lane |
 
 The desktop model and context are declared through
 `windows_ollama_runtime` host variables, its LiteLLM publication is declared

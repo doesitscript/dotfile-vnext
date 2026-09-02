@@ -25,7 +25,7 @@ Concise plan of the Open WebUI / LiteLLM / Ollama / vLLM / Automatic1111 / Comfy
 | LiteLLM | k3s on `hom-lab-ctl-k3s-02` → http://litellm.hom.lab:30400/v1 | Chat gateway |
 | Ornith / `default` | k3s-02 vLLM (RTX 5090) | Local-first text chat (paused while Phase B ComfyUI is present) |
 | ComfyUI | k3s-02 (`comfyui.hom.lab:30188`) | FLUX.1-dev FP8 + SDXL base starter — see [k3s-02-gpu-timeshare-phase-b.md](k3s-02-gpu-timeshare-phase-b.md) |
-| Desktop coding Ollama | `dev-workstation-win` Ollama (`E:\ai\models\ollama`) | `qwen2.5-coder:7b`, `qwen2.5-coder:14b`, and Ministral routes; the 14B route is a bounded Codex coding-chat lane |
+| Desktop coding Ollama | `dev-workstation-win` Ollama (`E:\ai\models\ollama`) | `ministral-3:8b`, `qwen2.5-coder:7b`, `qwen2.5-coder:14b`, and `gpt-oss:20b`; the new fit pick is `gpt-oss:20b`, but the Codex desktop lane remains separately qualified |
 | A1111 | `HOM-LAB-HVH-01` :7860 (`a1111-hvh01.hom.lab`) | Open WebUI t2i / img2img (CyberRealistic + OpenPose) |
 | Arena | Open WebUI synthetic model | Separate evaluation surface; do not assume a desktop vision model is qualified |
 
@@ -100,6 +100,8 @@ flowchart LR
   about 90 percent ready pending a separately researched replacement.
 - `qwen2.5-coder-14b@desktop` is for concise Codex coding chat, not inline
   completion or autonomous shell work.
+- `gpt-oss:20b` is the current best-fit 16GB desktop candidate, but it is not
+  yet a proven Codex/LiteLLM tool-loop lane.
 - LiteLLM image = chat vision path (needs Pillow); A1111 = simple pixel path; ComfyUI = FLUX/SDXL.
 - Desktop Ollama / A1111 are scheduled tasks — may need start after host sleep.
 

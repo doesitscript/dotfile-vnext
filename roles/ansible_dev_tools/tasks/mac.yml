@@ -50,3 +50,11 @@
   loop: "{{ ansible_dev_tools_global_cli_tools }}"
   when: ansible_dev_tools_publish_venv_toolchain_globally | bool
   tags: [pip, path]
+
+- name: Deploy WinRM env vars to ~/.bashrc.d (role-owned, not shell_config sweep)
+  ansible.builtin.copy:
+    src: bashrc.d/winrm_env.bash
+    dest: "{{ ansible_env.HOME }}/.bashrc.d/winrm_env.bash"
+    mode: "0644"
+  when: ansible_dev_tools_install | bool
+  tags: shell

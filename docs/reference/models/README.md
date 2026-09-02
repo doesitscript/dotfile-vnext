@@ -8,6 +8,8 @@ Use this directory when you are:
 - researching a lane swap or quantization change
 - re-tuning VRAM / context / concurrency on a GPU host
 - documenting probe evidence after a tuning pass
+- recording an `EVAL-model-note-fit` decision before commissioning a lane swap
+- teaching or reusing the model-to-hardware evaluation method
 
 ## How this relates to other sources
 
@@ -30,8 +32,21 @@ When you complete a tuning or research pass:
 
 ## Runbooks
 
+`docs/reference/models/eval/` is the current EVAL workspace:
+
+- [eval/README.md](./eval/README.md) is the landing page
+- `EVAL-model-note-fit-framework.md` defines the method and evidence order
+- `EVAL-model-note-fit-template.md` is the reusable note shape
+- dated `EVAL-model-note-fit--*.md` files record actual decisions
+- matrices capture scored comparisons before lane changes
+
 | Model / lane | Doc | Host | Status |
 | --- | --- | --- | --- |
+| EVAL landing | [eval/README.md](./eval/README.md) | n/a | **Reference** |
+| Evaluation method | [eval/EVAL-model-note-fit-framework.md](./eval/EVAL-model-note-fit-framework.md) | n/a | **Reference** |
+| Evaluation template | [eval/EVAL-model-note-fit-template.md](./eval/EVAL-model-note-fit-template.md) | n/a | **Reference** |
+| Windows desktop 16GB fit review | [eval/EVAL-model-note-fit--dev-workstation-win-gpt-oss-20b.md](./eval/EVAL-model-note-fit--dev-workstation-win-gpt-oss-20b.md) | `dev-workstation-win` | **Selected** `gpt-oss:20b` for host presence; Codex lane not yet re-qualified |
+| Windows desktop scored matrix | [eval/dev-workstation-win-2026-09-02-matrix.md](./eval/dev-workstation-win-2026-09-02-matrix.md) | `dev-workstation-win` | **Reference** |
 | Google Gemini free-tier (LiteLLM cloud) | [gemini-litellm-lanes.md](./gemini-litellm-lanes.md) | `litellm.hom.lab` | **Implemented** — gated on `vault_shared_gemini_api_key` |
 | Qwen2.5-Coder 14B vs 32B AWQ on 5090 | [5090-qwen25-coder-14b-vs-32b.md](./5090-qwen25-coder-14b-vs-32b.md) | `hom-lab-ctl-k3s-02` | **32B selected**; 14B rejected |
 

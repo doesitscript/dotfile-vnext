@@ -13,6 +13,13 @@
     state: present
   tags: [python, brew]
 
+- name: Resolve Homebrew prefix for Python tooling paths
+  ansible.builtin.command:
+    argv: [brew, --prefix]
+  register: python_homebrew_prefix
+  changed_when: false
+  tags: [python, brew]
+
 - name: Ensure Homebrew CA certs are linked into OpenSSL directory
   ansible.builtin.file:
     src: "{{ item.src }}"
@@ -20,8 +27,8 @@
     state: link
     force: true
   loop:
-    - src: /usr/local/share/ca-certificates/cacert.pem
-      dest: /usr/local/etc/openssl@3/cert.pem
+    - src: "{{ python_homebrew_prefix.stdout | trim }}/share/ca-certificates/cacert.pem"
+      dest: "{{ python_homebrew_prefix.stdout | trim }}/etc/openssl@3/cert.pem"
   loop_control:
     label: "{{ item.dest }}"
 

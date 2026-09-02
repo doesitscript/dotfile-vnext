@@ -1,0 +1,77 @@
+- name: Validate work_laptop_codex_cli state
+  ansible.builtin.assert:
+    that:
+      - work_laptop_codex_cli_state in ["present", "absent"]
+    fail_msg: work_laptop_codex_cli_state must be present or absent.
+
+- name: Resolve npm executable from the managed nvm default
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/common/node/tasks/resolve_npm.yml"
+  when: work_laptop_codex_cli_state == "present"
+
+- name: Set Codex npm package name
+  ansible.builtin.set_fact:
+    work_laptop_codex_cli_package_name: >-
+      {{
+        work_laptop_codex_cli_package_base_name
+        ~ (
+          '@' ~ work_laptop_codex_cli_version
+          if (work_laptop_codex_cli_version | default('') | length) > 0
+          else ''
+        )
+      }}
+  when: work_laptop_codex_cli_state == "present"
+
+- name: Install Codex CLI via npm
+  community.general.npm:
+    name: "{{ work_laptop_codex_cli_package_name }}"
+    global: true
+    state: present
+    executable: "{{ node_npm_executable }}"
+  environment:
+    PATH: "{{ (node_npm_executable | dirname) ~ ':' ~ ansible_facts['env']['PATH'] }}"
+  timeout: 300
+  when: work_laptop_codex_cli_state == "present"
+
+- name: Set Codex CLI command path
+  ansible.builtin.set_fact:
+    work_laptop_codex_cli_command: "{{ node_npm_executable | dirname }}/codex"
+  when: work_laptop_codex_cli_state == "present"
+
+- name: Remove quarantine attribute from Codex npm module
+  ansible.builtin.command:
+    argv:
+      - xattr
+      - -dr
+      - com.apple.quarantine
+      - "{{ node_npm_executable | dirname | dirname }}/lib/node_modules/@openai/codex"
+  register: work_laptop_codex_cli_quarantine_remove
+  changed_when: work_laptop_codex_cli_quarantine_remove.rc == 0
+  failed_when: false
+  when: work_laptop_codex_cli_state == "present"
+
+- name: Verify Codex CLI binary path
+  ansible.builtin.stat:
+    path: "{{ work_laptop_codex_cli_command }}"
+  register: work_laptop_codex_cli_binary
+  when: work_laptop_codex_cli_state == "present"
+
+- name: Require Codex CLI binary to exist after install
+  ansible.builtin.assert:
+    that:
+      - work_laptop_codex_cli_binary.stat.exists | default(false)
+      - work_laptop_codex_cli_binary.stat.executable | default(false)
+    fail_msg: >-
+      Codex CLI install did not produce an executable at
+      {{ work_laptop_codex_cli_command }}.
+  when: work_laptop_codex_cli_state == "present"
+
+- name: Remove Codex CLI via npm when absent
+  community.general.npm:
+    name: "{{ work_laptop_codex_cli_package_base_name }}"
+    global: true
+    state: absent
+    executable: "{{ node_npm_executable }}"
+  environment:
+    PATH: "{{ (node_npm_executable | dirname) ~ ':' ~ ansible_facts['env']['PATH'] }}"
+  timeout: 300
+  when: work_laptop_codex_cli_state == "absent"

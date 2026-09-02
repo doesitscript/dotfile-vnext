@@ -26,5 +26,41 @@
           Hostname mismatch. Expected {{ expected_local_hostname }}, got
           {{ ansible_hostname }}.
 
+    - name: Require macOS target
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['system'] == "Darwin"
+        fail_msg: This packet currently supports macOS targets only.
+
+    - name: Check whether Homebrew is available
+      ansible.builtin.command:
+        argv: [brew, --version]
+      register: work_laptop_homebrew_check
+      changed_when: false
+      failed_when: false
+
+    - name: Require Homebrew before package-managed tasks
+      ansible.builtin.assert:
+        that:
+          - work_laptop_homebrew_check.rc == 0
+        fail_msg: >-
+          Homebrew is required before this packet can install VS Code, Python,
+          and Codex CLI dependencies. Run
+          ./bootstrap/bootstrap-macos-ansible.sh on the exported packet first,
+          then re-run this playbook.
+
   roles:
-    - role: work_laptop_hello
+    - role: homelab_hosts_file_mac
+      tags: [hosts_file]
+    - role: common/node
+      tags: [codex, codex_cli]
+    - role: work_laptop_codex_cli
+      tags: [codex, codex_cli]
+    - role: codex_homelab_profiles
+      tags: [codex, codex_profiles]
+    - role: common/vscode
+      tags: [vscode, vscode_continue]
+    - role: continue_ide
+      tags: [continue, vscode_continue]
+    - role: work_laptop_packet_receipt
+      tags: [always]

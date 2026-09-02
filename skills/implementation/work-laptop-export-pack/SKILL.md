@@ -1,6 +1,6 @@
 ---
 name: work-laptop-export-pack
-description: "Use when the isolated work-laptop export packet under exports/work-laptop-ai-tools should be sliced into a zip, unpacked outside the repo, and smoke-tested from the extracted copy. Use for build the work-laptop export zip, round-trip this packet outside the repo, or verify the extracted hello-world packet still runs."
+description: "Use when the isolated work-laptop export packet under exports/work-laptop-ai-tools should be sliced into a zip, unpacked outside the repo, and smoke-tested from the extracted copy. Use for build the work-laptop export zip, validate that the packet still matches repo work-laptop packet conventions, or verify the extracted packet still runs."
 license: MIT
 version: "0.1.0"
 author: "dotfile-vnext"
@@ -60,25 +60,35 @@ or when only the packet role logic itself is changing.
 
 1. Read the packet manifest and keep the slice limited to its explicit `include`
    list.
-2. Build the archive with:
+2. Validate the packet contract against the current repo work-laptop packet source surfaces:
+
+```bash
+bin/codex-env python \
+  skills/implementation/work-laptop-export-pack/scripts/validate_export_contract.py
+```
+
+3. Build the archive with:
 
 ```bash
 bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/build_export_archive.py
 ```
 
-3. When development still needs an external proof run, unpack and verify from a
-   non-repo location with:
+4. When development still needs an external proof run, unpack and verify from a
+   non-repo location with the preview-only default:
 
 ```bash
 bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/roundtrip_smoke.py \
   --ansible-command "$PWD/bin/codex-env ansible-playbook"
 ```
 
-4. If the extracted proof path uses a non-default inventory, pass
+5. Add `--apply` only when the extracted packet is being run on the real work
+   laptop and a mutating apply is intended.
+6. If the extracted proof path uses a non-default inventory, pass
    `--inventory-file <name>`.
-5. Verify the extracted playbook runs from its unpacked `playbook_dir`, not the
-   repo copy.
-6. Hand off to `project-skill-runtime-bridge` when the skill should be
+7. Verify the extracted preview commands run from the unpacked `playbook_dir`,
+   not the repo copy. When `--apply` is used, also verify the marker file
+   proves the extracted `playbook_dir`.
+8. Hand off to `project-skill-runtime-bridge` when the skill should be
    discoverable under `.cursor/skills`.
 
 ## Handoffs
@@ -89,14 +99,21 @@ bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/round
 
 - zip archive rooted at `work-laptop-ai-tools/`
 - extracted smoke-run folder outside the repo
-- command output proving syntax, host, task, and apply success from the
-  extracted packet
+- validation output showing the packet still matches repo work-laptop packet conventions
+- command output proving extracted bootstrap preview plus extracted syntax,
+  host, and task previews
+- optional apply proof from the extracted packet when `--apply` is used on the
+  real work laptop
 
 ## Validation
 
+- The packet contract matches the current repo values for the work-laptop
+  packet Python path, packet `.venv`, public `~/.local/bin` Ansible shims,
+  and vendored bootstrap roles
 - Only manifest-owned packet files are included in the archive
 - The extracted packet lives outside the repo
-- The marker file records the extracted `playbook_dir`
+- Preview proof uses the extracted bootstrap script and extracted playbook paths
+- The marker file records the extracted `playbook_dir` when `--apply` is used
 
 ## Failure boundaries
 

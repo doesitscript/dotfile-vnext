@@ -7,6 +7,7 @@ from datetime import datetime
 import os
 from pathlib import Path
 import shlex
+import stat
 import subprocess
 import sys
 import zipfile
@@ -25,6 +26,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--destination-root", default="")
     parser.add_argument("--ansible-command", default="")
     parser.add_argument("--inventory-file", default="inventory.yaml")
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Run the extracted playbook apply step. Leave off for preview-only proof.",
+    )
     return parser.parse_args()
 
 
@@ -107,31 +113,43 @@ def main() -> int:
     ansible_parts = shlex.split(ansible_command)
     extracted_playbook = str(packet_dir / "playbook.yaml")
     extracted_inventory = str(packet_dir / args.inventory_file)
+    extracted_bootstrap = packet_dir / "bootstrap" / "bootstrap-macos-ansible.sh"
     base_command = ansible_parts + [extracted_playbook, "-i", extracted_inventory]
 
+    if not extracted_bootstrap.is_file():
+        raise FileNotFoundError(f"Extracted bootstrap script is missing: {extracted_bootstrap}")
+    extracted_bootstrap.chmod(extracted_bootstrap.stat().st_mode | stat.S_IXUSR)
+
+    run_command([str(extracted_bootstrap), "--help"], cwd=packet_dir)
+    run_command(
+        [str(extracted_bootstrap), "--dry-run", "--bootstrap-only"],
+        cwd=packet_dir,
+    )
     run_command(base_command + ["--syntax-check"], cwd=packet_dir)
     run_command(base_command + ["--list-hosts"], cwd=packet_dir)
     run_command(base_command + ["--list-tasks"], cwd=packet_dir)
-    run_command(base_command, cwd=packet_dir)
+    if args.apply:
+        run_command(base_command, cwd=packet_dir)
 
-    marker_path = Path.home() / ".work-laptop-export-targeting.txt"
-    if not marker_path.is_file():
-        raise FileNotFoundError(f"Marker file not found after round-trip apply: {marker_path}")
+        marker_path = Path.home() / ".work-laptop-export-targeting.txt"
+        if not marker_path.is_file():
+            raise FileNotFoundError(f"Marker file not found after round-trip apply: {marker_path}")
 
-    marker_text = marker_path.read_text(encoding="utf-8")
-    expected_line = f"playbook_dir={packet_dir}"
-    if expected_line not in marker_text:
-        raise RuntimeError(
-            "Marker file does not prove extracted execution.\n"
-            f"Expected line: {expected_line}\n"
-            f"Marker path: {marker_path}"
-        )
+        marker_text = marker_path.read_text(encoding="utf-8")
+        expected_line = f"playbook_dir={packet_dir}"
+        if expected_line not in marker_text:
+            raise RuntimeError(
+                "Marker file does not prove extracted execution.\n"
+                f"Expected line: {expected_line}\n"
+                f"Marker path: {marker_path}"
+            )
+        print(f"Marker: {marker_path}")
+        print(f"Verified marker line: {expected_line}")
 
     print(f"Archive: {archive_path}")
     print(f"Round-trip root: {run_root}")
     print(f"Extracted packet: {packet_dir}")
-    print(f"Marker: {marker_path}")
-    print(f"Verified marker line: {expected_line}")
+    print(f"Apply run: {'yes' if args.apply else 'no'}")
     return 0
 
 

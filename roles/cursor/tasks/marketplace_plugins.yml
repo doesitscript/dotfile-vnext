@@ -1,0 +1,62 @@
+---
+- name: Ensure Cursor marketplace plugin contract directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ cursor_marketplace_plugins_contract_path | dirname }}"
+    - "{{ cursor_marketplace_plugins_codex_doc_path | dirname }}"
+
+- name: Render Cursor marketplace plugin contract
+  ansible.builtin.template:
+    src: cursor-marketplace-plugins.json.j2
+    dest: "{{ cursor_marketplace_plugins_contract_path }}"
+    mode: "0644"
+
+- name: Render Codex companion plugin note
+  ansible.builtin.template:
+    src: CURSOR_MARKETPLACE_PLUGINS.md.j2
+    dest: "{{ cursor_marketplace_plugins_codex_doc_path }}"
+    mode: "0644"
+
+- name: Find required Cursor plugin manifests on macOS
+  ansible.builtin.find:
+    paths: "{{ cursor_marketplace_plugins_cache_root }}/{{ item }}"
+    recurse: true
+    hidden: true
+    file_type: file
+    patterns: plugin.json
+  loop: "{{ cursor_marketplace_plugins_required }}"
+  register: _cursor_marketplace_plugin_manifests
+  when:
+    - ansible_facts['system'] == "Darwin"
+    - (cursor_marketplace_plugins_required | length) > 0
+
+- name: Require installed Cursor plugin manifests for required plugins
+  ansible.builtin.assert:
+    that:
+      - >-
+        (
+          item.files
+          | map(attribute='path')
+          | select('search', '/\\.cursor-plugin/plugin\\.json$')
+          | list
+          | length
+        ) > 0
+    fail_msg: >-
+      Required Cursor marketplace plugin {{ item.item }} is not installed under
+      {{ cursor_marketplace_plugins_cache_root }}. Install it in Cursor with
+      /add-plugin {{ item.item }} and rerun the role.
+  loop: "{{ _cursor_marketplace_plugin_manifests.results | default([]) }}"
+  when:
+    - ansible_facts['system'] == "Darwin"
+    - (cursor_marketplace_plugins_required | length) > 0
+
+- name: Summarize Cursor marketplace plugin contract
+  ansible.builtin.debug:
+    msg:
+      contract: "{{ cursor_marketplace_plugins_contract_path }}"
+      codex_doc: "{{ cursor_marketplace_plugins_codex_doc_path }}"
+      required_plugins: "{{ cursor_marketplace_plugins_required }}"
+      manifest_cache_root: "{{ cursor_marketplace_plugins_cache_root }}"

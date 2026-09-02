@@ -1,0 +1,15 @@
+{
+  "schema": "cursor_marketplace_plugins",
+  "status": "declared",
+  "managed_by_role": "roles/cursor",
+  "inventory_host": "{{ inventory_hostname }}",
+  "required_plugins": [
+{% for plugin in cursor_marketplace_plugins_required %}
+    {
+      "slug": "{{ plugin }}",
+      "install_hint": "/add-plugin {{ plugin }}",
+      "cursor_manifest_glob": "{{ cursor_marketplace_plugins_cache_root }}/{{ plugin }}/*/.cursor-plugin/plugin.json"
+    }{% if not loop.last %},{% endif %}
+{% endfor %}
+  ]
+}

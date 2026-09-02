@@ -37,8 +37,9 @@ gpu_diagnostics_windows_enable_presentmon_cli: false
 windows_ollama_runtime_state: present
 windows_ollama_runtime_bind_host: "0.0.0.0"
 windows_ollama_runtime_port: 11434
-# Codex-owned desktop implementation lane: 12K passed directly within the RX
-# 9060 XT VRAM budget. Preserve this while qwen2.5-coder:14b@desktop is routed.
+# Codex-owned desktop implementation lane still routes separately via LiteLLM.
+# The Windows host should keep the best 16GB-class local candidate on disk even
+# before that lane is re-qualified.
 windows_ollama_runtime_context_length: 12000
 windows_ollama_runtime_models_path: 'E:\ai\models\ollama'
 windows_ollama_runtime_default_model: "ministral-3:8b"
@@ -47,13 +48,17 @@ windows_ollama_runtime_fallback_model: "ministral-3:8b"
 windows_ollama_runtime_model_pull_mode: background
 windows_ollama_runtime_models_present:
   - "ministral-3:8b"
+  - "gpt-oss:20b"
   - "qwen2.5-coder:7b"
   - "qwen2.5-coder:14b"
+# EVAL 2026-09-02 model note fit: fresh desktop review favors gpt-oss:20b as
+# the strongest 16GB-class local candidate for this RX 9060 XT host. Keep the
+# existing Codex/LiteLLM route separate until tool-loop behavior is re-tested.
 # Codex 2026-09-02: vision plumbing is about 90% ready, but Gemma4 is
 # intentionally removed to prioritize local coding. Preserve the deployment
 # code; research and qualify a better vision model before adding one here.
 # RETIRED (Kilo clean setup) — removed from disk via deploy_kilo_code_ollama_models.yaml:
-#   devstral:24b, qwen3-coder:30b, gemma4:12b, qwen3.6:27b, gpt-oss:20b
+#   devstral:24b, qwen3-coder:30b, gemma4:12b, qwen3.6:27b
 windows_ollama_runtime_model_aliases: []
 
 # Publish interim *.hom.lab names on this Windows desktop too.

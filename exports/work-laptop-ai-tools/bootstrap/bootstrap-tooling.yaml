@@ -1,0 +1,53 @@
+- name: Bootstrap packet-local Ansible tooling for the work laptop packet
+  hosts: work-laptop
+  gather_facts: true
+  become: false
+
+  vars:
+    dotfiles_home: "{{ playbook_dir | dirname }}"
+    dotfiles_user_home: "{{ ansible_facts['env']['HOME'] | default(ansible_user_dir) }}"
+    vscode_cli_binary: code
+    python_vscode_extensions: []
+    package_update: "{{ work_laptop_bootstrap_force_homebrew_upgrade | default(false) | bool }}"
+    package_upgrade: "{{ work_laptop_bootstrap_force_homebrew_upgrade | default(false) | bool }}"
+
+  pre_tasks:
+    - name: Require explicit export mode for packet tooling bootstrap
+      ansible.builtin.assert:
+        that:
+          - work_laptop_export_mode | default(false) | bool
+        fail_msg: This bootstrap playbook is for the exported work laptop packet only.
+
+    - name: Require local execution for packet tooling bootstrap
+      ansible.builtin.assert:
+        that:
+          - ansible_connection == "local"
+        fail_msg: This bootstrap playbook must run locally on the target MacBook.
+
+    - name: Require macOS target for packet tooling bootstrap
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['system'] == "Darwin"
+        fail_msg: This bootstrap playbook currently supports macOS targets only.
+
+    - name: Require Homebrew before packet tooling bootstrap
+      ansible.builtin.command:
+        argv: [brew, --version]
+      register: work_laptop_bootstrap_homebrew_check
+      changed_when: false
+
+  roles:
+    - role: package_manager
+      when: work_laptop_bootstrap_force_homebrew_upgrade | default(false) | bool
+      tags: [bootstrap, package_manager]
+    - role: ansible_dev_tools
+      tags: [bootstrap, ansible_dev_tools]
+
+  tasks:
+    - name: Force refresh packet Ansible dev tools when requested
+      ansible.builtin.pip:
+        name: "{{ ansible_dev_tools_pip_packages }}"
+        virtualenv: "{{ ansible_dev_tools_venv_path }}"
+        state: latest
+      when: work_laptop_bootstrap_force_packet_toolchain_upgrade | default(false) | bool
+      tags: [bootstrap, ansible_dev_tools]

@@ -6,10 +6,140 @@ outbound_only: true
 os: macOS
 
 work_laptop_packet_scope:
-  - hello_world_targeting_check
+  - hosts_file
+  - codex_cli
+  - codex_profiles
+  - vscode_continue
 
 work_laptop_model: "MacBook Pro 14-inch (November 2023)"
 work_laptop_chip: "Apple M3 Pro"
 work_laptop_macos_version: "Tahoe 26.6.1"
+pyenv_global_versions:
+  - "3.14.6"
+python_vscode_extensions: []
+vscode_cli_binary: code
 
 work_laptop_hello_marker_path: "{{ ansible_env.HOME }}/.work-laptop-export-targeting.txt"
+
+homelab_hosts_file_mac_enabled: true
+homelab_hosts_file_mac_web_catalog:
+  - catalog_key: langfuse-web
+    hostname: langfuse.hom.lab
+    hosts_ip: "192.168.50.158"
+    verify_url: "http://langfuse.hom.lab:30000/"
+    mac_hosts_enabled: true
+  - catalog_key: litellm-gateway
+    hostname: litellm.hom.lab
+    hosts_ip: "192.168.50.158"
+    verify_url: "http://litellm.hom.lab:30400/"
+    mac_hosts_enabled: true
+  - catalog_key: jupyter-workbench
+    hostname: jupyter.hom.lab
+    hosts_ip: "192.168.137.11"
+    verify_url: "http://jupyter.hom.lab:8888/lab"
+    mac_hosts_enabled: true
+  - catalog_key: netbox-web
+    hostname: netbox.hom.lab
+    hosts_ip: "192.168.50.158"
+    verify_url: "http://netbox.hom.lab:8000/"
+    mac_hosts_enabled: true
+  - catalog_key: semaphore-web
+    hostname: semaphore.hom.lab
+    hosts_ip: "192.168.50.158"
+    verify_url: "http://semaphore.hom.lab:3001/"
+    mac_hosts_enabled: true
+  - catalog_key: loki-http
+    hostname: loki.hom.lab
+    hosts_ip: "192.168.50.158"
+    verify_url: "http://loki.hom.lab:3100/ready"
+    mac_hosts_enabled: true
+  - catalog_key: openwebui-web
+    hostname: openwebui.hom.lab
+    hosts_ip: "192.168.50.158"
+    verify_url: "http://openwebui.hom.lab:3080/"
+    mac_hosts_enabled: true
+  - catalog_key: grafana-web
+    hostname: grafana.hom.lab
+    hosts_ip: "192.168.137.10"
+    verify_url: "http://grafana.hom.lab:3000/"
+    mac_hosts_enabled: true
+  - catalog_key: HOM-LAB-HVH-02-host
+    hostname: HOM-LAB-HVH-02
+    hosts_ip: "192.168.50.158"
+    verify_url: "ssh://HOM-LAB-HVH-02"
+    mac_hosts_enabled: true
+  - catalog_key: HOM-LAB-HVH-01-host
+    hostname: HOM-LAB-HVH-01
+    hosts_ip: "192.168.50.234"
+    verify_url: "ssh://HOM-LAB-HVH-01"
+    mac_hosts_enabled: true
+  - catalog_key: ollama-desktop
+    hostname: ollama-desktop.hom.lab
+    hosts_ip: "192.168.50.133"
+    verify_url: "http://ollama-desktop.hom.lab:11434/api/tags"
+    mac_hosts_enabled: true
+  - catalog_key: ollama-hvh01
+    hostname: ollama-hvh01.hom.lab
+    hosts_ip: "192.168.50.234"
+    verify_url: "http://ollama-hvh01.hom.lab:11434/api/tags"
+    mac_hosts_enabled: true
+  - catalog_key: a1111-hvh01
+    hostname: a1111-hvh01.hom.lab
+    hosts_ip: "192.168.50.234"
+    verify_url: "http://a1111-hvh01.hom.lab:7860/sdapi/v1/sd-models"
+    mac_hosts_enabled: true
+  - catalog_key: comfyui-k3s
+    hostname: comfyui.hom.lab
+    hosts_ip: "192.168.50.158"
+    verify_url: "http://comfyui.hom.lab:30188/system_stats"
+    mac_hosts_enabled: true
+homelab_hosts_file_mac_router_workaround:
+  - hostname: hom-lab-ctl-dkr-02
+    ip: "192.168.137.10"
+  - hostname: hom-lab-ctl-k3s-02
+    ip: "192.168.137.11"
+
+node_default_version: "20"
+npm_global_packages: []
+
+work_laptop_codex_cli_state: present
+
+codex_homelab_profiles_state: present
+codex_homelab_profiles_multi_terminal_state: present
+codex_homelab_profiles_model: "ministral-3-8b@desktop"
+codex_homelab_profiles_context_window: 24000
+
+vscode_extensions:
+  - Continue.continue
+
+continue_ide_state: present
+continue_ide_api_key: "REPLACE_WITH_LITELLM_KEY"
+continue_ide_models:
+  - name: "Chat Qwen2.5 Coder 32B (5090 vLLM)"
+    model: "qwen2.5-coder-32b@k3s02-vllm"
+    roles:
+      - chat
+    default_completion_options:
+      contextLength: 32768
+      maxTokens: 4096
+      temperature: 0.3
+  - name: "Edit Qwen2.5 Coder 7B (desktop Ollama)"
+    model: "qwen2.5-coder-7b@desktop"
+    roles:
+      - edit
+      - apply
+    default_completion_options:
+      contextLength: 32768
+      maxTokens: 4096
+      temperature: 0.2
+  - name: "Autocomplete Qwen2.5 Coder 1.5B (hvh01)"
+    model: "qwen2.5-coder-1.5b@hvh01"
+    roles:
+      - autocomplete
+    use_legacy_completions_endpoint: true
+    autocomplete_options:
+      debounceDelay: 250
+      maxPromptTokens: 1024
+      onlyMyCode: true
+continue_ide_blocked_lanes:
+  - "qwen2.5-coder-14b@k3s02-vllm (undersized for 5090 — use 32B AWQ + fp8 KV)"
