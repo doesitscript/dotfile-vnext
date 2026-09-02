@@ -46,11 +46,31 @@ install -m 0755 "${deploy_root}/scripts/render_local_model_catalog_one_off_tasks
 
 "${HOME}/bin/render_local_model_catalog_one_off_tasks"
 
+# --- Tab completion deps: fzf + lincheney/fzf-tab-completion ------------------
+if command -v brew >/dev/null 2>&1; then
+  for formula in fzf gawk grep gnu-sed coreutils; do
+    if ! brew list "$formula" >/dev/null 2>&1; then
+      printf '%s\n' "Installing brew formula: $formula"
+      brew install "$formula" || printf 'Warning: brew install %s failed — continue manually.\n' "$formula" >&2
+    fi
+  done
+fi
+
+FZF_TAB_DIR="${HOME}/.local/share/fzf-tab-completion"
+if [[ ! -f "${FZF_TAB_DIR}/bash/fzf-bash-completion.sh" ]]; then
+  mkdir -p "${HOME}/.local/share"
+  git clone --depth 1 https://github.com/lincheney/fzf-tab-completion.git "${FZF_TAB_DIR}" \
+    || printf 'Warning: could not clone fzf-tab-completion — inline cx-* Tab still works.\n' >&2
+fi
+
 printf '\n%s\n' 'Installed. Open a new shell or run:'
 printf '  source ~/.bashrc.d/codex-multi-terminal_one_off_tasks.bash\n'
 printf '  source ~/.bashrc.d/shell-completion_one_off_tasks.bash\n\n'
-printf '%s\n' 'Tab completion: type cx-de<Tab> — lists cx-deep / cx-desktop (no beep).'
-printf '%s\n\n' '              Shift+Tab cycles backward. Repeat Tab cycles forward.'
+printf '%s\n' 'Tab completion (cx-de<Tab>):'
+printf '%s\n' '  • 1st Tab → inserts cx-deep immediately'
+printf '%s\n' '  • horizontal list of all matches below (highlighted = active)'
+printf '%s\n' '  • Tab again → cycles cx-deep-smoke, cx-desktop, … on same line'
+printf '%s\n\n' '  • paths/flags → fzf-tab-completion when fzf is installed'
 printf '%s\n' 'Try:'
 printf '  cx-deep       # 32B @ 5090 — dotfile-vnext\n'
 printf '  cx-desktop    # 14B @ desktop — dotfile-vnext\n'

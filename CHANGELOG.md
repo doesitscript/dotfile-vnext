@@ -6,6 +6,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [6.1.5] - 2026-09-02
+
+Pre-release channel: `v6.1.5-beta` (Codex tab completion in-place menu redraw).
+
+### Changed
+
+- `shell-completion_one_off_tasks.bash` — horizontal completion menu redraws in place on
+  repeated Tab instead of stacking a new line each cycle; adds fzf-tab-completion for
+  paths/flags after first word.
+
 ## [6.1.4] - 2026-09-02
 
 Pre-release channel: `v6.1.4-beta` (Codex multi-terminal one-off trial).

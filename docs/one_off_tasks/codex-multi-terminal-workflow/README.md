@@ -204,46 +204,47 @@ docs/one_off_tasks/codex-multi-terminal-workflow/
 
 ---
 
-## Tab completion (no more beep)
+## Tab completion (inline + fzf)
 
-**Problem:** `cx-de` + Tab beeped because readline had `show-all-if-ambiguous off`
-(default).
+**Research sources (Context7 / blogs):**
 
-**Fix deployed:** `~/.bashrc.d/shell-completion_one_off_tasks.bash`
-
-| Setting | Effect |
+| Source | Finding |
 | --- | --- |
-| `show-all-if-ambiguous off` | With `menu-complete`, first Tab inserts inline instead of list-only |
-| `print-completions-horizontally on` | Space-separated options under prompt (AWS CLI style) |
-| `menu-complete` on Tab | First Tab inserts first match; repeat Tab cycles on same line |
-| `complete -I` | Command-name completion for `cx-*` at line start |
+| GNU Bash manual | `menu-complete` inserts one match per Tab; `show-all-if-ambiguous` lists without inserting |
+| [junegunn/fzf](https://github.com/junegunn/fzf) | `eval "$(fzf --bash)"` uses `**` trigger — not plain Tab |
+| [lincheney/fzf-tab-completion](https://github.com/lincheney/fzf-tab-completion) | `bind -x '"\t": fzf_bash_completion'` for paths/flags ([Matt Duck, 2021](https://www.mattduck.com/2021-05-fzf-tab-completion)) |
+| [aloxaf/fzf-tab](https://github.com/aloxaf/fzf-tab) | zsh only |
 
-**Try it** (new shell, or `source ~/.bashrc.d/shell-completion_one_off_tasks.bash`):
+**Deployed:** `~/.bashrc.d/shell-completion_one_off_tasks.bash`
 
-```text
-cx-de<Tab>        → prompt becomes cx-deep; options shown horizontally below
-<Tab>             → cx-deep-smoke, then cx-desktop, … (same prompt line)
-<Shift-Tab>       → cycle backward
-codex-homelab_one_off_tasks <Tab>  → deep desktop fast hvh01 tools
-```
+**Hybrid behavior:**
 
-### Optional: fzf (paths and fuzzy pick)
+1. **Command names** (`cx-de<Tab>`): custom inline horizontal menu
+   - 1st Tab → inserts **first match immediately** (`cx-deep`)
+   - horizontal list below with **highlighted** active option
+   - Tab again → cycles on the **same prompt line**; menu row **redraws in place** (no stack)
+2. **Paths / flags** (after a space): `fzf-tab-completion` when fzf is installed
 
-fzf is **not required** for cx-* command cycling. For fuzzy **path** completion
-(history, files, `cd` trees), install fzf and add to shell startup (from fzf
-README via Context7):
+**Deps** (`install_one_off_tasks.sh` installs when missing):
 
 ```bash
-brew install fzf
-# In ~/.bashrc.d after bash-completion loads:
-eval "$(fzf --bash)"
+brew install fzf gawk grep gnu-sed coreutils
+# cloned to ~/.local/share/fzf-tab-completion by install script
 ```
 
-fzf uses `**` as the default completion trigger for fuzzy file/command search —
-separate from plain Tab menu-complete above.
+Reload:
 
-**Promote permanently:** fold `shell-completion_one_off_tasks.bash` into Ansible
-`roles/common/shell_config/files/bashrc.d/` after trial.
+```bash
+source ~/.bashrc.d/shell-completion_one_off_tasks.bash
+```
+
+```text
+cx-de<Tab>   → cx-deep on prompt + horizontal list below (cx-deep highlighted)
+<Tab>        → cx-deep-smoke on prompt, highlight moves
+<Shift-Tab>  → backward
+```
+
+**Promote permanently:** fold into `roles/common/shell_config/files/bashrc.d/` after trial.
 
 ---
 
