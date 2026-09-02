@@ -16,13 +16,16 @@ the dotfile-vnext source of truth for **what** must pass.
 ## ATDD workflow
 
 Full developer flow diagram:
-[`docs/plans/2026-09-01--homelab-local-ai-clients-codex/draft-multi-agent-vnext-plan-work/diagrams/atdd-developer-flow.md`](docs/plans/2026-09-01--homelab-local-ai-clients-codex/draft-multi-agent-vnext-plan-work/diagrams/atdd-developer-flow.md)
+[`docs/plans/2026-09-01--homelab-model-lane-atdd-coordination/diagrams/atdd-developer-flow.md`](docs/plans/2026-09-01--homelab-model-lane-atdd-coordination/diagrams/atdd-developer-flow.md)
 
-> **Implementer** is a provisional role name (often Codex today); it may be renamed.
+Coordination plan (acceptance author + stack implementer handoffs):
+[`docs/plans/2026-09-01--homelab-model-lane-atdd-coordination/README.md`](docs/plans/2026-09-01--homelab-model-lane-atdd-coordination/README.md)
+
+> **Stack implementer** is a role — agent and client surface vary by campaign (Codex CLI is one example).
 
 1. **You** define the user journey (communication, code explain, tool round trip, FIM).
-2. **Acceptance author** (Cursor) writes or updates YAML here with `title`, `user_story`, and EXPECTED fields **before** treating the lane as approved.
-3. **Implementer** changes runtime, gateway routes, or parsers until probes pass.
+2. **Acceptance author** writes or updates YAML here with `title`, `user_story`, and EXPECTED fields **before** treating the lane as approved.
+3. **Stack implementer** changes runtime, gateway routes, or parsers until probes pass.
 4. **Promote** only when live receipts show PASS for every step — move `pending/` → approved manifest.
 
 Default probe output is **human**: print USER / EXPECTED / ACTUAL for every pass
