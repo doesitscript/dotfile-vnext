@@ -25,4 +25,8 @@ Future agents should read these notes as:
 
 ## Subfolders
 
+- **[codex-multi-terminal-workflow/](./codex-multi-terminal-workflow/)** — one-off trial for
+  four distributed local Codex terminals (`cx-deep`, `cx-desktop`, `cx-skills`, `cx-hvh01`)
+  plus cloud `cx-research`. Deploy with
+  `codex-multi-terminal-workflow/deploy/install_one_off_tasks.sh`.
 - **[on-offs/](./on-offs/)** — setting on/off timelines and tool matrices for active troubleshooting (e.g. GPU/FPS). Tables use **What we got** for raw pulse evidence in that column; see [on-offs/README.md](./on-offs/README.md).

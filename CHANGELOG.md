@@ -6,6 +6,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [6.1.4] - 2026-09-02
+
+Pre-release channel: `v6.1.4-beta` (Codex multi-terminal one-off trial).
+
+### Added
+
+- `docs/one_off_tasks/codex-multi-terminal-workflow/` — try-before-commit package for
+  distributed homelab Codex terminals (`cx-deep`, `cx-desktop`, `cx-skills`,
+  `cx-hvh01`, `cx-research`), role-specific instructions, and inline horizontal
+  tab completion (`shell-completion_one_off_tasks.bash`).
+
 ## [6.1.3] - 2026-09-02
 
 Pre-release channel: `v6.1.3-alpha` (pre-multi-agent ATDD coordination).
