@@ -1,4 +1,3 @@
----
 # Managed by Ansible role fzf_tab_completion. Do not edit on the host.
 # Upstream: https://github.com/lincheney/fzf-tab-completion#bash
 

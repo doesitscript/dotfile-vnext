@@ -49,7 +49,7 @@ Distributed Codex terminals on `mac-dev`: `cx-deep`, `cx-desktop`, `cx-skills`, 
 | Extend `codex_homelab_profiles` multi-terminal | done | `tasks/multi_terminal.yml`, `files/bashrc.d/codex-multi-terminal.bash` |
 | `mac-dev` host_vars | done | `fzf_tab_completion_state: present`, `codex_homelab_profiles_multi_terminal_state: present` |
 | Legacy host cleanup script | done | `scripts/uninstall_codex_multi_terminal_one_off_legacy.sh` |
-| Live Ansible apply on mac-dev | done | `deploy_development_nodes.yaml` 2026-09-02 — 69 ok, 12 changed |
+| Live Ansible apply on mac-dev | done | Playbook runs + smoke tests — see Execution receipt |
 
 ## Promotion map (one-off → Ansible)
 
@@ -73,17 +73,30 @@ Distributed Codex terminals on `mac-dev`: `cx-deep`, `cx-desktop`, `cx-skills`, 
 - Playbook + `mac-dev` inventory wired.
 - Legacy uninstall script run on operator Mac (removed `*_one_off_tasks` host files).
 
-**Live converge (2026-09-02):** `deploy_development_nodes.yaml --tags shell_config,fzf_tab_completion,codex_homelab_profiles --limit mac-dev` — **ok** (12 changed).
+**Live converge (2026-09-02):**
 
-**Verify on host:**
+| Run | Command | Result |
+| --- | --- | --- |
+| Initial apply | `deploy_development_nodes.yaml --tags shell_config,fzf_tab_completion,codex_homelab_profiles --limit mac-dev` | **ok** — 69 ok, 12 changed |
+| Idempotent re-run | same tags | **ok** — 69 ok, 3 changed |
+| Dedicated profile playbook | `deploy_codex_homelab_profiles.yaml --limit mac-dev` | **ok** — 15 ok, 1 changed |
+| Fix redeploy | after removing stray `---` from `shell-completion.bash` | **ok** — 56 ok, 2 changed |
 
-```bash
-type cx-deep codex-homelab rl_custom_complete
-test -f ~/.bashrc.d/shell-completion.bash
-test -f ~/.codex/local-deep.config.toml
-```
+**Post-apply verification (2026-09-02, mac-dev):**
 
-Open a **new terminal** to load `codex-multi-terminal.bash` and `shell-completion.bash`.
+| Check | Result |
+| --- | --- |
+| `bash -lc 'type cx-deep cx-desktop cx-skills cx-hvh01 cx-research'` | pass — all functions defined |
+| `type codex-homelab rl_custom_complete` | pass — binaries in `~/bin` |
+| Artifact files (`shell-completion.bash`, `codex-multi-terminal.bash`, `local-deep.config.toml`, fzf clone) | pass — all present |
+| `bash -lc 'source ~/.bashrc.d/shell-completion.bash'` | pass after fix (was failing: line 1 `---` YAML frontmatter) |
+| `cx-hvh01-smoke` | pass — model `qwen2.5-coder-1.5b@hvh01` replied `pong` |
+| `cx-deep-smoke` | pass — model `qwen2.5-coder-32b@k3s02-vllm` replied `pong` |
+| Legacy one-off cleanup | pass — `scripts/uninstall_codex_multi_terminal_one_off_legacy.sh` run earlier |
+| Interactive Tab (`cx-de<Tab>`, Python REPL Tab) | not automatable without TTY — open a **new terminal** and confirm manually |
+
+**Bug fixed during verification:** `roles/fzf_tab_completion/files/bashrc.d/shell-completion.bash` had a stray
+`---` on line 1 (YAML frontmatter leak). Removed and redeployed.
 
 ## Diagram Inventory
 
