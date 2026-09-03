@@ -124,24 +124,33 @@ When a bootstrap/playbook failure is fixed upstream and pushed to this sibling
 repo, run these on the work laptop. Prefer this path over one-off editor edits
 in the checkout — local patches get overwritten on the next sync/pull.
 
-1. Pull the latest sibling checkout:
+Branch policy: stay on `master` (this sibling) / `main` (`dotfile-vnext`). Do
+not create feature branches for normal fix → sync → pull loops unless a
+special reason is called out.
+
+1. Pull the latest sibling checkout (stay on `master`):
 
 ```bash
 cd ~/Documents/develop/work-laptop-ai-tools
 git status
+git branch --show-current   # expect: master
 git pull
 ```
 
-2. If you made a local one-off edit while waiting (for example in
-   `roles/python/tasks/mac.yml`), discard it so the pulled fix wins:
+2. Only if you (or a local editor agent) changed files in this checkout while
+   waiting for the upstream fix, discard those local edits so the pulled fix
+   wins. Skip this step when `git status` is clean after `git pull`.
 
 ```bash
-git checkout -- roles/python/tasks/mac.yml
-# or discard everything unmanaged/local:
+# discard edits to one file (NOT a branch switch):
+git restore roles/python/tasks/mac.yml
+
+# or discard all tracked local edits:
 # git restore .
-# git clean -fd   # only if you intend to remove untracked files
-git pull
 ```
+
+`git restore <file>` / `git checkout -- <file>` only resets working-tree files.
+It does not create or switch branches.
 
 3. Re-run bootstrap + packet playbook (asks for sudo password when hosts-file
    or other become tasks need it):
@@ -177,8 +186,8 @@ brew trust <user>/<tap>
 ```
 
 Paste the full failing task output back to the agent when something still
-stops the run; fixes belong in `dotfile-vnext` source, then sync → pull →
-re-run the commands above.
+stops the run; fixes belong in `dotfile-vnext` source on `main`, then sync →
+sibling `master` push → you `git pull` on `master` → re-run the commands above.
 
 Direct playbook previews still work when you want them separately:
 
