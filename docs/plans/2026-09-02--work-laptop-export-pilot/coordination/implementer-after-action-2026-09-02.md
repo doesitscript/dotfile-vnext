@@ -126,11 +126,17 @@ explicitly wait for evaluator artifacts on the same `plan_dir`.
 ### Additional required behavior
 
 - The monitoring skill must terminate its own background process when the
-  monitored campaign reaches an end state such as approved-complete or operator
-  stop.
+  monitored campaign reaches a true end state such as approved-complete with
+  both roles resolved to no further actor, or when the operator stops it.
 - It must not leave a watcher running after the owning role is effectively
-  done, because that creates misleading "still active" UI state and wastes the
-  operator's attention.
+  done, and it must also not leave both role watchers running after the paired
+  campaign itself is done. That was the actual failure in this run.
+- Concretely: once the shared resolver reaches `next actor: none` and the plan
+  is in approved-complete state, both monitors should tear down automatically
+  unless they were started in an explicit "keep watching after completion"
+  mode.
+- Leaving them running until the operator manually intervenes creates a false
+  impression that work is still active and wastes the operator's attention.
 - It should also publish one concise, continuously updated status line in the
   terminal or terminal-adjacent UI that includes:
   - whether a background monitor is running
