@@ -1,10 +1,21 @@
 ---
 # oniguruma is a C regex library required by ansible-navigator (via onigurumacffi).
 # pip cannot install onigurumacffi without the system library headers present.
+# Use a stat probe on the opt prefix instead of community.general.homebrew so that
+# "already installed" does not produce a non-zero exit code / fatal failure.
+- name: Probe oniguruma opt prefix
+  ansible.builtin.stat:
+    path: /opt/homebrew/opt/oniguruma
+  register: ansible_dev_tools_oniguruma_opt
+  tags: brew
+
 - name: Install oniguruma system library (required by ansible-navigator)
-  community.general.homebrew:
-    name: oniguruma
-    state: present
+  ansible.builtin.command:
+    argv: [brew, install, oniguruma]
+  when: not ansible_dev_tools_oniguruma_opt.stat.exists
+  changed_when: true
+  environment:
+    HOMEBREW_NO_REQUIRE_TAP_TRUST: "{{ lookup('env', 'HOMEBREW_NO_REQUIRE_TAP_TRUST') | default('1', true) }}"
   tags: brew
 
 - name: Install Ansible dev tools into project venv
