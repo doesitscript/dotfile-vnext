@@ -131,7 +131,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | OD-01 | Treat the work laptop as an export-only, thin-client packet. | Packet boundary and playbook guards. | Integrated |
 | OD-02 | Use the short real hostname `MLLXLJJ2XVFJ` when the packet is exported. | `inventory.yaml` and plan naming diagram. | Integrated |
-| OD-03 | Smoke-test locally first with a harmless hello-world run on the current Mac. | `inventory-smoke.yaml`, hello role, and receipt O-04. | Integrated |
+| OD-03 | Smoke-test locally first with a harmless local preview before touching the real work laptop. | The original hello-world idea was superseded by the external sibling-repo preview path: bootstrap `--help`, bootstrap `--dry-run --bootstrap-only`, then `playbook.yaml --syntax-check`, `--list-hosts`, and `--list-tasks` from the generated repo, reflected in the Verify contract and evaluator-confirmed preview evidence. | Integrated |
 | OD-04 | Package the packet as a zip, extract it outside the repo, and verify the extracted copy runs. | Explicit opt-in branch of `work-laptop-export-pack` and receipt O-06. | Integrated |
 | OD-05 | Stop using the current Mac as the active execution target and prepare the packet for the real work laptop instead. | `inventory.yaml`, README apply contract, and receipt O-02/O-04. | Integrated |
 | OD-06 | Pivot from zip-first delivery to a generated sibling repo that stays replaceable and out of broad inventory lanes. | `export-manifest.yml`, packet README, sibling repo sync script, workspace files, and receipt O-05/O-06. | Integrated |
