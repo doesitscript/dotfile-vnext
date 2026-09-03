@@ -10,6 +10,11 @@ because remote autocomplete lanes have been observed to destabilize editors and
 remote inference backends. Only re-enable autocomplete with a deliberately
 local-only model on the client machine after explicit validation.
 
+**Morph WarpGrep (evaluation):** When `continue_ide_mcp_servers` includes
+`morph-mcp` (see `inventory/host_vars/mac-dev.yaml`), Continue Agent mode can
+call `codebase_search`. Steering rule:
+`.continue/rules/morph-warpgrep-evaluation.md` (deployed by `roles/mcp_servers/morph`).
+
 The **Continue editor extension** (`Continue.continue`) is installed by
 `roles/cursor` / `roles/common/vscode` — not by this role.
 
