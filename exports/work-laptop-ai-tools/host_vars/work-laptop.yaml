@@ -204,6 +204,14 @@ continue_ide_blocked_lanes:
   - "qwen2.5-coder-14b@k3s02-vllm (undersized for 5090 — use 32B AWQ + fp8 KV)"
   - "Remote autocomplete disabled on 2026-09-02 due editor and remote-backend stability risk; only revisit with a local-only model on this Mac."
 
+# ansible-dev-tools (Red Hat meta-package) requires Python >=3.10.
+# The work laptop packet venv runs Python 3.9.6 (macOS system Python).
+# Ansible core is already installed via scripts/requirements.txt in bootstrap.
+# Override to only the libraries that are compatible and useful on Python 3.9.
+ansible_dev_tools_pip_packages:
+  - pynetbox
+  - pytz
+
 zed_ide_state: present
 # Zed is already installed on the work laptop; manage config only — do not
 # install or upgrade the Zed Homebrew cask from this packet.
