@@ -122,3 +122,17 @@ explicitly wait for evaluator artifacts on the same `plan_dir`.
   explicit operator/runtime mechanism to consume and act on new artifacts.
 - The monitor skill should make that boundary explicit so it does not imply more
   autonomy than the runtime actually provides.
+
+## Final stabilization closeout
+
+- The paired-agent runtime was stabilized by moving both roles to the same
+  artifact-derived actor-resolution model instead of relying on prose like
+  "waiting on the other."
+- The implementer monitor was narrowed to review-relevant plan artifacts only,
+  which removed the self-watch loop that had been producing false change events.
+- The live implementer runtime proof reached the expected steady state:
+  real handoff changes produced `observed ... state change`, and idle periods
+  produced heartbeat lines instead of repeated fake change detections.
+- The alpha snapshot of the full work-laptop export pilot plan packet was then
+  committed in `dotfile-vnext` as `cf51802d` so the stabilized state is
+  preserved in repo history.
