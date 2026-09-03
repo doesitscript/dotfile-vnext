@@ -67,6 +67,12 @@ status: final
   - ensure evaluator self-reporting includes a final closeout artifact, not
     only an early in-loop report
   - avoid labeling feedback as an "approved artifact" in live status surfaces
+  - automatically terminate evaluator background monitors when the plan reaches
+    approved plus `idle-complete` / `Computed next actor: none`, instead of
+    leaving them running until the operator notices
+  - include one concise runtime-status line in the visible status surface and in
+    chat updates so the operator can immediately see whether a background
+    process is still running and how long it has been idle
 
 ## Recommended next improvements
 
@@ -76,3 +82,6 @@ status: final
   closeout contract for paired plan campaigns.
 - Keep monitor event logs as runtime evidence, but avoid broad watch globs that
   let status surfaces trigger themselves.
+- Update the paired-agent monitor skill contract so monitors self-terminate at
+  approved closeout and always expose a one-line runtime state such as
+  `running`, `stopped`, or `idle since <timestamp>`.

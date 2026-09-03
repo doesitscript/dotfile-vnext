@@ -1,6 +1,6 @@
 ---
 title: evaluator wait state
-updated_at: 2026-09-02T232811
+updated_at: 2026-09-02T23:58:37
 author: evaluator-simple
 status: approved
 plan: 2026-09-02--work-laptop-export-pilot
@@ -23,3 +23,4 @@ loop_mode: idle-complete
   - any governed-file content change after `ready_for_review_by_evaluator_simple_2026-09-02T232811.md`
   - any operator instruction that re-opens this plan
 - Monitoring note: this file tracks evaluator state transitions; live polling exists only while an evaluator background terminal is actually running
+- Runtime status line: background monitor stopped; no active evaluator background process attached; idle since last heartbeat `2026-09-02T23:51:18`
