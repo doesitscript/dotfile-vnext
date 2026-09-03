@@ -1,0 +1,37 @@
+# BEGIN ANSIBLE MANAGED BLOCK: routing_morph-mcp
+## Morph WarpGrep + Fast Apply (evaluation — under_evaluation)
+
+Morph `morph-mcp` is **under evaluation** on this controller (installed 2026-09-02).
+Access is Ansible-managed (`roles/mcp_servers/morph`). Prefer these Morph MCP
+tools when they are available in the client.
+
+### WarpGrep (`codebase_search`)
+
+`codebase_search` is a WarpGrep subagent: natural-language search for relevant
+context. Use it at the **beginning** of codebase explorations to find relevant
+files/lines faster than repeated native grep/read loops.
+
+- Prefer for broad semantic queries: "Find the XYZ flow", "How does XYZ work?",
+  "Where is XYZ handled?", "Where is this error message coming from?"
+- Do **not** use it to pinpoint exact keywords, symbols, or regex — use native
+  grep/`rg` for those.
+- `github_codebase_search` is for public GitHub repos without cloning.
+
+### Fast Apply (`edit_file`)
+
+IMPORTANT: Prefer `edit_file` over native search-and-replace or full-file writes
+for multi-hunk or large-file edits. It works with partial snippets and
+`// ... existing code ...` markers — no need for the full file content in the
+edit payload.
+
+- `edit_file` calls Morph's Fast Apply API and consumes **Morph API usage**
+  (`MORPH_API_KEY`). Fall back to native edit on timeout/error.
+- Batch all edits to one file in a single `edit_file` call when practical.
+
+### Reflex tools
+
+Reflex tools stay enabled but are passive until explicitly called.
+
+Authority: `roles/mcp_servers/morph`, `docs/plans/2026-09-02--morph-warpgrep-evaluation/README.md`
+Vendor steering: https://docs.morphllm.com/guides/mcp
+# END ANSIBLE MANAGED BLOCK: routing_morph-mcp
