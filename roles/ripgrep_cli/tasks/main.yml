@@ -1,0 +1,20 @@
+---
+- name: Validate ripgrep_cli state
+  ansible.builtin.assert:
+    that:
+      - ripgrep_cli_state in ["present", "absent"]
+    fail_msg: ripgrep_cli_state must be present or absent.
+
+- name: Require macOS or Ubuntu for ripgrep_cli package management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin" or ansible_facts["distribution"] | default('') == "Ubuntu"
+    fail_msg: ripgrep_cli currently supports macOS (Homebrew) and Ubuntu (apt) only.
+
+- name: Manage ripgrep on macOS
+  ansible.builtin.import_tasks: mac.yml
+  when: ansible_facts["system"] == "Darwin"
+
+- name: Manage ripgrep on Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when: ansible_facts["distribution"] | default('') == "Ubuntu"

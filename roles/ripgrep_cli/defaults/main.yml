@@ -1,0 +1,31 @@
+---
+ripgrep_cli_state: present
+# GitHub release install on Darwin — Homebrew on macOS 12 source-builds Rust/LLVM.
+ripgrep_cli_release_version: "15.2.0"
+ripgrep_cli_github_owner: BurntSushi
+ripgrep_cli_github_repo: ripgrep
+ripgrep_cli_arch_map:
+  x86_64: x86_64
+  amd64: x86_64
+  arm64: aarch64
+  aarch64: aarch64
+ripgrep_cli_release_arch: "{{ ripgrep_cli_arch_map[ansible_architecture] }}"
+ripgrep_cli_archive_filename: >-
+  ripgrep-{{ ripgrep_cli_release_version }}-{{ ripgrep_cli_release_arch }}-apple-darwin.tar.gz
+ripgrep_cli_archive_checksum_map:
+  x86_64: "sha256:af7825fcc69a2afc7a7aea55fc9af90e26421d8f20fe59df32e233c0b8a231c1"
+  aarch64: "sha256:3750b2e93f37e0c692657da574d7019a101c0084da05a790c83fd335bad973e4"
+ripgrep_cli_archive_checksum: "{{ ripgrep_cli_archive_checksum_map[ripgrep_cli_release_arch] }}"
+ripgrep_cli_archive_url: >-
+  https://github.com/{{ ripgrep_cli_github_owner }}/{{ ripgrep_cli_github_repo }}/releases/download/{{
+  ripgrep_cli_release_version }}/{{ ripgrep_cli_archive_filename }}
+ripgrep_cli_download_dir: "{{ ansible_env.HOME }}/.cache/ripgrep-cli"
+ripgrep_cli_extract_dir: >-
+  {{ ripgrep_cli_download_dir }}/ripgrep-{{ ripgrep_cli_release_version }}-{{ ripgrep_cli_release_arch }}-apple-darwin
+ripgrep_cli_archive_path: "{{ ripgrep_cli_download_dir }}/{{ ripgrep_cli_archive_filename }}"
+ripgrep_cli_install_dir: "{{ ansible_env.HOME }}/.local/bin"
+ripgrep_cli_binary: rg
+ripgrep_cli_binary_path: "{{ ripgrep_cli_install_dir }}/{{ ripgrep_cli_binary }}"
+ripgrep_cli_extracted_binary: "{{ ripgrep_cli_extract_dir }}/{{ ripgrep_cli_binary }}"
+ripgrep_cli_apt_package: ripgrep
+ripgrep_cli_verify: true

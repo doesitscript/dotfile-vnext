@@ -1,0 +1,47 @@
+---
+- name: Manage ripgrep apt package
+  ansible.builtin.package:
+    name: "{{ ripgrep_cli_apt_package }}"
+    state: "{{ ripgrep_cli_state }}"
+
+- name: Probe rg binary after apt change
+  ansible.builtin.command:
+    argv:
+      - "{{ ripgrep_cli_binary }}"
+      - --version
+  register: ripgrep_cli_version_probe
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - ripgrep_cli_verify | bool
+
+- name: Verify rg binary is present after apt install
+  ansible.builtin.assert:
+    that:
+      - ripgrep_cli_version_probe.rc == 0
+    fail_msg: "{{ ripgrep_cli_binary }} was not found on PATH after installing {{ ripgrep_cli_apt_package }}."
+  when:
+    - not ansible_check_mode
+    - ripgrep_cli_verify | bool
+    - ripgrep_cli_state == "present"
+
+- name: Verify rg binary is absent after apt remove
+  ansible.builtin.assert:
+    that:
+      - ripgrep_cli_version_probe.rc != 0
+    fail_msg: "{{ ripgrep_cli_binary }} remains on PATH after removing {{ ripgrep_cli_apt_package }}."
+  when:
+    - not ansible_check_mode
+    - ripgrep_cli_verify | bool
+    - ripgrep_cli_state == "absent"
+
+- name: Report ripgrep apt package state
+  ansible.builtin.debug:
+    msg:
+      - "apt package {{ ripgrep_cli_apt_package }} is {{ 'installed' if ripgrep_cli_state == 'present' else 'absent' }}."
+      - "Binary name is {{ ripgrep_cli_binary }} (not 'ripgrep')."
+      - "{{ ripgrep_cli_version_probe.stdout_lines | default([]) | first | default('') }}"
+  when:
+    - not ansible_check_mode
+    - ripgrep_cli_verify | bool

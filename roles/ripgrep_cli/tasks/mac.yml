@@ -1,0 +1,153 @@
+---
+- name: Ensure ripgrep download cache directory exists
+  ansible.builtin.file:
+    path: "{{ ripgrep_cli_download_dir }}"
+    state: directory
+    mode: "0755"
+  when: ripgrep_cli_state == "present"
+
+- name: Ensure ripgrep install directory exists
+  ansible.builtin.file:
+    path: "{{ ripgrep_cli_install_dir }}"
+    state: directory
+    mode: "0755"
+  when: ripgrep_cli_state == "present"
+
+- name: Check ripgrep cache directory state for preview mode
+  ansible.builtin.stat:
+    path: "{{ ripgrep_cli_download_dir }}"
+  register: ripgrep_cli_download_dir_stat
+  when:
+    - ripgrep_cli_state == "present"
+    - ansible_check_mode
+
+- name: Check ripgrep cached archive state for preview mode
+  ansible.builtin.stat:
+    path: "{{ ripgrep_cli_archive_path }}"
+  register: ripgrep_cli_archive_stat
+  when:
+    - ripgrep_cli_state == "present"
+    - ansible_check_mode
+
+- name: Check extracted ripgrep binary state for preview mode
+  ansible.builtin.stat:
+    path: "{{ ripgrep_cli_extracted_binary }}"
+  register: ripgrep_cli_extracted_binary_stat
+  when:
+    - ripgrep_cli_state == "present"
+    - ansible_check_mode
+
+- name: Download ripgrep release archive
+  ansible.builtin.get_url:
+    url: "{{ ripgrep_cli_archive_url }}"
+    dest: "{{ ripgrep_cli_archive_path }}"
+    checksum: "{{ ripgrep_cli_archive_checksum }}"
+    mode: "0644"
+  when:
+    - ripgrep_cli_state == "present"
+    - not ansible_check_mode or (ripgrep_cli_download_dir_stat.stat.exists | default(false))
+
+- name: Extract ripgrep release archive with macOS tar  # noqa: command-instead-of-module
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/tar
+      - -xzf
+      - "{{ ripgrep_cli_archive_path }}"
+      - -C
+      - "{{ ripgrep_cli_download_dir }}"
+    creates: "{{ ripgrep_cli_extracted_binary }}"
+  when:
+    - ripgrep_cli_state == "present"
+    - not ansible_check_mode or (ripgrep_cli_archive_stat.stat.exists | default(false))
+
+- name: Install ripgrep binary
+  ansible.builtin.copy:
+    src: "{{ ripgrep_cli_extracted_binary }}"
+    dest: "{{ ripgrep_cli_binary_path }}"
+    remote_src: true
+    mode: "0755"
+  when:
+    - ripgrep_cli_state == "present"
+    - not ansible_check_mode or (ripgrep_cli_extracted_binary_stat.stat.exists | default(false))
+
+- name: Explain ripgrep preview limitations when cache assets are absent
+  ansible.builtin.debug:
+    msg:
+      - "Check mode note: live apply will download {{ ripgrep_cli_archive_url }}."
+      - "Archive extraction and binary copy are skipped in preview until the cached archive exists."
+      - "Planned install path: {{ ripgrep_cli_binary_path }}"
+      - "Binary name is {{ ripgrep_cli_binary }} (not 'ripgrep')."
+  when:
+    - ripgrep_cli_state == "present"
+    - ansible_check_mode
+    - not (ripgrep_cli_archive_stat.stat.exists | default(false))
+
+- name: Remove ripgrep binary
+  ansible.builtin.file:
+    path: "{{ ripgrep_cli_binary_path }}"
+    state: absent
+  when: ripgrep_cli_state == "absent"
+
+- name: Remove ripgrep extracted release directory
+  ansible.builtin.file:
+    path: "{{ ripgrep_cli_extract_dir }}"
+    state: absent
+  when: ripgrep_cli_state == "absent"
+
+- name: Remove ripgrep cached archive
+  ansible.builtin.file:
+    path: "{{ ripgrep_cli_archive_path }}"
+    state: absent
+  when: ripgrep_cli_state == "absent"
+
+- name: Check installed ripgrep binary
+  ansible.builtin.stat:
+    path: "{{ ripgrep_cli_binary_path }}"
+  register: ripgrep_cli_binary_stat
+  when:
+    - not ansible_check_mode
+    - ripgrep_cli_verify | bool
+
+- name: Verify ripgrep binary is present
+  ansible.builtin.assert:
+    that:
+      - ripgrep_cli_binary_stat.stat.exists | default(false)
+      - ripgrep_cli_binary_stat.stat.executable | default(false)
+    fail_msg: "ripgrep binary is not installed at {{ ripgrep_cli_binary_path }}."
+  when:
+    - not ansible_check_mode
+    - ripgrep_cli_verify | bool
+    - ripgrep_cli_state == "present"
+
+- name: Verify ripgrep binary is absent
+  ansible.builtin.assert:
+    that:
+      - not (ripgrep_cli_binary_stat.stat.exists | default(false))
+    fail_msg: "ripgrep binary remains installed at {{ ripgrep_cli_binary_path }}."
+  when:
+    - not ansible_check_mode
+    - ripgrep_cli_verify | bool
+    - ripgrep_cli_state == "absent"
+
+- name: Probe rg version
+  ansible.builtin.command:
+    argv:
+      - "{{ ripgrep_cli_binary_path }}"
+      - --version
+  register: ripgrep_cli_version_probe
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - ripgrep_cli_verify | bool
+    - ripgrep_cli_state == "present"
+
+- name: Report ripgrep binary state
+  ansible.builtin.debug:
+    msg:
+      - "ripgrep binary path: {{ ripgrep_cli_binary_path if ripgrep_cli_state == 'present' else 'removed' }}"
+      - "Binary name is {{ ripgrep_cli_binary }} (not 'ripgrep')."
+      - "Install family: BurntSushi GitHub release {{ ripgrep_cli_release_version }} (Homebrew bottles unavailable on this macOS)."
+      - "{{ ripgrep_cli_version_probe.stdout_lines | default([]) | first | default('') }}"
+  when:
+    - not ansible_check_mode
+    - ripgrep_cli_verify | bool
