@@ -83,6 +83,7 @@ Example packet: `2026-09-01--litellm-model-client-id-patterns/`.
 
 | Packet | Status |
 | --- | --- |
+| [2026-09-03--paired-agent-runtime-orchestration-patterns/](2026-09-03--paired-agent-runtime-orchestration-patterns/) | brainstorm (OpenAPI/MCP coordinator patterns) |
 | [2026-09-01--homelab-routing-layer-flint-openwrt/](2026-09-01--homelab-routing-layer-flint-openwrt/) | packet-active |
 | [2026-09-01--litellm-model-client-id-patterns/](2026-09-01--litellm-model-client-id-patterns/) | partially-implemented (gateway live) |
 | [2026-09-01--homelab-local-ai-clients-patterns/](2026-09-01--homelab-local-ai-clients-patterns/) | brainstorm (Continue, OpenCode, Codex CLI) |
