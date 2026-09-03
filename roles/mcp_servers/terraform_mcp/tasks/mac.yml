@@ -84,14 +84,27 @@
 
 - name: Determine whether Terraform MCP install needs refresh
   ansible.builtin.set_fact:
-    terraform_mcp_install_required: >-
+    terraform_mcp_install_required: "{{ terraform_mcp_force_reinstall | bool }}"
+    terraform_mcp_installed_version: >-
       {{
-        (terraform_mcp_force_reinstall | bool)
-        or not (terraform_mcp_existing_binary.stat.exists | default(false))
-        or not (terraform_mcp_version_marker.stat.exists | default(false))
-        or ((terraform_mcp_version_raw.content | default('') | b64decode | trim) != terraform_mcp_repo_version)
+        (terraform_mcp_version_raw.content | default('') | b64decode | trim)
+        if (terraform_mcp_version_marker.stat.exists | default(false))
+        else ''
       }}
 
+- name: Mark Terraform MCP install required when binary missing
+  ansible.builtin.set_fact:
+    terraform_mcp_install_required: true
+  when: not (terraform_mcp_existing_binary.stat.exists | default(false))
+
+- name: Mark Terraform MCP install required when version marker missing or stale
+  ansible.builtin.set_fact:
+    terraform_mcp_install_required: true
+  when: >-
+    not (terraform_mcp_version_marker.stat.exists | default(false))
+    or (terraform_mcp_installed_version != terraform_mcp_repo_version)
+
+# go install pulls many modules; corporate networks often need several minutes.
 - name: Install Terraform MCP server from HashiCorp release
   ansible.builtin.command:
     argv:
@@ -101,7 +114,29 @@
   environment:
     GOBIN: "{{ terraform_mcp_bin_dir }}"
     GOPATH: "{{ terraform_mcp_go_path }}"
+  register: terraform_mcp_go_install
   changed_when: true
+  timeout: 900
+  when: terraform_mcp_install_required | bool
+
+- name: Re-check Terraform MCP binary after go install
+  ansible.builtin.stat:
+    path: "{{ terraform_mcp_command }}"
+  register: terraform_mcp_existing_binary
+  when: terraform_mcp_install_required | bool
+
+- name: Require go install to produce Terraform MCP binary
+  ansible.builtin.assert:
+    that:
+      - terraform_mcp_existing_binary.stat.exists | default(false)
+      - terraform_mcp_existing_binary.stat.executable | default(false)
+    fail_msg: >-
+      go install did not produce {{ terraform_mcp_command }}.
+      rc={{ terraform_mcp_go_install.rc | default('n/a') }}
+      stdout={{ terraform_mcp_go_install.stdout | default('') }}
+      stderr={{ terraform_mcp_go_install.stderr | default('') }}.
+      Manual: GOBIN="$HOME/.local/bin" go install
+      {{ terraform_mcp_go_package }}@{{ terraform_mcp_repo_version }}
   when: terraform_mcp_install_required | bool
 
 - name: Record installed Terraform MCP version
