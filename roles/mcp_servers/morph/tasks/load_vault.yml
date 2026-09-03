@@ -1,0 +1,20 @@
+---
+- name: Include shared vault variables for Morph MCP
+  ansible.builtin.include_vars:
+    file: "{{ morph_mcp_vault_file_path }}"
+    name: vault_vars
+  no_log: true
+
+- name: Set Morph API key from vault
+  ansible.builtin.set_fact:
+    morph_mcp_api_key: "{{ vault_vars.vault_shared_morph_api_key | default('') }}"
+  no_log: true
+
+- name: Assert Morph API key is present in vault
+  ansible.builtin.assert:
+    that:
+      - morph_mcp_api_key is defined
+      - morph_mcp_api_key | length > 0
+    fail_msg: >-
+      vault_shared_morph_api_key is required in vault/shared.vault.yml before
+      Morph MCP can be configured. Obtain a key from https://www.morphllm.com/

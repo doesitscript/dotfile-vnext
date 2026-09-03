@@ -1,0 +1,15 @@
+---
+- name: Ensure routing target directory exists for {{ _mcp_routing_marker_name }}
+  ansible.builtin.file:
+    path: "{{ _mcp_routing_target_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Ensure routing instruction block exists for {{ _mcp_routing_marker_name }}
+  ansible.builtin.blockinfile:
+    path: "{{ _mcp_routing_target_path }}"
+    create: true
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: {{ _mcp_routing_marker_name }}"
+    insertafter: EOF
+    block: "{{ _mcp_routing_block_content | trim }}"

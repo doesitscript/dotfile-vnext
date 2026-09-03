@@ -1,0 +1,71 @@
+---
+- name: Remove Morph MCP package via npm
+  community.general.npm:
+    name: "{{ morph_mcp_cli_package_name }}"
+    global: true
+    state: absent
+    executable: "{{ node_npm_executable }}"
+  timeout: 300
+
+- name: Remove Morph routing instructions
+  ansible.builtin.import_tasks: remove_routing.yml
+
+- name: Remove Morph entry from project Cursor mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _morph_target_name: "cursor"
+    _morph_target_config_path: "{{ morph_mcp_cursor_config_path }}"
+  when: _morph_target_cursor_selected | bool
+
+- name: Remove Morph entry from user Cursor mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _morph_target_name: "cursor_user"
+    _morph_target_config_path: "{{ morph_mcp_cursor_user_config_path }}"
+  when: _morph_target_cursor_user_selected | bool
+
+- name: Remove Morph entry from VS Code mcp.json
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _morph_target_name: "vscode"
+    _morph_target_config_path: "{{ morph_mcp_vscode_config_path }}"
+  when: _morph_target_vscode_selected | bool
+
+- name: Remove Morph entry from project Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ morph_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ morph_mcp_server_key }}"
+  when: _morph_target_codex_selected | bool
+
+- name: Remove Morph entry from user Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ morph_mcp_codex_user_config_path }}"
+    _mcp_codex_server_key: "{{ morph_mcp_server_key }}"
+  when:
+    - _morph_target_codex_selected | bool
+    - morph_mcp_configure_codex_user | bool
+
+- name: Remove Morph Codex optional-startup grace from project config
+  ansible.builtin.blockinfile:
+    path: "{{ morph_mcp_codex_config_path }}"
+    create: false
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: morph_mcp_codex_optional_startup_grace"
+    state: absent
+  when: _morph_target_codex_selected | bool
+
+- name: Remove Morph Codex optional-startup grace from user config
+  ansible.builtin.blockinfile:
+    path: "{{ morph_mcp_codex_user_config_path }}"
+    create: false
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: morph_mcp_codex_optional_startup_grace"
+    state: absent
+  when:
+    - _morph_target_codex_selected | bool
+    - morph_mcp_configure_codex_user | bool
+
+- name: Remove Morph MCP runtime env file
+  ansible.builtin.file:
+    path: "{{ morph_mcp_env_file_path }}"
+    state: absent

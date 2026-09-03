@@ -1,0 +1,43 @@
+---
+- name: Install Morph MCP package via npm on Ubuntu
+  community.general.npm:
+    name: "{{ morph_mcp_npm_spec }}"
+    global: true
+    state: present
+    executable: "{{ node_npm_executable }}"
+  timeout: 300
+
+- name: Check Morph MCP binary candidates on Ubuntu
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ _morph_bin_candidates }}"
+  register: _morph_mcp_bin_stats_ubuntu
+  vars:
+    _morph_bin_candidates: >-
+      {{
+        morph_mcp_bin_candidates
+        if (morph_mcp_bin_candidates | length > 0)
+        else [
+          (node_npm_executable | dirname) ~ '/morph-mcp'
+        ]
+      }}
+
+- name: Set Morph MCP command path for MCP clients on Ubuntu
+  ansible.builtin.set_fact:
+    morph_mcp_command: "{{ (_morph_mcp_bin_stats_ubuntu.results | selectattr('stat.exists') | map(attribute='item') | first) | default('') }}"
+
+- name: Fail if Morph MCP binary was not found on Ubuntu
+  ansible.builtin.fail:
+    msg: >-
+      Morph MCP package installed, but no executable was found in
+      morph_mcp_bin_candidates={{ _morph_bin_candidates | to_json }}.
+  when: not (morph_mcp_command | default(''))
+  vars:
+    _morph_bin_candidates: >-
+      {{
+        morph_mcp_bin_candidates
+        if (morph_mcp_bin_candidates | length > 0)
+        else [
+          (node_npm_executable | dirname) ~ '/morph-mcp'
+        ]
+      }}

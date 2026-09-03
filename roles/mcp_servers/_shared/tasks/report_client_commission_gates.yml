@@ -1,0 +1,171 @@
+---
+# Shared MCP client commission gate reporter / file-level verify.
+#
+# Contract: writing mcp.json or project .codex/config.toml is ACCESS only.
+# Client COMMISSION requires per-client gates (see
+# roles/mcp_servers/CLIENT_COMMISSION_GATES.md). Roles MUST include this task
+# (or equivalent) at the end of present.yml. Play recap "ok" alone is NEVER
+# execute-complete for Agent/Codex enablement.
+#
+# Required vars:
+#   _mcp_commission_server_key
+#   _mcp_commission_role_name
+# Optional (bool, default false):
+#   _mcp_commission_cursor_selected
+#   _mcp_commission_cursor_user_selected
+#   _mcp_commission_codex_selected
+#   _mcp_commission_codex_user_configured
+# Optional paths (required when corresponding selected/configured is true):
+#   _mcp_commission_cursor_path
+#   _mcp_commission_cursor_user_path
+#   _mcp_commission_codex_path
+#   _mcp_commission_codex_user_path
+
+- name: "MCP commission — assert project Cursor mcp.json contains {{ _mcp_commission_server_key }}"
+  when: _mcp_commission_cursor_selected | default(false) | bool
+  block:
+    - name: Stat project Cursor mcp.json for {{ _mcp_commission_server_key }}
+      ansible.builtin.stat:
+        path: "{{ _mcp_commission_cursor_path }}"
+      register: _mcp_commission_cursor_stat
+
+    - name: Fail if project Cursor mcp.json missing for {{ _mcp_commission_server_key }}
+      ansible.builtin.assert:
+        that:
+          - _mcp_commission_cursor_stat.stat.exists | default(false)
+        fail_msg: >-
+          Access layer incomplete: expected project Cursor config at
+          {{ _mcp_commission_cursor_path }} for {{ _mcp_commission_server_key }}
+          (role {{ _mcp_commission_role_name }}).
+
+    - name: Read project Cursor mcp.json for {{ _mcp_commission_server_key }}
+      ansible.builtin.slurp:
+        src: "{{ _mcp_commission_cursor_path }}"
+      register: _mcp_commission_cursor_slurp
+
+    - name: Assert project Cursor entry exists for {{ _mcp_commission_server_key }}
+      ansible.builtin.assert:
+        that:
+          - >-
+            (_mcp_commission_cursor_slurp.content | b64decode | from_json)
+            .mcpServers[_mcp_commission_server_key] is defined
+        fail_msg: >-
+          Access layer incomplete: {{ _mcp_commission_cursor_path }} has no
+          mcpServers.{{ _mcp_commission_server_key }}.
+
+- name: "MCP commission — assert user Cursor mcp.json contains {{ _mcp_commission_server_key }}"
+  when: _mcp_commission_cursor_user_selected | default(false) | bool
+  block:
+    - name: Stat user Cursor mcp.json for {{ _mcp_commission_server_key }}
+      ansible.builtin.stat:
+        path: "{{ _mcp_commission_cursor_user_path }}"
+      register: _mcp_commission_cursor_user_stat
+
+    - name: Fail if user Cursor mcp.json missing for {{ _mcp_commission_server_key }}
+      ansible.builtin.assert:
+        that:
+          - _mcp_commission_cursor_user_stat.stat.exists | default(false)
+        fail_msg: >-
+          Access layer incomplete: expected user Cursor config at
+          {{ _mcp_commission_cursor_user_path }} for {{ _mcp_commission_server_key }}.
+
+    - name: Read user Cursor mcp.json for {{ _mcp_commission_server_key }}
+      ansible.builtin.slurp:
+        src: "{{ _mcp_commission_cursor_user_path }}"
+      register: _mcp_commission_cursor_user_slurp
+
+    - name: Assert user Cursor entry exists for {{ _mcp_commission_server_key }}
+      ansible.builtin.assert:
+        that:
+          - >-
+            (_mcp_commission_cursor_user_slurp.content | b64decode | from_json)
+            .mcpServers[_mcp_commission_server_key] is defined
+        fail_msg: >-
+          Access layer incomplete: {{ _mcp_commission_cursor_user_path }} has no
+          mcpServers.{{ _mcp_commission_server_key }}.
+
+- name: "MCP commission — assert project Codex config contains {{ _mcp_commission_server_key }}"
+  when: _mcp_commission_codex_selected | default(false) | bool
+  block:
+    - name: Stat project Codex config for {{ _mcp_commission_server_key }}
+      ansible.builtin.stat:
+        path: "{{ _mcp_commission_codex_path }}"
+      register: _mcp_commission_codex_stat
+
+    - name: Fail if project Codex config missing for {{ _mcp_commission_server_key }}
+      ansible.builtin.assert:
+        that:
+          - _mcp_commission_codex_stat.stat.exists | default(false)
+        fail_msg: >-
+          Access layer incomplete: expected project Codex config at
+          {{ _mcp_commission_codex_path }}.
+
+    - name: Grep project Codex for {{ _mcp_commission_server_key }}
+      ansible.builtin.command:
+        argv:
+          - rg
+          - -n
+          - "\\[mcp_servers\\.{{ _mcp_commission_server_key }}\\]"
+          - "{{ _mcp_commission_codex_path }}"
+      register: _mcp_commission_codex_rg
+      changed_when: false
+      failed_when: _mcp_commission_codex_rg.rc != 0
+
+- name: "MCP commission — assert user Codex config contains {{ _mcp_commission_server_key }}"
+  when:
+    - _mcp_commission_codex_selected | default(false) | bool
+    - _mcp_commission_codex_user_configured | default(false) | bool
+  block:
+    - name: Stat user Codex config for {{ _mcp_commission_server_key }}
+      ansible.builtin.stat:
+        path: "{{ _mcp_commission_codex_user_path }}"
+      register: _mcp_commission_codex_user_stat
+
+    - name: Fail if user Codex config missing for {{ _mcp_commission_server_key }}
+      ansible.builtin.assert:
+        that:
+          - _mcp_commission_codex_user_stat.stat.exists | default(false)
+        fail_msg: >-
+          Codex commission incomplete: {{ _mcp_commission_server_key }} must also
+          be in {{ _mcp_commission_codex_user_path }}. `codex mcp list` / IDE
+          extension read user config (homelab-findings + Codex ConfigEditsBuilder).
+          Dual-write project + user is required when codex is commissioned.
+
+    - name: Grep user Codex for {{ _mcp_commission_server_key }}
+      ansible.builtin.command:
+        argv:
+          - rg
+          - -n
+          - "\\[mcp_servers\\.{{ _mcp_commission_server_key }}\\]"
+          - "{{ _mcp_commission_codex_user_path }}"
+      register: _mcp_commission_codex_user_rg
+      changed_when: false
+      failed_when: _mcp_commission_codex_user_rg.rc != 0
+
+- name: "MCP commission — emit Cursor project allowlist gate for {{ _mcp_commission_server_key }}"
+  ansible.builtin.debug:
+    msg: >-
+      CURSOR PROJECT GATE (not satisfied by Ansible mcp.json write alone):
+      target `cursor` selected for {{ _mcp_commission_server_key }}.
+      Cursor Agent needs project-MCP allowlist entry
+      approvedProjectMcpServers = project-N-<folder>-{{ _mcp_commission_server_key }}:<configHash>
+      in state.vscdb, then full Cursor restart (or proven createClient).
+      Customize UI may omit Project source — verify Agent namespaces/logs.
+      Prefer target cursor_user for Agent-critical servers unless project scope
+      is deliberate. Role: {{ _mcp_commission_role_name }}.
+  when:
+    - _mcp_commission_cursor_selected | default(false) | bool
+    - not (_mcp_commission_cursor_user_selected | default(false) | bool)
+
+- name: "MCP commission — receipt for {{ _mcp_commission_server_key }}"
+  ansible.builtin.debug:
+    msg: >-
+      MCP commission receipt ({{ _mcp_commission_role_name }} /
+      {{ _mcp_commission_server_key }}):
+      access_cursor={{ _mcp_commission_cursor_selected | default(false) }},
+      access_cursor_user={{ _mcp_commission_cursor_user_selected | default(false) }},
+      access_codex_project={{ _mcp_commission_codex_selected | default(false) }},
+      access_codex_user={{ (_mcp_commission_codex_selected | default(false)) and (_mcp_commission_codex_user_configured | default(false)) }}.
+      File asserts above check ACCESS only. Live Agent/Codex tool listing is
+      still a separate Verify step (CLIENT_COMMISSION_GATES.md).
+      Authority: roles/mcp_servers/CLIENT_COMMISSION_GATES.md

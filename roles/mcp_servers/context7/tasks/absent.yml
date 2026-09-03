@@ -28,6 +28,15 @@
     _mcp_codex_server_key: "{{ context7_mcp_server_key }}"
   when: _context7_target_codex_selected | bool
 
+- name: Remove Context7 entry from user Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ context7_mcp_codex_user_config_path }}"
+    _mcp_codex_server_key: "{{ context7_mcp_server_key }}"
+  when:
+    - _context7_target_codex_selected | bool
+    - context7_mcp_configure_codex_user | bool
+
 - name: Remove Context7 local env file
   ansible.builtin.file:
     path: "{{ context7_mcp_env_file_path }}"

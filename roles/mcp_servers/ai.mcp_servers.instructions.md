@@ -51,6 +51,17 @@ For Firecrawl collection:
 Use the smallest tool that can answer the research question. Do not crawl a
 whole site when a mapped URL list plus focused scrape is enough.
 
+## Morph WarpGrep — Local Codebase Search
+
+Morph MCP (`roles/mcp_servers/morph`) is separate from the research collection
+stack. It answers "where in *this repo* does X live?" via WarpGrep
+`codebase_search`, not vendor documentation.
+
+- Install via `playbooks/mac/mcp_servers.yaml --tags morph`
+- Secret: `vault_shared_morph_api_key` in `vault/shared.vault.yml`
+- Launcher: global `morph-mcp` binary from `@morphllm/morphmcp` (not `npx --prefer-offline`)
+- Reflex tools stay enabled by default; they only run when explicitly called
+
 ## Start With Upstream Classification
 
 Before writing tasks, classify the upstream server from its README, package
@@ -180,8 +191,25 @@ Codex uses the shared project `.codex/config.toml` block-management pattern:
 4. Preserve unrelated config outside that block.
 5. On `absent`, remove only the role's block.
 
+**Required dual-write:** when `codex` is commissioned, also write
+`~/.codex/config.toml` (`*_configure_codex_user: true` by default).
+`codex mcp list` / IDE surfaces lean on user config; project-only write is an
+incomplete Codex commission (see `CLIENT_COMMISSION_GATES.md`).
+
 Use the shared helper tasks under `roles/mcp_servers/_shared/tasks/` for this
 pattern instead of per-role TOML merge logic or `codex mcp` CLI mutation.
+
+## Access ≠ commission (mandatory)
+
+**Do not** treat “Ansible wrote mcp.json / project Codex TOML” as Agent/Codex
+ready. That incomplete commission delayed Morph and can hit **any** project MCP.
+
+Authority: `roles/mcp_servers/CLIENT_COMMISSION_GATES.md`
+
+Every role `present.yml` must end with
+`_shared/tasks/report_client_commission_gates.yml` (file asserts + Cursor
+project allowlist warning + receipt). Prefer Cursor target `cursor_user` for
+Agent-critical servers; project `cursor` needs allowlist + restart.
 
 Do not hand-edit `.cursor/mcp.json` or `.vscode/mcp.json` as an implementation
 shortcut when those files are already owned by an MCP role. Change the owning

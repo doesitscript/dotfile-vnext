@@ -1,14 +1,3 @@
-sandbox_mode = "workspace-write"
-model_reasoning_effort = "medium"
-
-developer_instructions = """
-This role maps to the repo's Executor behavior.
-
-- Own a bounded implementation or verification slice.
-- Respect AGENTS.md and the repo framework guidance already loaded by the parent thread.
-- Execute the assigned slice instead of re-planning the whole task.
-- Report verification performed, missing checks, and any concrete risks or blockers.
-# BEGIN ANSIBLE MANAGED BLOCK: routing_morph-mcp
 ## Morph WarpGrep + Fast Apply (evaluation — under_evaluation)
 
 Morph `morph-mcp` is **under evaluation** on this controller (installed 2026-09-02).
@@ -44,5 +33,3 @@ Reflex tools stay enabled but are passive until explicitly called.
 
 Authority: `roles/mcp_servers/morph`, `docs/plans/2026-09-02--morph-warpgrep-evaluation/README.md`
 Vendor steering: https://docs.morphllm.com/guides/mcp
-# END ANSIBLE MANAGED BLOCK: routing_morph-mcp
-"""

@@ -20,6 +20,7 @@ you explicitly add them back.
 | `netbox` | NetBox MCP query server | Python (uv) | launcher | Cursor, Codex | [netboxlabs/netbox-mcp-server](https://github.com/netboxlabs/netbox-mcp-server) |
 | `context7` | Technical docs, APIs, SDK references, and library docs | Node.js (npm) | launcher | Cursor, Codex | [upstash/context7](https://github.com/upstash/context7) |
 | `firecrawl` | Firecrawl web scraping, crawling, search, and extraction MCP | Node.js (npm) | launcher | Cursor, Codex | [firecrawl/firecrawl-mcp-server](https://github.com/firecrawl/firecrawl-mcp-server) |
+| `morph` | Morph WarpGrep semantic codebase search (`codebase_search`) | Node.js (npm global) | launcher | Cursor, Codex, VS Code | [@morphllm/morphmcp](https://www.npmjs.com/package/@morphllm/morphmcp) |
 | `playwright` | Browser-rendered pages, login flows, screenshots, and browser state | Node.js (npm) | launcher/browser | Cursor, Codex | [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp) |
 | `fetch` | Lightweight webpage fetching fallback | Node.js (npm) | launcher | Cursor, Codex | [zcaceres/fetch-mcp](https://github.com/zcaceres/fetch-mcp) |
 | `firebase` | Official Firebase MCP server via Firebase CLI | Node.js (`npx` launcher) | launcher | Cursor, VS Code, Codex | [Firebase MCP server](https://firebase.google.com/docs/ai-assistance/mcp-server) |
@@ -160,6 +161,11 @@ registry, and the managed-block pattern for machine-scope files such as
 `docs/codex_framework/instruction-scope-registry.md`. A new knowledge server
 is not fully installed until its registry row and routing instruction exist.
 
+**Client commission gates** (Cursor allowlist, Codex user dual-write, Continue
+launch hygiene) are mandatory and separate from access. See
+`roles/mcp_servers/CLIENT_COMMISSION_GATES.md`. Shared task:
+`_shared/tasks/report_client_commission_gates.yml`.
+
 Supported targets and commissioned targets are not the same thing. A role may
 support `cursor`, `vscode`, and `codex`, while a host only commissions a subset
 through inventory. For the MCP Research Collection Stack on `mac-dev`, the
@@ -169,7 +175,8 @@ uses `mcp_target_vscode`.
 
 After client config changes, reload the MCP client. Cursor Settings and already
 running chat sessions can show stale MCP availability until the window/session
-restarts or the MCP server list is refreshed.
+restarts or the MCP server list is refreshed. Project Cursor may also need the
+allowlist gate even after reload.
 
 ## Directory Layout
 

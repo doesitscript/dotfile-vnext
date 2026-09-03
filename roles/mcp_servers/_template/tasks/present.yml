@@ -39,3 +39,27 @@
     _mcp_codex_server_key: "{{ template_mcp_server_key }}"
     _mcp_codex_entry: "{{ template_mcp_codex_entry }}"
   when: _template_mcp_target_codex_selected | bool
+
+- name: Ensure the template MCP entry exists in user Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ template_mcp_codex_user_config_path }}"
+    _mcp_codex_server_key: "{{ template_mcp_server_key }}"
+    _mcp_codex_entry: "{{ template_mcp_codex_entry }}"
+  when:
+    - _template_mcp_target_codex_selected | bool
+    - template_mcp_configure_codex_user | bool
+
+- name: Report template MCP client commission gates
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/report_client_commission_gates.yml"
+  vars:
+    _mcp_commission_server_key: "{{ template_mcp_server_key }}"
+    _mcp_commission_role_name: "mcp_servers/_template"
+    _mcp_commission_cursor_selected: "{{ _template_mcp_target_cursor_selected | bool }}"
+    _mcp_commission_cursor_user_selected: false
+    _mcp_commission_codex_selected: "{{ _template_mcp_target_codex_selected | bool }}"
+    _mcp_commission_codex_user_configured: "{{ template_mcp_configure_codex_user | bool }}"
+    _mcp_commission_cursor_path: "{{ template_mcp_cursor_config_path }}"
+    _mcp_commission_cursor_user_path: ""
+    _mcp_commission_codex_path: "{{ template_mcp_codex_config_path }}"
+    _mcp_commission_codex_user_path: "{{ template_mcp_codex_user_config_path }}"

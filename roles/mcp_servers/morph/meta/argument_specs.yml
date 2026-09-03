@@ -1,0 +1,63 @@
+---
+argument_specs:
+  main:
+    short_description: Install Morph MCP (WarpGrep) and configure repo-local Cursor, Codex, or VS Code targets.
+    description: >
+      Installs @morphllm/morphmcp globally via nvm-managed npm (pinned
+      morph_mcp_package_version), loads vault_shared_morph_api_key from
+      vault/shared.vault.yml, renders a local env file, and merges a morph-mcp
+      entry into selected MCP client targets. Does not use npx --prefer-offline
+      at client launch (that path failed with ETARGET on a nested dependency).
+    options:
+      morph_mcp_state:
+        type: str
+        default: present
+        choices:
+          - present
+          - absent
+      morph_mcp_server_key:
+        type: str
+        default: "morph-mcp"
+      morph_mcp_cli_package_name:
+        type: str
+        default: "@morphllm/morphmcp"
+      morph_mcp_targets:
+        type: list
+        elements: str
+        default:
+          - cursor_user
+        description: >
+          Client targets. Supported Cursor targets: cursor_user
+          (~/.cursor/mcp.json, lab default) and cursor (project
+          .cursor/mcp.json). Project Cursor needs Cursor's project-MCP
+          allowlist (state.vscdb approvedProjectMcpServers) plus restart —
+          a Cursor-wide gate for any project MCP, not Morph-specific.
+      morph_mcp_workspace_mode:
+        type: str
+        default: "true"
+      morph_mcp_warp_grep_timeout_ms:
+        type: str
+        default: ""
+        description: Optional MORPH_WARP_GREP_TIMEOUT override in milliseconds.
+      morph_mcp_codex_user_config_path:
+        type: str
+        required: false
+        description: User-level Codex config (~/.codex/config.toml) used by Codex CLI mcp list and the IDE extension.
+      morph_mcp_configure_codex_user:
+        type: bool
+        default: true
+        description: Also write the Morph MCP block to ~/.codex/config.toml.
+      morph_mcp_codex_startup_timeout_sec:
+        type: int
+        default: 120
+        description: Codex MCP initialize timeout. Morph docs recommend 120s.
+      morph_mcp_codex_tool_timeout_sec:
+        type: int
+        default: 60
+        description: Codex MCP tool timeout. Morph docs recommend 60s.
+      morph_mcp_codex_optional_startup_grace_ms:
+        type: int
+        default: 0
+        description: >
+          Codex default optional-server grace is 1000ms, which drops Morph before
+          tools/list. 0 waits for startup_timeout_sec instead.

@@ -1,6 +1,9 @@
 #:schema https://developers.openai.com/codex/config-schema.json
 sandbox_mode = "danger-full-access"
 approval_policy = "never"
+# BEGIN ANSIBLE MANAGED BLOCK: morph_mcp_codex_optional_startup_grace
+mcp_optional_startup_grace_ms = 0
+# END ANSIBLE MANAGED BLOCK: morph_mcp_codex_optional_startup_grace
 
 profile = "stable_single_agent"
 project_doc_max_bytes = 65536
@@ -155,3 +158,17 @@ required = false
 [mcp_servers.firebase.env]
 _MCP_ANSIBLE_ROLE_PATH = "roles/mcp_servers/firebase"
 # END ANSIBLE MANAGED BLOCK: mcp_server_firebase
+# BEGIN ANSIBLE MANAGED BLOCK: mcp_server_morph-mcp
+[mcp_servers.morph-mcp]
+command = "/Users/joshc/develop/dotfile-vnext/bin/mcp-server-env-wrapper"
+args = ["/Users/joshc/.config/dotfile-vnext/mcp/env.d/morph.env", "/Users/joshc/.nvm/versions/node/v20.20.0/bin/morph-mcp"]
+startup_timeout_sec = 120
+tool_timeout_sec = 60
+enabled = true
+required = false
+
+[mcp_servers.morph-mcp.env]
+_MCP_ANSIBLE_ROLE_PATH = "roles/mcp_servers/morph"
+PATH = "/Users/joshc/.local/bin:/usr/local/bin:/Users/joshc/develop/dotfile-vnext/.venv/bin:/Users/joshc/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Applications/Cursor.app/Contents/Resources/app/node_modules/@vscode/ripgrep/bin:/Users/joshc/.nvm/versions/node/v20.20.0/bin"
+WORKSPACE_MODE = "true"
+# END ANSIBLE MANAGED BLOCK: mcp_server_morph-mcp

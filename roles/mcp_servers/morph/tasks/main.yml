@@ -1,0 +1,150 @@
+---
+- name: Resolve node_npm_executable if not already set by common/node
+  ansible.builtin.include_role:
+    name: common/node
+    tasks_from: resolve_npm.yml
+    apply:
+      tags:
+        - mcp
+        - morph
+        - mcp_target_cursor
+        - mcp_target_cursor_user
+        - mcp_target_vscode
+        - mcp_target_codex
+        - mcp_target_openapi
+  when:
+    - node_npm_executable is not defined
+    - morph_mcp_state == "absent" or not (morph_mcp_command | default(''))
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+  tags:
+    - mcp
+    - morph
+    - mcp_target_cursor
+    - mcp_target_cursor_user
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Capture requested Morph MCP target tags
+  ansible.builtin.set_fact:
+    _morph_requested_target_tags: >-
+      {{
+        (ansible_run_tags | default([]))
+        | intersect(['mcp_target_cursor', 'mcp_target_cursor_user', 'mcp_target_vscode', 'mcp_target_codex', 'mcp_target_openapi'])
+      }}
+  tags:
+    - mcp
+    - morph
+    - mcp_target_cursor
+    - mcp_target_cursor_user
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Validate configured Morph MCP targets
+  ansible.builtin.assert:
+    that:
+      - (morph_mcp_targets | difference(morph_mcp_supported_targets)) | length == 0
+    fail_msg: >-
+      morph_mcp_targets contains unsupported values:
+      {{ morph_mcp_targets | difference(morph_mcp_supported_targets) | to_json }}
+  tags:
+    - mcp
+    - morph
+    - mcp_target_cursor
+    - mcp_target_cursor_user
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Determine active Morph MCP client targets
+  ansible.builtin.set_fact:
+    _morph_target_cursor_selected: >-
+      {{
+        ('mcp_target_cursor' in _morph_requested_target_tags)
+        or
+        (
+          (_morph_requested_target_tags | length) == 0
+          and ('cursor' in morph_mcp_targets)
+        )
+      }}
+    _morph_target_cursor_user_selected: >-
+      {{
+        ('mcp_target_cursor_user' in _morph_requested_target_tags)
+        or
+        (
+          (_morph_requested_target_tags | length) == 0
+          and ('cursor_user' in morph_mcp_targets)
+        )
+      }}
+    _morph_target_vscode_selected: >-
+      {{
+        ('mcp_target_vscode' in _morph_requested_target_tags)
+        or
+        (
+          (_morph_requested_target_tags | length) == 0
+          and ('vscode' in morph_mcp_targets)
+        )
+      }}
+    _morph_target_codex_selected: >-
+      {{
+        ('mcp_target_codex' in _morph_requested_target_tags)
+        or
+        (
+          (_morph_requested_target_tags | length) == 0
+          and ('codex' in morph_mcp_targets)
+        )
+      }}
+    _morph_target_openapi_selected: >-
+      {{
+        ('mcp_target_openapi' in _morph_requested_target_tags)
+        or
+        (
+          (_morph_requested_target_tags | length) == 0
+          and ('openapi' in morph_mcp_targets)
+        )
+      }}
+  tags:
+    - mcp
+    - morph
+    - mcp_target_cursor
+    - mcp_target_cursor_user
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Fail fast for the Morph OpenAPI target stub
+  ansible.builtin.import_tasks: openapi_stub.yml
+  when: _morph_target_openapi_selected | bool
+  tags:
+    - mcp
+    - morph
+    - mcp_target_openapi
+
+- name: Ensure Morph MCP server is present
+  ansible.builtin.import_tasks: present.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - morph_mcp_state == "present"
+  tags:
+    - mcp
+    - morph
+    - mcp_target_cursor
+    - mcp_target_cursor_user
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi
+
+- name: Ensure Morph MCP server is absent
+  ansible.builtin.import_tasks: absent.yml
+  when:
+    - (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
+    - morph_mcp_state == "absent"
+  tags:
+    - mcp
+    - morph
+    - mcp_target_cursor
+    - mcp_target_cursor_user
+    - mcp_target_vscode
+    - mcp_target_codex
+    - mcp_target_openapi

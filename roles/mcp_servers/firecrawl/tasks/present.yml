@@ -65,3 +65,27 @@
     _mcp_codex_server_key: "{{ firecrawl_mcp_server_key }}"
     _mcp_codex_entry: "{{ firecrawl_mcp_codex_entry }}"
   when: _firecrawl_target_codex_selected | bool
+
+- name: Ensure Firecrawl entry exists in user Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ firecrawl_mcp_codex_user_config_path }}"
+    _mcp_codex_server_key: "{{ firecrawl_mcp_server_key }}"
+    _mcp_codex_entry: "{{ firecrawl_mcp_codex_entry }}"
+  when:
+    - _firecrawl_target_codex_selected | bool
+    - firecrawl_mcp_configure_codex_user | bool
+
+- name: Report Firecrawl MCP client commission gates
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/report_client_commission_gates.yml"
+  vars:
+    _mcp_commission_server_key: "{{ firecrawl_mcp_server_key }}"
+    _mcp_commission_role_name: "mcp_servers/firecrawl"
+    _mcp_commission_cursor_selected: "{{ _firecrawl_target_cursor_selected | bool }}"
+    _mcp_commission_cursor_user_selected: false
+    _mcp_commission_codex_selected: "{{ _firecrawl_target_codex_selected | bool }}"
+    _mcp_commission_codex_user_configured: "{{ firecrawl_mcp_configure_codex_user | bool }}"
+    _mcp_commission_cursor_path: "{{ firecrawl_mcp_cursor_config_path }}"
+    _mcp_commission_cursor_user_path: ""
+    _mcp_commission_codex_path: "{{ firecrawl_mcp_codex_config_path }}"
+    _mcp_commission_codex_user_path: "{{ firecrawl_mcp_codex_user_config_path }}"

@@ -1,0 +1,44 @@
+---
+- name: Remove Morph routing block from project AGENTS.md
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_routing_block.yml"
+  vars:
+    _mcp_routing_marker_name: "{{ morph_mcp_routing_marker_name }}"
+    _mcp_routing_target_path: "{{ morph_mcp_routing_agents_md_path }}"
+  when: morph_mcp_routing_enable_agents_md | bool
+
+- name: Remove Morph routing block from Codex explorer agent instructions
+  ansible.builtin.include_tasks: remove_codex_agent_routing.yml
+  vars:
+    _mcp_codex_agent_routing_path: "{{ morph_mcp_routing_codex_explorer_path }}"
+  when: morph_mcp_routing_enable_codex_explorer | bool
+
+- name: Remove Morph routing block from Codex default agent instructions
+  ansible.builtin.include_tasks: remove_codex_agent_routing.yml
+  vars:
+    _mcp_codex_agent_routing_path: "{{ morph_mcp_routing_codex_default_path }}"
+  when: morph_mcp_routing_enable_codex_default | bool
+
+- name: Remove Morph routing block from Codex worker agent instructions
+  ansible.builtin.include_tasks: remove_codex_agent_routing.yml
+  vars:
+    _mcp_codex_agent_routing_path: "{{ morph_mcp_routing_codex_worker_path }}"
+  when: morph_mcp_routing_enable_codex_worker | bool
+
+- name: Remove Morph WarpGrep Cursor rule file
+  ansible.builtin.file:
+    path: "{{ morph_mcp_routing_cursor_rule_path }}"
+    state: absent
+  when: morph_mcp_routing_enable_cursor_rule | bool
+
+- name: Remove Morph WarpGrep Continue rule file
+  ansible.builtin.file:
+    path: "{{ morph_mcp_continue_rule_path }}"
+    state: absent
+  when: morph_mcp_continue_enabled | bool
+
+- name: Remove Morph routing block from GitHub Copilot instructions
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/remove_routing_block.yml"
+  vars:
+    _mcp_routing_marker_name: "{{ morph_mcp_routing_marker_name }}"
+    _mcp_routing_target_path: "{{ morph_mcp_routing_copilot_instructions_path }}"
+  when: morph_mcp_routing_enable_copilot_instructions | bool

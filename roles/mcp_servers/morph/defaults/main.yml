@@ -1,0 +1,87 @@
+---
+morph_mcp_state: present
+morph_mcp_server_key: "morph-mcp"
+morph_mcp_cli_package_name: "@morphllm/morphmcp"
+morph_mcp_package_version: "0.8.212"
+morph_mcp_npm_spec: "{{ morph_mcp_cli_package_name }}@{{ morph_mcp_package_version }}"
+morph_mcp_bin_candidates: []
+
+morph_mcp_project_root: "{{ dotfiles_home | default(playbook_dir | dirname | dirname) }}"
+morph_mcp_targets:
+  - cursor_user
+morph_mcp_supported_targets:
+  - cursor
+  - cursor_user
+  - vscode
+  - codex
+  - openapi
+
+morph_mcp_cursor_config_path: "{{ morph_mcp_project_root }}/.cursor/mcp.json"
+# User-scope Cursor MCP (~/.cursor/mcp.json). Prefer for Agent: project MCP
+# servers need a Cursor trust approval Ansible cannot flip in a live session.
+morph_mcp_cursor_user_config_path: "{{ ansible_env.HOME }}/.cursor/mcp.json"
+morph_mcp_vscode_config_path: "{{ morph_mcp_project_root }}/.vscode/mcp.json"
+morph_mcp_codex_config_path: "{{ morph_mcp_project_root }}/.codex/config.toml"
+morph_mcp_codex_user_config_path: "{{ ansible_env.HOME }}/.codex/config.toml"
+morph_mcp_configure_codex_user: true
+morph_mcp_role_path: "roles/mcp_servers/morph"
+morph_mcp_wrapper_path: "{{ morph_mcp_project_root }}/bin/mcp-server-env-wrapper"
+morph_mcp_vault_file_path: "{{ morph_mcp_project_root }}/vault/shared.vault.yml"
+morph_mcp_env_file_path: "{{ ansible_env.HOME }}/.config/dotfile-vnext/mcp/env.d/morph.env"
+
+morph_mcp_command: ""
+morph_mcp_required: false
+morph_mcp_workspace_mode: "true"
+morph_mcp_warp_grep_timeout_ms: ""
+morph_mcp_codex_startup_timeout_sec: 120
+morph_mcp_codex_tool_timeout_sec: 60
+morph_mcp_codex_enabled: true
+morph_mcp_codex_optional_startup_grace_ms: 0
+
+morph_mcp_args: []
+
+morph_mcp_env:
+  _MCP_ANSIBLE_ROLE_PATH: "{{ morph_mcp_role_path }}"
+  WORKSPACE_MODE: "{{ morph_mcp_workspace_mode }}"
+
+morph_mcp_api_key: ""
+
+morph_mcp_client_entry:
+  command: "{{ morph_mcp_wrapper_path }}"
+  args: "{{ [morph_mcp_env_file_path, morph_mcp_command] + morph_mcp_args }}"
+  env: "{{ morph_mcp_env }}"
+
+morph_mcp_codex_entry:
+  command: "{{ morph_mcp_wrapper_path }}"
+  args: "{{ [morph_mcp_env_file_path, morph_mcp_command] + morph_mcp_args }}"
+  env: "{{ morph_mcp_env }}"
+  required: "{{ morph_mcp_required }}"
+  enabled: "{{ morph_mcp_codex_enabled }}"
+  startup_timeout_sec: "{{ morph_mcp_codex_startup_timeout_sec }}"
+  tool_timeout_sec: "{{ morph_mcp_codex_tool_timeout_sec }}"
+
+# Evaluation posture — see docs/plans/2026-09-02--morph-warpgrep-evaluation/README.md
+morph_mcp_evaluation_status: "under_evaluation"
+morph_mcp_evaluation_started_at: "2026-09-02"
+
+# Habit layer targets (instruction-scope-registry — project scope)
+# Vendor steering: https://docs.morphllm.com/guides/mcp (Fast Apply + Warp Grep)
+morph_mcp_routing_marker_name: "routing_morph-mcp"
+morph_mcp_routing_agents_md_path: "{{ morph_mcp_project_root }}/AGENTS.md"
+morph_mcp_routing_codex_explorer_path: "{{ morph_mcp_project_root }}/.codex/agents/explorer.toml"
+morph_mcp_routing_codex_default_path: "{{ morph_mcp_project_root }}/.codex/agents/default.toml"
+morph_mcp_routing_codex_worker_path: "{{ morph_mcp_project_root }}/.codex/agents/worker.toml"
+morph_mcp_routing_cursor_rule_path: "{{ morph_mcp_project_root }}/.cursor/rules/morph-warpgrep-evaluation.mdc"
+morph_mcp_routing_copilot_instructions_path: "{{ morph_mcp_project_root }}/.github/copilot-instructions.md"
+morph_mcp_routing_enable_agents_md: true
+morph_mcp_routing_enable_codex_explorer: true
+morph_mcp_routing_enable_codex_default: true
+morph_mcp_routing_enable_codex_worker: true
+morph_mcp_routing_enable_cursor_rule: true
+morph_mcp_routing_enable_copilot_instructions: true
+
+# Continue IDE extension (~/.continue/config.yaml) — access + rules
+morph_mcp_continue_enabled: true
+morph_mcp_continue_config_path: "{{ ansible_env.HOME }}/.continue/config.yaml"
+morph_mcp_continue_rule_path: "{{ morph_mcp_project_root }}/.continue/rules/morph-warpgrep-evaluation.md"
+morph_mcp_continue_cwd: "{{ morph_mcp_project_root }}"

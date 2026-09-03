@@ -82,6 +82,11 @@ codex_homelab_profiles_multi_terminal_state: present
 codex_homelab_profiles_model: "ministral-3-8b@desktop"
 codex_homelab_profiles_context_window: 24000
 
+# User-scoped ~/.codex/config.toml — preserve existing file, but always
+# converge the macOS shell locale policy block (Homebrew Bash rejects C.UTF-8).
+codex_user_config_state: present
+codex_user_config_force: false
+
 # fzf-tab-completion for bash + Python REPL (promoted from one-off trial).
 fzf_tab_completion_state: present
 
@@ -90,6 +95,9 @@ netcat_cli_state: present
 
 # just command runner package-management desired state.
 just_cli_state: present
+
+# ripgrep (rg) — Morph WarpGrep local codebase_search dependency.
+ripgrep_cli_state: present
 
 # Shared bash-completion substrate for repo-managed CLI completion files.
 common_bash_completion_state: present
@@ -118,6 +126,35 @@ firecrawl_mcp_targets:
   - cursor
   - codex
   - vscode
+
+morph_mcp_state: present
+# Cursor MCP access — both targets are supported by roles/mcp_servers/morph:
+#   cursor_user → ~/.cursor/mcp.json (lab DEFAULT; Agent namespace user-morph-mcp)
+#   cursor      → project .cursor/mcp.json (needs Cursor project-MCP allowlist +
+#                 restart; Customize UI may not show a Project source even when
+#                 Agent has project-*-morph-mcp — non-breaking UI gap)
+# Default to cursor_user only. Add `cursor` deliberately when commissioning
+# project-scoped Morph (and keep allowlist/restart procedure).
+morph_mcp_targets:
+  - cursor_user
+  - codex
+  - vscode
+
+# Continue extension — Morph MCP access (requires morph role + continue_ide converge).
+# Do NOT also list continue_ide_rules for morph-warpgrep-evaluation.md: the morph
+# role already drops that file under project .continue/rules/, and Continue loads
+# it automatically. Listing it again in ~/.continue/config.yaml duplicates the rule.
+continue_ide_rules: []
+continue_ide_mcp_servers:
+  - name: morph-mcp
+    type: stdio
+    command: "{{ dotfiles_home }}/bin/mcp-server-env-wrapper"
+    args:
+      - "{{ ansible_env.HOME }}/.config/dotfile-vnext/mcp/env.d/morph.env"
+      - "{{ ansible_env.HOME }}/.nvm/versions/node/v20.20.0/bin/morph-mcp"
+    cwd: "{{ dotfiles_home }}"
+    env:
+      WORKSPACE_MODE: "true"
 
 playwright_mcp_state: present
 playwright_mcp_targets:

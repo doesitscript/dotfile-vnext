@@ -1,0 +1,171 @@
+---
+- name: Load Morph MCP secrets from shared vault
+  ansible.builtin.import_tasks: load_vault.yml
+
+- name: Resolve Morph MCP command on macOS
+  ansible.builtin.import_tasks: mac.yml
+  when:
+    - not (morph_mcp_command | default(''))
+    - ansible_facts['system'] == "Darwin"
+
+- name: Resolve Morph MCP command on Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yml
+  when:
+    - not (morph_mcp_command | default(''))
+    - ansible_facts['distribution'] == "Ubuntu"
+
+- name: Fail if Morph MCP command could not be resolved
+  ansible.builtin.fail:
+    msg: >-
+      Morph MCP command is empty after installation. This role currently
+      supports macOS and Ubuntu via npm global install of
+      {{ morph_mcp_npm_spec }}, or an explicit morph_mcp_command override.
+  when: not (morph_mcp_command | default(''))
+
+- name: Render Morph MCP runtime env file
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/render_env_file.yml"
+  vars:
+    _mcp_env_file_path: "{{ morph_mcp_env_file_path }}"
+    _mcp_env_vars: >-
+      {{
+        {'MORPH_API_KEY': morph_mcp_api_key}
+        | combine(
+            {'MORPH_WARP_GREP_TIMEOUT': morph_mcp_warp_grep_timeout_ms},
+            recursive=True
+          )
+          if (morph_mcp_warp_grep_timeout_ms | default('') | length > 0)
+          else {'MORPH_API_KEY': morph_mcp_api_key}
+      }}
+  no_log: true
+
+- name: Resolve Homebrew prefix for Morph MCP PATH on macOS
+  ansible.builtin.command:
+    argv:
+      - brew
+      - --prefix
+  register: _morph_mcp_brew_prefix
+  changed_when: false
+  failed_when: false
+  when: ansible_facts['system'] == "Darwin"
+
+- name: Set Morph client and Codex MCP entries after command resolution
+  ansible.builtin.set_fact:
+    morph_mcp_client_entry: "{{ morph_mcp_client_entry | combine({'env': _morph_mcp_runtime_env}) }}"
+    morph_mcp_codex_entry: "{{ morph_mcp_client_entry | combine(_morph_mcp_codex_overlay, recursive=True) }}"
+  vars:
+    _morph_mcp_client_path: >-
+      {{
+        ([ansible_env.HOME ~ '/.local/bin']
+          + (
+            [_morph_mcp_brew_prefix.stdout ~ '/bin']
+            if (
+              ansible_facts['system'] == 'Darwin'
+              and (_morph_mcp_brew_prefix.rc | default(1) | int) == 0
+              and (_morph_mcp_brew_prefix.stdout | default('') | length) > 0
+            )
+            else []
+          )
+          + (ansible_env.PATH | default('/usr/bin:/bin')).split(':')
+        ) | unique | join(':')
+      }}
+    _morph_mcp_runtime_env: "{{ morph_mcp_env | combine({'PATH': _morph_mcp_client_path}) }}"
+    _morph_mcp_codex_overlay:
+      env: "{{ _morph_mcp_runtime_env }}"
+      required: "{{ morph_mcp_required }}"
+      enabled: "{{ morph_mcp_codex_enabled }}"
+      startup_timeout_sec: "{{ morph_mcp_codex_startup_timeout_sec | int }}"
+      tool_timeout_sec: "{{ morph_mcp_codex_tool_timeout_sec | int }}"
+  no_log: true
+
+- name: Configure Morph WarpGrep routing instructions for Codex and Continue
+  ansible.builtin.import_tasks: configure_routing.yml
+
+- name: Ensure Morph entry exists in project Cursor mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _morph_target_name: "cursor"
+    _morph_target_config_path: "{{ morph_mcp_cursor_config_path }}"
+  when: _morph_target_cursor_selected | bool
+
+- name: Ensure Morph entry exists in user Cursor mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _morph_target_name: "cursor_user"
+    _morph_target_config_path: "{{ morph_mcp_cursor_user_config_path }}"
+  when: _morph_target_cursor_user_selected | bool
+
+# Prefer cursor_user alone during evaluation so Agent is not stuck on the
+# project-MCP trust gate (disconnected project-*-morph-mcp with no createClient).
+- name: Remove Morph from project Cursor mcp.json when only cursor_user is selected
+  ansible.builtin.include_tasks: remove_target.yml
+  vars:
+    _morph_target_name: "cursor"
+    _morph_target_config_path: "{{ morph_mcp_cursor_config_path }}"
+  when:
+    - _morph_target_cursor_user_selected | bool
+    - not (_morph_target_cursor_selected | bool)
+
+- name: Ensure Morph entry exists in VS Code mcp.json
+  ansible.builtin.include_tasks: configure_target.yml
+  vars:
+    _morph_target_name: "vscode"
+    _morph_target_config_path: "{{ morph_mcp_vscode_config_path }}"
+  when: _morph_target_vscode_selected | bool
+
+- name: Ensure Morph entry exists in project Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ morph_mcp_codex_config_path }}"
+    _mcp_codex_server_key: "{{ morph_mcp_server_key }}"
+    _mcp_codex_entry: "{{ morph_mcp_codex_entry }}"
+  when: _morph_target_codex_selected | bool
+
+- name: Ensure Morph entry exists in user Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ morph_mcp_codex_user_config_path }}"
+    _mcp_codex_server_key: "{{ morph_mcp_server_key }}"
+    _mcp_codex_entry: "{{ morph_mcp_codex_entry }}"
+  when:
+    - _morph_target_codex_selected | bool
+    - morph_mcp_configure_codex_user | bool
+
+- name: Wait for optional Codex MCP startup on project config
+  ansible.builtin.blockinfile:
+    path: "{{ morph_mcp_codex_config_path }}"
+    create: false
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: morph_mcp_codex_optional_startup_grace"
+    # insertbefore '^\[mcp_servers' uses the LAST match and nests inside Morph's
+    # [mcp_servers.morph-mcp] table. Keep this top-level after approval_policy.
+    insertafter: '^approval_policy\b'
+    block: |
+      mcp_optional_startup_grace_ms = {{ morph_mcp_codex_optional_startup_grace_ms | int }}
+  when: _morph_target_codex_selected | bool
+
+- name: Wait for optional Codex MCP startup on user config
+  ansible.builtin.blockinfile:
+    path: "{{ morph_mcp_codex_user_config_path }}"
+    create: false
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: morph_mcp_codex_optional_startup_grace"
+    insertafter: '^approval_policy\b'
+    block: |
+      mcp_optional_startup_grace_ms = {{ morph_mcp_codex_optional_startup_grace_ms | int }}
+  when:
+    - _morph_target_codex_selected | bool
+    - morph_mcp_configure_codex_user | bool
+
+- name: Report Morph MCP client commission gates (access ≠ Agent ready)
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/report_client_commission_gates.yml"
+  vars:
+    _mcp_commission_server_key: "{{ morph_mcp_server_key }}"
+    _mcp_commission_role_name: "mcp_servers/morph"
+    _mcp_commission_cursor_selected: "{{ _morph_target_cursor_selected | bool }}"
+    _mcp_commission_cursor_user_selected: "{{ _morph_target_cursor_user_selected | bool }}"
+    _mcp_commission_codex_selected: "{{ _morph_target_codex_selected | bool }}"
+    _mcp_commission_codex_user_configured: "{{ morph_mcp_configure_codex_user | bool }}"
+    _mcp_commission_cursor_path: "{{ morph_mcp_cursor_config_path }}"
+    _mcp_commission_cursor_user_path: "{{ morph_mcp_cursor_user_config_path }}"
+    _mcp_commission_codex_path: "{{ morph_mcp_codex_config_path }}"
+    _mcp_commission_codex_user_path: "{{ morph_mcp_codex_user_config_path }}"

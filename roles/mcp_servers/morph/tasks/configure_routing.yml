@@ -1,0 +1,73 @@
+---
+- name: Render Morph WarpGrep routing instruction block
+  ansible.builtin.set_fact:
+    _morph_mcp_routing_block_content: "{{ lookup('template', role_path ~ '/templates/routing_morph-mcp.md.j2') }}"
+
+- name: Ensure Morph routing block exists in project AGENTS.md
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_routing_block.yml"
+  vars:
+    _mcp_routing_marker_name: "{{ morph_mcp_routing_marker_name }}"
+    _mcp_routing_target_path: "{{ morph_mcp_routing_agents_md_path }}"
+    _mcp_routing_block_content: "{{ _morph_mcp_routing_block_content }}"
+  when: morph_mcp_routing_enable_agents_md | bool
+
+- name: Ensure Morph routing block exists in Codex explorer agent instructions
+  ansible.builtin.include_tasks: configure_codex_agent_routing.yml
+  vars:
+    _mcp_codex_agent_routing_path: "{{ morph_mcp_routing_codex_explorer_path }}"
+  when: morph_mcp_routing_enable_codex_explorer | bool
+
+- name: Ensure Morph routing block exists in Codex default agent instructions
+  ansible.builtin.include_tasks: configure_codex_agent_routing.yml
+  vars:
+    _mcp_codex_agent_routing_path: "{{ morph_mcp_routing_codex_default_path }}"
+  when: morph_mcp_routing_enable_codex_default | bool
+
+- name: Ensure Morph routing block exists in Codex worker agent instructions
+  ansible.builtin.include_tasks: configure_codex_agent_routing.yml
+  vars:
+    _mcp_codex_agent_routing_path: "{{ morph_mcp_routing_codex_worker_path }}"
+  when: morph_mcp_routing_enable_codex_worker | bool
+
+- name: Ensure Cursor rules directory exists for Morph steering
+  ansible.builtin.file:
+    path: "{{ morph_mcp_routing_cursor_rule_path | dirname }}"
+    state: directory
+    mode: "0755"
+  when: morph_mcp_routing_enable_cursor_rule | bool
+
+- name: Deploy Morph WarpGrep Cursor rule file
+  ansible.builtin.template:
+    src: routing_morph-mcp.mdc.j2
+    dest: "{{ morph_mcp_routing_cursor_rule_path }}"
+    mode: "0644"
+  when: morph_mcp_routing_enable_cursor_rule | bool
+
+- name: Ensure Continue rules directory exists for Morph steering
+  ansible.builtin.file:
+    path: "{{ morph_mcp_continue_rule_path | dirname }}"
+    state: directory
+    mode: "0755"
+  when: morph_mcp_continue_enabled | bool
+
+- name: Deploy Morph WarpGrep Continue rule file
+  ansible.builtin.template:
+    src: routing_morph-mcp.md.j2
+    dest: "{{ morph_mcp_continue_rule_path }}"
+    mode: "0644"
+  when: morph_mcp_continue_enabled | bool
+
+- name: Ensure .github directory exists for VS Code / Copilot Morph steering
+  ansible.builtin.file:
+    path: "{{ morph_mcp_routing_copilot_instructions_path | dirname }}"
+    state: directory
+    mode: "0755"
+  when: morph_mcp_routing_enable_copilot_instructions | bool
+
+- name: Ensure Morph routing block exists in GitHub Copilot instructions (VS Code)
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_routing_block.yml"
+  vars:
+    _mcp_routing_marker_name: "{{ morph_mcp_routing_marker_name }}"
+    _mcp_routing_target_path: "{{ morph_mcp_routing_copilot_instructions_path }}"
+    _mcp_routing_block_content: "{{ _morph_mcp_routing_block_content }}"
+  when: morph_mcp_routing_enable_copilot_instructions | bool
