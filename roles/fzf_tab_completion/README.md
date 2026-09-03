@@ -17,6 +17,11 @@ controller hosts (`mac-dev`).
 - `~/.bashrc.d/python-fzf-tab-completion.bash` + `usercustomize.py` on PYTHONPATH
 - `~/bin/rl_custom_complete` symlink
 
+Python REPL fzf completion is registered on `sys.__interactivehook__` only (TTY
+interactive sessions). It must not run at `usercustomize` import time — that
+path hits `_pyrepl`/`termios` and prints `Error in usercustomize` on every
+non-interactive `python3` invocation.
+
 ## Apply / Verify / Undo
 
 Requires `common/shell_config` (`.bashrc.d` directory + sourcing) before this role's bashrc drop.
