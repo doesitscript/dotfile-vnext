@@ -1,0 +1,53 @@
+---
+# Lifecycle — host_vars commission with present; defaults stay conservative.
+multiagents_state: absent
+
+# Package version — pin via version contract in inventory/group_vars/all/
+multiagents_version: "{{ multiagents_tooling_version_contract.cli | default('') }}"
+multiagents_package_name: multiagents
+
+# Bun runtime — GitHub release binary (Homebrew source-builds on older macOS).
+multiagents_bun_install_method: release_binary
+multiagents_bun_release_version: "{{ multiagents_tooling_version_contract.bun | default('1.4.0') }}"
+multiagents_bun_arch_map:
+  x86_64: x64
+  amd64: x64
+  arm64: aarch64
+  aarch64: aarch64
+multiagents_bun_release_arch: "{{ multiagents_bun_arch_map[ansible_architecture] }}"
+# Monterey / older Intel: baseline zip is safer; override in host_vars if needed.
+multiagents_bun_use_baseline: "{{ ansible_architecture in ['x86_64', 'amd64'] }}"
+multiagents_bun_archive_filename: >-
+  {{
+    'bun-darwin-' ~ multiagents_bun_release_arch ~ ('-baseline.zip' if multiagents_bun_use_baseline | bool else '.zip')
+  }}
+multiagents_bun_archive_checksum_map:
+  bun-darwin-aarch64.zip: "sha256:c669e97f6164e1c96e0701748db98dfa77492908cbd8394c7557134a735de381"
+  bun-darwin-x64.zip: "sha256:1d0211b8f1dc991182344687ad15e72ee86f154845a5f7fa477994cd341dd9b0"
+  bun-darwin-x64-baseline.zip: "sha256:da9b9f1b4ba766c6f299711f38dfaa98623e1ed9c40896aa53db803c52ec1fa0"
+multiagents_bun_archive_checksum: "{{ multiagents_bun_archive_checksum_map[multiagents_bun_archive_filename] }}"
+multiagents_bun_archive_url: >-
+  https://github.com/oven-sh/bun/releases/download/bun-v{{ multiagents_bun_release_version }}/{{ multiagents_bun_archive_filename }}
+multiagents_bun_download_dir: "{{ ansible_env.HOME }}/.cache/multiagents-bun"
+multiagents_bun_extract_dir: >-
+  {{ multiagents_bun_download_dir }}/bun-v{{ multiagents_bun_release_version }}-{{ multiagents_bun_release_arch }}{{ '-baseline' if multiagents_bun_use_baseline | bool else '' }}
+multiagents_bun_archive_path: "{{ multiagents_bun_download_dir }}/{{ multiagents_bun_archive_filename }}"
+multiagents_bun_install_dir: "{{ ansible_env.HOME }}/.bun/bin"
+multiagents_bun_bin: "{{ multiagents_bun_install_dir }}/bun"
+multiagents_manage_bun: true
+multiagents_remove_bun_on_absent: false
+
+# Managed layout — intentionally replaceable later for multi-scenario / multi-client configs.
+multiagents_root_dir: "{{ ansible_env.HOME }}/.config/dotfile-vnext/multiagents"
+multiagents_data_dir: "{{ multiagents_root_dir }}/data"
+multiagents_scenarios_dir: "{{ multiagents_root_dir }}/scenarios"
+multiagents_layout_readme_path: "{{ multiagents_root_dir }}/README.md"
+
+multiagents_install_usage_note: true
+multiagents_usage_note_path: "{{ ansible_env.HOME }}/.config/dotfile-vnext/ai/tool-guides/multiagents.md"
+multiagents_install_path_snippet: true
+multiagents_path_snippet_path: "{{ ansible_env.HOME }}/.bashrc.d/multiagents-path.bash"
+
+multiagents_verify: true
+multiagents_broker_port: 7899
+multiagents_upstream_db_default: "{{ ansible_env.HOME }}/.multiagents/peers.db"

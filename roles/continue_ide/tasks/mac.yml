@@ -1,10 +1,19 @@
 ---
+- name: Check Continue LiteLLM vault file
+  ansible.builtin.stat:
+    path: "{{ continue_ide_vault_file_path }}"
+  register: _continue_ide_vault_stat
+  when:
+    - continue_ide_state == "present"
+    - continue_ide_api_key | default('') | length == 0
+
 - name: Load shared vault for Continue LiteLLM API key when unset
   when:
     - continue_ide_state == "present"
     - continue_ide_api_key | default('') | length == 0
+    - _continue_ide_vault_stat.stat.exists | default(false)
   ansible.builtin.include_vars:
-    file: "{{ inventory_dir }}/../vault/shared.vault.yml"
+    file: "{{ continue_ide_vault_file_path }}"
     name: continue_ide_vault_vars
   no_log: true
 

@@ -1,0 +1,24 @@
+---
+- name: Validate multiagents state
+  ansible.builtin.assert:
+    that:
+      - multiagents_state in ["present", "absent"]
+    fail_msg: "multiagents_state must be present or absent."
+
+- name: Require macOS for multiagents package management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "multiagents currently supports macOS through Homebrew Bun only."
+
+- name: Require pinned multiagents version when present
+  ansible.builtin.assert:
+    that:
+      - multiagents_version | default('') | length > 0
+    fail_msg: >-
+      multiagents_version is empty. Set multiagents_tooling_version_contract.cli
+      in inventory/group_vars/all.yaml before commissioning present.
+  when: multiagents_state == "present"
+
+- name: Manage multiagents on macOS
+  ansible.builtin.import_tasks: mac.yml

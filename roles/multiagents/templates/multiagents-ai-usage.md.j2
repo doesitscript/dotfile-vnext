@@ -1,0 +1,53 @@
+# multiagents — AI / operator usage note
+
+This file is Ansible-managed by the `multiagents` role.
+
+## What this host has now
+
+Scaffold install only:
+
+- Bun runtime `{{ multiagents_bun_release_version }}` at `{{ multiagents_bun_bin }}`
+  (GitHub release binary; method=`{{ multiagents_bun_install_method }}`)
+- Global package `{{ multiagents_package_name }}@{{ multiagents_version }}`
+- Managed root: `{{ multiagents_root_dir }}`
+- Scenario placeholder: `{{ multiagents_scenarios_dir }}`
+- Layout note: `{{ multiagents_layout_readme_path }}`
+
+## Verify
+
+```bash
+export PATH="{{ multiagents_bun_install_dir }}:$PATH"
+which bun multiagents
+bun --version
+multiagents help
+```
+
+## Not configured yet (later pass)
+
+Do **not** assume these were applied by Ansible:
+
+- `multiagents setup` / `multiagents install-mcp`
+- Broker daemon on port `{{ multiagents_broker_port }}`
+- Codex / Cursor / Claude / Gemini MCP wiring
+- Scenario packs under `{{ multiagents_scenarios_dir }}`
+
+When those land, prefer inventory-driven role vars over one-off interactive setup
+so the same capability can scale to multiple clients and scenarios.
+
+## Sources
+
+- Upstream: https://github.com/zetbrush/multiagents
+- npm: https://www.npmjs.com/package/multiagents
+- Role + settings map: `roles/multiagents/README.md`
+- Version contract: `inventory/group_vars/all/multiagents_tooling.yml`
+- Host commission: `inventory/host_vars/mac-dev.yaml` (`multiagents_state`)
+- Apply: `ansible-playbook playbooks/deploy_development_nodes.yaml --tags multiagents --limit mac-dev`
+- Plan packet: `docs/plans/2026-09-03--multi-agent-orchestration-plan/`
+
+## Lifecycle
+
+| Action | Command |
+| --- | --- |
+| Apply | `ansible-playbook playbooks/deploy_development_nodes.yaml --tags multiagents --limit mac-dev` |
+| Undo | same with `-e multiagents_state=absent` (or set host_vars to `absent`) |
+| Upgrade | bump `multiagents_tooling_version_contract.cli` then re-apply |

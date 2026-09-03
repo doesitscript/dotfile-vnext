@@ -57,6 +57,7 @@ Requirements:
 - use the implementer and evaluator role contracts defined by the paired-agent skills
 - use the minimal multiagents orchestration slice, not the broader final configuration
 - use the minimal Codex app-server setup required for real thread/turn control
+- install and run that Codex app-server on the local Mac laptop where the operator starts the workflow
 - run the smoke target first, then the 10-handoff stability target, then the 20-handoff acceptance target only if the earlier stages pass
 - capture and show concrete output for each claimed passing stage
 - do not summarize with "worked as expected" without evidence

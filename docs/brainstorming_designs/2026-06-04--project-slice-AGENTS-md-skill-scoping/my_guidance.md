@@ -1,0 +1,9 @@
+ I'm thinking that we can make this more efficient, this part of the project: /Users/joshc/develop/dotfile-vnext/exports/work-laptop-ai-tools
+
+ And I thought I read somewhere that agents.MD, used by Cursor I believe and I apologize the capitalization is not correct. But that this can be placed inside of sub folders such as this one. And we could define specific skills that apply or would be made available to the agent when working within that or folder or accessing that agent. So what I was thinking of is developing skills that streamline how we process this slice of my project. And I feel that skills is the right way to go because we are already building out a knowledge base inside of our HRL library, and the better location for this type of logic in terms of when your action is within a skill. And so I think the skills that we could create we could also embed the logic that we've been making through for instanc
+
+ For instance. We can make a skill or a few skills with handling MCP server and taking to the work laptop AI sub project. And we could have skills that basically handle the processing of these different things that we intake for that other project. For instance I may implement a skill that helps me to share some secrets with that project and some skills for managing its own vault. For instance.
+
+ ChatGPT had a legitimate concern. I was thinking one of the best ways to scope those skills and to keep them from cluttering the global skills, is by storing them within this location: /Users/joshc/develop/dotfile-vnext/exports/work-laptop-ai-tools Financial thought was inside a folder called skills.
+
+ First and foremost. I want you to use contact and fire crawl, to research my ideas for this project and get intelligent and authoritative on these topics so you can help me finalize or verify detail details that might work.

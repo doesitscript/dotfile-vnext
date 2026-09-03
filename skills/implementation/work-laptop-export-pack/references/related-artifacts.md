@@ -14,8 +14,12 @@ Packet source of truth:
 
 Associated skills (operator quick-find; mirrored in packet README):
 
-- `work-laptop-export-pack` — this skill (sync / validate / smoke)
-- `project-skill-runtime-bridge` — Cursor discoverability for this skill
+- Slice-local (packet `.agents/skills/`): `work-laptop-mcp-collect`,
+  `work-laptop-mcp-adopt`, `work-laptop-vault`, `work-laptop-packet-ops`
+- `work-laptop-export-pack` — this skill (sync / validate / smoke scripts;
+  **remains in parent** — see brainstorm
+  `docs/brainstorming_designs/2026-06-04--project-slice-AGENTS-md-skill-scoping/skill-placement-evaluation.md`)
+- `project-skill-runtime-bridge` — Cursor discoverability for parent project skills
 - Plan loop (optional): `paired-agent-plan-implementer`,
   `paired-agent-plan-evaluator` against
   `docs/plans/2026-09-02--work-laptop-export-pilot/`

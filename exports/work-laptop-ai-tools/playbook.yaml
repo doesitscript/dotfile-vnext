@@ -80,6 +80,38 @@
       tags: [mcp, aws, aws_mcp]
     - role: mcp_servers/aws_iac_mcp
       tags: [mcp, aws, aws_iac, aws_iac_mcp]
+    # Optional MCP catalog (default absent in host_vars — not commissioned).
+    - role: ripgrep_cli
+      tags: [mcp, morph, ripgrep]
+    - role: mcp_servers/context7
+      tags: [mcp, context7]
+    - role: mcp_servers/firecrawl
+      tags: [mcp, firecrawl]
+    - role: mcp_servers/morph
+      tags: [mcp, morph]
+    - role: mcp_servers/playwright
+      tags: [mcp, playwright]
+    - role: mcp_servers/fetch
+      tags: [mcp, fetch]
+    - role: mcp_servers/firebase
+      tags: [mcp, firebase]
+    - role: mcp_servers/drawio
+      tags: [mcp, drawio]
+    - role: mcp_servers/netbox
+      tags: [mcp, netbox]
+    - role: mcp_servers/openai_docs
+      tags: [mcp, openai_docs]
+    - role: mcp_servers/langfuse_docs
+      tags: [mcp, langfuse_docs]
+    - role: mcp_servers/huggingface
+      tags: [mcp, huggingface]
+    # Legacy-shaped roles without native present|absent — gate via host_vars.
+    - role: mcp_servers/mcp-sysoperator
+      when: mcp_sysoperator_state | default('absent') == 'present'
+      tags: [mcp, mcp-sysoperator]
+    - role: mcp_servers/redhat-ansible
+      when: redhat_ansible_mcp_state | default('absent') == 'present'
+      tags: [mcp, redhat-ansible]
     - role: continue_ide
       tags: [continue, vscode_continue]
     - role: zed_ide

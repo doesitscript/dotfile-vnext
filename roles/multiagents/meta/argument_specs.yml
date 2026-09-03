@@ -1,0 +1,108 @@
+---
+argument_specs:
+  main:
+    short_description: >-
+      Install and manage the multiagents CLI scaffold on macOS (Bun release + pinned package)
+    options:
+      multiagents_state:
+        type: str
+        default: absent
+        choices:
+          - present
+          - absent
+        description:
+          - Desired lifecycle state for the multiagents package and managed layout.
+      multiagents_version:
+        type: str
+        required: false
+        description:
+          - Pinned package version from multiagents_tooling_version_contract.cli.
+      multiagents_package_name:
+        type: str
+        required: false
+        default: multiagents
+        description:
+          - npm/bun package name for the multiagents CLI.
+      multiagents_bun_install_method:
+        type: str
+        required: false
+        default: release_binary
+        choices:
+          - release_binary
+        description:
+          - Bun install strategy. release_binary uses oven-sh/bun GitHub assets.
+      multiagents_bun_release_version:
+        type: str
+        required: false
+        description:
+          - Pinned Bun version from multiagents_tooling_version_contract.bun.
+      multiagents_bun_use_baseline:
+        type: bool
+        required: false
+        description:
+          - Use the baseline darwin-x64 zip (safer on older Intel macOS).
+      multiagents_bun_install_dir:
+        type: str
+        required: false
+        description:
+          - Directory for the managed bun and multiagents binaries.
+      multiagents_manage_bun:
+        type: bool
+        required: false
+        default: true
+        description:
+          - Whether this role ensures Bun is present when multiagents_state is present.
+      multiagents_remove_bun_on_absent:
+        type: bool
+        required: false
+        default: false
+        description:
+          - Whether to remove the managed Bun binary when multiagents_state is absent.
+      multiagents_root_dir:
+        type: str
+        required: false
+        description:
+          - Repo-managed multiagents root directory (layout may change for multi-scenario configs).
+      multiagents_data_dir:
+        type: str
+        required: false
+        description:
+          - Managed data directory reserved for future MULTIAGENTS_DB / runtime state.
+      multiagents_scenarios_dir:
+        type: str
+        required: false
+        description:
+          - Placeholder directory for future per-client or per-scenario configuration packs.
+      multiagents_layout_readme_path:
+        type: str
+        required: false
+        description:
+          - Path for the managed layout README under multiagents_root_dir.
+      multiagents_install_usage_note:
+        type: bool
+        required: false
+        default: true
+        description:
+          - Whether to render the managed AI/operator usage note.
+      multiagents_usage_note_path:
+        type: str
+        required: false
+        description:
+          - Filesystem path for the managed multiagents usage note.
+      multiagents_verify:
+        type: bool
+        required: false
+        default: true
+        description:
+          - Verify package and layout state after convergence.
+      multiagents_broker_port:
+        type: int
+        required: false
+        default: 7899
+        description:
+          - Documented upstream broker port (not started by this role in the scaffold pass).
+      multiagents_upstream_db_default:
+        type: str
+        required: false
+        description:
+          - Documented upstream default SQLite path (not wired by this role yet).

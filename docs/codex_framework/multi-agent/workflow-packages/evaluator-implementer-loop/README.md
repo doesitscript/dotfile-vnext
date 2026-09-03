@@ -4,20 +4,28 @@ status: active
 owner: codex-framework
 applies_to:
   - docs/plans
-  - multi-agent-implementer
-  - evaluator-simple-loop
+  - paired-agent-plan-implementer
+  - paired-agent-plan-evaluator
 created: 2026-09-02
-reference_plan: docs/plans/2026-09-02--codex-multi-terminal-promotion/
+updated: 2026-09-03
+reference_plan: docs/plans/2026-09-03--multi-agent-orchestration-plan/
 ---
 
 # Evaluator–implementer loop
 
-Durable documentation for the **split-role** workflow where one agent (or
-automated loop) **evaluates** and another **implements** corrections on a plan
-packet until evaluator sign-off.
+Durable documentation for the **split-role** workflow where one agent
+**evaluates** and another **implements** on a plan packet until evaluator
+sign-off.
 
-This folder matures the pattern first exercised during the **codex
-multi-terminal promotion** (2026-09-02).
+**2026-09-03 update:** Preferred model is **external orchestration** (for
+example `multiagents` + Codex app-server). Role skills are single-pass and do
+not own folder-watch or polling. Pattern contract:
+[`evaluator-implementer-loop.md`](../../agent-workflow-registry/patterns/evaluator-implementer-loop.md).
+Alignment discussion:
+`docs/plans/2026-09-03--multi-agent-orchestration-plan/discussion/orchestration-agnostic-framing.md`.
+
+Historical notes from the 2026-09-02 multi-terminal promotion remain useful as
+AAR/context but are not the preferred control plane.
 
 ## Documents
 
@@ -27,41 +35,39 @@ multi-terminal promotion** (2026-09-02).
 | [evaluator-role-documentation.md](evaluator-role-documentation.md) | Evaluator operators & audit agents | Evaluator surface, files, scripts implementer must not drive |
 | [after-action-report-2026-09-02.md](after-action-report-2026-09-02.md) | Stewards | Session AAR summary (skills + process) |
 
+## Preferred skill entrypoints (global)
+
+| Role | Skill |
+| --- | --- |
+| Implementer | `paired-agent-plan-implementer` (`global-skills`) |
+| Evaluator | `paired-agent-plan-evaluator` (`global-skills`) |
+| Artifact contract | `paired-agent-feedback-artifacts` (includes `review_ready_for_evaluator_*`) |
+
+Repo-local `skills/multi-agent/multi-agent-implementer` may still exist as a
+project wrapper; prefer the global paired-agent skills for the Codex-first
+orchestration plan.
+
 ## Capability packet
 
 | Surface | Role |
 | --- | --- |
-| [`skills/multi-agent/multi-agent-implementer/capability.yml`](../../../../../skills/multi-agent/multi-agent-implementer/capability.yml) | Machine-readable capability manifest for the project-owned implementer family |
-| [`skills/multi-agent/README.md`](../../../../../skills/multi-agent/README.md) | Family index and operator entrypoint |
-| [`evaluator-implementer-loop.md`](../../agent-workflow-registry/patterns/evaluator-implementer-loop.md) | Reusable workflow contract |
-
-## Related repo surfaces
-
-| Surface | Path |
-| --- | --- |
-| **Parent skill (start here)** | `skills/multi-agent/multi-agent-implementer/SKILL.md` |
-| Skill family index | `skills/multi-agent/README.md` |
-| Capability manifest | `skills/multi-agent/multi-agent-implementer/capability.yml` |
-| Pattern (workflow schema) | `docs/codex_framework/multi-agent/agent-workflow-registry/patterns/evaluator-implementer-loop.md` |
-| Workflow package (this folder) | `docs/codex_framework/multi-agent/workflow-packages/evaluator-implementer-loop/` |
-| Plan packet AAR (full) | `docs/plans/2026-09-02--codex-multi-terminal-promotion/AFTER-ACTION-REPORT-skills-and-evaluator-implementer-loop.md` |
-| Plan-local paired docs | `docs/plans/2026-09-02--codex-multi-terminal-promotion/documentation/` |
-| Reference run | `docs/plans/2026-09-02--codex-multi-terminal-promotion/` |
+| [`evaluator-implementer-loop.md`](../../agent-workflow-registry/patterns/evaluator-implementer-loop.md) | Reusable workflow contract (external orchestration) |
+| Active plan | `docs/plans/2026-09-03--multi-agent-orchestration-plan/` |
 
 ## Quick start (implementer)
 
 ```text
-Use skill multi-agent-implementer on docs/plans/<slug>/
+Use skill paired-agent-plan-implementer on docs/plans/<slug>/
+# After the pass: write review_ready_for_evaluator_<timestamp>.md and stop
 ```
 
-Omit the path when already inside the plan packet — `resolve_plan_dir.py` auto-detects.
+## Quick start (evaluator)
 
-## Quick start (evaluator operator)
-
-Run separately from the implementer session:
-
-```bash
-docs/plans/<slug>/scripts/evaluator_simple_loop.sh
+```text
+Use skill paired-agent-plan-evaluator on docs/plans/<slug>/
+# Write exactly one feedback|waiting|ready artifact and stop
 ```
 
-Implementer agents must **not** run this script. See evaluator-role-documentation.md.
+Manual operator invocation of each pass is the fallback when an orchestrator is
+not yet wired. Prefer the Phase 1 harness in the active plan packet when
+available.

@@ -1,116 +1,142 @@
 ---
-status: trial
+status: active
 owner: codex-framework
 applies_to:
   - plan-promotion
-  - multi-agent-implementer
-  - evaluator-simple-loop
-reference_plan: docs/plans/2026-09-02--codex-multi-terminal-promotion/
-skill_entrypoint: multi-agent-implementer
+  - paired-agent-plan-implementer
+  - paired-agent-plan-evaluator
+reference_plan: docs/plans/2026-09-03--multi-agent-orchestration-plan/
+skill_entrypoint: paired-agent-plan-implementer
+orchestration: external
 ---
 
-# Evaluator–implementer correction loop
+# Evaluator–implementer loop (external orchestration)
 
 ## Purpose
 
-Coordinate **plan packet corrections** when an independent evaluator (automated
-loop and/or AI audit files) must sign off before the work is considered complete.
-Typical use: one-off promotion, framework repair plans, skill-family audits tied
-to a plan folder.
+Coordinate **plan packet work** when an independent evaluator must sign off
+before the scoped campaign is complete. Typical use: plan promotion, framework
+repair, skill-family audits tied to a plan folder.
+
+**Framing:** role skills own cooperation and quality; an external orchestrator
+(for example `multiagents` + Codex app-server) owns wakeups and turn
+advancement. Plan-folder artifacts remain the durable audit trail, not the
+scheduler. See
+`docs/plans/2026-09-03--multi-agent-orchestration-plan/discussion/orchestration-agnostic-framing.md`.
 
 ## Triggers
 
-- User says continue until evaluator is satisfied / approved / done.
-- Plan folder contains `EVALUATOR-WAIT-STATE.md` or evaluator feedback files.
-- Promotion or correction work with `feedback_for_review_by_evaluator_*` present.
-- User invokes skill `multi-agent-implementer`.
+- User starts a paired-agent campaign on a plan folder.
+- Operator or orchestrator invokes `paired-agent-plan-implementer` or
+  `paired-agent-plan-evaluator` for a single pass.
+- Plan folder contains evaluator artifacts or implementer
+  `review_ready_for_evaluator_*` files.
 
 ## Roles
 
-### Implementer (correcting agent)
+### Implementer
 
-- **Responsibility:** Repo fixes, live Ansible, receipts, plan contract rows.
-- **Read/write boundary:** All implementation artifacts; implementer sections of wait-state.
-- **Allowed tools:** Ansible via `bin/codex-env`, folder watch script, skill validators.
-- **Forbidden tools:** `evaluator_simple_loop.sh`; authoring `feedback_*` / `ready_*`.
-- **Handoff artifact:** Updated `EXECUTION-RECEIPT.md`, corrected roles/docs.
-- **Completion signal:** None alone — waits for evaluator sign-off.
-- **Skill entry:** `multi-agent-implementer`
+- **Responsibility:** Repo fixes, live verification when required, receipts,
+  accounting when the packet uses it.
+- **Skill entry:** `paired-agent-plan-implementer` (global-skills)
+- **Read/write boundary:** Implementation artifacts;
+  `review_ready_for_evaluator_*`; never evaluator `feedback_*` / `waiting_*` /
+  `ready_*`.
+- **Handoff artifact:** `review_ready_for_evaluator_<timestamp>.md`
+- **Completion signal:** None alone — waits for evaluator sign-off across
+  *later* invocations.
+- **Must not:** Poll, folder-watch, or self-schedule the next evaluator turn.
 
-### Evaluator-simple (automated loop or operator)
+### Evaluator
 
-- **Responsibility:** Run check matrix; emit timestamped feedback or sign-off.
-- **Read/write boundary:** `feedback_*`, `waiting_*`, `ready_*`; evaluator logs.
-- **Allowed tools:** `evaluator_simple_loop.sh`, project validators as coded in script.
-- **Handoff artifact:** `ready_for_review_by_evaluator_*` when satisfactory.
-- **Completion signal:** `decision: approved` in ready file.
+- **Responsibility:** Evidence-backed review; emit one of `feedback` /
+  `waiting` / `ready` per invocation.
+- **Skill entry:** `paired-agent-plan-evaluator` (global-skills)
+- **Read/write boundary:** Evaluator-owned artifacts only.
+- **Handoff artifact:** `feedback_*` or `waiting_*` (continue) or `ready_*`
+  (terminate).
+- **Completion signal:** `ready_for_review_by_evaluator_*` with evidence.
+- **Must not:** Implementer work, self-schedule hidden rechecks, or own
+  orchestration transport.
 
-### Evaluator-audit (AI markdown)
+### Orchestrator (external)
 
-- **Responsibility:** Durable finding lists (`AI-CORRECTION-EVALUATION.md`, etc.).
-- **Handoff artifact:** P1–Pn findings for implementer.
-- **Completion signal:** Findings resolved in repo + confirmed by evaluator-simple.
+- **Responsibility:** Session continuity; route implementer ↔ evaluator after
+  durable handoff events; Codex `thread/start`, `turn/start`, `turn/steer` (or
+  equivalent) when Codex-first.
+- **Must not:** Redefine evaluator quality rules or replace plan-folder audit
+  artifacts.
 
-### Folder watch (implementer aid)
+## Deprecated / non-primary paths
 
-- **Responsibility:** Wake implementer on evaluator file changes.
-- **Allowed:** `watch_evaluator_folder.sh` only.
+The following may still exist as historical helpers but are **not** the
+preferred steady-state orchestration model:
+
+- Implementer-owned folder watch scripts as the required wake mechanism
+- Role-managed polling loops that keep a skill "alive" as its own scheduler
+- Treating chat `continue` as the designed control plane
+
+Document those as fallback/manual operator aids only.
 
 ## Parallel work
 
-- HRL / Context7 research while waiting for evaluator cadence.
-- Skill validator runs after implementer edits.
+- Research while waiting for the next orchestrated pass.
+- Skill validators after implementer edits.
 - Read-only plan/inventory probes.
 
 ## Serialized work
 
-- Implementer corrections before evaluator re-run.
-- Live mutating Ansible after read-only preview.
-- Closeout only after `ready_for_review_*`.
+- Implementer corrections before evaluator re-review.
+- Live mutating apply after read-only preview when applicable.
+- Closeout only after evaluator `ready_*`.
 
 ## Gates
 
 | Gate | Input | Pass | Fail / send-back |
 | --- | --- | --- | --- |
 | Bootstrap | `plan_dir` resolved | Boot line emitted | Ambiguity listed; one question |
-| Corrections | Newest `feedback_*` or AI audit | Blockers addressed + fresh verify | Open blockers remain |
-| Evaluator boundary | Implementer session | No evaluator loop run | Stop; document interference |
-| Sign-off | `ready_for_review_*` | `decision: approved`, newest authority | Continue loop |
-| Closeout | Sign-off + fresh verify | Wait-state signed off, watch stopped | Do not claim complete |
+| Implementer pass | Scope / feedback | `review_ready_for_evaluator_*` written; stop | Open work without handoff |
+| Evaluator pass | Newest review-ready + packet | One evaluator artifact | Wrong ownership / no evidence |
+| Sign-off | `ready_for_review_*` | Evidence closes whole scoped scenario | Write feedback/waiting instead |
+| Closeout | Sign-off + fresh verify | Orchestrator releases session | Do not claim complete |
 
-**Fallback:** If evaluator loop unavailable, leave unsigned; implementer documents blocked state — does not self-sign-off.
+**Fallback:** If orchestrator unavailable, operator may manually invoke each
+skill pass. Implementer must not self-sign-off.
 
 ## Artifacts
 
 | Artifact | Owner |
 | --- | --- |
-| `EXECUTION-RECEIPT.md` | Implementer |
-| `EVALUATOR-WAIT-STATE.md` | Implementer (status); evaluator (sign-off ref) |
-| `feedback_*` / `ready_*` | Evaluator-simple |
-| `AI-*-EVALUATION.md` | Evaluator-audit |
-| `AFTER-ACTION-REPORT-*.md` | Implementer/steward |
-| `documentation/*--implementer.md` | Implementer or durable pointer |
-| `documentation/*--evaluator.md` | Evaluator |
+| `review_ready_for_evaluator_*` | Implementer |
+| `coordination/implementation-accounting.md` | Implementer (when used) |
+| `EXECUTION-RECEIPT.md` / verification receipts | Implementer sections |
+| `EVALUATOR-WAIT-STATE.md` | Evaluator |
+| `feedback_*` / `waiting_*` / `ready_*` | Evaluator |
+| Plan packet README / diagrams | Shared packet; ownership per plan rules |
 
 ## Completion rule
 
-Coordinator/implementer may report the **loop** complete only when:
+The **loop** is complete only when:
 
-1. Evaluator-simple `ready_for_review_by_evaluator_*` with `decision: approved` exists.
-2. Fresh verification probes ran in the closeout turn.
-3. Folder watch stopped; wait-state shows `evaluator-signed-off`.
+1. Evaluator `ready_for_review_by_evaluator_*` exists with evidence-backed
+   approval for the **whole** scoped scenario.
+2. Fresh verification ran in the closeout context when the work type requires it.
+3. Orchestrator (or operator) has released / stopped the paired session.
 
-Plan `lifecycle: implemented` is a **separate** step (`complete-plan-lifecycle`).
+Plan `lifecycle: implemented` remains a separate step (`complete-plan-lifecycle`).
 
 ## Failure rule
 
-- Implementer runs evaluator → invalidates trust; stop and acknowledge per good/bad examples.
+- Implementer authors evaluator sign-off → invalid; stop and correct.
 - Validator/tool failure → narrow scope, retry; do not self-sign-off.
 - Repeated identical blockers → research before next code change.
+- Ambiguous ownership or missing handoff artifacts → fail the validation stage.
 
 ## Documentation
 
-- `docs/codex_framework/multi-agent/workflow-packages/evaluator-implementer-loop/` — role docs + AAR
-- `docs/codex_framework/multi-agent/agent-workflow-registry/patterns/evaluator-implementer-loop.md` — pattern contract
-- `docs/plans/<slug>/documentation/` — plan-local paired documentation packet
-- `skills/multi-agent/references/` — skill-pack meditation and examples
+- Global skills: `paired-agent-plan-implementer`, `paired-agent-plan-evaluator`,
+  `paired-agent-feedback-artifacts`
+- Plan packet:
+  `docs/plans/2026-09-03--multi-agent-orchestration-plan/`
+- Workflow package:
+  `docs/codex_framework/multi-agent/workflow-packages/evaluator-implementer-loop/`

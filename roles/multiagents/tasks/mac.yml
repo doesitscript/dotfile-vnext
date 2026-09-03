@@ -1,0 +1,370 @@
+---
+# multiagents/tasks/mac.yml
+# Scaffold: pinned Bun release binary + pinned multiagents global package + managed layout.
+# Deferred: multiagents setup, broker start, MCP writes for Codex/Cursor/Claude.
+
+- name: Ensure Bun download cache directory exists
+  ansible.builtin.file:
+    path: "{{ multiagents_bun_download_dir }}"
+    state: directory
+    mode: "0755"
+  when:
+    - multiagents_manage_bun | bool
+    - multiagents_bun_install_method == "release_binary"
+    - multiagents_state == "present"
+
+- name: Ensure Bun extract directory exists
+  ansible.builtin.file:
+    path: "{{ multiagents_bun_extract_dir }}"
+    state: directory
+    mode: "0755"
+  when:
+    - multiagents_manage_bun | bool
+    - multiagents_bun_install_method == "release_binary"
+    - multiagents_state == "present"
+
+- name: Ensure Bun install directory exists
+  ansible.builtin.file:
+    path: "{{ multiagents_bun_install_dir }}"
+    state: directory
+    mode: "0755"
+  when:
+    - multiagents_manage_bun | bool
+    - multiagents_bun_install_method == "release_binary"
+    - multiagents_state == "present"
+
+- name: Check Bun archive state for preview mode
+  ansible.builtin.stat:
+    path: "{{ multiagents_bun_archive_path }}"
+  register: multiagents_bun_archive_stat
+  when:
+    - multiagents_manage_bun | bool
+    - multiagents_bun_install_method == "release_binary"
+    - multiagents_state == "present"
+    - ansible_check_mode
+
+- name: Download Bun release archive
+  ansible.builtin.get_url:
+    url: "{{ multiagents_bun_archive_url }}"
+    dest: "{{ multiagents_bun_archive_path }}"
+    checksum: "{{ multiagents_bun_archive_checksum }}"
+    mode: "0644"
+  when:
+    - multiagents_manage_bun | bool
+    - multiagents_bun_install_method == "release_binary"
+    - multiagents_state == "present"
+    - not ansible_check_mode
+
+- name: Extract Bun release archive with macOS unzip  # noqa: command-instead-of-module
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/unzip
+      - -o
+      - "{{ multiagents_bun_archive_path }}"
+      - -d
+      - "{{ multiagents_bun_extract_dir }}"
+  args:
+    creates: "{{ multiagents_bun_extract_dir }}/bun-darwin-{{ multiagents_bun_release_arch }}{{ '-baseline' if multiagents_bun_use_baseline | bool else '' }}/bun"
+  when:
+    - multiagents_manage_bun | bool
+    - multiagents_bun_install_method == "release_binary"
+    - multiagents_state == "present"
+    - not ansible_check_mode
+
+- name: Install Bun binary into managed bin dir
+  ansible.builtin.copy:
+    src: >-
+      {{ multiagents_bun_extract_dir }}/bun-darwin-{{ multiagents_bun_release_arch }}{{ '-baseline' if multiagents_bun_use_baseline | bool else '' }}/bun
+    dest: "{{ multiagents_bun_bin }}"
+    remote_src: true
+    mode: "0755"
+  when:
+    - multiagents_manage_bun | bool
+    - multiagents_bun_install_method == "release_binary"
+    - multiagents_state == "present"
+    - not ansible_check_mode
+
+- name: Explain Bun release preview limitations when archive is absent
+  ansible.builtin.debug:
+    msg:
+      - "Check mode note: live apply will download {{ multiagents_bun_archive_url }}."
+      - "Planned Bun path: {{ multiagents_bun_bin }}"
+      - "Planned package: {{ multiagents_package_name }}@{{ multiagents_version }}"
+  when:
+    - multiagents_state == "present"
+    - ansible_check_mode
+
+- name: Probe currently installed multiagents global package version
+  ansible.builtin.command:
+    argv:
+      - "{{ multiagents_bun_bin }}"
+      - pm
+      - ls
+      - -g
+  environment:
+    PATH: "{{ multiagents_bun_install_dir }}:{{ ansible_facts['env']['PATH'] }}"
+  register: multiagents_global_ls
+  changed_when: false
+  failed_when: false
+  when:
+    - multiagents_state == "present"
+    - not ansible_check_mode
+
+- name: Derive whether multiagents package needs install or upgrade
+  ansible.builtin.set_fact:
+    multiagents_package_needs_install: >-
+      {{
+        (multiagents_package_name not in (multiagents_global_ls.stdout | default('')))
+        or (multiagents_version not in (multiagents_global_ls.stdout | default('')))
+      }}
+  when:
+    - multiagents_state == "present"
+    - not ansible_check_mode
+
+- name: Install pinned multiagents package globally via Bun  # noqa: command-instead-of-module
+  ansible.builtin.command:
+    argv:
+      - "{{ multiagents_bun_bin }}"
+      - install
+      - -g
+      - "{{ multiagents_package_name }}@{{ multiagents_version }}"
+  environment:
+    PATH: "{{ multiagents_bun_install_dir }}:{{ ansible_facts['env']['PATH'] }}"
+  register: multiagents_bun_install
+  changed_when: multiagents_bun_install.rc == 0
+  when:
+    - multiagents_state == "present"
+    - not ansible_check_mode
+    - multiagents_package_needs_install | bool
+
+- name: Ensure managed multiagents layout directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ multiagents_root_dir }}"
+    - "{{ multiagents_data_dir }}"
+    - "{{ multiagents_scenarios_dir }}"
+  when: multiagents_state == "present"
+
+- name: Render managed multiagents layout README
+  ansible.builtin.template:
+    src: layout-readme.md.j2
+    dest: "{{ multiagents_layout_readme_path }}"
+    mode: "0644"
+  when: multiagents_state == "present"
+
+- name: Ensure multiagents usage note parent directory exists
+  ansible.builtin.file:
+    path: "{{ multiagents_usage_note_path | dirname }}"
+    state: directory
+    mode: "0755"
+  when:
+    - multiagents_state == "present"
+    - multiagents_install_usage_note | bool
+
+- name: Render multiagents AI/operator usage note
+  ansible.builtin.template:
+    src: multiagents-ai-usage.md.j2
+    dest: "{{ multiagents_usage_note_path }}"
+    mode: "0644"
+  when:
+    - multiagents_state == "present"
+    - multiagents_install_usage_note | bool
+
+- name: Ensure bashrc.d exists for multiagents PATH snippet
+  ansible.builtin.file:
+    path: "{{ multiagents_path_snippet_path | dirname }}"
+    state: directory
+    mode: "0755"
+  when:
+    - multiagents_state == "present"
+    - multiagents_install_path_snippet | bool
+
+- name: Install multiagents PATH snippet into bashrc.d
+  ansible.builtin.copy:
+    src: multiagents-path.bash
+    dest: "{{ multiagents_path_snippet_path }}"
+    mode: "0644"
+  when:
+    - multiagents_state == "present"
+    - multiagents_install_path_snippet | bool
+
+- name: Remove multiagents global package via Bun  # noqa: command-instead-of-module
+  ansible.builtin.command:
+    argv:
+      - "{{ multiagents_bun_bin }}"
+      - remove
+      - -g
+      - "{{ multiagents_package_name }}"
+  environment:
+    PATH: "{{ multiagents_bun_install_dir }}:{{ ansible_facts['env']['PATH'] }}"
+  register: multiagents_bun_remove
+  changed_when: multiagents_bun_remove.rc == 0
+  failed_when: false
+  when:
+    - multiagents_state == "absent"
+    - not ansible_check_mode
+    - multiagents_manage_bun | bool
+
+- name: Remove managed multiagents usage note
+  ansible.builtin.file:
+    path: "{{ multiagents_usage_note_path }}"
+    state: absent
+  when:
+    - multiagents_state == "absent"
+    - multiagents_install_usage_note | bool
+
+- name: Remove multiagents PATH snippet
+  ansible.builtin.file:
+    path: "{{ multiagents_path_snippet_path }}"
+    state: absent
+  when:
+    - multiagents_state == "absent"
+    - multiagents_install_path_snippet | bool
+
+- name: Remove managed multiagents layout root
+  ansible.builtin.file:
+    path: "{{ multiagents_root_dir }}"
+    state: absent
+  when: multiagents_state == "absent"
+
+- name: Remove managed Bun binary when explicitly requested
+  ansible.builtin.file:
+    path: "{{ multiagents_bun_bin }}"
+    state: absent
+  when:
+    - multiagents_state == "absent"
+    - multiagents_manage_bun | bool
+    - multiagents_remove_bun_on_absent | bool
+
+- name: Locate multiagents binary
+  ansible.builtin.stat:
+    path: "{{ multiagents_bun_install_dir }}/multiagents"
+  register: multiagents_bin_stat
+  when:
+    - not ansible_check_mode
+    - multiagents_verify | bool
+
+- name: Probe multiagents via Bun bin PATH
+  ansible.builtin.command:
+    argv:
+      - "{{ multiagents_bun_install_dir }}/multiagents"
+      - help
+  environment:
+    PATH: "{{ multiagents_bun_install_dir }}:{{ ansible_facts['env']['PATH'] }}"
+  register: multiagents_help_probe
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - multiagents_verify | bool
+    - multiagents_state == "present"
+
+- name: Verify multiagents binary is present
+  ansible.builtin.assert:
+    that:
+      - multiagents_bin_stat.stat.exists | default(false)
+      - multiagents_help_probe.rc == 0
+    fail_msg: >-
+      multiagents binary missing or help failed under {{ multiagents_bun_install_dir }}.
+      stdout={{ multiagents_help_probe.stdout | default('') }}
+      stderr={{ multiagents_help_probe.stderr | default('') }}
+  when:
+    - not ansible_check_mode
+    - multiagents_verify | bool
+    - multiagents_state == "present"
+
+- name: Verify multiagents binary is absent
+  ansible.builtin.assert:
+    that:
+      - not (multiagents_bin_stat.stat.exists | default(false))
+    fail_msg: "multiagents binary remains at {{ multiagents_bun_install_dir }}/multiagents after absent."
+  when:
+    - not ansible_check_mode
+    - multiagents_verify | bool
+    - multiagents_state == "absent"
+
+- name: Verify Bun binary exists when present
+  ansible.builtin.stat:
+    path: "{{ multiagents_bun_bin }}"
+  register: multiagents_bun_bin_stat
+  when:
+    - not ansible_check_mode
+    - multiagents_verify | bool
+    - multiagents_state == "present"
+    - multiagents_manage_bun | bool
+
+- name: Assert Bun binary exists
+  ansible.builtin.assert:
+    that:
+      - multiagents_bun_bin_stat.stat.exists | default(false)
+    fail_msg: "Managed Bun binary missing at {{ multiagents_bun_bin }}."
+  when:
+    - not ansible_check_mode
+    - multiagents_verify | bool
+    - multiagents_state == "present"
+    - multiagents_manage_bun | bool
+
+- name: Verify managed layout directories exist
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: multiagents_layout_stats
+  loop:
+    - "{{ multiagents_root_dir }}"
+    - "{{ multiagents_data_dir }}"
+    - "{{ multiagents_scenarios_dir }}"
+    - "{{ multiagents_layout_readme_path }}"
+  when:
+    - not ansible_check_mode
+    - multiagents_verify | bool
+    - multiagents_state == "present"
+
+- name: Assert managed layout paths exist
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists | default(false)
+    fail_msg: "Managed multiagents path missing: {{ item.item }}"
+  loop: "{{ multiagents_layout_stats.results | default([]) }}"
+  when:
+    - not ansible_check_mode
+    - multiagents_verify | bool
+    - multiagents_state == "present"
+
+- name: Verify multiagents usage note exists
+  ansible.builtin.stat:
+    path: "{{ multiagents_usage_note_path }}"
+  register: multiagents_usage_note_stat
+  when:
+    - not ansible_check_mode
+    - multiagents_verify | bool
+    - multiagents_state == "present"
+    - multiagents_install_usage_note | bool
+
+- name: Assert multiagents usage note exists
+  ansible.builtin.assert:
+    that:
+      - multiagents_usage_note_stat.stat.exists | default(false)
+    fail_msg: "Managed multiagents usage note missing at {{ multiagents_usage_note_path }}."
+  when:
+    - not ansible_check_mode
+    - multiagents_verify | bool
+    - multiagents_state == "present"
+    - multiagents_install_usage_note | bool
+
+- name: Report multiagents scaffold state
+  ansible.builtin.debug:
+    msg:
+      - "multiagents_state={{ multiagents_state }}"
+      - "bun={{ multiagents_bun_bin }} ({{ multiagents_bun_install_method }})"
+      - "package={{ multiagents_package_name }}@{{ multiagents_version }}"
+      - "binary={{ multiagents_bun_install_dir }}/multiagents"
+      - "managed_root={{ multiagents_root_dir }}"
+      - "scenarios_dir={{ multiagents_scenarios_dir }} (placeholder for later Codex/Cursor/scenario packs)"
+      - "usage_note={{ multiagents_usage_note_path if multiagents_install_usage_note | bool else 'disabled' }}"
+      - "deferred=setup/broker/MCP client wiring"
+      - "{{ multiagents_help_probe.stdout_lines | default([]) | first | default('') }}"
+  when:
+    - not ansible_check_mode
+    - multiagents_verify | bool

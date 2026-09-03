@@ -9,6 +9,7 @@ include:
   - path: exports/work-laptop-ai-tools/.gitignore
   - path: exports/work-laptop-ai-tools/.packet-revision
   - path: exports/work-laptop-ai-tools/README.md
+  - path: exports/work-laptop-ai-tools/AGENTS.md
   - path: exports/work-laptop-ai-tools/ansible.cfg
   - path: exports/work-laptop-ai-tools/bootstrap
   - path: exports/work-laptop-ai-tools/capability.yml
@@ -19,6 +20,12 @@ include:
   - path: exports/work-laptop-ai-tools/host_vars
   - path: exports/work-laptop-ai-tools/scripts
   - path: exports/work-laptop-ai-tools/roles
+  - path: exports/work-laptop-ai-tools/.agents
+    dest: .agents
+  - path: exports/work-laptop-ai-tools/bin
+    dest: bin
+  - path: exports/work-laptop-ai-tools/vault
+    dest: vault
   - path: roles/common/shell_config
     dest: roles/common/shell_config
   - path: roles/common/node
@@ -35,14 +42,46 @@ include:
     dest: roles/zed_ide
   - path: roles/homelab_hosts_file_mac
     dest: roles/homelab_hosts_file_mac
+  - path: roles/ripgrep_cli
+    dest: roles/ripgrep_cli
   - path: roles/mcp_servers/_shared
     dest: roles/mcp_servers/_shared
+  - path: roles/mcp_servers/README.md
+    dest: roles/mcp_servers/README.md
+  - path: roles/mcp_servers/CLIENT_COMMISSION_GATES.md
+    dest: roles/mcp_servers/CLIENT_COMMISSION_GATES.md
   - path: roles/mcp_servers/aws_mcp
     dest: roles/mcp_servers/aws_mcp
   - path: roles/mcp_servers/aws_iac_mcp
     dest: roles/mcp_servers/aws_iac_mcp
   - path: roles/mcp_servers/terraform_mcp
     dest: roles/mcp_servers/terraform_mcp
+  - path: roles/mcp_servers/context7
+    dest: roles/mcp_servers/context7
+  - path: roles/mcp_servers/firecrawl
+    dest: roles/mcp_servers/firecrawl
+  - path: roles/mcp_servers/morph
+    dest: roles/mcp_servers/morph
+  - path: roles/mcp_servers/playwright
+    dest: roles/mcp_servers/playwright
+  - path: roles/mcp_servers/fetch
+    dest: roles/mcp_servers/fetch
+  - path: roles/mcp_servers/firebase
+    dest: roles/mcp_servers/firebase
+  - path: roles/mcp_servers/drawio
+    dest: roles/mcp_servers/drawio
+  - path: roles/mcp_servers/netbox
+    dest: roles/mcp_servers/netbox
+  - path: roles/mcp_servers/openai_docs
+    dest: roles/mcp_servers/openai_docs
+  - path: roles/mcp_servers/langfuse_docs
+    dest: roles/mcp_servers/langfuse_docs
+  - path: roles/mcp_servers/huggingface
+    dest: roles/mcp_servers/huggingface
+  - path: roles/mcp_servers/mcp-sysoperator
+    dest: roles/mcp_servers/mcp-sysoperator
+  - path: roles/mcp_servers/redhat-ansible
+    dest: roles/mcp_servers/redhat-ansible
   - path: roles/python
     dest: roles/python
   - path: roles/ansible_dev_tools
@@ -58,7 +97,10 @@ exclude:
   - node_modules/**
 notes:
   - The real target short hostname is MLLXLJJ2XVFJ.
-  - This pilot intentionally ships no secrets or vault content.
+  - Live secrets are not shipped; vault/ holds README + example only until operator-local vault is provided.
+  - "Additional MCP roles are included; commissioned in host_vars: terraform, aws, aws_iac, context7, firebase, morph (+ ripgrep). Others stay absent."
+  - "Morph WarpGrep needs operator-local vault/shared.vault.yml (vault_shared_morph_api_key) before the packet playbook will converge."
+  - Slice-local agent skills live under `.agents/skills/` and ship with AGENTS.md.
   - Continue renders with a placeholder API key that must be replaced on the work laptop.
   - AWS MCP uses first-use OAuth against the official managed AWS endpoint.
   - The Codex launcher expects SSH and kubectl access to hom-lab-ctl-k3s-02 for gateway-key lookup.

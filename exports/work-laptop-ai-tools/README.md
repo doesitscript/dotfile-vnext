@@ -11,15 +11,70 @@ Primary delivery model:
 - the zip archive is optional and secondary
 - the sibling repo is replaceable and should never become the design authority
 
+## Adopted design (slice locality)
+
+This packet is a **scoped operating surface**, not just an Ansible zip. Agents
+working in this tree (parent `exports/work-laptop-ai-tools/` or the sibling
+checkout) should follow packet `AGENTS.md` plus the skills under
+`.agents/skills/`, instead of pulling work-laptop MCP/vault/sync logic into
+global-skills or the parent’s huge catalog.
+
+Three concerns are kept separate:
+
+| Concern | Mechanism in this packet |
+| --- | --- |
+| Instruction scope | Nested `AGENTS.md` (Cursor + Codex both walk subdirectory files) |
+| Skill discovery | `.agents/skills/<name>/SKILL.md` — Codex-native; Cursor loads this path too |
+| Implementation / generate | Parent skill `work-laptop-export-pack` scripts sync this packet **into** the sibling |
+
+Do **not** put skills in a bare `skills/` folder here. Runtimes will not
+discover that path. One discovery root is enough (no extra `.cursor/skills/`
+tree in the packet).
+
+**What the skills may do vs when they appear:** skill *bodies* may reach parent
+`roles/mcp_servers/`, this packet, the sibling after sync, and HRL MCP guides.
+Discovery is still local: they surface when you work under this subtree or in
+the sibling git root after sync — not everywhere in `dotfile-vnext`.
+
+**MCP catalog vs commission:** parent MCP role logic is included so the laptop
+can adopt servers later. Optional servers stay `*_state: absent` (or playbook
+`when:` for legacy roles). Continue/Zed lists are not auto-updated. Client
+paths are remapped to user home (`~/.vscode/mcp.json`, `~/.codex/config.toml`)
+and secrets use packet `vault/` + `~/.config/work-laptop-ai-tools/mcp/env.d/`
+(never keys in tracked mcp.json). Living docs: HRL
+`implementation-guides/mcp/work-laptop-ai-tools-mcp-slice.md` and
+`porting-mcp-servers-between-projects.md`; skills invoke those and carry a
+condensed offline checklist.
+
+**Skill split:** slice-local collect / adopt / vault / packet-ops live here and
+ship to the sibling. `work-laptop-export-pack` and
+`project-skill-runtime-bridge` stay in the parent — they generate and bridge
+from the monorepo, they are not laptop-day-2 skills.
+
+When adding another MCP: `work-laptop-mcp-collect` → `work-laptop-mcp-adopt`
+(default absent) → `work-laptop-vault` if secrets → `work-laptop-packet-ops`
+to sync.
+
 ## Associated skills (quick find)
 
-These skills live in `dotfile-vnext` (not in this generated sibling). Use them
-from that repo so you can re-sync or validate this packet without hunting.
+### Slice-local (shipped in this packet → sibling)
+
+Discovered via `.agents/skills/` when working under this tree or the sibling
+checkout. See `AGENTS.md`.
+
+| Skill | Path | Use for |
+| --- | --- | --- |
+| `work-laptop-mcp-collect` | `.agents/skills/work-laptop-mcp-collect/` | Inventory parent MCP role design/deps |
+| `work-laptop-mcp-adopt` | `.agents/skills/work-laptop-mcp-adopt/` | Wire MCP into packet at `absent` + HRL remaps |
+| `work-laptop-vault` | `.agents/skills/work-laptop-vault/` | Vault example / key map / parent→packet transfer prep |
+| `work-laptop-packet-ops` | `.agents/skills/work-laptop-packet-ops/` | Validate + sync sibling (thin; delegates scripts) |
+
+### Parent-only (stay in `dotfile-vnext`)
 
 | Skill | Path in `dotfile-vnext` | Use for |
 | --- | --- | --- |
-| `work-laptop-export-pack` | `skills/implementation/work-laptop-export-pack/SKILL.md` | Sync this sibling repo, validate the export contract, run external smoke preview |
-| `project-skill-runtime-bridge` | `skills/implementation/project-skill-runtime-bridge/SKILL.md` | Keep `work-laptop-export-pack` discoverable under `.cursor/skills` |
+| `work-laptop-export-pack` | `skills/implementation/work-laptop-export-pack/SKILL.md` | Owns sync/validate/smoke **scripts** — keep in parent |
+| `project-skill-runtime-bridge` | `skills/implementation/project-skill-runtime-bridge/SKILL.md` | Repo-wide Cursor skill bridging — keep in parent |
 
 Governing plan packet (paired-agent pilot history):
 
@@ -27,10 +82,10 @@ Governing plan packet (paired-agent pilot history):
 - related paired-agent skills when re-running that plan loop:
   `paired-agent-plan-implementer`, `paired-agent-plan-evaluator`
 
-Copy-paste from `dotfile-vnext`:
+Copy-paste from `dotfile-vnext` (export-pack scripts):
 
 ```bash
-# Use skill work-laptop-export-pack
+# Use skill work-laptop-export-pack (or slice work-laptop-packet-ops)
 bin/codex-env python \
   skills/implementation/work-laptop-export-pack/scripts/validate_export_contract.py
 bin/codex-env python \
@@ -49,19 +104,26 @@ Current scope:
 - baseline `~/.codex/config.toml` creation for Codex CLI on the work laptop
 - Codex local profile/config export for the current homelab model lanes
 - `/private/etc/hosts` entries for current homelab names
-- VS Code install + `Continue.continue`, `redhat.ansible`, `redhat.vscode-yaml`,
-  and `hashicorp.terraform`
-- VS Code `.vscode/mcp.json` entries for HashiCorp Terraform MCP and the
-  official AWS MCP Server plus AWS IaC MCP
+- VS Code install + `Continue.continue`, `openai.chatgpt` (Codex),
+  `redhat.ansible`, `redhat.vscode-yaml`, and `hashicorp.terraform`
+- VS Code `~/.vscode/mcp.json` plus Codex CLI / Codex extension
+  `~/.codex/config.toml` for HashiCorp Terraform MCP, AWS MCP, AWS IaC MCP,
+  Context7, Firebase, and Morph WarpGrep (`morph-mcp`)
 - `~/.continue/config.yaml` with the existing LiteLLM chat/edit lanes plus
-  Terraform MCP, AWS MCP, and AWS IaC MCP server entries
+  those same MCP servers (Continue WarpGrep uses `WORKSPACE_MODE` + env wrapper)
 - Zed configuration only (`zed_ide_install_cask: false`) — deploys
   `~/.config/zed/settings.json` for Zed Agent model routing, inline assistant,
   commit messages, thread summaries, and Zed `context_servers` for Terraform
   MCP, AWS MCP, and AWS IaC MCP; does **not** install or upgrade the Zed app
 - local HashiCorp Terraform CLI and Terraform MCP server install
 - Homebrew `uv` install as needed for `awslabs.aws-iac-mcp-server@latest`
+- npm globals via nvm for Context7 MCP, Morph MCP (`@morphllm/morphmcp`), and
+  Firebase MCP (`npx firebase-tools mcp`); `ripgrep` (`rg`) for WarpGrep
 - minimal shared bash startup scaffolding required by the Node/Codex path
+- remaining MCP role catalog (Firecrawl, Playwright, Fetch, drawio, NetBox,
+  OpenAI docs, Langfuse docs, Hugging Face, mcp-sysoperator, redhat-ansible)
+  stays **`*_state: absent`** until commissioned; vault-ready via `vault/` +
+  `~/.config/work-laptop-ai-tools/mcp/env.d/`
 
 Safety posture:
 
@@ -74,6 +136,8 @@ Safety posture:
 
 Primary files:
 
+- `AGENTS.md` — slice-local agent instructions
+- `.agents/skills/` — slice-local skills (MCP collect/adopt, vault, packet-ops)
 - `ansible.cfg`
 - `bootstrap/bootstrap-contract.sh`
 - `bootstrap/bootstrap-tooling.yaml`
@@ -86,6 +150,7 @@ Primary files:
 - `roles/work_laptop_codex_cli/tasks/main.yml`
 - `roles/work_laptop_packet_receipt/tasks/main.yml`
 - `export-manifest.yml`
+- `vault/README.md` (vault-ready; no live secrets in git)
 
 Canonical run on the generated sibling repo checkout on the work laptop:
 
@@ -127,12 +192,6 @@ in the checkout — local patches get overwritten on the next sync/pull.
 Branch policy: stay on `master` (this sibling) / `main` (`dotfile-vnext`). Do
 not create feature branches for normal fix → sync → pull loops unless a
 special reason is called out.
-
-**Stale-checkout detector:** if Ansible fails on task
-`Ensure Python tooling dependencies are installed on macOS`, you are **not**
-on current `master` yet (that task was removed in commit `745ecce`). Current
-bootstrap prints `Packet revision OK: python_mac_revision=openssl-skip-v2`
-before Ansible runs.
 
 1. Pull the latest sibling checkout (stay on `master`):
 
@@ -322,6 +381,13 @@ Bootstrap behavior:
   `terraform-mcp-server` to `~/.local/bin`
 - the AWS IaC MCP role installs Homebrew `uv` if needed, then configures
   `uvx awslabs.aws-iac-mcp-server@latest`
+- optional MCP roles are exported with logic intact; commissioned on this
+  slice are terraform, aws, aws_iac, context7, firebase, morph (+ ripgrep)
+- Morph WarpGrep requires operator-local `vault/shared.vault.yml` with
+  `vault_shared_morph_api_key` (not REPLACE_ME) and `--ask-vault-pass`
+- secret-bearing MCP servers keep vault + env-wrapper patterns; see
+  `vault/README.md` and HRL
+  `implementation-guides/mcp/work-laptop-ai-tools-mcp-slice.md`
 
 Safeguards:
 

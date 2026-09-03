@@ -118,3 +118,13 @@
     _mcp_codex_server_key: "{{ firebase_mcp_server_key }}"
     _mcp_codex_entry: "{{ firebase_mcp_codex_entry }}"
   when: _firebase_target_codex_selected | bool
+
+- name: Ensure Firebase entry exists in user Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ firebase_mcp_codex_user_config_path }}"
+    _mcp_codex_server_key: "{{ firebase_mcp_server_key }}"
+    _mcp_codex_entry: "{{ firebase_mcp_codex_entry }}"
+  when:
+    - _firebase_target_codex_selected | bool
+    - firebase_mcp_configure_codex_user | bool

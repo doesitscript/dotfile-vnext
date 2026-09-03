@@ -21,6 +21,9 @@ primary orchestration mechanism.
 — role skills are the cooperation source of truth; orchestration (`multiagents`
 today) is swappable enablement, not the definition of the roles.
 
+**Progress log:** [`progress-report.md`](./progress-report.md)  
+**Phase 1 harness notes:** [`phase1-minimal-harness.md`](./phase1-minimal-harness.md)
+
 ## Problem statement
 
 The current evaluator/implementer workflow proved the role split can raise
@@ -38,6 +41,10 @@ that capability stops at package install and filesystem layout. It does not yet
 configure Codex app-server integration, workflow scenarios, task-state mapping,
 or the repo-side documentation and contracts needed to run the paired-agent loop
 through `multiagents`.
+
+For this capability, the Codex app-server install target is the user's local
+Mac laptop. The app-server should run locally on the same machine where the
+paired-agent workflow is being started, not on a separate remote host.
 
 This plan turns that gap into a concrete implementation slice for this project.
 
@@ -80,6 +87,9 @@ This revision is informed by:
 | Paired-agent skills | Evaluator and implementer skills exist in `global-skills` and are already simplified around external orchestration | Need repo-local integration contract that tells implementers how to wire them into `multiagents` |
 | Repo framework docs | `docs/codex_framework/multi-agent/` exists with workflow registry and packages | Still contains stale folder-watch and local-monitor assumptions |
 | Tooling install | `roles/multiagents/` installs Bun + `multiagents` scaffold on macOS | No `multiagents setup`, broker/session wiring, or Codex scenario contract |
+| Codex install method | Codex CLI already present on the laptop (stdio app-server works from that CLI) | Managed standalone / `app-server daemon` lifecycle is **deferred follow-up** after the stdio handshake path is proven |
+| Codex app-server target | Planned as the Codex runtime control surface for this workflow | Phase 1 uses local Mac `codex app-server --stdio`; daemon install revisit comes later |
+| Operator UI | Visibility is part of the intended operator experience | The plan must explicitly deploy and verify the dashboard surface on the local Mac laptop instead of treating it as optional |
 | Durable artifacts | Plan folders and evaluator/implementer file contracts already exist | Need explicit mapping from those artifacts to `multiagents` task states and Codex turn actions |
 | Orchestration | User manually re-enters agents when new work appears | Need `multiagents` to own handoff advancement, agent-to-agent messaging, and new turn creation |
 
@@ -106,13 +116,18 @@ Goal:
 
 - stabilize the evaluator/implementer skill contract
 - align repo workflow docs with that contract
-- stand up the smallest viable Codex app-server plus `multiagents` slice needed
-  to run the staged ping-pong validation
+- stand up the smallest viable **stdio** Codex app-server plus `multiagents`
+  slice needed to run the staged ping-pong validation
+- verify at least one working operator dashboard surface on the local Mac laptop
+- defer managed standalone / `app-server daemon` install wording until after
+  the stdio path has been exercised and evidenced (then revisit)
 
 Primary success target:
 
 - smoke, stability, and acceptance ping-pong stages pass with evaluator-owned
   termination and output-backed evidence
+- stdio app-server handshake + turn evidence exists on the local Mac laptop
+  (daemon/standalone proof is a later revisit, not a Phase 1 gate)
 
 Primary plan artifact:
 
@@ -126,11 +141,15 @@ Goal:
   scenario/config layout
 - render and document the managed files under the `multiagents` root
 - define the operator start/resume/release flow as a durable repo contract
+- deploy the preferred browser dashboard when the installed `multiagents` build
+  supports it, while retaining the TUI as a fallback operator surface
 
 Primary success target:
 
 - repo-managed scenario/config exists, is documented, and can drive the paired
   workflow without relying on user scheduling between handoffs
+- operator UI is explicitly documented and verified, with browser UI on
+  `localhost:7900` when supported by the installed build
 
 ### Phase 3 — Operator surface, hardening, and follow-on clients
 
@@ -161,7 +180,7 @@ Primary success target:
 
 | | |
 | --- | --- |
-| **Apply** | Implement the repo-owned `multiagents` scenario/config/docs surfaces, then apply the existing `multiagents` role path on the target Mac as needed |
+| **Apply** | Implement the repo-owned `multiagents` scenario/config/docs surfaces, then apply the existing `multiagents` role path on the local Mac laptop that will host the Codex app-server and operator flow |
 | **Verify** | Prove the Codex-first workflow can move implementer → evaluator → implementer via `multiagents`-driven turn starts or steer actions while preserving the plan-folder artifact contract |
 | **Undo** | Remove the repo-owned `multiagents` integration surfaces and fall back to user-driven paired-agent handoff without disturbing the base `multiagents` package install unless explicitly requested |
 | **Change class** | New orchestration capability integration with documentation, workflow-contract, and runtime-config changes |
@@ -208,7 +227,7 @@ The first pass should use these upstream `multiagents` capabilities:
 | Shared knowledge | Store session-scoped decisions, blockers, and conventions | Reduces context drift between implementer and evaluator |
 | File coordination | Use ownership zones and `acquire_file` only for genuinely shared files | Prevents conflicts without overcomplicating simple passes |
 | Session control | Support pause/resume/release as the end-of-loop control surface | Defines a clean completion boundary |
-| Dashboard | Use TUI or web dashboard for visibility, not as a source of truth | Helpful operations surface, but not the audit trail |
+| Dashboard | Deploy the operator dashboard on the local Mac laptop; use TUI immediately and browser UI on `localhost:7900` when supported by the installed build | Helpful operations surface, but not the audit trail |
 
 ## Handoff contract
 
@@ -382,8 +401,32 @@ sequenceDiagram
 - Use the official app-server startup and protocol flow from OpenAI docs:
   `initialize`, `initialized`, `thread/start`, `turn/start`, and `turn/steer`
   as needed.
+- Phase 1 active path: run Codex app-server on the local Mac via
+  `codex app-server --stdio` (existing CLI). Capture argv and handshake
+  receipts under `validation/`.
 - Treat this as a narrow phase-1 setup slice, not the full final scenario pack.
 - Capture exactly which app-server action advances each validation handoff.
+
+### F1b. Standalone Codex prerequisite — deferred revisit
+
+- Managed standalone install (`~/.codex/packages/standalone/current/`) and
+  `codex app-server daemon` lifecycle are **not** the active Phase 1 gate.
+- Proceed on the stdio path first. After handshake + ping-pong evidence lands,
+  revisit this section and decide whether daemon-backed lifecycle remains a
+  hard requirement, a Phase 2/3 hardening item, or stays optional.
+- Until that revisit, do not block Phase 1 claims that are proven over stdio.
+
+### F1c. Operator dashboard baseline
+
+- Phase 1 must produce at least one working dashboard surface on the local Mac
+  laptop.
+- `multiagents dashboard` is the minimum acceptable operator UI baseline.
+- If the installed build also supports `multiagents web`, verify the browser UI
+  on `http://127.0.0.1:7900` or `http://localhost:7900`.
+- If the installed build does not expose the browser UI, record that as a
+  version/package gap rather than pretending no UI target exists.
+- Capture the exact command used and the observed launch or listening evidence
+  for whichever dashboard surface is claimed.
 
 ### F2. Plan-artifact to orchestration-state mapping
 
@@ -559,6 +602,9 @@ This is the coordination mechanism the plan should drive toward.
       `skill-upgrade-first-pass.md` using the smallest viable `multiagents`
       orchestration slice: smoke first, then 10-handoff stability, then
       20-handoff acceptance with evaluator-owned termination.
+- [ ] `MA-1c` **Deferred revisit:** managed standalone Codex /
+      `app-server daemon` lifecycle — come back after stdio handshake and
+      ping-pong receipts; do not block Phase 1 stdio progress on this item.
 - [ ] `MA-2` Document how the scenario launches or addresses the evaluator and
       implementer skills without duplicating their role logic.
 - [ ] `MA-3` Define the authoritative artifact-state mapping between plan-folder
@@ -574,6 +620,13 @@ This is the coordination mechanism the plan should drive toward.
       old role-managed looping model.
 - [ ] `MA-6` Add a repo-local usage guide that explains the Codex-first workflow,
       startup expectations, and evidence surfaces.
+- [ ] `MA-6a` Document and verify the operator dashboard surface on the local
+      Mac laptop, including whether the installed build provides only TUI or
+      also the browser UI on `localhost:7900`.
+- [ ] `MA-6b` If browser UI is desired but unavailable in the installed build,
+      define the version or packaging change needed to expose `multiagents web`
+      and keep that as an explicit follow-on requirement instead of leaving the
+      gap implicit.
 - [ ] `MA-7` Define verification steps that prove the orchestrator can advance
       the paired workflow without user re-entry between every handoff.
 - [ ] `MA-8` Record first-pass limitations and explicit future work for
@@ -598,6 +651,8 @@ following:
 | `V-6` | The repo-owned managed file layout for this integration is rendered and documented | File-path evidence under the managed `multiagents` root |
 | `V-7` | The end-to-end sequence from bootstrap through approval is documented with concrete role, broker, and Codex turn touch points | Sequence diagram and matching docs evidence |
 | `V-8` | The pre-broader-configuration role contract has passed the staged ping-pong targets through a minimal `multiagents` orchestration slice: smoke, stability, and 20-handoff acceptance with evaluator-owned termination | Validation notes or harness evidence tied back to `skill-upgrade-first-pass.md` |
+| `V-9` | **Deferred revisit:** standalone / daemon-backed app-server lifecycle on the local Mac | Not a Phase 1 stdio gate; update after stdio path is proven |
+| `V-10` | The operator UI surface is deployed and verified on the local Mac laptop | Command, listening, or launch evidence for TUI and browser UI as applicable |
 
 ## Output-proof requirement
 

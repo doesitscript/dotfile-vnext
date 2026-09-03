@@ -1,4 +1,19 @@
 ---
+- name: Check for Morph MCP vault file
+  ansible.builtin.stat:
+    path: "{{ morph_mcp_vault_file_path }}"
+  register: _morph_mcp_vault_file_stat
+
+- name: Require Morph MCP vault file
+  ansible.builtin.assert:
+    that:
+      - _morph_mcp_vault_file_stat.stat.exists | default(false)
+    fail_msg: >-
+      Morph MCP needs {{ morph_mcp_vault_file_path }} with
+      vault_shared_morph_api_key. Copy vault/shared.vault.yml.example,
+      replace REPLACE_ME, encrypt with ansible-vault, then re-run with
+      --ask-vault-pass. Key: https://www.morphllm.com/
+
 - name: Include shared vault variables for Morph MCP
   ansible.builtin.include_vars:
     file: "{{ morph_mcp_vault_file_path }}"
@@ -15,6 +30,8 @@
     that:
       - morph_mcp_api_key is defined
       - morph_mcp_api_key | length > 0
+      - morph_mcp_api_key != 'REPLACE_ME'
     fail_msg: >-
-      vault_shared_morph_api_key is required in vault/shared.vault.yml before
-      Morph MCP can be configured. Obtain a key from https://www.morphllm.com/
+      vault_shared_morph_api_key is required in {{ morph_mcp_vault_file_path }}
+      (not empty, not REPLACE_ME) before Morph MCP can be configured.
+      Obtain a key from https://www.morphllm.com/

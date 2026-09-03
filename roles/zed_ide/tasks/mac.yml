@@ -6,12 +6,21 @@
       - zed_ide_gateway_api_url | length > 0
     fail_msg: "zed_ide configuration is invalid."
 
+- name: Check Zed LiteLLM vault file
+  ansible.builtin.stat:
+    path: "{{ zed_ide_vault_file_path }}"
+  register: _zed_ide_vault_stat
+  when:
+    - zed_ide_state == "present"
+    - zed_ide_api_key | default('') | length == 0
+
 - name: Load shared vault for Zed LiteLLM API key when unset
   when:
     - zed_ide_state == "present"
     - zed_ide_api_key | default('') | length == 0
+    - _zed_ide_vault_stat.stat.exists | default(false)
   ansible.builtin.include_vars:
-    file: "{{ inventory_dir }}/../vault/shared.vault.yml"
+    file: "{{ zed_ide_vault_file_path }}"
     name: zed_ide_vault_vars
   no_log: true
 

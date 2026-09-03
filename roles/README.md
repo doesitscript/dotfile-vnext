@@ -58,5 +58,21 @@ Role `tasks/main.yml` files should import OS-specific task files using clear con
 - Windows package management currently uses Chocolatey (`chocolatey.chocolatey.win_chocolatey`).
 - Ubuntu package management uses `ansible.builtin.apt`.
 - macOS package management uses Homebrew (`community.general.homebrew`).
+- When Homebrew source-builds or is weakly controllable, prefer a **pinned
+  GitHub release binary** role pattern (example: `roles/gonzo_cli`,
+  `roles/multiagents` for Bun). Keep version pins in
+  `inventory/group_vars/all/*.yml` contracts and lifecycle in host_vars.
+
+## CLI / tool capability settings ownership
+
+For repo-managed developer CLIs, keep settings in the same places so scale-out
+stays boring:
+
+| Layer | What lives there | Example |
+| --- | --- | --- |
+| `inventory/group_vars/all/<tool>_tooling.yml` | Shared version contract | `multiagents_tooling.yml` |
+| `inventory/host_vars/<host>.yaml` | Per-host `*_state: present\|absent` | `multiagents_state` on `mac-dev` |
+| `roles/<capability>/` | Defaults, tasks, README, argument_specs | `roles/multiagents/` |
+| `playbooks/deploy_development_nodes.yaml` | Composition + `--tags` | `--tags multiagents` |
 
 Additional PowerShell-based package managers are planned and will be added later as separate, explicit tasks/roles (for example WinGet or PowerShell module flows) so behavior stays clear by operational modality.

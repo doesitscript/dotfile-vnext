@@ -1,0 +1,34 @@
+# multiagents managed layout
+
+Ansible-managed by the `multiagents` role (`multiagents_state={{ multiagents_state }}`).
+
+## Purpose
+
+This directory is the **repo-owned scaffold root** for multiagents on this host.
+Package install is separate (`bun install -g {{ multiagents_package_name }}@{{ multiagents_version }}`).
+Client wiring (Codex, Cursor, Claude, Gemini) and scenario packs are **deferred**.
+
+## Layout (may change)
+
+| Path | Intent |
+| --- | --- |
+| `data/` | Reserved for future runtime/DB state if we move off the upstream default |
+| `scenarios/` | Placeholder for future per-client / per-scenario config packs |
+| `README.md` | This file |
+
+Layout is intentionally not frozen. If multi-config support needs a different
+tree (profiles, clients, ports, env files), change the role defaults and
+re-apply — do not treat this first scaffold as sacred.
+
+## Upstream defaults (not managed yet)
+
+- Broker port: `{{ multiagents_broker_port }}`
+- Default DB: `{{ multiagents_upstream_db_default }}`
+- Upstream: https://github.com/zetbrush/multiagents
+
+## Out of scope for this pass
+
+- `multiagents setup`
+- Broker start/stop
+- MCP config writes into Codex / Cursor / Claude / Gemini
+- Scenario profiles

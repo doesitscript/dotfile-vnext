@@ -38,6 +38,10 @@ needs a real thread/turn control surface. Phase 1 should use the smallest
 app-server-backed shape that can prove the handoff loop without pretending the
 full production-facing scenario pack already exists.
 
+For this first pass, that app-server target is the user's local Mac laptop.
+The implementing agent should treat the laptop that is running the operator
+entrypoint as the app-server host for the validation harness.
+
 ## First-pass scope
 
 ### In scope
@@ -80,6 +84,8 @@ in:
 
 At minimum, the implementing agent must define and validate:
 
+- that the Codex app-server is installed and run on the local Mac laptop for
+  the first-pass harness
 - how app-server is started for the validation harness
 - which transport is used for the first pass
 - the `initialize` then `initialized` handshake
@@ -236,6 +242,7 @@ to orchestrate before the project invests in more runtime wiring.
 | Roles | Exactly one implementer and one evaluator |
 | Work item | One intentionally simple scoped task with repeatable review boundaries |
 | Transport | Minimal but real Codex app-server-backed thread/turn transport |
+| App-server host | The user's local Mac laptop acting as the operator workstation |
 | Smoke target | 2 to 4 consecutive role-to-role handoffs |
 | Stability target | 10 consecutive role-to-role handoffs |
 | Acceptance target | 20 consecutive role-to-role handoffs |
