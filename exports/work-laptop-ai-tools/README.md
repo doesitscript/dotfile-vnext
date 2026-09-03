@@ -128,6 +128,12 @@ Branch policy: stay on `master` (this sibling) / `main` (`dotfile-vnext`). Do
 not create feature branches for normal fix → sync → pull loops unless a
 special reason is called out.
 
+**Stale-checkout detector:** if Ansible fails on task
+`Ensure Python tooling dependencies are installed on macOS`, you are **not**
+on current `master` yet (that task was removed in commit `745ecce`). Current
+bootstrap prints `Packet revision OK: python_mac_revision=openssl-skip-v2`
+before Ansible runs.
+
 1. Pull the latest sibling checkout (stay on `master`):
 
 ```bash

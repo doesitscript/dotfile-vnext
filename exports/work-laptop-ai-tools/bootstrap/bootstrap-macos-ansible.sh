@@ -362,23 +362,36 @@ configure_homebrew_tap_trust_compat() {
 
 require_current_python_brew_tasks() {
   local python_mac_tasks="${PACKET_ROOT}/roles/python/tasks/mac.yml"
+  local revision_file="${PACKET_ROOT}/${PACKET_REVISION_RELATIVE}"
   local head_sha=""
+  local revision_value=""
 
   [ -f "${python_mac_tasks}" ] || fail "Missing ${python_mac_tasks}"
+  [ -f "${revision_file}" ] || fail "Missing ${revision_file}. Run git pull on master (need commit >= 745ecce)."
+
+  revision_value="$(grep -E '^python_mac_revision=' "${revision_file}" | head -1 | cut -d= -f2- | tr -d '[:space:]')"
+  if [ "${revision_value}" != "${PACKET_PYTHON_MAC_REVISION}" ]; then
+    fail "Stale ${revision_file}: got python_mac_revision=${revision_value:-<missing>}, need ${PACKET_PYTHON_MAC_REVISION}. Run: git fetch origin && git pull --ff-only origin master"
+  fi
+  log "Packet revision OK: python_mac_revision=${revision_value}"
 
   if [ -d "${PACKET_ROOT}/.git" ] && command -v git >/dev/null 2>&1; then
     head_sha="$(git -C "${PACKET_ROOT}" rev-parse --short HEAD 2>/dev/null || true)"
     if [ -n "${head_sha}" ]; then
-      log "Packet git HEAD: ${head_sha}"
+      log "Packet git HEAD: ${head_sha} (need >= 745ecce for OpenSSL-skip fix)"
     fi
   fi
 
   if grep -Fq 'Ensure Python tooling dependencies are installed on macOS' "${python_mac_tasks}"; then
-    fail "Stale python brew installer detected in ${python_mac_tasks}. That old community.general.homebrew openssl task must not run. On master run: git fetch origin && git status && git pull && re-run bootstrap. Expected task: 'Report existing OpenSSL instead of reinstalling'."
+    fail "Stale python brew installer still on disk in ${python_mac_tasks}. Run: git fetch origin && git restore --source=origin/master -- roles/python/tasks/mac.yml roles/python/defaults/main.yml bootstrap/bootstrap-macos-ansible.sh .packet-revision && git pull --ff-only origin master"
+  fi
+
+  if ! grep -Fq "PACKET_PYTHON_MAC_REVISION=${PACKET_PYTHON_MAC_REVISION}" "${python_mac_tasks}"; then
+    fail "python mac tasks missing revision marker ${PACKET_PYTHON_MAC_REVISION}. Run git pull on master."
   fi
 
   if ! grep -Fq 'Report existing OpenSSL instead of reinstalling' "${python_mac_tasks}"; then
-    fail "Packet checkout is missing the OpenSSL-skip python tasks in ${python_mac_tasks}. Run: git fetch origin && git pull (on master) and re-run bootstrap."
+    fail "Packet checkout is missing the OpenSSL-skip python tasks. Run git pull on master."
   fi
 
   log "Python brew task preflight OK (OpenSSL install/upgrade skipped by design)."
