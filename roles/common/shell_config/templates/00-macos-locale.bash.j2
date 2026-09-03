@@ -1,0 +1,28 @@
+# Managed by Ansible role common/shell_config.
+# Homebrew Bash rejects invalid inherited locales such as C.UTF-8 / bare UTF-8
+# (Apple Terminal style). Normalize early for interactive login shells.
+# Agent/Codex non-interactive shells still need pre-bash env policy
+# (~/.codex shell_environment_policy / Cursor terminal.integrated.env.osx).
+
+if [[ "$(uname -s 2>/dev/null)" != "Darwin" ]]; then
+  return 0 2>/dev/null || exit 0
+fi
+
+_macos_locale_invalid() {
+  case "${1:-}" in
+    C.UTF-8|UTF-8|utf-8|"") return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+if _macos_locale_invalid "${LC_ALL:-}"; then
+  export LC_ALL="en_US.UTF-8"
+fi
+if _macos_locale_invalid "${LANG:-}"; then
+  export LANG="en_US.UTF-8"
+fi
+if _macos_locale_invalid "${LC_CTYPE:-}"; then
+  export LC_CTYPE="en_US.UTF-8"
+fi
+
+unset -f _macos_locale_invalid

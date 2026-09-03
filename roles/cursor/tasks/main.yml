@@ -40,6 +40,16 @@
     and (ansible_facts['system'] | default('')) not in ['Windows', 'Win32NT']
   tags: [cursor, cursor_settings]
 
+- name: Ensure Cursor macOS terminal locale env for Homebrew Bash
+  ansible.builtin.include_tasks:
+    file: macos_locale_env.yml
+    apply:
+      tags: [cursor, cursor_settings, locale]
+  when: >
+    cursor_settings_enabled | default(true) | bool
+    and (ansible_facts['system'] | default('')) == 'Darwin'
+  tags: [cursor, cursor_settings, locale]
+
 - name: Deploy AI agent profile contract for Cursor and Codex
   ansible.builtin.include_tasks:
     file: ai_agent_profiles.yml

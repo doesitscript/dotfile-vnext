@@ -7,7 +7,9 @@ Manages bash startup using a modular `.bashrc.d` pattern. This role:
 3. Ensures `~/.bash_profile` sources `~/.bashrc` (so login shells get the same config)
 4. Ensures `.bashrc` sources all `~/.bashrc.d/*.bash` files
 5. Deploys `path.bash` and `aliases.bash` into `.bashrc.d/`
-6. Keeps shell startup modular and predictable across macOS and Linux
+6. On Darwin, deploys `00-macos-locale.bash` so interactive shells normalize
+   invalid inherited `C.UTF-8` / bare `UTF-8` values to `en_US.UTF-8`
+7. Keeps shell startup modular and predictable across macOS and Linux
 
 ## Pattern (build order)
 

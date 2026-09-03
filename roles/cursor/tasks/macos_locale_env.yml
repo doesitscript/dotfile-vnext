@@ -1,0 +1,69 @@
+---
+# Ensure Cursor integrated-terminal env on macOS uses a locale Homebrew Bash
+# accepts. Existing terminal.integrated.env.osx keys are preserved; only the
+# three locale keys are force-converged.
+
+- name: Ensure Cursor macOS terminal locale env keys
+  when:
+    - cursor_settings_enabled | bool
+    - ansible_facts['system'] == 'Darwin'
+  tags:
+    - cursor
+    - cursor_settings
+    - locale
+  block:
+    - name: Stat Cursor settings.json for locale merge
+      ansible.builtin.stat:
+        path: "{{ cursor_settings_path }}"
+      register: cursor_locale_settings_stat
+
+    - name: Ensure Cursor settings.json parent directory exists for locale merge
+      ansible.builtin.file:
+        path: "{{ cursor_settings_path | dirname }}"
+        state: directory
+        mode: "0755"
+      when: not cursor_locale_settings_stat.stat.exists
+
+    - name: Merge macOS locale keys into Cursor terminal.integrated.env.osx
+      ansible.builtin.shell: |
+        python3 << 'PYEOF'
+        import json
+        import os
+        from pathlib import Path
+
+        path = Path(os.environ["CURSOR_SETTINGS_PATH"])
+        desired = {
+            "LANG": "en_US.UTF-8",
+            "LC_ALL": "en_US.UTF-8",
+            "LC_CTYPE": "en_US.UTF-8",
+        }
+
+        if path.exists():
+            data = json.loads(path.read_text(encoding="utf-8"))
+        else:
+            data = {}
+
+        env = data.get("terminal.integrated.env.osx")
+        if not isinstance(env, dict):
+            env = {}
+
+        changed = False
+        for key, value in desired.items():
+            if env.get(key) != value:
+                env[key] = value
+                changed = True
+
+        data["terminal.integrated.env.osx"] = env
+        new_text = json.dumps(data, indent=4, sort_keys=False) + "\n"
+        old_text = path.read_text(encoding="utf-8") if path.exists() else ""
+        if new_text != old_text:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(new_text, encoding="utf-8")
+            changed = True
+
+        print("changed=" + ("true" if changed else "false"))
+        PYEOF
+      environment:
+        CURSOR_SETTINGS_PATH: "{{ cursor_settings_path }}"
+      register: cursor_locale_merge
+      changed_when: "'changed=true' in cursor_locale_merge.stdout"

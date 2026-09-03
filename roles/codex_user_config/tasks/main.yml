@@ -48,6 +48,26 @@
     - codex_user_config_stat.stat.exists | default(false)
     - not (codex_user_config_force | bool)
 
+- name: Ensure macOS Codex shell locale policy in user config
+  ansible.builtin.blockinfile:
+    path: "{{ codex_user_config_path }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: macos_shell_locale"
+    create: true
+    mode: "0644"
+    block: "{{ lookup('template', 'macos_shell_locale.toml.j2') }}"
+  when:
+    - codex_user_config_state == "present"
+    - codex_user_config_macos_locale_normalize | bool
+
+- name: Remove macOS Codex shell locale policy from user config
+  ansible.builtin.blockinfile:
+    path: "{{ codex_user_config_path }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: macos_shell_locale"
+    state: absent
+  when:
+    - codex_user_config_state == "present"
+    - not (codex_user_config_macos_locale_normalize | bool)
+
 - name: Remove Codex user config
   ansible.builtin.file:
     path: "{{ codex_user_config_path }}"

@@ -5,6 +5,10 @@ codex_user_config_home: "{{ ansible_env.HOME }}/.codex"
 codex_user_config_path: "{{ codex_user_config_home }}/config.toml"
 codex_user_config_backup_suffix: ".pre-ansible.bak"
 
+# macOS Homebrew Bash rejects C.UTF-8 / bare UTF-8. Keep a managed
+# shell_environment_policy block even when the baseline file is preserved.
+codex_user_config_macos_locale_normalize: "{{ ansible_facts['system'] | default('') == 'Darwin' }}"
+
 codex_user_config_model: "gpt-5.4"
 codex_user_config_model_reasoning_effort: "high"
 codex_user_config_approval_policy: "never"

@@ -42,16 +42,20 @@ bin/codex-env ansible-playbook playbooks/access_windows.yaml -i inventory/invent
 
 `bin/codex-env`:
 
-1. changes to the repo root
-2. on macOS, normalizes invalid inherited `C.UTF-8` locale values to `en_US.UTF-8`
-3. sources `.envrc` when present
-4. sources `bin/load-netbox-controller-env.sh` when present
-5. activates `.venv/bin/activate` when present
-6. for `ansible*` commands on macOS, defaults controller temp paths under
+1. is interpreted by macOS system `/bin/bash` (not Homebrew Bash), so the
+   wrapper itself does not emit setlocale warnings when parents inject
+   `C.UTF-8` / bare `UTF-8`
+2. changes to the repo root
+3. on macOS, normalizes invalid inherited `C.UTF-8` / `UTF-8` locale values to
+   `en_US.UTF-8`
+4. sources `.envrc` when present
+5. sources `bin/load-netbox-controller-env.sh` when present
+6. activates `.venv/bin/activate` when present
+7. for `ansible*` commands on macOS, defaults controller temp paths under
    `/private/tmp`
-7. for `ansible*` commands on macOS, drops inherited controller-only
+8. for `ansible*` commands on macOS, drops inherited controller-only
    `ANSIBLE_REMOTE_TEMP` values such as `/private/tmp/...` or `/var/folders/...`
-8. `exec`s the requested command
+9. `exec`s the requested command
 
 This makes the environment explicit instead of depending on shell startup mode.
 
@@ -103,7 +107,16 @@ bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file o
 ```
 
 `bin/codex-env` normalizes those inherited values to `en_US.UTF-8` on macOS so
-repo commands run without that warning.
+repo commands run without that warning. It also normalizes bare `UTF-8` /
+`utf-8` values (Apple Terminal style) that Homebrew Bash rejects when set as
+`LC_ALL`.
+
+Complementary owner surfaces:
+
+- project `.codex/config.toml` and user `~/.codex/config.toml`
+  `shell_environment_policy.set` (role `codex_user_config`)
+- Cursor `terminal.integrated.env.osx` locale keys (role `cursor`)
+- interactive `~/.bashrc.d/00-macos-locale.bash` (role `common/shell_config`)
 
 ## Ansible Temp Path Note
 

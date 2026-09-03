@@ -8,6 +8,9 @@ into Cursor's settings.json.
 
 ### All Hosts (macOS, Ubuntu, Windows)
 - **Merges LF + UTF-8 settings** into `settings.json` — prevents BOM and CRLF contamination in all files edited with Cursor (see [Settings](#settings) below)
+- **On macOS, converges** `terminal.integrated.env.osx` locale keys to
+  `en_US.UTF-8` so Homebrew Bash does not warn on inherited `C.UTF-8` / bare
+  `UTF-8` values
 - **Installs Cursor extensions** via CLI
 - **Renders project AI agent/profile contracts** for Cursor and Codex-compatible clients from `inventory/group_vars/all/ai_agent_profiles.yml`
 - **Renders a project contract for required Cursor marketplace plugins** and verifies their installed manifests on macOS

@@ -1,4 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash
+# Use macOS system bash for this wrapper's own interpreter. Homebrew Bash
+# (/usr/local/bin/bash) warns on inherited C.UTF-8/UTF-8 at process start,
+# before this script body can normalize. System /bin/bash does not.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,18 +12,24 @@ if [ "$#" -eq 0 ]; then
   exit 2
 fi
 
-# Some parent runtimes inject C.UTF-8, but macOS may not have that locale
-# available. Normalize early so child shells do not emit setlocale warnings.
+# Some parent runtimes inject C.UTF-8 or bare UTF-8, but macOS/Homebrew Bash
+# may not have those locales. Normalize early so child shells do not emit
+# setlocale warnings.
 if [ "$(uname -s)" = "Darwin" ]; then
-  if [ "${LANG:-}" = "C.UTF-8" ]; then
-    export LANG="en_US.UTF-8"
-  fi
-  if [ "${LC_CTYPE:-}" = "C.UTF-8" ]; then
-    export LC_CTYPE="en_US.UTF-8"
-  fi
-  if [ "${LC_ALL:-}" = "C.UTF-8" ]; then
-    export LC_ALL="en_US.UTF-8"
-  fi
+  _codex_env_normalize_locale() {
+    local var_name="$1"
+    local current
+    eval "current=\${${var_name}:-}"
+    case "${current}" in
+      C.UTF-8|UTF-8|utf-8)
+        export "${var_name}=en_US.UTF-8"
+        ;;
+    esac
+  }
+  _codex_env_normalize_locale LANG
+  _codex_env_normalize_locale LC_ALL
+  _codex_env_normalize_locale LC_CTYPE
+  unset -f _codex_env_normalize_locale
 fi
 
 cd "${REPO_ROOT}"

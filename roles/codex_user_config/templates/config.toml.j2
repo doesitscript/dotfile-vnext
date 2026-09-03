@@ -4,6 +4,17 @@ approval_policy = {{ codex_user_config_approval_policy | to_json }}
 memories = {{ codex_user_config_memories | ternary('"true"', '"false"') }}
 shell_snapshot = {{ codex_user_config_shell_snapshot | ternary('"true"', '"false"') }}
 
+{% if codex_user_config_macos_locale_normalize | bool %}
+# BEGIN ANSIBLE MANAGED BLOCK: macos_shell_locale
+[shell_environment_policy]
+
+[shell_environment_policy.set]
+LANG = "en_US.UTF-8"
+LC_ALL = "en_US.UTF-8"
+LC_CTYPE = "en_US.UTF-8"
+# END ANSIBLE MANAGED BLOCK: macos_shell_locale
+{% endif %}
+
 [features]
 memories = {{ codex_user_config_memories | to_json }}
 

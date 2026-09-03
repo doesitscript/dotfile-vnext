@@ -38,17 +38,30 @@
 - name: Normalize existing settings JSON for merge
   ansible.builtin.shell: |
     python3 << 'PYEOF'
-    import re, os
-    path = os.environ.get('CURSOR_SETTINGS_PATH', '')
-    raw = open(path).read()
-    s = re.sub(r'//[^\n]*', '', raw)
-    s = re.sub(r'/\*.*?\*/', '', s, flags=re.DOTALL)
+    import json
+    import os
+    import re
+
+    path = os.environ.get("CURSOR_SETTINGS_PATH", "")
+    raw = open(path, encoding="utf-8").read()
+    try:
+        json.loads(raw)
+        print(raw)
+        raise SystemExit(0)
+    except json.JSONDecodeError:
+        pass
+
+    # JSONC fallback. Do not use naive /* */ stripping: globs like
+    # "**/.git/objects/**" contain "/**" and would be corrupted.
+    s = re.sub(r"(?m)^\s*//.*?$", "", raw)
+    s = re.sub(r"(?m)\s+//.*?$", "", s)
     while True:
-        n = re.sub(r',\s*}', '}', s)
-        n = re.sub(r',\s*]', ']', n)
+        n = re.sub(r",\s*}", "}", s)
+        n = re.sub(r",\s*]", "]", n)
         if n == s:
             break
         s = n
+    json.loads(s)  # raise if still invalid
     print(s)
     PYEOF
   environment:

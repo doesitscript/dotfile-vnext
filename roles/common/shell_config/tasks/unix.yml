@@ -79,6 +79,19 @@
     dest: "{{ ansible_env.HOME }}/.bashrc.d/path.bash"
     mode: "0644"
 
+- name: Deploy macOS locale normalization for Homebrew Bash
+  ansible.builtin.template:
+    src: 00-macos-locale.bash.j2
+    dest: "{{ ansible_env.HOME }}/.bashrc.d/00-macos-locale.bash"
+    mode: "0644"
+  when: ansible_facts['system'] == 'Darwin'
+
+- name: Remove macOS locale drop-in on non-Darwin hosts
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.bashrc.d/00-macos-locale.bash"
+    state: absent
+  when: ansible_facts['system'] != 'Darwin'
+
 - name: Deploy common aliases
   ansible.builtin.template:
     src: aliases.bash.j2

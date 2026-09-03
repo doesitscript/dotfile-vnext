@@ -94,6 +94,7 @@ machine-readable ownership.
 | `openaiDeveloperDocs` | `~/.codex/config.toml` + project block (machine + project) | `~/.codex/AGENTS.md` managed block (machine) | `roles/mcp_servers/openai_docs` | habit block pending Ansible slice |
 | `ansible` / `ansible-mcp` MCP checkpoints | project `.codex/config.toml`, `.cursor/mcp.json` (project) | `AGENTS.md` Researcher checkpoints, `framework-mcp-and-tool-usage.mdc` (project) | repo rules layer | active |
 | Research collection stack (context7, firecrawl, playwright, fetch) | project config blocks (project) | `framework-mcp-and-tool-usage.mdc` router anchor + `mcp-research-collection-stack.md` (project) | `mcp-research-collection-stack` packet | active |
+| `morph-mcp` (WarpGrep — **under evaluation**) | machine `~/.cursor/mcp.json` (**default** `cursor_user` → `user-morph-mcp`); project `.cursor/mcp.json` via opt-in target `cursor` (Cursor project-MCP allowlist + restart; Customize UI may omit Project); project `.codex/config.toml` + machine `~/.codex/config.toml`; Continue `mcpServers`; VS Code `.vscode/mcp.json` | `AGENTS.md` + Codex agent toml + `.cursor/rules/morph-warpgrep-evaluation.mdc` + `framework-mcp-and-tool-usage.mdc` + Continue rules + `.github/copilot-instructions.md` | `roles/mcp_servers/morph` | active — evaluation; default user Cursor; see findings receipt |
 | `netbox` | project config blocks (project) | `netbox-knowledge-gate.mdc` (project) | netbox gate rules | active |
 
 When a new knowledge-shaped server is added, add its row here in the same
