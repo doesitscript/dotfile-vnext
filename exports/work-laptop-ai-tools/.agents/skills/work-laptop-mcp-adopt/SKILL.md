@@ -54,8 +54,9 @@ Do not use when:
    `when: <flag> | default('absent') == 'present'`.
 4. In `host_vars/work-laptop.yaml`:
    - set `*_state: absent` (or packet gate flag `absent`)
-   - set targets only from `*_supported_targets` (often `[vscode, codex]` or `[codex]`)
-   - override vscode/codex paths to user home via `work_laptop_mcp_*` helpers
+   - set targets to `[codex]` for this slice (Continue is separate; do not use
+     `vscode` unless the user explicitly wants VS Code native MCP)
+   - override codex path to user home via `work_laptop_mcp_codex_config_path`
    - override env dir to `~/.config/work-laptop-ai-tools/mcp/env.d/`
    - override wrapper + `*_vault_file_path` to packet `bin/` + `vault/shared.vault.yml`
 5. Do **not** append `continue_ide_mcp_servers` / `zed_ide_context_servers` unless asked.

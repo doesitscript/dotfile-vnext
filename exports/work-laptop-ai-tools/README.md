@@ -38,10 +38,12 @@ the sibling git root after sync — not everywhere in `dotfile-vnext`.
 
 **MCP catalog vs commission:** parent MCP role logic is included so the laptop
 can adopt servers later. Optional servers stay `*_state: absent` (or playbook
-`when:` for legacy roles). Continue/Zed lists are not auto-updated. Client
-paths are remapped to user home (`~/.vscode/mcp.json`, `~/.codex/config.toml`)
-and secrets use packet `vault/` + `~/.config/work-laptop-ai-tools/mcp/env.d/`
-(never keys in tracked mcp.json). Living docs: HRL
+`when:` for legacy roles). Continue lists are not auto-updated from role
+targets. Codex CLI + Codex VS Code extension share `~/.codex/config.toml`
+(`*_targets: [codex]`). Do **not** wire VS Code native `~/.vscode/mcp.json`
+on this slice. Secrets use packet `vault/` +
+`~/.config/work-laptop-ai-tools/mcp/env.d/` (never keys in tracked client
+config). Living docs: HRL
 `implementation-guides/mcp/work-laptop-ai-tools-mcp-slice.md` and
 `porting-mcp-servers-between-projects.md`; skills invoke those and carry a
 condensed offline checklist.
@@ -104,11 +106,11 @@ Current scope:
 - baseline `~/.codex/config.toml` creation for Codex CLI on the work laptop
 - Codex local profile/config export for the current homelab model lanes
 - `/private/etc/hosts` entries for current homelab names
-- VS Code install + `Continue.continue`, `openai.chatgpt` (Codex),
+- VS Code install + `Continue.continue`, `openai.chatgpt` (Codex extension),
   `redhat.ansible`, `redhat.vscode-yaml`, and `hashicorp.terraform`
-- VS Code `~/.vscode/mcp.json` plus Codex CLI / Codex extension
-  `~/.codex/config.toml` for HashiCorp Terraform MCP, AWS MCP, AWS IaC MCP,
-  Context7, Firebase, and Morph WarpGrep (`morph-mcp`)
+- Codex CLI + Codex VS Code extension: MCP entries in `~/.codex/config.toml`
+  for HashiCorp Terraform MCP, AWS MCP, AWS IaC MCP, Context7, Firebase, and
+  Morph WarpGrep (`morph-mcp`) — **not** VS Code native `~/.vscode/mcp.json`
 - `~/.continue/config.yaml` with the existing LiteLLM chat/edit lanes plus
   those same MCP servers (Continue WarpGrep uses `WORKSPACE_MODE` + env wrapper)
 - Zed configuration only (`zed_ide_install_cask: false`) — deploys

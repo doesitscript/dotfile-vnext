@@ -27,7 +27,9 @@ unless the user explicitly asks.
 | `work-laptop-mcp-collect` | Collect / inventory an MCP role from the parent project into the packet design set |
 | `work-laptop-mcp-adopt` | Wire a collected MCP into packet playbook/host_vars/manifest with HRL remaps; default `absent` |
 | `work-laptop-mcp-commission` | User asked to **enable** MCP for VS Code / Codex / Continue (flip present, Continue lists, vault gates) |
-| `work-laptop-vault` | Packet vault layout, key names, optional parent→packet key transfer prep (no live secrets in git) |
+| `work-laptop-vault` | Packet vault router: init / hydrate / status via `scripts/work_laptop_vault.py` |
+| `work-laptop-vault-hydrate` | Copy parent vault values with `hydrate_vault_from_parent.py` (no values in chat) |
+| `work-laptop-vault-status` | Names-only ciphertext + nonempty key check via `vault_status.py` |
 | `work-laptop-packet-ops` | Validate export contract, sync sibling, smoke; delegates heavy scripts to parent `work-laptop-export-pack` |
 
 Discovery path: `.agents/skills/<name>/SKILL.md` (Cursor + Codex). Skills are
@@ -50,4 +52,7 @@ Physical skill location does not sandbox those paths.
   (`work-laptop-mcp-commission`).
 - Do not append Continue/Zed MCP lists unless asked.
 - Never commit live vault secrets; ship example + README only.
-- Prefer user-home VS Code/Codex paths on this slice, not project-root mcp.json.
+- Prefer user-home Codex config (`~/.codex/config.toml`) and Continue
+  (`continue_ide_mcp_servers`). Do **not** commission VS Code native
+  `~/.vscode/mcp.json` on this slice unless explicitly asked.
+

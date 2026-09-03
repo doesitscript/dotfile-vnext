@@ -11,21 +11,26 @@ This packet is **vault-ready** but does **not** ship live secrets.
 | `vault/key-hydrate-map.yml` | Key **names** + parent source files (no values) |
 | `vault/shared.vault.yml` | Operator-local Ansible Vault file (gitignored) |
 
-## Hydrate from parent (this controller)
+## Scripts (slice skills must use these)
 
-Creates an empty encrypted packet vault, then copies matching parent values
-without printing them. Uses parent `.vault_pass` (same password for the
-packet ciphertext).
-
-From `dotfile-vnext`:
+Operator CLI (preferred):
 
 ```bash
-bin/codex-env python \
-  exports/work-laptop-ai-tools/scripts/hydrate_vault_from_parent.py \
-  --also-sibling
+bin/codex-env python exports/work-laptop-ai-tools/scripts/work_laptop_vault.py hydrate --also-sibling
+bin/codex-env python exports/work-laptop-ai-tools/scripts/work_laptop_vault.py status
+bin/codex-env python exports/work-laptop-ai-tools/scripts/work_laptop_vault.py init-empty
 ```
 
-Stdout is names and status only (`COPIED` / `EMPTY_IN_PARENT` / `ABSENT_IN_PARENT`).
+| Script | Role |
+| --- | --- |
+| `scripts/work_laptop_vault.py` | Subcommands; calls the scripts below |
+| `scripts/hydrate_vault_from_parent.py` | Init empty ciphertext + copy parent values |
+| `scripts/vault_status.py` | Names-only nonempty/empty/missing |
+| `scripts/vault_paths.py` | Parent vs packet path discovery |
+
+Skills: `work-laptop-vault`, `work-laptop-vault-hydrate`, `work-laptop-vault-status`.
+
+Stdout is names and status only. Do not `ansible-vault view`.
 
 On the work laptop, decrypt with that same vault password:
 

@@ -1,6 +1,6 @@
 ---
 name: work-laptop-mcp-commission
-description: "Use when the user explicitly asks to enable/deploy MCP servers on the work-laptop-ai-tools packet (flip *_state to present, Continue/VS Code/Codex wiring, vault gates, WarpGrep). Do not use for first-time catalog include (use work-laptop-mcp-adopt) or live apply on the laptop (user runs the sibling playbook)."
+description: "Use when the user explicitly asks to enable/deploy MCP servers on the work-laptop-ai-tools packet (flip *_state to present, Continue + Codex CLI/extension wiring, vault gates, WarpGrep). Do not target VS Code native mcp.json. Do not use for first-time catalog include (use work-laptop-mcp-adopt) or live apply on the laptop (user runs the sibling playbook)."
 ---
 
 # Skill: Work-laptop MCP commission
@@ -8,13 +8,23 @@ description: "Use when the user explicitly asks to enable/deploy MCP servers on 
 Turn an **already adopted** MCP role from catalog (`absent`) into a
 commissioned deployable server for this slice.
 
+## Client targets for this slice (hard rule)
+
+| Client | How MCP is wired | In `*_targets`? |
+| --- | --- | --- |
+| Continue extension (in VS Code) | `continue_ide_mcp_servers` → `~/.continue/config.yaml` | **no** — separate list |
+| Codex CLI | `*_targets: [codex]` → `~/.codex/config.toml` | **yes** |
+| Codex VS Code extension (`openai.chatgpt`) | same `~/.codex/config.toml` | **yes** (same as CLI) |
+| VS Code native MCP | `~/.vscode/mcp.json` | **never** on this slice |
+
 ## When to use / not use
 
-Use when the user names clients (VS Code, Codex CLI, Codex extension,
-Continue) and wants servers **on** for the next laptop playbook run.
+Use when the user wants servers **on** for Continue and/or Codex CLI/extension.
 
 Do not use to invent a new role (collect + adopt first).
 Do not `--apply` on the work laptop from this skill.
+Do not add `vscode` to `*_targets` unless the user explicitly asks for VS Code
+native MCP (default: no).
 
 ## Inputs
 
@@ -27,28 +37,26 @@ Do not `--apply` on the work laptop from this skill.
 
 1. Confirm the role is on `export-manifest.yml` and in `playbook.yaml`.
 2. Set `*_state: present` (and `ripgrep_cli_state: present` for Morph).
-3. Keep user-home vscode/codex path overrides.
+3. Set `*_targets: [codex]` and `*_codex_config_path` → `~/.codex/config.toml`
+   (covers Codex CLI **and** Codex VS Code extension).
 4. **Continue:** append `continue_ide_mcp_servers`. Role `*_targets` do not
-   update Continue. VS Code GUI PATH often lacks nvm — use
-   `bin/work-laptop-nvm-exec` (and Morph env wrapper + `WORKSPACE_MODE`).
-5. **Codex CLI + Codex VS Code extension:** `*_targets` must include `codex`
-   and `*_codex_config_path` must be `~/.codex/config.toml` (or dual-write
-   `*_configure_codex_user`).
-6. **VS Code built-in MCP / Continue extension:** `vscode` in targets →
-   `~/.vscode/mcp.json`; Continue list as in step 4. Add `openai.chatgpt` to
-   `vscode_extensions` when commissioning Codex-in-VS-Code.
-7. **Secrets:** Morph requires `vault_shared_morph_api_key` (not REPLACE_ME).
+   update Continue. GUI PATH often lacks nvm — use `bin/work-laptop-nvm-exec`
+   (and Morph env wrapper + `WORKSPACE_MODE`).
+5. Keep `Continue.continue` and `openai.chatgpt` in `vscode_extensions` when
+   those products are in scope (extensions host Continue/Codex; they are not
+   VS Code native MCP).
+6. **Secrets:** Morph requires `vault_shared_morph_api_key` (not REPLACE_ME).
    Context7/Firebase may install without vault. Hand off `work-laptop-vault`.
-8. **Morph WarpGrep:** enable continue rule at
+7. **Morph WarpGrep:** Continue rule at
    `~/.continue/rules/morph-warpgrep-evaluation.md`; do not also list that
-   file in `continue_ide_rules`. Disable Cursor/Copilot project routing on
-   this slice unless asked.
-9. Update packet README + HRL slice commissioned table.
-10. `work-laptop-packet-ops` validate + sync sibling.
+   file in `continue_ide_rules`.
+8. Update packet README + HRL slice commissioned table.
+9. `work-laptop-packet-ops` validate + sync sibling.
 
 ## Validation
 
 - Commissioned `*_state: present`
+- `vscode` not in commissioned `*_targets`
 - Continue entries exist for asked servers
 - Morph vault gate documented
 - Sibling synced
@@ -56,5 +64,6 @@ Do not `--apply` on the work laptop from this skill.
 ## Prohibited behavior
 
 - Enabling servers the user did not name
-- Embedding API keys in mcp.json / Continue config
+- Writing `~/.vscode/mcp.json` for this slice by default
+- Embedding API keys in Continue config / Codex TOML
 - Treating sibling as design authority

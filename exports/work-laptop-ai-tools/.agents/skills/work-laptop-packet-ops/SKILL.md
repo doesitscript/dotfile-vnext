@@ -21,6 +21,7 @@ Do not use when:
 
 - designing MCP remaps (use `work-laptop-mcp-adopt`)
 - parent-wide skill bridging (`project-skill-runtime-bridge`)
+- vault hydrate/status (use `work-laptop-vault-hydrate` / `work-laptop-vault-status`)
 
 ## Why this stays thin (move evaluation)
 

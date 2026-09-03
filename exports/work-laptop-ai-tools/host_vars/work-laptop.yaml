@@ -135,64 +135,55 @@ terraform_cli_state: present
 
 terraform_mcp_state: present
 terraform_mcp_targets:
-  - vscode
   - codex
-terraform_mcp_vscode_config_path: "{{ ansible_env.HOME }}/.vscode/mcp.json"
 terraform_mcp_codex_config_path: "{{ ansible_env.HOME }}/.codex/config.toml"
 
 aws_mcp_state: present
 aws_mcp_targets:
-  - vscode
   - codex
-aws_mcp_vscode_config_path: "{{ ansible_env.HOME }}/.vscode/mcp.json"
 aws_mcp_codex_config_path: "{{ ansible_env.HOME }}/.codex/config.toml"
 
 aws_iac_mcp_state: present
 aws_iac_mcp_targets:
-  - vscode
   - codex
-aws_iac_mcp_vscode_config_path: "{{ ansible_env.HOME }}/.vscode/mcp.json"
 aws_iac_mcp_codex_config_path: "{{ ansible_env.HOME }}/.codex/config.toml"
 aws_iac_mcp_aws_region: "us-east-1"
 
 # ---------------------------------------------------------------------------
-# MCP catalog. Commissioned for VS Code (~/.vscode/mcp.json), Codex CLI +
-# Codex VS Code extension (~/.codex/config.toml), and Continue
-# (continue_ide_mcp_servers). Remaining catalog entries stay absent.
+# MCP catalog. Commissioned clients for this slice (NOT VS Code native MCP):
+#   - Continue extension (~/.continue/config.yaml via continue_ide_mcp_servers)
+#   - Codex CLI + Codex VS Code extension (~/.codex/config.toml via *_targets: [codex])
+# Remaining catalog entries stay absent. Do not add vscode to *_targets.
 # ---------------------------------------------------------------------------
 work_laptop_mcp_env_dir: "{{ ansible_env.HOME }}/.config/work-laptop-ai-tools/mcp/env.d"
 work_laptop_mcp_vault_file: "{{ playbook_dir }}/vault/shared.vault.yml"
-work_laptop_mcp_vscode_config_path: "{{ ansible_env.HOME }}/.vscode/mcp.json"
 work_laptop_mcp_codex_config_path: "{{ ansible_env.HOME }}/.codex/config.toml"
 work_laptop_nvm_exec: "{{ playbook_dir }}/bin/work-laptop-nvm-exec"
 
 ripgrep_cli_state: present
 
 context7_mcp_state: present
-context7_mcp_targets: [vscode, codex]
-context7_mcp_vscode_config_path: "{{ work_laptop_mcp_vscode_config_path }}"
+context7_mcp_targets: [codex]
 context7_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
 context7_mcp_env_file_path: "{{ work_laptop_mcp_env_dir }}/context7.env"
 context7_mcp_wrapper_path: "{{ playbook_dir }}/bin/mcp-server-env-wrapper"
 context7_mcp_vault_file_path: "{{ work_laptop_mcp_vault_file }}"
 
 firecrawl_mcp_state: absent
-firecrawl_mcp_targets: [vscode, codex]
-firecrawl_mcp_vscode_config_path: "{{ work_laptop_mcp_vscode_config_path }}"
+firecrawl_mcp_targets: [codex]
 firecrawl_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
 firecrawl_mcp_env_file_path: "{{ work_laptop_mcp_env_dir }}/firecrawl.env"
 firecrawl_mcp_wrapper_path: "{{ playbook_dir }}/bin/mcp-server-env-wrapper"
 firecrawl_mcp_vault_file_path: "{{ work_laptop_mcp_vault_file }}"
 
 morph_mcp_state: present
-morph_mcp_targets: [vscode, codex]
-morph_mcp_vscode_config_path: "{{ work_laptop_mcp_vscode_config_path }}"
+morph_mcp_targets: [codex]
 morph_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
 morph_mcp_env_file_path: "{{ work_laptop_mcp_env_dir }}/morph.env"
 morph_mcp_wrapper_path: "{{ playbook_dir }}/bin/mcp-server-env-wrapper"
 morph_mcp_vault_file_path: "{{ work_laptop_mcp_vault_file }}"
 # WarpGrep habit layer: Continue user rules + packet AGENTS.md. Skip Cursor /
-# Copilot project files on this slice (VS Code + Codex, not Cursor).
+# Copilot project files and VS Code native mcp.json on this slice.
 morph_mcp_continue_enabled: true
 morph_mcp_continue_rule_path: "{{ ansible_env.HOME }}/.continue/rules/morph-warpgrep-evaluation.md"
 morph_mcp_routing_enable_agents_md: true
@@ -203,18 +194,15 @@ morph_mcp_routing_enable_cursor_rule: false
 morph_mcp_routing_enable_copilot_instructions: false
 
 playwright_mcp_state: absent
-playwright_mcp_targets: [vscode, codex]
-playwright_mcp_vscode_config_path: "{{ work_laptop_mcp_vscode_config_path }}"
+playwright_mcp_targets: [codex]
 playwright_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
 
 fetch_mcp_state: absent
-fetch_mcp_targets: [vscode, codex]
-fetch_mcp_vscode_config_path: "{{ work_laptop_mcp_vscode_config_path }}"
+fetch_mcp_targets: [codex]
 fetch_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
 
 firebase_mcp_state: present
-firebase_mcp_targets: [vscode, codex]
-firebase_mcp_vscode_config_path: "{{ work_laptop_mcp_vscode_config_path }}"
+firebase_mcp_targets: [codex]
 firebase_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
 firebase_mcp_env_file_path: "{{ work_laptop_mcp_env_dir }}/firebase.env"
 firebase_mcp_wrapper_path: "{{ playbook_dir }}/bin/mcp-server-env-wrapper"
@@ -222,8 +210,7 @@ firebase_mcp_vault_file_path: "{{ work_laptop_mcp_vault_file }}"
 firebase_mcp_credentials_file_path: "{{ ansible_env.HOME }}/.config/work-laptop-ai-tools/mcp/credentials/firebase-service-account.json"
 
 drawio_mcp_state: absent
-drawio_mcp_targets: [vscode, codex]
-drawio_mcp_vscode_config_path: "{{ work_laptop_mcp_vscode_config_path }}"
+drawio_mcp_targets: [codex]
 drawio_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
 drawio_mcp_codex_wrapper_path: "{{ playbook_dir }}/bin/drawio-mcp-codex-stdio-wrapper.js"
 

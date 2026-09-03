@@ -18,6 +18,8 @@ from pathlib import Path
 
 import yaml
 
+from vault_paths import discover_parent_root
+
 STATUS_COPIED = "copied"
 STATUS_EMPTY_PARENT = "empty_in_parent"
 STATUS_MISSING_PARENT = "absent_in_parent"
@@ -60,7 +62,7 @@ def resolve_defaults(args: argparse.Namespace) -> None:
     args.parent_root = (
         Path(args.parent_root).expanduser().resolve()
         if args.parent_root
-        else packet_root.parent.parent
+        else discover_parent_root(packet_root)
     )
     args.map_file = (
         Path(args.map_file).expanduser().resolve()
