@@ -13,12 +13,36 @@
     state: present
   when: terraform_cli_state == "present"
 
+# brew uninstall terraform often leaves brew-prefix/bin/terraform behind.
+# Install then fails with: The `brew link` step did not complete successfully
+# even though the keg is present. Tolerate module failure, force-link, verify.
 - name: Manage Terraform CLI formula
   community.general.homebrew:
     name: "{{ terraform_cli_homebrew_formula }}"
     state: "{{ terraform_cli_state }}"
+  register: terraform_cli_homebrew_result
+  failed_when: >-
+    terraform_cli_state == "absent"
+    and (terraform_cli_homebrew_result.failed | default(false))
   when:
     - not ansible_check_mode or terraform_cli_homebrew_tap in terraform_cli_installed_taps.stdout_lines
+
+- name: Force-link Terraform after install (overwrite leftover bin)
+  ansible.builtin.command:
+    argv:
+      - brew
+      - link
+      - --overwrite
+      - "{{ terraform_cli_homebrew_formula }}"
+  register: terraform_cli_force_link
+  changed_when: >-
+    'Already linked' not in (terraform_cli_force_link.stdout | default(''))
+    and 'Warning: Already linked' not in (terraform_cli_force_link.stderr | default(''))
+  failed_when: terraform_cli_force_link.rc != 0
+  when:
+    - not ansible_check_mode
+    - terraform_cli_state == "present"
+    - not (terraform_cli_homebrew_result.skipped | default(false))
 
 - name: Report deferred Terraform formula preview
   ansible.builtin.debug:
