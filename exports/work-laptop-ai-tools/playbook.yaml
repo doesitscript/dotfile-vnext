@@ -7,6 +7,12 @@
   environment:
     HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
 
+  vars:
+    # Self-contained packet: resolve paths relative to the packet root and the
+    # running user's home directory instead of a dotfile-vnext checkout.
+    dotfiles_home: "{{ playbook_dir }}"
+    dotfiles_user_home: "{{ ansible_facts['env']['HOME'] | default(ansible_user_dir) }}"
+
   pre_tasks:
     - name: Require explicit export mode
       ansible.builtin.assert:
