@@ -11,10 +11,28 @@
     state: directory
     mode: "0755"
 
+# community.general.homebrew often returns FAILED with only bottle-download
+# stdout when brew exits non-zero for link / unrelated dependent upgrades.
+# Tolerate module failure, force-link, then require a working go binary.
 - name: Ensure Homebrew Go is installed for Terraform MCP
   community.general.homebrew:
     name: "{{ terraform_mcp_homebrew_go_formula }}"
     state: present
+  register: terraform_mcp_go_brew
+  failed_when: false
+
+- name: Force-link Homebrew Go (overwrite leftover bin)
+  ansible.builtin.command:
+    argv:
+      - brew
+      - link
+      - --overwrite
+      - "{{ terraform_mcp_homebrew_go_formula }}"
+  register: terraform_mcp_go_link
+  changed_when: >-
+    'Already linked' not in (terraform_mcp_go_link.stdout | default(''))
+    and 'Warning: Already linked' not in (terraform_mcp_go_link.stderr | default(''))
+  failed_when: false
 
 - name: Resolve Homebrew prefix for Go
   ansible.builtin.command:
@@ -24,6 +42,24 @@
       - "{{ terraform_mcp_homebrew_go_formula }}"
   register: terraform_mcp_go_prefix
   changed_when: false
+
+- name: Require Homebrew Go binary after install/link
+  ansible.builtin.stat:
+    path: "{{ terraform_mcp_go_prefix.stdout | trim }}/bin/go"
+  register: terraform_mcp_go_bin_stat
+
+- name: Assert Homebrew Go is usable for Terraform MCP
+  ansible.builtin.assert:
+    that:
+      - terraform_mcp_go_bin_stat.stat.exists | default(false)
+      - terraform_mcp_go_bin_stat.stat.executable | default(false)
+    fail_msg: >-
+      Homebrew Go is not usable at
+      {{ terraform_mcp_go_prefix.stdout | trim }}/bin/go.
+      brew install msg={{ terraform_mcp_go_brew.msg | default('') }}
+      brew link rc={{ terraform_mcp_go_link.rc | default('n/a') }}
+      stderr={{ terraform_mcp_go_link.stderr | default('') }}.
+      Try: brew install go && brew link --overwrite go && go version
 
 - name: Set Terraform MCP Go binary path
   ansible.builtin.set_fact:

@@ -4,8 +4,12 @@
   become: false
   # Homebrew 6+ tap-trust breaks community.general.homebrew when the machine
   # already has untrusted third-party taps. Keep official formula installs working.
+  # Also avoid brew install of one formula upgrading unrelated outdated kegs
+  # (e.g. golangci-lint) and failing the whole Ansible homebrew task on link.
   environment:
     HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
+    HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
+    HOMEBREW_NO_AUTO_UPDATE: "1"
 
   vars:
     # Self-contained packet: resolve paths relative to the packet root and the
