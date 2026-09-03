@@ -1,4 +1,15 @@
 ---
+- name: Resolve npm global prefix for Morph MCP on Ubuntu
+  ansible.builtin.command:
+    argv:
+      - "{{ node_npm_executable }}"
+      - prefix
+      - -g
+  register: _morph_mcp_npm_prefix_ubuntu
+  changed_when: false
+  environment:
+    PATH: "{{ (node_npm_executable | dirname) ~ ':' ~ ansible_facts['env']['PATH'] }}"
+
 - name: Install Morph MCP package via npm on Ubuntu
   community.general.npm:
     name: "{{ morph_mcp_npm_spec }}"
@@ -18,6 +29,7 @@
         morph_mcp_bin_candidates
         if (morph_mcp_bin_candidates | length > 0)
         else [
+          (_morph_mcp_npm_prefix_ubuntu.stdout | trim) ~ '/bin/morph-mcp',
           (node_npm_executable | dirname) ~ '/morph-mcp'
         ]
       }}
@@ -38,6 +50,7 @@
         morph_mcp_bin_candidates
         if (morph_mcp_bin_candidates | length > 0)
         else [
+          (_morph_mcp_npm_prefix_ubuntu.stdout | trim) ~ '/bin/morph-mcp',
           (node_npm_executable | dirname) ~ '/morph-mcp'
         ]
       }}

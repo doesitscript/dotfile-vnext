@@ -1,4 +1,15 @@
 ---
+- name: Resolve npm global prefix for Context7 MCP on Ubuntu
+  ansible.builtin.command:
+    argv:
+      - "{{ node_npm_executable }}"
+      - prefix
+      - -g
+  register: _context7_mcp_npm_prefix_ubuntu
+  changed_when: false
+  environment:
+    PATH: "{{ (node_npm_executable | dirname) ~ ':' ~ ansible_facts['env']['PATH'] }}"
+
 - name: Install Context7 MCP package via npm on Ubuntu
   community.general.npm:
     name: "{{ context7_mcp_package_name }}"
@@ -18,6 +29,7 @@
         context7_mcp_bin_candidates
         if (context7_mcp_bin_candidates | length > 0)
         else [
+          (_context7_mcp_npm_prefix_ubuntu.stdout | trim) ~ '/bin/context7-mcp',
           (node_npm_executable | dirname) ~ '/context7-mcp'
         ]
       }}
@@ -38,6 +50,7 @@
         context7_mcp_bin_candidates
         if (context7_mcp_bin_candidates | length > 0)
         else [
+          (_context7_mcp_npm_prefix_ubuntu.stdout | trim) ~ '/bin/context7-mcp',
           (node_npm_executable | dirname) ~ '/context7-mcp'
         ]
       }}

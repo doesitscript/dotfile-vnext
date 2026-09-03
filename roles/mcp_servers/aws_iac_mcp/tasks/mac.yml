@@ -1,8 +1,20 @@
 ---
-- name: Ensure Homebrew uv is installed for AWS IaC MCP
+- name: Check whether Homebrew uv is installed for AWS IaC MCP
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --versions
+      - "{{ aws_iac_mcp_homebrew_uv_formula }}"
+  register: aws_iac_mcp_uv_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install Homebrew uv for AWS IaC MCP
   community.general.homebrew:
     name: "{{ aws_iac_mcp_homebrew_uv_formula }}"
     state: present
+  when: aws_iac_mcp_uv_installed.rc != 0
 
 - name: Resolve Homebrew prefix for uv
   ansible.builtin.command:

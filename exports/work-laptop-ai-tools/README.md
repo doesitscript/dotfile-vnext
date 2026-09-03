@@ -186,6 +186,23 @@ Bootstrap only, without handing off into the packet playbook:
 ./bootstrap/bootstrap-macos-ansible.sh --bootstrap-only
 ```
 
+## Local Runtime Notes
+
+The following adjustments came from a live macOS packet run. They are durable
+role fixes, not host-specific workarounds, and no `one-off-fixes.md` was added.
+
+| Area | Observed behavior | Resolution |
+| --- | --- | --- |
+| Vault password | Ansible prompted for the packet vault password on each run. | `ansible.cfg` uses the local `vault_pass.sh` helper, which reads the ignored `.vault_pass` file. Run the playbook without `--ask-vault-pass`. Never commit either a real password file or vault ciphertext. |
+| AWS IaC MCP | `community.general.homebrew` failed when Homebrew reported `uv` was already current, despite the formula being installed. | The role checks `brew list --versions uv` first and runs the Homebrew install task only when the formula is absent. |
+| Context7 MCP | The role expected `context7-mcp` next to the nvm-managed npm binary, but custom npm `prefix=` configuration installed it under a separate global prefix. | The macOS and Ubuntu tasks resolve `npm prefix -g` and check `<prefix>/bin/context7-mcp` before retaining the nvm-bin fallback. |
+
+The validation run completed the vault, AWS IaC MCP, and Context7 MCP paths
+without prompting. It then stopped at the intentional Morph MCP credential
+gate because `morph_mcp_state` is `present` while its vault key is still the
+placeholder value. Supply a valid Morph key through the encrypted packet vault,
+or set `morph_mcp_state: absent` when Morph is not commissioned.
+
 ## After a source fix (work laptop recovery)
 
 When a bootstrap/playbook failure is fixed upstream and pushed to this sibling
