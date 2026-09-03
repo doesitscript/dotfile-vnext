@@ -159,7 +159,17 @@ It does not create or switch branches.
 ./bootstrap/bootstrap-macos-ansible.sh -- -K
 ```
 
-4. Optional probes when Homebrew / OpenSSL was the failure:
+4. Confirm this OpenSSL skip fix is present before re-running (expect the
+   probe/report tasks, not `community.general.homebrew` installing openssl):
+
+```bash
+rg -n "Report existing OpenSSL|Install missing required Python|openssl@3" roles/python/tasks/mac.yml roles/python/defaults/main.yml
+# expect: no openssl@3 in python_macos_brew_packages
+# expect: task names include "Report existing OpenSSL instead of reinstalling"
+ls -ld "$(brew --prefix)/opt/openssl@3"
+```
+
+5. Optional probes when Homebrew / OpenSSL was the failure:
 
 ```bash
 which openssl
@@ -168,7 +178,7 @@ brew list --versions openssl@3
 brew --prefix openssl@3
 ```
 
-5. Optional longer-term Homebrew tap trust (instead of relying forever on the
+6. Optional longer-term Homebrew tap trust (instead of relying forever on the
    bootstrap `HOMEBREW_NO_REQUIRE_TAP_TRUST=1` session opt-out). Trust only taps
    you intentionally keep:
 
@@ -177,7 +187,7 @@ brew tap-info --installed
 brew trust <user>/<tap>
 ```
 
-6. If `ansible-playbook` is not on your shell `PATH`, use the packet venv
+7. If `ansible-playbook` is not on your shell `PATH`, use the packet venv
    binary (bootstrap already does this):
 
 ```bash
@@ -274,7 +284,11 @@ Bootstrap behavior:
 - existing Homebrew, packet `.venv`, packet collections, and packet tooling are left alone unless a `--force-*` flag is passed
 - a newly installed Homebrew gets its `shellenv` line appended once to the active login-shell profile
 - bootstrap and both packet playbooks set `HOMEBREW_NO_REQUIRE_TAP_TRUST=1` so Homebrew 6 tap-trust on pre-existing third-party taps does not abort official formula installs (`openssl@3`, `pyenv`, etc.); prefer long-term `brew trust <tap>` for taps you keep
-- Python macOS brew deps use `openssl@3` and skip already-installed formulae so an existing Homebrew OpenSSL is not re-fetched as a failing upgrade
+- Python macOS brew deps skip installing/upgrading `openssl@3` and
+  `ca-certificates` when a usable Homebrew OpenSSL already exists; those
+  re-fetches were failing mid-bottle on the work laptop
+- remaining brew deps (`readline`, `sqlite`, `xz`, `zlib`, `pyenv`, `pipx`) are
+  installed only when their `$(brew --prefix)/opt/<formula>` path is missing
 - Windows-only role paths (Chocolatey, PowerShell profile, WinRM bash drop-in) are not executed on this macOS packet; platform dispatch uses dynamic `include_tasks` so those files do not spam skipped task noise
 - the packet carries a local contract file so the export skill can validate path and method drift before sibling-repo sync or zipping
 - the Terraform MCP role installs Homebrew `go` if needed, then publishes

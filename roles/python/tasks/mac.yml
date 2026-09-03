@@ -1,37 +1,7 @@
 ---
-# Skip formulae that are already present. Requesting the openssl alias while
-# openssl@3 is installed makes brew re-fetch bottles; community.general.homebrew
-# then fails mid-install even though openssl is already usable.
-- name: Check which Python tooling Homebrew formulae are already installed
-  ansible.builtin.command:
-    argv: [brew, list, --formula, "{{ item }}"]
-  loop: "{{ python_macos_brew_packages }}"
-  register: python_brew_formula_checks
-  changed_when: false
-  failed_when: false
-  tags: [python, brew]
-
-- name: Install missing Python tooling Homebrew formulae
-  ansible.builtin.command:
-    argv: [brew, install, "{{ item.item }}"]
-  loop: "{{ python_brew_formula_checks.results }}"
-  loop_control:
-    label: "{{ item.item }}"
-  when: item.rc != 0
-  register: python_brew_installs
-  changed_when: python_brew_installs.rc == 0
-  failed_when:
-    - python_brew_installs.rc is defined
-    - python_brew_installs.rc != 0
-    - >-
-      'already installed' not in (
-        (python_brew_installs.stderr | default(''))
-        ~ (python_brew_installs.stdout | default(''))
-      )
-  environment:
-    HOMEBREW_NO_REQUIRE_TAP_TRUST: "{{ lookup('env', 'HOMEBREW_NO_REQUIRE_TAP_TRUST') | default('1', true) }}"
-  tags: [python, brew]
-
+# Detect presence via Homebrew opt prefixes (filesystem), not `brew list`.
+# Installing ca-certificates/openssl via brew can re-fetch openssl@3 bottles and
+# fail mid-download even when /opt/homebrew/opt/openssl@3 already exists.
 - name: Resolve Homebrew prefix for Python tooling paths
   ansible.builtin.command:
     argv: [brew, --prefix]
@@ -39,17 +9,91 @@
   changed_when: false
   tags: [python, brew]
 
+- name: Probe required Python tooling formula opt prefixes
+  ansible.builtin.stat:
+    path: "{{ python_homebrew_prefix.stdout | trim }}/opt/{{ item }}"
+  loop: "{{ python_macos_brew_packages }}"
+  register: python_brew_prefix_stats
+  tags: [python, brew]
+
+- name: Install missing required Python tooling Homebrew formulae
+  ansible.builtin.command:
+    argv: [brew, install, "{{ item.item }}"]
+  loop: "{{ python_brew_prefix_stats.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: not (item.stat.exists | default(false))
+  register: python_brew_installs
+  changed_when:
+    - python_brew_installs.rc is defined
+    - python_brew_installs.rc == 0
+  failed_when: false
+  environment:
+    HOMEBREW_NO_REQUIRE_TAP_TRUST: "{{ lookup('env', 'HOMEBREW_NO_REQUIRE_TAP_TRUST') | default('1', true) }}"
+  tags: [python, brew]
+
+- name: Re-probe required formula opt prefixes after install attempts
+  ansible.builtin.stat:
+    path: "{{ python_homebrew_prefix.stdout | trim }}/opt/{{ item }}"
+  loop: "{{ python_macos_brew_packages }}"
+  register: python_brew_prefix_stats_after
+  tags: [python, brew]
+
+- name: Require required Python tooling formulae to be present
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists | default(false)
+    fail_msg: >-
+      Homebrew formula {{ item.item }} is still missing under
+      {{ python_homebrew_prefix.stdout | trim }}/opt/{{ item.item }} after
+      brew install. Inspect brew doctor output on this Mac.
+  loop: "{{ python_brew_prefix_stats_after.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  tags: [python, brew]
+
+- name: Probe soft OpenSSL opt prefix
+  ansible.builtin.stat:
+    path: "{{ python_homebrew_prefix.stdout | trim }}/opt/openssl@3"
+  register: python_openssl_opt_stat
+  tags: [python, brew]
+
+- name: Probe Homebrew CA certificate bundle
+  ansible.builtin.stat:
+    path: "{{ python_homebrew_prefix.stdout | trim }}/share/ca-certificates/cacert.pem"
+  register: python_cacert_stat
+  tags: [python, brew]
+
+- name: Report existing OpenSSL instead of reinstalling
+  ansible.builtin.debug:
+    msg: >-
+      Using existing Homebrew openssl@3 at
+      {{ python_homebrew_prefix.stdout | trim }}/opt/openssl@3
+      (install/upgrade of openssl@3 and ca-certificates is intentionally skipped
+      to avoid mid-bottle brew failures on work laptops that already have OpenSSL).
+  when: python_openssl_opt_stat.stat.exists | default(false)
+  tags: [python, brew]
+
+- name: Warn when openssl@3 opt prefix is missing
+  ansible.builtin.debug:
+    msg: >-
+      openssl@3 is not present under
+      {{ python_homebrew_prefix.stdout | trim }}/opt/openssl@3.
+      Install manually with: brew install openssl@3
+      Continuing; pyenv builds may fail later without it.
+  when: not (python_openssl_opt_stat.stat.exists | default(false))
+  tags: [python, brew]
+
 - name: Ensure Homebrew CA certs are linked into OpenSSL directory
   ansible.builtin.file:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
+    src: "{{ python_homebrew_prefix.stdout | trim }}/share/ca-certificates/cacert.pem"
+    dest: "{{ python_homebrew_prefix.stdout | trim }}/etc/openssl@3/cert.pem"
     state: link
     force: true
-  loop:
-    - src: "{{ python_homebrew_prefix.stdout | trim }}/share/ca-certificates/cacert.pem"
-      dest: "{{ python_homebrew_prefix.stdout | trim }}/etc/openssl@3/cert.pem"
-  loop_control:
-    label: "{{ item.dest }}"
+  when:
+    - python_openssl_opt_stat.stat.exists | default(false)
+    - python_cacert_stat.stat.exists | default(false)
+  tags: [python, brew]
 
 - name: Check whether pytest.ini already exists
   ansible.builtin.stat:
