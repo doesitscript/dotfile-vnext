@@ -118,6 +118,68 @@ Bootstrap only, without handing off into the packet playbook:
 ./bootstrap/bootstrap-macos-ansible.sh --bootstrap-only
 ```
 
+## After a source fix (work laptop recovery)
+
+When a bootstrap/playbook failure is fixed upstream and pushed to this sibling
+repo, run these on the work laptop. Prefer this path over one-off editor edits
+in the checkout — local patches get overwritten on the next sync/pull.
+
+1. Pull the latest sibling checkout:
+
+```bash
+cd ~/Documents/develop/work-laptop-ai-tools
+git status
+git pull
+```
+
+2. If you made a local one-off edit while waiting (for example in
+   `roles/python/tasks/mac.yml`), discard it so the pulled fix wins:
+
+```bash
+git checkout -- roles/python/tasks/mac.yml
+# or discard everything unmanaged/local:
+# git restore .
+# git clean -fd   # only if you intend to remove untracked files
+git pull
+```
+
+3. Re-run bootstrap + packet playbook (asks for sudo password when hosts-file
+   or other become tasks need it):
+
+```bash
+./bootstrap/bootstrap-macos-ansible.sh -- -K
+```
+
+4. Optional probes when Homebrew / OpenSSL was the failure:
+
+```bash
+which openssl
+openssl version
+brew list --versions openssl@3
+brew --prefix openssl@3
+```
+
+5. Optional longer-term Homebrew tap trust (instead of relying forever on the
+   bootstrap `HOMEBREW_NO_REQUIRE_TAP_TRUST=1` session opt-out). Trust only taps
+   you intentionally keep:
+
+```bash
+brew tap-info --installed
+brew trust <user>/<tap>
+```
+
+6. If `ansible-playbook` is not on your shell `PATH`, use the packet venv
+   binary (bootstrap already does this):
+
+```bash
+./.venv/bin/ansible-playbook --version
+./.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml --list-tasks
+```
+
+Paste the full failing task output back to the agent when something still
+stops the run; fixes belong in `dotfile-vnext` source, then sync → pull →
+re-run the commands above.
+
 Direct playbook previews still work when you want them separately:
 
 ```bash
