@@ -123,6 +123,23 @@ explicitly wait for evaluator artifacts on the same `plan_dir`.
 - The monitor skill should make that boundary explicit so it does not imply more
   autonomy than the runtime actually provides.
 
+### Additional required behavior
+
+- The monitoring skill must terminate its own background process when the
+  monitored campaign reaches an end state such as approved-complete or operator
+  stop.
+- It must not leave a watcher running after the owning role is effectively
+  done, because that creates misleading "still active" UI state and wastes the
+  operator's attention.
+- It should also publish one concise, continuously updated status line in the
+  terminal or terminal-adjacent UI that includes:
+  - whether a background monitor is running
+  - what role owns it
+  - what it is waiting on
+  - how long it has been idle or waiting
+- The goal is that the operator can glance at one line and immediately know
+  whether the agent is actively polling, truly idle-complete, or needs action.
+
 ## Final stabilization closeout
 
 - The paired-agent runtime was stabilized by moving both roles to the same
@@ -133,6 +150,9 @@ explicitly wait for evaluator artifacts on the same `plan_dir`.
 - The live implementer runtime proof reached the expected steady state:
   real handoff changes produced `observed ... state change`, and idle periods
   produced heartbeat lines instead of repeated fake change detections.
+- The implementer monitor was manually terminated once it was no longer needed.
+  That stop behavior was operator-driven in this run, which means the current
+  skill still lacks the required automatic teardown behavior described above.
 - The alpha snapshot of the full work-laptop export pilot plan packet was then
   committed in `dotfile-vnext` as `cf51802d` so the stabilized state is
   preserved in repo history.
