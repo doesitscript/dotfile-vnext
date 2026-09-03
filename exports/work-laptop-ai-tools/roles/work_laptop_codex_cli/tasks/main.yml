@@ -8,6 +8,29 @@
   ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/common/node/tasks/resolve_npm.yml"
   when: work_laptop_codex_cli_state == "present"
 
+# Corporate / custom ~/.npmrc often sets prefix= (e.g. ~/.npm-packages). Global
+# bins then land under that prefix, not next to the nvm npm binary.
+- name: Resolve npm global prefix for Codex binary layout
+  ansible.builtin.command:
+    argv:
+      - "{{ node_npm_executable }}"
+      - prefix
+      - -g
+  register: work_laptop_codex_cli_npm_prefix_cmd
+  changed_when: false
+  environment:
+    PATH: "{{ (node_npm_executable | dirname) ~ ':' ~ ansible_facts['env']['PATH'] }}"
+  when: work_laptop_codex_cli_state == "present"
+
+- name: Set Codex npm layout facts from global prefix
+  ansible.builtin.set_fact:
+    work_laptop_codex_cli_npm_prefix: "{{ work_laptop_codex_cli_npm_prefix_cmd.stdout | trim }}"
+    work_laptop_codex_cli_command: >-
+      {{ (work_laptop_codex_cli_npm_prefix_cmd.stdout | trim) }}/bin/codex
+    work_laptop_codex_cli_module_path: >-
+      {{ (work_laptop_codex_cli_npm_prefix_cmd.stdout | trim) }}/lib/node_modules/@openai/codex
+  when: work_laptop_codex_cli_state == "present"
+
 - name: Set Codex npm package name
   ansible.builtin.set_fact:
     work_laptop_codex_cli_package_name: >-
@@ -32,18 +55,13 @@
   timeout: 300
   when: work_laptop_codex_cli_state == "present"
 
-- name: Set Codex CLI command path
-  ansible.builtin.set_fact:
-    work_laptop_codex_cli_command: "{{ node_npm_executable | dirname }}/codex"
-  when: work_laptop_codex_cli_state == "present"
-
 - name: Remove quarantine attribute from Codex npm module
   ansible.builtin.command:
     argv:
       - xattr
       - -dr
       - com.apple.quarantine
-      - "{{ node_npm_executable | dirname | dirname }}/lib/node_modules/@openai/codex"
+      - "{{ work_laptop_codex_cli_module_path }}"
   register: work_laptop_codex_cli_quarantine_remove
   changed_when: work_laptop_codex_cli_quarantine_remove.rc == 0
   failed_when: false
@@ -62,7 +80,10 @@
       - work_laptop_codex_cli_binary.stat.executable | default(false)
     fail_msg: >-
       Codex CLI install did not produce an executable at
-      {{ work_laptop_codex_cli_command }}.
+      {{ work_laptop_codex_cli_command }}
+      (npm prefix -g={{ work_laptop_codex_cli_npm_prefix }}).
+      Check ~/.npmrc prefix= and that {{ work_laptop_codex_cli_npm_prefix }}/bin
+      is on PATH for interactive shells.
   when: work_laptop_codex_cli_state == "present"
 
 - name: Remove Codex CLI via npm when absent
