@@ -1,16 +1,35 @@
 ---
-- name: Ensure Python tooling dependencies are installed on macOS
-  community.general.homebrew:
-    name:
-      - openssl
-      - readline
-      - sqlite3
-      - xz
-      - zlib
-      - ca-certificates
-      - pyenv
-      - pipx
-    state: present
+# Skip formulae that are already present. Requesting the openssl alias while
+# openssl@3 is installed makes brew re-fetch bottles; community.general.homebrew
+# then fails mid-install even though openssl is already usable.
+- name: Check which Python tooling Homebrew formulae are already installed
+  ansible.builtin.command:
+    argv: [brew, list, --formula, "{{ item }}"]
+  loop: "{{ python_macos_brew_packages }}"
+  register: python_brew_formula_checks
+  changed_when: false
+  failed_when: false
+  tags: [python, brew]
+
+- name: Install missing Python tooling Homebrew formulae
+  ansible.builtin.command:
+    argv: [brew, install, "{{ item.item }}"]
+  loop: "{{ python_brew_formula_checks.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: item.rc != 0
+  register: python_brew_installs
+  changed_when: python_brew_installs.rc == 0
+  failed_when:
+    - python_brew_installs.rc is defined
+    - python_brew_installs.rc != 0
+    - >-
+      'already installed' not in (
+        (python_brew_installs.stderr | default(''))
+        ~ (python_brew_installs.stdout | default(''))
+      )
+  environment:
+    HOMEBREW_NO_REQUIRE_TAP_TRUST: "{{ lookup('env', 'HOMEBREW_NO_REQUIRE_TAP_TRUST') | default('1', true) }}"
   tags: [python, brew]
 
 - name: Resolve Homebrew prefix for Python tooling paths

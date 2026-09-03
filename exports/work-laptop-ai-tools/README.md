@@ -202,7 +202,8 @@ Bootstrap behavior:
 - packet Ansible lives at `.venv/bin/ansible-playbook` and the repo-style public entrypoint is `~/.local/bin/ansible-playbook`
 - existing Homebrew, packet `.venv`, packet collections, and packet tooling are left alone unless a `--force-*` flag is passed
 - a newly installed Homebrew gets its `shellenv` line appended once to the active login-shell profile
-- bootstrap and both packet playbooks set `HOMEBREW_NO_REQUIRE_TAP_TRUST=1` so Homebrew 6 tap-trust on pre-existing third-party taps does not abort official formula installs (`openssl`, `pyenv`, etc.); prefer long-term `brew trust <tap>` for taps you keep
+- bootstrap and both packet playbooks set `HOMEBREW_NO_REQUIRE_TAP_TRUST=1` so Homebrew 6 tap-trust on pre-existing third-party taps does not abort official formula installs (`openssl@3`, `pyenv`, etc.); prefer long-term `brew trust <tap>` for taps you keep
+- Python macOS brew deps use `openssl@3` and skip already-installed formulae so an existing Homebrew OpenSSL is not re-fetched as a failing upgrade
 - Windows-only role paths (Chocolatey, PowerShell profile, WinRM bash drop-in) are not executed on this macOS packet; platform dispatch uses dynamic `include_tasks` so those files do not spam skipped task noise
 - the packet carries a local contract file so the export skill can validate path and method drift before sibling-repo sync or zipping
 - the Terraform MCP role installs Homebrew `go` if needed, then publishes
