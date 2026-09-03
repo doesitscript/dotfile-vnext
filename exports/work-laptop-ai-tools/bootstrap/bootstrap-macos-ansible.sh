@@ -360,12 +360,37 @@ configure_homebrew_tap_trust_compat() {
   fi
 }
 
+require_current_python_brew_tasks() {
+  local python_mac_tasks="${PACKET_ROOT}/roles/python/tasks/mac.yml"
+  local head_sha=""
+
+  [ -f "${python_mac_tasks}" ] || fail "Missing ${python_mac_tasks}"
+
+  if [ -d "${PACKET_ROOT}/.git" ] && command -v git >/dev/null 2>&1; then
+    head_sha="$(git -C "${PACKET_ROOT}" rev-parse --short HEAD 2>/dev/null || true)"
+    if [ -n "${head_sha}" ]; then
+      log "Packet git HEAD: ${head_sha}"
+    fi
+  fi
+
+  if grep -Fq 'Ensure Python tooling dependencies are installed on macOS' "${python_mac_tasks}"; then
+    fail "Stale python brew installer detected in ${python_mac_tasks}. That old community.general.homebrew openssl task must not run. On master run: git fetch origin && git status && git pull && re-run bootstrap. Expected task: 'Report existing OpenSSL instead of reinstalling'."
+  fi
+
+  if ! grep -Fq 'Report existing OpenSSL instead of reinstalling' "${python_mac_tasks}"; then
+    fail "Packet checkout is missing the OpenSSL-skip python tasks in ${python_mac_tasks}. Run: git fetch origin && git pull (on master) and re-run bootstrap."
+  fi
+
+  log "Python brew task preflight OK (OpenSSL install/upgrade skipped by design)."
+}
+
 main() {
   [ "$(uname -s)" = "Darwin" ] || fail "This bootstrap currently supports macOS only."
   parse_args "$@"
   ensure_homebrew_path_for_session
   export ANSIBLE_CONFIG="${PACKET_ROOT}/ansible.cfg"
   configure_homebrew_tap_trust_compat
+  require_current_python_brew_tasks
 
   ensure_homebrew
   ensure_packet_venv

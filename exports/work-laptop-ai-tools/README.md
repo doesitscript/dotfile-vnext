@@ -132,10 +132,31 @@ special reason is called out.
 
 ```bash
 cd ~/Documents/develop/work-laptop-ai-tools
+git fetch origin
 git status
 git branch --show-current   # expect: master
-git pull
+git rev-parse --short HEAD
+git log -1 --oneline origin/master
+git pull --ff-only origin master
+git rev-parse --short HEAD  # expect at least 745ecce (OpenSSL-skip fix) or newer
 ```
+
+If `git pull` says you are already up to date but the failing Ansible task is
+still named `Ensure Python tooling dependencies are installed on macOS`, your
+working tree is stale or dirty. Reset the managed python tasks to origin:
+
+```bash
+git fetch origin
+git restore --source=origin/master -- roles/python/tasks/mac.yml roles/python/defaults/main.yml
+git status
+rg -n "Report existing OpenSSL|Ensure Python tooling dependencies" roles/python/tasks/mac.yml
+# expect ONLY: Report existing OpenSSL instead of reinstalling
+# expect NOT:  Ensure Python tooling dependencies are installed on macOS
+```
+
+Bootstrap now preflights those task names and prints `Packet git HEAD:` before
+running Ansible. If the old openssl installer is still on disk, bootstrap exits
+before the playbook starts.
 
 2. Only if you (or a local editor agent) changed files in this checkout while
    waiting for the upstream fix, discard those local edits so the pulled fix
