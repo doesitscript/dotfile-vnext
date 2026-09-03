@@ -11,6 +11,36 @@ Primary delivery model:
 - the zip archive is optional and secondary
 - the sibling repo is replaceable and should never become the design authority
 
+## Associated skills (quick find)
+
+These skills live in `dotfile-vnext` (not in this generated sibling). Use them
+from that repo so you can re-sync or validate this packet without hunting.
+
+| Skill | Path in `dotfile-vnext` | Use for |
+| --- | --- | --- |
+| `work-laptop-export-pack` | `skills/implementation/work-laptop-export-pack/SKILL.md` | Sync this sibling repo, validate the export contract, run external smoke preview |
+| `project-skill-runtime-bridge` | `skills/implementation/project-skill-runtime-bridge/SKILL.md` | Keep `work-laptop-export-pack` discoverable under `.cursor/skills` |
+
+Governing plan packet (paired-agent pilot history):
+
+- `docs/plans/2026-09-02--work-laptop-export-pilot/README.md`
+- related paired-agent skills when re-running that plan loop:
+  `paired-agent-plan-implementer`, `paired-agent-plan-evaluator`
+
+Copy-paste from `dotfile-vnext`:
+
+```bash
+# Use skill work-laptop-export-pack
+bin/codex-env python \
+  skills/implementation/work-laptop-export-pack/scripts/validate_export_contract.py
+bin/codex-env python \
+  skills/implementation/work-laptop-export-pack/scripts/sync_sibling_repo.py
+bin/codex-env python \
+  skills/implementation/work-laptop-export-pack/scripts/roundtrip_smoke.py \
+  --packet-dir /Users/joshc/develop/work-laptop-ai-tools \
+  --ansible-command "$PWD/bin/codex-env ansible-playbook"
+```
+
 Current scope:
 
 - target-local execution on the exported work laptop only
@@ -25,9 +55,10 @@ Current scope:
   official AWS MCP Server plus AWS IaC MCP
 - `~/.continue/config.yaml` with the existing LiteLLM chat/edit lanes plus
   Terraform MCP, AWS MCP, and AWS IaC MCP server entries
-- Zed install plus `~/.config/zed/settings.json` for Zed Agent model routing,
-  inline assistant, commit messages, thread summaries, and
-  Zed `context_servers` for Terraform MCP, AWS MCP, and AWS IaC MCP
+- Zed configuration only (`zed_ide_install_cask: false`) — deploys
+  `~/.config/zed/settings.json` for Zed Agent model routing, inline assistant,
+  commit messages, thread summaries, and Zed `context_servers` for Terraform
+  MCP, AWS MCP, and AWS IaC MCP; does **not** install or upgrade the Zed app
 - local HashiCorp Terraform CLI and Terraform MCP server install
 - Homebrew `uv` install as needed for `awslabs.aws-iac-mcp-server@latest`
 - minimal shared bash startup scaffolding required by the Node/Codex path
@@ -171,6 +202,8 @@ Bootstrap behavior:
 - packet Ansible lives at `.venv/bin/ansible-playbook` and the repo-style public entrypoint is `~/.local/bin/ansible-playbook`
 - existing Homebrew, packet `.venv`, packet collections, and packet tooling are left alone unless a `--force-*` flag is passed
 - a newly installed Homebrew gets its `shellenv` line appended once to the active login-shell profile
+- bootstrap and both packet playbooks set `HOMEBREW_NO_REQUIRE_TAP_TRUST=1` so Homebrew 6 tap-trust on pre-existing third-party taps does not abort official formula installs (`openssl`, `pyenv`, etc.); prefer long-term `brew trust <tap>` for taps you keep
+- Windows-only role paths (Chocolatey, PowerShell profile, WinRM bash drop-in) are not executed on this macOS packet; platform dispatch uses dynamic `include_tasks` so those files do not spam skipped task noise
 - the packet carries a local contract file so the export skill can validate path and method drift before sibling-repo sync or zipping
 - the Terraform MCP role installs Homebrew `go` if needed, then publishes
   `terraform-mcp-server` to `~/.local/bin`

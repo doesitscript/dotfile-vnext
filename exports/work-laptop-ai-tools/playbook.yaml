@@ -2,6 +2,10 @@
   hosts: work-laptop
   gather_facts: true
   become: false
+  # Homebrew 6+ tap-trust breaks community.general.homebrew when the machine
+  # already has untrusted third-party taps. Keep official formula installs working.
+  environment:
+    HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
 
   pre_tasks:
     - name: Require explicit export mode

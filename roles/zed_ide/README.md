@@ -1,7 +1,11 @@
 # zed_ide
 
-Installs Zed on macOS and manages a Zed AI configuration that points agent
-features at the homelab LiteLLM gateway.
+Optionally installs Zed on macOS (Homebrew cask) and manages a Zed AI
+configuration that points agent features at the homelab LiteLLM gateway.
+
+Set `zed_ide_install_cask: false` when Zed is already installed and should not
+be installed or upgraded by this role (config + launcher only). The work-laptop
+export packet uses that mode.
 
 Remote autocomplete-style behavior is intentionally disabled by default as of
 `2026-09-02`. In this role, that means `zed_ide_edit_predictions_enabled:

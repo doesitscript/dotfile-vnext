@@ -2,14 +2,21 @@
 # vscode — main task dispatcher (multi-OS: macOS, Windows)
 # Install: Homebrew cask (Mac), Chocolatey (Windows)
 # Extensions: code --install-extension (both platforms)
+# include_tasks keeps non-matching OS files from expanding into skipped noise.
 
 - name: Process vscode role for macOS
-  ansible.builtin.import_tasks: mac.yml
+  ansible.builtin.include_tasks:
+    file: mac.yml
+    apply:
+      tags: [vscode, vscode_install]
   when: ansible_facts['system'] == "Darwin"
   tags: [vscode, vscode_install]
 
 - name: Process vscode role for Windows
-  ansible.builtin.import_tasks: windows.yml
+  ansible.builtin.include_tasks:
+    file: windows.yml
+    apply:
+      tags: [vscode, vscode_install]
   when: ansible_facts['system'] == "Windows"
   tags: [vscode, vscode_install]
 

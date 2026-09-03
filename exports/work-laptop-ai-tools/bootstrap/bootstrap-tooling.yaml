@@ -2,6 +2,10 @@
   hosts: work-laptop
   gather_facts: true
   become: false
+  # Homebrew 6+ tap-trust breaks community.general.homebrew when the machine
+  # already has untrusted third-party taps. Keep official formula installs working.
+  environment:
+    HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
 
   vars:
     dotfiles_home: "{{ playbook_dir | dirname }}"
@@ -10,6 +14,8 @@
     python_vscode_extensions: []
     package_update: "{{ work_laptop_bootstrap_force_homebrew_upgrade | default(false) | bool }}"
     package_upgrade: "{{ work_laptop_bootstrap_force_homebrew_upgrade | default(false) | bool }}"
+    # Work-laptop packet is macOS-only; skip WinRM controller drop-ins.
+    ansible_dev_tools_deploy_winrm_env: false
 
   pre_tasks:
     - name: Require explicit export mode for packet tooling bootstrap

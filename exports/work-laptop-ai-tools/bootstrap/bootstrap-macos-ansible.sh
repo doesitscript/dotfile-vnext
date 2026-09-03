@@ -346,11 +346,26 @@ parse_args() {
   done
 }
 
+configure_homebrew_tap_trust_compat() {
+  # Work laptops often already have third-party taps. Homebrew 6+ refuses some
+  # brew operations while untrusted taps are present, which breaks Ansible
+  # community.general.homebrew installs of official formulae (openssl, pyenv,
+  # etc.). Prefer trusting taps you keep long-term with `brew trust <tap>`.
+  # This session opt-out keeps packet automation unblocked until then.
+  if [ -z "${HOMEBREW_NO_REQUIRE_TAP_TRUST:-}" ]; then
+    export HOMEBREW_NO_REQUIRE_TAP_TRUST=1
+    log "Enabled HOMEBREW_NO_REQUIRE_TAP_TRUST=1 for this bootstrap/Ansible session (Homebrew 6 tap-trust compat)."
+  else
+    log "Using existing HOMEBREW_NO_REQUIRE_TAP_TRUST=${HOMEBREW_NO_REQUIRE_TAP_TRUST}"
+  fi
+}
+
 main() {
   [ "$(uname -s)" = "Darwin" ] || fail "This bootstrap currently supports macOS only."
   parse_args "$@"
   ensure_homebrew_path_for_session
   export ANSIBLE_CONFIG="${PACKET_ROOT}/ansible.cfg"
+  configure_homebrew_tap_trust_compat
 
   ensure_homebrew
   ensure_packet_venv
