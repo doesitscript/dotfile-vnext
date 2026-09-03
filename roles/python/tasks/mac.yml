@@ -1,5 +1,4 @@
 ---
-# PACKET_PYTHON_MAC_REVISION=openssl-skip-v2
 # Detect presence via Homebrew opt prefixes (filesystem), not `brew list`.
 # Installing ca-certificates/openssl via brew can re-fetch openssl@3 bottles and
 # fail mid-download even when /opt/homebrew/opt/openssl@3 already exists.
@@ -130,6 +129,39 @@
     version: "{{ pyenv_virtualenv_git_version }}"
     update: true
     force: true
+  tags: [python, pyenv]
+
+# pyenv bundles its own python-build definitions. A freshly installed pyenv
+# may not know about a recently released Python version. Check first; if any
+# requested version is missing from the definition list, upgrade pyenv so its
+# bundled python-build gains knowledge of that version before install.
+- name: Check whether requested pyenv Python version definitions are available
+  ansible.builtin.shell:
+    cmd: >-
+      pyenv install --list 2>/dev/null | awk '{$1=$1;print}' | grep -qx '{{ item }}'
+  loop: "{{ pyenv_global_versions | default([]) }}"
+  register: python_pyenv_definition_checks
+  changed_when: false
+  failed_when: false
+  tags: [python, pyenv]
+
+- name: Upgrade pyenv when a requested Python version definition is missing
+  ansible.builtin.command:
+    argv: [brew, upgrade, pyenv]
+  when: python_pyenv_definition_checks.results | selectattr('rc', 'ne', 0) | list | length > 0
+  register: python_pyenv_brew_upgrade
+  changed_when: python_pyenv_brew_upgrade.rc == 0
+  failed_when: false
+  environment:
+    HOMEBREW_NO_REQUIRE_TAP_TRUST: "{{ lookup('env', 'HOMEBREW_NO_REQUIRE_TAP_TRUST') | default('1', true) }}"
+  tags: [python, pyenv]
+
+- name: Report pyenv upgrade outcome
+  ansible.builtin.debug:
+    msg: >-
+      pyenv brew upgrade {{ 'ran successfully' if (python_pyenv_brew_upgrade.rc | default(1)) == 0
+      else ('skipped (all version definitions already present)' if python_pyenv_brew_upgrade is skipped
+      else 'attempted but returned rc=' ~ (python_pyenv_brew_upgrade.rc | default('?'))) }}.
   tags: [python, pyenv]
 
 - name: Ensure requested pyenv versions are installed on macOS
