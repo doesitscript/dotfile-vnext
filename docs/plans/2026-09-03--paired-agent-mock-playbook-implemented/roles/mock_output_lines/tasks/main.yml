@@ -1,0 +1,20 @@
+---
+- name: Build restored ordered output when the original requirement returns
+  ansible.builtin.set_fact:
+    mock_output_effective_messages: >-
+      {{
+        query('ansible.builtin.sequence', 'start=1 end=5')
+        | map('regex_replace', '^(.*)$', mock_output_friendly_prefix ~ ' \\1')
+        | list
+      }}
+  when: mock_output_restore_original_sequence
+
+- name: Use current mock packet messages while the packet stays in review mode
+  ansible.builtin.set_fact:
+    mock_output_effective_messages: "{{ mock_output_messages }}"
+  when: not mock_output_restore_original_sequence
+
+- name: Show mock packet output lines
+  ansible.builtin.debug:
+    msg: "{{ item }}"
+  loop: "{{ mock_output_effective_messages }}"

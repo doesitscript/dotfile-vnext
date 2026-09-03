@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Advisory implementer poller for this plan packet.
+# Its files record last observed state only; they do not prove a live process to
+# a static evaluator.
+
 PLAN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNTIME_DIR="$PLAN_DIR/runtime"
 STATUS_FILE="$RUNTIME_DIR/IMPLEMENTER-RUNTIME-STATUS.txt"
@@ -28,6 +32,9 @@ latest_impl_file() {
   find "$PLAN_DIR" -type f \
     ! -path "$RUNTIME_DIR/*" \
     ! -name 'EVALUATOR-WAIT-STATE.md' \
+    ! -path "$PLAN_DIR/coordination/EVALUATOR-RUNTIME-STATUS.txt" \
+    ! -path "$PLAN_DIR/coordination/evaluator-heartbeat.log" \
+    ! -path "$PLAN_DIR/coordination/evaluator-monitor.sh" \
     ! -name 'feedback_for_review_by_evaluator_*' \
     ! -name 'waiting_for_review_by_evaluator_*' \
     ! -name 'ready_for_review_by_evaluator_*' \
