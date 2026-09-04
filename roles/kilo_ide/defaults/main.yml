@@ -4,9 +4,13 @@ kilo_ide_state: present
 # Live Kilo Code reads ~/.config/kilo/kilo.jsonc (not config.json).
 kilo_ide_config_dir: "{{ ansible_env.HOME }}/.config/kilo"
 kilo_ide_config_path: "{{ kilo_ide_config_dir }}/kilo.jsonc"
-# Legacy path previously written by this role — remove on present so only
-# kilo.jsonc remains authoritative.
+# Legacy path previously written by this role — convert once into kilo.jsonc.
 kilo_ide_legacy_config_path: "{{ kilo_ide_config_dir }}/config.json"
+
+# merge (default): convert legacy path if needed, then merge managed slices into
+# existing kilo.jsonc so user MCP/custom agents/providers are not wiped.
+# overwrite: write the managed template only (recovery / first bootstrap).
+kilo_ide_apply_mode: merge
 
 # API key — resolved from vault when empty; written into kilo.jsonc (mode 0600).
 kilo_ide_api_key: ""
@@ -47,7 +51,7 @@ kilo_ide_compaction:
   auto: true
   reserved: 8192
 
-# Agent / capability → model map (overwrites existing kilo.jsonc agent block).
+# Agent / capability → model map (merged into existing agent block by id).
 # Aligns with Continue chat=32B and edit/apply=7B lanes.
 kilo_ide_agents:
   code:

@@ -98,9 +98,23 @@ deviations:
     entry: entries/aider-write-edit-workflow.md
     inbound_sources:
       - "intake.md Aider Write-Access Follow-Up (sibling d19db17)"
-    reapply: "playbook --tags aider; verify ~/.aider.conf.yml dirty-commits/suggest-shell/yes"
+      - "sibling a37cd53 yes→yes-always + map-tokens + fail version probe"
+    reapply: "playbook --tags aider; verify dirty-commits/suggest-shell/yes-always/map; aider --version"
     generalize_to:
       - "CLI agents that refuse dirty git or prefer shell for new files"
+      - "Upstream config key renames — convert, do not keep emitting old keys"
+
+  - id: managed-ide-config-merge
+    status: promoted
+    behavior_group: ide-config-lifecycle
+    title: Managed IDE configs convert/merge — avoid blind overwrite
+    entry: entries/managed-ide-config-merge.md
+    inbound_sources:
+      - "Kilo config.json vs kilo.jsonc path + overwrite risk"
+      - "Aider yes→yes-always conversion lesson (a37cd53)"
+    reapply: "playbook --tags kilo,cline,aider; kilo.jsonc present; no bare yes: in aider"
+    generalize_to:
+      - "Zed/Continue/Cline/Kilo managed config roles"
 
   - id: cline-vscode-settings-jsonc
     status: promoted

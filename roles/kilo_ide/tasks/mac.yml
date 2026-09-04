@@ -38,6 +38,7 @@
       - kilo_ide_gateway_api_base | default('') | length > 0
       - (kilo_ide_models | default([]) | length) > 0
       - (kilo_ide_agents | default({}) | length) > 0
+      - kilo_ide_apply_mode | default('merge') in ['merge', 'overwrite']
       - >-
         (not (kilo_ide_require_api_key | default(true) | bool))
         or (
@@ -45,9 +46,10 @@
           and (kilo_ide_render_api_key | default('') != 'REPLACE_WITH_LITELLM_KEY')
         )
     fail_msg: >-
-      kilo_ide_state=present but default model/agents/models are empty or the
-      LiteLLM API key is still REPLACE_WITH_LITELLM_KEY. Hydrate
-      vault/shared.vault.yml ({{ kilo_ide_vault_key }}) or set kilo_ide_api_key.
+      kilo_ide_state=present but default model/agents/models are empty, apply
+      mode is not merge|overwrite, or the LiteLLM API key is still
+      REPLACE_WITH_LITELLM_KEY. Hydrate vault/shared.vault.yml
+      ({{ kilo_ide_vault_key }}) or set kilo_ide_api_key.
   when: kilo_ide_state == "present"
 
 - name: Ensure Kilo config directory exists
@@ -57,15 +59,77 @@
     mode: "0700"
   when: kilo_ide_state == "present"
 
-- name: Deploy Kilo homelab config (overwrite kilo.jsonc)
+- name: Stat live and legacy Kilo config paths
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ kilo_ide_config_path }}"
+    - "{{ kilo_ide_legacy_config_path }}"
+  register: _kilo_config_stats
+  when: kilo_ide_state == "present"
+
+- name: Convert legacy config.json → kilo.jsonc once (path migration)
+  ansible.builtin.copy:
+    src: "{{ kilo_ide_legacy_config_path }}"
+    dest: "{{ kilo_ide_config_path }}"
+    remote_src: true
+    mode: "0600"
+    force: false
+  when:
+    - kilo_ide_state == "present"
+    - not (_kilo_config_stats.results[0].stat.exists | default(false))
+    - _kilo_config_stats.results[1].stat.exists | default(false)
+
+- name: Render managed Kilo overlay to a temp file
+  ansible.builtin.tempfile:
+    state: file
+    suffix: .kilo-overlay.json
+  register: _kilo_overlay_tmp
+  when: kilo_ide_state == "present"
+
+- name: Write managed Kilo overlay template
   ansible.builtin.template:
     src: kilo_config.json.j2
-    dest: "{{ kilo_ide_config_path }}"
+    dest: "{{ _kilo_overlay_tmp.path }}"
     mode: "0600"
   when: kilo_ide_state == "present"
   no_log: true
 
-- name: Remove legacy Kilo config.json so kilo.jsonc is sole authority
+- name: Merge managed Kilo slices into existing kilo.jsonc
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ role_path }}/scripts/merge_kilo_config.py"
+      - --existing
+      - "{{ kilo_ide_config_path }}"
+      - --overlay
+      - "{{ _kilo_overlay_tmp.path }}"
+      - --out
+      - "{{ kilo_ide_config_path }}"
+  when:
+    - kilo_ide_state == "present"
+    - (kilo_ide_apply_mode | default('merge')) == 'merge'
+
+- name: Overwrite kilo.jsonc with managed template only
+  ansible.builtin.copy:
+    src: "{{ _kilo_overlay_tmp.path }}"
+    dest: "{{ kilo_ide_config_path }}"
+    remote_src: true
+    mode: "0600"
+  when:
+    - kilo_ide_state == "present"
+    - (kilo_ide_apply_mode | default('merge')) == 'overwrite'
+  no_log: true
+
+- name: Remove temp Kilo overlay
+  ansible.builtin.file:
+    path: "{{ _kilo_overlay_tmp.path }}"
+    state: absent
+  when:
+    - kilo_ide_state == "present"
+    - _kilo_overlay_tmp.path is defined
+
+- name: Remove legacy Kilo config.json after conversion/merge
   ansible.builtin.file:
     path: "{{ kilo_ide_legacy_config_path }}"
     state: absent
@@ -85,6 +149,7 @@
     msg:
       kilo_ide_state: "{{ kilo_ide_state }}"
       config: "{{ kilo_ide_config_path }}"
+      apply_mode: "{{ kilo_ide_apply_mode | default('merge') }}"
       default_model: "{{ kilo_ide_default_model }}"
       small_model: "{{ kilo_ide_small_model }}"
       default_agent: "{{ kilo_ide_default_agent }}"

@@ -1,13 +1,19 @@
 # kilo_ide
 
-Deploys **Kilo Code** config at `~/.config/kilo/kilo.jsonc` (overwrite,
-idempotent) with a LiteLLM OpenAI-compatible provider and per-agent model
-assignments.
+Deploys **Kilo Code** config at `~/.config/kilo/kilo.jsonc` with a LiteLLM
+OpenAI-compatible provider and per-agent model assignments.
 
 | Artifact | Path |
 | --- | --- |
 | Config | `~/.config/kilo/kilo.jsonc` |
-| Legacy (removed on present) | `~/.config/kilo/config.json` |
+| Legacy (converted then removed) | `~/.config/kilo/config.json` |
+
+## Apply modes
+
+| `kilo_ide_apply_mode` | Behavior |
+| --- | --- |
+| `merge` (default) | Convert `config.json` → `kilo.jsonc` if needed; merge managed provider/agents/top-level model keys; **preserve** user MCP, custom agents, other providers |
+| `overwrite` | Write managed template only (recovery / bootstrap) |
 
 Default agent model map (Continue-aligned):
 
@@ -25,9 +31,9 @@ Default agent model map (Continue-aligned):
 | | |
 | --- | --- |
 | **Apply** | Include role with `kilo_ide_state: present` |
-| **Verify** | `jq '.model,.agent \| keys' ~/.config/kilo/kilo.jsonc` |
+| **Verify** | `jq '.model, (.agent\|keys), (.provider\|keys)' ~/.config/kilo/kilo.jsonc` |
 | **Undo** | `kilo_ide_state: absent` |
-| **Change class** | Idempotent config (full overwrite of kilo.jsonc) |
+| **Change class** | Idempotent config (merge by default) |
 
 ## Secrets
 

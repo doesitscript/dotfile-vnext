@@ -3,15 +3,25 @@ argument_specs:
   main:
     short_description: "Deploy Kilo Code homelab LiteLLM provider + agent model map"
     description: >
-      Overwrites ~/.config/kilo/kilo.jsonc with an OpenAI-compatible provider
-      pointed at the homelab LiteLLM gateway and per-agent model assignments.
-      API key is loaded from the shared vault when kilo_ide_api_key is unset.
+      Deploys ~/.config/kilo/kilo.jsonc with a LiteLLM OpenAI-compatible
+      provider. Default apply mode merges managed slices and converts legacy
+      config.json once so user MCP/custom agents are not wiped.
     options:
       kilo_ide_state:
         type: str
         required: false
         default: present
         description: "present to deploy, absent to remove config"
+      kilo_ide_apply_mode:
+        type: str
+        required: false
+        default: merge
+        choices:
+          - merge
+          - overwrite
+        description: >-
+          merge preserves non-managed keys; overwrite writes the managed
+          template only.
       kilo_ide_api_key:
         type: str
         required: false

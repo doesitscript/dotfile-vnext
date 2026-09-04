@@ -34,6 +34,16 @@
   no_log: true
   when: aider_state == "present"
 
+- name: Convert legacy aider_yes inventory to yes-always (Aider 0.86+)
+  ansible.builtin.set_fact:
+    aider_render_yes_always: >-
+      {{
+        aider_yes_always
+        if (aider_yes_always is not none)
+        else (aider_yes | default(true))
+      }}
+  when: aider_state == "present"
+
 - name: Build pipx install argv for aider
   ansible.builtin.set_fact:
     _aider_pipx_argv: >-
@@ -90,12 +100,11 @@
     - "{{ aider_mcp_config_path }}"
   when: aider_state == "absent"
 
-- name: Probe aider version
+- name: Probe aider version (fails if managed config is invalid)
   ansible.builtin.command:
     argv: [aider, --version]
   register: _aider_version_probe
   changed_when: false
-  failed_when: false
   when:
     - aider_state == "present"
     - not ansible_check_mode
@@ -107,5 +116,7 @@
       config: "{{ aider_config_path }}"
       mcp_config: "{{ aider_mcp_config_path }}"
       default_model: "{{ aider_default_model }}"
+      yes_always: "{{ aider_render_yes_always | default(true) }}"
+      map_tokens: "{{ aider_map_tokens | default(2048) }}"
       version: "{{ _aider_version_probe.stdout | default('not installed') }}"
   when: aider_state == "present"

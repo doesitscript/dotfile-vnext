@@ -1,9 +1,11 @@
 # Aider homelab configuration — managed by Ansible (work-laptop packet / parent role).
 # Do not edit manually; re-run the packet playbook to regenerate.
 #
-# New files: tell Aider about them with /add <path> before asking it to write
-# (see https://aider.chat/docs/usage/tips.html). suggest-shell-commands is off
-# so create/edit should go through apply-edits, not "run this shell" fallbacks.
+# Conversion note (Aider 0.86+): use yes-always, never the legacy `yes:` key.
+# New files: /add <path> before asking it to write (or aider --read <path> for
+# planning). Paths are relative to the Git worktree root. map-tokens indexes the
+# repo; it does not automatically expose every file's full contents.
+# suggest-shell-commands is off so create/edit goes through apply-edits.
 
 # LiteLLM gateway on homelab
 openai-api-key: "{{ aider_render_api_key }}"
@@ -14,9 +16,11 @@ model: "{{ aider_default_model }}"
 auto-commits: {{ aider_auto_commits | default(false) | bool | lower }}
 dirty-commits: {{ aider_dirty_commits | default(true) | bool | lower }}
 suggest-shell-commands: {{ aider_suggest_shell_commands | default(false) | bool | lower }}
-yes: {{ aider_yes | default(true) | bool | lower }}
+yes-always: {{ aider_render_yes_always | default(true) | bool | lower }}
 git: {{ aider_git | default(true) | bool | lower }}
 skip-sanity-check-repo: {{ aider_skip_sanity_check_repo | default(false) | bool | lower }}
+map-tokens: {{ aider_map_tokens | default(2048) }}
+map-refresh: {{ aider_map_refresh | default('files') }}
 stream: true
 {% if aider_read_files | default([]) | length > 0 %}
 read:
