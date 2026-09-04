@@ -6,10 +6,12 @@
 
 - name: Resolve npm executable from the managed nvm default
   ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/common/node/tasks/resolve_npm.yml"
-  when: work_laptop_codex_cli_state == "present"
+  when: work_laptop_codex_cli_state in ["present", "absent"]
 
 # Corporate / custom ~/.npmrc often sets prefix= (e.g. ~/.npm-packages). Global
 # bins then land under that prefix, not next to the nvm npm binary.
+# community.general.npm can report changed/ok without creating the shim at
+# that prefix — always install with an explicit --prefix matching `npm prefix -g`.
 - name: Resolve npm global prefix for Codex binary layout
   ansible.builtin.command:
     argv:
@@ -20,7 +22,7 @@
   changed_when: false
   environment:
     PATH: "{{ (node_npm_executable | dirname) ~ ':' ~ ansible_facts['env']['PATH'] }}"
-  when: work_laptop_codex_cli_state == "present"
+  when: work_laptop_codex_cli_state in ["present", "absent"]
 
 - name: Set Codex npm layout facts from global prefix
   ansible.builtin.set_fact:
@@ -29,7 +31,7 @@
       {{ (work_laptop_codex_cli_npm_prefix_cmd.stdout | trim) }}/bin/codex
     work_laptop_codex_cli_module_path: >-
       {{ (work_laptop_codex_cli_npm_prefix_cmd.stdout | trim) }}/lib/node_modules/@openai/codex
-  when: work_laptop_codex_cli_state == "present"
+  when: work_laptop_codex_cli_state in ["present", "absent"]
 
 - name: Set Codex npm package name
   ansible.builtin.set_fact:
@@ -44,14 +46,33 @@
       }}
   when: work_laptop_codex_cli_state == "present"
 
-- name: Install Codex CLI via npm
-  community.general.npm:
-    name: "{{ work_laptop_codex_cli_package_name }}"
-    global: true
-    state: present
-    executable: "{{ node_npm_executable }}"
+- name: Ensure npm global prefix directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ work_laptop_codex_cli_npm_prefix }}"
+    - "{{ work_laptop_codex_cli_npm_prefix }}/bin"
+    - "{{ work_laptop_codex_cli_npm_prefix }}/lib"
+  when: work_laptop_codex_cli_state == "present"
+
+- name: Install Codex CLI via npm into resolved global prefix
+  ansible.builtin.command:
+    argv:
+      - "{{ node_npm_executable }}"
+      - install
+      - --global
+      - --prefix
+      - "{{ work_laptop_codex_cli_npm_prefix }}"
+      - "{{ work_laptop_codex_cli_package_name }}"
   environment:
     PATH: "{{ (node_npm_executable | dirname) ~ ':' ~ ansible_facts['env']['PATH'] }}"
+  register: work_laptop_codex_cli_npm_install
+  changed_when: >-
+    'added' in (work_laptop_codex_cli_npm_install.stdout | default(''))
+    or 'changed' in (work_laptop_codex_cli_npm_install.stdout | default(''))
+    or 'updated' in (work_laptop_codex_cli_npm_install.stdout | default(''))
   timeout: 300
   when: work_laptop_codex_cli_state == "present"
 
@@ -67,7 +88,31 @@
   failed_when: false
   when: work_laptop_codex_cli_state == "present"
 
-- name: Verify Codex CLI binary path
+- name: Check Codex CLI binary path after npm install
+  ansible.builtin.stat:
+    path: "{{ work_laptop_codex_cli_command }}"
+  register: work_laptop_codex_cli_binary
+  when: work_laptop_codex_cli_state == "present"
+
+# Safety net for partial installs (module reported ok but shim missing).
+- name: Repair missing Codex CLI binary with npm into resolved prefix
+  ansible.builtin.command:
+    argv:
+      - "{{ node_npm_executable }}"
+      - install
+      - --global
+      - --prefix
+      - "{{ work_laptop_codex_cli_npm_prefix }}"
+      - "{{ work_laptop_codex_cli_package_name }}"
+  environment:
+    PATH: "{{ (node_npm_executable | dirname) ~ ':' ~ ansible_facts['env']['PATH'] }}"
+  changed_when: true
+  timeout: 300
+  when:
+    - work_laptop_codex_cli_state == "present"
+    - not (work_laptop_codex_cli_binary.stat.exists | default(false))
+
+- name: Verify Codex CLI binary path after repair
   ansible.builtin.stat:
     path: "{{ work_laptop_codex_cli_command }}"
   register: work_laptop_codex_cli_binary
@@ -86,13 +131,34 @@
       is on PATH for interactive shells.
   when: work_laptop_codex_cli_state == "present"
 
+# Keep interactive shells able to find prefix-global bins (Codex, context7-mcp, …).
+- name: Ensure zsh PATH includes npm global prefix bin
+  ansible.builtin.blockinfile:
+    path: "{{ ansible_facts['env']['HOME'] }}/.zshrc"
+    create: true
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: work_laptop_npm_global_prefix_path"
+    block: |
+      # npm prefix -g (from ~/.npmrc); required when prefix != nvm node bin
+      export PATH="{{ work_laptop_codex_cli_npm_prefix }}/bin:$PATH"
+  when:
+    - work_laptop_codex_cli_state == "present"
+    - work_laptop_codex_cli_npm_prefix != (node_npm_executable | dirname | dirname)
+
 - name: Remove Codex CLI via npm when absent
-  community.general.npm:
-    name: "{{ work_laptop_codex_cli_package_base_name }}"
-    global: true
-    state: absent
-    executable: "{{ node_npm_executable }}"
+  ansible.builtin.command:
+    argv:
+      - "{{ node_npm_executable }}"
+      - uninstall
+      - --global
+      - --prefix
+      - "{{ work_laptop_codex_cli_npm_prefix }}"
+      - "{{ work_laptop_codex_cli_package_base_name }}"
   environment:
     PATH: "{{ (node_npm_executable | dirname) ~ ':' ~ ansible_facts['env']['PATH'] }}"
+  register: work_laptop_codex_cli_npm_uninstall
+  changed_when: >-
+    'removed' in (work_laptop_codex_cli_npm_uninstall.stdout | default(''))
+  failed_when: false
   timeout: 300
   when: work_laptop_codex_cli_state == "absent"

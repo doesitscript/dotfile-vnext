@@ -102,8 +102,11 @@ Current scope:
 
 - target-local execution on the exported work laptop only
 - guarded `ansible_connection: local`
-- Codex CLI install through `nvm` + npm (honors `~/.npmrc` `prefix=`; binary
-  may live under e.g. `~/.npm-packages/bin/codex`, not the nvm `bin/` dir)
+- Codex CLI install through `nvm` + npm with explicit `npm prefix -g`
+  (`--prefix`), plus a repair pass if the shim is still missing. Custom
+  `~/.npmrc` `prefix=` (e.g. `~/.npm-packages`) is supported; the role also
+  appends that prefix's `bin/` to `~/.zshrc` when it differs from the nvm
+  node root so interactive `codex` works.
 - baseline `~/.codex/config.toml` creation for Codex CLI on the work laptop
 - Codex local profile/config export for the current homelab model lanes
 - `/private/etc/hosts` entries for current homelab names
