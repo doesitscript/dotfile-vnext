@@ -1,0 +1,35 @@
+---
+kilo_ide_state: present
+
+kilo_ide_config_dir: "{{ ansible_env.HOME }}/.config/kilo"
+kilo_ide_config_path: "{{ kilo_ide_config_dir }}/config.json"
+
+# API key — resolved from vault when empty.
+kilo_ide_api_key: ""
+kilo_ide_api_key_env_var: "LITELLM_API_KEY"
+kilo_ide_gateway_api_base: "http://litellm.hom.lab/v1"
+kilo_ide_provider_id: "homelab-litellm"
+kilo_ide_provider_display_name: "Homelab LiteLLM"
+
+# Vault source for API key when kilo_ide_api_key is unset.
+kilo_ide_vault_file_path: "{{ dotfiles_home }}/vault/shared.vault.yml"
+kilo_ide_vault_key: "vault_k3s_litellm_gateway_master_key"
+
+kilo_ide_default_model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+
+kilo_ide_models:
+  - id: "qwen2.5-coder-32b@k3s02-vllm"
+    name: "Qwen2.5 Coder 32B (5090 vLLM)"
+    tool_call: true
+    context: 32768
+    output: 4096
+  - id: "qwen2.5-coder-7b@desktop"
+    name: "Qwen2.5 Coder 7B (desktop Ollama)"
+    tool_call: true
+    context: 32768
+    output: 4096
+  - id: "ministral-3-8b@desktop"
+    name: "Homelab Ministral 3 8B"
+    tool_call: false
+    context: 24000
+    output: 4096

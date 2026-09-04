@@ -1,0 +1,88 @@
+---
+- name: Check aider vault file
+  ansible.builtin.stat:
+    path: "{{ aider_vault_file_path }}"
+  register: _aider_vault_stat
+  when:
+    - aider_state == "present"
+    - aider_api_key | default('') | length == 0
+
+- name: Load shared vault for aider API keys when unset
+  ansible.builtin.include_vars:
+    file: "{{ aider_vault_file_path }}"
+    name: _aider_vault_vars
+  when:
+    - aider_state == "present"
+    - aider_api_key | default('') | length == 0
+    - _aider_vault_stat.stat.exists | default(false)
+  no_log: true
+
+- name: Resolve aider LiteLLM API key for render
+  ansible.builtin.set_fact:
+    aider_render_api_key: >-
+      {{
+        aider_api_key
+        if aider_api_key | default('') | length > 0
+        else (_aider_vault_vars[aider_vault_key] | default('REPLACE_WITH_LITELLM_KEY'))
+      }}
+    aider_render_firecrawl_api_key: >-
+      {{
+        aider_firecrawl_api_key
+        if aider_firecrawl_api_key | default('') | length > 0
+        else (_aider_vault_vars[aider_firecrawl_vault_key] | default('REPLACE_WITH_FIRECRAWL_KEY'))
+      }}
+  no_log: true
+  when: aider_state == "present"
+
+- name: Install aider via pipx
+  ansible.builtin.command:
+    argv: [pipx, install, "{{ aider_pipx_package }}"]
+  register: _aider_pipx_result
+  changed_when: "'installed package' in _aider_pipx_result.stdout"
+  failed_when:
+    - _aider_pipx_result.rc != 0
+    - "'already seems to be installed' not in _aider_pipx_result.stderr"
+  when: aider_state == "present"
+
+- name: Deploy aider config
+  ansible.builtin.template:
+    src: aider.conf.yml.j2
+    dest: "{{ aider_config_path }}"
+    mode: "0600"
+  when: aider_state == "present"
+
+- name: Deploy aider MCP config
+  ansible.builtin.template:
+    src: aider.mcp.json.j2
+    dest: "{{ aider_mcp_config_path }}"
+    mode: "0600"
+  when: aider_state == "present"
+
+- name: Remove aider config files managed by this role
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ aider_config_path }}"
+    - "{{ aider_mcp_config_path }}"
+  when: aider_state == "absent"
+
+- name: Probe aider version
+  ansible.builtin.command:
+    argv: [aider, --version]
+  register: _aider_version_probe
+  changed_when: false
+  failed_when: false
+  when:
+    - aider_state == "present"
+    - not ansible_check_mode
+
+- name: Report aider state
+  ansible.builtin.debug:
+    msg:
+      aider_state: "{{ aider_state }}"
+      config: "{{ aider_config_path }}"
+      mcp_config: "{{ aider_mcp_config_path }}"
+      default_model: "{{ aider_default_model }}"
+      version: "{{ _aider_version_probe.stdout | default('not installed') }}"
+  when: aider_state == "present"

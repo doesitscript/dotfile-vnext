@@ -1,0 +1,27 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "model": "{{ kilo_ide_default_model }}",
+  "provider": {
+    "{{ kilo_ide_provider_id }}": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "{{ kilo_ide_provider_display_name }}",
+      "options": {
+        "baseURL": "{{ kilo_ide_gateway_api_base }}",
+        "apiKey": "{env:{{ kilo_ide_api_key_env_var }}}"
+      },
+      "models": {
+{% for m in kilo_ide_models %}
+        "{{ m.id }}": {
+          "name": {{ m.name | to_json }},
+          "tool_call": {{ m.tool_call | lower }},
+          "limit": {
+            "context": {{ m.context }},
+            "output": {{ m.output }}
+          }
+        }{% if not loop.last %},{% endif %}
+
+{% endfor %}
+      }
+    }
+  }
+}

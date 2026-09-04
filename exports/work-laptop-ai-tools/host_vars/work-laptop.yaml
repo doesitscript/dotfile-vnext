@@ -131,6 +131,7 @@ vscode_extensions:
   - hashicorp.terraform
   - redhat.ansible
   - redhat.vscode-yaml
+  - kilocode.kilo-code
 
 # cx-* wrappers: work laptop repos live under Documents/develop (not ~/develop).
 codex_homelab_profiles_develop_root: "{{ ansible_env.HOME }}/Documents/develop"
@@ -342,6 +343,65 @@ cline_ide_mcp_servers: "{{ continue_ide_mcp_servers }}"
 ansible_dev_tools_pip_packages:
   - pynetbox
   - pytz
+
+# --- opencode CLI ---
+opencode_cli_state: present
+opencode_cli_default_model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+opencode_cli_models:
+  - id: "qwen2.5-coder-32b@k3s02-vllm"
+    name: "Qwen2.5 Coder 32B (5090 vLLM)"
+  - id: "qwen2.5-coder-7b@desktop"
+    name: "Qwen2.5 Coder 7B (desktop Ollama)"
+  - id: "ministral-3-8b@desktop"
+    name: "Homelab Ministral 3 8B"
+opencode_cli_mcp_context7_enabled: true
+opencode_cli_mcp_firecrawl_enabled: true
+
+# --- aider ---
+aider_state: present
+aider_default_model: "openai/qwen2.5-coder-32b@k3s02-vllm"
+aider_mcp_context7_enabled: true
+aider_mcp_firecrawl_enabled: true
+
+# --- Kilo IDE ---
+kilo_ide_state: present
+kilo_ide_default_model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+
+# --- morph MCP ---
+morph_mcp_state: present
+morph_mcp_targets:
+  - cursor_user
+  - vscode
+  - codex
+# Use HOME-scoped paths so the server is available globally, not just in the packet root.
+morph_mcp_vscode_config_path: "{{ ansible_env.HOME }}/.vscode/mcp.json"
+morph_mcp_cursor_user_config_path: "{{ ansible_env.HOME }}/.cursor/mcp.json"
+# Disable project-routing markers — they target dotfile-vnext files, not the packet.
+morph_mcp_routing_enable_agents_md: false
+morph_mcp_routing_enable_codex_explorer: false
+morph_mcp_routing_enable_codex_default: false
+morph_mcp_routing_enable_codex_worker: false
+morph_mcp_routing_enable_cursor_rule: false
+morph_mcp_routing_enable_copilot_instructions: false
+morph_mcp_continue_enabled: false
+
+# --- context7 MCP ---
+context7_mcp_state: present
+context7_mcp_targets:
+  - vscode
+  - codex
+context7_mcp_vscode_config_path: "{{ ansible_env.HOME }}/.vscode/mcp.json"
+# Override vault path to the packet vault (packet has no mac_dev.vault.yml).
+context7_mcp_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
+
+# --- firecrawl MCP ---
+firecrawl_mcp_state: present
+firecrawl_mcp_targets:
+  - vscode
+  - codex
+firecrawl_mcp_vscode_config_path: "{{ ansible_env.HOME }}/.vscode/mcp.json"
+# Override vault path to the packet vault.
+firecrawl_mcp_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
 
 zed_ide_state: present
 # Zed is already installed on the work laptop; manage config only — do not

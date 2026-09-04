@@ -1,0 +1,57 @@
+---
+- name: Check Kilo IDE vault file
+  ansible.builtin.stat:
+    path: "{{ kilo_ide_vault_file_path }}"
+  register: _kilo_vault_stat
+  when:
+    - kilo_ide_state == "present"
+    - kilo_ide_api_key | default('') | length == 0
+
+- name: Load shared vault for Kilo LiteLLM API key when unset
+  ansible.builtin.include_vars:
+    file: "{{ kilo_ide_vault_file_path }}"
+    name: _kilo_vault_vars
+  when:
+    - kilo_ide_state == "present"
+    - kilo_ide_api_key | default('') | length == 0
+    - _kilo_vault_stat.stat.exists | default(false)
+  no_log: true
+
+- name: Resolve Kilo LiteLLM API key for render
+  ansible.builtin.set_fact:
+    kilo_ide_render_api_key: >-
+      {{
+        kilo_ide_api_key
+        if kilo_ide_api_key | default('') | length > 0
+        else (_kilo_vault_vars[kilo_ide_vault_key] | default('REPLACE_WITH_LITELLM_KEY'))
+      }}
+  no_log: true
+  when: kilo_ide_state == "present"
+
+- name: Ensure Kilo config directory exists
+  ansible.builtin.file:
+    path: "{{ kilo_ide_config_dir }}"
+    state: directory
+    mode: "0700"
+  when: kilo_ide_state == "present"
+
+- name: Deploy Kilo homelab config
+  ansible.builtin.template:
+    src: kilo_config.json.j2
+    dest: "{{ kilo_ide_config_path }}"
+    mode: "0600"
+  when: kilo_ide_state == "present"
+
+- name: Remove Kilo config managed by this role
+  ansible.builtin.file:
+    path: "{{ kilo_ide_config_path }}"
+    state: absent
+  when: kilo_ide_state == "absent"
+
+- name: Report Kilo IDE state
+  ansible.builtin.debug:
+    msg:
+      kilo_ide_state: "{{ kilo_ide_state }}"
+      config: "{{ kilo_ide_config_path }}"
+      default_model: "{{ kilo_ide_default_model }}"
+  when: kilo_ide_state == "present"

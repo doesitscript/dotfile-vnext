@@ -22,5 +22,24 @@
 {% endfor %}
       }
     }
+  }{% if opencode_cli_mcp_context7_enabled or opencode_cli_mcp_firecrawl_enabled %},
+  "mcp": {
+{% if opencode_cli_mcp_context7_enabled %}
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
+    }{% if opencode_cli_mcp_firecrawl_enabled %},{% endif %}
+
+{% endif %}
+{% if opencode_cli_mcp_firecrawl_enabled %}
+    "firecrawl": {
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp@latest"],
+      "environment": {
+        "FIRECRAWL_API_KEY": "{{ opencode_cli_render_firecrawl_api_key | default('REPLACE_WITH_FIRECRAWL_KEY') }}"
+      }
+    }
+{% endif %}
   }
+{% endif %}
 }

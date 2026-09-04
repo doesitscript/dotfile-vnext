@@ -1,0 +1,32 @@
+---
+argument_specs:
+  main:
+    short_description: "Install Kilo Code VS Code extension and deploy homelab LiteLLM provider config"
+    description: >
+      Deploys the Kilo Code config file (~/.config/kilo/config.json) with a
+      custom OpenAI-compatible provider pointed at the homelab LiteLLM gateway.
+      API key is loaded from the shared packet vault when kilo_ide_api_key is unset.
+    options:
+      kilo_ide_state:
+        type: str
+        required: false
+        default: present
+        description: "present to deploy, absent to remove config"
+      kilo_ide_api_key:
+        type: str
+        required: false
+        default: ""
+        description: "LiteLLM gateway master key; loaded from vault when empty"
+      kilo_ide_gateway_api_base:
+        type: str
+        required: false
+        default: "http://litellm.hom.lab/v1"
+        description: "Base URL for the OpenAI-compatible endpoint"
+      kilo_ide_default_model:
+        type: str
+        required: false
+        description: "Default model in provider_id/model_id format"
+      kilo_ide_models:
+        type: list
+        required: false
+        description: "List of model objects with id, name, tool_call, context, output"

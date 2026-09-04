@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+{% if aider_mcp_context7_enabled %}
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "env": {}
+    }{% if aider_mcp_firecrawl_enabled %},{% endif %}
+
+{% endif %}
+{% if aider_mcp_firecrawl_enabled %}
+    "firecrawl": {
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp@latest"],
+      "env": {
+        "FIRECRAWL_API_KEY": "{{ aider_render_firecrawl_api_key }}"
+      }
+    }
+{% endif %}
+  }
+}

@@ -1,10 +1,92 @@
 ---
+- name: Check OpenCode vault file for Firecrawl key
+  ansible.builtin.stat:
+    path: "{{ opencode_cli_vault_file_path }}"
+  register: _opencode_vault_stat
+  when:
+    - opencode_cli_state == "present"
+    - opencode_cli_mcp_firecrawl_enabled | bool
+    - opencode_cli_firecrawl_api_key | default('') | length == 0
+
+- name: Load shared vault for OpenCode Firecrawl API key when unset
+  ansible.builtin.include_vars:
+    file: "{{ opencode_cli_vault_file_path }}"
+    name: _opencode_vault_vars
+  when:
+    - opencode_cli_state == "present"
+    - opencode_cli_mcp_firecrawl_enabled | bool
+    - opencode_cli_firecrawl_api_key | default('') | length == 0
+    - _opencode_vault_stat.stat.exists | default(false)
+  no_log: true
+
+- name: Resolve OpenCode Firecrawl API key for render
+  ansible.builtin.set_fact:
+    opencode_cli_render_firecrawl_api_key: >-
+      {{
+        opencode_cli_firecrawl_api_key
+        if opencode_cli_firecrawl_api_key | default('') | length > 0
+        else (_opencode_vault_vars[opencode_cli_firecrawl_vault_key] | default('REPLACE_WITH_FIRECRAWL_KEY'))
+      }}
+  no_log: true
+  when:
+    - opencode_cli_state == "present"
+    - opencode_cli_mcp_firecrawl_enabled | bool
+
 - name: Ensure OpenCode install directory exists
   ansible.builtin.file:
     path: "{{ opencode_cli_install_dir }}"
     state: directory
     mode: "0755"
   when: opencode_cli_state == "present"
+
+- name: Install OpenCode binary from official installer
+  ansible.builtin.shell:
+    cmd: curl -fsSL {{ opencode_cli_install_url }} | bash -s -- --no-modify-path
+    creates: "{{ opencode_cli_binary_path }}"
+  when: opencode_cli_state == "present"
+
+- name: Ensure OpenCode config directory exists
+  ansible.builtin.file:
+    path: "{{ opencode_cli_config_dir }}"
+    state: directory
+    mode: "0700"
+  when: opencode_cli_state == "present"
+
+- name: Deploy OpenCode homelab LiteLLM config
+  ansible.builtin.template:
+    src: opencode.jsonc.j2
+    dest: "{{ opencode_cli_config_path }}"
+    mode: "0600"
+  when: opencode_cli_state == "present"
+
+- name: Remove OpenCode config managed by this role
+  ansible.builtin.file:
+    path: "{{ opencode_cli_config_path }}"
+    state: absent
+  when: opencode_cli_state == "absent"
+
+- name: Probe OpenCode version
+  ansible.builtin.command:
+    argv:
+      - "{{ opencode_cli_binary_path }}"
+      - --version
+  register: opencode_cli_version_probe
+  changed_when: false
+  failed_when: false
+  when:
+    - opencode_cli_state == "present"
+    - not ansible_check_mode
+
+- name: Report OpenCode CLI state
+  ansible.builtin.debug:
+    msg:
+      opencode_cli_state: "{{ opencode_cli_state }}"
+      binary: "{{ opencode_cli_binary_path }}"
+      config: "{{ opencode_cli_config_path }}"
+      default_model: "{{ opencode_cli_default_model }}"
+      version: "{{ opencode_cli_version_probe.stdout | default('not installed') }}"
+  when: opencode_cli_state == "present"
+
 
 - name: Install OpenCode binary from official installer
   ansible.builtin.shell:

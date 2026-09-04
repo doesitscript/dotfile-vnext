@@ -1,0 +1,10 @@
+---
+- name: Dispatch kilo_ide by platform
+  ansible.builtin.include_tasks: "{{ _kilo_platform }}"
+  vars:
+    _kilo_platform: >-
+      {{
+        'mac.yml'
+        if ansible_facts['system'] == 'Darwin'
+        else 'unsupported.yml'
+      }}

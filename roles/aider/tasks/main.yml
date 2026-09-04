@@ -1,0 +1,10 @@
+---
+- name: Dispatch aider by platform
+  ansible.builtin.include_tasks: "{{ _aider_platform }}"
+  vars:
+    _aider_platform: >-
+      {{
+        'mac.yml'
+        if ansible_facts['system'] == 'Darwin'
+        else 'unsupported.yml'
+      }}
