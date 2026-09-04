@@ -72,6 +72,27 @@ cursor_ai_agent_profiles_codex_path: "{{ cursor_ai_agent_profiles_project_root }
 cursor_ai_agent_profiles_rule_path: "{{ cursor_ai_agent_profiles_project_root }}/.cursor/rules/framework-ai-agent-model-lanes.mdc"
 cursor_ai_agent_profiles_codex_doc_path: "{{ cursor_ai_agent_profiles_project_root }}/.codex/AI_AGENT_PROFILES.md"
 
+# ── Manual model setup notes ─────────────────────────────────────────────────
+# These models require one-time UI configuration on each Mac.
+# They cannot be automated via Ansible because providers store config in
+# VS Code Secrets (encrypted keychain) or in Cursor's account/server state.
+#
+# Cursor Settings > Models (OpenAI-compatible provider):
+#   Base URL: http://litellm.hom.lab/v1
+#   API key: LITELLM_MASTER_KEY (from vault)
+#   Add each model ID:
+#     gemini-2.5-flash@google~public-research   # daily driver
+#     gemini-2.5-flash@google~long-context      # 1M context
+#     gemini-2.5-pro@google~deep-reasoning      # hard reasoning
+#     gemini-2.5-flash-lite@google~bulk         # bulk / cheap
+#
+# Cline (saoudrizwan.claude-dev) sidebar → Settings:
+#   API Provider: OpenAI Compatible
+#   Base URL: http://litellm.hom.lab/v1
+#   API key: LITELLM_MASTER_KEY (from vault)
+#   Model ID: one of the four Gemini IDs above (set per-session as needed)
+# ─────────────────────────────────────────────────────────────────────────────
+
 # Cursor marketplace plugins use a separate subsystem from VS Code extensions.
 # Track required plugin slugs in the repo and verify their installed manifests
 # on macOS instead of trying to install them with `cursor --install-extension`.

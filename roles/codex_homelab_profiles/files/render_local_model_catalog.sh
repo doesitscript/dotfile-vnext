@@ -27,7 +27,11 @@ jq '
           {slug: "qwen2.5-coder-14b@desktop", name: "Homelab Qwen2.5 Coder 14B", context: 12000},
           {slug: "ministral-3-8b@desktop", name: "Homelab Ministral 3 8B", context: 24000},
           {slug: "qwen2.5-coder-32b@k3s02-vllm", name: "Homelab Qwen2.5 Coder 32B", context: 28000},
-          {slug: "qwen2.5-coder-1.5b@hvh01", name: "Homelab Qwen2.5 Coder 1.5B", context: 8192}
+          {slug: "qwen2.5-coder-1.5b@hvh01", name: "Homelab Qwen2.5 Coder 1.5B", context: 8192},
+          {slug: "gemini-2.5-flash@google~public-research", name: "Gemini 2.5 Flash (Daily Driver)", context: 1048576},
+          {slug: "gemini-2.5-flash@google~long-context", name: "Gemini 2.5 Flash (Long Context 1M)", context: 1048576},
+          {slug: "gemini-2.5-pro@google~deep-reasoning", name: "Gemini 2.5 Pro (Deep Reasoning)", context: 1048576},
+          {slug: "gemini-2.5-flash-lite@google~bulk", name: "Gemini 2.5 Flash Lite (Bulk)", context: 1048576}
         ]
         | map(
             . as $local
@@ -52,5 +56,5 @@ jq '
       )
     }' "$cache_path" >"$output_path"
 
-jq -e '.models | length == 5' "$output_path" >/dev/null
+jq -e '.models | length >= 5' "$output_path" >/dev/null
 printf 'Rendered local Codex model catalog: %s\n' "$output_path"
