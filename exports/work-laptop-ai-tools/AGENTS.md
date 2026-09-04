@@ -26,7 +26,9 @@ unless the user explicitly asks.
 | --- | --- |
 | `work-laptop-mcp-collect` | Collect / inventory an MCP role from the parent project into the packet design set |
 | `work-laptop-mcp-adopt` | Wire a collected MCP into packet playbook/host_vars/manifest with HRL remaps; default `absent` |
-| `work-laptop-mcp-commission` | User asked to **enable** MCP for VS Code / Codex / Continue (flip present, Continue lists, vault gates) |
+| `work-laptop-mcp-commission` | User asked to **enable** MCP for Continue / Cline / Codex (flip present, client lists, vault gates) |
+| `work-laptop-ide-clients` | Continue / Cline / Zed / `cx-*` config, LiteLLM key gates, empty UI, Documents repo roots |
+| `work-laptop-day2-apply` | On the work Mac: `git pull` + playbook `--skip-tags hosts_file` + verify Continue/Cline/`cx-*` |
 | `work-laptop-vault` | Packet vault router: init / hydrate / status via `scripts/work_laptop_vault.py` |
 | `work-laptop-vault-hydrate` | Copy parent vault values with `hydrate_vault_from_parent.py` (no values in chat) |
 | `work-laptop-vault-status` | Names-only ciphertext + nonempty key check via `vault_status.py` |
@@ -50,12 +52,14 @@ Physical skill location does not sandbox those paths.
 
 - New MCP catalog entries stay `*_state: absent` until the user commissions them
   (`work-laptop-mcp-commission`).
-- Do not append Continue/Zed MCP lists unless asked.
+- Do not append Continue/Cline/Zed MCP lists unless asked.
 - Never commit live vault secrets; ship example + README only.
 - Prefer user-home Codex config (`~/.codex/config.toml`), Continue
   (`continue_ide_mcp_servers` → `~/.continue/config.yaml`), and Cline
   (`cline_ide_*` → `~/.cline/data/settings/`). Do **not** commission VS Code
   native `~/.vscode/mcp.json` on this slice unless explicitly asked.
+- After packet edits: `work-laptop-packet-ops` → push sibling → on laptop
+  `work-laptop-day2-apply`.
 
 # BEGIN ANSIBLE MANAGED BLOCK: routing_morph-mcp
 ## Morph WarpGrep + Fast Apply (evaluation — under_evaluation)

@@ -9,8 +9,9 @@ Names-only health check for `vault/shared.vault.yml`.
 
 ## When to use / not use
 
-Use after hydrate, before Morph commission, or when the user asks if the
-packet vault is ready.
+Use after hydrate, before Morph or Continue/Cline commission, or when the user
+asks if the packet vault is ready (especially LiteLLM /
+`vault_k3s_litellm_gateway_master_key`).
 
 Do not use to copy values (`work-laptop-vault-hydrate`).
 

@@ -11,10 +11,20 @@ and the focused skills `work-laptop-vault-hydrate` / `work-laptop-vault-status`.
 ## When to use / not use
 
 Use when the user mentions packet vault, API keys, Morph vault gate, LiteLLM
-key in Continue/Zed, or parent→packet secret copy.
+key for Continue/Cline/Zed, empty Continue/Cline UI after apply, or parent→packet
+secret copy.
 
 Do not use to `ansible-vault view` / `decrypt` to the terminal in this chat.
 Do not commit `vault/shared.vault.yml`.
+
+## LiteLLM key (Continue / Cline / Zed)
+
+`vault_k3s_litellm_gateway_master_key` must be nonempty in the packet vault
+before `continue_ide` / `cline_ide` present runs succeed
+(`*_require_api_key: true`). Symptom of missing key: Continue/Cline UI looks
+empty. After hydrate on the home Mac, get ciphertext onto the laptop (share
+drop or similar — never auto-decrypt onto shares), then
+`work-laptop-day2-apply`. IDE details: `work-laptop-ide-clients`.
 
 ## Scripts (required)
 
@@ -52,5 +62,7 @@ bin/codex-env python \
 
 - `work-laptop-vault-hydrate`
 - `work-laptop-vault-status`
+- `work-laptop-ide-clients` (Continue/Cline empty UI)
+- `work-laptop-day2-apply` (laptop converge after vault drop)
 - `vault/README.md`
 - `references/key-name-map.md`

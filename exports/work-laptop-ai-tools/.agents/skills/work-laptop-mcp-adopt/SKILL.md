@@ -59,7 +59,9 @@ Do not use when:
    - override codex path to user home via `work_laptop_mcp_codex_config_path`
    - override env dir to `~/.config/work-laptop-ai-tools/mcp/env.d/`
    - override wrapper + `*_vault_file_path` to packet `bin/` + `vault/shared.vault.yml`
-5. Do **not** append `continue_ide_mcp_servers` / `zed_ide_context_servers` unless asked.
+5. Do **not** append `continue_ide_mcp_servers` / `cline_ide_mcp_servers` /
+   `zed_ide_context_servers` unless asked (use `work-laptop-mcp-commission`
+   and `work-laptop-ide-clients`).
 6. If Morph: keep `ripgrep_cli_state: absent` until Morph is commissioned; note the dependency.
 7. Update packet README optional-MCP note if the catalog changed.
 8. If secrets: hand off to `work-laptop-vault` for example keys (no live secrets).
@@ -92,4 +94,5 @@ Do not use when:
 
 - `references/porting-checklist.md` — required remaps
 - `references/hrl-pointers.md` — library living docs
-- Companion: `work-laptop-mcp-collect`, `work-laptop-mcp-commission`, `work-laptop-vault`, `work-laptop-packet-ops`
+- Companion: `work-laptop-mcp-collect`, `work-laptop-mcp-commission`,
+  `work-laptop-ide-clients`, `work-laptop-vault`, `work-laptop-packet-ops`

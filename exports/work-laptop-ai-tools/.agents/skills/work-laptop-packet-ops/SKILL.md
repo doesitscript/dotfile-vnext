@@ -13,7 +13,7 @@ slice skill scopes when to run them and what “done” means for the packet.
 
 Use when:
 
-- after MCP adopt / vault example / packet README changes
+- after MCP adopt / vault example / packet README / IDE client changes
 - refreshing the sibling `work-laptop-ai-tools` checkout
 - verifying export contract before zip (zip only if user asks)
 
@@ -22,6 +22,7 @@ Do not use when:
 - designing MCP remaps (use `work-laptop-mcp-adopt`)
 - parent-wide skill bridging (`project-skill-runtime-bridge`)
 - vault hydrate/status (use `work-laptop-vault-hydrate` / `work-laptop-vault-status`)
+- running the playbook **on** the work laptop (use `work-laptop-day2-apply`)
 
 ## Why this stays thin (move evaluation)
 
@@ -57,18 +58,24 @@ Archive/zip only when the user explicitly requests the archive branch.
 - Validate OK
 - Sibling sync file counts / state file updated
 - Smoke result if requested
+- Reminder: commit/push sibling when delivering to the laptop; laptop then
+  runs `work-laptop-day2-apply` (`git pull` + playbook `--skip-tags hosts_file`)
 
 ## Validation
 
 - Contract script exits 0
 - Sibling contains `.agents/skills/` and `AGENTS.md` after sync when those are on the manifest
+- New packet skills appear under sibling `.agents/skills/` after sync
 
 ## Prohibited behavior
 
 - `--apply` without explicit user request for live work-laptop apply
 - Claiming sibling is design authority
+- Claiming the work laptop is updated without a push + laptop pull/apply
 
 ## Progressive disclosure
 
 - Parent skill: `skills/implementation/work-laptop-export-pack/SKILL.md`
 - Packet `export-manifest.yml`, `AGENTS.md`
+- Laptop apply: `work-laptop-day2-apply`
+- IDE clients: `work-laptop-ide-clients`
