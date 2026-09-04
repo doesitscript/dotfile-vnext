@@ -29,6 +29,7 @@ unless the user explicitly asks.
 | `work-laptop-mcp-commission` | User asked to **enable** MCP for Continue / Cline / Codex (flip present, client lists, vault gates) |
 | `work-laptop-ide-clients` | Continue / Cline / Zed / `cx-*` config, LiteLLM key gates, empty UI, Documents repo roots |
 | `work-laptop-day2-apply` | On the work Mac: `git pull` + playbook `--skip-tags hosts_file` + verify Continue/Cline/`cx-*` |
+| `work-laptop-improvement-review` | Pull latest sibling, read commits/comments, evaluate tech debt + skill gaps (audit-only by default) |
 | `work-laptop-vault` | Packet vault router: init / hydrate / status via `scripts/work_laptop_vault.py` |
 | `work-laptop-vault-hydrate` | Copy parent vault values with `hydrate_vault_from_parent.py` (no values in chat) |
 | `work-laptop-vault-status` | Names-only ciphertext + nonempty key check via `vault_status.py` |

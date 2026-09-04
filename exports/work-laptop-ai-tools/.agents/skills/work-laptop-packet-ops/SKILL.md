@@ -79,3 +79,4 @@ Archive/zip only when the user explicitly requests the archive branch.
 - Packet `export-manifest.yml`, `AGENTS.md`
 - Laptop apply: `work-laptop-day2-apply`
 - IDE clients: `work-laptop-ide-clients`
+- Debt / skill review: `work-laptop-improvement-review`
