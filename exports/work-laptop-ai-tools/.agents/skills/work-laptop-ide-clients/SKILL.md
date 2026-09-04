@@ -44,6 +44,9 @@ Do not use when:
    `vscode_extensions` when those clients are commissioned.
 7. Work-laptop `cx-*` roots default to `~/Documents/develop/...`, not
    `~/develop/dotfile-vnext`.
+8. Before inventing path/URL/npm workarounds, read `deviations/register.yaml`
+   (behavior groups `repo-layout-paths`, `npm-global-install`, `litellm-client-keys`).
+   New laptop-driven fixes → `work-laptop-improvement-review` intake.
 
 ## Workflow — Continue empty UI
 

@@ -78,11 +78,14 @@ Do not claim pass without this turn’s command output.
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| Continue/Cline UI empty | LiteLLM key still placeholder / vault missing | `work-laptop-vault` on home → drop ciphertext vault → re-apply |
+| Continue/Cline UI empty | LiteLLM key still placeholder / vault missing | `work-laptop-vault` on home → drop ciphertext vault → re-apply; deviation `litellm-key-ide-clients` |
 | `continue_ide` / `cline_ide` assert fail | `*_require_api_key: true` and no vault key | Hydrate `vault_k3s_litellm_gateway_master_key` |
-| `cd: …/develop/dotfile-vnext: No such file` | Stale `cx-*` bashrc | Re-apply `codex_homelab_profiles` (this packet sets Documents paths) |
-| hosts_file / become fail | sudo password | `--skip-tags hosts_file` for day-2 |
-| `codex` missing after npm | corporate `~/.npmrc` prefix | Role repairs via `npm prefix -g`; re-run codex tags |
+| `cd: …/develop/dotfile-vnext: No such file` | Stale `cx-*` bashrc | Re-apply profiles; deviation `documents-develop-paths` |
+| hosts_file / become fail | sudo password | `--skip-tags hosts_file`; deviation `hosts-file-skip-day2` |
+| `codex` missing after npm | corporate `~/.npmrc` prefix | Codex role prefix repair; deviation `npm-global-prefix` |
+
+Before inventing a new workaround, read `deviations/register.yaml` — the class
+of problem may already be accepted and documented.
 
 ## Prohibited behavior
 
@@ -96,4 +99,6 @@ Do not claim pass without this turn’s command output.
 - IDE clients: `work-laptop-ide-clients`
 - Parent sync: `work-laptop-packet-ops`
 - Vault: `work-laptop-vault`
+- Inbound laptop feedback / debt: `work-laptop-improvement-review`
+- Deviation manifest: `deviations/README.md`
 - Packet `README.md` day-2 notes

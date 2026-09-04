@@ -1,0 +1,91 @@
+---
+# Accepted work-laptop deviations index.
+# schema_version bumps when field names change.
+schema_version: 1
+updated_at: "2026-09-04"
+notes: >
+  Inbound laptop corrections must land here (or update an existing id) so
+  accommodations survive reinstall and generalize across behavior_group peers.
+  Skill: work-laptop-improvement-review.
+
+deviations:
+  - id: vault-pass-helper
+    status: promoted
+    behavior_group: vault-password-ux
+    title: Packet vault via vault_pass.sh + .vault_pass (no --ask-vault-pass)
+    entry: entries/vault-pass-helper.md
+    inbound_sources:
+      - "README Local Runtime Notes; laptop playbook UX"
+    reapply: "Ensure vault_pass.sh + gitignored .vault_pass on laptop; ansible.cfg vault_password_file"
+    generalize_to:
+      - "Any packet playbook that would otherwise prompt for vault every run"
+
+  - id: npm-global-prefix
+    status: promoted
+    behavior_group: npm-global-install
+    title: Corporate ~/.npmrc prefix= — install/verify globals via npm prefix -g
+    entry: entries/npm-global-prefix.md
+    inbound_sources:
+      - "Codex CLI missing shim; Context7 bin not next to nvm"
+      - "Laptop one-off merges absorbed into work_laptop_codex_cli + context7 tasks"
+    reapply: "Roles resolve npm prefix -g; zsh PATH block for prefix/bin; repair if shim missing"
+    generalize_to:
+      - "morph-mcp / firebase npx globals via work-laptop-nvm-exec"
+      - "Any new npm -g tool on this slice"
+
+  - id: documents-develop-paths
+    status: promoted
+    behavior_group: repo-layout-paths
+    title: Work laptop repos under ~/Documents/develop (not ~/develop)
+    entry: entries/documents-develop-paths.md
+    inbound_sources:
+      - "cx-desktop cd failed: /Users/a805120/develop/dotfile-vnext missing"
+    reapply: "host_vars codex_homelab_profiles_repo_*; re-deploy multi-terminal bash"
+    generalize_to:
+      - "Any skill/script hardcoded to ~/develop/*"
+      - "Bootstrap or kickoff paths that assume home Mac layout"
+
+  - id: hosts-file-skip-day2
+    status: accepted
+    behavior_group: sudo-hosts-file
+    title: Day-2 playbook skips hosts_file (sudo); hosts already complete
+    entry: entries/hosts-file-skip-day2.md
+    inbound_sources:
+      - "Repeated become/sudo friction on laptop converge"
+    reapply: "ansible-playbook ... --skip-tags hosts_file; skill work-laptop-day2-apply"
+    generalize_to:
+      - "Other become-gated tags that are bootstrap-once on corporate Mac"
+
+  - id: litellm-key-ide-clients
+    status: promoted
+    behavior_group: litellm-client-keys
+    title: Continue/Cline require vault LiteLLM key (empty UI otherwise)
+    entry: entries/litellm-key-ide-clients.md
+    inbound_sources:
+      - "Continue config looked empty on laptop"
+    reapply: "Hydrate vault_k3s_litellm_gateway_master_key; continue_ide/cline_ide require_api_key"
+    generalize_to:
+      - "zed_ide openai.env"
+      - "Any new OpenAI-compatible IDE client on this slice"
+
+  - id: homebrew-uv-idempotence
+    status: promoted
+    behavior_group: homebrew-idempotence
+    title: Skip brew install when formula already listed (uv / dependents noise)
+    entry: entries/homebrew-uv-idempotence.md
+    inbound_sources:
+      - "README Local Runtime Notes; AWS IaC MCP uv path"
+    reapply: "Role precheck brew list --versions before community.general.homebrew"
+    generalize_to:
+      - "Other Homebrew formula installs on this packet that fail when already current"
+
+  - id: continue-apiBase-no-v1
+    status: promoted
+    behavior_group: litellm-client-keys
+    title: Continue apiBase omits /v1; Cline/Zed include /v1
+    entry: entries/continue-apiBase-no-v1.md
+    inbound_sources:
+      - "Gateway probe GET {apiBase}; /v1 alone 404s for Continue"
+    reapply: "continue_ide_gateway_api_base vs cline_ide_gateway_api_base in host_vars"
+    generalize_to:
+      - "New IDE clients — check vendor probe path before copying either pattern"

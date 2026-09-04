@@ -1,25 +1,39 @@
 # Evaluation rubric — work-laptop improvement review
 
-Use this after `git pull` and commit/comment intake. Prefer evidence over
-memory.
+Use after `git pull` and commit/comment intake. Prefer evidence over memory.
 
 ## Dimensions
 
-### 1. Runtime reliability (tech debt)
+### 0. Inbound deviations (first when laptop feedback exists)
 
 Ask:
 
-- Can day-2 apply succeed with `--skip-tags hosts_file` without surprise sudo?
-- Do Continue/Cline present runs fail loud on missing LiteLLM key (not empty UI)?
-- Are `cx-*` roots correct for `Documents/develop` on the work Mac?
-- Do MCP roles still resolve `meta/dependencies` at parse time when `absent`?
-- Corporate npm `prefix=` / missing `codex` shim still handled?
+- Did a work-laptop push/PR/commit fix a runtime mismatch?
+- Is that fix in `deviations/register.yaml`?
+- Is there a re-apply recipe for wipe/reinstall?
+- Are peers in the same `behavior_group` listed (or marked none)?
+- Would a *new* tool of the same class hit this tomorrow?
 
-High priority if a recent commit message or user thread re-hit the same failure.
+| Severity | Condition |
+| --- | --- |
+| P0 | Inbound fix with **no** register entry (will resurface) |
+| P1 | Entry exists but accommodation not in role/skill (reinstall fragile) |
+| P2 | Promoted for one tool; peers in group still vulnerable |
+| OK | Registered + promoted + peers covered or explicitly deferred |
+
+**Accepted deviation ≠ debt.** Unregistered or non-generalized deviation = debt.
+
+### 1. Runtime reliability (tech debt)
+
+- Day-2 apply with `--skip-tags hosts_file`?
+- Continue/Cline fail loud on missing LiteLLM key?
+- `cx-*` Documents paths?
+- MCP parse-time deps packaged when `absent`?
+- npm `prefix=` / missing shim handled?
+
+High priority if the same failure appears twice in the commit window.
 
 ### 2. Skill coverage vs repeated work
-
-For each repeated laptop/packet loop in recent commits or docs:
 
 | Loop | Expected skill |
 | --- | --- |
@@ -29,47 +43,51 @@ For each repeated laptop/packet loop in recent commits or docs:
 | adopt MCP role | `work-laptop-mcp-adopt` |
 | vault hydrate/status | `work-laptop-vault*` |
 | validate + sync sibling | `work-laptop-packet-ops` |
-| this review | `work-laptop-improvement-review` |
+| debt + inbound laptop feedback | `work-laptop-improvement-review` |
 
-Gap = loop happened in commits/comments but skill missing, outdated, or not
-handed off from AGENTS.md.
+Gap = loop in commits/comments but skill missing, outdated, or ignores
+`deviations/`.
 
-### 3. Skill quality (process this project better)
+### 3. Skill quality
 
-- Description frontmatter discoverable for the real trigger phrases?
-- Handoffs name the next skill (packet-ops → day2-apply; vault → ide-clients)?
-- Prohibited behavior still match slice rules (no VS Code native MCP by default)?
-- Porting checklist include Cline mirror, `/v1` split, Documents paths?
+- Frontmatter matches real triggers (including “laptop pushed a fix”)?
+- Handoffs: improvement-review → packet-ops → day2-apply?
+- Skills tell agents to **read `deviations/register.yaml`** before inventing paths?
 
-### 4. Authority / process debt
+### 4. Authority / process
 
-- Edits landing only on sibling?
-- Sync without push / push without laptop pull instructions?
-- Secrets risk (vault decrypt on shares, keys in chat)?
+- Edits sibling-only?
+- Sync without push / push without laptop pull?
+- Secrets risk?
 
-### 5. Known themes from this slice (checklist)
+### 5. Known themes checklist
 
-Mark each: fixed / still open / deferred intentionally.
+Mark: fixed / open / deferred / **registered deviation**.
 
-- [ ] Continue empty UI ↔ LiteLLM vault key
-- [ ] Cline commissioned like Continue
-- [ ] `cx-*` Documents/develop roots
-- [ ] hosts_file skip for day-2
-- [ ] Codex npm prefix / shim repair
-- [ ] `common/supergateway` parse-time dep packaged
-- [ ] MemoriesToml / Codex config migration
-- [ ] MCP catalog default `absent` until commission
+- [ ] Continue empty UI ↔ LiteLLM vault key → `litellm-key-ide-clients`
+- [ ] Cline like Continue
+- [ ] `cx-*` Documents paths → `documents-develop-paths`
+- [ ] hosts_file skip day-2 → `hosts-file-skip-day2`
+- [ ] Codex/Context7 npm prefix → `npm-global-prefix`
+- [ ] `common/supergateway` parse-time dep
+- [ ] MemoriesToml migration
+- [ ] MCP catalog default `absent`
+- [ ] vault_pass helper → `vault-pass-helper`
+- [ ] brew uv idempotence → `homebrew-uv-idempotence`
 
 ## Priority order for the receipt
 
-1. Breaks day-2 or empty IDE with no skill handoff
-2. Repeated commit churn on same class of fix
-3. Skill description/handoff drift from AGENTS.md
-4. Nice-to-have docs polish
+1. Unregistered inbound laptop feedback
+2. Resurface / reinstall without re-apply recipe
+3. Generalization gaps inside a behavior_group
+4. Day-2 / empty IDE breaks
+5. Skill handoff drift
+6. Docs polish
 
 ## Non-actions (default defer)
 
-- Enabling absent MCP servers without user ask
+- Enabling absent MCP without user ask
 - Re-enabling remote Continue autocomplete
 - VS Code native `mcp.json`
-- Promoting packet skills to global-skills unless reuse across repos is proven
+- Deleting an accepted deviation to “simplify” home-Mac defaults
+- Promoting packet skills to global-skills without proven cross-repo reuse

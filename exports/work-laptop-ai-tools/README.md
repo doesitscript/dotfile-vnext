@@ -196,14 +196,23 @@ Bootstrap only, without handing off into the packet playbook:
 
 ## Local Runtime Notes
 
-The following adjustments came from a live macOS packet run. They are durable
-role fixes, not host-specific workarounds, and no `one-off-fixes.md` was added.
+Live macOS / work-laptop accommodations are tracked as **accepted deviations**
+(not one-off shame docs). Canonical index:
+
+- `deviations/register.yaml`
+- `deviations/entries/*.md`
+- Skill: `work-laptop-improvement-review` (inbound laptop feedback → register → generalize)
+
+Historical snapshot (see register for current status):
 
 | Area | Observed behavior | Resolution |
 | --- | --- | --- |
-| Vault password | Ansible prompted for the packet vault password on each run. | `ansible.cfg` uses the local `vault_pass.sh` helper, which reads the ignored `.vault_pass` file. Run the playbook without `--ask-vault-pass`. Never commit either a real password file or vault ciphertext. |
-| AWS IaC MCP | `community.general.homebrew` failed when Homebrew reported `uv` was already current, despite the formula being installed. | The role checks `brew list --versions uv` first and runs the Homebrew install task only when the formula is absent. |
-| Context7 MCP | The role expected `context7-mcp` next to the nvm-managed npm binary, but custom npm `prefix=` configuration installed it under a separate global prefix. | The macOS and Ubuntu tasks resolve `npm prefix -g` and check `<prefix>/bin/context7-mcp` before retaining the nvm-bin fallback. |
+| Vault password | Ansible prompted for the packet vault password on each run. | `vault-pass-helper` — `vault_pass.sh` + `.vault_pass` |
+| AWS IaC MCP / uv | Homebrew failed when `uv` already current. | `homebrew-uv-idempotence` |
+| Context7 / Codex npm | Custom `~/.npmrc` `prefix=` — bins not beside nvm. | `npm-global-prefix` |
+
+When the laptop pushes another correction, run improvement-review and **add or
+update** a deviation before the lesson is lost.
 
 The validation run completed the vault, AWS IaC MCP, and Context7 MCP paths
 without prompting. It then stopped at the intentional Morph MCP credential

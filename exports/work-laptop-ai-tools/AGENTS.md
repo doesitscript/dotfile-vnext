@@ -29,7 +29,7 @@ unless the user explicitly asks.
 | `work-laptop-mcp-commission` | User asked to **enable** MCP for Continue / Cline / Codex (flip present, client lists, vault gates) |
 | `work-laptop-ide-clients` | Continue / Cline / Zed / `cx-*` config, LiteLLM key gates, empty UI, Documents repo roots |
 | `work-laptop-day2-apply` | On the work Mac: `git pull` + playbook `--skip-tags hosts_file` + verify Continue/Cline/`cx-*` |
-| `work-laptop-improvement-review` | Pull latest sibling, read commits/comments, evaluate tech debt + skill gaps (audit-only by default) |
+| `work-laptop-improvement-review` | Pull latest; ingest **inbound laptop feedback**; register accepted deviations; evaluate debt + skill gaps + generalize peers (audit-only by default) |
 | `work-laptop-vault` | Packet vault router: init / hydrate / status via `scripts/work_laptop_vault.py` |
 | `work-laptop-vault-hydrate` | Copy parent vault values with `hydrate_vault_from_parent.py` (no values in chat) |
 | `work-laptop-vault-status` | Names-only ciphertext + nonempty key check via `vault_status.py` |
@@ -61,6 +61,10 @@ Physical skill location does not sandbox those paths.
   native `~/.vscode/mcp.json` on this slice unless explicitly asked.
 - After packet edits: `work-laptop-packet-ops` → push sibling → on laptop
   `work-laptop-day2-apply`.
+- **Accepted deviations** (work laptop ≠ clean home-Mac assumptions) live in
+  `deviations/register.yaml`. Inbound laptop corrections must update that
+  manifest via `work-laptop-improvement-review` so accommodations re-apply and
+  generalize to similar tools.
 
 # BEGIN ANSIBLE MANAGED BLOCK: routing_morph-mcp
 ## Morph WarpGrep + Fast Apply (evaluation — under_evaluation)
