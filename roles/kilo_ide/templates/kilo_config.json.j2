@@ -1,22 +1,45 @@
 {
   "$schema": "https://app.kilo.ai/config.json",
-  "model": "{{ kilo_ide_default_model }}",
+  "default_agent": {{ kilo_ide_default_agent | to_json }},
+  "model": {{ kilo_ide_default_model | to_json }},
+  "small_model": {{ kilo_ide_small_model | to_json }},
+  "auto_collapse_reasoning": {{ kilo_ide_auto_collapse_reasoning | default(true) | lower }},
+  "terminal_command_display": {{ kilo_ide_terminal_command_display | default('collapsed') | to_json }},
+  "code_edit_display": {{ kilo_ide_code_edit_display | default('collapsed') | to_json }},
+  "permission": {{ kilo_ide_permission | to_json }},
+  "agent": {
+{% for agent_id, agent_cfg in kilo_ide_agents.items() %}
+    {{ agent_id | to_json }}: {
+      "model": {{ agent_cfg.model | to_json }}{% if agent_cfg.description is defined %},
+      "description": {{ agent_cfg.description | to_json }}{% endif %}{% if agent_cfg.permission is defined %},
+      "permission": {{ agent_cfg.permission | to_json }}{% endif %}{% if agent_cfg.temperature is defined %},
+      "temperature": {{ agent_cfg.temperature }}{% endif %}
+    }{% if not loop.last %},{% endif %}
+
+{% endfor %}
+  },
+  "compaction": {{ kilo_ide_compaction | to_json }},
+  "disabled_providers": {{ kilo_ide_disabled_providers | default([]) | to_json }},
   "provider": {
-    "{{ kilo_ide_provider_id }}": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "{{ kilo_ide_provider_display_name }}",
+    {{ kilo_ide_provider_id | to_json }}: {
+      "npm": {{ kilo_ide_provider_npm | default('@ai-sdk/openai-compatible') | to_json }},
+      "name": {{ kilo_ide_provider_display_name | to_json }},
       "options": {
-        "baseURL": "{{ kilo_ide_gateway_api_base }}",
-        "apiKey": "{env:{{ kilo_ide_api_key_env_var }}}"
+        "baseURL": {{ kilo_ide_gateway_api_base | to_json }},
+        "apiKey": {{ kilo_ide_render_api_key | to_json }},
+        "timeout": {{ kilo_ide_provider_timeout_ms | default(300000) }},
+        "chunkTimeout": {{ kilo_ide_provider_chunk_timeout_ms | default(30000) }}
       },
       "models": {
 {% for m in kilo_ide_models %}
-        "{{ m.id }}": {
+        {{ m.id | to_json }}: {
           "name": {{ m.name | to_json }},
+          "id": {{ m.id | to_json }},
           "tool_call": {{ m.tool_call | lower }},
           "limit": {
             "context": {{ m.context }},
-            "output": {{ m.output }}
+            "output": {{ m.output }}{% if m.input is defined %},
+            "input": {{ m.input }}{% endif %}
           }
         }{% if not loop.last %},{% endif %}
 

@@ -10,7 +10,8 @@ Manage **editor/agent client configs** for this slice (not VS Code native MCP).
 | Client | Config surface | Role / vars |
 | --- | --- | --- |
 | Continue | `~/.continue/config.yaml` | `continue_ide_*` |
-| Cline | `~/.cline/data/settings/providers.json` (+ MCP) | `cline_ide_*` |
+| Cline | `~/.cline/data/settings/providers.json` + `models.json` (+ MCP) | `cline_ide_*` |
+| Kilo | `~/.config/kilo/kilo.jsonc` (agent→model map) | `kilo_ide_*` |
 | Zed | `~/.config/zed/settings.json` | `zed_ide_*` |
 | `cx-*` wrappers | `~/.bashrc.d/codex-multi-terminal.bash` | `codex_homelab_profiles_repo_*` |
 | Extensions | VS Code marketplace IDs | `vscode_extensions` |
@@ -62,12 +63,23 @@ Do not use when:
    - `cline_ide_state: present`
    - `cline_ide_gateway_api_base: "http://litellm.hom.lab/v1"`
    - `cline_ide_model` (LiteLLM `model@host`)
+   - `cline_ide_models` (catalog → `models.json`)
    - `cline_ide_mcp_servers: "{{ continue_ide_mcp_servers }}"`
    - `saoudrizwan.claude-dev` in `vscode_extensions`
 2. Ensure `roles/cline_ide` is on `export-manifest.yml` and `playbook.yaml`.
 3. `work-laptop-packet-ops` → push → `work-laptop-day2-apply`.
-4. Verify `~/.cline/data/settings/providers.json` `lastUsedProvider` /
-   `openai-compatible` + `baseUrl`.
+4. Verify `~/.cline/data/settings/providers.json` + `models.json`
+   (`openai-compatible`, `/v1` baseUrl, multiple model ids).
+
+## Workflow — Commission or refresh Kilo
+
+1. Packet `host_vars/work-laptop.yaml`:
+   - `kilo_ide_state: present`
+   - `kilo_ide_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"`
+   - `kilo_ide_default_model` / `kilo_ide_small_model`
+   - `kilo_ide_models` + `kilo_ide_agents` (role→model map)
+2. Role overwrites `~/.config/kilo/kilo.jsonc` and removes legacy `config.json`.
+3. Verify: `jq '.model, (.agent|keys)' ~/.config/kilo/kilo.jsonc`
 
 ## Workflow — Fix `cx-*` paths
 

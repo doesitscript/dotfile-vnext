@@ -36,6 +36,7 @@
     that:
       - cline_ide_model | default('') | length > 0
       - cline_ide_gateway_api_base | default('') | length > 0
+      - (cline_ide_models | default([]) | length) > 0
       - >-
         (not (cline_ide_require_api_key | default(true) | bool))
         or (
@@ -43,9 +44,10 @@
           and (cline_ide_render_api_key | default('') != 'REPLACE_WITH_LITELLM_KEY')
         )
     fail_msg: >-
-      cline_ide_state=present but model/base URL is empty or the LiteLLM API
-      key is still REPLACE_WITH_LITELLM_KEY. Hydrate vault/shared.vault.yml
-      (vault_k3s_litellm_gateway_master_key) or set cline_ide_api_key.
+      cline_ide_state=present but model/base URL/models list is empty or the
+      LiteLLM API key is still REPLACE_WITH_LITELLM_KEY. Hydrate
+      vault/shared.vault.yml (vault_k3s_litellm_gateway_master_key) or set
+      cline_ide_api_key.
   when: cline_ide_state == "present"
 
 - name: Ensure Cline settings directories exist
@@ -59,6 +61,47 @@
     - "{{ cline_ide_data_settings_dir }}"
   when: cline_ide_state == "present"
 
+- name: Stat existing Cline providers.json for merge
+  ansible.builtin.stat:
+    path: "{{ cline_ide_providers_path }}"
+  register: _cline_ide_providers_stat
+  when:
+    - cline_ide_state == "present"
+    - cline_ide_providers_merge | default(true) | bool
+
+- name: Load existing Cline providers.json when merging
+  ansible.builtin.slurp:
+    src: "{{ cline_ide_providers_path }}"
+  register: _cline_ide_providers_slurp
+  when:
+    - cline_ide_state == "present"
+    - cline_ide_providers_merge | default(true) | bool
+    - _cline_ide_providers_stat.stat.exists | default(false)
+
+- name: Capture existing non-managed Cline providers for merge
+  ansible.builtin.set_fact:
+    cline_ide_existing_providers: >-
+      {{
+        (
+          (_cline_ide_providers_slurp.content | b64decode | from_json).providers
+          if (
+            (_cline_ide_providers_stat.stat.exists | default(false))
+            and (_cline_ide_providers_slurp.content is defined)
+          )
+          else {}
+        )
+      }}
+  when:
+    - cline_ide_state == "present"
+    - cline_ide_providers_merge | default(true) | bool
+
+- name: Clear existing providers merge map when merge disabled
+  ansible.builtin.set_fact:
+    cline_ide_existing_providers: {}
+  when:
+    - cline_ide_state == "present"
+    - not (cline_ide_providers_merge | default(true) | bool)
+
 - name: Deploy Cline providers.json (OpenAI Compatible → LiteLLM)
   ansible.builtin.template:
     src: providers.json.j2
@@ -66,6 +109,13 @@
     mode: "0600"
   when: cline_ide_state == "present"
   no_log: true
+
+- name: Deploy Cline models.json (LiteLLM lane catalog)
+  ansible.builtin.template:
+    src: models.json.j2
+    dest: "{{ cline_ide_models_path }}"
+    mode: "0600"
+  when: cline_ide_state == "present"
 
 - name: Deploy Cline MCP settings (IDE path)
   ansible.builtin.template:
@@ -169,6 +219,7 @@
     state: absent
   loop:
     - "{{ cline_ide_providers_path }}"
+    - "{{ cline_ide_models_path }}"
     - "{{ cline_ide_mcp_settings_path }}"
     - "{{ cline_ide_mcp_cli_path }}"
   when: cline_ide_state == "absent"
@@ -178,9 +229,11 @@
     msg: >-
       cline_ide_state={{ cline_ide_state }}
       providers={{ cline_ide_providers_path }}
+      models={{ cline_ide_models_path }}
       mcp={{ cline_ide_mcp_settings_path }}
       api_base={{ cline_ide_gateway_api_base }}
       model={{ cline_ide_model }}
+      model_count={{ cline_ide_models | default([]) | length }}
       mcp_server_count={{ cline_ide_mcp_servers | default([]) | length }}
       api_key_resolved={{
         (cline_ide_render_api_key | default('') | length > 0)

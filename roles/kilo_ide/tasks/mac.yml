@@ -23,9 +23,31 @@
       {{
         kilo_ide_api_key
         if kilo_ide_api_key | default('') | length > 0
-        else (_kilo_vault_vars[kilo_ide_vault_key] | default('REPLACE_WITH_LITELLM_KEY'))
+        else (
+          (_kilo_vault_vars | default({}))[kilo_ide_vault_key]
+          | default('REPLACE_WITH_LITELLM_KEY')
+        )
       }}
   no_log: true
+  when: kilo_ide_state == "present"
+
+- name: Require a real LiteLLM key for Kilo when present
+  ansible.builtin.assert:
+    that:
+      - kilo_ide_default_model | default('') | length > 0
+      - kilo_ide_gateway_api_base | default('') | length > 0
+      - (kilo_ide_models | default([]) | length) > 0
+      - (kilo_ide_agents | default({}) | length) > 0
+      - >-
+        (not (kilo_ide_require_api_key | default(true) | bool))
+        or (
+          (kilo_ide_render_api_key | default('') | length > 0)
+          and (kilo_ide_render_api_key | default('') != 'REPLACE_WITH_LITELLM_KEY')
+        )
+    fail_msg: >-
+      kilo_ide_state=present but default model/agents/models are empty or the
+      LiteLLM API key is still REPLACE_WITH_LITELLM_KEY. Hydrate
+      vault/shared.vault.yml ({{ kilo_ide_vault_key }}) or set kilo_ide_api_key.
   when: kilo_ide_state == "present"
 
 - name: Ensure Kilo config directory exists
@@ -35,17 +57,27 @@
     mode: "0700"
   when: kilo_ide_state == "present"
 
-- name: Deploy Kilo homelab config
+- name: Deploy Kilo homelab config (overwrite kilo.jsonc)
   ansible.builtin.template:
     src: kilo_config.json.j2
     dest: "{{ kilo_ide_config_path }}"
     mode: "0600"
   when: kilo_ide_state == "present"
+  no_log: true
+
+- name: Remove legacy Kilo config.json so kilo.jsonc is sole authority
+  ansible.builtin.file:
+    path: "{{ kilo_ide_legacy_config_path }}"
+    state: absent
+  when: kilo_ide_state == "present"
 
 - name: Remove Kilo config managed by this role
   ansible.builtin.file:
-    path: "{{ kilo_ide_config_path }}"
+    path: "{{ item }}"
     state: absent
+  loop:
+    - "{{ kilo_ide_config_path }}"
+    - "{{ kilo_ide_legacy_config_path }}"
   when: kilo_ide_state == "absent"
 
 - name: Report Kilo IDE state
@@ -54,4 +86,13 @@
       kilo_ide_state: "{{ kilo_ide_state }}"
       config: "{{ kilo_ide_config_path }}"
       default_model: "{{ kilo_ide_default_model }}"
+      small_model: "{{ kilo_ide_small_model }}"
+      default_agent: "{{ kilo_ide_default_agent }}"
+      agent_count: "{{ kilo_ide_agents | default({}) | length }}"
+      model_count: "{{ kilo_ide_models | default([]) | length }}"
+      api_key_resolved: >-
+        {{
+          (kilo_ide_render_api_key | default('') | length > 0)
+          and (kilo_ide_render_api_key | default('') != 'REPLACE_WITH_LITELLM_KEY')
+        }}
   when: kilo_ide_state == "present"

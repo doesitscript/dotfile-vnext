@@ -1,8 +1,16 @@
 {# Ansible-managed Cline providers.json — OpenAI Compatible → LiteLLM. #}
+{# Merges with existing non-managed providers when cline_ide_providers_merge is true. #}
 {
   "version": 1,
   "lastUsedProvider": {{ cline_ide_provider_id | to_json }},
+  "modes": {{ cline_ide_modes | default({}) | to_json }},
   "providers": {
+{% set _existing = cline_ide_existing_providers | default({}) %}
+{% for pid, pdata in _existing.items() %}
+{% if pid != cline_ide_provider_id %}
+    {{ pid | to_json }}: {{ pdata | to_json }},
+{% endif %}
+{% endfor %}
     {{ cline_ide_provider_id | to_json }}: {
       "settings": {
         "provider": {{ cline_ide_provider_id | to_json }},
@@ -10,6 +18,15 @@
         "model": {{ cline_ide_model | to_json }},
         "baseUrl": {{ cline_ide_gateway_api_base | to_json }},
         "headers": {},
+        "openAiModelId": {{ cline_ide_model | to_json }},
+        "openAiBaseUrl": {{ cline_ide_gateway_api_base | to_json }},
+        "openAiApiKey": {{ cline_ide_render_api_key | to_json }},
+        "openAiModelInfo": {
+          "contextWindow": {{ cline_ide_default_context_window }},
+          "maxTokens": {{ cline_ide_default_max_output_tokens }},
+          "supportsImages": false,
+          "supportsPromptCache": false
+        },
         "reasoning": {
           "enabled": false
         }

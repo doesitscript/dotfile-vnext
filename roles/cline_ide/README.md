@@ -6,11 +6,16 @@ CLI use **LiteLLM OpenAI Compatible** lanes (same gateway as Continue/Zed).
 | Artifact | Path |
 | --- | --- |
 | Providers | `~/.cline/data/settings/providers.json` |
+| Model catalog | `~/.cline/data/settings/models.json` |
 | MCP (IDE) | `~/.cline/data/settings/cline_mcp_settings.json` |
 | MCP (CLI) | `~/.cline/mcp.json` |
 | Legacy VS Code keys | `~/Library/Application Support/Code/User/settings.json` (`cline.*`) |
 
 Cline `baseUrl` **includes `/v1`**. Continue `apiBase` intentionally omits it.
+
+`cline_ide_models` populates `models.json` and sets the default model in
+`providers.json`. With `cline_ide_providers_merge: true` (default), other
+provider entries (e.g. Cline cloud auth) are preserved.
 
 The **Cline extension** (`saoudrizwan.claude-dev`) is installed by
 `roles/common/vscode` — not by this role.
@@ -24,7 +29,7 @@ The **Cline extension** (`saoudrizwan.claude-dev`) is installed by
 | | |
 | --- | --- |
 | **Apply** | Include role with `cline_ide_state: present` |
-| **Verify** | `test -s ~/.cline/data/settings/providers.json` and open Cline → OpenAI Compatible |
+| **Verify** | `test -s ~/.cline/data/settings/providers.json` and `models.json`; open Cline → OpenAI Compatible |
 | **Undo** | `cline_ide_state: absent` |
 | **Change class** | Idempotent config |
 

@@ -1,0 +1,26 @@
+{# Ansible-managed Cline models.json — LiteLLM lane catalog for OpenAI Compatible. #}
+{
+  "version": 1,
+  "providers": {
+    {{ cline_ide_provider_id | to_json }}: {
+      "provider": {
+        "name": {{ cline_ide_provider_display_name | to_json }},
+        "baseUrl": {{ cline_ide_gateway_api_base | to_json }},
+        "defaultModelId": {{ cline_ide_model | to_json }}
+      },
+      "models": {
+{% for entry in cline_ide_models %}
+        {{ entry.model | to_json }}: {
+          "id": {{ entry.model | to_json }},
+          "name": {{ (entry.name | default(entry.model)) | to_json }},
+          "contextWindow": {{ entry.context_window | default(cline_ide_default_context_window) }},
+          "maxInputTokens": {{ entry.max_input_tokens | default(entry.context_window | default(cline_ide_default_context_window)) }},
+          "maxOutputTokens": {{ entry.max_output_tokens | default(cline_ide_default_max_output_tokens) }},
+          "capabilities": {{ (entry.capabilities | default(cline_ide_default_capabilities)) | to_json }}
+        }{% if not loop.last %},{% endif %}
+
+{% endfor %}
+      }
+    }
+  }
+}

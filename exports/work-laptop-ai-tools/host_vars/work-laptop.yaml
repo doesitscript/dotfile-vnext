@@ -334,6 +334,37 @@ cline_ide_require_api_key: true
 cline_ide_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
 cline_ide_gateway_api_base: "http://litellm.hom.lab/v1"
 cline_ide_model: "qwen2.5-coder-32b@k3s02-vllm"
+cline_ide_models:
+  - name: "Chat Qwen2.5 Coder 32B (5090 vLLM)"
+    model: "qwen2.5-coder-32b@k3s02-vllm"
+    roles:
+      - chat
+      - agent
+    context_window: 32768
+    max_output_tokens: 4096
+    capabilities:
+      - streaming
+      - tools
+  - name: "Edit Qwen2.5 Coder 7B (desktop Ollama)"
+    model: "qwen2.5-coder-7b@desktop"
+    roles:
+      - edit
+      - apply
+    context_window: 32768
+    max_output_tokens: 4096
+    capabilities:
+      - streaming
+      - tools
+  - name: "Fast Ministral 3 8B (desktop Ollama)"
+    model: "ministral-3-8b@desktop"
+    roles:
+      - chat
+      - agent
+    context_window: 24000
+    max_output_tokens: 4096
+    capabilities:
+      - streaming
+      - tools
 cline_ide_mcp_servers: "{{ continue_ide_mcp_servers }}"
 
 # ansible-dev-tools (Red Hat meta-package) requires Python >=3.10.
@@ -370,8 +401,79 @@ aider_mcp_context7_enabled: true
 aider_mcp_firecrawl_enabled: true
 
 # --- Kilo IDE ---
+# Overwrites ~/.config/kilo/kilo.jsonc idempotently with role→model map.
 kilo_ide_state: present
+kilo_ide_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
 kilo_ide_default_model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+kilo_ide_small_model: "homelab-litellm/qwen2.5-coder-7b@desktop"
+kilo_ide_default_agent: "code"
+kilo_ide_models:
+  - id: "qwen2.5-coder-32b@k3s02-vllm"
+    name: "Qwen2.5 Coder 32B (5090 vLLM)"
+    tool_call: true
+    context: 32768
+    output: 4096
+    input: 28672
+  - id: "qwen2.5-coder-7b@desktop"
+    name: "Qwen2.5 Coder 7B (desktop Ollama)"
+    tool_call: true
+    context: 32768
+    output: 4096
+    input: 28672
+  - id: "ministral-3-8b@desktop"
+    name: "Homelab Ministral 3 8B"
+    tool_call: true
+    context: 24000
+    output: 4096
+    input: 20000
+kilo_ide_agents:
+  code:
+    model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+    description: "Primary coding agent — 5090 vLLM 32B (tools)."
+    permission:
+      task: deny
+      bash: allow
+      edit: allow
+      read: allow
+      glob: allow
+      grep: allow
+  build:
+    model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+    description: "Build / implement — same as code."
+  plan:
+    model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+    description: "Planning / architecture on 5090 vLLM."
+  ask:
+    model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+    description: "Q&A / conversation on 5090 vLLM."
+  general:
+    model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+    description: "General assistant — 5090 vLLM."
+  debug:
+    model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+    description: "Debug / hard investigation — 5090 vLLM."
+    permission:
+      task: deny
+  explore:
+    model: "homelab-litellm/qwen2.5-coder-7b@desktop"
+    description: "Explore / search — desktop 7B (faster tool loops)."
+    permission:
+      task: deny
+      read: allow
+      glob: allow
+      grep: allow
+  title:
+    model: "homelab-litellm/qwen2.5-coder-7b@desktop"
+    description: "Session titles — small/fast."
+  summary:
+    model: "homelab-litellm/qwen2.5-coder-7b@desktop"
+    description: "Summaries — small/fast."
+  compaction:
+    model: "homelab-litellm/qwen2.5-coder-7b@desktop"
+    description: "Context compaction — small/fast."
+  orchestrator:
+    model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+    description: "Orchestrator / multi-step — 5090 vLLM."
 
 # --- morph MCP ---
 morph_mcp_state: present

@@ -1,11 +1,11 @@
 ---
 argument_specs:
   main:
-    short_description: "Install Kilo Code VS Code extension and deploy homelab LiteLLM provider config"
+    short_description: "Deploy Kilo Code homelab LiteLLM provider + agent model map"
     description: >
-      Deploys the Kilo Code config file (~/.config/kilo/config.json) with a
-      custom OpenAI-compatible provider pointed at the homelab LiteLLM gateway.
-      API key is loaded from the shared packet vault when kilo_ide_api_key is unset.
+      Overwrites ~/.config/kilo/kilo.jsonc with an OpenAI-compatible provider
+      pointed at the homelab LiteLLM gateway and per-agent model assignments.
+      API key is loaded from the shared vault when kilo_ide_api_key is unset.
     options:
       kilo_ide_state:
         type: str
@@ -26,7 +26,24 @@ argument_specs:
         type: str
         required: false
         description: "Default model in provider_id/model_id format"
+      kilo_ide_small_model:
+        type: str
+        required: false
+        description: "Small model for titles/summaries (provider_id/model_id)"
+      kilo_ide_default_agent:
+        type: str
+        required: false
+        default: code
+        description: "Primary agent id (e.g. code)"
       kilo_ide_models:
         type: list
         required: false
         description: "List of model objects with id, name, tool_call, context, output"
+      kilo_ide_agents:
+        type: dict
+        required: false
+        description: "Map of agent id → {model, description?, permission?}"
+      kilo_ide_require_api_key:
+        type: bool
+        required: false
+        default: true

@@ -60,9 +60,14 @@ After apply:
 # Continue — must show models: and a non-placeholder apiKey
 grep -E '^(name:|models:)|apiKey:' ~/.continue/config.yaml | head -20
 
-# Cline — OpenAI Compatible → LiteLLM
+# Cline — OpenAI Compatible → LiteLLM (+ model catalog)
 test -s ~/.cline/data/settings/providers.json && \
+  test -s ~/.cline/data/settings/models.json && \
   grep -E 'openai-compatible|baseUrl|model' ~/.cline/data/settings/providers.json | head -20
+
+# Kilo — agent→model map in kilo.jsonc
+test -s ~/.config/kilo/kilo.jsonc && \
+  grep -E '"model"|"code"|"explore"|"plan"' ~/.config/kilo/kilo.jsonc | head -30
 
 # cx-* roots (Documents/develop, not ~/develop/dotfile-vnext)
 grep -E '_CODEX_MT_REPO_' ~/.bashrc.d/codex-multi-terminal.bash

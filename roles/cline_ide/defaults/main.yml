@@ -3,10 +3,12 @@
 # Lifecycle: cline_ide_state: present|absent
 # Authority: https://docs.cline.bot/getting-started/config.md
 # Provider shape: ~/.cline/data/settings/providers.json (openai-compatible)
+# Model catalog: ~/.cline/data/settings/models.json
 cline_ide_state: absent
 cline_ide_config_root: "{{ ansible_env.HOME }}/.cline"
 cline_ide_data_settings_dir: "{{ cline_ide_config_root }}/data/settings"
 cline_ide_providers_path: "{{ cline_ide_data_settings_dir }}/providers.json"
+cline_ide_models_path: "{{ cline_ide_data_settings_dir }}/models.json"
 cline_ide_mcp_settings_path: "{{ cline_ide_data_settings_dir }}/cline_mcp_settings.json"
 cline_ide_mcp_cli_path: "{{ cline_ide_config_root }}/mcp.json"
 # Cline OpenAI-compatible base URL includes /v1 (unlike Continue apiBase).
@@ -15,7 +17,49 @@ cline_ide_api_key: ""
 cline_ide_require_api_key: true
 cline_ide_vault_file_path: "{{ inventory_dir }}/../vault/shared.vault.yml"
 cline_ide_provider_id: "openai-compatible"
+cline_ide_provider_display_name: "Homelab LiteLLM"
+# Default / last-used model id (must exist in cline_ide_models).
 cline_ide_model: "qwen2.5-coder-32b@k3s02-vllm"
+cline_ide_default_context_window: 32768
+cline_ide_default_max_output_tokens: 4096
+cline_ide_default_capabilities:
+  - streaming
+  - tools
+# When true, preserve non-managed provider entries (e.g. Cline cloud auth).
+cline_ide_providers_merge: true
+cline_ide_modes: {}
+# LiteLLM lanes available in the Cline model picker.
+cline_ide_models:
+  - name: "Chat Qwen2.5 Coder 32B (5090 vLLM)"
+    model: "qwen2.5-coder-32b@k3s02-vllm"
+    roles:
+      - chat
+      - agent
+    context_window: 32768
+    max_output_tokens: 4096
+    capabilities:
+      - streaming
+      - tools
+  - name: "Edit Qwen2.5 Coder 7B (desktop Ollama)"
+    model: "qwen2.5-coder-7b@desktop"
+    roles:
+      - edit
+      - apply
+    context_window: 32768
+    max_output_tokens: 4096
+    capabilities:
+      - streaming
+      - tools
+  - name: "Fast Ministral 3 8B (desktop Ollama)"
+    model: "ministral-3-8b@desktop"
+    roles:
+      - chat
+      - agent
+    context_window: 24000
+    max_output_tokens: 4096
+    capabilities:
+      - streaming
+      - tools
 # MCP servers as a list (same shape as continue_ide_mcp_servers); rendered to
 # Cline mcpServers object keyed by name.
 cline_ide_mcp_servers: []
