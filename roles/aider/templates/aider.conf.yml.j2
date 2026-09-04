@@ -1,12 +1,26 @@
-# Aider homelab configuration — managed by dotfile-vnext work-laptop packet.
+# Aider homelab configuration — managed by Ansible (work-laptop packet / parent role).
 # Do not edit manually; re-run the packet playbook to regenerate.
+#
+# New files: tell Aider about them with /add <path> before asking it to write
+# (see https://aider.chat/docs/usage/tips.html). suggest-shell-commands is off
+# so create/edit should go through apply-edits, not "run this shell" fallbacks.
 
 # LiteLLM gateway on homelab
 openai-api-key: "{{ aider_render_api_key }}"
 openai-api-base: "{{ aider_gateway_api_base }}"
 model: "{{ aider_default_model }}"
 
-# Behaviour
-auto-commits: false
-dirty-commits: false
+# Behaviour — write/edit workflow for dirty corporate checkouts
+auto-commits: {{ aider_auto_commits | default(false) | bool | lower }}
+dirty-commits: {{ aider_dirty_commits | default(true) | bool | lower }}
+suggest-shell-commands: {{ aider_suggest_shell_commands | default(false) | bool | lower }}
+yes: {{ aider_yes | default(true) | bool | lower }}
+git: {{ aider_git | default(true) | bool | lower }}
+skip-sanity-check-repo: {{ aider_skip_sanity_check_repo | default(false) | bool | lower }}
 stream: true
+{% if aider_read_files | default([]) | length > 0 %}
+read:
+{% for path in aider_read_files %}
+  - {{ path | to_json }}
+{% endfor %}
+{% endif %}

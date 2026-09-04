@@ -34,9 +34,23 @@
   no_log: true
   when: aider_state == "present"
 
+- name: Build pipx install argv for aider
+  ansible.builtin.set_fact:
+    _aider_pipx_argv: >-
+      {{
+        ['pipx', 'install']
+        + (
+          ['--python', aider_pipx_python]
+          if (aider_pipx_python | default('') | length > 0)
+          else []
+        )
+        + [aider_pipx_package]
+      }}
+  when: aider_state == "present"
+
 - name: Install aider via pipx
   ansible.builtin.command:
-    argv: [pipx, install, "{{ aider_pipx_package }}"]
+    argv: "{{ _aider_pipx_argv }}"
   register: _aider_pipx_result
   changed_when: "'installed package' in _aider_pipx_result.stdout"
   failed_when:
@@ -57,6 +71,15 @@
     dest: "{{ aider_mcp_config_path }}"
     mode: "0600"
   when: aider_state == "present"
+
+- name: Deploy packet-root .aiderignore for map noise control
+  ansible.builtin.template:
+    src: aiderignore.j2
+    dest: "{{ aider_repo_ignore_path }}"
+    mode: "0644"
+  when:
+    - aider_state == "present"
+    - aider_deploy_repo_ignore | default(true) | bool
 
 - name: Remove aider config files managed by this role
   ansible.builtin.file:

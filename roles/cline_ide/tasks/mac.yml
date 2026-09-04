@@ -107,6 +107,33 @@
     - cline_ide_vscode_settings_merge | default(true) | bool
     - _cline_ide_vscode_settings_stat.stat.exists | default(false)
 
+- name: Check existing VS Code settings.json is strict JSON
+  ansible.builtin.command:
+    argv:
+      - jq
+      - -e
+      - .
+      - "{{ cline_ide_vscode_settings_path }}"
+  register: _cline_ide_vscode_settings_json_check
+  changed_when: false
+  failed_when: false
+  when:
+    - cline_ide_state == "present"
+    - cline_ide_vscode_settings_merge | default(true) | bool
+    - _cline_ide_vscode_settings_stat.stat.exists | default(false)
+
+- name: Explain skipped Cline VS Code settings merge for JSONC
+  ansible.builtin.debug:
+    msg: >-
+      Skipping the optional Cline legacy VS Code settings merge because
+      {{ cline_ide_vscode_settings_path }} is JSONC rather than strict JSON.
+      Cline providers.json and MCP settings were still deployed.
+  when:
+    - cline_ide_state == "present"
+    - cline_ide_vscode_settings_merge | default(true) | bool
+    - _cline_ide_vscode_settings_stat.stat.exists | default(false)
+    - _cline_ide_vscode_settings_json_check.rc != 0
+
 - name: Merge Cline OpenAI Compatible keys into VS Code settings.json
   ansible.builtin.copy:
     dest: "{{ cline_ide_vscode_settings_path }}"
@@ -131,6 +158,9 @@
   when:
     - cline_ide_state == "present"
     - cline_ide_vscode_settings_merge | default(true) | bool
+    - >-
+      not (_cline_ide_vscode_settings_stat.stat.exists | default(false))
+      or (_cline_ide_vscode_settings_json_check.rc | default(1)) == 0
   no_log: true
 
 - name: Remove Cline providers/MCP managed by this role

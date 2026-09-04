@@ -1,4 +1,15 @@
 ---
+- name: Resolve npm global prefix for Firecrawl MCP on macOS
+  ansible.builtin.command:
+    argv:
+      - "{{ node_npm_executable }}"
+      - prefix
+      - -g
+  register: _firecrawl_mcp_npm_prefix_mac
+  changed_when: false
+  environment:
+    PATH: "{{ (node_npm_executable | dirname) ~ ':' ~ ansible_facts['env']['PATH'] }}"
+
 - name: Install Firecrawl MCP package via npm on macOS
   community.general.npm:
     name: "{{ firecrawl_mcp_package_name }}"
@@ -18,6 +29,7 @@
         firecrawl_mcp_bin_candidates
         if (firecrawl_mcp_bin_candidates | length > 0)
         else [
+          (_firecrawl_mcp_npm_prefix_mac.stdout | trim) ~ '/bin/firecrawl-mcp',
           (node_npm_executable | dirname) ~ '/firecrawl-mcp'
         ]
       }}
@@ -30,7 +42,8 @@
   ansible.builtin.fail:
     msg: >-
       Firecrawl MCP package installed, but no executable was found in
-      firecrawl_mcp_bin_candidates={{ _firecrawl_bin_candidates | to_json }}.
+      firecrawl_mcp_bin_candidates={{ _firecrawl_bin_candidates | to_json }}
+      (npm prefix -g={{ _firecrawl_mcp_npm_prefix_mac.stdout | default('') | trim }}).
   when: not (firecrawl_mcp_command | default(''))
   vars:
     _firecrawl_bin_candidates: >-
@@ -38,6 +51,7 @@
         firecrawl_mcp_bin_candidates
         if (firecrawl_mcp_bin_candidates | length > 0)
         else [
+          (_firecrawl_mcp_npm_prefix_mac.stdout | trim) ~ '/bin/firecrawl-mcp',
           (node_npm_executable | dirname) ~ '/firecrawl-mcp'
         ]
       }}
