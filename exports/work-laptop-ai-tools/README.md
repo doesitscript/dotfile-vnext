@@ -110,13 +110,18 @@ Current scope:
 - baseline `~/.codex/config.toml` creation for Codex CLI on the work laptop
 - Codex local profile/config export for the current homelab model lanes
 - `/private/etc/hosts` entries for current homelab names
-- VS Code install + `Continue.continue`, `openai.chatgpt` (Codex extension),
-  `redhat.ansible`, `redhat.vscode-yaml`, and `hashicorp.terraform`
+- VS Code install + `Continue.continue`, `saoudrizwan.claude-dev` (Cline),
+  `openai.chatgpt` (Codex extension), `redhat.ansible`, `redhat.vscode-yaml`,
+  and `hashicorp.terraform`
 - Codex CLI + Codex VS Code extension: MCP entries in `~/.codex/config.toml`
   for HashiCorp Terraform MCP, AWS MCP, AWS IaC MCP, Context7, Firebase, and
   Morph WarpGrep (`morph-mcp`) — **not** VS Code native `~/.vscode/mcp.json`
 - `~/.continue/config.yaml` with the existing LiteLLM chat/edit lanes plus
   those same MCP servers (Continue WarpGrep uses `WORKSPACE_MODE` + env wrapper)
+- `~/.cline/data/settings/providers.json` (Cline OpenAI Compatible → LiteLLM,
+  `baseUrl` includes `/v1`) plus MCP mirrors of the Continue server list
+- `cx-*` multi-terminal wrappers default to `~/Documents/develop/...` on this
+  packet (not `~/develop/dotfile-vnext`)
 - Zed configuration only (`zed_ide_install_cask: false`) — deploys
   `~/.config/zed/settings.json` for Zed Agent model routing, inline assistant,
   commit messages, thread summaries, and Zed `context_servers` for Terraform
@@ -370,9 +375,14 @@ Remote autocomplete policy:
 
 Secret and access boundaries:
 
-- `continue_ide` ships `REPLACE_WITH_LITELLM_KEY` by design; supply the real gateway key on the work laptop before relying on Continue.
+- `continue_ide` / `cline_ide` **require** a real LiteLLM key when `*_require_api_key: true`
+  (default). Hydrate `vault/shared.vault.yml` (`vault_k3s_litellm_gateway_master_key`)
+  or set `continue_ide_api_key` / `cline_ide_api_key`. Placeholder keys make the
+  Continue/Cline UIs look empty.
 - `continue_ide` intentionally renders no autocomplete lane unless
   `continue_ide_autocomplete_enabled=true` is set for a local-only future path.
+- Cline uses `http://litellm.hom.lab/v1` (`/v1` included). Continue uses
+  `http://litellm.hom.lab` (no `/v1`).
 - `zed_ide` ships `REPLACE_WITH_LITELLM_KEY` in `~/.config/zed/openai.env`;
   use `zed-homelab` or save the key in Zed's provider UI before relying on
   Zed Agent model access.

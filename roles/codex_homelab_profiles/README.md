@@ -15,11 +15,20 @@ known parser mismatch from the default laptop path.
 
 ## Multi-terminal (`codex_homelab_profiles_multi_terminal_state: present`)
 
-When enabled on `mac-dev`:
+When enabled:
 
-- `~/.bashrc.d/codex-multi-terminal.bash` — role-owned deploy (`multi_terminal.yml`)
-- Shared `~/.codex/local-{deep,fast,hvh01,tools}.config.toml` and lane instructions
+- `~/.bashrc.d/codex-multi-terminal.bash` — templated from
+  `templates/codex-multi-terminal.bash.j2` (`multi_terminal.yml`)
+- Shared `~/.codex/local-{deep,fast,hvh01}.config.toml` and lane instructions
 - `~/bin/render_local_model_catalog` and `codex-homelab` launcher (`deep|fast|desktop|hvh01`)
+
+Repo roots for `cx-*` wrappers (override on work-laptop):
+
+| Variable | Default (home Mac) |
+| --- | --- |
+| `codex_homelab_profiles_repo_primary` | `~/develop/dotfile-vnext` |
+| `codex_homelab_profiles_repo_skills` | `~/develop/global-skills` |
+| `codex_homelab_profiles_repo_research` | `~/develop/homelab-reference-library` |
 
 Promotion plan: `docs/plans/2026-09-02--codex-multi-terminal-promotion/`
 

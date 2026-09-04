@@ -1,0 +1,159 @@
+---
+- name: Check Cline LiteLLM vault file
+  ansible.builtin.stat:
+    path: "{{ cline_ide_vault_file_path }}"
+  register: _cline_ide_vault_stat
+  when:
+    - cline_ide_state == "present"
+    - cline_ide_api_key | default('') | length == 0
+
+- name: Load shared vault for Cline LiteLLM API key when unset
+  when:
+    - cline_ide_state == "present"
+    - cline_ide_api_key | default('') | length == 0
+    - _cline_ide_vault_stat.stat.exists | default(false)
+  ansible.builtin.include_vars:
+    file: "{{ cline_ide_vault_file_path }}"
+    name: cline_ide_vault_vars
+  no_log: true
+
+- name: Resolve Cline LiteLLM API key for render
+  ansible.builtin.set_fact:
+    cline_ide_render_api_key: >-
+      {{
+        cline_ide_api_key
+        if (cline_ide_api_key | default('') | length > 0)
+        else (
+          (cline_ide_vault_vars | default({}))['vault_k3s_litellm_gateway_master_key']
+          | default('REPLACE_WITH_LITELLM_KEY')
+        )
+      }}
+  when: cline_ide_state == "present"
+  no_log: true
+
+- name: Require a real LiteLLM key for Cline when present
+  ansible.builtin.assert:
+    that:
+      - cline_ide_model | default('') | length > 0
+      - cline_ide_gateway_api_base | default('') | length > 0
+      - >-
+        (not (cline_ide_require_api_key | default(true) | bool))
+        or (
+          (cline_ide_render_api_key | default('') | length > 0)
+          and (cline_ide_render_api_key | default('') != 'REPLACE_WITH_LITELLM_KEY')
+        )
+    fail_msg: >-
+      cline_ide_state=present but model/base URL is empty or the LiteLLM API
+      key is still REPLACE_WITH_LITELLM_KEY. Hydrate vault/shared.vault.yml
+      (vault_k3s_litellm_gateway_master_key) or set cline_ide_api_key.
+  when: cline_ide_state == "present"
+
+- name: Ensure Cline settings directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0700"
+  loop:
+    - "{{ cline_ide_config_root }}"
+    - "{{ cline_ide_config_root }}/data"
+    - "{{ cline_ide_data_settings_dir }}"
+  when: cline_ide_state == "present"
+
+- name: Deploy Cline providers.json (OpenAI Compatible → LiteLLM)
+  ansible.builtin.template:
+    src: providers.json.j2
+    dest: "{{ cline_ide_providers_path }}"
+    mode: "0600"
+  when: cline_ide_state == "present"
+  no_log: true
+
+- name: Deploy Cline MCP settings (IDE path)
+  ansible.builtin.template:
+    src: cline_mcp_settings.json.j2
+    dest: "{{ cline_ide_mcp_settings_path }}"
+    mode: "0600"
+  when: cline_ide_state == "present"
+
+- name: Deploy Cline MCP settings (CLI path ~/.cline/mcp.json)
+  ansible.builtin.template:
+    src: cline_mcp_settings.json.j2
+    dest: "{{ cline_ide_mcp_cli_path }}"
+    mode: "0600"
+  when: cline_ide_state == "present"
+
+- name: Stat VS Code user settings for optional Cline merge
+  ansible.builtin.stat:
+    path: "{{ cline_ide_vscode_settings_path }}"
+  register: _cline_ide_vscode_settings_stat
+  when:
+    - cline_ide_state == "present"
+    - cline_ide_vscode_settings_merge | default(true) | bool
+
+- name: Ensure VS Code User settings directory exists
+  ansible.builtin.file:
+    path: "{{ cline_ide_vscode_settings_path | dirname }}"
+    state: directory
+    mode: "0755"
+  when:
+    - cline_ide_state == "present"
+    - cline_ide_vscode_settings_merge | default(true) | bool
+
+- name: Load existing VS Code settings.json when present
+  ansible.builtin.slurp:
+    src: "{{ cline_ide_vscode_settings_path }}"
+  register: _cline_ide_vscode_settings_slurp
+  when:
+    - cline_ide_state == "present"
+    - cline_ide_vscode_settings_merge | default(true) | bool
+    - _cline_ide_vscode_settings_stat.stat.exists | default(false)
+
+- name: Merge Cline OpenAI Compatible keys into VS Code settings.json
+  ansible.builtin.copy:
+    dest: "{{ cline_ide_vscode_settings_path }}"
+    mode: "0600"
+    content: >-
+      {{
+        (
+          (
+            (_cline_ide_vscode_settings_slurp.content | b64decode | from_json)
+            if (_cline_ide_vscode_settings_stat.stat.exists | default(false))
+            else {}
+          )
+          | combine({
+              'cline.apiProvider': 'openai-compatible',
+              'cline.openAiCompatible.baseUrl': cline_ide_gateway_api_base,
+              'cline.openAiCompatible.apiKey': cline_ide_render_api_key,
+              'cline.openAiCompatible.modelId': cline_ide_model
+            }, recursive=True)
+          | to_nice_json
+        ) ~ '\n'
+      }}
+  when:
+    - cline_ide_state == "present"
+    - cline_ide_vscode_settings_merge | default(true) | bool
+  no_log: true
+
+- name: Remove Cline providers/MCP managed by this role
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ cline_ide_providers_path }}"
+    - "{{ cline_ide_mcp_settings_path }}"
+    - "{{ cline_ide_mcp_cli_path }}"
+  when: cline_ide_state == "absent"
+
+- name: Report Cline IDE config paths
+  ansible.builtin.debug:
+    msg: >-
+      cline_ide_state={{ cline_ide_state }}
+      providers={{ cline_ide_providers_path }}
+      mcp={{ cline_ide_mcp_settings_path }}
+      api_base={{ cline_ide_gateway_api_base }}
+      model={{ cline_ide_model }}
+      mcp_server_count={{ cline_ide_mcp_servers | default([]) | length }}
+      api_key_resolved={{
+        (cline_ide_render_api_key | default('') | length > 0)
+        and (cline_ide_render_api_key | default('') != 'REPLACE_WITH_LITELLM_KEY')
+      }}
+  when: cline_ide_state == "present"

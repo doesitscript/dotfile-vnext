@@ -52,9 +52,10 @@ Physical skill location does not sandbox those paths.
   (`work-laptop-mcp-commission`).
 - Do not append Continue/Zed MCP lists unless asked.
 - Never commit live vault secrets; ship example + README only.
-- Prefer user-home Codex config (`~/.codex/config.toml`) and Continue
-  (`continue_ide_mcp_servers`). Do **not** commission VS Code native
-  `~/.vscode/mcp.json` on this slice unless explicitly asked.
+- Prefer user-home Codex config (`~/.codex/config.toml`), Continue
+  (`continue_ide_mcp_servers` → `~/.continue/config.yaml`), and Cline
+  (`cline_ide_*` → `~/.cline/data/settings/`). Do **not** commission VS Code
+  native `~/.vscode/mcp.json` on this slice unless explicitly asked.
 
 # BEGIN ANSIBLE MANAGED BLOCK: routing_morph-mcp
 ## Morph WarpGrep + Fast Apply (evaluation — under_evaluation)

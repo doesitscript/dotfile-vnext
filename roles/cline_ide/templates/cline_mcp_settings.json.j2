@@ -1,0 +1,32 @@
+{# Ansible-managed Cline MCP settings (IDE + CLI share this shape). #}
+{
+  "mcpServers": {
+{% for server in cline_ide_mcp_servers | default([]) %}
+    {{ server.name | to_json }}: {
+{% if server.command is defined %}
+      "command": {{ server.command | to_json }},
+{% endif %}
+{% if server.args is defined %}
+      "args": {{ server.args | to_json }},
+{% endif %}
+{% if server.url is defined %}
+{% if server.type is defined and (server.type == 'streamable-http' or server.type == 'streamableHttp') %}
+      "type": "streamableHttp",
+{% elif server.type is defined %}
+      "type": {{ server.type | to_json }},
+{% endif %}
+      "url": {{ server.url | to_json }},
+{% endif %}
+{% if server.env is defined %}
+      "env": {{ server.env | to_json }},
+{% endif %}
+{% if server.cwd is defined %}
+      "cwd": {{ server.cwd | to_json }},
+{% endif %}
+      "disabled": false,
+      "autoApprove": []
+    }{% if not loop.last %},{% endif %}
+
+{% endfor %}
+  }
+}

@@ -24,24 +24,56 @@
     mode: "0700"
   when: continue_ide_state == "present"
 
-- name: Deploy Continue config for LiteLLM lanes
-  ansible.builtin.template:
-    src: config.yaml.j2
-    dest: "{{ continue_ide_config_path }}"
-    mode: "0600"
-  vars:
-    # Prefer explicit continue_ide_api_key; else vault master key; else placeholder.
+- name: Resolve Continue LiteLLM API key for render
+  ansible.builtin.set_fact:
     continue_ide_render_api_key: >-
       {{
         continue_ide_api_key
         if (continue_ide_api_key | default('') | length > 0)
         else (
-          continue_ide_vault_vars['vault_k3s_litellm_gateway_master_key']
+          (continue_ide_vault_vars | default({}))['vault_k3s_litellm_gateway_master_key']
           | default('REPLACE_WITH_LITELLM_KEY')
         )
       }}
   when: continue_ide_state == "present"
   no_log: true
+
+- name: Require a real LiteLLM key for Continue when present
+  ansible.builtin.assert:
+    that:
+      - continue_ide_models | default([]) | length > 0
+      - >-
+        (not (continue_ide_require_api_key | default(true) | bool))
+        or (
+          (continue_ide_render_api_key | default('') | length > 0)
+          and (continue_ide_render_api_key | default('') != 'REPLACE_WITH_LITELLM_KEY')
+        )
+    fail_msg: >-
+      continue_ide_state=present but models are empty or the LiteLLM API key
+      is still REPLACE_WITH_LITELLM_KEY. Hydrate vault/shared.vault.yml
+      (vault_k3s_litellm_gateway_master_key) or set continue_ide_api_key.
+      Without a real key Continue's UI often looks empty / unconfigured.
+  when: continue_ide_state == "present"
+
+- name: Deploy Continue config for LiteLLM lanes
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: "{{ continue_ide_config_path }}"
+    mode: "0600"
+  when: continue_ide_state == "present"
+  no_log: true
+
+- name: Verify Continue config.yaml has models
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/grep
+      - -E
+      - "^models:|[[:space:]]+- name:"
+      - "{{ continue_ide_config_path }}"
+  register: continue_ide_config_grep
+  changed_when: false
+  failed_when: continue_ide_config_grep.rc != 0
+  when: continue_ide_state == "present"
 
 - name: Remove Continue config managed by this role
   ansible.builtin.file:
@@ -58,4 +90,8 @@
       model_count={{ continue_ide_models | default([]) | length }}
       mcp_server_count={{ continue_ide_mcp_servers | default([]) | length }}
       api_key_from_inventory={{ (continue_ide_api_key | default('') | length > 0) | bool }}
+      api_key_resolved={{
+        (continue_ide_render_api_key | default('') | length > 0)
+        and (continue_ide_render_api_key | default('') != 'REPLACE_WITH_LITELLM_KEY')
+      }}
   when: continue_ide_state == "present"

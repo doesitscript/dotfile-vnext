@@ -1,0 +1,25 @@
+---
+# Cline IDE/CLI config pointing at the shared LiteLLM gateway.
+# Lifecycle: cline_ide_state: present|absent
+# Authority: https://docs.cline.bot/getting-started/config.md
+# Provider shape: ~/.cline/data/settings/providers.json (openai-compatible)
+cline_ide_state: absent
+cline_ide_config_root: "{{ ansible_env.HOME }}/.cline"
+cline_ide_data_settings_dir: "{{ cline_ide_config_root }}/data/settings"
+cline_ide_providers_path: "{{ cline_ide_data_settings_dir }}/providers.json"
+cline_ide_mcp_settings_path: "{{ cline_ide_data_settings_dir }}/cline_mcp_settings.json"
+cline_ide_mcp_cli_path: "{{ cline_ide_config_root }}/mcp.json"
+# Cline OpenAI-compatible base URL includes /v1 (unlike Continue apiBase).
+cline_ide_gateway_api_base: "http://litellm.hom.lab/v1"
+cline_ide_api_key: ""
+cline_ide_require_api_key: true
+cline_ide_vault_file_path: "{{ inventory_dir }}/../vault/shared.vault.yml"
+cline_ide_provider_id: "openai-compatible"
+cline_ide_model: "qwen2.5-coder-32b@k3s02-vllm"
+# MCP servers as a list (same shape as continue_ide_mcp_servers); rendered to
+# Cline mcpServers object keyed by name.
+cline_ide_mcp_servers: []
+# Also merge legacy VS Code settings.json keys used by some Cline builds.
+cline_ide_vscode_settings_merge: true
+cline_ide_vscode_settings_path: >-
+  {{ ansible_env.HOME }}/Library/Application Support/Code/User/settings.json

@@ -126,10 +126,17 @@ codex_homelab_profiles_context_window: 24000
 
 vscode_extensions:
   - Continue.continue
+  - saoudrizwan.claude-dev
   - openai.chatgpt
   - hashicorp.terraform
   - redhat.ansible
   - redhat.vscode-yaml
+
+# cx-* wrappers: work laptop repos live under Documents/develop (not ~/develop).
+codex_homelab_profiles_develop_root: "{{ ansible_env.HOME }}/Documents/develop"
+codex_homelab_profiles_repo_primary: "{{ codex_homelab_profiles_develop_root }}/work-laptop-ai-tools"
+codex_homelab_profiles_repo_skills: "{{ codex_homelab_profiles_develop_root }}/global-skills"
+codex_homelab_profiles_repo_research: "{{ codex_homelab_profiles_develop_root }}/homelab-reference-library"
 
 terraform_cli_state: present
 
@@ -152,6 +159,7 @@ aws_iac_mcp_aws_region: "us-east-1"
 # ---------------------------------------------------------------------------
 # MCP catalog. Commissioned clients for this slice (NOT VS Code native MCP):
 #   - Continue extension (~/.continue/config.yaml via continue_ide_mcp_servers)
+#   - Cline extension (~/.cline via cline_ide_mcp_servers; mirrors Continue list)
 #   - Codex CLI + Codex VS Code extension (~/.codex/config.toml via *_targets: [codex])
 # Remaining catalog entries stay absent. Do not add vscode to *_targets.
 # ---------------------------------------------------------------------------
@@ -247,6 +255,7 @@ redhat_ansible_workspace_root: "{{ playbook_dir }}"
 # - only revisit autocomplete/predictions with a deliberately local-only small model on this Mac
 continue_ide_state: present
 continue_ide_api_key: ""
+continue_ide_require_api_key: true
 continue_ide_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
 continue_ide_autocomplete_enabled: false
 continue_ide_models:
@@ -316,6 +325,15 @@ continue_ide_mcp_servers:
 continue_ide_blocked_lanes:
   - "qwen2.5-coder-14b@k3s02-vllm (undersized for 5090 — use 32B AWQ + fp8 KV)"
   - "Remote autocomplete disabled on 2026-09-02 due editor and remote-backend stability risk; only revisit with a local-only model on this Mac."
+
+# Cline (saoudrizwan.claude-dev) — same LiteLLM lanes as Continue; baseUrl includes /v1.
+cline_ide_state: present
+cline_ide_api_key: ""
+cline_ide_require_api_key: true
+cline_ide_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
+cline_ide_gateway_api_base: "http://litellm.hom.lab/v1"
+cline_ide_model: "qwen2.5-coder-32b@k3s02-vllm"
+cline_ide_mcp_servers: "{{ continue_ide_mcp_servers }}"
 
 # ansible-dev-tools (Red Hat meta-package) requires Python >=3.10.
 # The work laptop packet venv runs Python 3.9.6 (macOS system Python).
