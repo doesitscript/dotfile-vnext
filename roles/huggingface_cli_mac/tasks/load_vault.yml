@@ -1,5 +1,6 @@
 ---
-# Optional vault load — Context7-style: missing/empty does not fail the role.
+# Vault token is required when present, same shape as Morph MCP.
+# Override huggingface_cli_mac_hf_token only for a one-run exception.
 - name: Default resolved HF token from role override
   ansible.builtin.set_fact:
     huggingface_cli_mac_resolved_hf_token: "{{ huggingface_cli_mac_hf_token | default('') | trim }}"
@@ -10,6 +11,19 @@
     path: "{{ huggingface_cli_mac_vault_file }}"
   register: _huggingface_cli_mac_vault_stat
   when:
+    - huggingface_cli_mac_load_vault | bool
+    - (huggingface_cli_mac_resolved_hf_token | length) == 0
+
+- name: Require Hugging Face shared vault file
+  ansible.builtin.assert:
+    that:
+      - _huggingface_cli_mac_vault_stat.stat.exists | default(false)
+    fail_msg: >-
+      huggingface_cli_mac needs {{ huggingface_cli_mac_vault_file }} with
+      vault_hf_token. Same file as Morph MCP and k3s_vllm_runtime.
+      Copy the shared vault, set vault_hf_token, encrypt, then re-run.
+  when:
+    - huggingface_cli_mac_require_token | bool
     - huggingface_cli_mac_load_vault | bool
     - (huggingface_cli_mac_resolved_hf_token | length) == 0
 
@@ -34,4 +48,17 @@
   when:
     - (huggingface_cli_mac_resolved_hf_token | length) == 0
     - _huggingface_cli_mac_vault_vars is defined
+  no_log: true
+
+- name: Require vault_hf_token for Hugging Face CLI login
+  ansible.builtin.assert:
+    that:
+      - huggingface_cli_mac_resolved_hf_token is defined
+      - huggingface_cli_mac_resolved_hf_token | length > 0
+      - huggingface_cli_mac_resolved_hf_token != 'REPLACE_ME'
+    fail_msg: >-
+      vault_hf_token is required in {{ huggingface_cli_mac_vault_file }}
+      (not empty, not REPLACE_ME) before huggingface_cli_mac can log in
+      the hf CLI. Same key k3s_vllm_runtime writes as HF_TOKEN.
+  when: huggingface_cli_mac_require_token | bool
   no_log: true

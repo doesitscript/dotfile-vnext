@@ -24,11 +24,15 @@ huggingface_cli_mac_env_file: "{{ ansible_env.HOME }}/.config/homelab/huggingfac
 huggingface_cli_mac_hf_home: "{{ ansible_env.HOME }}/HomelabSMB/hvh-01-public/models/huggingface"
 huggingface_cli_mac_shell_snippet: "{{ ansible_env.HOME }}/.bashrc.d/huggingface_cli_mac.bash"
 
-# Optional shared vault (same source as k3s_vllm_runtime HF_TOKEN).
-# Missing file or empty vault_hf_token is OK — CLI still installs; Hub stays
-# unauthenticated until a token is provided.
+# Required shared vault key, same file as Morph MCP / k3s_vllm_runtime.
+# present fails if vault_hf_token is missing. Do not leave the CLI anonymous.
+huggingface_cli_mac_require_token: true
 huggingface_cli_mac_load_vault: true
 huggingface_cli_mac_vault_file: "{{ inventory_dir }}/../vault/shared.vault.yml"
+# CLI login store stays on the controller. Do not write the token under HF_HOME
+# on the public share.
+huggingface_cli_mac_cli_home: "{{ ansible_env.HOME }}/.cache/huggingface"
+huggingface_cli_mac_token_path: "{{ huggingface_cli_mac_cli_home }}/token"
 
 # Direct override (host_vars / -e). Empty means "use vault if present".
 huggingface_cli_mac_hf_token: ""

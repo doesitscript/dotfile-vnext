@@ -17,25 +17,26 @@ This is the practical Monterey/Intel substitute when apps like ToolPiper
 `hf` works on Monterey x86_64 and can write into the HVH public share mount
 (`~/HomelabSMB/hvh-01-public/models/huggingface` by default).
 
-## Vault (optional HF token)
+## Vault (required HF token)
 
-Same pattern as Context7 MCP / `k3s_vllm_runtime`: load
-`vault_hf_token` from `vault/shared.vault.yml` when present.
+Same required-key shape as Morph MCP. Same vault file and key as
+`k3s_vllm_runtime`: `vault_hf_token` in `vault/shared.vault.yml`.
 
 | Condition | Behavior |
 | --- | --- |
-| Vault file missing | Install continues; no `HF_TOKEN` in env file |
-| `vault_hf_token` empty | Install continues; unauthenticated Hub access |
-| `vault_hf_token` set | Env file exports `HF_TOKEN` + `HUGGINGFACE_HUB_TOKEN` (`0600`) |
+| Vault file missing | `present` fails |
+| `vault_hf_token` empty or `REPLACE_ME` | `present` fails |
+| `vault_hf_token` set | `hf auth login --token` writes the local CLI store, and the env file exports `HF_TOKEN` (`0600`) |
 | `-e huggingface_cli_mac_hf_token=...` | Overrides vault for this run |
 
-Empty token never fails the role (unlike Morph MCP, which requires a key).
+The token file is `~/.cache/huggingface/token`. It is not written under
+`HF_HOME` on the public share. See `docs/reference/controller-cli-vault-creds.md`.
 
 ## Lifecycle
 
 | State | Effect |
 | --- | --- |
-| `present` | `pipx install huggingface_hub` + HF_HOME env (+ token when set) |
+| `present` | `pipx install huggingface_hub`, vault login, HF env file |
 | `absent` | `pipx uninstall` + remove managed env files |
 
 ## Apply / Verify / Undo / Change class
@@ -45,7 +46,7 @@ ansible-playbook playbooks/deploy_development_nodes.yaml \
   --tags huggingface_cli_mac --limit mac-dev
 ```
 
-- **Verify:** `hf version`; with token, `source ~/.config/homelab/huggingface_cli_mac.env && hf auth whoami`
+- **Verify:** `env -u HF_TOKEN -u HUGGINGFACE_HUB_TOKEN hf auth whoami` (uses the CLI store, not the shell)
 - **Download example:** `hf download Qwen/Qwen2.5-Coder-1.5B-Instruct --local-dir "$HF_HOME/Qwen--Qwen2.5-Coder-1.5B-Instruct"`
 - **Undo:** `-e huggingface_cli_mac_state=absent`
 - **Change class:** idempotent controller-local package install

@@ -69,6 +69,31 @@
       fi
   when: huggingface_cli_mac_manage_env | bool
 
+- name: Ensure local Hugging Face CLI login directory exists
+  ansible.builtin.file:
+    path: "{{ huggingface_cli_mac_cli_home }}"
+    state: directory
+    mode: "0700"
+  when: huggingface_cli_mac_require_token | bool
+
+- name: Log hf CLI in from vault_hf_token
+  ansible.builtin.command:
+    argv:
+      - "{{ huggingface_cli_mac_global_bin_dir }}/hf"
+      - auth
+      - login
+      - --token
+      - "{{ huggingface_cli_mac_resolved_hf_token }}"
+      - --force
+  environment:
+    HF_HOME: "{{ huggingface_cli_mac_cli_home }}"
+    HF_TOKEN_PATH: "{{ huggingface_cli_mac_token_path }}"
+    HF_TOKEN: ""
+    HUGGINGFACE_HUB_TOKEN: ""
+  no_log: true
+  changed_when: true
+  when: huggingface_cli_mac_require_token | bool
+
 - name: Verify hf CLI responds
   ansible.builtin.command:
     argv:
@@ -80,23 +105,32 @@
     - not ansible_check_mode
     - huggingface_cli_mac_verify | bool
 
-- name: Probe Hugging Face auth when token is configured
+- name: Restrict local HF CLI token file
+  ansible.builtin.file:
+    path: "{{ huggingface_cli_mac_token_path }}"
+    mode: "0600"
+  when:
+    - huggingface_cli_mac_require_token | bool
+    - not ansible_check_mode
+
+- name: Probe Hugging Face CLI login without inherited HF_TOKEN
   ansible.builtin.command:
     argv:
       - "{{ huggingface_cli_mac_global_bin_dir }}/hf"
       - auth
       - whoami
   environment:
-    HF_TOKEN: "{{ huggingface_cli_mac_resolved_hf_token }}"
-    HUGGINGFACE_HUB_TOKEN: "{{ huggingface_cli_mac_resolved_hf_token }}"
+    HF_HOME: "{{ huggingface_cli_mac_cli_home }}"
+    HF_TOKEN_PATH: "{{ huggingface_cli_mac_token_path }}"
+    HF_TOKEN: ""
+    HUGGINGFACE_HUB_TOKEN: ""
   register: huggingface_cli_mac_whoami
   changed_when: false
-  failed_when: false
   no_log: true
   when:
     - not ansible_check_mode
     - huggingface_cli_mac_verify | bool
-    - (huggingface_cli_mac_resolved_hf_token | default('') | length) > 0
+    - huggingface_cli_mac_require_token | bool
 
 - name: Report Hugging Face CLI install
   ansible.builtin.debug:
@@ -105,15 +139,11 @@
       version: "{{ huggingface_cli_mac_version.stdout | default('') }}"
       hf_home: "{{ huggingface_cli_mac_hf_home }}"
       token_configured: "{{ (huggingface_cli_mac_resolved_hf_token | default('') | length) > 0 }}"
-      auth_whoami_ok: >-
-        {{
-          (huggingface_cli_mac_whoami.rc | default(1)) == 0
-          if (huggingface_cli_mac_resolved_hf_token | default('') | length) > 0
-          else 'skipped_no_token'
-        }}
+      cli_token_path: "{{ huggingface_cli_mac_token_path }}"
+      auth_whoami: "{{ huggingface_cli_mac_whoami.stdout | default('') }}"
       note: >-
-        vault_hf_token is optional. Empty/missing vault does not fail install;
-        Hub downloads stay unauthenticated until a token is set.
+        vault_hf_token is the default. The role logs the hf CLI in and writes
+        ~/.config/homelab/huggingface_cli_mac.env. Token file stays on this Mac.
   when:
     - not ansible_check_mode
     - huggingface_cli_mac_verify | bool

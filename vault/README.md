@@ -61,3 +61,19 @@ whole-file vaults and inline `encrypt_string` blocks for mixed YAML files.
 
 Project-root `vault.yml` holds app/service secrets for roles that load it via
 `roles/*/tasks/load_vault.yml`.
+
+## Controller CLI credentials
+
+Controller tools that need a Hub or vendor key take it from
+`vault/shared.vault.yml`. Do not `hf auth login` by hand and do not copy the
+token into a shell profile.
+
+| Client | Vault key | Role |
+| --- | --- | --- |
+| Hugging Face CLI on the controller Mac | `vault_hf_token` | `huggingface_cli_mac` |
+| vLLM runtime | `vault_hf_token` | `k3s_vllm_runtime` |
+| Morph MCP | `vault_shared_morph_api_key` | `mcp_servers/morph` |
+
+Pattern: require the vault file, reject empty/`REPLACE_ME`, write the client
+credential store, then verify without printing the secret. HF CLI details:
+`docs/reference/controller-cli-vault-creds.md`.
