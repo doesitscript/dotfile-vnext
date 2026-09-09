@@ -9,7 +9,7 @@ the weight on the laptop as the primary path.
 ```text
 controller Mac (this Mac)
   → download into the HVH public share under models/<ecosystem>/
-  → work laptop copies that models/ tree to ~/models
+  → work laptop copies listed model folders from models-to-copy.list to ~/models
   → import commands point at ~/models, not at the share
 ```
 
@@ -21,8 +21,12 @@ tool, not copied again per tool.
 ## Currently
 
 Only a few tools are in use. Those runtimes do not detect a folder drop.
-From the work laptop, copy the share `models/` tree to `~/models`, then run
-that tool's import command against the local file.
+The model list is `helpers/work-mac-local-models/models-to-copy.list`.
+The helper scripts only print commands from that list. You run them.
+From the work laptop, copy only those listed folders to `~/models` (same
+path as the share), then run that tool's import command against the local
+file. Do not copy the whole `models/` tree. The copy is one-way and does
+not delete files already on the Mac.
 Do not treat "the file is in public" or "the file is in ~/models" as "the
 runtime has the model."
 
@@ -41,9 +45,9 @@ import, no `ollama pull`):
   `Qwen3-4B-Q4_K_M.gguf` (`JAN-AI-WORK-MAC-RAG.md`). Jan links that local
   file. It does not download a second copy.
 
-Script dividers (`echo:<tool>`, `process:<tool>`, `next-cli`) are the only
-places to add another CLI. Hugging Face and Ollama are the first pairs, not
-the only allowed tools.
+Add or remove a model in the manifest. Do not hand-write the same model
+into each tool section. Another tool is another echo section over that same
+list. The scripts do not run the commands.
 
 ## Share layout
 

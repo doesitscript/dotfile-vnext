@@ -1,62 +1,93 @@
-# Share paths for human model commands.
-# Topology (UNC, hosts, mount methods): helpers/share_topology.md
-# Do not invent a path. Read that file and this file before writing
-# section 1 or section 2.
+# Share paths and echo printers for the human model helpers.
+# Topology: helpers/share_topology.md
+# Model list: models-to-copy.list (source of truth).
 #
-# Mounts are not managed here. A later role may own them. Controller Mac
-# mounts today come from parent role macos_smb_public_mounts (finder_login).
+# These helpers only print commands. They do not download, copy, or import.
+# Do not wrap folder values in []. A previous print form created a real
+# directory named [/Users/joshc/HomelabSMB/hvh-01-public] under this folder.
 
-# Controller Mac (mac-dev, finder_login). Section 1 only.
+# Controller Mac (mac-dev, finder_login). Download echo only.
 # Staging host is HOM-LAB-HVH-01 (\\HOM-LAB-HVH-01\public).
 # That share root has: apps, artifacts, driver-staging, models, studio.
 # HVH-02 public does not have models/. Do not swap this value.
 CONTROLLER_PUBLIC_FOLDER="${HOME}/HomelabSMB/hvh-01-public"
-# other controller public folder, not model staging:
-# ${HOME}/HomelabSMB/hvh-02-public (\\HOM-LAB-HVH-02\public)
 
-# Bracket the value so an empty variable still shows where it was printed.
-# Work laptop owned weight root. Same children as the share's models/ folder
-# (huggingface, ollama, and any other ecosystem folder copied across).
-# Import commands point here, not at the share. See helpers/share_topology.md.
+# Work laptop owned weight root. Import echo points here, not at the share.
 WORK_LAPTOP_LOCAL_MODELS="${HOME}/models"
 
-print_share_folders() {
-  echo "CONTROLLER_PUBLIC_FOLDER=[${CONTROLLER_PUBLIC_FOLDER}]"
-  echo "WORK_LAPTOP_PUBLIC_FOLDER=[${WORK_LAPTOP_PUBLIC_FOLDER}]"
-  echo "WORK_LAPTOP_LOCAL_MODELS=[${WORK_LAPTOP_LOCAL_MODELS}]"
-}
+_SHARE_PATHS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORK_LAPTOP_MODEL_MANIFEST="${_SHARE_PATHS_DIR}/models-to-copy.list"
 
-# Copy share models/ onto the work laptop, preserving ecosystem folders.
-# Does not copy apps, artifacts, or the rest of the public root.
-copy_public_models_to_local() {
-  local src="${WORK_LAPTOP_PUBLIC_FOLDER}/models/"
-  local dest="${WORK_LAPTOP_LOCAL_MODELS}/"
-  if [[ -z "${WORK_LAPTOP_PUBLIC_FOLDER}" ]]; then
-    echo "WORK_LAPTOP_PUBLIC_FOLDER is empty. Cannot copy models onto the work laptop." >&2
-    return 1
-  fi
-  if [[ ! -d "${src}" ]]; then
-    echo "Share models folder is missing: [${src}]" >&2
-    return 1
-  fi
-  mkdir -p "${WORK_LAPTOP_LOCAL_MODELS}"
-  rsync -a "${src}" "${dest}"
-}
-
-require_controller_model_staging() {
-  local root="${CONTROLLER_PUBLIC_FOLDER}"
-  local name
-  for name in apps artifacts driver-staging models studio; do
-    if [[ ! -d "${root}/${name}" ]]; then
-      echo "CONTROLLER_PUBLIC_FOLDER is not the HVH-01 model staging share: missing [${root}/${name}]" >&2
-      echo "Expected \\\\HOM-LAB-HVH-01\\public (apps, artifacts, driver-staging, models, studio). Do not use hvh-02-public." >&2
-      return 1
-    fi
-  done
-}
-
-# Work laptop mount of the HVH-01 public share. Copy source only.
-# Not recorded. Do not copy the controller path. Fill this before the copy
-# step. Import commands use WORK_LAPTOP_LOCAL_MODELS, not this mount.
-# See helpers/share_topology.md.
+# Work laptop mount of the HVH-01 public share. Copy echo source only.
+# Not recorded. Do not copy the controller path. Fill this before you run
+# a printed copy command. See helpers/share_topology.md.
 WORK_LAPTOP_PUBLIC_FOLDER=""
+
+print_share_folders() {
+  echo "CONTROLLER_PUBLIC_FOLDER=${CONTROLLER_PUBLIC_FOLDER}"
+  if [[ -n "${WORK_LAPTOP_PUBLIC_FOLDER}" ]]; then
+    echo "WORK_LAPTOP_PUBLIC_FOLDER=${WORK_LAPTOP_PUBLIC_FOLDER}"
+  else
+    echo "WORK_LAPTOP_PUBLIC_FOLDER is unset. Fill it in share-paths.sh before you run a copy command."
+  fi
+  echo "WORK_LAPTOP_LOCAL_MODELS=${WORK_LAPTOP_LOCAL_MODELS}"
+  echo "model manifest=${WORK_LAPTOP_MODEL_MANIFEST}"
+}
+
+# Read the manifest. Skip blanks and # comments.
+# Calls the given function with: share_rel hf_repo gguf_file ollama_name
+each_listed_model() {
+  local line share_rel hf_repo gguf_file ollama_name
+  if [[ ! -f "${WORK_LAPTOP_MODEL_MANIFEST}" ]]; then
+    echo "Model manifest is missing: ${WORK_LAPTOP_MODEL_MANIFEST}" >&2
+    return 1
+  fi
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line%%#*}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "${line}" ]] && continue
+    IFS='|' read -r share_rel hf_repo gguf_file ollama_name <<<"${line}"
+    share_rel="${share_rel#"${share_rel%%[![:space:]]*}"}"
+    share_rel="${share_rel%"${share_rel##*[![:space:]]}"}"
+    [[ -z "${share_rel}" ]] && continue
+    "$@" "${share_rel}" "${hf_repo}" "${gguf_file}" "${ollama_name}"
+  done < "${WORK_LAPTOP_MODEL_MANIFEST}"
+}
+
+_echo_hf_download() {
+  local share_rel="$1" hf_repo="$2" gguf_file="$3"
+  echo "hf download ${hf_repo} ${gguf_file} --local-dir \"\${CONTROLLER_PUBLIC_FOLDER}/models/${share_rel}\""
+}
+
+_echo_copy_one() {
+  local share_rel="$1"
+  echo "rsync -a \"\${WORK_LAPTOP_PUBLIC_FOLDER}/models/${share_rel}/\" \"\${WORK_LAPTOP_LOCAL_MODELS}/${share_rel}/\""
+}
+
+_echo_ollama_one() {
+  local share_rel="$1" _hf_repo="$2" gguf_file="$3" ollama_name="$4"
+  echo "printf 'FROM %s\\n' \"\${WORK_LAPTOP_LOCAL_MODELS}/${share_rel}/${gguf_file}\" | ollama create ${ollama_name} -f -"
+}
+
+_echo_lmstudio_one() {
+  local share_rel="$1" _hf_repo="$2" gguf_file="$3"
+  echo "lms import \"\${WORK_LAPTOP_LOCAL_MODELS}/${share_rel}/${gguf_file}\" -y"
+}
+
+print_echo_huggingface() {
+  each_listed_model _echo_hf_download
+}
+
+print_echo_copy() {
+  echo "# one-way copy of listed model folders only. no --delete. does not clean the Mac."
+  each_listed_model _echo_copy_one
+}
+
+print_echo_ollama() {
+  each_listed_model _echo_ollama_one
+}
+
+print_echo_lmstudio() {
+  each_listed_model _echo_lmstudio_one
+}

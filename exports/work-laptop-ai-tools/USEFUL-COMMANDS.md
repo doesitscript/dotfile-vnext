@@ -19,11 +19,11 @@ Use skill work-laptop-model-runtime-import to pin Qwen3-4B as the Jan RAG chat m
 
 ## 4. Add a controller download
 
-Use skill `work-laptop-model-public-download` to add a controller-Mac Hugging Face download line and the matching later process line for <repo> <file.gguf> in `helpers/work-mac-local-models/continue-mac-local-controller.sh`. Do not run the download unless asked.
+Use skill `work-laptop-model-public-download` to add <repo> <file.gguf> to `helpers/work-mac-local-models/models-to-copy.list`. The controller helper only echoes the download command. Do not run the download unless asked.
 
 ## 5. Add a work-laptop import
 
-Use skill `work-laptop-model-runtime-import` to add the work-laptop echo and process lines that import <file.gguf> from `~/models` into Ollama. Point at the local copy, not the share. Do not claim the import ran.
+Use skill `work-laptop-model-runtime-import` so the work-laptop helper echoes the copy and Ollama import commands for models already in `models-to-copy.list`. Point at `~/models`, not the share. Do not run those commands.
 
 ## 6. Apply on the work laptop
 

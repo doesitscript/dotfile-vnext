@@ -59,14 +59,18 @@ imported into a work-Mac runtime. Arrival workflow:
 | Hugging Face CLI | `models/huggingface` | `~/models/huggingface` |
 | Ollama | `models/ollama` | `~/models/ollama` |
 
-Observed HVH-01 `models/` also has `stable-diffusion`. Copy that child the
-same way if it is present. Do not invent extra ecosystem roots.
+Observed HVH-01 `models/` also has `stable-diffusion`. Do not copy that
+child unless it is listed in `models-to-copy.list`.
 
 ## Work-laptop local copy
 
 The work laptop owns one weight tree: `~/models`
-(`WORK_LAPTOP_LOCAL_MODELS`). Copy `public/models/` onto that root so the
-child folders match the share (`huggingface`, `ollama`, and so on).
+(`WORK_LAPTOP_LOCAL_MODELS`). The model list is
+`helpers/work-mac-local-models/models-to-copy.list`. Helpers only print
+commands. You run them. Copy is one-way `rsync -a` of each listed folder,
+same path under `~/models` as under the share `models/` folder. No
+`--delete`. It does not copy the rest of `models/` and does not delete
+files already on the Mac.
 
 Import commands then point at files under `~/models`. The intended contract
 is one Mac copy, with each tool's import creating a registry entry or link

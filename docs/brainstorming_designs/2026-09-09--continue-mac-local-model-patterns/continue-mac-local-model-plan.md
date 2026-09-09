@@ -40,7 +40,7 @@ children.
 controller Mac
   → hf download into \\HOM-LAB-HVH-01\public\models\huggingface
     (public root: apps, artifacts, driver-staging, models, studio; not HVH-02)
-  → work laptop copies public/models/ to ~/models
+  → work laptop copies only models-to-copy.list folders to ~/models
     (huggingface, ollama, and any other child stay the same)
   → ollama create FROM ~/models/huggingface/<gguf>
   → continue_ide marked section continue-ollama-local

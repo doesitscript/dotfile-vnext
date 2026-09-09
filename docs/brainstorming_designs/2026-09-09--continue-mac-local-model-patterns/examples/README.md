@@ -1,28 +1,11 @@
 # Script examples
 
-Pattern copies of the human-run scripts. Same divider contract as the runnable
-files. Do not treat this folder as the place to run them.
+The runnable helpers live in the work-laptop packet. This folder is not the
+place to run them, and it is not a second model list.
 
-Runnable copies:
+- Manifest: `exports/work-laptop-ai-tools/helpers/work-mac-local-models/models-to-copy.list`
+- Controller echo: `continue-mac-local-controller.sh`
+- Work-laptop echo: `continue-mac-local-work-laptop.sh`
 
-- `exports/work-laptop-ai-tools/helpers/work-mac-local-models/continue-mac-local-controller.sh`
-- `exports/work-laptop-ai-tools/helpers/work-mac-local-models/continue-mac-local-work-laptop.sh`
-- `exports/work-laptop-ai-tools/helpers/work-mac-local-models/example-commands.sh`
-
-Skills that add lines: `work-laptop-model-public-download` (controller Mac /
-mac-dev) and `work-laptop-model-runtime-import` (work laptop).
-
-## Dividers
-
-Add commands only inside the matching markers. A new CLI is a new pair, not
-more lines inside `huggingface` or `ollama`.
-
-| Marker | What to add |
-| --- | --- |
-| `SECTION: echo:<tool>` | Printed command. Folder value in `[]`. |
-| `SECTION: process:<tool>` | Same models, real command, for later on that machine. |
-| `SECTION: next-cli` | Empty. Put the next tool's echo+process pair above this marker. |
-
-Controller process blocks run later on mac-dev. Work-laptop process blocks
-run on the work laptop after `WORK_LAPTOP_PUBLIC_FOLDER` is set. Copy lands
-in `~/models`. Import commands use `WORK_LAPTOP_LOCAL_MODELS`, not the share.
+Those scripts only print commands from the manifest. You run the printed
+lines. Do not wrap folder values in `[]`.

@@ -54,8 +54,8 @@ unless the user explicitly asks.
 | `work-laptop-vault-status` | Names-only ciphertext + nonempty key check via `vault_status.py` |
 | `work-laptop-packet-ops` | Validate export contract, sync sibling, smoke; delegates heavy scripts to parent `work-laptop-export-pack` |
 | `work-laptop-recorded-facts` | Work laptop model, chip, macOS, hostname, username — read host_vars first |
-| `work-laptop-model-public-download` | Add a controller-Mac download: `echo:<tool>` plus later `process:<tool>` above `next-cli` (hf first; any other CLI the same way) |
-| `work-laptop-model-runtime-import` | Add a work-laptop import: `echo:<tool>` plus `process:<tool>` above `next-cli` (Ollama first; LM Studio or any other CLI the same way) |
+| `work-laptop-model-public-download` | Add a model to `models-to-copy.list`. Controller helper only echoes download commands from that list. |
+| `work-laptop-model-runtime-import` | Same manifest. Work-laptop helper only echoes copy and per-tool import commands. Do not run them. |
 
 Discovery path: `.agents/skills/<name>/SKILL.md` (Cursor + Codex). Skills are
 synced into the sibling so laptop sessions can discover them.

@@ -1,53 +1,35 @@
 # Work-Mac local model commands
 
-Human-run command files. Agents write the lines. You run them. Ansible does
-not.
+Echo-only helpers. They print the commands you run. They do not download,
+copy, or import. Ansible does not. They are not Continue-extension config.
 
 Workflow: `WORK-MAC-LOCAL-MODEL-ARRIVAL.md`.
 Share map: `helpers/share_topology.md`. Paths: `share-paths.sh`.
+Model list: `models-to-copy.list`.
+
+Add or remove a model in that manifest. Every echo section is generated
+from those same lines. Do not copy model lines into a script by hand.
+Do not wrap folder values in `[]`. That form created a real directory
+named `[/Users/joshc/HomelabSMB/hvh-01-public]` under this folder.
 
 ```text
-controller Mac → public share models/ → copy to ~/models → import from ~/models
+controller Mac → public share models/<listed folder>
+  → work laptop copies those listed folders only to ~/models
+  → you run the import command for each tool you care about
 ```
 
-## File shape
+## What gets printed
 
-Scripts use named dividers. Skills add lines only inside the matching pair.
-One command per model. No blank lines inside a tool block.
-
-| Marker | Machine | What goes here |
+| Script | Machine | Echo sections |
 | --- | --- | --- |
-| `SECTION: paths` | both | Print folder variables. Values are wrapped in `[]`. |
-| `SECTION: echo:<tool>` | that tool's machine | Printed command only. Folder value in `[]`. |
-| `SECTION: process:<tool>` | same machine, later | Same models as that echo block. Unbracketed folder variable. |
-| `SECTION: echo:confirm` / `process:confirm` | work laptop | One confirm line per tool. |
-| `SECTION: next-cli` | both | Empty marker. Insert the next tool's echo+process pair above it. |
+| `continue-mac-local-controller.sh` | controller Mac | `echo:huggingface` |
+| `continue-mac-local-work-laptop.sh` | work laptop | `echo:copy`, `echo:ollama`, `echo:lmstudio`, `echo:confirm` |
 
-1. **Download** — controller Mac (`mac-dev`). `CONTROLLER_PUBLIC_FOLDER` only.
-   Hugging Face is `echo:huggingface` plus `process:huggingface`.
-2. **Copy** — work laptop. `echo:copy` plus `process:copy`. Copies share
-   `models/` onto `WORK_LAPTOP_LOCAL_MODELS` (`~/models`) with the same child
-   folders. Needs `WORK_LAPTOP_PUBLIC_FOLDER`.
-3. **Import** — work laptop. `WORK_LAPTOP_LOCAL_MODELS` only. Ollama is
-   `echo:ollama` plus `process:ollama`. A file on the share is not imported.
-   A file under `~/models` is not imported until the tool command runs.
-4. **Confirm** — work laptop confirm sections.
+Copy is one `rsync -a` per listed folder, same path as the share. No
+`--delete`. It does not copy the rest of `models/` and does not clean the
+Mac. Fill `WORK_LAPTOP_PUBLIC_FOLDER` before you run a printed copy line.
 
-Another CLI does not extend the huggingface or ollama blocks. Copy an
-echo+process pair and place it above `SECTION: next-cli`.
+Another tool is another `print_echo_<tool>` over the same manifest, called
+from the matching script above `SECTION: next-cli`.
 
-## Example
-
-`example-commands.sh` — format example. Do not run it as this plan.
-
-Pattern copies of these scripts also live in
-`docs/brainstorming_designs/2026-09-09--continue-mac-local-model-patterns/examples/`.
-Edit the copies in this folder; that examples folder is the design mirror.
-
-This plan's commands:
-
-- Controller Mac: `continue-mac-local-controller.sh` — prints `echo:huggingface`.
-  `process:huggingface` is the later mac-dev download. No Ollama.
-- Work laptop: `continue-mac-local-work-laptop.sh` — prints `echo:copy` and
-  `echo:ollama`, then copies and imports only after
-  `WORK_LAPTOP_PUBLIC_FOLDER` is set. Imports use `~/models`.
+`example-commands.sh` shows the line shape only. Do not run it as the list.
