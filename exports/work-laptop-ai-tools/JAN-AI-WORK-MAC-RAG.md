@@ -13,8 +13,10 @@ and `generated/context7/jan/local-rag-mac/`.
 
 - Machine: work laptop (MacBook Pro 14-inch, November 2023, Apple M3 Pro).
 - App: Jan desktop.
-- Model: a local Qwen around 3B–4B, GGUF, already under `~/models`. Size
-  band only. Exact file is `pending_research`. Do not download it inside Jan.
+- Chat model: `Qwen/Qwen3-4B-GGUF` file `Qwen3-4B-Q4_K_M.gguf`.
+  After copy it lives at
+  `~/models/huggingface/Qwen--Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf`.
+  Do not download it inside Jan.
 - Corpus: the homelab-reference-library checkout on this Mac.
 
 ## Paths
@@ -31,12 +33,23 @@ point Jan at the HVH public share.
 
 ## Model
 
+Selected chat weight for this RAG assistant:
+
+| Field | Value |
+| --- | --- |
+| Hugging Face repo | `Qwen/Qwen3-4B-GGUF` |
+| File | `Qwen3-4B-Q4_K_M.gguf` |
+| Share folder | `models/huggingface/Qwen--Qwen3-4B-GGUF` |
+| Local file | `~/models/huggingface/Qwen--Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf` |
+| Ollama name | `qwen3:4b` (shared weight; Jan itself imports the GGUF) |
+
 1. Weights arrive by `WORK-MAC-LOCAL-MODEL-ARRIVAL.md`: public share
    `models/huggingface`, then copy to `~/models/huggingface`.
-2. In Jan, Llama.cpp local import of that GGUF. Vendor docs say this links
-   the file and does not duplicate it. Deleting the Jan entry must not be
-   assumed to delete the file under `~/models`.
-3. Confirm the Jan model entry's path is under `~/models/huggingface`, not
+2. In Jan, Llama.cpp local import of `Qwen3-4B-Q4_K_M.gguf`. Vendor docs say
+   this links the file and does not duplicate it. Deleting the Jan entry
+   must not be assumed to delete the file under `~/models`.
+3. Confirm the Jan model entry's path is
+   `~/models/huggingface/Qwen--Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf`, not
    under `~/Library/Application Support/Jan/data/llamacpp/models`.
 
 ## RAG on the library checkout
@@ -66,6 +79,7 @@ Do not enable retrieval until the installed Jan build shows the same tool.
 ## Not in this entry
 
 - Installing Jan. The role writes config only.
-- Pinning a Qwen repo id or quantization.
+- Choosing a different chat weight. This entry uses
+  `Qwen/Qwen3-4B-GGUF` / `Qwen3-4B-Q4_K_M.gguf`.
 - Continue, Ollama, or LM Studio config. Those stay on the local-model
   arrival scripts and still import from `~/models` so the weight is shared.

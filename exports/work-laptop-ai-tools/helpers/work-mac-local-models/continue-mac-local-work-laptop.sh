@@ -35,6 +35,8 @@ echo "printf 'FROM [${WORK_LAPTOP_LOCAL_MODELS}]/huggingface/ggml-org--Qwen2.5-C
 echo "printf 'FROM [${WORK_LAPTOP_LOCAL_MODELS}]/huggingface/bartowski--Qwen2.5-Coder-3B-GGUF/Qwen2.5-Coder-3B-Q4_K_M.gguf' | ollama create qwen2.5-coder:3b-base -f -"
 echo "printf 'FROM [${WORK_LAPTOP_LOCAL_MODELS}]/huggingface/Qwen--Qwen2.5-Coder-7B-Instruct-GGUF/qwen2.5-coder-7b-instruct-q4_k_m.gguf' | ollama create qwen2.5-coder:7b-instruct -f -"
 echo "printf 'FROM [${WORK_LAPTOP_LOCAL_MODELS}]/huggingface/nomic-ai--nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf' | ollama create nomic-embed-text -f -"
+# Jan RAG chat weight. Same file Jan links; do not download a second copy.
+echo "printf 'FROM [${WORK_LAPTOP_LOCAL_MODELS}]/huggingface/Qwen--Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf' | ollama create qwen3:4b -f -"
 # ===== END SECTION: echo:ollama =====
 
 # ===== SECTION: echo:confirm =====
@@ -58,6 +60,7 @@ printf 'FROM %s\n' "${WORK_LAPTOP_LOCAL_MODELS}/huggingface/ggml-org--Qwen2.5-Co
 printf 'FROM %s\n' "${WORK_LAPTOP_LOCAL_MODELS}/huggingface/bartowski--Qwen2.5-Coder-3B-GGUF/Qwen2.5-Coder-3B-Q4_K_M.gguf" | ollama create qwen2.5-coder:3b-base -f -
 printf 'FROM %s\n' "${WORK_LAPTOP_LOCAL_MODELS}/huggingface/Qwen--Qwen2.5-Coder-7B-Instruct-GGUF/qwen2.5-coder-7b-instruct-q4_k_m.gguf" | ollama create qwen2.5-coder:7b-instruct -f -
 printf 'FROM %s\n' "${WORK_LAPTOP_LOCAL_MODELS}/huggingface/nomic-ai--nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf" | ollama create nomic-embed-text -f -
+printf 'FROM %s\n' "${WORK_LAPTOP_LOCAL_MODELS}/huggingface/Qwen--Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf" | ollama create qwen3:4b -f -
 # ===== END SECTION: process:ollama =====
 
 # ===== SECTION: process:confirm =====

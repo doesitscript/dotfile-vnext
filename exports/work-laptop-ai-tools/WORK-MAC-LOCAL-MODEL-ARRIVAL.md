@@ -37,6 +37,9 @@ import, no `ollama pull`):
 - Work laptop: `helpers/work-mac-local-models/continue-mac-local-work-laptop.sh`
 - Plan: `docs/brainstorming_designs/2026-09-09--continue-mac-local-model-patterns`
 - Pattern copies: `docs/brainstorming_designs/2026-09-09--continue-mac-local-model-patterns/examples/`
+- Jan RAG chat weight on that same list: `Qwen/Qwen3-4B-GGUF` /
+  `Qwen3-4B-Q4_K_M.gguf` (`JAN-AI-WORK-MAC-RAG.md`). Jan links that local
+  file. It does not download a second copy.
 
 Script dividers (`echo:<tool>`, `process:<tool>`, `next-cli`) are the only
 places to add another CLI. Hugging Face and Ollama are the first pairs, not

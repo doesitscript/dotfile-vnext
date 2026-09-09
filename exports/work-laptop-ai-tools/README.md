@@ -385,6 +385,7 @@ Remote autocomplete policy:
 - Work laptop import: `helpers/work-mac-local-models/continue-mac-local-work-laptop.sh`
 - Jan local RAG: role `jan_ide` writes the HRL checkout
   `~/Documents/develop/homelab-reference-library` as the document source
+  and records chat model `Qwen/Qwen3-4B-GGUF` / `Qwen3-4B-Q4_K_M.gguf`
   (`JAN-AI-WORK-MAC-RAG.md`)
 - Zed edit predictions stay disabled
 

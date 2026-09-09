@@ -30,6 +30,7 @@ echo "hf download ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF qwen2.5-coder-1.5b-q8_0.
 echo "hf download bartowski/Qwen2.5-Coder-3B-GGUF Qwen2.5-Coder-3B-Q4_K_M.gguf --local-dir \"[${CONTROLLER_PUBLIC_FOLDER}]/models/huggingface/bartowski--Qwen2.5-Coder-3B-GGUF\""
 echo "hf download Qwen/Qwen2.5-Coder-7B-Instruct-GGUF qwen2.5-coder-7b-instruct-q4_k_m.gguf --local-dir \"[${CONTROLLER_PUBLIC_FOLDER}]/models/huggingface/Qwen--Qwen2.5-Coder-7B-Instruct-GGUF\""
 echo "hf download nomic-ai/nomic-embed-text-v1.5-GGUF nomic-embed-text-v1.5.Q8_0.gguf --local-dir \"[${CONTROLLER_PUBLIC_FOLDER}]/models/huggingface/nomic-ai--nomic-embed-text-v1.5-GGUF\""
+echo "hf download Qwen/Qwen3-4B-GGUF Qwen3-4B-Q4_K_M.gguf --local-dir \"[${CONTROLLER_PUBLIC_FOLDER}]/models/huggingface/Qwen--Qwen3-4B-GGUF\""
 # ===== END SECTION: echo:huggingface =====
 
 # ===== SECTION: process:huggingface =====
@@ -44,6 +45,7 @@ echo "hf download nomic-ai/nomic-embed-text-v1.5-GGUF nomic-embed-text-v1.5.Q8_0
 # hf download bartowski/Qwen2.5-Coder-3B-GGUF Qwen2.5-Coder-3B-Q4_K_M.gguf --local-dir "${CONTROLLER_PUBLIC_FOLDER}/models/huggingface/bartowski--Qwen2.5-Coder-3B-GGUF"
 # hf download Qwen/Qwen2.5-Coder-7B-Instruct-GGUF qwen2.5-coder-7b-instruct-q4_k_m.gguf --local-dir "${CONTROLLER_PUBLIC_FOLDER}/models/huggingface/Qwen--Qwen2.5-Coder-7B-Instruct-GGUF"
 # hf download nomic-ai/nomic-embed-text-v1.5-GGUF nomic-embed-text-v1.5.Q8_0.gguf --local-dir "${CONTROLLER_PUBLIC_FOLDER}/models/huggingface/nomic-ai--nomic-embed-text-v1.5-GGUF"
+# hf download Qwen/Qwen3-4B-GGUF Qwen3-4B-Q4_K_M.gguf --local-dir "${CONTROLLER_PUBLIC_FOLDER}/models/huggingface/Qwen--Qwen3-4B-GGUF"
 # ===== END SECTION: process:huggingface =====
 
 # ===== SECTION: next-cli =====
