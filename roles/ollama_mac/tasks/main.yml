@@ -1,0 +1,40 @@
+---
+- name: Require macOS for ollama_mac
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['system'] == 'Darwin'
+    fail_msg: "ollama_mac currently supports macOS only."
+
+- name: Require a valid ollama_mac lifecycle state
+  ansible.builtin.assert:
+    that:
+      - ollama_mac_state in ['present', 'absent']
+    fail_msg: "ollama_mac_state must be present or absent."
+
+- name: Resolve effective Ollama install method for this macOS version
+  ansible.builtin.set_fact:
+    _ollama_mac_macos_major: "{{ ansible_facts['distribution_major_version'] | int }}"
+    _ollama_mac_install_method: >-
+      {{
+        ollama_mac_install_method
+        if ollama_mac_install_method != 'auto'
+        else (
+          'cask'
+          if (ansible_facts['distribution_major_version'] | int) >= (ollama_mac_cask_min_macos_major | int)
+          else 'github_zip'
+        )
+      }}
+
+- name: Require a supported Ollama install method
+  ansible.builtin.assert:
+    that:
+      - _ollama_mac_install_method in ['cask', 'github_zip']
+    fail_msg: "ollama_mac_install_method must be auto, cask, or github_zip."
+
+- name: Ensure Ollama macOS app and CLI are present
+  ansible.builtin.import_tasks: present.yml
+  when: ollama_mac_state == "present"
+
+- name: Ensure Ollama macOS app and CLI are absent
+  ansible.builtin.import_tasks: absent.yml
+  when: ollama_mac_state == "absent"

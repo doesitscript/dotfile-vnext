@@ -1,0 +1,24 @@
+---
+- name: Install Ollama desktop app via Homebrew cask
+  community.general.homebrew_cask:
+    name: "{{ ollama_mac_cask_name }}"
+    state: present
+
+- name: Check Ollama app bundle after cask install
+  ansible.builtin.stat:
+    path: "{{ ollama_mac_app_path }}"
+  register: ollama_mac_app_bundle
+  when:
+    - not ansible_check_mode
+    - ollama_mac_verify_install | bool
+
+- name: Assert Ollama app bundle exists after cask install
+  ansible.builtin.assert:
+    that:
+      - ollama_mac_app_bundle.stat.exists
+      - ollama_mac_app_bundle.stat.isdir
+    success_msg: "Ollama.app is installed via cask."
+    fail_msg: "Ollama.app was not found after cask install."
+  when:
+    - not ansible_check_mode
+    - ollama_mac_verify_install | bool

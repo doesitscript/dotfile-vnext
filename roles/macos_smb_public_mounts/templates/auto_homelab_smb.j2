@@ -1,0 +1,7 @@
+{#
+  Relative automount map under macos_smb_public_mounts_base_dir.
+  Password is URL-encoded (e.g. @ -> %40). Map file must be mode 0600.
+#}
+{% for mount in _macos_smb_public_mounts_resolved %}
+{{ mount.name }}	-{{ macos_smb_public_mounts_fstype_opts }}	://{{ macos_smb_public_mounts_username }}:{{ macos_smb_public_mounts_password | urlencode }}@{{ mount.server }}/{{ mount.share }}
+{% endfor %}

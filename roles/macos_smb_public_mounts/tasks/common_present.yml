@@ -1,0 +1,86 @@
+---
+# Shared resolve + Keychain used by both mount methods.
+
+- name: Load house Windows remoting vault for SMB password
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../inventory/group_vars/windows_os_hosts/vault.yml"
+    name: macos_smb_public_mounts_vault
+  when: (macos_smb_public_mounts_password | default('') | length) == 0
+  no_log: true
+
+- name: Set SMB password from house remoting vault
+  ansible.builtin.set_fact:
+    macos_smb_public_mounts_password: >-
+      {{ macos_smb_public_mounts_vault.vault_windows_house_remoting_password }}
+  when:
+    - (macos_smb_public_mounts_password | default('') | length) == 0
+    - macos_smb_public_mounts_vault is defined
+  no_log: true
+
+- name: Require SMB method, username, and password
+  ansible.builtin.assert:
+    that:
+      - macos_smb_public_mounts_method in ['automount', 'finder_login']
+      - macos_smb_public_mounts_username | length > 0
+      - macos_smb_public_mounts_password | length > 0
+      - macos_smb_public_mounts | length > 0
+    fail_msg: >-
+      macos_smb_public_mounts requires method automount|finder_login,
+      username, password (vault_windows_house_remoting_password), and mounts.
+
+- name: Normalize resolved SMB mount definitions
+  ansible.builtin.set_fact:
+    _macos_smb_public_mounts_resolved: >-
+      {%- set ns = namespace(items=[]) -%}
+      {%- for mount in macos_smb_public_mounts -%}
+      {%- set mount_point = (
+            (macos_smb_public_mounts_finder_base_dir ~ '/' ~ mount.name)
+            if macos_smb_public_mounts_method == 'finder_login'
+            else (macos_smb_public_mounts_base_dir ~ '/' ~ mount.name)
+          ) -%}
+      {%- set ns.items = ns.items + [{
+        'name': mount.name,
+        'share': mount.share,
+        'server': mount.server,
+        'server_label': mount.server_label | default(mount.server),
+        'mount_point': mount_point
+      }] -%}
+      {%- endfor -%}
+      {{ ns.items }}
+
+- name: Upsert Keychain internet password for each SMB server (by IP)
+  ansible.builtin.command:
+    cmd: >-
+      security add-internet-password -U
+      -a {{ macos_smb_public_mounts_username | quote }}
+      -s {{ item.server | quote }}
+      -r "smb "
+      {% for trusted_app in macos_smb_public_mounts_keychain_trusted_apps %}
+      -T {{ trusted_app | quote }}
+      {% endfor %}
+      -w {{ macos_smb_public_mounts_password | quote }}
+  loop: "{{ _macos_smb_public_mounts_resolved }}"
+  loop_control:
+    label: "{{ item.server_label }} ({{ item.server }})"
+  no_log: true
+  register: macos_smb_public_mounts_keychain_ip
+  changed_when: macos_smb_public_mounts_keychain_ip.rc == 0
+
+- name: Upsert Keychain internet password for each SMB server label (hostname)
+  ansible.builtin.command:
+    cmd: >-
+      security add-internet-password -U
+      -a {{ macos_smb_public_mounts_username | quote }}
+      -s {{ item.server_label | quote }}
+      -r "smb "
+      {% for trusted_app in macos_smb_public_mounts_keychain_trusted_apps %}
+      -T {{ trusted_app | quote }}
+      {% endfor %}
+      -w {{ macos_smb_public_mounts_password | quote }}
+  loop: "{{ _macos_smb_public_mounts_resolved }}"
+  loop_control:
+    label: "{{ item.server_label }}"
+  when: item.server_label != item.server
+  no_log: true
+  register: macos_smb_public_mounts_keychain_label
+  changed_when: macos_smb_public_mounts_keychain_label.rc == 0

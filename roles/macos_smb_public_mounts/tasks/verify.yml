@@ -1,0 +1,28 @@
+---
+- name: Confirm each mount point is an active smbfs mount
+  ansible.builtin.shell: |
+    set -euo pipefail
+    if [[ "{{ macos_smb_public_mounts_method }}" == "automount" ]]; then
+      /bin/ls "{{ item.mount_point }}" >/dev/null
+    fi
+    mount | grep -F " on {{ item.mount_point }} " | grep -F smbfs
+  args:
+    executable: /bin/bash
+  loop: "{{ _macos_smb_public_mounts_resolved }}"
+  loop_control:
+    label: "{{ item.mount_point }}"
+  register: macos_smb_public_mounts_mount_check
+  changed_when: false
+
+- name: Report verified Windows public SMB mount points
+  ansible.builtin.debug:
+    msg:
+      method: "{{ macos_smb_public_mounts_method }}"
+      username: "{{ macos_smb_public_mounts_username }}"
+      mounts: "{{ _macos_smb_public_mounts_resolved | map(attribute='mount_point') | list }}"
+      note: >-
+        finder_login uses ~/HomelabSMB/hvh-*-public (not /Volumes/public) so a
+        Finder favorite named public is left alone.
+      unc_equivalents:
+        - "\\\\HOM-LAB-HVH-01\\public -> {{ _macos_smb_public_mounts_resolved[0].mount_point | default('hvh-01-public') }}"
+        - "\\\\HOM-LAB-HVH-02\\public -> {{ _macos_smb_public_mounts_resolved[1].mount_point | default('hvh-02-public') }}"

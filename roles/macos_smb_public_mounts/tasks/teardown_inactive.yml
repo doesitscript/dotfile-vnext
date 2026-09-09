@@ -1,0 +1,68 @@
+---
+# Tear down both backends so methods never fight; present rebuilds the active one.
+
+- name: Build candidate mount paths for teardown
+  ansible.builtin.set_fact:
+    _macos_smb_public_mounts_teardown_paths: >-
+      {%- set ns = namespace(paths=[]) -%}
+      {%- for mount in macos_smb_public_mounts -%}
+      {%- set ns.paths = ns.paths + [
+            macos_smb_public_mounts_base_dir ~ '/' ~ mount.name,
+            macos_smb_public_mounts_finder_base_dir ~ '/' ~ mount.name
+          ] -%}
+      {%- endfor -%}
+      {%- if _macos_smb_public_mounts_resolved is defined -%}
+      {%- for mount in _macos_smb_public_mounts_resolved -%}
+      {%- set ns.paths = ns.paths + [mount.mount_point] -%}
+      {%- endfor -%}
+      {%- endif -%}
+      {{ ns.paths | unique | list }}
+
+- name: Unmount managed SMB mount points (automount and /Volumes names)
+  ansible.builtin.command:
+    argv:
+      - /sbin/umount
+      - "{{ item }}"
+  loop: "{{ _macos_smb_public_mounts_teardown_paths }}"
+  register: macos_smb_public_mounts_umount_all
+  failed_when: false
+  changed_when: macos_smb_public_mounts_umount_all.rc == 0
+
+- name: Stop and unload finder_login LaunchAgent when present
+  ansible.builtin.command:
+    argv:
+      - /bin/launchctl
+      - bootout
+      - "gui/{{ ansible_user_uid }}/{{ macos_smb_public_mounts_launch_agent_label }}"
+  register: macos_smb_public_mounts_bootout
+  failed_when: false
+  changed_when: macos_smb_public_mounts_bootout.rc == 0
+
+- name: Remove finder_login LaunchAgent plist
+  ansible.builtin.file:
+    path: "{{ macos_smb_public_mounts_launch_agents_dir }}/{{ macos_smb_public_mounts_launch_agent_label }}.plist"
+    state: absent
+
+- name: Remove finder_login mount script support dir
+  ansible.builtin.file:
+    path: "{{ macos_smb_public_mounts_support_dir }}"
+    state: absent
+
+- name: Remove automount map for Windows public SMB shares
+  ansible.builtin.file:
+    path: "{{ macos_smb_public_mounts_auto_map }}"
+    state: absent
+  become: true
+  notify: Reload macOS automount maps
+
+- name: Remove auto_master block for the homelab SMB map
+  ansible.builtin.blockinfile:
+    path: "{{ macos_smb_public_mounts_auto_master }}"
+    marker: "# {mark} ANSIBLE MANAGED macos_smb_public_mounts"
+    state: absent
+    backup: true
+  become: true
+  notify: Reload macOS automount maps
+
+- name: Flush automount handlers after inactive-method teardown
+  ansible.builtin.meta: flush_handlers

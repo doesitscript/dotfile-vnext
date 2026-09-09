@@ -1,0 +1,15 @@
+---
+- name: Validate huggingface_cli_mac state
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['system'] == 'Darwin'
+      - huggingface_cli_mac_state in ['present', 'absent']
+    fail_msg: "huggingface_cli_mac requires Darwin and state present|absent."
+
+- name: Ensure Hugging Face CLI is present on macOS
+  ansible.builtin.import_tasks: present.yml
+  when: huggingface_cli_mac_state == "present"
+
+- name: Ensure Hugging Face CLI is absent on macOS
+  ansible.builtin.import_tasks: absent.yml
+  when: huggingface_cli_mac_state == "absent"

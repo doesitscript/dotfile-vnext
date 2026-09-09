@@ -1,0 +1,71 @@
+---
+- name: Resolve Homebrew prefix for CLI link removal
+  ansible.builtin.command:
+    argv:
+      - brew
+      - --prefix
+  register: ollama_mac_brew_prefix
+  changed_when: false
+  check_mode: false
+
+- name: Set resolved CLI link path from Homebrew prefix
+  ansible.builtin.set_fact:
+    _ollama_mac_cli_link_path: >-
+      {{
+        ollama_mac_cli_link_path
+        if (ollama_mac_cli_link_path | default('') | length) > 0
+        else (ollama_mac_brew_prefix.stdout ~ '/bin/ollama')
+      }}
+
+- name: Remove Ollama desktop app Homebrew cask when present
+  community.general.homebrew_cask:
+    name: "{{ ollama_mac_cask_name }}"
+    state: absent
+  failed_when: false
+
+- name: Remove Ollama Homebrew formula if previously used as fallback
+  community.general.homebrew:
+    name: "{{ ollama_mac_formula_name }}"
+    state: absent
+  when: ollama_mac_formula_fallback | bool
+  failed_when: false
+
+- name: Remove Ollama.app installed from GitHub zip / Applications
+  ansible.builtin.file:
+    path: "{{ ollama_mac_app_path }}"
+    state: absent
+  become: true
+
+- name: Stat managed Ollama CLI path before removal
+  ansible.builtin.stat:
+    path: "{{ _ollama_mac_cli_link_path }}"
+  register: ollama_mac_cli_link_stat
+  when: not ansible_check_mode
+
+- name: Remove managed Ollama CLI symlink only when it points at the app bundle
+  ansible.builtin.file:
+    path: "{{ _ollama_mac_cli_link_path }}"
+    state: absent
+  become: true
+  when:
+    - not ansible_check_mode
+    - ollama_mac_cli_link_stat.stat.islnk | default(false)
+    - (ollama_mac_cli_link_stat.stat.lnk_source | default('')) == ollama_mac_bundled_cli_path
+
+- name: Check Ollama app bundle after removal
+  ansible.builtin.stat:
+    path: "{{ ollama_mac_app_path }}"
+  register: ollama_mac_app_bundle_removed
+  when:
+    - not ansible_check_mode
+    - ollama_mac_verify_install | bool
+
+- name: Assert Ollama app bundle is absent
+  ansible.builtin.assert:
+    that:
+      - not ollama_mac_app_bundle_removed.stat.exists
+    success_msg: "Ollama.app is absent."
+    fail_msg: "Ollama.app still exists after removal."
+  when:
+    - not ansible_check_mode
+    - ollama_mac_verify_install | bool

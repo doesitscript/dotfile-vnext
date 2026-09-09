@@ -1,0 +1,19 @@
+---
+- name: Uninstall Hugging Face Hub CLI via pipx
+  ansible.builtin.command:
+    argv:
+      - "{{ huggingface_cli_mac_pipx_executable }}"
+      - uninstall
+      - "{{ huggingface_cli_mac_package_name }}"
+  register: huggingface_cli_mac_pipx_uninstall
+  changed_when: huggingface_cli_mac_pipx_uninstall.rc == 0
+  failed_when: false
+
+- name: Remove managed HF env and shell snippet
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ huggingface_cli_mac_env_file }}"
+    - "{{ huggingface_cli_mac_shell_snippet }}"
+  when: huggingface_cli_mac_manage_env | bool

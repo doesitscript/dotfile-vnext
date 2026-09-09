@@ -17,6 +17,12 @@ docker_engine_ssh_host: "hom-lab-ctl-dkr-02"
 docker_engine_ssh_port: 22
 docker_engine_ssh_user: "joshc"
 
+# Permanent mounts for Windows public SMB shares on HVH hosts.
+# UNC \\HOM-LAB-HVH-0N\public -> method-specific path (joshc via house remoting vault).
+# method: automount (~/mnt/hvh-0N-public) | finder_login (~/HomelabSMB/hvh-0N-public)
+macos_smb_public_mounts_state: present
+macos_smb_public_mounts_method: finder_login
+
 # Hyper-V Ubuntu VM guest-subnet access.
 # Part 1 of the routed-private-subnet design gives mac-dev direct reachability
 # to the guest IP through HOM-LAB-HVH-02 before the broader router/LAN route
@@ -54,6 +60,13 @@ k3s_mac_client_default_context: "hom-lab-ctl-k3s-02"
 
 # OpenLens Kubernetes IDE desired state.
 openlens_state: present
+
+# Ollama desktop app + CLI on macOS (Homebrew cask ollama-app).
+ollama_mac_state: present
+
+# Hugging Face Hub CLI (hf) for model search/download — ToolPiper/LM Studio
+# substitutes on Monterey/Intel. Default HF_HOME → HomelabSMB hvh-01 public.
+huggingface_cli_mac_state: present
 
 # Terraform CLI package-management desired state.
 terraform_cli_state: present

@@ -1,0 +1,21 @@
+---
+- name: Reload macOS automount maps
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/automount
+      - -vc
+  become: true
+  changed_when: true
+
+- name: Reload finder_login LaunchAgent
+  ansible.builtin.shell: |
+    set -euo pipefail
+    label={{ macos_smb_public_mounts_launch_agent_label | quote }}
+    plist={{ (macos_smb_public_mounts_launch_agents_dir ~ '/' ~ macos_smb_public_mounts_launch_agent_label ~ '.plist') | quote }}
+    /bin/launchctl bootout "gui/{{ ansible_user_uid }}/${label}" 2>/dev/null || true
+    /bin/launchctl bootstrap "gui/{{ ansible_user_uid }}" "${plist}"
+    /bin/launchctl enable "gui/{{ ansible_user_uid }}/${label}"
+    /bin/launchctl kickstart -k "gui/{{ ansible_user_uid }}/${label}"
+  args:
+    executable: /bin/bash
+  changed_when: true

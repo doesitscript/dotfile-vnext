@@ -1,0 +1,33 @@
+#!/bin/bash
+# Managed by Ansible role macos_smb_public_mounts (finder_login).
+# Mounts Windows public shares under ~/HomelabSMB/<distinct-name> via
+# mount_smbfs (Finder SMB client). Names are not "public".
+set -euo pipefail
+
+OPTS={{ macos_smb_public_mounts_mount_smbfs_opts | quote }}
+USER={{ macos_smb_public_mounts_username | quote }}
+PASS_ENC={{ macos_smb_public_mounts_password | urlencode | quote }}
+BASE={{ macos_smb_public_mounts_finder_base_dir | quote }}
+
+mkdir -p "${BASE}"
+
+mount_one() {
+  local name="$1"
+  local server="$2"
+  local share="$3"
+  local mp="${BASE}/${name}"
+
+  if mount | grep -F " on ${mp} " | grep -Fq smbfs; then
+    return 0
+  fi
+
+  mkdir -p "${mp}"
+
+  /sbin/mount_smbfs -o "${OPTS}" \
+    "//${USER}:${PASS_ENC}@${server}/${share}" \
+    "${mp}"
+}
+
+{% for mount in _macos_smb_public_mounts_resolved %}
+mount_one {{ mount.name | quote }} {{ mount.server | quote }} {{ mount.share | quote }}
+{% endfor %}

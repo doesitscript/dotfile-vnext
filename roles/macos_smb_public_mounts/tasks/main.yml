@@ -1,0 +1,21 @@
+---
+- name: Require macOS for SMB public mount management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['system'] == 'Darwin'
+    fail_msg: "macos_smb_public_mounts must run on a macOS host."
+
+- name: Require a supported SMB mount method when present
+  ansible.builtin.assert:
+    that:
+      - macos_smb_public_mounts_method in ['automount', 'finder_login']
+    fail_msg: "macos_smb_public_mounts_method must be automount or finder_login."
+  when: macos_smb_public_mounts_state == "present"
+
+- name: Ensure Windows public SMB mounts are present on macOS
+  ansible.builtin.import_tasks: present.yml
+  when: macos_smb_public_mounts_state == "present"
+
+- name: Ensure Windows public SMB mounts are absent on macOS
+  ansible.builtin.import_tasks: absent.yml
+  when: macos_smb_public_mounts_state == "absent"

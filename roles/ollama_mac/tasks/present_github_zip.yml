@@ -1,0 +1,93 @@
+---
+- name: Notice — using Monterey-compatible Ollama GitHub zip
+  ansible.builtin.debug:
+    msg: >-
+      macOS {{ ansible_facts['distribution_version'] }} is older than
+      {{ ollama_mac_cask_min_macos_major }}. Homebrew cask ollama-app requires
+      Sonoma+. Installing pinned Ollama.app {{ ollama_mac_github_version }}
+      from GitHub (LSMinimumSystemVersion 11.0).
+
+- name: Ensure Ollama download cache directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+  loop:
+    - "{{ ollama_mac_download_dir }}"
+    - "{{ ollama_mac_extract_dir }}"
+
+- name: Check whether target Ollama.app already matches pinned version
+  ansible.builtin.command:
+    argv:
+      - defaults
+      - read
+      - "{{ ollama_mac_app_path }}/Contents/Info"
+      - CFBundleShortVersionString
+  register: ollama_mac_existing_version
+  changed_when: false
+  failed_when: false
+
+- name: Determine whether GitHub zip install is needed
+  ansible.builtin.set_fact:
+    ollama_mac_github_install_needed: >-
+      {{
+        (ollama_mac_existing_version.rc != 0)
+        or ((ollama_mac_existing_version.stdout | default('') | trim) != ollama_mac_github_version)
+      }}
+
+- name: Download pinned Ollama-darwin.zip
+  ansible.builtin.get_url:
+    url: "{{ ollama_mac_github_zip_url }}"
+    dest: "{{ ollama_mac_download_path }}"
+    checksum: "{{ ollama_mac_github_zip_checksum }}"
+    mode: "0644"
+  when: ollama_mac_github_install_needed | bool
+
+- name: Extract pinned Ollama.app from zip
+  ansible.builtin.unarchive:
+    src: "{{ ollama_mac_download_path }}"
+    dest: "{{ ollama_mac_extract_dir }}"
+    remote_src: true
+    creates: "{{ ollama_mac_extract_dir }}/Ollama.app/Contents/Info.plist"
+  when: ollama_mac_github_install_needed | bool
+
+- name: Install Ollama.app into /Applications via ditto
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/ditto
+      - "{{ ollama_mac_extract_dir }}/Ollama.app"
+      - "{{ ollama_mac_app_path }}"
+  become: true
+  when: ollama_mac_github_install_needed | bool
+
+- name: Remove quarantine from installed Ollama.app
+  ansible.builtin.command:
+    argv:
+      - xattr
+      - -dr
+      - com.apple.quarantine
+      - "{{ ollama_mac_app_path }}"
+  become: true
+  register: ollama_mac_quarantine
+  changed_when: ollama_mac_quarantine.rc == 0
+  failed_when: false
+  when: ollama_mac_github_install_needed | bool
+
+- name: Check Ollama app bundle after GitHub zip install
+  ansible.builtin.stat:
+    path: "{{ ollama_mac_app_path }}"
+  register: ollama_mac_app_bundle
+  when:
+    - not ansible_check_mode
+    - ollama_mac_verify_install | bool
+
+- name: Assert Ollama app bundle exists after GitHub zip install
+  ansible.builtin.assert:
+    that:
+      - ollama_mac_app_bundle.stat.exists
+      - ollama_mac_app_bundle.stat.isdir
+    success_msg: "Ollama.app is installed via GitHub zip."
+    fail_msg: "Ollama.app was not found after GitHub zip install."
+  when:
+    - not ansible_check_mode
+    - ollama_mac_verify_install | bool

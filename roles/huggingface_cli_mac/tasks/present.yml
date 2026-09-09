@@ -1,0 +1,119 @@
+---
+- name: Load optional Hugging Face token from shared vault
+  ansible.builtin.import_tasks: load_vault.yml
+
+- name: Require pipx for Hugging Face CLI installation
+  ansible.builtin.command:
+    argv:
+      - which
+      - "{{ huggingface_cli_mac_pipx_executable }}"
+  register: huggingface_cli_mac_pipx_which
+  changed_when: false
+  failed_when: huggingface_cli_mac_pipx_which.rc != 0
+
+- name: Install Hugging Face Hub CLI via pipx
+  ansible.builtin.command:
+    argv: "{{ huggingface_cli_mac_pipx_install_argv }}"
+  vars:
+    huggingface_cli_mac_pipx_install_argv: >-
+      {{
+        [huggingface_cli_mac_pipx_executable, 'install', huggingface_cli_mac_package_spec]
+        + (['--force'] if huggingface_cli_mac_force_reinstall | bool else [])
+      }}
+  register: huggingface_cli_mac_pipx_install
+  changed_when: "'installed package' in (huggingface_cli_mac_pipx_install.stdout | default(''))"
+  failed_when:
+    - huggingface_cli_mac_pipx_install.rc != 0
+    - >-
+      'already seems to be installed' not in
+      ((huggingface_cli_mac_pipx_install.stdout | default(''))
+       ~ (huggingface_cli_mac_pipx_install.stderr | default('')))
+
+- name: Ensure HF env parent directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+  loop:
+    - "{{ huggingface_cli_mac_env_file | dirname }}"
+    - "{{ huggingface_cli_mac_shell_snippet | dirname }}"
+  when: huggingface_cli_mac_manage_env | bool
+
+- name: Ensure default HF download root exists on share mount
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ huggingface_cli_mac_hf_home }}"
+    - "{{ huggingface_cli_mac_hf_home }}/hub"
+  when: huggingface_cli_mac_manage_env | bool
+
+- name: Deploy HF env file (paths always; token only when non-empty)
+  ansible.builtin.template:
+    src: huggingface_cli_mac.env.j2
+    dest: "{{ huggingface_cli_mac_env_file }}"
+    mode: "{{ '0600' if (huggingface_cli_mac_resolved_hf_token | default('') | length) > 0 else '0640' }}"
+  when: huggingface_cli_mac_manage_env | bool
+  no_log: "{{ (huggingface_cli_mac_resolved_hf_token | default('') | length) > 0 }}"
+
+- name: Deploy bash snippet that sources HF env
+  ansible.builtin.copy:
+    dest: "{{ huggingface_cli_mac_shell_snippet }}"
+    mode: "0644"
+    content: |
+      # Managed by Ansible role huggingface_cli_mac
+      if [ -f "{{ huggingface_cli_mac_env_file }}" ]; then
+        # shellcheck disable=SC1090
+        . "{{ huggingface_cli_mac_env_file }}"
+      fi
+  when: huggingface_cli_mac_manage_env | bool
+
+- name: Verify hf CLI responds
+  ansible.builtin.command:
+    argv:
+      - "{{ huggingface_cli_mac_global_bin_dir }}/hf"
+      - version
+  register: huggingface_cli_mac_version
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - huggingface_cli_mac_verify | bool
+
+- name: Probe Hugging Face auth when token is configured
+  ansible.builtin.command:
+    argv:
+      - "{{ huggingface_cli_mac_global_bin_dir }}/hf"
+      - auth
+      - whoami
+  environment:
+    HF_TOKEN: "{{ huggingface_cli_mac_resolved_hf_token }}"
+    HUGGINGFACE_HUB_TOKEN: "{{ huggingface_cli_mac_resolved_hf_token }}"
+  register: huggingface_cli_mac_whoami
+  changed_when: false
+  failed_when: false
+  no_log: true
+  when:
+    - not ansible_check_mode
+    - huggingface_cli_mac_verify | bool
+    - (huggingface_cli_mac_resolved_hf_token | default('') | length) > 0
+
+- name: Report Hugging Face CLI install
+  ansible.builtin.debug:
+    msg:
+      cli: "{{ huggingface_cli_mac_global_bin_dir }}/hf"
+      version: "{{ huggingface_cli_mac_version.stdout | default('') }}"
+      hf_home: "{{ huggingface_cli_mac_hf_home }}"
+      token_configured: "{{ (huggingface_cli_mac_resolved_hf_token | default('') | length) > 0 }}"
+      auth_whoami_ok: >-
+        {{
+          (huggingface_cli_mac_whoami.rc | default(1)) == 0
+          if (huggingface_cli_mac_resolved_hf_token | default('') | length) > 0
+          else 'skipped_no_token'
+        }}
+      note: >-
+        vault_hf_token is optional. Empty/missing vault does not fail install;
+        Hub downloads stay unauthenticated until a token is set.
+  when:
+    - not ansible_check_mode
+    - huggingface_cli_mac_verify | bool

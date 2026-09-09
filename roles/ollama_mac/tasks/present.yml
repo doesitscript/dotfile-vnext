@@ -1,0 +1,88 @@
+---
+- name: Resolve Homebrew prefix for CLI link placement
+  ansible.builtin.command:
+    argv:
+      - brew
+      - --prefix
+  register: ollama_mac_brew_prefix
+  changed_when: false
+  check_mode: false
+
+- name: Set resolved CLI link path from Homebrew prefix
+  ansible.builtin.set_fact:
+    _ollama_mac_cli_link_path: >-
+      {{
+        ollama_mac_cli_link_path
+        if (ollama_mac_cli_link_path | default('') | length) > 0
+        else (ollama_mac_brew_prefix.stdout ~ '/bin/ollama')
+      }}
+
+- name: Install Ollama via Homebrew cask (Sonoma+)
+  ansible.builtin.import_tasks: present_cask.yml
+  when: _ollama_mac_install_method == "cask"
+
+- name: Install Ollama via pinned GitHub app zip (pre-Sonoma)
+  ansible.builtin.import_tasks: present_github_zip.yml
+  when: _ollama_mac_install_method == "github_zip"
+
+- name: Check bundled Ollama CLI inside the app
+  ansible.builtin.stat:
+    path: "{{ ollama_mac_bundled_cli_path }}"
+  register: ollama_mac_bundled_cli
+  when: not ansible_check_mode
+
+- name: Check whether ollama is already on PATH
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/which
+      - ollama
+  register: ollama_mac_which
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Ensure PATH symlink to the app-bundled Ollama CLI
+  ansible.builtin.file:
+    src: "{{ ollama_mac_bundled_cli_path }}"
+    dest: "{{ _ollama_mac_cli_link_path }}"
+    state: link
+    force: true
+  become: true
+  when:
+    - not ansible_check_mode
+    - ollama_mac_bundled_cli.stat.exists | default(false)
+    - ollama_mac_which.rc != 0
+
+- name: Install Ollama Homebrew formula when app-bundled CLI is missing
+  community.general.homebrew:
+    name: "{{ ollama_mac_formula_name }}"
+    state: present
+  when:
+    - not ansible_check_mode
+    - ollama_mac_formula_fallback | bool
+    - _ollama_mac_install_method == "cask"
+    - not (ollama_mac_bundled_cli.stat.exists | default(false))
+    - ollama_mac_which.rc != 0
+
+- name: Verify ollama CLI responds
+  ansible.builtin.command:
+    argv:
+      - ollama
+      - --version
+  register: ollama_mac_cli_version
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - ollama_mac_verify_install | bool
+
+- name: Report Ollama macOS install verification
+  ansible.builtin.debug:
+    msg:
+      method: "{{ _ollama_mac_install_method }}"
+      macos_major: "{{ _ollama_mac_macos_major }}"
+      app: "{{ ollama_mac_app_path }}"
+      cli_version: "{{ ollama_mac_cli_version.stdout | default('') }}"
+      bundled_cli_present: "{{ ollama_mac_bundled_cli.stat.exists | default(false) }}"
+  when:
+    - not ansible_check_mode
+    - ollama_mac_verify_install | bool

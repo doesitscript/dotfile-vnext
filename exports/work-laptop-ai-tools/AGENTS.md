@@ -16,6 +16,19 @@ when the task is packet MCP, vault, or sync.
 Do not treat the sibling checkout as design authority. Edit the packet (or
 parent roles), then sync.
 
+## Recorded facts — read before searching
+
+When the user asks an obvious recorded fact about the work laptop (model,
+chip, macOS, hostname, username, Documents vs `~/develop` paths), **do not
+search the tree first**. Open these, in order:
+
+1. `host_vars/work-laptop.yaml` — keys `work_laptop_model`, `work_laptop_chip`,
+   `work_laptop_macos_version` (source of truth)
+2. README section `Current target facts` (hostname, username, same hardware)
+3. `deviations/register.yaml` — accepted work-laptop ≠ home-Mac differences
+
+Skill: `work-laptop-recorded-facts`.
+
 ## Local skills (`.agents/skills/`)
 
 These skills are specific to this slice and its external build target. Prefer
@@ -34,6 +47,7 @@ unless the user explicitly asks.
 | `work-laptop-vault-hydrate` | Copy parent vault values with `hydrate_vault_from_parent.py` (no values in chat) |
 | `work-laptop-vault-status` | Names-only ciphertext + nonempty key check via `vault_status.py` |
 | `work-laptop-packet-ops` | Validate export contract, sync sibling, smoke; delegates heavy scripts to parent `work-laptop-export-pack` |
+| `work-laptop-recorded-facts` | Work laptop model, chip, macOS, hostname, username — read host_vars first |
 
 Discovery path: `.agents/skills/<name>/SKILL.md` (Cursor + Codex). Skills are
 synced into the sibling so laptop sessions can discover them.

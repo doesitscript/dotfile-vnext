@@ -1,0 +1,62 @@
+---
+- name: Normalize resolved SMB mount definitions for teardown
+  ansible.builtin.set_fact:
+    _macos_smb_public_mounts_resolved: >-
+      {%- set ns = namespace(items=[]) -%}
+      {%- for mount in macos_smb_public_mounts -%}
+      {%- set mount_point = (
+            (macos_smb_public_mounts_finder_base_dir ~ '/' ~ mount.name)
+            if macos_smb_public_mounts_method == 'finder_login'
+            else (macos_smb_public_mounts_base_dir ~ '/' ~ mount.name)
+          ) -%}
+      {%- set ns.items = ns.items + [{
+        'name': mount.name,
+        'share': mount.share,
+        'server': mount.server,
+        'server_label': mount.server_label | default(mount.server),
+        'mount_point': mount_point
+      }] -%}
+      {%- endfor -%}
+      {{ ns.items }}
+
+- name: Tear down automount and finder_login SMB backends
+  ansible.builtin.import_tasks: teardown_inactive.yml
+
+- name: Remove Keychain internet password for each SMB server (by IP)
+  ansible.builtin.command:
+    argv:
+      - security
+      - delete-internet-password
+      - -a
+      - "{{ macos_smb_public_mounts_username }}"
+      - -s
+      - "{{ item.server }}"
+      - -r
+      - "smb "
+  loop: "{{ _macos_smb_public_mounts_resolved }}"
+  loop_control:
+    label: "{{ item.server }}"
+  register: macos_smb_public_mounts_keychain_delete_ip
+  failed_when: false
+  changed_when: macos_smb_public_mounts_keychain_delete_ip.rc == 0
+  no_log: true
+
+- name: Remove Keychain internet password for each SMB server label
+  ansible.builtin.command:
+    argv:
+      - security
+      - delete-internet-password
+      - -a
+      - "{{ macos_smb_public_mounts_username }}"
+      - -s
+      - "{{ item.server_label }}"
+      - -r
+      - "smb "
+  loop: "{{ _macos_smb_public_mounts_resolved }}"
+  loop_control:
+    label: "{{ item.server_label }}"
+  when: item.server_label != item.server
+  register: macos_smb_public_mounts_keychain_delete_label
+  failed_when: false
+  changed_when: macos_smb_public_mounts_keychain_delete_label.rc == 0
+  no_log: true

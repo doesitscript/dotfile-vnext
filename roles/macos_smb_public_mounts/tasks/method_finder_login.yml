@@ -1,0 +1,47 @@
+---
+# finder_login: LaunchAgent + mount_smbfs into ~/HomelabSMB/<distinct-name>.
+# Same smbfs client Finder uses; no GUI clicks. Names avoid /Volumes/public.
+
+- name: Ensure finder_login support directory exists
+  ansible.builtin.file:
+    path: "{{ macos_smb_public_mounts_support_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Ensure finder_login mount base directory exists
+  ansible.builtin.file:
+    path: "{{ macos_smb_public_mounts_finder_base_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Ensure LaunchAgents directory exists
+  ansible.builtin.file:
+    path: "{{ macos_smb_public_mounts_launch_agents_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Deploy finder_login mount script
+  ansible.builtin.template:
+    src: mount_public_shares.sh.j2
+    dest: "{{ macos_smb_public_mounts_mount_script }}"
+    mode: "0700"
+  no_log: true
+  notify: Reload finder_login LaunchAgent
+
+- name: Deploy finder_login LaunchAgent plist
+  ansible.builtin.template:
+    src: macos_smb_public_mounts.plist.j2
+    dest: "{{ macos_smb_public_mounts_launch_agents_dir }}/{{ macos_smb_public_mounts_launch_agent_label }}.plist"
+    mode: "0644"
+  notify: Reload finder_login LaunchAgent
+
+- name: Flush LaunchAgent handlers before first mount
+  ansible.builtin.meta: flush_handlers
+
+- name: Run finder_login mount script now
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - "{{ macos_smb_public_mounts_mount_script }}"
+  register: macos_smb_public_mounts_mount_now
+  changed_when: true

@@ -1,0 +1,36 @@
+---
+# Lifecycle: present|absent. Conservative default; enable in host_vars.
+ollama_mac_state: absent
+
+# Install method:
+#   auto       — cask on macOS 14+; GitHub app zip on older macOS (Monterey)
+#   cask       — Homebrew cask ollama-app (requires Sonoma+)
+#   github_zip — pinned Ollama-darwin.zip (Monterey-compatible GUI + CLI)
+ollama_mac_install_method: auto
+
+# Homebrew cask path (Sonoma+).
+ollama_mac_cask_name: ollama-app
+ollama_mac_app_path: /Applications/Ollama.app
+ollama_mac_bundled_cli_path: /Applications/Ollama.app/Contents/Resources/ollama
+
+# PATH link when needed (resolved against brew --prefix at runtime).
+ollama_mac_cli_link_path: ""
+
+# Formula fallback only when cask/app has no bundled CLI (rare).
+ollama_mac_formula_fallback: true
+ollama_mac_formula_name: ollama
+
+# Monterey / pre-Sonoma GitHub app zip (LSMinimumSystemVersion 11.0).
+# Latest brew cask requires macOS 14; this pinned zip keeps a real GUI app on 12.x.
+ollama_mac_github_version: "0.9.6"
+ollama_mac_github_zip_url: >-
+  https://github.com/ollama/ollama/releases/download/v{{ ollama_mac_github_version }}/Ollama-darwin.zip
+ollama_mac_github_zip_checksum: >-
+  sha256:35e5fd5a90c1709bd6a54ceda0124a241f6e6e41c8c5064bbd39a71e82b93ff4
+ollama_mac_download_dir: "{{ ansible_env.HOME }}/.cache/homelab/ollama_mac"
+ollama_mac_download_path: >-
+  {{ ollama_mac_download_dir }}/Ollama-darwin-{{ ollama_mac_github_version }}.zip
+ollama_mac_extract_dir: "{{ ollama_mac_download_dir }}/extract-{{ ollama_mac_github_version }}"
+
+ollama_mac_verify_install: true
+ollama_mac_cask_min_macos_major: 14

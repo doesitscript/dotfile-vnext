@@ -1,0 +1,36 @@
+---
+# Lifecycle: present|absent. Conservative default; enable in host_vars.
+huggingface_cli_mac_state: absent
+
+# pipx package — includes `hf` / `huggingface-cli` for search + download.
+huggingface_cli_mac_package_name: huggingface_hub
+huggingface_cli_mac_package_version: ""
+huggingface_cli_mac_package_spec: >-
+  {{
+    huggingface_cli_mac_package_name ~ '==' ~ huggingface_cli_mac_package_version
+    if huggingface_cli_mac_package_version | default('') | length > 0
+    else huggingface_cli_mac_package_name
+  }}
+
+huggingface_cli_mac_pipx_executable: pipx
+huggingface_cli_mac_force_reinstall: false
+huggingface_cli_mac_global_bin_dir: "{{ ansible_env.HOME }}/.local/bin"
+
+# Default download/cache root for operator convenience (not auto-wired into shell
+# unless huggingface_cli_mac_manage_env is true). Prefer the HVH-01 public share
+# when finder_login mounts are present.
+huggingface_cli_mac_manage_env: true
+huggingface_cli_mac_env_file: "{{ ansible_env.HOME }}/.config/homelab/huggingface_cli_mac.env"
+huggingface_cli_mac_hf_home: "{{ ansible_env.HOME }}/HomelabSMB/hvh-01-public/models/huggingface"
+huggingface_cli_mac_shell_snippet: "{{ ansible_env.HOME }}/.bashrc.d/huggingface_cli_mac.bash"
+
+# Optional shared vault (same source as k3s_vllm_runtime HF_TOKEN).
+# Missing file or empty vault_hf_token is OK — CLI still installs; Hub stays
+# unauthenticated until a token is provided.
+huggingface_cli_mac_load_vault: true
+huggingface_cli_mac_vault_file: "{{ inventory_dir }}/../vault/shared.vault.yml"
+
+# Direct override (host_vars / -e). Empty means "use vault if present".
+huggingface_cli_mac_hf_token: ""
+
+huggingface_cli_mac_verify: true

@@ -1,0 +1,55 @@
+---
+# Lifecycle: present|absent. Conservative default; enable in host_vars.
+macos_smb_public_mounts_state: absent
+
+# Mount backend:
+#   automount    — /etc/auto_master + /etc/auto_homelab_smb under ~/mnt
+#   finder_login — LaunchAgent + mount_smbfs into ~/HomelabSMB/<name>
+#                  (Finder SMB client path, no GUI clicks; distinct names avoid
+#                  clashing with a Finder favorite named "public")
+macos_smb_public_mounts_method: automount
+
+macos_smb_public_mounts_username: "{{ windows_remoting_fallback_user | default('joshc') }}"
+# Loaded from inventory/group_vars/windows_os_hosts/vault.yml when empty.
+macos_smb_public_mounts_password: ""
+
+# Parent directory used as the automount base (relative map keys below).
+macos_smb_public_mounts_base_dir: "{{ ansible_env.HOME }}/mnt"
+
+# finder_login mounts under a user-owned base (not /Volumes/public).
+# Distinct names avoid clashing with a Finder favorite labeled "public".
+macos_smb_public_mounts_finder_base_dir: "{{ ansible_env.HOME }}/HomelabSMB"
+
+macos_smb_public_mounts_auto_master: /etc/auto_master
+macos_smb_public_mounts_auto_map: /etc/auto_homelab_smb
+macos_smb_public_mounts_auto_map_name: auto_homelab_smb
+
+macos_smb_public_mounts_fstype_opts: "fstype=smbfs,soft,noowners,nosuid,rw,nobrowse"
+macos_smb_public_mounts_mount_smbfs_opts: "nobrowse,soft,noowners,nosuid"
+
+# Keychain apps allowed to read SMB internet passwords.
+macos_smb_public_mounts_keychain_trusted_apps:
+  - /System/Library/CoreServices/NetAuthAgent.app
+  - /System/Library/CoreServices/NetAuthAgent.app/Contents/MacOS/NetAuthAgent
+  - /sbin/mount_smbfs
+
+macos_smb_public_mounts_launch_agent_label: lab.hom.macos-smb-public-mounts
+macos_smb_public_mounts_launch_agents_dir: "{{ ansible_env.HOME }}/Library/LaunchAgents"
+macos_smb_public_mounts_support_dir: "{{ ansible_env.HOME }}/.local/share/macos_smb_public_mounts"
+macos_smb_public_mounts_mount_script: "{{ macos_smb_public_mounts_support_dir }}/mount_public_shares.sh"
+
+macos_smb_public_mounts_verify: true
+
+# Each mount: name (volume / automount key — keep distinct from share name
+# "public"), inventory_host, share, optional server override.
+macos_smb_public_mounts:
+  - name: hvh-01-public
+    inventory_host: HOM-LAB-HVH-01
+    share: public
+    server: "{{ hostvars['HOM-LAB-HVH-01'].host_ip | default('192.168.50.234') }}"
+    server_label: HOM-LAB-HVH-01
+  - name: hvh-02-public
+    inventory_host: HOM-LAB-HVH-02
+    share: public
+    server: "{{ hostvars['HOM-LAB-HVH-02'].host_ip | default('192.168.50.158') }}"
+    server_label: HOM-LAB-HVH-02

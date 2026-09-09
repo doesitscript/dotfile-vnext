@@ -1,0 +1,46 @@
+---
+- name: Probe whether SMB automount base is already autofs-managed
+  ansible.builtin.command:
+    argv:
+      - /sbin/mount
+  register: macos_smb_public_mounts_mount_table
+  changed_when: false
+
+- name: Ensure automount parent directory exists before first map attach
+  ansible.builtin.file:
+    path: "{{ macos_smb_public_mounts_base_dir }}"
+    state: directory
+    owner: "{{ ansible_user_id }}"
+    group: staff
+    mode: "0755"
+  when: >-
+    (' on ' ~ macos_smb_public_mounts_base_dir ~ ' (autofs')
+    not in macos_smb_public_mounts_mount_table.stdout
+
+- name: Deploy automount map for Windows public SMB shares
+  ansible.builtin.template:
+    src: auto_homelab_smb.j2
+    dest: "{{ macos_smb_public_mounts_auto_map }}"
+    owner: root
+    group: wheel
+    mode: "0600"
+  become: true
+  no_log: true
+  notify: Reload macOS automount maps
+
+- name: Ensure auto_master includes the homelab SMB map
+  ansible.builtin.blockinfile:
+    path: "{{ macos_smb_public_mounts_auto_master }}"
+    marker: "# {mark} ANSIBLE MANAGED macos_smb_public_mounts"
+    block: |
+      {{ macos_smb_public_mounts_base_dir }}		{{ macos_smb_public_mounts_auto_map_name }}
+    backup: true
+  become: true
+  notify: Reload macOS automount maps
+
+- name: Flush automount handlers before verification
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait briefly for automountd after map reload
+  ansible.builtin.pause:
+    seconds: 2

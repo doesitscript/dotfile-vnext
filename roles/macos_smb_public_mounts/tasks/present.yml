@@ -1,0 +1,18 @@
+---
+- name: Shared resolve + Keychain for SMB public mounts
+  ansible.builtin.import_tasks: common_present.yml
+
+- name: Tear down inactive/previous SMB mount backends before applying method
+  ansible.builtin.import_tasks: teardown_inactive.yml
+
+- name: Apply automount method for Windows public SMB shares
+  ansible.builtin.import_tasks: method_automount.yml
+  when: macos_smb_public_mounts_method == "automount"
+
+- name: Apply finder_login method for Windows public SMB shares
+  ansible.builtin.import_tasks: method_finder_login.yml
+  when: macos_smb_public_mounts_method == "finder_login"
+
+- name: Verify Windows public SMB mounts
+  ansible.builtin.import_tasks: verify.yml
+  when: macos_smb_public_mounts_verify | bool

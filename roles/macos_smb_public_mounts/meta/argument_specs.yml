@@ -1,0 +1,86 @@
+---
+argument_specs:
+  main:
+    short_description: >-
+      Permanently mount Windows public SMB shares on macOS via automount or
+      finder_login LaunchAgent (no GUI clicks).
+    options:
+      macos_smb_public_mounts_state:
+        type: str
+        default: absent
+        choices:
+          - present
+          - absent
+      macos_smb_public_mounts_method:
+        type: str
+        default: automount
+        choices:
+          - automount
+          - finder_login
+      macos_smb_public_mounts_username:
+        type: str
+        required: false
+      macos_smb_public_mounts_password:
+        type: str
+        required: false
+        no_log: true
+      macos_smb_public_mounts_base_dir:
+        type: str
+        required: false
+      macos_smb_public_mounts_finder_base_dir:
+        type: str
+        required: false
+      macos_smb_public_mounts_auto_master:
+        type: str
+        default: /etc/auto_master
+      macos_smb_public_mounts_auto_map:
+        type: str
+        default: /etc/auto_homelab_smb
+      macos_smb_public_mounts_auto_map_name:
+        type: str
+        default: auto_homelab_smb
+      macos_smb_public_mounts_fstype_opts:
+        type: str
+        required: false
+      macos_smb_public_mounts_mount_smbfs_opts:
+        type: str
+        required: false
+      macos_smb_public_mounts_keychain_trusted_apps:
+        type: list
+        elements: str
+        required: false
+      macos_smb_public_mounts_launch_agent_label:
+        type: str
+        required: false
+      macos_smb_public_mounts_launch_agents_dir:
+        type: str
+        required: false
+      macos_smb_public_mounts_support_dir:
+        type: str
+        required: false
+      macos_smb_public_mounts_mount_script:
+        type: str
+        required: false
+      macos_smb_public_mounts_verify:
+        type: bool
+        default: true
+      macos_smb_public_mounts:
+        type: list
+        elements: dict
+        required: false
+        options:
+          name:
+            type: str
+            required: true
+          inventory_host:
+            type: str
+            required: false
+          share:
+            type: str
+            required: true
+          server:
+            type: str
+            required: true
+          server_label:
+            type: str
+            required: false

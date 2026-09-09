@@ -1,0 +1,37 @@
+---
+# Optional vault load — Context7-style: missing/empty does not fail the role.
+- name: Default resolved HF token from role override
+  ansible.builtin.set_fact:
+    huggingface_cli_mac_resolved_hf_token: "{{ huggingface_cli_mac_hf_token | default('') | trim }}"
+  no_log: true
+
+- name: Check for Hugging Face shared vault file
+  ansible.builtin.stat:
+    path: "{{ huggingface_cli_mac_vault_file }}"
+  register: _huggingface_cli_mac_vault_stat
+  when:
+    - huggingface_cli_mac_load_vault | bool
+    - (huggingface_cli_mac_resolved_hf_token | length) == 0
+
+- name: Include shared vault variables for Hugging Face CLI
+  ansible.builtin.include_vars:
+    file: "{{ huggingface_cli_mac_vault_file }}"
+    name: _huggingface_cli_mac_vault_vars
+  when:
+    - huggingface_cli_mac_load_vault | bool
+    - (huggingface_cli_mac_resolved_hf_token | length) == 0
+    - _huggingface_cli_mac_vault_stat.stat.exists | default(false)
+  no_log: true
+
+- name: Fill HF token from vault_hf_token when override is empty
+  ansible.builtin.set_fact:
+    huggingface_cli_mac_resolved_hf_token: >-
+      {{
+        _huggingface_cli_mac_vault_vars.vault_hf_token
+        | default('')
+        | trim
+      }}
+  when:
+    - (huggingface_cli_mac_resolved_hf_token | length) == 0
+    - _huggingface_cli_mac_vault_vars is defined
+  no_log: true
