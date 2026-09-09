@@ -8,19 +8,23 @@ the weight on the laptop as the primary path.
 
 ```text
 controller Mac (this Mac)
-  → download into the HVH public share
-  → share keeps that downloader's ecosystem folder
-  → work laptop sees the same share
-  → import into the local runtime
+  → download into the HVH public share under models/<ecosystem>/
+  → work laptop copies that models/ tree to ~/models
+  → import commands point at ~/models, not at the share
 ```
 
-A file on the share is not installed. The last arrow is required.
+A file on the share is not installed. A file under `~/models` is the owned
+Mac copy. The import arrow is still required: it creates the runtime's
+entry or link. One weight under `~/models` is meant to be shared by every
+tool, not copied again per tool.
 
 ## Currently
 
 Only a few tools are in use. Those runtimes do not detect a folder drop.
-From the work laptop, run that tool's import command against the share copy.
-Do not treat "the file is in public" as "the runtime has the model."
+From the work laptop, copy the share `models/` tree to `~/models`, then run
+that tool's import command against the local file.
+Do not treat "the file is in public" or "the file is in ~/models" as "the
+runtime has the model."
 
 Exact flags stay with the tool. Human command files live in
 `helpers/work-mac-local-models/`. Skills: `work-laptop-model-public-download`,
@@ -45,17 +49,19 @@ Mounts are not the same path. Do not copy path literals into this workflow.
 - Staging host: `HOM-LAB-HVH-01` (`\\HOM-LAB-HVH-01\public`). Public root
   has `apps`, `artifacts`, `driver-staging`, `models`, `studio`. Not HVH-02.
 - Map: `helpers/share_topology.md` (UNC, hosts, mount methods, model folders)
-- Shell: `helpers/work-mac-local-models/share-paths.sh` (`CONTROLLER_PUBLIC_FOLDER`, `WORK_LAPTOP_PUBLIC_FOLDER`)
+- Shell: `helpers/work-mac-local-models/share-paths.sh`
+  (`CONTROLLER_PUBLIC_FOLDER`, `WORK_LAPTOP_PUBLIC_FOLDER`,
+  `WORK_LAPTOP_LOCAL_MODELS`)
 
 `WORK_LAPTOP_PUBLIC_FOLDER` is not recorded. Do not copy the controller path.
-Do not invent a second root. Do not recreate import commands until that
-variable is filled in. A later role may manage these mounts; this packet
-only records them.
+The local root is recorded: `~/models`. Copy needs the share mount; import
+uses `~/models`. A later role may manage the mount and that local tree; this
+packet only records them.
 
-| Downloader | Public folder |
-| --- | --- |
-| Hugging Face CLI (`huggingface_cli_mac`) | `models/huggingface` |
-| Ollama (lab share path) | `models/ollama` |
+| Downloader | Public folder | Work-laptop copy |
+| --- | --- | --- |
+| Hugging Face CLI (`huggingface_cli_mac`) | `models/huggingface` | `~/models/huggingface` |
+| Ollama (lab share path) | `models/ollama` | `~/models/ollama` |
 
 Which runtime then receives the import is a separate choice
 (`DEPENDENCY-MAP.md` → HRL Mac candidate runtimes). This file only moves the

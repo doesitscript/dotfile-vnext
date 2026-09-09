@@ -18,8 +18,9 @@ pattern copies in [examples/](examples/README.md), are:
 - `exports/work-laptop-ai-tools/helpers/work-mac-local-models/continue-mac-local-controller.sh`
 - `exports/work-laptop-ai-tools/helpers/work-mac-local-models/continue-mac-local-work-laptop.sh`
 
-Those scripts print `echo:huggingface` / `echo:ollama` first. Matching
-`process:` blocks are the later mac-dev download and work-laptop import.
+Those scripts print `echo:huggingface` / `echo:copy` / `echo:ollama` first.
+Matching `process:` blocks are the later mac-dev download, the work-laptop
+copy of share `models/` onto `~/models`, and the import from that local tree.
 Add another CLI as its own echo+process pair above `SECTION: next-cli`.
 Tags those imports create:
 

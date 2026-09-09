@@ -1,0 +1,24 @@
+{
+  "avatar": "📚",
+  "id": {{ jan_ide_assistant_id | to_json }},
+  "object": "assistant",
+  "name": "Homelab reference library",
+  "description": "Local RAG over the homelab-reference-library checkout on this work Mac.",
+  "model": "*",
+  "instructions": {{ jan_ide_assistant_instructions | to_json }},
+  "tools": [
+    {
+      "type": "retrieval",
+      "enabled": true,
+      "useTimeWeightedRetriever": false,
+      "settings": {
+        "top_k": 5,
+        "chunk_size": 1024,
+        "chunk_overlap": 64,
+        "retrieval_template": "Use the following pieces of context to answer the question at the end.\n----------------\nCONTEXT: {CONTEXT}\n----------------\nQUESTION: {QUESTION}\n----------------\nHelpful Answer:",
+        "document_source": {{ jan_ide_rag_corpus_path | to_json }}
+      }
+    }
+  ],
+  "file_ids": []
+}

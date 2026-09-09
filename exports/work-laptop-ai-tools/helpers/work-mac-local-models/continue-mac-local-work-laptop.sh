@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Human-run on the work laptop only.
-# Prints import commands, then runs process blocks only after the mount is set.
+# Prints copy and import commands, then runs process blocks only after the
+# share mount is set. Imports point at ~/models, not the share.
 # Continue config is a later ansible role pass, not this script.
 # Plan: docs/brainstorming_designs/2026-09-09--continue-mac-local-model-patterns
 #
@@ -18,15 +19,22 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ===== SECTION: paths =====
 print_share_folders
-echo "work-laptop huggingface models=[${WORK_LAPTOP_PUBLIC_FOLDER}]/models/huggingface"
+echo "work-laptop share models=[${WORK_LAPTOP_PUBLIC_FOLDER}]/models"
+echo "work-laptop local models=[${WORK_LAPTOP_LOCAL_MODELS}]"
 # ===== END SECTION: paths =====
+
+# ===== SECTION: echo:copy =====
+# Printed only. Copy share models/ onto ~/models, same child folders.
+echo "rsync -a [${WORK_LAPTOP_PUBLIC_FOLDER}]/models/ [${WORK_LAPTOP_LOCAL_MODELS}]/"
+# ===== END SECTION: echo:copy =====
 
 # ===== SECTION: echo:ollama =====
 # Add printed import lines here. One model per line. Do not run ollama in this block.
-echo "printf 'FROM [${WORK_LAPTOP_PUBLIC_FOLDER}]/models/huggingface/ggml-org--Qwen2.5-Coder-1.5B-Q8_0-GGUF/qwen2.5-coder-1.5b-q8_0.gguf' | ollama create qwen2.5-coder:1.5b-base -f -"
-echo "printf 'FROM [${WORK_LAPTOP_PUBLIC_FOLDER}]/models/huggingface/bartowski--Qwen2.5-Coder-3B-GGUF/Qwen2.5-Coder-3B-Q4_K_M.gguf' | ollama create qwen2.5-coder:3b-base -f -"
-echo "printf 'FROM [${WORK_LAPTOP_PUBLIC_FOLDER}]/models/huggingface/Qwen--Qwen2.5-Coder-7B-Instruct-GGUF/qwen2.5-coder-7b-instruct-q4_k_m.gguf' | ollama create qwen2.5-coder:7b-instruct -f -"
-echo "printf 'FROM [${WORK_LAPTOP_PUBLIC_FOLDER}]/models/huggingface/nomic-ai--nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf' | ollama create nomic-embed-text -f -"
+# Point FROM at the local copy. Do not point at the share.
+echo "printf 'FROM [${WORK_LAPTOP_LOCAL_MODELS}]/huggingface/ggml-org--Qwen2.5-Coder-1.5B-Q8_0-GGUF/qwen2.5-coder-1.5b-q8_0.gguf' | ollama create qwen2.5-coder:1.5b-base -f -"
+echo "printf 'FROM [${WORK_LAPTOP_LOCAL_MODELS}]/huggingface/bartowski--Qwen2.5-Coder-3B-GGUF/Qwen2.5-Coder-3B-Q4_K_M.gguf' | ollama create qwen2.5-coder:3b-base -f -"
+echo "printf 'FROM [${WORK_LAPTOP_LOCAL_MODELS}]/huggingface/Qwen--Qwen2.5-Coder-7B-Instruct-GGUF/qwen2.5-coder-7b-instruct-q4_k_m.gguf' | ollama create qwen2.5-coder:7b-instruct -f -"
+echo "printf 'FROM [${WORK_LAPTOP_LOCAL_MODELS}]/huggingface/nomic-ai--nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf' | ollama create nomic-embed-text -f -"
 # ===== END SECTION: echo:ollama =====
 
 # ===== SECTION: echo:confirm =====
@@ -38,13 +46,18 @@ if [[ -z "${WORK_LAPTOP_PUBLIC_FOLDER}" ]]; then
   exit 1
 fi
 
+# ===== SECTION: process:copy =====
+# Same copy as echo:copy. Preserves huggingface/, ollama/, and other children.
+copy_public_models_to_local
+# ===== END SECTION: process:copy =====
+
 # ===== SECTION: process:ollama =====
 # Matching process on the work laptop. Same models as echo:ollama.
-# Use "${WORK_LAPTOP_PUBLIC_FOLDER}" without brackets. Do not copy the controller path.
-printf 'FROM %s\n' "${WORK_LAPTOP_PUBLIC_FOLDER}/models/huggingface/ggml-org--Qwen2.5-Coder-1.5B-Q8_0-GGUF/qwen2.5-coder-1.5b-q8_0.gguf" | ollama create qwen2.5-coder:1.5b-base -f -
-printf 'FROM %s\n' "${WORK_LAPTOP_PUBLIC_FOLDER}/models/huggingface/bartowski--Qwen2.5-Coder-3B-GGUF/Qwen2.5-Coder-3B-Q4_K_M.gguf" | ollama create qwen2.5-coder:3b-base -f -
-printf 'FROM %s\n' "${WORK_LAPTOP_PUBLIC_FOLDER}/models/huggingface/Qwen--Qwen2.5-Coder-7B-Instruct-GGUF/qwen2.5-coder-7b-instruct-q4_k_m.gguf" | ollama create qwen2.5-coder:7b-instruct -f -
-printf 'FROM %s\n' "${WORK_LAPTOP_PUBLIC_FOLDER}/models/huggingface/nomic-ai--nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf" | ollama create nomic-embed-text -f -
+# Use "${WORK_LAPTOP_LOCAL_MODELS}" without brackets. Do not point at the share.
+printf 'FROM %s\n' "${WORK_LAPTOP_LOCAL_MODELS}/huggingface/ggml-org--Qwen2.5-Coder-1.5B-Q8_0-GGUF/qwen2.5-coder-1.5b-q8_0.gguf" | ollama create qwen2.5-coder:1.5b-base -f -
+printf 'FROM %s\n' "${WORK_LAPTOP_LOCAL_MODELS}/huggingface/bartowski--Qwen2.5-Coder-3B-GGUF/Qwen2.5-Coder-3B-Q4_K_M.gguf" | ollama create qwen2.5-coder:3b-base -f -
+printf 'FROM %s\n' "${WORK_LAPTOP_LOCAL_MODELS}/huggingface/Qwen--Qwen2.5-Coder-7B-Instruct-GGUF/qwen2.5-coder-7b-instruct-q4_k_m.gguf" | ollama create qwen2.5-coder:7b-instruct -f -
+printf 'FROM %s\n' "${WORK_LAPTOP_LOCAL_MODELS}/huggingface/nomic-ai--nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf" | ollama create nomic-embed-text -f -
 # ===== END SECTION: process:ollama =====
 
 # ===== SECTION: process:confirm =====

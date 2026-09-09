@@ -1,0 +1,26 @@
+---
+# Jan desktop local RAG config for the work laptop packet.
+# Lifecycle: jan_ide_state: present|absent
+# Does not install Jan and does not download a model.
+jan_ide_state: absent
+jan_ide_data_dir: "{{ ansible_env.HOME }}/Library/Application Support/Jan/data"
+jan_ide_mcp_config_path: "{{ jan_ide_data_dir }}/mcp_config.json"
+jan_ide_assistant_id: homelab-reference-library
+jan_ide_assistant_dir: "{{ jan_ide_data_dir }}/assistants/{{ jan_ide_assistant_id }}"
+jan_ide_assistant_path: "{{ jan_ide_assistant_dir }}/assistant.json"
+jan_ide_project_dir: "{{ jan_ide_data_dir }}/projects/{{ jan_ide_assistant_id }}"
+jan_ide_project_path: "{{ jan_ide_project_dir }}/project.json"
+jan_ide_rag_source_path: "{{ jan_ide_data_dir }}/homelab-reference-library-rag.json"
+# Work-laptop checkout. Do not point this at ~/develop or the HVH public share.
+jan_ide_rag_corpus_path: "{{ ansible_env.HOME }}/Documents/develop/homelab-reference-library"
+jan_ide_local_models_path: "{{ ansible_env.HOME }}/models"
+jan_ide_mcp_server_name: homelab-reference-library
+jan_ide_mcp_settings:
+  toolCallTimeoutSeconds: 30
+  baseRestartDelayMs: 1000
+  maxRestartDelayMs: 30000
+  backoffMultiplier: 2.0
+  enableSmartToolRouting: true
+  useLightweightRouterModel: false
+  routerModelProvider: ""
+  routerModelId: ""

@@ -43,6 +43,7 @@ method. Do not copy the controller Mac path onto the work laptop.
 | Controller Mac | `finder_login` (other share) | `~/HomelabSMB/hvh-02-public` | comment in `share-paths.sh` |
 | Controller Mac | `automount` (not current) | `~/mnt/hvh-01-public`, `~/mnt/hvh-02-public` | not the model-command default |
 | Work laptop | not recorded | empty until filled in | `WORK_LAPTOP_PUBLIC_FOLDER` |
+| Work laptop | local copy (owned) | `~/models` | `WORK_LAPTOP_LOCAL_MODELS` |
 
 Names are `hvh-01-public` and `hvh-02-public` so they do not collide with a
 Finder favorite named `public`.
@@ -53,7 +54,25 @@ Weights stay under `models/<ecosystem>/` on the share. A file there is not
 imported into a work-Mac runtime. Arrival workflow:
 `WORK-MAC-LOCAL-MODEL-ARRIVAL.md`.
 
-| Downloader | Folder under the public folder |
-| --- | --- |
-| Hugging Face CLI | `models/huggingface` |
-| Ollama | `models/ollama` |
+| Downloader | Folder under the public folder | Same folder on the work laptop |
+| --- | --- | --- |
+| Hugging Face CLI | `models/huggingface` | `~/models/huggingface` |
+| Ollama | `models/ollama` | `~/models/ollama` |
+
+Observed HVH-01 `models/` also has `stable-diffusion`. Copy that child the
+same way if it is present. Do not invent extra ecosystem roots.
+
+## Work-laptop local copy
+
+The work laptop owns one weight tree: `~/models`
+(`WORK_LAPTOP_LOCAL_MODELS`). Copy `public/models/` onto that root so the
+child folders match the share (`huggingface`, `ollama`, and so on).
+
+Import commands then point at files under `~/models`. The intended contract
+is one Mac copy, with each tool's import creating a registry entry or link
+to that file rather than a second weight. Jan's Llama.cpp import is
+documented as a link. Other CLIs are not yet proven to link; still point
+them at `~/models`, and do not treat a share file as imported.
+
+A later role may manage the share mount and this local tree. This packet
+only records them.

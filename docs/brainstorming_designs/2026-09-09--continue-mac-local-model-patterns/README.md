@@ -15,7 +15,8 @@ configuration. Model identifiers and resource estimates are `pending_research`.
   scripts. Runnable files stay in the work-laptop packet helpers.
 
 First iteration target is the work laptop only. Weights arrive through the
-public-share workflow. Continue's local Ollama roles are the marked block
+public-share workflow, then copy to `~/models` with the same `models/`
+children before any import. Continue's local Ollama roles are the marked block
 `continue-ollama-local` in `roles/continue_ide`. Other Continue settings stay
 put. This experiment is distinct from the
 [homelab client brainstorm](../2026-09-01--homelab-local-ai-clients-patterns/README.md).

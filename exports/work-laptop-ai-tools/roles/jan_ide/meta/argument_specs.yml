@@ -1,0 +1,33 @@
+---
+argument_specs:
+  main:
+    short_description: Manage Jan desktop local RAG config for the work-laptop HRL checkout
+    options:
+      jan_ide_state:
+        type: str
+        required: false
+        default: absent
+        choices:
+          - present
+          - absent
+      jan_ide_data_dir:
+        type: str
+        required: false
+        default: "{{ ansible_env.HOME }}/Library/Application Support/Jan/data"
+        description: Jan macOS data directory.
+      jan_ide_rag_corpus_path:
+        type: str
+        required: false
+        default: "{{ ansible_env.HOME }}/Documents/develop/homelab-reference-library"
+        description: >-
+          Document source for Jan RAG on the work laptop. Must be the
+          homelab-reference-library checkout under Documents/develop.
+      jan_ide_local_models_path:
+        type: str
+        required: false
+        default: "{{ ansible_env.HOME }}/models"
+        description: Owned local weight root. Import links here; this role does not copy weights.
+      jan_ide_assistant_id:
+        type: str
+        required: false
+        default: homelab-reference-library

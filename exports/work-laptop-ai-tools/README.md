@@ -383,6 +383,9 @@ Remote autocomplete policy:
   block `continue-ollama-local` (autocomplete, embed, edit, apply)
 - Controller download: `helpers/work-mac-local-models/continue-mac-local-controller.sh`
 - Work laptop import: `helpers/work-mac-local-models/continue-mac-local-work-laptop.sh`
+- Jan local RAG: role `jan_ide` writes the HRL checkout
+  `~/Documents/develop/homelab-reference-library` as the document source
+  (`JAN-AI-WORK-MAC-RAG.md`)
 - Zed edit predictions stay disabled
 
 Secret and access boundaries:

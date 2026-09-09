@@ -7,7 +7,7 @@ Workflow: `WORK-MAC-LOCAL-MODEL-ARRIVAL.md`.
 Share map: `helpers/share_topology.md`. Paths: `share-paths.sh`.
 
 ```text
-controller Mac → public share → work laptop import
+controller Mac → public share models/ → copy to ~/models → import from ~/models
 ```
 
 ## File shape
@@ -25,9 +25,13 @@ One command per model. No blank lines inside a tool block.
 
 1. **Download** — controller Mac (`mac-dev`). `CONTROLLER_PUBLIC_FOLDER` only.
    Hugging Face is `echo:huggingface` plus `process:huggingface`.
-2. **Import** — work laptop. `WORK_LAPTOP_PUBLIC_FOLDER` only. Ollama is
+2. **Copy** — work laptop. `echo:copy` plus `process:copy`. Copies share
+   `models/` onto `WORK_LAPTOP_LOCAL_MODELS` (`~/models`) with the same child
+   folders. Needs `WORK_LAPTOP_PUBLIC_FOLDER`.
+3. **Import** — work laptop. `WORK_LAPTOP_LOCAL_MODELS` only. Ollama is
    `echo:ollama` plus `process:ollama`. A file on the share is not imported.
-3. **Confirm** — work laptop confirm sections.
+   A file under `~/models` is not imported until the tool command runs.
+4. **Confirm** — work laptop confirm sections.
 
 Another CLI does not extend the huggingface or ollama blocks. Copy an
 echo+process pair and place it above `SECTION: next-cli`.
@@ -44,5 +48,6 @@ This plan's commands:
 
 - Controller Mac: `continue-mac-local-controller.sh` — prints `echo:huggingface`.
   `process:huggingface` is the later mac-dev download. No Ollama.
-- Work laptop: `continue-mac-local-work-laptop.sh` — prints `echo:ollama`, then
-  runs `process:ollama` only after `WORK_LAPTOP_PUBLIC_FOLDER` is set.
+- Work laptop: `continue-mac-local-work-laptop.sh` — prints `echo:copy` and
+  `echo:ollama`, then copies and imports only after
+  `WORK_LAPTOP_PUBLIC_FOLDER` is set. Imports use `~/models`.

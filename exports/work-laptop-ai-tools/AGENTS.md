@@ -13,7 +13,8 @@ when the task is packet MCP, vault, or sync.
 | Generated build target | sibling `../work-laptop-ai-tools` |
 | Living process docs | HRL `implementation-guides/mcp/work-laptop-ai-tools-mcp-slice.md` and `porting-mcp-servers-between-projects.md` |
 | Related projects | `DEPENDENCY-MAP.md` (this packet, sibling, `dotfile-vnext`, HRL, `global-skills`) |
-| Local models on the work Mac | `WORK-MAC-LOCAL-MODEL-ARRIVAL.md` — public share, then import |
+| Local models on the work Mac | `WORK-MAC-LOCAL-MODEL-ARRIVAL.md` — public share, copy to `~/models`, then import |
+| Jan.AI local RAG on the work Mac | `JAN-AI-WORK-MAC-RAG.md` and role `jan_ide` — corpus `~/Documents/develop/homelab-reference-library` |
 | Public share folders | `helpers/share_topology.md` — UNC and per-machine paths; shell: `helpers/work-mac-local-models/share-paths.sh` |
 | Human model commands | `helpers/work-mac-local-models/` — example plus one line per model |
 

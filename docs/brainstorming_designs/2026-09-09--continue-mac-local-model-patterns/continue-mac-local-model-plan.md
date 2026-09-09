@@ -32,16 +32,24 @@ Human commands (you run these):
 - Work laptop: `exports/work-laptop-ai-tools/helpers/work-mac-local-models/continue-mac-local-work-laptop.sh`
 
 Share map: `exports/work-laptop-ai-tools/helpers/share_topology.md`.
-`WORK_LAPTOP_PUBLIC_FOLDER` must be filled before the work-laptop script runs.
+`WORK_LAPTOP_PUBLIC_FOLDER` must be filled before the copy step. Imports use
+`~/models` (`WORK_LAPTOP_LOCAL_MODELS`), which mirrors the share `models/`
+children.
 
 ```text
 controller Mac
   → hf download into \\HOM-LAB-HVH-01\public\models\huggingface
     (public root: apps, artifacts, driver-staging, models, studio; not HVH-02)
-  → work laptop mount of that share
-  → ollama create FROM <gguf>
+  → work laptop copies public/models/ to ~/models
+    (huggingface, ollama, and any other child stay the same)
+  → ollama create FROM ~/models/huggingface/<gguf>
   → continue_ide marked section continue-ollama-local
 ```
+
+One owned weight tree on the work laptop: `~/models`. Each tool import is
+meant to register or link that file, not keep a second copy. Jan's Llama.cpp
+import is documented as a link. Ollama `create` link-versus-copy is not
+verified; still point `FROM` at `~/models`.
 
 ## Primary direction after edits
 

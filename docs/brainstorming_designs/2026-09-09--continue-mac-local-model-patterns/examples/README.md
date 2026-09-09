@@ -24,4 +24,5 @@ more lines inside `huggingface` or `ollama`.
 | `SECTION: next-cli` | Empty. Put the next tool's echo+process pair above this marker. |
 
 Controller process blocks run later on mac-dev. Work-laptop process blocks
-run on the work laptop after `WORK_LAPTOP_PUBLIC_FOLDER` is set.
+run on the work laptop after `WORK_LAPTOP_PUBLIC_FOLDER` is set. Copy lands
+in `~/models`. Import commands use `WORK_LAPTOP_LOCAL_MODELS`, not the share.

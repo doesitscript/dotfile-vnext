@@ -1,0 +1,145 @@
+---
+- name: Validate jan_ide state
+  ansible.builtin.assert:
+    that:
+      - jan_ide_state in ["present", "absent"]
+    fail_msg: jan_ide_state must be present or absent.
+
+- name: Require the work-laptop HRL checkout as the Jan RAG document source
+  ansible.builtin.assert:
+    that:
+      - jan_ide_rag_corpus_path is match('.*/Documents/develop/homelab-reference-library$')
+    fail_msg: >-
+      jan_ide_rag_corpus_path must be the work-laptop checkout
+      ~/Documents/develop/homelab-reference-library. Do not use ~/develop
+      or the HVH public share.
+  when: jan_ide_state == "present"
+
+- name: Ensure Jan data directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0700"
+  loop:
+    - "{{ jan_ide_data_dir }}"
+    - "{{ jan_ide_assistant_dir }}"
+    - "{{ jan_ide_project_dir }}"
+  when: jan_ide_state == "present"
+
+- name: Write Jan HRL RAG source record
+  ansible.builtin.template:
+    src: rag-source.json.j2
+    dest: "{{ jan_ide_rag_source_path }}"
+    mode: "0600"
+  when: jan_ide_state == "present"
+
+- name: Write Jan HRL assistant retrieval config
+  ansible.builtin.template:
+    src: assistant.json.j2
+    dest: "{{ jan_ide_assistant_path }}"
+    mode: "0600"
+  vars:
+    jan_ide_assistant_instructions: >-
+      Document source for retrieval is {{ jan_ide_rag_corpus_path }}.
+      Use that checkout as the only RAG corpus. Do not use ~/develop or
+      the HVH public share. Local GGUF weights live under
+      {{ jan_ide_local_models_path }} and must be linked, not copied into
+      Jan's data folder.
+  when: jan_ide_state == "present"
+
+- name: Write Jan HRL project record
+  ansible.builtin.template:
+    src: project.json.j2
+    dest: "{{ jan_ide_project_path }}"
+    mode: "0600"
+  when: jan_ide_state == "present"
+
+- name: Read existing Jan MCP config
+  ansible.builtin.slurp:
+    src: "{{ jan_ide_mcp_config_path }}"
+  register: jan_ide_mcp_slurp
+  failed_when: false
+  when: jan_ide_state == "present"
+
+- name: Write Jan MCP config with the HRL filesystem source
+  ansible.builtin.copy:
+    dest: "{{ jan_ide_mcp_config_path }}"
+    mode: "0600"
+    content: "{{ jan_ide_mcp_rendered | to_nice_json }}\n"
+  vars:
+    jan_ide_mcp_existing: >-
+      {{
+        (jan_ide_mcp_slurp.content | b64decode | from_json)
+        if (jan_ide_mcp_slurp.content is defined and (jan_ide_mcp_slurp.content | default('') | length) > 0)
+        else {"mcpServers": {}, "mcpSettings": jan_ide_mcp_settings}
+      }}
+    jan_ide_filesystem_server:
+      command: npx
+      args:
+        - "-y"
+        - "@modelcontextprotocol/server-filesystem"
+        - "{{ jan_ide_rag_corpus_path }}"
+      env: {}
+      active: true
+    jan_ide_mcp_rendered:
+      mcpServers: >-
+        {{
+          (jan_ide_mcp_existing.mcpServers | default({}))
+          | combine({jan_ide_mcp_server_name: jan_ide_filesystem_server})
+        }}
+      mcpSettings: "{{ jan_ide_mcp_existing.mcpSettings | default(jan_ide_mcp_settings) }}"
+  when: jan_ide_state == "present"
+
+- name: Confirm Jan RAG config names the HRL checkout
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/grep
+      - -F
+      - "{{ jan_ide_rag_corpus_path }}"
+      - "{{ jan_ide_rag_source_path }}"
+  register: jan_ide_rag_source_grep
+  changed_when: false
+  failed_when: jan_ide_rag_source_grep.rc != 0
+  when: jan_ide_state == "present"
+
+- name: Read Jan MCP config before absent
+  ansible.builtin.slurp:
+    src: "{{ jan_ide_mcp_config_path }}"
+  register: jan_ide_mcp_absent_slurp
+  failed_when: false
+  when: jan_ide_state == "absent"
+
+- name: Drop the HRL filesystem server from Jan MCP config
+  ansible.builtin.copy:
+    dest: "{{ jan_ide_mcp_config_path }}"
+    mode: "0600"
+    content: "{{ jan_ide_mcp_absent_rendered | to_nice_json }}\n"
+  vars:
+    jan_ide_mcp_absent_existing: >-
+      {{
+        (jan_ide_mcp_absent_slurp.content | b64decode | from_json)
+        if (jan_ide_mcp_absent_slurp.content is defined and (jan_ide_mcp_absent_slurp.content | default('') | length) > 0)
+        else {"mcpServers": {}, "mcpSettings": {}}
+      }}
+    jan_ide_mcp_absent_rendered:
+      mcpServers: >-
+        {{
+          (jan_ide_mcp_absent_existing.mcpServers | default({}))
+          | dict2items
+          | rejectattr('key', 'equalto', jan_ide_mcp_server_name)
+          | items2dict
+        }}
+      mcpSettings: "{{ jan_ide_mcp_absent_existing.mcpSettings | default({}) }}"
+  when:
+    - jan_ide_state == "absent"
+    - jan_ide_mcp_absent_slurp.content is defined
+
+- name: Remove Jan HRL RAG files managed by this role
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ jan_ide_assistant_dir }}"
+    - "{{ jan_ide_project_dir }}"
+    - "{{ jan_ide_rag_source_path }}"
+  when: jan_ide_state == "absent"
