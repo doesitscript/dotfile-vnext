@@ -46,7 +46,8 @@ on this slice. Secrets use packet `vault/` +
 config). Living docs: HRL
 `implementation-guides/mcp/work-laptop-ai-tools-mcp-slice.md` and
 `porting-mcp-servers-between-projects.md`; skills invoke those and carry a
-condensed offline checklist.
+condensed offline checklist. Related projects and how to work in them:
+`DEPENDENCY-MAP.md`.
 
 **Skill split:** slice-local collect / adopt / vault / packet-ops live here and
 ship to the sibling. `work-laptop-export-pack` and

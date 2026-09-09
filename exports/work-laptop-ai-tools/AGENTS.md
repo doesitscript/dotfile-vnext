@@ -12,6 +12,7 @@ when the task is packet MCP, vault, or sync.
 | Shared MCP role logic | `dotfile-vnext/roles/mcp_servers/*` (parent) |
 | Generated build target | sibling `../work-laptop-ai-tools` |
 | Living process docs | HRL `implementation-guides/mcp/work-laptop-ai-tools-mcp-slice.md` and `porting-mcp-servers-between-projects.md` |
+| Related projects | `DEPENDENCY-MAP.md` (this packet, sibling, `dotfile-vnext`, HRL, `global-skills`) |
 
 Do not treat the sibling checkout as design authority. Edit the packet (or
 parent roles), then sync.
