@@ -22,7 +22,9 @@ Only a few tools are in use. Those runtimes do not detect a folder drop.
 From the work laptop, run that tool's import command against the share copy.
 Do not treat "the file is in public" as "the runtime has the model."
 
-Exact import flags stay with the tool. They are not catalogued here.
+Exact flags stay with the tool. Human command files live in
+`helpers/work-mac-local-models/`. Skills: `work-laptop-model-public-download`,
+`work-laptop-model-runtime-import`.
 
 ## Share layout
 
