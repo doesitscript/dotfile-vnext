@@ -7,10 +7,14 @@ Workflow: `WORK-MAC-LOCAL-MODEL-ARRIVAL.md`.
 Share map: `helpers/share_topology.md`. Paths: `share-paths.sh`.
 Model list: `models-to-copy.list`.
 
-Add or remove a model in that manifest. Every echo section is generated
+Add or remove a model in that list. Every echo section is generated
 from those same lines. Do not copy model lines into a script by hand.
-Do not wrap folder values in `[]`. That form created a real directory
-named `[/Users/joshc/HomelabSMB/hvh-01-public]` under this folder.
+
+Each command is two lines. The red line is a `#` comment that explains
+the next command, parameter by parameter. The next line is the command.
+Paste both. The comments do not run. Hugging Face commands are green.
+Copying a `[]` path created a real directory named
+`[/Users/joshc/HomelabSMB/hvh-01-public]` under this folder.
 
 ```text
 controller Mac → public share models/<listed folder>

@@ -22,8 +22,9 @@ Both hosts expose the same share name, `public`, on `F:\shares\public`.
 
 Controller Hugging Face auth is not a stored `hf auth login`. The token
 lives in `~/.config/homelab/huggingface_cli_mac.env` (`HF_TOKEN` from vault).
-`continue-mac-local-controller.sh` sources that file. A clean shell without
-it is not logged in.
+`continue-mac-local-controller.sh` and `continue-mac-local-work-laptop.sh`
+source `share-paths.sh`. A clean shell without the Hugging Face env file is
+not logged in.
 
 Model staging is **HVH-01 only**. Observed public-root layout on
 `~/HomelabSMB/hvh-01-public` (2026-09-09): `apps`, `artifacts`,

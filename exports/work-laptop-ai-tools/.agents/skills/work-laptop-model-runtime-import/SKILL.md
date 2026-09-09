@@ -1,6 +1,6 @@
 ---
 name: work-laptop-model-runtime-import
-description: "Use when the work-laptop helper should echo copy and import commands for models in models-to-copy.manifest. The script only prints. Add a tool section over that same list. Do not use for the controller download step, and do not treat a printed command as already run."
+description: "Use when the work-laptop helper should echo copy and import commands for models in models-to-copy.list. The script only prints. Add a tool section over that same list. Do not use for the controller download step, and do not treat a printed command as already run."
 ---
 
 # Skill: Work-laptop model runtime import
@@ -36,14 +36,16 @@ Edit the packet, then `work-laptop-packet-ops` sync.
 ## Where to add a model or a tool
 
 Read `helpers/share_topology.md` and `helpers/work-mac-local-models/share-paths.sh` first.
-Add or remove a line in `models-to-copy.manifest`. The work-laptop helper
+Add or remove a line in `models-to-copy.list`. Do not drop a model because its share folder is missing. The work-laptop helper
 echoes copy, Ollama, and LM Studio commands from that same list. It does
 not run them.
 
 Import echoes use `WORK_LAPTOP_LOCAL_MODELS` (`~/models`). Copy echoes use
 `WORK_LAPTOP_PUBLIC_FOLDER` as the source. If that mount is empty, still
 print the commands with the variable name. Do not invent a mount path and
-do not copy `CONTROLLER_PUBLIC_FOLDER`. Do not wrap paths in `[]`.
+do not copy `CONTROLLER_PUBLIC_FOLDER`. Yellow lines may use `[]` and are
+not for pasting. The following plain line is the paste command and must
+not contain `[]`.
 
 Another runtime is a new `print_echo_<tool>` over the same manifest, called
 above `SECTION: next-cli`, plus one confirm line in `echo:confirm`.

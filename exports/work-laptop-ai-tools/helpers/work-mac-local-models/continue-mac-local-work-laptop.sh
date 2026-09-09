@@ -10,8 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 . "${SCRIPT_DIR}/share-paths.sh"
 
-echo "# commands to run yourself on the work laptop. this script does not run them."
-echo "# source ${SCRIPT_DIR}/share-paths.sh first. Fill WORK_LAPTOP_PUBLIC_FOLDER before a copy."
+echo_for_reading "red lines are comments. paste them with the commands. they do not run."
+echo_for_reading "commands for the work laptop. this script does not run them."
 
 # ===== SECTION: paths =====
 print_share_folders
@@ -32,8 +32,7 @@ print_echo_lmstudio
 # ===== END SECTION: echo:lmstudio =====
 
 # ===== SECTION: echo:confirm =====
-echo "ollama list"
-echo "lms ls"
+print_echo_confirm
 # ===== END SECTION: echo:confirm =====
 
 # ===== SECTION: next-cli =====

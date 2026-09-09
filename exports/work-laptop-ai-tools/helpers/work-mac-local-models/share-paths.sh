@@ -3,8 +3,11 @@
 # Model list: models-to-copy.list (source of truth).
 #
 # These helpers only print commands. They do not download, copy, or import.
-# Do not wrap folder values in []. A previous print form created a real
-# directory named [/Users/joshc/HomelabSMB/hvh-01-public] under this folder.
+#
+# Two lines per command:
+#   red # comment — explains the next command, parameter by parameter
+#   next line — the command to paste
+# A block of both can be pasted together. The # lines do nothing.
 
 # Controller Mac (mac-dev, finder_login). Download echo only.
 # Staging host is HOM-LAB-HVH-01 (\\HOM-LAB-HVH-01\public).
@@ -23,15 +26,44 @@ WORK_LAPTOP_MODEL_MANIFEST="${_SHARE_PATHS_DIR}/models-to-copy.list"
 # a printed copy command. See helpers/share_topology.md.
 WORK_LAPTOP_PUBLIC_FOLDER=""
 
+# Red: # comment explaining the next command. Safe to paste.
+# Green: Hugging Face command to run.
+_READ_COLOR=$'\033[31m'
+_HF_COLOR=$'\033[32m'
+_RESET=$'\033[0m'
+
+echo_for_reading() {
+  local text="$*"
+  text="${text#\# }"
+  text="${text#\#}"
+  printf '%b# %s%b\n' "${_READ_COLOR}" "${text}" "${_RESET}"
+}
+
+echo_for_huggingface() {
+  printf '%b%s%b\n' "${_HF_COLOR}" "$*" "${_RESET}"
+}
+
+# First argument is the explanation. Printed as a # comment.
+# Second argument is the command to paste.
+print_command_pair() {
+  echo_for_reading "$1"
+  printf '%s\n' "$2"
+}
+
+print_huggingface_pair() {
+  echo_for_reading "$1"
+  echo_for_huggingface "$2"
+}
+
 print_share_folders() {
-  echo "CONTROLLER_PUBLIC_FOLDER=${CONTROLLER_PUBLIC_FOLDER}"
+  echo_for_reading "CONTROLLER_PUBLIC_FOLDER is the controller Mac folder for the HVH-01 public share: ${CONTROLLER_PUBLIC_FOLDER}"
   if [[ -n "${WORK_LAPTOP_PUBLIC_FOLDER}" ]]; then
-    echo "WORK_LAPTOP_PUBLIC_FOLDER=${WORK_LAPTOP_PUBLIC_FOLDER}"
+    echo_for_reading "WORK_LAPTOP_PUBLIC_FOLDER is the work-laptop mount of that same share: ${WORK_LAPTOP_PUBLIC_FOLDER}"
   else
-    echo "WORK_LAPTOP_PUBLIC_FOLDER is unset. Fill it in share-paths.sh before you run a copy command."
+    echo_for_reading "WORK_LAPTOP_PUBLIC_FOLDER is unset. Fill it in share-paths.sh before a copy command is printed."
   fi
-  echo "WORK_LAPTOP_LOCAL_MODELS=${WORK_LAPTOP_LOCAL_MODELS}"
-  echo "model manifest=${WORK_LAPTOP_MODEL_MANIFEST}"
+  echo_for_reading "WORK_LAPTOP_LOCAL_MODELS is the work-laptop folder that receives the copied models: ${WORK_LAPTOP_LOCAL_MODELS}"
+  echo_for_reading "model list is ${WORK_LAPTOP_MODEL_MANIFEST}"
 }
 
 # Read the manifest. Skip blanks and # comments.
@@ -57,22 +89,39 @@ each_listed_model() {
 
 _echo_hf_download() {
   local share_rel="$1" hf_repo="$2" gguf_file="$3"
-  echo "hf download ${hf_repo} ${gguf_file} --local-dir \"\${CONTROLLER_PUBLIC_FOLDER}/models/${share_rel}\""
+  local dest="${CONTROLLER_PUBLIC_FOLDER}/models/${share_rel}"
+  print_huggingface_pair \
+    "hf download. repo: ${hf_repo}. file: ${gguf_file}. --local-dir: write that file into ${dest}." \
+    "hf download ${hf_repo} ${gguf_file} --local-dir \"${dest}\""
 }
 
 _echo_copy_one() {
   local share_rel="$1"
-  echo "rsync -a \"\${WORK_LAPTOP_PUBLIC_FOLDER}/models/${share_rel}/\" \"\${WORK_LAPTOP_LOCAL_MODELS}/${share_rel}/\""
+  if [[ -z "${WORK_LAPTOP_PUBLIC_FOLDER}" ]]; then
+    echo_for_reading "rsync skipped. WORK_LAPTOP_PUBLIC_FOLDER is unset. folder: ${share_rel}. -a would copy that folder only, one way, with no --delete."
+    return 0
+  fi
+  local src="${WORK_LAPTOP_PUBLIC_FOLDER}/models/${share_rel}/"
+  local dest="${WORK_LAPTOP_LOCAL_MODELS}/${share_rel}/"
+  print_command_pair \
+    "rsync -a. source: ${src}. dest: ${dest}. copies that folder only, one way. no --delete, so nothing already on the Mac is removed." \
+    "rsync -a \"${src}\" \"${dest}\""
 }
 
 _echo_ollama_one() {
   local share_rel="$1" _hf_repo="$2" gguf_file="$3" ollama_name="$4"
-  echo "printf 'FROM %s\\n' \"\${WORK_LAPTOP_LOCAL_MODELS}/${share_rel}/${gguf_file}\" | ollama create ${ollama_name} -f -"
+  local weight="${WORK_LAPTOP_LOCAL_MODELS}/${share_rel}/${gguf_file}"
+  print_command_pair \
+    "ollama create. name: ${ollama_name}. FROM file: ${weight}. printf writes that one-line Modelfile. -f - reads it from stdin." \
+    "printf 'FROM %s\\n' \"${weight}\" | ollama create ${ollama_name} -f -"
 }
 
 _echo_lmstudio_one() {
   local share_rel="$1" _hf_repo="$2" gguf_file="$3"
-  echo "lms import \"\${WORK_LAPTOP_LOCAL_MODELS}/${share_rel}/${gguf_file}\" -y"
+  local weight="${WORK_LAPTOP_LOCAL_MODELS}/${share_rel}/${gguf_file}"
+  print_command_pair \
+    "lms import. file: ${weight}. -y accepts the import prompt." \
+    "lms import \"${weight}\" -y"
 }
 
 print_echo_huggingface() {
@@ -80,8 +129,13 @@ print_echo_huggingface() {
 }
 
 print_echo_copy() {
-  echo "# one-way copy of listed model folders only. no --delete. does not clean the Mac."
+  echo_for_reading "copy section. one rsync per listed folder. same path under the work-laptop models folder as on the share."
   each_listed_model _echo_copy_one
+}
+
+print_echo_confirm() {
+  print_command_pair "ollama list. no parameters. prints names already created in Ollama." "ollama list"
+  print_command_pair "lms ls. no parameters. prints models already imported in LM Studio." "lms ls"
 }
 
 print_echo_ollama() {

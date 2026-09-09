@@ -10,8 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 . "${SCRIPT_DIR}/share-paths.sh"
 
-echo "# commands to run yourself on the controller Mac. this script does not run them."
-echo "# source ${SCRIPT_DIR}/share-paths.sh first so CONTROLLER_PUBLIC_FOLDER is set."
+echo_for_reading "red lines are comments. paste them with the commands. they do not run."
+echo_for_reading "green lines are the Hugging Face commands. this script does not run them."
 
 # ===== SECTION: paths =====
 print_share_folders

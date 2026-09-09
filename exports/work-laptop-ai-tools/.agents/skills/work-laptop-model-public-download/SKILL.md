@@ -36,13 +36,13 @@ Edit the packet in `dotfile-vnext/exports/work-laptop-ai-tools/`, then
 ## Where to add a model
 
 Read `helpers/share_topology.md` and `helpers/work-mac-local-models/share-paths.sh` first.
-Add or remove a line in `helpers/work-mac-local-models/models-to-copy.manifest`.
+Add or remove a line in `helpers/work-mac-local-models/models-to-copy.list`.
 That file is the source of truth. `continue-mac-local-controller.sh` only
 echoes `hf download` lines from it. It does not download.
 
 Fields: `share_rel|hf_repo|gguf_file|ollama_name`
 
-Do not wrap paths in `[]`. Do not add a second share root.
+Print two lines per command. The red line is a `#` comment that explains the next command, parameter by parameter. The Hugging Face command is green. Paste both. The `#` line does not run. Do not drop a model because its share folder is missing. Do not add a second share root.
 Another downloader is a new `print_echo_<tool>` over the same manifest,
 called above `SECTION: next-cli`. Do not copy model lines by hand.
 
