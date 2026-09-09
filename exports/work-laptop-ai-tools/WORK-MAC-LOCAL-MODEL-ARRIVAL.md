@@ -28,9 +28,17 @@ Exact flags stay with the tool. Human command files live in
 
 ## Share layout
 
-Controller mount today: `~/HomelabSMB/hvh-01-public` (`finder_login`).
-Put the weight under `models/<ecosystem>/` for the tool that downloaded it.
-Do not invent a second root.
+Mounts are not the same path. Source: `helpers/work-mac-local-models/share-paths.sh`.
+
+| Machine | Variable | Path |
+| --- | --- | --- |
+| Controller Mac | `CONTROLLER_PUBLIC_FOLDER` | `~/HomelabSMB/hvh-01-public` (`finder_login`) |
+| Controller alternate | comment in `share-paths.sh` | `~/HomelabSMB/hvh-02-public` |
+| Work laptop | `WORK_LAPTOP_PUBLIC_FOLDER` | not recorded — do not copy the controller path |
+
+Same share: `\\HOM-LAB-HVH-01\public`. Put weights under `models/<ecosystem>/`.
+Do not invent a second root. Do not recreate import commands until the work
+laptop mount is filled in.
 
 | Downloader | Public folder |
 | --- | --- |

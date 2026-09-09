@@ -29,8 +29,11 @@ Edit the packet, then `work-laptop-packet-ops` sync.
 
 ## Section 2 rules
 
-- These lines run on the work laptop. `PUBLIC_FOLDER` must be that Mac's mount
-  of the same share.
+- Read `helpers/work-mac-local-models/share-paths.sh` first.
+- These lines run on the work laptop. Use `WORK_LAPTOP_PUBLIC_FOLDER` only.
+- If that variable is empty, do not recreate the import lines. Ask for the
+  work-laptop mount and write it into `share-paths.sh` first. Do not copy
+  `CONTROLLER_PUBLIC_FOLDER`.
 - One command per model. No blank lines inside a tool block.
 - After all lines for one runtime, one blank line, then the next runtime.
 - First tools: Ollama, then LM Studio. Another runtime gets the same blank-line

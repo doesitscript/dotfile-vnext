@@ -15,10 +15,12 @@ Each script has three sections. One command per model. No blank lines inside
 a tool block. A blank line only between tools.
 
 1. **Download to the public folder** — run on the controller Mac.
-   `PUBLIC_FOLDER` is the live mount. The comment under it is the other public
-   folder; swap the variable value, do not add a second root.
-2. **Import onto the work Mac** — run on the work laptop, against that Mac's
-   mount of the same share. Set `PUBLIC_FOLDER` there before these lines.
+   Use `CONTROLLER_PUBLIC_FOLDER` from `share-paths.sh`. The comment under it
+   is the other controller public folder; swap that value, do not add a second
+   root.
+2. **Import onto the work Mac** — run on the work laptop. Use
+   `WORK_LAPTOP_PUBLIC_FOLDER` from `share-paths.sh`. That path is not the
+   controller path. Do not write import lines while it is empty.
    First tools: Ollama, then LM Studio. A file on the share is not imported.
 3. **Confirm** — one line per runtime, blank line between tools.
 

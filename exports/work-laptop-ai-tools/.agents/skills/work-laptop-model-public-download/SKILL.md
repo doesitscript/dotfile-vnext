@@ -28,10 +28,11 @@ Edit the packet in `dotfile-vnext/exports/work-laptop-ai-tools/`, then
 
 ## Section 1 rules
 
-- Keep `PUBLIC_FOLDER` at the top of section 1.
-- Comment the other public folder under that variable. Swap the value; do not
-  add a second path.
-- Hugging Face CLI: one `hf download … --local-dir "${PUBLIC_FOLDER}/models/huggingface/…"`
+- Read `helpers/work-mac-local-models/share-paths.sh` first.
+- Section 1 uses `CONTROLLER_PUBLIC_FOLDER` only.
+- Comment the other controller public folder under that variable. Swap the
+  value; do not add a second path.
+- Hugging Face CLI: one `hf download … --local-dir "${CONTROLLER_PUBLIC_FOLDER}/models/huggingface/…"`
   line per model. No blank lines between those lines.
 - A new downloader: one blank line, then that tool's commands, one line each.
 
