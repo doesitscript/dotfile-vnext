@@ -1,6 +1,6 @@
 ---
 name: work-laptop-day2-apply
-description: "Use when applying or verifying the work-laptop-ai-tools sibling on the corporate Mac after a git pull: playbook with --skip-tags hosts_file, vault_pass, Continue/Cline/cx-* checks. Do not invent ad-hoc SSH/scp applies. Do not use for parent packet design edits (edit packet then work-laptop-packet-ops)."
+description: "Use when applying or verifying the work-laptop-ai-tools sibling on the corporate Mac after a git pull: full playbook with --skip-tags hosts_file, or a recent-window apply with --tags recent_10 or recent_15. Do not invent ad-hoc SSH/scp applies. Do not use for parent packet design edits (edit packet then work-laptop-packet-ops)."
 ---
 
 # Skill: Work-laptop day-2 apply
@@ -38,8 +38,13 @@ Do not use when:
 cd ~/Documents/develop/work-laptop-ai-tools
 git pull
 
-# Day-to-day: skip hosts_file (needs --ask-become-pass; laptop hosts already set)
+# Full day-2: skip hosts_file (needs --ask-become-pass; laptop hosts already set)
 .venv/bin/ansible-playbook playbook.yaml -i inventory.yaml --skip-tags hosts_file
+
+# Quick window when the change is in the sequential role-list tail.
+# recent_10 = last 10 role entries. recent_15 = last 15. Safety pre_tasks still run.
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml --skip-tags hosts_file --tags recent_10
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml --skip-tags hosts_file --tags recent_15
 
 # Hosts refresh only when catalog names change:
 # .venv/bin/ansible-playbook playbook.yaml -i inventory.yaml --tags hosts_file --ask-become-pass
@@ -107,3 +112,4 @@ of problem may already be accepted and documented.
 - Inbound laptop feedback / debt: `work-laptop-improvement-review`
 - Deviation manifest: `deviations/README.md`
 - Packet `README.md` day-2 notes
+- Recent-window check: `scripts/check_playbook_recent_window.py`

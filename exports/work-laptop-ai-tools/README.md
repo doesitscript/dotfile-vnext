@@ -221,6 +221,31 @@ gate because `morph_mcp_state` is `present` while its vault key is still the
 placeholder value. Supply a valid Morph key through the encrypted packet vault,
 or set `morph_mcp_state: absent` when Morph is not commissioned.
 
+## Day-2 playbook
+
+Full converge skips the hosts-file role (that one needs sudo). Use it when
+older roles may have drifted.
+
+```bash
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml --skip-tags hosts_file
+```
+
+Recent work is the tail of `playbook.yaml` `roles:`. New sequential roles
+are appended above `work_laptop_packet_receipt`. Two quick windows skip the
+older entries and still run the playbook safety checks:
+
+```bash
+# last 10 role entries
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml --skip-tags hosts_file --tags recent_10
+
+# last 15 role entries
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml --skip-tags hosts_file --tags recent_15
+```
+
+`scripts/check_playbook_recent_window.py` fails if those tags no longer match
+the role-list tail. A quick window is not a substitute for a full apply after
+a change outside that tail.
+
 ## After a source fix (work laptop recovery)
 
 When a bootstrap/playbook failure is fixed upstream and pushed to this sibling

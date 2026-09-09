@@ -17,6 +17,7 @@ when the task is packet MCP, vault, or sync.
 | Jan.AI local RAG on the work Mac | `JAN-AI-WORK-MAC-RAG.md` and role `jan_ide` — corpus `~/Documents/develop/homelab-reference-library`; chat model `Qwen/Qwen3-4B-GGUF` / `Qwen3-4B-Q4_K_M.gguf` |
 | Public share folders | `helpers/share_topology.md` — UNC and per-machine paths; shell: `helpers/work-mac-local-models/share-paths.sh` |
 | Human model commands | `helpers/work-mac-local-models/` — example plus one line per model |
+| Paste-ready agent prompts | `USEFUL-COMMANDS.md` — top 10 prompts, including source-to-sibling sync |
 
 Do not treat the sibling checkout as design authority. Edit the packet (or
 parent roles), then sync.

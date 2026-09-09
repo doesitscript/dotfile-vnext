@@ -13,6 +13,7 @@ title: Skip hosts_file on day-2 converge
 ## Accommodation
 
 - Default day-2: `--skip-tags hosts_file`.
+- Quick window for the sequential role-list tail: `--tags recent_10` or `--tags recent_15`, still with `--skip-tags hosts_file`.
 - Refresh hosts only when catalog names change: `--tags hosts_file --ask-become-pass`.
 - Encoded in skill `work-laptop-day2-apply`.
 
