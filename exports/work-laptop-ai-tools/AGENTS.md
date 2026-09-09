@@ -14,6 +14,7 @@ when the task is packet MCP, vault, or sync.
 | Living process docs | HRL `implementation-guides/mcp/work-laptop-ai-tools-mcp-slice.md` and `porting-mcp-servers-between-projects.md` |
 | Related projects | `DEPENDENCY-MAP.md` (this packet, sibling, `dotfile-vnext`, HRL, `global-skills`) |
 | Local models on the work Mac | `WORK-MAC-LOCAL-MODEL-ARRIVAL.md` — public share, then import |
+| Public share folders | `helpers/share_topology.md` — UNC and per-machine paths; shell: `helpers/work-mac-local-models/share-paths.sh` |
 | Human model commands | `helpers/work-mac-local-models/` — example plus one line per model |
 
 Do not treat the sibling checkout as design authority. Edit the packet (or
@@ -51,8 +52,8 @@ unless the user explicitly asks.
 | `work-laptop-vault-status` | Names-only ciphertext + nonempty key check via `vault_status.py` |
 | `work-laptop-packet-ops` | Validate export contract, sync sibling, smoke; delegates heavy scripts to parent `work-laptop-export-pack` |
 | `work-laptop-recorded-facts` | Work laptop model, chip, macOS, hostname, username — read host_vars first |
-| `work-laptop-model-public-download` | Write a human-run public-folder download line (controller Mac) |
-| `work-laptop-model-runtime-import` | Write a human-run import line into Ollama or LM Studio (work laptop) |
+| `work-laptop-model-public-download` | Add a controller-Mac download: `echo:<tool>` plus later `process:<tool>` above `next-cli` (hf first; any other CLI the same way) |
+| `work-laptop-model-runtime-import` | Add a work-laptop import: `echo:<tool>` plus `process:<tool>` above `next-cli` (Ollama first; LM Studio or any other CLI the same way) |
 
 Discovery path: `.agents/skills/<name>/SKILL.md` (Cursor + Codex). Skills are
 synced into the sibling so laptop sessions can discover them.

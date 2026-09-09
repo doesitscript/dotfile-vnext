@@ -45,6 +45,19 @@ Autocomplete policy:
 - if a future local-only autocomplete lane is proven stable on the client Mac,
   enable it explicitly and document the exact local model/runtime
 
+## Work-laptop local Ollama section
+
+First iteration of
+`docs/brainstorming_designs/2026-09-09--continue-mac-local-model-patterns`.
+This role does not download weights. The human runs the helper scripts, then
+this role writes only the marked block `continue-ollama-local` for the plan
+roles (autocomplete, embed, edit, apply). Other models, MCP, and rules stay
+as they were.
+
+Helpers: `exports/work-laptop-ai-tools/helpers/work-mac-local-models/`
+(`continue-mac-local-controller.sh` on the controller Mac,
+`continue-mac-local-work-laptop.sh` on the work laptop).
+
 Set `defaultCompletionOptions.contextLength: 32768` and `maxTokens: 4096` on
 chat/edit lanes (Continue docs; aligns with vLLM `--max-model-len`).
 

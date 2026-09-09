@@ -271,17 +271,26 @@ continue_ide_models:
       contextLength: 32768
       maxTokens: 4096
       temperature: 0.3
-  - name: "Edit Qwen2.5 Coder 7B (desktop Ollama)"
-    model: "qwen2.5-coder-7b@desktop"
-    capabilities:
-      - tool_use
+# Local autocomplete / embed / edit / apply live in continue_ide_ollama_local_models.
+# Do not put those plan roles on remote LiteLLM lanes.
+continue_ide_ollama_local_models:
+  - name: "Qwen 2.5 Coder 1.5B (Autocomplete Baseline)"
+    model: "qwen2.5-coder:1.5b-base"
+    roles:
+      - autocomplete
+  - name: "Qwen 2.5 Coder 3B (Autocomplete Comparison)"
+    model: "qwen2.5-coder:3b-base"
+    roles:
+      - autocomplete
+  - name: "Nomic Embed Text (Local Embeddings)"
+    model: "nomic-embed-text"
+    roles:
+      - embed
+  - name: "Qwen 2.5 Coder 7B (Local Edit)"
+    model: "qwen2.5-coder:7b-instruct"
     roles:
       - edit
       - apply
-    default_completion_options:
-      contextLength: 32768
-      maxTokens: 4096
-      temperature: 0.2
 continue_ide_mcp_servers:
   - name: "Terraform MCP"
     type: "stdio"

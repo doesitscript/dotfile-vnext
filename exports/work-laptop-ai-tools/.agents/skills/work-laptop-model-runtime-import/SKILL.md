@@ -1,6 +1,6 @@
 ---
 name: work-laptop-model-runtime-import
-description: "Use when adding a human-run command that imports a model from the public share into a work-Mac runtime. First runtimes are Ollama and LM Studio. Writes one line per model into helpers/work-mac-local-models. Do not use for the controller download step, and do not treat a share copy as already imported."
+description: "Use when adding a human-run import command from the public share into a work-Mac runtime. Writes an echo line and a matching process line inside the script section markers. First runtime is Ollama; LM Studio and any later CLI get their own echo and process pair. Do not use for the controller download step, and do not treat a share copy as already imported."
 ---
 
 # Skill: Work-laptop model runtime import
@@ -13,40 +13,64 @@ Use when:
 
 - a model is, or will be, on the public share and must be imported into a
   runtime on the work laptop
-- the selected runtime is Ollama or LM Studio
+- the selected runtime is Ollama, LM Studio, or another local CLI
 
 Do not use when:
 
 - the model still needs a controller download (`work-laptop-model-public-download`)
 - the user only asked which runtime to consider (HRL Mac candidate stubs)
 
-## File
+## Files
 
-`helpers/work-mac-local-models/` — section 2 import, section 3 confirm.
-See `README.md` and `example-commands.sh`.
+Runnable scripts (edit these):
+
+- `helpers/work-mac-local-models/continue-mac-local-work-laptop.sh`
+- format example: `helpers/work-mac-local-models/example-commands.sh`
+
+Pattern copies:
+
+- `docs/brainstorming_designs/2026-09-09--continue-mac-local-model-patterns/examples/`
 
 Edit the packet, then `work-laptop-packet-ops` sync.
 
-## Section 2 rules
+## Where to add lines
 
-- Read `helpers/work-mac-local-models/share-paths.sh` first.
-- These lines run on the work laptop. Use `WORK_LAPTOP_PUBLIC_FOLDER` only.
-- If that variable is empty, do not recreate the import lines. Ask for the
-  work-laptop mount and write it into `share-paths.sh` first. Do not copy
-  `CONTROLLER_PUBLIC_FOLDER`.
-- One command per model. No blank lines inside a tool block.
-- After all lines for one runtime, one blank line, then the next runtime.
-- First tools: Ollama, then LM Studio. Another runtime gets the same blank-line
-  split.
-- Ollama does not detect a folder drop. Import with `ollama create <name> -f -`
-  and a `FROM <gguf>` on stdin. Point `FROM` at a GGUF file that exists in the
-  download dir. Do not invent a filename; use `REPLACE.gguf` until the human
-  names the file that landed.
-- LM Studio does not detect a folder drop. Import with
-  `lms import <file> -y`.
+Read `helpers/share_topology.md` and `helpers/work-mac-local-models/share-paths.sh` first.
+These lines run on the work laptop. Use `WORK_LAPTOP_PUBLIC_FOLDER` only.
+If that variable is empty, still add the echo lines (they print `[]`), but do
+not invent a mount path and do not copy `CONTROLLER_PUBLIC_FOLDER`. Ask for
+the work-laptop mount and write it into `share-paths.sh` before relying on
+the process block.
 
-## Section 3
+Insert a new runtime's pair above `# ===== SECTION: next-cli =====`.
 
-One confirm line per tool, blank line between tools (`ollama list`, then
-`lms ls`). If a confirm flag fails, fix the line from that tool's help. Do
-not claim the import worked without the human running it.
+| Marker | What to add | When it runs |
+| --- | --- | --- |
+| `SECTION: echo:<tool>` | One printed command per model. Folder value in `[]`. | Always, before the empty-folder exit |
+| `SECTION: process:<tool>` | The same models, real CLI, unbracketed `"${WORK_LAPTOP_PUBLIC_FOLDER}"` | After the folder is set, on the work laptop |
+| `SECTION: echo:confirm` / `process:confirm` | One confirm line per tool (`ollama list`, `lms ls`) | Echo always; process after the folder is set |
+| `SECTION: next-cli` | Do not put commands here. Next runtime's echo+process pair goes above it. | Never |
+
+Ollama today:
+
+- echo: `echo "printf 'FROM [${WORK_LAPTOP_PUBLIC_FOLDER}]/…/file.gguf' | ollama create <name> -f -"`
+- process: `printf 'FROM %s\n' "${WORK_LAPTOP_PUBLIC_FOLDER}/…/file.gguf" | ollama create <name> -f -`
+
+Ollama does not detect a folder drop. Point `FROM` at a GGUF file that exists
+in the download dir. Do not invent a filename; use `REPLACE.gguf` until the
+human names the file that landed.
+
+LM Studio is the next runtime, not a second share root. Add `echo:lmstudio`
+and `process:lmstudio` above `next-cli`. Import with `lms import <file> -y`.
+Confirm with `lms ls` in the confirm sections.
+
+## Another CLI
+
+Do not put a new tool's lines inside the ollama blocks. Copy the pair above
+`SECTION: next-cli`, then add that tool's confirm line to both confirm sections.
+
+## Do not
+
+- Use `CONTROLLER_PUBLIC_FOLDER` on the work laptop
+- Treat a file on the share as already imported
+- Claim the import worked without the human running the process block

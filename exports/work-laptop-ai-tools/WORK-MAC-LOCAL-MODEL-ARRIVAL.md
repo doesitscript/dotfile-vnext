@@ -26,19 +26,31 @@ Exact flags stay with the tool. Human command files live in
 `helpers/work-mac-local-models/`. Skills: `work-laptop-model-public-download`,
 `work-laptop-model-runtime-import`.
 
+First concrete path (Continue on the work laptop, Hugging Face then Ollama
+import, no `ollama pull`):
+
+- Controller: `helpers/work-mac-local-models/continue-mac-local-controller.sh`
+- Work laptop: `helpers/work-mac-local-models/continue-mac-local-work-laptop.sh`
+- Plan: `docs/brainstorming_designs/2026-09-09--continue-mac-local-model-patterns`
+- Pattern copies: `docs/brainstorming_designs/2026-09-09--continue-mac-local-model-patterns/examples/`
+
+Script dividers (`echo:<tool>`, `process:<tool>`, `next-cli`) are the only
+places to add another CLI. Hugging Face and Ollama are the first pairs, not
+the only allowed tools.
+
 ## Share layout
 
-Mounts are not the same path. Source: `helpers/work-mac-local-models/share-paths.sh`.
+Mounts are not the same path. Do not copy path literals into this workflow.
 
-| Machine | Variable | Path |
-| --- | --- | --- |
-| Controller Mac | `CONTROLLER_PUBLIC_FOLDER` | `~/HomelabSMB/hvh-01-public` (`finder_login`) |
-| Controller alternate | comment in `share-paths.sh` | `~/HomelabSMB/hvh-02-public` |
-| Work laptop | `WORK_LAPTOP_PUBLIC_FOLDER` | not recorded — do not copy the controller path |
+- Staging host: `HOM-LAB-HVH-01` (`\\HOM-LAB-HVH-01\public`). Public root
+  has `apps`, `artifacts`, `driver-staging`, `models`, `studio`. Not HVH-02.
+- Map: `helpers/share_topology.md` (UNC, hosts, mount methods, model folders)
+- Shell: `helpers/work-mac-local-models/share-paths.sh` (`CONTROLLER_PUBLIC_FOLDER`, `WORK_LAPTOP_PUBLIC_FOLDER`)
 
-Same share: `\\HOM-LAB-HVH-01\public`. Put weights under `models/<ecosystem>/`.
-Do not invent a second root. Do not recreate import commands until the work
-laptop mount is filled in.
+`WORK_LAPTOP_PUBLIC_FOLDER` is not recorded. Do not copy the controller path.
+Do not invent a second root. Do not recreate import commands until that
+variable is filled in. A later role may manage these mounts; this packet
+only records them.
 
 | Downloader | Public folder |
 | --- | --- |

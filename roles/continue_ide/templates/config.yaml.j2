@@ -54,6 +54,23 @@ models:
 {% endif %}
 {% endif %}
 {% endfor %}
+{% if (continue_ide_ollama_local_models | default([]) | length) > 0 %}
+  # BEGIN ANSIBLE MANAGED: continue-ollama-local
+  # Work-laptop local Ollama models only. Does not replace other models above.
+  # Plan: docs/brainstorming_designs/2026-09-09--continue-mac-local-model-patterns
+  # Weights: helpers/work-mac-local-models (human-run; not this role)
+{% for entry in continue_ide_ollama_local_models %}
+  - name: {{ entry.name | to_json }}
+    provider: ollama
+    apiBase: {{ (entry.api_base | default('http://127.0.0.1:11434')) | to_json }}
+    model: {{ entry.model | to_json }}
+    roles:
+{% for role in entry.roles %}
+      - {{ role | to_json }}
+{% endfor %}
+{% endfor %}
+  # END ANSIBLE MANAGED: continue-ollama-local
+{% endif %}
 {% if (continue_ide_mcp_servers | default([]) | length) > 0 %}
 mcpServers:
 {% for server in continue_ide_mcp_servers %}

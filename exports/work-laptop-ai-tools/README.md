@@ -376,12 +376,14 @@ laptop and a mutating apply is intended.
 
 Remote autocomplete policy:
 
-- Continue autocomplete is intentionally disabled in this packet
-- Zed edit predictions are intentionally disabled in this packet
-- do not point editor autocomplete-style features at remote LiteLLM, vLLM, or
-  remote Ollama infrastructure from this laptop
-- only revisit this with a deliberately local-only small model running on the
-  Mac itself after validation
+- Do not point editor autocomplete at remote LiteLLM, vLLM, or remote Ollama
+- Local exception, work laptop only:
+  `docs/brainstorming_designs/2026-09-09--continue-mac-local-model-patterns`
+- You run the helpers, then the `continue_ide` role writes only the marked
+  block `continue-ollama-local` (autocomplete, embed, edit, apply)
+- Controller download: `helpers/work-mac-local-models/continue-mac-local-controller.sh`
+- Work laptop import: `helpers/work-mac-local-models/continue-mac-local-work-laptop.sh`
+- Zed edit predictions stay disabled
 
 Secret and access boundaries:
 
@@ -389,8 +391,9 @@ Secret and access boundaries:
   (default). Hydrate `vault/shared.vault.yml` (`vault_k3s_litellm_gateway_master_key`)
   or set `continue_ide_api_key` / `cline_ide_api_key`. Placeholder keys make the
   Continue/Cline UIs look empty.
-- `continue_ide` intentionally renders no autocomplete lane unless
-  `continue_ide_autocomplete_enabled=true` is set for a local-only future path.
+- Remote Continue autocomplete stays off (`continue_ide_autocomplete_enabled`
+  false). Local Ollama autocomplete is only the marked `continue-ollama-local`
+  block from `continue_ide_ollama_local_models`.
 - Cline uses `http://litellm.hom.lab/v1` (`/v1` included). Continue uses
   `http://litellm.hom.lab` (no `/v1`).
 - `zed_ide` ships `REPLACE_WITH_LITELLM_KEY` in `~/.config/zed/openai.env`;
