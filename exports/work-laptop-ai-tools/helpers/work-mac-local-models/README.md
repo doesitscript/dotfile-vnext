@@ -12,7 +12,7 @@ from those same lines. Do not copy model lines into a script by hand.
 
 Each command is two lines. The red line is a `#` comment that explains
 the next command, parameter by parameter. The next line is the command.
-Paste both. The comments do not run. Hugging Face commands are green.
+Paste both. The comments do not run. Hugging Face commands are green. Rsync explanations are cyan. The rsync line is always a command, not a comment.
 Copying a `[]` path created a real directory named
 `[/Users/joshc/HomelabSMB/hvh-01-public]` under this folder.
 

@@ -21,10 +21,10 @@ WORK_LAPTOP_LOCAL_MODELS="${HOME}/models"
 _SHARE_PATHS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_LAPTOP_MODEL_MANIFEST="${_SHARE_PATHS_DIR}/models-to-copy.list"
 
-# Work laptop mount of the HVH-01 public share. Copy echo source only.
-# Not recorded. Do not copy the controller path. Fill this before you run
-# a printed copy command. See helpers/share_topology.md.
-WORK_LAPTOP_PUBLIC_FOLDER=""
+# Work laptop mount of the HVH-01 public share, created by setup_shares.sh.
+# Copy echo source only. Do not copy the controller path.
+# See helpers/share_topology.md.
+WORK_LAPTOP_PUBLIC_FOLDER="${HOME}/mnt/hvh-01-public"
 
 # Red: # comment explaining the next command. Safe to paste.
 # Green: Hugging Face command to run.
@@ -57,11 +57,7 @@ print_huggingface_pair() {
 
 print_share_folders() {
   echo_for_reading "CONTROLLER_PUBLIC_FOLDER is the controller Mac folder for the HVH-01 public share: ${CONTROLLER_PUBLIC_FOLDER}"
-  if [[ -n "${WORK_LAPTOP_PUBLIC_FOLDER}" ]]; then
-    echo_for_reading "WORK_LAPTOP_PUBLIC_FOLDER is the work-laptop mount of that same share: ${WORK_LAPTOP_PUBLIC_FOLDER}"
-  else
-    echo_for_reading "WORK_LAPTOP_PUBLIC_FOLDER is unset. Fill it in share-paths.sh before a copy command is printed."
-  fi
+  echo_for_reading "WORK_LAPTOP_PUBLIC_FOLDER is the work-laptop mount of that same share: ${WORK_LAPTOP_PUBLIC_FOLDER}"
   echo_for_reading "WORK_LAPTOP_LOCAL_MODELS is the work-laptop folder that receives the copied models: ${WORK_LAPTOP_LOCAL_MODELS}"
   echo_for_reading "model list is ${WORK_LAPTOP_MODEL_MANIFEST}"
 }
@@ -97,15 +93,11 @@ _echo_hf_download() {
 
 _echo_copy_one() {
   local share_rel="$1"
-  if [[ -z "${WORK_LAPTOP_PUBLIC_FOLDER}" ]]; then
-    echo_for_reading "rsync skipped. WORK_LAPTOP_PUBLIC_FOLDER is unset. folder: ${share_rel}. -a would copy that folder only, one way, with no --delete."
-    return 0
-  fi
   local src="${WORK_LAPTOP_PUBLIC_FOLDER}/models/${share_rel}/"
   local dest="${WORK_LAPTOP_LOCAL_MODELS}/${share_rel}/"
   print_command_pair \
-    "rsync -a. source: ${src}. dest: ${dest}. copies that folder only, one way. no --delete, so nothing already on the Mac is removed." \
-    "rsync -a \"${src}\" \"${dest}\""
+    "rsync -aP. source: ${src}. dest: ${dest}. shows live progress for each file and retains partial files if interrupted. On rerun, matching files are skipped; only missing or changed files transfer. copies that folder only, one way. no --delete, so nothing already on the Mac is removed." \
+    "rsync -aP \"${src}\" \"${dest}\""
 }
 
 _echo_ollama_one() {

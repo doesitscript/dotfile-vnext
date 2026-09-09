@@ -10,8 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 . "${SCRIPT_DIR}/share-paths.sh"
 
-echo_for_reading "red lines are comments. paste them with the commands. they do not run."
-echo_for_reading "commands for the work laptop. this script does not run them."
+echo_for_reading "red and cyan lines are comments. paste them with the commands. they do not run."
+echo_for_reading "cyan explains each rsync. the next line is the rsync to run."
 
 # ===== SECTION: paths =====
 print_share_folders

@@ -60,10 +60,12 @@ Mounts are not the same path. Do not copy path literals into this workflow.
   (`CONTROLLER_PUBLIC_FOLDER`, `WORK_LAPTOP_PUBLIC_FOLDER`,
   `WORK_LAPTOP_LOCAL_MODELS`)
 
-`WORK_LAPTOP_PUBLIC_FOLDER` is not recorded. Do not copy the controller path.
-The local root is recorded: `~/models`. Copy needs the share mount; import
-uses `~/models`. A later role may manage the mount and that local tree; this
-packet only records them.
+Run `helpers/work-mac-local-models/setup_shares.sh` to mount
+`\\HOM-LAB-HVH-01\public` at `~/mnt/hvh-01-public`; that is the fixed
+`WORK_LAPTOP_PUBLIC_FOLDER` used by the copy commands. Do not copy the
+controller path. The local root is recorded: `~/models`. Copy needs the share
+mount; import uses `~/models`. A later role may manage the mount and that local
+tree; this packet only records them.
 
 | Downloader | Public folder | Work-laptop copy |
 | --- | --- | --- |

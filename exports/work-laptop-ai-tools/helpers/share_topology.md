@@ -43,7 +43,7 @@ method. Do not copy the controller Mac path onto the work laptop.
 | Controller Mac (`mac-dev`) | `finder_login` (current) | `~/HomelabSMB/hvh-01-public` | `CONTROLLER_PUBLIC_FOLDER` |
 | Controller Mac | `finder_login` (other share) | `~/HomelabSMB/hvh-02-public` | comment in `share-paths.sh` |
 | Controller Mac | `automount` (not current) | `~/mnt/hvh-01-public`, `~/mnt/hvh-02-public` | not the model-command default |
-| Work laptop | not recorded | empty until filled in | `WORK_LAPTOP_PUBLIC_FOLDER` |
+| Work laptop | SMB mount (`setup_shares.sh`) | `~/mnt/hvh-01-public` | `WORK_LAPTOP_PUBLIC_FOLDER` |
 | Work laptop | local copy (owned) | `~/models` | `WORK_LAPTOP_LOCAL_MODELS` |
 
 Names are `hvh-01-public` and `hvh-02-public` so they do not collide with a
