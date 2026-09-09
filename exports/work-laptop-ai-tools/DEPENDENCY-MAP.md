@@ -37,3 +37,4 @@ HRL (library checkout; may be absent on a laptop session):
 1. Design in the packet (or parent roles). Sync into the sibling. Apply on the laptop.
 2. New MCP stays `absent` until `work-laptop-mcp-commission`.
 3. HRL and parent docs explain. They do not replace `host_vars/work-laptop.yaml` or `deviations/register.yaml`.
+4. A model for the work laptop follows `WORK-MAC-LOCAL-MODEL-ARRIVAL.md`: controller download to the public share, then import on the laptop. A share copy is not installed.

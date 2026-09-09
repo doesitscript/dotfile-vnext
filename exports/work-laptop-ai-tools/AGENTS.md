@@ -13,6 +13,7 @@ when the task is packet MCP, vault, or sync.
 | Generated build target | sibling `../work-laptop-ai-tools` |
 | Living process docs | HRL `implementation-guides/mcp/work-laptop-ai-tools-mcp-slice.md` and `porting-mcp-servers-between-projects.md` |
 | Related projects | `DEPENDENCY-MAP.md` (this packet, sibling, `dotfile-vnext`, HRL, `global-skills`) |
+| Local models on the work Mac | `WORK-MAC-LOCAL-MODEL-ARRIVAL.md` — public share, then import |
 
 Do not treat the sibling checkout as design authority. Edit the packet (or
 parent roles), then sync.
