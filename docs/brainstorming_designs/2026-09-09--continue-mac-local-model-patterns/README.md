@@ -24,8 +24,9 @@ remains below for history. Model identifiers stay `pending_research` /
   helpers. DMR examples live in the packet `helpers/docker-model-runner/examples/`.
 
 First iteration target remains the work laptop only. New weight arrival should
-use DMR pull, not the share/rsync pipeline. Continue local roles still map from
-`continue_ide_ollama_local_models` until a DMR managed block is commissioned.
+use DMR pull, not the share/rsync pipeline. Work-laptop Continue deploys
+**DMR 1.5B autocomplete** via `continue_ide_local_models` (not Jan/Ollama).
+Jan/Ollama recipes: `docs/lessons-learned/continue/jan-and-ollama-local-autocomplete.md`.
 
 Documentation change contract: update this packet and links; verify content;
 undo by reverting those additions. Change class: reversible documentation only.

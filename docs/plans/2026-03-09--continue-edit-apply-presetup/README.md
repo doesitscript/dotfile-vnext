@@ -26,7 +26,12 @@ lanes, preferring **`dev-workstation-win`** (desktop Ollama) published through
 
 Research findings and live metrics:
 [model_recommendations.md](./model_recommendations.md).  
+Continue **Agent** pass/fail rubric + retire recommendation (Context7-backed):
+[continue-agent-assessment.md](./continue-agent-assessment.md).  
 Packet validations: [validations/](./validations/).  
+Agent-lane fitness (agnostic validations plan + lite eval):  
+[`../2026-09-10--validations-agent-lane-fitness/`](../2026-09-10--validations-agent-lane-fitness/)  
+HRL: `homelab-reference-library/notes/investigations/2026-09-10--llm-agent-pass-fail-evaluation-patterns.md`.  
 Intake wording preserved: [prompt-draft.md](./prompt-draft.md).
 
 ## Capability Packet Boundary
@@ -225,5 +230,7 @@ Client id shape follows
 | --- | --- |
 | [model_recommendations.md](./model_recommendations.md) | Selected model + metrics SSOT |
 | [validations/README.md](./validations/README.md) | How to re-run probes |
+| [continue-agent-assessment.md](./continue-agent-assessment.md) | Agent retire rubric (origin) |
+| [../2026-09-10--validations-agent-lane-fitness/](../2026-09-10--validations-agent-lane-fitness/) | Agnostic agent-lane validations + lite eval |
 | [../2026-09-01--homelab-local-ai-clients-cursor-kilo/README.md](../2026-09-01--homelab-local-ai-clients-cursor-kilo/README.md) | Broader Continue/OpenCode client plan |
 | `roles/continue_ide/defaults/main.yml` | Live Continue model entry |

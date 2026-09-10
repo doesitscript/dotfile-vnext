@@ -1,8 +1,9 @@
 # {{ ansible_managed }}
-# Continue → LiteLLM only. Every model below MUST exist on GET /v1/models.
-# apiBase omits /v1 (Continue probes GET {apiBase}; /v1 alone 404s on this gateway).
-# Remote autocomplete is intentionally disabled by default; re-enable only for a
-# deliberately local-only client model after validation.
+# Continue → LiteLLM only for remote lanes. Every gateway model MUST exist on
+# GET /v1/models. apiBase omits /v1 (Continue probes GET {apiBase}; /v1 alone
+# 404s on this gateway).
+# Remote autocomplete stays blocked. Local autocomplete uses an OpenAI-compatible
+# server on the client Mac (e.g. Jan), never provider: ollama for that role.
 # Blocked / not commissioned:
 {% for lane in continue_ide_blocked_lanes %}
 #   - {{ lane }}
@@ -54,25 +55,50 @@ models:
 {% endif %}
 {% endif %}
 {% endfor %}
-{% if (continue_ide_ollama_local_models | default([]) | length) > 0 %}
-  # BEGIN ANSIBLE MANAGED: continue-ollama-local
-  # Work-laptop local Ollama models only. Does not replace other models above.
-  # Plan: docs/brainstorming_designs/2026-09-09--continue-mac-local-model-patterns
-  # Weights: legacy helpers/work-mac-local-models (human-run; not this role).
-  # Preferred direction: Docker Model Runner (DOCKER-MODEL-RUNNER.md); DMR
-  # Ansible automation disabled until commissioned — do not invent a second
-  # managed block here until then.
-{% for entry in continue_ide_ollama_local_models %}
+{% set _continue_local_models = (continue_ide_local_models | default(continue_ide_ollama_local_models | default([]))) %}
+{% if (_continue_local_models | length) > 0 %}
+  # BEGIN ANSIBLE MANAGED: continue-local-models
+  # Client-local OpenAI-compatible (or legacy ollama) models only.
+  # Autocomplete: prefer Jan (provider openai + Jan GET /v1/models id).
+  # Edit/apply: prefer LiteLLM model@host entries in continue_ide_models above.
+{% for entry in _continue_local_models %}
   - name: {{ entry.name | to_json }}
-    provider: ollama
-    apiBase: {{ (entry.api_base | default('http://127.0.0.1:11434')) | to_json }}
+    provider: {{ (entry.provider | default('openai')) | to_json }}
+    apiBase: {{ (entry.api_base | default('http://127.0.0.1:1337/v1')) | to_json }}
     model: {{ entry.model | to_json }}
+{% if (entry.provider | default('openai')) != 'ollama' %}
+    apiKey: {{ (entry.api_key | default('local')) | to_json }}
+{% endif %}
     roles:
 {% for role in entry.roles %}
       - {{ role | to_json }}
 {% endfor %}
+{% if entry.default_completion_options is defined %}
+    defaultCompletionOptions:
+{% for opt_key, opt_val in entry.default_completion_options.items() %}
+      {{ opt_key }}: {{ opt_val }}
 {% endfor %}
-  # END ANSIBLE MANAGED: continue-ollama-local
+{% endif %}
+{% if entry.autocomplete_options is defined %}
+    autocompleteOptions:
+{% for opt_key, opt_val in entry.autocomplete_options.items() %}
+      {{ opt_key }}: {{ opt_val }}
+{% endfor %}
+{% endif %}
+{% if entry.use_legacy_completions_endpoint | default(false) %}
+    useLegacyCompletionsEndpoint: true
+{% endif %}
+{% if entry.prompt_templates is defined %}
+    promptTemplates:
+{% for tmpl_key, tmpl_val in entry.prompt_templates.items() %}
+      {{ tmpl_key }}: {{ tmpl_val | to_json }}
+{% endfor %}
+{% elif entry.use_legacy_completions_endpoint | default(false) %}
+    promptTemplates:
+      autocomplete: {{ '<|fim_prefix|>{{{prefix}}}<|fim_suffix|>{{{suffix}}}<|fim_middle|>' | to_json }}
+{% endif %}
+{% endfor %}
+  # END ANSIBLE MANAGED: continue-local-models
 {% endif %}
 {% if (continue_ide_mcp_servers | default([]) | length) > 0 %}
 mcpServers:

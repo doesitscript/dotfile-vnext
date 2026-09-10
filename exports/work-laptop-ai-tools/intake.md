@@ -16,6 +16,11 @@ Inbound from the work-laptop sibling. Processed by
 | Stable HVH-01 SMB mount (Finder `/Volumes` collision) | `helpers/work-mac-local-models/setup_shares.sh` + deviation `smb-stable-mount-hvh01` (legacy share path) |
 | Bootstrap OpenSSL-skip preflight via task content | `bootstrap/bootstrap-macos-ansible.sh` + deviation `bootstrap-openssl-content-gate` |
 | Prefer DMR over share/rsync for local models | `DOCKER-MODEL-RUNNER.md`; automation `disabled` until commissioned |
+| Continue MCP NVM+npmrc prefix abort (Context7/Firebase) | `bin/work-laptop-nvm-exec` resolves Node without `nvm.sh`; deviation `npm-global-prefix` |
+| Continue Jan autocomplete + LiteLLM edit/apply | superseded by DMR 3B local models from `inbox/config.yaml`; keep `7b@desktop` edit/apply |
+| Continue corrected config (`inbox/config.yaml`) | DMR **1.5B** default autocomplete; LM Studio embed; no Jan/Ollama on packet; fix AWS IaC `uvx` |
+| Jan/Ollama Continue recipes | Parent only: `docs/lessons-learned/continue/jan-and-ollama-local-autocomplete.md` |
+| AWS MCP OAuth / AWS IaC profile interactive | deviation `continue-mcp-oauth-aws-profile`; optional `aws_iac_mcp_aws_profile` |
 
 See `deviations/register.yaml` for accepted long-term accommodations.
 

@@ -158,6 +158,10 @@ aws_iac_mcp_targets:
   - codex
 aws_iac_mcp_codex_config_path: "{{ ansible_env.HOME }}/.codex/config.toml"
 aws_iac_mcp_aws_region: "us-east-1"
+# When non-empty, Continue AWS IaC MCP env sets AWS_PROFILE (SSO/login still operator-run).
+aws_iac_mcp_aws_profile: ""
+# Prefer Homebrew uv path so Continue never gets an empty command (inbox/config.yaml bug).
+aws_iac_mcp_command: "/opt/homebrew/opt/uv/bin/uvx"
 
 # ---------------------------------------------------------------------------
 # MCP catalog. Commissioned clients for this slice (NOT VS Code native MCP):
@@ -269,7 +273,8 @@ continue_ide_state: present
 continue_ide_api_key: ""
 continue_ide_require_api_key: true
 continue_ide_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
-continue_ide_autocomplete_enabled: false
+# Local DMR/llama.cpp autocomplete is allowed; remote LiteLLM/vLLM autocomplete stays blocked.
+continue_ide_autocomplete_enabled: true
 continue_ide_models:
   - name: "Chat Qwen2.5 Coder 32B (5090 vLLM)"
     model: "qwen2.5-coder-32b@k3s02-vllm"
@@ -281,34 +286,54 @@ continue_ide_models:
       contextLength: 32768
       maxTokens: 4096
       temperature: 0.3
-# Docker Model Runner — preferred local runtime (2026-09-09).
-# Ansible role / playbook automation is DISABLED until explicitly commissioned.
-# Docs: DOCKER-MODEL-RUNNER.md ; examples: helpers/docker-model-runner/examples/
-work_laptop_docker_model_runner_enabled: false
-work_laptop_docker_model_runner_automation: disabled
-
-# Local autocomplete / embed / edit / apply live in continue_ide_ollama_local_models.
-# Do not put those plan roles on remote LiteLLM lanes.
-# Tentative: remap these roles onto DMR (openai + :12434/engines/v1) instead of
-# growing the deprecated public-share → rsync → Ollama import path.
-continue_ide_ollama_local_models:
-  - name: "Qwen 2.5 Coder 1.5B (Autocomplete Baseline)"
-    model: "qwen2.5-coder:1.5b-base"
-    roles:
-      - autocomplete
-  - name: "Qwen 2.5 Coder 3B (Autocomplete Comparison)"
-    model: "qwen2.5-coder:3b-base"
-    roles:
-      - autocomplete
-  - name: "Nomic Embed Text (Local Embeddings)"
-    model: "nomic-embed-text"
-    roles:
-      - embed
-  - name: "Qwen 2.5 Coder 7B (Local Edit)"
-    model: "qwen2.5-coder:7b-instruct"
+  # Edit/apply via LiteLLM (validated 2026-09-10) — not provider:ollama, not 32B chat lane.
+  - name: "Edit/Apply Qwen2.5 Coder 7B (desktop via LiteLLM)"
+    model: "qwen2.5-coder-7b@desktop"
     roles:
       - edit
       - apply
+    default_completion_options:
+      contextLength: 32768
+      maxTokens: 4096
+      temperature: 0.2
+# Docker Model Runner — Continue may point at a local DMR API; Ansible install
+# automation stays DISABLED until commissioned.
+# Docs: DOCKER-MODEL-RUNNER.md ; examples: helpers/docker-model-runner/examples/
+# Jan / Ollama Continue recipes live in parent docs only (not deployed here):
+# docs/brainstorming_designs/2026-09-09--continue-mac-local-model-patterns/
+# docs/lessons-learned/continue/jan-and-ollama-local-autocomplete.md
+work_laptop_docker_model_runner_enabled: false
+work_laptop_docker_model_runner_automation: disabled
+
+# Client-local autocomplete: DMR 1.5B only (default). No Jan / Ollama on this slice.
+# Edit/apply stay on LiteLLM above.
+continue_ide_local_models:
+  - name: "Qwen 2.5 Coder 1.5B (Docker Model Runner Autocomplete)"
+    provider: "openai"
+    api_base: "http://127.0.0.1:12434/engines/llama.cpp/v1"
+    api_key: "docker-model-runner"
+    model: "local/qwen2.5-coder-autocomplete:1.5b-q8_0"
+    roles:
+      - autocomplete
+    default_completion_options:
+      contextLength: 8192
+      maxTokens: 128
+      temperature: 0.1
+    autocomplete_options:
+      debounceDelay: 250
+      maxPromptTokens: 6144
+    use_legacy_completions_endpoint: true
+    prompt_templates:
+      autocomplete: "<|fim_prefix|>{{{prefix}}}<|fim_suffix|>{{{suffix}}}<|fim_middle|>"
+  - name: "Nomic Embed Text (LM Studio Embeddings)"
+    provider: "openai"
+    api_base: "http://127.0.0.1:1234/v1"
+    api_key: "lm-studio"
+    model: "continue-nomic-embed"
+    roles:
+      - embed
+# Legacy alias for continue_ide template; must stay empty (no provider:ollama).
+continue_ide_ollama_local_models: []
 continue_ide_mcp_servers:
   - name: "Terraform MCP"
     type: "stdio"
@@ -320,12 +345,11 @@ continue_ide_mcp_servers:
     url: "https://aws-mcp.us-east-1.api.aws/mcp?oauth=initialize"
   - name: "AWS IaC MCP"
     type: "stdio"
-    command: "{{ aws_iac_mcp_command | default('uvx') }}"
+    # Inbox had empty command — always set Homebrew uvx (investigation 2026-09-10).
+    command: "{{ aws_iac_mcp_command | default('/opt/homebrew/opt/uv/bin/uvx') }}"
     args:
       - "awslabs.aws-iac-mcp-server@latest"
-    env:
-      FASTMCP_LOG_LEVEL: "ERROR"
-      AWS_REGION: "us-east-1"
+    env: "{{ {'FASTMCP_LOG_LEVEL': 'ERROR', 'AWS_REGION': (aws_iac_mcp_aws_region | default('us-east-1'))} | combine(({'AWS_PROFILE': aws_iac_mcp_aws_profile}) if ((aws_iac_mcp_aws_profile | default('') | length) > 0) else {}) }}"
   - name: context7
     type: stdio
     command: "{{ work_laptop_nvm_exec }}"
@@ -350,7 +374,8 @@ continue_ide_mcp_servers:
       - morph-mcp
     env:
       WORKSPACE_MODE: "true"
-      PATH: "{{ ansible_env.HOME }}/.local/bin:{{ ansible_env.PATH }}"
+      # Prefer npm global + ~/.local/bin; do not dump full GUI PATH from inbox.
+      PATH: "{{ ansible_env.HOME }}/.npm-packages/bin:{{ ansible_env.HOME }}/.local/bin:{{ ansible_env.PATH }}"
 continue_ide_blocked_lanes:
   - "qwen2.5-coder-14b@k3s02-vllm (undersized for 5090 — use 32B AWQ + fp8 KV)"
   - "Remote autocomplete disabled on 2026-09-02 due editor and remote-backend stability risk; only revisit with a local-only model on this Mac."

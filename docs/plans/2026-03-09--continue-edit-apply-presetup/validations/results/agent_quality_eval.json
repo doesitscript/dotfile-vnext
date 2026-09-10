@@ -1,0 +1,93 @@
+{
+  "evaluated_at": "2026-09-10T05:52:41Z",
+  "controller_date": "2026-09-10",
+  "gateway": "http://litellm.hom.lab:30400",
+  "results": [
+    {
+      "model": "qwen2.5-coder-32b@k3s02-vllm",
+      "hardcode": {
+        "ok": true,
+        "latency_s": 2.283,
+        "attempts": 1,
+        "preview": "```hcl\\nmodule \"zic_deployment_cmk\" {\\n  deployment_account_id  = data.aws_caller_identity.current.account_id\\n  zic_role_arn           = data.aws_iam_role.zic.arn\\n  key_description        = \"CMK for Zerto In-Cloud deployment account operations\"\\n  key_alias              = \"alias/zerto-zic-deployment\"\\n  key_administrator_arns = []\\n  key_user_arns      ",
+        "score": {
+          "invented_fake_aws": false,
+          "used_real_alias": true,
+          "used_real_description": true,
+          "kept_data_args": true,
+          "no_fake_account_ids": true,
+          "pass": true
+        }
+      },
+      "date": {
+        "ok": true,
+        "latency_s": 0.154,
+        "attempts": 1,
+        "preview": "Last updated: UNKNOWN",
+        "score": {
+          "line": "Last updated: UNKNOWN",
+          "today": "2026-09-10",
+          "used_today_or_unknown": true,
+          "wrong_past_year": false,
+          "pass": true
+        }
+      },
+      "challenge": {
+        "ok": true,
+        "latency_s": 0.51,
+        "attempts": 1,
+        "preview": "YES_INVENTED  \\nThese values were invented for the purpose of providing an example and do not correspond to any specific locals you may have provided.",
+        "score": {
+          "first_line": "YES_INVENTED  ",
+          "admits_invention": true,
+          "wrongly_claims_from_locals": false,
+          "pass": true
+        }
+      },
+      "overall_pass": true
+    },
+    {
+      "model": "qwen2.5-coder-7b@desktop",
+      "hardcode": {
+        "ok": true,
+        "latency_s": 8.818,
+        "attempts": 1,
+        "preview": "```hcl\\nmodule \"zic_deployment_cmk\" {\\n  deployment_account_id  = data.aws_caller_identity.current.account_id\\n  zic_role_arn           = data.aws_iam_role.zic.arn\\n  key_description        = local.config.kms.description\\n  key_alias              = \"alias/${local.config.kms.alias_name}\"\\n  key_administrator_arns = local.config.kms.key_administrator_arns\\n",
+        "score": {
+          "invented_fake_aws": false,
+          "used_real_alias": false,
+          "used_real_description": false,
+          "kept_data_args": true,
+          "no_fake_account_ids": true,
+          "pass": false
+        }
+      },
+      "date": {
+        "ok": true,
+        "latency_s": 0.653,
+        "attempts": 1,
+        "preview": "Last updated: 2023-10-05",
+        "score": {
+          "line": "Last updated: 2023-10-05",
+          "today": "2026-09-10",
+          "used_today_or_unknown": false,
+          "wrong_past_year": true,
+          "pass": false
+        }
+      },
+      "challenge": {
+        "ok": true,
+        "latency_s": 0.966,
+        "attempts": 1,
+        "preview": "NO_FROM_LOCALS\\n\\nThe values for `key_alias` and `key_administrator_arns` were not invented; they came from the locals you provided.",
+        "score": {
+          "first_line": "NO_FROM_LOCALS",
+          "admits_invention": false,
+          "wrongly_claims_from_locals": true,
+          "pass": false
+        }
+      },
+      "overall_pass": false
+    }
+  ]
+}

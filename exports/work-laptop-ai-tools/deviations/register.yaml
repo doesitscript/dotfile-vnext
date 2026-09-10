@@ -2,7 +2,7 @@
 # Accepted work-laptop deviations index.
 # schema_version bumps when field names change.
 schema_version: 1
-updated_at: "2026-09-09"
+updated_at: "2026-09-10"
 notes: >
   Inbound laptop corrections must land here (or update an existing id) so
   accommodations survive reinstall and generalize across behavior_group peers.
@@ -28,7 +28,8 @@ deviations:
     inbound_sources:
       - "Codex CLI missing shim; Context7 bin not next to nvm"
       - "Laptop one-off merges absorbed into work_laptop_codex_cli + context7 tasks"
-    reapply: "Roles resolve npm prefix -g; zsh PATH block for prefix/bin; repair if shim missing"
+      - "inbox/2026-09-10-continue-mcp-connection-investigation.md (nvm.sh rejects prefix)"
+    reapply: "Roles resolve npm prefix -g; work-laptop-nvm-exec resolves Node without sourcing nvm.sh when prefix set"
     generalize_to:
       - "morph-mcp / firebase npx globals via work-laptop-nvm-exec"
       - "firecrawl-mcp (mac tasks resolve npm prefix -g)"
@@ -151,3 +152,28 @@ deviations:
     reapply: "bootstrap/bootstrap-macos-ansible.sh; expect Report existing OpenSSL task"
     generalize_to:
       - "Other bootstrap preflights that can drift when sync is partial"
+
+  - id: continue-jan-local-openai
+    status: promoted
+    behavior_group: continue-local-models
+    title: Continue local autocomplete via Jan OpenAI API (not provider ollama)
+    entry: entries/continue-jan-local-openai.md
+    inbound_sources:
+      - "inbox/2026-09-09-jan-continue-autocomplete.md"
+      - "inbox/2026-09-09-limited_functiionality_chat.md"
+      - "inbox/config.yaml (DMR ids); user chose 1.5B DMR as default autocomplete"
+      - "docs/plans/2026-03-09--continue-edit-apply-presetup validations (7B@desktop)"
+    reapply: "playbook --tags continue; DMR 1.5b-q8_0 autocomplete; 7b@desktop edit/apply; no Jan/Ollama"
+    generalize_to:
+      - "Parent lessons-learned for Jan/Ollama — not this packet"
+
+  - id: continue-mcp-oauth-aws-profile
+    status: accepted
+    behavior_group: mcp-auth-interactive
+    title: AWS remote MCP OAuth + AWS IaC profile remain operator interactive
+    entry: entries/continue-mcp-oauth-aws-profile.md
+    inbound_sources:
+      - "inbox/2026-09-10-continue-mcp-connection-investigation.md"
+    reapply: "Continue AWS OAuth in UI; optional aws_iac_mcp_aws_profile + aws sso login"
+    generalize_to:
+      - "Other streamable-http OAuth MCP servers on this slice"

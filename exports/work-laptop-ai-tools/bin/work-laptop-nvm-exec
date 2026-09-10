@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Run an MCP/Node binary with nvm loaded. VS Code / Continue GUI PATH often
-# lacks ~/.nvm/*/bin, so Continue stdio servers must not assume `morph-mcp`
-# or `npx` are on PATH.
+# Run an MCP/Node binary with a usable Node on PATH for GUI clients (Continue /
+# VS Code) that do not load interactive nvm.
 #
-# Also prepend `npm prefix -g`/bin when ~/.npmrc sets a custom prefix
-# (e.g. ~/.npm-packages). Without that, globals install away from nvm's bin
-# and shims like context7-mcp / morph-mcp / codex are invisible to GUI clients.
+# Corporate Macs often set `prefix=` in ~/.npmrc (e.g. ~/.npm-packages). Sourcing
+# nvm.sh rejects that and exits before the MCP binary runs. Prefer resolving an
+# nvm Node bin directory without sourcing nvm.sh, then prepend npm global bin so
+# globals like context7-mcp / morph-mcp / npx remain visible.
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
@@ -14,17 +14,64 @@ if [[ $# -lt 1 ]]; then
 fi
 
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+
+_prepend_path_dir() {
+  local dir="$1"
+  if [[ -n "${dir}" && -d "${dir}" ]]; then
+    case ":${PATH}:" in
+      *":${dir}:"*) ;;
+      *) export PATH="${dir}:${PATH}" ;;
+    esac
+  fi
+}
+
+# 1) Put an nvm Node on PATH without sourcing nvm.sh (avoids ~/.npmrc prefix abort).
+_nvm_node_bin=""
+if [[ -d "${NVM_DIR}/versions/node" ]]; then
+  if [[ -f "${NVM_DIR}/alias/default" ]]; then
+    _def="$(tr -d '[:space:]' <"${NVM_DIR}/alias/default" 2>/dev/null || true)"
+    if [[ -n "${_def}" && -d "${NVM_DIR}/versions/node/${_def}/bin" ]]; then
+      _nvm_node_bin="${NVM_DIR}/versions/node/${_def}/bin"
+    fi
+  fi
+  if [[ -z "${_nvm_node_bin}" ]]; then
+    _nvm_node_bin="$(ls -1d "${NVM_DIR}/versions/node"/v*/bin 2>/dev/null | sort -V | tail -1 || true)"
+  fi
+fi
+_prepend_path_dir "${_nvm_node_bin}"
+
+# Fallback: source nvm only when no prefix/globalconfig is set in ~/.npmrc.
+if ! command -v node >/dev/null 2>&1 && [[ -s "${NVM_DIR}/nvm.sh" ]]; then
+  if [[ -f "${HOME}/.npmrc" ]] && grep -Eq '^\s*(prefix|globalconfig)\s*=' "${HOME}/.npmrc"; then
+    echo "work-laptop-nvm-exec: no nvm Node bin found and ~/.npmrc has prefix/globalconfig; cannot source nvm.sh safely" >&2
+    exit 127
+  fi
   # shellcheck disable=SC1091
-  . "$NVM_DIR/nvm.sh"
+  . "${NVM_DIR}/nvm.sh"
 fi
 
+# 2) Prepend npm global bin (corporate prefix).
+_npm_prefix=""
 if command -v npm >/dev/null 2>&1; then
   _npm_prefix="$(npm prefix -g 2>/dev/null || true)"
-  if [[ -n "${_npm_prefix}" && -d "${_npm_prefix}/bin" ]]; then
-    export PATH="${_npm_prefix}/bin:${PATH}"
-  fi
-  unset _npm_prefix
 fi
+if [[ -z "${_npm_prefix}" && -f "${HOME}/.npmrc" ]]; then
+  _npm_prefix="$(
+    sed -nE 's/^[[:space:]]*prefix[[:space:]]*=[[:space:]]*//p' "${HOME}/.npmrc" \
+      | head -1 \
+      | sed -E 's/^["'\'']//; s/["'\'']$//'
+  )"
+  if [[ "${_npm_prefix}" == ~* ]]; then
+    _npm_prefix="${_npm_prefix/#\~/$HOME}"
+  fi
+fi
+if [[ -z "${_npm_prefix}" && -d "${HOME}/.npm-packages/bin" ]]; then
+  _npm_prefix="${HOME}/.npm-packages"
+fi
+if [[ -n "${_npm_prefix}" ]]; then
+  _prepend_path_dir "${_npm_prefix}/bin"
+fi
+
+unset _nvm_node_bin _npm_prefix _def
 
 exec "$@"

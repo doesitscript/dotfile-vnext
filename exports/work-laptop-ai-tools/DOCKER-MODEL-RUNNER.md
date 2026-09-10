@@ -45,9 +45,18 @@ DMR host API (typical Desktop):
 http://127.0.0.1:12434/engines/v1
 ```
 
-Continue often uses `provider: openai` + that `apiBase` (same pattern as the
-LM Studio inbox note on `:1234/v1`). Exact model ids must be taken from
-`docker model list` after pull — do not invent Hub tags as selected.
+**Work-laptop Continue (proven 2026-09-10 `inbox/config.yaml`):**
+
+```text
+http://127.0.0.1:12434/engines/llama.cpp/v1
+```
+
+with model ids like `local/qwen2.5-coder-autocomplete:3b-q8_0`. Prefer that
+shape in `continue_ide_local_models` until DMR docs and the laptop disagree.
+
+Continue uses `provider: openai` + that `apiBase` (same pattern as LM Studio
+on `:1234/v1`). Exact model ids must come from the laptop `/models` response
+or `docker model list` — do not invent Hub tags as selected.
 
 ## Automation gate (disabled)
 

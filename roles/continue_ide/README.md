@@ -8,7 +8,8 @@ Deploys Continue IDE `~/.continue/config.yaml` from
 Remote autocomplete is intentionally disabled by default as of `2026-09-02`
 because remote autocomplete lanes have been observed to destabilize editors and
 remote inference backends. Only re-enable autocomplete with a deliberately
-local-only model on the client machine after explicit validation.
+local OpenAI-compatible server on the client Mac (e.g. Jan) after explicit
+validation — never `provider: ollama` against a Jan GGUF model id.
 
 **Morph WarpGrep (evaluation):** When `continue_ide_mcp_servers` includes
 `morph-mcp` (see `inventory/host_vars/mac-dev.yaml`), Continue Agent mode can
