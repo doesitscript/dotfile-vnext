@@ -187,12 +187,119 @@ model_catalog_manifest:
       research_sources:
         - https://docs.continue.dev/ide-extensions/chat/model-setup
       notes: Prefer DiffuCoder local wrapper; qwen3-coder-30b as alternate local lane.
-    - lane: qwen3-coder-30b
-      purpose: Continue Chat Edit alternate local
-      status: pending_research
-      candidate_family: Qwen3-Coder 30B
+    - lane: qwen3-coder-30b-a3b-primary
+      purpose: Primary agentic coder on 5090 (replaces Qwen2.5-Coder-32B-AWQ)
+      status: selected
+      candidate_family: Qwen3-Coder 30B-A3B MoE (30B total, 3B active)
+      selected_hf_repo_id: Qwen/Qwen3-Coder-30B-A3B-Instruct
+      quantization_repo_id: unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF
+      quantization: Q4_K_M
+      vram_estimate_gb: 18
       serving_runtime: vllm
-      notes: Local candidate when VRAM/research matrix passes; not OpenRouter.
+      storage_host: HOM-LAB-HVH-02
+      unc_path: null
+      license: apache-2.0
+      source_routing:
+        primary_doc_source: huggingface_model_card
+        primary_doc_url: "https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct"
+        quantization_doc_url: "https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF"
+        hrl_pack_slug: qwen-qwen3-coder-30b-a3b-instruct
+        hrl_pack_status: pending
+      research_sources:
+        - https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct
+        - https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF
+        - docs/brainstorming_designs/2026-09-10--5090-model-lane-evaluation/model-selection-reasoning.md
+      notes: >-
+        Consensus pick for agentic coding on single consumer GPU. MoE with low
+        active params (3B) keeps tok/s high for Continue/Cursor loops. Strong
+        tool-calling. Replaces Qwen2.5-Coder-32B-AWQ as vllm-primary lane.
+        Q4_K_M ~18GB, Q5_K_M ~22GB, ~100-170 tok/s on 5090.
+    - lane: qwen3.6-35b-a3b-generalist
+      purpose: Architecture discussion and generalist reasoning (separate from code edits)
+      status: selected
+      candidate_family: Qwen3.6 35B-A3B MoE
+      selected_hf_repo_id: Qwen/Qwen3.6-35B-A3B
+      quantization_repo_id: nvidia/Qwen3.6-35B-A3B-NVFP4
+      quantization: Q6 or NVFP4
+      vram_estimate_gb: 28
+      serving_runtime: vllm
+      storage_host: HOM-LAB-HVH-02
+      unc_path: null
+      license: apache-2.0
+      source_routing:
+        primary_doc_source: huggingface_model_card
+        primary_doc_url: "https://huggingface.co/Qwen/Qwen3.6-35B-A3B"
+        quantization_doc_url: "https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4"
+        hrl_pack_slug: qwen-qwen36-35b-a3b
+        hrl_pack_status: pending
+      research_sources:
+        - https://huggingface.co/Qwen/Qwen3.6-35B-A3B
+        - https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4
+        - docs/brainstorming_designs/2026-09-10--5090-model-lane-evaluation/model-selection-reasoning.md
+      notes: >-
+        Separate from code edits - for "explain this Terraform module" discussions.
+        MoE runs ~145 tok/s at Q6 on 5090 with long context headroom. Q6 ~28GB fits
+        comfortably. Not for raw code generation (use qwen3-coder-30b-a3b-primary).
+    - lane: devstral-small-2-agent
+      purpose: Repo navigation and tool-use agent specialist
+      status: selected
+      candidate_family: Devstral Small 2 24B dense
+      selected_hf_repo_id: mistralai/Devstral-Small-2-24B-Instruct-2512
+      quantization_repo_id: bartowski/mistralai_Devstral-Small-2-24B-Instruct-2512-GGUF
+      quantization: Q4_K_M
+      vram_estimate_gb: 14
+      serving_runtime: vllm
+      storage_host: HOM-LAB-HVH-02
+      unc_path: null
+      license: apache-2.0
+      source_routing:
+        primary_doc_source: huggingface_model_card
+        primary_doc_url: "https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512"
+        quantization_doc_url: "https://huggingface.co/bartowski/mistralai_Devstral-Small-2-24B-Instruct-2512-GGUF"
+        hrl_pack_slug: mistralai-devstral-small-2-24b-instruct-2512
+        hrl_pack_status: pending
+      research_sources:
+        - https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512
+        - https://huggingface.co/bartowski/mistralai_Devstral-Small-2-24B-Instruct-2512-GGUF
+        - docs/brainstorming_designs/2026-09-10--5090-model-lane-evaluation/model-selection-reasoning.md
+      notes: >-
+        Purpose-built for repo navigation and tool-use loops. Dense 24B fits at Q4
+        (~14GB). Ranked above GLM for Continue Agent eval alignment - closer match
+        to actual failure modes tested. Second-generation Devstral.
+    - lane: glm-4.6-experimental
+      purpose: Experimental heavier capability lane (fits in 32GB with context headroom)
+      status: selected
+      candidate_family: GLM-4.6 (not 4.5-Air)
+      selected_hf_repo_id: zai-org/GLM-4.6
+      quantization_repo_id: unsloth/GLM-4.6-GGUF
+      quantization: Q4_K_M
+      vram_estimate_gb: 28
+      serving_runtime: vllm
+      storage_host: HOM-LAB-HVH-02
+      unc_path: null
+      license: glm-4-community-license
+      source_routing:
+        primary_doc_source: huggingface_model_card
+        primary_doc_url: "https://huggingface.co/zai-org/GLM-4.6"
+        quantization_doc_url: "https://huggingface.co/unsloth/GLM-4.6-GGUF"
+        hrl_pack_slug: zai-org-glm-4.6
+        hrl_pack_status: pending
+      research_sources:
+        - https://huggingface.co/zai-org/GLM-4.6
+        - https://huggingface.co/unsloth/GLM-4.6-GGUF
+        - docs/brainstorming_designs/2026-09-10--5090-model-lane-evaluation/model-selection-reasoning.md
+      notes: >-
+        Swapped in over GLM-4.5-Air (unquantized ~221GB makes 4.5-Air a science
+        project). GLM-4.6 Q4_K_M fits in 32GB with context room - same
+        architectural ambition, actually usable daily. Heavier experimental lane.
+    - lane: qwen3-coder-30b
+      purpose: Continue Chat Edit alternate local (deprecated - use qwen3-coder-30b-a3b-primary)
+      status: deprecated
+      candidate_family: Qwen3-Coder 30B (non-MoE)
+      serving_runtime: vllm
+      notes: >-
+        Replaced by qwen3-coder-30b-a3b-primary (MoE variant). This entry kept
+        for catalog continuity. Do not download.
     - lane: qwen3-coder-480b
       purpose: Continue Chat Edit large open model
       status: deferred
