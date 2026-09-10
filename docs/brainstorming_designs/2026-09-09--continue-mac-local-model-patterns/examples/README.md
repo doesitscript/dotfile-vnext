@@ -1,7 +1,9 @@
-# Script examples
+# Script examples (legacy share / rsync)
 
-The runnable helpers live in the work-laptop packet. This folder is not the
-place to run them, and it is not a second model list.
+> Prefer packet `helpers/docker-model-runner/examples/` for new work.
+
+The runnable **legacy** helpers live in the work-laptop packet. This folder is
+not the place to run them, and it is not a second model list.
 
 - Manifest: `exports/work-laptop-ai-tools/helpers/work-mac-local-models/models-to-copy.list`
 - Controller echo: `continue-mac-local-controller.sh`

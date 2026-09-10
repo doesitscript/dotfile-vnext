@@ -1,26 +1,31 @@
 # Continue Mac-local model stack
 
-Status: **brainstorm**. Execution: **not started**. Created: 2026-09-09.
+Status: **brainstorm → direction update 2026-09-09**.
 
-Capture of the supplied local Continue/Ollama proposal and subsequent edits.
-The later edits take priority; superseded ideas remain next-iteration notes.
-This is advisory material, not approved implementation scope or verified runtime
-configuration. Model identifiers and resource estimates are `pending_research`.
+**Preferred runtime:** Docker Model Runner (DMR). Packet doc:
+`exports/work-laptop-ai-tools/DOCKER-MODEL-RUNNER.md`. Examples:
+`exports/work-laptop-ai-tools/helpers/docker-model-runner/examples/`.
+Ansible automation for DMR is **disabled** until commissioned.
+
+**Legacy (tentatively deprecated):** public-share → rsync → `~/models` →
+Ollama/LM Studio. Helpers remain under
+`exports/work-laptop-ai-tools/helpers/work-mac-local-models/`. Findings saved
+under `helpers/docker-model-runner/examples/save/`.
+
+Capture of the supplied local Continue/Ollama proposal and subsequent edits
+remains below for history. Model identifiers stay `pending_research` /
+`provisional_example` until live DMR `/models` ids are selected.
 
 - [Brainstorm plan](continue-mac-local-model-plan.md): role choices, experiment
-  order, configuration sketch, and next-iteration considerations.
-- [Example commands](example-commands.md): reference notes for model downloads
-  and inspection.
-- [Script examples](examples/README.md): divider copies of the human-run
-  scripts. Runnable files stay in the work-laptop packet helpers.
+  order, configuration sketch (update toward DMR).
+- [Example commands](example-commands.md): legacy reference notes.
+- [Script examples](examples/README.md): divider copies of the **legacy**
+  human-run scripts. Runnable legacy files stay in the work-laptop packet
+  helpers. DMR examples live in the packet `helpers/docker-model-runner/examples/`.
 
-First iteration target is the work laptop only. Weights arrive through the
-public-share workflow, then copy to `~/models` with the same `models/`
-children before any import. Continue's local Ollama roles are the marked block
-`continue-ollama-local` in `roles/continue_ide`. Other Continue settings stay
-put. This experiment is distinct from the
-[homelab client brainstorm](../2026-09-01--homelab-local-ai-clients-patterns/README.md).
+First iteration target remains the work laptop only. New weight arrival should
+use DMR pull, not the share/rsync pipeline. Continue local roles still map from
+`continue_ide_ollama_local_models` until a DMR managed block is commissioned.
 
-Documentation change contract: add this packet and its parent index link;
-verify content, links, and whitespace; undo by removing those additions.
-Change class: reversible documentation only.
+Documentation change contract: update this packet and links; verify content;
+undo by reverting those additions. Change class: reversible documentation only.

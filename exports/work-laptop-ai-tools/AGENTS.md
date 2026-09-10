@@ -13,10 +13,10 @@ when the task is packet MCP, vault, or sync.
 | Generated build target | sibling `../work-laptop-ai-tools` |
 | Living process docs | HRL `implementation-guides/mcp/work-laptop-ai-tools-mcp-slice.md` and `porting-mcp-servers-between-projects.md` |
 | Related projects | `DEPENDENCY-MAP.md` (this packet, sibling, `dotfile-vnext`, HRL, `global-skills`) |
-| Local models on the work Mac | `WORK-MAC-LOCAL-MODEL-ARRIVAL.md` — public share, copy to `~/models`, then import |
+| Local models on the work Mac | **Preferred:** `DOCKER-MODEL-RUNNER.md` (DMR; Ansible automation **disabled** until commissioned). **Legacy:** `WORK-MAC-LOCAL-MODEL-ARRIVAL.md` (public share → rsync → `~/models`) |
 | Jan.AI local RAG on the work Mac | `JAN-AI-WORK-MAC-RAG.md` and role `jan_ide` — corpus `~/Documents/develop/homelab-reference-library`; chat model `Qwen/Qwen3-4B-GGUF` / `Qwen3-4B-Q4_K_M.gguf` |
-| Public share folders | `helpers/share_topology.md` — UNC and per-machine paths; shell: `helpers/work-mac-local-models/share-paths.sh` |
-| Human model commands | `helpers/work-mac-local-models/` — example plus one line per model |
+| Public share folders | Legacy map: `helpers/share_topology.md`; shell: `helpers/work-mac-local-models/share-paths.sh` |
+| Human model commands | **Preferred examples:** `helpers/docker-model-runner/examples/`. **Legacy echo:** `helpers/work-mac-local-models/` |
 | Paste-ready agent prompts | `USEFUL-COMMANDS.md` — top 10 prompts, including source-to-sibling sync |
 
 Do not treat the sibling checkout as design authority. Edit the packet (or
@@ -54,8 +54,8 @@ unless the user explicitly asks.
 | `work-laptop-vault-status` | Names-only ciphertext + nonempty key check via `vault_status.py` |
 | `work-laptop-packet-ops` | Validate export contract, sync sibling, smoke; delegates heavy scripts to parent `work-laptop-export-pack` |
 | `work-laptop-recorded-facts` | Work laptop model, chip, macOS, hostname, username — read host_vars first |
-| `work-laptop-model-public-download` | Add a model to `models-to-copy.list`. Controller helper only echoes download commands from that list. |
-| `work-laptop-model-runtime-import` | Same manifest. Work-laptop helper only echoes copy and per-tool import commands. Do not run them. |
+| `work-laptop-model-public-download` | **Legacy.** Add a model to `models-to-copy.list` for the share/rsync path. Prefer DMR docs; do not extend this pipeline for new work. |
+| `work-laptop-model-runtime-import` | **Legacy.** Echo copy/import for `models-to-copy.list`. Prefer `helpers/docker-model-runner/examples/`. |
 
 Discovery path: `.agents/skills/<name>/SKILL.md` (Cursor + Codex). Skills are
 synced into the sibling so laptop sessions can discover them.

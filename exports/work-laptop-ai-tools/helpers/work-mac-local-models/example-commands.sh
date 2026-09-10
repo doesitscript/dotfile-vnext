@@ -15,8 +15,8 @@ print_huggingface_pair \
   "hf download <hf_repo> <gguf_file> --local-dir \"\${CONTROLLER_PUBLIC_FOLDER}/models/<share_rel>\""
 echo
 print_command_pair \
-  "rsync -a. source: \${WORK_LAPTOP_PUBLIC_FOLDER}/models/<share_rel>/. dest: \${WORK_LAPTOP_LOCAL_MODELS}/<share_rel>/. copies that folder only, one way. no --delete." \
-  "rsync -a \"\${WORK_LAPTOP_PUBLIC_FOLDER}/models/<share_rel>/\" \"\${WORK_LAPTOP_LOCAL_MODELS}/<share_rel>/\""
+  "rsync -aP. source: \${WORK_LAPTOP_PUBLIC_FOLDER}/models/<share_rel>/. dest: \${WORK_LAPTOP_LOCAL_MODELS}/<share_rel>/. progress + partial resume; copies that folder only, one way. no --delete." \
+  "rsync -aP \"\${WORK_LAPTOP_PUBLIC_FOLDER}/models/<share_rel>/\" \"\${WORK_LAPTOP_LOCAL_MODELS}/<share_rel>/\""
 echo
 echo_for_reading "work laptop script: continue-mac-local-work-laptop.sh"
 print_command_pair \

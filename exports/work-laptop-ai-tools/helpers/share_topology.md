@@ -1,15 +1,24 @@
 # Share topology
 
+> **Legacy for model weights (2026-09-09).** Prefer Docker Model Runner
+> (`DOCKER-MODEL-RUNNER.md`). This map remains valid for non-model share use
+> and emergency rsync recovery.
+
 Where the HVH public folders are, and how each machine sees them.
 
 This file is the human map. Shell variables live in
 `helpers/work-mac-local-models/share-paths.sh`. Scripts and other docs point
 here or source that file. Do not invent a second root.
 
-Mounts are not managed by this packet yet. A later Ansible role may own
+Mounts are not managed by Ansible in this packet yet. A later role may own
 present/absent for a machine. On the controller Mac that role already exists
 in the parent repo (`roles/macos_smb_public_mounts`, `finder_login` on
-`mac-dev`). This packet only records the paths.
+`mac-dev`).
+
+On the **work laptop**, use `helpers/work-mac-local-models/setup_shares.sh`
+to create the stable mount at `~/mnt/hvh-01-public`. If Finder already mounted
+the same share under `/Volumes`, the helper unmounts that duplicate first
+(macOS rejects a second mount). Deviation: `smb-stable-mount-hvh01`.
 
 ## Shares
 
@@ -68,10 +77,12 @@ child unless it is listed in `models-to-copy.list`.
 The work laptop owns one weight tree: `~/models`
 (`WORK_LAPTOP_LOCAL_MODELS`). The model list is
 `helpers/work-mac-local-models/models-to-copy.list`. Helpers only print
-commands. You run them. Copy is one-way `rsync -a` of each listed folder,
+commands. You run them. Copy is one-way `rsync -aP` of each listed folder
+(progress + partial resume; macOS bundled rsync rejects `--info=progress2`),
 same path under `~/models` as under the share `models/` folder. No
 `--delete`. It does not copy the rest of `models/` and does not delete
-files already on the Mac.
+files already on the Mac. Paste the printed two-line pair (red `#` comment,
+then the command). Do not join them onto one line.
 
 Import commands then point at files under `~/models`. The intended contract
 is one Mac copy, with each tool's import creating a registry entry or link

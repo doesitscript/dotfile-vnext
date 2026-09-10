@@ -12,5 +12,7 @@ PACKET_BOOTSTRAP_PLAYBOOK_RELATIVE="bootstrap/bootstrap-tooling.yaml"
 PACKET_MAIN_PLAYBOOK_RELATIVE="playbook.yaml"
 PACKET_INVENTORY_RELATIVE="inventory.yaml"
 PACKET_PUBLIC_BIN_RELATIVE=".local/bin"
+# Sync/documentation marker only. Bootstrap fail-gate is content in
+# roles/python/tasks/mac.yml (see deviation bootstrap-openssl-content-gate).
 PACKET_REVISION_RELATIVE=".packet-revision"
 PACKET_PYTHON_MAC_REVISION="openssl-skip-v2"

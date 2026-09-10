@@ -17,11 +17,15 @@ Use skill `work-laptop-packet-ops` to sync the work-laptop-ai-tools source packe
 
 Use skill work-laptop-model-runtime-import to pin Qwen3-4B as the Jan RAG chat model, then work-laptop-packet-ops to sync and push the packet and sibling.
 
-## 4. Add a controller download
+## 3b. Docker Model Runner (preferred; automation disabled)
 
-Use skill `work-laptop-model-public-download` to add <repo> <file.gguf> to `helpers/work-mac-local-models/models-to-copy.list`. The controller helper only echoes the download command. Do not run the download unless asked.
+Follow `DOCKER-MODEL-RUNNER.md` and `helpers/docker-model-runner/examples/redeploy-checklist.md`. Do not implement an Ansible DMR role until `work_laptop_docker_model_runner_automation` is commissioned. Do not extend the legacy public-share rsync helpers for new model work.
 
-## 5. Add a work-laptop import
+## 4. Add a controller download (legacy share path)
+
+Use skill `work-laptop-model-public-download` to add <repo> <file.gguf> to `helpers/work-mac-local-models/models-to-copy.list`. The controller helper only echoes the download command. Do not run the download unless asked. Prefer DMR for new work.
+
+## 5. Add a work-laptop import (legacy share path)
 
 Use skill `work-laptop-model-runtime-import` so the work-laptop helper echoes the copy and Ollama import commands for models already in `models-to-copy.list`. Point at `~/models`, not the share. Do not run those commands.
 

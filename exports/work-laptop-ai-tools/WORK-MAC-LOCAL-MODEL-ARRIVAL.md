@@ -1,8 +1,17 @@
 # Work Mac local model arrival
 
-Specific workflow for getting a model onto the work laptop to run locally.
-Use this whenever the job is "get a model onto the work Mac." Do not download
-the weight on the laptop as the primary path.
+> **Tentatively deprecated (2026-09-09).** Prefer
+> [`DOCKER-MODEL-RUNNER.md`](DOCKER-MODEL-RUNNER.md) (Docker Model Runner).
+> Public-share → rsync → `~/models` → Ollama/LM Studio import stays for
+> emergency/legacy only. Ansible for DMR is **disabled** until commissioned.
+> Findings saved under
+> `helpers/docker-model-runner/examples/save/`.
+
+Specific workflow for getting a model onto the work laptop to run locally
+**via the legacy share pipeline**. Use this only when explicitly continuing
+that path. Do not download the weight on the laptop as the primary path for
+new work — use DMR pulls instead.
+
 
 ## Stages
 
@@ -62,10 +71,12 @@ Mounts are not the same path. Do not copy path literals into this workflow.
 
 Run `helpers/work-mac-local-models/setup_shares.sh` to mount
 `\\HOM-LAB-HVH-01\public` at `~/mnt/hvh-01-public`; that is the fixed
-`WORK_LAPTOP_PUBLIC_FOLDER` used by the copy commands. Do not copy the
-controller path. The local root is recorded: `~/models`. Copy needs the share
-mount; import uses `~/models`. A later role may manage the mount and that local
-tree; this packet only records them.
+`WORK_LAPTOP_PUBLIC_FOLDER` used by the copy commands. If Finder already
+mounted the share under `/Volumes`, the helper unmounts that duplicate first
+(deviation `smb-stable-mount-hvh01`). Do not copy the controller path. The
+local root is recorded: `~/models`. Copy needs the share mount; import uses
+`~/models`. A later role may manage the mount and that local tree; this packet
+only records them.
 
 | Downloader | Public folder | Work-laptop copy |
 | --- | --- | --- |

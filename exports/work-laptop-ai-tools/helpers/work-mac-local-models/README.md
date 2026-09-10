@@ -1,5 +1,9 @@
 # Work-Mac local model commands
 
+> **Legacy / tentatively deprecated.** Prefer
+> `DOCKER-MODEL-RUNNER.md` and `helpers/docker-model-runner/examples/`.
+> These helpers still echo the public-share → rsync → import path.
+
 Echo-only helpers. They print the commands you run. They do not download,
 copy, or import. Ansible does not. They are not Continue-extension config.
 
@@ -12,7 +16,11 @@ from those same lines. Do not copy model lines into a script by hand.
 
 Each command is two lines. The red line is a `#` comment that explains
 the next command, parameter by parameter. The next line is the command.
-Paste both. The comments do not run. Hugging Face commands are green. Rsync explanations are cyan. The rsync line is always a command, not a comment.
+Paste both as separate lines. The comments do not run. Do not join the red
+explanation and the command onto one line. Hugging Face commands are green.
+The rsync line is always a plain command (`rsync -aP`), not a comment.
+Before copy on the work laptop, run `setup_shares.sh` so
+`WORK_LAPTOP_PUBLIC_FOLDER` (`~/mnt/hvh-01-public`) exists.
 Copying a `[]` path created a real directory named
 `[/Users/joshc/HomelabSMB/hvh-01-public]` under this folder.
 
@@ -29,9 +37,9 @@ controller Mac → public share models/<listed folder>
 | `continue-mac-local-controller.sh` | controller Mac | `echo:huggingface` |
 | `continue-mac-local-work-laptop.sh` | work laptop | `echo:copy`, `echo:ollama`, `echo:lmstudio`, `echo:confirm` |
 
-Copy is one `rsync -a` per listed folder, same path as the share. No
+Copy is one `rsync -aP` per listed folder, same path as the share. No
 `--delete`. It does not copy the rest of `models/` and does not clean the
-Mac. Fill `WORK_LAPTOP_PUBLIC_FOLDER` before you run a printed copy line.
+Mac. Run `setup_shares.sh` first so `WORK_LAPTOP_PUBLIC_FOLDER` is mounted.
 
 Another tool is another `print_echo_<tool>` over the same manifest, called
 from the matching script above `SECTION: next-cli`.

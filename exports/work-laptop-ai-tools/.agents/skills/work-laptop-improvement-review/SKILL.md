@@ -91,6 +91,9 @@ Treat as **inbound laptop feedback** when any of:
 
 Also read:
 
+- `inbox/` on the sibling (laptop desktop notes) — promote durable items into
+  `deviations/` / packet helpers; do not leave accepted accommodations only in
+  inbox prose
 - `deviations/register.yaml` + matching `deviations/entries/*.md`
 - `AGENTS.md`, `README.md` (Local Runtime Notes)
 - `.agents/skills/*/SKILL.md`

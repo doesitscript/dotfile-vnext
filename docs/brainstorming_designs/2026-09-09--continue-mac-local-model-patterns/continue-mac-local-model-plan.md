@@ -10,10 +10,13 @@ resource_selection_status: pending_research
 
 ## Intent and provenance
 
-First iteration is the **work laptop** only (MacBook Pro M3 Pro). This plan is
-for getting models onto that Mac and pointing Continue at local Ollama. It is
-not for installing or serving models on the controller Mac, except the
-controller download into the public share.
+First iteration is the **work laptop** only (MacBook Pro M3 Pro). **Preferred
+arrival (2026-09-09):** Docker Model Runner — see packet
+`DOCKER-MODEL-RUNNER.md` (Ansible automation disabled until commissioned).
+
+The public-share → rsync → Ollama path below is **legacy / tentatively
+deprecated**. Preserve for history; do not extend for new work.
+
 
 Do not use `ollama pull`. That path sets runtime/library behavior we are not
 using. The repeatable path is Hugging Face download on the controller, then

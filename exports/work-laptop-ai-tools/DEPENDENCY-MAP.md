@@ -37,4 +37,10 @@ HRL (library checkout; may be absent on a laptop session):
 1. Design in the packet (or parent roles). Sync into the sibling. Apply on the laptop.
 2. New MCP stays `absent` until `work-laptop-mcp-commission`.
 3. HRL and parent docs explain. They do not replace `host_vars/work-laptop.yaml` or `deviations/register.yaml`.
-4. A model for the work laptop follows `WORK-MAC-LOCAL-MODEL-ARRIVAL.md`: controller download to the public share, copy to `~/models`, then import on the laptop. A share copy is not installed. Share map: `helpers/share_topology.md`. Human commands: `helpers/work-mac-local-models/` (`share-paths.sh`). Jan.AI local RAG: role `jan_ide` and `JAN-AI-WORK-MAC-RAG.md` (`~/Documents/develop/homelab-reference-library`; chat model `Qwen/Qwen3-4B-GGUF` / `Qwen3-4B-Q4_K_M.gguf`).
+4. **Preferred local models on the work laptop:** Docker Model Runner —
+   `DOCKER-MODEL-RUNNER.md` and `helpers/docker-model-runner/examples/`.
+   Ansible automation is **disabled** (`work_laptop_docker_model_runner_automation: disabled`)
+   until explicitly commissioned. **Legacy:** `WORK-MAC-LOCAL-MODEL-ARRIVAL.md`
+   (controller download to public share → rsync → `~/models` → import). Do not
+   extend the share/rsync pipeline for new work. Jan.AI local RAG: role `jan_ide`
+   and `JAN-AI-WORK-MAC-RAG.md`.

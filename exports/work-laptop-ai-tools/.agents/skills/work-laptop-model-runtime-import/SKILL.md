@@ -1,9 +1,13 @@
 ---
 name: work-laptop-model-runtime-import
-description: "Use when the work-laptop helper should echo copy and import commands for models in models-to-copy.list. The script only prints. Add a tool section over that same list. Do not use for the controller download step, and do not treat a printed command as already run."
+description: "LEGACY share/rsync path. Prefer DOCKER-MODEL-RUNNER.md. Use only when echoing copy/import for models-to-copy.list. Script only prints. Do not extend for new work; DMR Ansible is disabled until commissioned."
 ---
 
-# Skill: Work-laptop model runtime import
+# Skill: Work-laptop model runtime import (legacy)
+
+> Prefer `DOCKER-MODEL-RUNNER.md` and
+> `helpers/docker-model-runner/examples/`. This skill maintains the deprecated
+> rsync → `~/models` → Ollama/LM Studio echo path.
 
 Write the work-laptop import lines. The human runs them on that Mac.
 
@@ -11,14 +15,16 @@ Write the work-laptop import lines. The human runs them on that Mac.
 
 Use when:
 
+- the user explicitly continues the **legacy** copy/import pipeline
 - a model is, or will be, copied to `~/models` and must be imported into a
-  runtime on the work laptop
-- the selected runtime is Ollama, LM Studio, or another local CLI
+  runtime on the work laptop via that path
 
 Do not use when:
 
+- new local-model work (use DMR examples / redeploy checklist)
 - the model still needs a controller download (`work-laptop-model-public-download`)
 - the user only asked which runtime to consider (HRL Mac candidate stubs)
+- implementing Ansible for DMR (automation disabled until commissioned)
 
 ## Files
 

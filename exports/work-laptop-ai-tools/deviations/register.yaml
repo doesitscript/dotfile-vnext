@@ -2,7 +2,7 @@
 # Accepted work-laptop deviations index.
 # schema_version bumps when field names change.
 schema_version: 1
-updated_at: "2026-09-04"
+updated_at: "2026-09-09"
 notes: >
   Inbound laptop corrections must land here (or update an existing id) so
   accommodations survive reinstall and generalize across behavior_group peers.
@@ -126,3 +126,28 @@ deviations:
     reapply: "playbook --tags cline; providers.json still deployed"
     generalize_to:
       - "Other VS Code settings.json merge tasks"
+
+  - id: smb-stable-mount-hvh01
+    status: promoted
+    behavior_group: smb-share-mount
+    title: Stable HVH-01 public mount at ~/mnt/hvh-01-public (unmount Finder first)
+    entry: entries/smb-stable-mount-hvh01.md
+    inbound_sources:
+      - "inbox/noted_diffs.md 2026-09-09 Finder /Volumes vs ~/mnt collision"
+      - "sibling-only setup_shares.sh promoted into packet helpers"
+    reapply: "helpers/work-mac-local-models/setup_shares.sh; test -d ~/mnt/hvh-01-public/models"
+    generalize_to:
+      - "Any work-laptop SMB mount that competes with Finder /Volumes"
+      - "Future packet Ansible mount role (encode unmount-then-stable-path)"
+
+  - id: bootstrap-openssl-content-gate
+    status: promoted
+    behavior_group: bootstrap-preflight
+    title: Bootstrap OpenSSL-skip gate via python mac.yml content (not only .packet-revision)
+    entry: entries/bootstrap-openssl-content-gate.md
+    inbound_sources:
+      - "Sibling bootstrap softened revision-file fail; parent packet matches"
+      - "Stale community.general.homebrew openssl task must never run"
+    reapply: "bootstrap/bootstrap-macos-ansible.sh; expect Report existing OpenSSL task"
+    generalize_to:
+      - "Other bootstrap preflights that can drift when sync is partial"

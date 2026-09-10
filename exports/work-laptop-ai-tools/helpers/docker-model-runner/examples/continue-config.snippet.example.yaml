@@ -1,0 +1,39 @@
+# Example Continue snippet — Docker Model Runner (OpenAI-compatible)
+#
+# Merge conceptually into ~/.continue/config.yaml models: list.
+# Packet Ansible continue_ide role does NOT write this block yet.
+# When automation is commissioned, prefer a marked managed block similar to
+# continue-ollama-local, or migrate that block's roles onto DMR.
+#
+# apiBase: host Desktop DMR gateway (typical). Confirm with:
+#   curl -s http://127.0.0.1:12434/engines/v1/models
+#
+# model: must match an id from `docker model list` / the /models response.
+# Values below are provisional_example only.
+
+models:
+  - name: "Chat Qwen2.5 Coder (local DMR)"
+    provider: "openai"
+    apiBase: "http://127.0.0.1:12434/engines/v1"
+    model: "ai/qwen2.5-coder:7B-Instruct-Q4_K_M"
+    apiKey: "local"
+    roles:
+      - chat
+      - edit
+      - apply
+    defaultCompletionOptions:
+      contextLength: 8192
+      maxTokens: 2048
+      temperature: 0.2
+
+  - name: "Autocomplete Qwen2.5 Coder small (local DMR)"
+    provider: "openai"
+    apiBase: "http://127.0.0.1:12434/engines/v1"
+    model: "ai/qwen2.5-coder:1.5B-Q8_0"
+    apiKey: "local"
+    roles:
+      - autocomplete
+
+# Role intent preserved from host_vars continue_ide_ollama_local_models:
+# autocomplete (1.5B/3B), embed (nomic), edit+apply (7B instruct).
+# Remap tags to real DMR ids before enabling autocomplete on the work Mac.

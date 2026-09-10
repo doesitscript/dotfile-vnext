@@ -1,9 +1,12 @@
 ---
 name: work-laptop-model-public-download
-description: "Use when adding a model to the work-Mac helper manifest so the controller helper echoes a Hugging Face download command. The script only prints. Do not hand-write echo lines, and do not run the download unless the user asks."
+description: "LEGACY share/rsync path. Prefer DOCKER-MODEL-RUNNER.md. Use only when adding a model to models-to-copy.list so the controller helper echoes a Hugging Face download. Script only prints. Do not extend this pipeline for new work; DMR Ansible is disabled until commissioned."
 ---
 
-# Skill: Work-laptop model public download
+# Skill: Work-laptop model public download (legacy)
+
+> Prefer `DOCKER-MODEL-RUNNER.md`. This skill maintains the deprecated
+> public-share download echo path.
 
 Write the controller-Mac download lines. The human runs them later on mac-dev.
 
@@ -11,13 +14,15 @@ Write the controller-Mac download lines. The human runs them later on mac-dev.
 
 Use when:
 
-- the user wants a model downloaded to the public folder for the work Mac
-- adding another downloader besides Hugging Face CLI
+- the user explicitly continues the **legacy** share → rsync pipeline
+- adding another downloader besides Hugging Face CLI on that legacy path
 
 Do not use when:
 
+- new local-model work on the work Mac (use DMR docs / examples instead)
 - the next step is import into Ollama or LM Studio (`work-laptop-model-runtime-import`)
 - the user asked to run the download now (add the manifest line first; run the printed command only if they say so)
+- implementing Ansible for DMR (automation disabled until commissioned)
 
 ## Files
 

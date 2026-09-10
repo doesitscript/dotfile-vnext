@@ -1,0 +1,35 @@
+# Example only — Docker Compose models + DMR
+#
+# Prerequisites: Docker Desktop with Model Runner enabled; Compose ≥ 2.38.
+# Model OCI ids below are provisional_example — replace with ids from
+# `docker model list` / Hub after research. Do not treat as selected inventory.
+#
+# Idempotent intent for a future role:
+# - `docker compose up` / pull when present should converge without destructive
+#   recreate of unrelated services
+# - re-running pull for an already-cached model should be a no-op or fast cache hit
+#
+# Status: example / disabled automation. Not applied by the packet playbook.
+
+services:
+  # Optional consumer stub — shows long-syntax model wiring.
+  # Remove or replace when a real local app needs the endpoint vars.
+  continue-dmr-probe:
+    image: curlimages/curl:8.11.1
+    profiles: ["probe"]
+    entrypoint: ["sh", "-c", "echo AI_API_URL=$$AI_API_URL AI_MODEL=$$AI_MODEL && curl -sf $$AI_API_URL/models | head -c 500"]
+    models:
+      coder_chat:
+        endpoint_var: AI_API_URL
+        model_var: AI_MODEL
+
+models:
+  # provisional_example — swap for the work-laptop selected DMR artifact
+  coder_chat:
+    model: ai/qwen2.5-coder:7B-Instruct-Q4_K_M
+    context_size: 8192
+
+  # provisional_example — embeddings often need a dedicated model + flags
+  embed_text:
+    model: ai/nomic-embed-text-v1.5
+    context_size: 2048

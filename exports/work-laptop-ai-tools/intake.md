@@ -13,6 +13,9 @@ Inbound from the work-laptop sibling. Processed by
 | Cline skip JSONC VS Code settings merge | `roles/cline_ide` jq gate |
 | Firecrawl respect `npm prefix -g` | `roles/mcp_servers/firecrawl` mac tasks |
 | Kilo/Cline managed config must merge/convert (not blind overwrite) | `kilo_ide_apply_mode: merge`, `cline_ide_providers_merge`, deviation `managed-ide-config-merge` |
+| Stable HVH-01 SMB mount (Finder `/Volumes` collision) | `helpers/work-mac-local-models/setup_shares.sh` + deviation `smb-stable-mount-hvh01` (legacy share path) |
+| Bootstrap OpenSSL-skip preflight via task content | `bootstrap/bootstrap-macos-ansible.sh` + deviation `bootstrap-openssl-content-gate` |
+| Prefer DMR over share/rsync for local models | `DOCKER-MODEL-RUNNER.md`; automation `disabled` until commissioned |
 
 See `deviations/register.yaml` for accepted long-term accommodations.
 
