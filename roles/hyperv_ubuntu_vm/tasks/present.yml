@@ -108,12 +108,104 @@
     path: "{{ hyperv_ubuntu_vm_host_vm_dir }}"
     state: directory
 
+- name: Check shared cache for existing Ubuntu cloud image archive
+  when: hyperv_ubuntu_vm_shared_cache_enabled | default(false)
+  block:
+    - name: Probe shared cache for Ubuntu cloud image archive
+      ansible.windows.win_stat:
+        path: "{{ hyperv_ubuntu_vm_shared_cache_cloud_images }}\\{{ hyperv_ubuntu_vm_cloud_image_filename }}"
+      register: _hyperv_ubuntu_vm_shared_cache_archive_stat
+
+    - name: Copy cloud image archive from shared cache to VM directory when available
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $Ansible.Changed = $false
+          $sharedArchive = '{{ hyperv_ubuntu_vm_shared_cache_cloud_images }}\{{ hyperv_ubuntu_vm_cloud_image_filename }}'
+          $destArchive = '{{ hyperv_ubuntu_vm_host_archive_path }}'
+          
+          if (-not (Test-Path $sharedArchive)) {
+            $Ansible.Result = @{
+              shared_cache_used = $false
+              reason = 'Archive not found in shared cache'
+              shared_path = $sharedArchive
+            }
+            Exit 0
+          }
+          
+          if (Test-Path $destArchive) {
+            $Ansible.Result = @{
+              shared_cache_used = $false
+              reason = 'Archive already exists at destination'
+              dest_path = $destArchive
+            }
+            Exit 0
+          }
+          
+          Copy-Item -LiteralPath $sharedArchive -Destination $destArchive -Force -ErrorAction Stop
+          $Ansible.Changed = $true
+          $Ansible.Result = @{
+            shared_cache_used = $true
+            copied_from = $sharedArchive
+            copied_to = $destArchive
+            size_mb = [math]::Round((Get-Item $destArchive).Length / 1MB, 2)
+          }
+      register: _hyperv_ubuntu_vm_shared_cache_archive_copy
+      when: _hyperv_ubuntu_vm_shared_cache_archive_stat.stat.exists | default(false)
+
 - name: Download Ubuntu Azure VHD archive to Windows host
   ansible.windows.win_get_url:
     url: "{{ hyperv_ubuntu_vm_cloud_image_url }}"
     dest: "{{ hyperv_ubuntu_vm_host_archive_path }}"
     force: false
     url_timeout: "{{ hyperv_ubuntu_vm_download_timeout }}"
+  register: _hyperv_ubuntu_vm_download_archive
+  when: >-
+    not (
+      hyperv_ubuntu_vm_shared_cache_enabled | default(false)
+      and (_hyperv_ubuntu_vm_shared_cache_archive_copy.result.shared_cache_used | default(false))
+    )
+
+- name: Copy downloaded archive to shared cache for future VMs
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $sourceArchive = '{{ hyperv_ubuntu_vm_host_archive_path }}'
+      $sharedCacheDir = '{{ hyperv_ubuntu_vm_shared_cache_cloud_images }}'
+      $destArchive = "$sharedCacheDir\{{ hyperv_ubuntu_vm_cloud_image_filename }}"
+      
+      if (-not (Test-Path $sourceArchive)) {
+        $Ansible.Result = @{
+          copied_to_cache = $false
+          reason = 'Source archive not found'
+        }
+        Exit 0
+      }
+      
+      if (Test-Path $destArchive) {
+        $Ansible.Result = @{
+          copied_to_cache = $false
+          reason = 'Archive already exists in shared cache'
+        }
+        Exit 0
+      }
+      
+      if (-not (Test-Path $sharedCacheDir)) {
+        New-Item -ItemType Directory -Path $sharedCacheDir -Force -ErrorAction Stop | Out-Null
+      }
+      
+      Copy-Item -LiteralPath $sourceArchive -Destination $destArchive -Force -ErrorAction Stop
+      $Ansible.Changed = $true
+      $Ansible.Result = @{
+        copied_to_cache = $true
+        source = $sourceArchive
+        destination = $destArchive
+        size_mb = [math]::Round((Get-Item $destArchive).Length / 1MB, 2)
+      }
+  when: >-
+    hyperv_ubuntu_vm_shared_cache_enabled | default(false)
+    and (_hyperv_ubuntu_vm_download_archive.changed | default(false))
 
 - name: Extract Ubuntu Azure VHD source on Windows host when absent
   ansible.windows.win_powershell:
