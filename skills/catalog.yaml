@@ -1085,10 +1085,10 @@ skills:
   litellm-cursor-traffic-analyzer:
     name: litellm-cursor-traffic-analyzer
     description: "Use when Cursor Agent traffic through the homelab LiteLLM gateway needs diagnosis or\
-      \ measurement \u2014 context overflow, mid-stream Internal Server Error, lost chat context after\
-      \ trim, or questions about what Cursor sends vs what LiteLLM can report. Use for Ornith tool-tax\
-      \ analysis, trim_messages hook evidence, or routing to capture/tune sub-workflows. Do not use for\
-      \ DNS reachability of litellm.hom.lab alone or for generic LiteLLM vendor-doc collection."
+      \ measurement — Request Inspector logs, tool-schema tax, mid-stream errors, or questions about what\
+      \ Cursor sends vs what LiteLLM can report. Do not diagnose live issues as missing trim_messages\
+      \ (mutate trim archived 2026-07; trim narrative outdated 2026-09-09). For weak 32B coding quality,\
+      \ prefer 5090 untuned→tuned model docs. Do not use for DNS reachability of litellm.hom.lab alone."
     path: validation/litellm-cursor-traffic-analyzer/SKILL.md
     scope: project
     category: validation
@@ -1192,20 +1192,21 @@ skills:
       cursor_skill_name: analyze-litellm-observable-surfaces
   tune-litellm-context-safety-net:
     name: tune-litellm-context-safety-net
-    description: "Use when changing the LiteLLM pre-call trim_messages safety net or context-window fallbacks\
-      \ for Cursor on the local 32k vLLM path \u2014 max input budget, safety tokens, min completion,\
-      \ min messages, OpenAI vault key fallbacks, or redeploying the callback ConfigMap. Do not use for\
-      \ tools[] capture-only work or for DNS/service reachability."
+    description: "Use when changing LiteLLM Request Inspector thresholds or context-window fallbacks\
+      \ for Cursor on the local 32k vLLM path — max_window, warn percentages, dump-on-warn, OpenAI vault\
+      \ key fallbacks, or redeploying the callback ConfigMap. The former trim_messages mutate path is\
+      \ archived (2026-07); do not treat mutate trim as live. Do not use for tools[] capture-only work\
+      \ or for DNS/service reachability."
     path: implementation/tune-litellm-context-safety-net/SKILL.md
     scope: project
     category: implementation
-    purpose: Change and redeploy LiteLLM trim/fallback drivers with verify evidence
+    purpose: Change and redeploy LiteLLM Request Inspector / fallback drivers with verify evidence
     status: reviewed
     triggers:
-    - raise litellm min completion tokens
+    - raise litellm request inspector warn thresholds
     - enable openai context window fallback
-    - redeploy litellm trim_messages callback
-    - tune the ornith context safety net
+    - redeploy litellm request inspector callback
+    - tune the ornith context observability net
     do_not_use_when:
     - only tools payload capture is requested
     - only dns or http reachability is requested

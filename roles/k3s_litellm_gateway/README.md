@@ -172,9 +172,12 @@ The former pre-call **mutate** safety net (`trim_messages` + hard-cut, gated by
 `roles/k3s_litellm_gateway/archive/trim-messages-callback-2026-07/`
 
 That archive README documents the old `*_trim_messages_*` Ansible vars and how
-to revive mutate in an emergency. Historical overflow / mid-stream evidence that
-drove those drivers remains in
+to revive mutate in an emergency. Historical overflow notes that drove those
+drivers were **dated outdated 2026-09-09** and moved to
+`docs/diagnostics/archive/litellm-context-window--k3s--diagnostics--outdated-2026-09-09.md`.
+Current stub (points at 5090 untuned→tuned model truth):
 `docs/diagnostics/litellm-context-window--k3s--diagnostics.md`.
+**Do not diagnose live 32B issues as “missing trim.”**
 
 ### Operator notes
 

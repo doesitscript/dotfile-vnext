@@ -1,6 +1,6 @@
 ---
 name: litellm-cursor-traffic-analyzer
-description: "Use when Cursor Agent traffic through the homelab LiteLLM gateway needs diagnosis or measurement — context overflow, mid-stream Internal Server Error, lost chat context after trim, or questions about what Cursor sends vs what LiteLLM can report. Use for Ornith tool-tax analysis, trim_messages hook evidence, or routing to capture/tune sub-workflows. Do not use for DNS reachability of litellm.hom.lab alone or for generic LiteLLM vendor-doc collection."
+description: "Use when Cursor Agent traffic through the homelab LiteLLM gateway needs diagnosis or measurement — Request Inspector logs, tool-schema tax, mid-stream errors, or questions about what Cursor sends vs what LiteLLM can report. Do not diagnose live issues as missing trim_messages (mutate trim archived 2026-07; trim narrative outdated 2026-09-09). For weak 32B coding quality, prefer 5090 untuned→tuned model docs. Do not use for DNS reachability of litellm.hom.lab alone."
 license: MIT
 version: "0.1.0"
 author: "dotfile-vnext"

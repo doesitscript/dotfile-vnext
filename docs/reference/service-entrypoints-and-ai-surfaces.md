@@ -84,25 +84,15 @@ ansible-playbook playbooks/deploy_ai_inference_stack.yaml -i inventory/inventory
 Important:
 - `deepreinforce-ai/Ornith-1.0-35B-GGUF` is the client-facing LiteLLM lane alias, not the literal upstream vLLM weights identifier.
 - The current primary local backend for that lane is `Qwen/Qwen2.5-Coder-32B-Instruct-AWQ`, with vLLM tool calling enabled through the `hermes` parser.
-- Context-overflow handling is owned by LiteLLM:
-  - **Driving error (homelab):** Cursor Agent → Ornith returned
-    `ContextWindowExceededError` / `Hosted_vllmException` with
-    `maximum context length is 32768` / `input_tokens=32769` and
-    “requested 0 output tokens”; `Available Model Group Fallbacks=None`.
-    A trim budget of ~30000 still failed (`after≈29993` in hook logs vs vLLM
-    32769) because of tokenizer skew, Agent `tools` schemas, and
-    `max_tokens: 0`. Full write-up:
-    `docs/diagnostics/litellm-context-window--k3s--diagnostics.md` and
-    `roles/k3s_litellm_gateway/README.md` § Error that drove these custom values.
-  - **Local trim hook (default):** server-tuned drivers in
-    `roles/k3s_litellm_gateway/defaults/main.yml` — budget **24000**, safety
-    **2048**, rewrite `max_tokens: 0` → **256**, subtract estimated `tools`
-    size, multimodal hard-cut (**2.5** chars/token), then rollout restart
-    (subPath remount; wait **600s**). See role README § Server-tuned trim
-    drivers.
-  - **Cloud fallback:** with OpenAI configured, oversize requests can also fall
-    back toward `gpt-4o-mini`; without OpenAI, local aliases share the same 32k
-    vLLM context so there is no larger local overflow path.
+- **5090 lane health is model tuning, not LiteLLM trim.** The weak “almost full GPU / weak coding” era was an **untuned** 14B-at-32k placement; the live fix is **32B AWQ + fp8 KV** at the same 32k window. See
+  `docs/plans/2026-09-01--homelab-local-ai-clients-cursor-kilo/diagrams/5090-vram-tuning-before-after.md`.
+- LiteLLM **does not mutate/trim** requests on the live path. Request Inspector is **observe-only**. The old `trim_messages` mutate safety net is archived under
+  `roles/k3s_litellm_gateway/archive/trim-messages-callback-2026-07/`. Historical trim notes (dated outdated 2026-09-09):
+  `docs/diagnostics/archive/litellm-context-window--k3s--diagnostics--outdated-2026-09-09.md`.
+  Current stub: `docs/diagnostics/litellm-context-window--k3s--diagnostics.md`.
+- **Cloud fallback:** with OpenAI configured, oversize requests can also fall
+  back toward `gpt-4o-mini`; without OpenAI, local aliases share the same 32k
+  vLLM context so there is no larger local overflow path.
 - `smart-router` is the LiteLLM complexity auto-router alias (`auto_router/complexity_router`, LiteLLM >= v1.94.x). It classifies SIMPLE/MEDIUM/COMPLEX/REASONING before the call (not confidence handoff). SIMPLE uses `code-review` (vLLM alias); MEDIUM uses Ornith; COMPLEX/REASONING escalate to Claude or `gpt-4o` when provider keys exist.
 - `code-review` is a client-facing alias on `vllm-primary` (same Qwen2.5-Coder-32B AWQ backend as Ornith). Desktop Ollama is also published through LiteLLM for explicit, separate coding lanes; it is not an automatic fallback group.
 

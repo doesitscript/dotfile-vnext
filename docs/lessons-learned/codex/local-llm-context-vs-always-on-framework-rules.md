@@ -11,7 +11,12 @@ Local Ornith via LiteLLM is ~32k context. Cursor Agent was injecting:
 1. ~26k Cursor builtin tool schemas (Task, Shell, …) — product client tax
 2. ~45k `alwaysApply: true` framework rules — repo-controlled tax
 
-That combination cannot fit; LiteLLM trim then drops chat → amnesia / errors.
+That combination cannot fit. **Do not diagnose this as “turn trim back on.”**
+Live LiteLLM does **not** mutate/trim (Request Inspector is observe-only;
+`trim_messages` archived 2026-07). Client-side always-on rule demotion is the
+repo fix for the framework tax. Separately, 5090 coding quality required
+**untuned 14B → tuned 32B AWQ + fp8 KV**, not a trim safety net — see
+`docs/plans/2026-09-01--homelab-local-ai-clients-cursor-kilo/diagrams/5090-vram-tuning-before-after.md`.
 
 ## Constraint
 
@@ -37,6 +42,8 @@ Hard split (optional later): open Ornith sessions in a boot-only workspace copy.
 
 ## Related
 
-- `docs/diagnostics/litellm-context-window--k3s--diagnostics.md`
+- `docs/diagnostics/litellm-context-window--k3s--diagnostics.md` (current stub;
+  trim narrative archived outdated-2026-09-09)
 - `.cursor/rules/framework-context-budget.mdc`
 - Skills: `litellm-cursor-traffic-analyzer`, `tune-litellm-context-safety-net`
+  (inspector thresholds / fallbacks — **not** mutate trim)

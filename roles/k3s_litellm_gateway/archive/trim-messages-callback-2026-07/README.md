@@ -21,11 +21,15 @@ The mutate half is intentionally **out of the live path**.
 ## Why it existed
 
 Local Ornith / vLLM primary is ~32k context. Cursor Agent injects large
-builtin `tools[]` schemas (~26k tokens observed). Without trim, LiteLLM/vLLM
-hit `ContextWindowExceededError` or mid-stream `finish_reason=length`
-(Cursor Internal Server Error). See:
+builtin `tools[]` schemas. In 2026-07 the mutate path tried to paper over
+overflows. **That approach is retired.** Live path is observe-only Request
+Inspector. The durable coding fix on the 5090 was **model tuning** (14B
+untuned → 32B AWQ + fp8 KV), not continuing to trim. See:
 
-- `docs/diagnostics/litellm-context-window--k3s--diagnostics.md`
+- Current stub: `docs/diagnostics/litellm-context-window--k3s--diagnostics.md`
+- Outdated trim narrative (archived 2026-09-09):
+  `docs/diagnostics/archive/litellm-context-window--k3s--diagnostics--outdated-2026-09-09.md`
+- `docs/plans/2026-09-01--homelab-local-ai-clients-cursor-kilo/diagrams/5090-vram-tuning-before-after.md`
 - `docs/lessons-learned/codex/local-llm-context-vs-always-on-framework-rules.md`
 
 ## Former live Ansible / inventory names

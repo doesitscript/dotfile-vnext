@@ -4,7 +4,7 @@
 
 | Surface | What it reports | How to reach |
 | --- | --- | --- |
-| `CustomLogger.async_pre_call_hook` | Request `data` before backend: messages, `tools`, `max_tokens`; trim + tools dump | Mounted `custom_callbacks.py`; stdout + `/tmp/litellm-tools-capture/` |
+| `CustomLogger` Request Inspector | Observe-only context/tools warnings (no mutate trim); optional tools dump | Mounted `custom_callbacks.py`; stdout `litellm request_inspector` + `/tmp/litellm-tools-capture/` |
 | LiteLLM pod stdout | Hook lines, proxy errors, Hosted_vllmException text | `kubectl -n litellm logs -l app.kubernetes.io/name=litellm` via Ansible on `hom-lab-ctl-k3s-02` |
 | Pod `/tmp/litellm-tools-capture/` | Full `tools[]`, Task/Shell JSON, summary splits | `capture-litellm-tools-payload` collect script |
 | Langfuse success callback | Post-call traces/generations when enabled | `k3s_litellm_gateway_langfuse_*` → Langfuse UI/API |
@@ -21,4 +21,4 @@
 
 - `roles/k3s_litellm_gateway/templates/custom_callbacks.py.j2`
 - `roles/k3s_litellm_gateway/defaults/main.yml`
-- `docs/diagnostics/litellm-context-window--k3s--diagnostics.md`
+- `docs/diagnostics/litellm-context-window--k3s--diagnostics.md (stub; trim narrative archived outdated-2026-09-09)`
