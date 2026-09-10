@@ -119,10 +119,14 @@ resource "aws_kms_alias" "example" { ... }
 
 Machine copy: [`../results/conversation-kms-hardcode-continue-agent.json`](../results/conversation-kms-hardcode-continue-agent.json)
 
-## Lite-eval (secondary, same model)
+## Controlled lite eval (secondary)
 
-[`../lite-eval-qwen25-coder-32b-continue/results/summary.json`](../lite-eval-qwen25-coder-32b-continue/results/summary.json) —
-E1 fail; E2–E4 pass with locals in prompt. Does **not** clear Agent.
+LiteLLM chat suite **E1–E10** (`lite-eval-qwen25-coder-32b-continue/`):
+
+- Latest run `2026-09-10T07:35:06Z`: **9/10 PASS**, suite **FAIL**
+- **E1 FAIL** only (date invent); E2–E10 PASS with structured prompts
+- Full responses: `lite-eval-…/results/raw/<case>.txt`
+- Does **not** clear Agent (see conversation source above)
 
 ## Re-open condition
 

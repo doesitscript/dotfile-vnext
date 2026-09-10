@@ -1,0 +1,16 @@
+Here is a Terraform module call. Hard-code every argument that uses local.* into literals. Keep data.* unchanged. Do NOT invent AWS account IDs, IAM users, or placeholder aliases. If a literal value is unknown, use an empty list [] or the string UNKNOWN.
+
+
+module "zic_deployment_cmk" {
+  source = "../../components/terraform/zic-deployment-cmk"
+  deployment_account_id  = data.aws_caller_identity.current.account_id
+  zic_role_arn           = data.aws_iam_role.zic.arn
+  key_description        = local.config.kms.description
+  key_alias              = "alias/${local.config.kms.alias_name}"
+  key_administrator_arns = local.config.kms.key_administrator_arns
+  key_user_arns          = local.config.kms.key_user_arns
+  grant_account_ids      = local.config.kms.grant_account_ids
+  tags                   = local.config.kms.tags
+}
+
+Return only the module block.

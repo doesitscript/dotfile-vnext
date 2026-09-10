@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | Date | 2026-09-10 |
-| Suite kind | **lite** (E1–E4 subset) |
+| Suite kind | **lite** (E1–E10) |
 | Model | `qwen2.5-coder-32b@k3s02-vllm` |
 | Client label | Continue (`-continue` folder suffix only) |
 | Gateway | `http://litellm.hom.lab:30400` |
@@ -16,13 +16,23 @@
 
 ## Case outcome (this run)
 
+Latest: `2026-09-10T07:35:06Z` — **9/10**, suite **fail** (E1 only).
+
 | Case | Pass |
 | --- | --- |
 | E1_date_exact | false |
 | E2_hardcode_grounded | true |
 | E3_invent_admit | true |
 | E4_scope_no_extra_resource | true |
+| E5_thin_context_no_invent | true |
+| E6_keep_data_refs | true |
+| E7_empty_arns_stay_empty | true |
+| E8_tags_from_locals | true |
+| E9_no_duplicate_kms_resources | true |
+| E10_invent_admit_tags | true |
 | **suite_pass** | **false** |
+
+Full responses: `../lite-eval-qwen25-coder-32b-continue/results/raw/`.
 
 ## Note
 
