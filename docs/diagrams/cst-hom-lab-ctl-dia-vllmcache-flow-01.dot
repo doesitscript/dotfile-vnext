@@ -1,0 +1,139 @@
+digraph "vLLM weights: Hub to disk to GPU (hom-lab-ctl-k3s-02)" {
+	graph [bb="0,0,537.5,1678",
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="vLLM weights: Hub to disk to GPU (hom-lab-ctl-k3s-02)",
+		labelloc=t,
+		lheight=0.19,
+		lp="268.75,1667",
+		lwidth=5.01,
+		nodesep=1.2,
+		pad=0.6,
+		rankdir=TB,
+		ranksep=0.9,
+		splines=ortho
+	];
+	node [fixedsize=true,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		height=1.4,
+		imagescale=true,
+		label="\N",
+		labelloc=b,
+		shape=box,
+		style=rounded,
+		width=1.4
+	];
+	edge [color="#7B8894"];
+	b428b5ae178245bbb033309a25c72fb1	[height=2.3056,
+		image="assets/onprem/network/internet.png",
+		label="Hugging Face Hub
+Qwen2.5-Coder-32B-AWQ",
+		pos="180.5,1573",
+		shape=none,
+		width=1.4028];
+	d849ff14d23b410e90a6a0b47b06a1cb	[height=2.3056,
+		image="assets/k8s/compute/pod.png",
+		label="vLLM pod
+vllm-primary",
+		pos="180.5,1313",
+		shape=none,
+		width=1.4028];
+	b428b5ae178245bbb033309a25c72fb1 -> d849ff14d23b410e90a6a0b47b06a1cb	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="  1. pod pulls weights on start
+  19 GB for this model",
+		lp="280,1443",
+		pos="e,180.5,1396.3 180.5,1489.7 180.5,1489.7 180.5,1406.3 180.5,1406.3"];
+	fb5b345877844aeaae5380c4b42ffb57	[height=2.3056,
+		image="assets/k8s/storage/pvc.png",
+		label="PVC vllm-primary-hf-cache
+requests 120Gi",
+		pos="180.5,1067",
+		shape=none,
+		width=1.4028];
+	d849ff14d23b410e90a6a0b47b06a1cb -> fb5b345877844aeaae5380c4b42ffb57	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="  2. writes /root/.cache/huggingface",
+		lp="299.5,1190",
+		pos="e,180.5,1150.2 180.5,1229.7 180.5,1229.7 180.5,1160.2 180.5,1160.2"];
+	"74ef6e04e945460b8973f6b57cfef900"	[height=2.3056,
+		image="assets/k8s/storage/sc.png",
+		label="StorageClass local-path
+K3s default",
+		pos="180.5,821",
+		shape=none,
+		width=1.4028];
+	fb5b345877844aeaae5380c4b42ffb57 -> "74ef6e04e945460b8973f6b57cfef900"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="  3. bound to",
+		lp="223.5,944",
+		pos="e,180.5,904.2 180.5,983.72 180.5,983.72 180.5,914.2 180.5,914.2"];
+	"356ce458b7d8491490194525b361aeb8"	[height=2.3056,
+		image="assets/k8s/storage/vol.png",
+		label="PV is a plain directory
+/var/lib/rancher/k3s/storage",
+		pos="180.5,575",
+		shape=none,
+		width=1.4028];
+	"74ef6e04e945460b8973f6b57cfef900" -> "356ce458b7d8491490194525b361aeb8"	[color=firebrick,
+		dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="  4. makes a folder, sets no size limit",
+		lp="303.5,698",
+		pos="e,180.5,658.2 180.5,737.72 180.5,737.72 180.5,668.2 180.5,668.2"];
+	"7904010f3e084bbaba2c090b8789989d"	[height=2.3056,
+		image="assets/generic/storage/storage.png",
+		label="Guest disk /dev/root ext4
+77G total, 13G free",
+		pos="50.5,329",
+		shape=none,
+		width=1.4028];
+	"356ce458b7d8491490194525b361aeb8" -> "7904010f3e084bbaba2c090b8789989d"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="  5. consumes real blocks",
+		lp="135.5,452",
+		pos="e,101.13,329 180.5,491.72 180.5,420.35 180.5,329 180.5,329 180.5,329 111.13,329 111.13,329"];
+	"570948308faa4ce7bb3c92875a0e567f"	[height=2.3056,
+		image="assets/programming/flowchart/internal-storage.png",
+		label="GPU VRAM
+RTX 5090",
+		pos="311.5,329",
+		shape=none,
+		width=1.4028];
+	"356ce458b7d8491490194525b361aeb8" -> "570948308faa4ce7bb3c92875a0e567f"	[color=darkgreen,
+		dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="  7. read into VRAM at model load",
+		lp="424.5,452",
+		pos="e,311.5,412.28 231.15,575 268.01,575 311.5,575 311.5,575 311.5,575 311.5,422.28 311.5,422.28",
+		style=dashed];
+	f58375c2a68c46448e129f082dd67d8b	[height=2.3056,
+		image="assets/generic/os/windows.png",
+		label="HOM-LAB-HVH-02
+Fixed VHDX 80GB on D:",
+		pos="50.5,83",
+		shape=none,
+		width=1.4028];
+	"7904010f3e084bbaba2c090b8789989d" -> f58375c2a68c46448e129f082dd67d8b	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="  6. backed by",
+		lp="97.5,206",
+		pos="e,50.5,166.2 50.5,245.72 50.5,245.72 50.5,176.2 50.5,176.2"];
+}

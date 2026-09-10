@@ -1,0 +1,228 @@
+digraph "PVCs claim 320Gi on a 77G disk: local-path never checks" {
+	graph [bb="0,0,872,1351",
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="PVCs claim 320Gi on a 77G disk: local-path never checks",
+		labelloc=t,
+		lheight=0.19,
+		lp="436,1340",
+		lwidth=5.26,
+		nodesep=0.9,
+		pad=0.6,
+		rankdir=TB,
+		ranksep=1.5,
+		splines=ortho
+	];
+	node [fixedsize=true,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		height=1.4,
+		imagescale=true,
+		label="\N",
+		labelloc=b,
+		shape=box,
+		style=rounded,
+		width=1.4
+	];
+	edge [color="#7B8894"];
+	subgraph "cluster_What Kubernetes was asked for: 320Gi" {
+		graph [bb="192,1118,476,1321",
+			bgcolor="#E5F5FD",
+			fontname="Sans-Serif",
+			fontsize=12,
+			label="What Kubernetes was asked for: 320Gi",
+			labeljust=l,
+			lheight=0.18,
+			lp="316,1310.5",
+			lwidth=3.22,
+			pencolor="#AEB6BE",
+			rankdir=LR,
+			shape=box,
+			style=rounded
+		];
+		d99fd531a6754ae8b769bb752fa73d04	[height=2.3056,
+			image="assets/k8s/storage/pvc.png",
+			label="vllm-primary-hf-cache
+requests 120Gi",
+			pos="251,1209",
+			shape=none,
+			width=1.4028];
+		"96c24509574b40788308dec11a9c7157"	[height=2.3056,
+			image="assets/k8s/storage/pvc.png",
+			label="comfyui-models
+requests 200Gi",
+			pos="417,1209",
+			shape=none,
+			width=1.4028];
+	}
+	subgraph "cluster_What is really on that 77G disk today" {
+		graph [bb="8,267,624,470",
+			bgcolor="#E5F5FD",
+			fontname="Sans-Serif",
+			fontsize=12,
+			label="What is really on that 77G disk today",
+			labeljust=l,
+			lheight=0.18,
+			lp="126,459.5",
+			lwidth=3.06,
+			pencolor="#AEB6BE",
+			rankdir=LR,
+			shape=box,
+			style=rounded
+		];
+		ae97d4661a294d8cb88c0c8d8fd92145	[height=2.3056,
+			image="assets/programming/flowchart/stored-data.png",
+			label="containerd images
+33 G",
+			pos="67,358",
+			shape=none,
+			width=1.4028];
+		"36ebe0a52c114fa9a1f71de3bce00b78"	[height=2.3056,
+			image="assets/programming/flowchart/stored-data.png",
+			label="HF model cache
+19 G",
+			pos="233,358",
+			shape=none,
+			width=1.4028];
+		"7e70770f7b654a25b84e75e62d064100"	[height=2.3056,
+			image="assets/programming/flowchart/stored-data.png",
+			label="ansible state
+5 G",
+			pos="399,358",
+			shape=none,
+			width=1.4028];
+		"765aa5900e554fe78306476e10e1f364"	[height=2.3056,
+			image="assets/programming/flowchart/stored-data.png",
+			label="free headroom
+13 G",
+			pos="565,358",
+			shape=none,
+			width=1.4028];
+	}
+	subgraph "cluster_Shared failure when it fills" {
+		graph [bb="423,8,707,182",
+			bgcolor="#E5F5FD",
+			fontname="Sans-Serif",
+			fontsize=12,
+			label="Shared failure when it fills",
+			labeljust=l,
+			lheight=0.18,
+			lp="508,171.5",
+			lwidth=2.14,
+			pencolor="#AEB6BE",
+			rankdir=LR,
+			shape=box,
+			style=rounded
+		];
+		"391ddff5b78b4d82ac57863d83df247d"	[height=1.9028,
+			image="assets/k8s/compute/pod.png",
+			label="vLLM pod",
+			pos="482,84.5",
+			shape=none,
+			width=1.4028];
+		"45508cd682844c72bafdb24c4939b548"	[height=1.9028,
+			image="assets/k8s/compute/pod.png",
+			label="ComfyUI pod",
+			pos="648,84.5",
+			shape=none,
+			width=1.4028];
+	}
+	"935e55ca552540b9a02e66b7a427062c"	[height=2.3056,
+		image="assets/k8s/storage/sc.png",
+		label="StorageClass local-path
+mkdir only",
+		pos="316,921",
+		shape=none,
+		width=1.4028];
+	d99fd531a6754ae8b769bb752fa73d04 -> "935e55ca552540b9a02e66b7a427062c"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="  size is only a label",
+		lp="299,1065",
+		pos="e,283.5,1004.1 283.5,1125.7 283.5,1125.7 283.5,1014.1 283.5,1014.1"];
+	"96c24509574b40788308dec11a9c7157" -> "935e55ca552540b9a02e66b7a427062c"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="  size is only a label",
+		lp="501,1065",
+		pos="e,334,1004.3 366.33,1209 349.05,1209 334,1209 334,1209 334,1209 334,1014.3 334,1014.3"];
+	"931fb07cb1104519bd916f748fd44e3c"	[height=2.3056,
+		image="assets/generic/storage/storage.png",
+		label="Real device /dev/root ext4
+77G total, 64G used, 13G free",
+		pos="316,633",
+		shape=none,
+		width=1.4028];
+	"935e55ca552540b9a02e66b7a427062c" -> "931fb07cb1104519bd916f748fd44e3c"	[color=firebrick,
+		dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="  both folders land on one filesystem",
+		lp="438,777",
+		penwidth=2,
+		pos="e,316,716.11 316,837.7 316,837.7 316,726.11 316,726.11"];
+	de689806115f45f392415a1f24840c0e	[height=2.3056,
+		image="assets/k8s/clusterconfig/quota.png",
+		label="No ResourceQuota
+No filesystem quota",
+		pos="619,1209",
+		shape=none,
+		width=1.4028];
+	de689806115f45f392415a1f24840c0e -> "935e55ca552540b9a02e66b7a427062c"	[color=firebrick,
+		constraint=false,
+		dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="  nothing rejects an oversized write",
+		lp="754.5,1065",
+		pos="e,366.62,921 592,1125.7 592,1040.6 592,921 592,921 592,921 376.62,921 376.62,921",
+		style=dashed];
+	"931fb07cb1104519bd916f748fd44e3c" -> ae97d4661a294d8cb88c0c8d8fd92145	[color=gray40,
+		dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		pos="e,67,441.26 265.31,633 192.51,633 67,633 67,633 67,633 67,451.26 67,451.26",
+		style=dotted];
+	"931fb07cb1104519bd916f748fd44e3c" -> "36ebe0a52c114fa9a1f71de3bce00b78"	[color=gray40,
+		dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		pos="e,274.5,441.45 274.5,549.74 274.5,549.74 274.5,451.45 274.5,451.45",
+		style=dotted];
+	"931fb07cb1104519bd916f748fd44e3c" -> "7e70770f7b654a25b84e75e62d064100"	[color=gray40,
+		dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		pos="e,357.5,441.45 357.5,549.74 357.5,549.74 357.5,451.45 357.5,451.45",
+		style=dotted];
+	"931fb07cb1104519bd916f748fd44e3c" -> "765aa5900e554fe78306476e10e1f364"	[color=gray40,
+		dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		pos="e,541.5,441.26 366.61,633 433.09,633 541.5,633 541.5,633 541.5,633 541.5,451.26 541.5,451.26",
+		style=dotted];
+	"765aa5900e554fe78306476e10e1f364" -> "391ddff5b78b4d82ac57863d83df247d"	[color=firebrick,
+		dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="  ENOSPC hits both",
+		lp="546,214",
+		pos="e,523.5,153.04 523.5,274.83 523.5,274.83 523.5,163.04 523.5,163.04"];
+	"765aa5900e554fe78306476e10e1f364" -> "45508cd682844c72bafdb24c4939b548"	[color=firebrick,
+		dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		pos="e,606.5,153.04 606.5,274.83 606.5,274.83 606.5,163.04 606.5,163.04"];
+}

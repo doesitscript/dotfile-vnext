@@ -60,6 +60,8 @@ Mermaid when migrating diagrams.
 | [cst-hom-lab-ctl-dia-svcinv-steady-03.md](cst-hom-lab-ctl-dia-svcinv-steady-03.md) | Final steady-state diagram for curated repo data, runtime discovery, and live NetBox service agreement |
 | [cst-hom-lab-ctl-dia-homelab-hosts-file-01.md](cst-hom-lab-ctl-dia-homelab-hosts-file-01.md) | Interim DNS-3 hosts-file bridge (`homelab_hosts_file_*`, Traefik registry, portproxy web catalog) |
 | [cst-hom-lab-ctl-dia-homelab-estate-04.md](cst-hom-lab-ctl-dia-homelab-estate-04.md) | **Homelab estate overview** — both Hyper-V lanes, deployments per node, NetBox role codes, hom.lab naming, `site.yaml` phases |
+| [cst-hom-lab-ctl-dia-vllmcache-flow-01.md](cst-hom-lab-ctl-dia-vllmcache-flow-01.md) | vLLM model weights from Hugging Face Hub through the PVC to GPU VRAM on `hom-lab-ctl-k3s-02`, with the physical disk and VHDX underneath |
+| [cst-hom-lab-ctl-dia-vllmcache-overcommit-02.md](cst-hom-lab-ctl-dia-vllmcache-overcommit-02.md) | Why K3s `local-path` does not enforce a PVC size request — 320Gi of claims on a 77G disk, and the shared-node `ENOSPC` blast radius |
 
 ## Notes
 

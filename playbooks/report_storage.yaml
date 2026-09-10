@@ -1,0 +1,77 @@
+---
+# Quick on-demand storage report: drive letters, buses, sizes, free space.
+# Usage: ansible-playbook playbooks/report_storage.yaml
+#        ansible-playbook playbooks/report_storage.yaml --limit HOM-LAB-HVH-02
+
+- name: Gather storage facts from all hosts
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Gather Windows storage details
+      ansible.windows.win_powershell:
+        script: |
+          $volumes = Get-Volume | Where-Object { $_.DriveLetter } | ForEach-Object {
+            $disk = Get-Partition -DriveLetter $_.DriveLetter | Get-Disk
+            [PSCustomObject]@{
+              Drive       = "$($_.DriveLetter):"
+              Label       = $_.FileSystemLabel
+              SizeGB      = [math]::Round($_.Size / 1GB, 1)
+              FreeGB      = [math]::Round($_.SizeRemaining / 1GB, 1)
+              UsedPercent = [math]::Round((($_.Size - $_.SizeRemaining) / $_.Size) * 100, 0)
+              BusType     = $disk.BusType
+              MediaType   = $disk.FriendlyName
+            }
+          }
+          $Ansible.Result = @{ volumes = $volumes }
+      register: windows_storage
+      when: ansible_facts['os_family'] == "Windows"
+
+    - name: Gather Linux storage details
+      ansible.builtin.shell:
+        cmd: |
+          df -h --output=source,fstype,size,used,avail,pcent,target | grep -E '^/dev/' | awk '{print $1 "," $2 "," $3 "," $4 "," $5 "," $6 "," $7}'
+      register: linux_storage
+      changed_when: false
+      when: ansible_facts['os_family'] != "Windows"
+
+    - name: Display Windows storage table
+      ansible.builtin.debug:
+        msg: |
+          {% set host_label = inventory_hostname | upper %}
+          === {{ host_label }} Storage ===
+          {% for vol in windows_storage.result.volumes %}
+          {{ "%-4s %-20s %8.1f GB  %8.1f GB free (%3d%% used)  %-8s  %s" | format(
+               vol.Drive,
+               vol.Label | default(''),
+               vol.SizeGB,
+               vol.FreeGB,
+               vol.UsedPercent,
+               vol.BusType,
+               vol.MediaType
+             ) }}
+          {% endfor %}
+      when:
+        - ansible_facts['os_family'] == "Windows"
+        - windows_storage.result.volumes | default([]) | length > 0
+
+    - name: Display Linux storage table
+      ansible.builtin.debug:
+        msg: |
+          {% set host_label = inventory_hostname | upper %}
+          === {{ host_label }} Storage ===
+          {{ "%-20s %-10s %8s %8s %8s %6s  %s" | format("Device", "Type", "Size", "Used", "Avail", "Use%", "Mount") }}
+          {% for line in linux_storage.stdout_lines %}
+          {% set parts = line.split(',') %}
+          {{ "%-20s %-10s %8s %8s %8s %6s  %s" | format(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5], parts[6]) }}
+          {% endfor %}
+      when:
+        - ansible_facts['os_family'] != "Windows"
+        - linux_storage.stdout_lines | default([]) | length > 0
+
+- name: Summary
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Report complete
+      ansible.builtin.debug:
+        msg: "Storage report complete. Run with --limit <host> to target specific hosts."

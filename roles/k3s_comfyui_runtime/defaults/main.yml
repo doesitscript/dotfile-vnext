@@ -28,8 +28,16 @@ k3s_comfyui_runtime_cpu_limit: "4"
 k3s_comfyui_runtime_memory_limit: 8Gi
 k3s_comfyui_runtime_tolerations: []
 
+# Model cache lifecycle, separate from k3s_comfyui_runtime_state so the weights
+# survive Phase B toggles. Set to absent to reclaim the PVC and namespace.
+k3s_comfyui_runtime_models_pvc_state: present
+
 # Models + output PVC (local-path). Not resizeable after create.
-k3s_comfyui_runtime_models_pvc_size: 200Gi
+# local-path does not enforce this value — it creates a directory on the node
+# root filesystem, so the number is a capacity declaration, not a limit. Keep
+# it honest: the starter set below is ~34G (flux1-dev-fp8 12G, t5xxl_fp8 5G,
+# sd_xl_base 7G, ltx-video-2b 9G, clip_l + ae <1G), plus input/output renders.
+k3s_comfyui_runtime_models_pvc_size: 60Gi
 k3s_comfyui_runtime_kubeconfig: /etc/rancher/k3s/k3s.yaml
 
 k3s_comfyui_runtime_ready_timeout_seconds: 900
