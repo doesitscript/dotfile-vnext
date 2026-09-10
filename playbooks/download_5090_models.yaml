@@ -1,0 +1,68 @@
+---
+# Playbook: Download selected 5090 models
+# Authority: inventory/group_vars/model_catalog/manifest.yml
+# Skill: hf-model-weight-lifecycle
+#
+# Downloads the 4 new models for 5090 evaluation:
+# - Qwen3-Coder-30B-A3B-Instruct (primary)
+# - Qwen3.6-35B-A3B (generalist)
+# - Devstral-Small-2-24B-Instruct-2512 (agent)
+# - GLM-4.6 (experimental)
+#
+# Run in background:
+#   bin/codex-env ansible-playbook playbooks/download_5090_models.yaml &
+
+- name: Download 5090 model weights
+  hosts: HOM-LAB-HVH-01  # Current catalog storage host
+  gather_facts: false
+  vars:
+    models_to_download:
+      - repo: Qwen/Qwen3-Coder-30B-A3B-Instruct
+        quant_repo: unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF
+        files: ["*Q4_K_M.gguf"]
+        lane: qwen3-coder-30b-a3b-primary
+      - repo: Qwen/Qwen3.6-35B-A3B
+        quant_repo: nvidia/Qwen3.6-35B-A3B-NVFP4
+        files: ["*.safetensors", "config.json", "tokenizer.json", "*.model"]
+        lane: qwen3.6-35b-a3b-generalist
+      - repo: mistralai/Devstral-Small-2-24B-Instruct-2512
+        quant_repo: bartowski/mistralai_Devstral-Small-2-24B-Instruct-2512-GGUF
+        files: ["*Q4_K_M.gguf"]
+        lane: devstral-small-2-agent
+      - repo: zai-org/GLM-4.6
+        quant_repo: unsloth/GLM-4.6-GGUF
+        files: ["*Q4_K_M.gguf"]
+        lane: glm-4.6-experimental
+
+  tasks:
+    - name: Ensure huggingface_hub is present
+      ansible.windows.win_command:
+        cmd: py -m pip show huggingface_hub
+      register: _hf_hub_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install huggingface_hub if missing
+      ansible.windows.win_command:
+        cmd: py -m pip install --user huggingface_hub
+      when: _hf_hub_check.rc != 0
+
+    - name: Download model weights via huggingface-cli
+      ansible.windows.win_command:
+        cmd: >-
+          py -m huggingface_hub.commands.huggingface_cli download
+          {{ item.quant_repo }}
+          --include {{ item.files | join(' ') }}
+          --local-dir F:\shares\public\models\huggingface\{{ item.quant_repo | replace('/', '--') }}
+      loop: "{{ models_to_download }}"
+      register: _download_results
+      async: 14400  # 4 hours max per model
+      poll: 0  # Fire and forget
+
+    - name: Report download job IDs
+      ansible.builtin.debug:
+        msg: >-
+          Started download for {{ item.item.lane }}
+          (job {{ item.ansible_job_id }})
+      loop: "{{ _download_results.results }}"
+      when: item.ansible_job_id is defined
