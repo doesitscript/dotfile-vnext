@@ -1,0 +1,10 @@
+---
+- name: Require partition parent to be the verified selected disk
+  ansible.builtin.assert:
+    that:
+      - >-
+        '/dev/' ~ (linux_data_disk_mount_partition_parent_name | trim) ==
+        linux_data_disk_mount_selected_device
+    fail_msg: >-
+      Partition parent {{ linux_data_disk_mount_partition_parent_name | trim }}
+      is not the verified selected disk {{ linux_data_disk_mount_selected_device }}.

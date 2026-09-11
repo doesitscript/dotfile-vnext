@@ -1,0 +1,215 @@
+---
+- name: Verify K3s data-disk safety contracts without managed-host access
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    hyperv_vm_data_disk_size_gib: 100
+    hyperv_vm_data_disk_type: dynamic
+    hyperv_vm_data_disk_host_reserve_gib: 20
+    hyperv_vm_data_disk_controller_number: 0
+    hyperv_vm_data_disk_controller_location: 2
+    _valid_preview:
+      result:
+        requested_path: 'D:\\Hyper-V\\fixture.vhdx'
+        slot_attached_path: null
+        path_attachment_count: 0
+        path_attachment_controller_number: null
+        path_attachment_controller_location: null
+        vhd_exists: true
+        vhd_size_bytes: 107374182400
+        vhd_type: dynamic
+        host_free_bytes: 536870912000
+  tasks:
+    - name: Accept populated matching Hyper-V preview fixture
+      ansible.builtin.include_tasks: >-
+        {{ playbook_dir }}/../roles/hyperv_vm_data_disk/tasks/validate_present_preview.yml
+      vars:
+        _hyperv_vm_data_disk_preview: "{{ _valid_preview }}"
+
+    - name: Initialize size mismatch result
+      ansible.builtin.set_fact:
+        _size_mismatch_rejected: false
+
+    - name: Exercise existing VHDX size mismatch rejection
+      block:
+        - name: Validate mismatched VHDX size fixture
+          ansible.builtin.include_tasks: >-
+            {{ playbook_dir }}/../roles/hyperv_vm_data_disk/tasks/validate_present_preview.yml
+          vars:
+            _hyperv_vm_data_disk_preview: >-
+              {{ _valid_preview | combine({'result':
+                 _valid_preview.result | combine({'vhd_size_bytes': 53687091200})}) }}
+      rescue:
+        - name: Record size mismatch rejection
+          ansible.builtin.set_fact:
+            _size_mismatch_rejected: true
+
+    - name: Require size mismatch rejection
+      ansible.builtin.assert:
+        that: _size_mismatch_rejected
+
+    - name: Initialize type mismatch result
+      ansible.builtin.set_fact:
+        _type_mismatch_rejected: false
+
+    - name: Exercise existing VHDX type mismatch rejection
+      block:
+        - name: Validate mismatched VHDX type fixture
+          ansible.builtin.include_tasks: >-
+            {{ playbook_dir }}/../roles/hyperv_vm_data_disk/tasks/validate_present_preview.yml
+          vars:
+            _hyperv_vm_data_disk_preview: >-
+              {{ _valid_preview | combine({'result':
+                 _valid_preview.result | combine({'vhd_type': 'fixed'})}) }}
+      rescue:
+        - name: Record type mismatch rejection
+          ansible.builtin.set_fact:
+            _type_mismatch_rejected: true
+
+    - name: Require type mismatch rejection
+      ansible.builtin.assert:
+        that: _type_mismatch_rejected
+
+    - name: Initialize capacity mismatch result
+      ansible.builtin.set_fact:
+        _capacity_mismatch_rejected: false
+
+    - name: Exercise host reserve rejection for new VHDX
+      block:
+        - name: Validate insufficient free-capacity fixture
+          ansible.builtin.include_tasks: >-
+            {{ playbook_dir }}/../roles/hyperv_vm_data_disk/tasks/validate_present_preview.yml
+          vars:
+            _hyperv_vm_data_disk_preview: >-
+              {{ _valid_preview | combine({'result':
+                 _valid_preview.result | combine({'vhd_exists': false,
+                 'vhd_size_bytes': none, 'vhd_type': none,
+                 'host_free_bytes': 118111600640})}) }}
+      rescue:
+        - name: Record host reserve rejection
+          ansible.builtin.set_fact:
+            _capacity_mismatch_rejected: true
+
+    - name: Require host reserve rejection
+      ansible.builtin.assert:
+        that: _capacity_mismatch_rejected
+
+    - name: Initialize attachment path conflict result
+      ansible.builtin.set_fact:
+        _path_conflict_rejected: false
+
+    - name: Exercise same-VM path conflict rejection
+      block:
+        - name: Validate conflicting VHDX path attachment fixture
+          ansible.builtin.include_tasks: >-
+            {{ playbook_dir }}/../roles/hyperv_vm_data_disk/tasks/validate_present_preview.yml
+          vars:
+            _hyperv_vm_data_disk_preview: >-
+              {{ _valid_preview | combine({'result':
+                 _valid_preview.result | combine({'path_attachment_count': 1,
+                 'path_attachment_controller_number': 0,
+                 'path_attachment_controller_location': 3})}) }}
+      rescue:
+        - name: Record attachment path conflict rejection
+          ansible.builtin.set_fact:
+            _path_conflict_rejected: true
+
+    - name: Require attachment path conflict rejection
+      ansible.builtin.assert:
+        that: _path_conflict_rejected
+
+    - name: Initialize partition mismatch result
+      ansible.builtin.set_fact:
+        _partition_mismatch_rejected: false
+
+    - name: Exercise independent partition path rejection
+      block:
+        - name: Validate mismatched partition fixture
+          ansible.builtin.include_tasks: >-
+            {{ playbook_dir }}/../roles/linux_data_disk_mount/tasks/derive_partition.yml
+          vars:
+            linux_data_disk_mount_device_by_id: /dev/disk/by-id/fixture-disk
+            linux_data_disk_mount_partition_path: /dev/disk/by-id/other-disk-part1
+      rescue:
+        - name: Record partition mismatch rejection
+          ansible.builtin.set_fact:
+            _partition_mismatch_rejected: true
+
+    - name: Require partition mismatch rejection
+      ansible.builtin.assert:
+        that: _partition_mismatch_rejected
+
+    - name: Initialize partition parent mismatch result
+      ansible.builtin.set_fact:
+        _partition_parent_mismatch_rejected: false
+
+    - name: Exercise partition parent mismatch rejection
+      block:
+        - name: Validate wrong parent disk fixture
+          ansible.builtin.include_tasks: >-
+            {{ playbook_dir }}/../roles/linux_data_disk_mount/tasks/validate_partition_parent.yml
+          vars:
+            linux_data_disk_mount_partition_parent_name: fixture-parent-b
+            linux_data_disk_mount_selected_device: /dev/fixture-parent-a
+      rescue:
+        - name: Record partition parent mismatch rejection
+          ansible.builtin.set_fact:
+            _partition_parent_mismatch_rejected: true
+
+    - name: Require partition parent mismatch rejection
+      ansible.builtin.assert:
+        that: _partition_parent_mismatch_rejected
+
+    - name: Load orchestration and absent task contracts
+      ansible.builtin.set_fact:
+        _workflow: >-
+          {{ lookup('ansible.builtin.file', playbook_dir ~
+             '/deploy_k3s_data_disk.yaml') | from_yaml }}
+        _absent_tasks: >-
+          {{ lookup('ansible.builtin.file', playbook_dir ~
+             '/../roles/linux_data_disk_mount/tasks/absent.yml') | from_yaml }}
+        _hyperv_present_tasks: >-
+          {{ lookup('ansible.builtin.file', playbook_dir ~
+             '/../roles/hyperv_vm_data_disk/tasks/present.yml') | from_yaml }}
+        _hyperv_absent_tasks: >-
+          {{ lookup('ansible.builtin.file', playbook_dir ~
+             '/../roles/hyperv_vm_data_disk/tasks/absent.yml') | from_yaml }}
+
+    - name: Require reverse-safe play order and persistent absent operation
+      ansible.builtin.assert:
+        that:
+          - "'remove the selected K3s guest' in _workflow[0].name"
+          - _workflow[0].roles[0].linux_data_disk_mount_state == 'absent'
+          - "'absent' in _workflow[0].roles[0].when"
+          - "'Hyper-V VM data disk' in _workflow[1].name"
+          - >-
+            'k3s_data_disk_state' in
+            _workflow[1].roles[0].hyperv_vm_data_disk_state
+          - "'mount the selected K3s guest' in _workflow[2].name"
+          - _workflow[2].roles[0].linux_data_disk_mount_state == 'present'
+          - "'present' in _workflow[2].roles[0].when"
+          - >-
+            (_absent_tasks |
+             selectattr('name', 'equalto',
+             'Remove selected persistent fstab intent without deleting data') |
+             first)['ansible.posix.mount'].state == 'absent_from_fstab'
+          - >-
+            (_absent_tasks |
+             selectattr('name', 'equalto',
+             'Require exact disk, partition, live mount and fstab identity') |
+             list | length) == 1
+          - >-
+            (_hyperv_present_tasks |
+             selectattr('name', 'equalto',
+             'Preview Hyper-V data disk and host capacity') |
+             first)['ansible.windows.win_powershell'].parameters | length == 7
+          - >-
+            (_hyperv_absent_tasks |
+             selectattr('name', 'equalto',
+             'Preview exact Hyper-V data-disk attachment before detach') |
+             first)['ansible.windows.win_powershell'].parameters | length == 4
+        fail_msg: >-
+          Absent must run guest cleanup before detach and remove fstab only
+          after exact source identity validation; Hyper-V user values must use
+          structured PowerShell parameters.

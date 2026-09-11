@@ -1,0 +1,184 @@
+---
+- name: Require exact Linux unmount selection
+  ansible.builtin.assert:
+    that:
+      - linux_data_disk_mount_device_by_id | trim | length > 0
+      - not (linux_data_disk_mount_device_by_id | regex_search('-part[0-9]+$'))
+      - linux_data_disk_mount_expected_serial | trim | length > 0
+      - linux_data_disk_mount_path | trim | length > 0
+      - linux_data_disk_mount_authority_ref | trim | length > 0
+    fail_msg: >-
+      Absent requires the stable whole-disk by-id path, observed serial, exact
+      mount path and authority reference for its read-only identity preview.
+
+- name: Derive and validate absent partition identity
+  ansible.builtin.include_tasks: derive_partition.yml
+
+- name: Inspect selected whole-disk identity path
+  ansible.builtin.stat:
+    path: "{{ linux_data_disk_mount_device_by_id }}"
+    follow: true
+  register: _linux_data_disk_mount_absent_device_stat
+  check_mode: false
+
+- name: Inspect live mount source
+  ansible.builtin.command:
+    argv:
+      - findmnt
+      - --noheadings
+      - --output
+      - SOURCE
+      - --target
+      - "{{ linux_data_disk_mount_path }}"
+  register: _linux_data_disk_mount_live_source
+  changed_when: false
+  failed_when: _linux_data_disk_mount_live_source.rc not in [0, 1]
+  check_mode: false
+
+- name: Inspect persistent fstab source
+  ansible.builtin.command:
+    argv:
+      - findmnt
+      - --fstab
+      - --noheadings
+      - --output
+      - SOURCE
+      - --target
+      - "{{ linux_data_disk_mount_path }}"
+  register: _linux_data_disk_mount_fstab_source
+  changed_when: false
+  failed_when: _linux_data_disk_mount_fstab_source.rc not in [0, 1]
+  check_mode: false
+
+- name: Require no lingering mount intent when selected disk is absent
+  ansible.builtin.assert:
+    that:
+      - _linux_data_disk_mount_live_source.rc == 1
+      - _linux_data_disk_mount_fstab_source.rc == 1
+    fail_msg: >-
+      Selected disk is unavailable while the mount path remains live or present
+      in fstab; refusing an identity-blind unmount.
+  when: not _linux_data_disk_mount_absent_device_stat.stat.exists
+
+- name: Resolve selected Linux data disk for absent preview
+  ansible.builtin.command:
+    argv: [readlink, -f, "{{ linux_data_disk_mount_device_by_id }}"]
+  register: _linux_data_disk_mount_absent_device
+  changed_when: false
+  check_mode: false
+  when: _linux_data_disk_mount_absent_device_stat.stat.exists
+
+- name: Read selected Linux data-disk serial for absent preview
+  ansible.builtin.command:
+    argv:
+      - lsblk
+      - --nodeps
+      - --noheadings
+      - --output
+      - SERIAL
+      - "{{ _linux_data_disk_mount_absent_device.stdout }}"
+  register: _linux_data_disk_mount_absent_serial
+  changed_when: false
+  check_mode: false
+  when: _linux_data_disk_mount_absent_device_stat.stat.exists
+
+- name: Inspect derived absent partition
+  ansible.builtin.stat:
+    path: "{{ _linux_data_disk_mount_partition_by_id }}"
+    follow: true
+  register: _linux_data_disk_mount_absent_partition_stat
+  check_mode: false
+  when: _linux_data_disk_mount_absent_device_stat.stat.exists
+
+- name: Resolve derived absent partition
+  ansible.builtin.command:
+    argv: [readlink, -f, "{{ _linux_data_disk_mount_partition_by_id }}"]
+  register: _linux_data_disk_mount_absent_partition
+  changed_when: false
+  check_mode: false
+  when:
+    - _linux_data_disk_mount_absent_device_stat.stat.exists
+    - _linux_data_disk_mount_absent_partition_stat.stat.exists
+
+- name: Read absent partition parent
+  ansible.builtin.command:
+    argv:
+      - lsblk
+      - --noheadings
+      - --output
+      - PKNAME
+      - "{{ _linux_data_disk_mount_absent_partition.stdout }}"
+  register: _linux_data_disk_mount_absent_parent_name
+  changed_when: false
+  check_mode: false
+  when:
+    - _linux_data_disk_mount_absent_device_stat.stat.exists
+    - _linux_data_disk_mount_absent_partition_stat.stat.exists
+
+- name: Resolve live mount source
+  ansible.builtin.command:
+    argv: [readlink, -f, "{{ _linux_data_disk_mount_live_source.stdout | trim }}"]
+  register: _linux_data_disk_mount_live_source_resolved
+  changed_when: false
+  check_mode: false
+  when:
+    - _linux_data_disk_mount_absent_device_stat.stat.exists
+    - _linux_data_disk_mount_live_source.rc == 0
+
+- name: Bind absent partition to selected disk
+  ansible.builtin.include_tasks: validate_partition_parent.yml
+  vars:
+    linux_data_disk_mount_partition_parent_name: >-
+      {{ _linux_data_disk_mount_absent_parent_name.stdout }}
+    linux_data_disk_mount_selected_device: >-
+      {{ _linux_data_disk_mount_absent_device.stdout }}
+  when:
+    - _linux_data_disk_mount_absent_device_stat.stat.exists
+    - _linux_data_disk_mount_absent_partition_stat.stat.exists
+
+- name: Require exact disk, partition, live mount and fstab identity
+  ansible.builtin.assert:
+    that:
+      - _linux_data_disk_mount_absent_device.stdout != '/dev/sda'
+      - >-
+        _linux_data_disk_mount_absent_serial.stdout | trim ==
+        linux_data_disk_mount_expected_serial
+      - >-
+        _linux_data_disk_mount_live_source.rc == 1 or
+        (_linux_data_disk_mount_absent_partition_stat.stat.exists and
+         _linux_data_disk_mount_live_source_resolved.stdout ==
+         _linux_data_disk_mount_absent_partition.stdout)
+      - >-
+        _linux_data_disk_mount_fstab_source.rc == 1 or
+        _linux_data_disk_mount_fstab_source.stdout | trim ==
+        _linux_data_disk_mount_partition_by_id
+    fail_msg: >-
+      Disk serial, live mount source, or fstab source does not match the exact
+      selected disk; refusing unmount or fstab change.
+  when: _linux_data_disk_mount_absent_device_stat.stat.exists
+
+- name: Require explicit unmount authority before mutation
+  ansible.builtin.assert:
+    that:
+      - linux_data_disk_mount_unmount_authorized | bool
+    fail_msg: >-
+      Unmount and fstab removal require explicit authority; filesystem data is
+      preserved.
+  when: linux_data_disk_mount_apply | bool
+
+- name: Unmount exact selected data filesystem without deleting data
+  ansible.posix.mount:
+    path: "{{ linux_data_disk_mount_path }}"
+    state: unmounted
+  when:
+    - linux_data_disk_mount_apply | bool
+    - _linux_data_disk_mount_live_source.rc == 0
+
+- name: Remove selected persistent fstab intent without deleting data
+  ansible.posix.mount:
+    path: "{{ linux_data_disk_mount_path }}"
+    backup: true
+    state: absent_from_fstab
+  when:
+    - linux_data_disk_mount_apply | bool
+    - _linux_data_disk_mount_fstab_source.rc == 0

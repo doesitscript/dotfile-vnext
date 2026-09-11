@@ -1,0 +1,13 @@
+---
+- name: Validate Linux data-disk lifecycle state
+  ansible.builtin.assert:
+    that:
+      - linux_data_disk_mount_state in ['present', 'absent']
+
+- name: Include Linux data-disk present path
+  ansible.builtin.include_tasks: present.yml
+  when: linux_data_disk_mount_state == 'present'
+
+- name: Include Linux data-disk absent path
+  ansible.builtin.include_tasks: absent.yml
+  when: linux_data_disk_mount_state == 'absent'

@@ -1,0 +1,16 @@
+---
+- name: Derive stable partition path from selected whole disk
+  ansible.builtin.set_fact:
+    _linux_data_disk_mount_partition_by_id: >-
+      {{ linux_data_disk_mount_device_by_id }}-part1
+
+- name: Reject an independent or mismatched partition selection
+  ansible.builtin.assert:
+    that:
+      - >-
+        linux_data_disk_mount_partition_path | trim | length == 0 or
+        linux_data_disk_mount_partition_path ==
+        _linux_data_disk_mount_partition_by_id
+    fail_msg: >-
+      partition_path must be empty or exactly the derived stable partition
+      {{ _linux_data_disk_mount_partition_by_id }}; refusing an independent device.

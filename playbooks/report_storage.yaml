@@ -5,8 +5,28 @@
 
 - name: Gather storage facts from all hosts
   hosts: all
-  gather_facts: true
+  gather_facts: false
+  tags:
+    - storage_report
+  pre_tasks:
+    - name: Require an explicit inventory limit for the storage report
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | trim | length > 0
+        fail_msg: >-
+          report_storage.yaml is read-only but intentionally requires
+          --limit <verified-inventory-target>; refusing the default all-host run.
+      run_once: true
+      tags:
+        - always
+
   tasks:
+    - name: Gather host facts after target validation
+      ansible.builtin.setup:
+      tags:
+        - always
+
     - name: Gather Windows storage details
       ansible.windows.win_powershell:
         script: |
@@ -22,17 +42,401 @@
               MediaType   = $disk.FriendlyName
             }
           }
+          $Ansible.Changed = $false
           $Ansible.Result = @{ volumes = $volumes }
       register: windows_storage
       when: ansible_facts['os_family'] == "Windows"
 
+    - name: Gather configured Hyper-V VM disk attachments
+      ansible.windows.win_powershell:
+        error_action: stop
+        script: |
+          $hypervServer = '{{ hyperv_management_endpoint | default(ansible_host | default(host_ip | default(os_hostname | default(inventory_hostname)))) }}'
+          $vmName = '{{ item.vm_name }}'
+          $vm = Get-VM -ComputerName $hypervServer -Name $vmName -ErrorAction Stop
+          $attachments = @(
+            Get-VMHardDiskDrive -ComputerName $hypervServer -VMName $vmName -ErrorAction Stop |
+              ForEach-Object {
+                $vhd = Get-VHD -ComputerName $hypervServer -Path $_.Path -ErrorAction Stop
+                [PSCustomObject]@{
+                  controller_type = $_.ControllerType.ToString()
+                  controller_number = $_.ControllerNumber
+                  controller_location = $_.ControllerLocation
+                  path = $_.Path
+                  vhd_type = $vhd.VhdType.ToString()
+                  file_size_gb = [math]::Round($vhd.FileSize / 1GB, 2)
+                  virtual_size_gb = [math]::Round($vhd.Size / 1GB, 2)
+                }
+              }
+          )
+          $Ansible.Changed = $false
+          $Ansible.Result = @{
+            vm = $vmName
+            state = $vm.State.ToString()
+            attachments = $attachments
+          }
+      loop: "{{ hyperv_vm_storage_move_targets | default([]) }}"
+      loop_control:
+        label: "{{ item.vm_name }}"
+      register: hyperv_storage_attachments
+      check_mode: false
+      when:
+        - ansible_facts['os_family'] == "Windows"
+        - hyperv_vm_storage_move_targets | default([]) | length > 0
+
     - name: Gather Linux storage details
-      ansible.builtin.shell:
-        cmd: |
-          df -h --output=source,fstype,size,used,avail,pcent,target | grep -E '^/dev/' | awk '{print $1 "," $2 "," $3 "," $4 "," $5 "," $6 "," $7}'
+      ansible.builtin.command:
+        argv:
+          - df
+          - -h
+          - --output=source,fstype,size,used,avail,pcent,target
       register: linux_storage
       changed_when: false
+      check_mode: false
       when: ansible_facts['os_family'] != "Windows"
+
+    - name: Gather K3s storage control-plane details
+      ansible.builtin.command:
+        argv: "{{ item.argv }}"
+      become: true
+      check_mode: false
+      changed_when: false
+      register: k3s_storage_details
+      failed_when: false
+      loop:
+        - label: guest block devices and filesystems
+          argv:
+            - lsblk
+            - --json
+            - --output
+            - NAME,PATH,TYPE,SIZE,FSTYPE,FSAVAIL,FSUSE%,MOUNTPOINTS,PKNAME,MODEL,SERIAL
+        - label: guest real mounts
+          argv:
+            - findmnt
+            - --json
+            - --real
+            - --output
+            - SOURCE,TARGET,FSTYPE,OPTIONS
+        - label: guest persistent mount declarations
+          argv:
+            - cat
+            - /etc/fstab
+        - label: K3s version
+          argv:
+            - k3s
+            - --version
+        - label: K3s configuration source inventory
+          argv:
+            - find
+            - /etc/rancher/k3s
+            - -maxdepth
+            - "2"
+            - -type
+            - f
+            - -printf
+            - "%P size=%s bytes mode=%m\n"
+        - label: K3s generated containerd configuration inventory
+          argv:
+            - find
+            - /var/lib/rancher/k3s/agent/etc/containerd
+            - -maxdepth
+            - "1"
+            - -type
+            - f
+            - -printf
+            - "%f size=%s bytes mode=%m\n"
+        - label: embedded containerd client and server versions
+          argv:
+            - k3s
+            - ctr
+            - version
+        - label: CRI runtime configuration summary
+          argv:
+            - crictl
+            - info
+        - label: node DiskPressure condition
+          argv:
+            - k3s
+            - kubectl
+            - get
+            - node
+            - "{{ inventory_hostname }}"
+            - -o
+            - >-
+              jsonpath={range .status.conditions[?(@.type=="DiskPressure")]}
+              {.type}={.status} reason={.reason} message={.message}{"\n"}{end}
+        - label: PVC, PV, and StorageClass summary
+          argv:
+            - k3s
+            - kubectl
+            - get
+            - pvc,pv,storageclass
+            - -A
+            - -o
+            - wide
+        - label: local PV backing paths
+          argv:
+            - k3s
+            - kubectl
+            - get
+            - pv
+            - -o
+            - >-
+              custom-columns=NAME:.metadata.name,CLAIM:.spec.claimRef.name,
+              NAMESPACE:.spec.claimRef.namespace,CAPACITY:.spec.capacity.storage,
+              CLASS:.spec.storageClassName,LOCAL_PATH:.spec.local.path
+        - label: K3s image filesystem usage
+          argv:
+            - crictl
+            - imagefsinfo
+        - label: K3s images
+          argv:
+            - crictl
+            - images
+        - label: containerd snapshot ownership
+          argv:
+            - k3s
+            - ctr
+            - --namespace
+            - k8s.io
+            - snapshots
+            - list
+        - label: containerd content ownership and size
+          argv:
+            - k3s
+            - ctr
+            - --namespace
+            - k8s.io
+            - content
+            - list
+        - label: containerd container ownership
+          argv:
+            - k3s
+            - ctr
+            - --namespace
+            - k8s.io
+            - containers
+            - list
+        - label: containerd snapshot directory sizes
+          argv:
+            - find
+            - /var/lib/rancher/k3s/agent/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots
+            - -mindepth
+            - "2"
+            - -maxdepth
+            - "2"
+            - -type
+            - d
+            - -name
+            - fs
+            - -exec
+            - du
+            - -s
+            - -B1
+            - --
+            - "{}"
+            - "+"
+        - label: exited K3s containers
+          argv:
+            - crictl
+            - ps
+            - --all
+            - --state
+            - Exited
+        - label: not-ready K3s sandboxes
+          argv:
+            - crictl
+            - pods
+            - --state
+            - notready
+        - label: K3s workload controllers
+          argv:
+            - k3s
+            - kubectl
+            - get
+            - deployment,statefulset,daemonset
+            - -A
+            - -o
+            - wide
+        - label: K3s pending pods
+          argv:
+            - k3s
+            - kubectl
+            - get
+            - pod
+            - -A
+            - --field-selector
+            - status.phase=Pending
+            - -o
+            - wide
+        - label: K3s warning events
+          argv:
+            - k3s
+            - kubectl
+            - get
+            - events
+            - -A
+            - --field-selector
+            - type=Warning
+            - --sort-by=.lastTimestamp
+        - label: vLLM deployment image and mount declaration
+          optional: true
+          argv:
+            - k3s
+            - kubectl
+            - get
+            - deployment
+            - "{{ k3s_vllm_runtime_name | default('vllm-primary') }}"
+            - -n
+            - "{{ k3s_vllm_runtime_namespace | default('vllm-runtime') }}"
+            - -o
+            - >-
+              jsonpath=image={.spec.template.spec.containers[0].image}{"\n"}
+              volumes={.spec.template.spec.volumes}{"\n"}
+              mounts={.spec.template.spec.containers[0].volumeMounts}{"\n"}
+        - label: vLLM Hugging Face cache usage
+          optional: true
+          argv:
+            - find
+            - /var/lib/rancher/k3s/storage
+            - -maxdepth
+            - "1"
+            - -type
+            - d
+            - -name
+            - "*_{{ k3s_vllm_runtime_namespace | default('vllm-runtime') }}_{{ k3s_vllm_runtime_name | default('vllm-primary') }}-hf-cache"
+            - -exec
+            - du
+            - -sh
+            - --
+            - "{}"
+            - "+"
+        - label: K3s containerd and local-path usage
+          argv:
+            - du
+            - -sh
+            - /var/lib/rancher/k3s/agent/containerd
+            - /var/lib/rancher/k3s/storage
+        - label: K3s unit storage dependencies
+          argv:
+            - systemctl
+            - show
+            - k3s
+            - --property=ActiveState,SubState,FragmentPath,DropInPaths,After,Requires,Wants
+        - label: system journal disk usage
+          argv:
+            - journalctl
+            - --disk-usage
+        - label: kubelet effective configuration
+          argv:
+            - k3s
+            - kubectl
+            - get
+            - --raw
+            - "/api/v1/nodes/{{ inventory_hostname }}/proxy/configz"
+        - label: host scheduler timers
+          argv:
+            - systemctl
+            - list-timers
+            - --all
+            - --no-pager
+        - label: Kubernetes API resources for monitoring discovery
+          argv:
+            - k3s
+            - kubectl
+            - api-resources
+      loop_control:
+        label: "{{ item.label }}"
+      when:
+        - ansible_facts['os_family'] != "Windows"
+        - workload_runtime.type | default('') == 'k3s'
+      tags:
+        - k3s_storage_report
+
+    - name: Gather full IDs for exited K3s containers
+      ansible.builtin.command:
+        argv:
+          - crictl
+          - ps
+          - --all
+          - --state
+          - Exited
+          - --quiet
+          - --no-trunc
+      become: true
+      check_mode: false
+      changed_when: false
+      register: k3s_storage_exited_container_ids
+      when:
+        - ansible_facts['os_family'] != "Windows"
+        - workload_runtime.type | default('') == 'k3s'
+      tags:
+        - k3s_storage_report
+
+    - name: Measure writable snapshots for exited K3s containers
+      ansible.builtin.command:
+        argv:
+          - k3s
+          - ctr
+          - --namespace
+          - k8s.io
+          - snapshots
+          - usage
+          - "{{ item }}"
+      become: true
+      check_mode: false
+      changed_when: false
+      loop: "{{ k3s_storage_exited_container_ids.stdout_lines | default([]) }}"
+      loop_control:
+        label: "{{ item[:12] }}"
+      register: k3s_storage_exited_container_snapshot_usage
+      when:
+        - ansible_facts['os_family'] != "Windows"
+        - workload_runtime.type | default('') == 'k3s'
+      tags:
+        - k3s_storage_report
+
+    - name: Gather full IDs for not-ready K3s sandboxes
+      ansible.builtin.command:
+        argv:
+          - crictl
+          - pods
+          - --state
+          - notready
+          - --quiet
+          - --no-trunc
+      become: true
+      check_mode: false
+      changed_when: false
+      register: k3s_storage_notready_sandbox_ids
+      when:
+        - ansible_facts['os_family'] != "Windows"
+        - workload_runtime.type | default('') == 'k3s'
+      tags:
+        - k3s_storage_report
+
+    - name: Measure writable snapshots for not-ready K3s sandboxes
+      ansible.builtin.command:
+        argv:
+          - k3s
+          - ctr
+          - --namespace
+          - k8s.io
+          - snapshots
+          - usage
+          - "{{ item }}"
+      become: true
+      check_mode: false
+      changed_when: false
+      loop: "{{ k3s_storage_notready_sandbox_ids.stdout_lines | default([]) }}"
+      loop_control:
+        label: "{{ item[:12] }}"
+      register: k3s_storage_notready_sandbox_snapshot_usage
+      when:
+        - ansible_facts['os_family'] != "Windows"
+        - workload_runtime.type | default('') == 'k3s'
+      tags:
+        - k3s_storage_report
 
     - name: Display Windows storage table
       ansible.builtin.debug:
@@ -54,23 +458,135 @@
         - ansible_facts['os_family'] == "Windows"
         - windows_storage.result.volumes | default([]) | length > 0
 
+    - name: Display configured Hyper-V VM disk attachments
+      ansible.builtin.debug:
+        msg: "{{ item.result }}"
+      loop: "{{ hyperv_storage_attachments.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item.vm_name | default('Hyper-V VM') }}"
+      when:
+        - item.result is defined
+
     - name: Display Linux storage table
       ansible.builtin.debug:
         msg: |
           {% set host_label = inventory_hostname | upper %}
           === {{ host_label }} Storage ===
-          {{ "%-20s %-10s %8s %8s %8s %6s  %s" | format("Device", "Type", "Size", "Used", "Avail", "Use%", "Mount") }}
-          {% for line in linux_storage.stdout_lines %}
-          {% set parts = line.split(',') %}
-          {{ "%-20s %-10s %8s %8s %8s %6s  %s" | format(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5], parts[6]) }}
-          {% endfor %}
+          {{ linux_storage.stdout }}
       when:
         - ansible_facts['os_family'] != "Windows"
         - linux_storage.stdout_lines | default([]) | length > 0
 
+    - name: Display K3s storage control-plane details
+      ansible.builtin.debug:
+        msg: |-
+          === {{ inventory_hostname | upper }} {{ item.item.label }} ===
+          rc={{ item.rc | default('unknown') }}
+          {{ item.stdout | default('') }}
+          {{ item.stderr | default('') }}
+      loop: "{{ k3s_storage_details.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item.label | default('K3s storage detail') }}"
+      when:
+        - item.stdout is defined
+        - item.item.label != 'kubelet effective configuration'
+      tags:
+        - k3s_storage_report
+
+    - name: Summarize optional K3s storage probe failures
+      ansible.builtin.debug:
+        msg: >-
+          Optional probe '{{ item.item.label }}' returned rc={{ item.rc }}:
+          {{ item.stderr | default('') | trim }}
+      loop: >-
+        {{
+          k3s_storage_details.results
+          | selectattr('item.optional', 'defined')
+          | rejectattr('rc', 'equalto', 0)
+          | list
+        }}
+      loop_control:
+        label: "{{ item.item.label }}"
+      tags:
+        - k3s_storage_report
+
+    - name: Display storage-relevant kubelet configuration
+      ansible.builtin.debug:
+        msg:
+          image_gc_high_threshold_percent: "{{ _report_storage_kubelet_config.imageGCHighThresholdPercent }}"
+          image_gc_low_threshold_percent: "{{ _report_storage_kubelet_config.imageGCLowThresholdPercent }}"
+          image_minimum_gc_age: "{{ _report_storage_kubelet_config.imageMinimumGCAge }}"
+          image_maximum_gc_age: "{{ _report_storage_kubelet_config.imageMaximumGCAge }}"
+          eviction_hard: "{{ _report_storage_kubelet_config.evictionHard }}"
+          eviction_minimum_reclaim: "{{ _report_storage_kubelet_config.evictionMinimumReclaim }}"
+      vars:
+        _report_storage_kubelet_result: >-
+          {{
+            k3s_storage_details.results
+            | selectattr('item.label', 'equalto', 'kubelet effective configuration')
+            | first
+          }}
+        _report_storage_kubelet_config: >-
+          {{ (_report_storage_kubelet_result.stdout | from_json).kubeletconfig }}
+      when:
+        - k3s_storage_details.results | default([]) | length > 0
+        - _report_storage_kubelet_result.rc | default(1) == 0
+      tags:
+        - k3s_storage_report
+
+    - name: Display exited container writable snapshot usage
+      ansible.builtin.debug:
+        msg: |-
+          snapshot={{ item.item }} rc={{ item.rc }}
+          {{ item.stdout | default('') }}
+          {{ item.stderr | default('') }}
+      loop: "{{ k3s_storage_exited_container_snapshot_usage.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item[:12] }}"
+      tags:
+        - k3s_storage_report
+
+    - name: Display not-ready sandbox writable snapshot usage
+      ansible.builtin.debug:
+        msg: |-
+          snapshot={{ item.item }} rc={{ item.rc }}
+          {{ item.stdout | default('') }}
+          {{ item.stderr | default('') }}
+      loop: "{{ k3s_storage_notready_sandbox_snapshot_usage.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item[:12] }}"
+      tags:
+        - k3s_storage_report
+
+    - name: Require every mandatory K3s storage probe to succeed
+      ansible.builtin.assert:
+        that:
+          - _report_storage_required_failures | length == 0
+        fail_msg: >-
+          Mandatory storage probes failed: {{
+            _report_storage_required_failures
+            | map(attribute='item.label')
+            | list
+            | join(', ')
+          }}. Review each displayed rc/stderr result; optional probes are not
+          included in this gate.
+        success_msg: "Every mandatory K3s storage probe succeeded."
+      vars:
+        _report_storage_required_failures: >-
+          {{
+            k3s_storage_details.results
+            | rejectattr('item.optional', 'defined')
+            | rejectattr('rc', 'equalto', 0)
+            | list
+          }}
+      tags:
+        - k3s_storage_report
+
 - name: Summary
   hosts: localhost
   gather_facts: false
+  tags:
+    - storage_report
   tasks:
     - name: Report complete
       ansible.builtin.debug:

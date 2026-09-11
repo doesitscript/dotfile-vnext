@@ -1,0 +1,117 @@
+---
+- name: Require exact Hyper-V detach selection
+  ansible.builtin.assert:
+    that:
+      - hyperv_vm_data_disk_vm_name | trim | length > 0
+      - hyperv_vm_data_disk_vhdx_path | trim | length > 0
+      - hyperv_vm_data_disk_controller_location | int >= 0
+      - hyperv_vm_data_disk_authority_ref | trim | length > 0
+    fail_msg: >-
+      Absent requires the exact VM, VHDX path, controller slot and authority
+      reference for its read-only attachment preview.
+
+- name: Preview exact Hyper-V data-disk attachment before detach
+  ansible.windows.win_powershell:
+    error_action: stop
+    parameters:
+      VmName: "{{ hyperv_vm_data_disk_vm_name }}"
+      Path: "{{ hyperv_vm_data_disk_vhdx_path }}"
+      ControllerNumber: "{{ hyperv_vm_data_disk_controller_number | int }}"
+      ControllerLocation: "{{ hyperv_vm_data_disk_controller_location | int }}"
+    script: |
+      param(
+        [Parameter(Mandatory)][string]$VmName,
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][int]$ControllerNumber,
+        [Parameter(Mandatory)][int]$ControllerLocation
+      )
+      $requestedFullPath = [System.IO.Path]::GetFullPath($Path)
+      $vmDisks = @(Get-VMHardDiskDrive -VMName $VmName -ErrorAction Stop)
+      $slotAttachment = $vmDisks | Where-Object {
+        $_.ControllerNumber -eq $ControllerNumber -and
+        $_.ControllerLocation -eq $ControllerLocation
+      } | Select-Object -First 1
+      $pathAttachments = @($vmDisks | Where-Object {
+        $_.Path -and [System.IO.Path]::GetFullPath($_.Path) -eq $requestedFullPath
+      })
+      $exactAttachments = @($pathAttachments | Where-Object {
+        $_.ControllerNumber -eq $ControllerNumber -and
+        $_.ControllerLocation -eq $ControllerLocation
+      })
+      $Ansible.Changed = $false
+      $Ansible.Result = @{
+        requested_path = $requestedFullPath
+        slot_attached_path = if ($slotAttachment) {
+          [System.IO.Path]::GetFullPath($slotAttachment.Path)
+        } else { $null }
+        path_attachment_count = $pathAttachments.Count
+        exact_attachment_count = $exactAttachments.Count
+        file_exists = Test-Path -LiteralPath $Path
+      }
+  register: _hyperv_vm_data_disk_absent_preview
+  check_mode: false
+
+- name: Require exact attachment identity before detach
+  ansible.builtin.assert:
+    that:
+      - _hyperv_vm_data_disk_absent_preview.result.path_attachment_count | int <= 1
+      - _hyperv_vm_data_disk_absent_preview.result.exact_attachment_count | int <= 1
+      - >-
+        _hyperv_vm_data_disk_absent_preview.result.slot_attached_path is none or
+        _hyperv_vm_data_disk_absent_preview.result.slot_attached_path ==
+        _hyperv_vm_data_disk_absent_preview.result.requested_path
+      - >-
+        _hyperv_vm_data_disk_absent_preview.result.path_attachment_count | int == 0 or
+        _hyperv_vm_data_disk_absent_preview.result.exact_attachment_count | int == 1
+    fail_msg: >-
+      Selected VHDX path and controller slot do not identify the same unique
+      attachment; refusing detach.
+
+- name: Require explicit detach authority before mutation
+  ansible.builtin.assert:
+    that:
+      - hyperv_vm_data_disk_detach_authorized | bool
+    fail_msg: >-
+      Detach requires hyperv_vm_data_disk_detach_authorized=true and never
+      deletes the VHDX file.
+  when: hyperv_vm_data_disk_apply | bool
+
+- name: Detach exact Hyper-V data disk without deleting it
+  ansible.windows.win_powershell:
+    error_action: stop
+    parameters:
+      VmName: "{{ hyperv_vm_data_disk_vm_name }}"
+      Path: "{{ hyperv_vm_data_disk_vhdx_path }}"
+      ControllerNumber: "{{ hyperv_vm_data_disk_controller_number | int }}"
+      ControllerLocation: "{{ hyperv_vm_data_disk_controller_location | int }}"
+    script: |
+      param(
+        [Parameter(Mandatory)][string]$VmName,
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][int]$ControllerNumber,
+        [Parameter(Mandatory)][int]$ControllerLocation
+      )
+      $requestedFullPath = [System.IO.Path]::GetFullPath($Path)
+      $exact = @(Get-VMHardDiskDrive -VMName $VmName -ErrorAction Stop |
+        Where-Object {
+          $_.Path -and
+          [System.IO.Path]::GetFullPath($_.Path) -eq $requestedFullPath -and
+          $_.ControllerNumber -eq $ControllerNumber -and
+          $_.ControllerLocation -eq $ControllerLocation
+        })
+      if ($exact.Count -gt 1) {
+        throw "More than one exact attachment appeared after preview; refusing detach"
+      }
+      $Ansible.Changed = $false
+      if ($exact.Count -eq 1) {
+        Remove-VMHardDiskDrive -VMHardDiskDrive $exact[0] -ErrorAction Stop
+        $Ansible.Changed = $true
+      }
+      $Ansible.Result = @{
+        path = $requestedFullPath
+        detached = $exact.Count -eq 1
+        file_preserved = Test-Path -LiteralPath $Path
+      }
+  when:
+    - hyperv_vm_data_disk_apply | bool
+    - not ansible_check_mode

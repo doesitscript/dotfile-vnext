@@ -1,4 +1,24 @@
 ---
+- name: Require verified physical backing for the vLLM cache PVC
+  ansible.builtin.assert:
+    that:
+      - k3s_vllm_runtime_hf_cache_backing_capacity_verified | bool
+      - k3s_vllm_runtime_hf_cache_backing_capacity_evidence_ref | trim | length > 0
+    fail_msg: >-
+      Refusing vLLM present-state mutation: the requested
+      {{ k3s_vllm_runtime_hf_cache_size }} cache PVC does not yet have verified
+      physical backing capacity. Record the approved storage target, capacity,
+      backup/rollback basis, and receipt path in
+      k3s_vllm_runtime_hf_cache_backing_capacity_evidence_ref, then set
+      k3s_vllm_runtime_hf_cache_backing_capacity_verified=true.
+    success_msg: >-
+      vLLM cache backing capacity is verified by
+      {{ k3s_vllm_runtime_hf_cache_backing_capacity_evidence_ref }}.
+  when: k3s_vllm_runtime_state == 'present'
+  tags:
+    - always
+    - k3s_vllm_runtime_preflight
+
 - name: Load vault for K3s vLLM runtime
   ansible.builtin.include_tasks: load_vault.yml
   when: k3s_vllm_runtime_state == 'present'

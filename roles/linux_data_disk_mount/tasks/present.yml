@@ -1,0 +1,156 @@
+---
+- name: Require selected Linux data-disk inputs
+  ansible.builtin.assert:
+    that:
+      - linux_data_disk_mount_device_by_id | trim | length > 0
+      - not (linux_data_disk_mount_device_by_id | regex_search('-part[0-9]+$'))
+      - linux_data_disk_mount_expected_serial | trim | length > 0
+      - linux_data_disk_mount_path | trim | length > 0
+      - linux_data_disk_mount_backup_evidence_ref | trim | length > 0
+      - linux_data_disk_mount_authority_ref | trim | length > 0
+    fail_msg: >-
+      Select the stable whole-disk by-id path, observed serial, mount path,
+      backup evidence and user-authority reference.
+
+- name: Derive and validate selected partition identity
+  ansible.builtin.include_tasks: derive_partition.yml
+
+- name: Resolve selected Linux data disk
+  ansible.builtin.command:
+    argv: [readlink, -f, "{{ linux_data_disk_mount_device_by_id }}"]
+  register: _linux_data_disk_mount_device
+  changed_when: false
+  check_mode: false
+
+- name: Read selected Linux data-disk identity
+  ansible.builtin.command:
+    argv:
+      - lsblk
+      - --nodeps
+      - --noheadings
+      - --output
+      - SERIAL
+      - "{{ _linux_data_disk_mount_device.stdout }}"
+  register: _linux_data_disk_mount_serial
+  changed_when: false
+  check_mode: false
+
+- name: Require exact Linux data-disk identity
+  ansible.builtin.assert:
+    that:
+      - _linux_data_disk_mount_device.stdout != '/dev/sda'
+      - _linux_data_disk_mount_serial.stdout | trim == linux_data_disk_mount_expected_serial
+    fail_msg: >-
+      Refusing the OS disk or a serial mismatch. Resolved device={{
+      _linux_data_disk_mount_device.stdout }}, observed serial={{
+      _linux_data_disk_mount_serial.stdout | trim }}.
+
+- name: Inspect derived partition path
+  ansible.builtin.stat:
+    path: "{{ _linux_data_disk_mount_partition_by_id }}"
+    follow: true
+  register: _linux_data_disk_mount_partition_stat
+  check_mode: false
+
+- name: Resolve existing derived partition
+  ansible.builtin.command:
+    argv: [readlink, -f, "{{ _linux_data_disk_mount_partition_by_id }}"]
+  register: _linux_data_disk_mount_partition
+  changed_when: false
+  check_mode: false
+  when: _linux_data_disk_mount_partition_stat.stat.exists
+
+- name: Read existing partition parent
+  ansible.builtin.command:
+    argv:
+      - lsblk
+      - --noheadings
+      - --output
+      - PKNAME
+      - "{{ _linux_data_disk_mount_partition.stdout }}"
+  register: _linux_data_disk_mount_partition_parent_name
+  changed_when: false
+  check_mode: false
+  when: _linux_data_disk_mount_partition_stat.stat.exists
+
+- name: Bind existing partition to selected disk
+  ansible.builtin.include_tasks: validate_partition_parent.yml
+  vars:
+    linux_data_disk_mount_partition_parent_name: >-
+      {{ _linux_data_disk_mount_partition_parent_name.stdout }}
+    linux_data_disk_mount_selected_device: "{{ _linux_data_disk_mount_device.stdout }}"
+  when: _linux_data_disk_mount_partition_stat.stat.exists
+
+- name: Require explicit initialization authority before disk mutation
+  ansible.builtin.assert:
+    that:
+      - linux_data_disk_mount_initialize_authorized | bool
+    fail_msg: "Disk partitioning/formatting requires explicit initialization authority."
+  when: linux_data_disk_mount_apply | bool
+
+- name: Create one GPT data partition
+  community.general.parted:
+    device: "{{ _linux_data_disk_mount_device.stdout }}"
+    label: gpt
+    number: 1
+    part_start: 1MiB
+    part_end: 100%
+    state: present
+  when: linux_data_disk_mount_apply | bool
+
+- name: Wait for derived partition identity after initialization
+  ansible.builtin.command:
+    argv: [udevadm, settle]
+  changed_when: false
+  when: linux_data_disk_mount_apply | bool
+
+- name: Resolve derived partition after initialization
+  ansible.builtin.command:
+    argv: [readlink, -f, "{{ _linux_data_disk_mount_partition_by_id }}"]
+  register: _linux_data_disk_mount_partition_after
+  changed_when: false
+  when: linux_data_disk_mount_apply | bool
+
+- name: Read derived partition parent after initialization
+  ansible.builtin.command:
+    argv:
+      - lsblk
+      - --noheadings
+      - --output
+      - PKNAME
+      - "{{ _linux_data_disk_mount_partition_after.stdout }}"
+  register: _linux_data_disk_mount_partition_parent_after
+  changed_when: false
+  when: linux_data_disk_mount_apply | bool
+
+- name: Bind initialized partition to selected disk
+  ansible.builtin.include_tasks: validate_partition_parent.yml
+  vars:
+    linux_data_disk_mount_partition_parent_name: >-
+      {{ _linux_data_disk_mount_partition_parent_after.stdout }}
+    linux_data_disk_mount_selected_device: "{{ _linux_data_disk_mount_device.stdout }}"
+  when: linux_data_disk_mount_apply | bool
+
+- name: Create selected data filesystem
+  community.general.filesystem:
+    dev: "{{ _linux_data_disk_mount_partition_by_id }}"
+    fstype: "{{ linux_data_disk_mount_fstype }}"
+  when: linux_data_disk_mount_apply | bool
+
+- name: Create selected mount path
+  ansible.builtin.file:
+    path: "{{ linux_data_disk_mount_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: linux_data_disk_mount_apply | bool
+
+- name: Persist and mount selected data filesystem
+  ansible.posix.mount:
+    path: "{{ linux_data_disk_mount_path }}"
+    src: "{{ _linux_data_disk_mount_partition_by_id }}"
+    fstype: "{{ linux_data_disk_mount_fstype }}"
+    opts: defaults,nofail
+    state: mounted
+  when: linux_data_disk_mount_apply | bool

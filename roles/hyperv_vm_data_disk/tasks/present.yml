@@ -1,0 +1,160 @@
+---
+- name: Require selected Hyper-V data-disk inputs
+  ansible.builtin.assert:
+    that:
+      - hyperv_vm_data_disk_vm_name | trim | length > 0
+      - hyperv_vm_data_disk_vhdx_path | trim | length > 0
+      - hyperv_vm_data_disk_size_gib | int > 0
+      - hyperv_vm_data_disk_type in ['fixed', 'dynamic']
+      - hyperv_vm_data_disk_host_reserve_gib | int >= 0
+      - hyperv_vm_data_disk_controller_location | int >= 0
+      - hyperv_vm_data_disk_backup_evidence_ref | trim | length > 0
+      - hyperv_vm_data_disk_authority_ref | trim | length > 0
+    fail_msg: >-
+      Select the exact VM, VHDX path, positive capacity, fixed/dynamic type,
+      non-negative host-volume reserve, controller location, retained-backup
+      evidence and user-authority reference.
+
+- name: Preview Hyper-V data disk and host capacity
+  ansible.windows.win_powershell:
+    error_action: stop
+    parameters:
+      VmName: "{{ hyperv_vm_data_disk_vm_name }}"
+      Path: "{{ hyperv_vm_data_disk_vhdx_path }}"
+      RequestedSizeBytes: "{{ (hyperv_vm_data_disk_size_gib | int) * 1073741824 }}"
+      RequestedType: "{{ hyperv_vm_data_disk_type }}"
+      HostReserveBytes: "{{ (hyperv_vm_data_disk_host_reserve_gib | int) * 1073741824 }}"
+      ControllerNumber: "{{ hyperv_vm_data_disk_controller_number | int }}"
+      ControllerLocation: "{{ hyperv_vm_data_disk_controller_location | int }}"
+    script: |
+      param(
+        [Parameter(Mandatory)][string]$VmName,
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][Int64]$RequestedSizeBytes,
+        [Parameter(Mandatory)][ValidateSet('fixed', 'dynamic')][string]$RequestedType,
+        [Parameter(Mandatory)][Int64]$HostReserveBytes,
+        [Parameter(Mandatory)][int]$ControllerNumber,
+        [Parameter(Mandatory)][int]$ControllerLocation
+      )
+      $vm = Get-VM -Name $VmName -ErrorAction Stop
+      $requestedFullPath = [System.IO.Path]::GetFullPath($Path)
+      $vmDisks = @(Get-VMHardDiskDrive -VMName $VmName -ErrorAction Stop)
+      $slotAttachment = $vmDisks | Where-Object {
+        $_.ControllerNumber -eq $ControllerNumber -and
+        $_.ControllerLocation -eq $ControllerLocation
+      } | Select-Object -First 1
+      $pathAttachments = @($vmDisks | Where-Object {
+        $_.Path -and [System.IO.Path]::GetFullPath($_.Path) -eq $requestedFullPath
+      })
+      $vhd = if (Test-Path -LiteralPath $Path) {
+        Get-VHD -Path $Path -ErrorAction Stop
+      } else { $null }
+      $driveRoot = Split-Path -Qualifier $Path
+      if (-not $driveRoot) {
+        throw "VHDX path must use a local qualified host volume: $Path"
+      }
+      $driveName = $driveRoot.TrimEnd([char[]]'\\:')
+      $drive = Get-PSDrive -Name $driveName -PSProvider FileSystem -ErrorAction Stop
+      $Ansible.Changed = $false
+      $Ansible.Result = @{
+        vm = $VmName
+        vm_state = $vm.State.ToString()
+        requested_path = $requestedFullPath
+        requested_size_bytes = $RequestedSizeBytes
+        requested_type = $RequestedType.ToLowerInvariant()
+        host_reserve_bytes = $HostReserveBytes
+        host_free_bytes = [Int64]$drive.Free
+        controller_number = $ControllerNumber
+        controller_location = $ControllerLocation
+        slot_attached_path = if ($slotAttachment) {
+          [System.IO.Path]::GetFullPath($slotAttachment.Path)
+        } else { $null }
+        path_attachment_count = $pathAttachments.Count
+        path_attachment_controller_number = if ($pathAttachments.Count -eq 1) {
+          $pathAttachments[0].ControllerNumber
+        } else { $null }
+        path_attachment_controller_location = if ($pathAttachments.Count -eq 1) {
+          $pathAttachments[0].ControllerLocation
+        } else { $null }
+        vhd_exists = [bool]$vhd
+        vhd_size_bytes = if ($vhd) { [Int64]$vhd.Size } else { $null }
+        vhd_type = if ($vhd) { $vhd.VhdType.ToString().ToLowerInvariant() } else { $null }
+      }
+  register: _hyperv_vm_data_disk_preview
+  check_mode: false
+
+- name: Validate Hyper-V data-disk preview invariants
+  ansible.builtin.include_tasks: validate_present_preview.yml
+
+- name: Create and attach selected Hyper-V data disk
+  ansible.windows.win_powershell:
+    error_action: stop
+    parameters:
+      VmName: "{{ hyperv_vm_data_disk_vm_name }}"
+      Path: "{{ hyperv_vm_data_disk_vhdx_path }}"
+      RequestedSizeBytes: "{{ (hyperv_vm_data_disk_size_gib | int) * 1073741824 }}"
+      RequestedType: "{{ hyperv_vm_data_disk_type }}"
+      ControllerNumber: "{{ hyperv_vm_data_disk_controller_number | int }}"
+      ControllerLocation: "{{ hyperv_vm_data_disk_controller_location | int }}"
+    script: |
+      param(
+        [Parameter(Mandatory)][string]$VmName,
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][Int64]$RequestedSizeBytes,
+        [Parameter(Mandatory)][ValidateSet('fixed', 'dynamic')][string]$RequestedType,
+        [Parameter(Mandatory)][int]$ControllerNumber,
+        [Parameter(Mandatory)][int]$ControllerLocation
+      )
+      $parent = Split-Path -LiteralPath $Path
+      $Ansible.Changed = $false
+      if (-not (Test-Path -LiteralPath $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force -ErrorAction Stop | Out-Null
+      }
+      if (-not (Test-Path -LiteralPath $Path)) {
+        if ($RequestedType -eq 'fixed') {
+          New-VHD -Path $Path -SizeBytes $RequestedSizeBytes -Fixed -ErrorAction Stop | Out-Null
+        } else {
+          New-VHD -Path $Path -SizeBytes $RequestedSizeBytes -Dynamic -ErrorAction Stop | Out-Null
+        }
+        $Ansible.Changed = $true
+      }
+      $vhd = Get-VHD -Path $Path -ErrorAction Stop
+      if ([Int64]$vhd.Size -ne $RequestedSizeBytes -or
+          $vhd.VhdType.ToString().ToLowerInvariant() -ne $RequestedType) {
+        throw "VHDX identity changed after preview; refusing attachment"
+      }
+      $requestedFullPath = [System.IO.Path]::GetFullPath($Path)
+      $vmDisks = @(Get-VMHardDiskDrive -VMName $VmName -ErrorAction Stop)
+      $slotAttachment = $vmDisks | Where-Object {
+        $_.ControllerNumber -eq $ControllerNumber -and
+        $_.ControllerLocation -eq $ControllerLocation
+      } | Select-Object -First 1
+      $pathAttachments = @($vmDisks | Where-Object {
+        $_.Path -and [System.IO.Path]::GetFullPath($_.Path) -eq $requestedFullPath
+      })
+      if ($slotAttachment -and
+          [System.IO.Path]::GetFullPath($slotAttachment.Path) -ne $requestedFullPath) {
+        throw "Controller slot changed after preview; refusing replacement"
+      }
+      if ($pathAttachments.Count -gt 1 -or
+          ($pathAttachments.Count -eq 1 -and
+           ($pathAttachments[0].ControllerNumber -ne $ControllerNumber -or
+            $pathAttachments[0].ControllerLocation -ne $ControllerLocation))) {
+        throw "Requested path attachment changed after preview; refusing duplicate"
+      }
+      if (-not $slotAttachment) {
+        Add-VMHardDiskDrive -VMName $VmName -Path $Path -ControllerType SCSI `
+          -ControllerNumber $ControllerNumber -ControllerLocation $ControllerLocation `
+          -ErrorAction Stop
+        $Ansible.Changed = $true
+      }
+      $Ansible.Result = @{
+        vm = $VmName
+        path = $requestedFullPath
+        attached = $true
+        size_bytes = [Int64]$vhd.Size
+        type = $vhd.VhdType.ToString().ToLowerInvariant()
+      }
+  when:
+    - hyperv_vm_data_disk_apply | bool
+    - not ansible_check_mode

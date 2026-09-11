@@ -1,0 +1,59 @@
+---
+# Ordered S3/S4 entrypoint. One playbook-level lifecycle state guarantees
+# attach -> mount for present and unmount/fstab removal -> detach for absent.
+# Role defaults intentionally fail closed. Always preview with an explicit
+# two-host limit before setting either *_apply flag true.
+- name: Preview or remove the selected K3s guest data-disk mount
+  hosts: container_orchestrator_k3s:&gpu_workload_nodes
+  gather_facts: false
+  become: true
+  tags: [k3s_data_disk, linux_data_disk_mount, k3s_data_disk_absent]
+  pre_tasks:
+    - name: Require explicit target limit for K3s data-disk workflow
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | trim | length > 0
+          - (k3s_data_disk_state | default('present')) in ['present', 'absent']
+        fail_msg: >-
+          Use --limit with the verified Hyper-V and guest inventory aliases and
+          set k3s_data_disk_state to present or absent.
+      run_once: true
+      tags: [always]
+  roles:
+    - role: linux_data_disk_mount
+      linux_data_disk_mount_state: absent
+      when: (k3s_data_disk_state | default('present')) == 'absent'
+      tags: [linux_data_disk_mount]
+
+- name: Preview, attach, or detach the selected Hyper-V VM data disk
+  hosts: windows_hosts
+  gather_facts: false
+  tags: [k3s_data_disk, hyperv_vm_data_disk]
+  pre_tasks:
+    - name: Require explicit target limit for K3s data-disk workflow
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | trim | length > 0
+          - (k3s_data_disk_state | default('present')) in ['present', 'absent']
+        fail_msg: >-
+          Use --limit with the verified Hyper-V and guest inventory aliases and
+          set k3s_data_disk_state to present or absent.
+      run_once: true
+      tags: [always]
+  roles:
+    - role: hyperv_vm_data_disk
+      hyperv_vm_data_disk_state: "{{ k3s_data_disk_state | default('present') }}"
+      tags: [hyperv_vm_data_disk]
+
+- name: Preview or mount the selected K3s guest data disk after attachment
+  hosts: container_orchestrator_k3s:&gpu_workload_nodes
+  gather_facts: false
+  become: true
+  tags: [k3s_data_disk, linux_data_disk_mount]
+  roles:
+    - role: linux_data_disk_mount
+      linux_data_disk_mount_state: present
+      when: (k3s_data_disk_state | default('present')) == 'present'
+      tags: [linux_data_disk_mount]

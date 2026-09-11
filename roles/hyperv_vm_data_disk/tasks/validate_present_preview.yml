@@ -1,0 +1,44 @@
+---
+- name: Require an unoccupied or matching attachment slot and path
+  ansible.builtin.assert:
+    that:
+      - >-
+        _hyperv_vm_data_disk_preview.result.slot_attached_path is none or
+        _hyperv_vm_data_disk_preview.result.slot_attached_path ==
+        _hyperv_vm_data_disk_preview.result.requested_path
+      - _hyperv_vm_data_disk_preview.result.path_attachment_count | int <= 1
+      - >-
+        _hyperv_vm_data_disk_preview.result.path_attachment_count | int == 0 or
+        (_hyperv_vm_data_disk_preview.result.path_attachment_controller_number | int ==
+         hyperv_vm_data_disk_controller_number | int and
+         _hyperv_vm_data_disk_preview.result.path_attachment_controller_location | int ==
+         hyperv_vm_data_disk_controller_location | int)
+    fail_msg: >-
+      Requested controller slot or VHDX path conflicts with another attachment;
+      refusing replacement or duplicate attachment.
+
+- name: Require an existing VHDX to match selected size and type
+  ansible.builtin.assert:
+    that:
+      - >-
+        not (_hyperv_vm_data_disk_preview.result.vhd_exists | bool) or
+        _hyperv_vm_data_disk_preview.result.vhd_size_bytes | int ==
+        (hyperv_vm_data_disk_size_gib | int) * 1073741824
+      - >-
+        not (_hyperv_vm_data_disk_preview.result.vhd_exists | bool) or
+        _hyperv_vm_data_disk_preview.result.vhd_type == hyperv_vm_data_disk_type
+    fail_msg: >-
+      Existing VHDX size/type differs from the selected identity; refusing to
+      reuse or attach it.
+
+- name: Preserve selected host free-space reserve before VHDX creation
+  ansible.builtin.assert:
+    that:
+      - >-
+        _hyperv_vm_data_disk_preview.result.vhd_exists | bool or
+        _hyperv_vm_data_disk_preview.result.host_free_bytes | int >=
+        ((hyperv_vm_data_disk_size_gib | int) * 1073741824) +
+        ((hyperv_vm_data_disk_host_reserve_gib | int) * 1073741824)
+    fail_msg: >-
+      Host volume free capacity cannot hold the requested VHDX while preserving
+      the selected reserve; refusing creation.

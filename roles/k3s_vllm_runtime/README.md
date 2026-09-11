@@ -6,6 +6,14 @@ The role uses the official `vllm/vllm-openai` image pattern and fails before
 mutation if the node does not expose `nvidia-smi` and Kubernetes
 `nvidia.com/gpu` capacity.
 
+It also fails closed before present-state mutation unless inventory records
+both `k3s_vllm_runtime_hf_cache_backing_capacity_verified: true` and a nonempty
+`k3s_vllm_runtime_hf_cache_backing_capacity_evidence_ref`. A bound PVC or its
+requested size does not prove that the underlying filesystem has that capacity.
+The evidence reference must identify the approved physical target, measured
+capacity, and backup/rollback basis. Keep the flag `false` while those facts are
+unselected or disproven.
+
 ## Vault
 
 | Vault file | Variable |
@@ -20,7 +28,14 @@ bin/codex-env ansible-vault edit vault/shared.vault.yml
 ## Apply
 
 ```bash
-ansible-playbook playbooks/deploy_vllm_runtime.yaml -i inventory/inventory.yaml
+ansible-playbook playbooks/deploy_vllm_runtime.yaml \
+  -i inventory/inventory.yaml \
+  --limit hom-lab-ctl-k3s-02 \
+  --list-hosts
+
+ansible-playbook playbooks/deploy_vllm_runtime.yaml \
+  -i inventory/inventory.yaml \
+  --limit hom-lab-ctl-k3s-02
 ```
 
 ## Verify
@@ -36,6 +51,17 @@ Then query the OpenAI-compatible models endpoint:
 ```bash
 curl http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1/models
 ```
+
+Verify the evidence reference still matches the backing filesystem and confirm
+PVC binding, pod mount, node `DiskPressure=False`, deployment readiness, and
+`/health` before accepting the runtime.
+
+## Undo
+
+Restore the prior approved inventory values and re-run the same limited owner
+playbook. Do not set the capacity gate to `true` merely to bypass it. Cache data
+is recoverable only from the retained source or backup named by the evidence
+reference; PVC deletion is not an undo mechanism.
 
 ## Memory policy
 
