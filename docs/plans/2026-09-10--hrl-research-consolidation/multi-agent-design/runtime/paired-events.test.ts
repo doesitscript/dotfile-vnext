@@ -87,6 +87,14 @@ describe("paired finite-pass event acceptance", () => {
   test("matching directories are rejected", () => {
     const root = fixture(); mkdirSync(join(root, names.review_ready)); expect(() => scanEvents(root)).toThrow("regular file");
   });
+  test("evaluator non-contract filename hard-fails before accept", () => {
+    const root = fixture();
+    write(root, names.review_ready);
+    const before = scanEvents(root);
+    const evaluator = { ...expected, role: "evaluator" as const, responds_to: join(root, names.review_ready) };
+    write(root, "ready_for_review_by_coordinator_2026-09-11T010103.md", evaluator);
+    expect(() => acceptEvent(root, before, evaluator)).toThrow("non-contract filename");
+  });
 });
 
 describe("causal resume routing", () => {

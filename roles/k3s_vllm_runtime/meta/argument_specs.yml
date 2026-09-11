@@ -50,7 +50,20 @@ argument_specs:
       k3s_vllm_runtime_hf_cache_host_path:
         type: path
         default: /mnt/k3s-cache/hf
-        description: Host directory mounted into the vLLM container for HF data.
+        description: Host directory mounted at the settled HF cache path.
+      k3s_vllm_runtime_hf_cache_container_path:
+        type: path
+        default: /mnt/k3s-cache/hf
+        description: >-
+          Container mount path for the NVMe-backed Hugging Face cache. Keep this
+          aligned with the absolute HF_HUB_CACHE path.
+      k3s_vllm_runtime_hf_hub_cache_container_path:
+        type: path
+        default: /mnt/k3s-cache/hf/hub
+        description: >-
+          Absolute HF_HUB_CACHE path used by the vLLM container (C1). Must be
+          under k3s_vllm_runtime_hf_cache_container_path. Never use
+          TRANSFORMERS_CACHE.
       k3s_vllm_runtime_hf_cache_migration_apply:
         type: bool
         default: false

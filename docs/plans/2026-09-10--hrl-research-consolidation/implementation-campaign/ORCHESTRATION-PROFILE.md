@@ -67,3 +67,8 @@ review-ready handoff; only then does Evaluator run. Use a fresh run ID and
 `--recover-lock` after exact owner absence is verified (locks live under
 `multi-agent-design/orchestration/temp/`). A 900-second pass ceiling is a stall
 guard, not a reason to wait or continue expanding the batch.
+
+Light parents refuse Full-era `feedback` / `waiting` tip resume unless
+`allow_full_tip_resume: true`. See
+[`coordination/light-tip-reset-2026-09-11.md`](coordination/light-tip-reset-2026-09-11.md)
+for the S3 queue restart after the 134911Z safety-fixture loop.

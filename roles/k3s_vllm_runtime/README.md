@@ -14,6 +14,15 @@ The evidence reference must identify the approved physical target, measured
 capacity, and backup/rollback basis. Keep the flag `false` while those facts are
 unselected or disproven.
 
+## HF cache desired state (S3 / FA-hf-cache)
+
+| Contract | Role behavior |
+| --- | --- |
+| C1 | Deployment sets `HF_HUB_CACHE` to `k3s_vllm_runtime_hf_hub_cache_container_path` (default `/mnt/k3s-cache/hf/hub`). Assert refuses `TRANSFORMERS_CACHE` in extra args. |
+| C2 | This role does not call `huggingface-cli` (deprecated stub). Prefer `hf cache ls/rm/prune/verify` if a future task shells the image CLI. |
+| Token | `HF_TOKEN` via Secret on durable cluster storage — not stored on the NVMe cache tree. |
+| Idempotence | When the Deployment already mounts the selected host path, migrate + post-cutover live gates are skipped unless `hf_cache_source_cleanup_apply` is true. |
+
 ## Vault
 
 | Vault file | Variable |

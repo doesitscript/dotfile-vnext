@@ -18,6 +18,8 @@ const defaultRefinedHandoff=join(packet,'orchestration/05-refined-technical-hand
 const refinedTechnicalHandoffPath=cfg.refined_technical_handoff_path?resolve(cfg.refined_technical_handoff_path):(existsSync(defaultRefinedHandoff)?defaultRefinedHandoff:null);
 const parallelPreflightJobs=Array.isArray(cfg.parallel_preflight_jobs)?cfg.parallel_preflight_jobs:[];
 const orchestrationProfile=cfg.orchestration_profile==='full'?'full':'light';
+const workerAgentType='codex' as const;
+const allowFullTipResume=cfg.allow_full_tip_resume===true;
 const defaultLightOwnerBatch=['roles/k3s_vllm_runtime/**','roles/k3s_storage_offload/**','playbooks/deploy_k3s_storage_expansion.yaml'];
 const lightOwnerBatch=(Array.isArray(cfg.owner_batch)?cfg.owner_batch:defaultLightOwnerBatch).filter((item:any)=>typeof item==='string'&&item.length>0);
 // A completed artifact wakes the next role immediately. These are leak/stall
@@ -130,7 +132,17 @@ try{
  }
  writeFileSync(lock,JSON.stringify({run_id:cfg.run_id,owner_manifest_path:owner,session_id:session}),{flag:'wx'});lockOwned=true;
  const tip=resumeEvent(plan,{campaign_id:intake.campaign_id,upstream_plan_sha256:intake.upstream_plan_sha256});
- if(tip){responseTo=tip.path;nextActor=tip.nextActor;log('resume_from',{...tip});}
+ if(tip){
+  const fullEraTip=tip.kind==='feedback'||tip.kind==='waiting';
+  if(orchestrationProfile==='light'&&fullEraTip&&!allowFullTipResume){
+   throw Error(
+    `Light profile refuses to resume Full-era tip ${tip.path} (kind=${tip.kind}). `+
+    'Quarantine/supersede that tip and start from the implementation work queue, '+
+    'or pass allow_full_tip_resume: true for an explicit override.',
+   );
+  }
+  responseTo=tip.path;nextActor=tip.nextActor;log('resume_from',{...tip});
+ }
  if(nextActor==='none'&&cfg.reopen_review===true)nextActor='evaluator';
  if(nextActor==='operator'&&cfg.operator_resolution_path){
   if(!existsSync(resolve(cfg.operator_resolution_path)))throw Error('Missing recorded operator resolution');
@@ -155,7 +167,8 @@ try{
  await client.connect(transport);ledger('register',['--pid',String(transport.pid),'--role','orchestrator','--descendants']);
  writeFileSync(join(out,'AGENTS.md'),`# Parent-owned runtime work area\nOne finite assigned pass; parent owns scheduling. Use explicit project_root and plan_dir from the task, never ambient cwd. ${fixture?'Fixture only: no real project or host access.':'Read project_root/AGENTS.md before substantive project work; follow that project framework. Preserve unrelated work and specific Apply authority.'}\n`);
  const runtimeRoles=consultationRoles(consultationRequestPath);
- const result=await client.callTool({name:'create_team',arguments:{project_dir:out,session_name:requestedSession,agents:runtimeRoles.map(role=>({agent_type:'codex',name:role,role,role_description:`You are ${role}. Follow ${skills[role]} for task passes. Parent schedules finite passes. No independent polling, peer launches or runtime operation.`,initial_task:'Reply READY only. No tools or file writes. End this initialization turn.',file_ownership:role==='implementer'?['roles/**','playbooks/**','inventory/**','review_ready_for_evaluator_*','coordination/implementation-work-queue.md']:role==='evaluator'?['feedback_for_review_by_evaluator_*','waiting_for_review_by_evaluator_*','ready_for_review_by_evaluator_*']:['coordination/consultations/**']}))}},undefined,{timeout:180000});
+ const result=await client.callTool({name:'create_team',arguments:{project_dir:out,session_name:requestedSession,agents:runtimeRoles.map(role=>({agent_type:workerAgentType,name:role,role,role_description:`You are ${role}. Follow ${skills[role]} for task passes. Parent schedules finite passes. No independent polling, peer launches or runtime operation.`,initial_task:'Reply READY only. No tools or file writes. End this initialization turn.',file_ownership:role==='implementer'?['roles/**','playbooks/**','inventory/**','review_ready_for_evaluator_*','coordination/implementation-work-queue.md']:role==='evaluator'?['feedback_for_review_by_evaluator_*','waiting_for_review_by_evaluator_*','ready_for_review_by_evaluator_*']:['coordination/consultations/**']}))}},undefined,{timeout:180000});
+ if(workerAgentType!=='codex')throw Error(`Worker agent_type must be codex; refused ${workerAgentType}`);
  const text=result.content?.map((x:any)=>x.text||'').join('\n')||'',match=text.match(/Session "([^"]+)" created/);if(result.isError||!match)throw Error(`create_team failed: ${text}`);
  const expectedSession=session;session=match[1];created=true;log('team_created',{session_id:session});save('session.json',{session_id:session,run_id:cfg.run_id,owner_manifest_path:owner});printMonitorCommand();
  if(session!==expectedSession)throw Error('Unexpected session collision; actual ID retained for cleanup');

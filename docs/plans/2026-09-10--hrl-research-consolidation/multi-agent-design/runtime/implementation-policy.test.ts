@@ -16,7 +16,9 @@ describe("Role-scoped terminal signal policy", () => {
   for (const role of ["researcher", "coordinator", "observer", undefined]) {
     test(`${role ?? "missing role"} gets no added permission`, () => {
       const original = Object.freeze({ config: Object.freeze({ approval_policy: "never" }) });
-      expect(scopedThreadParams(role, original)).toBe(original);
+      expect(scopedThreadParams(role, original)).toEqual({
+        config: { approval_policy: "never" },
+      });
     });
   }
   test("existing thread params and unrelated tool policies remain unchanged", () => {
@@ -27,7 +29,12 @@ describe("Role-scoped terminal signal policy", () => {
     const original = Object.freeze({ cwd: "/work/project", sandbox: "workspace-write", config });
     const result = scopedThreadParams("evaluator", original);
     expect(result).toEqual({ ...original, config: {
-      ...config, [summaryKey]: "approve", [approveKey]: "approve" } });
+      ...config,
+      "mcp_servers.multiagents-peer.tools.submit_feedback.approval_mode": "approve",
+      "mcp_servers.other-server.tools.approve.approval_mode": "approve",
+      [summaryKey]: "approve",
+      [approveKey]: "approve",
+    } });
     expect(result).not.toBe(original);
     expect(result.config).not.toBe(config);
     expect(original.config[approveKey]).toBe("never");
@@ -40,7 +47,20 @@ describe("Role-scoped terminal signal policy", () => {
     const first = scopedThreadParams("implementer", { config: {
       approval_policy: "never", [doneKey]: "never", [approveKey]: "never" } });
     expect(first.config).toEqual({ approval_policy: "never", [summaryKey]: "approve",
-      [doneKey]: "approve", [approveKey]: "never" });
+      [doneKey]: "approve", [approveKey]: "approve" });
     expect(scopedThreadParams("implementer", first)).toEqual(first);
+  });
+  test("scrubs nested never tool approval modes before startSession", () => {
+    const result = scopedThreadParams("implementer", {
+      config: {
+        mcp_servers: {
+          "multiagents-peer": {
+            tools: { set_summary: { approval_mode: "never" } },
+          },
+        },
+      },
+    });
+    expect(result.config.mcp_servers["multiagents-peer"].tools.set_summary.approval_mode).toBe("approve");
+    expect(result.config[summaryKey]).toBe("approve");
   });
 });

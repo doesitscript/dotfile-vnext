@@ -38,7 +38,7 @@ ID from the refined handoff.
 
 | Order | ID | State | Target state / owners | Targeted validation | Next |
 | --- | --- | --- | --- | --- | --- |
-| 1 | `FA-hf-cache-desired-state` | ready | HF cache converges on `HF_HUB_CACHE=/mnt/k3s-cache/hf/hub`; no `TRANSFORMERS_CACHE` / deprecated CLI. Owners: `roles/k3s_vllm_runtime/**`; related vLLM deploy owner | one bundled whitespace, syntax/lint, template/argument-contract check | FA-containerd-imagefs-bind |
+| 1 | `FA-hf-cache-desired-state` (`S3-cache-idempotence`) | ready | HF cache converges on `HF_HUB_CACHE=/mnt/k3s-cache/hf/hub`; no `TRANSFORMERS_CACHE` / deprecated CLI; already-cut-over host_path reruns skip migration + cutover live gates. Owners: `roles/k3s_vllm_runtime/**`; related vLLM deploy owner | one bundled whitespace, syntax/lint, template/argument-contract check | FA-containerd-imagefs-bind |
 | 2 | `FA-containerd-imagefs-bind` | ready | containerd imagefs bind offload converges on NVMe layout; server/TLS untouched. Owners: `roles/k3s_storage_offload/**`; `playbooks/deploy_k3s_data_disk.yaml`; `playbooks/deploy_k3s_storage_expansion.yaml` | one bundled whitespace, syntax/lint, exact normal-state idempotence check | FA-local-path-new-only |
 | 3 | `FA-local-path-new-only` | ready | new local-path backing under `/mnt/k3s-cache/local-path`; existing PVs immutable. Owners: k3s storage / local-path surfaces already in repo | syntax/lint on touched files | FA-capacity-signal |
 | 4 | `FA-capacity-signal` | ready | monitor emits usable capacity signal via owned stack. Owners: `roles/storage_capacity_monitor/**`; `roles/logging_alloy/**` only if required | monitor fixture/template test, syntax/lint | FA-ansible-tag-hygiene |

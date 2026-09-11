@@ -30,8 +30,29 @@ const patterns: [RegExp, EventKind, Role, AcceptedEvent["nextActor"]][] = [
   [/^ready_for_review_by_evaluator_.+\.md$/, "ready", "evaluator", "none"],
 ];
 
+/** Near-miss Evaluator filenames that must hard-fail instead of silent ignore. */
+const invalidEvaluatorNames = [
+  /^ready_for_review_by_coordinator_.+\.md$/,
+  /^feedback_for_review_by_coordinator_.+\.md$/,
+  /^waiting_for_review_by_coordinator_.+\.md$/,
+  /^ready_for_review_by_implementer_.+\.md$/,
+];
+
 function eventType(name: string) {
   return patterns.find(([pattern]) => pattern.test(name));
+}
+
+function assertNoInvalidEvaluatorFilename(planDir: string, before: EventSnapshot, role: Role) {
+  if (role !== "evaluator") return;
+  const afterNames = readdirSync(planDir);
+  const added = afterNames.filter(name => !Object.hasOwn(before, name));
+  const bad = added.filter(name => invalidEvaluatorNames.some(pattern => pattern.test(name)));
+  if (bad.length > 0) {
+    throw Error(
+      `Light/Evaluator wrote non-contract filename(s): ${bad.join(", ")}. ` +
+      "Use ready_for_review_by_evaluator_*, feedback_for_review_by_evaluator_*, or waiting_for_review_by_evaluator_* only.",
+    );
+  }
 }
 
 function readEvent(planDir: string, name: string): Buffer {
@@ -67,6 +88,7 @@ export function acceptEvent(planDir: string, before: EventSnapshot, expected: Ex
   if (expected.responds_to !== null && (typeof expected.responds_to !== "string" || !expected.responds_to)) {
     throw Error("Invalid expected responds_to");
   }
+  assertNoInvalidEvaluatorFilename(planDir, before, expected.role);
   const after = scanEvents(planDir);
   for (const [name, digest] of Object.entries(before)) {
     if (after[name] !== digest) throw Error(`Pre-existing event changed or removed: ${name}`);

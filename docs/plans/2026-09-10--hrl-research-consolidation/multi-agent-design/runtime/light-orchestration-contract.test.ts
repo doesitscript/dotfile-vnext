@@ -53,8 +53,9 @@ describe("Light orchestration contract", () => {
 
   test("keeps dashboard updates non-interactive while preserving terminal gates", () => {
     const policy = read("implementation-policy.ts");
-    expect(policy).toContain('tools.set_summary.approval_mode": "approve"');
-    expect(policy).toContain('[`mcp_servers.multiagents-peer.tools.${tool}.approval_mode`]: "approve"');
+    expect(policy).toContain('[`${PEER}.set_summary.approval_mode`]: "approve"');
+    expect(policy).toContain('[`${PEER}.${tool}.approval_mode`]: "approve"');
+    expect(policy).toContain("scrubInvalidToolApprovalModes");
   });
 
   test("role adapters prohibit broad research and remote work in Light", () => {
@@ -89,6 +90,12 @@ describe("Light orchestration contract", () => {
     expect(evaluator).toContain("One bundled source-quality verdict");
     expect(queue).not.toContain("verify_k3s_storage_offload_safety");
     expect(queue).not.toContain("verify_vllm_cache_migration_safety");
-    expect(runner).toContain("agent_type:'codex'");
+    expect(runner).toContain("agent_type:workerAgentType");
+    expect(runner).toContain("workerAgentType='codex'");
+    expect(runner).toContain("allow_full_tip_resume");
+    expect(runner).toContain("Light profile refuses to resume Full-era tip");
+    expect(read("paired-events.ts")).toContain("non-contract filename");
+    expect(read("implementation-policy.ts")).toContain("scrubInvalidToolApprovalModes");
+    expect(read("implementation-policy.ts")).toContain('[`${PEER}.set_summary.approval_mode`]: "approve"');
   });
 });

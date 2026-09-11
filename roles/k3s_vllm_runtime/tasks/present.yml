@@ -87,6 +87,39 @@
         else false
       }}
 
+- name: Require HF_HUB_CACHE desired-state contract (C1)
+  ansible.builtin.assert:
+    that:
+      - k3s_vllm_runtime_hf_hub_cache_container_path | length > 0
+      - >-
+        k3s_vllm_runtime_hf_hub_cache_container_path.startswith(
+          (k3s_vllm_runtime_hf_cache_container_path | regex_replace('/$', '')) ~ '/'
+        )
+      - >-
+        'TRANSFORMERS_CACHE' not in (
+          k3s_vllm_runtime_extra_args | default([]) | map('string') | list | join(' ')
+        )
+    fail_msg: >-
+      Refusing vLLM present-state mutation: HF_HUB_CACHE must sit under the
+      container HF cache mount (default /mnt/k3s-cache/hf/hub). Do not use
+      TRANSFORMERS_CACHE (C1). Token credentials stay in the cluster Secret on
+      durable root (HF_TOKEN), never on the NVMe cache volume.
+    success_msg: >-
+      HF_HUB_CACHE contract OK:
+      {{ k3s_vllm_runtime_hf_hub_cache_container_path }} under
+      {{ k3s_vllm_runtime_hf_cache_container_path }}.
+
+- name: Decide whether host-path cutover live verification is required this pass
+  ansible.builtin.set_fact:
+    _k3s_vllm_runtime_host_path_cutover_verify_this_pass: >-
+      {{
+        k3s_vllm_runtime_hf_cache_backend == 'host_path'
+        and (
+          not (_k3s_vllm_runtime_cache_already_on_selected_host_path | bool)
+          or (k3s_vllm_runtime_hf_cache_source_cleanup_apply | bool)
+        )
+      }}
+
 - name: Prepare retained PVC cache for selected host-path cutover
   ansible.builtin.include_tasks: migrate_hf_cache.yml
   when:
@@ -366,7 +399,7 @@
       environment:
         KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
       register: _k3s_vllm_runtime_service
-      when: k3s_vllm_runtime_hf_cache_backend == 'host_path'
+      when: _k3s_vllm_runtime_host_path_cutover_verify_this_pass | bool
 
     - name: Verify vLLM health endpoint after host-path cutover
       ansible.builtin.uri:
@@ -378,7 +411,7 @@
       until: _k3s_vllm_runtime_health.status == 200
       retries: 20
       delay: 30
-      when: k3s_vllm_runtime_hf_cache_backend == 'host_path'
+      when: _k3s_vllm_runtime_host_path_cutover_verify_this_pass | bool
 
     - name: Verify vLLM models endpoint after host-path cutover
       ansible.builtin.uri:
@@ -392,7 +425,7 @@
         - _k3s_vllm_runtime_models.json.data | default([]) | length > 0
       retries: 20
       delay: 30
-      when: k3s_vllm_runtime_hf_cache_backend == 'host_path'
+      when: _k3s_vllm_runtime_host_path_cutover_verify_this_pass | bool
 
     - name: Verify vLLM inference after host-path cutover
       ansible.builtin.uri:
@@ -413,7 +446,7 @@
         - _k3s_vllm_runtime_inference.json.choices | default([]) | length > 0
       retries: 3
       delay: 10
-      when: k3s_vllm_runtime_hf_cache_backend == 'host_path'
+      when: _k3s_vllm_runtime_host_path_cutover_verify_this_pass | bool
 
     - name: Inventory old root-backed cache entries after cutover health passes
       ansible.builtin.find:
@@ -424,7 +457,7 @@
         recurse: false
       register: _k3s_vllm_runtime_old_cache_entries
       when:
-        - k3s_vllm_runtime_hf_cache_backend == 'host_path'
+        - _k3s_vllm_runtime_host_path_cutover_verify_this_pass | bool
         - _k3s_vllm_runtime_cache_source_path is defined
 
     - name: Record old cache cleanup start for rollback handling
@@ -486,7 +519,7 @@
         ) == 'False'
       retries: 20
       delay: 30
-      when: k3s_vllm_runtime_hf_cache_backend == 'host_path'
+      when: _k3s_vllm_runtime_host_path_cutover_verify_this_pass | bool
 
     - name: Wait for root utilization margin after host-path cutover
       ansible.builtin.command:
@@ -501,7 +534,7 @@
          | trim | regex_replace('%$', '') | int) <= 80
       retries: 20
       delay: 30
-      when: k3s_vllm_runtime_hf_cache_backend == 'host_path'
+      when: _k3s_vllm_runtime_host_path_cutover_verify_this_pass | bool
   rescue:
     - name: Restore previous vLLM deployment after cutover failure
       ansible.builtin.include_tasks: restore_previous_deployment.yml
