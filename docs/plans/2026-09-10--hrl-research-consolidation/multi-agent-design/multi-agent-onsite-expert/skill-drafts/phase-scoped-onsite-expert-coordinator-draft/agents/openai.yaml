@@ -1,0 +1,47 @@
+interface:
+  display_name: "Phase-Scoped Onsite Expert Coordinator (Draft)"
+  short_description: "Draft current-phase routing and implementation handoff"
+  default_prompt: >-
+    Use $phase-scoped-onsite-expert-coordinator-draft with source_plan_root,
+    preparation_output_root, project_root, run_id, and pass; route bounded
+    research, compose a plan, and release only after independent Researcher
+    review of its current hash, reporting dashboard status and cleanup options.
+policy:
+  allow_implicit_invocation: false
+depends_on_skills: "multiagents-runtime-contract, multiagents-runtime-operator"
+# Local harness contract; custom paths resolve against the skill directory,
+# not agents/. These keys are not a native scheduler.
+orchestration:
+  workflow_id: "phase-scoped-plan-preparation"
+  contract_version: 1
+  role: "onsite-expert-coordinator"
+  counterpart_role: "researcher"
+  phase: "current-phase-preparation-only"
+  invocation_model: "single_pass_per_invocation"
+  passes: ["route", "compose", "revise", "release"]
+  required_inputs: ["source_plan_root", "preparation_output_root", "project_root", "pipeline_id", "stage_id", "task_id", "run_id", "pass", "mode"]
+  orchestrated_inputs: ["session_id", "owner_manifest_path"]
+  optional_runtime_inputs: ["runtime_observation_path"]
+  optional_upstream_inputs: ["upstream_handoff_path", "upstream_handoff_sha256"]
+  execution_contract: "../../../agent-prompts/execution-contract.md"
+  runtime_adapter: "../../../runtime/run-preparation.ts"
+  stage_id: "preparation"
+  downstream_activation: "authorized_separately"
+  input_artifact: "CURRENT-PHASE-PREPARATION-PLAN.md"
+  artifact_root: "preparation_output_root"
+  first_handoff_artifact: "coordination/current-phase-routing.md"
+  plan_artifact: "handoff/current-phase-implementation-plan.md"
+  review_artifact: "research/current-phase-plan-review.md"
+  final_handoff_artifact: "handoff/current-phase-release.md"
+  release_requires: "plan_review_passed for the current run and plan SHA-256"
+  cleanup_offer_owner: true
+  does_not_own:
+    - "host_mutation"
+    - "ansible_implementation"
+    - "evaluator_approval"
+    - "researcher_plan_review"
+    - "polling"
+    - "folder_watch"
+    - "turn_scheduling"
+    - "downstream_stage_activation"
+    - "runtime_process_ownership"

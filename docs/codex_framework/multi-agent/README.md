@@ -46,6 +46,7 @@ then add a package folder when role docs or an AAR are needed.
 | Workflow ID | Status | Pattern | Package | Primary skill |
 | --- | --- | --- | --- | --- |
 | `evaluator-implementer-loop` | trial | [pattern](agent-workflow-registry/patterns/evaluator-implementer-loop.md) | [package](workflow-packages/evaluator-implementer-loop/README.md) | `multi-agent-implementer` |
+| `phase-scoped-plan-preparation` | trial | [pattern](agent-workflow-registry/patterns/phase-scoped-plan-preparation.md) | [execution package](../../plans/2026-09-10--hrl-research-consolidation/multi-agent-design/agent-prompts/execution-contract.md) | `phase-scoped-onsite-expert-coordinator-draft` + `phase-scoped-researcher-draft` |
 | `plan-family-execution-with-validator` | active | [pattern](agent-workflow-registry/patterns/plan-family-execution-with-validator.md) | — | (plan coordinator) |
 | `doc-collection-coordinator` | trial | [pattern](agent-workflow-registry/patterns/doc-collection-coordinator.md) | — | `vendor-doc-collection` |
 | `hyperv-guest-connectivity-and-ai-stack-order` | active | [pattern](agent-workflow-registry/patterns/hyperv-guest-connectivity-and-ai-stack-order.md) | — | — |

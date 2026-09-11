@@ -1,0 +1,46 @@
+interface:
+  display_name: "Phase-Scoped Researcher (Draft)"
+  short_description: "Draft bounded readiness research for the current phase"
+  default_prompt: >-
+    Use $phase-scoped-researcher-draft with source_plan_root,
+    preparation_output_root, project_root, run_id, and pass; research routed
+    gaps, then independently review the Coordinator plan in a later pass and
+    record its current SHA-256, evidence coverage, and actionable findings.
+policy:
+  allow_implicit_invocation: false
+depends_on_skills: "multiagents-runtime-contract, multiagents-runtime-operator"
+# Local harness contract; custom paths resolve against the skill directory,
+# not agents/. These keys are not a native scheduler.
+orchestration:
+  workflow_id: "phase-scoped-plan-preparation"
+  contract_version: 1
+  role: "researcher"
+  counterpart_role: "onsite-expert-coordinator"
+  phase: "current-phase-preparation-only"
+  invocation_model: "single_pass_per_invocation"
+  passes: ["research", "review-plan"]
+  required_inputs: ["source_plan_root", "preparation_output_root", "project_root", "pipeline_id", "stage_id", "task_id", "run_id", "pass", "mode"]
+  orchestrated_inputs: ["session_id", "owner_manifest_path"]
+  optional_runtime_inputs: ["runtime_observation_path"]
+  optional_upstream_inputs: ["upstream_handoff_path", "upstream_handoff_sha256"]
+  execution_contract: "../../../agent-prompts/execution-contract.md"
+  runtime_adapter: "../../../runtime/run-preparation.ts"
+  stage_id: "preparation"
+  downstream_activation: "authorized_separately"
+  artifact_root: "preparation_output_root"
+  input_artifact: "coordination/current-phase-routing.md"
+  handoff_artifact: "research/current-phase-readiness-brief.md"
+  review_input_artifact: "handoff/current-phase-implementation-plan.md"
+  review_artifact: "research/current-phase-plan-review.md"
+  review_statuses: ["plan_review_passed", "plan_changes_required"]
+  cleanup_offer_owner: false
+  does_not_own:
+    - "host_mutation"
+    - "ansible_implementation"
+    - "implementation_plan"
+    - "evaluator_approval"
+    - "polling"
+    - "folder_watch"
+    - "turn_scheduling"
+    - "downstream_stage_activation"
+    - "runtime_process_ownership"

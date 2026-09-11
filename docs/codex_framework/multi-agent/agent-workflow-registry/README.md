@@ -49,6 +49,7 @@ See [../workflow-packages/README.md](../workflow-packages/README.md).
 | ID | Status | Pattern file | Package | Notes |
 | --- | --- | --- | --- | --- |
 | `evaluator-implementer-loop` | trial | [patterns/evaluator-implementer-loop.md](patterns/evaluator-implementer-loop.md) | [package](../workflow-packages/evaluator-implementer-loop/README.md) | Skill `multi-agent-implementer` |
+| `phase-scoped-plan-preparation` | trial | [patterns/phase-scoped-plan-preparation.md](patterns/phase-scoped-plan-preparation.md) | [execution package](../../../plans/2026-09-10--hrl-research-consolidation/multi-agent-design/agent-prompts/execution-contract.md) | Two-role middle stage; reviewed handoff only, no downstream launch |
 | `plan-family-execution-with-validator` | active | [patterns/plan-family-execution-with-validator.md](patterns/plan-family-execution-with-validator.md) | — | Coordinator + validator gate |
 | `doc-collection-coordinator` | trial | [patterns/doc-collection-coordinator.md](patterns/doc-collection-coordinator.md) | — | Vendor doc collection |
 | `hyperv-guest-connectivity-and-ai-stack-order` | active | [patterns/hyperv-guest-connectivity-and-ai-stack-order.md](patterns/hyperv-guest-connectivity-and-ai-stack-order.md) | — | Stack ordering |

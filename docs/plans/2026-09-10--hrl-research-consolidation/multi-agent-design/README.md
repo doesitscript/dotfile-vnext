@@ -5,6 +5,12 @@
 **Status:** Active documentation  
 **Last Updated:** September 10, 2026
 
+**Current delivery:** [START-HERE.md](START-HERE.md) links the implemented
+preparation-role skills, two copy/paste prompts and executable controller. A
+real two-agent preparation run passed independent review/revision/release and
+owned-process teardown. The storage plan has not been executed. See the
+[fresh validation receipt](validation-2026-09-11.md) for proof and limitations.
+
 ---
 
 ## Overview
@@ -18,6 +24,12 @@ This directory captures the **proven multi-agent patterns** used to successfully
 [`knowledge-capabilities/SKILL-RECOMMENDATIONS.md`](knowledge-capabilities/SKILL-RECOMMENDATIONS.md)
 identifies the one proposed new project skill and the existing skills/workflows
 to enhance, without creating new permanent roles.
+
+**Current-phase two-agent draft:**
+[`CURRENT-PHASE-PREPARATION-PLAN.md`](CURRENT-PHASE-PREPARATION-PLAN.md)
+is the practical Coordinator + Researcher preparation packet. Its two drop-in
+draft skills and prompts produce a bounded implementation plan and research
+readiness brief for the established Implementer/Evaluator loop.
 
 **Immediate next-step guide:**
 [`IMMEDIATE-RECOMMENDATIONS-BEFORE-ACTIVATION.md`](IMMEDIATE-RECOMMENDATIONS-BEFORE-ACTIVATION.md)

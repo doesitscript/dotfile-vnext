@@ -1,0 +1,30 @@
+flowchart TB
+    OP["Operator: source plan + separate output root"]
+    UP["Future upstream intake<br/>pipeline_id + task_id + scoped handoff/hash"]
+    ID["Attempt identity<br/>stage_id=preparation + run_id<br/>separate session_id + owner manifest"]
+    RUNTIME["External orchestrator + reusable runtime operator<br/>dashboard http://127.0.0.1:7900<br/>setup, wakeups, recovery, owned cleanup"]
+    SRC["Source plan + task-relevant project/HRL evidence"]
+    subgraph PREP["Preparation outputs: preparation_output_root"]
+        CO1["Coordinator: route"] --> RT["coordination/current-phase-routing.md"]
+        RT --> RE["Researcher: research"] --> RB["research/current-phase-readiness-brief.md"]
+        RB --> CO2["Coordinator: compose or revise"] --> HP["handoff/current-phase-implementation-plan.md"]
+        HP --> REV["Researcher: independent evidence and coverage review"]
+        REV --> REVIEW["research/current-phase-plan-review.md<br/>reviewed path + SHA-256"]
+        REVIEW --> STATUS{"Plan review status"}
+        STATUS -->|"changes required: bounded correction"| CO2
+        STATUS -->|"passed: same run and current hash"| REL["Coordinator: release"]
+        REL --> RELEASE["handoff/current-phase-release.md<br/>ready_for_implementation"]
+    end
+    OP --> RUNTIME
+    UP -.->|"optional intake; authorized scope only"| OP
+    OP --> ID --> RUNTIME
+    RUNTIME -.->|"schedule each single-pass invocation"| PREP
+    SRC --> CO1
+    SRC --> RE
+    SRC --> REV
+    CO2 -->|"meaningful evidence gap"| RE
+    CO2 -->|"unresolved user decision"| OP
+    RELEASE --> PARENT["Return exact plan/review/hash to parent or operator<br/>preparation stops here"]
+    PARENT -.->|"future stage; separate activation authority"| IMPL["Established Implementer"] --> EVAL["Established Evaluator"]
+    RELEASE --> CLEAN["Coordinator: offer cleanup of exact leftovers<br/>retain skills, plan, handoff, and receipts"]
+    CLEAN -->|"authorized cleanup"| RUNTIME
