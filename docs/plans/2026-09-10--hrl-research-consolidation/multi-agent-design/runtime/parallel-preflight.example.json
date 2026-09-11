@@ -1,0 +1,12 @@
+{
+  "project_root": "/absolute/project-root",
+  "plan_dir": "/absolute/implementation-campaign",
+  "output_dir": "/absolute/fresh-run-directory/parallel-preflight",
+  "run_id": "unique-kebab-case-run-id",
+  "jobs": [
+    { "id": "infrastructure-evidence", "purpose": "read inventory and target facts", "command": ["ansible-inventory", "-i", "inventory", "--list"], "timeout_seconds": 120 },
+    { "id": "ansible-contract", "purpose": "syntax-check targeted playbooks", "command": ["ansible-playbook", "playbooks/report_storage.yaml", "--syntax-check"], "timeout_seconds": 120 },
+    { "id": "research-map", "purpose": "locate supplied decision guidance", "command": ["rg", "-n", "S3|S4|S5", "docs/plans/2026-09-10--hrl-research-consolidation/implementation-campaign/coordination/research-application"], "timeout_seconds": 60 },
+    { "id": "runtime-tests", "purpose": "run retained fast tests", "command": ["bun", "test", "docs/plans/2026-09-10--hrl-research-consolidation/multi-agent-design/runtime/paired-events.test.ts"], "timeout_seconds": 120 }
+  ]
+}

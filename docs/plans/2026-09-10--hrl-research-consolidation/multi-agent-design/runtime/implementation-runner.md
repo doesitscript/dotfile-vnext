@@ -40,6 +40,17 @@ passes, 15 minutes per pass, 90 minutes total. These are stopping limits, not
 success criteria. Source/receipt work survives a stop; restart with a fresh run
 directory and ID to continue. Live Apply is still gated by actual authorization.
 
+## Experimental parallel preflight
+
+An optional `parallel_preflight_jobs` array in the run config launches one to
+four bounded inspection/test jobs before the serial role loop. Use the contract
+and examples in [parallel-preflight-experiment.md](../orchestration/parallel-preflight-experiment.md).
+Each job is allowlisted read-only, writes only to the fresh runtime directory,
+and its manifest is supplied to both roles. This is suited to concurrent route
+discovery, storage/Alloy/vLLM ownership mapping, Ansible syntax inspection and
+fast tests. It never parallelizes source edits, live Apply, approval or final
+technical synthesis.
+
 Before starting, the parent checks broker health through the existing runtime
 operator and recovers it if necessary. The runner owns exactly its newly created
 session/children/dashboard and reuses shared dashboards. It does not recover or
