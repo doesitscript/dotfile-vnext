@@ -55,25 +55,23 @@ k3s_vllm_runtime_cpu_request: "1200m"
 k3s_vllm_runtime_memory_request: 2Gi
 k3s_vllm_runtime_memory_limit: 8Gi
 k3s_vllm_runtime_enable_auto_tool_choice: true
-k3s_vllm_runtime_tool_call_parser: "qwen2_5_coder"
+k3s_vllm_runtime_tool_call_parser: "qwen3_coder"
 k3s_vllm_runtime_tool_parser_plugin_enabled: true
 # Codex-owned tool-call repair; Cursor: preserve this template/parser pairing.
 k3s_vllm_runtime_tool_parser_plugin_chat_template_enabled: true
-# 5090 vLLM — Qwen2.5-Coder-32B AWQ @ 32k context.
-# Memory tuning (vLLM docs): fp8 KV cache shrinks KV pool ~50% without lowering
-# --max-model-len; gpu-memory-utilization sets KV budget from free VRAM after weights.
-# Prior 32B deploy failed during K3s apiserver restart — not confirmed OOM.
-k3s_vllm_runtime_model: Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
-k3s_vllm_runtime_served_model_name: Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
+# 5090 vLLM — Qwen3-Coder-30B-A3B AWQ-4bit @ 32k context.
+# Replaced Qwen2.5-Coder-32B AWQ with Qwen3 MoE (30B/~3B active) 2026-09-10.
+# AWQ-4bit quantization (~18GB) for vLLM native compatibility.
+# Memory tuning: AWQ handles quantization internally, no extra KV cache dtype needed.
+k3s_vllm_runtime_model: cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit
+k3s_vllm_runtime_served_model_name: cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit
 k3s_vllm_runtime_extra_args:
   - --gpu-memory-utilization
-  - "0.92"
+  - "0.90"
   - --max-model-len
   - "32768"
-  - --kv-cache-dtype
-  - "fp8"
   - --max-num-seqs
-  - "4"
+  - "6"
 k3s_langfuse_platform_web_cpu_request: "150m"
 k3s_langfuse_platform_web_memory_request: "512Mi"
 k3s_langfuse_platform_worker_cpu_request: "100m"
@@ -138,7 +136,7 @@ ai_service_profile:
 
 # Continue edit (desktop Ollama qwen2.5-coder:7b).
 k3s_litellm_gateway_primary_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1"
-k3s_litellm_gateway_primary_vllm_model: "Qwen/Qwen2.5-Coder-32B-Instruct-AWQ"
+k3s_litellm_gateway_primary_vllm_model: "cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit"
 k3s_litellm_gateway_continue_edit_api_base: "http://ollama-desktop.hom.lab:11434/v1"
 k3s_litellm_gateway_continue_edit_model: "qwen2.5-coder:7b"
 k3s_litellm_gateway_continue_edit_provider: "openai"
@@ -162,10 +160,7 @@ k3s_litellm_gateway_autocomplete_1_5b_provider: "openai"
 # k3s_litellm_gateway_gpt_oss_chat_api_base: "http://ollama-desktop.hom.lab:11434"
 # k3s_litellm_gateway_devstral_chat_api_base: "http://ollama-desktop.hom.lab:11434"
 
-# Kilo fallback (desktop Ollama).
-k3s_litellm_gateway_kilo_fast_chat_api_base: "http://ollama-desktop.hom.lab:11434"
-k3s_litellm_gateway_kilo_fast_chat_model: "ministral-3:8b"
-k3s_litellm_gateway_kilo_fast_chat_provider: "ollama"
+# Kilo fallback (desktop Ollama) — defined below in Phase B section.
 
 # ---------------------------------------------------------------------------
 # GPU time-share on this host (single nvidia.com/gpu) — Phase B on vs off

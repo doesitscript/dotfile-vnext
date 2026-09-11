@@ -1,6 +1,6 @@
 # redhat-ansible
 
-Builds the current Red Hat Ansible MCP server from source (`ansible/vscode-ansible`) and configures the `"ansible"` entry in the project's `.cursor/mcp.json`. This is the live role; the frozen snapshot lives in `roles/mcp_servers/redhat-ansible-frozen/`.
+Builds the current Red Hat Ansible MCP server from source (`ansible/vscode-ansible`) and configures the `"ansible"` entry in the project's `.cursor/mcp.json`, project `.codex/config.toml`, and (by default) `~/.codex/config.toml`. This is the live role; the frozen snapshot lives in `roles/mcp_servers/redhat-ansible-frozen/`.
 
 ## Background
 
@@ -13,7 +13,7 @@ The Red Hat Ansible VS Code/Cursor extension used to ship an MCP entry point at 
 1. Clones [ansible/vscode-ansible](https://github.com/ansible/vscode-ansible) to `~/.local/lib/vscode-ansible` (version-pinned via git ref).
 2. Runs `yarn install` and `yarn run build` at repo root (using NVM-managed Node 24 where available).
 3. Resolves the Node binary via `nvm which 24` (fallback `nvm which default`) — project pattern: resolve with nvm, never construct nvm paths.
-4. Merges the `"ansible"` server entry into `.cursor/mcp.json` with the **full path to node** as the command, the built `cli.js` path in args, and required environment variables.
+4. Merges the `"ansible"` server entry into `.cursor/mcp.json` and managed Codex config blocks with the **full path to node** as the command, the built `cli.js` path in args, and required environment variables.
 
 **Why the full path to node?** Cursor often runs without nvm on PATH (e.g. when launched from the GUI). Using `command: "node"` then causes spawn ENOENT. We intentionally write the resolved full path (e.g. `~/.nvm/versions/node/v24.14.0/bin/node`) into `mcp.json` so the MCP server starts reliably. This is intentional and acceptable.
 

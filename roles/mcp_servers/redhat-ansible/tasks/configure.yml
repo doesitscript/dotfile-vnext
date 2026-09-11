@@ -19,6 +19,21 @@
   ansible.builtin.set_fact:
     _redhat_ansible_node_command: "{{ _node_path_result.stdout | trim }}"
 
+- name: Ensure Red Hat Ansible entry exists in project Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ redhat_ansible_codex_config_path }}"
+    _mcp_codex_server_key: "ansible"
+    _mcp_codex_entry: "{{ redhat_ansible_codex_entry }}"
+
+- name: Ensure Red Hat Ansible entry exists in user Codex config
+  ansible.builtin.include_tasks: "{{ role_path }}/../_shared/tasks/configure_codex_target.yml"
+  vars:
+    _mcp_codex_target_config_path: "{{ redhat_ansible_codex_user_config_path }}"
+    _mcp_codex_server_key: "ansible"
+    _mcp_codex_entry: "{{ redhat_ansible_codex_entry }}"
+  when: redhat_ansible_configure_codex_user | bool
+
 - name: Check whether .cursor/mcp.json exists
   ansible.builtin.stat:
     path: "{{ redhat_ansible_project_dir }}/mcp.json"

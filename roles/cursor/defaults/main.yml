@@ -102,3 +102,26 @@ cursor_marketplace_plugins_required: []
 cursor_marketplace_plugins_contract_path: "{{ cursor_marketplace_plugins_project_root }}/.cursor/marketplace-plugins.json"
 cursor_marketplace_plugins_codex_doc_path: "{{ cursor_marketplace_plugins_project_root }}/.codex/CURSOR_MARKETPLACE_PLUGINS.md"
 cursor_marketplace_plugins_cache_root: "{{ (dotfiles_user_home | default(ansible_user_dir)) + '/.cursor/plugins/cache/cursor-public' }}"
+
+# User-scope Cursor MCP for the multiagents peer. Project .cursor/mcp.json is
+# not enough: Cursor Agent loads ~/.cursor/mcp.json without the project-MCP
+# allowlist. Upstream install-mcp does not write Cursor configs.
+# multiagents has no cursor agent type; claude is the generic stdio adapter.
+cursor_multiagents_mcp_enabled: "{{ (multiagents_state | default('absent')) == 'present' }}"
+cursor_multiagents_mcp_require_cli: false
+cursor_multiagents_mcp_server_key: multiagents-peer
+cursor_multiagents_mcp_agent_type: claude
+cursor_multiagents_mcp_user_config_path: "{{ ansible_env.HOME }}/.cursor/mcp.json"
+cursor_multiagents_mcp_bun_bin: "{{ ansible_env.HOME }}/.bun/bin/bun"
+cursor_multiagents_mcp_cli: "{{ ansible_env.HOME }}/.bun/install/global/node_modules/multiagents/cli.ts"
+cursor_multiagents_mcp_role_path: roles/cursor
+cursor_multiagents_mcp_entry:
+  command: "{{ cursor_multiagents_mcp_bun_bin }}"
+  args:
+    - "{{ cursor_multiagents_mcp_cli }}"
+    - mcp-server
+    - --agent-type
+    - "{{ cursor_multiagents_mcp_agent_type }}"
+  env:
+    PATH: "{{ cursor_multiagents_mcp_bun_bin | dirname }}:/usr/bin:/bin:/usr/sbin:/sbin"
+    _MCP_ANSIBLE_ROLE_PATH: "{{ cursor_multiagents_mcp_role_path }}"

@@ -1,0 +1,169 @@
+---
+# User-scope Cursor MCP for multiagents-peer.
+# Do not write project .cursor/mcp.json: Cursor Agent does not load project
+# MCP servers unless they are also allowlisted in state.vscdb.
+# Do not use command: bun — Cursor GUI PATH does not include ~/.bun/bin.
+
+- name: Stat multiagents Bun binary for Cursor MCP
+  ansible.builtin.stat:
+    path: "{{ cursor_multiagents_mcp_bun_bin }}"
+  register: cursor_multiagents_mcp_bun_stat
+
+- name: Stat multiagents CLI for Cursor MCP
+  ansible.builtin.stat:
+    path: "{{ cursor_multiagents_mcp_cli }}"
+  register: cursor_multiagents_mcp_cli_stat
+
+- name: Require multiagents CLI when Cursor MCP entry is mandatory
+  ansible.builtin.assert:
+    that:
+      - cursor_multiagents_mcp_bun_stat.stat.exists
+      - cursor_multiagents_mcp_bun_stat.stat.executable | default(false)
+      - cursor_multiagents_mcp_cli_stat.stat.exists
+    fail_msg: >-
+      cursor_multiagents_mcp_enabled is true but
+      {{ cursor_multiagents_mcp_bun_bin }} or
+      {{ cursor_multiagents_mcp_cli }} is missing.
+      Apply the multiagents role first.
+  when:
+    - cursor_multiagents_mcp_enabled | bool
+    - cursor_multiagents_mcp_require_cli | bool
+
+- name: Skip Cursor multiagents MCP merge until the CLI exists
+  ansible.builtin.debug:
+    msg: >-
+      Skipping {{ cursor_multiagents_mcp_user_config_path }} merge.
+      {{ cursor_multiagents_mcp_bun_bin }} or
+      {{ cursor_multiagents_mcp_cli }} is not installed yet.
+  when:
+    - cursor_multiagents_mcp_enabled | bool
+    - not (cursor_multiagents_mcp_require_cli | bool)
+    - not (
+        cursor_multiagents_mcp_bun_stat.stat.exists
+        and cursor_multiagents_mcp_cli_stat.stat.exists
+      )
+
+- name: Ensure Cursor user MCP config directory exists
+  ansible.builtin.file:
+    path: "{{ cursor_multiagents_mcp_user_config_path | dirname }}"
+    state: directory
+    mode: "0755"
+  when:
+    - cursor_multiagents_mcp_enabled | bool
+    - cursor_multiagents_mcp_bun_stat.stat.exists
+    - cursor_multiagents_mcp_cli_stat.stat.exists
+
+- name: Stat Cursor user MCP config
+  ansible.builtin.stat:
+    path: "{{ cursor_multiagents_mcp_user_config_path }}"
+  register: cursor_multiagents_mcp_json_stat
+  when: >-
+    (cursor_multiagents_mcp_enabled | bool
+    and cursor_multiagents_mcp_bun_stat.stat.exists
+    and cursor_multiagents_mcp_cli_stat.stat.exists)
+    or not (cursor_multiagents_mcp_enabled | bool)
+
+- name: Create Cursor user MCP config with multiagents-peer
+  ansible.builtin.copy:
+    dest: "{{ cursor_multiagents_mcp_user_config_path }}"
+    mode: "0644"
+    content: "{{ {'mcpServers': {(cursor_multiagents_mcp_server_key): cursor_multiagents_mcp_entry}} | to_nice_json }}\n"
+  when:
+    - cursor_multiagents_mcp_enabled | bool
+    - cursor_multiagents_mcp_bun_stat.stat.exists
+    - cursor_multiagents_mcp_cli_stat.stat.exists
+    - not cursor_multiagents_mcp_json_stat.stat.exists
+
+- name: Merge multiagents-peer into existing Cursor user MCP config
+  when:
+    - cursor_multiagents_mcp_enabled | bool
+    - cursor_multiagents_mcp_bun_stat.stat.exists
+    - cursor_multiagents_mcp_cli_stat.stat.exists
+    - cursor_multiagents_mcp_json_stat.stat.exists
+  block:
+    - name: Read existing Cursor user MCP config
+      ansible.builtin.slurp:
+        src: "{{ cursor_multiagents_mcp_user_config_path }}"
+      register: cursor_multiagents_mcp_json_raw
+
+    - name: Write merged Cursor user MCP config
+      ansible.builtin.copy:
+        dest: "{{ cursor_multiagents_mcp_user_config_path }}"
+        mode: "0644"
+        content: "{{ cursor_multiagents_mcp_merged | to_nice_json }}\n"
+      vars:
+        cursor_multiagents_mcp_existing: "{{ cursor_multiagents_mcp_json_raw.content | b64decode | from_json }}"
+        cursor_multiagents_mcp_servers: >-
+          {{
+            (cursor_multiagents_mcp_existing.mcpServers | default({}))
+            | combine({(cursor_multiagents_mcp_server_key): cursor_multiagents_mcp_entry})
+          }}
+        cursor_multiagents_mcp_merged: >-
+          {{
+            cursor_multiagents_mcp_existing
+            | combine({'mcpServers': cursor_multiagents_mcp_servers})
+          }}
+
+- name: Remove multiagents-peer from Cursor user MCP config when disabled
+  when:
+    - not (cursor_multiagents_mcp_enabled | bool)
+    - cursor_multiagents_mcp_json_stat.stat.exists | default(false)
+  block:
+    - name: Read Cursor user MCP config before removing multiagents-peer
+      ansible.builtin.slurp:
+        src: "{{ cursor_multiagents_mcp_user_config_path }}"
+      register: cursor_multiagents_mcp_remove_raw
+
+    - name: Write Cursor user MCP config without multiagents-peer
+      ansible.builtin.copy:
+        dest: "{{ cursor_multiagents_mcp_user_config_path }}"
+        mode: "0644"
+        content: "{{ cursor_multiagents_mcp_removed | to_nice_json }}\n"
+      vars:
+        cursor_multiagents_mcp_existing: "{{ cursor_multiagents_mcp_remove_raw.content | b64decode | from_json }}"
+        cursor_multiagents_mcp_servers: >-
+          {{
+            (cursor_multiagents_mcp_existing.mcpServers | default({}))
+            | dict2items
+            | rejectattr('key', 'equalto', cursor_multiagents_mcp_server_key)
+            | items2dict
+          }}
+        cursor_multiagents_mcp_removed: >-
+          {{
+            cursor_multiagents_mcp_existing
+            | combine({'mcpServers': cursor_multiagents_mcp_servers})
+          }}
+
+- name: Verify Cursor user multiagents MCP entry
+  when:
+    - not ansible_check_mode
+    - cursor_multiagents_mcp_enabled | bool
+    - cursor_multiagents_mcp_bun_stat.stat.exists
+    - cursor_multiagents_mcp_cli_stat.stat.exists
+  block:
+    - name: Read Cursor user MCP config after merge
+      ansible.builtin.slurp:
+        src: "{{ cursor_multiagents_mcp_user_config_path }}"
+      register: cursor_multiagents_mcp_verify_raw
+
+    - name: Assert multiagents-peer Cursor MCP entry
+      ansible.builtin.assert:
+        that:
+          - cursor_multiagents_mcp_written.command == cursor_multiagents_mcp_bun_bin
+          - cursor_multiagents_mcp_written.command is match('^/')
+          - cursor_multiagents_mcp_written.args == cursor_multiagents_mcp_entry.args
+          - cursor_multiagents_mcp_written.args[3] == 'claude'
+        fail_msg: >-
+          {{ cursor_multiagents_mcp_user_config_path }} does not contain the
+          expected multiagents-peer entry.
+        success_msg: >-
+          {{ cursor_multiagents_mcp_user_config_path }}
+          {{ cursor_multiagents_mcp_server_key }}
+          command={{ cursor_multiagents_mcp_written.command }}
+          agent_type={{ cursor_multiagents_mcp_written.args[3] }}
+      vars:
+        cursor_multiagents_mcp_verified: "{{ cursor_multiagents_mcp_verify_raw.content | b64decode | from_json }}"
+        cursor_multiagents_mcp_written: >-
+          {{
+            cursor_multiagents_mcp_verified.mcpServers[cursor_multiagents_mcp_server_key]
+          }}

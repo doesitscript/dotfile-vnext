@@ -47,13 +47,13 @@
         cmd: py -m pip install --user huggingface_hub
       when: _hf_hub_check.rc != 0
 
-    - name: Download model weights via huggingface-cli
-      ansible.windows.win_command:
-        cmd: >-
-          py -m huggingface_hub.commands.huggingface_cli download
-          {{ item.quant_repo }}
-          --include {{ item.files | join(' ') }}
-          --local-dir F:\shares\public\models\huggingface\{{ item.quant_repo | replace('/', '--') }}
+    - name: Download model weights via Python API
+      ansible.windows.win_shell: >-
+        py -c "from huggingface_hub import snapshot_download;
+        snapshot_download('{{ item.quant_repo }}',
+        allow_patterns='{{ item.files[0] }}',
+        local_dir=r'F:\shares\public\models\huggingface\{{ item.quant_repo | replace("/", "--") }}',
+        local_dir_use_symlinks=False, resume_download=True)"
       loop: "{{ models_to_download }}"
       register: _download_results
       async: 14400  # 4 hours max per model

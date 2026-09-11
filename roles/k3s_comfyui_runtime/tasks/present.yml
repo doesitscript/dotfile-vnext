@@ -36,34 +36,8 @@
       k3s_vllm_runtime_state: absent, apply the vLLM playbook, then retry ComfyUI.
   when: k3s_comfyui_runtime_require_vllm_absent | bool
 
-- name: Ensure ComfyUI namespace exists
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: "{{ k3s_comfyui_runtime_namespace }}"
-  environment:
-    KUBECONFIG: "{{ k3s_comfyui_runtime_kubeconfig }}"
-
-- name: Ensure ComfyUI models PVC exists
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
-        name: "{{ k3s_comfyui_runtime_name }}-models"
-        namespace: "{{ k3s_comfyui_runtime_namespace }}"
-      spec:
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: "{{ k3s_comfyui_runtime_models_pvc_size }}"
-  environment:
-    KUBECONFIG: "{{ k3s_comfyui_runtime_kubeconfig }}"
+# Namespace and models PVC are owned by tasks/storage.yml, which runs for both
+# lifecycle states so the model cache survives Phase B toggles.
 
 - name: Build ComfyUI resource maps
   ansible.builtin.set_fact:

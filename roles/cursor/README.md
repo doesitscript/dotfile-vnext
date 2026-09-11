@@ -100,6 +100,9 @@ This role handles the infrastructure side:
 | `cursor_cli_cask_state` | `present` | `present` or `absent` (remove CLI) |
 | `cursor_ai_agent_profiles_enabled` | `true` | Render project-scoped Cursor and Codex AI agent/profile contract files |
 | `cursor_marketplace_plugins_enabled` | `true` | Render project plugin contract files and verify required macOS plugin manifests |
+| `cursor_multiagents_mcp_enabled` | `true` when `multiagents_state` is `present` | Merge `multiagents-peer` into user `~/.cursor/mcp.json` |
+| `cursor_multiagents_mcp_agent_type` | `claude` | `multiagents --agent-type`. Cursor has no native type; do not use `codex` |
+| `cursor_multiagents_mcp_user_config_path` | `~/.cursor/mcp.json` | User-scope Cursor MCP file. Project `.cursor/mcp.json` is not used |
 
 The default Codex/OpenAI extension entry is assembled as
 `{{ cursor_openai_extension_id }}@{{ cursor_openai_extension_version }}` when a
@@ -136,6 +139,7 @@ cursor_remote_ssh_hosts:
 | `cursor_settings` | settings.json LF/UTF-8 merge only |
 | `cursor_ai_profiles` | Project AI agent/model-lane contract only |
 | `cursor_marketplace_plugins` | Project plugin contract plus macOS installed-plugin verification |
+| `cursor_mcp` | User `~/.cursor/mcp.json` `multiagents-peer` entry only |
 
 ---
 

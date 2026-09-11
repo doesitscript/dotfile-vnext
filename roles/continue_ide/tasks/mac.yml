@@ -55,6 +55,57 @@
       Without a real key Continue's UI often looks empty / unconfigured.
   when: continue_ide_state == "present"
 
+- name: Check pinned Firebase CLI for Continue MCP
+  vars:
+    _continue_ide_npm_prefix: >-
+      {{
+        [work_laptop_nvm_exec]
+        if (work_laptop_nvm_exec | default('') | length > 0)
+        else []
+      }}
+  ansible.builtin.command:
+    argv: >-
+      {{
+        _continue_ide_npm_prefix
+        + [
+          'npm',
+          'list',
+          '--global',
+          '--depth=0',
+          'firebase-tools@' ~ (continue_ide_firebase_tools_version | default('15.30.0'))
+        ]
+      }}
+  register: continue_ide_firebase_cli_check
+  changed_when: false
+  failed_when: false
+  when:
+    - continue_ide_state == "present"
+    - continue_ide_provision_firebase_cli | default(false) | bool
+
+- name: Install pinned Firebase CLI for Continue MCP
+  vars:
+    _continue_ide_npm_prefix: >-
+      {{
+        [work_laptop_nvm_exec]
+        if (work_laptop_nvm_exec | default('') | length > 0)
+        else []
+      }}
+  ansible.builtin.command:
+    argv: >-
+      {{
+        _continue_ide_npm_prefix
+        + [
+          'npm',
+          'install',
+          '--global',
+          'firebase-tools@' ~ (continue_ide_firebase_tools_version | default('15.30.0'))
+        ]
+      }}
+  when:
+    - continue_ide_state == "present"
+    - continue_ide_provision_firebase_cli | default(false) | bool
+    - continue_ide_firebase_cli_check.rc | default(1) != 0
+
 - name: Deploy Continue config for LiteLLM lanes
   ansible.builtin.template:
     src: config.yaml.j2

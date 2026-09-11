@@ -28,8 +28,12 @@ Do **not** assume these were applied by Ansible:
 
 - `multiagents setup` / `multiagents install-mcp`
 - Broker daemon on port `{{ multiagents_broker_port }}`
-- Codex / Cursor / Claude / Gemini MCP wiring
+- Codex / Claude / Gemini MCP wiring
 - Scenario packs under `{{ multiagents_scenarios_dir }}`
+
+Cursor user MCP (`multiagents-peer` in `~/.cursor/mcp.json`) is owned by
+`roles/cursor`, not this role. Do not use `command: bun` or `--agent-type codex`
+for that client.
 
 When those land, prefer inventory-driven role vars over one-off interactive setup
 so the same capability can scale to multiple clients and scenarios.

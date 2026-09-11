@@ -14,6 +14,22 @@ argument_specs:
         type: str
         default: comfyui-runtime
         description: Kubernetes namespace for ComfyUI.
+      k3s_comfyui_runtime_models_pvc_state:
+        type: str
+        default: present
+        choices:
+          - present
+          - absent
+        description: >-
+          Lifecycle state for the model cache PVC and namespace, independent of
+          the runtime so weights survive Phase B toggles. Set to absent to
+          reclaim the PVC, or to recreate it at a changed size.
+      k3s_comfyui_runtime_models_pvc_size:
+        type: str
+        default: 60Gi
+        description: >-
+          Requested size of the models PVC. K3s local-path does not enforce
+          this and PVCs are not resizeable; purge and re-apply to change it.
       k3s_comfyui_runtime_gpu_count:
         type: int
         default: 1

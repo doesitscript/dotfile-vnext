@@ -5,10 +5,22 @@
       - k3s_comfyui_runtime_state in ['present', 'absent']
     fail_msg: "k3s_comfyui_runtime_state must be present or absent"
 
-- name: Include present tasks for K3s ComfyUI runtime
-  ansible.builtin.include_tasks: present.yml
-  when: k3s_comfyui_runtime_state == 'present'
+- name: Validate k3s_comfyui_runtime_models_pvc_state
+  ansible.builtin.assert:
+    that:
+      - k3s_comfyui_runtime_models_pvc_state in ['present', 'absent']
+    fail_msg: "k3s_comfyui_runtime_models_pvc_state must be present or absent"
 
+# Order: tear workloads down first, converge the cache, then bring workloads up.
+# This keeps a purge from racing a running pod, and guarantees the PVC exists
+# before the Deployment mounts it.
 - name: Include absent tasks for K3s ComfyUI runtime
   ansible.builtin.include_tasks: absent.yml
   when: k3s_comfyui_runtime_state == 'absent'
+
+- name: Include model cache storage tasks for K3s ComfyUI runtime
+  ansible.builtin.include_tasks: storage.yml
+
+- name: Include present tasks for K3s ComfyUI runtime
+  ansible.builtin.include_tasks: present.yml
+  when: k3s_comfyui_runtime_state == 'present'

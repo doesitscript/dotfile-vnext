@@ -1,0 +1,63 @@
+---
+# Model cache lifecycle, deliberately separate from the runtime lifecycle.
+# The PVC is meant to outlive Phase B toggles, so it is not torn down by
+# k3s_comfyui_runtime_state: absent. Use k3s_comfyui_runtime_models_pvc_state
+# to reclaim it.
+#
+# local-path PVCs cannot be resized. Changing
+# k3s_comfyui_runtime_models_pvc_size against an existing PVC is rejected by the
+# API server; purge first (models_pvc_state: absent), then re-apply.
+
+- name: Ensure ComfyUI namespace exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ k3s_comfyui_runtime_namespace }}"
+  when: k3s_comfyui_runtime_models_pvc_state == 'present'
+  environment:
+    KUBECONFIG: "{{ k3s_comfyui_runtime_kubeconfig }}"
+
+- name: Ensure ComfyUI models PVC exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: "{{ k3s_comfyui_runtime_name }}-models"
+        namespace: "{{ k3s_comfyui_runtime_namespace }}"
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: "{{ k3s_comfyui_runtime_models_pvc_size }}"
+  when: k3s_comfyui_runtime_models_pvc_state == 'present'
+  environment:
+    KUBECONFIG: "{{ k3s_comfyui_runtime_kubeconfig }}"
+
+- name: Remove ComfyUI models PVC
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: PersistentVolumeClaim
+    name: "{{ k3s_comfyui_runtime_name }}-models"
+    namespace: "{{ k3s_comfyui_runtime_namespace }}"
+    wait: true
+  when: k3s_comfyui_runtime_models_pvc_state == 'absent'
+  environment:
+    KUBECONFIG: "{{ k3s_comfyui_runtime_kubeconfig }}"
+
+- name: Remove ComfyUI namespace
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: Namespace
+    name: "{{ k3s_comfyui_runtime_namespace }}"
+    wait: true
+  when: k3s_comfyui_runtime_models_pvc_state == 'absent'
+  environment:
+    KUBECONFIG: "{{ k3s_comfyui_runtime_kubeconfig }}"

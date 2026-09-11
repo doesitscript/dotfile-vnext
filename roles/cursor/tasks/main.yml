@@ -65,3 +65,11 @@
       tags: [cursor, cursor_marketplace_plugins]
   when: cursor_marketplace_plugins_enabled | default(true) | bool
   tags: [cursor, cursor_marketplace_plugins]
+
+- name: Manage Cursor user multiagents MCP entry
+  ansible.builtin.include_tasks:
+    file: multiagents_mcp.yml
+    apply:
+      tags: [cursor, cursor_mcp]
+  when: ansible_facts['system'] == "Darwin"
+  tags: [cursor, cursor_mcp]

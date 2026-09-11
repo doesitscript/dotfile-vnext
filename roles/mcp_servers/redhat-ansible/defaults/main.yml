@@ -15,6 +15,13 @@ redhat_ansible_entry_point: "{{ redhat_ansible_install_dir }}/packages/ansible-m
 # Cursor project directory for .cursor/mcp.json
 redhat_ansible_project_dir: "{{ dotfiles_home }}/.cursor"
 
+# Codex reads the project config while working in dotfile-vnext; the user-level
+# config makes the controller-local MCP discoverable to Codex outside that
+# workspace as well.
+redhat_ansible_codex_config_path: "{{ dotfiles_home }}/.codex/config.toml"
+redhat_ansible_codex_user_config_path: "{{ dotfiles_user_home }}/.codex/config.toml"
+redhat_ansible_configure_codex_user: true
+
 # Relative path from project root (for tracking/debugging)
 redhat_ansible_role_path: "roles/mcp_servers/redhat-ansible"
 
@@ -37,3 +44,12 @@ redhat_ansible_runtime_env:
   OBJC_DISABLE_INITIALIZE_FORK_SAFETY: "yes"
   no_proxy: "*"
   _MCP_ANSIBLE_ROLE_PATH: "{{ redhat_ansible_role_path }}"
+
+# Rendered through roles/mcp_servers/_shared/tasks/configure_codex_target.yml.
+redhat_ansible_codex_entry:
+  command: "{{ _redhat_ansible_node_command }}"
+  args:
+    - "{{ redhat_ansible_entry_point }}"
+    - "--stdio"
+  env: "{{ redhat_ansible_runtime_env }}"
+  required: false

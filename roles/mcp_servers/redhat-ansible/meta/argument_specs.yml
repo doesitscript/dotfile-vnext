@@ -1,11 +1,12 @@
 ---
 argument_specs:
   main:
-    short_description: Build the current Red Hat Ansible MCP from source and configure .cursor/mcp.json.
+    short_description: Build the current Red Hat Ansible MCP from source and configure Cursor and Codex.
     description: >
       Clones ansible/vscode-ansible, runs yarn install and builds the
       packages/ansible-mcp-server package. Writes the "ansible" entry into
-      .cursor/mcp.json with the built cli.js path and required env vars.
+      .cursor/mcp.json and managed Codex config blocks with the built cli.js
+      path and required env vars.
       Version is pinned via redhat_ansible_version; upgrade only when you intentionally change it.
     options:
       redhat_ansible_version:
@@ -35,6 +36,22 @@ argument_specs:
         type: str
         required: false
         description: Directory containing mcp.json (default dotfiles_home/.cursor).
+
+      redhat_ansible_codex_config_path:
+        type: str
+        required: false
+        description: Project Codex config.toml path for the Ansible MCP block.
+
+      redhat_ansible_codex_user_config_path:
+        type: str
+        required: false
+        description: User Codex config.toml path for the controller-local Ansible MCP block.
+
+      redhat_ansible_configure_codex_user:
+        type: bool
+        required: false
+        default: true
+        description: Also configure the Ansible MCP in the user-level Codex config.
 
       redhat_ansible_workspace_root:
         type: str

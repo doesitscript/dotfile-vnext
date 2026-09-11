@@ -5,7 +5,8 @@
 #          common/bash_completion (Homebrew bash-completion loader for managed CLI completions)
 #          direnv (installation + bash hook)
 #          git (global gitconfig, gitattributes, gitignore_global symlink)
-#          cursor (editor config, extensions incl. Continue + Cline, LF/UTF-8 settings)
+#          cursor (editor config, extensions incl. Continue + Cline, LF/UTF-8 settings,
+#            user ~/.cursor/mcp.json multiagents-peer entry)
 #          common/vscode (VS Code + extensions incl. Continue + Cline)
 #          common/agent_skills (repo-owned Cursor/Codex skill symlinks)
 #          langfuse_cli (Langfuse CLI for tracing and evaluation)
@@ -26,7 +27,8 @@
 #          gonzo_cli (Gonzo AI-native log analysis TUI on macOS through the pinned upstream release binary)
 #          dstl8_cli (Dstl8 runtime-feedback CLI and MCP installer on macOS through the upstream Homebrew tap)
 #          multiagents (Bun release binary + pinned multiagents CLI scaffold;
-#            versions in group_vars/all/multiagents_tooling.yml; MCP/broker deferred;
+#            versions in group_vars/all/multiagents_tooling.yml; broker/setup deferred;
+#            Cursor MCP entry is owned by role cursor, applied again after this role;
 #            see roles/multiagents/README.md)
 #          localtunnel_cli (localtunnel CLI on macOS through the Homebrew localtunnel formula)
 #          ngrok_cli (ngrok CLI on macOS through the Homebrew ngrok cask)
@@ -251,3 +253,14 @@
     - role: common/postgresql_client
       tags: [postgresql_client]
     - role: common/vscode
+  post_tasks:
+    - name: Apply Cursor multiagents MCP entry after the multiagents package
+      ansible.builtin.include_role:
+        name: cursor
+        tasks_from: multiagents_mcp.yml
+        apply:
+          tags: [cursor_mcp]
+      vars:
+        cursor_multiagents_mcp_require_cli: true
+      when: ansible_system == "Darwin"
+      tags: [cursor_mcp]

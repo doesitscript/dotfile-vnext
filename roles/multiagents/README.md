@@ -9,8 +9,11 @@ CLI scaffold on macOS:
 3. Managed layout under `~/.config/dotfile-vnext/multiagents/` for later
    multi-client / multi-scenario config
 
-This role does **not** run `multiagents setup`, start the broker, or write MCP
-configs for Codex/Cursor/Claude/Gemini. Those are deferred.
+This role does **not** run `multiagents setup` or start the broker. Those
+remain deferred. The Cursor user MCP entry (`multiagents-peer` in
+`~/.cursor/mcp.json`) is owned by `roles/cursor` (`--tags cursor_mcp`), applied
+again by `playbooks/deploy_development_nodes.yaml` after this package is
+present. Codex/Claude/Gemini MCP writes stay deferred.
 
 Related plan intake:
 `docs/plans/2026-09-03--multi-agent-orchestration-plan/`.
