@@ -35,6 +35,7 @@ of a decision, recommendation, target identity, or approval.
 | Stage | Owner | Consumes | Produces / exit condition |
 | --- | --- | --- | --- |
 | Frame and plan | Coordinator / Planner | intake, research index, constraints, authority profile | canonical plan with decisions, acceptance criteria, rollback and known assumptions |
+| Apply research to the problem | Research Synthesizer ↔ Resident Expert | decision questions, user constraints, research, current receipts, topology and configuration surfaces | challenged research-to-decision packet and selected recommendation |
 | Resolve a fork | Resident Expert | canonical plan and matching current evidence | scoped recommendation: `best_recommendation` or `preference`, confidence, assumptions, validation, rollback |
 | Fill an evidence gap | Researcher | exact question, evidence inventory, return target | evidence delta that changes a named decision or confirms its current basis |
 | Implement | Implementer | materialized plan, Expert packet/profile, current Evaluator feedback | bounded source changes, tests/receipts, `review_ready_for_evaluator_*` |
@@ -76,6 +77,19 @@ Refresh only the exact missing knowledge. Their output is a reusable evidence
 delta linked to a question and a returning role, including source status and
 how the result affects a decision. They are not a general audit lane launched
 because an Implementer starts.
+
+For multi-technology work, the Research Synthesizer specialization owns the
+intermediate application pass: cross-reference research with current state and
+project surfaces; produce decision packets; accept Expert challenges; and make
+focused follow-up passes. It does not choose the plan or apply changes.
+
+### User / project sponsor
+
+The user can collaboratively frame desired outcomes, tradeoffs, constraints,
+and corrections to the problem model alongside the Expert. The Coordinator
+records these as durable inputs to the packet so they can be reused by future
+agents. This is design guidance, not a requirement that the user approve each
+ordinary evidence-backed technical decision in a lab autonomy profile.
 
 ### Implementer
 
@@ -119,6 +133,21 @@ Expert recommendation, and the current Evaluator feedback together. It is
 ready to implement the named S4 corrections and then submit a fresh review
 handoff. A live storage Apply remains gated on those corrected tests, exact
 identity checks, and a new Evaluator verdict.
+
+## Next-major-iteration extension: performance and placement pass
+
+Before plan materialization, Researchers/Organizers should turn relevant
+technology research into a compact workload-to-storage matrix: I/O pattern,
+durability class, current location, available hardware tier, compatibility
+constraints, expected gain, and proof metric. A hardware collector supplies
+current paths, device identity, capacity, and attachment facts. The Resident
+Expert then chooses a bounded allocation; the Planner maps each accepted row to
+an existing configuration surface and a verification/rollback path. This is the
+automation target demonstrated by the current user-led performance pass, not an
+invitation to re-run broad research on every implementation loop.
+
+The [guided research-application loop](research-application-loop.md) now
+defines the multi-pass ownership that this extension requires.
 
 ## Related material
 

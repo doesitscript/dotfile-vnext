@@ -7,6 +7,8 @@ This is a proposed operating model for the storage work and related infrastructu
 It is not an active orchestration contract, an authorization to execute changes, or a replacement for the established Implementer/Evaluator workflow. The next implementation plan must select the actual orchestrator, artifact locations, and activation conditions before any role runs.
 The [role operating contract](role-operating-contract.md) gives the matching
 role-level boundaries, consultation classifier, and authority-profile behavior.
+The [guided research-application loop](research-application-loop.md) now adds
+the missing multi-pass middle stage between broad research and plan activation.
 
 ## Proposed flow
 
@@ -82,6 +84,7 @@ review; the lab override changes approval routing, not technical safety.
 | --- | --- | --- | --- |
 | 0. Frame | Onsite Expert or coordinator | Problem record, scope, constraints, research requests | The change is bounded enough to investigate. |
 | 1. Research | Researchers | Source-backed findings, unresolved questions, evidence references | Research answers the decision questions or explicitly records gaps. |
+| 1a. Performance and placement (future) | Researchers/organizers + hardware collector + Resident Expert | Workload-to-storage matrix, compatibility corrections, allocation recommendation, proof metrics | A declared storage/performance decision is mapped to current configuration surfaces. |
 | 2. Readiness | Invoked knowledge capability | Task-specific readiness brief and authority map | Applicable practices and live tool/resource status are known. |
 | 3. Activate plan | Planner/coordinator using the named authority profile | Accepted execution plan, exact scope, Expert defaults, acceptance criteria, rollback boundary | The required evidence and exact target identity are present; this lab auto-adopts in-scope defaults. |
 | 4. Implement | Existing Implementer | Scoped change, implementation receipt, review-ready artifact | A bounded technical consultation may resolve doubt; a real conflict becomes an exception record. |

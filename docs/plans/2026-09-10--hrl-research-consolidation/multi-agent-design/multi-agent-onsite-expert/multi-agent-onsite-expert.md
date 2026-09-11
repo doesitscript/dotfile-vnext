@@ -101,6 +101,22 @@ decision; in the declared recreatable lab profile, evidence-backed in-scope
 technical defaults are adopted by the Coordinator while safety and Evaluator
 requirements remain intact.
 
+### Guided research application partnership
+
+The Expert does not receive a broad research index as a final answer. It
+partners with a Research Synthesizer in repeated, bounded passes: frame the
+decision questions with the user’s outcomes and constraints; inspect a concise
+cross-technology decision packet; challenge assumptions, current-state mappings,
+or proof metrics; and request only the necessary follow-up. Once the Expert can
+recommend a direction, the Planner/Coordinator materializes it into project
+surfaces, sequencing, validation, and rollback before Implementer activation.
+
+The user’s collaboration is a first-class durable input: intended outcome,
+tradeoffs, non-negotiable constraints, and corrections to assumptions must enter
+the canonical packet. In a lab autonomy profile, this does not turn routine
+technical decisions into a mandatory human wait. The full loop is defined in
+[the guided research-application loop](../research-application-loop.md).
+
 ---
 
 ## Collaborative Nature

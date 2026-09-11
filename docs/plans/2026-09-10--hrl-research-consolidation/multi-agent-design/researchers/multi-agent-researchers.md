@@ -131,6 +131,23 @@ escalates only unknown identity/evidence, a real source/runtime conflict, or a
 choice outside the declared recreatable campaign scope. The selected profile,
 not researcher preference, controls approval routing.
 
+### Research Synthesizer specialization
+
+Collection and indexing alone are not the complete Researcher contribution.
+For multi-technology work, one Researcher specialization acts as the **Research
+Synthesizer**. It receives the Expert's decision questions and the user's
+recorded constraints, then cross-references existing research with verified
+current state, topology/hardware facts, and current repository configuration
+surfaces. It produces concise research-to-decision packets, not another broad
+findings report.
+
+The Synthesizer and On-site Expert make multiple bounded passes: the Expert
+challenges unsupported conclusions or asks a focused follow-up; the Synthesizer
+refreshes only that evidence or mapping; the Expert then selects a recommended
+direction. The Planner/Coordinator receives the accepted direction and maps it
+to an executable plan. See the exact ownership, packet fields, and return
+conditions in [the guided research-application loop](../research-application-loop.md).
+
 ---
 
 ## Research Output Structure
