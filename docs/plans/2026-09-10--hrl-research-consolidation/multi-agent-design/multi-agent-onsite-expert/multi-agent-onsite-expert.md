@@ -61,6 +61,46 @@ Even in worst-case scenarios, a responsible outcome includes:
 
 The Onsite Expert ensures that **something useful** emerges from every investigation, even if a perfect solution isn't immediately available.
 
+## Next-iteration recommendation responsibilities
+
+For an implementation campaign, the Onsite Expert evolves into a Resident
+Expert: it consumes prior research, verified receipts, topology, inventory, and
+known project ownership before requesting fresh probes. It produces a durable
+recommendation packet containing ranked options, a recommended default,
+confidence, assumptions, expected benefit, validation/rollback, and the
+smallest remaining human approval. It should resolve ordinary technical sizing,
+placement, and sequencing from evidence; it escalates only a consequential
+cost, outage, retention, or irreversible data-risk tradeoff.
+
+It does not grant Apply authority, overwrite Evaluator judgment, or invent a
+physical target. When evidence is stale or insufficient, it delegates a narrow
+refresh question to Researchers rather than sending Implementer into broad
+rediscovery.
+
+The Expert emits recommendations for the canonical plan packet, including the
+applicable decision authority profile. In this homelab,
+`lab_recreatable_autonomy` means evidence-backed defaults are adopted for
+in-scope recreatable, availability-tolerant work; a product profile restores
+narrow human approval waits. The Expert still requires verified target identity
+and never treats the lab override as a waiver of safety or Evaluator review.
+
+### Consultation contract
+
+The Expert is consulted for a named, bounded fork—not as a replacement for the
+Planner or Implementer. It first reads the canonical plan and evidence inventory,
+then returns a durable recommendation that identifies the decision slice,
+`Best recommendation` or `Preference`, evidence, confidence, assumptions,
+validation, rollback, and return consumer. A valid recommendation narrows the
+Implementer's work; it does not force broad rediscovery or a re-plan. Only a
+current source/runtime contradiction should result in a documented exception.
+
+For a missing or stale fact, the Expert asks Researchers one exact refresh
+question and folds the resulting evidence delta back into the same decision.
+For a product-governed consequential choice it frames the smallest human
+decision; in the declared recreatable lab profile, evidence-backed in-scope
+technical defaults are adopted by the Coordinator while safety and Evaluator
+requirements remain intact.
+
 ---
 
 ## Collaborative Nature

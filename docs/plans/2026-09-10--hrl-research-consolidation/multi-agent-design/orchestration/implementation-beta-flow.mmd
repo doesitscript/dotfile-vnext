@@ -1,0 +1,22 @@
+flowchart TD
+    P[Coordinator and Researcher preparation] --> R[Independent review + hash-bound release]
+    R --> G[User activation + verified project snapshot]
+    G --> I[Implementer: discovery / Ansible build / authorized apply / receipts]
+    I --> O[Durable review-ready outbox]
+    O --> E[Evaluator: source and evidence review]
+    E -->|scoped feedback| I
+    E -->|unchanged waiting| H[Hold for new evidence or user decision]
+    H --> I
+    E -->|all S1-S6 verified| D[Whole-campaign sign-off and owner closeout]
+    I -->|bounded knowledge gap| Q[Request with campaign ID and return-to]
+    E -->|bounded knowledge gap| Q
+    Q --> P
+    P -->|separate response; preserve upstream snapshot| B{Request return-to role}
+    B -->|Implementer| I
+    B -->|Evaluator| E
+    V[Read-only Observer] -. artifacts .-> O
+    V -. verdicts .-> E
+    V -. optional named runtime snapshot .-> X[One parent chat / implementation runner / dashboard]
+    X -. reports progress directly .-> U[User stays in parent chat]
+    X -. owns wakeups, not role judgment .-> I
+    X -. owns wakeups, not role judgment .-> E

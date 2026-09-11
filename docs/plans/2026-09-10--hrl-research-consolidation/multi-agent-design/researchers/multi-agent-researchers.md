@@ -114,6 +114,23 @@ Onsite Expert                    Researchers
 - Researchers ensure technical accuracy
 - Two-layer verification catches both technical and practical issues
 
+### Next-iteration evidence reuse contract
+
+Researchers receive the Resident Expert's exact decision question and evidence
+inventory first. They must cite reusable current receipts, topology facts, and
+prior source-backed findings before collecting new material. New research is
+for a named uncertainty, stale fact, or competing option—not a repeat of
+already verified discovery. Their output should state how it changes the
+recommended option, confidence, validation, rollback, or human-approval need.
+It returns to a named canonical-plan decision and consumer role as an evidence
+delta; it must not create a parallel, open-ended redesign of the campaign.
+
+Under `lab_recreatable_autonomy`, a researcher does not create a human wait
+merely because an evidence-backed technical default has consequences. It
+escalates only unknown identity/evidence, a real source/runtime conflict, or a
+choice outside the declared recreatable campaign scope. The selected profile,
+not researcher preference, controls approval routing.
+
 ---
 
 ## Research Output Structure

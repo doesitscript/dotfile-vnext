@@ -1,0 +1,17 @@
+interface:
+  display_name: "Paired Plan Orchestrator (Beta)"
+  short_description: "One parent chat manages implementation and review"
+  default_prompt: "Use $paired-plan-orchestrator-beta with project_root and plan_dir to run the pair and report progress here."
+orchestration:
+  role: "parent-orchestrator"
+  workflow_id: "evaluator-implementer-loop"
+  stage_id: "implementation"
+  invocation_model: "bounded_parent_managed_run"
+  required_inputs: ["project_root", "plan_dir"]
+  child_roles: ["implementer", "evaluator"]
+  runtime_adapter: "../../../runtime/run-implementation.ts"
+  execution_contract: "../../implementation-beta-contract.md"
+  owns_scheduler: true
+  owns_runtime: true
+  owns_approval: false
+  includes_observation: true

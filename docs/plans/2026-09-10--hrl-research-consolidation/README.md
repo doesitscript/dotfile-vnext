@@ -1,5 +1,18 @@
 # Plan: HRL Research Consolidation
 
+## Current execution entrypoint — beta iteration
+
+**Quick launch:** [prompts and skills directory](launch-directory.md).
+
+Use the [implementation campaign](implementation-campaign/README.md) and its
+[three launch prompts](multi-agent-design/agent-prompts/implementation-beta-prompts.md).
+The reviewed preparation output is preserved inside the project. The mature
+Implementer/Evaluator now have project adapters; the optional Observer is read-only.
+Ready for discovery and implementation work, **not yet applied or implementation-approved**.
+[Iteration priorities](multi-agent-design/iteration_beta_pass.md) preserve the
+practical storage goal and bound orchestration expansion. The historical status
+and storage figures below are source context, not fresh runtime evidence.
+
 **Status:** Planning Phase - Research Collection Complete (Partial)  
 **Date:** September 10, 2026  
 **Type:** Multi-technology research consolidation
@@ -33,7 +46,7 @@ Research was triggered by vLLM k3s-02 storage constraints (84% disk usage, 13GB 
 | `planner.md` | Future workflow notes for automation | ✅ Complete |
 | `research-index.md` | HRL research location index | ✅ Complete |
 | `findings-report.md` | Comprehensive findings summary | ✅ Complete |
-| `plan.md` | Implementation plan (future) | ⏳ Pending planner run |
+| `plan.md` | Current implementation campaign entrypoint | Ready for implementation work; Apply pending |
 
 ---
 

@@ -1,0 +1,26 @@
+interface:
+  display_name: "Storage Plan Evaluator (Beta)"
+  short_description: "Evaluate storage changes and the full campaign scope"
+  default_prompt: "Use $storage-plan-evaluator-beta with the supplied plan_dir for one evaluator pass."
+policy:
+  allow_implicit_invocation: false
+# Project integration metadata, not a native scheduler.
+depends_on_skills: "paired-agent-plan-evaluator, paired-agent-feedback-artifacts"
+orchestration:
+  workflow_id: "evaluator-implementer-loop"
+  role: "evaluator"
+  counterpart_role: "implementer"
+  stage_id: "implementation"
+  contract_version: 1
+  invocation_model: "single_pass_per_invocation"
+  required_inputs: ["project_root", "plan_dir"]
+  identity_inputs: ["pipeline_id", "task_id", "campaign_id", "run_id", "upstream_run_id", "upstream_plan_sha256"]
+  optional_runtime_inputs: ["mode", "session_id", "owner_manifest_path", "runtime_observation_path"]
+  execution_contract: "../../../orchestration/implementation-beta-contract.md"
+  intake_checker: "../../../runtime/check-implementation-handoff.ts"
+  input_artifact: "upstream-manifest.json"
+  artifact_root: "plan_dir"
+  read_only: false
+  owns_approval: true
+  owns_runtime: false
+  owns_scheduler: false

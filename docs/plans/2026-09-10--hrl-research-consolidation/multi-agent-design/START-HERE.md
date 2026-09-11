@@ -1,5 +1,23 @@
 # Use the two preparation roles
 
+## Next stage: implement the storage plan
+
+**Preferred launch:** the first prompt in [the plan launch directory](../launch-directory.md)
+starts one parent chat that manages Implementer/Evaluator and observes progress.
+No separate Observer chat or manual worker hopping is required.
+
+Preparation has already produced the reviewed handoff below. To move into actual
+storage work, use the [beta Implementer / Evaluator / Observer prompts](agent-prompts/implementation-beta-prompts.md)
+on the [implementation campaign](../implementation-campaign/README.md). These
+project adapters load the existing mature global role packs. The beta intake
+checker protects the copied upstream evidence; it does not approve implementation.
+See [iteration priorities](iteration_beta_pass.md) and the
+[later-stage developer flow](orchestration/implementation-beta-flow.mmd).
+The [role operating contract](role-operating-contract.md) captures the next
+definition pass: canonical plan ownership, bounded Expert consultation, and
+the lab/product authority profiles that now govern the later-stage roles.
+The preparation instructions below remain available for new preparation runs.
+
 The two preparation roles are implemented and have completed a real two-agent
 run against this source plan, including a requested correction, independent
 re-review, hash-bound release, and owned-process teardown. Their `draft` names

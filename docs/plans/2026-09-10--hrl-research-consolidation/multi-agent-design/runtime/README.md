@@ -1,5 +1,14 @@
 # Run the preparation stage
 
+For the later implementation stage, use
+[`check-implementation-handoff.ts`](check-implementation-handoff.ts) with the
+absolute `implementation-campaign` directory. It needs Bun and reads only the
+project snapshot; it does not launch agents or touch services. Tests:
+`bun test check-implementation-handoff.test.ts artifacts.test.ts` from this
+directory. The [beta role prompts](../agent-prompts/implementation-beta-prompts.md)
+use the mature implementation loop. The preparation controller below does not
+schedule that later loop.
+
 This controller starts exactly two Codex agents through the installed
 `multiagents orchestrator` MCP server. It runs route → research → compose →
 independent review → release, with up to two correction rounds. It does not

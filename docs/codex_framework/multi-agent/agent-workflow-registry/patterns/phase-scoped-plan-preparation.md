@@ -7,6 +7,13 @@ applies_to:
 
 # Phase-scoped plan preparation
 
+Downstream integration: the [storage beta contract](../../../../plans/2026-09-10--hrl-research-consolidation/multi-agent-design/orchestration/implementation-beta-contract.md)
+consumes a separately activated, hash-verified preparation release through the
+existing Implementer/Evaluator loop. It also defines scoped research-return
+requests; new answers do not overwrite the original release. Preparation roles
+retain their current boundaries and do not start later roles or grant Apply
+authority. The optional Observer is read-only, not a third controller.
+
 ## Purpose
 
 Prepare a supplied project phase through two roles: Onsite Expert/Coordinator

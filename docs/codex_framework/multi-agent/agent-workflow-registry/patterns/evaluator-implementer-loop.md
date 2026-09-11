@@ -134,6 +134,20 @@ Plan `lifecycle: implemented` remains a separate step (`complete-plan-lifecycle`
 
 ## Documentation
 
+### Reviewed-preparation intake extension
+
+The [storage beta adapters](../../../../plans/2026-09-10--hrl-research-consolidation/multi-agent-design/implementation-beta-capability.yml)
+compose with the mature global Implementer/Evaluator skills. Their
+[integration contract](../../../../plans/2026-09-10--hrl-research-consolidation/multi-agent-design/orchestration/implementation-beta-contract.md)
+adds hash-verified upstream intake, campaign/invocation identity, bounded research
+return requests and an optional read-only Observer. The global role judgment,
+finite-pass behavior and artifact ownership remain unchanged. Preparation review
+is not implementation sign-off. The provided ordinary-chat prompts are usable
+now as fallback. The [single-parent skill](../../../../plans/2026-09-10--hrl-research-consolidation/multi-agent-design/orchestration/skills/paired-plan-orchestrator-beta/SKILL.md)
+and implementation runner now schedule this later-stage loop via multiagents,
+with integrated progress observation and owned cleanup. Automatic orchestration
+of every earlier/future stage remains outside this extension.
+
 - Global skills: `paired-agent-plan-implementer`, `paired-agent-plan-evaluator`,
   `paired-agent-feedback-artifacts`
 - Plan packet:
