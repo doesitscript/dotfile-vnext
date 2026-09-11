@@ -27,14 +27,16 @@ describe("Light orchestration contract", () => {
     expect(runner).toContain("refined_technical_handoff_path");
     expect(runner).toContain("Read the refined technical handoff FIRST");
     expect(runner).toContain("implementation_work_queue_path");
-    expect(runner).toContain("Derive or refresh the dynamic work queue");
-    const queue = read("../../implementation-campaign/coordination/implementation-work-queue.md");
+    expect(runner).toContain("Ansible intake");
+    expect(runner).toContain("verification only");
+    expect(runner).toContain("orchestration/temp");
+    const queue = read("../orchestration/examples/storage-layout-research-transforms/implementation-work-queue.md");
     expect(queue).toContain("Implementer-owned and dynamic");
     expect(queue).toContain("FA-hf-cache-desired-state");
     expect(queue).toContain("FA-containerd-imagefs-bind");
     expect(queue).toContain("FA-capacity-signal");
     expect(queue).toContain("Evaluator’s first verdict is whether the declared target state is present");
-    const handoff = read("../../implementation-campaign/coordination/research-application/performance-layout-bootstrap-2026-09-11/refined-technical-handoff.md");
+    const handoff = read("../orchestration/05-refined-technical-handoff--storage-layout.md");
     expect(handoff).toContain("Functional areas → project owners");
     expect(handoff).toContain("onsite-expert");
     expect(handoff).toContain("transcript");
@@ -45,8 +47,8 @@ describe("Light orchestration contract", () => {
     const implementer = read("../implementer/skills/storage-plan-implementer-light-beta/SKILL.md");
     const evaluator = read("../evaluator/skills/storage-plan-evaluator-light-beta/SKILL.md");
     expect(runner).toContain("Treat diffs, file reads, git status, task/argument inspection, and source checks only as evidence directly tied to that target");
-    expect(implementer).toContain("not adjacent hygiene or rediscovery");
-    expect(evaluator).toContain("not a separate");
+    expect(implementer).toContain("refactor the whole repo");
+    expect(evaluator).toContain("not a separate deliverable");
   });
 
   test("keeps dashboard updates non-interactive while preserving terminal gates", () => {
@@ -58,31 +60,33 @@ describe("Light orchestration contract", () => {
   test("role adapters prohibit broad research and remote work in Light", () => {
     const implementer = read("../implementer/skills/storage-plan-implementer-light-beta/SKILL.md");
     const evaluator = read("../evaluator/skills/storage-plan-evaluator-light-beta/SKILL.md");
-    expect(implementer).toContain("broad research in Light");
+    expect(implementer).toContain("Ansible intake");
     expect(implementer).toContain("SSH/live discovery");
     expect(evaluator).toContain("SSH");
     expect(evaluator).toContain("inventory ansible");
-    expect(implementer).toContain("refined-technical-handoff.md");
-    expect(evaluator).toContain("refined-technical-handoff.md");
-    expect(implementer).toContain("Dynamic chunking");
+    expect(implementer).toContain("05-refined-technical-handoff--storage-layout.md");
+    expect(evaluator).toContain("05-refined-technical-handoff--storage-layout.md");
+    expect(implementer).toContain("Chunk the handoff");
+    expect(evaluator).toContain("re-teach");
+    expect(evaluator).toContain("ansible-gpa-project-evaluator");
   });
 
   test("uses the project lab-cattle quality boundary", () => {
     const runner = read("run-implementation.ts");
     const evaluator = read("../evaluator/skills/storage-plan-evaluator-light-beta/SKILL.md");
     expect(runner).toContain("recreatable lab treats workloads and storage state as cattle");
-    expect(evaluator).toContain("cattle, not pets");
-    expect(evaluator).toContain("failure-forensics");
+    expect(evaluator).toContain("Cattle, not pets");
+    expect(evaluator).toContain("forensics");
   });
 
   test("retires S3/S4 safety fixtures and coalesces Light status", () => {
     const runner = read("run-implementation.ts");
     const implementer = read("../implementer/skills/storage-plan-implementer-light-beta/SKILL.md");
     const evaluator = read("../evaluator/skills/storage-plan-evaluator-light-beta/SKILL.md");
-    const queue = read("../../implementation-campaign/coordination/implementation-work-queue.md");
+    const queue = read("../orchestration/examples/storage-layout-research-transforms/implementation-work-queue.md");
     expect(runner).toContain("Publish at most a start summary naming the chunk and a final handoff/verdict summary");
     expect(implementer).toContain("S3/S4 safety-contract playbooks");
-    expect(evaluator).toContain("do not split whitespace/syntax/lint into separate");
+    expect(evaluator).toContain("One bundled source-quality verdict");
     expect(queue).not.toContain("verify_k3s_storage_offload_safety");
     expect(queue).not.toContain("verify_vllm_cache_migration_safety");
     expect(runner).toContain("agent_type:'codex'");

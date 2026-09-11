@@ -68,18 +68,13 @@ Orchestration adapters. Source/receipt work survives a stop; restart with a
 fresh run directory and ID to continue. Live Apply is still gated by actual
 authorization.
 
-## Experimental parallel preflight
+## Parallel preflight (experimental, opt-in)
 
-Every experimental run performs parallel-work admission before the serial role
-loop. A `parallel_preflight_jobs` array launches its admitted one to four
-bounded inspection/test jobs; an omitted or empty array records an explicit
-zero-job admission result instead of inventing workload commands. Use the contract
-and examples in [parallel-preflight-experiment.md](../orchestration/parallel-preflight-experiment.md).
-Each job is allowlisted read-only, writes only to the fresh runtime directory,
-and its manifest is supplied to both roles. This is suited to concurrent route
-discovery, storage/Alloy/vLLM ownership mapping, Ansible syntax inspection and
-fast tests. It never parallelizes source edits, live Apply, approval or final
-technical synthesis.
+Not part of the core Light path. Only when config supplies a non-empty
+`parallel_preflight_jobs` array does the runner invoke
+[`experimental/run-parallel-preflight.ts`](experimental/run-parallel-preflight.ts).
+Empty/default skips it. Jobs are allowlisted read-only inspection only—never
+source edits, Apply, or synthesis. See [experimental/README.md](experimental/README.md).
 
 Before starting, the parent checks broker health through the existing runtime
 endpoint and uses the existing MCP-managed broker immediately when it responds.
@@ -88,6 +83,9 @@ runner likewise reuses a responding dashboard and invokes `ensure-dashboard`
 only after a dashboard request fails. It does not recover or delete unrelated
 sessions. Always display http://127.0.0.1:7900 and observed status; HTTP health
 alone does not prove the dashboard selected this campaign.
+
+Runtime layering (broker vs peer MCP):
+[orchestration/07-runtime-surfaces--broker-vs-peer-mcp.md](../orchestration/07-runtime-surfaces--broker-vs-peer-mcp.md).
 
 ## Handoffs and restart
 
@@ -138,24 +136,21 @@ A quiet remote/read-only operation remains subject to the runner's finite
 per-pass and overall deadlines. Terminal errors still fail the run and preserve
 evidence; a counter or empty response cannot pass it.
 
-`.paired-run-lock.json` prevents duplicate controllers. A failed run retains its
-lock for inspection. Read its `owner_manifest_path` and use runtime operator
+Locks live under `multi-agent-design/orchestration/temp/` (gitignored), not the
+campaign working tree. `.paired-run-lock.json` prevents duplicate controllers.
+A failed run may leave a recovered snapshot in the same temp folder; delete it
+after inspection. Read `owner_manifest_path` and use runtime operator
 observe/stop on that exact run. Once the previous owner and registered processes
 are confirmed absent, start the new config with `--recover-lock`. The runner
-rechecks ownership and archives the old lock; it never wipes plan work.
+rechecks ownership; it never wipes plan work.
 
 On success or waiting, the session is archived and owned processes stopped.
-`result.json`, per-pass receipts, events and final-process observation remain.
-Before any cleanup is offered, the parent must materialize the plan-owned
-[default end-of-run retention contract](../execution-record-retention-default.md):
-transcripts when locally available, runtime evidence, checksum manifest and—if
-the campaign is not approved—a continuation checkpoint. The current runner
-retains source evidence in `run_dir`; automatic plan-owned transcript/export
-materialization remains a follow-up implementation item. After capture is
-verified, present the exact retained runtime folder and archived session as
-cleanup candidates. Do not tear them down without a separate user choice.
-An aborted owner is covered by the independent watchdog; broker archival may
-need explicit recovery.
+`result.json`, per-pass receipts, events and final-process observation remain in
+`run_dir`. **Plan-owned `execution-records/` are opt-in** (`retain_execution_records:
+true` or an explicit user request)—do not materialize them by default. Present
+the exact retained runtime folder and archived session as cleanup candidates.
+Do not tear them down without a separate user choice. An aborted owner is
+covered by the independent watchdog; broker archival may need explicit recovery.
 
 ## Verification
 

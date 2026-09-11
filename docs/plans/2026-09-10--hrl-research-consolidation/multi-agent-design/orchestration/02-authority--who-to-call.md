@@ -6,7 +6,7 @@ Who owns judgment, who supplies facts, who signs quality.
 | --- | --- | --- |
 | Frame problem / work area / decision questions | **On-site Expert** | Researcher inventing scope |
 | Missing / stale / conflicting fact | **Researcher** (then Expert) | Broad rediscovery |
-| Technical fork: placement, sizing, mechanism | **On-site Expert** Best recommendation | Implementer guessing design |
+| Technical fork: placement, sizing, mechanism | **On-site Expert** Best recommendation ([on-call](06-expert-on-call--lab-consultation.md)) | Implementer guessing design |
 | Map decision → roles/playbooks/owners | **Planner / Coordinator** | Handing raw research to Implementer |
 | Source edits + review-ready package | **Implementer** | Evaluator writing fixes |
 | Ansible quality / chunk accept or reject | **Evaluator** | Parent “approving” from dashboard |
@@ -30,7 +30,7 @@ Neither profile grants Apply by implication. Recommendation ≠ deployed.
 | Expert | Recommendations, framing | Apply, Evaluator verdicts |
 | Researcher | Evidence deltas | Plan decisions, source edits |
 | Planner | Refined technical handoff, plan materialization | Implementation edits |
-| Implementer | Source, receipts, `review_ready_*`, dynamic queue | Feedback / ready verdicts |
+| Implementer | Source intake from handoff, receipts, `review_ready_*`, dynamic queue | Feedback / ready verdicts; redesign |
 | Evaluator | `feedback_*` / `waiting_*` / `ready_*` | Source fixes |
 | Parent | Dispatch, locks, cleanup | Quality judgment |
 

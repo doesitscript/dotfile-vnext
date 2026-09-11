@@ -73,11 +73,11 @@ name durable evidence paths instead. If the parent owns the stop, it creates
 the same report before it presents recovery instructions; an independent
 Observer may add a later report only for materially new evidence.
 
-Before the parent offers cleanup, verify that it followed the
-[default end-of-run retention contract](../../../execution-record-retention-default.md).
-Report a missing plan-owned execution record as a retention gap, not as
-permission for the Observer to collect secrets or operate cleanup. The Observer
-may name the exact missing evidence and stop.
+Before the parent offers cleanup, verify execution-record retention only when
+the user opted in (`retain_execution_records: true` or an explicit request).
+Default evidence lives in the private `run_dir`. Missing opt-in plan-owned
+records are not a gap. The Observer may name evidence paths and stop; it must
+not collect secrets or operate cleanup.
 
 ## Optional bounded watch
 

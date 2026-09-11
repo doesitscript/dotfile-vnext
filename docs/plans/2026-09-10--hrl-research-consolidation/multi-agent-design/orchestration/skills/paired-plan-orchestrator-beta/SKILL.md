@@ -37,18 +37,20 @@ including its lifecycle/start/recovery references before starting processes.
 Also read the [authority map](../../02-authority--who-to-call.md)
 and any paired Expert recommendation / decision-authority profile named by the
 campaign. Treat them as canonical inputs, never as private-chat context.
-Before launching workers, require the newest
-`coordination/research-application/**/refined-technical-handoff.md`. That file
-is the primary Implementer/Evaluator input—not the onsite transcript. Pass its
-absolute path as `refined_technical_handoff_path`. Then read or seed
-`<plan_dir>/coordination/implementation-work-queue.md` using
-[`chunked-light-pipeline-beta`](../chunked-light-pipeline-beta/SKILL.md). The
-queue is **Implementer-owned and dynamic** (derived from the handoff’s
-functional areas). Give the first ready chunk—not the whole campaign—to
-Implementer. A frozen chunk is immediately reviewable by Evaluator; when a
-later area has no overlapping owners, reserve it so review and independent
-work can overlap. Classification-only packets without a refined handoff are
-incomplete; do not start the pair on them.
+Before launching workers, require a **refined technical handoff** (campaign
+path or the canonical storage example
+[`05-refined-technical-handoff--storage-layout.md`](../../05-refined-technical-handoff--storage-layout.md)).
+That file is the primary Implementer/Evaluator input—not the onsite transcript.
+Pass its absolute path as `refined_technical_handoff_path`. Optionally seed an
+Implementer-owned dynamic work queue from the handoff’s functional areas via
+[`chunked-light-pipeline-beta`](../chunked-light-pipeline-beta/SKILL.md)
+(historical example:
+[`examples/storage-layout-research-transforms/implementation-work-queue.md`](../../examples/storage-layout-research-transforms/implementation-work-queue.md)).
+Give the first ready chunk—not the whole campaign—to Implementer. A frozen
+chunk is immediately reviewable by Evaluator; when a later area has no
+overlapping owners, reserve it so review and independent work can overlap.
+Classification-only packets without a refined handoff are incomplete; do not
+start the pair on them.
 
 Early in the chat, report the plan folder, your parent role and
 `Dashboard: http://127.0.0.1:7900 — using existing MCP-managed service`.
@@ -70,14 +72,13 @@ an optional manual fallback, not another required step.
 ## Start or resume the pair
 
 1. Read [the runner instructions](../../../runtime/implementation-runner.md).
-   Validate the reviewed intake. Inspect any campaign `.paired-run-lock.json`;
+   Validate the reviewed intake. Inspect the orchestration temp lock under
+   `multi-agent-design/orchestration/temp/.paired-run-lock.json` (gitignored);
    never start a duplicate writer. If an existing owner is alive, monitor that
    exact run instead. If interrupted, use exact owner-manifest cleanup and
-   `--recover-lock` as documented; preserve all campaign work and prior evidence.
-   When a continuation checkpoint names a last governed artifact and says no
-   new accepted handoff exists, that artifact is the sole resume input. Treat
-   partial source edits as an unreviewed working batch, not a second causal
-   event. Dispatch Implementer first; do not wake Evaluator until a fresh
+   `--recover-lock` as documented; preserve campaign work and prior evidence.
+   Recovered lock snapshots stay in that temp folder and may be deleted once
+   inspected. Dispatch Implementer first; do not wake Evaluator until a fresh
    validation-backed `review_ready_for_evaluator_*` artifact exists.
 2. Treat the configured multiagents MCP server as the normal available runtime:
    do not start, set up, or redeploy it before use. On an actual broker request
@@ -160,22 +161,21 @@ preparation pipeline.
 
 On interruption, stop this exact owned run immediately using its manifest. On
 every automatic, error, limit, waiting, or user-requested stop, write one
-concise timestamped receipt at
-`<plan_dir>/multi-agent-design/observer/observation-reports/orchestration-stop-YYYY-MM-DDTHH-MM-SSZ.md`
-before presenting recovery instructions. It must identify the campaign/session/run,
-trigger, gate/artifact state, process disposition, every fix file and its
-validation, and next action. This is append-only; never overwrite an earlier
-report or hide a one-off runtime fix outside the plan packet. If no fix was
-made, say so explicitly. On completion, verify its workers/watchdog stopped and
-session archived.
+concise timestamped receipt into the private `run_dir` (preferred) or, only
+when troubleshooting was explicitly requested, under
+`multi-agent-design/orchestration/temp/`. Do not invent a campaign-owned
+`multi-agent-design/observer/observation-reports/` tree by default. The receipt
+must identify the campaign/session/run, trigger, gate/artifact state, process
+disposition, and next action. On completion, verify its workers/watchdog
+stopped and session archived.
 
-Before presenting or performing cleanup, follow the
-[default end-of-run retention contract](../../../execution-record-retention-default.md):
-materialize the plan-owned execution record, verify its checksums, and write a
-continuation checkpoint whenever no Evaluator-approved outcome exists. Then
-present—not execute—an exact owned cleanup candidate list. Cleanup requires a
-separate explicit user choice. Retain skills, plan, receipts, upstream evidence,
-and execution records. Preserve shared services.
+**Execution records are opt-in.** Do not create `plan_dir/execution-records/`,
+continuation checkpoints, or heavy troubleshooting dumps by default. Materialize
+them only when the user explicitly asks or config sets
+`retain_execution_records: true`. Otherwise keep evidence in the private
+`run_dir` under oneoffs (or equivalent) and present that folder as the cleanup
+candidate. Cleanup requires a separate explicit user choice. Retain skills,
+plan, and upstream evidence; preserve shared services.
 
 This skill restores single-parent implementation-stage orchestration. It can
 optionally start the bounded Expert/Researcher consultation sidecar from a

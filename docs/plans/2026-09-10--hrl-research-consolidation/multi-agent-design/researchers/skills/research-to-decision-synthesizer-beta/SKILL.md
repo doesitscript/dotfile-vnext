@@ -26,12 +26,13 @@ provenance. A transcript is **not** a plan; extract findings into packets.
 Classify findings: hard correction, placement/design principle,
 durability/safety prohibition, conditional option, discovery/validation.
 
-Write under `coordination/research-application/<packet-id>/`:
+Write under a campaign research-application packet **or** directly into the
+orchestration handoff when the design packet owns it:
 
 1. `research-to-decision-packet.md` — classified evidence for Expert
-2. After Expert acceptance, support Planner in emitting
-   **`refined-technical-handoff.md`** — owner-mapped functional areas,
-   hard corrections, Light vs Full boundary (required before Implementer)
+2. After Expert acceptance, support Planner in emitting a
+   **refined technical handoff** — owner-mapped functional areas, hard
+   corrections, Light vs Full boundary (required before Implementer)
 
 Keep general guidance general until Planner maps owners. Do not force device
 paths or shell commands as the only mechanism.
@@ -53,5 +54,6 @@ contract is mandatory whenever the loop is run manually or by a parent.
 
 Example shape:
 [storage-performance-research-application.md](../../../multi-agent-onsite-expert/examples/storage-performance-research-application.md)
-→ [bootstrap packet](../../../../implementation-campaign/coordination/research-application/performance-layout-bootstrap-2026-09-11/README.md)
-including [refined-technical-handoff.md](../../../../implementation-campaign/coordination/research-application/performance-layout-bootstrap-2026-09-11/refined-technical-handoff.md).
+→ [refined handoff](../../../orchestration/05-refined-technical-handoff--storage-layout.md)
+plus historical campaign transforms under
+[orchestration/examples/storage-layout-research-transforms/](../../../orchestration/examples/storage-layout-research-transforms/).

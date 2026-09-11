@@ -3,12 +3,12 @@
 Keep these beside the plan-owned runtime they test. This is the existing test
 coverage and a preserved smoke seed, not a new testing framework.
 
-## Fast tests (no agents or services started)
+## Fast tests (core — no agents or services started)
 
 From the parent `runtime/` directory:
 
 ```bash
-bun test paired-events.test.ts implementation-policy.test.ts implementation-interrupt-guard.test.ts light-orchestration-contract.test.ts check-implementation-handoff.test.ts artifacts.test.ts watch-implementation-output.test.ts run-parallel-preflight.test.ts
+bun test paired-events.test.ts implementation-policy.test.ts implementation-interrupt-guard.test.ts light-orchestration-contract.test.ts check-implementation-handoff.test.ts artifacts.test.ts watch-implementation-output.test.ts consultation-contract.test.ts
 ```
 
 - [paired-events.test.ts](../paired-events.test.ts): finite handoffs, identity,
@@ -19,18 +19,23 @@ bun test paired-events.test.ts implementation-policy.test.ts implementation-inte
   prevents the installed upstream's false 60-second turn interrupt while the
   parent runner's own finite deadlines remain in force.
 - [light-orchestration-contract.test.ts](../light-orchestration-contract.test.ts):
-  deployment-before-pass timing, source-local owner-batch boundaries, harmless
-  dashboard status, and no-research/no-remote Light role constraints.
+  Light handoff/intake/verify contract and runner constraints.
 - [check-implementation-handoff.test.ts](../check-implementation-handoff.test.ts):
   reviewed intake and snapshot rejection cases.
 - [artifacts.test.ts](../artifacts.test.ts): preparation review/release gates.
 - [watch-implementation-output.test.ts](../watch-implementation-output.test.ts):
   terminal monitor interface, read-only input contract, and peer-summary
   rendering rather than adapter-only metadata.
-- [run-parallel-preflight.test.ts](../run-parallel-preflight.test.ts):
-  bounded admission, quarantine, and explicit zero-job behavior.
-- [stage-batch-worktree.test.ts](../stage-batch-worktree.test.ts): isolated
-  no-commit staging of selected dirty paths.
+- [consultation-contract.test.ts](../consultation-contract.test.ts): Light
+  Expert/Researcher consultation path helpers.
+
+## Experimental tests (opt-in only)
+
+```bash
+bun test experimental/run-parallel-preflight.test.ts experimental/stage-batch-worktree.test.ts
+```
+
+Not part of the core Light path. See [experimental/README.md](../experimental/README.md).
 
 ## Small real-agent scenario
 
