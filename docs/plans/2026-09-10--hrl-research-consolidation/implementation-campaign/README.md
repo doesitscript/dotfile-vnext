@@ -29,13 +29,23 @@ The [iteration priorities](../multi-agent-design/iteration_beta_pass.md) bound
 the adapter-authoring iteration; they do not narrow this campaign to discovery.
 
 Read the [integration contract](../multi-agent-design/orchestration/implementation-beta-contract.md),
-[accounting](coordination/implementation-accounting.md), and
-[reviewed upstream plan](upstream/handoff/current-phase-implementation-plan.md).
+[refined technical handoff](../multi-agent-design/orchestration/05-refined-technical-handoff--storage-layout.md),
+and [reviewed upstream plan](upstream/handoff/current-phase-implementation-plan.md).
+Historical research→campaign transforms (examples):
+[orchestration/examples/storage-layout-research-transforms/](../multi-agent-design/orchestration/examples/storage-layout-research-transforms/).
 `upstream/` contains byte-preserved preparation artifacts. Original absolute
 paths in those files are provenance, not required runtime locations. Resolve
 them through [the manifest](upstream-manifest.json); do not rewrite frozen files.
 The release, not the plan's frozen `awaiting_plan_review` status, records that
 preparation review passed. That review is **not implementation sign-off**.
+
+Plan-owned `execution-records/` and historical `receipts/` /
+`review_ready_*` back-and-forth are **not** the working campaign surface.
+Those early loops are ignored under
+`multi-agent-design/orchestration/temp/historical-campaign-back-and-forth/`
+(gitignored). Fresh chunk artifacts belong in the private `run_dir` unless you
+explicitly ask to retain plan-owned records (`retain_execution_records: true`).
+Do not treat archived receipts as research hard-gates or as the current queue.
 
 From the project root, check the handoff without launching agents or hosts:
 
@@ -96,8 +106,9 @@ live values. Reconcile its intended additional-disk outcome during S1/S4.
 The launch prompt authorizes repository implementation and relevant read-only
 discovery. The frozen release grants no live Apply authority. Before each live
 mutation, record the applicable user authorization and exact verified target,
-selected values, baseline, change class, backup/rollback path and preview in
-`coordination/decisions-and-authorization.md`. Reuse existing specific permission;
+selected values, baseline, change class, and preview (see historical example
+`orchestration/examples/storage-layout-research-transforms/decisions-and-authorization.md`).
+Reuse existing specific permission;
 do not ask for a magic phrase or repeat an already answered decision. If authority
 or destructive target selection is genuinely absent, request the smallest missing
 decision and continue independent safe work. Evaluator approval never substitutes
@@ -107,7 +118,8 @@ Apply through owning Ansible roles/playbooks and a verified inventory limit. Use
 syntax/list-hosts/list-tasks/list-tags and project-required focused validation;
 check mode is only evidence for tasks that actually support it. Record command,
 exit code, time, targets, relevant output, idempotence or justified exception,
-before/after state and workload health. Store redacted receipts under `receipts/`.
+before/after state and workload health in the private `run_dir` (not a campaign
+`receipts/` working folder).
 
 Undo means restore captured config/deployment values and use the selected
 data-safe migration reversal. Never imply deleted models/images are recoverable

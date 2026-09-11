@@ -6,7 +6,8 @@ exchange one durable review package and one grouped Evaluator response as soon
 as each turn finishes.
 
 The queue's defined implementation target comes from the **refined technical
-handoff** (`coordination/research-application/**/refined-technical-handoff.md`).
+handoff**
+([`orchestration/05-refined-technical-handoff--storage-layout.md`](../multi-agent-design/orchestration/05-refined-technical-handoff--storage-layout.md)).
 Implementer derives dynamic queue chunks from that handoff’s functional areas;
 Evaluator decides whether each chunk’s target state is correctly realized.
 File reads, diffs, `git status`, syntax, and argument inspection are supporting
@@ -58,11 +59,11 @@ Researcher sidecar while unrelated source work continues.
 
 ## Interrupted Light recovery
 
-When the continuation checkpoint records partial source work but no fresh
-accepted handoff, resume from its named last governed artifact only. Treat the
-partial edits as one unreviewed working batch. The first Implementer pass must
-reduce that batch to the smallest coherent owner group, run its targeted source
-validation, and write a fresh review-ready handoff; only then does Evaluator
-run. Use a fresh run ID and `--recover-lock` after exact owner absence is
-verified. A 900-second pass ceiling is a stall guard, not a reason to wait or
-continue expanding the batch.
+When a prior run left partial source work but no fresh accepted handoff, resume
+from the last governed artifact only. Treat partial edits as one unreviewed
+working batch. The first Implementer pass must reduce that batch to the smallest
+coherent owner group, run its targeted source validation, and write a fresh
+review-ready handoff; only then does Evaluator run. Use a fresh run ID and
+`--recover-lock` after exact owner absence is verified (locks live under
+`multi-agent-design/orchestration/temp/`). A 900-second pass ceiling is a stall
+guard, not a reason to wait or continue expanding the batch.
