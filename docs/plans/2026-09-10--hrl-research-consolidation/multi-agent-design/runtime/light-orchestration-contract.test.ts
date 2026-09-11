@@ -14,6 +14,16 @@ describe("Light orchestration contract", () => {
     expect(runner.indexOf("log('pass_dispatched'")).toBeGreaterThan(runner.indexOf("await post('/send-message'"));
   });
 
+  test("separates durable event files from private runtime evidence", () => {
+    const runner = read("run-implementation.ts");
+    const example = read("implementation-config.example.json");
+    expect(runner).toContain("eventDir=resolve(cfg.event_dir||cfg.plan_dir)");
+    expect(runner).toContain("scanEvents(eventDir)");
+    expect(runner).toContain("acceptEvent(eventDir");
+    expect(runner).toContain("not run_dir");
+    expect(example).toContain('"event_dir"');
+  });
+
   test("keeps the default batch source-local and bounded", () => {
     const runner = read("run-implementation.ts");
     expect(runner).toContain("defaultLightOwnerBatch");
@@ -53,8 +63,8 @@ describe("Light orchestration contract", () => {
 
   test("keeps dashboard updates non-interactive while preserving terminal gates", () => {
     const policy = read("implementation-policy.ts");
-    expect(policy).toContain('[`${PEER}.set_summary.approval_mode`]: "approve"');
-    expect(policy).toContain('[`${PEER}.${tool}.approval_mode`]: "approve"');
+    expect(policy).toContain('[`${PEER}.set_summary.approval_mode`]: "auto"');
+    expect(policy).toContain('[`${PEER}.${tool}.approval_mode`]: "auto"');
     expect(policy).toContain("scrubInvalidToolApprovalModes");
   });
 
@@ -96,6 +106,6 @@ describe("Light orchestration contract", () => {
     expect(runner).toContain("Light profile refuses to resume Full-era tip");
     expect(read("paired-events.ts")).toContain("non-contract filename");
     expect(read("implementation-policy.ts")).toContain("scrubInvalidToolApprovalModes");
-    expect(read("implementation-policy.ts")).toContain('[`${PEER}.set_summary.approval_mode`]: "approve"');
+    expect(read("implementation-policy.ts")).toContain('[`${PEER}.set_summary.approval_mode`]: "auto"');
   });
 });

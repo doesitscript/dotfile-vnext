@@ -13,7 +13,8 @@ supplies progress observation.
 Fill [implementation-config.example.json](implementation-config.example.json)
 with a unique `run_id`, actual paths and a verified Codex executable. `run_dir`
 must not exist; use a private runtime container with `config.json` and a new
-`run/` child. The role outputs go to `plan_dir`, not runtime cwd. The MCP-generated
+`run/` child. Durable role events go to `event_dir` (defaulting to `plan_dir`),
+not runtime cwd. The MCP-generated
 client/session files stay in the isolated runtime directory; workers are told
 to read and follow the actual project's instructions before substantive work.
 
@@ -120,9 +121,10 @@ broker's explicit `__slot_<id>__` target avoids stale peer-ID routing. These are
 installed-runtime compatibility measures, not changes to role judgment.
 
 The preload binds each peer MCP connection through explicit session/slot/role
-arguments and driver-mode environment. Only the Evaluator's `approve` tool gets
-a thread-local `approval_mode: approve`; the noninteractive approval policy,
-other tool permissions and infrastructure authorization remain unchanged. This
+arguments and driver-mode environment. The bounded orchestration signals
+(`set_summary`, `signal_done`, and Evaluator `approve`) get thread-local
+`approval_mode: auto`; shell and infrastructure authorization remain governed
+separately by Codex's global approval policy and the campaign contract. This
 uses the [documented per-tool MCP setting](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)
 and the installed Codex `thread/start.config` schema, not a parent-forged approval.
 Managed policy still wins; a denied tool or missing peer signal is incomplete.

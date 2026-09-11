@@ -9,7 +9,7 @@ import {consultationArtifacts as consultationArtifactPaths,consultationRoles} fr
 
 const cfg=JSON.parse(readFileSync(process.argv[2],'utf8'));
 for(const k of ['project_root','plan_dir','run_dir','run_id','codex_binary','operator_skill_root'])if(!cfg[k])throw Error(`Missing ${k}`);
-const project=resolve(cfg.project_root),plan=resolve(cfg.plan_dir),out=resolve(cfg.run_dir),packet=resolve(import.meta.dir,'..');
+const project=resolve(cfg.project_root),plan=resolve(cfg.plan_dir),eventDir=resolve(cfg.event_dir||cfg.plan_dir),out=resolve(cfg.run_dir),packet=resolve(import.meta.dir,'..');
 const expertRecommendationPath=cfg.expert_recommendation_path?resolve(cfg.expert_recommendation_path):null;
 const decisionAuthorityProfilePath=cfg.decision_authority_profile_path?resolve(cfg.decision_authority_profile_path):null;
 const consultationRequestPath=cfg.consultation_request_path?resolve(cfg.consultation_request_path):null;
@@ -131,7 +131,7 @@ try{
   renameSync(lock,join(lockDir,`.paired-run-lock-recovered-${Date.now()}.json`));
  }
  writeFileSync(lock,JSON.stringify({run_id:cfg.run_id,owner_manifest_path:owner,session_id:session}),{flag:'wx'});lockOwned=true;
- const tip=resumeEvent(plan,{campaign_id:intake.campaign_id,upstream_plan_sha256:intake.upstream_plan_sha256});
+ const tip=resumeEvent(eventDir,{campaign_id:intake.campaign_id,upstream_plan_sha256:intake.upstream_plan_sha256});
  if(tip){
   const fullEraTip=tip.kind==='feedback'||tip.kind==='waiting';
   if(orchestrationProfile==='light'&&fullEraTip&&!allowFullTipResume){
@@ -211,8 +211,8 @@ try{
   const role=nextActor;current=`${role}/${pass}`;
   const slots=await post('/slots/list',{session_id:session}),slot=slots.find((s:any)=>s.display_name===role);if(!slot)throw Error(`Missing ${role} slot`);
   const thread=JSON.parse(slot.context_snapshot||'{}').codex_thread_id;if(!thread)throw Error(`Missing thread for ${role}`);
-  const prior=verified.get(thread)||0,before=scanEvents(plan),invocation=`${cfg.run_id}-${role}-${pass}`;
-  const inputs={project_root:project,plan_dir:plan,mode:'orchestrated',pipeline_id:upstream.pipeline_id,task_id:upstream.task_id,campaign_id:intake.campaign_id,stage_id:'implementation',run_id:invocation,upstream_run_id:intake.upstream_run_id,upstream_plan_sha256:intake.upstream_plan_sha256,session_id:session,owner_manifest_path:owner,runtime_observation_path:join(out,'dashboard-observation.json'),responds_to:responseTo,...(refinedTechnicalHandoffPath?{refined_technical_handoff_path:refinedTechnicalHandoffPath}:{}),...(implementationWorkQueuePath?{implementation_work_queue_path:implementationWorkQueuePath}:{}),...(parallelPreflightManifest?{parallel_preflight_manifest_path:parallelPreflightManifest}:{}),...(expertRecommendationPath?{expert_recommendation_path:expertRecommendationPath,decision_authority_profile_path:decisionAuthorityProfilePath}:{}),...(consultationArtifacts?{consultation_request_path:consultationRequestPath,consultation_expert_path:consultationArtifacts.coordinator,consultation_research_path:consultationArtifacts.researcher}:{}),...(cfg.operator_resolution_path?{operator_resolution_path:resolve(cfg.operator_resolution_path)}:{})};
+  const prior=verified.get(thread)||0,before=scanEvents(eventDir),invocation=`${cfg.run_id}-${role}-${pass}`;
+  const inputs={project_root:project,plan_dir:plan,event_dir:eventDir,mode:'orchestrated',pipeline_id:upstream.pipeline_id,task_id:upstream.task_id,campaign_id:intake.campaign_id,stage_id:'implementation',run_id:invocation,upstream_run_id:intake.upstream_run_id,upstream_plan_sha256:intake.upstream_plan_sha256,session_id:session,owner_manifest_path:owner,runtime_observation_path:join(out,'dashboard-observation.json'),responds_to:responseTo,...(refinedTechnicalHandoffPath?{refined_technical_handoff_path:refinedTechnicalHandoffPath}:{}),...(implementationWorkQueuePath?{implementation_work_queue_path:implementationWorkQueuePath}:{}),...(parallelPreflightManifest?{parallel_preflight_manifest_path:parallelPreflightManifest}:{}),...(expertRecommendationPath?{expert_recommendation_path:expertRecommendationPath,decision_authority_profile_path:decisionAuthorityProfilePath}:{}),...(consultationArtifacts?{consultation_request_path:consultationRequestPath,consultation_expert_path:consultationArtifacts.coordinator,consultation_research_path:consultationArtifacts.researcher}:{}),...(cfg.operator_resolution_path?{operator_resolution_path:resolve(cfg.operator_resolution_path)}:{})};
   const authorityGuidance=expertRecommendationPath?'Read both supplied Expert/profile paths. Apply only the profile-authorized recommendation within campaign scope; exact target identity, validation, receipts and Evaluator review remain mandatory.':'Live mutation needs recorded specific authority and verified targets/backup; never guess. Missing user choices go in the durable handoff; continue independent safe work.';
   const batch=orchestrationProfile==='light'?lightOwnerBatch:[];
   const lightScope=`Read the refined technical handoff FIRST as work instructions (primary input, not optional): ${refinedTechnicalHandoffPath}. Do not use the onsite transcript or raw research dumps as the work specification. ${role==='implementer'?`Your job is Ansible intake: derive or refresh the dynamic work queue from that handoff's functional areas${implementationWorkQueuePath?` at ${implementationWorkQueuePath}`:''}, then select exactly one ready non-overlapping chunk and adapt its settled settings into existing project owners. Hand the freeze to Evaluator. While a prior chunk is under evaluation, you may start the next independent area only when owners do not overlap. Do not wait for Evaluator to restate handoff design details. `:`Your job is verification only: check whether the frozen Implementer chunk correctly adapted its handoff functional-area target into the declared owners with mature Ansible quality. Do not re-teach the handoff's placement matrix or correction catalog. `}${implementationWorkQueuePath?`Queue path: ${implementationWorkQueuePath}. `:`Light owner batch fallback (do not expand it): ${JSON.stringify(batch)}. `}`;
@@ -221,14 +221,15 @@ try{
   await publishSlotSummary(slot,`${role === 'implementer' ? 'Implementer' : 'Evaluator'} pass ${pass} — preparing the next bounded source package.`);
   await post('/release-held',{session_id:session,slot_id:slot.id});
   // Explicit driver target avoids resolving a stale/nonexistent peer_id in this installed broker.
-  await post('/send-message',{from_id:'orchestrator',to_id:`__slot_${slot.id}__`,to_slot_id:slot.id,session_id:session,msg_type:'chat',text:prompt+(cfg.operator_resolution_path?' Read the supplied operator_resolution_path first; it records a specific user decision, not blanket Apply authority.':'')});
+  const contractPrompt=`${prompt} Write the new event directly under event_dir=${eventDir}, not run_dir. Its frontmatter must include contract_version, pipeline_id, task_id, campaign_id, stage_id, run_id=${invocation}, upstream_run_id, upstream_plan_sha256, role=${role}, event_id, responds_to=${JSON.stringify(responseTo)}, status, next_actor, mode, session_id, and owner_manifest_path.`;
+  await post('/send-message',{from_id:'orchestrator',to_id:`__slot_${slot.id}__`,to_slot_id:slot.id,session_id:session,msg_type:'chat',text:contractPrompt+(cfg.operator_resolution_path?' Read the supplied operator_resolution_path first; it records a specific user decision, not blanket Apply authority.':'')});
   log('pass_dispatched',{pass:current,slot_id:slot.id,deadline_seconds:limits.pass_timeout_seconds});
   let lastMirroredSummary='';
   const dashboardMirror=setInterval(()=>{void mirrorWorkerSummary(slot.id,role,lastMirroredSummary).then(summary=>{lastMirroredSummary=summary;});},3000);
   try{await until(()=>(verified.get(thread)||0)>prior,limits.pass_timeout_seconds);}
   finally{clearInterval(dashboardMirror);}
   await post('/hold-messages',{session_id:session,slot_id:slot.id});
-  const event=acceptEvent(plan,before,{campaign_id:intake.campaign_id,run_id:invocation,role,upstream_plan_sha256:intake.upstream_plan_sha256,responds_to:responseTo});
+  const event=acceptEvent(eventDir,before,{campaign_id:intake.campaign_id,run_id:invocation,role,upstream_plan_sha256:intake.upstream_plan_sha256,responds_to:responseTo});
   save(`pass-${pass}.json`,{...inputs,...event,terminal:'completed'});log('pass_completed',{pass:current,...event});await publishSlotSummary(slot,`${role === 'implementer' ? 'Implementer' : 'Evaluator'} pass ${pass} complete — ${event.kind}; next: ${event.nextActor}.`);responseTo=event.path;nextActor=event.nextActor;
   if(nextActor==='operator'){status='waiting_for_operator';break;}
   if(nextActor==='none'){

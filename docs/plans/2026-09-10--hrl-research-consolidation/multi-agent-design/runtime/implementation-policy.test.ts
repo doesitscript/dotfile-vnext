@@ -7,11 +7,11 @@ const summaryKey = "mcp_servers.multiagents-peer.tools.set_summary.approval_mode
 describe("Role-scoped terminal signal policy", () => {
   test("Evaluator gets non-interactive dashboard summary and final approve overrides", () => {
     expect(scopedThreadParams("evaluator", {})).toEqual({ config: {
-      [summaryKey]: "approve", [approveKey]: "approve" } });
+      [summaryKey]: "auto", [approveKey]: "auto" } });
   });
   test("Implementer gets non-interactive dashboard summary and final signal_done overrides", () => {
     expect(scopedThreadParams("implementer", {})).toEqual({ config: {
-      [summaryKey]: "approve", [doneKey]: "approve" } });
+      [summaryKey]: "auto", [doneKey]: "auto" } });
   });
   for (const role of ["researcher", "coordinator", "observer", undefined]) {
     test(`${role ?? "missing role"} gets no added permission`, () => {
@@ -32,8 +32,8 @@ describe("Role-scoped terminal signal policy", () => {
       ...config,
       "mcp_servers.multiagents-peer.tools.submit_feedback.approval_mode": "approve",
       "mcp_servers.other-server.tools.approve.approval_mode": "approve",
-      [summaryKey]: "approve",
-      [approveKey]: "approve",
+      [summaryKey]: "auto",
+      [approveKey]: "auto",
     } });
     expect(result).not.toBe(original);
     expect(result.config).not.toBe(config);
@@ -46,8 +46,8 @@ describe("Role-scoped terminal signal policy", () => {
   test("Implementer override preserves unrelated policies and is idempotent", () => {
     const first = scopedThreadParams("implementer", { config: {
       approval_policy: "never", [doneKey]: "never", [approveKey]: "never" } });
-    expect(first.config).toEqual({ approval_policy: "never", [summaryKey]: "approve",
-      [doneKey]: "approve", [approveKey]: "approve" });
+    expect(first.config).toEqual({ approval_policy: "never", [summaryKey]: "auto",
+      [doneKey]: "auto", [approveKey]: "approve" });
     expect(scopedThreadParams("implementer", first)).toEqual(first);
   });
   test("scrubs nested never tool approval modes before startSession", () => {
@@ -61,6 +61,6 @@ describe("Role-scoped terminal signal policy", () => {
       },
     });
     expect(result.config.mcp_servers["multiagents-peer"].tools.set_summary.approval_mode).toBe("approve");
-    expect(result.config[summaryKey]).toBe("approve");
+    expect(result.config[summaryKey]).toBe("auto");
   });
 });

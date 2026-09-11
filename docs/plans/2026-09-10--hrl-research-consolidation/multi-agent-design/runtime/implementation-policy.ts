@@ -52,8 +52,11 @@ export function scopedThreadParams(role: string | undefined, params: Record<stri
     config: {
       ...base,
       // Dashboard status must stay non-interactive; never reuse turn approvalPolicy=never here.
-      [`${PEER}.set_summary.approval_mode`]: "approve",
-      [`${PEER}.${tool}.approval_mode`]: "approve",
+      // These are bounded orchestration signals, not shell or infrastructure
+      // mutations. Auto-authorize them so a noninteractive app-server does not
+      // deadlock on a human approval prompt.
+      [`${PEER}.set_summary.approval_mode`]: "auto",
+      [`${PEER}.${tool}.approval_mode`]: "auto",
     },
   };
 }
