@@ -1,0 +1,89 @@
+---
+- name: Inspect retained local-path configuration
+  ansible.builtin.slurp:
+    src: "{{ k3s_storage_offload_local_path_backup_file }}"
+  register: __k3s_storage_offload_local_path_backup
+
+- name: Require explicit reversal authority and retained configuration
+  ansible.builtin.assert:
+    that:
+      - k3s_storage_offload_apply | bool
+      - __k3s_storage_offload_local_path_backup.content | length > 0
+    fail_msg: >-
+      Refusing K3s storage offload reversal without the explicit apply gate
+      and retained pre-change local-path configuration.
+
+- name: Restore prior local-path provisioner configuration
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: local-path-config
+        namespace: kube-system
+      data:
+        config.json: >-
+          {{ __k3s_storage_offload_local_path_backup.content | b64decode }}
+  environment:
+    KUBECONFIG: "{{ k3s_storage_offload_kubeconfig }}"
+
+- name: Inspect retained containerd backup
+  ansible.builtin.stat:
+    path: "{{ k3s_storage_offload_containerd_backup_path }}"
+    get_checksum: false
+  register: __k3s_storage_offload_containerd_backup
+
+- name: Require retained containerd tree for reversal
+  ansible.builtin.assert:
+    that:
+      - __k3s_storage_offload_containerd_backup.stat.exists
+      - __k3s_storage_offload_containerd_backup.stat.isdir
+    fail_msg: >-
+      Refusing containerd reversal because the retained original tree is absent.
+
+- name: Quiesce and synchronize current containerd data before reversal
+  block:
+    - name: Stop K3s before reverse containerd copy
+      ansible.builtin.systemd_service:
+        name: "{{ k3s_storage_offload_service_name }}"
+        state: stopped
+
+    - name: Synchronize current containerd data into retained root backing
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/rsync
+          - --archive
+          - --hard-links
+          - --acls
+          - --xattrs
+          - --numeric-ids
+          - --checksum
+          - --itemize-changes
+          - "{{ k3s_storage_offload_containerd_destination_path }}/"
+          - "{{ k3s_storage_offload_containerd_backup_path }}/"
+      register: __k3s_storage_offload_reverse_copy
+      changed_when: __k3s_storage_offload_reverse_copy.stdout | trim | length > 0
+
+    - name: Verify reversed containerd data by checksum comparison
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/rsync
+          - --archive
+          - --hard-links
+          - --acls
+          - --xattrs
+          - --numeric-ids
+          - --checksum
+          - --dry-run
+          - --itemize-changes
+          - "{{ k3s_storage_offload_containerd_destination_path }}/"
+          - "{{ k3s_storage_offload_containerd_backup_path }}/"
+      register: __k3s_storage_offload_reverse_verify
+      changed_when: false
+      failed_when: >-
+        __k3s_storage_offload_reverse_verify.rc != 0
+        or (__k3s_storage_offload_reverse_verify.stdout | trim | length > 0)
+
+    - name: Restore retained containerd source and service
+      ansible.builtin.include_tasks: restore_containerd.yml

@@ -1,0 +1,119 @@
+---
+- name: Verify storage capacity monitor shell behavior on the controller
+  hosts: localhost
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Create isolated storage monitor fixture directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: storage-capacity-monitor-
+      register: storage_capacity_monitor_fixture
+
+    - name: Exercise rendered storage monitor cases
+      block:
+        - name: Install fixture commands
+          ansible.builtin.copy:
+            dest: "{{ storage_capacity_monitor_fixture.path }}/{{ item.name }}"
+            mode: "0755"
+            content: "{{ item.content }}"
+          loop:
+            - name: findmnt
+              content: |
+                #!/usr/bin/env bash
+                [[ "$1" == "--mountpoint" && "$2" == "/fixture-mounted" ]]
+            - name: df
+              content: |
+                #!/usr/bin/env bash
+                [[ "$1" == "--output=pcent" && "$2" == "/fixture-mounted" ]] || exit 64
+                printf 'Use%%\n 85%%\n'
+            - name: systemd-cat
+              content: |
+                #!/usr/bin/env bash
+                read -r event
+                printf '%s | %s\n' "$*" "$event" >> "$EVENT_LOG"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Render mounted plus optional-missing fixture
+          ansible.builtin.copy:
+            dest: "{{ storage_capacity_monitor_fixture.path }}/optional.sh"
+            mode: "0755"
+            content: >-
+              {{ lookup('template', playbook_dir ~ '/../roles/storage_capacity_monitor/templates/storage-capacity-monitor.sh.j2') }}
+          vars:
+            storage_capacity_monitor_warning_percent: 75
+            storage_capacity_monitor_critical_percent: 90
+            storage_capacity_monitor_mounts:
+              - path: /fixture-mounted
+                required: true
+              - path: /fixture-optional-missing
+                required: false
+
+        - name: Run mounted plus optional-missing fixture
+          ansible.builtin.command:
+            argv:
+              - bash
+              - "{{ storage_capacity_monitor_fixture.path }}/optional.sh"
+          environment:
+            PATH: "{{ storage_capacity_monitor_fixture.path }}:/usr/bin:/bin"
+            EVENT_LOG: "{{ storage_capacity_monitor_fixture.path }}/optional.events"
+          register: storage_capacity_monitor_optional_result
+          changed_when: false
+
+        - name: Read mounted plus optional-missing events
+          ansible.builtin.slurp:
+            src: "{{ storage_capacity_monitor_fixture.path }}/optional.events"
+          register: storage_capacity_monitor_optional_events
+
+        - name: Require parsed utilization and non-failing optional absence
+          ansible.builtin.assert:
+            that:
+              - storage_capacity_monitor_optional_result.rc == 0
+              - "'status=warning path=/fixture-mounted used_percent=85' in (storage_capacity_monitor_optional_events.content | b64decode)"
+              - "'status=unavailable path=/fixture-optional-missing required=false' in (storage_capacity_monitor_optional_events.content | b64decode)"
+
+        - name: Render mounted plus required-missing fixture
+          ansible.builtin.copy:
+            dest: "{{ storage_capacity_monitor_fixture.path }}/required.sh"
+            mode: "0755"
+            content: >-
+              {{ lookup('template', playbook_dir ~ '/../roles/storage_capacity_monitor/templates/storage-capacity-monitor.sh.j2') }}
+          vars:
+            storage_capacity_monitor_warning_percent: 75
+            storage_capacity_monitor_critical_percent: 90
+            storage_capacity_monitor_mounts:
+              - path: /fixture-mounted
+                required: true
+              - path: /fixture-required-missing
+                required: true
+
+        - name: Run mounted plus required-missing fixture
+          ansible.builtin.command:
+            argv:
+              - bash
+              - "{{ storage_capacity_monitor_fixture.path }}/required.sh"
+          environment:
+            PATH: "{{ storage_capacity_monitor_fixture.path }}:/usr/bin:/bin"
+            EVENT_LOG: "{{ storage_capacity_monitor_fixture.path }}/required.events"
+          register: storage_capacity_monitor_required_result
+          changed_when: false
+          failed_when: false
+
+        - name: Read mounted plus required-missing events
+          ansible.builtin.slurp:
+            src: "{{ storage_capacity_monitor_fixture.path }}/required.events"
+          register: storage_capacity_monitor_required_events
+
+        - name: Require parsed utilization and failing required absence
+          ansible.builtin.assert:
+            that:
+              - storage_capacity_monitor_required_result.rc == 1
+              - "'status=warning path=/fixture-mounted used_percent=85' in (storage_capacity_monitor_required_events.content | b64decode)"
+              - "'status=unavailable path=/fixture-required-missing required=true' in (storage_capacity_monitor_required_events.content | b64decode)"
+      always:
+        - name: Remove isolated storage monitor fixture directory
+          ansible.builtin.file:
+            path: "{{ storage_capacity_monitor_fixture.path }}"
+            state: absent

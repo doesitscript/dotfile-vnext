@@ -34,3 +34,43 @@ argument_specs:
         description: >-
           Repository receipt or approved evidence reference proving the
           selected cache backing capacity and rollback basis.
+      k3s_vllm_runtime_hf_cache_backend:
+        type: str
+        default: pvc
+        choices:
+          - pvc
+          - host_path
+        description: >-
+          Backing selected for the Hugging Face cache. host_path retains the
+          source PVC and requires the explicit migration safety gates.
+      k3s_vllm_runtime_hf_cache_host_mount_path:
+        type: path
+        default: /mnt/k3s-cache
+        description: Exact verified mountpoint that owns the selected cache path.
+      k3s_vllm_runtime_hf_cache_host_path:
+        type: path
+        default: /mnt/k3s-cache/hf
+        description: Host directory mounted into the vLLM container for HF data.
+      k3s_vllm_runtime_hf_cache_migration_apply:
+        type: bool
+        default: false
+        description: >-
+          Explicit mutation gate for quiescing vLLM and copying the retained
+          source PVC cache to the verified host path.
+      k3s_vllm_runtime_hf_cache_source_cleanup_apply:
+        type: bool
+        default: false
+        description: >-
+          Separate destructive-data gate for clearing the old root-backed PVC
+          only after host-path health and model checks pass. Rollback recopies
+          from the retained destination before restoring the prior deployment.
+      k3s_vllm_runtime_hf_cache_retain_source_pvc:
+        type: bool
+        default: true
+        description: >-
+          Required data-safety acknowledgement that the original PVC remains
+          available as the reversal source after host-path cutover.
+      k3s_vllm_runtime_node_name:
+        type: str
+        default: ""
+        description: Exact Kubernetes Node object used for post-cutover pressure checks.

@@ -1,0 +1,292 @@
+---
+- name: Inspect exact selected storage mount
+  ansible.builtin.command:
+    argv:
+      - findmnt
+      - --mountpoint
+      - --noheadings
+      - --output
+      - SOURCE,FSTYPE
+      - "{{ k3s_storage_offload_mount_path }}"
+  register: __k3s_storage_offload_mount
+  changed_when: false
+  failed_when: __k3s_storage_offload_mount.rc not in [0, 1]
+  check_mode: false
+
+- name: Inspect current containerd bind mount
+  ansible.builtin.command:
+    argv:
+      - findmnt
+      - --mountpoint
+      - --noheadings
+      - --output
+      - SOURCE,FSROOT
+      - "{{ k3s_storage_offload_containerd_source_path }}"
+  register: __k3s_storage_offload_containerd_mount
+  changed_when: false
+  failed_when: __k3s_storage_offload_containerd_mount.rc not in [0, 1]
+  check_mode: false
+
+- name: Inspect containerd source and retained backup
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    get_checksum: false
+  loop:
+    - "{{ k3s_storage_offload_containerd_source_path }}"
+    - "{{ k3s_storage_offload_containerd_backup_path }}"
+    - /usr/bin/rsync
+  register: __k3s_storage_offload_paths
+
+- name: Inspect overlay filesystem support
+  ansible.builtin.command:
+    argv:
+      - grep
+      - -w
+      - overlay
+      - /proc/filesystems
+  register: __k3s_storage_offload_overlay
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Query current local-path provisioner configuration
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ConfigMap
+    namespace: kube-system
+    name: local-path-config
+  environment:
+    KUBECONFIG: "{{ k3s_storage_offload_kubeconfig }}"
+  register: __k3s_storage_offload_local_path_config
+
+- name: Resolve current local-path provisioner roots
+  ansible.builtin.set_fact:
+    __k3s_storage_offload_local_path_json: >-
+      {{ __k3s_storage_offload_local_path_config.resources[0].data['config.json'] | from_json }}
+    __k3s_storage_offload_current_local_paths: >-
+      {{
+        (__k3s_storage_offload_local_path_config.resources[0].data['config.json'] | from_json)
+        .nodePathMap | map(attribute='paths') | flatten | list
+      }}
+    __k3s_storage_offload_expected_containerd_fsroot: >-
+      {{
+        k3s_storage_offload_containerd_destination_path[
+          k3s_storage_offload_mount_path | length:
+        ]
+      }}
+
+- name: Require exact compatible backing and explicit offload authority
+  ansible.builtin.assert:
+    that:
+      - __k3s_storage_offload_mount.rc == 0
+      - (__k3s_storage_offload_mount.stdout.split() | last) in ['ext4', 'xfs']
+      - __k3s_storage_offload_overlay.rc == 0
+      - __k3s_storage_offload_paths.results[0].stat.exists
+      - __k3s_storage_offload_paths.results[0].stat.isdir
+      - __k3s_storage_offload_paths.results[2].stat.exists
+      - __k3s_storage_offload_paths.results[2].stat.executable
+      - >-
+        k3s_storage_offload_containerd_destination_path.startswith(
+          k3s_storage_offload_mount_path ~ '/'
+        )
+      - >-
+        k3s_storage_offload_local_path_destination.startswith(
+          k3s_storage_offload_mount_path ~ '/'
+        )
+      - k3s_storage_offload_retain_containerd_backup | bool
+      - k3s_storage_offload_apply | bool
+      - __k3s_storage_offload_local_path_config.resources | length == 1
+      - >-
+        (__k3s_storage_offload_current_local_paths ==
+         [k3s_storage_offload_expected_local_path_root])
+        or
+        (__k3s_storage_offload_current_local_paths ==
+         [k3s_storage_offload_local_path_destination])
+      - >-
+        __k3s_storage_offload_containerd_mount.rc == 1
+        or
+        (__k3s_storage_offload_containerd_mount.stdout.split() | last ==
+         __k3s_storage_offload_expected_containerd_fsroot)
+      - >-
+        __k3s_storage_offload_containerd_mount.rc == 0
+        or not __k3s_storage_offload_paths.results[1].stat.exists
+    fail_msg: >-
+      Refusing K3s storage offload. The exact data mount must be ext4/xfs,
+      overlayfs and rsync must be available, current containerd/local-path
+      ownership must match the expected source or selected destination, the
+      retained backup must not pre-exist before first migration, and apply plus
+      retain-containerd-backup gates must be true.
+
+- name: Migrate containerd to the selected bind backing
+  when: __k3s_storage_offload_containerd_mount.rc == 1
+  block:
+    - name: Stop K3s before containerd copy
+      ansible.builtin.systemd_service:
+        name: "{{ k3s_storage_offload_service_name }}"
+        state: stopped
+
+    - name: Ensure selected containerd destination exists
+      ansible.builtin.file:
+        path: "{{ k3s_storage_offload_containerd_destination_path }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0711"
+
+    # No Ansible file module performs an atomic directory rename. command is
+    # bounded to the exact validated source and retained-backup paths.
+    - name: Copy containerd tree without deleting either source
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/rsync
+          - --archive
+          - --hard-links
+          - --acls
+          - --xattrs
+          - --numeric-ids
+          - --checksum
+          - --itemize-changes
+          - "{{ k3s_storage_offload_containerd_source_path }}/"
+          - "{{ k3s_storage_offload_containerd_destination_path }}/"
+      register: __k3s_storage_offload_copy
+      changed_when: __k3s_storage_offload_copy.stdout | trim | length > 0
+
+    - name: Verify copied containerd tree by checksum comparison
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/rsync
+          - --archive
+          - --hard-links
+          - --acls
+          - --xattrs
+          - --numeric-ids
+          - --checksum
+          - --dry-run
+          - --itemize-changes
+          - "{{ k3s_storage_offload_containerd_source_path }}/"
+          - "{{ k3s_storage_offload_containerd_destination_path }}/"
+      register: __k3s_storage_offload_verify
+      changed_when: false
+      failed_when: >-
+        __k3s_storage_offload_verify.rc != 0
+        or (__k3s_storage_offload_verify.stdout | trim | length > 0)
+
+    - name: Retain original containerd tree for reversal
+      ansible.builtin.command:
+        argv:
+          - mv
+          - "{{ k3s_storage_offload_containerd_source_path }}"
+          - "{{ k3s_storage_offload_containerd_backup_path }}"
+        creates: "{{ k3s_storage_offload_containerd_backup_path }}"
+
+    - name: Recreate containerd bind target
+      ansible.builtin.file:
+        path: "{{ k3s_storage_offload_containerd_source_path }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0711"
+
+    - name: Bind selected containerd backing at the K3s-owned path
+      ansible.posix.mount:
+        path: "{{ k3s_storage_offload_containerd_source_path }}"
+        src: "{{ k3s_storage_offload_containerd_destination_path }}"
+        fstype: none
+        opts: bind
+        state: mounted
+
+    - name: Start K3s after containerd bind migration
+      ansible.builtin.systemd_service:
+        name: "{{ k3s_storage_offload_service_name }}"
+        state: started
+  rescue:
+    - name: Reverse incomplete containerd bind migration
+      ansible.builtin.include_tasks: restore_containerd.yml
+
+    - name: Stop after reversing incomplete containerd migration
+      ansible.builtin.fail:
+        msg: >-
+          Containerd migration failed. The role attempted to restore the
+          retained source tree and restart K3s; inspect service and mount state.
+
+- name: Ensure destination for newly provisioned local-path PVs exists
+  ansible.builtin.file:
+    path: "{{ k3s_storage_offload_local_path_destination }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure retained local-path configuration directory exists
+  ansible.builtin.file:
+    path: "{{ k3s_storage_offload_local_path_backup_file | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Retain original local-path provisioner configuration
+  ansible.builtin.copy:
+    dest: "{{ k3s_storage_offload_local_path_backup_file }}"
+    content: >-
+      {{ __k3s_storage_offload_local_path_config.resources[0].data['config.json'] }}
+    owner: root
+    group: root
+    mode: "0600"
+    force: false
+
+- name: Route only newly provisioned local-path PVs to selected backing
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: local-path-config
+        namespace: kube-system
+      data:
+        config.json: >-
+          {{
+            {
+              'nodePathMap': [
+                {
+                  'node': 'DEFAULT_PATH_FOR_NON_LISTED_NODES',
+                  'paths': [k3s_storage_offload_local_path_destination]
+                }
+              ]
+            } | to_json
+          }}
+  environment:
+    KUBECONFIG: "{{ k3s_storage_offload_kubeconfig }}"
+
+- name: Verify containerd bind source after migration
+  ansible.builtin.command:
+    argv:
+      - findmnt
+      - --mountpoint
+      - --noheadings
+      - --output
+      - SOURCE,FSROOT
+      - "{{ k3s_storage_offload_containerd_source_path }}"
+  register: __k3s_storage_offload_final_mount
+  changed_when: false
+  failed_when: >-
+    __k3s_storage_offload_final_mount.rc != 0
+    or (__k3s_storage_offload_final_mount.stdout.split() | last !=
+        __k3s_storage_offload_expected_containerd_fsroot)
+
+- name: Verify K3s service after storage offload
+  ansible.builtin.systemd_service:
+    name: "{{ k3s_storage_offload_service_name }}"
+    state: started
+  register: __k3s_storage_offload_service
+
+- name: Query containerd image filesystem after storage offload
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/crictl
+      - imagefsinfo
+      - --output
+      - json
+  register: __k3s_storage_offload_imagefs
+  changed_when: false

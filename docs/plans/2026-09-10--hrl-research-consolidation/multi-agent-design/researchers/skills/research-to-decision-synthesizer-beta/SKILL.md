@@ -1,6 +1,6 @@
 ---
 name: research-to-decision-synthesizer-beta
-description: Convert a nominated Expert research document and verified current-state evidence into bounded decision packets for Planner and Expert iteration. Use during planning; do not implement infrastructure or treat technical guidance as Apply authority.
+description: Convert Expert research and verified current-state evidence into decision packets and a Planner-ready refined technical handoff for Implementer/Evaluator. Use during planning; do not implement infrastructure.
 metadata:
   status: beta
   scope: research-application-planning
@@ -11,53 +11,47 @@ metadata:
 
 # Research-to-decision Synthesizer — beta
 
-Use this project-local skill when a supplied Expert document, research pack, or
-user/Expert collaboration needs to become a reusable planning input. It is not
-for re-researching the whole topic or writing infrastructure changes.
-
-Its normal consumer is Light Orchestration: decisions should be actionable as
-grouped source/Ansible design constraints and include the applicable patterns,
-module guidance and acceptance criteria. Mark Full Orchestration only for a
-specific later live-proof requirement; do not force it into ordinary integration.
+Use when a supplied Expert document, research pack, or user/Expert collaboration
+must become reusable planning input. Context7-style packs are the Researcher
+lane; this skill organizes them for Expert challenge—not for Implementer.
 
 ## Inputs
 
-Require the nominated source document, canonical plan/campaign location, the
-Expert's decision questions, durable user constraints, and relevant current
-receipts/configuration/topology evidence. Preserve the source document as
-provenance; do not overwrite it or mistake a transcript for a plan.
+Nominated source document(s), campaign location, Expert decision questions,
+user constraints, current receipts/topology/config. Preserve sources as
+provenance. A transcript is **not** a plan; extract findings into packets.
 
-## Produce a bounded packet
+## Produce bounded packets
 
-Classify each relevant finding as one of: hard correction, placement/design
-principle, durability/safety prohibition, conditional option, or required
-discovery/validation. For each decision question, cite evidence and current
-surfaces, alternatives, assumptions, expected benefit, proof metric, and the
-next consumer. Keep general Expert guidance general: a recommendation such as
-“use a fast tier for latency-sensitive storage” is a constraint to be mapped by
-Planner/Implementer, not a forced device path or shell command.
+Classify findings: hard correction, placement/design principle,
+durability/safety prohibition, conditional option, discovery/validation.
 
-Write the packet beneath the campaign's `coordination/research-application/`
-area. Include a short receipt that names source, user/Expert collaboration,
-packet paths, and the existing canonical plan artifacts updated or awaiting
-update. Follow [the guided research-application loop](../../../research-application-loop.md).
+Write under `coordination/research-application/<packet-id>/`:
+
+1. `research-to-decision-packet.md` — classified evidence for Expert
+2. After Expert acceptance, support Planner in emitting
+   **`refined-technical-handoff.md`** — owner-mapped functional areas,
+   hard corrections, Light vs Full boundary (required before Implementer)
+
+Keep general guidance general until Planner maps owners. Do not force device
+paths or shell commands as the only mechanism.
+
+Follow [the guided research-application loop](../../../orchestration/03-handoffs-and-loops.md).
 
 ## Iterate with the Expert
 
-Return only a named ambiguity: unsupported conclusion, competing owner mapping,
-stale/missing fact, unmeasurable benefit, or conflict with a safety boundary.
-Incorporate the Expert's response as a new bounded pass. Stop when the packet
-answers the decision questions or names the exact unresolved evidence.
+Return only named ambiguities. Stop when decision questions are answered or
+exact missing facts are named. Post-challenge refinements (new traps, Ansible
+practice defects, mechanism clarifications) must land in the next packet
+revision—**not** only in chat.
 
 ## Boundaries
 
-Do not choose Apply authority, edit implementation sources, bind an unknown
-physical target, or declare technical research to be an Evaluator-approved plan.
-The current beta runtime does not auto-schedule this skill; it is a bootstrap
-and next-iteration capability invoked through durable artifacts.
+No Apply authority, no implementation source edits, no treating research as
+Evaluator approval. Runtime may not auto-schedule this skill yet; the artifact
+contract is mandatory whenever the loop is run manually or by a parent.
 
-For a concrete project example, read
+Example shape:
 [storage-performance-research-application.md](../../../multi-agent-onsite-expert/examples/storage-performance-research-application.md)
-and its [bootstrap packet](../../../../implementation-campaign/coordination/research-application/performance-layout-bootstrap-2026-09-11/README.md).
-Use them as a demonstration of the contract, not as an authority to apply their
-specific technical choices to another campaign.
+→ [bootstrap packet](../../../../implementation-campaign/coordination/research-application/performance-layout-bootstrap-2026-09-11/README.md)
+including [refined-technical-handoff.md](../../../../implementation-campaign/coordination/research-application/performance-layout-bootstrap-2026-09-11/refined-technical-handoff.md).

@@ -5,9 +5,15 @@
 The bootstrap packet is materialized through:
 
 - [performance layout adoption](../../performance-layout-adoption.md), which
-  records the tiered allocation and discovery gates; and
+  records the tiered allocation and discovery gates;
 - [decisions and authorization](../../decisions-and-authorization.md), which
-  binds the applicable S3–S5 decisions to campaign authority.
+  binds the applicable decisions to campaign authority; and
+- [**refined technical handoff**](refined-technical-handoff.md), which is the
+  **required** Implementer/Evaluator input: hard corrections, placement,
+  functional areas → owners, and Light vs Full boundaries.
+
+Classification alone (`research-to-decision-packet.md`) is **not** sufficient
+to start Implementer. An unmapped recommendation remains incomplete.
 
 These are current design inputs. They are not a claim that an exact storage
 target has already been attached or that an Apply occurred.
@@ -16,15 +22,14 @@ target has already been attached or that an Apply occurred.
 
 | Consumer | Required interpretation |
 | --- | --- |
-| Planner / Coordinator | Map each applicable guidance class to the smallest owning role/playbook/inventory/configuration surface, plus exact target binding, Apply/Verify/Undo, and acceptance metric. Keep general principles general until a live owner makes them concrete. |
-| Implementer | Treat hard corrections and prohibitions as non-negotiable where applicable. Translate placement principles into idempotent Ansible through proven owners; do not copy illustrative shell commands or create new global configuration without ownership evidence. Record an exception only for genuine live/source conflict. |
-| Evaluator | Confirm technical guidance was neither ignored nor over-literalized: each mutation has an owner, constraint/rationale, target proof, validation, rollback, and no unjustified change to durable data or kubelet accounting. Reject unsupported performance claims and configuration sprawl. |
+| Planner / Coordinator | Map each applicable guidance class to the smallest owning role/playbook/inventory/configuration surface. Emit or refresh `refined-technical-handoff.md` with functional areas the Implementer can chunk. Keep illustrative research shell out of the handoff as mandatory commands. |
+| Implementer | Read the refined technical handoff first. Derive/update `implementation-work-queue.md` from its functional areas. Translate one area at a time into idempotent Ansible through proven owners. Do not consume the onsite transcript as primary input. |
+| Evaluator | Confirm each frozen chunk’s target state against the refined handoff area ID: Ansible quality, ownership, naming, hard corrections. Reject unowned config sprawl and Light safety-fixture theater. |
 
 ## Known orchestration gap
 
-The current beta implementation runtime begins at Implementer/Evaluator. It
-does not automatically invoke the prior Research Synthesizer ↔ Expert ↔ Planner
-cycle or decide the best moment to run it. That timing, packet routing, and
-automated repeat-pass policy remain next-major-iteration work, documented in
-[the accepted gap](../../../../ACCEPTED_GAP_NEXT_IMPROVEMENT.md) and
-[the guided research-application loop](../../../../multi-agent-design/research-application-loop.md).
+The parent runtime still begins at Implementer/Evaluator and does not yet
+auto-schedule the full Research-Synthesizer ↔ Expert ↔ Planner loop. That
+scheduling remains next-iteration work. **The missing handoff artifact itself
+is no longer deferred:** use `refined-technical-handoff.md` as if Planner had
+just completed materialization.

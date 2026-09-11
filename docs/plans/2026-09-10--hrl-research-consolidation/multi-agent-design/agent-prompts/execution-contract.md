@@ -12,7 +12,7 @@ This is an executable **middle stage**, not an end-to-end implementation engine.
 
 | Input | Meaning |
 | --- | --- |
-| `plan_path` | This packet's `CURRENT-PHASE-PREPARATION-PLAN.md`, the preparation contract. |
+| `plan_path` | This packet's `agent-prompts/CURRENT-PHASE-PREPARATION-PLAN.md`, the preparation contract. |
 | `source_plan_root` | Existing plan to prepare; default is parent `2026-09-10--hrl-research-consolidation`. Read its entrypoint and task-relevant linked sources. |
 | `preparation_output_root` | All generated artifacts; default is this `multi-agent-design` directory. |
 | `project_root` | Project owning the source plan. |

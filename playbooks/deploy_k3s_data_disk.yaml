@@ -1,6 +1,7 @@
 ---
 # Ordered S3/S4 entrypoint. One playbook-level lifecycle state guarantees
-# attach -> mount for present and unmount/fstab removal -> detach for absent.
+# attach -> mount -> offload for present and offload reversal -> unmount/fstab
+# removal -> detach for absent.
 # Role defaults intentionally fail closed. Always preview with an explicit
 # two-host limit before setting either *_apply flag true.
 - name: Preview or remove the selected K3s guest data-disk mount
@@ -21,6 +22,10 @@
       run_once: true
       tags: [always]
   roles:
+    - role: k3s_storage_offload
+      k3s_storage_offload_state: absent
+      when: (k3s_data_disk_state | default('present')) == 'absent'
+      tags: [k3s_storage_offload]
     - role: linux_data_disk_mount
       linux_data_disk_mount_state: absent
       when: (k3s_data_disk_state | default('present')) == 'absent'
@@ -51,9 +56,13 @@
   hosts: container_orchestrator_k3s:&gpu_workload_nodes
   gather_facts: false
   become: true
-  tags: [k3s_data_disk, linux_data_disk_mount]
+  tags: [k3s_data_disk, linux_data_disk_mount, k3s_storage_offload]
   roles:
     - role: linux_data_disk_mount
       linux_data_disk_mount_state: present
       when: (k3s_data_disk_state | default('present')) == 'present'
       tags: [linux_data_disk_mount]
+    - role: k3s_storage_offload
+      k3s_storage_offload_state: present
+      when: (k3s_data_disk_state | default('present')) == 'present'
+      tags: [k3s_storage_offload]

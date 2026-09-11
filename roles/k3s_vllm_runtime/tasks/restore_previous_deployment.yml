@@ -1,0 +1,73 @@
+---
+- name: Query current vLLM deployment before reversal
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ k3s_vllm_runtime_namespace }}"
+    name: "{{ k3s_vllm_runtime_name }}"
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+  register: _k3s_vllm_runtime_reversal_deployment
+
+- name: Quiesce current vLLM deployment before reversal copy
+  kubernetes.core.k8s_scale:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ k3s_vllm_runtime_namespace }}"
+    name: "{{ k3s_vllm_runtime_name }}"
+    replicas: 0
+    wait: true
+    wait_timeout: 600
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+  when: _k3s_vllm_runtime_reversal_deployment.resources | length == 1
+
+- name: Restore retained cache data to the source PVC path after cleanup
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/rsync
+      - --archive
+      - --checksum
+      - --itemize-changes
+      - "{{ k3s_vllm_runtime_hf_cache_host_path }}/"
+      - "{{ _k3s_vllm_runtime_cache_source_path }}/"
+  register: _k3s_vllm_runtime_reversal_copy
+  changed_when: _k3s_vllm_runtime_reversal_copy.stdout | trim | length > 0
+  when: _k3s_vllm_runtime_cache_source_cleanup_started | default(false) | bool
+
+- name: Verify restored source PVC cache by checksum comparison
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/rsync
+      - --archive
+      - --checksum
+      - --dry-run
+      - --itemize-changes
+      - "{{ k3s_vllm_runtime_hf_cache_host_path }}/"
+      - "{{ _k3s_vllm_runtime_cache_source_path }}/"
+  register: _k3s_vllm_runtime_reversal_verify
+  changed_when: false
+  failed_when: >-
+    _k3s_vllm_runtime_reversal_verify.rc != 0
+    or (_k3s_vllm_runtime_reversal_verify.stdout | trim | length > 0)
+  when: _k3s_vllm_runtime_cache_source_cleanup_started | default(false) | bool
+
+- name: Restore previous vLLM deployment definition
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ _k3s_vllm_runtime_previous_deployment_definition }}"
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+  when: _k3s_vllm_runtime_previous_deployment_definition is mapping
+
+- name: Remove newly created vLLM deployment when no prior definition existed
+  kubernetes.core.k8s:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ k3s_vllm_runtime_namespace }}"
+    name: "{{ k3s_vllm_runtime_name }}"
+    state: absent
+    wait: true
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+  when: _k3s_vllm_runtime_previous_deployment_definition is not mapping

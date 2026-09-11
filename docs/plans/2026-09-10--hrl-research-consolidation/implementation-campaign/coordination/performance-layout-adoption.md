@@ -7,6 +7,11 @@ It materializes the placement decisions into the campaign without asserting that
 any mount, migration, or hardware attachment has happened. The source is
 [the layout performance evaluation](../../multi-agent-design/multi-agent-onsite-expert/examples/storage-performance-research-application.md).
 
+Implementer/Evaluator primary package:
+[`refined-technical-handoff.md`](research-application/performance-layout-bootstrap-2026-09-11/refined-technical-handoff.md)
+(owner-mapped functional areas). This adoption file remains the campaign
+placement ledger; the refined handoff is what the pair must read first.
+
 ## Placement decisions
 
 | Storage class | Selected use | Explicit exclusions |

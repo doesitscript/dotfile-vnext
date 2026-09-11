@@ -17,7 +17,7 @@ const owner=join(out,'runtime','processes-'+process.pid+'.json');mkdirSync(dirna
 const requestedSession=`${cfg.task_id}--preparation--ppid${process.pid}`;
 const expectedSession=requestedSession.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 let session=expectedSession;
-const input={...cfg,contract_version:1,stage_id:'preparation',mode:'orchestrated',session_id:session,owner_manifest_path:owner,runtime_observation_path:join(out,'runtime/dashboard-observation.json'),plan_path:join(packet,'CURRENT-PHASE-PREPARATION-PLAN.md')};
+const input={...cfg,contract_version:1,stage_id:'preparation',mode:'orchestrated',session_id:session,owner_manifest_path:owner,runtime_observation_path:join(out,'runtime/dashboard-observation.json'),plan_path:join(packet,'agent-prompts/CURRENT-PHASE-PREPARATION-PLAN.md')};
 const log=(event:string,data:any={})=>{const line=JSON.stringify({time:new Date().toISOString(),event,...data});appendFileSync(join(out,'runtime/events.jsonl'),line+'\n');if(event!=='driver')console.log(line)};
 const save=(name:string,data:any)=>writeFileSync(join(out,'runtime',name),JSON.stringify(data,null,2)+'\n');
 const receiptsPath=join(out,'runtime/artifact-receipts.json');

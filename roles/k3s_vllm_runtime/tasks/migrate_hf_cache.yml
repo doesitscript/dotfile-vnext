@@ -1,0 +1,182 @@
+---
+- name: Inspect selected Hugging Face cache mountpoint
+  ansible.builtin.command:
+    argv:
+      - findmnt
+      - --mountpoint
+      - --noheadings
+      - --output
+      - TARGET,SOURCE,FSTYPE
+      - "{{ k3s_vllm_runtime_hf_cache_host_mount_path }}"
+  register: _k3s_vllm_runtime_cache_mount
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Query retained Hugging Face cache PVC
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: PersistentVolumeClaim
+    namespace: "{{ k3s_vllm_runtime_namespace }}"
+    name: "{{ k3s_vllm_runtime_name }}-hf-cache"
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+  register: _k3s_vllm_runtime_cache_pvc
+
+- name: Require a bound retained source PVC
+  ansible.builtin.assert:
+    that:
+      - _k3s_vllm_runtime_cache_pvc.resources | length == 1
+      - _k3s_vllm_runtime_cache_pvc.resources[0].status.phase == 'Bound'
+      - _k3s_vllm_runtime_cache_pvc.resources[0].spec.volumeName | default('') | length > 0
+    fail_msg: >-
+      Refusing Hugging Face cache migration: the retained source PVC is not
+      bound to one exact PersistentVolume.
+
+- name: Query retained Hugging Face cache PersistentVolume
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: PersistentVolume
+    name: "{{ _k3s_vllm_runtime_cache_pvc.resources[0].spec.volumeName }}"
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+  register: _k3s_vllm_runtime_cache_pv
+
+- name: Resolve retained source cache path
+  ansible.builtin.set_fact:
+    _k3s_vllm_runtime_cache_source_path: >-
+      {{
+        _k3s_vllm_runtime_cache_pv.resources[0].spec.local.path
+        | default(
+            _k3s_vllm_runtime_cache_pv.resources[0].spec.hostPath.path
+            | default(''),
+            true
+          )
+      }}
+
+- name: Inspect retained source cache path
+  ansible.builtin.stat:
+    path: "{{ _k3s_vllm_runtime_cache_source_path }}"
+    get_checksum: false
+  register: _k3s_vllm_runtime_cache_source
+
+- name: Inspect rsync availability for data-preserving cache copy
+  ansible.builtin.stat:
+    path: /usr/bin/rsync
+    get_checksum: false
+  register: _k3s_vllm_runtime_rsync
+
+- name: Measure selected cache backing free bytes
+  ansible.builtin.command:
+    argv:
+      - df
+      - --output=avail
+      - -B1
+      - "{{ k3s_vllm_runtime_hf_cache_host_mount_path }}"
+  register: _k3s_vllm_runtime_cache_free
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Require exact backing, source, reserve and migration authority
+  ansible.builtin.assert:
+    that:
+      - _k3s_vllm_runtime_cache_mount.rc == 0
+      - _k3s_vllm_runtime_cache_source_path | length > 0
+      - _k3s_vllm_runtime_cache_source.stat.exists
+      - _k3s_vllm_runtime_cache_source.stat.isdir
+      - _k3s_vllm_runtime_rsync.stat.exists
+      - _k3s_vllm_runtime_rsync.stat.executable
+      - k3s_vllm_runtime_node_name | trim | length > 0
+      - >-
+        k3s_vllm_runtime_hf_cache_host_path.startswith(
+          k3s_vllm_runtime_hf_cache_host_mount_path ~ '/'
+        )
+      - _k3s_vllm_runtime_cache_source_path != k3s_vllm_runtime_hf_cache_host_path
+      - >-
+        not _k3s_vllm_runtime_cache_source_path.startswith(
+          k3s_vllm_runtime_hf_cache_host_mount_path ~ '/'
+        )
+      - _k3s_vllm_runtime_cache_free.rc == 0
+      - >-
+        (_k3s_vllm_runtime_cache_free.stdout_lines[-1] | trim | int) >=
+        ((k3s_vllm_runtime_hf_cache_minimum_free_gib | int) * 1073741824)
+      - k3s_vllm_runtime_hf_cache_retain_source_pvc | bool
+      - k3s_vllm_runtime_hf_cache_migration_apply | bool
+      - k3s_vllm_runtime_hf_cache_backing_capacity_verified | bool
+      - k3s_vllm_runtime_hf_cache_backing_capacity_evidence_ref | trim | length > 0
+    fail_msg: >-
+      Refusing Hugging Face cache migration. The selected mount must exist as
+      an exact mountpoint with the configured free-space floor; the retained
+      source PVC must resolve to a different existing directory; rsync must be
+      available; retain_source_pvc, migration_apply, verified backing capacity,
+      and its evidence reference must all be set. Source cleanup remains a
+      separate optional destructive-data decision after cutover health passes.
+
+- name: Quiesce and copy the retained Hugging Face cache
+  block:
+    - name: Scale existing vLLM deployment to zero before cache copy
+      kubernetes.core.k8s_scale:
+        api_version: apps/v1
+        kind: Deployment
+        namespace: "{{ k3s_vllm_runtime_namespace }}"
+        name: "{{ k3s_vllm_runtime_name }}"
+        replicas: 0
+        wait: true
+        wait_timeout: 600
+      environment:
+        KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+      when:
+        - _k3s_vllm_runtime_existing_deployment.resources | length == 1
+        - >-
+          (_k3s_vllm_runtime_existing_deployment.resources[0].spec.replicas
+           | default(0) | int) > 0
+
+    - name: Ensure selected Hugging Face cache destination exists
+      ansible.builtin.file:
+        path: "{{ k3s_vllm_runtime_hf_cache_host_path }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Copy retained Hugging Face cache without deleting either tree
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/rsync
+          - --archive
+          - --checksum
+          - --itemize-changes
+          - "{{ _k3s_vllm_runtime_cache_source_path }}/"
+          - "{{ k3s_vllm_runtime_hf_cache_host_path }}/"
+      register: _k3s_vllm_runtime_cache_copy
+      changed_when: _k3s_vllm_runtime_cache_copy.stdout | trim | length > 0
+
+    - name: Verify copied Hugging Face cache by checksum comparison
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/rsync
+          - --archive
+          - --checksum
+          - --dry-run
+          - --itemize-changes
+          - "{{ _k3s_vllm_runtime_cache_source_path }}/"
+          - "{{ k3s_vllm_runtime_hf_cache_host_path }}/"
+      register: _k3s_vllm_runtime_cache_verify
+      changed_when: false
+      failed_when: >-
+        _k3s_vllm_runtime_cache_verify.rc != 0
+        or (_k3s_vllm_runtime_cache_verify.stdout | trim | length > 0)
+
+    - name: Record that root-backed source data remains intact
+      ansible.builtin.set_fact:
+        _k3s_vllm_runtime_cache_source_cleanup_completed: false
+  rescue:
+    - name: Restore previous vLLM deployment after cache-copy failure
+      ansible.builtin.include_tasks: restore_previous_deployment.yml
+
+    - name: Stop after restoring previous vLLM deployment
+      ansible.builtin.fail:
+        msg: >-
+          Hugging Face cache copy or integrity verification failed. The prior
+          deployment definition was restored and the source PVC was retained.

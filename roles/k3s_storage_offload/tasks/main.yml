@@ -1,0 +1,14 @@
+---
+- name: Validate K3s storage offload lifecycle state
+  ansible.builtin.assert:
+    that:
+      - k3s_storage_offload_state in ['present', 'absent']
+    fail_msg: "k3s_storage_offload_state must be present or absent."
+
+- name: Apply K3s storage offload present state
+  ansible.builtin.include_tasks: present.yml
+  when: k3s_storage_offload_state == 'present'
+
+- name: Apply K3s storage offload absent state
+  ansible.builtin.include_tasks: absent.yml
+  when: k3s_storage_offload_state == 'absent'

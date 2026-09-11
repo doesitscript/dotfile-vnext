@@ -1,4 +1,4 @@
-/** Pure per-thread policy adapter: enable only each role's terminal transport signal.
+/** Pure per-thread policy adapter: enable non-mutating dashboard status and each role's terminal signal.
  * Applied to thread/start by the scoped preload, never to global config files.
  * Authorization for infrastructure changes remains a separate plan contract.
  */
@@ -6,5 +6,6 @@ export function scopedThreadParams(role: string | undefined, params: Record<stri
   const tool = role === "evaluator" ? "approve" : role === "implementer" ? "signal_done" : null;
   if (!tool) return params;
   return { ...params, config: { ...params.config,
+    "mcp_servers.multiagents-peer.tools.set_summary.approval_mode": "approve",
     [`mcp_servers.multiagents-peer.tools.${tool}.approval_mode`]: "approve" } };
 }

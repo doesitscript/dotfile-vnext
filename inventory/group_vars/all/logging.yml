@@ -1,0 +1,14 @@
+---
+# Loki push endpoint — all Alloy agents on every host send logs here.
+# Keep this under group_vars/all/ because that directory is the active shared
+# variable surface for this inventory.
+logging_alloy_loki_endpoint: >-
+  {{
+    hostvars[(groups['logging_server'] | first)].logging_loki_public_endpoint
+    | default(
+      'http://' ~ (
+        hostvars[(groups['logging_server'] | first)].host_ip
+        | default(hostvars[(groups['logging_server'] | first)].ansible_host)
+      ) ~ ':3100/loki/api/v1/push'
+    )
+  }}

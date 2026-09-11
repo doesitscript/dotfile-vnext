@@ -502,11 +502,15 @@
         {{
           (k3s_storage_details.results | default([]))
           | selectattr('item.optional', 'defined')
+          | selectattr('rc', 'defined')
           | rejectattr('rc', 'equalto', 0)
           | list
         }}
       loop_control:
         label: "{{ item.item.label }}"
+      when:
+        - ansible_facts['os_family'] != "Windows"
+        - workload_runtime.type | default('') == 'k3s'
       tags:
         - k3s_storage_report
 

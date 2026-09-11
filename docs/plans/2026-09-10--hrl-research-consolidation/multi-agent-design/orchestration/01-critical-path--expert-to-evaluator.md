@@ -1,0 +1,35 @@
+# 01 — Critical path: Expert work area → Evaluator
+
+Concise extract of the primary multi-agent coordination path for this design
+project. Source material lives in role folders; this file is the map.
+
+## Scaffolding (must survive every handoff)
+
+1. **Expert frames a work area** (problem, surfaces, decision questions).
+2. **Researchers** (Context7 / library / probes) answer those questions.
+3. **Expert challenges** findings and settles recommendations.
+4. **Planner** maps decisions → project owners → **refined technical handoff**.
+5. **Implementer** chunks functional areas into Ansible owner edits (drafts in
+   the loose sense: role/playbook packages).
+6. **Evaluator** reviews each frozen chunk (Ansible champion). Feedback loops
+   only on that chunk; Implementer may advance the next non-overlapping area.
+
+The Expert conversation → research-enhanced recommendation → refined handoff
+is the critical deliverable. Downstream roles must consume that package—not the
+raw transcript.
+
+Campaign example handoff:
+`../implementation-campaign/coordination/research-application/performance-layout-bootstrap-2026-09-11/refined-technical-handoff.md`
+
+## Diagrams
+
+- [Critical path](diagrams/01-critical-path.mmd)
+- [Role handoffs](diagrams/02-role-handoffs.mmd)
+
+## Related
+
+- [02 Authority — who to call](02-authority--who-to-call.md)
+- [03 Handoffs and loops](03-handoffs-and-loops.md)
+- [04 Decision authority profiles](04-decision-authority-profiles.md)
+- Light default: [light-profile-rationale-2026-09-11.md](light-profile-rationale-2026-09-11.md)
+- Chunk pipeline: [chunked-light-pipeline-workflow.md](chunked-light-pipeline-workflow.md)

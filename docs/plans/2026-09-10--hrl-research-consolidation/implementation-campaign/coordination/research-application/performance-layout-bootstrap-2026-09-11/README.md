@@ -18,8 +18,8 @@ requiring them to rediscover or treat every example command as a mandatory plan.
 | --- | --- | --- |
 | User + On-site Expert | Framed capacity/performance outcome, corrected assumptions, focused research, challenged options, and selected a direction. | The source evaluation and constraints captured in its narrative. |
 | Research Synthesizer | Classified evidence into hard corrections, placement principles, conditional options, prohibitions, and discovery requirements. | [Research-to-decision packet](research-to-decision-packet.md) |
-| Planner / Coordinator | Mapped accepted guidance to campaign slices and repository ownership without creating a rigid implementation script. | [Plan-materialization brief](plan-materialization-brief.md) and the campaign decision ledger |
-| Implementer / Evaluator | Future consumers: interpret approved principles through current live evidence and existing Ansible owners; independently prove the result. | Future implementation receipts and Evaluator verdict |
+| Planner / Coordinator | Mapped accepted guidance to concrete project owners and functional areas; produced the Implementer/Evaluator package. | [Plan-materialization brief](plan-materialization-brief.md), [**refined technical handoff**](refined-technical-handoff.md), campaign decision ledger |
+| Implementer / Evaluator | Consume the refined technical handoff (not the transcript). Dynamically chunk functional areas into the work queue; independently prove each chunk. | `implementation-work-queue.md` updates, review-ready / feedback artifacts, receipts |
 
 ## Bootstrap limitation and future role behavior
 
@@ -34,7 +34,9 @@ grants Apply authority.
 
 ## Downstream links
 
+- [**Refined technical handoff (Implementer/Evaluator primary input)**](refined-technical-handoff.md)
 - [Research-to-decision packet](research-to-decision-packet.md)
 - [Plan-materialization brief](plan-materialization-brief.md)
+- [Implementation work queue](../../implementation-work-queue.md)
 - [Performance layout adoption](../../performance-layout-adoption.md)
 - [Campaign decisions and authority](../../decisions-and-authorization.md)

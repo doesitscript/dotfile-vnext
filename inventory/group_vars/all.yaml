@@ -63,22 +63,6 @@ dotfiles_user_home: >-
      if ansible_facts['system'] == 'Windows'
      else (ansible_facts['env'].HOME | default(ansible_facts['user_dir'])) }}
 
-# ─── Logging stack ────────────────────────────────────────────────────────────
-# Loki push endpoint — all Alloy agents on every host send logs here.
-# It follows the active logging_server assignment instead of hardcoding a node
-# name. If the active logging server needs a published/public endpoint distinct
-# from its own host_ip, define logging_loki_public_endpoint on that host.
-logging_alloy_loki_endpoint: >-
-  {{
-    hostvars[(groups['logging_server'] | first)].logging_loki_public_endpoint
-    | default(
-      'http://' ~ (
-        hostvars[(groups['logging_server'] | first)].host_ip
-        | default(hostvars[(groups['logging_server'] | first)].ansible_host)
-      ) ~ ':3100/loki/api/v1/push'
-    )
-  }}
-
 # ─── Codex / Cursor tooling versions ────────────────────────────────────────
 # Shared version contract for the local Codex CLI, Cursor CLI, and Codex Cursor
 # extension. These are different release streams, so they intentionally use

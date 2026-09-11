@@ -46,7 +46,7 @@ requirements.
 | Observer | Read-only runtime and governed-artifact snapshots with brief observations. | No feedback/sign-off, inbox consumption, routing, process starts/stops or edits. |
 | External operator/orchestrator | Assign invocation IDs/session slots, wake roles after durable events and own lifecycle. | Never replace role judgment with broker counters or helper status. |
 
-The [role operating contract](../role-operating-contract.md) defines the
+The [authority map](02-authority--who-to-call.md) defines the
 shared decision and consultation behavior for this beta adapter. It is
 normative for inputs and boundaries; this contract remains authoritative for
 artifact identity, runtime ownership, and scheduling behavior.

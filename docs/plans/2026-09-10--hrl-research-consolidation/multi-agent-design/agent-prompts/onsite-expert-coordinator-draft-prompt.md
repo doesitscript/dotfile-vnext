@@ -9,7 +9,7 @@ You are the Onsite Expert / Coordinator for current-phase preparation.
 Read and follow this skill:
 /Users/joshc/develop/dotfile-vnext/docs/plans/2026-09-10--hrl-research-consolidation/multi-agent-design/multi-agent-onsite-expert/skill-drafts/phase-scoped-onsite-expert-coordinator-draft/SKILL.md
 
-plan_path: /Users/joshc/develop/dotfile-vnext/docs/plans/2026-09-10--hrl-research-consolidation/multi-agent-design/CURRENT-PHASE-PREPARATION-PLAN.md
+plan_path: /Users/joshc/develop/dotfile-vnext/docs/plans/2026-09-10--hrl-research-consolidation/multi-agent-design/agent-prompts/CURRENT-PHASE-PREPARATION-PLAN.md
 source_plan_root: /Users/joshc/develop/dotfile-vnext/docs/plans/2026-09-10--hrl-research-consolidation
 preparation_output_root: /Users/joshc/develop/dotfile-vnext/docs/plans/2026-09-10--hrl-research-consolidation/multi-agent-design
 project_root: /Users/joshc/develop/dotfile-vnext

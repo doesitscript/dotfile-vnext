@@ -24,4 +24,9 @@ campaign plan, edit source, perform SSH/live discovery, run Apply, or choose
 unverified targets. The recommendation narrows a doubt; it is not an immutable
 implementation command or deployment authority.
 
+When a consultation changes a settled placement or hard correction, say so
+explicitly and name that Planner must refresh
+`refined-technical-handoff.md` before the next Implementer pass. Do not expect
+Implementer to discover the change from chat alone.
+
 The paired Researcher receives this output next and tests its evidence coverage.

@@ -8,7 +8,7 @@ coverage and a preserved smoke seed, not a new testing framework.
 From the parent `runtime/` directory:
 
 ```bash
-bun test paired-events.test.ts implementation-policy.test.ts implementation-interrupt-guard.test.ts check-implementation-handoff.test.ts artifacts.test.ts watch-implementation-output.test.ts run-parallel-preflight.test.ts
+bun test paired-events.test.ts implementation-policy.test.ts implementation-interrupt-guard.test.ts light-orchestration-contract.test.ts check-implementation-handoff.test.ts artifacts.test.ts watch-implementation-output.test.ts run-parallel-preflight.test.ts
 ```
 
 - [paired-events.test.ts](../paired-events.test.ts): finite handoffs, identity,
@@ -18,11 +18,15 @@ bun test paired-events.test.ts implementation-policy.test.ts implementation-inte
 - [implementation-interrupt-guard.test.ts](../implementation-interrupt-guard.test.ts):
   prevents the installed upstream's false 60-second turn interrupt while the
   parent runner's own finite deadlines remain in force.
+- [light-orchestration-contract.test.ts](../light-orchestration-contract.test.ts):
+  deployment-before-pass timing, source-local owner-batch boundaries, harmless
+  dashboard status, and no-research/no-remote Light role constraints.
 - [check-implementation-handoff.test.ts](../check-implementation-handoff.test.ts):
   reviewed intake and snapshot rejection cases.
 - [artifacts.test.ts](../artifacts.test.ts): preparation review/release gates.
 - [watch-implementation-output.test.ts](../watch-implementation-output.test.ts):
-  terminal monitor interface and read-only input contract.
+  terminal monitor interface, read-only input contract, and peer-summary
+  rendering rather than adapter-only metadata.
 - [run-parallel-preflight.test.ts](../run-parallel-preflight.test.ts):
   bounded admission, quarantine, and explicit zero-job behavior.
 - [stage-batch-worktree.test.ts](../stage-batch-worktree.test.ts): isolated

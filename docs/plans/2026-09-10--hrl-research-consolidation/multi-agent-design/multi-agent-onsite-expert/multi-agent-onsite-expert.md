@@ -115,7 +115,7 @@ The user’s collaboration is a first-class durable input: intended outcome,
 tradeoffs, non-negotiable constraints, and corrections to assumptions must enter
 the canonical packet. In a lab autonomy profile, this does not turn routine
 technical decisions into a mandatory human wait. The full loop is defined in
-[the guided research-application loop](../research-application-loop.md).
+[the guided research-application loop](../orchestration/03-handoffs-and-loops.md).
 The [storage performance research-application example](examples/storage-performance-research-application.md)
 shows this collaboration in practice: user constraints and observed hardware
 focused broad research, the Expert refined it across multiple passes, and the

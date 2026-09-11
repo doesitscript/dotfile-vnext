@@ -35,6 +35,66 @@
   environment:
     KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
 
+- name: Query existing vLLM deployment before cache migration
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ k3s_vllm_runtime_namespace }}"
+    name: "{{ k3s_vllm_runtime_name }}"
+  environment:
+    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+  register: _k3s_vllm_runtime_existing_deployment
+
+- name: Retain restorable vLLM deployment definition
+  ansible.builtin.set_fact:
+    _k3s_vllm_runtime_previous_deployment_definition: >-
+      {{
+        {
+          'apiVersion': 'apps/v1',
+          'kind': 'Deployment',
+          'metadata': {
+            'name': k3s_vllm_runtime_name,
+            'namespace': k3s_vllm_runtime_namespace,
+            'labels': (
+              _k3s_vllm_runtime_existing_deployment.resources[0].metadata.labels
+              | default({})
+            ),
+            'annotations': (
+              _k3s_vllm_runtime_existing_deployment.resources[0].metadata.annotations
+              | default({})
+            )
+          },
+          'spec': _k3s_vllm_runtime_existing_deployment.resources[0].spec
+        }
+        if _k3s_vllm_runtime_existing_deployment.resources | length == 1
+        else none
+      }}
+
+- name: Resolve whether the selected host-path cutover is already active
+  ansible.builtin.set_fact:
+    _k3s_vllm_runtime_cache_already_on_selected_host_path: >-
+      {{
+        (
+          _k3s_vllm_runtime_existing_deployment.resources[0].spec.template.spec.volumes
+          | default([])
+          | selectattr('name', 'equalto', 'hf-cache')
+          | selectattr('hostPath', 'defined')
+          | selectattr('hostPath.path', 'equalto', k3s_vllm_runtime_hf_cache_host_path)
+          | list
+          | length
+        ) == 1
+        if _k3s_vllm_runtime_existing_deployment.resources | length == 1
+        else false
+      }}
+
+- name: Prepare retained PVC cache for selected host-path cutover
+  ansible.builtin.include_tasks: migrate_hf_cache.yml
+  when:
+    - k3s_vllm_runtime_hf_cache_backend == 'host_path'
+    - >-
+      not (_k3s_vllm_runtime_cache_already_on_selected_host_path | bool)
+      or (k3s_vllm_runtime_hf_cache_source_cleanup_apply | bool)
+
 - name: Ensure vLLM Hugging Face token secret exists when configured
   kubernetes.core.k8s:
     state: present
@@ -135,7 +195,7 @@
         [
           {
             'name': 'hf-cache',
-            'mountPath': '/root/.cache/huggingface'
+            'mountPath': k3s_vllm_runtime_hf_cache_container_path
           }
         ]
         + (
@@ -154,14 +214,27 @@
       }}
     _k3s_vllm_runtime_volumes: >-
       {{
-        [
-          {
-            'name': 'hf-cache',
-            'persistentVolumeClaim': {
-              'claimName': k3s_vllm_runtime_name ~ '-hf-cache'
+        (
+          [
+            {
+              'name': 'hf-cache',
+              'hostPath': {
+                'path': k3s_vllm_runtime_hf_cache_host_path,
+                'type': 'Directory'
+              }
             }
-          }
-        ]
+          ]
+          if k3s_vllm_runtime_hf_cache_backend == 'host_path'
+          else
+          [
+            {
+              'name': 'hf-cache',
+              'persistentVolumeClaim': {
+                'claimName': k3s_vllm_runtime_name ~ '-hf-cache'
+              }
+            }
+          ]
+        )
         + (
           [
             {
@@ -178,113 +251,266 @@
         )
       }}
 
-- name: Query existing vLLM deployment
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
-    namespace: "{{ k3s_vllm_runtime_namespace }}"
-    name: "{{ k3s_vllm_runtime_name }}"
-  environment:
-    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
-  register: _k3s_vllm_runtime_existing_deployment
-
-- name: Remove vLLM deployment when rollout strategy must change
-  kubernetes.core.k8s:
-    api_version: apps/v1
-    kind: Deployment
-    namespace: "{{ k3s_vllm_runtime_namespace }}"
-    name: "{{ k3s_vllm_runtime_name }}"
-    state: absent
-    wait: true
-  environment:
-    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
-  when:
-    - _k3s_vllm_runtime_existing_deployment.resources | length > 0
-    - >-
-      (
-        _k3s_vllm_runtime_existing_deployment.resources[0].spec.strategy.type
-        | default('RollingUpdate')
-      ) != k3s_vllm_runtime_deployment_strategy_type
-
-- name: Ensure vLLM deployment exists
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: "{{ k3s_vllm_runtime_name }}"
+- name: Apply and verify selected vLLM cache cutover
+  block:
+    - name: Remove vLLM deployment when rollout strategy must change
+      kubernetes.core.k8s:
+        api_version: apps/v1
+        kind: Deployment
         namespace: "{{ k3s_vllm_runtime_namespace }}"
-        labels:
-          app.kubernetes.io/name: vllm
-          app.kubernetes.io/instance: "{{ k3s_vllm_runtime_name }}"
-          app.kubernetes.io/managed-by: ansible
-      spec:
-        replicas: "{{ k3s_vllm_runtime_replicas }}"
-        strategy: "{{ _k3s_vllm_runtime_deployment_strategy }}"
-        selector:
-          matchLabels:
-            app.kubernetes.io/name: vllm
-            app.kubernetes.io/instance: "{{ k3s_vllm_runtime_name }}"
-        template:
+        name: "{{ k3s_vllm_runtime_name }}"
+        state: absent
+        wait: true
+      environment:
+        KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+      when:
+        - _k3s_vllm_runtime_existing_deployment.resources | length > 0
+        - >-
+          (
+            _k3s_vllm_runtime_existing_deployment.resources[0].spec.strategy.type
+            | default('RollingUpdate')
+          ) != k3s_vllm_runtime_deployment_strategy_type
+
+    - name: Ensure vLLM deployment exists
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
           metadata:
+            name: "{{ k3s_vllm_runtime_name }}"
+            namespace: "{{ k3s_vllm_runtime_namespace }}"
             labels:
               app.kubernetes.io/name: vllm
               app.kubernetes.io/instance: "{{ k3s_vllm_runtime_name }}"
+              app.kubernetes.io/managed-by: ansible
           spec:
-            runtimeClassName: "{{ k3s_vllm_runtime_runtime_class_name }}"
-            containers:
-              - name: vllm
-                image: "{{ k3s_vllm_runtime_image }}"
-                args: "{{ _k3s_vllm_runtime_args }}"
-                ports:
-                  - name: http
-                    containerPort: "{{ k3s_vllm_runtime_container_port }}"
-                envFrom: >-
-                  {{
-                    [{'secretRef': {'name': k3s_vllm_runtime_name ~ '-env'}}]
-                    if (k3s_vllm_runtime_resolved_hf_token | default('') | length > 0) else []
-                  }}
-                volumeMounts: "{{ _k3s_vllm_runtime_volume_mounts }}"
-                resources:
-                  requests: "{{ _k3s_vllm_runtime_resource_requests }}"
-                  limits: "{{ _k3s_vllm_runtime_resource_limits }}"
-            volumes: "{{ _k3s_vllm_runtime_volumes }}"
-  environment:
-    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+            replicas: "{{ k3s_vllm_runtime_replicas }}"
+            strategy: "{{ _k3s_vllm_runtime_deployment_strategy }}"
+            selector:
+              matchLabels:
+                app.kubernetes.io/name: vllm
+                app.kubernetes.io/instance: "{{ k3s_vllm_runtime_name }}"
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/name: vllm
+                  app.kubernetes.io/instance: "{{ k3s_vllm_runtime_name }}"
+              spec:
+                runtimeClassName: "{{ k3s_vllm_runtime_runtime_class_name }}"
+                containers:
+                  - name: vllm
+                    image: "{{ k3s_vllm_runtime_image }}"
+                    args: "{{ _k3s_vllm_runtime_args }}"
+                    ports:
+                      - name: http
+                        containerPort: "{{ k3s_vllm_runtime_container_port }}"
+                    env:
+                      - name: HF_HUB_CACHE
+                        value: "{{ k3s_vllm_runtime_hf_hub_cache_container_path }}"
+                    envFrom: >-
+                      {{
+                        [{'secretRef': {'name': k3s_vllm_runtime_name ~ '-env'}}]
+                        if (k3s_vllm_runtime_resolved_hf_token | default('') | length > 0) else []
+                      }}
+                    volumeMounts: "{{ _k3s_vllm_runtime_volume_mounts }}"
+                    resources:
+                      requests: "{{ _k3s_vllm_runtime_resource_requests }}"
+                      limits: "{{ _k3s_vllm_runtime_resource_limits }}"
+                volumes: "{{ _k3s_vllm_runtime_volumes }}"
+      environment:
+        KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
 
-- name: Ensure vLLM service exists
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Service
-      metadata:
-        name: "{{ k3s_vllm_runtime_name }}"
+    - name: Ensure vLLM service exists
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: "{{ k3s_vllm_runtime_name }}"
+            namespace: "{{ k3s_vllm_runtime_namespace }}"
+          spec:
+            type: ClusterIP
+            selector:
+              app.kubernetes.io/name: vllm
+              app.kubernetes.io/instance: "{{ k3s_vllm_runtime_name }}"
+            ports:
+              - name: http
+                port: "{{ k3s_vllm_runtime_service_port }}"
+                targetPort: "{{ k3s_vllm_runtime_container_port }}"
+                protocol: TCP
+      environment:
+        KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+
+    - name: Wait for vLLM deployment to be ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
         namespace: "{{ k3s_vllm_runtime_namespace }}"
-      spec:
-        type: ClusterIP
-        selector:
-          app.kubernetes.io/name: vllm
-          app.kubernetes.io/instance: "{{ k3s_vllm_runtime_name }}"
-        ports:
-          - name: http
-            port: "{{ k3s_vllm_runtime_service_port }}"
-            targetPort: "{{ k3s_vllm_runtime_container_port }}"
-            protocol: TCP
-  environment:
-    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+        name: "{{ k3s_vllm_runtime_name }}"
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 600
+      environment:
+        KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
 
-- name: Wait for vLLM deployment to be ready
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
-    namespace: "{{ k3s_vllm_runtime_namespace }}"
-    name: "{{ k3s_vllm_runtime_name }}"
-    wait: true
-    wait_timeout: 600
-  environment:
-    KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+    - name: Query vLLM service after host-path cutover
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        namespace: "{{ k3s_vllm_runtime_namespace }}"
+        name: "{{ k3s_vllm_runtime_name }}"
+      environment:
+        KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+      register: _k3s_vllm_runtime_service
+      when: k3s_vllm_runtime_hf_cache_backend == 'host_path'
+
+    - name: Verify vLLM health endpoint after host-path cutover
+      ansible.builtin.uri:
+        url: >-
+          http://{{ _k3s_vllm_runtime_service.resources[0].spec.clusterIP }}:{{ k3s_vllm_runtime_service_port }}/health
+        status_code: 200
+        return_content: true
+      register: _k3s_vllm_runtime_health
+      until: _k3s_vllm_runtime_health.status == 200
+      retries: 20
+      delay: 30
+      when: k3s_vllm_runtime_hf_cache_backend == 'host_path'
+
+    - name: Verify vLLM models endpoint after host-path cutover
+      ansible.builtin.uri:
+        url: >-
+          http://{{ _k3s_vllm_runtime_service.resources[0].spec.clusterIP }}:{{ k3s_vllm_runtime_service_port }}/v1/models
+        status_code: 200
+        return_content: true
+      register: _k3s_vllm_runtime_models
+      until:
+        - _k3s_vllm_runtime_models.status == 200
+        - _k3s_vllm_runtime_models.json.data | default([]) | length > 0
+      retries: 20
+      delay: 30
+      when: k3s_vllm_runtime_hf_cache_backend == 'host_path'
+
+    - name: Verify vLLM inference after host-path cutover
+      ansible.builtin.uri:
+        url: >-
+          http://{{ _k3s_vllm_runtime_service.resources[0].spec.clusterIP }}:{{ k3s_vllm_runtime_service_port }}/v1/completions
+        method: POST
+        body_format: json
+        body:
+          model: "{{ k3s_vllm_runtime_served_model_name }}"
+          prompt: "Return OK."
+          max_tokens: 2
+          temperature: 0
+        status_code: 200
+        return_content: true
+      register: _k3s_vllm_runtime_inference
+      until:
+        - _k3s_vllm_runtime_inference.status == 200
+        - _k3s_vllm_runtime_inference.json.choices | default([]) | length > 0
+      retries: 3
+      delay: 10
+      when: k3s_vllm_runtime_hf_cache_backend == 'host_path'
+
+    - name: Inventory old root-backed cache entries after cutover health passes
+      ansible.builtin.find:
+        paths:
+          - "{{ _k3s_vllm_runtime_cache_source_path }}"
+        file_type: any
+        hidden: true
+        recurse: false
+      register: _k3s_vllm_runtime_old_cache_entries
+      when:
+        - k3s_vllm_runtime_hf_cache_backend == 'host_path'
+        - _k3s_vllm_runtime_cache_source_path is defined
+
+    - name: Record old cache cleanup start for rollback handling
+      ansible.builtin.set_fact:
+        _k3s_vllm_runtime_cache_source_cleanup_started: true
+      when:
+        - k3s_vllm_runtime_hf_cache_backend == 'host_path'
+        - k3s_vllm_runtime_hf_cache_source_cleanup_apply | bool
+        - _k3s_vllm_runtime_cache_source_path is defined
+
+    - name: Clear verified old root-backed cache entries
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ _k3s_vllm_runtime_old_cache_entries.files }}"
+      loop_control:
+        label: "{{ item.path }}"
+      when:
+        - k3s_vllm_runtime_hf_cache_backend == 'host_path'
+        - k3s_vllm_runtime_hf_cache_source_cleanup_apply | bool
+        - _k3s_vllm_runtime_cache_source_path is defined
+
+    - name: Record completed old cache cleanup for rollback handling
+      ansible.builtin.set_fact:
+        _k3s_vllm_runtime_cache_source_cleanup_completed: true
+      when:
+        - k3s_vllm_runtime_hf_cache_backend == 'host_path'
+        - k3s_vllm_runtime_hf_cache_source_cleanup_apply | bool
+        - _k3s_vllm_runtime_cache_source_path is defined
+
+    - name: Verify old root-backed cache is empty
+      ansible.builtin.find:
+        paths:
+          - "{{ _k3s_vllm_runtime_cache_source_path }}"
+        file_type: any
+        hidden: true
+        recurse: false
+      register: _k3s_vllm_runtime_old_cache_after_cleanup
+      failed_when: _k3s_vllm_runtime_old_cache_after_cleanup.matched != 0
+      when:
+        - k3s_vllm_runtime_hf_cache_backend == 'host_path'
+        - k3s_vllm_runtime_hf_cache_source_cleanup_apply | bool
+        - _k3s_vllm_runtime_cache_source_path is defined
+
+    - name: Wait for DiskPressure to clear after host-path cutover
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Node
+        name: "{{ k3s_vllm_runtime_node_name }}"
+      environment:
+        KUBECONFIG: "{{ k3s_vllm_runtime_kubeconfig }}"
+      register: _k3s_vllm_runtime_node
+      until: >-
+        (
+          _k3s_vllm_runtime_node.resources[0].status.conditions
+          | selectattr('type', 'equalto', 'DiskPressure')
+          | map(attribute='status')
+          | first
+        ) == 'False'
+      retries: 20
+      delay: 30
+      when: k3s_vllm_runtime_hf_cache_backend == 'host_path'
+
+    - name: Wait for root utilization margin after host-path cutover
+      ansible.builtin.command:
+        argv:
+          - df
+          - --output=pcent
+          - /
+      register: _k3s_vllm_runtime_root_use
+      changed_when: false
+      until: >-
+        (_k3s_vllm_runtime_root_use.stdout_lines[-1]
+         | trim | regex_replace('%$', '') | int) <= 80
+      retries: 20
+      delay: 30
+      when: k3s_vllm_runtime_hf_cache_backend == 'host_path'
+  rescue:
+    - name: Restore previous vLLM deployment after cutover failure
+      ansible.builtin.include_tasks: restore_previous_deployment.yml
+
+    - name: Stop after restoring previous vLLM deployment
+      ansible.builtin.fail:
+        msg: >-
+          vLLM host-path cutover verification failed. The previous deployment
+          definition was restored and the original PVC remains retained.
 
 - name: Report vLLM runtime service URL
   ansible.builtin.debug:

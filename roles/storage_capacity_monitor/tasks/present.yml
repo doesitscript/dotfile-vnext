@@ -42,6 +42,15 @@
     mode: "0755"
   become: true
 
+- name: Create persistent journal configuration directory
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
 - name: Install persistent journal size cap
   ansible.builtin.template:
     src: storage-capacity-monitor-journald.conf.j2
@@ -77,6 +86,7 @@
     enabled: true
     daemon_reload: true
   become: true
+  when: not ansible_check_mode
 
 - name: Exercise storage capacity check after deployment
   ansible.builtin.systemd_service:
@@ -84,6 +94,7 @@
     state: started
   become: true
   changed_when: false
+  when: not ansible_check_mode
 
 - name: Read latest storage capacity check events
   ansible.builtin.command:
@@ -95,6 +106,7 @@
   register: storage_capacity_monitor_journal
   changed_when: false
   become: true
+  when: not ansible_check_mode
 
 - name: Require an exercised event for every configured mount
   ansible.builtin.assert:
@@ -104,3 +116,4 @@
   loop: "{{ storage_capacity_monitor_mounts }}"
   loop_control:
     label: "{{ item.path }}"
+  when: not ansible_check_mode

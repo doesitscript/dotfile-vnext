@@ -3,6 +3,7 @@ set -euo pipefail
 
 warning_percent={{ storage_capacity_monitor_warning_percent | int }}
 critical_percent={{ storage_capacity_monitor_critical_percent | int }}
+exit_code=0
 
 emit_event() {
   local priority="$1"
@@ -16,11 +17,12 @@ required={{ (mount.required | default(true) | bool) | ternary('true', 'false') }
 if ! findmnt --mountpoint "$path" >/dev/null 2>&1; then
   if [[ "$required" == "true" ]]; then
     emit_event err "status=unavailable path=$path required=true"
+    exit_code=1
   else
     emit_event warning "status=unavailable path=$path required=false"
   fi
 else
-  used_percent="$(df -P --output=pcent "$path" | tail -n 1 | tr -dc '0-9')"
+  used_percent="$(df --output=pcent "$path" | tail -n 1 | tr -dc '0-9')"
   if (( used_percent >= critical_percent )); then
     status=critical
     priority=err
@@ -34,3 +36,5 @@ else
   emit_event "$priority" "status=$status path=$path used_percent=$used_percent warning_percent=$warning_percent critical_percent=$critical_percent"
 fi
 {% endfor %}
+
+exit "$exit_code"

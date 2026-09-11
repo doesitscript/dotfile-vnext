@@ -184,32 +184,32 @@ activation of all future roles remains outside this iteration.
 ## Plan verification receipt
 
 **Slice:** current implementation campaign  
-**Verified at:** 2026-09-11T10:52:33Z
+**Verified at:** 2026-09-11T13:27:58Z
 **Verifier:** Implementer run
-`hrl-storage-implementation-beta-01-parent-20260911t104646z-implementer-1`
+`hrl-storage-implementation-beta-01-parent-20260911t131549z-implementer-1`
 
 | ID | Source | Obligation | In scope? | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| S1 | Ordered execution | Exact target/owner map, capacity/use/workload baseline and required-probe semantics | yes | pending | Read-only increments are reviewable in `receipts/2026-09-11T075622Z-s2-owner-and-exact-evidence.md`; monitoring ownership remains open. |
+| S1 | Ordered execution | Exact target/owner map, capacity/use/workload baseline and required-probe semantics | yes | in progress | Fresh exact dual-target evidence is in `receipts/2026-09-11T112508Z-s1-s5-source-review.md`; the report exits cleanly across Windows and K3s and records current DiskPressure. Post-attach identity remains open. |
 | S2 | Ordered execution | Establish normal GC owner/effective configuration and apply only a justified cleanup/config change | yes | pending evaluator review | K3s-generated containerd config, kubelet 85/80 GC ownership and zero eligible image bytes support a no-change conclusion; exact commands and raw excerpts are in the current receipt. |
-| S3 | Ordered execution | Move vLLM cache/PVC to verified backing and prove mount, readiness, health, integrity and rollback | yes | blocked | The adopted layout selects `HF_HUB_CACHE` on the NVMe mount and preserves original-cache rollback; persistent backing and mutation proof remain incomplete. |
-| S3-V1 | Verify contract | Prove PVC/PV binding, physical mount backing, pod readiness, `/health` and `/v1/models` | yes | blocked | Requires authorized S3/S4 Apply and the new capacity/health receipts. |
-| S3-U1 | Undo contract | Preserve old cache/source and prove reversal after integrity comparison | yes | blocked | Original cache is the selected rollback source; cutover evidence is still required. |
-| S4 | Ordered execution | Add approved VHDX/mount and perform data-safe migration with integrity/rollback proof | yes | blocked | The selected 200 GiB NVMe VHDX source path now has exact mountpoint, stable whole-disk and apply-time reserve guards (`receipts/2026-09-11T105233Z-s4-final-source-boundaries.md`); post-attach by-id/serial binding, Apply and migration evidence remain incomplete. |
-| S4-A1 | Apply contract | Create/attach only the selected VHDX, then resolve by-id/serial and initialize/mount only after explicit authority | yes | blocked | `*_apply=false`; capacity/type/reserve/path/slot are selected, while whole-disk by-id, serial, ext4/xfs validation and live attachment evidence remain required. |
+| S3 | Ordered execution | Move vLLM cache/PVC to verified backing and prove mount, readiness, health, integrity and rollback | yes | pending evaluator review | The source owner now quiesces vLLM, checksum-copies without deletion, sets `HF_HUB_CACHE`, verifies health/models/pressure/root margin, and restores the retained source Deployment on failure. S4 backing and mutation evidence remain incomplete. |
+| S3-V1 | Verify contract | Prove PVC/PV binding, physical mount backing, pod readiness, `/health` and `/v1/models` | yes | blocked | Controller fixture proves the source copy/integrity/reversal contract; authorized S3/S4 Apply and live health receipts remain required. |
+| S3-U1 | Undo contract | Preserve old cache/source and prove reversal after integrity comparison | yes | pending evaluator review | Source retains the original PVC and prior Deployment definition; controller checksum reversal passes, while live reversal remains unexercised. |
+| S4 | Ordered execution | Add approved VHDX/mount and perform data-safe migration with integrity/rollback proof | yes | pending evaluator review | The source now encodes attach → mount → data-preserving containerd offload → vLLM cutover → Alloy → monitor. It moves no K3s server/database/TLS/credential tree and redirects only new local-path PVs. Post-attach identity, Apply and live integrity remain incomplete. |
+| S4-A1 | Apply contract | Create/attach only the selected VHDX, then resolve by-id/serial and initialize/mount only after explicit authority | yes | blocked | `*_apply=false`; slot 0:1 is freshly reconfirmed free and ext4-backed overlayfs is active, but no second guest disk exists yet, so whole-disk by-id/serial and live attachment evidence remain unavailable. |
 | S4-V1 | Verify contract | Prove attachment, disk identity, filesystem/mount, capacity and intended workload use | yes | blocked | Controller-local populated fixtures validate the source guards, but no selected physical disk exists or has been applied. |
-| S4-U1 | Undo contract | Unmount before detach and preserve VHDX/data/backup | yes | pending evaluator review | Playbook ordering and identity-checked unmount → fstab removal → exact detach are implemented but not applied. |
-| S5 | Ordered execution | Implement selected retention/monitoring owner, policy, behavior and disable path | yes | blocked | Existing journald/Alloy/Loki is selected with hourly 75/90 monitoring; SATA journal/swap placement needs hardware and Kubelet compatibility discovery. |
-| S5-A1 | Apply contract | Deploy only selected cadence, warning/critical thresholds and alert route | yes | blocked | Policy is selected; current metric/job owner and SATA target still require evidence. |
-| S5-V1 | Verify contract | Exercise metric/job/rule and alert behavior against actual metric names | yes | blocked | Requires actual selected-owner Apply and hardware receipts. |
-| S5-U1 | Undo contract | Disable/remove selected timer or rules without deleting retained evidence | yes | blocked | Disable/removal path is selected but must be proven against the final owner. |
+| S4-U1 | Undo contract | Unmount before detach and preserve VHDX/data/backup | yes | pending evaluator review | Offload reversal now precedes identity-checked unmount → fstab removal → exact detach; retained destination/VHDX data are not deleted. Live reversal is unexercised. |
+| S5 | Ordered execution | Implement selected retention/monitoring owner, policy, behavior and disable path | yes | pending evaluator review | The corrected `df` fixture passes, the deployment composes Alloy before the monitor, and the active inventory resolves the central Loki endpoint. Live forwarding remains fail-closed rather than asserted. |
+| S5-A1 | Apply contract | Deploy only selected cadence, warning/critical thresholds and alert route | yes | blocked | Live mutation is unauthorized. The source order is now `logging_alloy` then `storage_capacity_monitor`; live service and route proof remain required. |
+| S5-V1 | Verify contract | Exercise metric/job/rule and alert behavior against actual metric names | yes | blocked | The role exercises its oneshot and asserts one journal event per mount during Apply; live journald → Alloy → Loki/Grafana evidence remains required. |
+| S5-U1 | Undo contract | Disable/remove selected timer or rules without deleting retained evidence | yes | source reviewable | `absent` stops/disables the timer and removes only role-owned script, units and journal drop-in; live removal behavior remains unexercised. |
 | S6 | Ordered execution | Close research/module/docs/diagram/receipt/HRL obligations | yes | pending | Focused research, diagrams and HRL disposition exist; final implementation evidence is incomplete. |
 | C-01 | Apply/Verify/Undo | Every selected mutation has exact command, time, target, before/after, health, idempotence and rollback evidence | yes | blocked | No live mutation is authorized; the current receipt supplies exact-command read-only evidence only. |
 | C-02 | Capability boundary | Preserve protected upstream snapshots and account for every designed/routine output | yes | pending | Upstream checker passes and accounting is current for this increment; campaign remains open. |
 | C-03 | Completion | Fresh independent whole-campaign Evaluator sign-off | yes | blocked | No whole-campaign ready artifact exists. |
 
 Summary: seventeen in-scope obligations; zero campaign-complete, twelve
-blocked, three pending, and two pending Evaluator review. Blocked and pending rows keep this
+blocked, two pending, and three pending Evaluator review. Blocked and pending rows keep this
 campaign incomplete. No checklist row or plan lifecycle is promoted.
 
 ## Diagram Inventory

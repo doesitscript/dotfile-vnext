@@ -1,10 +1,23 @@
 # Accepted gap — next major improvement
 
+## Partial delivery (2026-09-11)
+
+The storage campaign now has an explicit
+[`refined-technical-handoff.md`](implementation-campaign/coordination/research-application/performance-layout-bootstrap-2026-09-11/refined-technical-handoff.md)
+that maps post-research Expert/Researcher findings to project owners and
+functional areas, and Light skills require it as the Implementer/Evaluator
+primary input. The work queue is Implementer-owned and dynamic.
+
+**Still deferred:** automatic parent scheduling of the full
+Research-Synthesizer ↔ Expert ↔ Planner loop before every campaign. Manual or
+bootstrap production of the refined handoff remains the activation path until
+that scheduler exists.
+
 ## Status
 
-Accepted as a future major-iteration design improvement. The current
-research-to-Expert-to-Implementer/Evaluator workflow is stable enough to use;
-this note does not reopen the present storage campaign or alter its decisions.
+Accepted as a future major-iteration design improvement for **auto-scheduling**
+the research-application loop. The handoff artifact contract itself is no
+longer an open gap for this campaign.
 
 ## Observed gap
 

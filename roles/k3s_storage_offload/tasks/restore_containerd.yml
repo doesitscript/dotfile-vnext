@@ -1,0 +1,124 @@
+---
+- name: Inspect containerd bind before reversal
+  ansible.builtin.command:
+    argv:
+      - findmnt
+      - --mountpoint
+      - --noheadings
+      - --output
+      - SOURCE,FSROOT
+      - "{{ k3s_storage_offload_containerd_source_path }}"
+  register: __k3s_storage_offload_restore_mount
+  changed_when: false
+  failed_when: __k3s_storage_offload_restore_mount.rc not in [0, 1]
+  check_mode: false
+
+- name: Refuse to reverse an unexpected containerd mount
+  ansible.builtin.assert:
+    that:
+      - >-
+        __k3s_storage_offload_restore_mount.rc == 1
+        or
+        (__k3s_storage_offload_restore_mount.stdout.split() | last ==
+         k3s_storage_offload_containerd_destination_path[
+           k3s_storage_offload_mount_path | length:
+         ])
+    fail_msg: >-
+      Refusing containerd reversal because the current mount does not resolve
+      to the selected data-disk backing. No mount will be removed.
+
+- name: Inspect retained backup and current containerd source before reversal
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    get_checksum: false
+  loop:
+    - "{{ k3s_storage_offload_containerd_backup_path }}"
+    - "{{ k3s_storage_offload_containerd_source_path }}"
+  register: __k3s_storage_offload_restore_paths
+
+- name: Inspect unmounted containerd target before reversal
+  ansible.builtin.find:
+    paths:
+      - "{{ k3s_storage_offload_containerd_source_path }}"
+    file_type: any
+    hidden: true
+    recurse: false
+  register: __k3s_storage_offload_restore_source_entries
+  when:
+    - __k3s_storage_offload_restore_mount.rc == 1
+    - __k3s_storage_offload_restore_paths.results[0].stat.exists
+    - __k3s_storage_offload_restore_paths.results[1].stat.exists
+
+- name: Preserve an intact source when no retained backup exists
+  ansible.builtin.assert:
+    that:
+      - >-
+        __k3s_storage_offload_restore_paths.results[0].stat.exists
+        or __k3s_storage_offload_restore_mount.rc == 1
+      - >-
+        not __k3s_storage_offload_restore_paths.results[0].stat.exists
+        or not __k3s_storage_offload_restore_paths.results[1].stat.exists
+        or __k3s_storage_offload_restore_mount.rc == 0
+        or (__k3s_storage_offload_restore_source_entries.matched | default(-1)) == 0
+    fail_msg: >-
+      Refusing containerd reversal because the retained backup is absent while
+      a mount is active, or because the unmounted bind target contains data.
+      The source path will be preserved and requires inspection.
+
+- name: Stop K3s before containerd reversal
+  ansible.builtin.systemd_service:
+    name: "{{ k3s_storage_offload_service_name }}"
+    state: stopped
+
+- name: Unmount containerd bind without deleting destination data
+  ansible.posix.mount:
+    path: "{{ k3s_storage_offload_containerd_source_path }}"
+    state: unmounted
+  when: __k3s_storage_offload_restore_mount.rc == 0
+
+- name: Inspect containerd bind target after unmount
+  ansible.builtin.find:
+    paths:
+      - "{{ k3s_storage_offload_containerd_source_path }}"
+    file_type: any
+    hidden: true
+    recurse: false
+  register: __k3s_storage_offload_unmounted_source_entries
+  when:
+    - __k3s_storage_offload_restore_paths.results[0].stat.exists
+    - __k3s_storage_offload_restore_paths.results[1].stat.exists
+
+- name: Require an empty bind target before restoring retained data
+  ansible.builtin.assert:
+    that:
+      - (__k3s_storage_offload_unmounted_source_entries.matched | int) == 0
+    fail_msg: >-
+      Refusing to remove a non-empty containerd source after unmount. The
+      retained backup and current source are preserved for inspection.
+  when:
+    - __k3s_storage_offload_restore_paths.results[0].stat.exists
+    - __k3s_storage_offload_restore_paths.results[1].stat.exists
+
+- name: Remove empty containerd bind target
+  ansible.builtin.file:
+    path: "{{ k3s_storage_offload_containerd_source_path }}"
+    state: absent
+  when:
+    - __k3s_storage_offload_restore_paths.results[0].stat.exists
+
+# No Ansible file module performs an atomic directory rename. command is
+# bounded to the exact retained-backup and original source paths.
+- name: Restore retained original containerd tree
+  ansible.builtin.command:
+    argv:
+      - mv
+      - "{{ k3s_storage_offload_containerd_backup_path }}"
+      - "{{ k3s_storage_offload_containerd_source_path }}"
+    creates: "{{ k3s_storage_offload_containerd_source_path }}"
+  when:
+    - __k3s_storage_offload_restore_paths.results[0].stat.exists
+
+- name: Start K3s after containerd reversal
+  ansible.builtin.systemd_service:
+    name: "{{ k3s_storage_offload_service_name }}"
+    state: started

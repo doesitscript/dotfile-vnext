@@ -9,7 +9,7 @@ live Apply has already occurred.
 ## Authority profile and adopted Expert defaults
 
 This campaign uses `lab_recreatable_autonomy` from
-`multi-agent-design/decision-authority-profiles.md`: it is a non-production,
+`multi-agent-design/orchestration/04-decision-authority-profiles.md`: it is a non-production,
 recreatable homelab with no availability commitment. Evidence-backed Expert
 defaults are therefore adopted as campaign technical decisions within the
 declared scope. Exact target identity, preview/fail-closed checks, receipts,

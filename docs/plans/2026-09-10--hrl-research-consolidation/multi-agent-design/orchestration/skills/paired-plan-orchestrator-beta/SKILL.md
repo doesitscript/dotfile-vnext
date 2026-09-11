@@ -34,24 +34,27 @@ Read the campaign README and
 `/Users/joshc/develop/global-skills/skills/documentation/multiagents-runtime-contract/SKILL.md`
 and `/Users/joshc/develop/global-skills/skills/implementation/multiagents-runtime-operator/SKILL.md`,
 including its lifecycle/start/recovery references before starting processes.
-When `parallel_preflight_jobs` is requested, first load the adjacent
-[`parallel-work-admission-experimental`](../parallel-work-admission-experimental/SKILL.md)
-skill. Give the runner only independent read-only candidates; report its
-admission receipt and continue serially even when all candidates are rejected.
-After a research/On-site Expert packet has stabilized an implementation direction,
-load [`batch-change-staging-experimental`](../batch-change-staging-experimental/SKILL.md)
-to decide whether a no-commit grouped source batch is worthwhile. Do not use it
-for a live target, shared mutable owner, approval, or unresolved design fork.
-Also read the [role operating contract](../../role-operating-contract.md)
+Also read the [authority map](../../02-authority--who-to-call.md)
 and any paired Expert recommendation / decision-authority profile named by the
 campaign. Treat them as canonical inputs, never as private-chat context.
-When `coordination/research-application/` exists, identify the newest applicable
-bootstrap packet and require both adapters to read its research-to-decision and
-plan-materialization artifacts before their first S3–S5 pass. This is planning
-input, not a separate runtime role to launch or a reason to repeat research.
+Before launching workers, require the newest
+`coordination/research-application/**/refined-technical-handoff.md`. That file
+is the primary Implementer/Evaluator input—not the onsite transcript. Pass its
+absolute path as `refined_technical_handoff_path`. Then read or seed
+`<plan_dir>/coordination/implementation-work-queue.md` using
+[`chunked-light-pipeline-beta`](../chunked-light-pipeline-beta/SKILL.md). The
+queue is **Implementer-owned and dynamic** (derived from the handoff’s
+functional areas). Give the first ready chunk—not the whole campaign—to
+Implementer. A frozen chunk is immediately reviewable by Evaluator; when a
+later area has no overlapping owners, reserve it so review and independent
+work can overlap. Classification-only packets without a refined handoff are
+incomplete; do not start the pair on them.
 
 Early in the chat, report the plan folder, your parent role and
-`Dashboard: http://127.0.0.1:7900 — <observed status>` using operator observe.
+`Dashboard: http://127.0.0.1:7900 — using existing MCP-managed service`.
+Do not run runtime setup or an operator observation as routine startup work.
+The runner attempts the already deployed broker/dashboard directly; observe or
+recover only after a concrete connection/health failure.
 Immediately after the runner returns its `session_id`—before scheduling the
 first role pass—put the runner's exact `watch-implementation-output.sh` command
 at the top of the parent response in a fenced `bash` block. It must contain the
@@ -71,10 +74,17 @@ an optional manual fallback, not another required step.
    never start a duplicate writer. If an existing owner is alive, monitor that
    exact run instead. If interrupted, use exact owner-manifest cleanup and
    `--recover-lock` as documented; preserve all campaign work and prior evidence.
-2. The user's request to run this parent authorizes the named team's runtime
-   and dashboard startup. Recover the broker through the runtime operator if
-   needed; never run `multiagents setup` or overwrite client configuration.
-   Reuse shared/MCP-managed dashboards; do not adopt or stop them.
+   When a continuation checkpoint names a last governed artifact and says no
+   new accepted handoff exists, that artifact is the sole resume input. Treat
+   partial source edits as an unreviewed working batch, not a second causal
+   event. Dispatch Implementer first; do not wake Evaluator until a fresh
+   validation-backed `review_ready_for_evaluator_*` artifact exists.
+2. Treat the configured multiagents MCP server as the normal available runtime:
+   do not start, set up, or redeploy it before use. On an actual broker request
+   failure, run the runtime operator's read-only observation, then start only
+   the failed broker surface. On an actual dashboard request failure, use
+   `ensure-dashboard` for that surface only. Never run `multiagents setup`,
+   overwrite client configuration, adopt, or stop a shared dashboard.
 3. Create a unique run ID and private runtime container under the project's
    chosen runtime location (on this machine, `/Users/joshc/develop/oneoffs/`).
    Copy the [config example](../../../runtime/implementation-config.example.json)
@@ -85,6 +95,10 @@ an optional manual fallback, not another required step.
    This launches a parent-owned MCP orchestrator and exactly two Codex workers,
    then schedules their turns. It does not merely print manual prompts. Use the
    execution tool's returned session ID to stay attached and collect output.
+   For a recovered Light batch, set a 900-second pass ceiling explicitly, but
+   require the first Implementer pass to select the smallest coherent changed
+   owner group, run its targeted validation, and hand off immediately. A ceiling
+   is not a planned wait; do not add unrelated owners after that group is ready.
 5. Monitor events/checkpoints and role artifacts while this parent invocation
    is active. Poll with waits no longer than 60 seconds and give short progress
    updates at least each minute. Show actual session/run/manifest paths and

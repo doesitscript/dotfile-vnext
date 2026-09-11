@@ -1,0 +1,54 @@
+---
+argument_specs:
+  main:
+    short_description: Data-preserving K3s storage offload lifecycle
+    options:
+      k3s_storage_offload_state:
+        type: str
+        default: present
+        choices: [present, absent]
+        description: Lifecycle state for containerd and new local-path backing.
+      k3s_storage_offload_apply:
+        type: bool
+        default: false
+        description: Explicit mutation gate after mount identity is verified.
+      k3s_storage_offload_mount_path:
+        type: path
+        default: /mnt/k3s-cache
+        description: Exact mounted NVMe-backed data-disk path.
+      k3s_storage_offload_containerd_source_path:
+        type: path
+        default: /var/lib/rancher/k3s/agent/containerd
+        description: Existing K3s-managed containerd root retained as the bind target.
+      k3s_storage_offload_containerd_destination_path:
+        type: path
+        default: /mnt/k3s-cache/containerd
+        description: Data-disk destination for the copied containerd tree.
+      k3s_storage_offload_containerd_backup_path:
+        type: path
+        default: /var/lib/rancher/k3s/agent/containerd.ansible-pre-offload
+        description: Retained original tree used for reversal.
+      k3s_storage_offload_local_path_destination:
+        type: path
+        default: /mnt/k3s-cache/local-path
+        description: Backing used only for newly provisioned local-path PVs.
+      k3s_storage_offload_expected_local_path_root:
+        type: path
+        default: /var/lib/rancher/k3s/storage
+        description: Exact current default allowed before changing future-PV placement.
+      k3s_storage_offload_local_path_backup_file:
+        type: path
+        default: /var/lib/ansible/k3s-storage-offload/local-path-config.json
+        description: Retained pre-change local-path ConfigMap JSON for reversal.
+      k3s_storage_offload_kubeconfig:
+        type: path
+        default: /etc/rancher/k3s/k3s.yaml
+        description: K3s kubeconfig used for local-path owner changes.
+      k3s_storage_offload_service_name:
+        type: str
+        default: k3s.service
+        description: Exact K3s unit quiesced during containerd migration.
+      k3s_storage_offload_retain_containerd_backup:
+        type: bool
+        default: true
+        description: Required acknowledgement that reversal data remains retained.

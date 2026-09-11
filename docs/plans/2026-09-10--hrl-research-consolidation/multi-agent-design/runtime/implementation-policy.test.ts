@@ -3,12 +3,15 @@ import { scopedThreadParams } from "./implementation-policy";
 
 const approveKey = "mcp_servers.multiagents-peer.tools.approve.approval_mode";
 const doneKey = "mcp_servers.multiagents-peer.tools.signal_done.approval_mode";
+const summaryKey = "mcp_servers.multiagents-peer.tools.set_summary.approval_mode";
 describe("Role-scoped terminal signal policy", () => {
-  test("Evaluator gets only its final approve tool override", () => {
-    expect(scopedThreadParams("evaluator", {})).toEqual({ config: { [approveKey]: "approve" } });
+  test("Evaluator gets non-interactive dashboard summary and final approve overrides", () => {
+    expect(scopedThreadParams("evaluator", {})).toEqual({ config: {
+      [summaryKey]: "approve", [approveKey]: "approve" } });
   });
-  test("Implementer gets only its final signal_done tool override", () => {
-    expect(scopedThreadParams("implementer", {})).toEqual({ config: { [doneKey]: "approve" } });
+  test("Implementer gets non-interactive dashboard summary and final signal_done overrides", () => {
+    expect(scopedThreadParams("implementer", {})).toEqual({ config: {
+      [summaryKey]: "approve", [doneKey]: "approve" } });
   });
   for (const role of ["researcher", "coordinator", "observer", undefined]) {
     test(`${role ?? "missing role"} gets no added permission`, () => {
@@ -23,7 +26,8 @@ describe("Role-scoped terminal signal policy", () => {
       [approveKey]: "never" });
     const original = Object.freeze({ cwd: "/work/project", sandbox: "workspace-write", config });
     const result = scopedThreadParams("evaluator", original);
-    expect(result).toEqual({ ...original, config: { ...config, [approveKey]: "approve" } });
+    expect(result).toEqual({ ...original, config: {
+      ...config, [summaryKey]: "approve", [approveKey]: "approve" } });
     expect(result).not.toBe(original);
     expect(result.config).not.toBe(config);
     expect(original.config[approveKey]).toBe("never");
@@ -35,7 +39,8 @@ describe("Role-scoped terminal signal policy", () => {
   test("Implementer override preserves unrelated policies and is idempotent", () => {
     const first = scopedThreadParams("implementer", { config: {
       approval_policy: "never", [doneKey]: "never", [approveKey]: "never" } });
-    expect(first.config).toEqual({ approval_policy: "never", [doneKey]: "approve", [approveKey]: "never" });
+    expect(first.config).toEqual({ approval_policy: "never", [summaryKey]: "approve",
+      [doneKey]: "approve", [approveKey]: "never" });
     expect(scopedThreadParams("implementer", first)).toEqual(first);
   });
 });

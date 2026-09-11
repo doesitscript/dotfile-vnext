@@ -1,0 +1,21 @@
+flowchart LR
+  subgraph design [Design stage]
+    OE[On-site Expert]
+    RS[Research Synthesizer / Researchers]
+    PL[Planner]
+    OE <--> RS
+    RS --> PL
+    OE --> PL
+  end
+  subgraph build [Light build stage]
+    IM[Implementer]
+    EV[Evaluator]
+    IM -->|review_ready| EV
+    EV -->|feedback| IM
+  end
+  PL -->|refined-technical-handoff| IM
+  PL -->|same handoff| EV
+  IM -.->|named fork| OE
+  EV -.->|named evidence conflict| OE
+  P[Parent orchestrator] -.->|dispatch only| IM
+  P -.->|dispatch only| EV

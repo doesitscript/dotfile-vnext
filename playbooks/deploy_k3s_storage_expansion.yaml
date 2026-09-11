@@ -1,0 +1,13 @@
+---
+# Present-path campaign orchestration. The imported playbooks retain their
+# explicit inventory-limit gates and role-level mutation/identity gates.
+- name: K3s storage expansion - attach, mount, and storage offload
+  ansible.builtin.import_playbook: deploy_k3s_data_disk.yaml
+  vars:
+    k3s_data_disk_state: present
+
+- name: K3s storage expansion - retained-cache vLLM cutover
+  ansible.builtin.import_playbook: deploy_vllm_runtime.yaml
+
+- name: K3s storage expansion - Alloy then capacity monitor
+  ansible.builtin.import_playbook: deploy_storage_capacity_monitor.yaml

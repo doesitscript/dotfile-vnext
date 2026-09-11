@@ -29,11 +29,16 @@ command for that session and fresh run directory. Run it in a second terminal:
 /absolute/path/to/runtime/watch-implementation-output.sh --session-id '<returned-session-id>' --run-dir '/absolute/fresh-run-dir' --endpoint 'http://127.0.0.1:7899' --interval 5 --clear
 ```
 
-The script uses `curl POST /slots/list` every five seconds and renders a
-colorized role table plus the latest durable `events.jsonl` event. `Ctrl-C`
-stops only that monitor. The browser dashboard remains useful for connection
-health, but its `driver-mode MCP adapter` label is broker adapter metadata; the
-installed API does not expose live model prose to that card.
+The script uses `curl POST /slots/list` and `/list-peers` every five seconds and
+renders a colorized role table, current broker summaries, and the latest durable
+`events.jsonl` event. `Ctrl-C` stops only that monitor. The browser dashboard
+shows the same concise progress. The parent publishes a dispatch/completion
+status and mirrors a worker's useful concise status from `context_snapshot` if
+the worker misses its direct `set_summary` call. It deliberately rejects driver
+placeholders and command/reasoning streams. `driver-mode MCP adapter` therefore
+means a legacy or externally-created session has not been initialized by this
+runner. New runner sessions label held roles explicitly—for example, `Evaluator
+held — awaiting a validated Implementer handoff.`
 
 ## Profiles
 
@@ -43,6 +48,13 @@ artifact wakes the next role immediately. The 15-minute per-turn and 60-minute
 campaign values are only leak/stall ceilings, not planned waits; tune them per
 batch when the bounded work warrants it. Light does not require SSH/live
 discovery, remote Apply, or whole-runtime proof to close the source package.
+
+Team deployment and the two `READY` initialization turns complete before a
+role-pass clock starts. The runner records `pass_dispatched` immediately after
+it releases that role and sends its bounded task; only then does the per-pass
+ceiling apply. Supply `owner_batch` for Light to keep the worker to the smallest
+coherent source group. Controller-local syntax/lint/fixture/static checks are
+allowed; inventory-targeted Ansible, SSH, remote discovery and Apply are not.
 
 For one named unsettled technical fork, set `consultation_request_path` to an
 absolute request file under `plan_dir/coordination/requests/`. The Light parent
@@ -70,10 +82,12 @@ fast tests. It never parallelizes source edits, live Apply, approval or final
 technical synthesis.
 
 Before starting, the parent checks broker health through the existing runtime
-operator and recovers it if necessary. The runner owns exactly its newly created
-session/children/dashboard and reuses shared dashboards. It does not recover or
-delete unrelated sessions. Always display http://127.0.0.1:7900 and observed
-status; HTTP health alone does not prove the dashboard selected this campaign.
+endpoint and uses the existing MCP-managed broker immediately when it responds.
+It invokes `multiagents broker start` only after that direct request fails. The
+runner likewise reuses a responding dashboard and invokes `ensure-dashboard`
+only after a dashboard request fails. It does not recover or delete unrelated
+sessions. Always display http://127.0.0.1:7900 and observed status; HTTP health
+alone does not prove the dashboard selected this campaign.
 
 ## Handoffs and restart
 

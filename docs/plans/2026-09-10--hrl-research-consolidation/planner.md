@@ -28,12 +28,17 @@ specific gap instead of giving the open problem to Implementer.
 4. Materialize only accepted decisions into plan slices.
 5. Produce a canonical plan whose inputs are bounded for Implementer and whose
    acceptance obligations are independently checkable by Evaluator.
+6. Emit `refined-technical-handoff.md` under the campaign research-application
+   packet: hard corrections, placement, functional areas → owners, Light vs
+   Full boundary. Implementer derives the dynamic work queue from that file;
+   Evaluator reviews chunks against it. Classification-only packets are not
+   enough to activate the pair.
 
 The complete interaction and packet schema are in
-[the guided research-application loop](multi-agent-design/research-application-loop.md).
+[the guided research-application loop](multi-agent-design/orchestration/03-handoffs-and-loops.md).
 The current [performance-layout bootstrap](implementation-campaign/coordination/research-application/performance-layout-bootstrap-2026-09-11/README.md)
-demonstrates how a user/Expert research document enters this role without
-becoming a rigid command list.
+and its [refined technical handoff](implementation-campaign/coordination/research-application/performance-layout-bootstrap-2026-09-11/refined-technical-handoff.md)
+demonstrate the required Implementer/Evaluator package.
 
 ## Future Workflow Vision
 
