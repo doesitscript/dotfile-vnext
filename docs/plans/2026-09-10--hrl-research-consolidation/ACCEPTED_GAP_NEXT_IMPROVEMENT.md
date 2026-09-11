@@ -39,6 +39,36 @@ configuration changes. It is intended to improve stability, performance-aware
 design, and reuse of existing research—not to add unbounded research or make
 the current roles wait for a human by default.
 
+## Manual performance pass to automate
+
+The user and On-site Expert demonstrated the missing loop in the storage
+campaign: cross-reference research with verified hardware, current configured
+surfaces, workload I/O patterns, durability classes, and available disk tiers;
+then turn the result into a small set of placement decisions. The resulting
+[performance layout evaluation](multi-agent-design/multi-agent-onsite-expert/onsite-export-context7-layout-performance_eval.md)
+used NVMe for model/image/PVC capacity, a smaller SATA SSD for isolated
+low-value I/O such as journal/swap/rebuildable caches, and root for K3s durable
+state plus kubelet-accounted pod logs.
+
+In the next major iteration, this becomes a bounded **performance and placement
+pass**, not another broad research phase:
+
+1. Researchers organize existing domain findings by workload, I/O pattern,
+   durability class, and candidate infrastructure surface.
+2. A hardware/current-state collector supplies verified drive classes,
+   capacity, attachment constraints, and current paths.
+3. The Expert synthesizes those two inputs into a placement matrix, hard
+   compatibility corrections, expected gain, validation metrics, and rollback.
+4. The Planner maps each accepted placement to a narrow configuration/Ansible
+   surface and materializes it before Implementer work begins.
+5. The Evaluator verifies both the intended performance/durability fit and the
+   measured post-change result; unsupported performance claims return as a
+   targeted evidence request.
+
+This preserves the value of broad research while making its application
+repeatable, scoped, and efficient. It also gives future roles a defined way to
+use every available storage tier rather than leaving smaller drives unused.
+
 ## Future acceptance signals
 
 - The Expert receives an indexed, topic-to-decision research summary before

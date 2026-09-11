@@ -1,26 +1,48 @@
-# Planner Notes - HRL Research Consolidation
+# Planner / Coordinator — research application and plan composition
 
 **Date:** September 10, 2026  
-**Purpose:** Document the research consolidation workflow for future automation
+**Purpose:** Turn organized research and Expert recommendations into a
+materialized implementation plan without asking Implementer or Evaluator to
+reconstruct the planning work.
 
 ---
 
-## Current Process
+## Role boundary
 
-This folder captures research entries made to the Homelab Reference Library (HRL) as part of storage optimization and infrastructure planning work. The research was conducted by multiple agents investigating various technologies and their disk management capabilities.
+The Planner/Coordinator is the second middle role after research synthesis. It
+does not merely summarize research or generate a generic `plan.md`. It consumes
+the Expert-approved decision packet and maps it to actual project surfaces:
+roles, playbooks, inventory, configuration owners, target binding, safe order,
+tests, validation, rollback, and Evaluator obligations.
+
+It works iteratively with the On-site Expert and Research Synthesizer. When a
+recommendation cannot be mapped to an owner or acceptance test, it returns the
+specific gap instead of giving the open problem to Implementer.
+
+## Guided plan-composition cycle
+
+1. Read the User/Expert problem frame and authority profile.
+2. Consume research-to-decision packets, rather than raw broad research alone.
+3. Challenge missing project mappings, unsupported performance claims, or
+   unclear rollback with the Expert/Synthesizer.
+4. Materialize only accepted decisions into plan slices.
+5. Produce a canonical plan whose inputs are bounded for Implementer and whose
+   acceptance obligations are independently checkable by Evaluator.
+
+The complete interaction and packet schema are in
+[the guided research-application loop](multi-agent-design/research-application-loop.md).
 
 ## Future Workflow Vision
-
-**Goal:** Automate the consolidation of HRL research entries into actionable implementation plans.
 
 ### Planned Enhancement:
 In future iterations, the planner agent should:
 
-1. **Scan HRL research entries** from `generated/context7/`
-2. **Group related topics** by technology and theme
-3. **Extract actionable insights** from Context7 results and decision files
-4. **Generate implementation guides** where missing
-5. **Create consolidated plan.md** with:
+1. **Consume synthesis packets** created from HRL research, receipts, current
+   configuration, and topology—not a raw directory scan as the sole input.
+2. **Map each accepted decision** to the smallest relevant owner and current
+   configuration surface.
+3. **Generate implementation guides** only where the owner/contract is missing.
+4. **Create a consolidated plan** with:
    - Architecture diagrams
    - Apply/Verify/Undo steps
    - Ansible role integration points
@@ -28,9 +50,11 @@ In future iterations, the planner agent should:
 
 ### Workflow Steps:
 ```
-Research Collection (Context7)
+Research collection (Context7)
     ↓
-Planner Analysis (this phase)
+Research Synthesizer ↔ On-site Expert
+    ↓
+Planner / Coordinator ↔ On-site Expert
     ↓
 Plan Generation (plan.md)
     ↓
@@ -45,13 +69,15 @@ Validation (receipts)
 - **Research in progress:** Ansible execution scaling, quality gates (not yet finished)
 - **Consolidation needed:** Transform scattered Context7 entries into cohesive plans
 
-## Notes for Next Iteration
+## Non-negotiable completion criteria
 
-When the Ansible research is complete, the planner should:
-- Review all Context7 decision.yaml files for selected approaches
-- Cross-reference with existing implementation guides
-- Identify gaps between research and current automation
-- Generate a unified plan that addresses all storage/cache/artifact concerns
+- Every plan decision links to a research-to-decision packet and a selected
+  Expert recommendation.
+- Every mutation identifies its owning project surface, exact target-binding
+  requirement, validation and rollback path.
+- The user’s outcome/constraint input is preserved as a plan constraint, not
+  left only in a conversation.
+- Unanswered questions return to the Expert/Synthesizer loop before activation.
 
 ---
 
