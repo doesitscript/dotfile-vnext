@@ -15,6 +15,9 @@ Suggested lanes: infrastructure evidence, Ansible contract, research mapping,
 and fast tests. No lane may edit repository files, send peer messages, release a
 worker slot, create infrastructure, or run a live Apply.
 
+The experimental [parallel work admission skill](skills/parallel-work-admission-experimental/SKILL.md)
+quarantines incompatible candidates in `admission.json`; it never deletes work.
+
 For the current storage pass, split verified-route/SSH control-master evidence,
 storage-report ownership mapping, and the Alloy/vLLM owner lookup. Those facts
 can arrive together in the manifest. The Implementer alone decides which owner

@@ -1,6 +1,6 @@
 ---
-name: storage-plan-implementer-beta
-description: "Extend the mature paired-agent-plan-implementer with verified Coordinator/Researcher intake, storage campaign identity, bounded research returns and Ansible implementation and receipts. Use on the supplied storage implementation plan, not a broad project audit."
+name: storage-plan-implementer-full-orchestration-beta
+description: "Full Orchestration implementation lane: combine source work with governed live discovery, target identity, receipts and runtime proof when explicitly requested. Not the default implementation lane."
 metadata:
   status: beta
   scope: storage-implementation-campaign
@@ -12,7 +12,7 @@ metadata:
   depends_on_skills: "paired-agent-plan-implementer, paired-agent-feedback-artifacts"
 ---
 
-# Storage plan Implementer — beta adapter
+# Storage plan Implementer — Full Orchestration
 
 Use this project-owned extension for the storage campaign, not for a generic
 project audit. After the early launch output below, read [the integration contract](../../../orchestration/implementation-beta-contract.md)
@@ -57,13 +57,17 @@ owns advertising the optional Observer prompt.
    recommendation as the plan's selected technical default within declared
    scope. Under `product_governed`, record it as proposed until the parent
    supplies the authority decision.
-   When a research-application packet is supplied, act as its technical
-   interpreter: preserve hard corrections/prohibitions, map general guidance to
+When a research-application packet is supplied, act as its technical
+interpreter: preserve hard corrections/prohibitions, map general guidance to
    proven current Ansible owners and live targets, and select an idempotent
    mechanism appropriate to the repository. Do not blindly copy illustrative
    source commands or turn a broad recommendation into unowned configuration.
    A different concrete mechanism is valid only when it preserves the guidance
    or records a genuine source/runtime-backed exception.
+   When supplied a staged-batch manifest, work only inside its isolated
+   worktree, preserve its no-commit/no-Apply boundary, and synthesize all
+   admitted owner changes into one review-ready package. Do not split one
+   coherent batch into artificial one-file handoffs.
 2. Use the mature artifact contract to decide current ownership. A fresh
    whole-campaign approval with no newer review-relevant changes means no work;
    pending review is not permission to race the Evaluator with another write pass.

@@ -11,6 +11,13 @@ real two-agent preparation run passed independent review/revision/release and
 owned-process teardown. The storage plan has not been executed. See the
 [fresh validation receipt](validation-2026-09-11.md) for proof and limitations.
 
+**Active implementation profile:**
+[Light Orchestration](orchestration/light-profile-rationale-2026-09-11.md) is
+the default for this campaign: rapid grouped source work and grouped Evaluator
+feedback. Full Orchestration remains explicit for named live-runtime, target,
+or authority needs. An optional bounded Expert → Researcher sidecar resolves
+one named technical fork without restarting the earlier preparation pipeline.
+
 ---
 
 ## Overview

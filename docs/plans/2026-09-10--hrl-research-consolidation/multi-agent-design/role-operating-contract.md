@@ -128,6 +128,21 @@ runtime evidence contradicts the recommendation.
 
 ## Implementation readiness for the next playbook pass
 
+## Implementation profiles
+
+The default **Light Orchestration** profile turns settled research and On-site
+Expert decisions into grouped project-owned Ansible changes. Its Implementer
+focuses on role placement, native modules, idempotence, naming, argument
+contracts, targeted source validation and one coherent handoff. Its Evaluator
+focuses on scalable design patterns and grouped owner/file feedback. It does
+not repeatedly require SSH discovery, remote execution, live Apply or runtime
+proof before accepting the source package.
+
+The explicit **Full Orchestration** profile retains the older governed lifecycle:
+target identity, live discovery, remote evidence, Apply authority and deployment
+proof. Enter it only for a named live requirement or a source/runtime
+contradiction; it is not a default quality bar for ordinary project integration.
+
 The next pass should consume the canonical campaign decisions, the On-site
 Expert recommendation, and the current Evaluator feedback together. It is
 ready to implement the named S4 corrections and then submit a fresh review

@@ -35,15 +35,33 @@ stops only that monitor. The browser dashboard remains useful for connection
 health, but its `driver-mode MCP adapter` label is broker adapter metadata; the
 installed API does not expose live model prose to that card.
 
-Defaults: at most 8
-passes, 15 minutes per pass, 90 minutes total. These are stopping limits, not
-success criteria. Source/receipt work survives a stop; restart with a fresh run
-directory and ID to continue. Live Apply is still gated by actual authorization.
+## Profiles
+
+`orchestration_profile: light` is the default: up to four source-first grouped
+passes, targeted validation, and Evaluator design review. A completed durable
+artifact wakes the next role immediately. The 15-minute per-turn and 60-minute
+campaign values are only leak/stall ceilings, not planned waits; tune them per
+batch when the bounded work warrants it. Light does not require SSH/live
+discovery, remote Apply, or whole-runtime proof to close the source package.
+
+For one named unsettled technical fork, set `consultation_request_path` to an
+absolute request file under `plan_dir/coordination/requests/`. The Light parent
+adds a held On-site Expert then Researcher sidecar and returns both artifacts to
+the normal pair. This is optional and does not restart broad preparation.
+
+Set `orchestration_profile: full` only when a named change genuinely needs
+verified targets, remote/live evidence, governed Apply, or deployment proof.
+That lane retains the original 8/15-minute/90-minute bounds and Full
+Orchestration adapters. Source/receipt work survives a stop; restart with a
+fresh run directory and ID to continue. Live Apply is still gated by actual
+authorization.
 
 ## Experimental parallel preflight
 
-An optional `parallel_preflight_jobs` array in the run config launches one to
-four bounded inspection/test jobs before the serial role loop. Use the contract
+Every experimental run performs parallel-work admission before the serial role
+loop. A `parallel_preflight_jobs` array launches its admitted one to four
+bounded inspection/test jobs; an omitted or empty array records an explicit
+zero-job admission result instead of inventing workload commands. Use the contract
 and examples in [parallel-preflight-experiment.md](../orchestration/parallel-preflight-experiment.md).
 Each job is allowlisted read-only, writes only to the fresh runtime directory,
 and its manifest is supplied to both roles. This is suited to concurrent route

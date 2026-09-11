@@ -20,6 +20,11 @@ Supply evidence for the current phase, then review the Coordinator's plan agains
 that evidence and source obligations. These are separate passes of the same role
 before the established Implementer/Evaluator begins.
 
+Package research so the default Light Orchestration roles can apply it directly
+to project design and Ansible ownership. A missing narrow fact may be returned
+in parallel while unaffected integration proceeds. Label a requirement for Full
+Orchestration only when it truly needs live target/Apply/deployment evidence.
+
 Read [the shared execution contract](../../../agent-prompts/execution-contract.md)
 before acting. Resolve and report `source_plan_root`, `preparation_output_root`,
 `project_root`, `pipeline_id`, `stage_id`, `task_id`, `run_id`, `pass`, and `mode`.

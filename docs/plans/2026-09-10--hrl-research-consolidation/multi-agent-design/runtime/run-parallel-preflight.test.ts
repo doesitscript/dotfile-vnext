@@ -12,9 +12,14 @@ describe("bounded parallel preflight", () => {
       expect(result.exitCode).toBe(0); const manifest = JSON.parse(readFileSync(join(root, "out", "manifest.json"), "utf8")); expect(manifest.jobs).toHaveLength(2); expect(manifest.synthesis_owner).toBe("implementer");
     } finally { rmSync(root, { recursive: true, force: true }); }
   });
-  test("rejects mutation-capable commands before a worker starts", () => {
+  test("quarantines mutation-capable work before a worker starts", () => {
     const root = mkdtempSync(join(tmpdir(), "parallel-preflight-"));
-    try { const result = Bun.spawnSync(["bun", runner, config(root, [{ id: "bad-job", purpose: "bad", command: ["git", "reset", "--hard"] }])], { stdout: "pipe", stderr: "pipe" }); expect(result.exitCode).not.toBe(0); expect(result.stderr.toString()).toContain("mutation-capable");
+    try { const result = Bun.spawnSync(["bun", runner, config(root, [{ id: "bad-job", purpose: "bad", command: ["git", "reset", "--hard"] }])], { stdout: "pipe", stderr: "pipe" }); expect(result.exitCode).toBe(0); const admission = JSON.parse(readFileSync(join(root, "out", "admission.json"), "utf8")); expect(admission.rejected[0].reason).toContain("mutation-capable");
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+  test("records an explicit zero-job admission instead of skipping it", () => {
+    const root = mkdtempSync(join(tmpdir(), "parallel-preflight-"));
+    try { const result = Bun.spawnSync(["bun", runner, config(root, [])], { stdout: "pipe", stderr: "pipe" }); expect(result.exitCode).toBe(0); const admission = JSON.parse(readFileSync(join(root, "out", "admission.json"), "utf8")); expect(admission.admitted).toEqual([]);
     } finally { rmSync(root, { recursive: true, force: true }); }
   });
 });

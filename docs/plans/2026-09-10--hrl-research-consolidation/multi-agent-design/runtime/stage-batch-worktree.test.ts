@@ -1,0 +1,7 @@
+import { afterEach, describe, expect, test } from "bun:test";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+const roots:string[]=[]; afterEach(()=>roots.splice(0).forEach(root=>rmSync(root,{recursive:true,force:true})));
+const runner=join(import.meta.dir,"stage-batch-worktree.ts");
+test("stages selected dirty source into a detached no-commit worktree",()=>{const root=mkdtempSync(join(tmpdir(),"batch-stage-"));roots.push(root); Bun.spawnSync(["git","init"],{cwd:root});Bun.spawnSync(["git","config","user.email","test@example.invalid"],{cwd:root});Bun.spawnSync(["git","config","user.name","Test"],{cwd:root});writeFileSync(join(root,"a.txt"),"base\n");Bun.spawnSync(["git","add","a.txt"],{cwd:root});Bun.spawnSync(["git","commit","-m","base"],{cwd:root});writeFileSync(join(root,"a.txt"),"candidate\n");const config=join(root,"config.json");writeFileSync(config,JSON.stringify({source_root:root,staging_root:join(root,"staging"),batch_id:"candidate",paths:["a.txt"],validation:[{id:"diff",command:["git","diff","--check"]}]}));const result=Bun.spawnSync(["bun",runner,config],{stdout:"pipe",stderr:"pipe"});expect(result.exitCode).toBe(0);const target=join(root,"staging","candidate");expect(readFileSync(join(target,"a.txt"),"utf8")).toBe("candidate\n");expect(JSON.parse(readFileSync(join(target,".batch-manifest.json"),"utf8")).status).toBe("ready_for_grouped_evaluation");});

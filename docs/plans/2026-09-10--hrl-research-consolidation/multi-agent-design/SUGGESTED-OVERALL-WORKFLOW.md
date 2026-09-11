@@ -10,8 +10,9 @@ role-level boundaries, consultation classifier, and authority-profile behavior.
 The [guided research-application loop](research-application-loop.md) now adds
 the missing multi-pass middle stage between broad research and plan activation.
 It is a known next-major-iteration gap that the beta runtime does not yet decide
-when to schedule that loop or automatically route its repeated Expert/Synthesizer
-passes. Expert output may remain general technical guidance; Planner,
+when to schedule the full repeated Expert/Synthesizer loop. It now can route one
+explicit bounded Expert → Researcher consultation during a Light implementation
+run; Expert output may remain general technical guidance; Planner,
 Implementer, and Evaluator must respectively materialize, interpret, and verify
 it through actual infrastructure ownership rather than treating it as a rigid
 command plan.
@@ -109,8 +110,12 @@ review; the lab override changes approval routing, not technical safety.
 | 1a. Performance and placement (future) | Researchers/organizers + hardware collector + Resident Expert | Workload-to-storage matrix, compatibility corrections, allocation recommendation, proof metrics | A declared storage/performance decision is mapped to current configuration surfaces. |
 | 2. Readiness | Invoked knowledge capability | Task-specific readiness brief and authority map | Applicable practices and live tool/resource status are known. |
 | 3. Activate plan | Planner/coordinator using the named authority profile | Accepted execution plan, exact scope, Expert defaults, acceptance criteria, rollback boundary | The required evidence and exact target identity are present; this lab auto-adopts in-scope defaults. |
-| 4. Implement | Existing Implementer | Scoped change, implementation receipt, review-ready artifact | A bounded technical consultation may resolve doubt; a real conflict becomes an exception record. |
-| 5. Evaluate | Existing Evaluator | Feedback, waiting state, or ready/accepted state | Evidence supports each acceptance criterion and any recommendation/exception fit. |
+| 3a. Parallel-work admission (experimental default) | Parent/orchestrator using `parallel-work-admission-experimental` | Admission receipt; zero to four independent read-only lanes; rejected-work reasons | No parallel lane shares mutable ownership, host mutation, approval, or final synthesis. |
+| 3b. Batch change staging (experimental) | Implementer using `batch-change-staging-experimental` | Isolated no-commit worktree, validation receipts, grouped review package | Only research/Expert-stable, separable source work enters; Apply and shared owners remain serial. |
+| 4. Implement (default) | Light Implementer | Grouped source change, targeted validation, review-ready artifact | Ansible ownership/design/idempotence first; no repeated live discovery by default. |
+| 4a. Bounded consultation (optional) | On-site Expert → Researcher | Two concise recommendation/evidence artifacts for one named fork | Runs alongside unaffected source work; returns to normal pair rather than reopening planning. |
+| 5. Evaluate (default) | Light Evaluator | Grouped feedback, waiting state, or source-package ready verdict | Checks scalable design, naming, native modules and grouped project fit. |
+| 4–5 Full Orchestration (explicit) | Full Implementer/Evaluator | Governed live discovery, target proof, Apply/deployment receipts | Only for named live-proof/authority/target needs; never an automatic escalation. |
 | 6. Close and learn | Evaluator/coordinator | Closeout record and promotion candidates | Any reusable pattern has enough repeated evidence to be considered separately. |
 
 ## How the work should compose
@@ -189,4 +194,6 @@ Promote a capability into a project skill only after it has supported the storag
 - [Implementer enhancement: knowledge-capability consumption](implementer/enhancements/knowledge-capability-consumption.md)
 - [Evaluator enhancement: knowledge-capability review](evaluator/enhancements/knowledge-capability-review.md)
 - [Decision authority profiles](decision-authority-profiles.md)
+- [Active Light-profile rationale](orchestration/light-profile-rationale-2026-09-11.md)
+- [Bounded Expert + Researcher sidecar](orchestration/skills/resident-expert-researcher-sidecar-light-beta/SKILL.md)
 - [Researcher enhancement: Ansible implementation readiness](researchers/enhancements/ansible-implementation-readiness.md)

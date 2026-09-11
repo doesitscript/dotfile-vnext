@@ -20,6 +20,12 @@ Prepare the supplied project phase for the established Implementer/Evaluator.
 The draft name marks the limited lifecycle scope: this skill ends at a reviewed
 preparation handoff. It does not manage later implementation or its evaluation.
 
+For a settled plan, release the default **Light Orchestration** handoff: grouped
+source-first integration, design/idempotence review, and no required live proof.
+Mark **Full Orchestration** only when the plan specifically requires target
+identity, remote evidence, Apply, or deployment proof. Do not make full the
+default merely because the subject is infrastructure.
+
 Read [the shared execution contract](../../../agent-prompts/execution-contract.md)
 before acting. It defines paths, handoff events, restart behavior, review
 freshness, and the division between role work and runtime operation.

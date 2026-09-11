@@ -15,6 +15,11 @@ Use this project-local skill when a supplied Expert document, research pack, or
 user/Expert collaboration needs to become a reusable planning input. It is not
 for re-researching the whole topic or writing infrastructure changes.
 
+Its normal consumer is Light Orchestration: decisions should be actionable as
+grouped source/Ansible design constraints and include the applicable patterns,
+module guidance and acceptance criteria. Mark Full Orchestration only for a
+specific later live-proof requirement; do not force it into ordinary integration.
+
 ## Inputs
 
 Require the nominated source document, canonical plan/campaign location, the

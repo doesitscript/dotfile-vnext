@@ -1,0 +1,19 @@
+interface:
+  display_name: "Storage Plan Implementer (Light Beta)"
+  short_description: "Implement grouped source-first Ansible changes"
+  default_prompt: "Use $storage-plan-implementer-light-beta with the supplied project_root and plan_dir for one grouped source pass."
+policy:
+  allow_implicit_invocation: false
+orchestration:
+  workflow_id: "evaluator-implementer-light-loop"
+  role: "implementer"
+  counterpart_role: "evaluator"
+  stage_id: "implementation"
+  invocation_model: "single-grouped-artifact-pass"
+  required_inputs: ["project_root", "plan_dir"]
+  optional_consultation_inputs: ["consultation_request_path", "consultation_expert_path", "consultation_research_path"]
+  execution_contract: "../../../orchestration/implementation-beta-contract.md"
+  runtime_adapter: "../../../runtime/run-implementation.ts"
+  owns_approval: false
+  owns_runtime: false
+  owns_scheduler: false

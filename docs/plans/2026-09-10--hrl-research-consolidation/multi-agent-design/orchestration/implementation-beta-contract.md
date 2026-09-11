@@ -26,6 +26,18 @@ checks when used.
 
 ## Role composition
 
+## Orchestration profiles
+
+The default `light` profile uses the light adapters: settled research/Expert
+decisions, grouped project changes, targeted source validation, and an
+Evaluator design/idempotence verdict. A light `ready` artifact approves only
+the declared source package; it never asserts host deployment or live proof.
+
+The opt-in `full` profile uses the existing full adapters and retains target
+identity, governed live discovery, Apply authorization and runtime/deployment
+evidence. A parent must name `full`; no light run may silently acquire those
+requirements.
+
 | Role | Entry and additional behavior | Protected boundaries |
 | --- | --- | --- |
 | Implementer | Read project adapter, then load the mature global Implementer and its required children. Convert S1–S6 into owning Ansible work and receipts; consume current evaluator feedback. | Never author evaluator verdicts, edit frozen upstream, self-approve, poll or launch peers. |
@@ -110,6 +122,14 @@ and records disposition; original upstream snapshots stay immutable. Minor
 module lookups can be done by the current role via the Ansible knowledge gate.
 Research does not grant Apply authority or create whole-campaign sign-off.
 
+For the active Light runtime, this route is now executable as an optional
+sidecar rather than merely a documented escalation: pass the request's absolute
+path as `consultation_request_path`. The parent adds held On-site Expert and
+Researcher slots, runs one artifact pass in that order, writes their responses
+under `coordination/consultations/`, and supplies those paths to the normal
+Implementer/Evaluator turns. It is bounded to the named fork and does not
+restart preparation or delay unrelated source owners.
+
 Classify before routing: an in-scope evidence-backed Expert recommendation is
 materialized as a plan decision under `lab_recreatable_autonomy`; do not create
 a human wait or research loop merely to reconsider it. Route only a named
@@ -140,8 +160,9 @@ In this managed implementation runner, inactive slots are held so approval or
 other broker messages cannot wake the Implementer outside a parent-dispatched
 pass. The Evaluator signals approval of the Implementer only after writing a
 fresh whole-campaign ready artifact. Both are checked before successful teardown.
-Research return requests are still a parent escalation, not an automatically
-launched preparation sub-pipeline.
+Research return requests remain opt-in parent escalation, not automatic broad
+preparation. The Light parent can launch the bounded Expert/Researcher sidecar
+only when a named `consultation_request_path` is supplied.
 
 ## Runtime and cleanup
 

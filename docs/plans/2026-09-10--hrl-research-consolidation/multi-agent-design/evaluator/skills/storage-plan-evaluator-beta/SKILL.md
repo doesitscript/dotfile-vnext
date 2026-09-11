@@ -1,6 +1,6 @@
 ---
-name: storage-plan-evaluator-beta
-description: "Extend the mature paired-agent-plan-evaluator with verified Coordinator/Researcher intake, storage campaign identity, bounded research returns and independent whole-campaign evaluation. Use on the supplied storage implementation plan, not a broad project audit."
+name: storage-plan-evaluator-full-orchestration-beta
+description: "Full Orchestration evaluation lane: require governed live evidence and whole-campaign closure when explicitly requested. Not the default evaluator lane."
 metadata:
   status: beta
   scope: storage-implementation-campaign
@@ -12,7 +12,7 @@ metadata:
   depends_on_skills: "paired-agent-plan-evaluator, paired-agent-feedback-artifacts"
 ---
 
-# Storage plan Evaluator — beta adapter
+# Storage plan Evaluator — Full Orchestration
 
 After the early launch output below, read [the integration contract](../../../orchestration/implementation-beta-contract.md)
 and run its read-only intake check. Then **load and follow**
@@ -66,6 +66,11 @@ This early output is required even when no Implementer handoff exists yet.
    measurement. Send back only concrete loss of constraint, disorder, or missing
    evidence; do not demand an identical implementation mechanism where the plan
    allowed a valid equivalent.
+   When reviewing a staged-batch manifest, inspect the complete isolated diff
+   and its validation receipts. Emit one verdict whose feedback is grouped by
+   owner/file and consequence; do not make a separate evaluator cycle for each
+   independent source change. A failed batch validation remains feedback, never
+   a reason to apply or mutate the source worktree.
 2. Inspect actual code/Ansible owners and receipt freshness, not only summaries.
    Tie findings to S1–S6 and the work changed. The authoring validation receipt
    tests adapters, not storage correctness. Do not demand unrelated maturity work.

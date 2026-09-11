@@ -21,7 +21,7 @@ const {CodexDriver}=await import(join(process.env.MULTIAGENTS_PACKAGE_ROOT!,'orc
 installParentManagedInterruptGuard(CodexDriver, event => process.stderr.write(`[managed-runtime] ${JSON.stringify(event)}\n`));
 const turnTimeoutMs=Number(process.env.MULTIAGENTS_TURN_TIMEOUT_MS);
 installParentManagedTurnTimeout(CodexDriver,turnTimeoutMs,event => process.stderr.write(`[managed-runtime] ${JSON.stringify(event)}\n`));
-// Thread-scoped permission for the workflow's final Evaluator signal only.
+// Thread-scoped permission for each role's terminal workflow signal only.
 // Keep the configured approval policy and all other tool permissions unchanged.
 const identities=new WeakMap<object,any>();
 const spawn=CodexDriver.spawn;

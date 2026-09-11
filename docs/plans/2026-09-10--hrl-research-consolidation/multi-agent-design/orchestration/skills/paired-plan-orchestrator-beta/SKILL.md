@@ -16,6 +16,11 @@ finite-pass skills through the supplied runner and remain the user's single
 point of contact. You provide lightweight observation; a third Observer chat is
 optional, not required. Do not replace evaluator judgment with your own verdict.
 
+Default to `orchestration_profile: light`: grouped source-first changes,
+targeted validation, and design/idempotence review. Select `full` only when
+explicitly requested for live infrastructure proof/Apply or when a named
+target/authority contradiction requires it. Never silently escalate a light run.
+
 ## Inputs and early output
 
 Resolve absolute `project_root` and `plan_dir`. If supplied the source plan folder
@@ -29,6 +34,14 @@ Read the campaign README and
 `/Users/joshc/develop/global-skills/skills/documentation/multiagents-runtime-contract/SKILL.md`
 and `/Users/joshc/develop/global-skills/skills/implementation/multiagents-runtime-operator/SKILL.md`,
 including its lifecycle/start/recovery references before starting processes.
+When `parallel_preflight_jobs` is requested, first load the adjacent
+[`parallel-work-admission-experimental`](../parallel-work-admission-experimental/SKILL.md)
+skill. Give the runner only independent read-only candidates; report its
+admission receipt and continue serially even when all candidates are rejected.
+After a research/On-site Expert packet has stabilized an implementation direction,
+load [`batch-change-staging-experimental`](../batch-change-staging-experimental/SKILL.md)
+to decide whether a no-commit grouped source batch is worthwhile. Do not use it
+for a live target, shared mutable owner, approval, or unresolved design fork.
 Also read the [role operating contract](../../role-operating-contract.md)
 and any paired Expert recommendation / decision-authority profile named by the
 campaign. Treat them as canonical inputs, never as private-chat context.
@@ -121,10 +134,15 @@ that technical default. Under `product_governed`, route the same consequential
 choice to the smallest human decision.
 
 Dispatch a Resident Expert only for a named technical fork and a Researcher
-only for a named stale/missing evidence gap. An exact target-identity gap needs
-the smallest read-only probe. A source/runtime conflict needs a recorded
-exception and Evaluator review. None of these routes authorize broad re-planning
-or automatic launch of the earlier preparation pipeline.
+only for a named stale/missing evidence gap. In the Light runner, write a
+bounded request under `coordination/requests/` and supply its absolute path as
+`consultation_request_path`: the optional
+`resident-expert-researcher-sidecar-light-beta` creates one held Expert slot,
+then one held Researcher slot, and returns both concise artifacts to the normal
+pair. An exact target-identity gap needs the smallest read-only probe. A
+source/runtime conflict needs a recorded exception and Evaluator review. None
+of these routes authorize broad re-planning or automatic launch of the earlier
+preparation pipeline.
 
 On interruption, stop this exact owned run immediately using its manifest. On
 every automatic, error, limit, waiting, or user-requested stop, write one
@@ -145,6 +163,7 @@ present—not execute—an exact owned cleanup candidate list. Cleanup requires 
 separate explicit user choice. Retain skills, plan, receipts, upstream evidence,
 and execution records. Preserve shared services.
 
-This skill restores single-parent implementation-stage orchestration. It does
-not yet automatically start the earlier Coordinator/Researcher stages or future
-roles; bounded research/decision gaps return to the parent through artifacts.
+This skill restores single-parent implementation-stage orchestration. It can
+optionally start the bounded Expert/Researcher consultation sidecar from a
+named request; it does not automatically restart the earlier full preparation
+stage or future roles.
