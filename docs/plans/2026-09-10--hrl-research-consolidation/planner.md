@@ -36,8 +36,8 @@ specific gap instead of giving the open problem to Implementer.
 
 The complete interaction and packet schema are in
 [the guided research-application loop](multi-agent-design/orchestration/03-handoffs-and-loops.md).
-The current [performance-layout bootstrap](implementation-campaign/coordination/research-application/performance-layout-bootstrap-2026-09-11/README.md)
-and its [refined technical handoff](implementation-campaign/coordination/research-application/performance-layout-bootstrap-2026-09-11/refined-technical-handoff.md)
+The current [refined technical handoff](multi-agent-design/orchestration/05-refined-technical-handoff--storage-layout.md)
+and [historical research transforms](multi-agent-design/orchestration/examples/storage-layout-research-transforms/)
 demonstrate the required Implementer/Evaluator package.
 
 ## Future Workflow Vision

@@ -3,7 +3,7 @@
 ## Partial delivery (2026-09-11)
 
 The storage campaign now has an explicit
-[`refined-technical-handoff.md`](implementation-campaign/coordination/research-application/performance-layout-bootstrap-2026-09-11/refined-technical-handoff.md)
+[`refined technical handoff`](multi-agent-design/orchestration/05-refined-technical-handoff--storage-layout.md)
 that maps post-research Expert/Researcher findings to project owners and
 functional areas, and Light skills require it as the Implementer/Evaluator
 primary input. The work queue is Implementer-owned and dynamic.
