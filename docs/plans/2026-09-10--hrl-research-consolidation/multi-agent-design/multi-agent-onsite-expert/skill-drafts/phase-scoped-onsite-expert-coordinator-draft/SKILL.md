@@ -89,6 +89,15 @@ Otherwise write `handoff/current-phase-implementation-plan.md` containing:
 - open questions and `status: awaiting_plan_review`, `needs_research`, or
   `operator_decision_required`.
 
+For a nominated Expert research document, require the Research Synthesizer's
+decision packet before composition. Preserve its hard corrections and safety
+prohibitions; map its general placement/design guidance to current project
+owners rather than copying examples into the plan as inflexible commands. If a
+mapping or benefit claim is ambiguous, return one named question to the
+Expert/Synthesizer loop. Record the user's stated outcome and tradeoffs as plan
+constraints, while the selected authority profile continues to control whether
+a human wait is needed.
+
 An unknown host/device may be a defined read-only discovery step, but must not
 be silently selected. Preserve the user-approved scope; name legitimate later
 phases instead of marking them finished. Announce `plan_review_requested` with

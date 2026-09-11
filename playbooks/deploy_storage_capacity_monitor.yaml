@@ -1,0 +1,21 @@
+---
+- name: Deploy storage capacity monitoring on classified K3s GPU hosts
+  hosts: "container_orchestrator_k3s:&gpu_workload_nodes"
+  gather_facts: true
+  become: false
+  pre_tasks:
+    - name: Require an explicit verified inventory limit
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | trim | length > 0
+        fail_msg: >-
+          Supply --limit for the previously classified K3s GPU target; refusing
+          to mutate the full selector by default.
+      run_once: true
+      tags: [always]
+  roles:
+    - role: storage_capacity_monitor
+      tags:
+        - storage_capacity_monitor
+        - storage_monitoring

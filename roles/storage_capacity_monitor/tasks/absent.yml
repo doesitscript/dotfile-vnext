@@ -1,0 +1,25 @@
+---
+- name: Stop and disable storage capacity timer
+  ansible.builtin.systemd_service:
+    name: "{{ storage_capacity_monitor_timer_name }}"
+    state: stopped
+    enabled: false
+  become: true
+  failed_when: false
+
+- name: Remove storage capacity monitor files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ storage_capacity_monitor_script_path }}"
+    - "/etc/systemd/system/{{ storage_capacity_monitor_service_name }}"
+    - "/etc/systemd/system/{{ storage_capacity_monitor_timer_name }}"
+    - /etc/systemd/journald.conf.d/60-storage-capacity-monitor.conf
+  become: true
+  notify: Restart systemd journal
+
+- name: Reload systemd after storage capacity monitor removal
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  become: true

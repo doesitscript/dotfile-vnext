@@ -32,9 +32,21 @@ including its lifecycle/start/recovery references before starting processes.
 Also read the [role operating contract](../../role-operating-contract.md)
 and any paired Expert recommendation / decision-authority profile named by the
 campaign. Treat them as canonical inputs, never as private-chat context.
+When `coordination/research-application/` exists, identify the newest applicable
+bootstrap packet and require both adapters to read its research-to-decision and
+plan-materialization artifacts before their first S3–S5 pass. This is planning
+input, not a separate runtime role to launch or a reason to repeat research.
 
 Early in the chat, report the plan folder, your parent role and
 `Dashboard: http://127.0.0.1:7900 — <observed status>` using operator observe.
+Immediately after the runner returns its `session_id`—before scheduling the
+first role pass—put the runner's exact `watch-implementation-output.sh` command
+at the top of the parent response in a fenced `bash` block. It must contain the
+returned session ID and fresh run directory, use `--interval 5 --clear`, and
+state that it is read-only and `Ctrl-C` stops only the monitor. Do not replace
+it with raw curl JSON. The monitor polls `/slots/list` and joins that status with
+the durable `events.jsonl`; the web dashboard's `driver-mode MCP adapter` label
+is adapter metadata, not a worker transcript.
 State that you will manage both roles and report meaningful changes here. Do
 not tell the user to open two more chats. Link the plan's launch directory as
 an optional manual fallback, not another required step.

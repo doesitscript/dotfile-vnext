@@ -1,0 +1,106 @@
+---
+- name: Validate storage capacity monitor contract
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] in ['Debian', 'RedHat']
+      - storage_capacity_monitor_warning_percent | int > 0
+      - storage_capacity_monitor_critical_percent | int < 100
+      - storage_capacity_monitor_warning_percent | int < storage_capacity_monitor_critical_percent | int
+      - storage_capacity_monitor_mounts | length > 0
+      - storage_capacity_monitor_mounts | map(attribute='path') | select('match', '^/') | list | length == storage_capacity_monitor_mounts | length
+    fail_msg: Storage capacity monitoring requires Linux, absolute mount paths, and ordered 1-99 thresholds.
+
+- name: Gather service state for log-forwarder prerequisite
+  ansible.builtin.service_facts:
+  when: storage_capacity_monitor_require_alloy | bool
+
+- name: Require the existing Alloy journald route
+  ansible.builtin.assert:
+    that:
+      - "'alloy.service' in ansible_facts.services"
+      - ansible_facts.services['alloy.service'].state == 'running'
+    fail_msg: >-
+      Alloy is not installed and running. Apply playbooks/logging.yaml with the
+      logging_alloy tag to this verified target before enabling this monitor.
+  when: storage_capacity_monitor_require_alloy | bool
+
+- name: Create storage monitor executable directory
+  ansible.builtin.file:
+    path: "{{ storage_capacity_monitor_script_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Install storage capacity check
+  ansible.builtin.template:
+    src: storage-capacity-monitor.sh.j2
+    dest: "{{ storage_capacity_monitor_script_path }}"
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Install persistent journal size cap
+  ansible.builtin.template:
+    src: storage-capacity-monitor-journald.conf.j2
+    dest: /etc/systemd/journald.conf.d/60-storage-capacity-monitor.conf
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: Restart systemd journal
+
+- name: Install storage capacity systemd service
+  ansible.builtin.template:
+    src: storage-capacity-monitor.service.j2
+    dest: "/etc/systemd/system/{{ storage_capacity_monitor_service_name }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Install storage capacity systemd timer
+  ansible.builtin.template:
+    src: storage-capacity-monitor.timer.j2
+    dest: "/etc/systemd/system/{{ storage_capacity_monitor_timer_name }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Enable hourly storage capacity timer
+  ansible.builtin.systemd_service:
+    name: "{{ storage_capacity_monitor_timer_name }}"
+    state: started
+    enabled: true
+    daemon_reload: true
+  become: true
+
+- name: Exercise storage capacity check after deployment
+  ansible.builtin.systemd_service:
+    name: "{{ storage_capacity_monitor_service_name }}"
+    state: started
+  become: true
+  changed_when: false
+
+- name: Read latest storage capacity check events
+  ansible.builtin.command:
+    argv:
+      - journalctl
+      - --identifier=storage-capacity-monitor
+      - --lines={{ storage_capacity_monitor_mounts | length }}
+      - --no-pager
+  register: storage_capacity_monitor_journal
+  changed_when: false
+  become: true
+
+- name: Require an exercised event for every configured mount
+  ansible.builtin.assert:
+    that:
+      - item.path in storage_capacity_monitor_journal.stdout
+    fail_msg: "No exercised storage-capacity event was found for {{ item.path }}."
+  loop: "{{ storage_capacity_monitor_mounts }}"
+  loop_control:
+    label: "{{ item.path }}"

@@ -5,7 +5,7 @@
 This is the user-directed adoption of the On-site Expert's performance pass.
 It materializes the placement decisions into the campaign without asserting that
 any mount, migration, or hardware attachment has happened. The source is
-[the layout performance evaluation](../../multi-agent-design/multi-agent-onsite-expert/onsite-export-context7-layout-performance_eval.md).
+[the layout performance evaluation](../../multi-agent-design/multi-agent-onsite-expert/examples/storage-performance-research-application.md).
 
 ## Placement decisions
 

@@ -45,7 +45,7 @@ The user and On-site Expert demonstrated the missing loop in the storage
 campaign: cross-reference research with verified hardware, current configured
 surfaces, workload I/O patterns, durability classes, and available disk tiers;
 then turn the result into a small set of placement decisions. The resulting
-[performance layout evaluation](multi-agent-design/multi-agent-onsite-expert/onsite-export-context7-layout-performance_eval.md)
+[performance layout evaluation](multi-agent-design/multi-agent-onsite-expert/examples/storage-performance-research-application.md)
 used NVMe for model/image/PVC capacity, a smaller SATA SSD for isolated
 low-value I/O such as journal/swap/rebuildable caches, and root for K3s durable
 state plus kubelet-accounted pod logs.

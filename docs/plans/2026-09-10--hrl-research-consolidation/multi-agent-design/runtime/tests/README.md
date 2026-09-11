@@ -8,7 +8,7 @@ coverage and a preserved smoke seed, not a new testing framework.
 From the parent `runtime/` directory:
 
 ```bash
-bun test paired-events.test.ts implementation-policy.test.ts implementation-interrupt-guard.test.ts check-implementation-handoff.test.ts artifacts.test.ts
+bun test paired-events.test.ts implementation-policy.test.ts implementation-interrupt-guard.test.ts check-implementation-handoff.test.ts artifacts.test.ts watch-implementation-output.test.ts
 ```
 
 - [paired-events.test.ts](../paired-events.test.ts): finite handoffs, identity,
@@ -21,6 +21,8 @@ bun test paired-events.test.ts implementation-policy.test.ts implementation-inte
 - [check-implementation-handoff.test.ts](../check-implementation-handoff.test.ts):
   reviewed intake and snapshot rejection cases.
 - [artifacts.test.ts](../artifacts.test.ts): preparation review/release gates.
+- [watch-implementation-output.test.ts](../watch-implementation-output.test.ts):
+  terminal monitor interface and read-only input contract.
 
 ## Small real-agent scenario
 

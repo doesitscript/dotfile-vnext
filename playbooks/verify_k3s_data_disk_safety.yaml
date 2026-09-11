@@ -20,6 +20,18 @@
         vhd_size_bytes: 107374182400
         vhd_type: dynamic
         host_free_bytes: 536870912000
+    _already_unmounted_fixture:
+      device_exists: false
+      live_source:
+        rc: 1
+        stdout: ""
+      fstab_source:
+        rc: 1
+        stdout: ""
+    _apply_capacity_recheck_fixture:
+      host_free_bytes: 118111600640
+      requested_size_bytes: 107374182400
+      host_reserve_bytes: 21474836480
   tasks:
     - name: Accept populated matching Hyper-V preview fixture
       ansible.builtin.include_tasks: >-
@@ -140,6 +152,48 @@
       ansible.builtin.assert:
         that: _partition_mismatch_rejected
 
+    - name: Initialize raw whole-disk path rejection result
+      ansible.builtin.set_fact:
+        _raw_device_path_rejected: false
+
+    - name: Exercise raw whole-disk path rejection
+      block:
+        - name: Validate unstable raw device fixture
+          ansible.builtin.include_tasks: >-
+            {{ playbook_dir }}/../roles/linux_data_disk_mount/tasks/derive_partition.yml
+          vars:
+            linux_data_disk_mount_device_by_id: /dev/sdb
+            linux_data_disk_mount_partition_path: ""
+      rescue:
+        - name: Record raw whole-disk path rejection
+          ansible.builtin.set_fact:
+            _raw_device_path_rejected: true
+
+    - name: Require raw whole-disk path rejection
+      ansible.builtin.assert:
+        that: _raw_device_path_rejected
+
+    - name: Initialize partition-suffixed path rejection result
+      ansible.builtin.set_fact:
+        _partition_path_rejected: false
+
+    - name: Exercise partition-suffixed path rejection
+      block:
+        - name: Validate partition-suffixed device fixture
+          ansible.builtin.include_tasks: >-
+            {{ playbook_dir }}/../roles/linux_data_disk_mount/tasks/derive_partition.yml
+          vars:
+            linux_data_disk_mount_device_by_id: /dev/disk/by-id/fixture-disk-part1
+            linux_data_disk_mount_partition_path: ""
+      rescue:
+        - name: Record partition-suffixed path rejection
+          ansible.builtin.set_fact:
+            _partition_path_rejected: true
+
+    - name: Require partition-suffixed path rejection
+      ansible.builtin.assert:
+        that: _partition_path_rejected
+
     - name: Initialize partition parent mismatch result
       ansible.builtin.set_fact:
         _partition_parent_mismatch_rejected: false
@@ -160,6 +214,23 @@
     - name: Require partition parent mismatch rejection
       ansible.builtin.assert:
         that: _partition_parent_mismatch_rejected
+
+    - name: Require populated already-unmounted fixture to stay source-empty
+      ansible.builtin.assert:
+        that:
+          - not _already_unmounted_fixture.device_exists
+          - _already_unmounted_fixture.live_source.rc == 1
+          - _already_unmounted_fixture.live_source.stdout | length == 0
+          - _already_unmounted_fixture.fstab_source.rc == 1
+          - _already_unmounted_fixture.fstab_source.stdout | length == 0
+
+    - name: Require populated apply-capacity fixture to cross selected reserve
+      ansible.builtin.assert:
+        that:
+          - >-
+            _apply_capacity_recheck_fixture.host_free_bytes -
+            _apply_capacity_recheck_fixture.requested_size_bytes <
+            _apply_capacity_recheck_fixture.host_reserve_bytes
 
     - name: Load orchestration and absent task contracts
       ansible.builtin.set_fact:
@@ -200,16 +271,56 @@
              'Require exact disk, partition, live mount and fstab identity') |
              list | length) == 1
           - >-
+            ((_absent_tasks |
+              selectattr('name', 'equalto', 'Inspect live mount source') |
+              first)['ansible.builtin.command'].argv | select('equalto', '--mountpoint') |
+              list | length) == 1
+          - >-
+            ((_absent_tasks |
+              selectattr('name', 'equalto', 'Inspect persistent fstab source') |
+              first)['ansible.builtin.command'].argv | select('equalto', '--mountpoint') |
+              list | length) == 1
+          - >-
+            ((_absent_tasks |
+              selectattr('name', 'equalto', 'Inspect live mount source') |
+              first)['ansible.builtin.command'].argv | select('equalto', '--target') |
+              list | length) == 0
+          - >-
+            (_absent_tasks |
+             selectattr('name', 'equalto',
+             'Require no lingering mount intent when selected disk is absent') |
+             first)['ansible.builtin.assert'].that ==
+            ['_linux_data_disk_mount_live_source.rc == 1',
+             '_linux_data_disk_mount_fstab_source.rc == 1']
+          - >-
             (_hyperv_present_tasks |
              selectattr('name', 'equalto',
              'Preview Hyper-V data disk and host capacity') |
              first)['ansible.windows.win_powershell'].parameters | length == 7
+          - >-
+            (_hyperv_present_tasks |
+             selectattr('name', 'equalto',
+             'Create and attach selected Hyper-V data disk') |
+             first)['ansible.windows.win_powershell'].parameters | length == 7
+          - >-
+            'HostReserveBytes' in
+            (_hyperv_present_tasks |
+             selectattr('name', 'equalto',
+             'Create and attach selected Hyper-V data disk') |
+             first)['ansible.windows.win_powershell'].parameters
+          - >-
+            ((_hyperv_present_tasks |
+              selectattr('name', 'equalto',
+              'Create and attach selected Hyper-V data disk') |
+              first)['ansible.windows.win_powershell'].script |
+              regex_search('Get-PSDrive[\\s\\S]+drive\\.Free - \\$RequestedSizeBytes -lt \\$HostReserveBytes[\\s\\S]+New-VHD')) is not none
           - >-
             (_hyperv_absent_tasks |
              selectattr('name', 'equalto',
              'Preview exact Hyper-V data-disk attachment before detach') |
              first)['ansible.windows.win_powershell'].parameters | length == 4
         fail_msg: >-
-          Absent must run guest cleanup before detach and remove fstab only
-          after exact source identity validation; Hyper-V user values must use
-          structured PowerShell parameters.
+          Absent must use exact mountpoint identity before guest cleanup and
+          detach; Linux disk selection must reject unstable/raw paths before
+          partitioning; Hyper-V apply must recheck reserve with structured
+          PowerShell parameters before New-VHD.

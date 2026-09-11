@@ -31,6 +31,9 @@ specific gap instead of giving the open problem to Implementer.
 
 The complete interaction and packet schema are in
 [the guided research-application loop](multi-agent-design/research-application-loop.md).
+The current [performance-layout bootstrap](implementation-campaign/coordination/research-application/performance-layout-bootstrap-2026-09-11/README.md)
+demonstrates how a user/Expert research document enters this role without
+becoming a rigid command list.
 
 ## Future Workflow Vision
 

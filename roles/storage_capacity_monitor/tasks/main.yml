@@ -1,0 +1,16 @@
+---
+- name: Validate storage capacity monitor lifecycle state
+  ansible.builtin.assert:
+    that:
+      - storage_capacity_monitor_state in ['present', 'absent']
+    fail_msg: >-
+      storage_capacity_monitor_state must be present or absent; got
+      {{ storage_capacity_monitor_state }}.
+
+- name: Manage present storage capacity monitor state
+  ansible.builtin.include_tasks: present.yml
+  when: storage_capacity_monitor_state == 'present'
+
+- name: Manage absent storage capacity monitor state
+  ansible.builtin.include_tasks: absent.yml
+  when: storage_capacity_monitor_state == 'absent'

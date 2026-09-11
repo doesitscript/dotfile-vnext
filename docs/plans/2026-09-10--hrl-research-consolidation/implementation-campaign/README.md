@@ -184,9 +184,9 @@ activation of all future roles remains outside this iteration.
 ## Plan verification receipt
 
 **Slice:** current implementation campaign  
-**Verified at:** 2026-09-11T08:23:17Z  
+**Verified at:** 2026-09-11T10:52:33Z
 **Verifier:** Implementer run
-`hrl-storage-implementation-beta-01-parent-20260911t074328z-implementer-7`
+`hrl-storage-implementation-beta-01-parent-20260911t104646z-implementer-1`
 
 | ID | Source | Obligation | In scope? | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
@@ -195,7 +195,7 @@ activation of all future roles remains outside this iteration.
 | S3 | Ordered execution | Move vLLM cache/PVC to verified backing and prove mount, readiness, health, integrity and rollback | yes | blocked | The adopted layout selects `HF_HUB_CACHE` on the NVMe mount and preserves original-cache rollback; persistent backing and mutation proof remain incomplete. |
 | S3-V1 | Verify contract | Prove PVC/PV binding, physical mount backing, pod readiness, `/health` and `/v1/models` | yes | blocked | Requires authorized S3/S4 Apply and the new capacity/health receipts. |
 | S3-U1 | Undo contract | Preserve old cache/source and prove reversal after integrity comparison | yes | blocked | Original cache is the selected rollback source; cutover evidence is still required. |
-| S4 | Ordered execution | Add approved VHDX/mount and perform data-safe migration with integrity/rollback proof | yes | blocked | The 200 GiB NVMe VHDX, reserve, host path, slot and mount are selected; state-aware ordering exists, but final Evaluator corrections, target binding and Apply remain incomplete. |
+| S4 | Ordered execution | Add approved VHDX/mount and perform data-safe migration with integrity/rollback proof | yes | blocked | The selected 200 GiB NVMe VHDX source path now has exact mountpoint, stable whole-disk and apply-time reserve guards (`receipts/2026-09-11T105233Z-s4-final-source-boundaries.md`); post-attach by-id/serial binding, Apply and migration evidence remain incomplete. |
 | S4-A1 | Apply contract | Create/attach only the selected VHDX, then resolve by-id/serial and initialize/mount only after explicit authority | yes | blocked | `*_apply=false`; capacity/type/reserve/path/slot are selected, while whole-disk by-id, serial, ext4/xfs validation and live attachment evidence remain required. |
 | S4-V1 | Verify contract | Prove attachment, disk identity, filesystem/mount, capacity and intended workload use | yes | blocked | Controller-local populated fixtures validate the source guards, but no selected physical disk exists or has been applied. |
 | S4-U1 | Undo contract | Unmount before detach and preserve VHDX/data/backup | yes | pending evaluator review | Playbook ordering and identity-checked unmount → fstab removal → exact detach are implemented but not applied. |

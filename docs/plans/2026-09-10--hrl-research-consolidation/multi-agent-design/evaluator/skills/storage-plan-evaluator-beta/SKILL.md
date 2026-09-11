@@ -26,6 +26,11 @@ If `mode: orchestrated` and a parent session/manifest is supplied, the parent
 already manages both roles and observation. Skip the manual launch blocks;
 report your role/pass to the parent and use its provided invocation ID. Do not
 generate a different ID or start another team. The following is manual-mode only.
+In a managed session, use the peer `set_summary` tool twice: once after intake
+with a concise factual review slice (for example, `Evaluator: checking S4
+identity evidence`), and once immediately before the durable verdict with its
+artifact filename and next actor. This improves the dashboard's limited status
+surface; it does not replace the artifact, receipt, or parent terminal monitor.
 
 On initial activation, after resolving `project_root` and `plan_dir` but before
 intake checks or evaluation, read the
@@ -48,6 +53,19 @@ This early output is required even when no Implementer handoff exists yet.
    profile. Verify that Implementer followed the profile-adopted technical
    default or recorded a real source/runtime exception; do not treat either a
    recommendation or a lab profile as approval without independent evidence.
+   Also read the newest applicable packet beneath
+   `coordination/research-application/` and its plan-materialization brief when
+   present. For this campaign, use it to assess S3–S5 interpretation and
+   decision lineage rather than asking Implementer to rediscover settled design
+   work.
+   When a research-application packet is supplied, check that the
+   implementation interpreted general technical guidance through actual owners
+   rather than copying it as an uncontrolled script. Confirm all applicable hard
+   corrections/prohibitions survived, each added configuration surface has an
+   owner and validation/rollback, and claimed performance benefit has a relevant
+   measurement. Send back only concrete loss of constraint, disorder, or missing
+   evidence; do not demand an identical implementation mechanism where the plan
+   allowed a valid equivalent.
 2. Inspect actual code/Ansible owners and receipt freshness, not only summaries.
    Tie findings to S1–S6 and the work changed. The authoring validation receipt
    tests adapters, not storage correctness. Do not demand unrelated maturity work.

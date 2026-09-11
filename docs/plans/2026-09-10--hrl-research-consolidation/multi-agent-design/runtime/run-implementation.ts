@@ -34,6 +34,8 @@ let current='preflight',nextActor='implementer',responseTo:string|null=null;
 let watcher:ReturnType<typeof spawn>|undefined;
 const save=(name:string,data:any)=>writeFileSync(join(out,name),JSON.stringify(data,null,2)+'\n');
 const log=(event:string,data:any={})=>{const line=JSON.stringify({time:new Date().toISOString(),event,...data});appendFileSync(join(out,'events.jsonl'),line+'\n');if(event!=='driver')console.log(line);};
+const shellQuote=(value:string)=>`'${value.replace(/'/g,"'\\''")}'`;
+const printMonitorCommand=()=>console.log(`\nMonitor this run in a second terminal (read-only; Ctrl-C stops only the monitor):\n${shellQuote(join(import.meta.dir,'watch-implementation-output.sh'))} --session-id ${shellQuote(session)} --run-dir ${shellQuote(out)} --endpoint ${shellQuote('http://127.0.0.1:7899')} --interval 5 --clear\n`);
 function ledger(mode:string,args:string[]=[],manifest=owner,run=cfg.run_id){
  const p=Bun.spawnSync(['python3',ownership,mode,'--manifest',manifest,'--run-id',run,...args],{stdout:'pipe',stderr:'pipe',timeout:20000});
  if(p.exitCode!==0)throw Error(p.stderr.toString()||p.stdout.toString());return JSON.parse(p.stdout.toString());
@@ -88,7 +90,7 @@ try{
  writeFileSync(join(out,'AGENTS.md'),`# Parent-owned runtime work area\nOne finite assigned pass; parent owns scheduling. Use explicit project_root and plan_dir from the task, never ambient cwd. ${fixture?'Fixture only: no real project or host access.':'Read project_root/AGENTS.md before substantive project work; follow that project framework. Preserve unrelated work and specific Apply authority.'}\n`);
  const result=await client.callTool({name:'create_team',arguments:{project_dir:out,session_name:requestedSession,agents:['implementer','evaluator'].map(role=>({agent_type:'codex',name:role,role,role_description:`You are ${role}. Follow ${skills[role]} for task passes. Parent schedules finite passes. No independent polling, peer launches or runtime operation.`,initial_task:'Reply READY only. No tools or file writes. End this initialization turn.',file_ownership:role==='implementer'?['roles/**','playbooks/**','inventory/**','review_ready_for_evaluator_*']:['feedback_for_review_by_evaluator_*','waiting_for_review_by_evaluator_*','ready_for_review_by_evaluator_*']}))}},undefined,{timeout:180000});
  const text=result.content?.map((x:any)=>x.text||'').join('\n')||'',match=text.match(/Session "([^"]+)" created/);if(result.isError||!match)throw Error(`create_team failed: ${text}`);
- const expectedSession=session;session=match[1];created=true;log('team_created',{session_id:session});save('session.json',{session_id:session,run_id:cfg.run_id,owner_manifest_path:owner});
+ const expectedSession=session;session=match[1];created=true;log('team_created',{session_id:session});save('session.json',{session_id:session,run_id:cfg.run_id,owner_manifest_path:owner});printMonitorCommand();
  if(session!==expectedSession)throw Error('Unexpected session collision; actual ID retained for cleanup');
  await until(()=>completed>=4,180);
  for(const slot of await post('/slots/list',{session_id:session}))await post('/hold-messages',{session_id:session,slot_id:slot.id});

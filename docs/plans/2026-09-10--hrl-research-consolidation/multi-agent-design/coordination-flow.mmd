@@ -26,20 +26,23 @@ flowchart TB
     CO2 -->|"unresolved user decision"| OP
     RELEASE --> PARENT["Return exact plan/review/hash to parent or operator<br/>preparation stops here"]
     PARENT -.->|"future stage; separate activation authority"| CANON["Canonical plan + evidence packet\nresearch, receipts, decisions, hashes"]
+    CANON --> SYNTH["Research Synthesizer\nclassifies research guidance\nagainst current state and owners"]
+    SYNTH --> EXPERT["Resident / On-site Expert\nchallenge and refine"]
+    EXPERT -->|"bounded follow-up"| SYNTH
     CANON --> PROFILE{"Decision authority profile"}
     PROFILE -->|"lab_recreatable_autonomy"| IMPL["Established Implementer"]
     PROFILE -->|"product_governed"| IMPL
     CANON --> EVAL["Established Evaluator"]
     IMPL --> UNCERTAIN{"Bounded uncertainty?"}
     UNCERTAIN -->|"none"| HANDOFF["Review-ready receipt"] --> EVAL
-    UNCERTAIN -->|"technical doubt"| EXPERT["Resident / On-site Expert\nscoped consultation"]
-    UNCERTAIN -->|"evidence gap"| RESEARCH["Targeted Researcher / capability refresh"] --> EXPERT
+    UNCERTAIN -->|"technical doubt"| EXPERT
+    UNCERTAIN -->|"evidence gap"| RESEARCH["Targeted Researcher / capability refresh"] --> SYNTH
     EXPERT --> REC["Recommendation packet\nclass + evidence + best recommendation\nvalidation + rollback"]
     REC -->|"technical recommendation"| IMPL
     REC -->|"consequential decision"| PROFILE
     PROFILE -->|"lab: adopt evidence-backed default"| IMPL
     PROFILE -->|"product: human decision required"| OPDEC["Operator authority decision"] --> CANON
-    IMPL -->|"source/runtime conflict only"| EXCEPTION["Recorded exception / deviation"] --> EVAL
+    IMPL -->|"source/runtime or safety contradiction"| EXCEPTION["Recorded exception / deviation"] --> EVAL
     EVAL -->|"defect"| IMPL
     EVAL -->|"evidence or recommendation conflict"| EXPERT
     EVAL -->|"accepted"| CLOSE["Closeout / reusable knowledge promotion"]

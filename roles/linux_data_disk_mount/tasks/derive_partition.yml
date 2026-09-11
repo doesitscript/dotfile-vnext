@@ -1,4 +1,14 @@
 ---
+- name: Require a stable whole-disk by-id selection before deriving a partition
+  ansible.builtin.assert:
+    that:
+      - linux_data_disk_mount_device_by_id | trim | length > 0
+      - linux_data_disk_mount_device_by_id is match('^/dev/disk/by-id/')
+      - not (linux_data_disk_mount_device_by_id | regex_search('-part[0-9]+$'))
+    fail_msg: >-
+      device_by_id must be a stable whole-disk path under /dev/disk/by-id/
+      without a -partN suffix.
+
 - name: Derive stable partition path from selected whole disk
   ansible.builtin.set_fact:
     _linux_data_disk_mount_partition_by_id: >-

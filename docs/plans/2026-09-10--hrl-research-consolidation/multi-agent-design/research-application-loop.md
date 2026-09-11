@@ -86,9 +86,12 @@ evaluator_input: independent acceptance obligations
   profile.
 - The Planner stops before activation when an accepted recommendation cannot be
   mapped to an owning project surface, target binding, validation, or rollback.
-- Implementer/Evaluator return only a real evidence/source/runtime conflict to
-  this loop; ordinary implementation findings remain in their normal repair
-  cycle.
+- During framing, synthesis, and plan materialization, a named ambiguity about
+  evidence, applicability, owner mapping, measurable benefit, or a safety
+  boundary returns to the Expert/Synthesizer loop. Once a materialized plan is
+  in the Implementer/Evaluator stage, only a real source/runtime conflict or
+  newly discovered safety contradiction reopens the design loop; ordinary
+  implementation findings remain in the normal repair cycle.
 
 ## Current runtime boundary
 
@@ -96,3 +99,10 @@ The beta parent runtime does not yet launch this loop automatically. It remains
 a durable artifact contract and a role definition for the next orchestration
 iteration. A future run can use this contract to process a nominated research
 document without changing the role boundaries again.
+
+The current [performance-layout bootstrap packet](../implementation-campaign/coordination/research-application/performance-layout-bootstrap-2026-09-11/README.md)
+is the first retrospective example of this contract: it retains a user/Expert
+source, gives the Research Synthesizer classification ownership, and gives the
+Planner, Implementer, and Evaluator their distinct downstream interpretation
+responsibilities.
+Its retained source example is [storage performance research application](multi-agent-onsite-expert/examples/storage-performance-research-application.md).

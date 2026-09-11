@@ -147,6 +147,9 @@ refreshes only that evidence or mapping; the Expert then selects a recommended
 direction. The Planner/Coordinator receives the accepted direction and maps it
 to an executable plan. See the exact ownership, packet fields, and return
 conditions in [the guided research-application loop](../research-application-loop.md).
+The [storage performance research-application example](../multi-agent-onsite-expert/examples/storage-performance-research-application.md)
+is a concrete reference for converting broad multi-technology evidence into
+successive Expert-facing decision packets rather than a one-pass index.
 
 ---
 

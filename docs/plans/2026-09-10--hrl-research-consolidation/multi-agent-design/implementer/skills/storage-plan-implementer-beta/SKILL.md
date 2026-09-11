@@ -26,6 +26,11 @@ If `mode: orchestrated` and a parent session/manifest is supplied, the parent
 already manages both roles and observation. Skip the manual launch blocks;
 report your role/pass to the parent and use its provided invocation ID. Do not
 generate a different ID or start another team. The following is manual-mode only.
+In a managed session, use the peer `set_summary` tool twice: once after intake
+with a concise factual work slice (for example, `Implementer: validating S4
+disk identity`), and once immediately before the durable handoff with its
+artifact filename and next actor. This improves the dashboard's limited status
+surface; it does not replace the artifact, receipt, or parent terminal monitor.
 
 On initial activation, after resolving `project_root` and `plan_dir` but before
 intake checks, research or implementation, read the
@@ -44,10 +49,21 @@ owns advertising the optional Observer prompt.
    Announce role, campaign/invocation IDs, scope and artifact ownership.
    If supplied, read the canonical Expert recommendation path and decision
    authority profile. Reuse its cited evidence; do not reopen broad research.
+   Also read the newest applicable packet beneath
+   `coordination/research-application/` and its plan-materialization brief when
+   that directory exists. For this campaign, it is required planning input for
+   S3–S5, alongside the authorization ledger—not optional background reading.
    Under `lab_recreatable_autonomy`, implement an evidence-backed Best
    recommendation as the plan's selected technical default within declared
    scope. Under `product_governed`, record it as proposed until the parent
    supplies the authority decision.
+   When a research-application packet is supplied, act as its technical
+   interpreter: preserve hard corrections/prohibitions, map general guidance to
+   proven current Ansible owners and live targets, and select an idempotent
+   mechanism appropriate to the repository. Do not blindly copy illustrative
+   source commands or turn a broad recommendation into unowned configuration.
+   A different concrete mechanism is valid only when it preserves the guidance
+   or records a genuine source/runtime-backed exception.
 2. Use the mature artifact contract to decide current ownership. A fresh
    whole-campaign approval with no newer review-relevant changes means no work;
    pending review is not permission to race the Evaluator with another write pass.

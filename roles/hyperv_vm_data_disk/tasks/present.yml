@@ -94,6 +94,7 @@
       Path: "{{ hyperv_vm_data_disk_vhdx_path }}"
       RequestedSizeBytes: "{{ (hyperv_vm_data_disk_size_gib | int) * 1073741824 }}"
       RequestedType: "{{ hyperv_vm_data_disk_type }}"
+      HostReserveBytes: "{{ (hyperv_vm_data_disk_host_reserve_gib | int) * 1073741824 }}"
       ControllerNumber: "{{ hyperv_vm_data_disk_controller_number | int }}"
       ControllerLocation: "{{ hyperv_vm_data_disk_controller_location | int }}"
     script: |
@@ -102,6 +103,7 @@
         [Parameter(Mandatory)][string]$Path,
         [Parameter(Mandatory)][Int64]$RequestedSizeBytes,
         [Parameter(Mandatory)][ValidateSet('fixed', 'dynamic')][string]$RequestedType,
+        [Parameter(Mandatory)][Int64]$HostReserveBytes,
         [Parameter(Mandatory)][int]$ControllerNumber,
         [Parameter(Mandatory)][int]$ControllerLocation
       )
@@ -111,6 +113,16 @@
         New-Item -ItemType Directory -Path $parent -Force -ErrorAction Stop | Out-Null
       }
       if (-not (Test-Path -LiteralPath $Path)) {
+        $driveRoot = Split-Path -Qualifier $Path
+        if (-not $driveRoot) {
+          throw "VHDX path must use a local qualified host volume: $Path"
+        }
+        $driveName = $driveRoot.TrimEnd([char[]]'\\:')
+        $drive = Get-PSDrive -Name $driveName -PSProvider FileSystem -ErrorAction Stop
+        if ($drive.Free - $RequestedSizeBytes -lt $HostReserveBytes) {
+          throw "Insufficient host free space: $([Int64]$drive.Free) bytes free; " +
+            "need $RequestedSizeBytes bytes plus $HostReserveBytes reserve"
+        }
         if ($RequestedType -eq 'fixed') {
           New-VHD -Path $Path -SizeBytes $RequestedSizeBytes -Fixed -ErrorAction Stop | Out-Null
         } else {

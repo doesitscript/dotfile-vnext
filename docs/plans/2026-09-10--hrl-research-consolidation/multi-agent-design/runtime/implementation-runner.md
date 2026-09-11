@@ -21,7 +21,21 @@ to read and follow the actual project's instructions before substantive work.
 bun /absolute/path/to/runtime/run-implementation.ts /absolute/config.json
 ```
 
-Keep the parent execution attached and follow JSON events. Defaults: at most 8
+Keep the parent execution attached and follow JSON events. Immediately after the
+session is created, the runner prints the exact read-only terminal monitor
+command for that session and fresh run directory. Run it in a second terminal:
+
+```bash
+/absolute/path/to/runtime/watch-implementation-output.sh --session-id '<returned-session-id>' --run-dir '/absolute/fresh-run-dir' --endpoint 'http://127.0.0.1:7899' --interval 5 --clear
+```
+
+The script uses `curl POST /slots/list` every five seconds and renders a
+colorized role table plus the latest durable `events.jsonl` event. `Ctrl-C`
+stops only that monitor. The browser dashboard remains useful for connection
+health, but its `driver-mode MCP adapter` label is broker adapter metadata; the
+installed API does not expose live model prose to that card.
+
+Defaults: at most 8
 passes, 15 minutes per pass, 90 minutes total. These are stopping limits, not
 success criteria. Source/receipt work survives a stop; restart with a fresh run
 directory and ID to continue. Live Apply is still gated by actual authorization.

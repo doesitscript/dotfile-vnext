@@ -9,6 +9,18 @@ The [role operating contract](role-operating-contract.md) gives the matching
 role-level boundaries, consultation classifier, and authority-profile behavior.
 The [guided research-application loop](research-application-loop.md) now adds
 the missing multi-pass middle stage between broad research and plan activation.
+It is a known next-major-iteration gap that the beta runtime does not yet decide
+when to schedule that loop or automatically route its repeated Expert/Synthesizer
+passes. Expert output may remain general technical guidance; Planner,
+Implementer, and Evaluator must respectively materialize, interpret, and verify
+it through actual infrastructure ownership rather than treating it as a rigid
+command plan.
+The [storage performance research-application example](multi-agent-onsite-expert/examples/storage-performance-research-application.md)
+and its campaign bootstrap packet show the intended refinement cycle:
+User/Expert framing → Research Synthesizer classification → Expert challenge
+and refinement → Planner materialization → Implementer interpretation →
+Evaluator validation. The runtime scheduling point for that earlier loop remains
+a documented next-major-iteration gap.
 
 ## Proposed flow
 
@@ -42,22 +54,25 @@ evidence and a recommended default before implementation starts.
 
 ```mermaid
 flowchart LR
-  CP[Canonical plan + evidence packet\nresearch, receipts, decisions, hashes] --> DP{Decision authority profile}
+  CP[Canonical plan + evidence packet\nresearch, receipts, decisions, hashes] --> RS[Research Synthesizer\nclassifies evidence, current state, owners]
+  RS --> OE[Resident / On-site Expert\nchallenge and refine]
+  OE -->|bounded follow-up| RS
+  CP --> DP{Decision authority profile}
   DP -->|lab_recreatable_autonomy| I[Implementer]
   DP -->|product_governed| I
   CP --> E[Evaluator]
   I --> D{Bounded uncertainty?}
   D -->|none| H[Evidence receipt and review-ready artifact]
-  D -->|technical doubt| OE[Resident / On-site Expert]
+  D -->|technical doubt| OE
   D -->|evidence gap| Q[Targeted research question]
-  Q --> R[Researchers and knowledge capabilities] --> OE
+  Q --> R[Researchers and knowledge capabilities] --> RS
   OE --> P[Scoped recommendation packet\nclass + evidence + Best recommendation\nassumptions + validation + rollback]
   P -->|technical recommendation| I
   P -->|consequential choice| DP
   DP -->|lab: evidence-backed default adopted| I
   DP -->|product: human decision required| U[Operator authority decision]
   U --> CP
-  I -->|source/runtime conflict only| X[Exception / deviation record] --> E
+  I -->|source/runtime or safety contradiction| X[Exception / deviation record] --> E
   H --> E
   E -->|implementation defect| I
   E -->|named evidence gap or recommendation conflict| OE
@@ -70,6 +85,13 @@ but does not repeat validated discovery merely because a later role starts.
 Its recommendation is a design input, never live-Apply authority. Technical
 Best recommendations let the Implementer continue within the existing plan;
 only a consequential authority choice pauses that flow.
+
+During planning, a named ambiguity about evidence applicability, owner mapping,
+benefit measurement, or a safety boundary can make another bounded
+Synthesizer/Expert pass necessary. After Planner materialization hands work to
+Implementer/Evaluator, that design loop reopens only for a real source/runtime
+or safety contradiction; ordinary implementation defects stay in the normal
+repair loop.
 
 For this homelab, the selected `lab_recreatable_autonomy` profile treats
 recreatable, availability-tolerant in-scope work as auto-adoptable once the

@@ -60,6 +60,14 @@ only when the user still wants an orchestrated run.
 6. Announce `research_ready` with the absolute brief path and next actor
    `Coordinator`. End this invocation for the external compose-pass wakeup.
 
+When a nominated Expert research document is supplied, do not merely attach it
+to the brief. First use the project-local
+`research-to-decision-synthesizer-beta` contract to classify hard corrections,
+principles, prohibitions, conditional options and discovery requirements. State
+which conclusions are general guidance needing Planner mapping rather than
+literal implementation steps. The result may return one bounded question to the
+On-site Expert for another pass; it must not restart broad research.
+
 ## Pass: review-plan
 
 Read source plan, routing, brief, and current
