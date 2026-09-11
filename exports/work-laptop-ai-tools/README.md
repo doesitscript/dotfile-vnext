@@ -71,6 +71,8 @@ checkout. See `AGENTS.md`.
 | `work-laptop-mcp-adopt` | `.agents/skills/work-laptop-mcp-adopt/` | Wire MCP into packet at `absent` + HRL remaps |
 | `work-laptop-vault` | `.agents/skills/work-laptop-vault/` | Vault example / key map / parent→packet transfer prep |
 | `work-laptop-packet-ops` | `.agents/skills/work-laptop-packet-ops/` | Validate + sync sibling (thin; delegates scripts) |
+| `work-laptop-inbox-evaluate-fix` | `.agents/skills/work-laptop-inbox-evaluate-fix/` | Pull → process `inbox/` → fix in source packet → sync/push |
+| `work-laptop-remediation-return` | `.agents/skills/work-laptop-remediation-return/` | Laptop repair + evidence receipt; return fix to source |
 
 ### Parent-only (stay in `dotfile-vnext`)
 

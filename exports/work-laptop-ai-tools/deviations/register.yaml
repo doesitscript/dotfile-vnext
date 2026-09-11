@@ -174,6 +174,31 @@ deviations:
     entry: entries/continue-mcp-oauth-aws-profile.md
     inbound_sources:
       - "inbox/2026-09-10-continue-mcp-connection-investigation.md"
-    reapply: "Continue AWS OAuth in UI; optional aws_iac_mcp_aws_profile + aws sso login"
+      - "inbox/2026-09-10-continue-mcp-working-configuration.md"
+    reapply: "Continue/Zed AWS MCP base URL (no ?oauth=initialize); AWS IaC uvx@1.0.26 without AWS_REGION by default; optional aws_iac_mcp_aws_profile + aws sso login; firebase via nvm-exec + pinned firebase-tools@15.30.0 + firebase login"
     generalize_to:
       - "Other streamable-http OAuth MCP servers on this slice"
+
+  - id: continue-fim-jinja-raw
+    status: promoted
+    behavior_group: continue-local-models
+    title: Escape Continue FIM {{{placeholders}}} for Ansible Jinja
+    entry: entries/continue-fim-jinja-raw.md
+    inbound_sources:
+      - "sibling 0d16134 fix(continue): escape FIM prompt placeholders"
+      - "inbox/2026-09-10-continue-mcp-connection-investigation.md (FIM correction section)"
+      - "inbox/2026-09-10-continue-fim-rendering-correction.md"
+    reapply: "playbook --tags continue; host_vars + continue_ide template wrap FIM in Jinja raw blocks"
+    generalize_to:
+      - "Any Jinja-managed IDE YAML that embeds vendor {{{ }}} tokens"
+
+  - id: continue-mcp-tool-execution-gap
+    status: accepted
+    behavior_group: continue-mcp-client
+    title: Continue may discover MCP resources without executing tools
+    entry: entries/continue-mcp-tool-execution-gap.md
+    inbound_sources:
+      - "inbox/2026-09-10-continue-mcp-working-configuration.md"
+    reapply: "Acceptance: Continue must return tool result or server error, not planning-only text"
+    generalize_to:
+      - "Any Continue MCP marked working only from resource catalog names"

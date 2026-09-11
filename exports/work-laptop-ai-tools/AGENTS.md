@@ -17,10 +17,17 @@ when the task is packet MCP, vault, or sync.
 | Jan.AI local RAG on the work Mac | `JAN-AI-WORK-MAC-RAG.md` and role `jan_ide` — corpus `~/Documents/develop/homelab-reference-library`; chat model `Qwen/Qwen3-4B-GGUF` / `Qwen3-4B-Q4_K_M.gguf` |
 | Public share folders | Legacy map: `helpers/share_topology.md`; shell: `helpers/work-mac-local-models/share-paths.sh` |
 | Human model commands | **Preferred examples:** `helpers/docker-model-runner/examples/`. **Legacy echo:** `helpers/work-mac-local-models/` |
-| Paste-ready agent prompts | `USEFUL-COMMANDS.md` — top 10 prompts, including source-to-sibling sync |
+| Paste-ready agent prompts | `USEFUL-COMMANDS.md` — Upstream (U1 inbox evaluate-fix, sync) + Work laptop (L1 day2-apply) |
 
 Do not treat the sibling checkout as design authority. Edit the packet (or
 parent roles), then sync.
+
+When laptop behavior conflicts with **source-packet** configuration (this file
+under `dotfile-vnext/exports/work-laptop-ai-tools/` / synced sibling copy of
+that packet), **keep the source-packet configuration**. Deprecate laptop-only
+drift unless the difference is accepted in `deviations/register.yaml`.
+“Prefer us / prefer source” means prefer the **export packet**, not ad-hoc
+`~/.continue` edits or unregistered sibling-only changes.
 
 ## Recorded facts — read before searching
 
@@ -49,11 +56,13 @@ unless the user explicitly asks.
 | `work-laptop-ide-clients` | Continue / Cline / Zed / `cx-*` config, LiteLLM key gates, empty UI, Documents repo roots |
 | `work-laptop-day2-apply` | On the work Mac: `git pull` + playbook `--skip-tags hosts_file` + verify Continue/Cline/`cx-*` |
 | `work-laptop-improvement-review` | Pull latest; ingest **inbound laptop feedback**; register accepted deviations; evaluate debt + skill gaps + generalize peers (audit-only by default) |
+| `work-laptop-inbox-evaluate-fix` | **Implement mode:** git pull → process `inbox/` → fix in source packet → sync/push sibling (this evaluate-and-fix cycle) |
 | `work-laptop-vault` | Packet vault router: init / hydrate / status via `scripts/work_laptop_vault.py` |
 | `work-laptop-vault-hydrate` | Copy parent vault values with `hydrate_vault_from_parent.py` (no values in chat) |
 | `work-laptop-vault-status` | Names-only ciphertext + nonempty key check via `vault_status.py` |
 | `work-laptop-packet-ops` | Validate export contract, sync sibling, smoke; delegates heavy scripts to parent `work-laptop-export-pack` |
 | `work-laptop-recorded-facts` | Work laptop model, chip, macOS, hostname, username — read host_vars first |
+| `work-laptop-remediation-return` | Diagnose a laptop apply/config failure, record the evidence, and return the correction to the source packet |
 | `work-laptop-model-public-download` | **Legacy.** Add a model to `models-to-copy.list` for the share/rsync path. Prefer DMR docs; do not extend this pipeline for new work. |
 | `work-laptop-model-runtime-import` | **Legacy.** Echo copy/import for `models-to-copy.list`. Prefer `helpers/docker-model-runner/examples/`. |
 

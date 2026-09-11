@@ -79,5 +79,6 @@ Archive/zip only when the user explicitly requests the archive branch.
 - Packet `export-manifest.yml`, `AGENTS.md`
 - Laptop apply: `work-laptop-day2-apply`
 - IDE clients: `work-laptop-ide-clients`
-- Debt / skill / **inbound laptop feedback**: `work-laptop-improvement-review`
+- Debt / skill / **inbound laptop feedback** (audit): `work-laptop-improvement-review`
+- Inbox **implement** cycle: `work-laptop-inbox-evaluate-fix`
 - Deviation manifest: `deviations/register.yaml`

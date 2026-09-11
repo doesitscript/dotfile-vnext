@@ -31,6 +31,7 @@ Do not use when:
 
 - only converging the laptop with no review (`work-laptop-day2-apply`)
 - only syncing parent→sibling design with no feedback intake (`work-laptop-packet-ops`)
+- implement-mode inbox process / evaluate-and-fix (`work-laptop-inbox-evaluate-fix`)
 - enabling MCP/IDE without a review ask
 
 ## Authority

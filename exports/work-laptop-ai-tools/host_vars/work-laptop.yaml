@@ -163,6 +163,7 @@ aws_iac_mcp_aws_profile: ""
 # Prefer Homebrew uv path so Continue never gets an empty command (inbox/config.yaml bug).
 aws_iac_mcp_command: "/opt/homebrew/opt/uv/bin/uvx"
 
+
 # ---------------------------------------------------------------------------
 # MCP catalog. Commissioned clients for this slice (NOT VS Code native MCP):
 #   - Continue extension (~/.continue/config.yaml via continue_ide_mcp_servers)
@@ -260,6 +261,19 @@ redhat_ansible_workspace_root: "{{ playbook_dir }}"
 # - do not enable editor autocomplete against remote LiteLLM, vLLM, or remote Ollama lanes
 # - do not enable Zed edit predictions against remote infrastructure
 # - only revisit autocomplete/predictions with a deliberately local-only small model on this Mac
+# zetbrush/multiagents (Bun + CLI). Peer MCP is wired into Continue below.
+# Operator still runs `multiagents setup` / broker once after first install.
+multiagents_tooling_version_contract:
+  cli: "0.5.0"
+  bun: "1.4.0"
+multiagents_state: present
+multiagents_root_dir: "{{ ansible_env.HOME }}/.config/work-laptop-ai-tools/multiagents"
+multiagents_data_dir: "{{ multiagents_root_dir }}/data"
+multiagents_scenarios_dir: "{{ multiagents_root_dir }}/scenarios"
+multiagents_layout_readme_path: "{{ multiagents_root_dir }}/README.md"
+multiagents_usage_note_path: "{{ ansible_env.HOME }}/.config/work-laptop-ai-tools/ai/tool-guides/multiagents.md"
+multiagents_continue_peer_agent_type: custom
+
 # Jan desktop local RAG. Document source is the work-laptop HRL checkout.
 # Do not point this at ~/develop or the HVH public share.
 jan_ide_state: present
@@ -275,9 +289,14 @@ continue_ide_require_api_key: true
 continue_ide_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
 # Local DMR/llama.cpp autocomplete is allowed; remote LiteLLM/vLLM autocomplete stays blocked.
 continue_ide_autocomplete_enabled: true
+# Pin firebase-tools for Continue MCP (sibling 2026-09-10); use nvm-exec, not npx@latest.
+continue_ide_provision_firebase_cli: true
+continue_ide_firebase_tools_version: "15.30.0"
 continue_ide_models:
-  - name: "Chat Qwen2.5 Coder 32B (5090 vLLM)"
-    model: "qwen2.5-coder-32b@k3s02-vllm"
+  # Primary local chat — replaces qwen2.5-coder-32b@k3s02-vllm on the 5090.
+  # Client id must exist on GET http://litellm.hom.lab/v1/models.
+  - name: "Chat Qwen3-Coder-30B-A3B (5090 vLLM)"
+    model: "qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
     capabilities:
       - tool_use
     roles:
@@ -286,7 +305,7 @@ continue_ide_models:
       contextLength: 32768
       maxTokens: 4096
       temperature: 0.3
-  # Edit/apply via LiteLLM (validated 2026-09-10) — not provider:ollama, not 32B chat lane.
+  # Edit/apply via LiteLLM — not provider:ollama, not the 5090 chat lane.
   - name: "Edit/Apply Qwen2.5 Coder 7B (desktop via LiteLLM)"
     model: "qwen2.5-coder-7b@desktop"
     roles:
@@ -296,6 +315,39 @@ continue_ide_models:
       contextLength: 32768
       maxTokens: 4096
       temperature: 0.2
+  # Optional public Gemini lanes (same as parent continue_ide defaults / mac Continue example).
+  - name: "Gemini 2.5 Flash (Daily Driver)"
+    model: "gemini-2.5-flash@google~public-research"
+    roles:
+      - chat
+    default_completion_options:
+      contextLength: 1048576
+      maxTokens: 8192
+      temperature: 0.3
+  - name: "Gemini 2.5 Flash (Long Context 1M)"
+    model: "gemini-2.5-flash@google~long-context"
+    roles:
+      - chat
+    default_completion_options:
+      contextLength: 1048576
+      maxTokens: 8192
+      temperature: 0.3
+  - name: "Gemini 2.5 Pro (Deep Reasoning)"
+    model: "gemini-2.5-pro@google~deep-reasoning"
+    roles:
+      - chat
+    default_completion_options:
+      contextLength: 1048576
+      maxTokens: 8192
+      temperature: 0.2
+  - name: "Gemini 2.5 Flash Lite (Bulk)"
+    model: "gemini-2.5-flash-lite@google~bulk"
+    roles:
+      - chat
+    default_completion_options:
+      contextLength: 1048576
+      maxTokens: 4096
+      temperature: 0.3
 # Docker Model Runner — Continue may point at a local DMR API; Ansible install
 # automation stays DISABLED until commissioned.
 # Docs: DOCKER-MODEL-RUNNER.md ; examples: helpers/docker-model-runner/examples/
@@ -324,7 +376,7 @@ continue_ide_local_models:
       maxPromptTokens: 6144
     use_legacy_completions_endpoint: true
     prompt_templates:
-      autocomplete: "<|fim_prefix|>{{{prefix}}}<|fim_suffix|>{{{suffix}}}<|fim_middle|>"
+      autocomplete: "{% raw %}<|fim_prefix|>{{{prefix}}}<|fim_suffix|>{{{suffix}}}<|fim_middle|>{% endraw %}"
   - name: "Nomic Embed Text (LM Studio Embeddings)"
     provider: "openai"
     api_base: "http://127.0.0.1:1234/v1"
@@ -342,14 +394,16 @@ continue_ide_mcp_servers:
       - "stdio"
   - name: "AWS MCP"
     type: "streamable-http"
-    url: "https://aws-mcp.us-east-1.api.aws/mcp?oauth=initialize"
+    # Inbox 2026-09-10: base URL initializes (200 + Mcp-Session-Id); ?oauth=initialize
+    # returned a bearer challenge on direct initialize and is not the working candidate.
+    url: "https://aws-mcp.us-east-1.api.aws/mcp"
   - name: "AWS IaC MCP"
     type: "stdio"
-    # Inbox had empty command — always set Homebrew uvx (investigation 2026-09-10).
+    # Pin package (laptop 2026-09-10); omit AWS_REGION by default (working consumer config).
     command: "{{ aws_iac_mcp_command | default('/opt/homebrew/opt/uv/bin/uvx') }}"
     args:
-      - "awslabs.aws-iac-mcp-server@latest"
-    env: "{{ {'FASTMCP_LOG_LEVEL': 'ERROR', 'AWS_REGION': (aws_iac_mcp_aws_region | default('us-east-1'))} | combine(({'AWS_PROFILE': aws_iac_mcp_aws_profile}) if ((aws_iac_mcp_aws_profile | default('') | length) > 0) else {}) }}"
+      - "awslabs.aws-iac-mcp-server@1.0.26"
+    env: "{{ {'FASTMCP_LOG_LEVEL': 'ERROR'} | combine(({'AWS_PROFILE': aws_iac_mcp_aws_profile}) if ((aws_iac_mcp_aws_profile | default('') | length) > 0) else {}) }}"
   - name: context7
     type: stdio
     command: "{{ work_laptop_nvm_exec }}"
@@ -359,9 +413,7 @@ continue_ide_mcp_servers:
     type: stdio
     command: "{{ work_laptop_nvm_exec }}"
     args:
-      - npx
-      - "-y"
-      - firebase-tools@latest
+      - firebase
       - mcp
   # WarpGrep: do not list continue_ide_rules for morph — morph role drops
   # ~/.continue/rules/morph-warpgrep-evaluation.md (Continue loads it).
@@ -376,8 +428,20 @@ continue_ide_mcp_servers:
       WORKSPACE_MODE: "true"
       # Prefer npm global + ~/.local/bin; do not dump full GUI PATH from inbox.
       PATH: "{{ ansible_env.HOME }}/.npm-packages/bin:{{ ansible_env.HOME }}/.local/bin:{{ ansible_env.PATH }}"
+  # zetbrush/multiagents peer MCP (requires multiagents_state=present + Bun).
+  # Agent types are claude|codex|gemini|custom; Continue uses custom (ClaudeAdapter).
+  - name: multiagents-peer
+    type: stdio
+    command: "{{ multiagents_bun_install_dir | default(ansible_env.HOME ~ '/.bun/bin') }}/multiagents"
+    args:
+      - mcp-server
+      - --agent-type
+      - "{{ multiagents_continue_peer_agent_type | default('custom') }}"
+    env:
+      PATH: "{{ multiagents_bun_install_dir | default(ansible_env.HOME ~ '/.bun/bin') }}:{{ ansible_env.PATH }}"
 continue_ide_blocked_lanes:
-  - "qwen2.5-coder-14b@k3s02-vllm (undersized for 5090 — use 32B AWQ + fp8 KV)"
+  - "qwen2.5-coder-14b@k3s02-vllm (undersized for 5090 — prefer qwen3-coder-30b-a3b@k3s02-vllm~coder-primary)"
+  - "qwen2.5-coder-32b@k3s02-vllm (replaced 2026-09-10 by qwen3-coder-30b-a3b@k3s02-vllm~coder-primary)"
   - "Remote autocomplete disabled on 2026-09-02 due editor and remote-backend stability risk; only revisit with a local-only model on this Mac."
 
 # Cline (saoudrizwan.claude-dev) — same LiteLLM lanes as Continue; baseUrl includes /v1.
@@ -386,10 +450,10 @@ cline_ide_api_key: ""
 cline_ide_require_api_key: true
 cline_ide_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
 cline_ide_gateway_api_base: "http://litellm.hom.lab/v1"
-cline_ide_model: "qwen2.5-coder-32b@k3s02-vllm"
+cline_ide_model: "qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
 cline_ide_models:
-  - name: "Chat Qwen2.5 Coder 32B (5090 vLLM)"
-    model: "qwen2.5-coder-32b@k3s02-vllm"
+  - name: "Chat Qwen3-Coder-30B-A3B (5090 vLLM)"
+    model: "qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
     roles:
       - chat
       - agent
@@ -418,6 +482,46 @@ cline_ide_models:
     capabilities:
       - streaming
       - tools
+  - name: "Gemini 2.5 Flash (Daily Driver)"
+    model: "gemini-2.5-flash@google~public-research"
+    roles:
+      - chat
+      - agent
+    context_window: 1048576
+    max_output_tokens: 8192
+    capabilities:
+      - streaming
+      - tools
+  - name: "Gemini 2.5 Flash (Long Context 1M)"
+    model: "gemini-2.5-flash@google~long-context"
+    roles:
+      - chat
+      - agent
+    context_window: 1048576
+    max_output_tokens: 8192
+    capabilities:
+      - streaming
+      - tools
+  - name: "Gemini 2.5 Pro (Deep Reasoning)"
+    model: "gemini-2.5-pro@google~deep-reasoning"
+    roles:
+      - chat
+      - agent
+    context_window: 1048576
+    max_output_tokens: 8192
+    capabilities:
+      - streaming
+      - tools
+  - name: "Gemini 2.5 Flash Lite (Bulk)"
+    model: "gemini-2.5-flash-lite@google~bulk"
+    roles:
+      - chat
+      - agent
+    context_window: 1048576
+    max_output_tokens: 4096
+    capabilities:
+      - streaming
+      - tools
 cline_ide_mcp_servers: "{{ continue_ide_mcp_servers }}"
 
 # ansible-dev-tools (Red Hat meta-package) requires Python >=3.10.
@@ -430,20 +534,28 @@ ansible_dev_tools_pip_packages:
 
 # --- opencode CLI ---
 opencode_cli_state: present
-opencode_cli_default_model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+opencode_cli_default_model: "homelab-litellm/qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
 opencode_cli_models:
-  - id: "qwen2.5-coder-32b@k3s02-vllm"
-    name: "Qwen2.5 Coder 32B (5090 vLLM)"
+  - id: "qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
+    name: "Qwen3-Coder-30B-A3B (5090 vLLM)"
   - id: "qwen2.5-coder-7b@desktop"
     name: "Qwen2.5 Coder 7B (desktop Ollama)"
   - id: "ministral-3-8b@desktop"
     name: "Homelab Ministral 3 8B"
+  - id: "gemini-2.5-flash@google~public-research"
+    name: "Gemini 2.5 Flash (Daily Driver)"
+  - id: "gemini-2.5-flash@google~long-context"
+    name: "Gemini 2.5 Flash (Long Context 1M)"
+  - id: "gemini-2.5-pro@google~deep-reasoning"
+    name: "Gemini 2.5 Pro (Deep Reasoning)"
+  - id: "gemini-2.5-flash-lite@google~bulk"
+    name: "Gemini 2.5 Flash Lite (Bulk)"
 opencode_cli_mcp_context7_enabled: true
 opencode_cli_mcp_firecrawl_enabled: true
 
 # --- aider ---
 aider_state: present
-aider_default_model: "openai/qwen2.5-coder-32b@k3s02-vllm"
+aider_default_model: "openai/qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
 aider_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
 aider_pipx_python: "/opt/homebrew/bin/python3.12"
 aider_dirty_commits: true
@@ -461,12 +573,12 @@ aider_mcp_firecrawl_enabled: true
 kilo_ide_state: present
 kilo_ide_apply_mode: merge
 kilo_ide_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
-kilo_ide_default_model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+kilo_ide_default_model: "homelab-litellm/qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
 kilo_ide_small_model: "homelab-litellm/qwen2.5-coder-7b@desktop"
 kilo_ide_default_agent: "code"
 kilo_ide_models:
-  - id: "qwen2.5-coder-32b@k3s02-vllm"
-    name: "Qwen2.5 Coder 32B (5090 vLLM)"
+  - id: "qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
+    name: "Qwen3-Coder-30B-A3B (5090 vLLM)"
     tool_call: true
     context: 32768
     output: 4096
@@ -483,10 +595,34 @@ kilo_ide_models:
     context: 24000
     output: 4096
     input: 20000
+  - id: "gemini-2.5-flash@google~public-research"
+    name: "Gemini 2.5 Flash (Daily Driver)"
+    tool_call: true
+    context: 1048576
+    output: 8192
+    input: 1000000
+  - id: "gemini-2.5-flash@google~long-context"
+    name: "Gemini 2.5 Flash (Long Context 1M)"
+    tool_call: true
+    context: 1048576
+    output: 8192
+    input: 1000000
+  - id: "gemini-2.5-pro@google~deep-reasoning"
+    name: "Gemini 2.5 Pro (Deep Reasoning)"
+    tool_call: true
+    context: 1048576
+    output: 8192
+    input: 1000000
+  - id: "gemini-2.5-flash-lite@google~bulk"
+    name: "Gemini 2.5 Flash Lite (Bulk)"
+    tool_call: true
+    context: 1048576
+    output: 4096
+    input: 1000000
 kilo_ide_agents:
   code:
-    model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
-    description: "Primary coding agent — 5090 vLLM 32B (tools)."
+    model: "homelab-litellm/qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
+    description: "Primary coding agent — 5090 vLLM Qwen3-Coder-30B-A3B (tools)."
     permission:
       task: deny
       bash: allow
@@ -495,19 +631,19 @@ kilo_ide_agents:
       glob: allow
       grep: allow
   build:
-    model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+    model: "homelab-litellm/qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
     description: "Build / implement — same as code."
   plan:
-    model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+    model: "homelab-litellm/qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
     description: "Planning / architecture on 5090 vLLM."
   ask:
-    model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+    model: "homelab-litellm/qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
     description: "Q&A / conversation on 5090 vLLM."
   general:
-    model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+    model: "homelab-litellm/qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
     description: "General assistant — 5090 vLLM."
   debug:
-    model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+    model: "homelab-litellm/qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
     description: "Debug / hard investigation — 5090 vLLM."
     permission:
       task: deny
@@ -529,7 +665,7 @@ kilo_ide_agents:
     model: "homelab-litellm/qwen2.5-coder-7b@desktop"
     description: "Context compaction — small/fast."
   orchestrator:
-    model: "homelab-litellm/qwen2.5-coder-32b@k3s02-vllm"
+    model: "homelab-litellm/qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
     description: "Orchestrator / multi-step — 5090 vLLM."
 
 # --- morph MCP ---
@@ -576,8 +712,8 @@ zed_ide_api_key: ""
 zed_ide_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
 zed_ide_gateway_api_url: "http://litellm.hom.lab/v1"
 zed_ide_models:
-  - name: "qwen2.5-coder-32b@k3s02-vllm"
-    display_name: "Homelab Qwen2.5 Coder 32B"
+  - name: "qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
+    display_name: "Homelab Qwen3-Coder-30B-A3B"
     max_tokens: 32768
     max_completion_tokens: 4096
   - name: "qwen2.5-coder-7b@desktop"
@@ -588,9 +724,25 @@ zed_ide_models:
     display_name: "Homelab Ministral 3 8B"
     max_tokens: 24000
     max_completion_tokens: 4096
+  - name: "gemini-2.5-flash@google~public-research"
+    display_name: "Gemini 2.5 Flash (Daily Driver)"
+    max_tokens: 1048576
+    max_completion_tokens: 8192
+  - name: "gemini-2.5-flash@google~long-context"
+    display_name: "Gemini 2.5 Flash (Long Context 1M)"
+    max_tokens: 1048576
+    max_completion_tokens: 8192
+  - name: "gemini-2.5-pro@google~deep-reasoning"
+    display_name: "Gemini 2.5 Pro (Deep Reasoning)"
+    max_tokens: 1048576
+    max_completion_tokens: 8192
+  - name: "gemini-2.5-flash-lite@google~bulk"
+    display_name: "Gemini 2.5 Flash Lite (Bulk)"
+    max_tokens: 1048576
+    max_completion_tokens: 4096
 zed_ide_default_model:
   provider: "openai"
-  model: "qwen2.5-coder-32b@k3s02-vllm"
+  model: "qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
 zed_ide_inline_assistant_model:
   provider: "openai"
   model: "qwen2.5-coder-7b@desktop"
@@ -602,10 +754,10 @@ zed_ide_thread_summary_model:
   model: "ministral-3-8b@desktop"
 zed_ide_compaction_model:
   provider: "openai"
-  model: "qwen2.5-coder-32b@k3s02-vllm"
+  model: "qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
 zed_ide_subagent_model:
   provider: "openai"
-  model: "qwen2.5-coder-32b@k3s02-vllm"
+  model: "qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
 zed_ide_inline_alternatives:
   - provider: "openai"
     model: "qwen2.5-coder-7b@desktop"
@@ -613,7 +765,7 @@ zed_ide_inline_alternatives:
     model: "ministral-3-8b@desktop"
 zed_ide_model_parameters:
   - provider: "openai"
-    model: "qwen2.5-coder-32b@k3s02-vllm"
+    model: "qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
     temperature: 0.3
   - provider: "openai"
     model: "qwen2.5-coder-7b@desktop"
@@ -641,11 +793,10 @@ zed_ide_context_servers:
     env:
       _MCP_ANSIBLE_ROLE_PATH: "roles/mcp_servers/terraform_mcp"
   "aws-mcp":
-    url: "https://aws-mcp.us-east-1.api.aws/mcp?oauth=initialize"
+    url: "https://aws-mcp.us-east-1.api.aws/mcp"
   "aws-iac":
     command: "{{ aws_iac_mcp_command | default('uvx', true) }}"
     args:
-      - "awslabs.aws-iac-mcp-server@latest"
+      - "awslabs.aws-iac-mcp-server@1.0.26"
     env:
       FASTMCP_LOG_LEVEL: "ERROR"
-      AWS_REGION: "us-east-1"
