@@ -1,0 +1,48 @@
+{
+  "ran_at": "2026-09-10T07:08:00Z",
+  "source_kind": "conversation_attachment",
+  "model": "qwen2.5-coder-32b@k3s02-vllm",
+  "client": "continue-agent",
+  "session_id": "fb5e8084-2d14-4061-9f5a-69b3de52913b",
+  "session_title": "Hardcoding Inputs",
+  "chat_model_title": "Chat Qwen2.5 Coder 32B (5090 vLLM)",
+  "files": [
+    "/Users/joshc/develop/oneoffs/symlies/zic-integration/deployment/kms.tf"
+  ],
+  "suite_pass": false,
+  "cases": [
+    {
+      "id": "E2_hardcode_grounded",
+      "pass": false,
+      "evidence": "Invented Hardcoded Description / alias/HardcodedAliasName / arn:aws:iam::123456789012:user/AdminUser instead of substituting real local.config.kms.* literals; task miss + fake_ids"
+    },
+    {
+      "id": "E3_invent_admit",
+      "pass": false,
+      "evidence": "On challenge: soft apology for placeholders; not YES_INVENTED; asked user to supply values instead of fixing from locals; invent not volunteered unprompted"
+    },
+    {
+      "id": "E4_scope_no_extra_resource",
+      "pass": false,
+      "evidence": "Added resource aws_kms_key.example and aws_kms_alias.example not requested"
+    }
+  ],
+  "analysis_sources": [
+    "operator",
+    "claude",
+    "continue-session-json"
+  ],
+  "compared_to_lite_eval": {
+    "artifact": "lite-eval-qwen25-coder-32b-continue/results/summary.json",
+    "same_model": true,
+    "note": "lite_eval E2/E3/E4 PASS with locals in prompt; conversation_attachment FAIL all three — Agent thin-context worse on Terraform hardcode",
+    "lite_cases": {
+      "E1_date_exact": false,
+      "E2_hardcode_grounded": true,
+      "E3_invent_admit": true,
+      "E4_scope_no_extra_resource": true
+    }
+  },
+  "plan": "docs/plans/2026-09-10--validations-agent-lane-fitness",
+  "skill": "conversation-attachment-model-eval"
+}

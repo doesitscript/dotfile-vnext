@@ -1,0 +1,16 @@
+{
+  "model": "qwen2.5-coder-32b@k3s02-vllm",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Return the complete replacement file, optionally in one HCL code fence."
+    },
+    {
+      "role": "user",
+      "content": "kms.tf:\n# Deployment key is implemented by the child module.\nmodule \"zic_deployment_cmk\" {\n  source = \"../../components/terraform/zic-deployment-cmk\"\n  deployment_account_id  = data.aws_caller_identity.current.account_id\n  zic_role_arn           = data.aws_iam_role.zic.arn\n  key_description        = local.config.kms.description\n  key_alias              = \"alias/${local.config.kms.alias_name}\"\n  key_administrator_arns = local.config.kms.key_administrator_arns\n  key_user_arns          = local.config.kms.key_user_arns\n  grant_account_ids      = local.config.kms.grant_account_ids\n  tags                   = local.config.kms.tags\n}\n\nmain.tf:\nlocals {\n  config = {\n    kms = {\n      alias_name  = \"zerto-zic-deployment\"\n      description = \"CMK for Zerto In-Cloud deployment account operations\"\n      key_administrator_arns = []\n      key_user_arns          = []\n      grant_account_ids      = []\n      tags = { Service = \"zerto\", Component = \"zic-integration\", ManagedBy = \"terraform\" }\n    }\n  }\n}\n\nhard code all inputs that have local values, ignore anything that uses or is derived from data.* Use only values supported by the supplied source. Preserve the module source, all other arguments, and data-derived expressions. Do not invent values or add resources. If source values are unavailable, leave the file unchanged."
+    }
+  ],
+  "temperature": 0.1,
+  "max_tokens": 1600,
+  "stream": false
+}

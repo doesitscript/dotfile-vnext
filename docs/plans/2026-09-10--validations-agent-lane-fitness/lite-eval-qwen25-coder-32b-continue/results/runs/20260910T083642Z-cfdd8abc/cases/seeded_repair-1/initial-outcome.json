@@ -1,0 +1,73 @@
+{
+  "grade": {
+    "pass": false,
+    "reasons": [
+      "root.content: unexpected resource",
+      "root.content.module[0].zic_deployment_cmk.grant_account_ids: expected list, got str",
+      "root.content.module[0].zic_deployment_cmk.key_administrator_arns: expected list, got str",
+      "root.content.module[0].zic_deployment_cmk.key_alias: expected 'alias/archive-sandbox', got '${local.config.kms.alias_name}'",
+      "root.content.module[0].zic_deployment_cmk.key_description: expected 'Archive test key; resource text in a string is not a block', got '${local.config.kms.description}'",
+      "root.content.module[0].zic_deployment_cmk.key_user_arns: expected list, got str",
+      "root.content.module[0].zic_deployment_cmk.tags: expected dict, got str",
+      "root.top_level_kinds: expected 1 items, got 2",
+      "Incorrect intermediate file write",
+      "Incorrect intermediate file write"
+    ],
+    "format_compliant": true
+  },
+  "files": {
+    "README.md": "# Deployment\n\nDeployment key configuration.\n",
+    "kms.tf": "# Deployment key is implemented by the child module.\nmodule \"zic_deployment_cmk\" {\n  source = \"../../components/terraform/zic-deployment-cmk\"\n  deployment_account_id  = local.deployment_account_id\n  zic_role_arn           = data.aws_iam_role.zic.arn\n  key_description        = local.config.kms.description\n  key_alias              = local.config.kms.alias_name\n  key_administrator_arns = local.config.kms.key_administrator_arns\n  key_user_arns          = local.config.kms.key_user_arns\n  grant_account_ids      = local.config.kms.grant_account_ids\n  tags                   = local.config.kms.tags\n}\n\nresource \"aws_kms_key\" \"unrequested\" {}\n",
+    "main.tf": "# Synthetic grounded values: these identify no deployed resources.\nlocals {\n  deployment_account_id = data.aws_caller_identity.current.account_id\n  config = {\n    kms = {\n      alias_name = \"archive-sandbox\"\n      description = \"Archive test key; resource text in a string is not a block\"\n      key_administrator_arns = [\"arn:aws:iam::555555555555:role/ArchiveMaintainer\"]\n      key_user_arns = [\"arn:aws:iam::555555555555:role/ArchiveReader\"]\n      grant_account_ids = [\"666666666666\"]\n      tags = { Service = \"archive\", Component = \"restore\", ManagedBy = \"fixture\", Ticket = \"LAB-42\" }\n    }\n  }\n}\n"
+  },
+  "turn": {
+    "completed": true,
+    "reason": "stop",
+    "metadata": [
+      {
+        "finish_reason": "tool_calls",
+        "response_model": "qwen2.5-coder-32b@k3s02-vllm",
+        "usage": {
+          "completion_tokens": 148,
+          "prompt_tokens": 362,
+          "total_tokens": 510
+        },
+        "request_id": "chatcmpl-b235a1584bb5c0f2",
+        "trace": "request-013"
+      },
+      {
+        "finish_reason": "tool_calls",
+        "response_model": "qwen2.5-coder-32b@k3s02-vllm",
+        "usage": {
+          "completion_tokens": 850,
+          "prompt_tokens": 542,
+          "total_tokens": 1392
+        },
+        "request_id": "chatcmpl-8741f540662e7d81",
+        "trace": "request-014"
+      },
+      {
+        "finish_reason": "tool_calls",
+        "response_model": "qwen2.5-coder-32b@k3s02-vllm",
+        "usage": {
+          "completion_tokens": 1264,
+          "prompt_tokens": 1886,
+          "total_tokens": 3150
+        },
+        "request_id": "chatcmpl-929297d926195d7c",
+        "trace": "request-015"
+      },
+      {
+        "finish_reason": "stop",
+        "response_model": "qwen2.5-coder-32b@k3s02-vllm",
+        "usage": {
+          "completion_tokens": 240,
+          "prompt_tokens": 3176,
+          "total_tokens": 3416
+        },
+        "request_id": "chatcmpl-999b5afda385149d",
+        "trace": "request-016"
+      }
+    ]
+  }
+}

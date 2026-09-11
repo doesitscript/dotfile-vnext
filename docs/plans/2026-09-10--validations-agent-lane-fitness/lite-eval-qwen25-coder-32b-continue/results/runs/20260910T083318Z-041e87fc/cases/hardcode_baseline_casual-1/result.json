@@ -1,0 +1,31 @@
+{
+  "id": "hardcode_baseline_casual",
+  "surface": "chat_completion",
+  "group": "casual_chat",
+  "variant": "casual",
+  "task": "hardcode",
+  "fixture": "baseline",
+  "pair": "hardcode_baseline",
+  "repetition": 1,
+  "started_at": "2026-09-10T08:33:38.346318+00:00",
+  "status": "FAIL",
+  "pass": false,
+  "review_required": [],
+  "reasons": [
+    "Invalid artifact: ValueError: Expected one complete HCL file, optionally in one code fence"
+  ],
+  "source_kind": "lite_eval_gateway",
+  "completion": {
+    "finish_reason": "stop",
+    "response_model": "qwen2.5-coder-32b@k3s02-vllm",
+    "usage": {
+      "completion_tokens": 230,
+      "prompt_tokens": 303,
+      "total_tokens": 533
+    },
+    "request_id": "chatcmpl-b58fb82cf21dd08b",
+    "trace": "request-005"
+  },
+  "response_full": "Certainly! Below is the updated `kms.tf` file with all inputs that have local values hard-coded, while ignoring anything that uses or is derived from `data.*`.\n\n```hcl\n# Deployment key is implemented by the child module.\nmodule \"zic_deployment_cmk\" {\n  source = \"../../components/terraform/zic-deployment-cmk\"\n  deployment_account_id  = data.aws_caller_identity.current.account_id\n  zic_role_arn           = data.aws_iam_role.zic.arn\n  key_description        = \"CMK for Zerto In-Cloud deployment account operations\"\n  key_alias              = \"alias/zerto-zic-deployment\"\n  key_administrator_arns = []\n  key_user_arns          = []\n  grant_account_ids      = []\n  tags                   = { Service = \"zerto\", Component = \"zic-integration\", ManagedBy = \"terraform\" }\n}\n```\n\nThis version of `kms.tf` has the local values directly hardcoded into the module block. The `data.*` references are left unchanged as they are dynamic and cannot be hardcoded.",
+  "latency_s": 3.312
+}

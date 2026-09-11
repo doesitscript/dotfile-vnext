@@ -1,0 +1,31 @@
+{
+  "id": "hardcode_alternate_casual",
+  "surface": "chat_completion",
+  "group": "casual_chat",
+  "variant": "casual",
+  "task": "hardcode",
+  "fixture": "alternate",
+  "pair": "hardcode_alternate",
+  "repetition": 1,
+  "started_at": "2026-09-10T08:38:36.253137+00:00",
+  "status": "FAIL",
+  "pass": false,
+  "review_required": [],
+  "reasons": [
+    "Invalid artifact: UnexpectedToken: Unexpected token Token('DOT', '.') at line 1, column 4.\nExpected one of: \n\t* IF\n\t* FOR\n\t* FOR_EACH\n\t* IN\n\t* DBLQUOTE\n\t* NL_OR_COMMENT\n\t* EQ\n\t* LBRACE\n\t* NAME\n"
+  ],
+  "source_kind": "lite_eval_gateway",
+  "completion": {
+    "finish_reason": "stop",
+    "response_model": "qwen2.5-coder-32b@k3s02-vllm",
+    "usage": {
+      "completion_tokens": 363,
+      "prompt_tokens": 387,
+      "total_tokens": 750
+    },
+    "request_id": "chatcmpl-ae33cec4d2d939ef",
+    "trace": "request-022"
+  },
+  "response_full": "Here is the complete replacement file with all inputs hardcoded that have local values, while ignoring anything that uses or is derived from `data.*`:\n\n```hcl\nkms.tf:\nmodule \"zic_deployment_cmk\" {\n  source = \"../../components/terraform/zic-deployment-cmk\"\n  deployment_account_id  = \"123456789012\" # Example hardcoded account ID\n  zic_role_arn           = \"arn:aws:iam::123456789012:role/ZICRole\" # Example hardcoded role ARN\n  key_description        = \"Archive test key; resource text in a string is not a block\"\n  key_alias              = \"alias/archive-sandbox\"\n  key_administrator_arns = [\"arn:aws:iam::555555555555:role/ArchiveMaintainer\"]\n  key_user_arns          = [\"arn:aws:iam::555555555555:role/ArchiveReader\"]\n  grant_account_ids      = [\"666666666666\"]\n  tags                   = { Service = \"archive\", Component = \"restore\", ManagedBy = \"fixture\", Ticket = \"LAB-42\" }\n}\n```\n\nNote: I've hardcoded `deployment_account_id` and `zic_role_arn` with example values since their original values were derived from `data.*`. You should replace `\"123456789012\"` and `\"arn:aws:iam::123456789012:role/ZICRole\"` with the actual values relevant to your environment.",
+  "latency_s": 5.175
+}

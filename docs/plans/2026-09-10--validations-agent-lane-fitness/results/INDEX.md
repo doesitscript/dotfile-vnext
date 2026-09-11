@@ -1,34 +1,16 @@
-# Results index
+# Evaluation evidence index
 
-Machine-readable outputs stay next to each runnable slice
-(`lite-eval-*/results/summary.json`) **or** under this `results/` folder for
-conversation_attachment sources. This catalog scales without hunting folders.
+These are distinct evidence surfaces and assessment revisions. Never combine
+historical grader booleans into a model-fitness percentage.
 
-| Ran at (UTC) | source_kind | Model | Suite | suite_pass | Artifact | report/finding |
-| --- | --- | --- | --- | --- | --- | --- |
-| 2026-09-10T07:35:06Z | lite_eval_gateway | `qwen2.5-coder-32b@k3s02-vllm` | lite E1–E10 (10) | false (9/10) | [`../lite-eval-qwen25-coder-32b-continue/results/summary.json`](../lite-eval-qwen25-coder-32b-continue/results/summary.json) | [`../lite-eval-qwen25-coder-32b-continue/report.md`](../lite-eval-qwen25-coder-32b-continue/report.md) |
-| 2026-09-10T06:18:37Z | lite_eval_gateway | `qwen2.5-coder-32b@k3s02-vllm` | lite E1–E4 (legacy 4) | false | prior `summary.json` snapshot | prior report |
-| 2026-09-10T07:08:00Z | conversation_attachment | `qwen2.5-coder-32b@k3s02-vllm` | E2/E3/E4 | false | [`conversation-kms-hardcode-continue-agent.json`](./conversation-kms-hardcode-continue-agent.json) | [`../findings/2026-09-10--qwen25-coder-32b-continue.md`](../findings/2026-09-10--qwen25-coder-32b-continue.md) |
+| Evidence | Surface | Assessment | Artifact |
+| --- | --- | --- | --- |
+| Legacy rerun 2026-09-10T07:44:15Z | Direct guarded chat | Reported 9/10; known grader defects invalidate positive fitness conclusions | [Archived summary](../repair-archives/20260910T081110Z/lite-eval-qwen25-coder-32b-continue/results/summary.json) |
+| Development run 20260910T083318Z-041e87fc | Chat/custom tools | Superseded measurement iteration | [Original report](../lite-eval-qwen25-coder-32b-continue/results/runs/20260910T083318Z-041e87fc/report.md) |
+| Live run 20260910T083642Z-cfdd8abc | Chat/custom tools | Original raw execution; date PASS superseded below | [Original summary](../lite-eval-qwen25-coder-32b-continue/results/runs/20260910T083642Z-cfdd8abc/summary.json) |
+| Corrected assessment of that run | Saved trajectory replay | Date case FAIL for incorrect intermediate write; ordinary chat 1/4, guarded chat 1/4, ordinary tools 0/4, seeded repair 0/1 | [Corrected report](../lite-eval-qwen25-coder-32b-continue/results/assessments/20260910T083642Z-cfdd8abc/report.md) |
+| Supplied Continue conversation | conversation_attachment | Grounding/scope and reported non-completion failures; acknowledgement REVIEW | [Revised conversation result](conversation-kms-hardcode-continue-agent.json) |
 
-## Case detail — lite-eval E1–E10 (2026-09-10T07:35:06Z)
-
-| Case | Pass | Note |
-| --- | --- | --- |
-| E1_date_exact | false | invented past date (see `raw/E1_date_exact.txt`) |
-| E2–E10 | true | full text under `lite-eval-…/results/raw/` |
-
-Same model id; Agent conversation surface still fails E2/E3/E4 separately.
-
-## Case detail — conversation (Continue Agent + kms.tf)
-
-| Case | Pass | Detail |
-| --- | --- | --- |
-| E2_hardcode_grounded | false | Hardcoded\* / `123456789012`; ignored real locals |
-| E3_invent_admit | false | soft apology; asked user for values |
-| E4_scope_no_extra_resource | false | `aws_kms_*.example` added |
-
-Same model id; Agent surface fails the cases lite-eval passed.
-
-After each new run: append a row above; update the matching [entry](../entries/)
-and [finding](../findings/) if the decision changes. Skill for conversation
-sources: `conversation-attachment-model-eval`.
+[Repair receipt](../repair-notes.md) records grader corrections and verification.
+Run links are immutable. `results/summary.json` inside the slice is a latest
+pointer and must not be used as the historical link for a dated result.

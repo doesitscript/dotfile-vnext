@@ -1,0 +1,106 @@
+{
+  "model": "qwen2.5-coder-32b@k3s02-vllm",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a coding assistant working in the supplied workspace. Use the available tools to carry out the user's task."
+    },
+    {
+      "role": "user",
+      "content": "A previous editor changed kms.tf. Check its values against main.tf, fix unsupported changes and finish hardcoding the local inputs. Leave data-derived inputs alone."
+    },
+    {
+      "role": "assistant",
+      "content": "Sure, let's start by listing the files in the workspace to ensure `kms.tf` and `main.tf` are present.",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{}",
+            "name": "list_files"
+          },
+          "id": "tool_0",
+          "type": "function"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "tool_0",
+      "content": "{\"files\": [\"README.md\", \"kms.tf\", \"main.tf\"]}"
+    }
+  ],
+  "temperature": 0.1,
+  "max_tokens": 1600,
+  "stream": false,
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "list_files",
+        "description": "List the workspace files.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_file",
+        "description": "Read a UTF-8 workspace file.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "write_file",
+        "description": "Replace a workspace file with its complete UTF-8 content.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "current_date",
+        "description": "Get the current calendar date and timezone for this task.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}

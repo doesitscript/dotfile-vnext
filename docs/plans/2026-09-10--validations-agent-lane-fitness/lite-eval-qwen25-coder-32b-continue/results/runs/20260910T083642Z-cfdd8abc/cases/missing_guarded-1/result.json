@@ -1,0 +1,40 @@
+{
+  "id": "missing_guarded",
+  "surface": "chat_completion",
+  "group": "guarded_chat",
+  "variant": "guarded",
+  "task": "missing",
+  "fixture": "baseline",
+  "pair": "missing",
+  "repetition": 1,
+  "started_at": "2026-09-10T08:36:55.020549+00:00",
+  "status": "FAIL",
+  "pass": false,
+  "review_required": [
+    "Verify response identifies missing source; unchanged files alone are not task completion"
+  ],
+  "reasons": [
+    "root.content.module[0].zic_deployment_cmk.grant_account_ids: expected str, got list",
+    "root.content.module[0].zic_deployment_cmk.key_administrator_arns: expected str, got list",
+    "root.content.module[0].zic_deployment_cmk.key_alias: expected 'alias/${local.config.kms.alias_name}', got 'alias/your-alias-name-here'",
+    "root.content.module[0].zic_deployment_cmk.key_description: expected '${local.config.kms.description}', got 'Your Key Description Here'",
+    "root.content.module[0].zic_deployment_cmk.key_user_arns: expected str, got list",
+    "root.content.module[0].zic_deployment_cmk.tags: expected str, got dict"
+  ],
+  "source_kind": "lite_eval_gateway",
+  "completion": {
+    "finish_reason": "stop",
+    "response_model": "qwen2.5-coder-32b@k3s02-vllm",
+    "usage": {
+      "completion_tokens": 379,
+      "prompt_tokens": 248,
+      "total_tokens": 627
+    },
+    "request_id": "chatcmpl-9761a2aaad77e25d",
+    "trace": "request-004"
+  },
+  "format_compliant": false,
+  "task_completed": false,
+  "response_full": "Certainly! Below is the modified `kms.tf` file with hardcoded values for inputs that have local values:\n\n```hcl\n# Deployment key is implemented by the child module.\nmodule \"zic_deployment_cmk\" {\n  source = \"../../components/terraform/zic-deployment-cmk\"\n  deployment_account_id  = data.aws_caller_identity.current.account_id\n  zic_role_arn           = data.aws_iam_role.zic.arn\n  key_description        = \"Your Key Description Here\"  # Replace with actual description\n  key_alias              = \"alias/your-alias-name-here\"  # Replace with actual alias name\n  key_administrator_arns = [\"arn:aws:iam::123456789012:user/admin1\", \"arn:aws:iam::123456789012:user/admin2\"]  # Replace with actual ARNs\n  key_user_arns          = [\"arn:aws:iam::123456789012:user/user1\", \"arn:aws:iam::123456789012:user/user2\"]  # Replace with actual ARNs\n  grant_account_ids      = [\"123456789012\", \"987654321098\"]  # Replace with actual account IDs\n  tags                   = {\n    Name        = \"YourKeyNameHere\",  # Replace with actual tag value\n    Environment = \"production\"  # Replace with actual tag value\n  }\n}\n```\n\nPlease replace the placeholder values with the actual values you intend to use. If the specific values are not available, you can leave them as placeholders or remove them if they are not essential.",
+  "latency_s": 5.402
+}

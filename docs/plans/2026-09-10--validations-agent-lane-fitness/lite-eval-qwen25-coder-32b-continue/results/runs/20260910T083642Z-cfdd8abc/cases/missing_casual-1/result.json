@@ -1,0 +1,40 @@
+{
+  "id": "missing_casual",
+  "surface": "chat_completion",
+  "group": "casual_chat",
+  "variant": "casual",
+  "task": "missing",
+  "fixture": "baseline",
+  "pair": "missing",
+  "repetition": 1,
+  "started_at": "2026-09-10T08:39:50.770870+00:00",
+  "status": "FAIL",
+  "pass": false,
+  "review_required": [
+    "Verify response identifies missing source; unchanged files alone are not task completion"
+  ],
+  "reasons": [
+    "root.content.module[0].zic_deployment_cmk.grant_account_ids: expected str, got list",
+    "root.content.module[0].zic_deployment_cmk.key_administrator_arns: expected str, got list",
+    "root.content.module[0].zic_deployment_cmk.key_alias: expected 'alias/${local.config.kms.alias_name}', got 'alias/your-alias-name-here'",
+    "root.content.module[0].zic_deployment_cmk.key_description: expected '${local.config.kms.description}', got 'Your Key Description Here'",
+    "root.content.module[0].zic_deployment_cmk.key_user_arns: expected str, got list",
+    "root.content.module[0].zic_deployment_cmk.tags: expected str, got dict"
+  ],
+  "source_kind": "lite_eval_gateway",
+  "completion": {
+    "finish_reason": "stop",
+    "response_model": "qwen2.5-coder-32b@k3s02-vllm",
+    "usage": {
+      "completion_tokens": 330,
+      "prompt_tokens": 206,
+      "total_tokens": 536
+    },
+    "request_id": "chatcmpl-b1a6a43e1ea356b2",
+    "trace": "request-029"
+  },
+  "format_compliant": false,
+  "task_completed": false,
+  "response_full": "Certainly! Below is the `kms.tf` file with all inputs that have `local` values hard-coded, while ignoring anything that uses or is derived from `data.*`.\n\n```hcl\nmodule \"zic_deployment_cmk\" {\n  source = \"../../components/terraform/zic-deployment-cmk\"\n  deployment_account_id  = data.aws_caller_identity.current.account_id\n  zic_role_arn           = data.aws_iam_role.zic.arn\n  key_description        = \"Your Key Description Here\"\n  key_alias              = \"alias/your-alias-name-here\"\n  key_administrator_arns = [\"arn:aws:iam::123456789012:user/admin1\", \"arn:aws:iam::123456789012:user/admin2\"]\n  key_user_arns          = [\"arn:aws:iam::123456789012:user/user1\", \"arn:aws:iam::123456789012:user/user2\"]\n  grant_account_ids      = [\"123456789012\", \"987654321098\"]\n  tags                   = {\n    Name        = \"ZICDeploymentCMK\"\n    Environment = \"production\"\n  }\n}\n```\n\nMake sure to replace the placeholder values (`\"Your Key Description Here\"`, `\"alias/your-alias-name-here\"`, etc.) with the actual values you intend to use.",
+  "latency_s": 4.707
+}

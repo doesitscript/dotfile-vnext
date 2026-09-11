@@ -1,0 +1,65 @@
+{
+  "grade": {
+    "pass": false,
+    "reasons": [
+      "root.content.module[0].zic_deployment_cmk.deployment_account_id: expected '${local.deployment_account_id}', got '123456789012'",
+      "root.content.module[0].zic_deployment_cmk.grant_account_ids[0]: expected '666666666666', got '123456789012'",
+      "root.content.module[0].zic_deployment_cmk.key_administrator_arns[0]: expected 'arn:aws:iam::555555555555:role/ArchiveMaintainer', got 'arn:aws:iam::123456789012:user/admin'",
+      "root.content.module[0].zic_deployment_cmk.key_alias: expected 'alias/archive-sandbox', got 'alias/zic-deployment-key'",
+      "root.content.module[0].zic_deployment_cmk.key_description: expected 'Archive test key; resource text in a string is not a block', got 'This is a KMS key for ZIC deployment'",
+      "root.content.module[0].zic_deployment_cmk.key_user_arns[0]: expected 'arn:aws:iam::555555555555:role/ArchiveReader', got 'arn:aws:iam::123456789012:user/user'",
+      "root.content.module[0].zic_deployment_cmk.tags: missing Component",
+      "root.content.module[0].zic_deployment_cmk.tags: missing ManagedBy",
+      "root.content.module[0].zic_deployment_cmk.tags: missing Service",
+      "root.content.module[0].zic_deployment_cmk.tags: missing Ticket",
+      "root.content.module[0].zic_deployment_cmk.tags: unexpected Environment",
+      "root.content.module[0].zic_deployment_cmk.tags: unexpected Name",
+      "Incorrect intermediate file write",
+      "No source read before edit"
+    ]
+  },
+  "files": {
+    "README.md": "# Deployment\n\nDeployment key configuration.\n",
+    "kms.tf": "# Deployment key is implemented by the child module.\nmodule \"zic_deployment_cmk\" {\n  source = \"../../components/terraform/zic-deployment-cmk\"\n  deployment_account_id  = \"123456789012\"\n  zic_role_arn           = data.aws_iam_role.zic.arn\n  key_description        = \"This is a KMS key for ZIC deployment\"\n  key_alias              = \"alias/zic-deployment-key\"\n  key_administrator_arns = [\"arn:aws:iam::123456789012:user/admin\"]\n  key_user_arns          = [\"arn:aws:iam::123456789012:user/user\"]\n  grant_account_ids      = [\"123456789012\"]\n  tags                   = { \"Name\" = \"ZIC Deployment Key\", \"Environment\" = \"Production\" }\n}\n",
+    "main.tf": "# Synthetic grounded values: these identify no deployed resources.\nlocals {\n  deployment_account_id = data.aws_caller_identity.current.account_id\n  config = {\n    kms = {\n      alias_name = \"archive-sandbox\"\n      description = \"Archive test key; resource text in a string is not a block\"\n      key_administrator_arns = [\"arn:aws:iam::555555555555:role/ArchiveMaintainer\"]\n      key_user_arns = [\"arn:aws:iam::555555555555:role/ArchiveReader\"]\n      grant_account_ids = [\"666666666666\"]\n      tags = { Service = \"archive\", Component = \"restore\", ManagedBy = \"fixture\", Ticket = \"LAB-42\" }\n    }\n  }\n}\n"
+  },
+  "turn": {
+    "completed": true,
+    "reason": "stop",
+    "metadata": [
+      {
+        "finish_reason": "tool_calls",
+        "response_model": "qwen2.5-coder-32b@k3s02-vllm",
+        "usage": {
+          "completion_tokens": 92,
+          "prompt_tokens": 354,
+          "total_tokens": 446
+        },
+        "request_id": "chatcmpl-be9932244cea80ce",
+        "trace": "request-024"
+      },
+      {
+        "finish_reason": "tool_calls",
+        "response_model": "qwen2.5-coder-32b@k3s02-vllm",
+        "usage": {
+          "completion_tokens": 602,
+          "prompt_tokens": 626,
+          "total_tokens": 1228
+        },
+        "request_id": "chatcmpl-9cda05c1b5d4036b",
+        "trace": "request-025"
+      },
+      {
+        "finish_reason": "stop",
+        "response_model": "qwen2.5-coder-32b@k3s02-vllm",
+        "usage": {
+          "completion_tokens": 44,
+          "prompt_tokens": 1261,
+          "total_tokens": 1305
+        },
+        "request_id": "chatcmpl-854459767abb0fb7",
+        "trace": "request-026"
+      }
+    ]
+  }
+}
