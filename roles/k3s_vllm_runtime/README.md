@@ -101,6 +101,10 @@ format. Enable both `k3s_vllm_runtime_tool_parser_plugin_enabled: true` and
 `k3s_vllm_runtime_tool_parser_plugin_chat_template_enabled: true`. Runbook:
 `docs/reference/models/5090-qwen25-coder-14b-vs-32b.md`.
 
+For **Qwen3-Coder** with `--tool-call-parser qwen3_coder`, leave both plugin
+flags **false** so vLLM uses the Hugging Face tokenizer `chat_template`. Do not
+override with the Qwen2.5 `<tools>` jinja — that pairing is Qwen2.5-only.
+
 | Action | Playbook |
 | --- | --- |
 | Apply / change vLLM | `playbooks/deploy_vllm_runtime.yaml` |

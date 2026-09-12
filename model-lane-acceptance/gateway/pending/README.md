@@ -35,5 +35,13 @@ LITELLM_MODEL_LANE_MANIFEST=model-lane-acceptance/gateway/pending/my-new-lane.ym
 
 ## Current pending
 
-The model-iteration matrix is pending. Gateway approved contracts live in the
-parent `manifest.yml`.
+| File | Purpose |
+| --- | --- |
+| `model-iteration-2026-09-11.yml` | Five-candidate chat/tools matrix (Qwen3 / gpt-oss / …) |
+| `continue-embed-nomic-hvh01.yml` | Continue `@Codebase` embed ATDD (768 dims) — **contract only** until harness supports `type: embed` |
+
+Human need + Given/When/Then + future Python for embed **and** FIM:
+[`../continue-embed-and-fim-atdd.md`](../continue-embed-and-fim-atdd.md).
+
+FIM autocomplete is already **approved** in parent `manifest.yml` (runnable).
+Gateway approved chat/tools/FIM contracts live in the parent `manifest.yml`.

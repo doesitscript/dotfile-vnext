@@ -286,13 +286,18 @@ windows_ollama_runtime_state: present
 windows_ollama_runtime_bind_host: "0.0.0.0"
 windows_ollama_runtime_port: 11434
 windows_ollama_runtime_models_path: 'F:\shares\public\models\ollama'
-windows_ollama_runtime_default_model: "qwen2.5-coder:1.5b"
+windows_ollama_runtime_default_model: "qwen2.5-coder:1.5b-base"
 windows_ollama_runtime_fallback_model: "qwen2.5-coder:1.5b"
 # Inline on HVH-01: small tags; Ansible parallelizes across hosts with desktop pulls.
 windows_ollama_runtime_model_pull_mode: inline
 windows_ollama_runtime_models_present:
-  # Kilo autocomplete (friendly: qwen2.5-coder-1.5b@hvh01~kilo-autocomplete).
+  # Continue / LiteLLM autocomplete FIM — base (not Instruct) for <|fim_*|> tokens.
+  # Plan 2026-09-12-mac_and_model_recommend; Ollama tag qwen2.5-coder:1.5b-base.
+  - "qwen2.5-coder:1.5b-base"
+  # Retain Instruct tag for Codex local-hvh01 smoke / any chat-style callers.
   - "qwen2.5-coder:1.5b"
+  # Continue embed role — offload Mac; ~275MB; coexists with 1.5B on GTX 1060.
+  - "nomic-embed-text"
   # Concurrent work: Codex installed this exact utility model; retain while its evaluation is documented.
   - "qwen3:4b"
 # RETIRED: phi4-mini (Continue apply — not Kilo download list)

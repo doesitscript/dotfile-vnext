@@ -97,10 +97,17 @@ k3s_litellm_gateway_context_window_fallbacks_without_openai: []
 # Complexity auto-router (MODEL GROUP) — disabled for Kilo clean setup.
 k3s_litellm_gateway_complexity_router_enabled: false
 
-# Local vLLM backend contract. Primary coding + review aliases share vllm-primary
-# until a second local vLLM runtime is commissioned.
+# Local vLLM backend contract. Primary Continue/Codex/OpenCode chat lane.
+# Current sequential primary: Qwen3.6-35B-A3B NVFP4 (nvidia ModelOpt).
 k3s_litellm_gateway_primary_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1" #FIXME: v1 is note part of the base
-k3s_litellm_gateway_primary_vllm_model: "cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit"
+k3s_litellm_gateway_primary_vllm_model: "nvidia/Qwen3.6-35B-A3B-NVFP4"
+# Qwen3.6 official "precise coding / WebDev" thinking-mode sampling
+# (https://huggingface.co/Qwen/Qwen3.6-35B-A3B Best Practices).
+# Clients may override. presence_penalty left at framework default (0).
+k3s_litellm_gateway_primary_vllm_temperature: 0.6
+k3s_litellm_gateway_primary_vllm_top_p: 0.95
+k3s_litellm_gateway_primary_vllm_top_k: 20
+k3s_litellm_gateway_primary_vllm_repetition_penalty: 1.0
 k3s_litellm_gateway_secondary_review_runtime_slug: "vllm-primary"
 k3s_litellm_gateway_secondary_review_api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
 k3s_litellm_gateway_secondary_review_model: "{{ k3s_litellm_gateway_primary_vllm_model }}"
@@ -109,11 +116,24 @@ k3s_litellm_gateway_secondary_review_model: "{{ k3s_litellm_gateway_primary_vllm
 # Kilo routes and legacy 5090 recommendations are retired. Do not add a model
 # here until its client owner, variant, and runtime are explicitly selected.
 k3s_litellm_gateway_lane_contract:
-  - lane: qwen3-coder-30b-a3b@k3s02-vllm
+  - lane: qwen3.6-35b-a3b
     state: enabled
     backend_kind: local-vllm
     runtime: vllm-primary
-    reason: Continue/Codex/OpenCode chat on 5090 — Qwen3-Coder AWQ @ 32k; tool qualification remains pending.
+    reason: >-
+      Continue/Cline/Codex/OpenCode default chat on 5090 — Qwen3.6 NVFP4 @ 32k;
+      NVIDIA card sampling (temp=0.6 top_p=0.95); tool parser qwen3_xml +
+      reasoning-parser qwen3.
+  - lane: qwen3-coder-30b-a3b
+    state: pending_sequential
+    backend_kind: local-vllm
+    runtime: vllm-primary
+    reason: Prior coder primary; requires sequential GPU cutover off Qwen3.6.
+  - lane: gpt-oss-20b
+    state: enabled
+    backend_kind: ollama-desktop
+    runtime: ollama-gpt-oss-desktop
+    reason: OpenAI gpt-oss:20b via desktop Ollama; think=low|medium|high.
   - lane: qwen2.5-coder-7b@desktop
     state: enabled
     backend_kind: ollama-desktop
@@ -155,7 +175,8 @@ k3s_litellm_gateway_anthropic_model_routes: []
 # -----------------------------------------------------------------------------
 k3s_litellm_gateway_autocomplete_1_5b_api_base: ""
 # Served model id at the OpenAI-compatible backend (Ollama tag or vLLM --served-model-name).
-k3s_litellm_gateway_autocomplete_1_5b_model: "qwen2.5-coder:1.5b"
+# Continue FIM prefers the base tag; Instruct remains pullable on HVH-01 for chat smokes.
+k3s_litellm_gateway_autocomplete_1_5b_model: "qwen2.5-coder:1.5b-base"
 # LiteLLM provider prefix: openai for Ollama/llama.cpp OpenAI servers; hosted_vllm for vLLM.
 k3s_litellm_gateway_autocomplete_1_5b_provider: "openai"
 k3s_litellm_gateway_autocomplete_7b_api_base: ""
@@ -186,10 +207,15 @@ k3s_litellm_gateway_continue_edit_provider: "openai"
 k3s_litellm_gateway_desktop_implement_api_base: ""
 k3s_litellm_gateway_desktop_implement_model: "qwen2.5-coder:14b"
 k3s_litellm_gateway_desktop_implement_provider: "openai"
-# Continue apply → HVH-01 Ollama Phi-4 Mini.
+# Continue apply → HVH-01 Ollama Phi-4 Mini (retired). Prefer 7B desktop for Apply.
 k3s_litellm_gateway_continue_apply_api_base: ""
-k3s_litellm_gateway_continue_apply_model: "phi4-mini"
+k3s_litellm_gateway_continue_apply_model: "qwen2.5-coder:7b"
 k3s_litellm_gateway_continue_apply_provider: "openai"
+
+# Continue / local nomic embeddings on HVH-01 Ollama (LiteLLM ollama/ provider).
+k3s_litellm_gateway_nomic_embed_api_base: ""
+k3s_litellm_gateway_nomic_embed_model: "nomic-embed-text"
+k3s_litellm_gateway_nomic_embed_provider: "ollama"
 
 # Open WebUI chat → desktop Ollama (official library tags).
 # Set api_base when the desktop Ollama route should be listed in LiteLLM.
@@ -205,9 +231,12 @@ k3s_litellm_gateway_qwen36_chat_api_base: ""
 k3s_litellm_gateway_qwen36_chat_model: "qwen3.6:27b"
 k3s_litellm_gateway_qwen36_chat_provider: "ollama"
 
+# gpt-oss-20b — desktop Ollama (commission api_base on k3s-02 host_vars).
 k3s_litellm_gateway_gpt_oss_chat_api_base: ""
 k3s_litellm_gateway_gpt_oss_chat_model: "gpt-oss:20b"
 k3s_litellm_gateway_gpt_oss_chat_provider: "ollama"
+k3s_litellm_gateway_gpt_oss_chat_temperature: 1.0
+k3s_litellm_gateway_gpt_oss_chat_top_p: 0.95
 
 # Positive/negative prompt assist alias (pixels stay on ComfyUI / A1111).
 # Defaults empty; host_vars pin to desktop Ollama (same engine as gemma4:12b).

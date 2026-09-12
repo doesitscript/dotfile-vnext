@@ -1,17 +1,19 @@
 # Concurrent editing note: Codex owns this profile template; Cursor should not rewrite it.
 # Install as ~/.codex/local-deep.config.toml and select it with codex --profile local-deep.
 # Keep the gateway secret out of this file; provide it through LITELLM_API_KEY.
+# Sampling for this Qwen3 lane is set on the LiteLLM primary route
+# (temperature=0.7, top_p=0.8, top_k=20, repetition_penalty=1.05).
 
-model = "qwen2.5-coder-32b@k3s02-vllm"
-model_provider = "homelab-litellm"
+model = "qwen3-coder-30b-a3b@k3s02-vllm"
+model_provider = "litellm"
 model_catalog_json = "/Users/joshc/.codex/local-model-catalog.json"
 model_reasoning_effort = "low"
-model_context_window = 28000
-model_auto_compact_token_limit = 24000
-model_instructions_file = "/Users/joshc/.codex/local-model-instructions.md"
+model_context_window = 32768
+model_auto_compact_token_limit = 28000
+model_instructions_file = "/Users/joshc/.codex/instructions-navigation.md"
 web_search = "disabled"
 
-[model_providers.homelab-litellm]
+[model_providers.litellm]
 name = "Homelab LiteLLM"
 base_url = "http://litellm.hom.lab/v1"
 env_key = "LITELLM_API_KEY"

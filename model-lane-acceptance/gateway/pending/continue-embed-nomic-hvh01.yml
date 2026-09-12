@@ -1,0 +1,49 @@
+# Pending — Continue embed (nomic @ HVH-01)
+#
+# STATUS: contract only until global-skills homelab-litellm-model-lane-pytest
+# supports type: embed (see continue-embed-and-fim-atdd.md).
+#
+# Do NOT point LITELLM_MODEL_LANE_MANIFEST at this file for a live run yet —
+# the harness will fail on unknown type "embed".
+#
+# When the harness lands, uncomment the lanes: block and promote to
+# gateway/manifest.yml after a green receipt (HTTP 200, dims == 768).
+
+# Proposed journey (kept as documentation + future executable SSOT):
+#
+# x-embed-nomic-768:
+#   id: codebase-embed-nomic-768
+#   title: "Can @Codebase get a real 768-dim vector through LiteLLM?"
+#   user_story: >-
+#     You ask Continue to index or search the repo. The embed model must return
+#     a nomic-width vector (768 floats) so retrieval is not empty or mismatched.
+#   group: embed
+#   type: embed
+#   requires_capabilities: [embed]
+#   user: "homelab continue embed smoke"
+#   embedding:
+#     endpoint: embeddings
+#     input: "homelab continue embed smoke"
+#   expect_dims: 768
+#   http_status: 200
+#
+# lanes:
+#   - id: nomic-embed-text@hvh01
+#     label: "HVH-01 Ollama nomic-embed-text — Continue embed / @Codebase"
+#     capabilities: [embed]
+#     usage:
+#       - <<: *embed_nomic_768
+
+# Placeholder so YAML parsers stay valid while this remains non-executable.
+lanes: []
+
+meta:
+  title: Continue embed nomic@hvh01 ATDD
+  related: gateway/continue-embed-and-fim-atdd.md
+  harness_gap: type_embed
+  expect_dims: 768
+  model_id: nomic-embed-text@hvh01
+  human_need: >-
+    Continue @Codebase / @Docs must obtain 768-dim vectors through LiteLLM so
+    repo retrieval works without hosting embedders on the Mac.
+  ops_smoke: "POST /v1/embeddings → HTTP 200 and len(data[0].embedding) == 768"

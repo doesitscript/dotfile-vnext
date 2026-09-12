@@ -59,21 +59,54 @@
               'litellm_params': {
                 'model': 'hosted_vllm/' ~ k3s_litellm_gateway_primary_vllm_model,
                 'api_base': k3s_litellm_gateway_primary_vllm_api_base,
-                'api_key': 'none'
+                'api_key': 'none',
+                'temperature': k3s_litellm_gateway_primary_vllm_temperature,
+                'top_p': k3s_litellm_gateway_primary_vllm_top_p,
+                'top_k': k3s_litellm_gateway_primary_vllm_top_k,
+                'repetition_penalty': k3s_litellm_gateway_primary_vllm_repetition_penalty
               },
               'model_info': {
+                'mode': 'chat',
                 'model_lane': k3s_litellm_gateway_client_model_id_continue_chat,
                 'routing_policy': 'local-continue-chat-vllm',
                 'project': 'ripi',
                 'backend_runtime': 'vllm-primary',
                 'hf_repo_id': k3s_litellm_gateway_primary_vllm_model,
-                'notes': 'Continue chat + Kilo ask/plan (5090 vLLM 32B AWQ)',
+                'placement': 'k3s-02 vLLM / RTX 5090 (sequential primary)',
+                'notes': 'Continue/Cline/Codex/OpenCode default (5090 Qwen3.6 NVFP4); placement k3s-02 vLLM — not in model_name; NVIDIA card sampling temp=0.6 top_p=0.95 top_k=20 rep=1.05',
                 'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
                 'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
               }
             }
           ]
           if (k3s_litellm_gateway_primary_vllm_api_base | default('') | length > 0)
+          else []
+        )
+        + (
+          [
+            {
+              'model_name': k3s_litellm_gateway_client_model_id_gpt_oss,
+              'litellm_params': {
+                'model': k3s_litellm_gateway_gpt_oss_chat_provider ~ '/' ~ k3s_litellm_gateway_gpt_oss_chat_model,
+                'api_base': k3s_litellm_gateway_gpt_oss_chat_api_base,
+                'api_key': 'none',
+                'temperature': k3s_litellm_gateway_gpt_oss_chat_temperature,
+                'top_p': k3s_litellm_gateway_gpt_oss_chat_top_p
+              },
+              'model_info': {
+                'mode': 'chat',
+                'model_lane': k3s_litellm_gateway_client_model_id_gpt_oss,
+                'routing_policy': 'local-gpt-oss-ollama-desktop',
+                'project': 'ripi',
+                'backend_runtime': 'ollama-gpt-oss-desktop',
+                'ollama_library': k3s_litellm_gateway_gpt_oss_chat_model,
+                'notes': 'gpt-oss:20b desktop Ollama; think=low|medium|high via Ollama API',
+                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+              }
+            }
+          ]
+          if (k3s_litellm_gateway_gpt_oss_chat_api_base | default('') | length > 0)
           else []
         )
         + (
@@ -138,15 +171,40 @@
                 'routing_policy': 'local-continue-autocomplete',
                 'project': 'ripi',
                 'backend_runtime': 'ollama-autocomplete-1.5b-hvh-01',
-                'hf_repo_id': 'Qwen/Qwen2.5-Coder-1.5B-Instruct',
-                'ollama_library': 'qwen2.5-coder:1.5b',
-                'notes': 'friendly: ~kilo-autocomplete',
+                'hf_repo_id': 'Qwen/Qwen2.5-Coder-1.5B',
+                'ollama_library': 'qwen2.5-coder:1.5b-base',
+                'notes': 'FIM autocomplete base tag; client id keeps 1.5b@hvh01',
                 'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
                 'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
               }
             }
           ]
           if (k3s_litellm_gateway_autocomplete_1_5b_api_base | default('') | length > 0)
+          else []
+        )
+        + (
+          [
+            {
+              'model_name': k3s_litellm_gateway_client_model_id_nomic_embed,
+              'litellm_params': {
+                'model': k3s_litellm_gateway_nomic_embed_provider ~ '/' ~ k3s_litellm_gateway_nomic_embed_model,
+                'api_base': k3s_litellm_gateway_nomic_embed_api_base,
+                'api_key': 'none'
+              },
+              'model_info': {
+                'model_lane': k3s_litellm_gateway_client_model_id_nomic_embed,
+                'routing_policy': 'local-continue-embed-ollama-hvh01',
+                'project': 'ripi',
+                'backend_runtime': 'ollama-nomic-embed-hvh-01',
+                'ollama_library': 'nomic-embed-text',
+                'context_class': 'embeddings',
+                'notes': 'Continue embed; Ollama nomic-embed-text on GTX 1060',
+                'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
+                'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
+              }
+            }
+          ]
+          if (k3s_litellm_gateway_nomic_embed_api_base | default('') | length > 0)
           else []
         )
         + (

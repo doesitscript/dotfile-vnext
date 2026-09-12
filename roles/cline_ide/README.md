@@ -14,11 +14,22 @@ CLI use **LiteLLM OpenAI Compatible** lanes (same gateway as Continue/Zed).
 Cline `baseUrl` **includes `/v1`**. Continue `apiBase` intentionally omits it.
 
 `cline_ide_models` populates `models.json` and sets the default model in
-`providers.json`. With `cline_ide_providers_merge: true` (default), other
-provider entries (e.g. Cline cloud auth) are preserved.
+`providers.json`. Optional per-model `temperature` / `top_p` (defaults
+`0.7` / `0.8` for Qwen3-Coder card alignment) are written into the catalog.
+With `cline_ide_providers_merge: true` (default), other provider entries
+(e.g. Cline cloud auth) are preserved.
 
 The **Cline extension** (`saoudrizwan.claude-dev`) is installed by
-`roles/common/vscode` — not by this role.
+`roles/common/vscode` — not by this role. The **Cline CLI** reads the same
+`~/.cline/` tree (including `mcp.json`).
+
+## Apply on mac-dev
+
+```bash
+ansible-playbook playbooks/deploy_cline_ide.yaml --limit mac-dev
+# or
+ansible-playbook playbooks/deploy_development_nodes.yaml --tags cline_ide --limit mac-dev
+```
 
 ## Lifecycle
 

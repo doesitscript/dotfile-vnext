@@ -12,7 +12,7 @@ Install [OpenCode](https://opencode.ai/install) on macOS and render
 | | |
 | --- | --- |
 | **Apply** | `ansible-playbook playbooks/deploy_opencode_cli.yaml --limit mac-dev` |
-| **Verify** | `opencode --version`; `opencode run -m homelab-litellm/ministral-3-8b@desktop "reply ok"` |
+| **Verify** | `opencode --version`; `opencode run -m litellm/ministral-3-8b@desktop "reply ok"` |
 | **Undo** | `-e opencode_cli_state=absent` |
 | **Change class** | Config idempotent; binary install is bootstrap |
 

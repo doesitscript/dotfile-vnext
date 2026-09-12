@@ -66,8 +66,10 @@ x-fim-add-function: &fim_add_function
   id: autocomplete-add-fim
   title: "Can autocomplete finish a function body while you type?"
   user_story: >-
-    Like Tab-complete in an IDE: given a partial `def add(a, b):`, the model
-    should insert a sensible middle chunk (typically `return a + b`).
+    Like Tab / ghost-text in Continue: you type a partial `def add(a, b):` and
+    need the middle filled via FIM on /v1/completions (not chat). A 200 with a
+    sensible body (often `return a + b`) proves IDE autocomplete plumbing meets
+    that need. Ops shorthand: "FIM completions 200".
   group: autocomplete
   type: fim
   requires_capabilities: [fim]
@@ -80,7 +82,7 @@ x-fim-add-function: &fim_add_function
   http_status: 200
 
 lanes:
-  - id: qwen2.5-coder-32b@k3s02-vllm
+  - id: qwen2.5-coder-32b
     label: "5090 vLLM 32B AWQ — Continue quality chat + Codex deep"
     capabilities: [chat, tools]
     usage:
@@ -100,7 +102,9 @@ lanes:
         expect_mode: json_in_content
 
   - id: qwen2.5-coder-1.5b@hvh01
-    label: "HVH-01 Ollama 1.5B — autocomplete"
+    # Continue autocomplete (FIM). Embed is a separate lane — see
+    # continue-embed-and-fim-atdd.md / pending/continue-embed-nomic-hvh01.yml
+    label: "HVH-01 Ollama 1.5B — Continue autocomplete FIM"
     capabilities: [chat, tools, fim]
     usage:
       - <<: *smoke_ping_pong

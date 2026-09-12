@@ -14,11 +14,11 @@ clients:
     acceptance: gateway/pending/model-iteration-2026-09-11.yml
     lanes:
       - model: Qwen3-Coder-30B-A3B
-        lane: qwen3-coder-30b-a3b@k3s02-vllm
+        lane: qwen3-coder-30b-a3b
         runtime: vllm
         status: published_pending_behavioral_receipts
       - model: Qwen3.6-35B-A3B
-        lane: qwen3.6-35b-a3b@k3s02-vllm
+        lane: qwen3.6-35b-a3b
         runtime: vllm_sequential
         status: pending_runtime_publication
       - model: gpt-oss-20b
@@ -39,7 +39,7 @@ clients:
     host: mac-dev
     lanes:
       - role: chat_quality
-        lane: qwen3-coder-30b-a3b@k3s02-vllm
+        lane: qwen3-coder-30b-a3b
         status: pending_behavioral_qualification
         acceptance: gateway/pending/model-iteration-2026-09-11.yml
       - role: edit_apply
@@ -50,25 +50,40 @@ clients:
         lane: qwen2.5-coder-1.5b@hvh01
         status: approved
         acceptance: gateway/manifest.yml
+        notes: >-
+          Human need = Tab/ghost-text FIM. ATDD:
+          gateway/continue-embed-and-fim-atdd.md §2. Run -m llm_fim.
+      - role: embed_codebase
+        lane: nomic-embed-text@hvh01
+        status: contract_written_harness_gap
+        acceptance: gateway/continue-embed-and-fim-atdd.md
+        pending_manifest: gateway/pending/continue-embed-nomic-hvh01.yml
+        notes: >-
+          Human need = @Codebase/@Docs vectors (768 dims). Ops smoke passed
+          2026-09-12; pytest type:embed not in harness yet.
 
-# udpdate thise values to math what i validated working form the vllm gateway, do tha talso fo rhteopencode tentry below.
+# Codex + OpenCode chat/tools lanes aligned to Qwen3.6-35B-A3B primary
+# (qwen3.6-35b-a3b). Desktop 7B stays for fast/edit only.
   codex_cli:
     product: codex-homelab terminal profiles
     profiles:
-      - profile: deep
-        config: docs/plans/2026-09-01--homelab-local-ai-clients-codex/templates/local-deep.config.toml
-        lane: qwen3-coder-30b-a3b@k3s02-vllm
+      - profile: qwen3.6-35b-a3b
+        launcher: deep
+        config: roles/codex_homelab_profiles/files/codex-profiles/qwen3.6-35b-a3b.config.toml
+        lane: qwen3.6-35b-a3b
         status: pending_behavioral_qualification
         acceptance: codex/pending/tool-loop.yml
-        notes: Chat is live; tool-call behavior is not yet qualified.
+        notes: Chat is live; tool-call behavior is not yet qualified. Replaces opaque local-deep.
       - profile: fast
         lane: qwen2.5-coder-7b@desktop
         status: experimental
-      - profile: tools
-        lane: qwen3-coder-30b-a3b@k3s02-vllm
+      - profile: qwen3.6-35b-a3b-tools
+        launcher: tools
+        config: roles/codex_homelab_profiles/files/codex-profiles/qwen3.6-35b-a3b-tools.config.toml
+        lane: qwen3.6-35b-a3b
         status: pending_behavioral_qualification
         acceptance: codex/pending/tool-loop.yml
-        notes: Replaced the desktop profile-tools entry with the selected primary model; do not promote until the tool-loop receipt passes.
+        notes: Same Qwen3.6 model with tools instructions; replaces opaque local-tools.
       - profile: hom-lab
         lane: qwen2.5-coder-7b@desktop
         status: experimental
@@ -81,11 +96,11 @@ clients:
         status: approved
         acceptance: gateway/manifest.yml
       - role: chat_agent_primary
-        lane: qwen3-coder-30b-a3b@k3s02-vllm
+        lane: qwen3.6-35b-a3b
         status: pending_behavioral_qualification
         acceptance: gateway/pending/model-iteration-2026-09-11.yml
       - role: generalist_evaluation
-        lane: qwen3.6-35b-a3b@k3s02-vllm
+        lane: qwen3.6-35b-a3b
         status: pending_runtime_publication
         acceptance: gateway/pending/model-iteration-2026-09-11.yml
       - role: alternate_agent_evaluation

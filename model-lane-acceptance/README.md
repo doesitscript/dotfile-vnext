@@ -35,7 +35,9 @@ and failure. Do not report only pytest counts.
 
 ```text
 gateway/manifest.yml           → LITELLM_MODEL_LANE_MANIFEST (approved gateway contracts)
-gateway/pending/               → criteria not yet green
+gateway/continue-embed-and-fim-atdd.md
+                               → Continue @Codebase embed + Tab FIM user needs / GWT / Python gap
+gateway/pending/               → criteria not yet green (incl. embed contract YAML)
 codex/profiles-approved.yml    → CODEX_CLI_MODEL_PROFILE_MANIFEST (approved CLI contracts)
 codex/pending/                 → ATDD specs (e.g. shell tool-loop; may fail by design)
 client-map.yml                 → Continue / Kilo / Codex profile → lane mapping
@@ -48,11 +50,20 @@ scripts/run-codex-acceptance.sh
 From repo root (requires `LITELLM_API_KEY` and reachable `litellm.hom.lab`):
 
 ```bash
+# Commissioned model id parity across Continue/Cline/OpenCode/Kilo/Zed/Aider
+./model-lane-acceptance/scripts/check-ai-cli-model-parity.py
+
 # All approved gateway journeys
 ./model-lane-acceptance/scripts/run-gateway-acceptance.sh
 
 # Smoke only
 ./model-lane-acceptance/scripts/run-gateway-acceptance.sh -m smoke -v -s
+
+# Continue autocomplete FIM (approved)
+./model-lane-acceptance/scripts/run-gateway-acceptance.sh -m llm_fim -v -s
+
+# Continue embed: see gateway/continue-embed-and-fim-atdd.md (harness gap;
+# ops probe = POST /v1/embeddings → 200 + 768 dims)
 
 # Approved Codex profiles
 ./model-lane-acceptance/scripts/run-codex-acceptance.sh

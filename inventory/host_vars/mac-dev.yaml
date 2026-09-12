@@ -11,6 +11,14 @@ node_classes:
 policy_classes:
   - controller
 
+# Labels for AI CLI / IDE client grouping (see inventory/group_vars/all/ai_cli_apps.yml).
+# Deploy all commissioned clients: --tags ai_cli_apps
+ai_cli_apps_labels:
+  - ai-cli-apps
+  - litellm-clients
+  - openai-compatible-edge
+  - mac-dev
+
 # Docker client — reaches the Ubuntu guest Docker engine via SSH.
 # Uses the generated SSH config alias so IdentityFile and other settings are inherited.
 docker_engine_ssh_host: "hom-lab-ctl-dkr-02"
@@ -74,12 +82,29 @@ terraform_cli_state: present
 # LiteLLM CLI package-management desired state.
 litellm_cli_state: present
 
-# Continue IDE → LiteLLM (model lanes: roles/continue_ide/defaults/main.yml).
+# Continue IDE → LiteLLM (model list + sampling defaults live in roles/continue_ide).
+# Plan 2026-09-12-mac_and_model_recommend: HVH-01 FIM autocomplete + nomic embed via gateway.
 continue_ide_state: present
+continue_ide_autocomplete_enabled: true
 
-# OpenCode CLI → homelab LiteLLM (see roles/opencode_cli).
+# Cline IDE + CLI → LiteLLM.
+# Sampling defaults (max_output_tokens / temperature / top_p) live in
+# roles/cline_ide/defaults/main.yml — do not restate here unless overriding.
+cline_ide_state: present
+cline_ide_model: "qwen3.6-35b-a3b"
+
+# OpenCode CLI → LiteLLM (provider id: litellm).
 opencode_cli_state: present
-opencode_cli_default_model: "homelab-litellm/qwen3-coder-30b-a3b@k3s02-vllm"
+opencode_cli_default_model: "litellm/qwen3.6-35b-a3b"
+
+# Kilo IDE → same Continue model set (provider id: litellm).
+kilo_ide_state: present
+kilo_ide_default_model: "litellm/qwen3.6-35b-a3b"
+
+# Aider CLI → LiteLLM OpenAI-compatible (same primary as Continue).
+aider_state: present
+aider_default_model: "openai/qwen3.6-35b-a3b"
+aider_pipx_python: "/usr/local/bin/python3.12"
 
 # Cursor marketplace plugins use Cursor's plugin subsystem, not
 # `cursor --install-extension`. Track required slugs here and let `roles/cursor`
@@ -87,9 +112,8 @@ opencode_cli_default_model: "homelab-litellm/qwen3-coder-30b-a3b@k3s02-vllm"
 cursor_marketplace_plugins_required:
   - superpowers
 
-# Codex-owned local desktop implementation lane on this Mac. The prior 14B
-# desktop route emitted unexecuted tool JSON in Codex and remains a chat-only
-# experimental lane until it is re-qualified.
+# Codex profiles: filenames = visible model id (not opaque local-deep / local-tools).
+# deep → qwen3.6-35b-a3b ; tools → qwen3.6-35b-a3b-tools
 codex_homelab_profiles_state: present
 codex_homelab_profiles_multi_terminal_state: present
 codex_homelab_profiles_model: "ministral-3-8b@desktop"
@@ -103,7 +127,7 @@ codex_user_config_force: false
 # fzf-tab-completion for bash + Python REPL (promoted from one-off trial).
 fzf_tab_completion_state: present
 
-# GNU netcat package-management desired state.
+# GNU netcat packa/Users/joshc/.local/pipx/venvs/aider-chatge-management desired state.
 netcat_cli_state: present
 
 # just command runner package-management desired state.

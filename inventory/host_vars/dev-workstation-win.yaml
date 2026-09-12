@@ -5,6 +5,12 @@
 # primary_connection: openssh (WinRM retained as secondary/bootstrap)
 # Groups: windows_hosts, windows_amd_gpu_hosts, windows_access_hosts (via children),
 #         windows_os_hosts, dev_workstation — NOT windows_hosts_offline / deferred
+#
+# Hardware facts (live WMI 2026-09-12):
+#   Board: MSI MS-7A12
+#   CPU: Intel Core i7-6700K @ 4.00 GHz (4C/8T)
+#   System RAM: 32 GB (do not use older docs that said 16 GB)
+#   GPU: AMD Radeon RX 9060 XT — 16 GB VRAM (product VRAM; ignore WMI AdapterRAM)
 ansible_host: "192.168.50.133"
 ansible_connection: ssh
 ansible_port: 22
@@ -33,7 +39,7 @@ gpu_diagnostics_windows_enable_presentmon_cli: false
 
 # Host-local Ollama — Continue edit, Open WebUI, and Kilo **fallback** only
 # (AMD RX 9060 XT / Vulkan). Kilo **primary** coding is 5090 vLLM via LiteLLM:
-#   qwen2.5-coder-32b@k3s02-vllm~kilo-main
+#   qwen2.5-coder-32b~kilo-main
 windows_ollama_runtime_state: present
 windows_ollama_runtime_bind_host: "0.0.0.0"
 windows_ollama_runtime_port: 11434

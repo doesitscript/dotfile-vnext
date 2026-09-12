@@ -40,19 +40,21 @@ The **Continue editor extension** (`Continue.continue`) is installed by
 | **Undo** | `-e continue_ide_state=absent` |
 | **Change class** | Idempotent config |
 
-## Functional lanes (2026-09-02)
+## Functional lanes (2026-09-12)
 
 | Continue role | Display name | LiteLLM `model` | GPU |
 | --- | --- | --- | --- |
-| Chat | Chat Qwen2.5 Coder 32B | `qwen2.5-coder-32b@k3s02-vllm` | 5090 vLLM AWQ |
-| Edit / Apply | Edit Qwen2.5 Coder 7B | `qwen2.5-coder-7b@desktop` | RX 9060 XT Ollama |
+| Chat | Chat Qwen3.6-35B-A3B | `qwen3.6-35b-a3b` | 5090 vLLM |
+| Edit | Edit Qwen2.5 Coder 14B | `qwen2.5-coder-14b@desktop` | RX 9060 XT Ollama |
+| Apply | Apply Qwen2.5 Coder 7B | `qwen2.5-coder-7b@desktop` | RX 9060 XT Ollama |
+| Autocomplete | Autocomplete 1.5B-base | `qwen2.5-coder-1.5b@hvh01` → Ollama `:1.5b-base` | GTX 1060 |
+| Embed | nomic-embed-text | `nomic-embed-text@hvh01` | GTX 1060 |
 
 Autocomplete policy:
 
 - `continue_ide_autocomplete_enabled: false` by default
-- keep remote autocomplete lanes out of the rendered config
-- if a future local-only autocomplete lane is proven stable on the client Mac,
-  enable it explicitly and document the exact local model/runtime
+- mac-dev may set `true` for HVH-01 FIM via LiteLLM (plan 2026-09-12)
+- keep Mac-local `provider: ollama` out of this path; gateway `model@host` only
 
 ## Work-laptop local Ollama section
 

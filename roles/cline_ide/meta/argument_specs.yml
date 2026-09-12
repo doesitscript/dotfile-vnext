@@ -24,7 +24,7 @@ argument_specs:
       cline_ide_model:
         type: str
         required: false
-        default: "qwen2.5-coder-32b@k3s02-vllm"
+        default: "qwen3-coder-30b-a3b"
         description: Default / last-used model id (must be in cline_ide_models).
       cline_ide_models:
         type: list
@@ -32,7 +32,22 @@ argument_specs:
         required: false
         description: >-
           LiteLLM lane catalog written to models.json (name, model,
-          context_window, capabilities).
+          context_window, max_output_tokens, temperature, top_p, capabilities).
+      cline_ide_default_temperature:
+        type: float
+        required: false
+        default: 0.7
+        description: Default sampling temperature when a model entry omits temperature.
+      cline_ide_default_top_p:
+        type: float
+        required: false
+        default: 0.8
+        description: Default top_p when a model entry omits top_p.
+      cline_ide_default_max_output_tokens:
+        type: int
+        required: false
+        default: 8192
+        description: Default max output tokens when a model entry omits max_output_tokens.
       cline_ide_providers_merge:
         type: bool
         required: false

@@ -30,7 +30,7 @@ model_catalog_manifest:
       - storage footprint estimate recorded before download
       - serving runtime and quantization compatibility confirmed
   entries:
-    - lane: qwen2.5-coder-14b@k3s02-vllm
+    - lane: qwen2.5-coder-14b
       purpose: retired legacy candidate; no current client owner
       status: retired
       example_hf_repo_id: null
@@ -61,51 +61,77 @@ model_catalog_manifest:
     - lane: code-fast
       purpose: autocomplete, small edits, repo questions
       status: downloaded
-      candidate_family: Qwen2.5-Coder 1.5B (Continue autocomplete default)
-      example_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B-Instruct
-      selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B-Instruct
+      candidate_family: Qwen2.5-Coder 1.5B base (Continue FIM)
+      example_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B
+      selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B
       license: apache-2.0
       serving_runtime: ollama
       storage_host: HOM-LAB-HVH-01
-      unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface\\Qwen--Qwen2.5-Coder-1.5B-Instruct"
+      unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\ollama"
       source_routing:
         primary_doc_source: ollama_library
         primary_doc_url: "https://ollama.com/library/qwen2.5-coder"
         secondary_doc_source: huggingface_model_card
-        secondary_doc_url: "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct"
+        secondary_doc_url: "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B"
         ollama_library_url: "https://ollama.com/library/qwen2.5-coder"
         llms_txt_url: null
-        context7_library_id: null
-        hrl_pack_slug: qwen-qwen2.5-coder-1.5b-instruct
+        context7_library_id: /websites/ollama
+        hrl_pack_slug: qwen-qwen2.5-coder-1.5b-base
         hrl_pack_status: missing
       research_sources:
-        - https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct
+        - https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B
         - https://ollama.com/library/qwen2.5-coder
-        - https://docs.continue.dev/ide-extensions/autocomplete/model-setup
-        - https://docs.litellm.ai/docs/providers/vllm
+        - https://docs.continue.dev/customize/deep-dives/autocomplete
+        - https://docs.litellm.ai/docs/providers/ollama
       notes: >-
-        LiteLLM lanes code-fast / code-autocomplete-1.5b. Served on HVH-01 GTX 1060
-        via Ollama (llama.cpp) OpenAI /v1 — not vLLM (Pascal CC 6.1). Not OpenRouter.
-        Do not alias onto vllm-primary 32B.
+        Plan 2026-09-12: Ollama tag qwen2.5-coder:1.5b-base for FIM. LiteLLM client
+        id remains qwen2.5-coder-1.5b@hvh01. Served on HVH-01 GTX 1060 via Ollama
+        OpenAI /v1 — not vLLM (Pascal CC 6.1). Instruct tag retained on host for smokes.
     - lane: code-autocomplete-1.5b
-      purpose: Continue autocomplete QwenCoder2.5 1.5B
+      purpose: Continue autocomplete QwenCoder2.5 1.5B-base FIM
       status: downloaded
-      candidate_family: smaller coding FIM model
-      example_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B-Instruct
-      selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B-Instruct
+      candidate_family: smaller coding FIM model (base)
+      example_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B
+      selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B
       license: apache-2.0
       serving_runtime: ollama
-      unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface\\Qwen--Qwen2.5-Coder-1.5B-Instruct"
+      unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\ollama"
       source_routing:
         primary_doc_source: ollama_library
         primary_doc_url: "https://ollama.com/library/qwen2.5-coder"
         secondary_doc_source: huggingface_model_card
-        secondary_doc_url: "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct"
-        hrl_pack_slug: qwen-qwen2.5-coder-1.5b-instruct
+        secondary_doc_url: "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B"
+        hrl_pack_slug: qwen-qwen2.5-coder-1.5b-base
         hrl_pack_status: missing
       notes: >-
-        Client alias for Continue autocomplete. Backend: Ollama qwen2.5-coder:1.5b
-        on HOM-LAB-HVH-01:11434/v1 via LiteLLM.
+        Client alias qwen2.5-coder-1.5b@hvh01 → Ollama qwen2.5-coder:1.5b-base
+        on HOM-LAB-HVH-01:11434/v1 via LiteLLM. Continue: temp 0.0, debounce 250,
+        maxPromptTokens 1024, legacy completions FIM template.
+    - lane: nomic-embed-text-hvh01
+      purpose: Continue embed off Mac onto HVH-01 Ollama
+      status: selected
+      candidate_family: Nomic Embed Text
+      example_hf_repo_id: nomic-ai/nomic-embed-text-v1.5
+      selected_hf_repo_id: nomic-ai/nomic-embed-text-v1.5
+      license: apache-2.0
+      serving_runtime: ollama
+      storage_host: HOM-LAB-HVH-01
+      unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\ollama"
+      source_routing:
+        primary_doc_source: ollama_library
+        primary_doc_url: "https://ollama.com/library/nomic-embed-text"
+        secondary_doc_source: huggingface_model_card
+        secondary_doc_url: "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5"
+        context7_library_id: /websites/ollama
+        hrl_pack_slug: nomic-embed-text
+        hrl_pack_status: missing
+      research_sources:
+        - https://ollama.com/library/nomic-embed-text
+        - https://ollama.com/blog/embedding-models
+        - https://docs.litellm.ai/docs/embedding/supported_embedding
+      notes: >-
+        LiteLLM model_name nomic-embed-text@hvh01 → ollama/nomic-embed-text at
+        http://ollama-hvh01.hom.lab:11434 (no /v1). Ollama >= 0.1.26. ~137M params.
     - lane: code-autocomplete-7b
       purpose: Continue autocomplete QwenCoder2.5 7B
       status: downloaded

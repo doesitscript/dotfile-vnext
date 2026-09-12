@@ -4,6 +4,7 @@
 # Authority: https://docs.cline.bot/getting-started/config.md
 # Provider shape: ~/.cline/data/settings/providers.json (openai-compatible)
 # Model catalog: ~/.cline/data/settings/models.json
+# CLI MCP: ~/.cline/mcp.json (same render as IDE MCP settings)
 cline_ide_state: absent
 cline_ide_config_root: "{{ ansible_env.HOME }}/.cline"
 cline_ide_data_settings_dir: "{{ cline_ide_config_root }}/data/settings"
@@ -19,34 +20,93 @@ cline_ide_vault_file_path: "{{ inventory_dir }}/../vault/shared.vault.yml"
 cline_ide_provider_id: "openai-compatible"
 cline_ide_provider_display_name: "Homelab LiteLLM"
 # Default / last-used model id (must exist in cline_ide_models).
-cline_ide_model: "qwen2.5-coder-32b@k3s02-vllm"
+cline_ide_model: "qwen3.6-35b-a3b"
 cline_ide_default_context_window: 32768
-cline_ide_default_max_output_tokens: 4096
+cline_ide_default_max_output_tokens: 8192
+# Qwen3.6 NVFP4 card SciCode-style defaults when a model entry omits sampling keys.
+cline_ide_default_temperature: 0.6
+cline_ide_default_top_p: 0.95
 cline_ide_default_capabilities:
   - streaming
   - tools
 # When true, preserve non-managed provider entries (e.g. Cline cloud auth).
 cline_ide_providers_merge: true
 cline_ide_modes: {}
-# LiteLLM lanes available in the Cline model picker.
+# LiteLLM lanes available in the Cline model picker (IDE + CLI share this catalog).
 cline_ide_models:
-  - name: "Chat Qwen2.5 Coder 32B (5090 vLLM)"
-    model: "qwen2.5-coder-32b@k3s02-vllm"
+  - name: "Chat Qwen3.6-35B-A3B (5090 vLLM)"
+    model: "qwen3.6-35b-a3b"
     roles:
       - chat
       - agent
     context_window: 32768
-    max_output_tokens: 4096
+    max_output_tokens: 8192
+    temperature: 0.6
+    top_p: 0.95
     capabilities:
       - streaming
       - tools
-  - name: "Edit Qwen2.5 Coder 7B (desktop Ollama)"
-    model: "qwen2.5-coder-7b@desktop"
+  - name: "Chat Qwen3-Coder-30B-A3B (pending sequential vLLM)"
+    model: "qwen3-coder-30b-a3b"
+    enabled: false
+    roles:
+      - chat
+      - agent
+    context_window: 32768
+    max_output_tokens: 8192
+    temperature: 0.7
+    top_p: 0.8
+    capabilities:
+      - streaming
+      - tools
+  - name: "Edit Qwen2.5 Coder 14B (desktop Ollama)"
+    model: "qwen2.5-coder-14b@desktop"
     roles:
       - edit
-      - apply
-    context_window: 32768
+    context_window: 12000
     max_output_tokens: 4096
+    temperature: 0.2
+    top_p: 0.9
+    capabilities:
+      - streaming
+      - tools
+  - name: "Apply Qwen2.5 Coder 7B (desktop Ollama)"
+    model: "qwen2.5-coder-7b@desktop"
+    roles:
+      - apply
+    context_window: 12000
+    max_output_tokens: 4096
+    temperature: 0.2
+    top_p: 0.9
+    capabilities:
+      - streaming
+      - tools
+  - name: "Autocomplete Qwen2.5 Coder 1.5B-base (HVH-01)"
+    model: "qwen2.5-coder-1.5b@hvh01"
+    roles:
+      - autocomplete
+    context_window: 4096
+    max_output_tokens: 256
+    temperature: 0.0
+    capabilities:
+      - streaming
+  - name: "Embed nomic-embed-text (HVH-01)"
+    model: "nomic-embed-text@hvh01"
+    roles:
+      - embed
+    context_window: 8192
+    max_output_tokens: 1
+    temperature: 0.0
+    capabilities: []
+  - name: "gpt-oss 20B (desktop Ollama)"
+    model: "gpt-oss-20b"
+    roles:
+      - chat
+      - agent
+    context_window: 131072
+    max_output_tokens: 8192
+    temperature: 1.0
+    top_p: 0.95
     capabilities:
       - streaming
       - tools
@@ -57,6 +117,52 @@ cline_ide_models:
       - agent
     context_window: 24000
     max_output_tokens: 4096
+    temperature: 0.2
+    top_p: 0.9
+    capabilities:
+      - streaming
+      - tools
+  - name: "Gemini 2.5 Flash (Daily Driver)"
+    model: "gemini-2.5-flash@google~public-research"
+    roles:
+      - chat
+      - agent
+    context_window: 1048576
+    max_output_tokens: 8192
+    temperature: 0.3
+    capabilities:
+      - streaming
+      - tools
+  - name: "Gemini 2.5 Flash (Long Context 1M)"
+    model: "gemini-2.5-flash@google~long-context"
+    roles:
+      - chat
+      - agent
+    context_window: 1048576
+    max_output_tokens: 8192
+    temperature: 0.3
+    capabilities:
+      - streaming
+      - tools
+  - name: "Gemini 2.5 Pro (Deep Reasoning)"
+    model: "gemini-2.5-pro@google~deep-reasoning"
+    roles:
+      - chat
+      - agent
+    context_window: 1048576
+    max_output_tokens: 8192
+    temperature: 0.2
+    capabilities:
+      - streaming
+      - tools
+  - name: "Gemini 2.5 Flash Lite (Bulk)"
+    model: "gemini-2.5-flash-lite@google~bulk"
+    roles:
+      - chat
+      - agent
+    context_window: 1048576
+    max_output_tokens: 4096
+    temperature: 0.3
     capabilities:
       - streaming
       - tools

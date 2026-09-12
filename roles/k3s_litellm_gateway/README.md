@@ -62,8 +62,8 @@ matching `k3s_litellm_gateway_*_chat_api_base` is set).
 
 | Client ID | Backend | Kilo code agent |
 | --- | --- | --- |
-| `qwen3-coder-30b-a3b@k3s02-vllm` | 5090 vLLM Qwen3-Coder AWQ | **Current primary**; chat live, tool acceptance pending |
-| `qwen2.5-coder-14b@k3s02-vllm~kilo-lite` | 5090 vLLM 14B AWQ (testing) | **Smoke/chat only** — tool_calls broken (hermes vs `<tools>` format) |
+| `qwen3-coder-30b-a3b` | 5090 vLLM Qwen3-Coder AWQ | **Current primary**; card sampling defaults on route (`temp=0.7`, `top_p=0.8`, `top_k=20`, `repetition_penalty=1.05`); tool acceptance pending |
+| `qwen2.5-coder-14b~kilo-lite` | 5090 vLLM 14B AWQ (testing) | **Smoke/chat only** — tool_calls broken (hermes vs `<tools>` format) |
 | `ministral-3-8b@desktop~kilo-fast` | Desktop Ollama | **Interim fallback** — API tool_calls OK |
 | `qwen2.5-coder-1.5b@hvh01~kilo-autocomplete` | HVH-01 Ollama | Autocomplete lane |
 
@@ -104,8 +104,8 @@ Entry kinds (also in `model_info.client_model_id_kind` when set):
 
 | Client `model_name` | Kind | Backend |
 | --- | --- | --- |
-| `qwen2.5-coder-32b@k3s02-vllm~coder-primary` | FRIENDLY ALIAS | vLLM Qwen2.5-Coder-32B AWQ on k3s-02 (5090) |
-| `qwen2.5-coder-32b@k3s02-vllm~kilo-main` | FRIENDLY ALIAS | Same 5090 backend — **Kilo primary** |
+| `qwen2.5-coder-32b~coder-primary` | FRIENDLY ALIAS | vLLM Qwen2.5-Coder-32B AWQ on k3s-02 (5090) |
+| `qwen2.5-coder-32b~kilo-main` | FRIENDLY ALIAS | Same 5090 backend — **Kilo primary** |
 | `qwen2.5-coder-1.5b@hvh01~kilo-autocomplete` | FRIENDLY ALIAS | Ollama on HVH-01 (1060) |
 | `devstral-24b@desktop~open-webui-coder` | FRIENDLY ALIAS | Desktop Ollama (not Kilo main) |
 | `litellm-complexity-auto-router@litellm~smart-router` | MODEL GROUP | Tier router |
@@ -125,10 +125,10 @@ Tier map (local-first; Ollama retired — SIMPLE tier aliases vllm-primary revie
 
 | Tier | Without cloud keys | With OpenAI | With Anthropic |
 | --- | --- | --- | --- |
-| SIMPLE | `qwen2.5-coder-32b@k3s02-vllm~code-review` | same | same |
-| MEDIUM | `qwen2.5-coder-32b@k3s02-vllm~coder-primary` | same | same |
-| COMPLEX | `qwen2.5-coder-32b@k3s02-vllm~coder-primary` | `gpt-4o@openai~cloud-chat` | `claude-sonnet-4@anthropic~cloud-escalation` |
-| REASONING | `qwen2.5-coder-32b@k3s02-vllm~coder-primary` | `gpt-4o@openai~cloud-chat` | `claude-sonnet-4@anthropic~cloud-escalation` |
+| SIMPLE | `qwen2.5-coder-32b~code-review` | same | same |
+| MEDIUM | `qwen2.5-coder-32b~coder-primary` | same | same |
+| COMPLEX | `qwen2.5-coder-32b~coder-primary` | `gpt-4o@openai~cloud-chat` | `claude-sonnet-4@anthropic~cloud-escalation` |
+| REASONING | `qwen2.5-coder-32b~coder-primary` | `gpt-4o@openai~cloud-chat` | `claude-sonnet-4@anthropic~cloud-escalation` |
 
 This is **pre-request complexity classification**, not post-response confidence
 handoff. Keyword rules for ansible/k3s/netbox escalate to COMPLEX/REASONING.
@@ -209,17 +209,17 @@ External PostgreSQL uses `k3s_litellm_gateway_db_endpoint` plus
 
 For the current slice:
 
-- `qwen3-coder-30b-a3b@k3s02-vllm` is the current primary local coding lane
+- `qwen3-coder-30b-a3b` is the current primary local coding lane
   (`cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit` on vLLM / 5090).
 - The old Qwen2.5 aliases below are historical migration references and must
   not be used as the current client source identity.
-- `qwen2.5-coder-32b@k3s02-vllm~coder-no-trim` is a historical alias from the
+- `qwen2.5-coder-32b~coder-no-trim` is a historical alias from the
   trim era; both aliases now pass through unmutated. Oversized prompts fail at
   vLLM (32k). Archived mutate path:
   `roles/k3s_litellm_gateway/archive/trim-messages-callback-2026-07/`.
-- `qwen2.5-coder-32b@k3s02-vllm~experiment` remains visible as a smoke alias, but it currently shares the
+- `qwen2.5-coder-32b~experiment` remains visible as a smoke alias, but it currently shares the
   same `vllm-primary` backend as coder-primary until a second runtime exists.
-- `gpt-4o-mini@openai~cloud-fast` and `qwen2.5-coder-32b@k3s02-vllm~default` stay present as migration rows while local-lane
+- `gpt-4o-mini@openai~cloud-fast` and `qwen2.5-coder-32b~default` stay present as migration rows while local-lane
   verification is still maturing.
 
 The durable Hugging Face/storage catalog is separate:

@@ -19,7 +19,7 @@ Default agent model map (Continue-aligned):
 
 | Agent | Model |
 | --- | --- |
-| `code` / `build` / `plan` / `ask` / `general` / `debug` / `orchestrator` | `qwen2.5-coder-32b@k3s02-vllm` |
+| `code` / `build` / `plan` / `ask` / `general` / `debug` / `orchestrator` | `qwen2.5-coder-32b` |
 | `explore` / `title` / `summary` / `compaction` / `small_model` | `qwen2.5-coder-7b@desktop` |
 
 ## Lifecycle
