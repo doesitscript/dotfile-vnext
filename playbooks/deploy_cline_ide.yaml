@@ -1,0 +1,18 @@
+---
+# Deploy Cline IDE + CLI config from the cline_ide role templates.
+# Renders providers.json, models.json, and MCP settings under ~/.cline/
+# (inventory: cline_ide_state: present on mac-dev).
+#
+#   ansible-playbook playbooks/deploy_cline_ide.yaml --limit mac-dev
+# Also available via:
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cline_ide --limit mac-dev
+- name: Deploy Cline IDE/CLI LiteLLM config
+  hosts: mac-dev
+  gather_facts: true
+  become: false
+  vars:
+    dotfiles_home: "{{ dotfiles_home | default(playbook_dir | dirname) }}"
+  roles:
+    - role: cline_ide
+      when: ansible_system == "Darwin"
+      tags: [cline, cline_ide]

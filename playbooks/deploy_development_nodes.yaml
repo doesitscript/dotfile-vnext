@@ -11,9 +11,8 @@
 #          common/agent_skills (repo-owned Cursor/Codex skill symlinks)
 #          langfuse_cli (Langfuse CLI for tracing and evaluation)
 #          litellm_cli (LiteLLM CLI on macOS via pipx)
-#          continue_ide (Continue IDE config → LiteLLM autocomplete/edit lanes; pair with Continue.continue extension)
-#          opencode_cli (OpenCode CLI + homelab LiteLLM opencode.jsonc)
-#          codex_homelab_profiles (isolated local Codex homes + launcher)
+#          continue_ide / cline_ide / opencode_cli / kilo_ide / aider /
+#            codex_homelab_profiles — AI CLI apps (umbrella tag: ai_cli_apps)
 #          terraform_cli (Terraform CLI on macOS through the official HashiCorp Homebrew tap)
 #          aws_cli (AWS CLI on macOS through Homebrew awscli formula)
 #          speech_central (Speech Central install on mac-dev via mas_cli dependency)
@@ -75,9 +74,12 @@
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags langfuse --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags langfuse_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags litellm_cli --limit mac-dev
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags ai_cli_apps --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags continue_ide --limit mac-dev
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags cline_ide --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags opencode_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags codex_homelab_profiles --limit mac-dev
+#   ansible-playbook playbooks/deploy_development_nodes.yaml --tags codex_user_config --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags terraform_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags aws_cli --limit mac-dev
 #   ansible-playbook playbooks/deploy_development_nodes.yaml --tags speech_central --limit mac-dev
@@ -178,16 +180,25 @@
       tags: [litellm, litellm_cli]
     - role: continue_ide
       when: ansible_system == "Darwin"
-      tags: [continue, continue_ide]
+      tags: [ai_cli_apps, ai_clients, continue, continue_ide]
+    - role: cline_ide
+      when: ansible_system == "Darwin"
+      tags: [ai_cli_apps, ai_clients, cline, cline_ide]
     - role: opencode_cli
       when: ansible_system == "Darwin"
-      tags: [opencode, opencode_cli]
+      tags: [ai_cli_apps, ai_clients, opencode, opencode_cli]
+    - role: kilo_ide
+      when: ansible_system == "Darwin"
+      tags: [ai_cli_apps, ai_clients, kilo, kilo_ide]
+    - role: aider
+      when: ansible_system == "Darwin"
+      tags: [ai_cli_apps, ai_clients, aider, aider_cli]
     - role: codex_homelab_profiles
       when: ansible_system == "Darwin"
-      tags: [codex, codex_homelab_profiles]
+      tags: [ai_cli_apps, ai_clients, codex, codex_homelab_profiles]
     - role: codex_user_config
       when: ansible_system == "Darwin"
-      tags: [codex, codex_user_config, locale]
+      tags: [ai_cli_apps, ai_clients, codex, codex_user_config, locale]
     - role: terraform_cli
       when: ansible_system == "Darwin"
       tags: [terraform_cli]
