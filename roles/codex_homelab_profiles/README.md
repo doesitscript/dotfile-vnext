@@ -19,8 +19,10 @@ When enabled:
 
 - `~/.bashrc.d/codex-multi-terminal.bash` — templated from
   `templates/codex-multi-terminal.bash.j2` (`multi_terminal.yml`)
-- Shared `~/.codex/local-{deep,fast,hvh01}.config.toml` and lane instructions
-- `~/bin/render_local_model_catalog` and `codex-homelab` launcher (`deep|fast|desktop|hvh01`)
+- Shared `~/.codex/qwen3.6-35b-a3b{,-tools}.config.toml`, `local-{fast,hvh01}`, Gemini profiles, and lane instructions
+- `~/bin/render_local_model_catalog` and `codex-homelab` launcher (`deep|tools|fast|desktop|hvh01`)
+  - `deep` → profile `qwen3.6-35b-a3b` (model `qwen3.6-35b-a3b`)
+  - `tools` → profile `qwen3.6-35b-a3b-tools` (same model, tools instructions)
 
 Repo roots for `cx-*` wrappers (override on work-laptop):
 
