@@ -1,0 +1,200 @@
+---
+# Install Cline CLI via nvm-managed Node (22+). Config under ~/.cline is
+# roles/cline_ide (providers.json, models.json, mcp.json).
+
+- name: Ensure nvm Node major exists for Cline CLI
+  ansible.builtin.shell: |
+    set -euo pipefail
+    export NVM_DIR="{{ ansible_env.HOME }}/.nvm"
+    # shellcheck disable=SC1091
+    . "$NVM_DIR/nvm.sh"
+    if ! nvm which {{ cline_cli_node_version }} >/dev/null 2>&1; then
+      nvm install {{ cline_cli_node_version }}
+    fi
+    nvm which {{ cline_cli_node_version }}
+  args:
+    executable: /bin/bash
+  register: _cline_cli_node_which
+  changed_when: false
+  when: cline_cli_state == "present"
+
+- name: Derive Cline CLI npm/node paths from nvm which
+  ansible.builtin.set_fact:
+    cline_cli_node_bin: "{{ _cline_cli_node_which.stdout | trim }}"
+    cline_cli_node_bin_dir: "{{ _cline_cli_node_which.stdout | trim | dirname }}"
+    cline_cli_npm_bin: "{{ (_cline_cli_node_which.stdout | trim | dirname) }}/npm"
+  when: cline_cli_state == "present"
+
+- name: Resolve npm global prefix for Cline CLI
+  ansible.builtin.command:
+    argv:
+      - "{{ cline_cli_npm_bin }}"
+      - prefix
+      - -g
+  register: _cline_cli_npm_prefix
+  changed_when: false
+  when: cline_cli_state == "present"
+
+- name: Install Cline CLI globally with nvm Node (allow postinstall native binary)
+  ansible.builtin.command:
+    argv:
+      - "{{ cline_cli_npm_bin }}"
+      - install
+      - -g
+      - "--allow-scripts={{ cline_cli_npm_package }},protobufjs"
+      - "{{ cline_cli_npm_package }}"
+  register: _cline_cli_npm_install
+  changed_when: >-
+    'added' in (_cline_cli_npm_install.stdout | default(''))
+    or 'changed' in (_cline_cli_npm_install.stdout | default(''))
+  when: cline_cli_state == "present"
+
+- name: Set Cline CLI binary path from npm global prefix
+  ansible.builtin.set_fact:
+    cline_cli_binary_path: >-
+      {{ (_cline_cli_npm_prefix.stdout | trim) }}/bin/{{ cline_cli_binary_name }}
+  when: cline_cli_state == "present"
+
+- name: Stat Cline CLI binary after npm install
+  ansible.builtin.stat:
+    path: "{{ cline_cli_binary_path }}"
+  register: _cline_cli_bin_stat
+  when: cline_cli_state == "present"
+
+- name: Require Cline CLI binary file after npm install
+  ansible.builtin.assert:
+    that:
+      - _cline_cli_bin_stat.stat.exists | default(false)
+      - _cline_cli_bin_stat.stat.islnk | default(false)
+        or _cline_cli_bin_stat.stat.isreg | default(false)
+    fail_msg: >-
+      npm install -g {{ cline_cli_npm_package }} did not create
+      {{ cline_cli_binary_path }}.
+      stdout={{ _cline_cli_npm_install.stdout | default('') | truncate(400) }}
+      stderr={{ _cline_cli_npm_install.stderr | default('') | truncate(400) }}
+  when:
+    - cline_cli_state == "present"
+    - not ansible_check_mode
+
+- name: Ensure ~/.local/bin exists for Cline CLI symlink
+  ansible.builtin.file:
+    path: "{{ cline_cli_local_bin_dir }}"
+    state: directory
+    mode: "0755"
+  when:
+    - cline_cli_state == "present"
+    - cline_cli_link_to_local_bin | bool
+
+- name: Symlink cline into ~/.local/bin for login PATH
+  ansible.builtin.file:
+    src: "{{ cline_cli_binary_path }}"
+    dest: "{{ cline_cli_local_bin_dir }}/{{ cline_cli_binary_name }}"
+    state: link
+    force: true
+    follow: false
+  when:
+    - cline_cli_state == "present"
+    - cline_cli_link_to_local_bin | bool
+
+- name: Probe Cline CLI version
+  ansible.builtin.command:
+    argv:
+      - "{{ cline_cli_binary_path }}"
+      - --version
+  register: cline_cli_version_probe
+  changed_when: false
+  failed_when: false
+  when:
+    - cline_cli_state == "present"
+    - not ansible_check_mode
+
+- name: Require Cline CLI binary after install
+  ansible.builtin.assert:
+    that:
+      - cline_cli_version_probe.rc | default(1) == 0
+      - (cline_cli_version_probe.stdout | default('') | length) > 0
+    fail_msg: >-
+      cline_cli_state=present but {{ cline_cli_binary_path }} --version failed
+      (rc={{ cline_cli_version_probe.rc | default('n/a') }}).
+      stderr={{ cline_cli_version_probe.stderr | default('') | truncate(300) }}
+  when:
+    - cline_cli_state == "present"
+    - not ansible_check_mode
+
+- name: Stat Cline IDE config surfaces required by CLI
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ cline_cli_providers_path }}"
+    - "{{ cline_cli_models_path }}"
+    - "{{ cline_cli_mcp_path }}"
+  register: _cline_cli_config_stats
+  when:
+    - cline_cli_state == "present"
+    - cline_cli_require_ide_config | bool
+
+- name: Require cline_ide LiteLLM config before treating CLI as commissioned
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+      - item.stat.size | default(0) > 2
+    fail_msg: >-
+      Missing {{ item.item }}. Deploy role cline_ide with
+      cline_ide_state=present (models + MCP) before or with cline_cli.
+      Mirror MCP with cline_ide_mcp_servers set from continue_ide_mcp_servers.
+  loop: "{{ _cline_cli_config_stats.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when:
+    - cline_cli_state == "present"
+    - cline_cli_require_ide_config | bool
+    - not ansible_check_mode
+
+- name: Remove Cline CLI symlink from ~/.local/bin
+  ansible.builtin.file:
+    path: "{{ cline_cli_local_bin_dir }}/{{ cline_cli_binary_name }}"
+    state: absent
+  when:
+    - cline_cli_state == "absent"
+    - cline_cli_link_to_local_bin | bool
+
+- name: Resolve nvm npm for Cline CLI uninstall
+  ansible.builtin.shell: |
+    set -euo pipefail
+    export NVM_DIR="{{ ansible_env.HOME }}/.nvm"
+    # shellcheck disable=SC1091
+    . "$NVM_DIR/nvm.sh"
+    nvm which {{ cline_cli_node_version }} 2>/dev/null || nvm which default
+  args:
+    executable: /bin/bash
+  register: _cline_cli_node_which_absent
+  changed_when: false
+  failed_when: false
+  when: cline_cli_state == "absent"
+
+- name: Uninstall Cline CLI npm global package
+  ansible.builtin.command:
+    argv:
+      - "{{ (_cline_cli_node_which_absent.stdout | trim | dirname) }}/npm"
+      - uninstall
+      - -g
+      - "{{ cline_cli_npm_package }}"
+  register: _cline_cli_npm_uninstall
+  changed_when: >-
+    'removed' in (_cline_cli_npm_uninstall.stdout | default(''))
+  failed_when: false
+  when:
+    - cline_cli_state == "absent"
+    - (_cline_cli_node_which_absent.rc | default(1)) == 0
+    - (_cline_cli_node_which_absent.stdout | default('') | length) > 0
+
+- name: Report Cline CLI state
+  ansible.builtin.debug:
+    msg:
+      cline_cli_state: "{{ cline_cli_state }}"
+      binary: "{{ cline_cli_binary_path | default('n/a') }}"
+      version: "{{ cline_cli_version_probe.stdout | default('not installed') }}"
+      providers: "{{ cline_cli_providers_path }}"
+      models: "{{ cline_cli_models_path }}"
+      mcp: "{{ cline_cli_mcp_path }}"
+  when: cline_cli_state == "present"

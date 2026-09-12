@@ -2,13 +2,24 @@
 # Accepted work-laptop deviations index.
 # schema_version bumps when field names change.
 schema_version: 1
-updated_at: "2026-09-10"
+updated_at: "2026-09-12"
 notes: >
   Inbound laptop corrections must land here (or update an existing id) so
   accommodations survive reinstall and generalize across behavior_group peers.
   Skill: work-laptop-improvement-review.
 
 deviations:
+  - id: cline-cli-node24-npm
+    status: accepted
+    behavior_group: npm-global-install
+    title: Cline CLI uses nvm Node 24 + allow-scripts; config owned by cline_ide
+    entry: entries/cline-cli-node24-npm.md
+    inbound_sources:
+      - "Home Mac cline_cli role commission 2026-09-12"
+    reapply: "playbook --tags cline_cli,cline_ide; cline_cli_node_version=24; npm prefix -g bin"
+    generalize_to:
+      - "Any new npm -g CLI needing Node 22+ while packet default stays 20"
+
   - id: vault-pass-helper
     status: promoted
     behavior_group: vault-password-ux

@@ -1,0 +1,26 @@
+---
+# Cline terminal CLI (npm package `cline`) — binary install only.
+# LiteLLM provider/models/MCP live under ~/.cline and are owned by cline_ide
+# (providers.json, models.json, mcp.json). Deploy cline_ide before or with
+# this role when commissioning (playbook order + ai_cli_apps tag).
+#
+# Upstream: https://docs.cline.bot/cline-cli/installation
+#           npm i -g cline  (Node.js 22+)
+# Lifecycle: cline_cli_state: present|absent
+cline_cli_state: absent
+
+# nvm Node major used to install the global package (22+ required by upstream).
+cline_cli_node_version: "24"
+cline_cli_npm_package: "cline"
+cline_cli_binary_name: "cline"
+
+# Optional PATH hint file under ~/.local/bin (symlink to nvm global bin).
+cline_cli_link_to_local_bin: true
+cline_cli_local_bin_dir: "{{ ansible_env.HOME }}/.local/bin"
+
+# When present, require cline_ide config surfaces (models + MCP) so the CLI
+# is usable against LiteLLM without a separate interactive `cline auth`.
+cline_cli_require_ide_config: true
+cline_cli_providers_path: "{{ ansible_env.HOME }}/.cline/data/settings/providers.json"
+cline_cli_models_path: "{{ ansible_env.HOME }}/.cline/data/settings/models.json"
+cline_cli_mcp_path: "{{ ansible_env.HOME }}/.cline/mcp.json"
