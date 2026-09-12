@@ -4,6 +4,10 @@
 **Gaming user:** `ericc`  
 **GPU:** AMD Radeon RX 9060 XT 16GB (TBP ~160W; ASUS `SUBSYS_061E1043`)
 
+<!-- Note (2026-09-12): system RAM has since increased to 32 GB (live WMI);
+     historical pulses below may still say 16 GB. Current facts:
+     inventory/host_vars/dev-workstation-win.yaml -->
+
 Related:
 
 - [../one_off_tasks/on-offs/DESKTOP-C1ACPUM-gpu-fps.md](../one_off_tasks/on-offs/DESKTOP-C1ACPUM-gpu-fps.md) — on/off timeline
@@ -205,6 +209,8 @@ duplicate AMD Adrenalin overlay on top.
 | **~50 W @ high GPU%** (windowed) | Fixed by **fullscreen** + correct power line | Display mode |
 | Power **~100 W not ~160 W** at **~60 FPS** | Not broken — game not drawing TBP | CPU limit, in-game cap, scene load |
 | **1–5 FPS** stalls | Logs only; does not prevent | DWM/VRAM, overlays, **16 GB @ 2133**, CSM/ReBAR, XMP |
+<!-- Note (2026-09-12): system RAM has since increased to 32 GB (live WMI). -->
+
 | Adrenalin **FPS.Latency** `N/A` | Separate tool | Adrenalin metrics + game detection |
 | Ground-truth power dispute | Use **HWiNFO** sensor | Manual Sensors log → `D:\ai\diagnostics\hwinfo\` |
 

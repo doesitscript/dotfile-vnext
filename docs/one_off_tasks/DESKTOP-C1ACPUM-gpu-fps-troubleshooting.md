@@ -27,6 +27,7 @@ Intermittent **1–5 FPS** in games (notably Dead by Daylight) on an ultrawide d
 - **3440×1440 @ 180 Hz**
 - **AMD Radeon RX 9060 XT** (~16 GB VRAM — not 4 GB; WMI `AdapterRAM` is wrong)
 - **Intel i7-6700K**, 16 GB system RAM
+  <!-- Note (2026-09-12): system RAM has since increased to 32 GB (live WMI). -->
 
 ---
 

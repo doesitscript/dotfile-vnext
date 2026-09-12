@@ -62,6 +62,6 @@ See packet `host_vars/work-laptop.yaml` → `continue_ide_local_models`:
 - Autocomplete: DMR `local/qwen2.5-coder-autocomplete:1.5b-q8_0` at
   `http://127.0.0.1:12434/engines/llama.cpp/v1`
 - Edit/apply: LiteLLM `qwen2.5-coder-7b@desktop`
-- Chat: LiteLLM `qwen2.5-coder-32b@k3s02-vllm`
+- Chat: LiteLLM `qwen2.5-coder-32b`
 
 DMR Ansible install remains disabled until commissioned.

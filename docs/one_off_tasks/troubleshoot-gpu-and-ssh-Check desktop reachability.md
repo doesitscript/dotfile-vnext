@@ -289,6 +289,7 @@ MSIAfterburner     9364
 - CPU leaders: `steam`, `Discord`, `MsMpEng`, `dwm`
 - Wallpaper Engine (`wallpaper64`) already back after reboot
 - RAM: ~9.8 GB free / 16.3 GB total
+  <!-- Note (2026-09-12): system RAM has since increased to 32 GB (live WMI). -->
 
 **Events**
 
@@ -341,6 +342,7 @@ Full GPU/RTSS pulse re-run via `scp` + `ssh` + PowerShell script — same findin
 | AMD Adrenalin registry | HKCU `AMD\DVR`, `AMD\CN\Performance` read OK |
 
 **Display / GPU (dxdiag):** 3440×1440 @ **180 Hz**; Dedicated Memory **16253 MB**; RX 9060 XT driver 32.0.31007.5012 (installed 5/29 ~12:19 AM). **Hardware Scheduling: Supported=False** (cannot enable). CPU i7-6700K, 16 GB RAM.
+<!-- Note (2026-09-12): system RAM has since increased to 32 GB (live WMI). -->
 
 **Out-of-game AMD Adrenalin / capture settings (registry):**
 
