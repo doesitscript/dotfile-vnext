@@ -230,6 +230,10 @@ older roles may have drifted.
 
 ```bash
 .venv/bin/ansible-playbook playbook.yaml -i inventory.yaml --skip-tags hosts_file
+
+# All LiteLLM-backed AI CLI / IDE clients (Continue, Cline, OpenCode, Kilo,
+# Aider, Codex profiles, Zed) — see group_vars/all/ai_cli_apps.yml
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml --skip-tags hosts_file --tags ai_cli_apps
 ```
 
 Recent work is the tail of `playbook.yaml` `roles:`. New sequential roles

@@ -48,6 +48,10 @@ Do not use when:
 8. Before inventing path/URL/npm workarounds, read `deviations/register.yaml`
    (behavior groups `repo-layout-paths`, `npm-global-install`, `litellm-client-keys`).
    New laptop-driven fixes → `work-laptop-improvement-review` intake.
+9. Commissioned LiteLLM model ids SSOT:
+   `inventory/group_vars/all/ai_cli_apps.yml` (synced into packet
+   `group_vars/all/ai_cli_apps.yml`). Deploy all clients with `--tags ai_cli_apps`.
+   Parity: `model-lane-acceptance/scripts/check-ai-cli-model-parity.py`.
 
 ## Workflow — Continue empty UI
 

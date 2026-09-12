@@ -21,7 +21,7 @@ title: Continue local autocomplete via DMR 1.5B (Jan/Ollama not deployed)
 - Jan/Ollama recipes retained in parent only:
   `docs/lessons-learned/continue/jan-and-ollama-local-autocomplete.md`
 - Edit/apply: LiteLLM `qwen2.5-coder-7b@desktop`
-- Chat: `qwen3-coder-30b-a3b@k3s02-vllm~coder-primary`
+- Chat: `qwen3-coder-30b-a3b~coder-primary`
 - MCP: nvm-exec + Homebrew `uvx` for AWS IaC
 
 ## Re-apply

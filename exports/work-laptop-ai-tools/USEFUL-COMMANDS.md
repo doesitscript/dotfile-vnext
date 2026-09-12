@@ -40,6 +40,22 @@ path from `dotfile-vnext/exports/work-laptop-ai-tools/` into the sibling
 checkout so the sibling matches the packet. Do not treat the sibling as design
 authority. Do not commit or push.
 
+### U3b. Deploy all AI CLI apps (model catalogs)
+
+After editing commissioned models in parent
+`inventory/group_vars/all/ai_cli_apps.yml` and client role/host_vars lists,
+sync the packet, then on the laptop:
+
+```bash
+ansible-playbook playbook.yaml --tags ai_cli_apps
+```
+
+Parity check from `dotfile-vnext`:
+
+```bash
+bin/codex-env python model-lane-acceptance/scripts/check-ai-cli-model-parity.py
+```
+
 ### U4. Sync source to sibling, then git push the sibling
 
 Use skill `work-laptop-packet-ops` to sync the work-laptop-ai-tools source
