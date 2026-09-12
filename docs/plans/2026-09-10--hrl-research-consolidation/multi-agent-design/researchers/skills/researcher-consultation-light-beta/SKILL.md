@@ -20,6 +20,8 @@ and return a concise synthesized recommendation to the requesting role.
 Write only the requested consultation artifact. Include the request path,
 reviewed Expert artifact, evidence coverage, recommendation disposition,
 assumptions, affected owners, and `return_to`. Do not repeat broad research,
-edit implementation sources, perform host discovery, run Apply, or replace the
-Implementer/Evaluator's ownership. If evidence is insufficient, state the one
-missing fact precisely while unrelated source work continues.
+edit implementation sources, or run Apply. If Expert cited a live probe,
+verify that evidence (re-read receipt/output or a matching read-only re-check
+via project Ansible/SSH helpers when needed). Do not invent by-id/serial.
+If evidence is insufficient, state the one missing probe precisely so Expert
+can re-run it—do not escalate that fact to the human when the lab can obtain it.

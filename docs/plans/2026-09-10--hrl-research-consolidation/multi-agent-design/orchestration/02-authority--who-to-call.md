@@ -12,7 +12,7 @@ Who owns judgment, who supplies facts, who signs quality.
 | Ansible quality / chunk accept or reject | **Evaluator** | Parent “approving” from dashboard |
 | Schedule next role / runtime lifecycle | **Parent orchestrator** | Roles polling each other |
 | Consequential product cost/outage/data-risk | **Human operator** (`product_governed`) | Lab auto-adopt outside scope |
-| Exact host/disk identity before Apply | Read-only discovery (evidence gate) | Guessing by-id |
+| Exact host/disk identity before Apply | **On-site Expert** (read-only discovery via project inventory + SSH/Ansible/PowerShell/bash as needed); Researcher if evidence is stale | Guessing by-id; asking the human for facts the lab can probe |
 
 ## Authority profiles
 
@@ -27,7 +27,7 @@ Neither profile grants Apply by implication. Recommendation ≠ deployed.
 
 | Role | Owns | Never owns |
 | --- | --- | --- |
-| Expert | Recommendations, framing | Apply, Evaluator verdicts |
+| Expert | Recommendations, framing, read-only identity-binding evidence | Apply, Evaluator verdicts |
 | Researcher | Evidence deltas | Plan decisions, source edits |
 | Planner | Refined technical handoff, plan materialization | Implementation edits |
 | Implementer | Source intake from handoff, receipts, `review_ready_*`, dynamic queue | Feedback / ready verdicts; redesign |

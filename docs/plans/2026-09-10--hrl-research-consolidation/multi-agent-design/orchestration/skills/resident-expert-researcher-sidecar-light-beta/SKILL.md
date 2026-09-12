@@ -18,8 +18,11 @@ Pass its absolute path as `consultation_request_path` to the parent Light
 runner. The runner creates two held slots, executes one On-site Expert pass then
 one Researcher pass, and passes their two durable responses back into the normal
 Implementer/Evaluator loop. Work outside the named owners continues; the
-sidecar does not restart planning, mutate sources, authorize Apply, or create a
-human wait when the lab profile can adopt an evidence-backed default.
+sidecar does not restart planning, mutate Implementer-owned sources, authorize
+Apply, or create a human wait when the lab profile can adopt an evidence-backed
+default. Expert may run **read-only** live probes (inventory → Ansible → SSH
+bash / Windows PowerShell helpers) to bind target identity—never invent by-id.
 
 Do not supply this option for an ordinary module lookup or a settled decision.
-Use Full Orchestration only for an actual target/authority/live-runtime need.
+Use Full Orchestration only for an actual Apply/attach/mutate or live-runtime
+proof need—not merely because identity must be discovered.

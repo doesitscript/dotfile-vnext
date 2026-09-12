@@ -21,6 +21,26 @@ targeted validation, and design/idempotence review. Select `full` only when
 explicitly requested for live infrastructure proof/Apply or when a named
 target/authority contradiction requires it. Never silently escalate a light run.
 
+## Existing-State Policy
+
+The skill MUST NOT automatically:
+
+- adopt an existing run;
+- resume the most recent session;
+- reuse an unverified worker or peer;
+- remove stale locks;
+- terminate unidentified processes;
+- attach to a preexisting dashboard;
+- infer ownership from paths, process names, or timestamps.
+
+The skill MAY inspect existing state and report it.
+
+Recovery is permitted only when the requested run ID matches an ownership manifest containing the expected project, workspace, agent, and parent process.
+
+This policy overrides convenience defaults in the runner and runtime-operator
+references below. A missing, incomplete, or unverifiable ownership manifest is
+not a recoverable run; report the state and stop for an explicit user decision.
+
 ## Inputs and early output
 
 Resolve absolute `project_root` and `plan_dir`. If supplied the source plan folder
@@ -53,7 +73,7 @@ Classification-only packets without a refined handoff are incomplete; do not
 start the pair on them.
 
 Early in the chat, report the plan folder, your parent role and
-`Dashboard: http://127.0.0.1:7900 — using existing MCP-managed service`.
+`Dashboard: http://127.0.0.1:7900 — existing state will be inspected only; this run will not attach to a preexisting dashboard`.
 Do not run runtime setup or an operator observation as routine startup work.
 The runner attempts the already deployed broker/dashboard directly; observe or
 recover only after a concrete connection/health failure.
@@ -69,7 +89,7 @@ State that you will manage both roles and report meaningful changes here. Do
 not tell the user to open two more chats. Link the plan's launch directory as
 an optional manual fallback, not another required step.
 
-## Start or resume the pair
+## Start or explicitly authorized recovery
 
 1. Read [the runner instructions](../../../runtime/implementation-runner.md).
    Validate the reviewed intake. Inspect the orchestration temp lock under

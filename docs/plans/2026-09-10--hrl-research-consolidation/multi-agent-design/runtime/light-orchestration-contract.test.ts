@@ -14,6 +14,14 @@ describe("Light orchestration contract", () => {
     expect(runner.indexOf("log('pass_dispatched'")).toBeGreaterThan(runner.indexOf("await post('/send-message'"));
   });
 
+  test("passes compact dispatch paths instead of serializing handoff inputs into chat", () => {
+    const runner = read("run-implementation.ts");
+    expect(runner).toContain("const dispatchPath=saveDispatch(`${role}-${pass}.json`,inputs)");
+    expect(runner).toContain("Read dispatch inputs from ${dispatchPath}");
+    expect(runner).toContain("Do not paste or relay the large refined handoff or prior artifact through chat");
+    expect(runner).not.toContain("Inputs: ${JSON.stringify(inputs)}");
+  });
+
   test("separates durable event files from private runtime evidence", () => {
     const runner = read("run-implementation.ts");
     const example = read("implementation-config.example.json");
@@ -73,6 +81,8 @@ describe("Light orchestration contract", () => {
     const evaluator = read("../evaluator/skills/storage-plan-evaluator-light-beta/SKILL.md");
     expect(implementer).toContain("Ansible intake");
     expect(implementer).toContain("SSH/live discovery");
+    expect(read("../multi-agent-onsite-expert/skills/onsite-expert-consultation-light-beta/SKILL.md")).toContain("find, never invent");
+    expect(read("../orchestration/06-expert-on-call--lab-consultation.md")).toContain("with project capabilities");
     expect(evaluator).toContain("SSH");
     expect(evaluator).toContain("inventory ansible");
     expect(implementer).toContain("05-refined-technical-handoff--storage-layout.md");

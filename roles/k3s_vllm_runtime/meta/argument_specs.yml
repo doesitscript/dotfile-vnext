@@ -14,14 +14,70 @@ argument_specs:
         type: str
         default: vllm-runtime
         description: Kubernetes namespace for vLLM.
+      k3s_vllm_runtime_name:
+        type: str
+        default: vllm-primary
+        description: Kubernetes Deployment and Service name for vLLM.
+      k3s_vllm_runtime_image:
+        type: str
+        default: vllm/vllm-openai:latest
+        description: Container image used by the vLLM runtime.
       k3s_vllm_runtime_model:
         type: str
-        default: Qwen/Qwen3-0.6B
+        default: Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
         description: Hugging Face model ID passed to vLLM.
+      k3s_vllm_runtime_served_model_name:
+        type: str
+        default: Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
+        description: Model name advertised by the vLLM OpenAI-compatible API.
+      k3s_vllm_runtime_replicas:
+        type: int
+        default: 1
+        description: Number of vLLM Deployment replicas.
+      k3s_vllm_runtime_deployment_strategy_type:
+        type: str
+        default: Recreate
+        description: Kubernetes Deployment strategy type for vLLM.
+      k3s_vllm_runtime_service_port:
+        type: int
+        default: 8000
+        description: Service port exposed for the vLLM API.
+      k3s_vllm_runtime_container_port:
+        type: int
+        default: 8000
+        description: Container port used by the vLLM API.
+      k3s_vllm_runtime_runtime_class_name:
+        type: str
+        default: nvidia
+        description: Kubernetes RuntimeClass used by the vLLM pod.
+      k3s_vllm_runtime_gpu_resource:
+        type: str
+        default: nvidia.com/gpu
+        description: Kubernetes extended resource requested for GPU access.
       k3s_vllm_runtime_gpu_count:
         type: int
         default: 1
         description: Number of NVIDIA GPUs requested by the runtime pod.
+      k3s_vllm_runtime_cpu_request:
+        type: str
+        default: "2"
+        description: Kubernetes CPU request for the vLLM container.
+      k3s_vllm_runtime_memory_request:
+        type: str
+        default: 8Gi
+        description: Kubernetes memory request for the vLLM container.
+      k3s_vllm_runtime_cpu_limit:
+        type: str
+        default: "8"
+        description: Kubernetes CPU limit for the vLLM container.
+      k3s_vllm_runtime_memory_limit:
+        type: str
+        default: 32Gi
+        description: Kubernetes memory limit for the vLLM container.
+      k3s_vllm_runtime_hf_cache_size:
+        type: str
+        default: 120Gi
+        description: Requested size of the Hugging Face cache PVC.
       k3s_vllm_runtime_hf_cache_backing_capacity_verified:
         type: bool
         default: false
@@ -64,6 +120,10 @@ argument_specs:
           Absolute HF_HUB_CACHE path used by the vLLM container (C1). Must be
           under k3s_vllm_runtime_hf_cache_container_path. Never use
           TRANSFORMERS_CACHE.
+      k3s_vllm_runtime_hf_cache_minimum_free_gib:
+        type: int
+        default: 120
+        description: Minimum free GiB required before an HF cache migration.
       k3s_vllm_runtime_hf_cache_migration_apply:
         type: bool
         default: false
@@ -87,3 +147,40 @@ argument_specs:
         type: str
         default: ""
         description: Exact Kubernetes Node object used for post-cutover pressure checks.
+      k3s_vllm_runtime_kubeconfig:
+        type: path
+        default: /etc/rancher/k3s/k3s.yaml
+        description: Kubeconfig used for Kubernetes API operations.
+      k3s_vllm_runtime_hf_token:
+        type: str
+        default: ""
+        description: Optional fallback Hugging Face token; vault value takes precedence.
+      k3s_vllm_runtime_enable_auto_tool_choice:
+        type: bool
+        default: false
+        description: Enable vLLM automatic tool choice support.
+      k3s_vllm_runtime_tool_call_parser:
+        type: str
+        default: ""
+        description: Optional vLLM tool-call parser name.
+      k3s_vllm_runtime_tool_parser_plugin_enabled:
+        type: bool
+        default: false
+        description: Mount the optional custom tool parser plugin.
+      k3s_vllm_runtime_tool_parser_plugin_mount_path:
+        type: path
+        default: /tool-parsers/qwen2_5_coder_tool_parser.py
+        description: Container path for the optional custom tool parser plugin.
+      k3s_vllm_runtime_tool_parser_plugin_chat_template_enabled:
+        type: bool
+        default: false
+        description: Mount the optional custom tool parser chat template.
+      k3s_vllm_runtime_tool_parser_plugin_chat_template_mount_path:
+        type: path
+        default: /tool-parsers/tool_chat_template_qwen2_5_coder.jinja
+        description: Container path for the optional custom tool chat template.
+      k3s_vllm_runtime_extra_args:
+        type: list
+        elements: str
+        default: []
+        description: Additional vLLM CLI arguments appended to the command.

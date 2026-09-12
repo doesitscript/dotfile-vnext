@@ -1,6 +1,6 @@
 ---
 name: onsite-expert-consultation-light-beta
-description: "Resolve one named technical fork from settled research for a Light implementation run, without reopening planning or changing source."
+description: "Resolve one named technical fork from settled research for a Light implementation run; may run read-only project probes for target identity. No Apply."
 metadata:
   status: beta
   scope: bounded-light-consultation
@@ -19,15 +19,31 @@ recommendation** the Implementer can fit into existing role/playbook ownership.
 This is a recreatable lab: answer as an on-call human would—best practice and
 best recommendation from settled research. Do not invent production outage
 windows, heavy backup/rollback theater, or deferred “validation question”
-packs that avoid deciding. Exact host/disk identity still needs the smallest
-read-only probe when Apply is in scope; that is not a preference wait.
+packs that avoid deciding.
+
+## Target identity — find, never invent
+
+If the fork needs an exact host/disk/path/slot identity, **obtain it**:
+
+1. Repo inventory / host_vars / prior receipts first
+2. Else project read-only Ansible/report owners via `bin/codex-env`
+3. Else live read-only probe on the inventory host:
+   - Linux: SSH/bash or Ansible modules
+   - Windows: `ansible.windows.win_powershell` or
+     `homelab-ssh-alias-connect` remote PowerShell helper — not nested
+     `ssh … powershell -Command "…"` one-liners
+
+Cite the exact command and captured output in the consultation artifact.
+Do **not** guess by-id/serial. Do **not** Apply, attach, format, or mutate
+during this consultation unless the parent explicitly authorized that Full
+Apply action in the request.
 
 Write only the requested consultation artifact. Include the request path,
-recommendation, motivation, evidence, assumptions, affected owners, validation
-expectations, and `return_to`. Do not reopen broad research, restructure the
-campaign plan, edit source, perform SSH/live discovery, run Apply, or choose
-unverified targets. The recommendation narrows a doubt; it is not deployment
-authority.
+recommendation, motivation, evidence (including probe output when used),
+assumptions, affected owners, validation expectations, and `return_to`. Do not
+reopen broad preparation, restructure the campaign plan, or edit Implementer-
+owned source. The recommendation narrows a doubt and may bind identity; it is
+not deployment authority by itself.
 
 When a consultation changes a settled placement or hard correction, say so
 explicitly and name that Planner must refresh the refined technical handoff

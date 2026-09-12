@@ -25,6 +25,8 @@ Campaign example handoff:
 
 Expert on-call after the heavy pass:
 [06-expert-on-call--lab-consultation.md](06-expert-on-call--lab-consultation.md)
+(On stuck forks or missing by-id: Expert finds facts read-only via project
+inventory/SSH/Ansible—Implementer does not guess and does not ask the human.)
 
 ## Diagrams
 

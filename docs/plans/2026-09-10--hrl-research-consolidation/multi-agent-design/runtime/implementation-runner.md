@@ -47,15 +47,20 @@ held — awaiting a validated Implementer handoff.`
 passes, targeted validation, and Evaluator design review. A completed durable
 artifact wakes the next role immediately. The 15-minute per-turn and 60-minute
 campaign values are only leak/stall ceilings, not planned waits; tune them per
-batch when the bounded work warrants it. Light does not require SSH/live
-discovery, remote Apply, or whole-runtime proof to close the source package.
+batch when the bounded work warrants it. Light Implementer/Evaluator passes do
+not require SSH/live discovery, remote Apply, or whole-runtime proof to close a
+source package.
 
 Team deployment and the two `READY` initialization turns complete before a
 role-pass clock starts. The runner records `pass_dispatched` immediately after
 it releases that role and sends its bounded task; only then does the per-pass
 ceiling apply. Supply `owner_batch` for Light to keep the worker to the smallest
-coherent source group. Controller-local syntax/lint/fixture/static checks are
-allowed; inventory-targeted Ansible, SSH, remote discovery and Apply are not.
+coherent source group. For Implementer/Evaluator: controller-local
+syntax/lint/fixture/static checks are allowed; inventory-targeted Ansible, SSH,
+remote discovery and Apply are not. **Exception — On-site Expert consultation:**
+when `consultation_request_path` names a target-identity fork, Expert may run
+read-only inventory/Ansible/SSH (Linux bash) or Windows PowerShell helpers to
+bind by-id/serial/mount/slot. Expert still must not invent identity or Apply.
 
 For one named unsettled technical fork, set `consultation_request_path` to an
 absolute request file under `plan_dir/coordination/requests/`. The Light parent

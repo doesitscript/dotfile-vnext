@@ -14,10 +14,13 @@ File reads, diffs, `git status`, syntax, and argument inspection are supporting
 evidence only. Light does not create separate process, hygiene, documentation,
 or investigation work merely because those checks are available.
 
-Do not use Full Orchestration, SSH/live discovery, remote Apply, deployment
-proof, or runtime-recovery loops for ordinary source/design work. Full is an
-explicit exception for a named target-identity, authority, destructive-action,
-or live-runtime contradiction.
+Do not use Full Orchestration, remote Apply, deployment proof, or
+runtime-recovery loops for ordinary source/design work. **Implementer and
+Evaluator** stay controller-local (no inventory-targeted SSH/Apply). When a
+named fork needs exact host/disk identity, summon the **On-site Expert**
+sidecar to obtain it read-only (inventory/receipts → Ansible → SSH bash or
+Windows PowerShell helpers)—never invent by-id and never ask the human for a
+probeable fact. Full remains the lane for named Apply/attach/mutate.
 
 ## Lab cattle posture
 

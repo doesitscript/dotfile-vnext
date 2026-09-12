@@ -51,6 +51,12 @@ Functional areas use the refined technical handoff as the technical decision.
 Light does not recreate safety-contract fixtures. A concrete source/runtime
 contradiction may request a narrow Expert clarification; otherwise continue.
 
+**Operator resolution (2026-09-11):** do not ask the user which of S1–S6 to
+pick. Advance every ready Light FA row for offload-off-root (and D:-class local
+volumes) per research/handoff recommendations. Physical attach/Apply remains
+the blocked `live-attach-and-apply` Full-lane row. See
+`implementation-campaign/coordination/operator-resolution-2026-09-11-offload-everywhere.md`.
+
 ## Snapshot and scheduling boundary
 
 Use a top-level `review_ready_for_evaluator_<timestamp>.md` with campaign

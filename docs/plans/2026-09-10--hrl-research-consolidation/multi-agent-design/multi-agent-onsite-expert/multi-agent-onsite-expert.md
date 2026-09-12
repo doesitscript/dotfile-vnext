@@ -73,16 +73,19 @@ placement, and sequencing from evidence; it escalates only a consequential
 cost, outage, retention, or irreversible data-risk tradeoff.
 
 It does not grant Apply authority, overwrite Evaluator judgment, or invent a
-physical target. When evidence is stale or insufficient, it delegates a narrow
-refresh question to Researchers rather than sending Implementer into broad
-rediscovery.
+physical target. When evidence is stale or insufficient, it obtains the smallest
+missing fact first from inventory/receipts, then via read-only project probes
+(Ansible / SSH bash / Windows PowerShell helpers), or delegates a narrow refresh
+to Researchers—rather than sending Implementer into broad rediscovery or asking
+the human for a probeable by-id.
 
 The Expert emits recommendations for the canonical plan packet, including the
 applicable decision authority profile. In this homelab,
 `lab_recreatable_autonomy` means evidence-backed defaults are adopted for
 in-scope recreatable, availability-tolerant work; a product profile restores
-narrow human approval waits. The Expert still requires verified target identity
-and never treats the lab override as a waiver of safety or Evaluator review.
+narrow human approval waits. The Expert still **binds** verified target identity
+(find, never invent) and never treats the lab override as a waiver of Apply
+gates or Evaluator review.
 
 ### Consultation contract
 
