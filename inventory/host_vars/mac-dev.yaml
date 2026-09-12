@@ -87,23 +87,22 @@ litellm_cli_state: present
 continue_ide_state: present
 continue_ide_autocomplete_enabled: true
 
-# Cline IDE + CLI → LiteLLM.
-# Sampling defaults (max_output_tokens / temperature / top_p) live in
-# roles/cline_ide/defaults/main.yml — do not restate here unless overriding.
+# Cline IDE + CLI → LiteLLM (plain model ids from ai_cli_apps.yml).
 cline_ide_state: present
-cline_ide_model: "qwen3.6-35b-a3b"
+cline_ide_model: "{{ ai_cli_default_chat_model }}"
 
-# OpenCode CLI → LiteLLM (provider id: litellm).
+# OpenCode CLI → LiteLLM (selection = litellm/<plain id>; catalog keys plain).
 opencode_cli_state: present
-opencode_cli_default_model: "litellm/qwen3.6-35b-a3b"
+opencode_cli_default_model: "{{ ai_cli_opencode_default_model }}"
 
-# Kilo IDE → same Continue model set (provider id: litellm).
+# Kilo IDE → same naming contract as OpenCode.
 kilo_ide_state: present
-kilo_ide_default_model: "litellm/qwen3.6-35b-a3b"
+kilo_ide_default_model: "{{ ai_cli_kilo_default_model }}"
+kilo_ide_small_model: "{{ ai_cli_kilo_small_model }}"
 
-# Aider CLI → LiteLLM OpenAI-compatible (same primary as Continue).
+# Aider CLI → openai/<plain id>.
 aider_state: present
-aider_default_model: "openai/qwen3.6-35b-a3b"
+aider_default_model: "{{ ai_cli_aider_default_model }}"
 aider_pipx_python: "/usr/local/bin/python3.12"
 
 # Cursor marketplace plugins use Cursor's plugin subsystem, not
@@ -116,8 +115,8 @@ cursor_marketplace_plugins_required:
 # deep → qwen3.6-35b-a3b ; tools → qwen3.6-35b-a3b-tools
 codex_homelab_profiles_state: present
 codex_homelab_profiles_multi_terminal_state: present
-codex_homelab_profiles_model: "ministral-3-8b@desktop"
-codex_homelab_profiles_context_window: 24000
+codex_homelab_profiles_model: "{{ ai_cli_default_chat_model }}"
+codex_homelab_profiles_context_window: 32768
 
 # User-scoped ~/.codex/config.toml — preserve existing file, but always
 # converge the macOS shell locale policy block (Homebrew Bash rejects C.UTF-8).
@@ -127,7 +126,7 @@ codex_user_config_force: false
 # fzf-tab-completion for bash + Python REPL (promoted from one-off trial).
 fzf_tab_completion_state: present
 
-# GNU netcat packa/Users/joshc/.local/pipx/venvs/aider-chatge-management desired state.
+# GNU netcat package-management desired state.
 netcat_cli_state: present
 
 # just command runner package-management desired state.

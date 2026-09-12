@@ -6,30 +6,32 @@ opencode_cli_config_dir: "{{ ansible_env.HOME }}/.config/opencode"
 opencode_cli_config_path: "{{ opencode_cli_config_dir }}/opencode.jsonc"
 opencode_cli_install_url: "https://opencode.ai/install"
 opencode_cli_gateway_api_base: "http://litellm.hom.lab/v1"
-opencode_cli_provider_id: "litellm"
+# Must match ai_cli_litellm_provider_id — selection string is provider_id/plain_id.
+opencode_cli_provider_id: "{{ ai_cli_litellm_provider_id | default('litellm') }}"
 opencode_cli_provider_npm: "@ai-sdk/openai-compatible"
 opencode_cli_provider_display_name: "Homelab LiteLLM"
 opencode_cli_api_key_env: "LITELLM_API_KEY"
-opencode_cli_default_model: "litellm/qwen3.6-35b-a3b"
+# OpenCode requires provider/model; plain LiteLLM id is the suffix.
+opencode_cli_default_model: "{{ ai_cli_opencode_default_model | default(opencode_cli_provider_id ~ '/' ~ (ai_cli_default_chat_model | default('qwen3.6-35b-a3b'))) }}"
 opencode_cli_context_limit: 32768
-opencode_cli_output_limit: 4096
-# Align with Continue commissioned chat/edit/Gemini set + gpt-oss.
+opencode_cli_output_limit: 8192
+# Catalog keys = plain LiteLLM ids (SSOT: ai_cli_commissioned_models).
 opencode_cli_models:
   - id: "qwen3.6-35b-a3b"
-    name: "Qwen3.6 35B-A3B (5090 vLLM)"
+    name: "Qwen3.6-35B-A3B"
   - id: "qwen3-coder-30b-a3b"
-    name: "Qwen3-Coder 30B-A3B (pending sequential vLLM)"
+    name: "Qwen3-Coder-30B-A3B (pending sequential)"
     enabled: false
   - id: "qwen2.5-coder-14b@desktop"
-    name: "Qwen2.5 Coder 14B (desktop Ollama edit)"
+    name: "Qwen2.5 Coder 14B (desktop Ollama)"
   - id: "qwen2.5-coder-7b@desktop"
-    name: "Qwen2.5 Coder 7B (desktop Ollama apply)"
+    name: "Qwen2.5 Coder 7B (desktop Ollama)"
+  - id: "qwen2.5-coder-1.5b@hvh01"
+    name: "Qwen2.5 Coder 1.5B-base (HVH-01 Ollama FIM)"
+  - id: "nomic-embed-text@hvh01"
+    name: "nomic-embed-text (HVH-01 Ollama)"
   - id: "gpt-oss-20b"
     name: "gpt-oss 20B (desktop Ollama)"
-  - id: "qwen2.5-coder-1.5b@hvh01"
-    name: "Qwen2.5 Coder 1.5B-base (HVH-01 FIM)"
-  - id: "nomic-embed-text@hvh01"
-    name: "nomic-embed-text (HVH-01)"
   - id: "gemini-2.5-flash@google~public-research"
     name: "Gemini 2.5 Flash (Daily Driver)"
   - id: "gemini-2.5-flash@google~long-context"
@@ -38,12 +40,6 @@ opencode_cli_models:
     name: "Gemini 2.5 Pro (Deep Reasoning)"
   - id: "gemini-2.5-flash-lite@google~bulk"
     name: "Gemini 2.5 Flash Lite (Bulk)"
-  - id: "devstral-small-2@k3s02-llama-cpp"
-    name: "Devstral Small 2 (pending llama.cpp publication)"
-    enabled: false
-  - id: "glm-4.6@k3s02-llama-cpp"
-    name: "GLM-4.6 (pending llama.cpp publication)"
-    enabled: false
 
 # MCP servers injected into opencode config (set to false to disable).
 opencode_cli_mcp_context7_enabled: true

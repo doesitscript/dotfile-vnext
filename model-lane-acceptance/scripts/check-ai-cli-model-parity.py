@@ -59,12 +59,20 @@ def main() -> int:
         "kilo_ide/defaults": enabled_ids(kilo.get("kilo_ide_models"), "id"),
         "work-laptop continue_ide_models": enabled_continue(wl.get("continue_ide_models")),
         "work-laptop cline_ide_models": enabled_continue(wl.get("cline_ide_models")),
-        "work-laptop opencode_cli_models": enabled_ids(wl.get("opencode_cli_models"), "id"),
-        "work-laptop kilo_ide_models": enabled_ids(wl.get("kilo_ide_models"), "id"),
         "work-laptop zed_ide_models": {
             e["name"] for e in (wl.get("zed_ide_models") or []) if e.get("name")
         },
     }
+    # Host overrides that are unset inherit role defaults — skip empty catalogs.
+    for label, key, extractor in (
+        ("work-laptop opencode_cli_models", "opencode_cli_models", lambda e: enabled_ids(e, "id")),
+        ("work-laptop kilo_ide_models", "kilo_ide_models", lambda e: enabled_ids(e, "id")),
+    ):
+        override = wl.get(key)
+        if override:
+            catalogs[label] = extractor(override)
+        else:
+            print(f"[SKIP] {label} (unset — inherits role defaults)")
 
     # Single-default clients: only check default points at chat model
     defaults = {

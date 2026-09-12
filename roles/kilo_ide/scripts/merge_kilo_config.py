@@ -35,6 +35,9 @@ MANAGED_TOP_LEVEL = frozenset(
     }
 )
 
+# Dropped when overlay installs provider id "litellm" (SSOT rename).
+LEGACY_LITELLM_PROVIDER_IDS = frozenset({"homelab-litellm"})
+
 
 def strip_jsonc(text: str) -> str:
     """Remove // and /* */ comments outside strings (good enough for kilo.jsonc)."""
@@ -96,6 +99,10 @@ def merge_kilo(existing: dict[str, Any], overlay: dict[str, Any]) -> dict[str, A
     existing_providers = dict(result.get("provider") or {})
     for pid, pdata in overlay_providers.items():
         existing_providers[pid] = pdata
+    # When SSOT provider id is litellm, remove pre-rename leftover catalogs.
+    if "litellm" in overlay_providers:
+        for legacy in LEGACY_LITELLM_PROVIDER_IDS:
+            existing_providers.pop(legacy, None)
     if overlay_providers or existing_providers:
         result["provider"] = existing_providers
 

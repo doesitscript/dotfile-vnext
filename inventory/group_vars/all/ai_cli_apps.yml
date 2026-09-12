@@ -117,14 +117,28 @@ ai_cli_apps:
 # (when the client supports a multi-model catalog). Default chat model first.
 # Pending/sequential lanes stay listed with enabled: false — do not delete.
 #
-# Client-visible ids are plain slugs (no @k3s02-vllm). Placement belongs in
-# labels / notes / LiteLLM model_info — see roles/k3s_litellm_gateway/.../model_client_ids.yml
+# Client-visible LiteLLM ids are plain slugs (no @k3s02-vllm). Placement belongs
+# in labels / notes / LiteLLM model_info — see roles/k3s_litellm_gateway/.../model_client_ids.yml
+#
+# Naming contract — HARD client requirements first, then consistency:
+# Prefer the same *plain LiteLLM id* everywhere, but NEVER strip a prefix or
+# path shape a client requires to function. Schema beats preference.
+# - Continue / Cline / Zed model fields: plain id (e.g. qwen3.6-35b-a3b)
+# - Continue apiBase: gateway root WITHOUT /v1; Cline baseUrl: WITH /v1
+# - OpenCode / Kilo catalog keys: plain id under provider "litellm"
+# - OpenCode / Kilo *selection* strings: litellm/<plain id>  (required provider namespace)
+# - Aider: openai/<plain id>  (required OpenAI-compatible prefix)
+# Do not invent per-client aliases or resurrect @k3s02-vllm in client ids.
 #
 # OPEN QUESTION (2026-09-12): upgrading a role (e.g. Edit 7B → 14B) does NOT
 # automatically mean remove the older model from catalogs. Prefer add/split
 # over silent retire until we decide. See:
 #   docs/lessons-learned/continue/do-not-auto-retire-older-model-entries.md
 #   inventory/group_vars/all/ai_cli_apps-INTAKE.md (§ Older models when upgrading)
+#
+# Operator preference: extra catalog entries that are not currently active in
+# lab infra are OK. Do not prune host/role catalogs just to match the enabled
+# commissioned set — keep older / optional / pending rows unless asked.
 ai_cli_commissioned_models:
   # -------------------------------------------------------------------------
   # UPSTREAM INTAKE — Qwen3.6-35B-A3B (primary chat / coding default)
@@ -240,3 +254,11 @@ ai_cli_default_edit_model: qwen2.5-coder-14b@desktop
 ai_cli_default_apply_model: qwen2.5-coder-7b@desktop
 ai_cli_default_autocomplete_model: qwen2.5-coder-1.5b@hvh01
 ai_cli_default_embed_model: nomic-embed-text@hvh01
+
+# Provider namespace for OpenCode / Kilo (catalog keys stay plain; selection adds this).
+ai_cli_litellm_provider_id: litellm
+# Derived selection strings — prefer these in host_vars / role defaults.
+ai_cli_opencode_default_model: "{{ ai_cli_litellm_provider_id }}/{{ ai_cli_default_chat_model }}"
+ai_cli_kilo_default_model: "{{ ai_cli_litellm_provider_id }}/{{ ai_cli_default_chat_model }}"
+ai_cli_kilo_small_model: "{{ ai_cli_litellm_provider_id }}/{{ ai_cli_default_apply_model }}"
+ai_cli_aider_default_model: "openai/{{ ai_cli_default_chat_model }}"

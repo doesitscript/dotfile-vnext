@@ -31,7 +31,7 @@
         "chunkTimeout": {{ kilo_ide_provider_chunk_timeout_ms | default(30000) }}
       },
       "models": {
-{% for m in kilo_ide_models %}
+{% for m in kilo_ide_models if m.enabled | default(true) %}
         {{ m.id | to_json }}: {
           "name": {{ m.name | to_json }},
           "id": {{ m.id | to_json }},

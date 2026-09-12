@@ -16,7 +16,8 @@ kilo_ide_apply_mode: merge
 kilo_ide_api_key: ""
 kilo_ide_api_key_env_var: "LITELLM_API_KEY"
 kilo_ide_gateway_api_base: "http://litellm.hom.lab/v1"
-kilo_ide_provider_id: "litellm"
+# Must match ai_cli_litellm_provider_id — selection string is provider_id/plain_id.
+kilo_ide_provider_id: "{{ ai_cli_litellm_provider_id | default('litellm') }}"
 kilo_ide_provider_display_name: "Homelab LiteLLM"
 kilo_ide_provider_npm: "@ai-sdk/openai-compatible"
 kilo_ide_provider_timeout_ms: 300000
@@ -27,9 +28,9 @@ kilo_ide_vault_file_path: "{{ dotfiles_home }}/vault/shared.vault.yml"
 kilo_ide_vault_key: "vault_k3s_litellm_gateway_master_key"
 kilo_ide_require_api_key: true
 
-# Default + small models use provider_id/model_id form.
-kilo_ide_default_model: "litellm/qwen3.6-35b-a3b"
-kilo_ide_small_model: "litellm/qwen2.5-coder-7b@desktop"
+# Kilo selection strings use provider/plain_id; catalog keys below stay plain.
+kilo_ide_default_model: "{{ ai_cli_kilo_default_model | default(kilo_ide_provider_id ~ '/' ~ (ai_cli_default_chat_model | default('qwen3.6-35b-a3b'))) }}"
+kilo_ide_small_model: "{{ ai_cli_kilo_small_model | default(kilo_ide_provider_id ~ '/' ~ (ai_cli_default_apply_model | default('qwen2.5-coder-7b@desktop'))) }}"
 kilo_ide_default_agent: "code"
 kilo_ide_auto_collapse_reasoning: true
 kilo_ide_terminal_command_display: collapsed
@@ -51,12 +52,11 @@ kilo_ide_compaction:
   auto: true
   reserved: 8192
 
-# Agent / capability → model map (merged into existing agent block by id).
-# Aligns with Continue chat=32B and edit/apply=7B lanes.
+# Agent → model map (provider/plain_id). Same plain ids as Continue/Cline.
 kilo_ide_agents:
   code:
-    model: "litellm/qwen3.6-35b-a3b"
-    description: "Primary coding agent — 5090 vLLM Qwen3.6 (tools)."
+    model: "{{ kilo_ide_default_model }}"
+    description: "Primary coding agent — Qwen3.6-35B-A3B (tools)."
     permission:
       task: deny
       bash: allow
@@ -65,92 +65,88 @@ kilo_ide_agents:
       glob: allow
       grep: allow
   build:
-    model: "litellm/qwen3.6-35b-a3b"
+    model: "{{ kilo_ide_default_model }}"
     description: "Build / implement — same as code."
   plan:
-    model: "litellm/qwen3.6-35b-a3b"
-    description: "Planning / architecture on 5090 vLLM."
+    model: "{{ kilo_ide_default_model }}"
+    description: "Planning / architecture."
   ask:
-    model: "litellm/qwen3.6-35b-a3b"
-    description: "Q&A / conversation on 5090 vLLM."
+    model: "{{ kilo_ide_default_model }}"
+    description: "Q&A / conversation."
   general:
-    model: "litellm/qwen3.6-35b-a3b"
-    description: "General assistant — 5090 vLLM."
+    model: "{{ kilo_ide_default_model }}"
+    description: "General assistant."
   debug:
-    model: "litellm/qwen3.6-35b-a3b"
-    description: "Debug / hard investigation — 5090 vLLM."
+    model: "{{ kilo_ide_default_model }}"
+    description: "Debug / hard investigation."
     permission:
       task: deny
   explore:
-    model: "litellm/qwen2.5-coder-7b@desktop"
-    description: "Explore / search — desktop 7B (faster tool loops)."
+    model: "{{ kilo_ide_small_model }}"
+    description: "Explore / search — apply/small lane."
     permission:
       task: deny
       read: allow
       glob: allow
       grep: allow
   title:
-    model: "litellm/qwen2.5-coder-7b@desktop"
+    model: "{{ kilo_ide_small_model }}"
     description: "Session titles — small/fast."
   summary:
-    model: "litellm/qwen2.5-coder-7b@desktop"
+    model: "{{ kilo_ide_small_model }}"
     description: "Summaries — small/fast."
   compaction:
-    model: "litellm/qwen2.5-coder-7b@desktop"
+    model: "{{ kilo_ide_small_model }}"
     description: "Context compaction — small/fast."
   orchestrator:
-    model: "litellm/qwen3.6-35b-a3b"
-    description: "Orchestrator / multi-step — 5090 vLLM."
+    model: "{{ kilo_ide_default_model }}"
+    description: "Orchestrator / multi-step."
 
+# Catalog keys = plain LiteLLM ids (SSOT: ai_cli_commissioned_models).
 kilo_ide_models:
   - id: "qwen3.6-35b-a3b"
-    name: "Qwen3.6 35B-A3B (5090 vLLM)"
+    name: "Qwen3.6-35B-A3B"
     tool_call: true
     context: 32768
     output: 8192
     input: 28672
   - id: "qwen3-coder-30b-a3b"
-    name: "Qwen3-Coder 30B-A3B (pending sequential)"
+    name: "Qwen3-Coder-30B-A3B (pending sequential)"
+    enabled: false
     tool_call: true
     context: 32768
     output: 8192
     input: 28672
+  - id: "qwen2.5-coder-14b@desktop"
+    name: "Qwen2.5 Coder 14B (desktop Ollama)"
+    tool_call: true
+    context: 12000
+    output: 4096
+    input: 10000
+  - id: "qwen2.5-coder-7b@desktop"
+    name: "Qwen2.5 Coder 7B (desktop Ollama)"
+    tool_call: true
+    context: 12000
+    output: 4096
+    input: 10000
+  - id: "qwen2.5-coder-1.5b@hvh01"
+    name: "Qwen2.5 Coder 1.5B-base (HVH-01 Ollama FIM)"
+    tool_call: false
+    context: 4096
+    output: 256
+    input: 3840
+  - id: "nomic-embed-text@hvh01"
+    name: "nomic-embed-text (HVH-01 Ollama)"
+    tool_call: false
+    context: 8192
+    output: 1
+    input: 8192
   - id: "gpt-oss-20b"
     name: "gpt-oss 20B (desktop Ollama)"
     tool_call: true
     context: 131072
     output: 8192
     input: 120000
-  - id: "qwen2.5-coder-14b@desktop"
-    name: "Qwen2.5 Coder 14B (desktop Ollama edit)"
-    tool_call: true
-    context: 12000
-    output: 4096
-    input: 10000
-  - id: "qwen2.5-coder-7b@desktop"
-    name: "Qwen2.5 Coder 7B (desktop Ollama apply)"
-    tool_call: true
-    context: 12000
-    output: 4096
-    input: 10000
-  - id: "qwen2.5-coder-1.5b@hvh01"
-    name: "Qwen2.5 Coder 1.5B-base (HVH-01 FIM)"
-    tool_call: false
-    context: 4096
-    output: 256
-    input: 3840
-  - id: "nomic-embed-text@hvh01"
-    name: "nomic-embed-text (HVH-01)"
-    tool_call: false
-    context: 8192
-    output: 1
-    input: 8192
-  - id: "ministral-3-8b@desktop"
-    name: "Homelab Ministral 3 8B"
-    tool_call: true
-    context: 24000
-    output: 4096
-    input: 20000
   - id: "gemini-2.5-flash@google~public-research"
     name: "Gemini 2.5 Flash (Daily Driver)"
     tool_call: true

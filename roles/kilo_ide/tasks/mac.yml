@@ -86,6 +86,7 @@
     suffix: .kilo-overlay.json
   register: _kilo_overlay_tmp
   when: kilo_ide_state == "present"
+  changed_when: false
 
 - name: Write managed Kilo overlay template
   ansible.builtin.template:
@@ -94,6 +95,16 @@
     mode: "0600"
   when: kilo_ide_state == "present"
   no_log: true
+  changed_when: false
+
+- name: Capture Kilo config checksum before merge
+  ansible.builtin.stat:
+    path: "{{ kilo_ide_config_path }}"
+    checksum_algorithm: sha256
+  register: _kilo_config_before
+  when:
+    - kilo_ide_state == "present"
+    - (kilo_ide_apply_mode | default('merge')) == 'merge'
 
 - name: Merge managed Kilo slices into existing kilo.jsonc
   ansible.builtin.command:
@@ -106,6 +117,32 @@
       - "{{ _kilo_overlay_tmp.path }}"
       - --out
       - "{{ kilo_ide_config_path }}"
+  when:
+    - kilo_ide_state == "present"
+    - (kilo_ide_apply_mode | default('merge')) == 'merge'
+  register: _kilo_merge_cmd
+  changed_when: false
+
+- name: Capture Kilo config checksum after merge
+  ansible.builtin.stat:
+    path: "{{ kilo_ide_config_path }}"
+    checksum_algorithm: sha256
+  register: _kilo_config_after
+  when:
+    - kilo_ide_state == "present"
+    - (kilo_ide_apply_mode | default('merge')) == 'merge'
+
+- name: Report whether Kilo merge changed on-disk config
+  ansible.builtin.debug:
+    msg: >-
+      kilo.jsonc
+      {{ 'changed' if (
+        (_kilo_config_before.stat.checksum | default(''))
+        != (_kilo_config_after.stat.checksum | default(''))
+      ) else 'unchanged' }}
+  changed_when: >-
+    (_kilo_config_before.stat.checksum | default(''))
+    != (_kilo_config_after.stat.checksum | default(''))
   when:
     - kilo_ide_state == "present"
     - (kilo_ide_apply_mode | default('merge')) == 'merge'
@@ -128,6 +165,7 @@
   when:
     - kilo_ide_state == "present"
     - _kilo_overlay_tmp.path is defined
+  changed_when: false
 
 - name: Remove legacy Kilo config.json after conversion/merge
   ansible.builtin.file:

@@ -19,8 +19,8 @@ cline_ide_require_api_key: true
 cline_ide_vault_file_path: "{{ inventory_dir }}/../vault/shared.vault.yml"
 cline_ide_provider_id: "openai-compatible"
 cline_ide_provider_display_name: "Homelab LiteLLM"
-# Default / last-used model id (must exist in cline_ide_models).
-cline_ide_model: "qwen3.6-35b-a3b"
+# Default / last-used model id (must exist in cline_ide_models). Plain LiteLLM id.
+cline_ide_model: "{{ ai_cli_default_chat_model | default('qwen3.6-35b-a3b') }}"
 cline_ide_default_context_window: 32768
 cline_ide_default_max_output_tokens: 8192
 # Qwen3.6 NVFP4 card SciCode-style defaults when a model entry omits sampling keys.
@@ -32,9 +32,9 @@ cline_ide_default_capabilities:
 # When true, preserve non-managed provider entries (e.g. Cline cloud auth).
 cline_ide_providers_merge: true
 cline_ide_modes: {}
-# LiteLLM lanes available in the Cline model picker (IDE + CLI share this catalog).
+# LiteLLM lanes available in the Cline model picker (SSOT: ai_cli_commissioned_models).
 cline_ide_models:
-  - name: "Chat Qwen3.6-35B-A3B (5090 vLLM)"
+  - name: "Qwen3.6-35B-A3B"
     model: "qwen3.6-35b-a3b"
     roles:
       - chat
@@ -46,7 +46,7 @@ cline_ide_models:
     capabilities:
       - streaming
       - tools
-  - name: "Chat Qwen3-Coder-30B-A3B (pending sequential vLLM)"
+  - name: "Qwen3-Coder-30B-A3B (pending sequential)"
     model: "qwen3-coder-30b-a3b"
     enabled: false
     roles:
@@ -59,7 +59,7 @@ cline_ide_models:
     capabilities:
       - streaming
       - tools
-  - name: "Edit Qwen2.5 Coder 14B (desktop Ollama)"
+  - name: "Qwen2.5 Coder 14B (desktop Ollama)"
     model: "qwen2.5-coder-14b@desktop"
     roles:
       - edit
@@ -70,7 +70,7 @@ cline_ide_models:
     capabilities:
       - streaming
       - tools
-  - name: "Apply Qwen2.5 Coder 7B (desktop Ollama)"
+  - name: "Qwen2.5 Coder 7B (desktop Ollama)"
     model: "qwen2.5-coder-7b@desktop"
     roles:
       - apply
@@ -81,7 +81,7 @@ cline_ide_models:
     capabilities:
       - streaming
       - tools
-  - name: "Autocomplete Qwen2.5 Coder 1.5B-base (HVH-01)"
+  - name: "Qwen2.5 Coder 1.5B-base (HVH-01 Ollama FIM)"
     model: "qwen2.5-coder-1.5b@hvh01"
     roles:
       - autocomplete
@@ -90,7 +90,7 @@ cline_ide_models:
     temperature: 0.0
     capabilities:
       - streaming
-  - name: "Embed nomic-embed-text (HVH-01)"
+  - name: "nomic-embed-text (HVH-01 Ollama)"
     model: "nomic-embed-text@hvh01"
     roles:
       - embed
@@ -107,18 +107,6 @@ cline_ide_models:
     max_output_tokens: 8192
     temperature: 1.0
     top_p: 0.95
-    capabilities:
-      - streaming
-      - tools
-  - name: "Fast Ministral 3 8B (desktop Ollama)"
-    model: "ministral-3-8b@desktop"
-    roles:
-      - chat
-      - agent
-    context_window: 24000
-    max_output_tokens: 4096
-    temperature: 0.2
-    top_p: 0.9
     capabilities:
       - streaming
       - tools

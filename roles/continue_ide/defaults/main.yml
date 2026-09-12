@@ -5,11 +5,13 @@
 # Commissioned LiteLLM lane ids (cross-client SSOT):
 #   inventory/group_vars/all/ai_cli_apps.yml → ai_cli_commissioned_models
 # Deploy all AI CLI apps: playbook tag ai_cli_apps (alias ai_clients).
+# Model field = plain LiteLLM id (same as Cline). OpenCode/Kilo add litellm/ only
+# for their provider/model selection string — catalog keys stay plain.
 continue_ide_state: absent
 continue_ide_config_dir: "{{ ansible_env.HOME }}/.continue"
 continue_ide_config_path: "{{ continue_ide_config_dir }}/config.yaml"
-# OpenAI-compatible clients use the gateway's /v1 API base.
-continue_ide_gateway_api_base: "http://litellm.hom.lab/v1"
+# Continue probes GET {apiBase}; omit /v1 on this gateway.
+continue_ide_gateway_api_base: "http://litellm.hom.lab"
 continue_ide_api_key: ""
 # Fail present runs when vault/inventory still leave REPLACE_WITH_LITELLM_KEY.
 continue_ide_require_api_key: true
@@ -35,23 +37,22 @@ continue_ide_autocomplete_enabled: false
 # Legacy alias continue_ide_ollama_local_models still accepted by the template.
 continue_ide_local_models: []
 continue_ide_ollama_local_models: []
-# Commissioned lanes — model@host only; must exist on GET /v1/models.
+# Commissioned lanes — plain ids; must exist on GET /v1/models.
 # OPEN: newer role picks (e.g. Edit 14B) do not auto-retire older catalog rows
 # (e.g. prior Edit 7B). See docs/lessons-learned/continue/do-not-auto-retire-older-model-entries.md
 continue_ide_models:
-  - name: "Chat Qwen3.6-35B-A3B (5090 vLLM)"
+  - name: "Qwen3.6-35B-A3B"
     model: "qwen3.6-35b-a3b"
     capabilities:
       - tool_use
     roles:
       - chat
-    # NVIDIA NVFP4 card SciCode-style defaults; top_k/rep via LiteLLM route.
     default_completion_options:
       contextLength: 32768
       maxTokens: 8192
       temperature: 0.6
       topP: 0.95
-  - name: "Chat Qwen3-Coder-30B-A3B (pending sequential vLLM)"
+  - name: "Qwen3-Coder-30B-A3B (pending sequential)"
     model: "qwen3-coder-30b-a3b"
     enabled: false
     capabilities:
@@ -63,8 +64,7 @@ continue_ide_models:
       maxTokens: 8192
       temperature: 0.7
       topP: 0.8
-  # Plan 2026-09-12: Edit = 14B desktop; Apply = 7B desktop (split roles).
-  - name: "Edit Qwen2.5 Coder 14B (desktop Ollama)"
+  - name: "Qwen2.5 Coder 14B (desktop Ollama)"
     model: "qwen2.5-coder-14b@desktop"
     roles:
       - edit
@@ -72,7 +72,7 @@ continue_ide_models:
       contextLength: 12000
       maxTokens: 4096
       temperature: 0.2
-  - name: "Apply Qwen2.5 Coder 7B (desktop Ollama)"
+  - name: "Qwen2.5 Coder 7B (desktop Ollama)"
     model: "qwen2.5-coder-7b@desktop"
     roles:
       - apply
@@ -80,8 +80,7 @@ continue_ide_models:
       contextLength: 12000
       maxTokens: 4096
       temperature: 0.2
-  # HVH-01 FIM autocomplete — rendered only when continue_ide_autocomplete_enabled.
-  - name: "Autocomplete Qwen2.5 Coder 1.5B-base (HVH-01 Ollama)"
+  - name: "Qwen2.5 Coder 1.5B-base (HVH-01 Ollama FIM)"
     model: "qwen2.5-coder-1.5b@hvh01"
     roles:
       - autocomplete
@@ -94,10 +93,19 @@ continue_ide_models:
       debounceDelay: 250
       maxPromptTokens: 1024
       onlyMyCode: true
-  - name: "Embed nomic-embed-text (HVH-01 Ollama)"
+  - name: "nomic-embed-text (HVH-01 Ollama)"
     model: "nomic-embed-text@hvh01"
     roles:
       - embed
+  - name: "gpt-oss 20B (desktop Ollama)"
+    model: "gpt-oss-20b"
+    roles:
+      - chat
+    default_completion_options:
+      contextLength: 131072
+      maxTokens: 8192
+      temperature: 1.0
+      topP: 0.95
   - name: "Gemini 2.5 Flash (Daily Driver)"
     model: "gemini-2.5-flash@google~public-research"
     roles:
@@ -130,25 +138,6 @@ continue_ide_models:
       contextLength: 1048576
       maxTokens: 4096
       temperature: 0.3
-  - name: "gpt-oss 20B (desktop Ollama)"
-    model: "gpt-oss-20b"
-    roles:
-      - chat
-    default_completion_options:
-      contextLength: 131072
-      maxTokens: 8192
-      temperature: 1.0
-      topP: 0.95
-  - name: "Devstral Small 2 (pending llama.cpp publication)"
-    model: "devstral-small-2@k3s02-llama-cpp"
-    enabled: false
-    roles:
-      - chat
-  - name: "GLM-4.6 (pending llama.cpp publication)"
-    model: "glm-4.6@k3s02-llama-cpp"
-    enabled: false
-    roles:
-      - chat
 continue_ide_blocked_lanes:
-  - "qwen2.5-coder-14b (superseded on 5090 by Qwen3.6 / Qwen3-Coder sequential lane)"
+  - "qwen2.5-coder-14b on 5090 (superseded by Qwen3.6 / Qwen3-Coder sequential lane)"
   - "Remote autocomplete was historically disabled; mac-dev may enable HVH-01 FIM via continue_ide_autocomplete_enabled (plan 2026-09-12)."
