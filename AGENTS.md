@@ -373,6 +373,69 @@ Prefer, in order:
 3. Add a new role or playbook that fits the repo structure
 4. Add a narrow helper script only when declarative automation is not a fit
 
+## Ansible agent protocol (digest)
+
+Portable agent-operating rules for Ansible work in this repo. Provenance and
+extract guidance:
+`/Users/joshc/develop/homelab-reference-library/implementation-guides/opencode-ansible/extract-agent-contract-without-full-import.md`
+(and Context7 pack
+`generated/context7/opencode-ansible/agent-ansible-contract/`). Do **not**
+import foreign inventory groups, Makefiles, OpenCode MCP/agents, or role
+skeletons that omit our gates below.
+
+**Principles**
+
+1. Declarative over imperative — describe target state, not ad-hoc steps.
+2. Idempotent roles — safe to re-run; converge via `present|absent`.
+3. Agent-friendly YAML — clear task `name:`; avoid needless complex Jinja.
+4. Preview before mutate — `--check --diff` (or an equivalent read-only
+   playbook/probe) before the first applying run unless the user already
+   approved live apply in-thread.
+5. Variables in role defaults — configurable values in `defaults/`; never
+   hardcode host-specific values into tasks.
+
+**Our hard gates (not optional)**
+
+- Role vars use the `role_name_` prefix; files use `.yml`.
+- Lifecycle interface: `*_state: present|absent` (playbook preserves both).
+- Every role: `meta/argument_specs.yml` + README.
+- Do not `set_fact` to override role defaults/inputs.
+- Host targeting via inventory groups / `policy/execution_roles.yml` — not
+  invented bare hostnames.
+- Enter install/mutate via skill `homelab-ansible-first-entry`.
+- Load `.cursor/rules/ansible-coding-standards.mdc` for substantial Ansible
+  authorship on Cursor provider models.
+
+**Agent change protocol**
+
+1. Read this file + match existing role/playbook patterns.
+2. Research modules/docs (Context7 / HRL / `ansible-knowledge-gate`) before
+   novel tasks.
+3. Syntax-check / lint when practical before commit or live apply.
+4. Always give tasks a purposeful `name:`.
+5. Preview with `--check --diff` (or verify playbook), then apply.
+6. Commit messages state what and why (only when the user asks to commit).
+
+**Command remap (use these, not foreign Makefiles)**
+
+```bash
+# Always wrap Ansible/Python through the repo env
+bin/codex-env ansible-playbook playbooks/<playbook>.yaml -i inventory/inventory.yaml \
+  --limit <host_or_group> --tags <tag> --check --diff
+
+bin/codex-env ansible-playbook playbooks/<playbook>.yaml -i inventory/inventory.yaml \
+  --limit <host_or_group> --tags <tag>
+
+bin/codex-env ansible-playbook playbooks/<playbook>.yaml -i inventory/inventory.yaml \
+  --syntax-check
+
+bin/codex-env ansible-lint playbooks/<playbook>.yaml   # when lint is in scope
+bin/codex-env python .cursor/skills/homelab-ansible-first-entry/scripts/print_entry_doors.py
+```
+
+Show operators the canonical `ansible-playbook …` form when giving
+copy-paste commands; use `bin/codex-env …` for agent-executed runs.
+
 ## Trust Rule
 
 When the user identifies a structural concern:
