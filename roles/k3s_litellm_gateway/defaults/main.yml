@@ -100,18 +100,20 @@ k3s_litellm_gateway_complexity_router_enabled: false
 # Local vLLM backend contract. Primary coding + review aliases share vllm-primary
 # until a second local vLLM runtime is commissioned.
 k3s_litellm_gateway_primary_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1" #FIXME: v1 is note part of the base
-k3s_litellm_gateway_primary_vllm_model: "Qwen/Qwen2.5-Coder-32B-Instruct-AWQ"
+k3s_litellm_gateway_primary_vllm_model: "cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit"
 k3s_litellm_gateway_secondary_review_runtime_slug: "vllm-primary"
 k3s_litellm_gateway_secondary_review_api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
 k3s_litellm_gateway_secondary_review_model: "{{ k3s_litellm_gateway_primary_vllm_model }}"
 
-# Homelab local routes — Continue + Kilo (model@host only).
+# Homelab local routes — current Continue-compatible surfaces only (model@host).
+# Kilo routes and legacy 5090 recommendations are retired. Do not add a model
+# here until its client owner, variant, and runtime are explicitly selected.
 k3s_litellm_gateway_lane_contract:
-  - lane: qwen2.5-coder-32b@k3s02-vllm
+  - lane: qwen3-coder-30b-a3b@k3s02-vllm
     state: enabled
     backend_kind: local-vllm
     runtime: vllm-primary
-    reason: Continue chat on 5090 — 32B AWQ @ 32k with fp8 KV cache (gpu-memory-utilization 0.92).
+    reason: Continue/Codex/OpenCode chat on 5090 — Qwen3-Coder AWQ @ 32k; tool qualification remains pending.
   - lane: qwen2.5-coder-7b@desktop
     state: enabled
     backend_kind: ollama-desktop
@@ -122,11 +124,6 @@ k3s_litellm_gateway_lane_contract:
     backend_kind: ollama-hvh01
     runtime: ollama-autocomplete-1.5b-hvh-01
     reason: Continue autocomplete on HVH-01 (GTX 1060).
-  - lane: ministral-3-8b@desktop
-    state: enabled
-    backend_kind: ollama-desktop
-    runtime: ollama-ministral-8b-desktop
-    reason: Kilo agent fallback on desktop Ollama.
 
 # RETIRED lane vocabulary — blocked; see git history before re-enabling.
 # - lane: smart-router  (MODEL GROUP — removed)
@@ -167,10 +164,10 @@ k3s_litellm_gateway_autocomplete_7b_provider: "hosted_vllm"
 # Kilo optional 5090 vLLM smoke lanes (mutually exclusive with 32B primary on single GPU).
 # Official Qwen AWQ quants — faster cold start / lower VRAM than 32B AWQ.
 k3s_litellm_gateway_kilo_lite_vllm_api_base: ""
-k3s_litellm_gateway_kilo_lite_vllm_model: "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ"
+k3s_litellm_gateway_kilo_lite_vllm_model: ""
 k3s_litellm_gateway_kilo_lite_vllm_provider: "hosted_vllm"
 k3s_litellm_gateway_kilo_smoke_vllm_api_base: ""
-k3s_litellm_gateway_kilo_smoke_vllm_model: "Qwen/Qwen2.5-Coder-7B-Instruct-AWQ"
+k3s_litellm_gateway_kilo_smoke_vllm_model: ""
 k3s_litellm_gateway_kilo_smoke_vllm_provider: "hosted_vllm"
 # Prefer FP8/NVFP4 quantized DiffusionGemma on 32GB GPUs; BF16 recipe expects ~64GB.
 k3s_litellm_gateway_diffusiongemma_api_base: ""
@@ -224,7 +221,7 @@ k3s_litellm_gateway_devstral_chat_model: "devstral:24b"
 k3s_litellm_gateway_devstral_chat_provider: "ollama"
 
 k3s_litellm_gateway_kilo_fast_chat_api_base: ""
-k3s_litellm_gateway_kilo_fast_chat_model: "ministral-3:8b"
+k3s_litellm_gateway_kilo_fast_chat_model: ""
 k3s_litellm_gateway_kilo_fast_chat_provider: "ollama"
 
 k3s_litellm_gateway_local_continue_model_routes: []

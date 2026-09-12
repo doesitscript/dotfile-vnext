@@ -79,7 +79,7 @@ continue_ide_state: present
 
 # OpenCode CLI → homelab LiteLLM (see roles/opencode_cli).
 opencode_cli_state: present
-opencode_cli_default_model: "homelab-litellm/qwen2.5-coder-7b@desktop"
+opencode_cli_default_model: "homelab-litellm/qwen3-coder-30b-a3b@k3s02-vllm"
 
 # Cursor marketplace plugins use Cursor's plugin subsystem, not
 # `cursor --install-extension`. Track required slugs here and let `roles/cursor`
@@ -167,13 +167,16 @@ morph_mcp_targets:
 # it automatically. Listing it again in ~/.continue/config.yaml duplicates the rule.
 continue_ide_rules: []
 continue_ide_mcp_servers:
+  # stdio MCP requires a real `command` (Continue schema). Wrapper loads Morph
+  # API key from env file then execs morph-mcp. Do not omit command or Continue
+  # fails to load the whole config.yaml.
   - name: morph-mcp
     type: stdio
-    command: "{{ dotfiles_home }}/bin/mcp-server-env-wrapper"
+    command: "{{ ansible_env.HOME }}/develop/dotfile-vnext/bin/mcp-server-env-wrapper"
     args:
       - "{{ ansible_env.HOME }}/.config/dotfile-vnext/mcp/env.d/morph.env"
       - "{{ ansible_env.HOME }}/.nvm/versions/node/v20.20.0/bin/morph-mcp"
-    cwd: "{{ dotfiles_home }}"
+    cwd: "{{ ansible_env.HOME }}/develop/dotfile-vnext"
     env:
       WORKSPACE_MODE: "true"
 

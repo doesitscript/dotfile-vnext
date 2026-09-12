@@ -1,0 +1,60 @@
+---
+- name: Validate selected weight entries
+  ansible.builtin.assert:
+    that:
+      - item.lane is defined
+      - item.repo_id is defined
+      - item.directory_name is defined
+      - item.allow_patterns is defined
+      - item.allow_patterns | length > 0
+      - item.directory_name is not search('[/\\\\]')
+    fail_msg: 'Invalid Hugging Face weight entry: {{ item | to_json }}'
+  loop: "{{ huggingface_model_weights }}"
+
+- name: Ensure role staging directory exists
+  ansible.windows.win_file:
+    path: "{{ huggingface_model_weights_staging_path }}"
+    state: directory
+
+- name: Stage repo-owned download helper
+  ansible.windows.win_copy:
+    src: "{{ playbook_dir }}/../scripts/download_hf_model.py"
+    dest: "{{ huggingface_model_weights_script_path }}"
+
+- name: Ensure selected model directories exist
+  ansible.windows.win_file:
+    path: "{{ huggingface_model_weights_root }}\\{{ item.directory_name }}"
+    state: directory
+  loop: "{{ huggingface_model_weights }}"
+
+- name: Inspect selected model completion receipts
+  ansible.windows.win_stat:
+    path: "{{ huggingface_model_weights_root }}\\{{ item.directory_name }}\\.ansible-download-complete.json"
+  loop: "{{ huggingface_model_weights }}"
+  register: _huggingface_model_weight_receipts
+  changed_when: false
+
+- name: Download selected model weights with resume support
+  ansible.windows.win_command:
+    cmd: >-
+      py "{{ huggingface_model_weights_script_path }}"
+      --repo-id "{{ item.item.repo_id }}"
+      {% for pattern in item.item.allow_patterns %}--allow-pattern "{{ pattern }}" {% endfor %}
+      --local-dir "{{ huggingface_model_weights_root }}\{{ item.item.directory_name }}"
+      --state-file "{{ huggingface_model_weights_root }}\{{ item.item.directory_name }}\.ansible-download-complete.json"
+  loop: "{{ _huggingface_model_weight_receipts.results }}"
+  when: not item.stat.exists
+  register: _huggingface_model_weight_downloads
+
+- name: Verify selected model completion receipts
+  ansible.windows.win_stat:
+    path: "{{ huggingface_model_weights_root }}\\{{ item.directory_name }}\\.ansible-download-complete.json"
+  loop: "{{ huggingface_model_weights }}"
+  register: _huggingface_model_weight_receipts_after
+  changed_when: false
+
+- name: Refuse incomplete weight trees
+  ansible.builtin.assert:
+    that: item.stat.exists
+    fail_msg: 'No completion receipt for {{ item.item.lane }}; download did not complete.'
+  loop: "{{ _huggingface_model_weight_receipts_after.results }}"

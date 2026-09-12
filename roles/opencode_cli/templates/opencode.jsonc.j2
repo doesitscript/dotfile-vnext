@@ -10,7 +10,7 @@
         "apiKey": "{env:{{ opencode_cli_api_key_env }}}"
       },
       "models": {
-{% for m in opencode_cli_models %}
+{% for m in opencode_cli_models if m.enabled | default(true) %}
         "{{ m.id }}": {
           "name": {{ m.name | to_json }},
           "limit": {

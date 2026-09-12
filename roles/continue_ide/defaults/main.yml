@@ -4,8 +4,8 @@
 continue_ide_state: absent
 continue_ide_config_dir: "{{ ansible_env.HOME }}/.continue"
 continue_ide_config_path: "{{ continue_ide_config_dir }}/config.yaml"
-# Omit /v1: Continue probes GET {apiBase}; LiteLLM returns 404 on bare /v1.
-continue_ide_gateway_api_base: "http://litellm.hom.lab"
+# OpenAI-compatible clients use the gateway's /v1 API base.
+continue_ide_gateway_api_base: "http://litellm.hom.lab/v1"
 continue_ide_api_key: ""
 # Fail present runs when vault/inventory still leave REPLACE_WITH_LITELLM_KEY.
 continue_ide_require_api_key: true
@@ -32,7 +32,7 @@ continue_ide_ollama_local_models: []
 # Commissioned lanes — model@host only; must exist on GET /v1/models.
 continue_ide_models:
   - name: "Chat Qwen3-Coder-30B-A3B (5090 vLLM)"
-    model: "qwen3-coder-30b-a3b@k3s02-vllm~coder-primary"
+    model: "qwen3-coder-30b-a3b@k3s02-vllm"
     roles:
       - chat
     default_completion_options:
@@ -80,6 +80,26 @@ continue_ide_models:
       contextLength: 1048576
       maxTokens: 4096
       temperature: 0.3
+  - name: "Qwen3.6 35B-A3B (pending sequential vLLM)"
+    model: "qwen3.6-35b-a3b@k3s02-vllm"
+    enabled: false
+    roles:
+      - chat
+  - name: "gpt-oss 20B (pending gateway publication)"
+    model: "gpt-oss-20b"
+    enabled: false
+    roles:
+      - chat
+  - name: "Devstral Small 2 (pending llama.cpp publication)"
+    model: "devstral-small-2@k3s02-llama-cpp"
+    enabled: false
+    roles:
+      - chat
+  - name: "GLM-4.6 (pending llama.cpp publication)"
+    model: "glm-4.6@k3s02-llama-cpp"
+    enabled: false
+    roles:
+      - chat
 continue_ide_blocked_lanes:
-  - "qwen2.5-coder-14b@k3s02-vllm (undersized for 5090 — use 32B AWQ + fp8 KV)"
+  - "qwen2.5-coder-14b@k3s02-vllm (superseded on 5090 by Qwen3-Coder-30B-A3B AWQ)"
   - "Remote autocomplete lanes are disabled by default as of 2026-09-02; only re-enable with a deliberately local-only model on the client Mac after validation."

@@ -16,6 +16,14 @@ validation — never `provider: ollama` against a Jan GGUF model id.
 call `codebase_search`. Steering rule:
 `.continue/rules/morph-warpgrep-evaluation.md` (deployed by `roles/mcp_servers/morph`).
 
+**stdio MCP gotcha:** Continue requires `command` on every `type: stdio`
+entry. If `command`/`cwd` use `{{ dotfiles_home }}` and that var is undefined
+(common when `group_vars/all/` shadows `all.yaml` and a standalone playbook
+omits the var), Continue fails to load the **entire** `config.yaml`. Prefer
+HOME-anchored absolute paths for MCP command/cwd, keep
+`inventory/group_vars/all/dotfiles_home.yml`, and set `dotfiles_home` on
+`playbooks/deploy_continue_ide.yaml`.
+
 The **Continue editor extension** (`Continue.continue`) is installed by
 `roles/cursor` / `roles/common/vscode` — not by this role.
 

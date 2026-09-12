@@ -6,6 +6,11 @@
   hosts: mac-dev
   gather_facts: true
   become: false
+  pre_tasks:
+    - name: Establish OpenCode repository path contract
+      ansible.builtin.set_fact:
+        dotfiles_home: "{{ dotfiles_home | default(playbook_dir | dirname) }}"
+        dotfiles_user_home: "{{ dotfiles_user_home | default(ansible_facts['env']['HOME'] | default(ansible_user_dir)) }}"
   roles:
     - role: opencode_cli
       when: ansible_system == "Darwin"

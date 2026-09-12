@@ -35,6 +35,6 @@ Authority:
 | --- | --- |
 | `trim_messages` mutate | **Archived** — `roles/k3s_litellm_gateway/archive/trim-messages-callback-2026-07/` |
 | Request Inspector | **Live, observe-only** — does not rewrite prompts |
-| Primary coding backend | `Qwen/Qwen2.5-Coder-32B-Instruct-AWQ` on vllm-primary (5090) |
+| Primary coding backend | `cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit` on vllm-primary (5090); chat live, tool acceptance pending |
 
 Gateway role README: `roles/k3s_litellm_gateway/README.md` § AI Request Inspector.

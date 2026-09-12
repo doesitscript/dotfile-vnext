@@ -1,5 +1,20 @@
 # Gateway acceptance — pending (ATDD)
 
+`model-iteration-2026-09-11.yml` is the five-candidate matrix for the new
+Qwen3-Coder, Qwen3.6, gpt-oss, Devstral, and GLM lanes. Run it through the
+shared global-skills harness:
+
+```bash
+./model-lane-acceptance/scripts/run-model-iteration-acceptance.sh \
+  -m infrastructure -v -s
+```
+
+The infrastructure group proves exact publication in `GET /v1/models`.
+After a candidate runtime is published, run the full human-receipt matrix
+without `-m infrastructure`. Keep this file pending until the exact
+candidate’s receipts are green; do not promote a route because its weights
+exist on the model share.
+
 Place **new** lane journeys here when criteria are defined before the model or
 route is commissioned.
 
@@ -20,4 +35,5 @@ LITELLM_MODEL_LANE_MANIFEST=model-lane-acceptance/gateway/pending/my-new-lane.ym
 
 ## Current pending
 
-None filed yet. Gateway approved contracts live in the parent `manifest.yml`.
+The model-iteration matrix is pending. Gateway approved contracts live in the
+parent `manifest.yml`.

@@ -30,9 +30,8 @@
   vars:
     ai_inference_lane_recovery_target_node: hom-lab-ctl-k3s-02
     ai_inference_lane_recovery_required_gateway_models:
-      - "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
-      - "{{ k3s_litellm_gateway_client_model_id_kilo_autocomplete }}"
-      - "{{ k3s_litellm_gateway_client_model_id_kilo_fast }}"
+      - "{{ k3s_litellm_gateway_client_model_id_continue_chat }}"
+      - "{{ k3s_litellm_gateway_client_model_id_continue_autocomplete }}"
 
   tasks:
     - name: Preview AI inference lane recovery entrypoint
@@ -45,7 +44,7 @@
             - node Ready and DiskPressure=False on hom-lab-ctl-k3s-02
             - vllm-primary / litellm / langfuse rollouts succeed
             - litellm.hom.lab/v1/models exposes the expected route aliases
-            - qwen2.5-coder-32b@k3s02-vllm~coder-primary completion probe succeeds
+            - qwen3-coder-30b-a3b@k3s02-vllm completion probe succeeds
           undo:
             - rerun owner playbooks after restoring prior repo truth
             - repeat the node cleanup/restart slice only when disk-pressure or rollout churn returns
@@ -225,10 +224,9 @@
     - "{{ playbook_dir }}/../roles/k3s_litellm_gateway/defaults/main.yml"
   vars:
     ai_inference_lane_recovery_required_gateway_models:
-      - "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
-      - "{{ k3s_litellm_gateway_client_model_id_kilo_autocomplete }}"
-      - "{{ k3s_litellm_gateway_client_model_id_kilo_fast }}"
-    ai_inference_lane_recovery_completion_probe_model: "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
+      - "{{ k3s_litellm_gateway_client_model_id_continue_chat }}"
+      - "{{ k3s_litellm_gateway_client_model_id_continue_autocomplete }}"
+    ai_inference_lane_recovery_completion_probe_model: "{{ k3s_litellm_gateway_client_model_id_continue_chat }}"
     ai_inference_lane_recovery_completion_probe_prompt: Reply with only the word READY.
     ai_inference_lane_recovery_completion_probe_expected_text: READY
   tags: [ai_inference_lane_recovery, ai_inference_lane_recovery_verify]

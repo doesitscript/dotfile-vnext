@@ -10,6 +10,10 @@
   hosts: mac-dev
   gather_facts: true
   become: false
+  vars:
+    # Standalone playbooks must set this; group_vars/all/ shadows all.yaml.
+    # Prefer inventory/group_vars/all/dotfiles_home.yml; keep play default as belt.
+    dotfiles_home: "{{ dotfiles_home | default(playbook_dir | dirname) }}"
   roles:
     - role: continue_ide
       when: ansible_system == "Darwin"

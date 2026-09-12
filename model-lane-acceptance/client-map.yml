@@ -8,14 +8,40 @@
 # docs/plans/2026-09-01--homelab-model-lane-atdd-coordination/README.md
 
 clients:
+  model_iteration_candidates:
+    product: 2026-09-11 model iteration qualification
+    status: pending
+    acceptance: gateway/pending/model-iteration-2026-09-11.yml
+    lanes:
+      - model: Qwen3-Coder-30B-A3B
+        lane: qwen3-coder-30b-a3b@k3s02-vllm
+        runtime: vllm
+        status: published_pending_behavioral_receipts
+      - model: Qwen3.6-35B-A3B
+        lane: qwen3.6-35b-a3b@k3s02-vllm
+        runtime: vllm_sequential
+        status: pending_runtime_publication
+      - model: gpt-oss-20b
+        lane: gpt-oss-20b
+        runtime: ollama
+        status: pending_gateway_publication
+      - model: Devstral Small 2
+        lane: devstral-small-2@k3s02-llama-cpp
+        runtime: llama_cpp
+        status: pending_runtime_publication
+      - model: GLM-4.6
+        lane: glm-4.6@k3s02-llama-cpp
+        runtime: llama_cpp
+        status: pending_runtime_publication
+
   continue:
     product: Continue IDE (VS Code-compatible)
     host: mac-dev
     lanes:
       - role: chat_quality
-        lane: qwen2.5-coder-32b@k3s02-vllm
-        status: approved
-        acceptance: gateway/manifest.yml
+        lane: qwen3-coder-30b-a3b@k3s02-vllm
+        status: pending_behavioral_qualification
+        acceptance: gateway/pending/model-iteration-2026-09-11.yml
       - role: edit_apply
         lane: qwen2.5-coder-7b@desktop
         status: approved
@@ -25,29 +51,24 @@ clients:
         status: approved
         acceptance: gateway/manifest.yml
 
-  kilo:
-    product: Kilo Code (fast agent)
-    lanes:
-      - role: agent_tools
-        lane: ministral-3-8b@desktop
-        status: approved
-        acceptance: gateway/manifest.yml
-
+# udpdate thise values to math what i validated working form the vllm gateway, do tha talso fo rhteopencode tentry below.
   codex_cli:
     product: codex-homelab terminal profiles
     profiles:
       - profile: deep
         config: docs/plans/2026-09-01--homelab-local-ai-clients-codex/templates/local-deep.config.toml
-        lane: qwen2.5-coder-32b@k3s02-vllm
-        status: approved
-        acceptance: codex/profiles-approved.yml
-        notes: Response/reasoning approved; shell tool loop is pending ATDD.
+        lane: qwen3-coder-30b-a3b@k3s02-vllm
+        status: pending_behavioral_qualification
+        acceptance: codex/pending/tool-loop.yml
+        notes: Chat is live; tool-call behavior is not yet qualified.
       - profile: fast
         lane: qwen2.5-coder-7b@desktop
         status: experimental
       - profile: tools
-        lane: ministral-3-8b@desktop
-        status: experimental
+        lane: qwen3-coder-30b-a3b@k3s02-vllm
+        status: pending_behavioral_qualification
+        acceptance: codex/pending/tool-loop.yml
+        notes: Replaced the desktop profile-tools entry with the selected primary model; do not promote until the tool-loop receipt passes.
       - profile: hom-lab
         lane: qwen2.5-coder-7b@desktop
         status: experimental
@@ -59,3 +80,23 @@ clients:
         lane: qwen2.5-coder-7b@desktop
         status: approved
         acceptance: gateway/manifest.yml
+      - role: chat_agent_primary
+        lane: qwen3-coder-30b-a3b@k3s02-vllm
+        status: pending_behavioral_qualification
+        acceptance: gateway/pending/model-iteration-2026-09-11.yml
+      - role: generalist_evaluation
+        lane: qwen3.6-35b-a3b@k3s02-vllm
+        status: pending_runtime_publication
+        acceptance: gateway/pending/model-iteration-2026-09-11.yml
+      - role: alternate_agent_evaluation
+        lane: devstral-small-2@k3s02-llama-cpp
+        status: pending_runtime_publication
+        acceptance: gateway/pending/model-iteration-2026-09-11.yml
+      - role: experimental_chat_evaluation
+        lane: glm-4.6@k3s02-llama-cpp
+        status: pending_runtime_publication
+        acceptance: gateway/pending/model-iteration-2026-09-11.yml
+      - role: small_generalist_evaluation
+        lane: gpt-oss-20b
+        status: pending_gateway_publication
+        acceptance: gateway/pending/model-iteration-2026-09-11.yml

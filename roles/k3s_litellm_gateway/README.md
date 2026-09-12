@@ -62,7 +62,7 @@ matching `k3s_litellm_gateway_*_chat_api_base` is set).
 
 | Client ID | Backend | Kilo code agent |
 | --- | --- | --- |
-| `qwen2.5-coder-32b@k3s02-vllm~kilo-main` | 5090 vLLM 32B AWQ | **Primary** when 32B restored |
+| `qwen3-coder-30b-a3b@k3s02-vllm` | 5090 vLLM Qwen3-Coder AWQ | **Current primary**; chat live, tool acceptance pending |
 | `qwen2.5-coder-14b@k3s02-vllm~kilo-lite` | 5090 vLLM 14B AWQ (testing) | **Smoke/chat only** — tool_calls broken (hermes vs `<tools>` format) |
 | `ministral-3-8b@desktop~kilo-fast` | Desktop Ollama | **Interim fallback** — API tool_calls OK |
 | `qwen2.5-coder-1.5b@hvh01~kilo-autocomplete` | HVH-01 Ollama | Autocomplete lane |
@@ -209,9 +209,10 @@ External PostgreSQL uses `k3s_litellm_gateway_db_endpoint` plus
 
 For the current slice:
 
-- `qwen2.5-coder-32b@k3s02-vllm~coder-primary` is the primary local coding lane
-  (`Qwen/Qwen2.5-Coder-32B-Instruct-AWQ` on vLLM / 5090).
-- `qwen2.5-coder-32b@k3s02-vllm~kilo-main` is the **Kilo Code** alias over the same backend.
+- `qwen3-coder-30b-a3b@k3s02-vllm` is the current primary local coding lane
+  (`cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit` on vLLM / 5090).
+- The old Qwen2.5 aliases below are historical migration references and must
+  not be used as the current client source identity.
 - `qwen2.5-coder-32b@k3s02-vllm~coder-no-trim` is a historical alias from the
   trim era; both aliases now pass through unmutated. Oversized prompts fail at
   vLLM (32k). Archived mutate path:

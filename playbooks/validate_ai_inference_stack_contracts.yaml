@@ -10,13 +10,13 @@
     - "{{ playbook_dir }}/../roles/k3s_vllm_runtime/defaults/main.yml"
   vars:
     _required_lane_contract_names:
-      - qwen2.5-coder-32b@k3s02-vllm
+      - qwen3-coder-30b-a3b@k3s02-vllm
+      - qwen2.5-coder-7b@desktop
       - qwen2.5-coder-1.5b@hvh01
-      - ministral-3-8b@desktop
     _required_enabled_gateway_routes:
-      - "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
-      - "{{ k3s_litellm_gateway_client_model_id_kilo_autocomplete }}"
-      - "{{ k3s_litellm_gateway_client_model_id_kilo_fast }}"
+      - "{{ k3s_litellm_gateway_client_model_id_continue_chat }}"
+      - "{{ k3s_litellm_gateway_client_model_id_continue_edit }}"
+      - "{{ k3s_litellm_gateway_client_model_id_continue_autocomplete }}"
   tasks:
     - name: Collect gateway and lane contract names
       ansible.builtin.set_fact:
@@ -25,7 +25,7 @@
         _lane_contract_names: "{{ k3s_litellm_gateway_lane_contract | map(attribute='lane') | list }}"
       changed_when: false
 
-    - name: Validate Kilo lane vocabulary
+    - name: Validate current client lane vocabulary
       ansible.builtin.assert:
         that:
           - item in _lane_contract_names
@@ -36,7 +36,7 @@
       ansible.builtin.assert:
         that:
           - not (k3s_litellm_gateway_complexity_router_enabled | bool)
-        fail_msg: "MODEL GROUP smart-router must stay disabled in Kilo clean setup."
+        fail_msg: "MODEL GROUP smart-router must stay disabled until a current owner selects it."
 
     - name: Validate Kilo 14B testing override when active
       ansible.builtin.assert:
@@ -47,14 +47,14 @@
           k3s_vllm_runtime_kilo_testing_active requires 14B vLLM + kilo_lite api_base on k3s-02.
       when: hostvars['hom-lab-ctl-k3s-02'].k3s_vllm_runtime_kilo_testing_active | default(false) | bool
 
-    - name: Summarize validated Kilo inference contract
+    - name: Summarize validated inference contract
       ansible.builtin.debug:
         msg:
           lane_contract_names: "{{ _lane_contract_names }}"
           static_gateway_routes: "{{ _gateway_route_names }}"
-          kilo_client_ids:
-            vllm: "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
-            autocomplete: "{{ k3s_litellm_gateway_client_model_id_kilo_autocomplete }}"
-            fast: "{{ k3s_litellm_gateway_client_model_id_kilo_fast }}"
+          current_client_ids:
+            chat: "{{ k3s_litellm_gateway_client_model_id_continue_chat }}"
+            edit: "{{ k3s_litellm_gateway_client_model_id_continue_edit }}"
+            autocomplete: "{{ k3s_litellm_gateway_client_model_id_continue_autocomplete }}"
           primary_vllm_model: "{{ k3s_litellm_gateway_primary_vllm_model }}"
           gateway_url: "{{ ai_agent_client_profiles.gateway.openai_base_url }}"

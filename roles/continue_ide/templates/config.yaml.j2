@@ -1,7 +1,6 @@
 # {{ ansible_managed }}
 # Continue → LiteLLM only for remote lanes. Every gateway model MUST exist on
-# GET /v1/models. apiBase omits /v1 (Continue probes GET {apiBase}; /v1 alone
-# 404s on this gateway).
+# GET {apiBase}/models. The OpenAI-compatible apiBase includes /v1.
 # Remote autocomplete stays blocked. Local autocomplete uses an OpenAI-compatible
 # server on the client Mac (e.g. Jan), never provider: ollama for that role.
 # Blocked / not commissioned:
@@ -12,7 +11,7 @@ name: {{ continue_ide_config_name | to_json }}
 version: {{ continue_ide_config_version | to_json }}
 schema: {{ continue_ide_config_schema | to_json }}
 models:
-{% for entry in continue_ide_models %}
+{% for entry in continue_ide_models if entry.enabled | default(true) %}
 {% set entry_roles = entry.roles | default([]) %}
 {% if continue_ide_autocomplete_enabled | default(false) or 'autocomplete' not in entry_roles %}
   - name: {{ entry.name | to_json }}

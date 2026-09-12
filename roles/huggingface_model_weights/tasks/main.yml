@@ -1,0 +1,12 @@
+---
+- name: Require Windows PowerShell connection surface
+  ansible.builtin.assert:
+    that:
+      - ansible_shell_type | default('') == 'powershell'
+    fail_msg: >-
+      huggingface_model_weights requires the Windows PowerShell connection
+      surface (ansible_shell_type=powershell).
+
+- name: Dispatch Hugging Face model weight lifecycle
+  ansible.builtin.include_tasks:
+    file: "{{ 'present.yml' if huggingface_model_weights_state == 'present' else 'absent.yml' }}"

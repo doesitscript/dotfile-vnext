@@ -4,9 +4,8 @@
 # ACTIVE RULE: model@host only — real weight slug + homelab host surface.
 # Friendly purpose suffix (~kilo-main, ~code-fast, …) is COMMENTS / model_info.notes ONLY.
 #
-#   qwen2.5-coder-32b@k3s02-vllm     # friendly: ~kilo-main / ~coder-primary
-#   qwen2.5-coder-1.5b@hvh01        # friendly: ~kilo-autocomplete
-#   ministral-3-8b@desktop          # friendly: ~kilo-fast
+#   qwen3-coder-30b-a3b@k3s02-vllm   # current primary; friendly suffixes are historical only
+#   qwen2.5-coder-1.5b@hvh01        # Continue autocomplete only
 #
 # Do not invent model slugs (ornith-35b, coder-primary, kilo-coder, …).
 # MODEL GROUP / router entries are removed from the Kilo clean setup.
@@ -24,10 +23,11 @@ k3s_litellm_gateway_client_model_id_continue_autocomplete: "qwen2.5-coder-1.5b@h
 # Codex-owned desktop implementation/review lane; no automatic fallback group.
 k3s_litellm_gateway_client_model_id_desktop_implement: "qwen2.5-coder-14b@desktop"
 
-# Kilo lanes (may share backends with Continue when testing separately).
-k3s_litellm_gateway_client_model_id_kilo_vllm: "{{ k3s_litellm_gateway_client_model_id_continue_chat }}"
-k3s_litellm_gateway_client_model_id_kilo_autocomplete: "{{ k3s_litellm_gateway_client_model_id_continue_autocomplete }}"
-k3s_litellm_gateway_client_model_id_kilo_fast: "ministral-3-8b@desktop"
+# Retired Kilo compatibility variables. Empty by design so old Kilo routes
+# cannot be published accidentally by a nonempty api_base override.
+k3s_litellm_gateway_client_model_id_kilo_vllm: ""
+k3s_litellm_gateway_client_model_id_kilo_autocomplete: ""
+k3s_litellm_gateway_client_model_id_kilo_fast: ""
 
 # --- Google Gemini cloud lanes (vault_shared_gemini_api_key) ---
 k3s_litellm_gateway_client_model_id_gemini_long_context: "gemini-2.5-flash@google~long-context"
@@ -39,6 +39,6 @@ k3s_litellm_gateway_client_model_id_gemini_embeddings: "gemini-embedding-001@goo
 # --- RETIRED (2026-09-01 Kilo clean setup) — do not publish without re-commissioning ---
 # Duplicate vLLM aliases, Continue/Open WebUI lanes, cloud rows, and group routers
 # lived here as ~friendly-suffix client IDs. See git history / archive if needed.
-# k3s_litellm_gateway_client_model_id_coder_primary: "qwen2.5-coder-32b@k3s02-vllm~coder-primary"
-# k3s_litellm_gateway_client_model_id_kilo_main: "qwen2.5-coder-32b@k3s02-vllm~kilo-main"
+# k3s_litellm_gateway_client_model_id_coder_primary: "qwen3-coder-30b-a3b@k3s02-vllm"
+# k3s_litellm_gateway_client_model_id_kilo_main: "qwen3-coder-30b-a3b@k3s02-vllm"
 # k3s_litellm_gateway_client_model_id_smart_router: "litellm-complexity-auto-router@litellm~smart-router"

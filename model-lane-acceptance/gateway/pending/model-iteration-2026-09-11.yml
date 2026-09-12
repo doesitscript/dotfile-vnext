@@ -1,0 +1,78 @@
+# Pending acceptance matrix for the 2026-09-11 model iteration.
+# Keep separate from gateway/manifest.yml until exact routes and journeys pass.
+
+x-smoke: &smoke
+  id: ping-pong
+  title: "Can the candidate answer a bounded smoke prompt?"
+  user_story: "A basic chat response proves the candidate route is usable."
+  group: smoke
+  type: chat
+  user: "Reply with exactly the word: pong"
+  expect_exact: pong
+  http_status: 200
+
+x-explain: &explain
+  id: explain-add-function
+  title: "Can the candidate explain a small code sample?"
+  user_story: "A short explanation is the minimum coding-chat contract."
+  group: chat
+  type: chat
+  user: |
+    In one short sentence, explain what this Python does:
+    def add(a, b):
+        return a + b
+  expect_any_substrings: [sum, add]
+  http_status: 200
+
+x-tools: &tools
+  id: read-hosts-tool
+  title: "Can the candidate request and complete a file-read tool journey?"
+  user_story: "Tool candidates must request the declared tool, not emit pretend JSON."
+  group: tools
+  type: tools
+  user: "Use the read_file tool to read /etc/hosts. Do not explain — just call the tool."
+  tool_name: read_file
+  expect_mode: tool_calls
+  tool_execute_path: /etc/hosts
+  tool_result_expect_any_substrings: ["127.0.0.1", localhost]
+  tool_followup_prompt: "You just read /etc/hosts. Reply with one short line that includes a hostname or IP address from that file."
+  tool_followup_expect_any_substrings: ["127.0.0.1", localhost]
+  http_status: 200
+
+lanes:
+  - id: qwen3-coder-30b-a3b@k3s02-vllm
+    label: "Qwen3-Coder-30B-A3B AWQ — vLLM 5090 primary"
+    capabilities: [chat, tools]
+    usage:
+      - <<: *smoke
+      - <<: *explain
+      - <<: *tools
+
+  - id: qwen3.6-35b-a3b@k3s02-vllm
+    label: "Qwen3.6-35B-A3B NVFP4 — sequential vLLM candidate"
+    capabilities: [chat]
+    usage:
+      - <<: *smoke
+      - <<: *explain
+
+  - id: gpt-oss-20b
+    label: "gpt-oss 20B — Ollama generalist candidate"
+    capabilities: [chat]
+    usage:
+      - <<: *smoke
+      - <<: *explain
+
+  - id: devstral-small-2@k3s02-llama-cpp
+    label: "Devstral Small 2 Q4_K_M — llama.cpp candidate"
+    capabilities: [chat, tools]
+    usage:
+      - <<: *smoke
+      - <<: *explain
+      - <<: *tools
+
+  - id: glm-4.6@k3s02-llama-cpp
+    label: "GLM-4.6 Q4_K_M — llama.cpp experimental candidate"
+    capabilities: [chat]
+    usage:
+      - <<: *smoke
+      - <<: *explain

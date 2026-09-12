@@ -82,8 +82,9 @@ ansible-playbook playbooks/deploy_ai_inference_stack.yaml -i inventory/inventory
 - Gateway and route contract: `roles/k3s_litellm_gateway/defaults/main.yml`
 
 Important:
-- `deepreinforce-ai/Ornith-1.0-35B-GGUF` is the client-facing LiteLLM lane alias, not the literal upstream vLLM weights identifier.
-- The current primary local backend for that lane is `Qwen/Qwen2.5-Coder-32B-Instruct-AWQ`, with vLLM tool calling enabled through the `hermes` parser.
+- `deepreinforce-ai/Ornith-1.0-35B-GGUF` remains a client-facing LiteLLM lane alias, not a literal upstream vLLM weights identifier. It documents the prior Qwen2.5 service surface.
+- The current model-iteration primary is `qwen3-coder-30b-a3b@k3s02-vllm`, backed by `cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit`. The source configuration enables the Qwen3-Coder parser; chat is live, while tool-call behavior remains pending acceptance evidence.
+- The prior `Qwen/Qwen2.5-Coder-32B-Instruct-AWQ` backend and its `hermes` parser remain historical baseline evidence, not the current primary source configuration.
 - **5090 lane health is model tuning, not LiteLLM trim.** The weak “almost full GPU / weak coding” era was an **untuned** 14B-at-32k placement; the live fix is **32B AWQ + fp8 KV** at the same 32k window. See
   `docs/plans/2026-09-01--homelab-local-ai-clients-cursor-kilo/diagrams/5090-vram-tuning-before-after.md`.
 - LiteLLM **does not mutate/trim** requests on the live path. Request Inspector is **observe-only**. The old `trim_messages` mutate safety net is archived under

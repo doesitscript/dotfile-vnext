@@ -1,68 +1,48 @@
 ---
-# Playbook: Download selected 5090 models
-# Authority: inventory/group_vars/model_catalog/manifest.yml
-# Skill: hf-model-weight-lifecycle
-#
-# Downloads the 4 new models for 5090 evaluation:
-# - Qwen3-Coder-30B-A3B-Instruct (primary)
-# - Qwen3.6-35B-A3B (generalist)
-# - Devstral-Small-2-24B-Instruct-2512 (agent)
-# - GLM-4.6 (experimental)
-#
-# Run in background:
-#   bin/codex-env ansible-playbook playbooks/download_5090_models.yaml &
+# Ansible-owned model-weight lifecycle for the 5090 evaluation candidates.
+# The storage share is on HOM-LAB-HVH-01. Do not run this playbook in the
+# background: completion receipts and task output are the evidence contract.
+# all of these model are instruct models and i'm not sure that they belong beyond an early naive intereest in trying them out.
+# i would tentatively mark them as deleteable.
 
-- name: Download 5090 model weights
-  hosts: HOM-LAB-HVH-01  # Current catalog storage host
+- name: Manage 5090 model weight trees
+  hosts: HOM-LAB-HVH-01
   gather_facts: false
-  vars:
-    models_to_download:
-      - repo: Qwen/Qwen3-Coder-30B-A3B-Instruct
-        quant_repo: unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF
-        files: ["*Q4_K_M.gguf"]
-        lane: qwen3-coder-30b-a3b-primary
-      - repo: Qwen/Qwen3.6-35B-A3B
-        quant_repo: nvidia/Qwen3.6-35B-A3B-NVFP4
-        files: ["*.safetensors", "config.json", "tokenizer.json", "*.model"]
-        lane: qwen3.6-35b-a3b-generalist
-      - repo: mistralai/Devstral-Small-2-24B-Instruct-2512
-        quant_repo: bartowski/mistralai_Devstral-Small-2-24B-Instruct-2512-GGUF
-        files: ["*Q4_K_M.gguf"]
-        lane: devstral-small-2-agent
-      - repo: zai-org/GLM-4.6
-        quant_repo: unsloth/GLM-4.6-GGUF
-        files: ["*Q4_K_M.gguf"]
-        lane: glm-4.6-experimental
-
-  tasks:
-    - name: Ensure huggingface_hub is present
-      ansible.windows.win_command:
-        cmd: py -m pip show huggingface_hub
-      register: _hf_hub_check
-      changed_when: false
-      failed_when: false
-
-    - name: Install huggingface_hub if missing
-      ansible.windows.win_command:
-        cmd: py -m pip install --user huggingface_hub
-      when: _hf_hub_check.rc != 0
-
-    - name: Download model weights via Python API
-      ansible.windows.win_shell: >-
-        py -c "from huggingface_hub import snapshot_download;
-        snapshot_download('{{ item.quant_repo }}',
-        allow_patterns='{{ item.files[0] }}',
-        local_dir=r'F:\shares\public\models\huggingface\{{ item.quant_repo | replace("/", "--") }}',
-        local_dir_use_symlinks=False, resume_download=True)"
-      loop: "{{ models_to_download }}"
-      register: _download_results
-      async: 14400  # 4 hours max per model
-      poll: 0  # Fire and forget
-
-    - name: Report download job IDs
-      ansible.builtin.debug:
-        msg: >-
-          Started download for {{ item.item.lane }}
-          (job {{ item.ansible_job_id }})
-      loop: "{{ _download_results.results }}"
-      when: item.ansible_job_id is defined
+  roles:
+    - role: huggingface_hub
+      huggingface_hub_state: present
+      huggingface_hub_package_version: ''
+      tags: [huggingface_hub, model_weights]
+    - role: huggingface_model_weights
+      huggingface_model_weights_state: present
+      huggingface_model_weights:
+        - lane: qwen3-coder-30b-a3b-primary
+          repo_id: cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit
+          directory_name: cyankiwi--Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit
+          allow_patterns:
+            - '*.safetensors'
+            - 'config.json'
+            - 'generation_config.json'
+            - 'tokenizer.json'
+            - 'tokenizer_config.json'
+            - 'chat_template.jinja'
+        - lane: qwen3.6-35b-a3b-generalist
+          repo_id: nvidia/Qwen3.6-35B-A3B-NVFP4
+          directory_name: nvidia--Qwen3.6-35B-A3B-NVFP4
+          allow_patterns:
+            - '*.safetensors'
+            - '*.json'
+            - '*.jinja'
+            - '*.model'
+            - '*.txt'
+        - lane: devstral-small-2-agent
+          repo_id: bartowski/mistralai_Devstral-Small-2-24B-Instruct-2512-GGUF
+          directory_name: bartowski--mistralai_Devstral-Small-2-24B-Instruct-2512-GGUF
+          allow_patterns:
+            - '*Q4_K_M.gguf'
+        - lane: glm-4.6-experimental
+          repo_id: unsloth/GLM-4.6-GGUF
+          directory_name: unsloth--GLM-4.6-GGUF
+          allow_patterns:
+            - '*Q4_K_M.gguf'
+      tags: [model_weights, model_iteration]

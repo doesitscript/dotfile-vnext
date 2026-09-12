@@ -1,33 +1,56 @@
 #!/usr/bin/env python3
-"""Download HuggingFace model weights using the Python API."""
-import sys
-from pathlib import Path
-from huggingface_hub import hf_hub_download
+"""Download one Hugging Face weight tree and write its completion receipt."""
 
-def main():
-    if len(sys.argv) < 4:
-        print("Usage: download_hf_model.py <repo_id> <pattern> <local_dir>", file=sys.stderr)
-        sys.exit(1)
-    
-    repo_id = sys.argv[1]
-    pattern = sys.argv[2]
-    local_dir = Path(sys.argv[3])
-    
-    print(f"Downloading {repo_id} (pattern: {pattern}) to {local_dir}")
-    
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+from huggingface_hub import snapshot_download
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--repo-id", required=True)
+    parser.add_argument("--allow-pattern", action="append", required=True)
+    parser.add_argument("--local-dir", required=True, type=Path)
+    parser.add_argument("--state-file", required=True, type=Path)
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    args.local_dir.mkdir(parents=True, exist_ok=True)
     try:
-        from huggingface_hub import snapshot_download
-        snapshot_download(
-            repo_id=repo_id,
-            allow_patterns=pattern,
-            local_dir=str(local_dir),
+        snapshot_path = snapshot_download(
+            repo_id=args.repo_id,
+            allow_patterns=args.allow_pattern,
+            local_dir=str(args.local_dir),
             local_dir_use_symlinks=False,
-            resume_download=True
+            resume_download=True,
         )
-        print(f"Download complete: {repo_id}")
-    except Exception as e:
-        print(f"Download failed: {e}", file=sys.stderr)
-        sys.exit(1)
+    except Exception as exc:
+        print(f"Download failed for {args.repo_id}: {exc}", file=sys.stderr)
+        return 1
+
+    receipt = {
+        "schema": "huggingface_model_weight_download_receipt",
+        "repo_id": args.repo_id,
+        "allow_patterns": args.allow_pattern,
+        "local_dir": str(args.local_dir),
+        "snapshot_path": str(snapshot_path),
+        "completed_at": datetime.now(timezone.utc).isoformat(),
+    }
+    args.state_file.parent.mkdir(parents=True, exist_ok=True)
+    temporary_state = args.state_file.with_suffix(args.state_file.suffix + ".tmp")
+    temporary_state.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+    temporary_state.replace(args.state_file)
+    print(json.dumps(receipt, sort_keys=True))
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

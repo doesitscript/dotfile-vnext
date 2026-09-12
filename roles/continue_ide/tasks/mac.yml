@@ -106,6 +106,43 @@
     - continue_ide_provision_firebase_cli | default(false) | bool
     - continue_ide_firebase_cli_check.rc | default(1) != 0
 
+- name: Require Continue stdio MCP entries to include a usable command
+  ansible.builtin.assert:
+    that:
+      - >-
+        (
+          continue_ide_mcp_servers | default([])
+          | selectattr('type', 'defined')
+          | selectattr('type', 'equalto', 'stdio')
+          | list
+          | length
+        ) == 0
+        or
+        (
+          continue_ide_mcp_servers | default([])
+          | selectattr('type', 'defined')
+          | selectattr('type', 'equalto', 'stdio')
+          | rejectattr('command', 'defined')
+          | list
+          | length
+        ) == 0
+      - >-
+        (
+          continue_ide_mcp_servers | default([])
+          | map(attribute='command', default='')
+          | select('search', 'error|undefined', ignorecase=True)
+          | list
+          | length
+        ) == 0
+    fail_msg: >-
+      continue_ide_mcp_servers has a stdio entry missing `command`, or command
+      contains an Ansible template error (often undefined dotfiles_home).
+      Continue rejects the whole config.yaml when stdio MCP omits command.
+      Fix host_vars / set dotfiles_home on the play, then re-run.
+  when:
+    - continue_ide_state == "present"
+    - (continue_ide_mcp_servers | default([]) | length) > 0
+
 - name: Deploy Continue config for LiteLLM lanes
   ansible.builtin.template:
     src: config.yaml.j2

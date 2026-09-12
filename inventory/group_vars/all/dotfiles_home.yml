@@ -1,0 +1,17 @@
+---
+# Dotfiles role path defaults.
+#
+# NOTE: inventory/group_vars/all/ (directory) shadows inventory/group_vars/all.yaml.
+# Keep this contract here so standalone playbooks (e.g. deploy_continue_ide.yaml)
+# still resolve {{ dotfiles_home }} when rendering Continue MCP command/cwd.
+dotfiles_home: >-
+  {{ 'D:\\develop\\dotfile-vnext'
+     if ansible_facts['system'] == 'Windows'
+     else ('/Users/' ~ ansible_facts['user_id'] ~ '/develop/dotfile-vnext'
+           if ansible_facts['system'] == 'Darwin'
+           else '/mnt/d/develop/dotfile-vnext') }}
+
+dotfiles_user_home: >-
+  {{ (ansible_facts['env'].USERPROFILE | default('C:\\Users\\' ~ ansible_facts['user_id']))
+     if ansible_facts['system'] == 'Windows'
+     else (ansible_facts['env'].HOME | default(ansible_facts['user_dir'])) }}
