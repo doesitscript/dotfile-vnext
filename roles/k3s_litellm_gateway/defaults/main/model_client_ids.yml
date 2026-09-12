@@ -7,8 +7,9 @@
 #
 # Historical pattern (retired for k3s02-vllm): model@host
 #   qwen3.6-35b-a3b@k3s02-vllm  → now  qwen3.6-35b-a3b
-# Desktop / HVH-01 / Gemini may still use @host or @google~lane where useful for
-# disambiguation across many backends; do not reintroduce @k3s02-vllm.
+# Prefer plain slugs. Do not use @desktop or @google~lane in client-facing ids
+# (placement belongs in model_info / notes). HVH-01 may keep @hvh01 until a
+# later plain rename. Do not reintroduce @k3s02-vllm.
 #
 # Do not invent model slugs (ornith-35b, coder-primary, kilo-coder, …).
 
@@ -24,11 +25,10 @@ k3s_litellm_gateway_client_model_host_k3s02_vllm: k3s02-vllm
 k3s_litellm_gateway_client_model_id_continue_chat: "qwen3.6-35b-a3b"
 # Prior coder primary — keep as named alias when that weight is the served model.
 k3s_litellm_gateway_client_model_id_coder_primary: "qwen3-coder-30b-a3b"
-k3s_litellm_gateway_client_model_id_continue_edit: "qwen2.5-coder-7b@desktop"
+k3s_litellm_gateway_client_model_id_continue_edit: "qwen2.5-coder-7b"
 k3s_litellm_gateway_client_model_id_continue_autocomplete: "qwen2.5-coder-1.5b@hvh01"
-# Codex-owned desktop implementation/review lane; no automatic fallback group.
-# Continue Edit role also uses this id (14B instruct on desktop Ollama).
-k3s_litellm_gateway_client_model_id_desktop_implement: "qwen2.5-coder-14b@desktop"
+# Desktop Ollama 14B implement/edit lane (plain slug; placement in notes).
+k3s_litellm_gateway_client_model_id_desktop_implement: "qwen2.5-coder-14b"
 k3s_litellm_gateway_client_model_id_gpt_oss: "gpt-oss-20b"
 # Continue embed role — nomic on HVH-01 Ollama (not a chat lane).
 k3s_litellm_gateway_client_model_id_nomic_embed: "nomic-embed-text@hvh01"
@@ -37,14 +37,14 @@ k3s_litellm_gateway_client_model_id_nomic_embed: "nomic-embed-text@hvh01"
 # cannot be published accidentally by a nonempty api_base override.
 k3s_litellm_gateway_client_model_id_kilo_vllm: ""
 k3s_litellm_gateway_client_model_id_kilo_autocomplete: ""
-k3s_litellm_gateway_client_model_id_kilo_fast: ""
+k3s_litellm_gateway_client_model_id_kilo_fast: "ministral-3-8b"
 
 # --- Google Gemini cloud lanes (vault_shared_gemini_api_key) ---
-k3s_litellm_gateway_client_model_id_gemini_long_context: "gemini-2.5-flash@google~long-context"
-k3s_litellm_gateway_client_model_id_gemini_deep_reasoning: "gemini-2.5-pro@google~deep-reasoning"
-k3s_litellm_gateway_client_model_id_gemini_public_research: "gemini-2.5-flash@google~public-research"
-k3s_litellm_gateway_client_model_id_gemini_bulk: "gemini-2.5-flash-lite@google~bulk"
-k3s_litellm_gateway_client_model_id_gemini_embeddings: "gemini-embedding-001@google~embeddings"
+k3s_litellm_gateway_client_model_id_gemini_long_context: "gemini-2.5-flash-long-context"
+k3s_litellm_gateway_client_model_id_gemini_deep_reasoning: "gemini-2.5-pro"
+k3s_litellm_gateway_client_model_id_gemini_public_research: "gemini-2.5-flash"
+k3s_litellm_gateway_client_model_id_gemini_bulk: "gemini-2.5-flash-lite"
+k3s_litellm_gateway_client_model_id_gemini_embeddings: "gemini-embedding-001"
 
 # --- RETIRED (2026-09-01 Kilo clean setup) — do not publish without re-commissioning ---
 # Duplicate vLLM aliases, Continue/Open WebUI lanes, cloud rows, and group routers

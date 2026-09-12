@@ -28,11 +28,11 @@ When `vault_shared_gemini_api_key` is set, the role appends five routes from
 
 | Client `model_name` | Backend | Highlight |
 | --- | --- | --- |
-| `gemini-2.5-flash@google~long-context` | `gemini/gemini-2.5-flash` | **1M ctx** — primary long-context lane |
-| `gemini-2.5-pro@google~deep-reasoning` | `gemini/gemini-2.5-pro` | Hard reasoning — **not** max-context |
-| `gemini-2.5-flash@google~public-research` | `gemini/gemini-2.5-flash` | Daily fast lane / tools |
-| `gemini-2.5-flash-lite@google~bulk` | `gemini/gemini-2.5-flash-lite` | Bulk / Langfuse evals |
-| `gemini-embedding-001@google~embeddings` | `gemini/gemini-embedding-001` | Text embeddings |
+| `gemini-2.5-flash-long-context` | `gemini/gemini-2.5-flash` | **1M ctx** — primary long-context lane |
+| `gemini-2.5-pro` | `gemini/gemini-2.5-pro` | Hard reasoning — **not** max-context |
+| `gemini-2.5-flash` | `gemini/gemini-2.5-flash` | Daily fast lane / tools |
+| `gemini-2.5-flash-lite` | `gemini/gemini-2.5-flash-lite` | Bulk / Langfuse evals |
+| `gemini-embedding-001` | `gemini/gemini-embedding-001` | Text embeddings |
 
 Tip: use **long-context** for volume; use **deep-reasoning** for quality on hard
 problems — both may share Flash/Pro backends but client IDs preserve intent in traces.
@@ -64,7 +64,7 @@ matching `k3s_litellm_gateway_*_chat_api_base` is set).
 | --- | --- | --- |
 | `qwen3-coder-30b-a3b` | 5090 vLLM Qwen3-Coder AWQ | **Current primary**; card sampling defaults on route (`temp=0.7`, `top_p=0.8`, `top_k=20`, `repetition_penalty=1.05`); tool acceptance pending |
 | `qwen2.5-coder-14b~kilo-lite` | 5090 vLLM 14B AWQ (testing) | **Smoke/chat only** — tool_calls broken (hermes vs `<tools>` format) |
-| `ministral-3-8b@desktop~kilo-fast` | Desktop Ollama | **Interim fallback** — API tool_calls OK |
+| `ministral-3-8b` | Desktop Ollama | **Interim fallback** — API tool_calls OK |
 | `qwen2.5-coder-1.5b@hvh01~kilo-autocomplete` | HVH-01 Ollama | Autocomplete lane |
 
 Do not invest in fixing 14B tool parsing. Restore 32B or upgrade to Qwen3-Coder /

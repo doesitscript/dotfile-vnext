@@ -70,7 +70,13 @@ k3s_litellm_gateway_langfuse_enabled: true
 k3s_litellm_gateway_langfuse_host: "http://langfuse-web.langfuse.svc.cluster.local:3000"
 k3s_litellm_gateway_langfuse_public_key: "{{ vault_shared_langfuse_public_key | default('lf_pk_Pass@w0rd1') }}"
 k3s_litellm_gateway_langfuse_secret_key: "{{ vault_shared_langfuse_secret_key | default('lf_sk_Pass@w0rd1') }}"
-k3s_litellm_gateway_proxy_litellm_settings: "{{ {'success_callback': ['langfuse']} if k3s_litellm_gateway_langfuse_enabled | bool else {} }}"
+# drop_params: true — Ollama/desktop backends reject OpenAI extras like
+# parallel_tool_calls (gpt-oss-20b). Drop instead of 500 so Continue/Cline work.
+k3s_litellm_gateway_proxy_litellm_settings: >-
+  {{
+    {'drop_params': true}
+    | combine({'success_callback': ['langfuse']} if (k3s_litellm_gateway_langfuse_enabled | bool) else {})
+  }}
 k3s_litellm_gateway_router_settings: {}
 k3s_litellm_gateway_enable_pre_call_checks: true
 # AI Request Inspector — observe-only LiteLLM callback (no message mutation).
@@ -134,11 +140,16 @@ k3s_litellm_gateway_lane_contract:
     backend_kind: ollama-desktop
     runtime: ollama-gpt-oss-desktop
     reason: OpenAI gpt-oss:20b via desktop Ollama; think=low|medium|high.
-  - lane: qwen2.5-coder-7b@desktop
+  - lane: qwen2.5-coder-7b
     state: enabled
     backend_kind: ollama-desktop
     runtime: ollama-qwen25-coder-7b-desktop
-    reason: Continue edit/apply on desktop Ollama.
+    reason: Continue apply / small-fast on desktop Ollama (plain client id).
+  - lane: qwen2.5-coder-14b
+    state: enabled
+    backend_kind: ollama-desktop
+    runtime: ollama-qwen25-coder-14b-desktop
+    reason: Continue edit / desktop implement on desktop Ollama (plain client id).
   - lane: qwen2.5-coder-1.5b@hvh01
     state: enabled
     backend_kind: ollama-hvh01
