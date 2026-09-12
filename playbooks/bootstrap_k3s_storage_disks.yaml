@@ -1,0 +1,42 @@
+---
+# Bootstrap only: create/attach separate non-RAID dynamic VHDXs on the
+# verified Hyper-V host volume. Guest partitioning/mounting is a later stage
+# after stable guest disk identity is collected.
+- name: Bootstrap separate K3s storage VHDX attachments
+  hosts: windows_hosts
+  gather_facts: false
+  tags: [k3s_storage, hyperv_vm_data_disk, bootstrap]
+  pre_tasks:
+    - name: Require an explicit two-host target limit
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | trim | length > 0
+          - hyperv_k3s_storage_disks | length == 2
+          - hyperv_k3s_storage_disks | map(attribute='controller_location') | list | unique | length == 2
+        fail_msg: >-
+          Use --limit HOM-LAB-HVH-02 and define exactly two separate storage
+          VHDXs with unique SCSI controller locations.
+      run_once: true
+      tags: [always]
+  tasks:
+    - name: Attach one selected non-RAID storage VHDX
+      ansible.builtin.include_role:
+        name: hyperv_vm_data_disk
+      vars:
+        hyperv_vm_data_disk_state: present
+        hyperv_vm_data_disk_apply: true
+        hyperv_vm_data_disk_vm_name: "{{ item.vm_name }}"
+        hyperv_vm_data_disk_vhdx_path: "{{ item.vhdx_path }}"
+        hyperv_vm_data_disk_size_gib: "{{ item.size_gib }}"
+        hyperv_vm_data_disk_type: "{{ item.type }}"
+        hyperv_vm_data_disk_host_reserve_gib: "{{ item.host_reserve_gib }}"
+        hyperv_vm_data_disk_controller_number: "{{ item.controller_number }}"
+        hyperv_vm_data_disk_controller_location: "{{ item.controller_location }}"
+        hyperv_vm_data_disk_backup_evidence_ref: >-
+          docs/plans/2026-09-10--k3s-02-storage-upgrade/draft-plan-v1-researched.md
+        hyperv_vm_data_disk_authority_ref: >-
+          docs/plans/2026-09-10--k3s-02-storage-upgrade/draft-plan-v1-researched.md
+      loop: "{{ hyperv_k3s_storage_disks }}"
+      loop_control:
+        label: "{{ item.name }} -> {{ item.vhdx_path }}"

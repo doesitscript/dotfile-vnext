@@ -3,11 +3,11 @@
   ansible.builtin.command:
     argv:
       - findmnt
-      - --mountpoint
+      - --target
+      - "{{ k3s_storage_offload_containerd_source_path }}"
       - --noheadings
       - --output
       - SOURCE,FSROOT
-      - "{{ k3s_storage_offload_containerd_source_path }}"
   register: __k3s_storage_offload_restore_mount
   changed_when: false
   failed_when: __k3s_storage_offload_restore_mount.rc not in [0, 1]

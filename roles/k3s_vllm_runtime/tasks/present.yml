@@ -120,6 +120,19 @@
         )
       }}
 
+- name: Refuse unscoped check-mode HF migration
+  ansible.builtin.assert:
+    that:
+      - not ansible_check_mode
+    fail_msg: >-
+      HF host-path migration is a quiesce/copy/cutover workflow and cannot be
+      previewed safely while k3s_vllm_runtime_hf_cache_migration_apply=true.
+      Run the bounded live apply with the retained source PVC enabled.
+  when:
+    - k3s_vllm_runtime_hf_cache_backend == 'host_path'
+    - not (_k3s_vllm_runtime_cache_already_on_selected_host_path | bool)
+    - k3s_vllm_runtime_hf_cache_migration_apply | bool
+
 - name: Prepare retained PVC cache for selected host-path cutover
   ansible.builtin.include_tasks: migrate_hf_cache.yml
   when:

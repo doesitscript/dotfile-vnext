@@ -1,6 +1,10 @@
 ---
-# Present-path campaign orchestration. The imported playbooks retain their
-# explicit inventory-limit gates and role-level mutation/identity gates.
+# Present-path campaign orchestration. Bootstrap VHDX attachment is separate
+# from guest identity discovery; the imported playbooks retain explicit
+# inventory-limit gates and role-level mutation/identity gates.
+- name: K3s storage expansion - bootstrap separate VHDX attachments
+  ansible.builtin.import_playbook: bootstrap_k3s_storage_disks.yaml
+
 - name: K3s storage expansion - attach, mount, and storage offload
   ansible.builtin.import_playbook: deploy_k3s_data_disk.yaml
   vars:
@@ -8,6 +12,8 @@
 
 - name: K3s storage expansion - retained-cache vLLM cutover
   ansible.builtin.import_playbook: deploy_vllm_runtime.yaml
+  tags: [vllm, cache_cutover]
 
 - name: K3s storage expansion - Alloy then capacity monitor
   ansible.builtin.import_playbook: deploy_storage_capacity_monitor.yaml
+  tags: [logging, storage_monitoring, storage_capacity_monitor]

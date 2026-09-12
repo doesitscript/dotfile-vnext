@@ -1,0 +1,76 @@
+---
+- name: Remove stale zero-replica vLLM ReplicaSets and pod volumes
+  hosts: container_orchestrator_k3s:&gpu_workload_nodes
+  gather_facts: false
+  become: true
+  tags: [vllm_cleanup]
+  pre_tasks:
+    - name: Require explicit target limit
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | trim | length > 0
+        fail_msg: "Use --limit hom-lab-ctl-k3s-02 for vLLM cleanup."
+      run_once: true
+      tags: [always]
+  tasks:
+    - name: Discover vLLM ReplicaSets
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: ReplicaSet
+        namespace: vllm-runtime
+        label_selectors:
+          - app.kubernetes.io/instance=vllm-primary
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: _vllm_replicasets
+
+    - name: Select only zero-replica vLLM ReplicaSets
+      ansible.builtin.set_fact:
+        _vllm_stale_replicasets: >-
+          {{ _vllm_replicasets.resources |
+             selectattr('spec.replicas', 'equalto', 0) | list }}
+
+    - name: Report stale ReplicaSets selected for cleanup
+      ansible.builtin.debug:
+        msg:
+          name: "{{ item.metadata.name }}"
+          replicas: "{{ item.spec.replicas }}"
+          owner_references: "{{ item.metadata.ownerReferences | default([]) }}"
+      loop: "{{ _vllm_stale_replicasets }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
+
+    - name: Delete only selected zero-replica ReplicaSets
+      kubernetes.core.k8s:
+        state: absent
+        api_version: apps/v1
+        kind: ReplicaSet
+        namespace: vllm-runtime
+        name: "{{ item.metadata.name }}"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      loop: "{{ _vllm_stale_replicasets }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
+
+    - name: Verify no stale vLLM ReplicaSets remain
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: ReplicaSet
+        namespace: vllm-runtime
+        label_selectors:
+          - app.kubernetes.io/instance=vllm-primary
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: _vllm_replicasets_after
+
+    - name: Require only the active ReplicaSet remains
+      ansible.builtin.assert:
+        that:
+          - >-
+            (_vllm_replicasets_after.resources |
+            selectattr('spec.replicas', 'equalto', 1) | list | length) == 1
+          - >-
+            (_vllm_replicasets_after.resources |
+            selectattr('spec.replicas', 'equalto', 0) | list | length) == 0

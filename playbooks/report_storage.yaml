@@ -110,6 +110,16 @@
             - --json
             - --output
             - NAME,PATH,TYPE,SIZE,FSTYPE,FSAVAIL,FSUSE%,MOUNTPOINTS,PKNAME,MODEL,SERIAL
+        - label: guest stable disk identity paths
+          argv:
+            - find
+            - /dev/disk/by-id
+            - -maxdepth
+            - "1"
+            - -type
+            - l
+            - -printf
+            - "%f -> %l\n"
         - label: guest real mounts
           argv:
             - findmnt

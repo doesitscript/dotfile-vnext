@@ -26,8 +26,22 @@
       k3s_storage_offload_state: absent
       when: (k3s_data_disk_state | default('present')) == 'absent'
       tags: [k3s_storage_offload]
-    - role: linux_data_disk_mount
-      linux_data_disk_mount_state: absent
+  tasks:
+    - name: Reverse each selected K3s guest data-disk mount
+      ansible.builtin.include_role:
+        name: linux_data_disk_mount
+      vars:
+        linux_data_disk_mount_state: absent
+        linux_data_disk_mount_apply: true
+        linux_data_disk_mount_device_by_id: "{{ item.device_by_id }}"
+        linux_data_disk_mount_expected_serial: "{{ item.expected_serial }}"
+        linux_data_disk_mount_path: "{{ item.path }}"
+        linux_data_disk_mount_authority_ref: >-
+          docs/plans/2026-09-10--k3s-02-storage-upgrade/draft-plan-v1-researched.md
+        linux_data_disk_mount_unmount_authorized: true
+      loop: "{{ linux_data_disk_mounts }}"
+      loop_control:
+        label: "{{ item.name }} -> {{ item.path }}"
       when: (k3s_data_disk_state | default('present')) == 'absent'
       tags: [linux_data_disk_mount]
 
@@ -47,22 +61,72 @@
           set k3s_data_disk_state to present or absent.
       run_once: true
       tags: [always]
-  roles:
-    - role: hyperv_vm_data_disk
-      hyperv_vm_data_disk_state: "{{ k3s_data_disk_state | default('present') }}"
+  tasks:
+    - name: Reconcile each selected Hyper-V VM data disk
+      ansible.builtin.include_role:
+        name: hyperv_vm_data_disk
+      vars:
+        hyperv_vm_data_disk_state: "{{ k3s_data_disk_state | default('present') }}"
+        hyperv_vm_data_disk_apply: true
+        hyperv_vm_data_disk_vm_name: "{{ item.vm_name }}"
+        hyperv_vm_data_disk_vhdx_path: "{{ item.vhdx_path }}"
+        hyperv_vm_data_disk_size_gib: "{{ item.size_gib }}"
+        hyperv_vm_data_disk_type: "{{ item.type }}"
+        hyperv_vm_data_disk_host_reserve_gib: "{{ item.host_reserve_gib }}"
+        hyperv_vm_data_disk_controller_number: "{{ item.controller_number }}"
+        hyperv_vm_data_disk_controller_location: "{{ item.controller_location }}"
+        hyperv_vm_data_disk_backup_evidence_ref: >-
+          docs/plans/2026-09-10--k3s-02-storage-upgrade/draft-plan-v1-researched.md
+        hyperv_vm_data_disk_authority_ref: >-
+          docs/plans/2026-09-10--k3s-02-storage-upgrade/draft-plan-v1-researched.md
+        hyperv_vm_data_disk_detach_authorized: true
+      loop: "{{ hostvars['HOM-LAB-HVH-02'].hyperv_k3s_storage_disks }}"
+      loop_control:
+        label: "{{ item.name }} -> {{ item.vhdx_path }}"
       tags: [hyperv_vm_data_disk]
 
 - name: Preview or mount the selected K3s guest data disk after attachment
   hosts: container_orchestrator_k3s:&gpu_workload_nodes
   gather_facts: false
   become: true
-  tags: [k3s_data_disk, linux_data_disk_mount, k3s_storage_offload]
-  roles:
-    - role: linux_data_disk_mount
-      linux_data_disk_mount_state: present
+  tags: [k3s_data_disk, linux_data_disk_mount]
+  tasks:
+    - name: Initialize and mount each selected K3s guest data disk
+      ansible.builtin.include_role:
+        name: linux_data_disk_mount
+      vars:
+        linux_data_disk_mount_state: present
+        linux_data_disk_mount_apply: true
+        linux_data_disk_mount_device_by_id: "{{ item.device_by_id }}"
+        linux_data_disk_mount_expected_serial: "{{ item.expected_serial }}"
+        linux_data_disk_mount_path: "{{ item.path }}"
+        linux_data_disk_mount_fstype: "{{ item.fstype }}"
+        linux_data_disk_mount_label: "{{ item.label }}"
+        linux_data_disk_mount_backup_evidence_ref: >-
+          docs/plans/2026-09-10--k3s-02-storage-upgrade/draft-plan-v1-researched.md
+        linux_data_disk_mount_authority_ref: >-
+          docs/plans/2026-09-10--k3s-02-storage-upgrade/draft-plan-v1-researched.md
+        linux_data_disk_mount_initialize_authorized: true
+      loop: "{{ linux_data_disk_mounts }}"
+      loop_control:
+        label: "{{ item.name }} -> {{ item.path }}"
       when: (k3s_data_disk_state | default('present')) == 'present'
       tags: [linux_data_disk_mount]
-    - role: k3s_storage_offload
-      k3s_storage_offload_state: present
+    - name: Ensure K3s service is available before storage offload
+      ansible.builtin.systemd_service:
+        name: k3s.service
+        state: started
+      become: true
+      tags:
+        - k3s_storage_offload
+
+    - name: Apply K3s containerd and local-path cache offload
+      ansible.builtin.include_role:
+        name: k3s_storage_offload
+        apply:
+          tags: [k3s_storage_offload]
+      vars:
+        k3s_storage_offload_state: present
+        k3s_storage_offload_apply: true
       when: (k3s_data_disk_state | default('present')) == 'present'
       tags: [k3s_storage_offload]

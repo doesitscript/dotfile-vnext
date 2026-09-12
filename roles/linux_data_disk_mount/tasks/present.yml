@@ -7,6 +7,7 @@
       - not (linux_data_disk_mount_device_by_id | regex_search('-part[0-9]+$'))
       - linux_data_disk_mount_expected_serial | trim | length > 0
       - linux_data_disk_mount_path | trim | length > 0
+      - linux_data_disk_mount_label | trim | length > 0
       - linux_data_disk_mount_backup_evidence_ref | trim | length > 0
       - linux_data_disk_mount_authority_ref | trim | length > 0
     fail_msg: >-
@@ -87,7 +88,9 @@
     that:
       - linux_data_disk_mount_initialize_authorized | bool
     fail_msg: "Disk partitioning/formatting requires explicit initialization authority."
-  when: linux_data_disk_mount_apply | bool
+  when:
+    - linux_data_disk_mount_apply | bool
+    - not ansible_check_mode
 
 - name: Create one GPT data partition
   community.general.parted:
@@ -97,20 +100,26 @@
     part_start: 1MiB
     part_end: 100%
     state: present
-  when: linux_data_disk_mount_apply | bool
+  when:
+    - linux_data_disk_mount_apply | bool
+    - not ansible_check_mode
 
 - name: Wait for derived partition identity after initialization
   ansible.builtin.command:
     argv: [udevadm, settle]
   changed_when: false
-  when: linux_data_disk_mount_apply | bool
+  when:
+    - linux_data_disk_mount_apply | bool
+    - not ansible_check_mode
 
 - name: Resolve derived partition after initialization
   ansible.builtin.command:
     argv: [readlink, -f, "{{ _linux_data_disk_mount_partition_by_id }}"]
   register: _linux_data_disk_mount_partition_after
   changed_when: false
-  when: linux_data_disk_mount_apply | bool
+  when:
+    - linux_data_disk_mount_apply | bool
+    - not ansible_check_mode
 
 - name: Read derived partition parent after initialization
   ansible.builtin.command:
@@ -122,7 +131,9 @@
       - "{{ _linux_data_disk_mount_partition_after.stdout }}"
   register: _linux_data_disk_mount_partition_parent_after
   changed_when: false
-  when: linux_data_disk_mount_apply | bool
+  when:
+    - linux_data_disk_mount_apply | bool
+    - not ansible_check_mode
 
 - name: Bind initialized partition to selected disk
   ansible.builtin.include_tasks: validate_partition_parent.yml
@@ -130,13 +141,40 @@
     linux_data_disk_mount_partition_parent_name: >-
       {{ _linux_data_disk_mount_partition_parent_after.stdout }}
     linux_data_disk_mount_selected_device: "{{ _linux_data_disk_mount_device.stdout }}"
-  when: linux_data_disk_mount_apply | bool
+  when:
+    - linux_data_disk_mount_apply | bool
+    - not ansible_check_mode
 
 - name: Create selected data filesystem
   community.general.filesystem:
     dev: "{{ _linux_data_disk_mount_partition_by_id }}"
     fstype: "{{ linux_data_disk_mount_fstype }}"
-  when: linux_data_disk_mount_apply | bool
+  when:
+    - linux_data_disk_mount_apply | bool
+    - not ansible_check_mode
+
+- name: Apply selected filesystem label
+  ansible.builtin.command:
+    argv: [blkid, -s, LABEL, -o, value, "{{ _linux_data_disk_mount_partition_by_id }}"]
+  register: _linux_data_disk_mount_current_label
+  changed_when: false
+  check_mode: false
+  when:
+    - linux_data_disk_mount_apply | bool
+    - not ansible_check_mode
+
+- name: Set selected filesystem label when it differs
+  ansible.builtin.command:
+    argv:
+      - e2label
+      - "{{ _linux_data_disk_mount_partition_by_id }}"
+      - "{{ linux_data_disk_mount_label }}"
+  register: _linux_data_disk_mount_label_result
+  changed_when: true
+  when:
+    - linux_data_disk_mount_apply | bool
+    - not ansible_check_mode
+    - _linux_data_disk_mount_current_label.stdout | trim != linux_data_disk_mount_label
 
 - name: Create selected mount path
   ansible.builtin.file:
@@ -145,13 +183,17 @@
     owner: root
     group: root
     mode: "0755"
-  when: linux_data_disk_mount_apply | bool
+  when:
+    - linux_data_disk_mount_apply | bool
+    - not ansible_check_mode
 
 - name: Persist and mount selected data filesystem
   ansible.posix.mount:
     path: "{{ linux_data_disk_mount_path }}"
-    src: "{{ _linux_data_disk_mount_partition_by_id }}"
+    src: "LABEL={{ linux_data_disk_mount_label }}"
     fstype: "{{ linux_data_disk_mount_fstype }}"
     opts: defaults,nofail
     state: mounted
-  when: linux_data_disk_mount_apply | bool
+  when:
+    - linux_data_disk_mount_apply | bool
+    - not ansible_check_mode

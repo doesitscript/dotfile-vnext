@@ -3,11 +3,11 @@
   ansible.builtin.command:
     argv:
       - findmnt
-      - --mountpoint
+      - --target
+      - "{{ k3s_storage_offload_mount_path }}"
       - --noheadings
       - --output
       - SOURCE,FSTYPE
-      - "{{ k3s_storage_offload_mount_path }}"
   register: __k3s_storage_offload_mount
   changed_when: false
   failed_when: __k3s_storage_offload_mount.rc not in [0, 1]
@@ -17,11 +17,11 @@
   ansible.builtin.command:
     argv:
       - findmnt
-      - --mountpoint
+      - --target
+      - "{{ k3s_storage_offload_containerd_source_path }}"
       - --noheadings
       - --output
       - SOURCE,FSROOT
-      - "{{ k3s_storage_offload_containerd_source_path }}"
   register: __k3s_storage_offload_containerd_mount
   changed_when: false
   failed_when: __k3s_storage_offload_containerd_mount.rc not in [0, 1]
@@ -105,8 +105,8 @@
       - >-
         __k3s_storage_offload_containerd_mount.rc == 1
         or
-        (__k3s_storage_offload_containerd_mount.stdout.split() | last ==
-         __k3s_storage_offload_expected_containerd_fsroot)
+        (__k3s_storage_offload_containerd_mount.stdout.split() | last in
+         ['/', __k3s_storage_offload_expected_containerd_fsroot])
       - >-
         __k3s_storage_offload_containerd_mount.rc == 0
         or not __k3s_storage_offload_paths.results[1].stat.exists
@@ -118,7 +118,10 @@
       retain-containerd-backup gates must be true.
 
 - name: Migrate containerd to the selected bind backing
-  when: __k3s_storage_offload_containerd_mount.rc == 1
+  when:
+    - >-
+      __k3s_storage_offload_containerd_mount.rc == 1 or
+      (__k3s_storage_offload_containerd_mount.stdout.split() | last == '/')
   block:
     - name: Stop K3s before containerd copy
       ansible.builtin.systemd_service:
@@ -263,17 +266,51 @@
   ansible.builtin.command:
     argv:
       - findmnt
-      - --mountpoint
+      - --target
+      - "{{ k3s_storage_offload_containerd_source_path }}"
       - --noheadings
       - --output
       - SOURCE,FSROOT
-      - "{{ k3s_storage_offload_containerd_source_path }}"
   register: __k3s_storage_offload_final_mount
   changed_when: false
   failed_when: >-
     __k3s_storage_offload_final_mount.rc != 0
     or (__k3s_storage_offload_final_mount.stdout.split() | last !=
         __k3s_storage_offload_expected_containerd_fsroot)
+
+- name: Inspect node filesystem backing source
+  ansible.builtin.command:
+    argv:
+      - findmnt
+      - --target
+      - /
+      - --noheadings
+      - --output
+      - SOURCE
+  register: __k3s_storage_offload_nodefs
+  changed_when: false
+
+- name: Inspect containerd image filesystem backing source
+  ansible.builtin.command:
+    argv:
+      - findmnt
+      - --target
+      - "{{ k3s_storage_offload_containerd_source_path }}"
+      - --noheadings
+      - --output
+      - SOURCE
+  register: __k3s_storage_offload_imagefs_source
+  changed_when: false
+
+- name: Require imagefs and nodefs to be separate
+  ansible.builtin.assert:
+    that:
+      - __k3s_storage_offload_nodefs.rc == 0
+      - __k3s_storage_offload_imagefs_source.rc == 0
+      - (__k3s_storage_offload_nodefs.stdout | trim) != (__k3s_storage_offload_imagefs_source.stdout | trim)
+    fail_msg: >-
+      Refusing to report a split image filesystem: nodefs and containerd imagefs
+      resolve to the same backing source.
 
 - name: Verify K3s service after storage offload
   ansible.builtin.systemd_service:

@@ -3,11 +3,11 @@
   ansible.builtin.command:
     argv:
       - findmnt
-      - --mountpoint
+      - --target
+      - "{{ k3s_vllm_runtime_hf_cache_host_mount_path }}"
       - --noheadings
       - --output
       - TARGET,SOURCE,FSTYPE
-      - "{{ k3s_vllm_runtime_hf_cache_host_mount_path }}"
   register: _k3s_vllm_runtime_cache_mount
   changed_when: false
   failed_when: false
@@ -146,6 +146,9 @@
           - /usr/bin/rsync
           - --archive
           - --checksum
+          - --exclude=*.incomplete
+          - --exclude=hub/.locks/**
+          - --exclude=xet/logs/**
           - --itemize-changes
           - "{{ _k3s_vllm_runtime_cache_source_path }}/"
           - "{{ k3s_vllm_runtime_hf_cache_host_path }}/"
@@ -159,6 +162,10 @@
           - --archive
           - --checksum
           - --dry-run
+          - --no-times
+          - --exclude=*.incomplete
+          - --exclude=hub/.locks/**
+          - --exclude=xet/logs/**
           - --itemize-changes
           - "{{ _k3s_vllm_runtime_cache_source_path }}/"
           - "{{ k3s_vllm_runtime_hf_cache_host_path }}/"

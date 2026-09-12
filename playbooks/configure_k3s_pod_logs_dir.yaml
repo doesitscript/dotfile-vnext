@@ -1,0 +1,77 @@
+---
+- name: Configure native K3s pod log storage path
+  hosts: server_gpu
+  gather_facts: false
+  become: true
+  serial: 1
+  tags: [k3s_pod_logs_dir]
+  pre_tasks:
+    - name: Require explicit K3s target limit
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | trim | length > 0
+          - >-
+            (linux_data_disk_mounts |
+            selectattr('path', 'equalto', '/mnt/k3s-logs') | list | length) == 1
+        fail_msg: "Use an explicit server_gpu limit and the inventory-owned k3s logs mount."
+      run_once: true
+      tags: [always]
+    - name: Require logs filesystem is mounted before K3s reconfiguration
+      ansible.builtin.command:
+        argv: [findmnt, --target, /mnt/k3s-logs, --noheadings, --output, SOURCE]
+      register: _k3s_pod_logs_mount
+      changed_when: false
+      check_mode: false
+      tags: [always]
+    - name: Require logs filesystem is available
+      ansible.builtin.assert:
+        that:
+          - _k3s_pod_logs_mount.rc == 0
+        fail_msg: "Refusing native podLogsDir configuration until /mnt/k3s-logs is mounted."
+      tags: [always]
+  tasks:
+    - name: Ensure native pod log directory exists
+      ansible.builtin.file:
+        path: /mnt/k3s-logs/pods
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Render inventory-owned KubeletConfiguration for native pod logs
+      ansible.builtin.copy:
+        content: |
+          apiVersion: kubelet.config.k8s.io/v1beta1
+          kind: KubeletConfiguration
+          podLogsDir: /mnt/k3s-logs/pods
+        dest: /etc/rancher/k3s/kubelet-config.yaml
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Render inventory-owned K3s server configuration
+      ansible.builtin.copy:
+        content: "{{ server_config_yaml }}"
+        dest: /etc/rancher/k3s/config.yaml
+        owner: root
+        group: root
+        mode: '0644'
+      register: _k3s_pod_logs_config
+
+    - name: Restart K3s after native pod log configuration change
+      ansible.builtin.systemd_service:
+        name: k3s.service
+        state: restarted
+      when: _k3s_pod_logs_config.changed
+
+    - name: Verify K3s service is active
+      ansible.builtin.systemd_service:
+        name: k3s.service
+        state: started
+      register: _k3s_pod_logs_service
+
+    - name: Verify native pod log directory remains mounted-backed
+      ansible.builtin.command:
+        argv: [findmnt, --target, /mnt/k3s-logs/pods, --noheadings, --output, SOURCE]
+      changed_when: false

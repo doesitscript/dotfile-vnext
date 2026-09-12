@@ -251,15 +251,17 @@
       ansible.builtin.assert:
         that:
           - "'remove the selected K3s guest' in _workflow[0].name"
-          - _workflow[0].roles[0].linux_data_disk_mount_state == 'absent'
+          - _workflow[0].roles[0].k3s_storage_offload_state == 'absent'
           - "'absent' in _workflow[0].roles[0].when"
+          - _workflow[0].tasks[0].name == 'Reverse each selected K3s guest data-disk mount'
+          - _workflow[0].tasks[0].vars.linux_data_disk_mount_state == 'absent'
           - "'Hyper-V VM data disk' in _workflow[1].name"
           - >-
             'k3s_data_disk_state' in
-            _workflow[1].roles[0].hyperv_vm_data_disk_state
+            _workflow[1].tasks[0].vars.hyperv_vm_data_disk_state
           - "'mount the selected K3s guest' in _workflow[2].name"
-          - _workflow[2].roles[0].linux_data_disk_mount_state == 'present'
-          - "'present' in _workflow[2].roles[0].when"
+          - _workflow[2].tasks[0].vars.linux_data_disk_mount_state == 'present'
+          - "'present' in _workflow[2].tasks[0].when"
           - >-
             (_absent_tasks |
              selectattr('name', 'equalto',
@@ -273,17 +275,17 @@
           - >-
             ((_absent_tasks |
               selectattr('name', 'equalto', 'Inspect live mount source') |
-              first)['ansible.builtin.command'].argv | select('equalto', '--mountpoint') |
+              first)['ansible.builtin.command'].argv | select('equalto', '--target') |
               list | length) == 1
           - >-
             ((_absent_tasks |
               selectattr('name', 'equalto', 'Inspect persistent fstab source') |
-              first)['ansible.builtin.command'].argv | select('equalto', '--mountpoint') |
+              first)['ansible.builtin.command'].argv | select('equalto', '--target') |
               list | length) == 1
           - >-
             ((_absent_tasks |
               selectattr('name', 'equalto', 'Inspect live mount source') |
-              first)['ansible.builtin.command'].argv | select('equalto', '--target') |
+              first)['ansible.builtin.command'].argv | select('equalto', '--mountpoint') |
               list | length) == 0
           - >-
             (_absent_tasks |

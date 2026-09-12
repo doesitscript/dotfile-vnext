@@ -1,8 +1,11 @@
 # K3s-02 Storage Upgrade Plan
 
 **Created**: 2026-09-10  
-**Status**: Immediate cleanup done, upgrade pending  
+**Status**: v1.1 storage implementation applied and verified
 **Priority**: High - recurring issue without disk expansion
+
+Latest concise infrastructure update: [2026-09-11--update_new_infra.md](./2026-09-11--update_new_infra.md).
+Post-change reapply instructions and remaining work: [post_2026-09-11.md](./post_2026-09-11.md).
 
 ## Problem Statement
 
@@ -35,6 +38,14 @@ sudo journalctl --vacuum-size=100M
 ```
 
 **Result**: Freed enough space to deploy Qwen3-Coder-30B-A3B AWQ.
+
+## Implementable Authority
+
+The reconciled implementation plan is [draft-plan-v1-researched.md](./draft-plan-v1-researched.md), reviewed against [draft-plan-v1-researched-suggestions.md](./draft-plan-v1-researched-suggestions.md). No RAID0 is part of the design. The current applied layout uses separate dynamic VHDX-backed guest files on host `D:`: 300 GiB for cache/containerd/local-path backing and 32 GiB for logs/scratch.
+
+The three newly added SSDs were repurposed by an exact-serial, previewed host-storage operation. They are separate NTFS volumes labeled `K3S-LOGS-HOST`, `K3S-CACHE-HOST`, and `K3S-COLD-HOST`; no RAID0 was created.
+
+See the live evidence and remaining obligations in [implementation-receipt.md](./implementation-receipt.md).
 
 ## Recommended Long-Term Solution
 
@@ -127,8 +138,12 @@ kubectl get pvc -A
 - vLLM role: `roles/k3s_vllm_runtime/`
 - Model selection reasoning: `docs/brainstorming_designs/2026-09-10--5090-model-lane-evaluation/model-selection-reasoning.md`
 
-## Next Actions
-- [ ] Schedule disk expansion (this week per user)
-- [ ] Update monitoring/alerting for disk usage
-- [ ] Document final disk configuration in inventory
-- [ ] Test deployment of remaining 3 models after expansion
+## Storage Closeout
+
+- [x] Separate cache and logs VHDXs attached, labeled, mounted, and verified.
+- [x] Containerd and vLLM/HF cache moved off root.
+- [x] Native pod logs configured on the logs filesystem.
+- [x] Monitoring enabled and stale vLLM pod data cleaned from root.
+- [x] Final inventory and implementation receipt updated.
+
+Testing the remaining models is workload validation, not an outstanding storage change.

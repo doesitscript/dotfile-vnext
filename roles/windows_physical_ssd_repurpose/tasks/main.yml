@@ -1,0 +1,148 @@
+---
+- name: Validate physical SSD repurpose lifecycle
+  ansible.builtin.assert:
+    that:
+      - windows_physical_ssd_repurpose_state in ['present', 'absent']
+      - windows_physical_ssd_repurpose_authority_ref | trim | length > 0
+      - windows_physical_ssd_repurpose_disks | length == 3
+    fail_msg: "Physical SSD repurpose requires three exact inventory serials and an authority reference."
+
+- name: Discover all Windows physical disks
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      Get-Disk | Select-Object Number, FriendlyName, SerialNumber, BusType,
+        PartitionStyle, OperationalStatus, IsBoot, IsSystem, Size
+  register: _windows_physical_ssd_repurpose_discovery
+  changed_when: false
+
+- name: Require each authorized SSD serial resolves exactly once
+  ansible.builtin.assert:
+    that:
+      - >-
+        (_windows_physical_ssd_repurpose_discovery.output |
+        selectattr('SerialNumber', 'equalto', item.serial) | list | length) == 1
+      - >-
+        (_windows_physical_ssd_repurpose_discovery.output |
+        selectattr('SerialNumber', 'equalto', item.serial) | first).BusType in ['SATA', 'NVMe', 'RAID']
+      - >-
+        not ((_windows_physical_ssd_repurpose_discovery.output |
+        selectattr('SerialNumber', 'equalto', item.serial) | first).IsBoot | bool)
+      - >-
+        not ((_windows_physical_ssd_repurpose_discovery.output |
+        selectattr('SerialNumber', 'equalto', item.serial) | first).IsSystem | bool)
+    fail_msg: >-
+      Refusing physical SSD operation: serial {{ item.serial }} did not resolve
+      to exactly one non-boot, non-system disk. Discovery:
+      {{ _windows_physical_ssd_repurpose_discovery.output | to_nice_json }}
+  loop: "{{ windows_physical_ssd_repurpose_disks }}"
+  loop_control:
+    label: "{{ item.serial }} -> {{ item.label }}"
+
+- name: Verify authorized physical SSD labels after apply
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      Get-Volume | Select-Object DriveLetter, FileSystem, FileSystemLabel, Size, SizeRemaining
+  register: _windows_physical_ssd_repurpose_final_volumes
+  changed_when: false
+  when: windows_physical_ssd_repurpose_state == 'present'
+
+- name: Discover current authorized SSD volume labels
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $result = foreach ($item in @(
+        @{ Serial = 'S1D5NSBF438394N'; Label = 'K3S-LOGS-HOST' },
+        @{ Serial = '002516159857'; Label = 'K3S-CACHE-HOST' },
+        @{ Serial = '002516159306'; Label = 'K3S-COLD-HOST' }
+      )) {
+        $disk = @(Get-Disk | Where-Object { $_.SerialNumber -eq $item.Serial })
+        if ($disk.Count -eq 1) {
+          $volume = Get-Partition -DiskNumber $disk[0].Number -ErrorAction SilentlyContinue |
+            Get-Volume -ErrorAction SilentlyContinue | Select-Object -First 1
+          [PSCustomObject]@{
+            Serial = $item.Serial
+            DesiredLabel = $item.Label
+            CurrentLabel = $volume.FileSystemLabel
+            NeedsFormat = ($volume.FileSystemLabel -ne $item.Label)
+          }
+        }
+      }
+      $Ansible.Changed = $false
+      $Ansible.Result = @($result)
+  register: _windows_physical_ssd_repurpose_current_labels
+  changed_when: false
+  when: windows_physical_ssd_repurpose_state == 'present'
+
+- name: Select SSDs requiring destructive initialization
+  ansible.builtin.set_fact:
+    _windows_physical_ssd_repurpose_needing_format: >-
+      {{ _windows_physical_ssd_repurpose_current_labels.output |
+         selectattr('NeedsFormat', 'equalto', true) |
+         map(attribute='Serial') | list }}
+  when: windows_physical_ssd_repurpose_state == 'present'
+
+- name: Require explicit destructive apply authority when a label is wrong
+  ansible.builtin.assert:
+    that: windows_physical_ssd_repurpose_apply | bool
+    fail_msg: >-
+      Preview passed but one or more labels need initialization. Set
+      windows_physical_ssd_repurpose_apply=true only for the exact
+      serial-bound SSD wipe and format operation.
+  when:
+    - windows_physical_ssd_repurpose_state == 'present'
+    - (_windows_physical_ssd_repurpose_needing_format | length) > 0
+
+- name: Require all authorized physical SSD labels are present
+  ansible.builtin.assert:
+    that:
+      - >-
+        (_windows_physical_ssd_repurpose_final_volumes.output |
+        selectattr('FileSystemLabel', 'equalto', item.label) | list | length) == 1
+    fail_msg: >-
+      Physical SSD label {{ item.label }} was not found exactly once after
+      apply. Volumes: {{ _windows_physical_ssd_repurpose_final_volumes.output | to_nice_json }}
+  loop: "{{ windows_physical_ssd_repurpose_disks }}"
+  loop_control:
+    label: "{{ item.serial }} -> {{ item.label }}"
+  when: windows_physical_ssd_repurpose_state == 'present'
+
+- name: Report exact physical SSD apply preview
+  ansible.builtin.debug:
+    msg:
+      serial: "{{ item.serial }}"
+      label: "{{ item.label }}"
+      purpose: "{{ item.purpose }}"
+      destructive_action: "Clear-Disk, Initialize-Disk GPT, single NTFS partition"
+      apply_enabled: "{{ windows_physical_ssd_repurpose_apply | bool }}"
+  loop: "{{ windows_physical_ssd_repurpose_disks }}"
+  loop_control:
+    label: "{{ item.serial }} -> {{ item.label }}"
+  when: windows_physical_ssd_repurpose_state == 'present'
+
+- name: Wipe and format each authorized physical SSD
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $serial = '{{ item.serial }}'
+      $label = '{{ item.label }}'
+      $disk = @(Get-Disk | Where-Object { $_.SerialNumber -eq $serial })
+      if ($disk.Count -ne 1) { throw "Serial $serial did not resolve exactly once" }
+      if ($disk[0].IsBoot -or $disk[0].IsSystem) { throw "Refusing boot/system disk $serial" }
+      Set-Disk -Number $disk[0].Number -IsReadOnly $false
+      Set-Disk -Number $disk[0].Number -IsOffline $false
+      Clear-Disk -Number $disk[0].Number -RemoveData -RemoveOEM -Confirm:$false
+      Initialize-Disk -Number $disk[0].Number -PartitionStyle GPT
+      $partition = New-Partition -DiskNumber $disk[0].Number -UseMaximumSize -AssignDriveLetter
+      Format-Volume -Partition $partition -FileSystem NTFS -NewFileSystemLabel $label -Confirm:$false
+    parameters:
+      Serial: "{{ item.serial }}"
+      Label: "{{ item.label }}"
+  loop: "{{ windows_physical_ssd_repurpose_disks }}"
+  loop_control:
+    label: "{{ item.serial }} -> {{ item.label }}"
+  when:
+    - windows_physical_ssd_repurpose_state == 'present'
+    - windows_physical_ssd_repurpose_apply | bool
+    - item.serial in (_windows_physical_ssd_repurpose_needing_format | map(attribute='serial') | list)

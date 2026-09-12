@@ -54,27 +54,28 @@ k3s_readiness_stub_expected_runtime: present
 k3s_vllm_runtime_cpu_request: "1200m"
 k3s_vllm_runtime_memory_request: 2Gi
 k3s_vllm_runtime_memory_limit: 8Gi
-k3s_vllm_runtime_hf_cache_backing_capacity_verified: false
+k3s_vllm_runtime_hf_cache_backing_capacity_verified: true
 k3s_vllm_runtime_hf_cache_backing_capacity_evidence_ref: >-
-  {{
-    'docs/plans/2026-09-10--hrl-research-consolidation/'
-    ~ 'implementation-campaign/receipts/'
-    ~ '2026-09-11T065746Z-s1-storage-discovery.md'
-  }}
-# Selected S3 design. Mutation remains disabled until S4 provides an exact
-# mounted backing identity and a current capacity/rollback receipt.
+  docs/plans/2026-09-10--k3s-02-storage-upgrade/implementation-receipt.md
+# Selected non-RAID design: separate cache and logs/scratch VHDXs. Mutation is
+# enabled only after each attached disk's stable by-id path and serial are
+# recorded by the storage campaign receipt.
+k3s_storage_offload_category: ephemeral_cache
+k3s_storage_offload_durability: reproducible_expensive
+k3s_storage_offload_mechanism: bind_mount
+k3s_storage_offload_device_by: LABEL=k3s-cache
 k3s_vllm_runtime_hf_cache_backend: host_path
 k3s_vllm_runtime_hf_cache_host_mount_path: /mnt/k3s-cache
 k3s_vllm_runtime_hf_cache_host_path: /mnt/k3s-cache/hf
 k3s_vllm_runtime_hf_cache_container_path: /mnt/k3s-cache/hf
 k3s_vllm_runtime_hf_hub_cache_container_path: /mnt/k3s-cache/hf/hub
 k3s_vllm_runtime_hf_cache_minimum_free_gib: 120
-k3s_vllm_runtime_hf_cache_migration_apply: false
+k3s_vllm_runtime_hf_cache_migration_apply: true
 k3s_vllm_runtime_hf_cache_source_cleanup_apply: false
 k3s_vllm_runtime_hf_cache_retain_source_pvc: true
 k3s_vllm_runtime_node_name: hom-lab-ctl-k3s-02
 k3s_storage_offload_state: present
-k3s_storage_offload_apply: false
+k3s_storage_offload_apply: true
 k3s_storage_offload_mount_path: /mnt/k3s-cache
 k3s_storage_offload_containerd_source_path: /var/lib/rancher/k3s/agent/containerd
 k3s_storage_offload_containerd_destination_path: /mnt/k3s-cache/containerd
@@ -83,6 +84,37 @@ k3s_storage_offload_local_path_destination: /mnt/k3s-cache/local-path
 k3s_storage_offload_expected_local_path_root: /var/lib/rancher/k3s/storage
 k3s_storage_offload_local_path_backup_file: /var/lib/ansible/k3s-storage-offload/local-path-config.json
 k3s_storage_offload_retain_containerd_backup: true
+k3s_storage_offload_mount_fstype: ext4
+k3s_storage_offload_authority_ref: docs/plans/2026-09-10--k3s-02-storage-upgrade/draft-plan-v1-researched.md
+k3s_storage_offload_imagefs_verification_required: true
+linux_data_disk_mounts:
+  - name: cache
+    device_by_id: /dev/disk/by-id/wwn-0x60022480737317e55fd3cd8e3fafbe4a
+    expected_serial: "60022480737317e55fd3cd8e3fafbe4a"
+    path: /mnt/k3s-cache
+    fstype: ext4
+    label: k3s-cache
+    category: ephemeral_cache
+    durability: reproducible_expensive
+    mechanism: bind_mount
+  - name: logs_scratch
+    device_by_id: /dev/disk/by-id/wwn-0x60022480f30acb542946b808b5379d44
+    expected_serial: "60022480f30acb542946b808b5379d44"
+    path: /mnt/k3s-logs
+    fstype: ext4
+    label: k3s-logs
+    category: logs_and_metrics
+    durability: reproducible
+    mechanism: bind_mount
+# Separate optional logs/scratch mount. Do not place Prometheus TSDB or unique
+# PVC data here. The host SSDs are user-authorized for future repurposing.
+k3s_storage_logs_scratch_category: logs_and_metrics
+k3s_storage_logs_scratch_durability: reproducible
+k3s_storage_logs_scratch_mechanism: bind_mount
+k3s_storage_logs_scratch_mount_path: /mnt/k3s-logs
+k3s_storage_logs_scratch_device_by: LABEL=k3s-logs
+k3s_storage_logs_scratch_expected_serial: "60022480f30acb542946b808b5379d44"
+k3s_storage_logs_scratch_apply: true
 storage_capacity_monitor_state: present
 storage_capacity_monitor_warning_percent: 75
 storage_capacity_monitor_critical_percent: 90
@@ -90,6 +122,8 @@ storage_capacity_monitor_mounts:
   - path: /
     required: true
   - path: /mnt/k3s-cache
+    required: false
+  - path: /mnt/k3s-logs
     required: false
 storage_capacity_monitor_require_alloy: true
 storage_capacity_monitor_journal_system_max_use: 1G

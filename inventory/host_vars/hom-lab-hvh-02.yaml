@@ -34,6 +34,28 @@ node_capabilities:
   - nvidia_gpu_host
   - gpu_partition_enabled_host
   - artifact_share_host
+physical_disks:
+  - serial: S1D5NSBF438394N
+    model: Samsung SSD 840 EVO 120GB
+    size_gb: 120
+    type: ssd
+    drive: 'F:'
+    occupancy: observed_100_percent_before_storage_campaign
+    purpose: available_for_repurposing_logs_or_scratch
+  - serial: "002516159857"
+    model: PLEXTOR PX-256G7LeV
+    size_gb: 256
+    type: ssd
+    drive: 'G:'
+    occupancy: observed_100_percent_before_storage_campaign
+    purpose: available_for_repurposing_active_cache
+  - serial: "002516159306"
+    model: PLEXTOR PX-256G7LeV
+    size_gb: 256
+    type: ssd
+    drive: 'H:'
+    occupancy: observed_90_percent_before_storage_campaign
+    purpose: available_for_repurposing_cold_or_durable_storage
 gpu_contract:
   vendor: nvidia
   partitioned: true
@@ -240,6 +262,28 @@ hyperv_ubuntu_k3s_vm_disk: "80G"
 # playbooks/hyperv_move_vm_storage.yaml.
 windows_hyperv_vm_storage_root: 'D:\ProgramData\Ansible\hyperv_ubuntu_vm'
 hyperv_ubuntu_k3s_vm_host_vhdx_path: 'D:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-k3s-02\hom-lab-ctl-k3s-02.vhdx'
+# Separate non-RAID data VHDXs for the K3s storage campaign. These are dynamic
+# files on D: for the current recovery path; physical SSD repurposing remains a
+# separate serial-bound host-storage capability.
+hyperv_k3s_storage_disks:
+  - name: cache
+    vm_name: "{{ hyperv_ubuntu_k3s_vm_hostname }}"
+    vhdx_path: 'D:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-k3s-02\k3s-02-cache.vhdx'
+    size_gib: 300
+    type: dynamic
+    host_reserve_gib: 20
+    controller_number: 0
+    controller_location: 2
+    purpose: k3s_ephemeral_cache
+  - name: logs_scratch
+    vm_name: "{{ hyperv_ubuntu_k3s_vm_hostname }}"
+    vhdx_path: 'D:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-k3s-02\k3s-02-logs-scratch.vhdx'
+    size_gib: 32
+    type: dynamic
+    host_reserve_gib: 20
+    controller_number: 0
+    controller_location: 3
+    purpose: pod_logs_or_scratch_offload
 # Live disk filename remains server-225-ubuntu.vhdx until a separate rename slice.
 hyperv_ubuntu_docker_vm_host_vhdx_path: 'D:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-dkr-02\server-225-ubuntu.vhdx'
 hyperv_vm_storage_move_targets:
