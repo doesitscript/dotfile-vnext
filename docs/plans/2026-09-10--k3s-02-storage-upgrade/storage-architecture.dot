@@ -1,0 +1,262 @@
+digraph "K3s-02 storage architecture" {
+	graph [bb="0,0,1490,972",
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=15,
+		label="K3s-02 storage architecture",
+		lheight=0.24,
+		lp="745,12.5",
+		lwidth=2.90,
+		nodesep=0.7,
+		pad=2.0,
+		rankdir=LR,
+		ranksep=1.1,
+		splines=ortho
+	];
+	node [fixedsize=true,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		height=1.4,
+		imagescale=true,
+		label="\N",
+		labelloc=b,
+		shape=box,
+		style=rounded,
+		width=1.4
+	];
+	edge [color="#7B8894"];
+	subgraph "cluster_HOM-LAB-HVH-02 | Windows Hyper-V" {
+		graph [bb="8,33,494,752",
+			bgcolor="#E5F5FD",
+			fontname="Sans-Serif",
+			fontsize=12,
+			label="HOM-LAB-HVH-02 | Windows Hyper-V",
+			labeljust=l,
+			lheight=0.18,
+			lp="127.5,741.5",
+			lwidth=3.10,
+			pencolor="#AEB6BE",
+			rankdir=LR,
+			shape=box,
+			style=rounded
+		];
+		"741ef00579fd4084ba7cab7d4193ecca"	[height=2.6944,
+			image="assets/onprem/compute/server.png",
+			label="Plextor
+K3S-CACHE-HOST
+serial-bound NTFS",
+			pos="66.5,626",
+			shape=none,
+			width=1.4028];
+		"1624f6218cd34c8f879c772412d4ed5a"	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="300 GiB dynamic VHDX
+cache | SCSI 0:2",
+			pos="435.5,636",
+			shape=none,
+			width=1.4028];
+		"741ef00579fd4084ba7cab7d4193ecca" -> "1624f6218cd34c8f879c772412d4ed5a"	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			label="no RAID0; separate volumes",
+			lp="251,636",
+			pos="e,384.99,636 117.03,636 117.03,636 374.99,636 374.99,636"];
+		e01c981f60784408abaa4ad569c19490	[height=2.6944,
+			image="assets/onprem/compute/server.png",
+			label="Samsung
+K3S-LOGS-HOST
+serial-bound NTFS",
+			pos="66.5,382",
+			shape=none,
+			width=1.4028];
+		"6bfd37470d5c42cc88bd355997f102b9"	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="32 GiB dynamic VHDX
+logs | SCSI 0:3",
+			pos="435.5,374",
+			shape=none,
+			width=1.4028];
+		e01c981f60784408abaa4ad569c19490 -> "6bfd37470d5c42cc88bd355997f102b9"	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			label="no RAID0; separate volumes",
+			lp="251,382",
+			pos="e,384.99,374 117.03,374 117.03,374 374.99,374 374.99,374"];
+		f1d41d5889be4b1985a2afa318b77d83	[height=2.6944,
+			image="assets/onprem/compute/server.png",
+			label="Plextor
+K3S-COLD-HOST
+host-only cold",
+			pos="66.5,138",
+			shape=none,
+			width=1.4028];
+	}
+	subgraph "cluster_hom-lab-ctl-k3s-02 | Ubuntu K3s guest" {
+		graph [bb="719,33,1482,964",
+			bgcolor="#E5F5FD",
+			fontname="Sans-Serif",
+			fontsize=12,
+			label="hom-lab-ctl-k3s-02 | Ubuntu K3s guest",
+			labeljust=l,
+			lheight=0.18,
+			lp="841.5,953.5",
+			lwidth=3.18,
+			pencolor="#AEB6BE",
+			rankdir=LR,
+			shape=box,
+			style=rounded
+		];
+		a8db12dc9ee6400789044875c240c300	[height=2.6944,
+			image="assets/onprem/compute/server.png",
+			label="OS root
+~77 GiB
+control plane only",
+			pos="959.5,138",
+			shape=none,
+			width=1.4028];
+		cd14f6329e6e4f0bad40d1dc59cac8c9	[height=2.6944,
+			image="assets/onprem/compute/server.png",
+			label="K3s node
+Ready
+DiskPressure=False",
+			pos="1241.5,584",
+			shape=none,
+			width=1.4028];
+		a8db12dc9ee6400789044875c240c300 -> cd14f6329e6e4f0bad40d1dc59cac8c9	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,1242,486.95 1010,138 1091.3,138 1242,138 1242,138 1242,138 1242,476.95 1242,476.95"];
+		a2cb10ad78a6470ea17fffadc244e1cb	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="LABEL=k3s-cache
+/mnt/k3s-cache",
+			pos="777.5,740",
+			shape=none,
+			width=1.4028];
+		"30f716b9eb6c4fafb00891602c9ad6f5"	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="containerd bind
+cache/containerd",
+			pos="959.5,800",
+			shape=none,
+			width=1.4028];
+		a2cb10ad78a6470ea17fffadc244e1cb -> "30f716b9eb6c4fafb00891602c9ad6f5"	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,908.76,770 828.2,770 828.2,770 898.76,770 898.76,770"];
+		"66353019bb924ee0aeea0f0df4785226"	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="local-path PVCs
+cache/local-path",
+			pos="959.5,584",
+			shape=none,
+			width=1.4028];
+		a2cb10ad78a6470ea17fffadc244e1cb -> "66353019bb924ee0aeea0f0df4785226"	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,908.76,662 828.2,662 828.2,662 898.76,662 898.76,662"];
+		"5d94528481ca430e8c65620b818f3b40"	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="HF / vLLM cache
+cache/hf/hub",
+			pos="1100.5,845",
+			shape=none,
+			width=1.4028];
+		a2cb10ad78a6470ea17fffadc244e1cb -> "5d94528481ca430e8c65620b818f3b40"	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,1101,761.76 828.05,699 919.03,699 1101,699 1101,699 1101,699 1101,751.76 1101,751.76"];
+		"3831b55e15ca4cffb083de5706535a59"	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="LABEL=k3s-logs
+/mnt/k3s-logs",
+			pos="777.5,371",
+			shape=none,
+			width=1.4028];
+		bc787edb738643a3a5966dd2ffdc9488	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="native podLogsDir
+logs/pods",
+			pos="959.5,368",
+			shape=none,
+			width=1.4028];
+		"3831b55e15ca4cffb083de5706535a59" -> bc787edb738643a3a5966dd2ffdc9488	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,908.76,369.5 828.2,369.5 828.2,369.5 898.76,369.5 898.76,369.5"];
+		"30f716b9eb6c4fafb00891602c9ad6f5" -> cd14f6329e6e4f0bad40d1dc59cac8c9	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,1190.8,674 960,716.66 960,693.23 960,674 960,674 960,674 1180.8,674 1180.8,674"];
+		"66353019bb924ee0aeea0f0df4785226" -> cd14f6329e6e4f0bad40d1dc59cac8c9	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,1190.7,584 1010.2,584 1010.2,584 1180.7,584 1180.7,584"];
+		c0b7663ea71648ad9bb1e712b61c90b6	[height=2.3056,
+			image="assets/k8s/compute/pod.png",
+			label="vLLM
+HF hostPath",
+			pos="1423.5,826",
+			shape=none,
+			width=1.4028];
+		"5d94528481ca430e8c65620b818f3b40" -> c0b7663ea71648ad9bb1e712b61c90b6	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,1373,835.5 1151.3,835.5 1151.3,835.5 1363,835.5 1363,835.5"];
+		bc787edb738643a3a5966dd2ffdc9488 -> cd14f6329e6e4f0bad40d1dc59cac8c9	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,1190.8,494 960,451.34 960,474.77 960,494 960,494 960,494 1180.8,494 1180.8,494"];
+		"963f09ff67cd401583152318d50b1ab0"	[height=2.3056,
+			image="assets/onprem/monitoring/grafana.png",
+			label="Alloy
+storage metrics",
+			pos="1423.5,584",
+			shape=none,
+			width=1.4028];
+		cd14f6329e6e4f0bad40d1dc59cac8c9 -> "963f09ff67cd401583152318d50b1ab0"	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,1372.8,584 1292.2,584 1292.2,584 1362.8,584 1362.8,584"];
+		cd14f6329e6e4f0bad40d1dc59cac8c9 -> c0b7663ea71648ad9bb1e712b61c90b6	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,1424,742.88 1292.3,674 1346.3,674 1424,674 1424,674 1424,674 1424,732.88 1424,732.88"];
+	}
+	"1624f6218cd34c8f879c772412d4ed5a" -> a2cb10ad78a6470ea17fffadc244e1cb	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="attach; mount by LABEL",
+		lp="606.5,664",
+		pos="e,726.95,688 486.33,688 486.33,688 716.95,688 716.95,688"];
+	"6bfd37470d5c42cc88bd355997f102b9" -> "3831b55e15ca4cffb083de5706535a59"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="attach; mount by LABEL",
+		lp="606.5,378",
+		pos="e,726.95,372.5 486.33,372.5 486.33,372.5 716.95,372.5 716.95,372.5"];
+	f1d41d5889be4b1985a2afa318b77d83 -> a8db12dc9ee6400789044875c240c300	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="not guest-mounted",
+		lp="606.5,145",
+		pos="e,908.93,138 117.07,138 117.07,138 898.93,138 898.93,138",
+		style=dashed];
+}

@@ -1,0 +1,213 @@
+digraph "K3s-02 storage safety boundaries" {
+	graph [bb="0,0,846,1480",
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=15,
+		label="K3s-02 storage safety boundaries",
+		lheight=0.24,
+		lp="423,12.5",
+		lwidth=3.50,
+		nodesep=0.6,
+		pad=2.0,
+		rankdir=TB,
+		ranksep=1.0,
+		splines=ortho
+	];
+	node [fixedsize=true,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		height=1.4,
+		imagescale=true,
+		label="\N",
+		labelloc=b,
+		shape=box,
+		style=rounded,
+		width=1.4
+	];
+	edge [color="#7B8894"];
+	subgraph "cluster_Authorized host operation" {
+		graph [bb="180,791,352,1472",
+			bgcolor="#E5F5FD",
+			fontname="Sans-Serif",
+			fontsize=12,
+			label="Authorized host operation",
+			labeljust=l,
+			lheight=0.18,
+			lp="266,1461.5",
+			lwidth=2.17,
+			pencolor="#AEB6BE",
+			rankdir=LR,
+			shape=box,
+			style=rounded
+		];
+		"4927e2504f2642129d1424886d651489"	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="Serial-bound SSD workflow
+exact serial discovery",
+			pos="266,1360",
+			shape=none,
+			width=1.4028];
+		"9ac0498e61d649608c6a0aa2a81c6bf2"	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="Wipe + format
+only named SSDs",
+			pos="266,1121",
+			shape=none,
+			width=1.4028];
+		"4927e2504f2642129d1424886d651489" -> "9ac0498e61d649608c6a0aa2a81c6bf2"	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,266,1204.4 266,1276.7 266,1276.7 266,1214.4 266,1214.4"];
+		d343280cf3324c148cfd0342efa3d0c9	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="F: logs | G: cache | H: cold
+independent NTFS volumes",
+			pos="266,882",
+			shape=none,
+			width=1.4028];
+		"9ac0498e61d649608c6a0aa2a81c6bf2" -> d343280cf3324c148cfd0342efa3d0c9	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,266,965.36 266,1037.7 266,1037.7 266,975.36 266,975.36"];
+	}
+	subgraph "cluster_Guest storage contracts" {
+		graph [bb="8,33,414,488",
+			bgcolor="#E5F5FD",
+			fontname="Sans-Serif",
+			fontsize=12,
+			label="Guest storage contracts",
+			labeljust=l,
+			lheight=0.18,
+			lp="88.5,477.5",
+			lwidth=2.01,
+			pencolor="#AEB6BE",
+			rankdir=LR,
+			shape=box,
+			style=rounded
+		];
+		"9315ea0bd4824c26a0f167f30b2eda5f"	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="Root disk
+OS + control plane",
+			pos="67,376",
+			shape=none,
+			width=1.4028];
+		a3dce4ce867543cd915bb0deeabdfd2d	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="K3s
+mounts are label-bound",
+			pos="208,124",
+			shape=none,
+			width=1.4028];
+		"9315ea0bd4824c26a0f167f30b2eda5f" -> a3dce4ce867543cd915bb0deeabdfd2d	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			pos="e,157.49,124 67,292.79 67,219.39 67,124 67,124 67,124 147.49,124 147.49,124"];
+		"5c65de5cf8f14d9780366284d573774d"	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="Cache disk
+containerd, PVCs, HF",
+			pos="355,376",
+			shape=none,
+			width=1.4028];
+		"5c65de5cf8f14d9780366284d573774d" -> a3dce4ce867543cd915bb0deeabdfd2d	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			label="LABEL=k3s-cache",
+			lp="346,250",
+			pos="e,258.59,151 355,292.86 355,228.76 355,151 355,151 355,151 268.59,151 268.59,151"];
+		"63ba222b2e684277a006a3d53966cfdd"	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="Logs disk
+pod logs",
+			pos="211,376",
+			shape=none,
+			width=1.4028];
+		"63ba222b2e684277a006a3d53966cfdd" -> a3dce4ce867543cd915bb0deeabdfd2d	[dir=forward,
+			fontcolor="#2D3436",
+			fontname="Sans-Serif",
+			fontsize=13,
+			label="LABEL=k3s-logs",
+			lp="184.5,250",
+			pos="e,209.5,207.13 209.5,292.79 209.5,292.79 209.5,217.13 209.5,217.13"];
+	}
+	subgraph "cluster_Explicit non-goals" {
+		graph [bb="432,538,838,741",
+			bgcolor="#E5F5FD",
+			fontname="Sans-Serif",
+			fontsize=12,
+			label="Explicit non-goals",
+			labeljust=l,
+			lheight=0.18,
+			lp="492.5,730.5",
+			lwidth=1.46,
+			pencolor="#AEB6BE",
+			rankdir=LR,
+			shape=box,
+			style=rounded
+		];
+		"1630e7bf43914c829dbaf1bc58bfcbbf"	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="No RAID0
+no striped failure domain",
+			pos="779,629",
+			shape=none,
+			width=1.4028];
+		f3e1916e0a1f46e187d8bd7e39ef90af	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="No SSD passthrough
+VHDX guest path remains",
+			pos="635,629",
+			shape=none,
+			width=1.4028];
+		"22d1d8f8e4ee4b50917278908d68d9c8"	[height=2.3056,
+			image="assets/onprem/compute/server.png",
+			label="No durable state
+on ephemeral cache alone",
+			pos="491,629",
+			shape=none,
+			width=1.4028];
+	}
+	d343280cf3324c148cfd0342efa3d0c9 -> "5c65de5cf8f14d9780366284d573774d"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="separate filesystem",
+		lp="331.5,629",
+		pos="e,310.5,459.36 310.5,798.73 310.5,798.73 310.5,469.36 310.5,469.36"];
+	d343280cf3324c148cfd0342efa3d0c9 -> "63ba222b2e684277a006a3d53966cfdd"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="separate filesystem",
+		lp="114.5,629",
+		pos="e,238.5,459.36 238.5,798.73 238.5,798.73 238.5,469.36 238.5,469.36"];
+	d343280cf3324c148cfd0342efa3d0c9 -> f3e1916e0a1f46e187d8bd7e39ef90af	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="host-only; not guest-mounted",
+		lp="584,756",
+		pos="e,635,712.19 316.53,882 417.59,882 635,882 635,882 635,882 635,722.19 635,722.19"];
+	"1630e7bf43914c829dbaf1bc58bfcbbf" -> a3dce4ce867543cd915bb0deeabdfd2d	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="policy boundary",
+		lp="659,376",
+		pos="e,258.67,96 779,545.72 779,395.81 779,96 779,96 779,96 268.67,96 268.67,96",
+		style=dashed];
+	"22d1d8f8e4ee4b50917278908d68d9c8" -> "5c65de5cf8f14d9780366284d573774d"	[dir=forward,
+		fontcolor="#2D3436",
+		fontname="Sans-Serif",
+		fontsize=13,
+		label="policy boundary",
+		lp="467,503",
+		pos="e,361,459.19 440.37,629 403.86,629 361,629 361,629 361,629 361,469.19 361,469.19",
+		style=dashed];
+}
