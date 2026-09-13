@@ -152,34 +152,32 @@ ai_cli_apps:
 # commissioned set — keep older / optional / pending rows unless asked.
 ai_cli_commissioned_models:
   # -------------------------------------------------------------------------
-  # UPSTREAM INTAKE — Qwen3.6-35B-A3B (primary chat / coding default)
-  # Served as: nvidia/Qwen3.6-35B-A3B-NVFP4 on k3s-02 vLLM (RTX 5090 sequential).
-  # Client id: qwen3.6-35b-a3b  (placement is NOT in the id).
-  #
-  # Operator evaluation (2026-09-12): followed instructions without excessive
-  # work; when asked to change values on the right-hand side of `=` it did so
-  # correctly after one clarifying question. Best regular-coding model evaluated
-  # in this lab so far for that class of edit.
+  # UPSTREAM INTAKE — Qwen3-Coder-30B-A3B (primary chat / coding default)
+  # Served as: cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit on k3s-02 vLLM
+  # (RTX 5090 sequential). Client id: qwen3-coder-30b-a3b (placement NOT in id).
+  # Tools: vLLM auto tool choice + qwen3_coder parser plugin.
   # -------------------------------------------------------------------------
-  - id: qwen3.6-35b-a3b
-    display_name: "Qwen3.6-35B-A3B"
+  - id: qwen3-coder-30b-a3b
+    display_name: "Qwen3-Coder-30B-A3B"
     enabled: true
     default_chat: true
     context: 32768
     max_output: 8192
-    temperature: 0.6
-    top_p: 0.95
-    labels: [primary, chat, coding, vllm, k3s02]
+    temperature: 0.7
+    top_p: 0.8
+    labels: [primary, chat, coding, tools, vllm, k3s02]
     placement_note: "k3s-02 vLLM / RTX 5090 (sequential primary)"
-  - id: qwen3-coder-30b-a3b
-    display_name: "Qwen3-Coder-30B-A3B (pending sequential)"
+  - id: qwen3.6-35b-a3b
+    display_name: "Qwen3.6-35B-A3B (pending sequential)"
     enabled: false
     context: 32768
     max_output: 8192
-    temperature: 0.7
-    top_p: 0.8
+    temperature: 0.6
+    top_p: 0.95
     labels: [pending, sequential, chat, coding, vllm, k3s02]
-    placement_note: "k3s-02 vLLM / RTX 5090 when cut over (not concurrent with Qwen3.6)"
+    placement_note: "k3s-02 vLLM / RTX 5090 when cut over (not concurrent with coder-30b)"
+    # Operator evaluation (2026-09-12 while primary): followed instructions cleanly;
+    # RHS-of-`=` edits correct after one clarification.
   - id: qwen2.5-coder-14b
     display_name: "qwen2.5-coder:14b"
     enabled: true
@@ -255,7 +253,7 @@ ai_cli_commissioned_models:
 
 # Convenience ids for docs/scripts (keep in sync with enabled: true rows above).
 ai_cli_commissioned_model_ids_enabled:
-  - qwen3.6-35b-a3b
+  - qwen3-coder-30b-a3b
   - qwen2.5-coder-14b
   - qwen2.5-coder-7b
   - qwen2.5-coder-1.5b-base-q8_0
@@ -266,7 +264,7 @@ ai_cli_commissioned_model_ids_enabled:
   - gemini-2.5-pro
   - gemini-2.5-flash-lite
 
-ai_cli_default_chat_model: qwen3.6-35b-a3b
+ai_cli_default_chat_model: qwen3-coder-30b-a3b
 ai_cli_default_edit_model: qwen2.5-coder-14b
 ai_cli_default_apply_model: qwen2.5-coder-7b
 ai_cli_default_autocomplete_model: qwen2.5-coder-1.5b-base-q8_0

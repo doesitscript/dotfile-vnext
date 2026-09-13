@@ -20,12 +20,12 @@ cline_ide_vault_file_path: "{{ inventory_dir }}/../vault/shared.vault.yml"
 cline_ide_provider_id: "openai-compatible"
 cline_ide_provider_display_name: "Homelab LiteLLM"
 # Default / last-used model id (must exist in cline_ide_models). Plain LiteLLM id.
-cline_ide_model: "{{ ai_cli_default_chat_model | default('qwen3.6-35b-a3b') }}"
+cline_ide_model: "{{ ai_cli_default_chat_model | default('qwen3-coder-30b-a3b') }}"
 cline_ide_default_context_window: 32768
 cline_ide_default_max_output_tokens: 8192
-# Qwen3.6 NVFP4 card SciCode-style defaults when a model entry omits sampling keys.
-cline_ide_default_temperature: 0.6
-cline_ide_default_top_p: 0.95
+# Qwen3-Coder AWQ defaults when a model entry omits sampling keys.
+cline_ide_default_temperature: 0.7
+cline_ide_default_top_p: 0.8
 cline_ide_default_capabilities:
   - streaming
   - tools
@@ -34,21 +34,8 @@ cline_ide_providers_merge: true
 cline_ide_modes: {}
 # LiteLLM lanes available in the Cline model picker (SSOT: ai_cli_commissioned_models).
 cline_ide_models:
-  - name: "Qwen3.6-35B-A3B"
-    model: "qwen3.6-35b-a3b"
-    roles:
-      - chat
-      - agent
-    context_window: 32768
-    max_output_tokens: 8192
-    temperature: 0.6
-    top_p: 0.95
-    capabilities:
-      - streaming
-      - tools
-  - name: "Qwen3-Coder-30B-A3B (pending sequential)"
+  - name: "Qwen3-Coder-30B-A3B"
     model: "qwen3-coder-30b-a3b"
-    enabled: false
     roles:
       - chat
       - agent
@@ -56,6 +43,19 @@ cline_ide_models:
     max_output_tokens: 8192
     temperature: 0.7
     top_p: 0.8
+    capabilities:
+      - streaming
+      - tools
+  - name: "Qwen3.6-35B-A3B (pending sequential)"
+    model: "qwen3.6-35b-a3b"
+    enabled: false
+    roles:
+      - chat
+      - agent
+    context_window: 32768
+    max_output_tokens: 8192
+    temperature: 0.6
+    top_p: 0.95
     capabilities:
       - streaming
       - tools

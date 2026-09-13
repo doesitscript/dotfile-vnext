@@ -128,40 +128,25 @@ storage_capacity_monitor_mounts:
 storage_capacity_monitor_require_alloy: true
 storage_capacity_monitor_journal_system_max_use: 1G
 k3s_vllm_runtime_enable_auto_tool_choice: true
-# Qwen3.6: official card + vLLM Codex recipe use qwen3_coder (not qwen3_xml).
-# Chat template: shipped in tokenizer_config.json — do NOT mount an external
-# --chat-template (plugin chat-template stays false).
-# Tools: --enable-auto-tool-choice + --tool-call-parser qwen3_coder
-# Reasoning: --reasoning-parser qwen3 (thinking on by default).
-# NVIDIA NVFP4 card also shows qwen3_xml; Alibaba Qwen3.6 card wins for this family.
-# Refs: https://huggingface.co/Qwen/Qwen3.6-35B-A3B ; Context7 /vllm-project/vllm
+# Qwen3-Coder-30B AWQ: use built-in --tool-call-parser qwen3_coder (vLLM 0.29).
+# Do NOT mount the qwen2_5_coder plugin — it imports removed vllm.entrypoints.openai.*
+# paths and fails to load on current images. See roles/k3s_vllm_runtime/README.md.
 k3s_vllm_runtime_tool_call_parser: "qwen3_coder"
 k3s_vllm_runtime_tool_parser_plugin_enabled: false
 k3s_vllm_runtime_tool_parser_plugin_chat_template_enabled: false
-# 5090 sequential primary — Qwen3.6-35B-A3B NVFP4 @ 32k (card default 262k OOMs).
-# Client-facing LiteLLM id: qwen3.6-35b-a3b (no @k3s02-vllm suffix).
-# Durable copy: HVH SMB models/huggingface/nvidia--Qwen3.6-35B-A3B-NVFP4
-# Hot cache: /mnt/k3s-cache/hf/hub/models--nvidia--Qwen3.6-35B-A3B-NVFP4
-# Prior sequential: cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit
-#
-# Operator eval (2026-09-12): best regular-coding model evaluated so far —
-# followed instructions cleanly; RHS-of-`=` edits correct after one clarification.
-# Upstream intake note: inventory/group_vars/all/ai_cli_apps.yml
-k3s_vllm_runtime_model: nvidia/Qwen3.6-35B-A3B-NVFP4
-k3s_vllm_runtime_served_model_name: nvidia/Qwen3.6-35B-A3B-NVFP4
+# 5090 sequential primary — Qwen3-Coder-30B-A3B AWQ-4bit @ 32k (cut over from Qwen3.6).
+# Client-facing LiteLLM id: qwen3-coder-30b-a3b (no @k3s02-vllm suffix).
+# Durable: cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit on HF cache / SMB.
+# Prior sequential: nvidia/Qwen3.6-35B-A3B-NVFP4 (keep weights; not concurrent).
+k3s_vllm_runtime_model: cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit
+k3s_vllm_runtime_served_model_name: cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit
 k3s_vllm_runtime_extra_args:
-  - --quantization
-  - modelopt
-  - --reasoning-parser
-  - qwen3
-  - --trust-remote-code
-  - --language-model-only
   - --gpu-memory-utilization
   - "0.90"
   - --max-model-len
   - "32768"
   - --max-num-seqs
-  - "4"
+  - "6"
 k3s_langfuse_platform_web_cpu_request: "150m"
 k3s_langfuse_platform_web_memory_request: "512Mi"
 k3s_langfuse_platform_worker_cpu_request: "100m"
@@ -226,7 +211,7 @@ ai_service_profile:
 
 # Continue Apply (desktop Ollama qwen2.5-coder:7b) — mechanical merge; keep 7B.
 k3s_litellm_gateway_primary_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1"
-k3s_litellm_gateway_primary_vllm_model: "nvidia/Qwen3.6-35B-A3B-NVFP4"
+k3s_litellm_gateway_primary_vllm_model: "cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit"
 k3s_litellm_gateway_continue_edit_api_base: "http://ollama-desktop.hom.lab:11434/v1"
 k3s_litellm_gateway_continue_edit_model: "qwen2.5-coder:7b"
 k3s_litellm_gateway_continue_edit_provider: "openai"
