@@ -1,8 +1,9 @@
 # {{ ansible_managed }}
 # Continue → LiteLLM only for remote lanes. Continue probes GET {apiBase};
 # use http://litellm.hom.lab without a trailing /v1 (bare /v1 404s on this gateway).
-# Remote autocomplete stays blocked. Local autocomplete uses an OpenAI-compatible
-# server on the client Mac (e.g. Jan), never provider: ollama for that role.
+# Full-file desired state: every continue_ide_models / local entry with
+# enabled|default(true) is rendered. No role-specific omit gates in this
+# template — disable an entry with enabled: false (or omit it from the list).
 # Blocked / not commissioned:
 {% for lane in continue_ide_blocked_lanes %}
 #   - {{ lane }}
@@ -12,8 +13,6 @@ version: {{ continue_ide_config_version | to_json }}
 schema: {{ continue_ide_config_schema | to_json }}
 models:
 {% for entry in continue_ide_models if entry.enabled | default(true) %}
-{% set entry_roles = entry.roles | default([]) %}
-{% if continue_ide_autocomplete_enabled | default(false) or 'autocomplete' not in entry_roles %}
   - name: {{ entry.name | to_json }}
     provider: {{ (entry.provider | default(continue_ide_provider)) | to_json }}
     apiBase: {{ (entry.api_base | default(continue_ide_gateway_api_base)) | to_json }}
@@ -42,9 +41,6 @@ models:
 {% endfor %}
 {% endif %}
 {% if entry.use_legacy_completions_endpoint | default(false) %}
-    # FIM for autocomplete: must match Ollama GGUF qwen2.5-coder:1.5b-base-q8_0
-    # Modelfile TEMPLATE (<|fim_*|> when .Suffix is set). Not safetensors/vLLM/MLX.
-    # See roles/continue_ide/README.md → Autocomplete role — FIM.
     useLegacyCompletionsEndpoint: true
     promptTemplates:
       autocomplete: {% raw %}"<|fim_prefix|>{{{prefix}}}<|fim_suffix|>{{{suffix}}}<|fim_middle|>"{% endraw %}
@@ -56,15 +52,12 @@ models:
       {{ tmpl_key }}: {{ tmpl_val | to_json }}
 {% endfor %}
 {% endif %}
-{% endif %}
 {% endfor %}
 {% set _continue_local_models = (continue_ide_local_models | default(continue_ide_ollama_local_models | default([]))) %}
 {% if (_continue_local_models | length) > 0 %}
   # BEGIN ANSIBLE MANAGED: continue-local-models
   # Client-local OpenAI-compatible (or legacy ollama) models only.
-  # Autocomplete FIM: same <|fim_*|> shape as gateway qwen2.5-coder:1.5b-base-q8_0.
-  # Edit/apply: prefer LiteLLM plain client ids in continue_ide_models above.
-{% for entry in _continue_local_models %}
+{% for entry in _continue_local_models if entry.enabled | default(true) %}
   - name: {{ entry.name | to_json }}
     provider: {{ (entry.provider | default('openai')) | to_json }}
     apiBase: {{ (entry.api_base | default('http://127.0.0.1:1337/v1')) | to_json }}

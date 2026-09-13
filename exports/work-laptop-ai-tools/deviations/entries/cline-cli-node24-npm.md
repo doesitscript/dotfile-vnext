@@ -13,12 +13,18 @@ updated_at: "2026-09-12"
 Node 22+ requirement. Fresh npm may also skip `cline` postinstall (native
 binary) unless `--allow-scripts=cline,protobufjs` is set.
 
+Corporate `~/.npmrc` with `prefix` / `globalconfig` also makes `nvm install`
+fail (exit 11) while activating Node 24.
+
 ## Accommodation
 
 - Role `cline_cli` installs via nvm Node major `cline_cli_node_version` (default
   `24`) without changing `node_default_version` for other tools.
-- Install uses `npm prefix -g` for the binary path (works with corporate
-  `~/.npmrc` prefix=; see `npm-global-prefix`).
+- NVM bootstrap temporarily moves `~/.npmrc` aside and restores it on EXIT so
+  nvm can install/activate; the later `npm install -g` still sees corporate
+  `prefix=` (see `npm-global-prefix`).
+- NVM install progress goes to stderr so the task registers only the Node path.
+- Install uses `npm prefix -g` for the binary path.
 - Config (models/MCP) stays in `cline_ide` under `~/.cline`.
 
 ## Reapply

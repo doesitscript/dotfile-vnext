@@ -30,8 +30,9 @@ continue_ide_firebase_tools_version: "15.30.0"
 continue_ide_default_context_length: 32768
 continue_ide_default_max_tokens: 8192
 continue_ide_autocomplete_debounce_delay: 250
-# Plan 2026-09-12: mac-dev enables HVH-01 Ollama FIM via LiteLLM (override on host).
-# Keep role default false so other hosts do not get remote autocomplete by accident.
+# Hosts that should not ship remote FIM set continue_ide_autocomplete_enabled:
+# false (role default). That flips enabled on the autocomplete model entry only —
+# the template has no role-specific omit gate; it renders every enabled entry.
 continue_ide_autocomplete_enabled: false
 # Client-local models (Jan / DMR openai / legacy ollama). Prefer openai provider.
 # Legacy alias continue_ide_ollama_local_models still accepted by the template.
@@ -95,11 +96,14 @@ continue_ide_models:
   # <|fim_prefix|>/<|fim_suffix|>/<|fim_middle|>. Chat-only success ≠ FIM OK.
   - name: "qwen2.5-coder:1.5b-base-q8_0"
     model: "qwen2.5-coder-1.5b-base-q8_0"
+    # Same generic enabled flag as any other model — not a template special case.
+    enabled: "{{ continue_ide_autocomplete_enabled | bool }}"
     roles:
       - autocomplete
     use_legacy_completions_endpoint: true
     default_completion_options:
-      contextLength: 4096
+      # Operator-chosen FIM context (was 4096); keep maxTokens 256 for Tab-complete.
+      contextLength: 12768
       maxTokens: 256
       temperature: 0.0
     autocomplete_options:
@@ -153,4 +157,4 @@ continue_ide_models:
       temperature: 0.3
 continue_ide_blocked_lanes:
   - "qwen2.5-coder-14b on 5090 (superseded by Qwen3.6 / Qwen3-Coder sequential lane)"
-  - "Remote autocomplete was historically disabled; mac-dev may enable HVH-01 FIM via continue_ide_autocomplete_enabled (plan 2026-09-12)."
+  - "Remote FIM model entry uses enabled via continue_ide_autocomplete_enabled (mac-dev true)."

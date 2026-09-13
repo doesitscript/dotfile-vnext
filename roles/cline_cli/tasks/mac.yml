@@ -6,10 +6,23 @@
   ansible.builtin.shell: |
     set -euo pipefail
     export NVM_DIR="{{ ansible_env.HOME }}/.nvm"
+    npmrc_path="$HOME/.npmrc"
+    npmrc_backup=""
+    if [ -f "$npmrc_path" ]; then
+      npmrc_backup="$(mktemp "${TMPDIR:-/tmp}/cline-cli.npmrc.XXXXXX")"
+      mv "$npmrc_path" "$npmrc_backup"
+    fi
+    restore_npmrc() {
+      if [ -n "$npmrc_backup" ]; then
+        mv "$npmrc_backup" "$npmrc_path"
+      fi
+    }
+    trap restore_npmrc EXIT
     # shellcheck disable=SC1091
     . "$NVM_DIR/nvm.sh"
     if ! nvm which {{ cline_cli_node_version }} >/dev/null 2>&1; then
-      nvm install {{ cline_cli_node_version }}
+      # Progress on stderr so register.stdout stays the Node path only.
+      nvm install {{ cline_cli_node_version }} >&2
     fi
     nvm which {{ cline_cli_node_version }}
   args:

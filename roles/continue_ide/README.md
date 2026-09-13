@@ -99,8 +99,12 @@ Chat `/v1/chat/completions` alone is **not** proof of autocomplete FIM.
 
 Autocomplete policy:
 
-- `continue_ide_autocomplete_enabled: false` by default
-- mac-dev may set `true` for this FIM lane via LiteLLM (plan 2026-09-12)
+- `continue_ide_autocomplete_enabled: false` by default → FIM model entry
+  `enabled: false` (same generic flag as any other model)
+- mac-dev sets `true` so that entry is included in the full-file template
+- Template has **no** role-specific omit logic — every `enabled` entry converges
+- Local edits/comments in `~/.continue/config.yaml` are overwritten on each
+  `present` run (no force flag required)
 - keep Mac-local `provider: ollama` out of the gateway path unless a work-laptop
   deviation explicitly documents a local OpenAI-compatible server
 

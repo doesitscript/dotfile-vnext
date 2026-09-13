@@ -151,6 +151,26 @@
   when: continue_ide_state == "present"
   no_log: true
 
+# Full-file template replace (no force / no merge). Local edits/comments in
+# ~/.continue/config.yaml are discarded on every present run. Desired state is
+# continue_ide_models (+ local models) with enabled|default(true); disable an
+# entry with enabled: false. Autocomplete uses that same flag via
+# continue_ide_autocomplete_enabled on the FIM model entry in role defaults.
+- name: Verify Continue autocomplete role is present when FIM is enabled
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/grep
+      - -F
+      - --
+      - '- "autocomplete"'
+      - "{{ continue_ide_config_path }}"
+  register: continue_ide_autocomplete_grep
+  changed_when: false
+  failed_when: continue_ide_autocomplete_grep.rc != 0
+  when:
+    - continue_ide_state == "present"
+    - continue_ide_autocomplete_enabled | default(false) | bool
+
 - name: Verify Continue config.yaml has models
   ansible.builtin.command:
     argv:
@@ -173,6 +193,7 @@
   ansible.builtin.debug:
     msg: >-
       continue_ide_state={{ continue_ide_state }}
+      autocomplete_enabled={{ continue_ide_autocomplete_enabled | default(false) }}
       config={{ continue_ide_config_path }}
       api_base={{ continue_ide_gateway_api_base }}
       model_count={{ continue_ide_models | default([]) | length }}
