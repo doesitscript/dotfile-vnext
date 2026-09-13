@@ -64,7 +64,7 @@ continue_ide_models:
       maxTokens: 8192
       temperature: 0.7
       topP: 0.8
-  - name: "Qwen2.5 Coder 14B"
+  - name: "qwen2.5-coder:14b"
     model: "qwen2.5-coder-14b"
     roles:
       - edit
@@ -72,7 +72,7 @@ continue_ide_models:
       contextLength: 12000
       maxTokens: 4096
       temperature: 0.2
-  - name: "Qwen2.5 Coder 7B"
+  - name: "qwen2.5-coder:7b"
     model: "qwen2.5-coder-7b"
     roles:
       - apply
@@ -80,8 +80,21 @@ continue_ide_models:
       contextLength: 12000
       maxTokens: 4096
       temperature: 0.2
-  - name: "Qwen2.5 Coder 1.5B-base (HVH-01 Ollama FIM)"
-    model: "qwen2.5-coder-1.5b@hvh01"
+  # Autocomplete = FIM only (not chat). Ollama GGUF tag
+  # qwen2.5-coder:1.5b-base-q8_0 (llama.cpp on HVH-01). Modelfile TEMPLATE uses
+  # <|fim_prefix|>/<|fim_suffix|>/<|fim_middle|> when .Suffix is set; Continue
+  # promptTemplates.autocomplete must match. Legacy completions → /v1/completions.
+  #
+  # Other FIM candidates (NOT commissioned — verify before trying):
+  #   - granite-code:8b / granite-code:8b-base (IBM Granite Code; paper trains FIM)
+  #   - starcoder2:3b or starcoder2:7b (well-rated FIM family; prefer base/default
+  #     tags over *-instruct). 15b usually too large for GTX 1060 6GB.
+  # Gate if tried: (1) ollama show <tag> TEMPLATE must emit FIM tokens when
+  # .Suffix is set; (2) LiteLLM POST /v1/completions FIM smoke HTTP 200 + text;
+  # (3) Continue promptTemplates may need retuning if tokens differ from
+  # <|fim_prefix|>/<|fim_suffix|>/<|fim_middle|>. Chat-only success ≠ FIM OK.
+  - name: "qwen2.5-coder:1.5b-base-q8_0"
+    model: "qwen2.5-coder-1.5b-base-q8_0"
     roles:
       - autocomplete
     use_legacy_completions_endpoint: true
@@ -93,11 +106,11 @@ continue_ide_models:
       debounceDelay: 250
       maxPromptTokens: 1024
       onlyMyCode: true
-  - name: "nomic-embed-text (HVH-01 Ollama)"
-    model: "nomic-embed-text@hvh01"
+  - name: "nomic-embed-text"
+    model: "nomic-embed-text"
     roles:
       - embed
-  - name: "gpt-oss 20B"
+  - name: "gpt-oss:20b"
     model: "gpt-oss-20b"
     roles:
       - chat

@@ -5,8 +5,8 @@ in plan `2026-09-12-mac_and_model_recommend`:
 
 | Lane | Continue role | Client id | Live smoke shorthand |
 | --- | --- | --- | --- |
-| Embed | `embed` | `nomic-embed-text@hvh01` | `embed smoke 768 dims` |
-| Autocomplete | `autocomplete` | `qwen2.5-coder-1.5b@hvh01` | `FIM completions 200` |
+| Embed | `embed` | `nomic-embed-text` | `embed smoke 768 dims` |
+| Autocomplete | `autocomplete` | `qwen2.5-coder-1.5b-base-q8_0` | `FIM completions 200` |
 
 Plain-language decode:
 [`docs/plans/2026-09-12-mac_and_model_recommend/smoke-evidence-decode.md`](../../docs/plans/2026-09-12-mac_and_model_recommend/smoke-evidence-decode.md)
@@ -24,7 +24,7 @@ until the harness grows `type: embed`.
 
 Josh uses Continue on the Mac. The Mac should **not** run local embed models.
 When he uses `@Codebase` / `@Docs`, Continue must call LiteLLM
-`nomic-embed-text@hvh01`, get real vectors, and build a usable index. If that
+`nomic-embed-text`, get real vectors, and build a usable index. If that
 path is down, chat may still work while **repo-aware context feels broken**.
 
 ### User story
@@ -37,8 +37,8 @@ path is down, chat may still work while **repo-aware context feels broken**.
 
 | Step | Spec |
 | --- | --- |
-| **Given** | LiteLLM publishes `nomic-embed-text@hvh01`; HVH-01 Ollama has tag `nomic-embed-text`; Continue `roles: [embed]` points at that id; `apiBase` is `http://litellm.hom.lab/v1` |
-| **When** | Client (or probe) `POST /v1/embeddings` with `{"model":"nomic-embed-text@hvh01","input":"homelab continue embed smoke"}` and a valid gateway key |
+| **Given** | LiteLLM publishes `nomic-embed-text`; HVH-01 Ollama has tag `nomic-embed-text`; Continue `roles: [embed]` points at that id; `apiBase` is `http://litellm.hom.lab/v1` |
+| **When** | Client (or probe) `POST /v1/embeddings` with `{"model":"nomic-embed-text","input":"homelab continue embed smoke"}` and a valid gateway key |
 | **Then** | HTTP **200**; `data[0].embedding` is a non-empty list; **`len(embedding) == 768`** |
 
 ### Pass / fail meaning
@@ -72,7 +72,7 @@ x-embed-nomic-768: &embed_nomic_768
   http_status: 200
 
 lanes:
-  - id: nomic-embed-text@hvh01
+  - id: nomic-embed-text
     label: "HVH-01 Ollama nomic-embed-text — Continue embed / @Codebase"
     capabilities: [embed]
     usage:
@@ -117,9 +117,32 @@ Until that lands, operators re-run the Ansible/`uri` probe documented in
 ### Human situation (capability meets need)
 
 Josh types in the editor. Continue should suggest the **middle** of the current
-edit (prefix + suffix), quickly, from a small FIM model on HVH-01 — not from the
+edit (prefix + suffix), quickly, from a small FIM model — not from the
 5090 chat model and not via `/v1/chat/completions` alone. If FIM fails, he loses
 **inline completion** even when sidebar chat is fine.
+
+**Why this model:** Autocomplete is **FIM-first**. Live Ollama
+`qwen2.5-coder:1.5b-base-q8_0` (`ollama show`) includes a Modelfile TEMPLATE that
+emits the same tokens Continue uses when a suffix is present:
+
+```text
+{{- if .Suffix }}<|fim_prefix|>{{ .Prompt }}<|fim_suffix|>{{ .Suffix }}<|fim_middle|>{{ else }}{{ .Prompt }}{{ end }}
+```
+
+Continue config (rendered) must keep:
+
+```yaml
+promptTemplates:
+  autocomplete: "<|fim_prefix|>{{{prefix}}}<|fim_suffix|>{{{suffix}}}<|fim_middle|>"
+```
+
+plus `useLegacyCompletionsEndpoint: true` so requests hit `/v1/completions`.
+Role README: `roles/continue_ide/README.md` → Autocomplete role — FIM.
+
+**Other FIM candidates (not commissioned):** `granite-code:8b` /
+`granite-code:8b-base`; StarCoder2 (`starcoder2:3b` or `:7b`, prefer non-instruct).
+If tried later: verify `ollama show` FIM TEMPLATE + LiteLLM
+`POST /v1/completions` smoke before Continue commission — chat success ≠ FIM.
 
 ### User story
 
@@ -131,7 +154,7 @@ edit (prefix + suffix), quickly, from a small FIM model on HVH-01 — not from t
 
 | Step | Spec |
 | --- | --- |
-| **Given** | LiteLLM publishes `qwen2.5-coder-1.5b@hvh01` backed by Ollama `qwen2.5-coder:1.5b-base`; Continue autocomplete enabled with that model id |
+| **Given** | LiteLLM publishes `qwen2.5-coder-1.5b-base-q8_0` backed by Ollama `qwen2.5-coder:1.5b-base-q8_0`; Continue autocomplete enabled with that model id and FIM `promptTemplates` matching the Ollama TEMPLATE |
 | **When** | Client (or probe) `POST /v1/completions` with a FIM prompt using `<|fim_prefix|>` / `<|fim_suffix|>` / `<|fim_middle|>` |
 | **Then** | HTTP **200**; `choices[0].text` is **non-empty** (ops smoke). Quality ATDD may also require substrings such as `return` for a `def add` body |
 
@@ -145,7 +168,7 @@ edit (prefix + suffix), quickly, from a small FIM model on HVH-01 — not from t
 ### Executable YAML today
 
 Already approved in [`manifest.yml`](./manifest.yml) as `autocomplete-add-fim`
-on lane `qwen2.5-coder-1.5b@hvh01` (`type: fim`). Run:
+on lane `qwen2.5-coder-1.5b-base-q8_0` (`type: fim`). Run:
 
 ```bash
 ./model-lane-acceptance/scripts/run-gateway-acceptance.sh -m llm_fim -v -s
@@ -166,8 +189,8 @@ required for FIM.
 
 | Continue role | Lane | Acceptance surface | Status |
 | --- | --- | --- | --- |
-| `autocomplete` | `qwen2.5-coder-1.5b@hvh01` | `gateway/manifest.yml` (FIM) | approved / runnable |
-| `embed` | `nomic-embed-text@hvh01` | this doc + `pending/continue-embed-nomic-hvh01.yml` | contract written; harness gap |
+| `autocomplete` | `qwen2.5-coder-1.5b-base-q8_0` | `gateway/manifest.yml` (FIM) | approved / runnable |
+| `embed` | `nomic-embed-text` | this doc + `pending/continue-embed-nomic-hvh01.yml` | contract written; harness gap |
 
 ---
 

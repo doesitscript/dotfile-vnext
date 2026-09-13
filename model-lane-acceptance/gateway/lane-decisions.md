@@ -16,7 +16,7 @@ models or clients change.
 | --- | --- | --- | --- |
 | `qwen2.5-coder-32b` | Continue chat, Codex deep | `tool_calls` + followup | 5090 vLLM |
 | `qwen2.5-coder-7b@desktop` | Continue edit, OpenCode | `json_in_content` | Desktop Ollama |
-| `qwen2.5-coder-1.5b@hvh01` | Continue FIM | `json_in_content` + **fim** | HVH Ollama |
+| `qwen2.5-coder-1.5b-base-q8_0` | Continue FIM | `json_in_content` + **fim** | HVH Ollama |
 | `ministral-3-8b@desktop` | Kilo agent | `tool_calls` + followup | Desktop Ollama |
 
 ## ATDD: adding or swapping a model

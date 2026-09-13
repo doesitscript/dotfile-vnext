@@ -65,7 +65,7 @@ matching `k3s_litellm_gateway_*_chat_api_base` is set).
 | `qwen3-coder-30b-a3b` | 5090 vLLM Qwen3-Coder AWQ | **Current primary**; card sampling defaults on route (`temp=0.7`, `top_p=0.8`, `top_k=20`, `repetition_penalty=1.05`); tool acceptance pending |
 | `qwen2.5-coder-14b~kilo-lite` | 5090 vLLM 14B AWQ (testing) | **Smoke/chat only** — tool_calls broken (hermes vs `<tools>` format) |
 | `ministral-3-8b` | Desktop Ollama | **Interim fallback** — API tool_calls OK |
-| `qwen2.5-coder-1.5b@hvh01~kilo-autocomplete` | HVH-01 Ollama | Autocomplete lane |
+| `qwen2.5-coder-1.5b-base~kilo-autocomplete` | HVH-01 Ollama | Autocomplete lane |
 
 Do not invest in fixing 14B tool parsing. Restore 32B or upgrade to Qwen3-Coder /
 Qwen 3.6 27B on vLLM. See HRL investigation note and
@@ -106,7 +106,7 @@ Entry kinds (also in `model_info.client_model_id_kind` when set):
 | --- | --- | --- |
 | `qwen2.5-coder-32b~coder-primary` | FRIENDLY ALIAS | vLLM Qwen2.5-Coder-32B AWQ on k3s-02 (5090) |
 | `qwen2.5-coder-32b~kilo-main` | FRIENDLY ALIAS | Same 5090 backend — **Kilo primary** |
-| `qwen2.5-coder-1.5b@hvh01~kilo-autocomplete` | FRIENDLY ALIAS | Ollama on HVH-01 (1060) |
+| `qwen2.5-coder-1.5b-base~kilo-autocomplete` | FRIENDLY ALIAS | Ollama on HVH-01 (1060) |
 | `devstral-24b@desktop~open-webui-coder` | FRIENDLY ALIAS | Desktop Ollama (not Kilo main) |
 | `litellm-complexity-auto-router@litellm~smart-router` | MODEL GROUP | Tier router |
 

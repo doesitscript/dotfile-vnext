@@ -181,7 +181,7 @@ ai_cli_commissioned_models:
     labels: [pending, sequential, chat, coding, vllm, k3s02]
     placement_note: "k3s-02 vLLM / RTX 5090 when cut over (not concurrent with Qwen3.6)"
   - id: qwen2.5-coder-14b
-    display_name: "Qwen2.5 Coder 14B"
+    display_name: "qwen2.5-coder:14b"
     enabled: true
     default_edit: true
     context: 12000
@@ -189,29 +189,34 @@ ai_cli_commissioned_models:
     temperature: 0.2
     labels: [edit, desktop, ollama]
   - id: qwen2.5-coder-7b
-    display_name: "Qwen2.5 Coder 7B"
+    display_name: "qwen2.5-coder:7b"
     enabled: true
     default_apply: true
     context: 12000
     max_output: 4096
     temperature: 0.2
     labels: [apply, desktop, ollama]
-  - id: qwen2.5-coder-1.5b@hvh01
-    display_name: "Qwen2.5 Coder 1.5B-base (HVH-01 Ollama FIM)"
+  - id: qwen2.5-coder-1.5b-base-q8_0
+    # Continue autocomplete = FIM (fill-in-the-middle). Ollama GGUF
+    # qwen2.5-coder:1.5b-base-q8_0 TEMPLATE uses <|fim_*|> when .Suffix is set;
+    # Continue promptTemplates.autocomplete must match. Not a chat lane.
+    # Other FIM candidates (verify before try): granite-code:8b(-base);
+    # starcoder2:3b|7b. Gate = ollama show FIM TEMPLATE + /v1/completions 200.
+    display_name: "qwen2.5-coder:1.5b-base-q8_0"
     enabled: true
     default_autocomplete: true
     context: 4096
     max_output: 256
     temperature: 0.0
     labels: [autocomplete, fim, hvh01, ollama]
-  - id: nomic-embed-text@hvh01
-    display_name: "nomic-embed-text (HVH-01 Ollama)"
+  - id: nomic-embed-text
+    display_name: "nomic-embed-text"
     enabled: true
     default_embed: true
     context: 8192
     labels: [embed, hvh01, ollama]
   - id: gpt-oss-20b
-    display_name: "gpt-oss 20B"
+    display_name: "gpt-oss:20b"
     enabled: true
     context: 131072
     max_output: 8192
@@ -252,8 +257,8 @@ ai_cli_commissioned_model_ids_enabled:
   - qwen3.6-35b-a3b
   - qwen2.5-coder-14b
   - qwen2.5-coder-7b
-  - qwen2.5-coder-1.5b@hvh01
-  - nomic-embed-text@hvh01
+  - qwen2.5-coder-1.5b-base-q8_0
+  - nomic-embed-text
   - gpt-oss-20b
   - gemini-2.5-flash
   - gemini-2.5-flash-long-context
@@ -263,8 +268,8 @@ ai_cli_commissioned_model_ids_enabled:
 ai_cli_default_chat_model: qwen3.6-35b-a3b
 ai_cli_default_edit_model: qwen2.5-coder-14b
 ai_cli_default_apply_model: qwen2.5-coder-7b
-ai_cli_default_autocomplete_model: qwen2.5-coder-1.5b@hvh01
-ai_cli_default_embed_model: nomic-embed-text@hvh01
+ai_cli_default_autocomplete_model: qwen2.5-coder-1.5b-base-q8_0
+ai_cli_default_embed_model: nomic-embed-text
 
 # Provider namespace for OpenCode / Kilo (catalog keys stay plain; selection adds this).
 ai_cli_litellm_provider_id: litellm

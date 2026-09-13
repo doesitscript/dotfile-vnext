@@ -44,17 +44,65 @@ The **Continue editor extension** (`Continue.continue`) is installed by
 
 | Continue role | Display name | LiteLLM `model` | GPU |
 | --- | --- | --- | --- |
-| Chat | Chat Qwen3.6-35B-A3B | `qwen3.6-35b-a3b` | 5090 vLLM |
-| Edit | Edit Qwen2.5 Coder 14B | `qwen2.5-coder-14b@desktop` | RX 9060 XT Ollama |
-| Apply | Apply Qwen2.5 Coder 7B | `qwen2.5-coder-7b@desktop` | RX 9060 XT Ollama |
-| Autocomplete | Autocomplete 1.5B-base | `qwen2.5-coder-1.5b@hvh01` → Ollama `:1.5b-base` | GTX 1060 |
-| Embed | nomic-embed-text | `nomic-embed-text@hvh01` | GTX 1060 |
+| Chat | Qwen3.6-35B-A3B | `qwen3.6-35b-a3b` | 5090 vLLM |
+| Edit | qwen2.5-coder:14b | `qwen2.5-coder-14b` | RX 9060 XT Ollama |
+| Apply | qwen2.5-coder:7b | `qwen2.5-coder-7b` | RX 9060 XT Ollama |
+| Autocomplete | qwen2.5-coder:1.5b-base-q8_0 | `qwen2.5-coder-1.5b-base-q8_0` → Ollama GGUF `:1.5b-base-q8_0` | GTX 1060 |
+| Embed | nomic-embed-text | `nomic-embed-text` | GTX 1060 |
+
+### Autocomplete role — FIM (fill-in-the-middle)
+
+For the **autocomplete** role we care about **FIM**, not chat. Tab / ghost-text
+must fill the *middle* of the current edit (code above the cursor + code below).
+That is why this lane uses the **base** Ollama GGUF tag
+`qwen2.5-coder:1.5b-base-q8_0` (not Instruct) and Continue’s **legacy
+completions** path (`useLegacyCompletionsEndpoint: true` → LiteLLM
+`POST /v1/completions`).
+
+Continue renders this template (see `~/.continue/config.yaml` /
+`templates/config.yaml.j2`):
+
+```text
+<|fim_prefix|>{{{prefix}}}<|fim_suffix|>{{{suffix}}}<|fim_middle|>
+```
+
+That matches the **Modelfile TEMPLATE** on the live Ollama model
+(`ollama show qwen2.5-coder:1.5b-base-q8_0`):
+
+```text
+{{- if .Suffix }}<|fim_prefix|>{{ .Prompt }}<|fim_suffix|>{{ .Suffix }}<|fim_middle|>{{ else }}{{ .Prompt }}{{ end }}
+```
+
+When a suffix is present, Ollama wraps prefix/suffix with the same
+`<|fim_*|>` tokens Continue emits. Chat-only success on this id does **not**
+prove autocomplete. Acceptance: `FIM completions 200` in
+`model-lane-acceptance/gateway/continue-embed-and-fim-atdd.md` and
+`docs/plans/2026-09-12-mac_and_model_recommend/smoke-evidence-decode.md`.
+
+#### Other FIM candidates (not commissioned)
+
+Documented for later trials only. Prefer Ollama **GGUF** on HVH-01. Do **not**
+flip Continue/LiteLLM to these until FIM is verified:
+
+| Candidate | Why interesting | Notes |
+| --- | --- | --- |
+| `granite-code:8b` / `granite-code:8b-base` | IBM Granite Code; FIM is part of the training story | Prefer **base** over chat-style tags when available; 8B is tight on 6 GB — use a Q4/Q5 GGUF and confirm VRAM |
+| `starcoder2:3b` or `starcoder2:7b` | StarCoder2 is a well-rated FIM / fill-in-the-middle family | Prefer non-`instruct` tags for Tab-complete; `15b` is usually too large for GTX 1060 |
+
+**Verify-if-tried gate (required):**
+
+1. `ollama show <tag>` — TEMPLATE (or docs) must support suffix / FIM tokens
+2. LiteLLM `POST /v1/completions` with a FIM-shaped prompt → HTTP **200** + non-empty text
+3. Align Continue `promptTemplates.autocomplete` if the model’s FIM tokens are not `<|fim_prefix|>` / `<|fim_suffix|>` / `<|fim_middle|>`
+
+Chat `/v1/chat/completions` alone is **not** proof of autocomplete FIM.
 
 Autocomplete policy:
 
 - `continue_ide_autocomplete_enabled: false` by default
-- mac-dev may set `true` for HVH-01 FIM via LiteLLM (plan 2026-09-12)
-- keep Mac-local `provider: ollama` out of this path; gateway `model@host` only
+- mac-dev may set `true` for this FIM lane via LiteLLM (plan 2026-09-12)
+- keep Mac-local `provider: ollama` out of the gateway path unless a work-laptop
+  deviation explicitly documents a local OpenAI-compatible server
 
 ## Work-laptop local Ollama section
 

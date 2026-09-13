@@ -29,7 +29,7 @@ jq '
           {slug: "qwen3.6-35b-a3b", name: "Homelab Qwen3.6 35B-A3B", context: 32768},
           {slug: "qwen3-coder-30b-a3b", name: "Homelab Qwen3 Coder 30B-A3B (sequential)", context: 32768},
           {slug: "gpt-oss-20b", name: "Homelab gpt-oss 20B", context: 131072},
-          {slug: "qwen2.5-coder-1.5b@hvh01", name: "Homelab Qwen2.5 Coder 1.5B", context: 8192},
+          {slug: "qwen2.5-coder-1.5b-base", name: "Homelab Qwen2.5 Coder 1.5B", context: 8192},
           {slug: "gemini-2.5-flash", name: "Gemini 2.5 Flash (Daily Driver)", context: 1048576},
           {slug: "gemini-2.5-flash-long-context", name: "Gemini 2.5 Flash (Long Context 1M)", context: 1048576},
           {slug: "gemini-2.5-pro", name: "Gemini 2.5 Pro (Deep Reasoning)", context: 1048576},

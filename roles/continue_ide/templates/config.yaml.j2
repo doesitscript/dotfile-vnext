@@ -42,6 +42,9 @@ models:
 {% endfor %}
 {% endif %}
 {% if entry.use_legacy_completions_endpoint | default(false) %}
+    # FIM for autocomplete: must match Ollama GGUF qwen2.5-coder:1.5b-base-q8_0
+    # Modelfile TEMPLATE (<|fim_*|> when .Suffix is set). Not safetensors/vLLM/MLX.
+    # See roles/continue_ide/README.md → Autocomplete role — FIM.
     useLegacyCompletionsEndpoint: true
     promptTemplates:
       autocomplete: {% raw %}"<|fim_prefix|>{{{prefix}}}<|fim_suffix|>{{{suffix}}}<|fim_middle|>"{% endraw %}
@@ -59,8 +62,8 @@ models:
 {% if (_continue_local_models | length) > 0 %}
   # BEGIN ANSIBLE MANAGED: continue-local-models
   # Client-local OpenAI-compatible (or legacy ollama) models only.
-  # Autocomplete: prefer Jan (provider openai + Jan GET /v1/models id).
-  # Edit/apply: prefer LiteLLM model@host entries in continue_ide_models above.
+  # Autocomplete FIM: same <|fim_*|> shape as gateway qwen2.5-coder:1.5b-base-q8_0.
+  # Edit/apply: prefer LiteLLM plain client ids in continue_ide_models above.
 {% for entry in _continue_local_models %}
   - name: {{ entry.name | to_json }}
     provider: {{ (entry.provider | default('openai')) | to_json }}
