@@ -162,7 +162,9 @@ ai_cli_commissioned_models:
     enabled: true
     default_chat: true
     context: 32768
-    max_output: 8192
+    # Leave headroom vs context: input + max_output must stay <= 32768
+    # (Continue ContextWindowExceededError when max_output was 8192).
+    max_output: 4096
     temperature: 0.7
     top_p: 0.8
     labels: [primary, chat, coding, tools, vllm, k3s02]
@@ -171,7 +173,7 @@ ai_cli_commissioned_models:
     display_name: "Qwen3.6-35B-A3B (pending sequential)"
     enabled: false
     context: 32768
-    max_output: 8192
+    max_output: 4096
     temperature: 0.6
     top_p: 0.95
     labels: [pending, sequential, chat, coding, vllm, k3s02]
