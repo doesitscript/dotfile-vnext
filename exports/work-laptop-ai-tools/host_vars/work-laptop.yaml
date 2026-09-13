@@ -410,26 +410,22 @@ continue_ide_models:
 work_laptop_docker_model_runner_enabled: false
 work_laptop_docker_model_runner_automation: disabled
 
-# Client-local autocomplete: DMR 1.5B only (default). No Jan / Ollama on this slice.
+# Sole Continue autocomplete owner: LiteLLM gateway qwen2.5-coder-1.5b-base-q8_0
+# above (HVH-01 Ollama GGUF). Do not assign autocomplete to a second model —
+# Continue docs + laptop 2026-09-12: dual autocomplete roles break Tab-complete.
+# DMR entry kept as a catalog alternate with roles: [] (no Jan / Ollama).
 # Edit/apply stay on LiteLLM above.
 continue_ide_local_models:
-  - name: "Qwen 2.5 Coder 1.5B (Docker Model Runner Autocomplete)"
+  - name: "Qwen 2.5 Coder 1.5B (Docker Model Runner — alternate, no role)"
     provider: "openai"
     api_base: "http://127.0.0.1:12434/engines/llama.cpp/v1"
     api_key: "docker-model-runner"
     model: "local/qwen2.5-coder-autocomplete:1.5b-q8_0"
-    roles:
-      - autocomplete
+    roles: []
     default_completion_options:
       contextLength: 8192
       maxTokens: 128
       temperature: 0.1
-    autocomplete_options:
-      debounceDelay: 250
-      maxPromptTokens: 6144
-    use_legacy_completions_endpoint: true
-    prompt_templates:
-      autocomplete: "{% raw %}{{prefix}}{{suffix}}{% endraw %}"
   - name: "Nomic Embed Text (LM Studio Embeddings)"
     provider: "openai"
     api_base: "http://127.0.0.1:1234/v1"

@@ -24,10 +24,14 @@ models:
       - {{ capability | to_json }}
 {% endfor %}
 {% endif %}
+{% if (entry.roles | default([])) | length > 0 %}
     roles:
 {% for role in entry.roles %}
       - {{ role | to_json }}
 {% endfor %}
+{% else %}
+    roles: []
+{% endif %}
 {% if entry.default_completion_options is defined %}
     defaultCompletionOptions:
 {% for opt_key, opt_val in entry.default_completion_options.items() %}
@@ -65,10 +69,14 @@ models:
 {% if (entry.provider | default('openai')) != 'ollama' %}
     apiKey: {{ (entry.api_key | default('local')) | to_json }}
 {% endif %}
+{% if (entry.roles | default([])) | length > 0 %}
     roles:
 {% for role in entry.roles %}
       - {{ role | to_json }}
 {% endfor %}
+{% else %}
+    roles: []
+{% endif %}
 {% if entry.default_completion_options is defined %}
     defaultCompletionOptions:
 {% for opt_key, opt_val in entry.default_completion_options.items() %}

@@ -98,7 +98,22 @@ For each implement item:
 Inbox is often **sibling-local** (may not be on the export manifest). Keep
 receipts in the sibling; durable design stays in the packet.
 
-### 5. Sync + deliver
+### 5. Report, sync, and deliver
+
+Before committing, write a dated report or processed inbox receipt that states:
+
+- the observed problem and verified outcome;
+- the packet/source paths that must adopt the fix;
+- validation performed; and
+- any source-checkout or synchronization boundary that prevented adoption.
+
+When the user explicitly directs that all unadded or uncommitted work be
+delivered, inspect it for secrets and then stage the complete working tree with
+`git add -A`. Commit the report, inbox artifacts, and all reviewed work before
+pushing. Do not silently omit ordinary untracked files under that direction;
+only exclude secrets or files the user explicitly excludes.
+
+Then synchronize from the packet when the parent checkout is available:
 
 ```bash
 cd /Users/joshc/develop/dotfile-vnext
@@ -107,14 +122,17 @@ bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/sync_
 ```
 
 Then in the sibling: commit synced packet files (no vault secrets), push when
-the user wants laptop delivery. Laptop next: `work-laptop-day2-apply`.
+the user wants laptop delivery. If the source checkout is unavailable, state
+that limitation in the report and push the sibling evidence without claiming a
+source sync. Laptop next: `work-laptop-day2-apply`.
 
 ## Outputs
 
 - Inbox notes classified and moved
 - Packet/parent fixes + optional deviation entries
 - Validate + sync OK
-- Optional sibling commit/push
+- Report or processed inbox receipt before commit
+- User-directed all-work commit/push when requested
 - Clear note if AGENTS “prefer source” was applied (kept packet, not laptop drift)
 
 ## Validation
