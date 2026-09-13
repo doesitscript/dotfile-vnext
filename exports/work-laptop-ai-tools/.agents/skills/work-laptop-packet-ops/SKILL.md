@@ -5,7 +5,7 @@ description: "Use when validating, syncing, or smoke-checking the work-laptop-ai
 
 # Skill: Work-laptop packet ops
 
-Operational loop for this slice: **validate → sync sibling → optional smoke**.
+Operational loop for this slice: **validate → sync sibling → optional smoke → commit → push**.
 Heavy scripts live in the parent project skill `work-laptop-export-pack`; this
 slice skill scopes when to run them and what “done” means for the packet.
 
@@ -46,6 +46,27 @@ bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/round
 
 Archive/zip only when the user explicitly requests the archive branch.
 
+## Delivery handoff
+
+When the user asks to hand off or deliver downstream, inspect the complete
+sibling worktree, confirm no vault secrets are present, and stage all reviewed
+ordinary work before committing and pushing:
+
+```bash
+cd /Users/joshc/develop/work-laptop-ai-tools
+git status --short
+git diff --check
+git add -A
+git diff --cached --check
+git commit -m "Prepare work laptop packet handoff"
+git push origin HEAD
+```
+
+Never stage `vault/shared.vault.yml`, `.vault_pass`, or other secret material.
+If unrelated or unreviewed dirty work exists, stop and report it. A successful
+push makes the sibling ready for the downstream operator to pull; it does not
+prove the laptop has pulled or applied the packet.
+
 ## Workflow (from sibling-only session)
 
 1. Treat sibling as **generated**. Prefer editing parent packet then re-sync.
@@ -58,8 +79,8 @@ Archive/zip only when the user explicitly requests the archive branch.
 - Validate OK
 - Sibling sync file counts / state file updated
 - Smoke result if requested
-- Reminder: commit/push sibling when delivering to the laptop; laptop then
-  runs `work-laptop-day2-apply` (`git pull` + playbook `--skip-tags hosts_file`)
+- Delivery receipt: sibling commit and push completed when requested; laptop
+  then runs `work-laptop-day2-apply` (`git pull` + playbook `--skip-tags hosts_file`)
 
 ## Validation
 

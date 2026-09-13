@@ -59,6 +59,12 @@ After apply:
 2. Run verify block below
 3. Hand off IDE details to `work-laptop-ide-clients` if Continue/Cline still empty
 
+Before handing off this subproject, replace `scripts/recent_and_next.md` with
+only the next bounded commands for the next operator. The upstream handoff
+owner must then run `git add -A`, review the staged diff, commit, and push the
+sibling; this skill does not claim downstream readiness until that push is
+complete.
+
 ## Verify (required before claiming success)
 
 ```bash

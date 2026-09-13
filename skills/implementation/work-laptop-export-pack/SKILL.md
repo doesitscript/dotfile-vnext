@@ -111,6 +111,10 @@ bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/round
    external `playbook_dir`.
 10. Hand off to `project-skill-runtime-bridge` when the skill should be
    discoverable under `.cursor/skills`.
+11. When the user requests downstream delivery, inspect the sibling worktree,
+    exclude vault secrets, then run `git add -A`, review the staged diff,
+    commit, and `git push origin HEAD`. A pushed sibling is ready for the
+    downstream operator to pull; it is not proof that the laptop applied it.
 
 ## Handoffs
 
@@ -125,6 +129,7 @@ bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/round
 - optional apply proof from the external packet when `--apply` is used on the
   real work laptop
 - optional zip archive and archive-based smoke proof only when explicitly requested
+- git commit and push receipt when downstream delivery was requested
 
 ## Validation
 

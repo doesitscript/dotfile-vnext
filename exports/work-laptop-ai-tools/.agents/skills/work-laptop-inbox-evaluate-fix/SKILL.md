@@ -121,10 +121,25 @@ bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/valid
 bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/sync_sibling_repo.py
 ```
 
-Then in the sibling: commit synced packet files (no vault secrets), push when
-the user wants laptop delivery. If the source checkout is unavailable, state
-that limitation in the report and push the sibling evidence without claiming a
-source sync. Laptop next: `work-laptop-day2-apply`.
+Then in the sibling, complete the delivery handoff when requested:
+
+```bash
+cd <sibling-root>
+git status --short
+git diff --check
+git add -A
+git diff --cached --check
+git commit -m "Apply work laptop inbox fixes"
+git push origin HEAD
+```
+
+Stage all reviewed ordinary work under an explicit all-work request, but never
+stage `vault/shared.vault.yml`, `.vault_pass`, or other secret material. Do not
+force-reset or overwrite unrelated dirty work. A pushed sibling is ready for
+the downstream operator to pull; laptop apply remains a separate step. If the
+source checkout is unavailable, state that limitation in the report and push
+the sibling evidence without claiming a source sync. Laptop next:
+`work-laptop-day2-apply`.
 
 ## Outputs
 
