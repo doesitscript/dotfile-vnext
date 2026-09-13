@@ -1,0 +1,143 @@
+---
+# Filled from retro-capture.template.yml — Qwen3-Coder-30B config evaluation
+# Values gathered from live authorities + inbox 2026-09-12 (before/after).
+# Do NOT treat as live Ansible inventory.
+
+schema: model_lane_retro_capture_v0
+
+meta:
+  date: "2026-09-12"
+  title: "Qwen3-Coder-30B deployed config + improvement evaluation"
+  focus_client: continue
+  status: closed
+  notes: >-
+    Inbox ContextWindowExceededError + dual embed inventory. Keep model;
+    tighten client budgets and LiteLLM model_info. Folder:
+    reports/2026-09-12-qwen3-coder-config-evaluation/
+
+authorities:
+  client_model_ids: roles/k3s_litellm_gateway/defaults/main/model_client_ids.yml
+  runtime_backends: inventory/host_vars/hom-lab-ctl-k3s-02.yaml
+  commissioned_ssot: inventory/group_vars/all/ai_cli_apps.yml
+
+# ---------------------------------------------------------------------------
+# 1) Runner — BEFORE vs AFTER (vLLM unchanged for this fix)
+# ---------------------------------------------------------------------------
+runner:
+  kind: vllm
+  host_or_surface: hom-lab-ctl-k3s-02 / vllm-primary
+  model_id: cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit
+  key_flags:
+    enable_auto_tool_choice: true
+    tool_call_parser: qwen3_coder
+    tool_parser_plugin_enabled: false
+    gpu_memory_utilization: "0.90"
+    max_model_len: 32768
+    max_num_seqs: 6
+  notes: >-
+    Live /v1/models max_model_len=32768. Runner flags did not need a cutover
+    for the inbox fix; the overflow was client maxTokens + prompt size.
+
+# ---------------------------------------------------------------------------
+# 2) LiteLLM — BEFORE vs AFTER sampling / model_info
+# ---------------------------------------------------------------------------
+litellm:
+  client_model_name: qwen3-coder-30b-a3b
+  backend_model: hosted_vllm/cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit
+  api_base_internal: http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1
+  sampling:
+    before:
+      temperature: 0.7
+      top_p: 0.8
+      top_k: 20
+      repetition_penalty: 1.0
+    after:
+      temperature: 0.7
+      top_p: 0.8
+      top_k: 20
+      repetition_penalty: 1.05
+  model_info:
+    before:
+      max_tokens: null
+      max_input_tokens: null
+      max_output_tokens: null
+    after:
+      max_tokens: 32768
+      max_input_tokens: 28672
+      max_output_tokens: 4096
+  notes: >-
+    After: HF Best Practices repetition_penalty=1.05; model_info budgets teach
+    LiteLLM the 32k cup size so clients leave headroom.
+
+# ---------------------------------------------------------------------------
+# 3) Client day-2 — Continue (primary) + Cline snapshot
+# ---------------------------------------------------------------------------
+clients:
+  continue:
+    status: in_scope
+    roles:
+      chat: qwen3-coder-30b-a3b
+      edit: qwen2.5-coder-14b
+      apply: qwen2.5-coder-7b
+      autocomplete: qwen2.5-coder-1.5b-base-q8_0
+      embed: nomic-embed-text
+    default_completion_options:
+      chat_before:
+        contextLength: 32768
+        maxTokens: 8192
+        temperature: 0.7
+        topP: 0.8
+      chat_after:
+        contextLength: 32768
+        maxTokens: 4096
+        temperature: 0.7
+        topP: 0.8
+    capabilities:
+      - tool_use
+    other:
+      lm_studio_local_embed_before:
+        model: continue-nomic-embed
+        api_base: http://127.0.0.1:1234/v1
+        roles: [embed]
+        state: active_or_manual_comment_out
+      lm_studio_local_embed_after:
+        model: continue-nomic-embed
+        enabled: false
+        roles: [embed]
+        state: rendered_absent_sole_gateway_embed
+      dmr_local_autocomplete_alternate:
+        model: local/qwen2.5-coder-autocomplete:1.5b-q8_0
+        roles: []
+    notes: >-
+      Failure case: prompt ~24577 + maxTokens 8192 = 32769 > 32768 cup.
+      After: maxTokens 4096 leaves room; one embed owner only.
+
+  cline:
+    status: in_scope
+    model: qwen3-coder-30b-a3b
+    context_window: 32768
+    max_output_tokens: 4096
+    other:
+      before_max_output_tokens: 8192
+      tools: true
+    notes: Aligned with Continue chat budget after fix.
+
+  codex:
+    status: reserved
+    profile: ""
+    model: qwen3-coder-30b-a3b
+    other: {}
+    notes: Same LiteLLM client id; profile ATDD not part of this inbox pass.
+
+outcome:
+  keep_model: true
+  changes_applied:
+    - "Continue/Cline/ai_cli max_output 8192→4096"
+    - "LM Studio continue-nomic-embed enabled: false"
+    - "LiteLLM repetition_penalty 1.05"
+    - "LiteLLM model_info max_input/output budgets"
+    - "HRL pack models/qwen-qwen3-coder-30b-a3b-instruct"
+  follow_ups:
+    - "Optional: raise vLLM max-model-len after VRAM/kv probe"
+    - "Do not switch tool parser to qwen3_xml without regression"
+    - "Do not swap to Qwen3.6 for coding primary"
