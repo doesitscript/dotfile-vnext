@@ -1,0 +1,281 @@
+---
+# AI CLI / IDE client apps — grouping metadata + commissioned LiteLLM model SSOT.
+#
+# Purpose:
+# - Group deployable client roles under one playbook tag: ai_cli_apps
+# - Keep a thin commissioned model id list so mac-dev + work-laptop stay aligned
+# - Labels for inventory/host metadata (not K8s node labels)
+#
+# Authority:
+# - Model *routes* still owned by roles/k3s_litellm_gateway + host_vars k3s-02
+# - Per-client schema (Continue YAML vs Cline JSON vs Kilo JSONC) stays in each role
+# - This file owns the shared *which lanes are commissioned* contract
+#
+# Human / agent intake docs (same folder):
+# - ai_cli_apps-INTAKE.md          — dependents that feed from this file
+# - ai_cli_apps-INFRA-COGS.md      — ASCII layout of servers/software cogs
+#
+# Deploy (home Mac):
+#   ansible-playbook playbooks/deploy_development_nodes.yaml \
+#     --limit mac-dev --tags ai_cli_apps
+#
+# Deploy (work-laptop packet):
+#   ansible-playbook playbook.yaml --tags ai_cli_apps
+
+# ---------------------------------------------------------------------------
+# Agent intake snippet — Continue / client model-lane recommend → apply → verify
+# Paste into a Cursor/Codex turn. Fill free_infra from live inventory facts.
+# Skills: .cursor/skills/continue-ide-model-lane-recommend|verify
+# ---------------------------------------------------------------------------
+ai_cli_model_lane_intake:
+  schema: ai_cli_model_lane_intake_v1
+  docs:
+    - inventory/group_vars/all/ai_cli_apps-INTAKE.md
+    - inventory/group_vars/all/ai_cli_apps-INFRA-COGS.md
+    - docs/plans/2026-09-12-mac_and_model_recommend/
+  default_roles:
+    - chat
+    - edit
+    - apply
+    - autocomplete
+    - embed
+  default_client: "mac-dev Continue via LiteLLM"
+  skill_chain:
+    - continue-ide-model-lane-recommend
+    - homelab-ansible-first-entry
+    - continue-ide-model-lane-verify
+  # Copy-paste prompt (also duplicated in ai_cli_apps-INTAKE.md).
+  prompt_snippet: |
+    Use skill continue-ide-model-lane-recommend with:
+      roles: [chat, edit, apply, autocomplete, embed]
+      free_infra: <hosts, GPUs, VRAM, runtimes>
+      client: mac-dev Continue via LiteLLM
+    Then use skill homelab-ansible-first-entry to apply, then continue-ide-model-lane-verify.
+
+ai_cli_apps_meta:
+  schema: ai_cli_apps_v1
+  playbook_tag: ai_cli_apps
+  # Alias tag — same membership; prefer ai_cli_apps in new docs/commands.
+  playbook_tag_alias: ai_clients
+  labels:
+    - ai-cli-apps
+    - litellm-clients
+    - openai-compatible-edge
+  description: >-
+    Homelab LiteLLM-backed AI CLI and IDE clients. Use umbrella playbook tag
+    ai_cli_apps to converge model catalogs on all commissioned targets.
+  model_lane_intake_key: ai_cli_model_lane_intake
+
+# Registry — one row per deployable client role.
+# state_var: host inventory gate (present|absent). Tags must include ai_cli_apps.
+ai_cli_apps:
+  - id: continue_ide
+    role: continue_ide
+    kind: ide_extension
+    state_var: continue_ide_state
+    tags: [ai_cli_apps, ai_clients, continue, continue_ide]
+    targets: [mac-dev, work-laptop]
+  - id: cline_ide
+    role: cline_ide
+    kind: ide_extension
+    state_var: cline_ide_state
+    tags: [ai_cli_apps, ai_clients, cline, cline_ide]
+    targets: [mac-dev, work-laptop]
+    notes: >-
+      Owns ~/.cline providers/models/MCP used by both the VS Code extension and
+      the terminal CLI (cline_cli).
+  - id: cline_cli
+    role: cline_cli
+    kind: cli
+    state_var: cline_cli_state
+    tags: [ai_cli_apps, ai_clients, cline, cline_cli]
+    targets: [mac-dev, work-laptop]
+    notes: >-
+      npm global `cline` binary (Node 22+). Requires cline_ide config present.
+  - id: opencode_cli
+    role: opencode_cli
+    kind: cli
+    state_var: opencode_cli_state
+    tags: [ai_cli_apps, ai_clients, opencode, opencode_cli]
+    targets: [mac-dev, work-laptop]
+  - id: kilo_ide
+    role: kilo_ide
+    kind: cli
+    state_var: kilo_ide_state
+    tags: [ai_cli_apps, ai_clients, kilo, kilo_ide]
+    targets: [mac-dev, work-laptop]
+  - id: aider
+    role: aider
+    kind: cli
+    state_var: aider_state
+    tags: [ai_cli_apps, ai_clients, aider, aider_cli]
+    targets: [mac-dev, work-laptop]
+  - id: codex_homelab_profiles
+    role: codex_homelab_profiles
+    kind: cli_profiles
+    state_var: codex_homelab_profiles_state
+    tags: [ai_cli_apps, ai_clients, codex, codex_homelab_profiles]
+    targets: [mac-dev, work-laptop]
+  - id: zed_ide
+    role: zed_ide
+    kind: ide
+    state_var: zed_ide_state
+    tags: [ai_cli_apps, ai_clients, zed, zed_ide]
+    targets: [work-laptop]
+    notes: Work-laptop packet only today; not on deploy_development_nodes Darwin set.
+
+# Commissioned LiteLLM model lanes that every AI CLI app should expose
+# (when the client supports a multi-model catalog). Default chat model first.
+# Pending/sequential lanes stay listed with enabled: false — do not delete.
+#
+# Client-visible LiteLLM ids are plain slugs (no @k3s02-vllm). Placement belongs
+# in labels / notes / LiteLLM model_info — see roles/k3s_litellm_gateway/.../model_client_ids.yml
+#
+# Naming contract — HARD client requirements first, then consistency:
+# Prefer the same *plain LiteLLM id* everywhere, but NEVER strip a prefix or
+# path shape a client requires to function. Schema beats preference.
+# - Continue / Cline / Zed model fields: plain id (e.g. qwen3.6-35b-a3b)
+# - Continue apiBase: gateway root WITHOUT /v1; Cline baseUrl: WITH /v1
+# - OpenCode / Kilo catalog keys: plain id under provider "litellm"
+# - OpenCode / Kilo *selection* strings: litellm/<plain id>  (required provider namespace)
+# - Aider: openai/<plain id>  (required OpenAI-compatible prefix)
+# Do not invent per-client aliases or resurrect @k3s02-vllm in client ids.
+#
+# OPEN QUESTION (2026-09-12): upgrading a role (e.g. Edit 7B → 14B) does NOT
+# automatically mean remove the older model from catalogs. Prefer add/split
+# over silent retire until we decide. See:
+#   docs/lessons-learned/continue/do-not-auto-retire-older-model-entries.md
+#   inventory/group_vars/all/ai_cli_apps-INTAKE.md (§ Older models when upgrading)
+#
+# Operator preference: extra catalog entries that are not currently active in
+# lab infra are OK. Do not prune host/role catalogs just to match the enabled
+# commissioned set — keep older / optional / pending rows unless asked.
+ai_cli_commissioned_models:
+  # -------------------------------------------------------------------------
+  # UPSTREAM INTAKE — Qwen3-Coder-30B-A3B (primary chat / coding default)
+  # Served as: cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit on k3s-02 vLLM
+  # (RTX 5090 sequential). Client id: qwen3-coder-30b-a3b (placement NOT in id).
+  # Tools: vLLM auto tool choice + qwen3_coder parser plugin.
+  # -------------------------------------------------------------------------
+  - id: qwen3-coder-30b-a3b
+    display_name: "Qwen3-Coder-30B-A3B"
+    enabled: true
+    default_chat: true
+    context: 32768
+    # Leave headroom vs context: input + max_output must stay <= 32768
+    # (Continue ContextWindowExceededError when max_output was 8192).
+    max_output: 4096
+    temperature: 0.7
+    top_p: 0.8
+    labels: [primary, chat, coding, tools, vllm, k3s02]
+    placement_note: "k3s-02 vLLM / RTX 5090 (sequential primary)"
+  - id: qwen3.6-35b-a3b
+    display_name: "Qwen3.6-35B-A3B (pending sequential)"
+    enabled: false
+    context: 32768
+    max_output: 4096
+    temperature: 0.6
+    top_p: 0.95
+    labels: [pending, sequential, chat, coding, vllm, k3s02]
+    placement_note: "k3s-02 vLLM / RTX 5090 when cut over (not concurrent with coder-30b)"
+    # Operator evaluation (2026-09-12 while primary): followed instructions cleanly;
+    # RHS-of-`=` edits correct after one clarification.
+  - id: qwen2.5-coder-14b
+    display_name: "qwen2.5-coder:14b"
+    enabled: true
+    default_edit: true
+    context: 12000
+    max_output: 4096
+    temperature: 0.2
+    labels: [edit, desktop, ollama]
+  - id: qwen2.5-coder-7b
+    display_name: "qwen2.5-coder:7b"
+    enabled: true
+    default_apply: true
+    context: 12000
+    max_output: 4096
+    temperature: 0.2
+    labels: [apply, desktop, ollama]
+  - id: qwen2.5-coder-1.5b-base-q8_0
+    # Continue autocomplete = FIM (fill-in-the-middle). Ollama GGUF
+    # qwen2.5-coder:1.5b-base-q8_0 TEMPLATE uses <|fim_*|> when .Suffix is set;
+    # Continue promptTemplates.autocomplete must match. Not a chat lane.
+    # Other FIM candidates (verify before try): granite-code:8b(-base);
+    # starcoder2:3b|7b. Gate = ollama show FIM TEMPLATE + /v1/completions 200.
+    display_name: "qwen2.5-coder:1.5b-base-q8_0"
+    enabled: true
+    default_autocomplete: true
+    # Continue defaultCompletionOptions.contextLength for FIM (operator: 12768).
+    context: 12768
+    max_output: 256
+    temperature: 0.0
+    labels: [autocomplete, fim, hvh01, ollama]
+  - id: nomic-embed-text
+    display_name: "nomic-embed-text"
+    enabled: true
+    default_embed: true
+    context: 8192
+    labels: [embed, hvh01, ollama]
+  - id: gpt-oss-20b
+    display_name: "gpt-oss:20b"
+    enabled: true
+    context: 131072
+    max_output: 8192
+    temperature: 1.0
+    top_p: 0.95
+    labels: [chat, desktop, ollama, tools]
+  - id: gemini-2.5-flash
+    display_name: "Gemini 2.5 Flash (Daily Driver)"
+    enabled: true
+    context: 1048576
+    max_output: 8192
+    temperature: 0.3
+    labels: [chat, cloud, gemini]
+  - id: gemini-2.5-flash-long-context
+    display_name: "Gemini 2.5 Flash (Long Context 1M)"
+    enabled: true
+    context: 1048576
+    max_output: 8192
+    temperature: 0.3
+    labels: [chat, cloud, gemini, long-context]
+  - id: gemini-2.5-pro
+    display_name: "Gemini 2.5 Pro (Deep Reasoning)"
+    enabled: true
+    context: 1048576
+    max_output: 8192
+    temperature: 0.2
+    labels: [chat, cloud, gemini, reasoning]
+  - id: gemini-2.5-flash-lite
+    display_name: "Gemini 2.5 Flash Lite (Bulk)"
+    enabled: true
+    context: 1048576
+    max_output: 4096
+    temperature: 0.3
+    labels: [chat, cloud, gemini, bulk]
+
+# Convenience ids for docs/scripts (keep in sync with enabled: true rows above).
+ai_cli_commissioned_model_ids_enabled:
+  - qwen3-coder-30b-a3b
+  - qwen2.5-coder-14b
+  - qwen2.5-coder-7b
+  - qwen2.5-coder-1.5b-base-q8_0
+  - nomic-embed-text
+  - gpt-oss-20b
+  - gemini-2.5-flash
+  - gemini-2.5-flash-long-context
+  - gemini-2.5-pro
+  - gemini-2.5-flash-lite
+
+ai_cli_default_chat_model: qwen3-coder-30b-a3b
+ai_cli_default_edit_model: qwen2.5-coder-14b
+ai_cli_default_apply_model: qwen2.5-coder-7b
+ai_cli_default_autocomplete_model: qwen2.5-coder-1.5b-base-q8_0
+ai_cli_default_embed_model: nomic-embed-text
+
+# Provider namespace for OpenCode / Kilo (catalog keys stay plain; selection adds this).
+ai_cli_litellm_provider_id: litellm
+# Derived selection strings — prefer these in host_vars / role defaults.
+ai_cli_opencode_default_model: "{{ ai_cli_litellm_provider_id }}/{{ ai_cli_default_chat_model }}"
+ai_cli_kilo_default_model: "{{ ai_cli_litellm_provider_id }}/{{ ai_cli_default_chat_model }}"
+ai_cli_kilo_small_model: "{{ ai_cli_litellm_provider_id }}/{{ ai_cli_default_apply_model }}"
+ai_cli_aider_default_model: "openai/{{ ai_cli_default_chat_model }}"

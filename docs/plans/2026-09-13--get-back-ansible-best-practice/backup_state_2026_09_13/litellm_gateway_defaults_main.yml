@@ -103,47 +103,76 @@ k3s_litellm_gateway_context_window_fallbacks_without_openai: []
 # Complexity auto-router (MODEL GROUP) — disabled for Kilo clean setup.
 k3s_litellm_gateway_complexity_router_enabled: false
 
-# =============================================================================
-# MODEL CONFIGURATION SETTINGS
-# =============================================================================
-k3s_litellm_gateway_primary_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1"
+# Local vLLM backend contract. Primary Continue/Codex/OpenCode chat lane.
+# Current sequential primary: Qwen3-Coder-30B-A3B AWQ-4bit (cyankiwi).
+k3s_litellm_gateway_primary_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1" #FIXME: v1 is note part of the base
 k3s_litellm_gateway_primary_vllm_model: "cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit"
+# Coding-oriented sampling for the AWQ coder primary (clients may override).
+# HF card Best Practices: temp=0.7 top_p=0.8 top_k=20 repetition_penalty=1.05
 k3s_litellm_gateway_primary_vllm_temperature: 0.7
 k3s_litellm_gateway_primary_vllm_top_p: 0.8
 k3s_litellm_gateway_primary_vllm_top_k: 20
 k3s_litellm_gateway_primary_vllm_repetition_penalty: 1.05
+k3s_litellm_gateway_secondary_review_runtime_slug: "vllm-primary"
+k3s_litellm_gateway_secondary_review_api_base: "{{ k3s_litellm_gateway_primary_vllm_api_base }}"
+k3s_litellm_gateway_secondary_review_model: "{{ k3s_litellm_gateway_primary_vllm_model }}"
 
+# Homelab local routes — current Continue-compatible surfaces only (model@host).
+# Kilo routes and legacy 5090 recommendations are retired. Do not add a model
+# here until its client owner, variant, and runtime are explicitly selected.
 k3s_litellm_gateway_lane_contract:
   - lane: qwen3-coder-30b-a3b
     state: enabled
     backend_kind: local-vllm
     runtime: vllm-primary
-  - lane: qwen2.5-coder-7b
-    state: enabled
-    backend_kind: ollama-desktop
-    runtime: ollama-qwen25-coder-7b-desktop
-  - lane: qwen2.5-coder-14b
-    state: enabled
-    backend_kind: ollama-desktop
-    runtime: ollama-qwen25-coder-14b-desktop
-  - lane: qwen2.5-coder-1.5b-base-q8_0
-    state: enabled
-    backend_kind: ollama-hvh01
-    runtime: ollama-autocomplete-1.5b-hvh-01
+    reason: >-
+      Continue/Cline/Codex/OpenCode default chat on 5090 — Qwen3-Coder-30B AWQ
+      @ 32k; tool parser plugin + auto tool choice.
+  - lane: qwen3.6-35b-a3b
+    state: pending_sequential
+    backend_kind: local-vllm
+    runtime: vllm-primary
+    reason: Prior NVFP4 generalist; requires sequential GPU cutover off coder-30b.
   - lane: gpt-oss-20b
     state: enabled
     backend_kind: ollama-desktop
     runtime: ollama-gpt-oss-desktop
-  - lane: nomic-embed-text
-    state: enabled
-    backend_kind: ollama-hvh01
-    runtime: ollama-embed-hvh01
-  - lane: ministral-3-8b
+    reason: OpenAI gpt-oss:20b via desktop Ollama; think=low|medium|high.
+  - lane: qwen2.5-coder-7b
     state: enabled
     backend_kind: ollama-desktop
-    runtime: ollama-ministral-desktop
+    runtime: ollama-qwen25-coder-7b-desktop
+    reason: Continue apply / small-fast on desktop Ollama (plain client id).
+  - lane: qwen2.5-coder-14b
+    state: enabled
+    backend_kind: ollama-desktop
+    runtime: ollama-qwen25-coder-14b-desktop
+    reason: Continue edit / desktop implement on desktop Ollama (plain client id).
+  - lane: qwen2.5-coder-1.5b-base-q8_0
+    state: enabled
+    backend_kind: ollama-hvh01
+    runtime: ollama-autocomplete-1.5b-hvh-01
+    reason: Continue autocomplete on HVH-01 (GTX 1060).
 
+# RETIRED lane vocabulary — blocked; see git history before re-enabling.
+# - lane: smart-router  (MODEL GROUP — removed)
+# - lane: coder-primary / code-review / experiment / default  (duplicate vLLM aliases)
+# - lane: code-fast / continue-* / open-webui-* / gpt-oss-20b  (non-Kilo downloads)
+
+# Model routes — api_key os.environ/* keys are injected via Kubernetes Secret litellm-env-secret.
+#
+# Do not confuse this LiteLLM `model_list` with the durable model catalog:
+# - `k3s_litellm_gateway_model_list` is the client-facing gateway route list.
+# - `inventory/group_vars/model_catalog/manifest.yml` is the HF/storage catalog
+#   SSOT for candidate/downloaded/served model weights.
+# - `model_info` below carries route metadata exposed by LiteLLM `/model/info`
+#   and used by Langfuse/client tracing. Per-request `agent_role` and
+#   `context_class` still come from the IDE/agent client metadata.
+# Kilo clean setup: static model_list is empty — routes are appended in
+# build_helm_values.yml when host_vars commission api_bases (vLLM + Ollama).
 k3s_litellm_gateway_model_list: []
+
+# Cloud / Anthropic fragments disabled for Kilo clean setup.
 k3s_litellm_gateway_anthropic_model_routes: []
 
 # -----------------------------------------------------------------------------

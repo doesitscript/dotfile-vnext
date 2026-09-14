@@ -1,0 +1,51 @@
+---
+# LiteLLM client-facing model_name values (gateway model_list[].model_name).
+#
+# ACTIVE RULE: use the plain model slug clients compare easily (e.g. qwen3.6-35b-a3b).
+# Host/runtime placement is NOT part of the visible id — put it in model_info.notes
+# / inventory comments / labels instead of suffixes like @k3s02-vllm.
+#
+# Historical pattern (retired for k3s02-vllm): model@host
+#   qwen3.6-35b-a3b@k3s02-vllm  → now  qwen3.6-35b-a3b
+# Prefer plain slugs. Do not use @desktop or @google~lane in client-facing ids
+# (placement belongs in model_info / notes). Embed/autocomplete use exact Ollama tags; no @hvh01 in client ids. Legacy note retired:
+# later plain rename. Do not reintroduce @k3s02-vllm.
+#
+# Do not invent model slugs (ornith-35b, coder-primary, kilo-coder, …).
+
+k3s_litellm_gateway_client_model_id_syntax: "<model-slug>"
+
+k3s_litellm_gateway_client_model_host_desktop: desktop
+k3s_litellm_gateway_client_model_host_hvh01: hvh01
+# Placement label only (not concatenated into client model ids anymore).
+k3s_litellm_gateway_client_model_host_k3s02_vllm: k3s02-vllm
+
+# --- Active homelab client model ids ---
+# Continue/Cline/Codex default chat lane (5090 sequential primary on k3s-02 vLLM).
+k3s_litellm_gateway_client_model_id_continue_chat: "qwen3-coder-30b-a3b"
+# Prior sequential NVFP4 generalist — keep as named alias when that weight is served.
+k3s_litellm_gateway_client_model_id_coder_primary: "qwen3-coder-30b-a3b"
+k3s_litellm_gateway_client_model_id_continue_edit: "qwen2.5-coder-7b"
+k3s_litellm_gateway_client_model_id_continue_autocomplete: "qwen2.5-coder-1.5b-base-q8_0"
+# Desktop Ollama 14B implement/edit lane (plain slug; placement in notes).
+k3s_litellm_gateway_client_model_id_desktop_implement: "qwen2.5-coder-14b"
+k3s_litellm_gateway_client_model_id_gpt_oss: "gpt-oss-20b"
+# Continue embed role — nomic on HVH-01 Ollama (not a chat lane).
+k3s_litellm_gateway_client_model_id_nomic_embed: "nomic-embed-text"
+
+# Retired Kilo compatibility variables. Empty by design so old Kilo routes
+# cannot be published accidentally by a nonempty api_base override.
+k3s_litellm_gateway_client_model_id_kilo_vllm: ""
+k3s_litellm_gateway_client_model_id_kilo_autocomplete: ""
+k3s_litellm_gateway_client_model_id_kilo_fast: "ministral-3-8b"
+
+# --- Google Gemini cloud lanes (vault_shared_gemini_api_key) ---
+k3s_litellm_gateway_client_model_id_gemini_long_context: "gemini-2.5-flash-long-context"
+k3s_litellm_gateway_client_model_id_gemini_deep_reasoning: "gemini-2.5-pro"
+k3s_litellm_gateway_client_model_id_gemini_public_research: "gemini-2.5-flash"
+k3s_litellm_gateway_client_model_id_gemini_bulk: "gemini-2.5-flash-lite"
+k3s_litellm_gateway_client_model_id_gemini_embeddings: "gemini-embedding-001"
+
+# --- RETIRED (2026-09-01 Kilo clean setup) — do not publish without re-commissioning ---
+# Duplicate vLLM aliases, Continue/Open WebUI lanes, cloud rows, and group routers
+# lived here as ~friendly-suffix client IDs. See git history / archive if needed.

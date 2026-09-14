@@ -1,0 +1,847 @@
+node_role: work-laptop-ai-tools
+node_purpose: interactive_desktop
+management_boundary: user_managed
+authority_level: non-authoritative
+outbound_only: true
+os: macOS
+
+work_laptop_packet_scope:
+  - hosts_file
+  - codex_cli
+  - codex_user_config
+  - codex_profiles
+  - terraform_cli
+  - aws_iac_mcp
+  - vscode_mcp
+  - vscode_continue
+  - vscode_cline
+  - zed_ide
+  - jan_ide
+  - opencode_cli
+  - kilo_ide
+  - aider
+  - ai_cli_apps
+
+# Labels for AI CLI / IDE client grouping (see inventory/group_vars/all/ai_cli_apps.yml).
+ai_cli_apps_labels:
+  - ai-cli-apps
+  - litellm-clients
+  - openai-compatible-edge
+
+# Recorded facts (source of truth). Agents: read this block before searching.
+work_laptop_model: "MacBook Pro 14-inch (November 2023)"
+work_laptop_chip: "Apple M3 Pro"
+work_laptop_macos_version: "Tahoe 26.6.1"
+pyenv_global_versions:
+  - "3.14.6"
+python_vscode_extensions: []
+vscode_cli_binary: code
+
+work_laptop_hello_marker_path: "{{ ansible_env.HOME }}/.work-laptop-export-targeting.txt"
+
+homelab_hosts_file_mac_enabled: true
+homelab_hosts_file_mac_web_catalog:
+  - catalog_key: langfuse-web
+    hostname: langfuse.hom.lab
+    hosts_ip: "192.168.50.158"
+    verify_url: "http://langfuse.hom.lab:30000/"
+    mac_hosts_enabled: true
+  - catalog_key: litellm-gateway
+    hostname: litellm.hom.lab
+    hosts_ip: "192.168.50.158"
+    verify_url: "http://litellm.hom.lab:30400/"
+    mac_hosts_enabled: true
+  - catalog_key: jupyter-workbench
+    hostname: jupyter.hom.lab
+    hosts_ip: "192.168.137.11"
+    verify_url: "http://jupyter.hom.lab:8888/lab"
+    mac_hosts_enabled: true
+  - catalog_key: netbox-web
+    hostname: netbox.hom.lab
+    hosts_ip: "192.168.50.158"
+    verify_url: "http://netbox.hom.lab:8000/"
+    mac_hosts_enabled: true
+  - catalog_key: semaphore-web
+    hostname: semaphore.hom.lab
+    hosts_ip: "192.168.50.158"
+    verify_url: "http://semaphore.hom.lab:3001/"
+    mac_hosts_enabled: true
+  - catalog_key: loki-http
+    hostname: loki.hom.lab
+    hosts_ip: "192.168.50.158"
+    verify_url: "http://loki.hom.lab:3100/ready"
+    mac_hosts_enabled: true
+  - catalog_key: openwebui-web
+    hostname: openwebui.hom.lab
+    hosts_ip: "192.168.50.158"
+    verify_url: "http://openwebui.hom.lab:3080/"
+    mac_hosts_enabled: true
+  - catalog_key: grafana-web
+    hostname: grafana.hom.lab
+    hosts_ip: "192.168.137.10"
+    verify_url: "http://grafana.hom.lab:3000/"
+    mac_hosts_enabled: true
+  - catalog_key: HOM-LAB-HVH-02-host
+    hostname: HOM-LAB-HVH-02
+    hosts_ip: "192.168.50.158"
+    verify_url: "ssh://HOM-LAB-HVH-02"
+    mac_hosts_enabled: true
+  - catalog_key: HOM-LAB-HVH-01-host
+    hostname: HOM-LAB-HVH-01
+    hosts_ip: "192.168.50.234"
+    verify_url: "ssh://HOM-LAB-HVH-01"
+    mac_hosts_enabled: true
+  - catalog_key: ollama-desktop
+    hostname: ollama-desktop.hom.lab
+    hosts_ip: "192.168.50.133"
+    verify_url: "http://ollama-desktop.hom.lab:11434/api/tags"
+    mac_hosts_enabled: true
+  - catalog_key: ollama-hvh01
+    hostname: ollama-hvh01.hom.lab
+    hosts_ip: "192.168.50.234"
+    verify_url: "http://ollama-hvh01.hom.lab:11434/api/tags"
+    mac_hosts_enabled: true
+  - catalog_key: a1111-hvh01
+    hostname: a1111-hvh01.hom.lab
+    hosts_ip: "192.168.50.234"
+    verify_url: "http://a1111-hvh01.hom.lab:7860/sdapi/v1/sd-models"
+    mac_hosts_enabled: true
+  - catalog_key: comfyui-k3s
+    hostname: comfyui.hom.lab
+    hosts_ip: "192.168.50.158"
+    verify_url: "http://comfyui.hom.lab:30188/system_stats"
+    mac_hosts_enabled: true
+homelab_hosts_file_mac_router_workaround:
+  - hostname: hom-lab-ctl-dkr-02
+    ip: "192.168.137.10"
+  - hostname: hom-lab-ctl-k3s-02
+    ip: "192.168.137.11"
+
+node_default_version: "20"
+npm_global_packages: []
+
+work_laptop_codex_cli_state: present
+
+codex_user_config_state: present
+codex_user_config_model: "gpt-5.4"
+codex_user_config_model_reasoning_effort: "high"
+codex_user_config_approval_policy: "never"
+codex_user_config_memories: true
+codex_user_config_shell_snapshot: true
+codex_user_config_desktop_conversation_detail_mode: "STEPS_COMMANDS"
+codex_user_config_desktop_ambient_suggestions_enabled: false
+codex_user_config_desktop_follow_up_queue_mode: "queue"
+
+codex_homelab_profiles_state: present
+codex_homelab_profiles_multi_terminal_state: present
+codex_homelab_profiles_model: "ministral-3-8b"
+codex_homelab_profiles_context_window: 24000
+
+vscode_extensions:
+  - Continue.continue
+  - saoudrizwan.claude-dev
+  - openai.chatgpt
+  - hashicorp.terraform
+  - redhat.ansible
+  - redhat.vscode-yaml
+  - kilocode.kilo-code
+
+# cx-* wrappers: work laptop repos live under Documents/develop (not ~/develop).
+codex_homelab_profiles_develop_root: "{{ ansible_env.HOME }}/Documents/develop"
+codex_homelab_profiles_repo_primary: "{{ codex_homelab_profiles_develop_root }}/work-laptop-ai-tools"
+codex_homelab_profiles_repo_skills: "{{ codex_homelab_profiles_develop_root }}/global-skills"
+codex_homelab_profiles_repo_research: "{{ codex_homelab_profiles_develop_root }}/homelab-reference-library"
+
+terraform_cli_state: present
+
+terraform_mcp_state: present
+terraform_mcp_targets:
+  - codex
+terraform_mcp_codex_config_path: "{{ ansible_env.HOME }}/.codex/config.toml"
+
+aws_mcp_state: present
+aws_mcp_targets:
+  - codex
+aws_mcp_codex_config_path: "{{ ansible_env.HOME }}/.codex/config.toml"
+
+aws_iac_mcp_state: present
+aws_iac_mcp_targets:
+  - codex
+aws_iac_mcp_codex_config_path: "{{ ansible_env.HOME }}/.codex/config.toml"
+aws_iac_mcp_aws_region: "us-east-1"
+# When non-empty, Continue AWS IaC MCP env sets AWS_PROFILE (SSO/login still operator-run).
+aws_iac_mcp_aws_profile: ""
+# Prefer Homebrew uv path so Continue never gets an empty command (inbox/config.yaml bug).
+aws_iac_mcp_command: "/opt/homebrew/opt/uv/bin/uvx"
+
+
+# ---------------------------------------------------------------------------
+# MCP catalog. Commissioned clients for this slice (NOT VS Code native MCP):
+#   - Continue extension (~/.continue/config.yaml via continue_ide_mcp_servers)
+#   - Cline extension (~/.cline via cline_ide_mcp_servers; mirrors Continue list)
+#   - Codex CLI + Codex VS Code extension (~/.codex/config.toml via *_targets: [codex])
+# Remaining catalog entries stay absent. Do not add vscode to *_targets.
+# ---------------------------------------------------------------------------
+work_laptop_mcp_env_dir: "{{ ansible_env.HOME }}/.config/work-laptop-ai-tools/mcp/env.d"
+work_laptop_mcp_vault_file: "{{ playbook_dir }}/vault/shared.vault.yml"
+work_laptop_mcp_codex_config_path: "{{ ansible_env.HOME }}/.codex/config.toml"
+work_laptop_nvm_exec: "{{ playbook_dir }}/bin/work-laptop-nvm-exec"
+
+ripgrep_cli_state: present
+
+context7_mcp_state: present
+context7_mcp_targets: [codex]
+context7_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
+context7_mcp_env_file_path: "{{ work_laptop_mcp_env_dir }}/context7.env"
+context7_mcp_wrapper_path: "{{ playbook_dir }}/bin/mcp-server-env-wrapper"
+context7_mcp_vault_file_path: "{{ work_laptop_mcp_vault_file }}"
+
+firecrawl_mcp_state: absent
+firecrawl_mcp_targets: [codex]
+firecrawl_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
+firecrawl_mcp_env_file_path: "{{ work_laptop_mcp_env_dir }}/firecrawl.env"
+firecrawl_mcp_wrapper_path: "{{ playbook_dir }}/bin/mcp-server-env-wrapper"
+firecrawl_mcp_vault_file_path: "{{ work_laptop_mcp_vault_file }}"
+
+morph_mcp_state: present
+morph_mcp_targets: [codex]
+morph_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
+morph_mcp_env_file_path: "{{ work_laptop_mcp_env_dir }}/morph.env"
+morph_mcp_wrapper_path: "{{ playbook_dir }}/bin/mcp-server-env-wrapper"
+morph_mcp_vault_file_path: "{{ work_laptop_mcp_vault_file }}"
+# WarpGrep habit layer: Continue user rules + packet AGENTS.md. Skip Cursor /
+# Copilot project files and VS Code native mcp.json on this slice.
+morph_mcp_continue_enabled: true
+morph_mcp_continue_rule_path: "{{ ansible_env.HOME }}/.continue/rules/morph-warpgrep-evaluation.md"
+morph_mcp_routing_enable_agents_md: true
+morph_mcp_routing_enable_codex_explorer: false
+morph_mcp_routing_enable_codex_default: false
+morph_mcp_routing_enable_codex_worker: false
+morph_mcp_routing_enable_cursor_rule: false
+morph_mcp_routing_enable_copilot_instructions: false
+
+playwright_mcp_state: absent
+playwright_mcp_targets: [codex]
+playwright_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
+
+fetch_mcp_state: absent
+fetch_mcp_targets: [codex]
+fetch_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
+
+firebase_mcp_state: present
+firebase_mcp_targets: [codex]
+firebase_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
+firebase_mcp_env_file_path: "{{ work_laptop_mcp_env_dir }}/firebase.env"
+firebase_mcp_wrapper_path: "{{ playbook_dir }}/bin/mcp-server-env-wrapper"
+firebase_mcp_vault_file_path: "{{ work_laptop_mcp_vault_file }}"
+firebase_mcp_credentials_file_path: "{{ ansible_env.HOME }}/.config/work-laptop-ai-tools/mcp/credentials/firebase-service-account.json"
+
+drawio_mcp_state: absent
+drawio_mcp_targets: [codex]
+drawio_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
+drawio_mcp_codex_wrapper_path: "{{ playbook_dir }}/bin/drawio-mcp-codex-stdio-wrapper.js"
+
+netbox_mcp_state: absent
+netbox_mcp_targets: [codex]
+netbox_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
+# Literal URL so role arg-spec/defaults never touch parent hostvars on this packet.
+netbox_mcp_url: "http://netbox.hom.lab:8000"
+
+openai_docs_mcp_state: absent
+openai_docs_mcp_targets: [codex]
+openai_docs_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
+
+langfuse_docs_mcp_state: absent
+langfuse_docs_mcp_targets: [codex]
+langfuse_docs_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
+
+huggingface_mcp_state: absent
+huggingface_mcp_targets: [codex]
+huggingface_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
+
+# Roles without native present|absent — playbook uses when: on these flags.
+mcp_sysoperator_state: absent
+mcp_sysoperator_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
+mcp_sysoperator_project_dir: "{{ ansible_env.HOME }}/.vscode"
+
+redhat_ansible_mcp_state: absent
+redhat_ansible_project_dir: "{{ ansible_env.HOME }}/.vscode"
+redhat_ansible_workspace_root: "{{ playbook_dir }}"
+
+# Permanent stability policy as of 2026-09-02:
+# - do not enable editor autocomplete against remote LiteLLM, vLLM, or remote Ollama lanes
+# - do not enable Zed edit predictions against remote infrastructure
+# - only revisit autocomplete/predictions with a deliberately local-only small model on this Mac
+# zetbrush/multiagents (Bun + CLI). Peer MCP is wired into Continue below.
+# Operator still runs `multiagents setup` / broker once after first install.
+multiagents_tooling_version_contract:
+  cli: "0.5.0"
+  bun: "1.4.0"
+multiagents_state: present
+multiagents_root_dir: "{{ ansible_env.HOME }}/.config/work-laptop-ai-tools/multiagents"
+multiagents_data_dir: "{{ multiagents_root_dir }}/data"
+multiagents_scenarios_dir: "{{ multiagents_root_dir }}/scenarios"
+multiagents_layout_readme_path: "{{ multiagents_root_dir }}/README.md"
+multiagents_usage_note_path: "{{ ansible_env.HOME }}/.config/work-laptop-ai-tools/ai/tool-guides/multiagents.md"
+multiagents_continue_peer_agent_type: custom
+
+# Jan desktop local RAG. Document source is the work-laptop HRL checkout.
+# Do not point this at ~/develop or the HVH public share.
+jan_ide_state: present
+jan_ide_rag_corpus_path: "{{ ansible_env.HOME }}/Documents/develop/homelab-reference-library"
+jan_ide_local_models_path: "{{ ansible_env.HOME }}/models"
+jan_ide_chat_model_repo: Qwen/Qwen3-4B-GGUF
+jan_ide_chat_model_file: Qwen3-4B-Q4_K_M.gguf
+jan_ide_chat_model_relpath: huggingface/Qwen--Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf
+
+continue_ide_state: present
+continue_ide_api_key: ""
+continue_ide_require_api_key: true
+continue_ide_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
+# Local DMR/llama.cpp autocomplete is allowed; remote LiteLLM/vLLM autocomplete stays blocked.
+continue_ide_autocomplete_enabled: true
+# Pin firebase-tools for Continue MCP (sibling 2026-09-10); use nvm-exec, not npx@latest.
+continue_ide_provision_firebase_cli: true
+continue_ide_firebase_tools_version: "15.30.0"
+continue_ide_models:
+  # Primary local chat — Qwen3-Coder AWQ on 5090 (sequential with Qwen3.6).
+  - name: "Chat Qwen3-Coder-30B-A3B (5090 vLLM)"
+    model: "qwen3-coder-30b-a3b"
+    capabilities:
+      - tool_use
+    roles:
+      - chat
+    default_completion_options:
+      contextLength: 32768
+      # Leave headroom: input + maxTokens must stay <= 32768 (inbox 2026-09-12).
+      maxTokens: 4096
+      temperature: 0.7
+      topP: 0.8
+  - name: "Chat Qwen3.6-35B-A3B (pending sequential vLLM)"
+    model: "qwen3.6-35b-a3b"
+    enabled: false
+    capabilities:
+      - tool_use
+    roles:
+      - chat
+    default_completion_options:
+      contextLength: 32768
+      maxTokens: 4096
+      temperature: 0.6
+      topP: 0.95
+  # Edit/apply via LiteLLM — aligned with ai_cli_apps.yml (14B edit, 7B apply).
+  - name: "qwen2.5-coder:14b"
+    model: "qwen2.5-coder-14b"
+    roles:
+      - edit
+    default_completion_options:
+      contextLength: 12000
+      maxTokens: 4096
+      temperature: 0.2
+  - name: "qwen2.5-coder:7b"
+    model: "qwen2.5-coder-7b"
+    roles:
+      - apply
+    default_completion_options:
+      contextLength: 12000
+      maxTokens: 4096
+      temperature: 0.2
+  - name: "qwen2.5-coder:1.5b-base-q8_0"
+    model: "qwen2.5-coder-1.5b-base-q8_0"
+    enabled: "{{ continue_ide_autocomplete_enabled | bool }}"
+    roles:
+      - autocomplete
+    use_legacy_completions_endpoint: true
+    default_completion_options:
+      contextLength: 12768
+      maxTokens: 256
+      temperature: 0.0
+  - name: "nomic-embed-text"
+    model: "nomic-embed-text"
+    roles:
+      - embed
+  - name: "gpt-oss:20b"
+    model: "gpt-oss-20b"
+    roles:
+      - chat
+    default_completion_options:
+      contextLength: 131072
+      maxTokens: 8192
+      temperature: 1.0
+      topP: 0.95
+  # Optional public Gemini lanes (same as parent continue_ide defaults / mac Continue example).
+  - name: "Gemini 2.5 Flash (Daily Driver)"
+    model: "gemini-2.5-flash"
+    roles:
+      - chat
+    default_completion_options:
+      contextLength: 1048576
+      maxTokens: 8192
+      temperature: 0.3
+  - name: "Gemini 2.5 Flash (Long Context 1M)"
+    model: "gemini-2.5-flash-long-context"
+    roles:
+      - chat
+    default_completion_options:
+      contextLength: 1048576
+      maxTokens: 8192
+      temperature: 0.3
+  - name: "Gemini 2.5 Pro (Deep Reasoning)"
+    model: "gemini-2.5-pro"
+    roles:
+      - chat
+    default_completion_options:
+      contextLength: 1048576
+      maxTokens: 8192
+      temperature: 0.2
+  - name: "Gemini 2.5 Flash Lite (Bulk)"
+    model: "gemini-2.5-flash-lite"
+    roles:
+      - chat
+    default_completion_options:
+      contextLength: 1048576
+      maxTokens: 4096
+      temperature: 0.3
+# Docker Model Runner — Continue may point at a local DMR API; Ansible install
+# automation stays DISABLED until commissioned.
+# Docs: DOCKER-MODEL-RUNNER.md ; examples: helpers/docker-model-runner/examples/
+# Jan / Ollama Continue recipes live in parent docs only (not deployed here):
+# docs/brainstorming_designs/2026-09-09--continue-mac-local-model-patterns/
+# docs/lessons-learned/continue/jan-and-ollama-local-autocomplete.md
+work_laptop_docker_model_runner_enabled: false
+work_laptop_docker_model_runner_automation: disabled
+
+# Sole Continue autocomplete owner: LiteLLM gateway qwen2.5-coder-1.5b-base-q8_0
+# above (HVH-01 Ollama GGUF). Do not assign autocomplete to a second model —
+# Continue docs + laptop 2026-09-12: dual autocomplete roles break Tab-complete.
+# DMR entry kept as a catalog alternate with roles: [] (no Jan / Ollama).
+# Edit/apply stay on LiteLLM above.
+continue_ide_local_models:
+  - name: "Qwen 2.5 Coder 1.5B (Docker Model Runner — alternate, no role)"
+    provider: "openai"
+    api_base: "http://127.0.0.1:12434/engines/llama.cpp/v1"
+    api_key: "docker-model-runner"
+    model: "local/qwen2.5-coder-autocomplete:1.5b-q8_0"
+    roles: []
+    default_completion_options:
+      contextLength: 8192
+      maxTokens: 128
+      temperature: 0.1
+  - name: "Nomic Embed Text (LM Studio Embeddings)"
+    provider: "openai"
+    api_base: "http://127.0.0.1:1234/v1"
+    api_key: "lm-studio"
+    model: "continue-nomic-embed"
+    # Inbox 2026-09-12: keep as inactive evaluation inventory; gateway
+    # nomic-embed-text owns the sole embed role while LM Studio is compared.
+    enabled: false
+    roles:
+      - embed
+# Legacy alias for continue_ide template; must stay empty (no provider:ollama).
+continue_ide_ollama_local_models: []
+continue_ide_mcp_servers:
+  - name: "Terraform MCP"
+    type: "stdio"
+    command: "{{ ansible_env.HOME }}/.local/bin/terraform-mcp-server"
+    args:
+      - "stdio"
+  - name: "AWS MCP"
+    type: "streamable-http"
+    # Inbox 2026-09-10: base URL initializes (200 + Mcp-Session-Id); ?oauth=initialize
+    # returned a bearer challenge on direct initialize and is not the working candidate.
+    url: "https://aws-mcp.us-east-1.api.aws/mcp"
+  - name: "AWS IaC MCP"
+    type: "stdio"
+    # Pin package (laptop 2026-09-10); omit AWS_REGION by default (working consumer config).
+    command: "{{ aws_iac_mcp_command | default('/opt/homebrew/opt/uv/bin/uvx') }}"
+    args:
+      - "awslabs.aws-iac-mcp-server@1.0.26"
+    env: "{{ {'FASTMCP_LOG_LEVEL': 'ERROR'} | combine(({'AWS_PROFILE': aws_iac_mcp_aws_profile}) if ((aws_iac_mcp_aws_profile | default('') | length) > 0) else {}) }}"
+  - name: context7
+    type: stdio
+    command: "{{ work_laptop_nvm_exec }}"
+    args:
+      - context7-mcp
+  - name: firebase
+    type: stdio
+    command: "{{ work_laptop_nvm_exec }}"
+    args:
+      - firebase
+      - mcp
+  # WarpGrep: do not list continue_ide_rules for morph — morph role drops
+  # ~/.continue/rules/morph-warpgrep-evaluation.md (Continue loads it).
+  - name: morph-mcp
+    type: stdio
+    command: "{{ playbook_dir }}/bin/mcp-server-env-wrapper"
+    args:
+      - "{{ work_laptop_mcp_env_dir }}/morph.env"
+      - "{{ work_laptop_nvm_exec }}"
+      - morph-mcp
+    env:
+      WORKSPACE_MODE: "true"
+      # Prefer npm global + ~/.local/bin; do not dump full GUI PATH from inbox.
+      PATH: "{{ ansible_env.HOME }}/.npm-packages/bin:{{ ansible_env.HOME }}/.local/bin:{{ ansible_env.PATH }}"
+  # zetbrush/multiagents peer MCP (requires multiagents_state=present + Bun).
+  # Agent types are claude|codex|gemini|custom; Continue uses custom (ClaudeAdapter).
+  - name: multiagents-peer
+    type: stdio
+    command: "{{ multiagents_bun_install_dir | default(ansible_env.HOME ~ '/.bun/bin') }}/multiagents"
+    args:
+      - mcp-server
+      - --agent-type
+      - "{{ multiagents_continue_peer_agent_type | default('custom') }}"
+    env:
+      PATH: "{{ multiagents_bun_install_dir | default(ansible_env.HOME ~ '/.bun/bin') }}:{{ ansible_env.PATH }}"
+continue_ide_blocked_lanes:
+  - "qwen2.5-coder-14b (undersized for 5090 — prefer qwen3-coder-30b-a3b)"
+  - "qwen2.5-coder-32b (replaced 2026-09-10 by qwen3-coder-30b-a3b)"
+  - "Remote autocomplete disabled on 2026-09-02 due editor and remote-backend stability risk; only revisit with a local-only model on this Mac."
+
+# Cline (saoudrizwan.claude-dev) — same LiteLLM lanes as Continue; baseUrl includes /v1.
+cline_ide_state: present
+cline_ide_api_key: ""
+cline_ide_require_api_key: true
+cline_ide_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
+cline_ide_gateway_api_base: "http://litellm.hom.lab/v1"
+cline_ide_model: "{{ ai_cli_default_chat_model | default('qwen3-coder-30b-a3b') }}"
+# Sampling defaults live in roles/cline_ide — override only when needed.
+cline_ide_default_max_output_tokens: 4096
+cline_ide_default_temperature: 0.7
+cline_ide_default_top_p: 0.8
+cline_ide_models:
+  - name: "Chat Qwen3-Coder-30B-A3B (5090 vLLM)"
+    model: "qwen3-coder-30b-a3b"
+    roles:
+      - chat
+      - agent
+    context_window: 32768
+    max_output_tokens: 4096
+    temperature: 0.7
+    top_p: 0.8
+    capabilities:
+      - streaming
+      - tools
+  - name: "Chat Qwen3.6-35B-A3B (pending sequential)"
+    model: "qwen3.6-35b-a3b"
+    enabled: false
+    roles:
+      - chat
+      - agent
+    context_window: 32768
+    max_output_tokens: 4096
+    temperature: 0.6
+    top_p: 0.95
+    capabilities:
+      - streaming
+      - tools
+  - name: "gpt-oss:20b"
+    model: "gpt-oss-20b"
+    roles:
+      - chat
+      - agent
+    context_window: 131072
+    max_output_tokens: 8192
+    temperature: 1.0
+    top_p: 0.95
+    capabilities:
+      - streaming
+      - tools
+  - name: "Edit Qwen2.5 Coder 14B"
+    model: "qwen2.5-coder-14b"
+    roles:
+      - edit
+    context_window: 12000
+    max_output_tokens: 4096
+    temperature: 0.2
+    top_p: 0.9
+    capabilities:
+      - streaming
+      - tools
+  - name: "Apply Qwen2.5 Coder 7B"
+    model: "qwen2.5-coder-7b"
+    roles:
+      - apply
+    context_window: 12000
+    max_output_tokens: 4096
+    temperature: 0.2
+    top_p: 0.9
+    capabilities:
+      - streaming
+      - tools
+  - name: "qwen2.5-coder:1.5b-base-q8_0"
+    model: "qwen2.5-coder-1.5b-base-q8_0"
+    roles:
+      - autocomplete
+    context_window: 12768
+    max_output_tokens: 256
+    temperature: 0.0
+    capabilities:
+      - streaming
+  - name: "nomic-embed-text"
+    model: "nomic-embed-text"
+    roles:
+      - embed
+    context_window: 8192
+    max_output_tokens: 1
+    temperature: 0.0
+    capabilities: []
+  # Optional / not primary — keep in catalog (extras OK when not active infra).
+  - name: "ministral-3:8b"
+    model: "ministral-3-8b"
+    roles:
+      - chat
+      - agent
+    context_window: 24000
+    max_output_tokens: 4096
+    temperature: 0.2
+    top_p: 0.9
+    capabilities:
+      - streaming
+      - tools
+  - name: "Gemini 2.5 Flash (Daily Driver)"
+    model: "gemini-2.5-flash"
+    roles:
+      - chat
+      - agent
+    context_window: 1048576
+    max_output_tokens: 8192
+    temperature: 0.3
+    capabilities:
+      - streaming
+      - tools
+  - name: "Gemini 2.5 Flash (Long Context 1M)"
+    model: "gemini-2.5-flash-long-context"
+    roles:
+      - chat
+      - agent
+    context_window: 1048576
+    max_output_tokens: 8192
+    temperature: 0.3
+    capabilities:
+      - streaming
+      - tools
+  - name: "Gemini 2.5 Pro (Deep Reasoning)"
+    model: "gemini-2.5-pro"
+    roles:
+      - chat
+      - agent
+    context_window: 1048576
+    max_output_tokens: 8192
+    temperature: 0.2
+    capabilities:
+      - streaming
+      - tools
+  - name: "Gemini 2.5 Flash Lite (Bulk)"
+    model: "gemini-2.5-flash-lite"
+    roles:
+      - chat
+      - agent
+    context_window: 1048576
+    max_output_tokens: 4096
+    temperature: 0.3
+    capabilities:
+      - streaming
+      - tools
+cline_ide_mcp_servers: "{{ continue_ide_mcp_servers }}"
+
+# Cline terminal CLI (npm package `cline`). Models/MCP owned by cline_ide.
+# Transform vs home Mac: work laptop keeps node_default_version=20 for other
+# tools; cline_cli installs Node 24 via nvm without changing that default.
+# npm globals may land under ~/.npmrc prefix — role resolves `npm prefix -g`.
+cline_cli_state: present
+cline_cli_node_version: "24"
+
+# ansible-dev-tools (Red Hat meta-package) requires Python >=3.10.
+# The work laptop packet venv runs Python 3.9.6 (macOS system Python).
+# Ansible core is already installed via scripts/requirements.txt in bootstrap.
+# Override to only the libraries that are compatible and useful on Python 3.9.
+ansible_dev_tools_pip_packages:
+  - pynetbox
+  - pytz
+
+# --- opencode CLI ---
+opencode_cli_state: present
+opencode_cli_default_model: "{{ ai_cli_opencode_default_model | default('litellm/qwen3-coder-30b-a3b') }}"
+# Prefer role defaults (SSOT-aligned). Keep packet overrides only when needed.
+# opencode_cli_models inherited from roles/opencode_cli/defaults when unset.
+opencode_cli_mcp_context7_enabled: true
+opencode_cli_mcp_firecrawl_enabled: true
+
+# --- aider ---
+aider_state: present
+aider_default_model: "{{ ai_cli_aider_default_model | default('openai/qwen3-coder-30b-a3b') }}"
+aider_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
+aider_pipx_python: "/opt/homebrew/bin/python3.12"
+aider_dirty_commits: true
+aider_suggest_shell_commands: false
+aider_yes_always: true
+aider_map_tokens: 2048
+aider_map_refresh: files
+aider_deploy_repo_ignore: true
+aider_mcp_context7_enabled: true
+aider_mcp_firecrawl_enabled: true
+
+# --- Kilo IDE ---
+# merge (default): convert config.json→kilo.jsonc once; merge managed slices;
+# do not wipe user MCP/custom agents. Use overwrite only for recovery.
+kilo_ide_state: present
+kilo_ide_apply_mode: merge
+kilo_ide_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
+kilo_ide_default_model: "{{ ai_cli_kilo_default_model | default('litellm/qwen3-coder-30b-a3b') }}"
+kilo_ide_small_model: "{{ ai_cli_kilo_small_model | default('litellm/qwen2.5-coder-7b') }}"
+kilo_ide_default_agent: "code"
+# kilo_ide_models / kilo_ide_agents inherited from role defaults (SSOT-aligned).
+
+# --- morph MCP ---
+morph_mcp_state: present
+morph_mcp_targets:
+  - cursor_user
+  - vscode
+  - codex
+# Use HOME-scoped paths so the server is available globally, not just in the packet root.
+morph_mcp_vscode_config_path: "{{ ansible_env.HOME }}/.vscode/mcp.json"
+morph_mcp_cursor_user_config_path: "{{ ansible_env.HOME }}/.cursor/mcp.json"
+# Disable project-routing markers — they target dotfile-vnext files, not the packet.
+morph_mcp_routing_enable_agents_md: false
+morph_mcp_routing_enable_codex_explorer: false
+morph_mcp_routing_enable_codex_default: false
+morph_mcp_routing_enable_codex_worker: false
+morph_mcp_routing_enable_cursor_rule: false
+morph_mcp_routing_enable_copilot_instructions: false
+morph_mcp_continue_enabled: false
+
+# --- context7 MCP ---
+context7_mcp_state: present
+context7_mcp_targets:
+  - vscode
+  - codex
+context7_mcp_vscode_config_path: "{{ ansible_env.HOME }}/.vscode/mcp.json"
+# Override vault path to the packet vault (packet has no mac_dev.vault.yml).
+context7_mcp_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
+
+# --- firecrawl MCP ---
+firecrawl_mcp_state: present
+firecrawl_mcp_targets:
+  - vscode
+  - codex
+firecrawl_mcp_vscode_config_path: "{{ ansible_env.HOME }}/.vscode/mcp.json"
+# Override vault path to the packet vault.
+firecrawl_mcp_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
+
+zed_ide_state: present
+# Zed is already installed on the work laptop; manage config only — do not
+# install or upgrade the Zed Homebrew cask from this packet.
+zed_ide_install_cask: false
+zed_ide_api_key: ""
+zed_ide_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
+zed_ide_gateway_api_url: "http://litellm.hom.lab/v1"
+zed_ide_models:
+  - name: "qwen3-coder-30b-a3b"
+    display_name: "Qwen3-Coder-30B-A3B"
+    max_tokens: 32768
+    max_completion_tokens: 8192
+  - name: "qwen3.6-35b-a3b"
+    display_name: "Qwen3.6-35B-A3B (pending sequential)"
+    max_tokens: 32768
+    max_completion_tokens: 8192
+  - name: "gpt-oss-20b"
+    display_name: "gpt-oss:20b"
+    max_tokens: 131072
+    max_completion_tokens: 8192
+  - name: "qwen2.5-coder-14b"
+    display_name: "qwen2.5-coder:14b"
+    max_tokens: 12000
+    max_completion_tokens: 4096
+  - name: "qwen2.5-coder-7b"
+    display_name: "qwen2.5-coder:7b"
+    max_tokens: 12000
+    max_completion_tokens: 4096
+  - name: "qwen2.5-coder-1.5b-base-q8_0"
+    display_name: "qwen2.5-coder:1.5b-base-q8_0"
+    max_tokens: 12768
+    max_completion_tokens: 256
+  - name: "nomic-embed-text"
+    display_name: "nomic-embed-text"
+    max_tokens: 8192
+    max_completion_tokens: 1
+  - name: "ministral-3-8b"
+    display_name: "ministral-3:8b"
+    max_tokens: 24000
+    max_completion_tokens: 4096
+  - name: "gemini-2.5-flash"
+    display_name: "Gemini 2.5 Flash (Daily Driver)"
+    max_tokens: 1048576
+    max_completion_tokens: 8192
+  - name: "gemini-2.5-flash-long-context"
+    display_name: "Gemini 2.5 Flash (Long Context 1M)"
+    max_tokens: 1048576
+    max_completion_tokens: 8192
+  - name: "gemini-2.5-pro"
+    display_name: "Gemini 2.5 Pro (Deep Reasoning)"
+    max_tokens: 1048576
+    max_completion_tokens: 8192
+  - name: "gemini-2.5-flash-lite"
+    display_name: "Gemini 2.5 Flash Lite (Bulk)"
+    max_tokens: 1048576
+    max_completion_tokens: 4096
+zed_ide_default_model:
+  provider: "openai"
+  model: "qwen3.6-35b-a3b"
+zed_ide_inline_assistant_model:
+  provider: "openai"
+  model: "qwen2.5-coder-7b"
+zed_ide_commit_message_model:
+  provider: "openai"
+  model: "qwen2.5-coder-7b"
+zed_ide_thread_summary_model:
+  provider: "openai"
+  model: "ministral-3-8b"
+zed_ide_compaction_model:
+  provider: "openai"
+  model: "qwen3-coder-30b-a3b"
+zed_ide_subagent_model:
+  provider: "openai"
+  model: "qwen3-coder-30b-a3b"
+zed_ide_inline_alternatives:
+  - provider: "openai"
+    model: "qwen2.5-coder-7b"
+  - provider: "openai"
+    model: "ministral-3-8b"
+zed_ide_model_parameters:
+  - provider: "openai"
+    model: "qwen3-coder-30b-a3b"
+    temperature: 0.7
+    top_p: 0.8
+  - provider: "openai"
+    model: "qwen2.5-coder-7b"
+    temperature: 0.2
+  - provider: "openai"
+    model: "ministral-3-8b"
+    temperature: 0.2
+zed_ide_auto_compact:
+  enabled: true
+  threshold: "90%"
+zed_ide_edit_predictions_enabled: false
+zed_ide_edit_predictions:
+  mode: "eager"
+  provider: "ollama"
+  ollama:
+    api_url: "http://127.0.0.1:11434"
+    model: "REPLACE_WITH_LOCAL_SMALL_MODEL"
+    prompt_format: "qwen"
+    max_output_tokens: 512
+zed_ide_context_servers:
+  terraform:
+    command: "{{ terraform_mcp_command | default(ansible_env.HOME ~ '/.local/bin/terraform-mcp-server', true) }}"
+    args:
+      - "stdio"
+    env:
+      _MCP_ANSIBLE_ROLE_PATH: "roles/mcp_servers/terraform_mcp"
+  "aws-mcp":
+    url: "https://aws-mcp.us-east-1.api.aws/mcp"
+  "aws-iac":
+    command: "{{ aws_iac_mcp_command | default('uvx', true) }}"
+    args:
+      - "awslabs.aws-iac-mcp-server@1.0.26"
+    env:
+      FASTMCP_LOG_LEVEL: "ERROR"
