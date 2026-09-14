@@ -227,9 +227,15 @@
 
 - name: Derive LiteLLM rollout health from deployment status
   ansible.builtin.set_fact:
-    _k3s_litellm_deployment_desired_replicas: "{{ (((_k3s_litellm_deployment.resources | first | default({})).spec | default({})).replicas | default(k3s_litellm_gateway_replicas)) | int }}"
-    _k3s_litellm_deployment_ready_replicas: "{{ (((_k3s_litellm_deployment.resources | first | default({})).status | default({})).readyReplicas | default(0)) | int }}"
-    _k3s_litellm_deployment_available_replicas: "{{ (((_k3s_litellm_deployment.resources | first | default({})).status | default({})).availableReplicas | default(0)) | int }}"
+    _k3s_litellm_deployment_desired_replicas: >-
+      {{ (((_k3s_litellm_deployment.resources | first | default({})).spec |
+      default({})).replicas | default(k3s_litellm_gateway_replicas)) | int }}
+    _k3s_litellm_deployment_ready_replicas: >-
+      {{ (((_k3s_litellm_deployment.resources | first | default({})).status |
+      default({})).readyReplicas | default(0)) | int }}
+    _k3s_litellm_deployment_available_replicas: >-
+      {{ (((_k3s_litellm_deployment.resources | first | default({})).status |
+      default({})).availableReplicas | default(0)) | int }}
 
 - name: Decide whether LiteLLM needs a post-converge rollout restart
   ansible.builtin.set_fact:
