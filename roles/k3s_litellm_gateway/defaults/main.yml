@@ -153,23 +153,23 @@ k3s_litellm_gateway_anthropic_model_routes: []
 # because GTX 1060 is Pascal CC 6.1 — current vLLM wants CC >= 7.5.
 # Catalog SSOT: inventory/group_vars/model_catalog/manifest.yml
 # -----------------------------------------------------------------------------
-k3s_litellm_gateway_autocomplete_1_5b_api_base: ""
+k3s_litellm_gateway_ollama_hvh01_fim_1_5b_api_base: ""
 # Served model id at the OpenAI-compatible backend (Ollama tag or vLLM --served-model-name).
 # Continue FIM prefers the base tag; Instruct remains pullable on HVH-01 for chat smokes.
-k3s_litellm_gateway_autocomplete_1_5b_model: "qwen2.5-coder:1.5b-base-q8_0"
+k3s_litellm_gateway_ollama_hvh01_fim_1_5b_model: "qwen2.5-coder:1.5b-base-q8_0"
 # LiteLLM provider prefix: openai for Ollama/llama.cpp OpenAI servers; hosted_vllm for vLLM.
-k3s_litellm_gateway_autocomplete_1_5b_provider: "openai"
-k3s_litellm_gateway_autocomplete_7b_api_base: ""
-k3s_litellm_gateway_autocomplete_7b_model: "Qwen/Qwen2.5-Coder-7B-Instruct"
-k3s_litellm_gateway_autocomplete_7b_provider: "hosted_vllm"
+k3s_litellm_gateway_ollama_hvh01_fim_1_5b_provider: "openai"
+k3s_litellm_gateway_vllm_fim_7b_api_base: ""
+k3s_litellm_gateway_vllm_fim_7b_model: "Qwen/Qwen2.5-Coder-7B-Instruct"
+k3s_litellm_gateway_vllm_fim_7b_provider: "hosted_vllm"
 # Kilo optional 5090 vLLM smoke lanes (mutually exclusive with 32B primary on single GPU).
 # Official Qwen AWQ quants — faster cold start / lower VRAM than 32B AWQ.
-k3s_litellm_gateway_kilo_lite_vllm_api_base: ""
-k3s_litellm_gateway_kilo_lite_vllm_model: ""
-k3s_litellm_gateway_kilo_lite_vllm_provider: "hosted_vllm"
-k3s_litellm_gateway_kilo_smoke_vllm_api_base: ""
-k3s_litellm_gateway_kilo_smoke_vllm_model: ""
-k3s_litellm_gateway_kilo_smoke_vllm_provider: "hosted_vllm"
+k3s_litellm_gateway_vllm_candidate_api_base: ""
+k3s_litellm_gateway_vllm_candidate_model: ""
+k3s_litellm_gateway_vllm_candidate_provider: "hosted_vllm"
+k3s_litellm_gateway_vllm_smoke_api_base: ""
+k3s_litellm_gateway_vllm_smoke_model: ""
+k3s_litellm_gateway_vllm_smoke_provider: "hosted_vllm"
 # Prefer FP8/NVFP4 quantized DiffusionGemma on 32GB GPUs; BF16 recipe expects ~64GB.
 k3s_litellm_gateway_diffusiongemma_api_base: ""
 k3s_litellm_gateway_diffusiongemma_model: "RedHatAI/diffusiongemma-26B-A4B-it-FP8-dynamic"
@@ -178,24 +178,24 @@ k3s_litellm_gateway_diffucoder_model: "apple/DiffuCoder-7B-cpGRPO"
 
 # Continue edit → desktop AMD Ollama (openai-compatible). When set, takes
 # continue-edit alias instead of DiffuCoder wrapper.
-k3s_litellm_gateway_continue_edit_api_base: ""
-k3s_litellm_gateway_continue_edit_model: "qwen2.5-coder:7b"
-k3s_litellm_gateway_continue_edit_provider: "openai"
+k3s_litellm_gateway_ollama_desktop_7b_api_base: ""
+k3s_litellm_gateway_ollama_desktop_7b_model: "qwen2.5-coder:7b"
+k3s_litellm_gateway_ollama_desktop_7b_provider: "openai"
 
 # Codex-owned desktop implementation/review lane. It is intentionally separate
 # from low-latency autocomplete and the large 5090 tool loop.
-k3s_litellm_gateway_desktop_implement_api_base: ""
-k3s_litellm_gateway_desktop_implement_model: "qwen2.5-coder:14b"
-k3s_litellm_gateway_desktop_implement_provider: "openai"
+k3s_litellm_gateway_ollama_desktop_14b_api_base: ""
+k3s_litellm_gateway_ollama_desktop_14b_model: "qwen2.5-coder:14b"
+k3s_litellm_gateway_ollama_desktop_14b_provider: "openai"
 # Continue apply → HVH-01 Ollama Phi-4 Mini (retired). Prefer 7B desktop for Apply.
-k3s_litellm_gateway_continue_apply_api_base: ""
-k3s_litellm_gateway_continue_apply_model: "qwen2.5-coder:7b"
-k3s_litellm_gateway_continue_apply_provider: "openai"
+k3s_litellm_gateway_ollama_desktop_apply_7b_api_base: ""
+k3s_litellm_gateway_ollama_desktop_apply_7b_model: "qwen2.5-coder:7b"
+k3s_litellm_gateway_ollama_desktop_apply_7b_provider: "openai"
 
 # Continue / local nomic embeddings on HVH-01 Ollama (LiteLLM ollama/ provider).
-k3s_litellm_gateway_nomic_embed_api_base: ""
-k3s_litellm_gateway_nomic_embed_model: "nomic-embed-text"
-k3s_litellm_gateway_nomic_embed_provider: "ollama"
+k3s_litellm_gateway_ollama_hvh01_nomic_api_base: ""
+k3s_litellm_gateway_ollama_hvh01_nomic_model: "nomic-embed-text"
+k3s_litellm_gateway_ollama_hvh01_nomic_provider: "ollama"
 
 # Open WebUI chat → desktop Ollama (official library tags).
 # Set api_base when the desktop Ollama route should be listed in LiteLLM.
@@ -212,11 +212,11 @@ k3s_litellm_gateway_qwen36_chat_model: "qwen3.6:27b"
 k3s_litellm_gateway_qwen36_chat_provider: "ollama"
 
 # gpt-oss-20b — desktop Ollama (commission api_base on k3s-02 host_vars).
-k3s_litellm_gateway_gpt_oss_chat_api_base: ""
-k3s_litellm_gateway_gpt_oss_chat_model: "gpt-oss:20b"
-k3s_litellm_gateway_gpt_oss_chat_provider: "ollama"
-k3s_litellm_gateway_gpt_oss_chat_temperature: 1.0
-k3s_litellm_gateway_gpt_oss_chat_top_p: 0.95
+k3s_litellm_gateway_ollama_desktop_gpt_oss_api_base: ""
+k3s_litellm_gateway_ollama_desktop_gpt_oss_model: "gpt-oss:20b"
+k3s_litellm_gateway_ollama_desktop_gpt_oss_provider: "ollama"
+k3s_litellm_gateway_ollama_desktop_gpt_oss_temperature: 1.0
+k3s_litellm_gateway_ollama_desktop_gpt_oss_top_p: 0.95
 
 # Positive/negative prompt assist alias (pixels stay on ComfyUI / A1111).
 # Defaults empty; host_vars pin to desktop Ollama (same engine as gemma4:12b).
@@ -229,11 +229,11 @@ k3s_litellm_gateway_devstral_chat_api_base: ""
 k3s_litellm_gateway_devstral_chat_model: "devstral:24b"
 k3s_litellm_gateway_devstral_chat_provider: "ollama"
 
-k3s_litellm_gateway_kilo_fast_chat_api_base: ""
-k3s_litellm_gateway_kilo_fast_chat_model: ""
-k3s_litellm_gateway_kilo_fast_chat_provider: "ollama"
+k3s_litellm_gateway_ollama_desktop_ministral_api_base: ""
+k3s_litellm_gateway_ollama_desktop_ministral_model: ""
+k3s_litellm_gateway_ollama_desktop_ministral_provider: "ollama"
 
-k3s_litellm_gateway_local_continue_model_routes: []
+k3s_litellm_gateway_local_model_routes: []
 # Built at runtime in build_helm_values.yml from the api_base vars above.
 
 # Fallback when vault_shared_openai_api_key is unset — proxy still starts; OpenAI routes omitted.

@@ -50,7 +50,7 @@
 # Homelab local routes — model@host client ids; friendly labels in notes only.
 - name: Build homelab LiteLLM routes from commissioned api_bases
   ansible.builtin.set_fact:
-    k3s_litellm_gateway_resolved_local_continue_routes: >-
+    k3s_litellm_gateway_resolved_local_model_routes: >-
       {{
         (
           [
@@ -93,11 +93,11 @@
             {
               'model_name': k3s_litellm_gateway_client_model_id_gpt_oss,
               'litellm_params': {
-                'model': k3s_litellm_gateway_gpt_oss_chat_provider ~ '/' ~ k3s_litellm_gateway_gpt_oss_chat_model,
-                'api_base': k3s_litellm_gateway_gpt_oss_chat_api_base,
+                'model': k3s_litellm_gateway_ollama_desktop_gpt_oss_provider ~ '/' ~ k3s_litellm_gateway_ollama_desktop_gpt_oss_model,
+                'api_base': k3s_litellm_gateway_ollama_desktop_gpt_oss_api_base,
                 'api_key': 'none',
-                'temperature': k3s_litellm_gateway_gpt_oss_chat_temperature,
-                'top_p': k3s_litellm_gateway_gpt_oss_chat_top_p
+                'temperature': k3s_litellm_gateway_ollama_desktop_gpt_oss_temperature,
+                'top_p': k3s_litellm_gateway_ollama_desktop_gpt_oss_top_p
               },
               'model_info': {
                 'mode': 'chat',
@@ -105,14 +105,14 @@
                 'routing_policy': 'local-gpt-oss-ollama-desktop',
                 'project': 'ripi',
                 'backend_runtime': 'ollama-gpt-oss-desktop',
-                'ollama_library': k3s_litellm_gateway_gpt_oss_chat_model,
+                'ollama_library': k3s_litellm_gateway_ollama_desktop_gpt_oss_model,
                 'notes': 'gpt-oss:20b desktop Ollama; think=low|medium|high via Ollama API',
                 'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
                 'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
               }
             }
           ]
-          if (k3s_litellm_gateway_gpt_oss_chat_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_ollama_desktop_gpt_oss_api_base | default('') | length > 0)
           else []
         )
         + (
@@ -120,8 +120,8 @@
             {
               'model_name': k3s_litellm_gateway_client_model_id_continue_edit,
               'litellm_params': {
-                'model': k3s_litellm_gateway_continue_edit_provider ~ '/' ~ k3s_litellm_gateway_continue_edit_model,
-                'api_base': k3s_litellm_gateway_continue_edit_api_base,
+                'model': k3s_litellm_gateway_ollama_desktop_7b_provider ~ '/' ~ k3s_litellm_gateway_ollama_desktop_7b_model,
+                'api_base': k3s_litellm_gateway_ollama_desktop_7b_api_base,
                 'api_key': 'none'
               },
               'model_info': {
@@ -129,14 +129,14 @@
                 'routing_policy': 'local-continue-edit-ollama-desktop',
                 'project': 'ripi',
                 'backend_runtime': 'ollama-qwen25-coder-7b-desktop',
-                'ollama_library': k3s_litellm_gateway_continue_edit_model,
+                'ollama_library': k3s_litellm_gateway_ollama_desktop_7b_model,
                 'notes': 'Continue edit/apply (desktop Ollama)',
                 'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
                 'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
               }
             }
           ]
-          if (k3s_litellm_gateway_continue_edit_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_ollama_desktop_7b_api_base | default('') | length > 0)
           else []
         )
         + (
@@ -144,8 +144,8 @@
             {
               'model_name': k3s_litellm_gateway_client_model_id_desktop_implement,
               'litellm_params': {
-                'model': k3s_litellm_gateway_desktop_implement_provider ~ '/' ~ k3s_litellm_gateway_desktop_implement_model,
-                'api_base': k3s_litellm_gateway_desktop_implement_api_base,
+                'model': k3s_litellm_gateway_ollama_desktop_14b_provider ~ '/' ~ k3s_litellm_gateway_ollama_desktop_14b_model,
+                'api_base': k3s_litellm_gateway_ollama_desktop_14b_api_base,
                 'api_key': 'none'
               },
               'model_info': {
@@ -153,14 +153,14 @@
                 'routing_policy': 'local-codex-desktop-implement-ollama',
                 'project': 'ripi',
                 'backend_runtime': 'ollama-qwen25-coder-14b-desktop',
-                'ollama_library': k3s_litellm_gateway_desktop_implement_model,
+                'ollama_library': k3s_litellm_gateway_ollama_desktop_14b_model,
                 'notes': 'Codex desktop implementation/review; no fallback group',
                 'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
                 'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
               }
             }
           ]
-          if (k3s_litellm_gateway_desktop_implement_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_ollama_desktop_14b_api_base | default('') | length > 0)
           else []
         )
         + (
@@ -168,8 +168,8 @@
             {
               'model_name': k3s_litellm_gateway_client_model_id_continue_autocomplete,
               'litellm_params': {
-                'model': k3s_litellm_gateway_autocomplete_1_5b_provider ~ '/' ~ k3s_litellm_gateway_autocomplete_1_5b_model,
-                'api_base': k3s_litellm_gateway_autocomplete_1_5b_api_base,
+                'model': k3s_litellm_gateway_ollama_hvh01_fim_1_5b_provider ~ '/' ~ k3s_litellm_gateway_ollama_hvh01_fim_1_5b_model,
+                'api_base': k3s_litellm_gateway_ollama_hvh01_fim_1_5b_api_base,
                 'api_key': 'none'
               },
               'model_info': {
@@ -185,7 +185,7 @@
               }
             }
           ]
-          if (k3s_litellm_gateway_autocomplete_1_5b_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_ollama_hvh01_fim_1_5b_api_base | default('') | length > 0)
           else []
         )
         + (
@@ -193,8 +193,8 @@
             {
               'model_name': k3s_litellm_gateway_client_model_id_nomic_embed,
               'litellm_params': {
-                'model': k3s_litellm_gateway_nomic_embed_provider ~ '/' ~ k3s_litellm_gateway_nomic_embed_model,
-                'api_base': k3s_litellm_gateway_nomic_embed_api_base,
+                'model': k3s_litellm_gateway_ollama_hvh01_nomic_provider ~ '/' ~ k3s_litellm_gateway_ollama_hvh01_nomic_model,
+                'api_base': k3s_litellm_gateway_ollama_hvh01_nomic_api_base,
                 'api_key': 'none'
               },
               'model_info': {
@@ -210,7 +210,7 @@
               }
             }
           ]
-          if (k3s_litellm_gateway_nomic_embed_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_ollama_hvh01_nomic_api_base | default('') | length > 0)
           else []
         )
         + (
@@ -218,8 +218,8 @@
             {
               'model_name': k3s_litellm_gateway_client_model_id_kilo_fast,
               'litellm_params': {
-                'model': k3s_litellm_gateway_kilo_fast_chat_provider ~ '/' ~ k3s_litellm_gateway_kilo_fast_chat_model,
-                'api_base': k3s_litellm_gateway_kilo_fast_chat_api_base,
+                'model': k3s_litellm_gateway_ollama_desktop_ministral_provider ~ '/' ~ k3s_litellm_gateway_ollama_desktop_ministral_model,
+                'api_base': k3s_litellm_gateway_ollama_desktop_ministral_api_base,
                 'api_key': 'none'
               },
               'model_info': {
@@ -234,7 +234,7 @@
               }
             }
           ]
-          if (k3s_litellm_gateway_kilo_fast_chat_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_ollama_desktop_ministral_api_base | default('') | length > 0)
           else []
         )
       }}
@@ -244,7 +244,7 @@
     k3s_litellm_gateway_resolved_model_list: >-
       {{
         k3s_litellm_gateway_resolved_model_list
-        + (k3s_litellm_gateway_resolved_local_continue_routes | default([]))
+        + (k3s_litellm_gateway_resolved_local_model_routes | default([]))
       }}
 
 - name: Resolve LiteLLM proxy-level fallback settings

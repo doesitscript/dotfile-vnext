@@ -46,9 +46,9 @@
       ansible.builtin.assert:
         that:
           - hostvars['hom-lab-ctl-k3s-02'].k3s_vllm_runtime_model is search('14B')
-          - hostvars['hom-lab-ctl-k3s-02'].k3s_litellm_gateway_kilo_lite_vllm_api_base | default('') | length > 0
+          - hostvars['hom-lab-ctl-k3s-02'].k3s_litellm_gateway_vllm_candidate_api_base | default('') | length > 0
         fail_msg: >-
-          k3s_vllm_runtime_kilo_testing_active requires 14B vLLM + kilo_lite api_base on k3s-02.
+          k3s_vllm_runtime_kilo_testing_active requires 14B vLLM + vllm_candidate api_base on k3s-02.
       when: hostvars['hom-lab-ctl-k3s-02'].k3s_vllm_runtime_kilo_testing_active | default(false) | bool
 
     - name: Summarize validated inference contract

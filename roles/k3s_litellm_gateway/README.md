@@ -45,8 +45,8 @@ set api_bases so LiteLLM appends mature `model_list` rows:
 
 ```yaml
 # inventory/host_vars/hom-lab-ctl-k3s-02.yaml (after secondary runtimes exist)
-k3s_litellm_gateway_autocomplete_1_5b_api_base: "http://vllm-autocomplete-1.5b....:8000/v1"
-k3s_litellm_gateway_autocomplete_7b_api_base: "http://vllm-autocomplete-7b....:8000/v1"
+k3s_litellm_gateway_ollama_hvh01_fim_1_5b_api_base: "http://vllm-fim-1.5b....:8000/v1"
+k3s_litellm_gateway_vllm_fim_7b_api_base: "http://vllm-fim-7b....:8000/v1"
 k3s_litellm_gateway_diffusiongemma_api_base: "http://vllm-diffusiongemma....:8000/v1"
 k3s_litellm_gateway_diffucoder_api_base: "http://diffucoder-openai-wrapper....:8000/v1"
 ```

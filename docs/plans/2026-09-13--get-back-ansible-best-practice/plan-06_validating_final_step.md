@@ -234,7 +234,7 @@ CONTENT: 'OK.'
 ```
 
 Conclusion: all seven lanes passed the basic HTTP/response or embedding
-endpoint smoke, and all six chat lanes handled the larger prompt without a
+endpoint smoke, and all five chat lanes handled the larger prompt without a
 context overflow. The 1.5B empty larger-prompt content and gpt-oss empty short
 smoke are findings for role-specific or client-parameter follow-up, not proof
 of a context-window failure.
@@ -290,3 +290,34 @@ RESULT: PASS
 All seven TDD smoke tests passed. These are basic user-perspective
 connectivity/response tests; they do not prove semantic code quality, tool
 calling, retrieval quality, latency, or UI rendering.
+
+## Backend-variable naming migration receipt 2026-09-14
+
+The gateway variable migration is complete for active implementation surfaces.
+Client model IDs were intentionally preserved because they are stable external
+client contracts; backend variables now identify the actual runtime/provider:
+
+| Retired concern | Current backend variable family |
+|---|---|
+| Continue edit/apply | `ollama_desktop_7b` |
+| Desktop implementation | `ollama_desktop_14b` |
+| Autocomplete 1.5B | `ollama_hvh01_fim_1_5b` |
+| Nomic embeddings | `ollama_hvh01_nomic` |
+| Kilo fast fallback | `ollama_desktop_ministral` |
+| GPT-OSS chat | `ollama_desktop_gpt_oss` |
+| Local Continue route collection | `local_model_routes` |
+
+Validation evidence:
+
+- active `roles/`, `inventory/`, and `playbooks/` contain no retired
+  client-oriented gateway variable names;
+- production-profile `ansible-lint` passed with zero failures and warnings;
+- both deployment and contract-validation playbooks passed syntax checks;
+- LiteLLM gateway convergence on `hom-lab-ctl-k3s-02` completed `ok=32
+  changed=0 failed=0`;
+- live seven-lane contract validation completed `ok=4 changed=0 failed=0`;
+- live TDD smoke tests passed for all seven lanes, including chat, FIM, and
+  768-dimensional embeddings.
+
+The old names remain only in historical assessment material, where they are
+preserved as evidence of the input state rather than used by Ansible.
