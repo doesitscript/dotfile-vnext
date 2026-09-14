@@ -1,0 +1,2 @@
+
+The way we download things get them and get them on the system. I think that pipeline is good. So we definitely want that flow to continue the way it has been Ben it seems functional however, the organization of it should take advantage of the refactor it should take its values for the refactor. We don't want to end up with the download part of the system still using the old way of doing things. Or up to finding things I should say

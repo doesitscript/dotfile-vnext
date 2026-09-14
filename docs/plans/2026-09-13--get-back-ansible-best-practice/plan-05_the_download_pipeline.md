@@ -1,0 +1,3 @@
+For the download pipeline, I think it's OK the way it functions. And I would like to keep all the notes well not all the notes but at least the ones that are relevant to their usage and for their installation and personal observations on specific things I note.   
+
+I think in the end there should definitely be a way to toggle items in that download pipeline with some type of boolean. And things that are currently downloaded, we can or however they are marked right now for being downloaded or not we can put that in the like we should stick with that for this first pass. We don't need to try to download everything or make that the default by any means.
