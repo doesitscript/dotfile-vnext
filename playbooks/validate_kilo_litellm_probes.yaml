@@ -32,7 +32,7 @@
           Authorization: "Bearer {{ _litellm_key }}"
         body_format: json
         body:
-          model: "{{ k3s_litellm_gateway_client_model_id_kilo_fast }}"
+          model: "{{ k3s_litellm_gateway_client_model_id_fast }}"
           messages:
             - role: user
               content: "Use glob to find README.md under /Users/joshc/develop/global-skills"
@@ -50,7 +50,7 @@
           - _kilo_fast_probe.json.choices[0].message.tool_calls is defined
           - _kilo_fast_probe.json.choices[0].message.tool_calls | length > 0
         fail_msg: >-
-          {{ k3s_litellm_gateway_client_model_id_kilo_fast }} must return tool_calls for Kilo code agent.
+          {{ k3s_litellm_gateway_client_model_id_fast }} must return tool_calls for Kilo code agent.
 
     - name: Probe 5090 vLLM lane chat smoke
       ansible.builtin.uri:
@@ -60,7 +60,7 @@
           Authorization: "Bearer {{ _litellm_key }}"
         body_format: json
         body:
-          model: "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
+          model: "{{ k3s_litellm_gateway_client_model_id_primary }}"
           messages:
             - role: user
               content: Reply with exactly OK
@@ -73,7 +73,7 @@
       ansible.builtin.assert:
         that:
           - _kilo_vllm_probe.json.choices[0].message.content | trim == 'OK'
-        fail_msg: "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }} chat probe failed."
+        fail_msg: "{{ k3s_litellm_gateway_client_model_id_primary }} chat probe failed."
 
     - name: Probe 5090 vLLM lane returns tool_calls (Kilo / agent TDD gate)
       ansible.builtin.uri:
@@ -83,7 +83,7 @@
           Authorization: "Bearer {{ _litellm_key }}"
         body_format: json
         body:
-          model: "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
+          model: "{{ k3s_litellm_gateway_client_model_id_primary }}"
           messages:
             - role: user
               content: "Use glob to find README.md under /Users/joshc/develop/dotfile-vnext"
@@ -101,16 +101,16 @@
           - _kilo_vllm_tool_probe.json.choices[0].message.tool_calls is defined
           - _kilo_vllm_tool_probe.json.choices[0].message.tool_calls | length > 0
         fail_msg: >-
-          {{ k3s_litellm_gateway_client_model_id_kilo_vllm }} must return tool_calls
+          {{ k3s_litellm_gateway_client_model_id_primary }} must return tool_calls
           when --enable-auto-tool-choice and --tool-call-parser qwen2_5_coder are set.
           Full message: {{ _kilo_vllm_tool_probe.json.choices[0].message | to_json }}
 
     - name: Summarize Kilo LiteLLM probes
       ansible.builtin.debug:
         msg:
-          code_agent_model: "{{ k3s_litellm_gateway_client_model_id_kilo_fast }}"
-          vllm_ask_plan_model: "{{ k3s_litellm_gateway_client_model_id_kilo_vllm }}"
-          autocomplete_model: "{{ k3s_litellm_gateway_client_model_id_kilo_autocomplete }}"
+          code_agent_model: "{{ k3s_litellm_gateway_client_model_id_fast }}"
+          vllm_ask_plan_model: "{{ k3s_litellm_gateway_client_model_id_primary }}"
+          autocomplete_model: "{{ k3s_litellm_gateway_client_model_id_autocomplete }}"
           ministral_tool_call: "{{ _kilo_fast_probe.json.choices[0].message.tool_calls[0].function.name }}"
           vllm_chat: "{{ _kilo_vllm_probe.json.choices[0].message.content | trim }}"
           vllm_tool_call: "{{ _kilo_vllm_tool_probe.json.choices[0].message.tool_calls[0].function.name | default('MISSING') }}"

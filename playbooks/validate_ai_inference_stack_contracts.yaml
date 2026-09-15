@@ -18,9 +18,9 @@
       - nomic-embed-text
       - ministral-3-8b
     _required_enabled_gateway_routes:
-      - "{{ k3s_litellm_gateway_client_model_id_continue_chat }}"
-      - "{{ k3s_litellm_gateway_client_model_id_continue_edit }}"
-      - "{{ k3s_litellm_gateway_client_model_id_continue_autocomplete }}"
+      - "{{ k3s_litellm_gateway_client_model_id_chat }}"
+      - "{{ k3s_litellm_gateway_client_model_id_edit }}"
+      - "{{ k3s_litellm_gateway_client_model_id_autocomplete }}"
   tasks:
     - name: Collect gateway and lane contract names
       ansible.builtin.set_fact:
@@ -57,8 +57,8 @@
           lane_contract_names: "{{ _lane_contract_names }}"
           static_gateway_routes: "{{ _gateway_route_names }}"
           current_client_ids:
-            chat: "{{ k3s_litellm_gateway_client_model_id_continue_chat }}"
-            edit: "{{ k3s_litellm_gateway_client_model_id_continue_edit }}"
-            autocomplete: "{{ k3s_litellm_gateway_client_model_id_continue_autocomplete }}"
+            chat: "{{ k3s_litellm_gateway_client_model_id_chat }}"
+            edit: "{{ k3s_litellm_gateway_client_model_id_edit }}"
+            autocomplete: "{{ k3s_litellm_gateway_client_model_id_autocomplete }}"
           primary_model: "{{ k3s_litellm_gateway_local_backends.primary.model }}"
           gateway_url: "{{ ai_agent_client_profiles.gateway.openai_base_url }}"
