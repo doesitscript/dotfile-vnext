@@ -45,27 +45,26 @@ set api_bases so LiteLLM appends mature `model_list` rows:
 
 ```yaml
 # inventory/host_vars/hom-lab-ctl-k3s-02.yaml (after secondary runtimes exist)
-k3s_litellm_gateway_ollama_hvh01_fim_1_5b_api_base: "http://vllm-fim-1.5b....:8000/v1"
-k3s_litellm_gateway_vllm_fim_7b_api_base: "http://vllm-fim-7b....:8000/v1"
+k3s_litellm_gateway_local_backends:
+  fim_1_5b:
+    api_base: "http://vllm-fim-1.5b....:8000/v1"
+  fim_7b:
+    api_base: "http://vllm-fim-7b....:8000/v1"
 k3s_litellm_gateway_diffusiongemma_api_base: "http://vllm-diffusiongemma....:8000/v1"
 k3s_litellm_gateway_diffucoder_api_base: "http://diffucoder-openai-wrapper....:8000/v1"
 ```
 
-Lane client IDs (structured `model_name` values): see **Client model ID syntax**
-above. Short catalog lanes: `code-fast`, `continue-autocomplete`, `diffusiongemma-nextedit`,
-`diffucoder`, `continue-edit`/`continue-apply`, `open-webui-chat`, `architect`,
-`open-webui-general`, `prompt-assist`, `kilo-main` (5090 vLLM), `kilo-autocomplete` (HVH-01 Ollama),
-`kilo-fast` (desktop Ollama fallback when the
-matching `k3s_litellm_gateway_*_chat_api_base` is set).
+Lane client IDs are plain logical model slugs. Runtime and host placement are
+kept in the structured backend registry and rendered `model_info`.
 
 ### Kilo lanes — operator notes (2026-09-01)
 
 | Client ID | Backend | Kilo code agent |
 | --- | --- | --- |
 | `qwen3-coder-30b-a3b` | 5090 vLLM Qwen3-Coder AWQ | **Current primary**; card sampling defaults on route (`temp=0.7`, `top_p=0.8`, `top_k=20`, `repetition_penalty=1.05`); tool acceptance pending |
-| `qwen2.5-coder-14b~kilo-lite` | 5090 vLLM 14B AWQ (testing) | **Smoke/chat only** — tool_calls broken (hermes vs `<tools>` format) |
-| `ministral-3-8b` | Desktop Ollama | **Interim fallback** — API tool_calls OK |
-| `qwen2.5-coder-1.5b-base~kilo-autocomplete` | HVH-01 Ollama | Autocomplete lane |
+| `qwen2.5-coder-14b` | Ollama on `dev-workstation-win` | Implement/edit lane |
+| `ministral-3-8b` | Ollama on `dev-workstation-win` | Interim fallback |
+| `qwen2.5-coder-1.5b-base-q8_0` | Ollama on `HOM-LAB-HVH-01` | Autocomplete lane |
 
 Do not invest in fixing 14B tool parsing. Restore 32B or upgrade to Qwen3-Coder /
 Qwen 3.6 27B on vLLM. See HRL investigation note and
@@ -73,62 +72,55 @@ Qwen 3.6 27B on vLLM. See HRL investigation note and
 
 Operator `kilo.jsonc` must set `limit` and `tool_call` per model — not managed by Ansible.
 
-## Client model ID syntax
+## Client model IDs
 
-LiteLLM `model_list[].model_name` values use structured client IDs defined in
+LiteLLM `model_list[].model_name` values use stable logical IDs defined in
 `defaults/main/model_client_ids.yml`:
 
 ```text
-<model-slug>@<host-slug>~<friendly-lane>
+<model-slug>
 ```
 
 | Segment | Meaning |
 | --- | --- |
-| `model-slug` | **Real** backend weight id (`:` and `/` → `-`). Never invented names (`kilo-coder`, `ornith-35b`). |
-| `@` | Separates model from host |
-| `host-slug` | Homelab surface (`desktop`, `hvh01`, `k3s02-vllm`, `google`, `openai`, `anthropic`, `litellm`) |
-| `~` | Separates host from purpose lane |
-| `friendly-lane` | **Only** invented homelab suffix (`kilo-main`, `code-fast`, …) — appears at end of dropdown string |
+| `model-slug` | Stable logical model/lane ID. Runtime, host, and policy are separate metadata. |
 
 Entry kinds (also in `model_info.client_model_id_kind` when set):
 
 - **FRIENDLY ALIAS** — one backend `model` + `api_base` (most routes).
 - **MODEL GROUP** — router entry; fans out to other client `model_name` targets.
-  Example: `litellm-complexity-auto-router@litellm~smart-router` (LiteLLM complexity auto-router).
+  Example: `litellm-complexity-auto-router` (LiteLLM complexity auto-router).
 
-`model_info.model_lane` keeps the short catalog-friendly slug for tracing
-(`code-fast`, `deepreinforce-ai/Ornith-1.0-35B-GGUF`, …) even when the client
-`model_name` uses the structured form.
+`model_info.model_lane` and `model_info.placement_host` retain tracing and
+placement details without putting infrastructure identity into the client ID.
 
 ### Examples
 
 | Client `model_name` | Kind | Backend |
 | --- | --- | --- |
-| `qwen2.5-coder-32b~coder-primary` | FRIENDLY ALIAS | vLLM Qwen2.5-Coder-32B AWQ on k3s-02 (5090) |
-| `qwen2.5-coder-32b~kilo-main` | FRIENDLY ALIAS | Same 5090 backend — **Kilo primary** |
-| `qwen2.5-coder-1.5b-base~kilo-autocomplete` | FRIENDLY ALIAS | Ollama on HVH-01 (1060) |
-| `devstral-24b@desktop~open-webui-coder` | FRIENDLY ALIAS | Desktop Ollama (not Kilo main) |
-| `litellm-complexity-auto-router@litellm~smart-router` | MODEL GROUP | Tier router |
+| `qwen3-coder-30b-a3b` | FRIENDLY ALIAS | vLLM on `hom-lab-ctl-k3s-02` |
+| `qwen2.5-coder-1.5b-base-q8_0` | FRIENDLY ALIAS | Ollama on `HOM-LAB-HVH-01` |
+| `qwen2.5-coder-7b` | FRIENDLY ALIAS | Ollama on `dev-workstation-win` |
 
-## Complexity auto-router (`litellm-complexity-auto-router@litellm~smart-router`)
+## Complexity auto-router (`litellm-complexity-auto-router`)
 
-Requires LiteLLM **>= v1.94.x** (`auto_router/complexity_router`). The role keeps
-`image_tag: main-latest` by default so the gateway can pick up that surface.
+This optional feature is currently disabled. If commissioned later, pin the
+LiteLLM chart and image versions before enabling it.
 
 Clients call:
 
 ```text
-model: litellm-complexity-auto-router@litellm~smart-router
+model: litellm-complexity-auto-router
 ```
 
-Tier map (local-first; Ollama retired — SIMPLE tier aliases vllm-primary review lane):
+Tier map (local-first; enable only after a separate route review):
 
 | Tier | Without cloud keys | With OpenAI | With Anthropic |
 | --- | --- | --- | --- |
-| SIMPLE | `qwen2.5-coder-32b~code-review` | same | same |
-| MEDIUM | `qwen2.5-coder-32b~coder-primary` | same | same |
-| COMPLEX | `qwen2.5-coder-32b~coder-primary` | `gpt-4o@openai~cloud-chat` | `claude-sonnet-4@anthropic~cloud-escalation` |
-| REASONING | `qwen2.5-coder-32b~coder-primary` | `gpt-4o@openai~cloud-chat` | `claude-sonnet-4@anthropic~cloud-escalation` |
+| SIMPLE | `qwen3-coder-30b-a3b` | same | same |
+| MEDIUM | `qwen3-coder-30b-a3b` | same | same |
+| COMPLEX | `qwen3-coder-30b-a3b` | `gpt-4o` | `claude-sonnet-4` |
+| REASONING | `qwen3-coder-30b-a3b` | `gpt-4o` | `claude-sonnet-4` |
 
 This is **pre-request complexity classification**, not post-response confidence
 handoff. Keyword rules for ansible/k3s/netbox escalate to COMPLEX/REASONING.

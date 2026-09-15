@@ -31,6 +31,39 @@
   when: cline_ide_state == "present"
   no_log: true
 
+- name: Resolve Cline model catalog from commissioned SSOT
+  ansible.builtin.set_fact:
+    cline_ide_models: []
+  when:
+    - cline_ide_state == "present"
+    - ai_cli_commissioned_models is defined
+
+- name: Translate commissioned model rows to Cline schema
+  ansible.builtin.set_fact:
+    cline_ide_models: >-
+      {{
+        cline_ide_models
+        + [
+            {
+              'name': item.display_name | default(item.id),
+              'model': item.id,
+              'enabled': item.enabled | default(true),
+              'roles': item.labels | default([]) | intersect(['chat', 'edit', 'apply', 'autocomplete', 'embed']),
+              'context_window': item.context | default(32768),
+              'max_output_tokens': item.max_output | default(4096),
+              'temperature': item.temperature | default(0.2),
+              'top_p': item.top_p | default(omit),
+              'capabilities': ['streaming', 'tools'] if 'tools' in (item.labels | default([])) else []
+            }
+          ]
+      }}
+  loop: "{{ ai_cli_commissioned_models }}"
+  loop_control:
+    label: "{{ item.id }}"
+  when:
+    - cline_ide_state == "present"
+    - ai_cli_commissioned_models is defined
+
 - name: Require a real LiteLLM key for Cline when present
   ansible.builtin.assert:
     that:

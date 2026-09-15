@@ -58,38 +58,11 @@ model_catalog_manifest:
         - current smoke-model research matrix incomplete
         - live GPU probe failed on hom-lab-ctl-k3s-02
       notes: Small smoke example verified to exist on Hugging Face; still not downloaded or pinned.
-    - lane: code-fast
-      purpose: autocomplete, small edits, repo questions
-      status: downloaded
-      candidate_family: Qwen2.5-Coder 1.5B base (Continue FIM)
-      example_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B
-      selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B
-      license: apache-2.0
-      serving_runtime: ollama
-      storage_host: HOM-LAB-HVH-01
-      unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\ollama"
-      source_routing:
-        primary_doc_source: ollama_library
-        primary_doc_url: "https://ollama.com/library/qwen2.5-coder"
-        secondary_doc_source: huggingface_model_card
-        secondary_doc_url: "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B"
-        ollama_library_url: "https://ollama.com/library/qwen2.5-coder"
-        llms_txt_url: null
-        context7_library_id: /websites/ollama
-        hrl_pack_slug: qwen-qwen2.5-coder-1.5b-base
-        hrl_pack_status: missing
-      research_sources:
-        - https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B
-        - https://ollama.com/library/qwen2.5-coder
-        - https://docs.continue.dev/customize/deep-dives/autocomplete
-        - https://docs.litellm.ai/docs/providers/ollama
-      notes: >-
-        Plan 2026-09-12: Ollama tag qwen2.5-coder:1.5b-base for FIM. LiteLLM client
-        id remains qwen2.5-coder-1.5b-base. Served on HVH-01 GTX 1060 via Ollama
-        OpenAI /v1 — not vLLM (Pascal CC 6.1). Instruct tag retained on host for smokes.
     - lane: code-autocomplete-1.5b
       purpose: Continue autocomplete QwenCoder2.5 1.5B-base FIM
       status: downloaded
+      aliases:
+        - code-fast
       candidate_family: smaller coding FIM model (base)
       example_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B
       selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B
@@ -111,8 +84,8 @@ model_catalog_manifest:
         that shape with useLegacyCompletionsEndpoint. Continue: temp 0.0,
         debounce 250, maxPromptTokens 1024. See roles/continue_ide/README.md
         and model-lane-acceptance/gateway/continue-embed-and-fim-atdd.md.
-    - lane: nomic-embed-text-hvh01
-      purpose: Continue embed off Mac onto HVH-01 Ollama
+    - lane: nomic-embed-text
+      purpose: embedding model; deployment placement is recorded separately
       status: selected
       candidate_family: Nomic Embed Text
       example_hf_repo_id: nomic-ai/nomic-embed-text-v1.5
@@ -211,7 +184,7 @@ model_catalog_manifest:
       research_sources:
         - https://docs.continue.dev/ide-extensions/chat/model-setup
       notes: Prefer DiffuCoder local wrapper; qwen3-coder-30b as alternate local lane.
-    - lane: qwen3-coder-30b-a3b-primary
+    - lane: qwen3-coder-30b-a3b
       purpose: Primary agentic coder on 5090 (replaces Qwen2.5-Coder-32B-AWQ)
       variant_class: instruct_chat_agent
       status: selected
@@ -241,7 +214,7 @@ model_catalog_manifest:
         active params (3B) keeps tok/s high for Continue/Cursor loops. Strong
         tool-calling. Replaces Qwen2.5-Coder-32B-AWQ as vllm-primary lane.
         AWQ-4bit ~18GB for vLLM compatibility, ~100-170 tok/s on 5090.
-    - lane: qwen3.6-35b-a3b-generalist
+    - lane: qwen3.6-35b-a3b
       purpose: Architecture discussion and generalist reasoning (separate from code edits)
       variant_class: conversational_generalist
       status: selected
@@ -269,7 +242,7 @@ model_catalog_manifest:
       notes: >-
         Separate from code edits - for "explain this Terraform module" discussions.
         MoE runs ~145 tok/s at Q6 on 5090 with long context headroom. Q6 ~28GB fits
-        comfortably. Not for raw code generation (use qwen3-coder-30b-a3b-primary).
+        comfortably. Not for raw code generation (use qwen3-coder-30b-a3b).
     - lane: devstral-small-2-agent
       purpose: Repo navigation and tool-use agent specialist
       variant_class: instruct_chat_agent
@@ -329,12 +302,12 @@ model_catalog_manifest:
         project). GLM-4.6 Q4_K_M fits in 32GB with context room - same
         architectural ambition, actually usable daily. Heavier experimental lane.
     - lane: qwen3-coder-30b
-      purpose: Continue Chat Edit alternate local (deprecated - use qwen3-coder-30b-a3b-primary)
+      purpose: Continue Chat Edit alternate local (deprecated - use qwen3-coder-30b-a3b)
       status: deprecated
       candidate_family: Qwen3-Coder 30B (non-MoE)
       serving_runtime: vllm
       notes: >-
-        Replaced by qwen3-coder-30b-a3b-primary (MoE variant). This entry kept
+        Replaced by qwen3-coder-30b-a3b (MoE variant). This entry kept
         for catalog continuity. Do not download.
     - lane: qwen3-coder-480b
       purpose: Continue Chat Edit large open model

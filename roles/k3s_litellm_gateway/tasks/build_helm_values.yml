@@ -47,7 +47,7 @@
         )
       }}
 
-# Homelab local routes — model@host client ids; friendly labels in notes only.
+# Homelab local routes — plain logical client IDs; placement is model_info data.
 - name: Build homelab LiteLLM routes from commissioned api_bases
   ansible.builtin.set_fact:
     k3s_litellm_gateway_resolved_local_model_routes: >-
@@ -57,13 +57,13 @@
             {
               'model_name': k3s_litellm_gateway_client_model_id_continue_chat,
               'litellm_params': {
-                'model': 'hosted_vllm/' ~ k3s_litellm_gateway_primary_vllm_model,
-                'api_base': k3s_litellm_gateway_primary_vllm_api_base,
+                'model': k3s_litellm_gateway_local_backends.primary.provider ~ '/' ~ k3s_litellm_gateway_local_backends.primary.model,
+                'api_base': k3s_litellm_gateway_local_backends.primary.api_base,
                 'api_key': 'none',
-                'temperature': k3s_litellm_gateway_primary_vllm_temperature,
-                'top_p': k3s_litellm_gateway_primary_vllm_top_p,
-                'top_k': k3s_litellm_gateway_primary_vllm_top_k,
-                'repetition_penalty': k3s_litellm_gateway_primary_vllm_repetition_penalty
+                'temperature': k3s_litellm_gateway_local_backends.primary.temperature,
+                'top_p': k3s_litellm_gateway_local_backends.primary.top_p,
+                'top_k': k3s_litellm_gateway_local_backends.primary.top_k,
+                'repetition_penalty': k3s_litellm_gateway_local_backends.primary.repetition_penalty
               },
               'model_info': {
                 'mode': 'chat',
@@ -71,7 +71,7 @@
                 'routing_policy': 'local-continue-chat-vllm',
                 'project': 'ripi',
                 'backend_runtime': 'vllm-primary',
-                'hf_repo_id': k3s_litellm_gateway_primary_vllm_model,
+                'hf_repo_id': k3s_litellm_gateway_local_backends.primary.model,
                 'placement': 'k3s-02 vLLM / RTX 5090 (sequential primary)',
                 'max_tokens': 32768,
                 'max_input_tokens': 28672,
@@ -85,7 +85,7 @@
               }
             }
           ]
-          if (k3s_litellm_gateway_primary_vllm_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_local_backends.primary.api_base | default('') | length > 0)
           else []
         )
         + (
@@ -93,26 +93,27 @@
             {
               'model_name': k3s_litellm_gateway_client_model_id_gpt_oss,
               'litellm_params': {
-                'model': k3s_litellm_gateway_ollama_desktop_gpt_oss_provider ~ '/' ~ k3s_litellm_gateway_ollama_desktop_gpt_oss_model,
-                'api_base': k3s_litellm_gateway_ollama_desktop_gpt_oss_api_base,
+                'model': k3s_litellm_gateway_local_backends.desktop_gpt_oss.provider ~ '/' ~ k3s_litellm_gateway_local_backends.desktop_gpt_oss.model,
+                'api_base': k3s_litellm_gateway_local_backends.desktop_gpt_oss.api_base,
                 'api_key': 'none',
-                'temperature': k3s_litellm_gateway_ollama_desktop_gpt_oss_temperature,
-                'top_p': k3s_litellm_gateway_ollama_desktop_gpt_oss_top_p
+                'temperature': k3s_litellm_gateway_local_backends.desktop_gpt_oss.temperature,
+                'top_p': k3s_litellm_gateway_local_backends.desktop_gpt_oss.top_p
               },
               'model_info': {
                 'mode': 'chat',
                 'model_lane': k3s_litellm_gateway_client_model_id_gpt_oss,
-                'routing_policy': 'local-gpt-oss-ollama-desktop',
+                'routing_policy': 'local-gpt-oss',
                 'project': 'ripi',
-                'backend_runtime': 'ollama-gpt-oss-desktop',
-                'ollama_library': k3s_litellm_gateway_ollama_desktop_gpt_oss_model,
+                'backend_runtime': 'ollama',
+                'placement_host': 'dev-workstation-win',
+                'ollama_library': k3s_litellm_gateway_local_backends.desktop_gpt_oss.model,
                 'notes': 'gpt-oss:20b desktop Ollama; think=low|medium|high via Ollama API',
                 'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
                 'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
               }
             }
           ]
-          if (k3s_litellm_gateway_ollama_desktop_gpt_oss_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_local_backends.desktop_gpt_oss.api_base | default('') | length > 0)
           else []
         )
         + (
@@ -120,23 +121,24 @@
             {
               'model_name': k3s_litellm_gateway_client_model_id_continue_edit,
               'litellm_params': {
-                'model': k3s_litellm_gateway_ollama_desktop_7b_provider ~ '/' ~ k3s_litellm_gateway_ollama_desktop_7b_model,
-                'api_base': k3s_litellm_gateway_ollama_desktop_7b_api_base,
+                'model': k3s_litellm_gateway_local_backends.desktop_7b.provider ~ '/' ~ k3s_litellm_gateway_local_backends.desktop_7b.model,
+                'api_base': k3s_litellm_gateway_local_backends.desktop_7b.api_base,
                 'api_key': 'none'
               },
               'model_info': {
                 'model_lane': k3s_litellm_gateway_client_model_id_continue_edit,
-                'routing_policy': 'local-continue-edit-ollama-desktop',
+                'routing_policy': 'local-continue-edit',
                 'project': 'ripi',
-                'backend_runtime': 'ollama-qwen25-coder-7b-desktop',
-                'ollama_library': k3s_litellm_gateway_ollama_desktop_7b_model,
+                'backend_runtime': 'ollama',
+                'placement_host': 'dev-workstation-win',
+                'ollama_library': k3s_litellm_gateway_local_backends.desktop_7b.model,
                 'notes': 'Continue edit/apply (desktop Ollama)',
                 'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
                 'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
               }
             }
           ]
-          if (k3s_litellm_gateway_ollama_desktop_7b_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_local_backends.desktop_7b.api_base | default('') | length > 0)
           else []
         )
         + (
@@ -144,23 +146,24 @@
             {
               'model_name': k3s_litellm_gateway_client_model_id_desktop_implement,
               'litellm_params': {
-                'model': k3s_litellm_gateway_ollama_desktop_14b_provider ~ '/' ~ k3s_litellm_gateway_ollama_desktop_14b_model,
-                'api_base': k3s_litellm_gateway_ollama_desktop_14b_api_base,
+                'model': k3s_litellm_gateway_local_backends.desktop_14b.provider ~ '/' ~ k3s_litellm_gateway_local_backends.desktop_14b.model,
+                'api_base': k3s_litellm_gateway_local_backends.desktop_14b.api_base,
                 'api_key': 'none'
               },
               'model_info': {
                 'model_lane': k3s_litellm_gateway_client_model_id_desktop_implement,
-                'routing_policy': 'local-codex-desktop-implement-ollama',
+                'routing_policy': 'local-codex-implement',
                 'project': 'ripi',
-                'backend_runtime': 'ollama-qwen25-coder-14b-desktop',
-                'ollama_library': k3s_litellm_gateway_ollama_desktop_14b_model,
+                'backend_runtime': 'ollama',
+                'placement_host': 'dev-workstation-win',
+                'ollama_library': k3s_litellm_gateway_local_backends.desktop_14b.model,
                 'notes': 'Codex desktop implementation/review; no fallback group',
                 'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
                 'model_catalog_manifest': 'inventory/group_vars/model_catalog/manifest.yml'
               }
             }
           ]
-          if (k3s_litellm_gateway_ollama_desktop_14b_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_local_backends.desktop_14b.api_base | default('') | length > 0)
           else []
         )
         + (
@@ -168,15 +171,16 @@
             {
               'model_name': k3s_litellm_gateway_client_model_id_continue_autocomplete,
               'litellm_params': {
-                'model': k3s_litellm_gateway_ollama_hvh01_fim_1_5b_provider ~ '/' ~ k3s_litellm_gateway_ollama_hvh01_fim_1_5b_model,
-                'api_base': k3s_litellm_gateway_ollama_hvh01_fim_1_5b_api_base,
+                'model': k3s_litellm_gateway_local_backends.fim_1_5b.provider ~ '/' ~ k3s_litellm_gateway_local_backends.fim_1_5b.model,
+                'api_base': k3s_litellm_gateway_local_backends.fim_1_5b.api_base,
                 'api_key': 'none'
               },
               'model_info': {
                 'model_lane': k3s_litellm_gateway_client_model_id_continue_autocomplete,
-                'routing_policy': 'local-continue-autocomplete',
+                'routing_policy': 'local-autocomplete',
                 'project': 'ripi',
-                'backend_runtime': 'ollama-autocomplete-1.5b-hvh-01',
+                'backend_runtime': 'ollama',
+                'placement_host': 'HOM-LAB-HVH-01',
                 'hf_repo_id': 'Qwen/Qwen2.5-Coder-1.5B',
                 'ollama_library': 'qwen2.5-coder:1.5b-base-q8_0',
                 'notes': 'FIM autocomplete Ollama GGUF Q8_0; client id qwen2.5-coder-1.5b-base-q8_0',
@@ -185,7 +189,7 @@
               }
             }
           ]
-          if (k3s_litellm_gateway_ollama_hvh01_fim_1_5b_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_local_backends.fim_1_5b.api_base | default('') | length > 0)
           else []
         )
         + (
@@ -193,15 +197,16 @@
             {
               'model_name': k3s_litellm_gateway_client_model_id_nomic_embed,
               'litellm_params': {
-                'model': k3s_litellm_gateway_ollama_hvh01_nomic_provider ~ '/' ~ k3s_litellm_gateway_ollama_hvh01_nomic_model,
-                'api_base': k3s_litellm_gateway_ollama_hvh01_nomic_api_base,
+                'model': k3s_litellm_gateway_local_backends.nomic.provider ~ '/' ~ k3s_litellm_gateway_local_backends.nomic.model,
+                'api_base': k3s_litellm_gateway_local_backends.nomic.api_base,
                 'api_key': 'none'
               },
               'model_info': {
                 'model_lane': k3s_litellm_gateway_client_model_id_nomic_embed,
-                'routing_policy': 'local-continue-embed-ollama-hvh01',
+                'routing_policy': 'local-embed-ollama',
                 'project': 'ripi',
-                'backend_runtime': 'ollama-nomic-embed-hvh-01',
+                'backend_runtime': 'ollama',
+                'placement_host': 'HOM-LAB-HVH-01',
                 'ollama_library': 'nomic-embed-text',
                 'context_class': 'embeddings',
                 'notes': 'Continue embed; Ollama nomic-embed-text on GTX 1060',
@@ -210,7 +215,7 @@
               }
             }
           ]
-          if (k3s_litellm_gateway_ollama_hvh01_nomic_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_local_backends.nomic.api_base | default('') | length > 0)
           else []
         )
         + (
@@ -218,15 +223,16 @@
             {
               'model_name': k3s_litellm_gateway_client_model_id_kilo_fast,
               'litellm_params': {
-                'model': k3s_litellm_gateway_ollama_desktop_ministral_provider ~ '/' ~ k3s_litellm_gateway_ollama_desktop_ministral_model,
-                'api_base': k3s_litellm_gateway_ollama_desktop_ministral_api_base,
+                'model': k3s_litellm_gateway_local_backends.desktop_ministral.provider ~ '/' ~ k3s_litellm_gateway_local_backends.desktop_ministral.model,
+                'api_base': k3s_litellm_gateway_local_backends.desktop_ministral.api_base,
                 'api_key': 'none'
               },
               'model_info': {
                 'model_lane': k3s_litellm_gateway_client_model_id_kilo_fast,
-                'routing_policy': 'local-kilo-fast-ollama-desktop',
+                'routing_policy': 'local-kilo-fast',
                 'project': 'ripi',
-                'backend_runtime': 'ollama-ministral-dev-workstation-win',
+                'backend_runtime': 'ollama',
+                'placement_host': 'dev-workstation-win',
                 'ollama_library': 'ministral-3:8b',
                 'notes': 'friendly: ~kilo-fast',
                 'source_registry': 'docs/reference/naming-standards/live-object-registry.yml#model_lanes',
@@ -234,7 +240,7 @@
               }
             }
           ]
-          if (k3s_litellm_gateway_ollama_desktop_ministral_api_base | default('') | length > 0)
+          if (k3s_litellm_gateway_local_backends.desktop_ministral.api_base | default('') | length > 0)
           else []
         )
       }}

@@ -38,6 +38,62 @@
   when: continue_ide_state == "present"
   no_log: true
 
+- name: Resolve Continue model catalog from commissioned SSOT
+  ansible.builtin.set_fact:
+    continue_ide_models: []
+  when:
+    - continue_ide_state == "present"
+    - ai_cli_commissioned_models is defined
+
+- name: Translate commissioned model rows to Continue schema
+  ansible.builtin.set_fact:
+    continue_ide_models: >-
+      {{
+        continue_ide_models
+        + [
+            {
+              'name': item.display_name | default(item.id),
+              'model': item.id,
+              'enabled':
+                (continue_ide_autocomplete_enabled | bool)
+                if item.id == 'qwen2.5-coder-1.5b-base-q8_0'
+                else item.enabled | default(true),
+              'roles': item.labels | default([]) | intersect(['chat', 'edit', 'apply', 'autocomplete', 'embed']),
+              'capabilities': ['tool_use'] if 'tools' in (item.labels | default([])) else []
+            }
+            | combine(
+                {
+                  'default_completion_options': {
+                    'contextLength': item.context | default(32768),
+                    'maxTokens': item.max_output | default(4096),
+                    'temperature': item.temperature | default(0.2)
+                  }
+                  | combine(
+                      {'topP': item.top_p}
+                      if item.top_p is defined else {}
+                    )
+                }
+              )
+            | combine(
+                {
+                  'use_legacy_completions_endpoint': true,
+                  'autocomplete_options': {
+                    'debounceDelay': 250,
+                    'maxPromptTokens': 1024,
+                    'onlyMyCode': true
+                  }
+                }
+                if item.id == 'qwen2.5-coder-1.5b-base-q8_0' else {}
+              )
+          ]
+      }}
+  loop: "{{ ai_cli_commissioned_models }}"
+  loop_control:
+    label: "{{ item.id }}"
+  when:
+    - continue_ide_state == "present"
+    - ai_cli_commissioned_models is defined
+
 - name: Require a real LiteLLM key for Continue when present
   ansible.builtin.assert:
     that:
@@ -57,24 +113,19 @@
 
 - name: Check pinned Firebase CLI for Continue MCP
   vars:
-    _continue_ide_npm_prefix: >-
-      {{
-        [work_laptop_nvm_exec]
-        if (work_laptop_nvm_exec | default('') | length > 0)
-        else []
-      }}
+    _continue_ide_npm_executable: "{{ work_laptop_nvm_exec if (work_laptop_nvm_exec | default('') | length > 0) else 'npm' }}"
+    _continue_ide_npm_args:
+      - list
+      - --global
+      - --depth=0
+      - "firebase-tools@{{ continue_ide_firebase_tools_version | default('15.30.0') }}"
   ansible.builtin.command:
-    argv: >-
-      {{
-        _continue_ide_npm_prefix
-        + [
-          'npm',
-          'list',
-          '--global',
-          '--depth=0',
-          'firebase-tools@' ~ (continue_ide_firebase_tools_version | default('15.30.0'))
-        ]
-      }}
+    argv:
+      - "{{ _continue_ide_npm_executable }}"
+      - "{{ _continue_ide_npm_args[0] }}"
+      - "{{ _continue_ide_npm_args[1] }}"
+      - "{{ _continue_ide_npm_args[2] }}"
+      - "{{ _continue_ide_npm_args[3] }}"
   register: continue_ide_firebase_cli_check
   changed_when: false
   failed_when: false
@@ -84,23 +135,18 @@
 
 - name: Install pinned Firebase CLI for Continue MCP
   vars:
-    _continue_ide_npm_prefix: >-
-      {{
-        [work_laptop_nvm_exec]
-        if (work_laptop_nvm_exec | default('') | length > 0)
-        else []
-      }}
+    _continue_ide_npm_executable: "{{ work_laptop_nvm_exec if (work_laptop_nvm_exec | default('') | length > 0) else 'npm' }}"
+    _continue_ide_npm_args:
+      - install
+      - --global
+      - "firebase-tools@{{ continue_ide_firebase_tools_version | default('15.30.0') }}"
   ansible.builtin.command:
-    argv: >-
-      {{
-        _continue_ide_npm_prefix
-        + [
-          'npm',
-          'install',
-          '--global',
-          'firebase-tools@' ~ (continue_ide_firebase_tools_version | default('15.30.0'))
-        ]
-      }}
+    argv:
+      - "{{ _continue_ide_npm_executable }}"
+      - "{{ _continue_ide_npm_args[0] }}"
+      - "{{ _continue_ide_npm_args[1] }}"
+      - "{{ _continue_ide_npm_args[2] }}"
+  changed_when: continue_ide_firebase_cli_check.rc | default(1) != 0
   when:
     - continue_ide_state == "present"
     - continue_ide_provision_firebase_cli | default(false) | bool

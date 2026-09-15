@@ -9,7 +9,7 @@
         "defaultModelId": {{ cline_ide_model | to_json }}
       },
       "models": {
-{% for entry in cline_ide_models %}
+{% for entry in cline_ide_models if entry.enabled | default(true) %}
         {{ entry.model | to_json }}: {
           "id": {{ entry.model | to_json }},
           "name": {{ (entry.name | default(entry.model)) | to_json }},

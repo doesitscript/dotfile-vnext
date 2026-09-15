@@ -2,6 +2,27 @@
 - name: Load vault variables for LiteLLM gateway
   ansible.builtin.include_tasks: load_vault.yml
 
+- name: Require vault-backed LiteLLM master key
+  ansible.builtin.assert:
+    that:
+      - k3s_litellm_gateway_resolved_master_key | default('') | length > 0
+    fail_msg: >-
+      LiteLLM deployment requires vault_k3s_litellm_gateway_master_key;
+      plaintext fallback keys are disabled.
+  no_log: true
+
+- name: Require vault-backed Langfuse keys when integration is enabled
+  ansible.builtin.assert:
+    that:
+      - k3s_litellm_gateway_resolved_langfuse_public_key | default('') | length > 0
+      - k3s_litellm_gateway_resolved_langfuse_secret_key | default('') | length > 0
+    fail_msg: >-
+      Langfuse integration is enabled but its public/secret keys are absent.
+      Put vault_shared_langfuse_public_key and vault_shared_langfuse_secret_key
+      in vault/shared.vault.yml, or disable Langfuse explicitly.
+  when: k3s_litellm_gateway_langfuse_enabled | bool
+  no_log: true
+
 - name: Build LiteLLM Helm values from vault-backed configuration
   ansible.builtin.include_tasks: build_helm_values.yml
 

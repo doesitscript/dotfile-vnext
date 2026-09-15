@@ -209,37 +209,45 @@ ai_service_profile:
         - runtime
         - primary
 
-# Desktop Ollama qwen2.5-coder:7b backend — mechanical merge; keep 7B.
-k3s_litellm_gateway_primary_vllm_api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1"
-k3s_litellm_gateway_primary_vllm_model: "cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit"
-k3s_litellm_gateway_ollama_desktop_7b_api_base: "http://ollama-desktop.hom.lab:11434/v1"
-k3s_litellm_gateway_ollama_desktop_7b_model: "qwen2.5-coder:7b"
-k3s_litellm_gateway_ollama_desktop_7b_provider: "openai"
+# Commissioned LiteLLM backend registry. Host placement belongs in values,
+# while logical backend IDs remain stable if a deployment moves.
+k3s_litellm_gateway_local_backends:
+  primary:
+    api_base: "http://vllm-primary.vllm-runtime.svc.cluster.local:8000/v1"
+    model: "cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit"
+    provider: "hosted_vllm"
+    temperature: 0.7
+    top_p: 0.8
+    top_k: 20
+    repetition_penalty: 1.05
+  desktop_7b:
+    api_base: "http://ollama-desktop.hom.lab:11434/v1"
+    model: "qwen2.5-coder:7b"
+    provider: "openai"
+  desktop_14b:
+    api_base: "http://ollama-desktop.hom.lab:11434/v1"
+    model: "qwen2.5-coder:14b"
+    provider: "openai"
+  fim_1_5b:
+    api_base: "http://ollama-hvh01.hom.lab:11434/v1"
+    model: "qwen2.5-coder:1.5b-base-q8_0"
+    provider: "openai"
+  nomic:
+    api_base: "http://ollama-hvh01.hom.lab:11434"
+    model: "nomic-embed-text"
+    provider: "ollama"
+  desktop_gpt_oss:
+    api_base: "http://ollama-desktop.hom.lab:11434"
+    model: "gpt-oss:20b"
+    provider: "ollama"
+    temperature: 1.0
+    top_p: 0.95
+  desktop_ministral:
+    api_base: "http://ollama-desktop.hom.lab:11434"
+    model: "ministral-3:8b"
+    provider: "ollama"
 
-# Desktop Ollama qwen2.5-coder:14b backend (RX 9060 XT).
-k3s_litellm_gateway_ollama_desktop_14b_api_base: "http://ollama-desktop.hom.lab:11434/v1"
-k3s_litellm_gateway_ollama_desktop_14b_model: "qwen2.5-coder:14b"
-k3s_litellm_gateway_ollama_desktop_14b_provider: "openai"
-
-# HVH-01 Ollama GGUF Q8_0 / llama.cpp FIM backend — base tag.
-# Client id includes quant: qwen2.5-coder-1.5b-base-q8_0.
-k3s_litellm_gateway_ollama_hvh01_fim_1_5b_api_base: "http://ollama-hvh01.hom.lab:11434/v1"
-k3s_litellm_gateway_ollama_hvh01_fim_1_5b_model: "qwen2.5-coder:1.5b-base-q8_0"
-k3s_litellm_gateway_ollama_hvh01_fim_1_5b_provider: "openai"
-
-# HVH-01 Ollama nomic-embed-text backend (LiteLLM ollama/ provider).
-# Native ollama api_base has no /v1; OpenAI-compat /v1/embeddings also works on Ollama.
-k3s_litellm_gateway_ollama_hvh01_nomic_api_base: "http://ollama-hvh01.hom.lab:11434"
-k3s_litellm_gateway_ollama_hvh01_nomic_model: "nomic-embed-text"
-k3s_litellm_gateway_ollama_hvh01_nomic_provider: "ollama"
-
-# RETIRED (Kilo clean setup) — Continue / Open WebUI / non-Kilo desktop models:
-# k3s_litellm_gateway_gemma4_chat_api_base: "http://ollama-desktop.hom.lab:11434"
-# k3s_litellm_gateway_qwen36_chat_api_base: "http://ollama-desktop.hom.lab:11434"
-# Desktop Ollama legacy chat rows are intentionally not configured here.
-# k3s_litellm_gateway_devstral_chat_api_base: "http://ollama-desktop.hom.lab:11434"
-
-# Kilo fallback (desktop Ollama) — defined below in Phase B section.
+# Optional Open WebUI registry entries remain uncommissioned on this host.
 
 # ---------------------------------------------------------------------------
 # GPU time-share on this host (single nvidia.com/gpu) — Phase B on vs off
@@ -273,20 +281,3 @@ k3s_comfyui_runtime_state: absent
 # ComfyUI pod memory (used only when k3s_comfyui_runtime_state: present).
 k3s_comfyui_runtime_memory_request: 4Gi
 k3s_comfyui_runtime_memory_limit: 20Gi
-
-# RETIRED (Kilo clean setup) — Open WebUI / prompt-assist / devstral gateway rows:
-# k3s_litellm_gateway_gemma4_chat_api_base: "http://ollama-desktop.hom.lab:11434"
-# k3s_litellm_gateway_qwen36_chat_api_base: "http://ollama-desktop.hom.lab:11434"
-# Desktop Ollama legacy chat rows are intentionally not configured here.
-# k3s_litellm_gateway_positive_negative_prompt_assist_chat_api_base: "http://ollama-desktop.hom.lab:11434"
-# k3s_litellm_gateway_devstral_chat_api_base: "http://ollama-desktop.hom.lab:11434"
-
-# Desktop Ollama Ministral fallback backend when the 5090 vLLM path is down.
-k3s_litellm_gateway_ollama_desktop_ministral_api_base: "http://ollama-desktop.hom.lab:11434"
-k3s_litellm_gateway_ollama_desktop_ministral_model: "ministral-3:8b"
-k3s_litellm_gateway_ollama_desktop_ministral_provider: "ollama"
-
-# Desktop Ollama gpt-oss-20b backend (OpenAI-compatible /v1).
-k3s_litellm_gateway_ollama_desktop_gpt_oss_api_base: "http://ollama-desktop.hom.lab:11434"
-k3s_litellm_gateway_ollama_desktop_gpt_oss_model: "gpt-oss:20b"
-k3s_litellm_gateway_ollama_desktop_gpt_oss_provider: "ollama"
