@@ -1,0 +1,131 @@
+
+── qwen3-coder-30b-a3b / smoke::ping-pong [PASS] ──
+JOURNEY:  Can the model hear you and answer with one exact word?
+WHY:      Like saying ping in chat and expecting pong — proves basic communication works end-to-end, not random tokens or a refusal.
+USER:     Reply with exactly the word: pong
+EXPECTED: HTTP 200 and declared expectation
+ACTUAL:   HTTP 200; 'pong'
+
+.
+── qwen3-coder-30b-a3b / chat::explain-add-function [PASS] ──
+JOURNEY:  Can the model explain simple code to a teammate?
+WHY:      You paste a tiny Python function; the model should describe what it does in plain language — the way you'd expect in Continue or Kilo chat.
+USER:     In one short sentence, explain what this Python does: def add(a, b): return a + b
+EXPECTED: HTTP 200 and declared expectation
+ACTUAL:   HTTP 200; 'This Python code defines a function that takes two parameters and returns their sum.'
+
+.
+── qwen3-coder-30b-a3b / tools::read-hosts-tool / invoke [PASS] ──
+JOURNEY:  Can the agent read a real file and report what it found?
+WHY:      You ask the agent to read /etc/hosts. It must request the tool, the harness must execute the read, and (when the lane supports it) cite a hostname or IP from the actual file — a full round trip, not a pretend JSON blob.
+USER:     Use the read_file tool to read /etc/hosts. Do not explain — just call the tool.
+EXPECTED: tool invoke
+ACTUAL:   tool_calls
+
+
+── qwen3-coder-30b-a3b / tools::read-hosts-tool / execute [PASS] ──
+JOURNEY:  Can the agent read a real file and report what it found?
+WHY:      You ask the agent to read /etc/hosts. It must request the tool, the harness must execute the read, and (when the lane supports it) cite a hostname or IP from the actual file — a full round trip, not a pretend JSON blob.
+USER:     (harness execution)
+EXPECTED: read /etc/hosts
+ACTUAL:   ## # Host Database # # localhost is used to configure the loopback interface # when the system is booting. Do not change this entry. ## 127.0.0.1 localhost 255.255.255.255 broadcasthost ::1 localhost 192.168.50.158 litellm.hom
+
+
+── qwen3-coder-30b-a3b / tools::read-hosts-tool / followup [PASS] ──
+JOURNEY:  Can the agent read a real file and report what it found?
+WHY:      You ask the agent to read /etc/hosts. It must request the tool, the harness must execute the read, and (when the lane supports it) cite a hostname or IP from the actual file — a full round trip, not a pretend JSON blob.
+USER:     (follow-up)
+EXPECTED: cites file content
+ACTUAL:   192.168.50.158
+
+
+── qwen3-coder-30b-a3b / tools::read-hosts-tool [PASS] ──
+JOURNEY:  Can the agent read a real file and report what it found?
+WHY:      You ask the agent to read /etc/hosts. It must request the tool, the harness must execute the read, and (when the lane supports it) cite a hostname or IP from the actual file — a full round trip, not a pretend JSON blob.
+USER:     Use the read_file tool to read /etc/hosts. Do not explain — just call the tool.
+EXPECTED: HTTP 200 and declared expectation
+ACTUAL:   HTTP 200; 'tool_calls'
+
+.
+── qwen2.5-coder-14b / smoke::ping-pong [PASS] ──
+JOURNEY:  Can the model hear you and answer with one exact word?
+WHY:      Like saying ping in chat and expecting pong — proves basic communication works end-to-end, not random tokens or a refusal.
+USER:     Reply with exactly the word: pong
+EXPECTED: HTTP 200 and declared expectation
+ACTUAL:   HTTP 200; 'pong'
+
+.
+── qwen2.5-coder-14b / chat::explain-add-function [PASS] ──
+JOURNEY:  Can the model explain simple code to a teammate?
+WHY:      You paste a tiny Python function; the model should describe what it does in plain language — the way you'd expect in Continue or Kilo chat.
+USER:     In one short sentence, explain what this Python does: def add(a, b): return a + b
+EXPECTED: HTTP 200 and declared expectation
+ACTUAL:   HTTP 200; 'This Python function adds two numbers and returns their sum.'
+
+.
+── qwen2.5-coder-7b / smoke::ping-pong [PASS] ──
+JOURNEY:  Can the model hear you and answer with one exact word?
+WHY:      Like saying ping in chat and expecting pong — proves basic communication works end-to-end, not random tokens or a refusal.
+USER:     Reply with exactly the word: pong
+EXPECTED: HTTP 200 and declared expectation
+ACTUAL:   HTTP 200; 'pong'
+
+.
+── qwen2.5-coder-7b / chat::explain-add-function [PASS] ──
+JOURNEY:  Can the model explain simple code to a teammate?
+WHY:      You paste a tiny Python function; the model should describe what it does in plain language — the way you'd expect in Continue or Kilo chat.
+USER:     In one short sentence, explain what this Python does: def add(a, b): return a + b
+EXPECTED: HTTP 200 and declared expectation
+ACTUAL:   HTTP 200; 'This Python function `add` takes two arguments, `a` and `b`, and returns their sum.'
+
+.
+── qwen2.5-coder-1.5b-base-q8_0 / autocomplete::autocomplete-add-fim [PASS] ──
+JOURNEY:  Can autocomplete finish a function body while you type?
+WHY:      Like Tab-complete in an IDE: given a partial `def add(a, b):`, the model should insert a sensible middle chunk (typically `return a + b`).
+USER:     Fill in the middle of the Python function (FIM).
+EXPECTED: HTTP 200 and declared expectation
+ACTUAL:   HTTP 200; 'print "ADDING %d + %d" % (a, b)\n return a + b\n\ndef subtract(a, b):\n print "SUBTRACTING %d - %d" % (a, b)\n return a - b\n\ndef multiply(a, b):\n print "MULTIPLYING'
+
+.
+── nomic-embed-text / embed::embedding-owner [PASS] ──
+JOURNEY:  Can the embedding owner return a vector?
+WHY:      An embed owner must return a non-empty embedding vector.
+USER:     embedding smoke
+EXPECTED: HTTP 200 and declared expectation
+ACTUAL:   HTTP 200; 'vector dimensions=768'
+
+.
+── gpt-oss-20b / smoke::ping-pong [PASS] ──
+JOURNEY:  Can the model hear you and answer with one exact word?
+WHY:      Like saying ping in chat and expecting pong — proves basic communication works end-to-end, not random tokens or a refusal.
+USER:     Reply with exactly the word: pong
+EXPECTED: HTTP 200 and declared expectation
+ACTUAL:   HTTP 200; 'pong'
+
+.
+── gpt-oss-20b / chat::explain-add-function [PASS] ──
+JOURNEY:  Can the model explain simple code to a teammate?
+WHY:      You paste a tiny Python function; the model should describe what it does in plain language — the way you'd expect in Continue or Kilo chat.
+USER:     In one short sentence, explain what this Python does: def add(a, b): return a + b
+EXPECTED: HTTP 200 and declared expectation
+ACTUAL:   HTTP 200; 'It defines a function that takes two arguments and returns their sum.'
+
+.
+=========================== GROUPED JOURNEY SUMMARY ============================
+smoke
+  PASS tests/live/test_journeys.py::test_user_journey[qwen3-coder-30b-a3b-smoke-ping-pong]
+  PASS tests/live/test_journeys.py::test_user_journey[qwen2.5-coder-14b-smoke-ping-pong]
+  PASS tests/live/test_journeys.py::test_user_journey[qwen2.5-coder-7b-smoke-ping-pong]
+  PASS tests/live/test_journeys.py::test_user_journey[gpt-oss-20b-smoke-ping-pong]
+llm_chat
+  PASS tests/live/test_journeys.py::test_user_journey[qwen3-coder-30b-a3b-chat-explain-add-function]
+  PASS tests/live/test_journeys.py::test_user_journey[qwen2.5-coder-14b-chat-explain-add-function]
+  PASS tests/live/test_journeys.py::test_user_journey[qwen2.5-coder-7b-chat-explain-add-function]
+  PASS tests/live/test_journeys.py::test_user_journey[gpt-oss-20b-chat-explain-add-function]
+llm_tools
+  PASS tests/live/test_journeys.py::test_user_journey[qwen3-coder-30b-a3b-tools-read-hosts-tool]
+llm_fim
+  PASS tests/live/test_journeys.py::test_user_journey[qwen2.5-coder-1.5b-base-q8_0-autocomplete-autocomplete-add-fim]
+embed
+  PASS tests/live/test_journeys.py::test_user_journey[nomic-embed-text-embed-embedding-owner]
+11 passed in 45.78s
