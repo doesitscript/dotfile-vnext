@@ -93,6 +93,12 @@
   when:
     - continue_ide_state == "present"
     - ai_cli_commissioned_models is defined
+    - >-
+      (
+        item.labels | default([])
+        | intersect(ai_cli_client_model_contracts.continue_ide.accept_roles | default(['chat', 'edit', 'apply', 'autocomplete', 'embed']))
+        | length
+      ) > 0
 
 - name: Require a real LiteLLM key for Continue when present
   ansible.builtin.assert:

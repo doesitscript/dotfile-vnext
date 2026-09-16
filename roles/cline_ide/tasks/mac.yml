@@ -63,6 +63,12 @@
   when:
     - cline_ide_state == "present"
     - ai_cli_commissioned_models is defined
+    - >-
+      (
+        item.labels | default([])
+        | intersect(ai_cli_client_model_contracts.cline_ide.accept_roles | default(['chat', 'edit', 'apply']))
+        | length
+      ) > 0
 
 - name: Require a real LiteLLM key for Cline when present
   ansible.builtin.assert:
@@ -70,6 +76,7 @@
       - cline_ide_model | default('') | length > 0
       - cline_ide_gateway_api_base | default('') | length > 0
       - (cline_ide_models | default([]) | length) > 0
+      - cline_ide_model in (cline_ide_models | map(attribute='model') | list)
       - >-
         (not (cline_ide_require_api_key | default(true) | bool))
         or (
@@ -77,8 +84,9 @@
           and (cline_ide_render_api_key | default('') != 'REPLACE_WITH_LITELLM_KEY')
         )
     fail_msg: >-
-      cline_ide_state=present but model/base URL/models list is empty or the
-      LiteLLM API key is still REPLACE_WITH_LITELLM_KEY. Hydrate
+      cline_ide_state=present but model/base URL/models list is empty, the
+      default model is not in the chat/edit/apply catalog, or the LiteLLM API
+      key is still REPLACE_WITH_LITELLM_KEY. Hydrate
       vault/shared.vault.yml (vault_k3s_litellm_gateway_master_key) or set
       cline_ide_api_key.
   when: cline_ide_state == "present"

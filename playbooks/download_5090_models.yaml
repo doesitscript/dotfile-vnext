@@ -2,8 +2,40 @@
 # Ansible-owned model-weight lifecycle for the 5090 evaluation candidates.
 # The storage share is on HOM-LAB-HVH-01. Do not run this playbook in the
 # background: completion receipts and task output are the evidence contract.
-# all of these model are instruct models and i'm not sure that they belong beyond an early naive intereest in trying them out.
-# i would tentatively mark them as deleteable.
+#
+# ---------------------------------------------------------------------------
+# How downloads work TODAY (opt-in shortlist — not auto-download)
+# ---------------------------------------------------------------------------
+# Only weight trees listed under huggingface_model_weights: below are managed
+# when this playbook runs. Presence in model_catalog, LiteLLM local_backends,
+# or ai_cli_commissioned_models does NOT pull HF weights.
+#
+# To keep a model from downloading: omit it from this list (or do not run
+# this playbook). That is intentional for evaluate-a-few workflows.
+#
+# Role-level lifecycle today: huggingface_model_weights_state present|absent
+# applies to the whole list passed into roles/huggingface_model_weights.
+# Undo trees with state=absent and an explicit lane list — see role README.
+#
+# ---------------------------------------------------------------------------
+# More Ansible-based next step (when the shortlist grows)
+# ---------------------------------------------------------------------------
+# Prefer per-weight desired state with normal role/playbook semantics, e.g.
+# each candidate in inventory carries state: present|absent (or the playbook
+# filters a catalog to state == present before calling the role). That keeps
+# "listed in catalog" separate from "weights must exist on the share" without
+# inventing a parallel enabled: true/false vocabulary.
+#
+# Do NOT silently couple this list to the LiteLLM gateway registry: gateway
+# commissioning (api_base / routes) is separate from HF download. Optional
+# later SSOT wiring must still require an explicit present download state.
+#
+# Discussion: docs/plans/2026-09-13--get-back-ansible-best-practice/
+#             ongoing_discussion_and_review.md
+#
+# Current candidates are instruct / early-eval interest; tentatively deletable
+# when evaluation ends.
+# ---------------------------------------------------------------------------
 
 - name: Manage 5090 model weight trees
   hosts: HOM-LAB-HVH-01
@@ -14,6 +46,7 @@
       huggingface_hub_package_version: ''
       tags: [huggingface_hub, model_weights]
     - role: huggingface_model_weights
+      # present = ensure listed trees exist; absent = remove listed trees only.
       huggingface_model_weights_state: present
       huggingface_model_weights:
         - lane: qwen3-coder-30b-a3b

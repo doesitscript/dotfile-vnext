@@ -32,61 +32,58 @@
     - opencode_cli_state == "present"
     - opencode_cli_mcp_firecrawl_enabled | bool
 
+- name: Resolve OpenCode model catalog from commissioned SSOT
+  ansible.builtin.set_fact:
+    opencode_cli_models: []
+  when:
+    - opencode_cli_state == "present"
+    - ai_cli_commissioned_models is defined
+
+- name: Translate commissioned model rows to OpenCode schema
+  ansible.builtin.set_fact:
+    opencode_cli_models: >-
+      {{
+        opencode_cli_models
+        + [{
+          'id': item.id,
+          'name': item.display_name | default(item.id),
+          'enabled': item.enabled | default(true),
+          'context': item.context | default(opencode_cli_context_limit),
+          'output': item.max_output | default(opencode_cli_output_limit)
+        }]
+      }}
+  loop: "{{ ai_cli_commissioned_models }}"
+  loop_control:
+    label: "{{ item.id }}"
+  when:
+    - opencode_cli_state == "present"
+    - ai_cli_commissioned_models is defined
+    - >-
+      (
+        item.labels | default([])
+        | intersect(ai_cli_client_model_contracts.opencode_cli.accept_roles | default(['chat', 'edit', 'apply']))
+        | length
+      ) > 0
+
+- name: Require OpenCode default model in commissioned catalog
+  ansible.builtin.assert:
+    that:
+      - >-
+        (opencode_cli_default_model | regex_replace('^[^/]+/', '')) in
+        (opencode_cli_models | selectattr('enabled', 'equalto', true) | map(attribute='id') | list)
+    fail_msg: >-
+      OpenCode default model {{ opencode_cli_default_model }} is not in the
+      enabled SSOT model catalog accepted by the OpenCode client contract.
+  when:
+    - opencode_cli_state == "present"
+    - ai_cli_commissioned_models is defined
+
 - name: Ensure OpenCode install directory exists
   ansible.builtin.file:
     path: "{{ opencode_cli_install_dir }}"
     state: directory
     mode: "0755"
   when: opencode_cli_state == "present"
-
-- name: Install OpenCode binary from official installer
-  ansible.builtin.shell:
-    cmd: curl -fsSL {{ opencode_cli_install_url }} | bash -s -- --no-modify-path
-    creates: "{{ opencode_cli_binary_path }}"
-  when: opencode_cli_state == "present"
-
-- name: Ensure OpenCode config directory exists
-  ansible.builtin.file:
-    path: "{{ opencode_cli_config_dir }}"
-    state: directory
-    mode: "0700"
-  when: opencode_cli_state == "present"
-
-- name: Deploy OpenCode homelab LiteLLM config
-  ansible.builtin.template:
-    src: opencode.jsonc.j2
-    dest: "{{ opencode_cli_config_path }}"
-    mode: "0600"
-  when: opencode_cli_state == "present"
-
-- name: Remove OpenCode config managed by this role
-  ansible.builtin.file:
-    path: "{{ opencode_cli_config_path }}"
-    state: absent
-  when: opencode_cli_state == "absent"
-
-- name: Probe OpenCode version
-  ansible.builtin.command:
-    argv:
-      - "{{ opencode_cli_binary_path }}"
-      - --version
-  register: opencode_cli_version_probe
-  changed_when: false
-  failed_when: false
-  when:
-    - opencode_cli_state == "present"
-    - not ansible_check_mode
-
-- name: Report OpenCode CLI state
-  ansible.builtin.debug:
-    msg:
-      opencode_cli_state: "{{ opencode_cli_state }}"
-      binary: "{{ opencode_cli_binary_path }}"
-      config: "{{ opencode_cli_config_path }}"
-      default_model: "{{ opencode_cli_default_model }}"
-      version: "{{ opencode_cli_version_probe.stdout | default('not installed') }}"
-  when: opencode_cli_state == "present"
-
 
 - name: Install OpenCode binary from official installer
   ansible.builtin.shell:

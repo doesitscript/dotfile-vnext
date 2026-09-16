@@ -31,6 +31,54 @@
   no_log: true
   when: kilo_ide_state == "present"
 
+- name: Resolve Kilo model catalog from commissioned SSOT
+  ansible.builtin.set_fact:
+    kilo_ide_models: []
+  when:
+    - kilo_ide_state == "present"
+    - ai_cli_commissioned_models is defined
+
+- name: Translate commissioned model rows to Kilo schema
+  ansible.builtin.set_fact:
+    kilo_ide_models: >-
+      {{
+        kilo_ide_models
+        + [{
+          'id': item.id,
+          'name': item.display_name | default(item.id),
+          'enabled': item.enabled | default(true),
+          'tool_call': 'tools' in (item.labels | default([])),
+          'context': item.context | default(32768),
+          'output': item.max_output | default(4096),
+          'input': (item.context | default(32768)) - (item.max_output | default(4096))
+        }]
+      }}
+  loop: "{{ ai_cli_commissioned_models }}"
+  loop_control:
+    label: "{{ item.id }}"
+  when:
+    - kilo_ide_state == "present"
+    - ai_cli_commissioned_models is defined
+    - >-
+      (
+        item.labels | default([])
+        | intersect(ai_cli_client_model_contracts.kilo_ide.accept_roles | default(['chat', 'edit', 'apply']))
+        | length
+      ) > 0
+
+- name: Require Kilo default model in commissioned catalog
+  ansible.builtin.assert:
+    that:
+      - >-
+        (kilo_ide_default_model | regex_replace('^[^/]+/', '')) in
+        (kilo_ide_models | selectattr('enabled', 'equalto', true) | map(attribute='id') | list)
+    fail_msg: >-
+      Kilo default model {{ kilo_ide_default_model }} is not in the enabled
+      SSOT model catalog accepted by the Kilo client contract.
+  when:
+    - kilo_ide_state == "present"
+    - ai_cli_commissioned_models is defined
+
 - name: Require a real LiteLLM key for Kilo when present
   ansible.builtin.assert:
     that:

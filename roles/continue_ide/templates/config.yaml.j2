@@ -18,7 +18,7 @@ models:
     apiBase: {{ (entry.api_base | default(continue_ide_gateway_api_base)) | to_json }}
     model: {{ entry.model | to_json }}
     apiKey: {{ continue_ide_render_api_key | to_json }}
-{% if entry.capabilities is defined %}
+{% if (entry.capabilities | default([])) | length > 0 %}
     capabilities:
 {% for capability in entry.capabilities %}
       - {{ capability | to_json }}

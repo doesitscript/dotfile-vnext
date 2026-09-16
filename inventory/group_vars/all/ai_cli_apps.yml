@@ -66,6 +66,21 @@ ai_cli_apps_meta:
     ai_cli_apps to converge model catalogs on all commissioned targets.
   model_lane_intake_key: ai_cli_model_lane_intake
 
+# Client capability contract. Model rows remain authoritative in
+# ai_cli_commissioned_models; each renderer selects only roles it can safely
+# use. This prevents FIM/embed-only lanes from entering tool-capable clients.
+ai_cli_client_model_contracts:
+  continue_ide:
+    accept_roles: [chat, edit, apply, autocomplete, embed]
+  cline_ide:
+    accept_roles: [chat, edit, apply]
+  opencode_cli:
+    accept_roles: [chat, edit, apply]
+  kilo_ide:
+    accept_roles: [chat, edit, apply]
+  aider:
+    accept_roles: [chat]
+
 # Registry — one row per deployable client role.
 # state_var: host inventory gate (present|absent). Tags must include ai_cli_apps.
 ai_cli_apps:
