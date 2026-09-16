@@ -165,3 +165,22 @@ steady-state work.
 | Legacy archive | [`contracts/fuzlang.contract.yaml`](contracts/fuzlang.contract.yaml) | Historical scaffold — **do not grow** |
 
 See [`contracts/README.md`](contracts/README.md).
+
+---
+
+## Known Limitations
+
+Dotfile Phoenix is functional and actively improving, but these limitations
+remain known:
+
+- Documentation and plan history can contain overlapping or superseded
+  guidance; prefer current-state receipts and active playbooks.
+- Some client roles still contain hardcoded or duplicated behavior while the
+  shared model-contract pattern is expanded.
+- API, gateway, and convergence checks do not by themselves prove complete
+  interactive IDE workflows, tool execution, or model quality.
+- Older Ansible surfaces still have lint and maintainability debt.
+- Configured, converged, live, and behaviorally proven are separate states;
+  not every commissioned model has evidence at every layer.
+- Some model lanes share limited GPU resources and must be validated or
+  operated sequentially rather than simultaneously.
