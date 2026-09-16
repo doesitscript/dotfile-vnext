@@ -100,3 +100,5 @@ credential). Mark obligation `blocked` or `pending` — never `pass`.
 | `.cursor/rules/framework-partner-process.mdc` | Execute / multi-plan closeout |
 | `docs/codex_framework/plan-verification-receipt.md` | Obligation inventory |
 | Superpowers `verification-before-completion` | Process skill (must load) |
+| Global skill `client-ui-symptom-local-evidence` | IDE/CLI UI blocked → local logs/config before product docs |
+| `scripts/managed_config_integrity.py` | Parse + Ansible marker integrity for managed client configs |

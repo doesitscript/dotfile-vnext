@@ -113,24 +113,13 @@
   ansible.builtin.command:
     argv:
       - python3
-      - -c
-      - |
-        import pathlib
-        import tomllib
-
-        path = pathlib.Path({{ codex_user_config_path | to_json }})
-        text = path.read_text(encoding="utf-8")
-        tomllib.loads(text)
-        begin = text.count("BEGIN ANSIBLE MANAGED BLOCK: macos_shell_locale")
-        end = text.count("END ANSIBLE MANAGED BLOCK: macos_shell_locale")
-        if begin != end:
-            raise SystemExit(
-                f"macos_shell_locale marker imbalance: begin={begin} end={end}"
-            )
-        if begin > 1:
-            raise SystemExit(
-                f"duplicate macos_shell_locale managed blocks: count={begin}"
-            )
+      - "{{ playbook_dir }}/../scripts/managed_config_integrity.py"
+      - --path
+      - "{{ codex_user_config_path }}"
+      - --format
+      - toml
+      - --marker
+      - macos_shell_locale
   changed_when: false
   when:
     - codex_user_config_state == "present"

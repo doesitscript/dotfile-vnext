@@ -48,6 +48,13 @@ Authority:
 `docs/diagnostics/codex-permission-mode-unavailable--config-duplicate-key--2026-09-15.md`
 (identifier `codex-permission-mode-unavailable-2026-09-15`).
 
+Shared validator:
+
+```bash
+bin/codex-env python scripts/managed_config_integrity.py \
+  --path ~/.codex/config.toml --format toml --marker macos_shell_locale
+```
+
 ## Variables
 
 See `defaults/main.yml` and `meta/argument_specs.yml`.

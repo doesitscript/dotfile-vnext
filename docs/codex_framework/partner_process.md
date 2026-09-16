@@ -343,6 +343,13 @@ Required report on every troubleshooting run:
 - `Missing this run: ...`
 - `Actual output seen this run: ...`
 
+**Client UI / IDE exception path:** when the symptom is a local IDE or CLI
+client message (submit blocked, mode unavailable, permission mode unavailable,
+extension error), check **local client config and logs first** before product
+permission/settings docs. Prefer global skill
+`client-ui-symptom-local-evidence`. For Ansible-managed config files, prefer
+`scripts/managed_config_integrity.py` (parse + managed-block marker balance).
+
 Evidence hierarchy:
 
 1. component-native logs, events, status, or vendor diagnostics

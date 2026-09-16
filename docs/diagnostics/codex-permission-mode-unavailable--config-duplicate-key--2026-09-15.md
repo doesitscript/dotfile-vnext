@@ -69,8 +69,9 @@ Owner role: `roles/codex_user_config` (`macos_shell_locale` via `blockinfile`).
 
 ## Prevention in repo
 
-- Role `codex_user_config` validates that `config.toml` parses after managed-block updates and that `macos_shell_locale` BEGIN/END markers are balanced and unique.
+- Role `codex_user_config` validates that `config.toml` parses after managed-block updates and that `macos_shell_locale` BEGIN/END markers are balanced and unique via `scripts/managed_config_integrity.py`.
 - README troubleshooting points here.
+- Global skill: `client-ui-symptom-local-evidence` (local logs/config before product docs).
 
 ## Related
 
