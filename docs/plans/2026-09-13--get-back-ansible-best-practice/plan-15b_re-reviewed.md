@@ -1,3 +1,10 @@
+# Plan 15b — re-review (historical findings)
+
+> Current status: the Continue filter defect identified below was fixed and
+> re-converged successfully. See [plan-15b_re-reviewed_executed.md](plan-15b_re-reviewed_executed.md)
+> and [CURRENT_STATE.md](CURRENT_STATE.md). The findings below remain as the
+> review input and are not an open TODO.
+
 **Note on the artifact:** `plan-15_…_executed.md` is mostly a paste of my earlier evaluation (including “I’m in Ask mode…”). The real execution receipt is **`plan-14_clien_and_other_cli_evaluation_reviewed.md`**. Review below is against **repo + plan-14**, not plan-15’s title.
 
 Also: this session is still **Ask mode** (read-only). I can inspect deeply; I can’t patch. Switch to Agent if you want the Continue bug fixed.

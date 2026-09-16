@@ -1,4 +1,11 @@
-In the end validate these models  work:
+# Plan 06 — validation history
+
+> Current status: the historical validation gap below was later supplemented
+> by live gateway/client receipts and the current client convergence documented
+> in [CURRENT_STATE.md](CURRENT_STATE.md). The original evidence boundary is
+> retained for audit history.
+
+In the end validate these models work:
 qwen3-coder-30b-a3b
 qwen2.5-coder-7b
 qwen2.5-coder-1.5b-base-q8_0

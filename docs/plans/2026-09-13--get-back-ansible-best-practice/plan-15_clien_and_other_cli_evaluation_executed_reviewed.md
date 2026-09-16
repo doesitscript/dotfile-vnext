@@ -1,3 +1,11 @@
+# Plan 15 — client evaluation (historical review, superseded)
+
+> Current status: the shared client capability contract is implemented and
+> Continue, Cline, OpenCode, and Kilo have been converged. See
+> [CURRENT_STATE.md](CURRENT_STATE.md) and the
+> [Plan 15b execution receipt](plan-15b_re-reviewed_executed.md). The analysis
+> below is retained as the original review record.
+
 Yes — your instinct is right. The Cline change was a **good local fix**, but the **scalable** pattern is not “special-case Cline forever.” It’s already half-built in your SSOT.
 
 ## What actually broke
@@ -21,10 +29,10 @@ You already have the data model pieces in `ai_cli_apps.yml`:
 - per-model: `enabled`, `labels: [chat|edit|apply|autocomplete|embed|tools|…]`
 - per-client registry: `ai_cli_apps` with `continue_ide`, `cline_ide`, …
 
-What’s missing as a **shared contract** is something like:
+At the time of this review, what was missing as a **shared contract** was:
 
 ```yaml
-# conceptual — not claiming this exists yet as one var
+# historical conceptual shape; now implemented in inventory/group_vars/all/ai_cli_apps.yml
 ai_cli_client_model_contracts:
   continue_ide:
     accept_roles: [chat, edit, apply, autocomplete, embed]
@@ -68,7 +76,9 @@ From plan-13:
 | Live `~/.cline/.../models.json` | Dropped FIM + embed |
 
 **Reusable idea:** label-based role filter.
-**Not yet scalable:** the accept-set lives only inside Cline’s task. Codex/Kilo/OpenCode/Aider could hit the same class of bug if they dump the full enabled SSOT into an agent picker.
+The accept-set is now shared by the Cline, OpenCode, Kilo, and Continue role
+renderers. Aider and Codex remain outside this catalog translation because
+their current role surfaces are not SSOT-backed multi-model pickers.
 
 ## Residual risk (worth knowing)
 
@@ -80,4 +90,5 @@ Even after the FIM fix, Cline still gets chat/edit/apply rows that may **lack** 
 - Your proposed standard: yes — **SSOT labels + per-client accepted roles (+ tools for agents)**, expressed once and reused by each role’s renderer.
 - Don’t use global enable/disable to hide FIM from Cline; keep FIM enabled for Continue and filter by client capability.
 
-I’m in Ask mode, so I can’t implement that shared contract — switch to Agent if you want it extracted from the Cline hardcode into inventory + shared by Continue/Cline/others.
+This historical Ask-mode limitation is resolved by the subsequent implementation
+and execution receipts linked above.
