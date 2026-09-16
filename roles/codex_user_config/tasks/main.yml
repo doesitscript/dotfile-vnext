@@ -109,6 +109,32 @@
     - codex_user_config_state == "present"
     - not (codex_user_config_macos_locale_normalize | bool)
 
+- name: Validate Codex user config TOML and macos_shell_locale markers
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - |
+        import pathlib
+        import tomllib
+
+        path = pathlib.Path({{ codex_user_config_path | to_json }})
+        text = path.read_text(encoding="utf-8")
+        tomllib.loads(text)
+        begin = text.count("BEGIN ANSIBLE MANAGED BLOCK: macos_shell_locale")
+        end = text.count("END ANSIBLE MANAGED BLOCK: macos_shell_locale")
+        if begin != end:
+            raise SystemExit(
+                f"macos_shell_locale marker imbalance: begin={begin} end={end}"
+            )
+        if begin > 1:
+            raise SystemExit(
+                f"duplicate macos_shell_locale managed blocks: count={begin}"
+            )
+  changed_when: false
+  when:
+    - codex_user_config_state == "present"
+
 - name: Remove Codex user config
   ansible.builtin.file:
     path: "{{ codex_user_config_path }}"
