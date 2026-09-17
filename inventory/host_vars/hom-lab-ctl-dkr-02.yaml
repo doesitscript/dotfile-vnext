@@ -39,6 +39,14 @@ docker_engine_state: present
 logging_loki_public_endpoint: >-
   http://{{ hostvars['HOM-LAB-HVH-02'].host_ip | default('192.168.50.158') }}:3100/loki/api/v1/push
 
+# Guest logging filesystem backed by F:\\LOGS-HOST on the Hyper-V parent.
+# Docker application data remains on its existing OS/application storage; only
+# journald, Loki, and Docker JSON logs use this logging-class filesystem.
+docker_logging_mount_path: /mnt/logs-host
+docker_logging_device_by_id: /dev/disk/by-id/wwn-0x60022480cf101e2ce703e11ef645bf1d
+docker_logging_expected_serial: "60022480cf101e2ce703e11ef645bf1d"
+docker_logging_filesystem_label: docker-logs
+
 # Operator /etc/hosts for hom.lab URLs (LAN publish IP via portproxy).
 homelab_hosts_file_linux_enabled: true
 # Legacy duplicate fuzlang-net stack on the GPU lane is now retired in favor of

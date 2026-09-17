@@ -8,7 +8,7 @@ Implementation is complete and documented in this plan folder.
 - Containerd and the vLLM/HF cache use the cache filesystem; native pod logs
   use `/mnt/k3s-logs/pods`.
 - The three SSDs were wiped and formatted as separate NTFS host volumes:
-  `K3S-LOGS-HOST`, `K3S-CACHE-HOST`, and `K3S-COLD-HOST`.
+  `LOGS-HOST`, `HOT-DATA-HOST`, and `COLD-DATA-HOST`.
 - Stale vLLM ReplicaSets and old root-backed cache data were removed. Root is
   now 21% used; K3s is Ready with `DiskPressure=False`; vLLM is Ready.
 - No RAID0, pagefile relocation, hibernation relocation, or Prometheus-on-cache

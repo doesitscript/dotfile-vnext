@@ -34,7 +34,7 @@ Probed on `HOM-LAB-HVH-02` (all healthy, uninitialized / blank):
 | PLEXTOR PX-256G7LeV #1 | `002516159857` | ~238 GB | Was misremembered as 120GB |
 | PLEXTOR PX-256G7LeV #2 | `002516159306` | ~238 GB | User-authorized for wipe and repurpose as a separate cold/durable storage boundary |
 
-**Strategy shift vs v0:** RAID0 is prohibited. The immediate implementation uses separate dynamic VHDX-backed guest disks on host `D:`: a 300 GiB cache disk and a 32 GiB logs/scratch disk. The three SSDs are now authorized for repurposing, including wiping observed contents, but direct pass-through or host-volume reformat remains a separate Ansible-owned capability until its module/safety contract is recorded.
+**Strategy shift vs v0:** RAID0 is prohibited. The applied implementation uses separate dynamic VHDX-backed guest disks: a 300 GiB hot-data disk backed by host `G:`, a 200 GiB cold-data disk backed by host `H:`, and a 32 GiB logs/scratch disk on host `F:`. The three SSDs remain separate NTFS host volumes; the guest consumes them through explicitly attached VHDXs.
 
 ---
 

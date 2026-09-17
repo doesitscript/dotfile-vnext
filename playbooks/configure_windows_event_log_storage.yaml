@@ -1,0 +1,46 @@
+---
+# Redirect enabled Windows Event Log channels to the shared LOGS-HOST SSD.
+# This changes future writes without formatting the volume or deleting the
+# original C: log files.
+- name: Configure Windows Event Log storage
+  hosts: windows_hosts
+  gather_facts: false
+  tags: [windows_event_log_storage]
+  pre_tasks:
+    - name: Require explicit target limit
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | trim | length > 0
+        fail_msg: "Use --limit HOM-LAB-HVH-02 for Windows Event Log storage."
+      run_once: true
+      tags: [always]
+  tasks:
+    - name: Redirect enabled event channels to LOGS-HOST
+      ansible.windows.win_powershell:
+        error_action: stop
+        parameters:
+          LogRoot: 'F:\LOGS-HOST\WindowsEventLogs'
+        script: |
+          param([Parameter(Mandatory)][string]$LogRoot)
+          New-Item -ItemType Directory -Path $LogRoot -Force | Out-Null
+          $changed = $false
+          $updated = @()
+          $failed = @()
+          foreach ($log in Get-WinEvent -ListLog * | Where-Object { $_.IsEnabled }) {
+            $safe = ($log.LogName -replace '[\\/:*?"<>|]', '_')
+            $path = Join-Path $LogRoot ($safe + '.evtx')
+            try {
+              & wevtutil.exe sl $log.LogName /lfn:$path
+              if ($LASTEXITCODE -ne 0) { throw "wevtutil exit code $LASTEXITCODE" }
+              $updated += $log.LogName
+              $changed = $true
+            } catch {
+              $failed += [PSCustomObject]@{ log = $log.LogName; error = $_.Exception.Message }
+            }
+          }
+          if ($failed.Count -gt 0) {
+            throw "Some enabled event channels could not be redirected: $($failed | ConvertTo-Json -Compress)"
+          }
+          $Ansible.Changed = $changed
+          $Ansible.Result = @{ root = $LogRoot; updated_count = $updated.Count; updated = $updated }

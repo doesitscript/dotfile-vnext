@@ -1,0 +1,54 @@
+---
+# Rename the already-formatted storage-class volumes without formatting them.
+# Serial identity is authoritative; labels are descriptive and reversible.
+- name: Rename storage-class volumes
+  hosts: windows_hosts
+  gather_facts: false
+  vars:
+    storage_class_volumes:
+      - serial: S1D5NSBF438394N
+        label: LOGS-HOST
+      - serial: "002516159857"
+        label: HOT-DATA-HOST
+      - serial: "002516159306"
+        label: COLD-DATA-HOST
+  tags: [storage_class_labels]
+  pre_tasks:
+    - name: Require explicit target limit
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | trim | length > 0
+        fail_msg: "Use --limit HOM-LAB-HVH-02 for storage-class relabeling."
+      run_once: true
+      tags: [always]
+  tasks:
+    - name: Relabel exact non-system storage volume by serial
+      ansible.windows.win_powershell:
+        error_action: stop
+        parameters:
+          DiskSerial: "{{ item.serial }}"
+          DesiredLabel: "{{ item.label }}"
+        script: |
+          param(
+            [Parameter(Mandatory)][string]$DiskSerial,
+            [Parameter(Mandatory)][string]$DesiredLabel
+          )
+          $disk = @(Get-Disk | Where-Object { $_.SerialNumber -eq $DiskSerial })
+          if ($disk.Count -ne 1) { throw "Serial did not resolve exactly once: $DiskSerial" }
+          if ($disk[0].IsBoot -or $disk[0].IsSystem) { throw "Refusing boot/system disk" }
+          $volume = Get-Partition -DiskNumber $disk[0].Number -ErrorAction Stop |
+            Get-Volume -ErrorAction Stop | Select-Object -First 1
+          if (-not $volume.DriveLetter) { throw "Authorized volume has no drive letter" }
+          if ($volume.FileSystemLabel -ne $DesiredLabel) {
+            Set-Volume -DriveLetter $volume.DriveLetter -NewFileSystemLabel $DesiredLabel -ErrorAction Stop
+          }
+          $Ansible.Changed = $true
+          $Ansible.Result = @{
+            serial = $DiskSerial
+            drive = "$($volume.DriveLetter):"
+            label = (Get-Volume -DriveLetter $volume.DriveLetter).FileSystemLabel
+          }
+      loop: "{{ storage_class_volumes }}"
+      loop_control:
+        label: "{{ item.serial }} -> {{ item.label }}"

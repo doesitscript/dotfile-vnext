@@ -1,0 +1,105 @@
+---
+# Put Docker VM logging paths on the F:-backed /mnt/logs-host filesystem.
+# Application data under /srv/data is intentionally outside this change.
+# The logging class is selected for write-heavy, bounded-retention data that
+# should not compete with OS or application data for root-disk capacity.
+- name: Configure Docker guest logging paths
+  hosts: logging_server
+  gather_facts: false
+  become: true
+  tags: [docker_logging_storage]
+  pre_tasks:
+    - name: Require explicit target limit
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | trim | length > 0
+        fail_msg: "Use --limit hom-lab-ctl-dkr-02 for Docker logging paths."
+      run_once: true
+      tags: [always]
+  tasks:
+    - name: Stop log writers before migration
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: stopped
+      loop:
+        - alloy
+        - docker
+      failed_when: false
+      tags: [docker_logging_storage, docker_logging_migrate]
+
+    - name: Create logging directories on the SSD-backed filesystem
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - /mnt/logs-host/journal
+        - /mnt/logs-host/loki
+        - /mnt/logs-host/docker-container-logs
+
+    - name: Copy existing systemd journal to the logging filesystem
+      ansible.builtin.shell:
+        cmd: "if ! findmnt -M /var/log/journal >/dev/null 2>&1; then cp -a /var/log/journal/. /mnt/logs-host/journal/; fi"
+      changed_when: true
+
+    - name: Copy existing Loki filesystem data to the logging filesystem
+      ansible.builtin.shell:
+        cmd: "if ! findmnt -M /var/lib/loki >/dev/null 2>&1; then cp -a /var/lib/loki/. /mnt/logs-host/loki/; fi"
+      changed_when: true
+
+    - name: Copy existing Docker JSON logs to the logging filesystem
+      ansible.builtin.shell:
+        cmd: "if ! findmnt -M /var/lib/docker/containers >/dev/null 2>&1 && [ -d /var/lib/docker/containers ]; then cp -a /var/lib/docker/containers/. /mnt/logs-host/docker-container-logs/; fi"
+      changed_when: true
+
+    - name: Persist journal bind mount on the logging filesystem
+      ansible.posix.mount:
+        path: /var/log/journal
+        src: /mnt/logs-host/journal
+        fstype: none
+        opts: bind
+        state: mounted
+
+    - name: Persist Loki bind mount on the logging filesystem
+      ansible.posix.mount:
+        path: /var/lib/loki
+        src: /mnt/logs-host/loki
+        fstype: none
+        opts: bind
+        state: mounted
+
+    - name: Persist Docker JSON-log bind mount on the logging filesystem
+      ansible.posix.mount:
+        path: /var/lib/docker/containers
+        src: /mnt/logs-host/docker-container-logs
+        fstype: none
+        opts: bind
+        state: mounted
+
+    - name: Start Docker and log collection services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+        daemon_reload: true
+      loop:
+        - docker
+        - alloy
+      failed_when: false
+
+    - name: Verify logging paths are on the selected filesystem
+      ansible.builtin.command:
+        argv: [findmnt, -M, "{{ item }}", -o, "SOURCE,TARGET"]
+      loop:
+        - /var/log/journal
+        - /var/lib/loki
+        - /var/lib/docker/containers
+      register: docker_logging_mounts
+      changed_when: false
+
+    - name: Report Docker logging mount verification
+      ansible.builtin.debug:
+        var: docker_logging_mounts.stdout_lines

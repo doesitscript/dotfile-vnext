@@ -46,8 +46,8 @@ an explicit `hom-lab-ctl-k3s-02` limit.
   resolves to `/dev/sdc1`.
 - The physical SSD workflow was applied through
   `repurpose_hyperv_physical_ssds.yaml` after exact serial discovery. Samsung
-  is now `K3S-LOGS-HOST`, Plextor `002516159857` is `K3S-CACHE-HOST`, and
-  Plextor `002516159306` is `K3S-COLD-HOST`; final volume-label verification
+ is now `LOGS-HOST`, Plextor `002516159857` is `HOT-DATA-HOST`, and
+  Plextor `002516159306` is `COLD-DATA-HOST`; final volume-label verification
   passed. Each is a separate GPT/NTFS filesystem.
 - A post-cutover cleanup removed ten zero-replica vLLM ReplicaSets and their
   stale kubelet pod-volume data. Root usage fell from 81% to 21%; kubelet pod

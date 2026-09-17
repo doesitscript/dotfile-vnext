@@ -1,0 +1,83 @@
+---
+# Rename same-volume K3s VHDX paths without creating a second full-size copy.
+# The VM stays powered off while each disk is detached, renamed, and reattached
+# at the same controller slot; guest disk identity and filesystem are retained.
+- name: Rename K3s host-side storage-class paths
+  hosts: windows_hosts
+  gather_facts: false
+  tags: [k3s_storage_class_paths]
+  pre_tasks:
+    - name: Require explicit target limit
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | trim | length > 0
+          - hyperv_k3s_storage_path_renames | length > 0
+        fail_msg: "Use --limit HOM-LAB-HVH-02 for K3s storage path renames."
+      run_once: true
+      tags: [always]
+  tasks:
+    - name: Rename selected same-volume VHDX path in place
+      ansible.windows.win_powershell:
+        error_action: stop
+        parameters:
+          VmName: "{{ item.vm_name }}"
+          SourcePath: "{{ item.source_path }}"
+          DestinationPath: "{{ item.destination_path }}"
+          ControllerNumber: "{{ item.controller_number | int }}"
+          ControllerLocation: "{{ item.controller_location | int }}"
+        script: |
+          param(
+            [Parameter(Mandatory)][string]$VmName,
+            [Parameter(Mandatory)][string]$SourcePath,
+            [Parameter(Mandatory)][string]$DestinationPath,
+            [Parameter(Mandatory)][int]$ControllerNumber,
+            [Parameter(Mandatory)][int]$ControllerLocation
+          )
+          $vm = Get-VM -Name $VmName -ErrorAction Stop
+          if ($vm.State.ToString() -ne 'Off') { throw "VM must be Off: $VmName" }
+          if (-not (Test-Path -LiteralPath $SourcePath)) { throw "Source VHDX missing: $SourcePath" }
+          if (Test-Path -LiteralPath $DestinationPath) { throw "Destination already exists: $DestinationPath" }
+          $disk = Get-VMHardDiskDrive -VMName $VmName -ErrorAction Stop |
+            Where-Object {
+              $_.ControllerNumber -eq $ControllerNumber -and
+              $_.ControllerLocation -eq $ControllerLocation
+            } | Select-Object -First 1
+          if (-not $disk -or [System.IO.Path]::GetFullPath($disk.Path) -ne [System.IO.Path]::GetFullPath($SourcePath)) {
+            throw "Expected VHDX is not attached at the selected controller slot."
+          }
+          $sourceVhd = Get-VHD -Path $SourcePath -ErrorAction Stop
+          Remove-VMHardDiskDrive -VMName $VmName -ControllerType SCSI -ControllerNumber $ControllerNumber -ControllerLocation $ControllerLocation -Confirm:$false -ErrorAction Stop
+          Move-Item -LiteralPath $SourcePath -Destination $DestinationPath -ErrorAction Stop
+          Add-VMHardDiskDrive -VMName $VmName -Path $DestinationPath -ControllerType SCSI -ControllerNumber $ControllerNumber -ControllerLocation $ControllerLocation -ErrorAction Stop
+          $attached = Get-VMHardDiskDrive -VMName $VmName -ErrorAction Stop |
+            Where-Object {
+              $_.ControllerNumber -eq $ControllerNumber -and
+              $_.ControllerLocation -eq $ControllerLocation
+            } | Select-Object -First 1
+          if (-not $attached -or [System.IO.Path]::GetFullPath($attached.Path) -ne [System.IO.Path]::GetFullPath($DestinationPath)) {
+            throw "Renamed VHDX is not attached at the expected slot."
+          }
+          $Ansible.Changed = $true
+          $Ansible.Result = @{
+            vm = $VmName
+            source = $SourcePath
+            destination = $DestinationPath
+            virtual_size_bytes = [Int64]$sourceVhd.Size
+            attached = $attached.Path
+          }
+      loop: "{{ hyperv_k3s_storage_path_renames }}"
+      loop_control:
+        label: "{{ item.vm_name }} {{ item.source_path }} -> {{ item.destination_path }}"
+
+    - name: Start K3s VM after storage-class path renames
+      ansible.windows.win_powershell:
+        error_action: stop
+        parameters:
+          VmName: "{{ hyperv_ubuntu_k3s_vm_hostname }}"
+        script: |
+          param([Parameter(Mandatory)][string]$VmName)
+          Start-VM -Name $VmName -ErrorAction Stop | Out-Null
+          $Ansible.Changed = $true
+          $Ansible.Result = @{ vm = $VmName; state = (Get-VM -Name $VmName).State.ToString() }
+      when: not ansible_check_mode

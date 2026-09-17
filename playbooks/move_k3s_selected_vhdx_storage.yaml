@@ -1,0 +1,160 @@
+---
+# Move an already-attached K3s data VHDX between explicitly identified host
+# volumes. This is deliberately separate from the OS-disk relocation playbook.
+# It preserves the guest filesystem and only changes the host-side backing path.
+# Storage-class rule: move only data whose durability and regeneration behavior
+# match the destination class; never infer that an arbitrary VHDX is cache or
+# disposable merely because it is large.
+#
+# Preview:
+#   bin/codex-env ansible-playbook playbooks/move_k3s_selected_vhdx_storage.yaml \
+#     -i inventory/inventory.yaml --limit HOM-LAB-HVH-02 --check
+# Apply:
+#   bin/codex-env ansible-playbook playbooks/move_k3s_selected_vhdx_storage.yaml \
+#     -i inventory/inventory.yaml --limit HOM-LAB-HVH-02
+- name: Move selected attached K3s data VHDXs
+  hosts: windows_hosts
+  gather_facts: false
+  tags: [k3s_vhdx_storage_move]
+  pre_tasks:
+    - name: Require explicit target limit
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | trim | length > 0
+          - hyperv_k3s_vhdx_storage_move_targets | default([]) | length > 0
+        fail_msg: >-
+          Use --limit HOM-LAB-HVH-02 and define an explicit selected VHDX move
+          target.
+      run_once: true
+      tags: [always]
+
+  tasks:
+    - name: Preview selected K3s VHDX move
+      ansible.windows.win_powershell:
+        error_action: stop
+        parameters:
+          VmName: "{{ item.vm_name }}"
+          SourcePath: "{{ item.source_path }}"
+          DestinationPath: "{{ item.destination_path }}"
+          ControllerNumber: "{{ item.controller_number | int }}"
+          ControllerLocation: "{{ item.controller_location | int }}"
+          HostReserveBytes: "{{ (item.host_reserve_gib | int) * 1073741824 }}"
+        script: |
+          param(
+            [Parameter(Mandatory)][string]$VmName,
+            [Parameter(Mandatory)][string]$SourcePath,
+            [Parameter(Mandatory)][string]$DestinationPath,
+            [Parameter(Mandatory)][int]$ControllerNumber,
+            [Parameter(Mandatory)][int]$ControllerLocation,
+            [Parameter(Mandatory)][Int64]$HostReserveBytes
+          )
+          $vm = Get-VM -Name $VmName -ErrorAction Stop
+          $disks = @(Get-VMHardDiskDrive -VMName $VmName -ErrorAction Stop)
+          $slot = $disks | Where-Object {
+            $_.ControllerNumber -eq $ControllerNumber -and
+            $_.ControllerLocation -eq $ControllerLocation
+          } | Select-Object -First 1
+          $sourceFull = [System.IO.Path]::GetFullPath($SourcePath)
+          $destinationFull = [System.IO.Path]::GetFullPath($DestinationPath)
+          $attached = $disks | Where-Object {
+            $_.Path -and [System.IO.Path]::GetFullPath($_.Path) -eq $sourceFull
+          } | Select-Object -First 1
+          $sourceVhd = Get-VHD -Path $SourcePath -ErrorAction Stop
+          $destinationRoot = [System.IO.Path]::GetPathRoot($DestinationPath)
+          $destinationDrive = Get-PSDrive -Name $destinationRoot.Substring(0,1) -PSProvider FileSystem -ErrorAction Stop
+          $Ansible.Changed = $false
+          $Ansible.Result = @{
+            vm = $VmName
+            vm_state = $vm.State.ToString()
+            source = $sourceFull
+            destination = $destinationFull
+            same_host_volume = ($sourceFull.Substring(0,1).ToUpperInvariant() -eq $destinationFull.Substring(0,1).ToUpperInvariant())
+            source_file_bytes = [Int64](Get-Item -LiteralPath $SourcePath).Length
+            source_virtual_size_bytes = [Int64]$sourceVhd.Size
+            source_type = $sourceVhd.VhdType.ToString()
+            source_attached_at_expected_slot = [bool]($attached -and $slot -and $attached.Path -eq $slot.Path)
+            destination_exists = Test-Path -LiteralPath $DestinationPath
+            destination_free_bytes = [Int64]$destinationDrive.Free
+            host_reserve_bytes = $HostReserveBytes
+            checkpoints = @(Get-VMSnapshot -VMName $VmName -ErrorAction SilentlyContinue).Count
+          }
+      loop: "{{ hyperv_k3s_vhdx_storage_move_targets }}"
+      loop_control:
+        label: "{{ item.vm_name }} {{ item.source_path }} -> {{ item.destination_path }}"
+      register: _k3s_vhdx_move_preview
+      check_mode: false
+
+    - name: Validate selected K3s VHDX move
+      ansible.builtin.assert:
+        that:
+          - item.result.checkpoints | int == 0
+          - item.result.source_attached_at_expected_slot | bool
+          - not (item.result.destination_exists | bool)
+          - >-
+            (item.result.destination_free_bytes | int) >
+            ((item.result.host_reserve_bytes | int) if (item.result.same_host_volume | bool)
+             else ((item.result.source_file_bytes | int) + (item.result.host_reserve_bytes | int)))
+        fail_msg: >-
+          Refusing VHDX move because the source attachment, destination, free
+          space, or checkpoint invariant failed: {{ item.result }}
+      loop: "{{ _k3s_vhdx_move_preview.results }}"
+      loop_control:
+        label: "{{ item.item.vm_name }}"
+
+    - name: Move selected K3s VHDX and restart VM
+      ansible.windows.win_powershell:
+        error_action: stop
+        parameters:
+          VmName: "{{ item.item.vm_name }}"
+          SourcePath: "{{ item.item.source_path }}"
+          DestinationPath: "{{ item.item.destination_path }}"
+          ControllerNumber: "{{ item.item.controller_number | int }}"
+          ControllerLocation: "{{ item.item.controller_location | int }}"
+          StartAfter: "{{ item.item.start_after | default(true) | bool }}"
+        script: |
+          param(
+            [Parameter(Mandatory)][string]$VmName,
+            [Parameter(Mandatory)][string]$SourcePath,
+            [Parameter(Mandatory)][string]$DestinationPath,
+            [Parameter(Mandatory)][int]$ControllerNumber,
+            [Parameter(Mandatory)][int]$ControllerLocation,
+            [Parameter(Mandatory)][bool]$StartAfter
+          )
+          if ($env:ANSIBLE_CHECK_MODE -eq '1') { return }
+          $vm = Get-VM -Name $VmName -ErrorAction Stop
+          if ($vm.State.ToString() -ne 'Off') {
+            Stop-VM -Name $VmName -Force -ErrorAction Stop
+            $deadline = (Get-Date).AddMinutes(3)
+            do {
+              Start-Sleep -Seconds 2
+              $state = (Get-VM -Name $VmName -ErrorAction Stop).State.ToString()
+            } while ($state -ne 'Off' -and (Get-Date) -lt $deadline)
+            if ($state -ne 'Off') { throw "VM did not reach Off before VHDX move." }
+          }
+          $destinationDir = Split-Path -LiteralPath $DestinationPath
+          New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+          Move-VMStorage -VMName $VmName -Vhds @(@{
+            SourceFilePath = $SourcePath
+            DestinationFilePath = $DestinationPath
+          }) -ErrorAction Stop
+          $attached = Get-VMHardDiskDrive -VMName $VmName -ErrorAction Stop | Where-Object {
+            $_.ControllerNumber -eq $ControllerNumber -and
+            $_.ControllerLocation -eq $ControllerLocation
+          } | Select-Object -First 1
+          if (-not $attached -or [System.IO.Path]::GetFullPath($attached.Path) -ne [System.IO.Path]::GetFullPath($DestinationPath)) {
+            throw "Moved VHDX is not attached at the expected controller slot and path."
+          }
+          if ($StartAfter) { Start-VM -Name $VmName -ErrorAction Stop }
+          $Ansible.Changed = $true
+          $Ansible.Result = @{
+            vm = $VmName
+            state = (Get-VM -Name $VmName).State.ToString()
+            attached_path = $attached.Path
+            source_exists = Test-Path -LiteralPath $SourcePath
+            destination_exists = Test-Path -LiteralPath $DestinationPath
+          }
+      loop: "{{ _k3s_vhdx_move_preview.results }}"
+      loop_control:
+        label: "{{ item.item.vm_name }}"
+      when: not ansible_check_mode

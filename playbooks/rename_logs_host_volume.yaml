@@ -1,0 +1,43 @@
+---
+# Rename the existing, already-formatted logging SSD without formatting it.
+# This is deliberately separate from the destructive SSD repurpose role.
+- name: Rename shared logging SSD
+  hosts: windows_hosts
+  gather_facts: false
+  tags: [logs_host_label]
+  pre_tasks:
+    - name: Require explicit target limit
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | trim | length > 0
+        fail_msg: "Use --limit HOM-LAB-HVH-02 for the LOGS-HOST relabel."
+      run_once: true
+      tags: [always]
+  tasks:
+    - name: Relabel exact non-system SSD by serial
+      ansible.windows.win_powershell:
+        error_action: stop
+        parameters:
+          DiskSerial: S1D5NSBF438394N
+          DesiredLabel: LOGS-HOST
+        script: |
+          param(
+            [Parameter(Mandatory)][string]$DiskSerial,
+            [Parameter(Mandatory)][string]$DesiredLabel
+          )
+          $disk = @(Get-Disk | Where-Object { $_.SerialNumber -eq $DiskSerial })
+          if ($disk.Count -ne 1) { throw "Serial did not resolve exactly once: $DiskSerial" }
+          if ($disk[0].IsBoot -or $disk[0].IsSystem) { throw "Refusing boot/system disk" }
+          $volume = Get-Partition -DiskNumber $disk[0].Number -ErrorAction Stop |
+            Get-Volume -ErrorAction Stop | Select-Object -First 1
+          if (-not $volume.DriveLetter) { throw "Authorized SSD has no drive letter" }
+          if ($volume.FileSystemLabel -ne $DesiredLabel) {
+            Set-Volume -DriveLetter $volume.DriveLetter -NewFileSystemLabel $DesiredLabel -ErrorAction Stop
+          }
+          $Ansible.Changed = $true
+          $Ansible.Result = @{
+            serial = $DiskSerial
+            drive = "$($volume.DriveLetter):"
+            label = (Get-Volume -DriveLetter $volume.DriveLetter).FileSystemLabel
+          }

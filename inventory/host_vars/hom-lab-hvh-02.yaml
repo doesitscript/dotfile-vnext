@@ -262,13 +262,15 @@ hyperv_ubuntu_k3s_vm_disk: "80G"
 # playbooks/hyperv_move_vm_storage.yaml.
 windows_hyperv_vm_storage_root: 'D:\ProgramData\Ansible\hyperv_ubuntu_vm'
 hyperv_ubuntu_k3s_vm_host_vhdx_path: 'D:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-k3s-02\hom-lab-ctl-k3s-02.vhdx'
-# Separate non-RAID data VHDXs for the K3s storage campaign. These are dynamic
-# files on D: for the current recovery path; physical SSD repurposing remains a
-# separate serial-bound host-storage capability.
+# Separate non-RAID data VHDXs classified by workload behavior: regenerable,
+# high-IOPS regenerable working data goes to HOT-DATA-HOST; reproducible but
+# bulky archives go to COLD-DATA-HOST; service and pod logs go to LOGS-HOST.
+# The guest sees
+# stable virtual disks while host labels remain physical ownership markers.
 hyperv_k3s_storage_disks:
   - name: cache
     vm_name: "{{ hyperv_ubuntu_k3s_vm_hostname }}"
-    vhdx_path: 'D:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-k3s-02\k3s-02-cache.vhdx'
+    vhdx_path: 'G:\HOT-DATA-HOST\k3s-02-cache.vhdx'
     size_gib: 300
     type: dynamic
     host_reserve_gib: 20
@@ -277,13 +279,34 @@ hyperv_k3s_storage_disks:
     purpose: k3s_ephemeral_cache
   - name: logs_scratch
     vm_name: "{{ hyperv_ubuntu_k3s_vm_hostname }}"
-    vhdx_path: 'D:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-k3s-02\k3s-02-logs-scratch.vhdx'
+    vhdx_path: 'F:\LOGS-HOST\k3s-02-logs-scratch.vhdx'
     size_gib: 32
     type: dynamic
     host_reserve_gib: 20
     controller_number: 0
     controller_location: 3
     purpose: pod_logs_or_scratch_offload
+  - name: cold_artifacts
+    vm_name: "{{ hyperv_ubuntu_k3s_vm_hostname }}"
+    vhdx_path: 'H:\COLD-DATA-HOST\k3s-02-cold-artifacts.vhdx'
+    size_gib: 200
+    type: dynamic
+    host_reserve_gib: 20
+    controller_number: 0
+    controller_location: 4
+    purpose: cold_model_archives_and_experimental_artifacts
+# Shared physical logging SSD. The VHDX keeps Docker guest logs isolated from
+# Windows Event Log files while both remain on the same LOGS-HOST volume.
+hyperv_docker_logging_disk:
+  name: logging
+  vm_name: "{{ hyperv_ubuntu_docker_vm_hostname }}"
+  vhdx_path: 'F:\LOGS-HOST\hom-lab-ctl-dkr-02-logging.vhdx'
+  size_gib: 32
+  type: dynamic
+  host_reserve_gib: 20
+  controller_number: 0
+  controller_location: 2
+  purpose: docker_guest_system_and_container_logs
 # Live disk filename remains server-225-ubuntu.vhdx until a separate rename slice.
 hyperv_ubuntu_docker_vm_host_vhdx_path: 'D:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-dkr-02\server-225-ubuntu.vhdx'
 hyperv_vm_storage_move_targets:

@@ -41,11 +41,14 @@ sudo journalctl --vacuum-size=100M
 
 ## Implementable Authority
 
-The reconciled implementation plan is [draft-plan-v1-researched.md](./draft-plan-v1-researched.md), reviewed against [draft-plan-v1-researched-suggestions.md](./draft-plan-v1-researched-suggestions.md). No RAID0 is part of the design. The current applied layout uses separate dynamic VHDX-backed guest files on host `D:`: 300 GiB for cache/containerd/local-path backing and 32 GiB for logs/scratch.
+The reconciled implementation plan is [draft-plan-v1-researched.md](./draft-plan-v1-researched.md), reviewed against [draft-plan-v1-researched-suggestions.md](./draft-plan-v1-researched-suggestions.md). No RAID0 is part of the design. The current applied layout uses separate dynamic VHDX-backed guest files: the 300 GiB hot-data VHDX is backed by host `G:` (`HOT-DATA-HOST`), the 200 GiB cold-data VHDX is backed by host `H:` (`COLD-DATA-HOST`), and the 32 GiB logs/scratch VHDX is backed by host `F:` (`LOGS-HOST`).
 
-The three newly added SSDs were repurposed by an exact-serial, previewed host-storage operation. They are separate NTFS volumes labeled `K3S-LOGS-HOST`, `K3S-CACHE-HOST`, and `K3S-COLD-HOST`; no RAID0 was created.
+The three newly added SSDs were repurposed by an exact-serial, previewed host-storage operation. They are separate NTFS volumes labeled `LOGS-HOST`, `HOT-DATA-HOST`, and `COLD-DATA-HOST`; no RAID0 was created. `LOGS-HOST` is shared by Windows Event Logs and the K3s/Docker guest logging VHDXs.
 
 See the live evidence and remaining obligations in [implementation-receipt.md](./implementation-receipt.md).
+
+The reusable storage-class policy for this lab and future systems is documented
+in [storage-layout-policy.md](../../reference/storage-layout-policy.md).
 
 ## Recommended Long-Term Solution
 

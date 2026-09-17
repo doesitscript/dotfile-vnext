@@ -1,0 +1,117 @@
+---
+# Data-preserving migration of explicitly selected inactive model artifacts.
+# The source is removed only after rsync verification reports no differences.
+- name: Migrate selected K3s cold artifacts
+  hosts: container_orchestrator_k3s:&gpu_workload_nodes
+  gather_facts: false
+  become: true
+  tags: [k3s_cold_artifacts, cold_artifact_migration]
+  pre_tasks:
+    - name: Require explicit target limit
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | trim | length > 0
+          - k3s_cold_artifact_migrations | default([]) | length > 0
+        fail_msg: "Use --limit hom-lab-ctl-k3s-02 with explicit cold-artifact migrations."
+      run_once: true
+      tags: [always]
+
+  tasks:
+    - name: Verify selected migration paths and mounts
+      ansible.builtin.shell: |
+        set -eu
+        findmnt --mountpoint '{{ item.expected_source_mount }}' >/dev/null
+        findmnt --mountpoint '{{ item.expected_destination_mount }}' >/dev/null
+        test -d '{{ item.source_path }}'
+        test ! -e '{{ item.destination_path }}'
+      loop: "{{ k3s_cold_artifact_migrations }}"
+      loop_control:
+        label: "{{ item.name }}"
+      changed_when: false
+      check_mode: false
+
+    - name: Create selected cold-artifact destination directory
+      ansible.builtin.file:
+        path: "{{ item.destination_path }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop: "{{ k3s_cold_artifact_migrations }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Copy selected cold artifacts with metadata preservation
+      ansible.builtin.command:
+        argv:
+          - rsync
+          - -aHAX
+          - --numeric-ids
+          - "{{ item.source_path }}/"
+          - "{{ item.destination_path }}/"
+      loop: "{{ k3s_cold_artifact_migrations }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: _cold_copy
+      changed_when: true
+
+    - name: Verify selected cold-artifact copy is converged
+      ansible.builtin.command:
+        argv:
+          - rsync
+          - -aHAXn
+          - --delete
+          - --itemize-changes
+          - "{{ item.source_path }}/"
+          - "{{ item.destination_path }}/"
+      loop: "{{ k3s_cold_artifact_migrations }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: _cold_verify
+      changed_when: false
+      check_mode: false
+
+    - name: Require selected cold-artifact copy to be identical
+      ansible.builtin.assert:
+        that:
+          - item.stdout | trim == ''
+        fail_msg: "Cold-artifact verification found differences: {{ item.stdout }}"
+      loop: "{{ _cold_verify.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+    - name: Remove verified source artifact tree
+      ansible.builtin.file:
+        path: "{{ item.source_path }}"
+        state: absent
+      loop: "{{ k3s_cold_artifact_migrations }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Confirm source is gone
+      ansible.builtin.stat:
+        path: "{{ item.source_path }}"
+      loop: "{{ k3s_cold_artifact_migrations }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: _cold_source_stats
+
+    - name: Confirm destination remains
+      ansible.builtin.stat:
+        path: "{{ item.destination_path }}"
+      loop: "{{ k3s_cold_artifact_migrations }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: _cold_destination_stats
+
+    - name: Require migrated cold-artifact destinations
+      ansible.builtin.assert:
+        that:
+          - not item.1.stat.exists
+          - item.2.stat.exists
+          - item.2.stat.isdir
+        fail_msg: "Cold-artifact migration did not finish for {{ item.0.name }}"
+      loop: "{{ k3s_cold_artifact_migrations | zip(_cold_source_stats.results, _cold_destination_stats.results) | list }}"
+      loop_control:
+        label: "{{ item.0.name }}"

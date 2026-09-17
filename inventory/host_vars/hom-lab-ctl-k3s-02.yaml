@@ -106,6 +106,15 @@ linux_data_disk_mounts:
     category: logs_and_metrics
     durability: reproducible
     mechanism: bind_mount
+  - name: cold_artifacts
+    device_by_id: /dev/disk/by-id/wwn-0x600224809dde1833df85e1e26e53dfa3
+    expected_serial: "600224809dde1833df85e1e26e53dfa3"
+    path: /mnt/k3s-cold
+    fstype: ext4
+    label: k3s-cold
+    category: cold_artifacts
+    durability: reproducible
+    mechanism: host_path
 # Separate optional logs/scratch mount. Do not place Prometheus TSDB or unique
 # PVC data here. The host SSDs are user-authorized for future repurposing.
 k3s_storage_logs_scratch_category: logs_and_metrics
@@ -125,8 +134,17 @@ storage_capacity_monitor_mounts:
     required: false
   - path: /mnt/k3s-logs
     required: false
+  - path: /mnt/k3s-cold
+    required: false
 storage_capacity_monitor_require_alloy: true
 storage_capacity_monitor_journal_system_max_use: 1G
+k3s_cold_artifact_migrations:
+  - name: qwen3_6_experimental_model_archive
+    source_path: /mnt/k3s-cache/hf/hub/models--nvidia--Qwen3.6-35B-A3B-NVFP4
+    destination_path: /mnt/k3s-cold/models/huggingface/models--nvidia--Qwen3.6-35B-A3B-NVFP4
+    expected_source_mount: /mnt/k3s-cache
+    expected_destination_mount: /mnt/k3s-cold
+    purpose: inactive_model_archive_for_later_promotion
 k3s_vllm_runtime_enable_auto_tool_choice: true
 # Qwen3-Coder-30B AWQ: use built-in --tool-call-parser qwen3_coder (vLLM 0.29).
 # Do NOT mount the qwen2_5_coder plugin — it imports removed vllm.entrypoints.openai.*

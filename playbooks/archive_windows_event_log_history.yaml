@@ -1,0 +1,86 @@
+---
+# One-off archive of legacy Windows Event Log files left on C: after the
+# LOGS-HOST redirection. Active files are detected from each channel's current
+# wevtutil logFileName and are never moved.
+- name: Archive inactive Windows Event Log history
+  hosts: windows_hosts
+  gather_facts: false
+  tags: [windows_event_log_history_archive]
+  pre_tasks:
+    - name: Require explicit target limit
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit | trim | length > 0
+        fail_msg: "Use --limit HOM-LAB-HVH-02 for the one-off Event Log archive."
+      run_once: true
+      tags: [always]
+  tasks:
+    - name: Move inactive legacy event log files to LOGS-HOST historical archive
+      ansible.windows.win_powershell:
+        error_action: stop
+        parameters:
+          SourceRoot: 'C:\Windows\System32\winevt\Logs'
+          ArchiveRoot: 'F:\LOGS-HOST\historical\WindowsEventLogs'
+        script: |
+          param(
+            [Parameter(Mandatory)][string]$SourceRoot,
+            [Parameter(Mandatory)][string]$ArchiveRoot
+          )
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path $ArchiveRoot -Force | Out-Null
+
+          # Build the set of files Windows currently has assigned to channels.
+          $activePaths = @{}
+          foreach ($channel in (& wevtutil.exe el)) {
+            if (-not $channel) { continue }
+            $config = @(& wevtutil.exe gl $channel 2>$null)
+            $line = $config | Where-Object { $_ -match '^\s*logFileName:\s*(.+)$' } | Select-Object -First 1
+            $match = if ($line) { [regex]::Match([string]$line, '^\s*logFileName:\s*(.+)$') } else { $null }
+            if ($match -and $match.Success) {
+              $configured = $match.Groups[1].Value.Trim()
+              if ($configured) {
+                $activePaths[[System.IO.Path]::GetFullPath($configured)] = $true
+              }
+            }
+          }
+
+          $moved = @()
+          $skippedActive = @()
+          $skippedExisting = @()
+          $skippedLocked = @()
+          foreach ($file in (Get-ChildItem -LiteralPath $SourceRoot -Filter '*.evtx' -File)) {
+            $source = [System.IO.Path]::GetFullPath($file.FullName)
+            $destination = Join-Path $ArchiveRoot $file.Name
+            if ($activePaths.ContainsKey($source)) {
+              $skippedActive += $file.Name
+              continue
+            }
+            if (Test-Path -LiteralPath $destination) {
+              $skippedExisting += $file.Name
+              continue
+            }
+            try {
+              Move-Item -LiteralPath $file.FullName -Destination $destination -ErrorAction Stop
+              $moved += $file.Name
+            } catch {
+              $skippedLocked += [PSCustomObject]@{ file = $file.Name; error = $_.Exception.Message }
+            }
+          }
+
+          $Ansible.Changed = ($moved.Count -gt 0)
+          $Ansible.Result = @{
+            source = $SourceRoot
+            archive = $ArchiveRoot
+            moved_count = $moved.Count
+            skipped_active_count = $skippedActive.Count
+            skipped_existing_count = $skippedExisting.Count
+            skipped_locked_count = $skippedLocked.Count
+            moved_bytes = [Int64](($moved | ForEach-Object {
+              $archived = Get-Item -LiteralPath (Join-Path $ArchiveRoot $_)
+              $archived.Length
+            } | Measure-Object -Sum).Sum)
+            skipped_active = $skippedActive
+            skipped_existing = $skippedExisting
+            skipped_locked = $skippedLocked
+          }

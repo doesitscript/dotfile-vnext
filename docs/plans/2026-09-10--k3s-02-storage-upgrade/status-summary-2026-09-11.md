@@ -28,13 +28,13 @@ Planning for 4 models (~82 GiB total) made the single-disk layout untenable.
 
 | Stage | What happened | Evidence |
 | --- | --- | --- |
-| **VHDX layout** | Two dynamic VHDXs on host `D:`: 300 GiB cache (`0:2`) + 32 GiB logs/scratch (`0:3`) | Serials locked via `by-id` |
+| **VHDX layout** | 300 GiB cache on host `G:` (`0:2`) + 200 GiB cold-artifacts on host `H:` (`0:4`) + 32 GiB logs/scratch on host `D:` (`0:3`) | Serials locked via `by-id` |
 | **containerd offload** | K3s containerd bind-mounted to cache disk; `imagefs` ≠ `nodefs` confirmed | `crictl imagefsinfo` split verified |
 | **local-path provisioner** | New PVCs route to `/mnt/k3s-cache/local-path` | ConfigMap updated; original retained |
 | **vLLM HF cache** | `HF_HUB_CACHE=/mnt/k3s-cache/hf/hub`; hostPath deployment → Ready | Source PVC retained |
 | **Pod logs dir** | `podLogsDir: /mnt/k3s-logs/pods` in KubeletConfiguration → `/dev/sdc1` | K3s restarted; path verified |
 | **Monitoring** | Grafana Alloy 1.19.2-1 installed, `alloy.service` running | Capacity monitor playbook passed |
-| **Physical SSDs** | Samsung → `K3S-LOGS-HOST` (F:), Plextor `857` → `K3S-CACHE-HOST` (G:), Plextor `306` → `K3S-COLD-HOST` (H:) | GPT/NTFS labels verified |
+| **Physical SSDs** | Samsung → `LOGS-HOST` (F:), Plextor `857` → `HOT-DATA-HOST` (G:) backing the hot-data VHDX, Plextor `306` → `COLD-DATA-HOST` (H:) backing the cold-data VHDX | GPT/NTFS labels and VHDX attachments verified |
 | **Root usage** | 21% used after stale ReplicaSet/cache cleanup | Live verification in `2026-09-11--update_new_infra.md` |
 
 ---
@@ -47,7 +47,7 @@ Planning for 4 models (~82 GiB total) made the single-disk layout untenable.
   - GLM-4.6 GGUF Q4 (~28 GiB)
 - [x] **Update inventory** — document final disk configuration
 - [x] **Monitoring/alerting thresholds** — storage monitoring is deployed; threshold policy remains in the monitor role
-- [ ] **Physical SSD wiring to K3s guest** — intentionally not required; the guest uses separate VHDXs and the host SSDs remain separate host filesystems
+- [x] **Physical SSD wiring to K3s guest** — cache VHDX moved to `G:` and cold-artifacts VHDX attached from `H:`; guest filesystems remain separate and non-RAID
 - [ ] **Prometheus/TSDB placement** — if Prometheus is added, must go on durable storage, *not* the cache VHDX
 - [ ] **Campaign formal sign-off** — `hrl-storage-implementation-beta-01` Evaluator whole-campaign sign-off (C-03) was never closed
 
