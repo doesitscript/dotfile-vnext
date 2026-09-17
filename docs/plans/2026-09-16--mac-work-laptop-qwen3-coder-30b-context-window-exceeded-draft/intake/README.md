@@ -9,6 +9,7 @@ draft plan
 | File | What it is |
 | --- | --- |
 | [2026-09-16--conversation-and-operator-report.md](2026-09-16--conversation-and-operator-report.md) | Conversation intent + structured report of what was seen |
+| [2026-09-16--followup-folder-search-context.md](2026-09-16--followup-folder-search-context.md) | Unstructured folder search + overflow/drift follow-up |
 | [raw-error.txt](raw-error.txt) | Verbatim error string from the Mac work laptop |
 
 ## Confirmation gates (before any fix work)
