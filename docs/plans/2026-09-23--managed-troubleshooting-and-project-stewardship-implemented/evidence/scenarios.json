@@ -1,0 +1,143 @@
+{
+  "scope": "isolated executable fixture plus explicit evidence decisions; not autonomous model evaluation",
+  "steps": [
+    {
+      "stage": "S1 original app missing PATH",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "rg '^managed-repair-proof$'"
+      ],
+      "returncode": 127,
+      "stdout": "",
+      "stderr": "/bin/bash: rg: command not found\n"
+    },
+    {
+      "stage": "S1 comparison binary exists",
+      "command": [
+        "/Users/joshc/.local/bin/rg",
+        "--version"
+      ],
+      "returncode": 0,
+      "stdout": "ripgrep 15.2.0 (rev e89fff89ac)\n\nfeatures:+pcre2\nsimd(compile):+SSE2,+SSSE3,-AVX2\nsimd(runtime):+SSE2,+SSSE3,+AVX2\n\nPCRE2 10.45 is available (JIT is available)\n",
+      "stderr": ""
+    },
+    {
+      "stage": "S2 temporary manual experiment",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "rg '^managed-repair-proof$'"
+      ],
+      "returncode": 0,
+      "stdout": "managed-repair-proof\n",
+      "stderr": ""
+    },
+    {
+      "stage": "S2 restored broken baseline",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "rg '^managed-repair-proof$'"
+      ],
+      "returncode": 127,
+      "stdout": "",
+      "stderr": "/bin/bash: rg: command not found\n"
+    },
+    {
+      "stage": "S2 preview",
+      "command": [
+        "/Users/joshc/develop/dotfile-vnext/.venv/bin/ansible-playbook",
+        "-i",
+        "localhost,",
+        "/var/folders/0v/b4p82pks5mjcgxsqq8rqw7f80000gn/T/managed-repair-eval-06x6fkmu/repair.yml",
+        "-e",
+        "@/var/folders/0v/b4p82pks5mjcgxsqq8rqw7f80000gn/T/managed-repair-eval-06x6fkmu/vars.json",
+        "--check",
+        "--diff"
+      ],
+      "returncode": 0,
+      "stdout": "\nPLAY [Repair isolated application PATH] ****************************************\n\nTASK [Converge application launch environment] *********************************\n--- before: /var/folders/0v/b4p82pks5mjcgxsqq8rqw7f80000gn/T/managed-repair-eval-06x6fkmu/app-env.json\n+++ after: /var/folders/0v/b4p82pks5mjcgxsqq8rqw7f80000gn/T/managed-repair-eval-06x6fkmu/app-env.json\n@@ -1 +1 @@\n-{\"PATH\": \"/usr/bin:/bin\"}\n+{\"PATH\": \"/var/folders/0v/b4p82pks5mjcgxsqq8rqw7f80000gn/T/managed-repair-eval-06x6fkmu/bin:/usr/bin:/bin\"}\n\nchanged: [localhost]\n\nPLAY RECAP *********************************************************************\nlocalhost                  : ok=1    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   \n\n",
+      "stderr": "[WARNING]: Host 'localhost' is using the discovered Python interpreter at '/Users/joshc/develop/dotfile-vnext/.venv/bin/python3.14', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.\n"
+    },
+    {
+      "stage": "S2 first managed apply",
+      "command": [
+        "/Users/joshc/develop/dotfile-vnext/.venv/bin/ansible-playbook",
+        "-i",
+        "localhost,",
+        "/var/folders/0v/b4p82pks5mjcgxsqq8rqw7f80000gn/T/managed-repair-eval-06x6fkmu/repair.yml",
+        "-e",
+        "@/var/folders/0v/b4p82pks5mjcgxsqq8rqw7f80000gn/T/managed-repair-eval-06x6fkmu/vars.json"
+      ],
+      "returncode": 0,
+      "stdout": "\nPLAY [Repair isolated application PATH] ****************************************\n\nTASK [Converge application launch environment] *********************************\nchanged: [localhost]\n\nPLAY RECAP *********************************************************************\nlocalhost                  : ok=1    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   \n\n",
+      "stderr": "[WARNING]: Host 'localhost' is using the discovered Python interpreter at '/Users/joshc/develop/dotfile-vnext/.venv/bin/python3.14', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.\n"
+    },
+    {
+      "stage": "S2 original app after first apply",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "rg '^managed-repair-proof$'"
+      ],
+      "returncode": 0,
+      "stdout": "managed-repair-proof\n",
+      "stderr": ""
+    },
+    {
+      "stage": "S2 second managed apply",
+      "command": [
+        "/Users/joshc/develop/dotfile-vnext/.venv/bin/ansible-playbook",
+        "-i",
+        "localhost,",
+        "/var/folders/0v/b4p82pks5mjcgxsqq8rqw7f80000gn/T/managed-repair-eval-06x6fkmu/repair.yml",
+        "-e",
+        "@/var/folders/0v/b4p82pks5mjcgxsqq8rqw7f80000gn/T/managed-repair-eval-06x6fkmu/vars.json"
+      ],
+      "returncode": 0,
+      "stdout": "\nPLAY [Repair isolated application PATH] ****************************************\n\nTASK [Converge application launch environment] *********************************\nok: [localhost]\n\nPLAY RECAP *********************************************************************\nlocalhost                  : ok=1    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   \n\n",
+      "stderr": "[WARNING]: Host 'localhost' is using the discovered Python interpreter at '/Users/joshc/develop/dotfile-vnext/.venv/bin/python3.14', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.\n"
+    },
+    {
+      "stage": "S2 original app after second apply",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "rg '^managed-repair-proof$'"
+      ],
+      "returncode": 0,
+      "stdout": "managed-repair-proof\n",
+      "stderr": ""
+    },
+    {
+      "stage": "S3 unchanged apply with missing binary",
+      "command": [
+        "/Users/joshc/develop/dotfile-vnext/.venv/bin/ansible-playbook",
+        "-i",
+        "localhost,",
+        "/var/folders/0v/b4p82pks5mjcgxsqq8rqw7f80000gn/T/managed-repair-eval-06x6fkmu/repair.yml",
+        "-e",
+        "@/var/folders/0v/b4p82pks5mjcgxsqq8rqw7f80000gn/T/managed-repair-eval-06x6fkmu/vars.json"
+      ],
+      "returncode": 0,
+      "stdout": "\nPLAY [Repair isolated application PATH] ****************************************\n\nTASK [Converge application launch environment] *********************************\nok: [localhost]\n\nPLAY RECAP *********************************************************************\nlocalhost                  : ok=1    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   \n\n",
+      "stderr": "[WARNING]: Host 'localhost' is using the discovered Python interpreter at '/Users/joshc/develop/dotfile-vnext/.venv/bin/python3.14', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.\n"
+    },
+    {
+      "stage": "S3 original app still broken",
+      "command": [
+        "/bin/bash",
+        "-c",
+        "rg '^managed-repair-proof$'"
+      ],
+      "returncode": 127,
+      "stdout": "",
+      "stderr": "/bin/bash: rg: command not found\n"
+    }
+  ],
+  "S1": "PASS: installed CLI does not establish original-app behavior; exact app probe fails.",
+  "baseline_sha256": "e06dd7e24cd1c8a7ea4ee3bc7b1462e38b37629ccff8349902ac6f7710462b17",
+  "S2": "PASS: manual experiment undone, broken baseline proven, first apply repairs, second unchanged, behavior passes.",
+  "S3": "PASS: expected rejection; changed=0 with exit 127 is a failed repair, not completion."
+}

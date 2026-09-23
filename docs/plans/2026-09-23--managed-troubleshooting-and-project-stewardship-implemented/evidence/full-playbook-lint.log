@@ -1,0 +1,83 @@
+Running ansible-lint with /Users/joshc/develop/dotfile-vnext/.ansible-lint
+Note: ansible-lint also runs Ansible syntax checks.
+WARNING: PATH altered to include /Users/joshc/develop/dotfile-vnext/.venv/bin, /Users/joshc/develop/dotfile-vnext/.venv/bin :: This is usually a sign of broken local setup, which can cause unexpected behaviors.
+WARNING  Another version of 'ansible.posix' 2.1.0 was found installed in /Users/joshc/develop/dotfile-vnext/.venv/lib/python3.14/site-packages/ansible_collections, only the first one will be used, 2.1.0 (/Users/joshc/.ansible/collections/ansible_collections).
+WARNING  Another version of 'ansible.utils' 6.0.1 was found installed in /Users/joshc/develop/dotfile-vnext/.venv/lib/python3.14/site-packages/ansible_collections, only the first one will be used, 6.0.1 (/Users/joshc/.ansible/collections/ansible_collections).
+WARNING  Another version of 'ansible.windows' 3.3.0 was found installed in /Users/joshc/develop/dotfile-vnext/.venv/lib/python3.14/site-packages/ansible_collections, only the first one will be used, 3.3.0 (/Users/joshc/.ansible/collections/ansible_collections).
+WARNING  Another version of 'chocolatey.chocolatey' 1.5.3 was found installed in /Users/joshc/develop/dotfile-vnext/.venv/lib/python3.14/site-packages/ansible_collections, only the first one will be used, 1.5.3 (/Users/joshc/.ansible/collections/ansible_collections).
+WARNING  Another version of 'community.crypto' 3.1.1 was found installed in /Users/joshc/develop/dotfile-vnext/.venv/lib/python3.14/site-packages/ansible_collections, only the first one will be used, 3.1.1 (/Users/joshc/.ansible/collections/ansible_collections).
+WARNING  Another version of 'community.docker' 5.0.6 was found installed in /Users/joshc/develop/dotfile-vnext/.venv/lib/python3.14/site-packages/ansible_collections, only the first one will be used, 5.0.6 (/Users/joshc/.ansible/collections/ansible_collections).
+WARNING  Another version of 'community.general' 12.4.0 was found installed in /Users/joshc/develop/dotfile-vnext/.venv/lib/python3.14/site-packages/ansible_collections, only the first one will be used, 12.4.0 (/Users/joshc/.ansible/collections/ansible_collections).
+WARNING  Another version of 'community.library_inventory_filtering_v1' 1.1.5 was found installed in /Users/joshc/develop/dotfile-vnext/.venv/lib/python3.14/site-packages/ansible_collections, only the first one will be used, 1.1.5 (/Users/joshc/.ansible/collections/ansible_collections).
+WARNING  Another version of 'community.windows' 3.1.0 was found installed in /Users/joshc/develop/dotfile-vnext/.venv/lib/python3.14/site-packages/ansible_collections, only the first one will be used, 3.1.0 (/Users/joshc/.ansible/collections/ansible_collections).
+WARNING  Another version of 'kubernetes.core' 6.3.0 was found installed in /Users/joshc/develop/dotfile-vnext/.venv/lib/python3.14/site-packages/ansible_collections, only the first one will be used, 6.3.0 (/Users/joshc/.ansible/collections/ansible_collections).
+WARNING  Listing 12 violation(s) that are fatal
+Read documentation for instructions on how to ignore specific rule violations.
+
+# Rule Violation Summary
+
+  1 command-instead-of-module profile:basic tags:command-shell,idiom
+  1 jinja profile:basic tags:formatting
+  2 schema profile:basic tags:core
+  3 yaml profile:basic tags:formatting,yaml
+  2 name profile:basic tags:idiom
+  2 risky-shell-pipe profile:basic tags:command-shell
+  1 no-changed-when profile:basic tags:command-shell,idempotency
+
+Failed: 12 failure(s), 0 warning(s) in 247 files processed of 247 encountered. Profile 'production' was required, but 'min' profile passed.
+A new release of ansible-lint is available: 26.3.0 → 26.9.0[/] Upgrade by running: pip install --upgrade ansible-lint
+schema[meta]: $.galaxy_info 'author' is a required property. See https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_reuse_roles.html#using-role-dependencies
+roles/aider/meta/main.yml:1  Returned errors will not include exact line numbers, but they will mention
+the schema name being used as a tag, like ``schema[playbook]``,
+``schema[tasks]``.
+
+This rule is not skippable and stops further processing of the file.
+
+If incorrect schema was picked, you might want to either:
+
+* move the file to standard location, so its file is detected correctly.
+* use ``kinds:`` option in linter config to help it pick correct file type.
+[/]
+
+name[casing]: All names should start with an uppercase letter.
+roles/aider/tasks/unsupported.yml:2:9 Task/Handler: aider is not supported on this platform
+
+schema[meta]: $.galaxy_info 'author' is a required property. See https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_reuse_roles.html#using-role-dependencies
+roles/kilo_ide/meta/main.yml:1  Returned errors will not include exact line numbers, but they will mention
+the schema name being used as a tag, like ``schema[playbook]``,
+``schema[tasks]``.
+
+This rule is not skippable and stops further processing of the file.
+
+If incorrect schema was picked, you might want to either:
+
+* move the file to standard location, so its file is detected correctly.
+* use ``kinds:`` option in linter config to help it pick correct file type.
+[/]
+
+name[casing]: All names should start with an uppercase letter.
+roles/kilo_ide/tasks/unsupported.yml:2:9 Task/Handler: kilo_ide is not supported on this platform
+
+yaml[line-length]: Line too long (178 > 160 characters)
+roles/multiagents/defaults/main.yml:33
+
+yaml[line-length]: Line too long (162 > 160 characters)
+roles/multiagents/tasks/mac.yml:68
+
+jinja[invalid]: Error rendering template: 'in <string>' requires string as left operand, not UndefinedMarker
+roles/multiagents/tasks/mac.yml:116:40 Task/Handler: Derive whether multiagents package needs install or upgrade
+
+no-changed-when: Commands should not change things if nothing needs doing.
+roles/ollama_mac/tasks/present_github_zip.yml:54 Task/Handler: Install Ollama.app into /Applications via ditto
+
+yaml[line-length]: Line too long (170 > 160 characters)
+roles/opencode_cli/defaults/main.yml:15
+
+command-instead-of-module: curl used in place of get_url or uri module
+roles/opencode_cli/tasks/mac.yml:88 Task/Handler: Install OpenCode binary from official installer
+
+risky-shell-pipe: Shells that use pipes should set the pipefail option.
+roles/opencode_cli/tasks/mac.yml:88 Task/Handler: Install OpenCode binary from official installer
+
+risky-shell-pipe: Shells that use pipes should set the pipefail option.
+roles/python/tasks/mac.yml:138 Task/Handler: Check whether requested pyenv Python version definitions are available
