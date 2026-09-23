@@ -1,22 +1,32 @@
-# Files and directories excluded from Cursor's codebase indexing and AI access.
-# Syntax matches .gitignore. Prefer listing high-noise / secret paths here even
-# when they already appear in .gitignore — gitignore alone is indexing-oriented;
-# .cursorignore also gates Agent / Tab / @ mentions.
+# Cursor-only context/indexing exclusions.
+# Plan: docs/plans/2026-09-23--large-ide-workspace-ai-context-evaluation/
+# These files may remain tracked in Git/GitHub where policy requires it, but
+# they are not normal AI source context. Explicitly named paths can still be
+# investigated when the task requires them.
 
-# Cross-project brainstorming and external reference notes.
-docs/brainstorming_designs/external_context/
+# Existing externalized runtime/evidence boundary.
+logs/
 
-# Python / Ansible runtime (large, not source of truth)
-.venv/
-__pycache__/
-*.pyc
-.facts_cache/
-.ansible/
-collections/ansible_collections/
+# Download, extraction, and controller/runtime artifacts under playbooks.
+playbooks/.cache/
+playbooks/artifacts/
+playbooks/troubleshoot/artifacts/
 
-# Archives and root navigator log
-*.zip
-ansible-navigator.log
+# Repository artifact trees.
+artifacts/
 
-# Cursor / skill capture logs under the IDE tree
-.cursor/logs/
+# Generated or execution-only descendants anywhere in the workspace.
+**/generated/
+**/rendered/
+**/runtime/
+**/evidence/
+**/coordination/
+**/transcripts/
+
+# High-noise generated/evidence file types.
+**/*.log
+**/*.zip
+**/*.mhtml
+**/*.dump
+**/*.tar
+**/*.tar.gz

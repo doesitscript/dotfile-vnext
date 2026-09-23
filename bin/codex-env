@@ -96,6 +96,13 @@ fi
 case "${command_name}" in
   ansible|ansible-*)
     if [ "$(uname -s)" = "Darwin" ]; then
+      # Keep controller-side Ansible execution evidence outside the repository.
+      # Target-host application/tool logs use inventory variable
+      # managed_application_log_root instead.
+      export DOTFILE_VNEXT_LOG_ROOT="${DOTFILE_VNEXT_LOG_ROOT:-${HOME}/Library/Logs/dotfile-vnext}"
+      mkdir -p "${DOTFILE_VNEXT_LOG_ROOT}"
+      export ANSIBLE_LOG_PATH="${ANSIBLE_LOG_PATH:-${DOTFILE_VNEXT_LOG_ROOT}/ansible.log}"
+
       if [ -z "${TMPDIR:-}" ]; then
         export TMPDIR="/private/tmp"
       fi
