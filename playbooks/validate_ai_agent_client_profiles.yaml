@@ -1,11 +1,22 @@
 ---
+# Validate AI agent client profile declarations against published gateway and
+# model-catalog identity (lane ∪ aliases ∪ client_model_id).
+#
+# Catalog identity contract:
+#   inventory/group_vars/model_catalog/LANE-IDENTITY.md
+#
+# Usage:
+#   bin/codex-env ansible-playbook playbooks/validate_ai_agent_client_profiles.yaml \
+#     -i inventory/inventory.yaml
+
 - name: Validate AI agent client profile declarations
   hosts: execution_nodes
   gather_facts: false
   vars_files:
     - "{{ playbook_dir }}/../inventory/group_vars/model_catalog/manifest.yml"
     - "{{ playbook_dir }}/../inventory/group_vars/all/ai_agent_profiles.yml"
-    - "{{ playbook_dir }}/../inventory/group_vars/k3s_cluster.yaml"
+    # Traefik route registry SSOT (directory group_vars, not a flat k3s_cluster.yaml)
+    - "{{ playbook_dir }}/../inventory/group_vars/k3s_cluster/main.yml"
   vars:
     _required_agent_roles:
       - planner
@@ -20,10 +31,8 @@
       - routing_policy
       - context_class
   tasks:
-    - name: Collect declared model lane names
-      ansible.builtin.set_fact:
-        _ai_agent_profile_lanes: "{{ model_catalog_manifest.entries | map(attribute='lane') | list }}"
-      changed_when: false
+    - name: Resolve model catalog reference names for agent profile validation
+      ansible.builtin.include_tasks: tasks/resolve_model_catalog_reference_names.yml
 
     - name: Resolve declared AI agent gateway route from Traefik registry
       ansible.builtin.set_fact:
@@ -83,15 +92,18 @@
           AI agent clients must target the published LiteLLM gateway contract derived from
           service slug {{ ai_agent_client_profiles.gateway.service_slug }}.
 
-    - name: Validate every agent default and alternate lane exists in model catalog
+    - name: Validate every agent default and alternate lane resolves in the model catalog
       ansible.builtin.assert:
         that:
-          - item.value.default_lane in _ai_agent_profile_lanes
-          - item.value.alternate_lane in _ai_agent_profile_lanes
+          - item.value.default_lane in model_catalog_reference_names
+          - item.value.alternate_lane in model_catalog_reference_names
         fail_msg: >-
-          AI agent role {{ item.key }} references missing lanes:
+          AI agent role {{ item.key }} references unresolved lanes:
           default={{ item.value.default_lane }},
           alternate={{ item.value.alternate_lane }}.
+          Register a catalog row whose lane equals the LiteLLM client model id
+          (see inventory/group_vars/model_catalog/LANE-IDENTITY.md). Purpose
+          labels are not accepted.
       loop: "{{ ai_agent_client_profiles.roles | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
@@ -104,5 +116,5 @@
           gateway_route_key: "{{ _ai_agent_gateway_route.route_key }}"
           gateway_deployed_by_role: "{{ _ai_agent_gateway_route.deployed_by_role }}"
           roles: "{{ ai_agent_client_profiles.roles.keys() | list }}"
-          lanes: "{{ _ai_agent_profile_lanes }}"
+          catalog_reference_name_count: "{{ model_catalog_reference_names | length }}"
           trace_metadata_keys: "{{ ai_agent_client_profiles.trace_metadata_keys }}"

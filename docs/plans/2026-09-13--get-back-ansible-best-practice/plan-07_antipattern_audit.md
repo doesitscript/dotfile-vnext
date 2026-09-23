@@ -124,7 +124,8 @@ override. Vault resolution should be required for commissioned deployment.
 
 1. Introduce a structured model/deployment registry in the authoritative
    inventory layer.
-2. Keep plain client model IDs as compatibility aliases.
+2. Keep plain client model IDs as the **canonical lane identity** (not a
+   second purpose vocabulary). Purpose/capability are metadata fields.
 3. Render LiteLLM routes by looping over deployment records; remove scalar
    per-placement gateway variables only after rendered-config comparison.
 4. Render Continue and Cline model catalogs from the shared registry, retaining
@@ -138,6 +139,13 @@ override. Vault resolution should be required for commissioned deployment.
 8. Validate source YAML, Ansible lint, rendered Helm values, second-run
    idempotence, live gateway routes, and client round trips before deleting
    compatibility variables.
+
+### Progress note (2026-09-22)
+
+Step 2 identity convergence for the live FIM/edit vocabulary is recorded in
+[plan-07_lane_identity_completion_2026-09-22.md](./plan-07_lane_identity_completion_2026-09-22.md).
+The dual-vocab validation bridge was archived rather than kept as a long-term
+compatibility layer.
 
 ## Scope boundary
 

@@ -1,39 +1,39 @@
 {
     "agent_roles": {
         "coder": {
-            "alternate_lane": "code-fast",
+            "alternate_lane": "ministral-3-8b",
             "context_class": "implementation",
-            "default_lane": "deepreinforce-ai/Ornith-1.0-35B-GGUF",
+            "default_lane": "qwen3-coder-30b-a3b",
             "write_boundary": "repo_write"
         },
         "documenter": {
-            "alternate_lane": "deepreinforce-ai/Ornith-1.0-35B-GGUF",
+            "alternate_lane": "qwen3-coder-30b-a3b",
             "context_class": "documentation",
-            "default_lane": "code-fast",
+            "default_lane": "qwen2.5-coder-1.5b-base-q8_0",
             "write_boundary": "repo_write"
         },
         "planner": {
-            "alternate_lane": "code-fast",
+            "alternate_lane": "qwen2.5-coder-1.5b-base-q8_0",
             "context_class": "private_planning",
-            "default_lane": "ripi-private",
+            "default_lane": "ministral-3-8b",
             "write_boundary": "read_only"
         },
         "reviewer": {
-            "alternate_lane": "ripi-private",
+            "alternate_lane": "ministral-3-8b",
             "context_class": "review",
-            "default_lane": "code-review",
+            "default_lane": "qwen3-coder-30b-a3b",
             "write_boundary": "read_only"
         },
         "steward": {
-            "alternate_lane": "code-review",
+            "alternate_lane": "qwen3-coder-30b-a3b",
             "context_class": "planning_governance",
-            "default_lane": "ripi-private",
+            "default_lane": "ministral-3-8b",
             "write_boundary": "governance"
         },
         "tester": {
-            "alternate_lane": "code-fast",
+            "alternate_lane": "ministral-3-8b",
             "context_class": "validation",
-            "default_lane": "code-test",
+            "default_lane": "qwen2.5-coder-1.5b-base-q8_0",
             "write_boundary": "test_execution"
         }
     },
@@ -44,35 +44,36 @@
             "profile_file": "/Users/joshc/develop/dotfile-vnext/.codex/ai-agent-profiles.json"
         },
         "cursor": {
-            "manual_model_provider_note": "If your Cursor build exposes Models -> Override OpenAI Base URL, point it at the gateway.openai_base_url value and add the lane names as custom models. Keep direct vLLM runtime URLs out of Cursor.",
+            "manual_model_provider_note": "Point Override OpenAI Base URL at the gateway.openai_base_url value. Add these custom model IDs in Cursor Settings > Models (OpenAI-compatible provider). Local lanes: qwen2.5-coder-14b, qwen2.5-coder-1.5b-base, ministral-3-8b. Google Gemini lanes (via LiteLLM): gemini-2.5-flash, gemini-2.5-flash-long-context, gemini-2.5-pro, gemini-2.5-flash-lite. Friendly ~suffix labels are comments only. Embeddings lane (gemini-embedding-001) is not a chat lane \u2014 omit from picker.",
             "profile_file": "/Users/joshc/develop/dotfile-vnext/.cursor/ai-agent-profiles.json",
             "project_rule": "/Users/joshc/develop/dotfile-vnext/.cursor/rules/framework-ai-agent-model-lanes.mdc"
         }
     },
     "gateway": {
+        "openai_api_path": "/v1",
         "openai_base_url": "http://litellm.hom.lab/v1",
+        "openai_scheme": "http",
         "service_slug": "litellm-k3s-gateway"
     },
     "managed_by": "ansible roles/cursor",
     "model_catalog": {
         "entries": [
             {
-                "candidate_family": "large coding model suitable for 5090 vLLM",
-                "example_hf_repo_id": "Qwen/Qwen2.5-Coder-32B-Instruct-AWQ",
-                "lane": "deepreinforce-ai/Ornith-1.0-35B-GGUF",
-                "notes": "Provisional example only; do not download or pin until research and GPU probe pass.",
-                "purpose": "architecture, refactors, hard coding",
-                "quantization": "AWQ",
-                "research_sources": [
-                    "https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ"
-                ],
+                "candidate_family": null,
+                "client_model_id": "qwen2.5-coder-14b",
+                "example_hf_repo_id": null,
+                "lane": "qwen2.5-coder-14b",
+                "notes": "Empty retirement row retained only for historical lane identity.",
+                "purpose": "retired legacy candidate; no current client owner",
+                "quantization": null,
+                "research_sources": [],
                 "selection_blockers": [
-                    "current model research matrix incomplete",
-                    "live GPU probe failed on hom-lab-ctl-k3s-02"
+                    "retired by user direction; do not download, serve, or assign to Kilo"
                 ],
-                "serving_runtime": "vllm",
-                "status": "pending_research",
-                "storage_host": "HOM-LAB-HVH-01",
+                "serving_runtime": null,
+                "source_routing": {},
+                "status": "retired",
+                "storage_host": null,
                 "unc_path": null
             },
             {
@@ -94,20 +95,507 @@
                 "unc_path": null
             },
             {
-                "candidate_family": "smaller coding/general model",
-                "lane": "code-fast",
-                "notes": "Requires current model research before pinning an HF repo.",
-                "purpose": "autocomplete, small edits, repo questions",
-                "status": "pending_research",
+                "candidate_family": "smaller coding FIM model (base)",
+                "capability": "code_completion",
+                "client_model_id": "qwen2.5-coder-1.5b-base-q8_0",
+                "client_roles": [
+                    "autocomplete"
+                ],
+                "deprecated_purpose_labels": [
+                    "code-autocomplete-1.5b",
+                    "code-fast"
+                ],
+                "example_hf_repo_id": "Qwen/Qwen2.5-Coder-1.5B",
+                "lane": "qwen2.5-coder-1.5b-base-q8_0",
+                "license": "apache-2.0",
+                "notes": "Canonical lane == LiteLLM client_model_id. Ollama tag qwen2.5-coder:1.5b-base-q8_0 on HOM-LAB-HVH-01 via LiteLLM. Former purpose labels code-autocomplete-1.5b / code-fast are retired (see LANE-IDENTITY.md). FIM-first Modelfile TEMPLATE; Continue promptTemplates.autocomplete must match.",
+                "purpose": "Continue autocomplete QwenCoder2.5 1.5B-base FIM",
+                "selected_hf_repo_id": "Qwen/Qwen2.5-Coder-1.5B",
+                "serving_runtime": "ollama",
+                "source_routing": {
+                    "hrl_pack_slug": "qwen-qwen2.5-coder-1.5b-base",
+                    "hrl_pack_status": "missing",
+                    "primary_doc_source": "ollama_library",
+                    "primary_doc_url": "https://ollama.com/library/qwen2.5-coder",
+                    "secondary_doc_source": "huggingface_model_card",
+                    "secondary_doc_url": "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B"
+                },
+                "status": "downloaded",
+                "unc_path": "\\\\HOM-LAB-HVH-01\\public\\models\\ollama"
+            },
+            {
+                "candidate_family": "Nomic Embed Text",
+                "capability": "embeddings",
+                "client_model_id": "nomic-embed-text",
+                "client_roles": [
+                    "embed"
+                ],
+                "example_hf_repo_id": "nomic-ai/nomic-embed-text-v1.5",
+                "lane": "nomic-embed-text",
+                "license": "apache-2.0",
+                "notes": "LiteLLM model_name nomic-embed-text \u2192 ollama/nomic-embed-text at http://ollama-hvh01.hom.lab:11434 (no /v1). Ollama >= 0.1.26. ~137M params.",
+                "purpose": "embedding model; deployment placement is recorded separately",
+                "research_sources": [
+                    "https://ollama.com/library/nomic-embed-text",
+                    "https://ollama.com/blog/embedding-models",
+                    "https://docs.litellm.ai/docs/embedding/supported_embedding"
+                ],
+                "selected_hf_repo_id": "nomic-ai/nomic-embed-text-v1.5",
+                "serving_runtime": "ollama",
+                "source_routing": {
+                    "context7_library_id": "/websites/ollama",
+                    "hrl_pack_slug": "nomic-embed-text",
+                    "hrl_pack_status": "missing",
+                    "primary_doc_source": "ollama_library",
+                    "primary_doc_url": "https://ollama.com/library/nomic-embed-text",
+                    "secondary_doc_source": "huggingface_model_card",
+                    "secondary_doc_url": "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5"
+                },
+                "status": "selected",
                 "storage_host": "HOM-LAB-HVH-01",
+                "unc_path": "\\\\HOM-LAB-HVH-01\\public\\models\\ollama"
+            },
+            {
+                "candidate_family": "mid coding Instruct model",
+                "capability": "code_edit",
+                "client_model_id": "qwen2.5-coder-7b",
+                "client_roles": [
+                    "edit",
+                    "apply"
+                ],
+                "deprecated_purpose_labels": [
+                    "code-autocomplete-7b"
+                ],
+                "example_hf_repo_id": "Qwen/Qwen2.5-Coder-7B-Instruct",
+                "lane": "qwen2.5-coder-7b",
+                "license": "apache-2.0",
+                "notes": "Canonical lane == LiteLLM client_model_id qwen2.5-coder-7b (desktop Ollama). Former purpose label code-autocomplete-7b retired.",
+                "purpose": "Continue edit/apply and mid-size coding chat on desktop Ollama",
+                "selected_hf_repo_id": "Qwen/Qwen2.5-Coder-7B-Instruct",
+                "serving_runtime": "ollama",
+                "source_routing": {
+                    "context7_library_id": null,
+                    "hrl_pack_slug": "qwen-qwen2.5-coder-7b-instruct",
+                    "hrl_pack_status": "missing",
+                    "llms_txt_url": null,
+                    "primary_doc_source": "huggingface_model_card",
+                    "primary_doc_url": "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct"
+                },
+                "status": "downloaded",
+                "unc_path": "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface\\Qwen--Qwen2.5-Coder-7B-Instruct"
+            },
+            {
+                "candidate_family": "Google DiffusionGemma MoE diffusion text",
+                "example_hf_repo_id": "google/diffusiongemma-26B-A4B-it",
+                "lane": "diffusiongemma-nextedit",
+                "license": "apache-2.0",
+                "notes": "User-selected Mercury replacement for Continue Next Edit role. LiteLLM alias diffusiongemma-nextedit.",
+                "purpose": "Continue Next Edit (replaces mercury-coder-nextedit)",
+                "research_sources": [
+                    "https://huggingface.co/google/diffusiongemma-26B-A4B-it",
+                    "https://huggingface.co/RedHatAI/diffusiongemma-26B-A4B-it-FP8-dynamic",
+                    "https://docs.continue.dev/ide-extensions/autocomplete/next-edit"
+                ],
+                "selected_hf_repo_id": "RedHatAI/diffusiongemma-26B-A4B-it-FP8-dynamic",
+                "serving_runtime": "vllm",
+                "source_routing": {
+                    "hrl_pack_slug": "redhatai-diffusiongemma-26b-a4b-it-fp8-dynamic",
+                    "hrl_pack_status": "missing",
+                    "primary_doc_source": "huggingface_model_card",
+                    "primary_doc_url": "https://huggingface.co/RedHatAI/diffusiongemma-26B-A4B-it-FP8-dynamic",
+                    "secondary_doc_source": "huggingface_model_card",
+                    "secondary_doc_url": "https://huggingface.co/google/diffusiongemma-26B-A4B-it"
+                },
+                "status": "downloading",
+                "unc_path": "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface\\RedHatAI--diffusiongemma-26B-A4B-it-FP8-dynamic",
+                "vram_notes": "BF16 recipe ~64GB; prefer FP8/NVFP4 on 32GB 5090. Serves via vLLM gemma image; OpenAI-compatible once commissioned."
+            },
+            {
+                "candidate_family": "Apple DiffuCoder diffusion code models",
+                "example_hf_repo_id": "apple/DiffuCoder-7B-cpGRPO",
+                "lane": "diffucoder",
+                "license": "apple-sample-code-license",
+                "notes": "Transformers diffusion_generate is not OpenAI chat-native. Download first; commission OpenAI-compatible wrapper before LiteLLM/Continue. Also maps to continue-edit default alias when ready.",
+                "purpose": "Continue Chat Edit / code generation (diffusion)",
+                "research_sources": [
+                    "https://huggingface.co/apple/DiffuCoder-7B-cpGRPO",
+                    "https://docs.continue.dev/ide-extensions/chat/model-setup"
+                ],
+                "selected_hf_repo_id": "apple/DiffuCoder-7B-cpGRPO",
+                "serving_runtime": "custom-openai-wrapper",
+                "source_routing": {
+                    "context7_library_id": null,
+                    "hrl_pack_slug": "apple-diffucoder-7b-cpgrpo",
+                    "hrl_pack_status": "missing",
+                    "llms_txt_url": null,
+                    "primary_doc_source": "huggingface_model_card",
+                    "primary_doc_url": "https://huggingface.co/apple/DiffuCoder-7B-cpGRPO"
+                },
+                "status": "downloaded",
+                "unc_path": "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface\\apple--DiffuCoder-7B-cpGRPO"
+            },
+            {
+                "candidate_family": "DiffuCoder when wrapped; else local Qwen3-Coder 30B",
+                "lane": "continue-edit",
+                "notes": "Prefer DiffuCoder local wrapper; qwen3-coder-30b as alternate local lane.",
+                "purpose": "Continue Chat Edit default",
+                "research_sources": [
+                    "https://docs.continue.dev/ide-extensions/chat/model-setup"
+                ],
+                "selected_hf_repo_id": "apple/DiffuCoder-7B-cpGRPO",
+                "serving_runtime": "custom-openai-wrapper",
+                "status": "pending_backend"
+            },
+            {
+                "candidate_family": "Qwen3-Coder 30B-A3B MoE (30B total, 3B active)",
+                "capability": "code_agent",
+                "client_model_id": "qwen3-coder-30b-a3b",
+                "client_roles": [
+                    "chat",
+                    "coder",
+                    "reviewer"
+                ],
+                "download_owner_role": "huggingface_model_weights",
+                "lane": "qwen3-coder-30b-a3b",
+                "license": "apache-2.0",
+                "notes": "Consensus pick for agentic coding on single consumer GPU. MoE with low active params (3B) keeps tok/s high for Continue/Cursor loops. Strong tool-calling. Replaces Qwen2.5-Coder-32B-AWQ as vllm-primary lane. AWQ-4bit ~18GB for vLLM compatibility, ~100-170 tok/s on 5090.",
+                "purpose": "Primary agentic coder on 5090 (replaces Qwen2.5-Coder-32B-AWQ)",
+                "quantization": "AWQ-4bit",
+                "quantization_repo_id": "cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit",
+                "research_sources": [
+                    "https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct",
+                    "https://huggingface.co/cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit",
+                    "docs/brainstorming_designs/2026-09-10--5090-model-lane-evaluation/model-selection-reasoning.md"
+                ],
+                "selected_hf_repo_id": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+                "serving_runtime": "vllm",
+                "source_routing": {
+                    "hrl_pack_slug": "qwen-qwen3-coder-30b-a3b-instruct",
+                    "hrl_pack_status": "draft",
+                    "primary_doc_source": "huggingface_model_card",
+                    "primary_doc_url": "https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct",
+                    "quantization_doc_url": "https://huggingface.co/cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit"
+                },
+                "status": "selected",
+                "storage_host": "HOM-LAB-HVH-01",
+                "unc_path": null,
+                "variant_class": "instruct_chat_agent",
+                "vram_estimate_gb": 18,
+                "weight_directory_name": "cyankiwi--Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit"
+            },
+            {
+                "candidate_family": "Qwen3.6 35B-A3B MoE",
+                "download_owner_role": "huggingface_model_weights",
+                "lane": "qwen3.6-35b-a3b",
+                "license": "apache-2.0",
+                "notes": "Separate from code edits - for \"explain this Terraform module\" discussions. MoE runs ~145 tok/s at Q6 on 5090 with long context headroom. Q6 ~28GB fits comfortably. Not for raw code generation (use qwen3-coder-30b-a3b).",
+                "purpose": "Architecture discussion and generalist reasoning (separate from code edits)",
+                "quantization": "Q6 or NVFP4",
+                "quantization_repo_id": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+                "research_sources": [
+                    "https://huggingface.co/Qwen/Qwen3.6-35B-A3B",
+                    "https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4",
+                    "docs/brainstorming_designs/2026-09-10--5090-model-lane-evaluation/model-selection-reasoning.md"
+                ],
+                "selected_hf_repo_id": "Qwen/Qwen3.6-35B-A3B",
+                "serving_runtime": "vllm",
+                "source_routing": {
+                    "hrl_pack_slug": "qwen-qwen36-35b-a3b",
+                    "hrl_pack_status": "pending",
+                    "primary_doc_source": "huggingface_model_card",
+                    "primary_doc_url": "https://huggingface.co/Qwen/Qwen3.6-35B-A3B",
+                    "quantization_doc_url": "https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4"
+                },
+                "status": "selected",
+                "storage_host": "HOM-LAB-HVH-01",
+                "unc_path": null,
+                "variant_class": "conversational_generalist",
+                "vram_estimate_gb": 28,
+                "weight_directory_name": "nvidia--Qwen3.6-35B-A3B-NVFP4"
+            },
+            {
+                "candidate_family": "Devstral Small 2 24B dense",
+                "download_owner_role": "huggingface_model_weights",
+                "lane": "devstral-small-2-agent",
+                "license": "apache-2.0",
+                "notes": "Purpose-built for repo navigation and tool-use loops. Dense 24B fits at Q4 (~14GB). Ranked above GLM for Continue Agent eval alignment - closer match to actual failure modes tested. Second-generation Devstral.",
+                "purpose": "Repo navigation and tool-use agent specialist",
+                "quantization": "Q4_K_M",
+                "quantization_repo_id": "bartowski/mistralai_Devstral-Small-2-24B-Instruct-2512-GGUF",
+                "research_sources": [
+                    "https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512",
+                    "https://huggingface.co/bartowski/mistralai_Devstral-Small-2-24B-Instruct-2512-GGUF",
+                    "docs/brainstorming_designs/2026-09-10--5090-model-lane-evaluation/model-selection-reasoning.md"
+                ],
+                "selected_hf_repo_id": "mistralai/Devstral-Small-2-24B-Instruct-2512",
+                "serving_runtime": "llama.cpp",
+                "source_routing": {
+                    "hrl_pack_slug": "mistralai-devstral-small-2-24b-instruct-2512",
+                    "hrl_pack_status": "pending",
+                    "primary_doc_source": "huggingface_model_card",
+                    "primary_doc_url": "https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512",
+                    "quantization_doc_url": "https://huggingface.co/bartowski/mistralai_Devstral-Small-2-24B-Instruct-2512-GGUF"
+                },
+                "status": "selected",
+                "storage_host": "HOM-LAB-HVH-01",
+                "unc_path": null,
+                "variant_class": "instruct_chat_agent",
+                "vram_estimate_gb": 14,
+                "weight_directory_name": "bartowski--mistralai_Devstral-Small-2-24B-Instruct-2512-GGUF"
+            },
+            {
+                "candidate_family": "GLM-4.6 (not 4.5-Air)",
+                "download_owner_role": "huggingface_model_weights",
+                "lane": "glm-4.6-experimental",
+                "license": "glm-4-community-license",
+                "notes": "Swapped in over GLM-4.5-Air (unquantized ~221GB makes 4.5-Air a science project). GLM-4.6 Q4_K_M fits in 32GB with context room - same architectural ambition, actually usable daily. Heavier experimental lane.",
+                "purpose": "Experimental heavier capability lane (fits in 32GB with context headroom)",
+                "quantization": "Q4_K_M",
+                "quantization_repo_id": "unsloth/GLM-4.6-GGUF",
+                "research_sources": [
+                    "https://huggingface.co/zai-org/GLM-4.6",
+                    "https://huggingface.co/unsloth/GLM-4.6-GGUF",
+                    "docs/brainstorming_designs/2026-09-10--5090-model-lane-evaluation/model-selection-reasoning.md"
+                ],
+                "selected_hf_repo_id": "zai-org/GLM-4.6",
+                "serving_runtime": "llama.cpp",
+                "source_routing": {
+                    "hrl_pack_slug": "zai-org-glm-4.6",
+                    "hrl_pack_status": "pending",
+                    "primary_doc_source": "huggingface_model_card",
+                    "primary_doc_url": "https://huggingface.co/zai-org/GLM-4.6",
+                    "quantization_doc_url": "https://huggingface.co/unsloth/GLM-4.6-GGUF"
+                },
+                "status": "selected",
+                "storage_host": "HOM-LAB-HVH-01",
+                "unc_path": null,
+                "variant_class": "conversational_chat_agent",
+                "vram_estimate_gb": 28,
+                "weight_directory_name": "unsloth--GLM-4.6-GGUF"
+            },
+            {
+                "candidate_family": "Qwen3-Coder 30B (non-MoE)",
+                "lane": "qwen3-coder-30b",
+                "notes": "Replaced by qwen3-coder-30b-a3b (MoE variant). This entry kept for catalog continuity. Do not download.",
+                "purpose": "Continue Chat Edit alternate local (deprecated - use qwen3-coder-30b-a3b)",
+                "serving_runtime": "vllm",
+                "status": "deprecated"
+            },
+            {
+                "candidate_family": "Qwen3-Coder 480B",
+                "lane": "qwen3-coder-480b",
+                "notes": "Too large for single 5090. Catalog-only; not OpenRouter.",
+                "purpose": "Continue Chat Edit large open model",
+                "serving_runtime": "deferred-multi-gpu",
+                "status": "deferred"
+            },
+            {
+                "candidate_family": "Gemma 4 12B (Google / Ollama library)",
+                "lane": "gemma4-12b",
+                "notes": "Served on dev-workstation-win (AMD RX 9060 XT) via windows_ollama_runtime at ollama-desktop.hom.lab. LiteLLM alias gemma4-12b for Open WebUI. Official Gemma4 12B library tag. Arena-pinned.",
+                "purpose": "Open WebUI chat \u2014 Gemma 4 12B official (vision + tools + thinking)",
+                "research_sources": [
+                    "https://ollama.com/library/gemma4",
+                    "https://docs.ollama.com/"
+                ],
+                "selected_ollama_tag": "gemma4:12b",
+                "serving_runtime": "ollama",
+                "source_routing": {
+                    "hrl_pack_slug": "gemma4-12b",
+                    "hrl_pack_status": "missing",
+                    "primary_doc_source": "ollama_library",
+                    "primary_doc_url": "https://ollama.com/library/gemma4",
+                    "secondary_doc_source": null,
+                    "secondary_doc_url": null
+                },
+                "status": "commissioned",
+                "storage_host": "dev-workstation-win",
                 "unc_path": null
             },
             {
-                "candidate_family": "reviewer/risk-finding model",
+                "candidate_family": "Qwen3.6 27B dense (Alibaba / Ollama library)",
+                "lane": "qwen3.6-27b",
+                "notes": "~17GB Q4 on desktop AMD Ollama. LiteLLM alias qwen3.6-27b. Official Qwen3.6 27B library tag for agentic / thinking chat. Text-first; not Arena.",
+                "purpose": "Open WebUI chat \u2014 Qwen3.6 27B (agentic coding + thinking)",
+                "research_sources": [
+                    "https://ollama.com/library/qwen3.6"
+                ],
+                "selected_ollama_tag": "qwen3.6:27b",
+                "serving_runtime": "ollama",
+                "source_routing": {
+                    "hrl_pack_slug": "qwen36-27b",
+                    "hrl_pack_status": "missing",
+                    "primary_doc_source": "ollama_library",
+                    "primary_doc_url": "https://ollama.com/library/qwen3.6",
+                    "secondary_doc_source": null,
+                    "secondary_doc_url": null
+                },
+                "status": "commissioned",
+                "storage_host": "dev-workstation-win",
+                "unc_path": null
+            },
+            {
+                "candidate_family": "gpt-oss 20B MoE (OpenAI / Ollama library)",
+                "capability": "general_chat",
+                "client_model_id": "gpt-oss-20b",
+                "client_roles": [
+                    "chat"
+                ],
+                "lane": "gpt-oss-20b",
+                "notes": "~14GB MXFP4; strong 16GB-class general lane. LiteLLM alias gpt-oss-20b. Official gpt-oss 20B library tag for general chat. 2026-09-02 EVAL selected this as the best current fit for host presence on dev-workstation-win; do not assume the separate Codex desktop lane is re-qualified until LiteLLM tool-loop behavior is re-tested.",
+                "purpose": "Open WebUI chat \u2014 gpt-oss 20B (OpenAI open weights, general/reasoning)",
+                "research_sources": [
+                    "https://ollama.com/library/gpt-oss"
+                ],
+                "selected_ollama_tag": "gpt-oss:20b",
+                "serving_runtime": "ollama",
+                "source_routing": {
+                    "hrl_pack_slug": "gpt-oss-20b",
+                    "hrl_pack_status": "missing",
+                    "primary_doc_source": "ollama_library",
+                    "primary_doc_url": "https://ollama.com/library/gpt-oss",
+                    "secondary_doc_source": null,
+                    "secondary_doc_url": null
+                },
+                "status": "commissioned",
+                "storage_host": "dev-workstation-win",
+                "unc_path": null
+            },
+            {
+                "candidate_family": "Mistral Ministral 3 8B",
+                "capability": "fast_chat",
+                "client_model_id": "ministral-3-8b",
+                "client_roles": [
+                    "planner",
+                    "steward",
+                    "alternate_chat"
+                ],
+                "lane": "ministral-3-8b",
+                "notes": "LiteLLM client_model_id ministral-3-8b \u2192 ollama/ministral-3:8b on dev-workstation-win. Used by ai_agent_client_profiles planner/steward defaults and as alternate for coder/tester/reviewer.",
+                "purpose": "Fast local planner / alternate chat (desktop Ollama)",
+                "research_sources": [
+                    "https://ollama.com/library/ministral-3"
+                ],
+                "selected_ollama_tag": "ministral-3:8b",
+                "serving_runtime": "ollama",
+                "source_routing": {
+                    "hrl_pack_slug": "ministral-3-8b",
+                    "hrl_pack_status": "missing",
+                    "primary_doc_source": "ollama_library",
+                    "primary_doc_url": "https://ollama.com/library/ministral-3",
+                    "secondary_doc_source": null,
+                    "secondary_doc_url": null
+                },
+                "status": "commissioned",
+                "storage_host": "dev-workstation-win",
+                "unc_path": null
+            },
+            {
+                "candidate_family": "Gemma 4 12B (alias over gemma4:12b)",
+                "lane": "positive-negative-prompt-assist",
+                "notes": "LiteLLM alias positive-negative-prompt-assist \u2192 same desktop Gemma4 as gemma4-12b. Writes a positive prompt, a negative prompt, and then lists Automatic1111 and ComfyUI as the local services that can use them.",
+                "purpose": "Open WebUI \u2014 positive/negative prompt assist for ComfyUI / A1111",
+                "research_sources": [
+                    "https://ollama.com/library/gemma4"
+                ],
+                "selected_ollama_tag": "gemma4:12b",
+                "serving_runtime": "ollama",
+                "source_routing": {
+                    "hrl_pack_slug": "positive-negative-prompt-assist-gemma4",
+                    "hrl_pack_status": "missing",
+                    "primary_doc_source": "ollama_library",
+                    "primary_doc_url": "https://ollama.com/library/gemma4",
+                    "secondary_doc_source": null,
+                    "secondary_doc_url": null
+                },
+                "status": "commissioned",
+                "storage_host": "dev-workstation-win",
+                "unc_path": null
+            },
+            {
+                "candidate_family": "CyberRealistic V9 FP16 (SD1.5)",
+                "lane": "a1111-cyberrealistic-v9",
+                "notes": "Top A1111 / Open WebUI t2i pick for 6GB VRAM. Paired with ControlNet OpenPose fp16 for pose edits. Share SDXL/FLUX quality path is ComfyUI on 5090.",
+                "purpose": "Open WebUI / A1111 stills \u2014 photoreal SD1.5 on GTX 1060 6GB",
+                "research_sources": [
+                    "https://huggingface.co/cyberdelia/CyberRealistic",
+                    "https://github.com/Mikubill/sd-webui-controlnet",
+                    "https://huggingface.co/comfyanonymous/ControlNet-v1-1_fp16_safetensors"
+                ],
+                "selected_hf_file": "CyberRealistic_V9_FP16.safetensors",
+                "selected_hf_repo_id": "cyberdelia/CyberRealistic",
+                "serving_runtime": "automatic1111",
+                "source_routing": {
+                    "hrl_pack_slug": "cyberdelia-cyberrealistic-v9-fp16",
+                    "hrl_pack_status": "missing",
+                    "primary_doc_source": "huggingface_model_card",
+                    "primary_doc_url": "https://huggingface.co/cyberdelia/CyberRealistic",
+                    "secondary_doc_source": null,
+                    "secondary_doc_url": null
+                },
+                "status": "commissioned",
+                "storage_host": "HOM-LAB-HVH-01",
+                "unc_path": "\\\\HOM-LAB-HVH-01\\public\\models\\stable-diffusion\\Stable-diffusion\\CyberRealistic_V9_FP16.safetensors"
+            },
+            {
+                "candidate_family": "FLUX.1-dev FP8 (Black Forest Labs / Comfy-Org)",
+                "lane": "comfyui-flux1-dev-fp8",
+                "notes": "ComfyUI starter primary on k3s-02 5090. Needs clip_l + t5xxl_fp8 + ae. Phase B still primary on ComfyUI 5090.",
+                "purpose": "ComfyUI primary stills \u2014 FLUX.1-dev FP8 on RTX 5090",
+                "research_sources": [
+                    "https://huggingface.co/Comfy-Org/flux1-dev",
+                    "https://docs.comfy.org/tutorials/flux/flux-1-text-to-image"
+                ],
+                "selected_hf_file": "flux1-dev-fp8.safetensors",
+                "selected_hf_repo_id": "Comfy-Org/flux1-dev",
+                "serving_runtime": "comfyui",
+                "source_routing": {
+                    "hrl_pack_slug": "comfy-org-flux1-dev-fp8",
+                    "hrl_pack_status": "missing",
+                    "primary_doc_source": "huggingface_model_card",
+                    "primary_doc_url": "https://huggingface.co/Comfy-Org/flux1-dev",
+                    "secondary_doc_source": "comfyui_docs",
+                    "secondary_doc_url": "https://docs.comfy.org/tutorials/flux/flux-1-text-to-image"
+                },
+                "status": "commissioned",
+                "storage_host": "HOM-LAB-HVH-02",
+                "unc_path": null
+            },
+            {
+                "candidate_family": "Stable Diffusion XL 1.0 base",
+                "lane": "comfyui-sdxl-base-1.0",
+                "notes": "Companion checkpoint for LoRA-heavy / ControlNet workflows beside FLUX.",
+                "purpose": "ComfyUI SDXL base \u2014 LoRA / ControlNet ecosystem on RTX 5090",
+                "research_sources": [
+                    "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0"
+                ],
+                "selected_hf_file": "sd_xl_base_1.0.safetensors",
+                "selected_hf_repo_id": "stabilityai/stable-diffusion-xl-base-1.0",
+                "serving_runtime": "comfyui",
+                "source_routing": {
+                    "hrl_pack_slug": "sdxl-base-1.0",
+                    "hrl_pack_status": "missing",
+                    "primary_doc_source": "huggingface_model_card",
+                    "primary_doc_url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0",
+                    "secondary_doc_source": null,
+                    "secondary_doc_url": null
+                },
+                "status": "commissioned",
+                "storage_host": "HOM-LAB-HVH-02",
+                "unc_path": null
+            },
+            {
+                "candidate_family": "code-review alias on shared vllm-primary until secondary runtime exists",
                 "lane": "code-review",
-                "notes": "Requires current model research and privacy route decision.",
+                "notes": "Ollama secondary-runtime path is retired. code-review is a LiteLLM client alias on vllm-primary (same weights as coder-primary) until a second local vLLM runtime is researched and commissioned. Tuning runbook: docs/reference/models/5090-qwen25-coder-14b-vs-32b.md",
                 "purpose": "critique, risk finding, test review",
-                "status": "pending_research",
+                "research_sources": [
+                    "roles/k3s_vllm_runtime/defaults/main.yml",
+                    "roles/k3s_litellm_gateway/defaults/main.yml"
+                ],
+                "selected_model": "Qwen/Qwen2.5-Coder-32B-Instruct-AWQ",
+                "serving_runtime": "vllm",
+                "status": "selected_alias_on_primary_vllm",
                 "storage_host": "HOM-LAB-HVH-01",
                 "unc_path": null
             },
@@ -154,6 +642,7 @@
         "selection_gate": {
             "required_before_download_or_pin": [
                 "current model research matrix compares multiple candidates per lane",
+                "EVAL-model-note-fit records host fit, runtime fit, and live-proof boundary",
                 "license and redistribution terms recorded",
                 "VRAM/runtime fit checked against live GPU probe",
                 "storage footprint estimate recorded before download",
@@ -162,6 +651,22 @@
         },
         "selection_status": "pending_research",
         "source_plan": "docs/plans/2026-05-29--ai-model-catalog-hf-storage-incomplete-wip/README.md",
+        "source_routing_defaults": {
+            "hf_download": {
+                "primary_doc_source": "huggingface_model_card",
+                "url_pattern": "https://huggingface.co/{hf_repo_id}"
+            },
+            "hrl_framework": "/Users/joshc/develop/homelab-reference-library/frameworks/model-doc-pack/FRAMEWORK.md",
+            "hrl_models_root": "/Users/joshc/develop/homelab-reference-library/models",
+            "ollama": {
+                "primary_doc_source": "ollama_library",
+                "url_pattern": "https://ollama.com/library/{name}"
+            },
+            "vllm": {
+                "primary_doc_source": "huggingface_model_card",
+                "url_pattern": "https://huggingface.co/{hf_repo_id}"
+            }
+        },
         "status": "candidate",
         "storage_host": "HOM-LAB-HVH-01",
         "storage_root_unc": "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface",

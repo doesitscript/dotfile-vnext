@@ -28,45 +28,63 @@ Profile contract:
 - Do not point Cursor directly at `vllm-runtime`, localhost, or one-off node
   ports for normal project work.
 - Preserve the user-approved model lane set. Do not collapse work to
-  `qwen2.5-coder-32b~coder-primary` just because it is the first runtime path.
-- Client `model_name` syntax: `<model-slug>@<host-slug>~<friendly-lane>` (see
-  `roles/k3s_litellm_gateway/defaults/main/model_client_ids.yml`). Most entries are
-  **FRIENDLY ALIAS** routes; `litellm-complexity-auto-router@litellm~smart-router` is a
-  **MODEL GROUP** (complexity auto-router).
+  `qwen2.5-coder-14b` just because it is the first runtime path.
 - Treat model catalog entries with `pending_research` or `provisional_example`
   status as not selected for download or pinning.
+- Lane names for roles come from inventory
+  (`ai_agent_profiles.yml` + `model_catalog/manifest.yml`). Catalog `lane`
+  equals LiteLLM `client_model_id` for published rows; purpose labels are
+  capability metadata only (`inventory/group_vars/model_catalog/LANE-IDENTITY.md`).
 - Include trace metadata in tool/client wrappers when available:
   `agent_role`, `model_lane`, `routing_policy`, `context_class`.
 
 ## Agent Roles
 
-- `planner`: default lane `ripi-private`, alternate lane
-  `qwen2.5-coder-1.5b-base`, boundary `read_only`,
+- `planner`: default lane `ministral-3-8b`, alternate lane
+  `qwen2.5-coder-1.5b-base-q8_0`, boundary `read_only`,
   context `private_planning`
-- `coder`: default lane `qwen2.5-coder-32b~coder-primary`, alternate lane
-  `qwen2.5-coder-1.5b-base`, boundary `repo_write`,
+- `coder`: default lane `qwen3-coder-30b-a3b`, alternate lane
+  `ministral-3-8b`, boundary `repo_write`,
   context `implementation`
-- `tester`: default lane `code-test`, alternate lane
-  `qwen2.5-coder-1.5b-base`, boundary `test_execution`,
+- `tester`: default lane `qwen2.5-coder-1.5b-base-q8_0`, alternate lane
+  `ministral-3-8b`, boundary `test_execution`,
   context `validation`
-- `reviewer`: default lane `qwen2.5-coder-32b~code-review`, alternate lane
-  `ripi-private`, boundary `read_only`,
+- `reviewer`: default lane `qwen3-coder-30b-a3b`, alternate lane
+  `ministral-3-8b`, boundary `read_only`,
   context `review`
-- `documenter`: default lane `qwen2.5-coder-1.5b-base`, alternate lane
-  `qwen2.5-coder-32b~coder-primary`, boundary `repo_write`,
+- `documenter`: default lane `qwen2.5-coder-1.5b-base-q8_0`, alternate lane
+  `qwen3-coder-30b-a3b`, boundary `repo_write`,
   context `documentation`
-- `steward`: default lane `ripi-private`, alternate lane
-  `qwen2.5-coder-32b~code-review`, boundary `governance`,
+- `steward`: default lane `ministral-3-8b`, alternate lane
+  `qwen3-coder-30b-a3b`, boundary `governance`,
   context `planning_governance`
 
-## Model Lanes (client `model_name` → catalog `model_lane`)
+## Model Lanes
 
-- `qwen2.5-coder-32b~coder-primary` (FRIENDLY ALIAS): architecture, refactors, hard coding; catalog lane `deepreinforce-ai/Ornith-1.0-35B-GGUF`; status `pending_research`
-- `qwen2.5-coder-32b~experiment` (FRIENDLY ALIAS): smoke tests; catalog lane `experiment`; status `provisional_example`
-- `qwen2.5-coder-1.5b-base` (FRIENDLY ALIAS): autocomplete / FIM (Ollama `qwen2.5-coder:1.5b-base`, Q4_K_M); catalog lane `code-fast`; status `selected`
-- `qwen2.5-coder-32b~code-review` (FRIENDLY ALIAS): critique, risk finding; catalog lane `code-review`; status `pending_research`
-- `code-test`: test generation (catalog lane; no gateway route yet); status `pending_research`
-- `ripi-private`: private planning (catalog lane; no gateway route yet); status `pending_research`
-- `embeddings-local`: local embeddings (catalog lane; no gateway route yet); status `pending_research`
-- `public-research`: public docs/research; status `deferred`
-- `litellm-complexity-auto-router@litellm~smart-router` (MODEL GROUP): complexity auto-router; catalog lane `smart-router`
+- `qwen2.5-coder-14b` (client `qwen2.5-coder-14b`): retired legacy candidate; no current client owner; status `retired`; example ``
+- `experiment`: smoke tests and trial models; status `provisional_example`; example `Qwen/Qwen3-0.6B`
+- `qwen2.5-coder-1.5b-base-q8_0` (client `qwen2.5-coder-1.5b-base-q8_0`): Continue autocomplete QwenCoder2.5 1.5B-base FIM; status `downloaded`; example `Qwen/Qwen2.5-Coder-1.5B`
+- `nomic-embed-text` (client `nomic-embed-text`): embedding model; deployment placement is recorded separately; status `selected`; example `nomic-ai/nomic-embed-text-v1.5`
+- `qwen2.5-coder-7b` (client `qwen2.5-coder-7b`): Continue edit/apply and mid-size coding chat on desktop Ollama; status `downloaded`; example `Qwen/Qwen2.5-Coder-7B-Instruct`
+- `diffusiongemma-nextedit`: Continue Next Edit (replaces mercury-coder-nextedit); status `downloading`; example `google/diffusiongemma-26B-A4B-it`
+- `diffucoder`: Continue Chat Edit / code generation (diffusion); status `downloaded`; example `apple/DiffuCoder-7B-cpGRPO`
+- `continue-edit`: Continue Chat Edit default; status `pending_backend`; family `DiffuCoder when wrapped; else local Qwen3-Coder 30B`
+- `qwen3-coder-30b-a3b` (client `qwen3-coder-30b-a3b`): Primary agentic coder on 5090 (replaces Qwen2.5-Coder-32B-AWQ); status `selected`; family `Qwen3-Coder 30B-A3B MoE (30B total, 3B active)`
+- `qwen3.6-35b-a3b`: Architecture discussion and generalist reasoning (separate from code edits); status `selected`; family `Qwen3.6 35B-A3B MoE`
+- `devstral-small-2-agent`: Repo navigation and tool-use agent specialist; status `selected`; family `Devstral Small 2 24B dense`
+- `glm-4.6-experimental`: Experimental heavier capability lane (fits in 32GB with context headroom); status `selected`; family `GLM-4.6 (not 4.5-Air)`
+- `qwen3-coder-30b`: Continue Chat Edit alternate local (deprecated - use qwen3-coder-30b-a3b); status `deprecated`; family `Qwen3-Coder 30B (non-MoE)`
+- `qwen3-coder-480b`: Continue Chat Edit large open model; status `deferred`; family `Qwen3-Coder 480B`
+- `gemma4-12b`: Open WebUI chat — Gemma 4 12B official (vision + tools + thinking); status `commissioned`; family `Gemma 4 12B (Google / Ollama library)`
+- `qwen3.6-27b`: Open WebUI chat — Qwen3.6 27B (agentic coding + thinking); status `commissioned`; family `Qwen3.6 27B dense (Alibaba / Ollama library)`
+- `gpt-oss-20b` (client `gpt-oss-20b`): Open WebUI chat — gpt-oss 20B (OpenAI open weights, general/reasoning); status `commissioned`; family `gpt-oss 20B MoE (OpenAI / Ollama library)`
+- `ministral-3-8b` (client `ministral-3-8b`): Fast local planner / alternate chat (desktop Ollama); status `commissioned`; family `Mistral Ministral 3 8B`
+- `positive-negative-prompt-assist`: Open WebUI — positive/negative prompt assist for ComfyUI / A1111; status `commissioned`; family `Gemma 4 12B (alias over gemma4:12b)`
+- `a1111-cyberrealistic-v9`: Open WebUI / A1111 stills — photoreal SD1.5 on GTX 1060 6GB; status `commissioned`; family `CyberRealistic V9 FP16 (SD1.5)`
+- `comfyui-flux1-dev-fp8`: ComfyUI primary stills — FLUX.1-dev FP8 on RTX 5090; status `commissioned`; family `FLUX.1-dev FP8 (Black Forest Labs / Comfy-Org)`
+- `comfyui-sdxl-base-1.0`: ComfyUI SDXL base — LoRA / ControlNet ecosystem on RTX 5090; status `commissioned`; family `Stable Diffusion XL 1.0 base`
+- `code-review`: critique, risk finding, test review; status `selected_alias_on_primary_vllm`; family `code-review alias on shared vllm-primary until secondary runtime exists`
+- `code-test`: test generation and focused test repair; status `pending_research`; family `test generation/repair model`
+- `ripi-private`: private planning, governance, and conversation; status `pending_research`; family `private local reasoning/planning model`
+- `embeddings-local`: local retrieval and index embeddings; status `pending_research`; family `embedding model`
+- `public-research`: public docs, comparison, and research; status `deferred`; family `cloud/provider route unless local model is selected`

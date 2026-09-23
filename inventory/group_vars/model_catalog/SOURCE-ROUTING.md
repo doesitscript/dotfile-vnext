@@ -17,6 +17,24 @@ storage authority.
 When both Ollama tag and HF base exist: primary = Ollama library for the runtime
 tag contract; set `secondary_doc_source: huggingface_model_card`.
 
+## Per-entry identity fields (lane == LiteLLM client id)
+
+See [LANE-IDENTITY.md](./LANE-IDENTITY.md). Published rows:
+
+```yaml
+lane: qwen2.5-coder-1.5b-base-q8_0          # canonical == LiteLLM model_name
+client_model_id: qwen2.5-coder-1.5b-base-q8_0
+capability: code_completion                 # metadata, not a second ID
+client_roles: [autocomplete]
+purpose: "human description only"
+deprecated_purpose_labels:                  # archaeology only; not validator-accepted
+  - code-autocomplete-1.5b
+  - code-fast
+```
+
+Validators resolve agent-profile and lane-contract names against **canonical
+`lane` only** via `playbooks/tasks/resolve_model_catalog_reference_names.yml`.
+
 ## Per-entry fields (`source_routing`)
 
 Add under each `model_catalog_manifest.entries[]` row when known:

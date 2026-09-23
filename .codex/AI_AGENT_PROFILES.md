@@ -19,15 +19,15 @@ LiteLLM, vLLM, Langfuse, and GPU prerequisite gates.
 
 ## Agent Roles
 
-- `planner` -> default `ripi-private`, alternate
-  `code-fast`, boundary `read_only`
-- `coder` -> default `deepreinforce-ai/Ornith-1.0-35B-GGUF`, alternate
-  `code-fast`, boundary `repo_write`
-- `tester` -> default `code-test`, alternate
-  `code-fast`, boundary `test_execution`
-- `reviewer` -> default `code-review`, alternate
-  `ripi-private`, boundary `read_only`
-- `documenter` -> default `code-fast`, alternate
-  `deepreinforce-ai/Ornith-1.0-35B-GGUF`, boundary `repo_write`
-- `steward` -> default `ripi-private`, alternate
-  `code-review`, boundary `governance`
+- `planner` -> default `ministral-3-8b`, alternate
+  `qwen2.5-coder-1.5b-base-q8_0`, boundary `read_only`
+- `coder` -> default `qwen3-coder-30b-a3b`, alternate
+  `ministral-3-8b`, boundary `repo_write`
+- `tester` -> default `qwen2.5-coder-1.5b-base-q8_0`, alternate
+  `ministral-3-8b`, boundary `test_execution`
+- `reviewer` -> default `qwen3-coder-30b-a3b`, alternate
+  `ministral-3-8b`, boundary `read_only`
+- `documenter` -> default `qwen2.5-coder-1.5b-base-q8_0`, alternate
+  `qwen3-coder-30b-a3b`, boundary `repo_write`
+- `steward` -> default `ministral-3-8b`, alternate
+  `qwen3-coder-30b-a3b`, boundary `governance`

@@ -33,6 +33,7 @@ model_catalog_manifest:
     - lane: qwen2.5-coder-14b
       purpose: retired legacy candidate; no current client owner
       status: retired
+      client_model_id: qwen2.5-coder-14b
       example_hf_repo_id: null
       candidate_family: null
       quantization: null
@@ -58,11 +59,15 @@ model_catalog_manifest:
         - current smoke-model research matrix incomplete
         - live GPU probe failed on hom-lab-ctl-k3s-02
       notes: Small smoke example verified to exist on Hugging Face; still not downloaded or pinned.
-    - lane: code-autocomplete-1.5b
+    - lane: qwen2.5-coder-1.5b-base-q8_0
       purpose: Continue autocomplete QwenCoder2.5 1.5B-base FIM
+      capability: code_completion
+      client_roles:
+        - autocomplete
       status: downloaded
-      aliases:
-        - code-fast
+      client_model_id: qwen2.5-coder-1.5b-base-q8_0
+      pytest_eval:
+        profiles: [eval-core]
       candidate_family: smaller coding FIM model (base)
       example_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B
       selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B
@@ -77,16 +82,23 @@ model_catalog_manifest:
         hrl_pack_slug: qwen-qwen2.5-coder-1.5b-base
         hrl_pack_status: missing
       notes: >-
-        Client alias qwen2.5-coder-1.5b-base → Ollama qwen2.5-coder:1.5b-base
-        on HOM-LAB-HVH-01:11434/v1 via LiteLLM. Autocomplete is FIM-first:
-        Ollama Modelfile TEMPLATE emits <|fim_prefix|>/<|fim_suffix|>/<|fim_middle|>
-        when .Suffix is set; Continue promptTemplates.autocomplete must match
-        that shape with useLegacyCompletionsEndpoint. Continue: temp 0.0,
-        debounce 250, maxPromptTokens 1024. See roles/continue_ide/README.md
-        and model-lane-acceptance/gateway/continue-embed-and-fim-atdd.md.
+        Canonical lane == LiteLLM client_model_id. Ollama tag
+        qwen2.5-coder:1.5b-base-q8_0 on HOM-LAB-HVH-01 via LiteLLM.
+        Former purpose labels code-autocomplete-1.5b / code-fast are retired
+        (see LANE-IDENTITY.md). FIM-first Modelfile TEMPLATE; Continue
+        promptTemplates.autocomplete must match.
+      deprecated_purpose_labels:
+        - code-autocomplete-1.5b
+        - code-fast
     - lane: nomic-embed-text
       purpose: embedding model; deployment placement is recorded separately
+      capability: embeddings
+      client_roles:
+        - embed
       status: selected
+      client_model_id: nomic-embed-text
+      pytest_eval:
+        profiles: [eval-core]
       candidate_family: Nomic Embed Text
       example_hf_repo_id: nomic-ai/nomic-embed-text-v1.5
       selected_hf_repo_id: nomic-ai/nomic-embed-text-v1.5
@@ -109,14 +121,21 @@ model_catalog_manifest:
       notes: >-
         LiteLLM model_name nomic-embed-text → ollama/nomic-embed-text at
         http://ollama-hvh01.hom.lab:11434 (no /v1). Ollama >= 0.1.26. ~137M params.
-    - lane: code-autocomplete-7b
-      purpose: Continue autocomplete QwenCoder2.5 7B
+    - lane: qwen2.5-coder-7b
+      purpose: Continue edit/apply and mid-size coding chat on desktop Ollama
+      capability: code_edit
+      client_roles:
+        - edit
+        - apply
       status: downloaded
-      candidate_family: mid coding FIM model
+      client_model_id: qwen2.5-coder-7b
+      pytest_eval:
+        profiles: [eval-core]
+      candidate_family: mid coding Instruct model
       example_hf_repo_id: Qwen/Qwen2.5-Coder-7B-Instruct
       selected_hf_repo_id: Qwen/Qwen2.5-Coder-7B-Instruct
       license: apache-2.0
-      serving_runtime: vllm
+      serving_runtime: ollama
       unc_path: "\\\\HOM-LAB-HVH-01\\public\\models\\huggingface\\Qwen--Qwen2.5-Coder-7B-Instruct"
       source_routing:
         primary_doc_source: huggingface_model_card
@@ -125,7 +144,11 @@ model_catalog_manifest:
         context7_library_id: null
         hrl_pack_slug: qwen-qwen2.5-coder-7b-instruct
         hrl_pack_status: missing
-      notes: Client alias for Continue autocomplete role.
+      notes: >-
+        Canonical lane == LiteLLM client_model_id qwen2.5-coder-7b (desktop
+        Ollama). Former purpose label code-autocomplete-7b retired.
+      deprecated_purpose_labels:
+        - code-autocomplete-7b
     - lane: diffusiongemma-nextedit
       purpose: Continue Next Edit (replaces mercury-coder-nextedit)
       status: downloading
@@ -186,8 +209,16 @@ model_catalog_manifest:
       notes: Prefer DiffuCoder local wrapper; qwen3-coder-30b as alternate local lane.
     - lane: qwen3-coder-30b-a3b
       purpose: Primary agentic coder on 5090 (replaces Qwen2.5-Coder-32B-AWQ)
+      capability: code_agent
+      client_roles:
+        - chat
+        - coder
+        - reviewer
       variant_class: instruct_chat_agent
       status: selected
+      client_model_id: qwen3-coder-30b-a3b
+      pytest_eval:
+        profiles: [eval-core]
       candidate_family: Qwen3-Coder 30B-A3B MoE (30B total, 3B active)
       selected_hf_repo_id: Qwen/Qwen3-Coder-30B-A3B-Instruct
       quantization_repo_id: cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit
@@ -359,7 +390,13 @@ model_catalog_manifest:
         Official Qwen3.6 27B library tag for agentic / thinking chat. Text-first; not Arena.
     - lane: gpt-oss-20b
       purpose: Open WebUI chat — gpt-oss 20B (OpenAI open weights, general/reasoning)
+      capability: general_chat
+      client_roles:
+        - chat
       status: commissioned
+      client_model_id: gpt-oss-20b
+      pytest_eval:
+        profiles: [eval-core]
       candidate_family: gpt-oss 20B MoE (OpenAI / Ollama library)
       selected_ollama_tag: gpt-oss:20b
       serving_runtime: ollama
@@ -380,6 +417,35 @@ model_catalog_manifest:
         selected this as the best current fit for host presence on
         dev-workstation-win; do not assume the separate Codex desktop lane is
         re-qualified until LiteLLM tool-loop behavior is re-tested.
+    - lane: ministral-3-8b
+      purpose: Fast local planner / alternate chat (desktop Ollama)
+      capability: fast_chat
+      client_roles:
+        - planner
+        - steward
+        - alternate_chat
+      status: commissioned
+      client_model_id: ministral-3-8b
+      pytest_eval:
+        profiles: [eval-core]
+      candidate_family: Mistral Ministral 3 8B
+      selected_ollama_tag: ministral-3:8b
+      serving_runtime: ollama
+      storage_host: dev-workstation-win
+      unc_path: null
+      source_routing:
+        primary_doc_source: ollama_library
+        primary_doc_url: "https://ollama.com/library/ministral-3"
+        secondary_doc_source: null
+        secondary_doc_url: null
+        hrl_pack_slug: ministral-3-8b
+        hrl_pack_status: missing
+      research_sources:
+        - https://ollama.com/library/ministral-3
+      notes: >-
+        LiteLLM client_model_id ministral-3-8b → ollama/ministral-3:8b on
+        dev-workstation-win. Used by ai_agent_client_profiles planner/steward
+        defaults and as alternate for coder/tester/reviewer.
     - lane: positive-negative-prompt-assist
       purpose: Open WebUI — positive/negative prompt assist for ComfyUI / A1111
       status: commissioned

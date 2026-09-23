@@ -118,6 +118,7 @@
 
     - name: Remove exited CRI containers for AI lane node recovery
       ansible.builtin.shell: |
+        set -o pipefail
         crictl ps -a --state Exited -q | xargs -r crictl rm
       args:
         executable: /bin/bash
@@ -130,6 +131,7 @@
 
     - name: Remove not-ready CRI sandboxes for AI lane node recovery
       ansible.builtin.shell: |
+        set -o pipefail
         crictl pods --state notready -q | xargs -r crictl rmp
       args:
         executable: /bin/bash
@@ -222,6 +224,8 @@
   vars_files:
     - "{{ playbook_dir }}/../roles/k3s_litellm_gateway/defaults/main/model_client_ids.yml"
     - "{{ playbook_dir }}/../roles/k3s_litellm_gateway/defaults/main.yml"
+    # Master key lives in shared vault (role defaults leave it empty)
+    - "{{ playbook_dir }}/../vault/shared.vault.yml"
   vars:
     ai_inference_lane_recovery_required_gateway_models:
       - "{{ k3s_litellm_gateway_client_model_id_chat }}"
@@ -229,15 +233,28 @@
     ai_inference_lane_recovery_completion_probe_model: "{{ k3s_litellm_gateway_client_model_id_chat }}"
     ai_inference_lane_recovery_completion_probe_prompt: Reply with only the word READY.
     ai_inference_lane_recovery_completion_probe_expected_text: READY
+    ai_inference_lane_recovery_master_key: >-
+      {{
+        vault_k3s_litellm_gateway_master_key
+        | default(k3s_litellm_gateway_master_key)
+      }}
   tags: [ai_inference_lane_recovery, ai_inference_lane_recovery_verify]
 
   tasks:
+    - name: Require a non-empty LiteLLM master key for live recovery probes
+      ansible.builtin.assert:
+        that:
+          - (ai_inference_lane_recovery_master_key | default('') | length) > 0
+        fail_msg: >-
+          Live recovery verify needs vault_k3s_litellm_gateway_master_key from
+          vault/shared.vault.yml (role default k3s_litellm_gateway_master_key is empty).
+
     - name: Wait for LiteLLM readiness on the published lane
       ansible.builtin.uri:
         url: http://litellm.hom.lab/health/readiness
         method: GET
         headers:
-          Authorization: "Bearer {{ k3s_litellm_gateway_master_key }}"
+          Authorization: "Bearer {{ ai_inference_lane_recovery_master_key }}"
         status_code: 200
         timeout: 30
       register: _ai_inference_lane_recovery_litellm_readiness
@@ -250,7 +267,7 @@
         url: http://litellm.hom.lab/v1/models
         method: GET
         headers:
-          Authorization: "Bearer {{ k3s_litellm_gateway_master_key }}"
+          Authorization: "Bearer {{ ai_inference_lane_recovery_master_key }}"
         status_code: 200
         return_content: true
         timeout: 30
@@ -278,7 +295,7 @@
         url: http://litellm.hom.lab/v1/chat/completions
         method: POST
         headers:
-          Authorization: "Bearer {{ k3s_litellm_gateway_master_key }}"
+          Authorization: "Bearer {{ ai_inference_lane_recovery_master_key }}"
         body_format: json
         body:
           model: "{{ ai_inference_lane_recovery_completion_probe_model }}"

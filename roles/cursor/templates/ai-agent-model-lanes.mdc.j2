@@ -31,6 +31,10 @@ Profile contract:
   `qwen2.5-coder-14b` just because it is the first runtime path.
 - Treat model catalog entries with `pending_research` or `provisional_example`
   status as not selected for download or pinning.
+- Lane names for roles come from inventory
+  (`ai_agent_profiles.yml` + `model_catalog/manifest.yml`). Catalog `lane`
+  equals LiteLLM `client_model_id` for published rows; purpose labels are
+  capability metadata only (`inventory/group_vars/model_catalog/LANE-IDENTITY.md`).
 - Include trace metadata in tool/client wrappers when available:
   `{{ ai_agent_client_profiles.trace_metadata_keys | join("`, `") }}`.
 
@@ -45,6 +49,6 @@ Profile contract:
 ## Model Lanes
 
 {% for entry in (model_catalog_manifest.entries | default([])) %}
-- `{{ entry.lane }}`: {{ entry.purpose }}; status `{{ entry.status }}`{% if entry.example_hf_repo_id is defined %}; example `{{ entry.example_hf_repo_id }}`{% elif entry.hf_repo_id is defined %}; repo `{{ entry.hf_repo_id }}`{% elif entry.candidate_family is defined %}; family `{{ entry.candidate_family }}`{% endif %}
+- `{{ entry.lane }}`{% if entry.client_model_id is defined and entry.client_model_id %} (client `{{ entry.client_model_id }}`){% endif %}: {{ entry.purpose }}; status `{{ entry.status }}`{% if entry.example_hf_repo_id is defined %}; example `{{ entry.example_hf_repo_id }}`{% elif entry.hf_repo_id is defined %}; repo `{{ entry.hf_repo_id }}`{% elif entry.candidate_family is defined %}; family `{{ entry.candidate_family }}`{% endif %}
 
 {% endfor %}

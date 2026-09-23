@@ -22,6 +22,9 @@
       - "{{ k3s_litellm_gateway_client_model_id_edit }}"
       - "{{ k3s_litellm_gateway_client_model_id_autocomplete }}"
   tasks:
+    - name: Resolve model catalog reference names for inference stack validation
+      ansible.builtin.include_tasks: tasks/resolve_model_catalog_reference_names.yml
+
     - name: Collect gateway and lane contract names
       ansible.builtin.set_fact:
         _gateway_route_names: "{{ k3s_litellm_gateway_model_list | map(attribute='model_name') | list }}"
@@ -35,6 +38,16 @@
           - item in _lane_contract_names
         fail_msg: "Missing LiteLLM lane contract entry: {{ item }}"
       loop: "{{ _required_lane_contract_names }}"
+
+    - name: Validate LiteLLM lane contract names resolve in the model catalog
+      ansible.builtin.assert:
+        that:
+          - item in model_catalog_reference_names
+        fail_msg: >-
+          LiteLLM lane contract '{{ item }}' is not a catalog lane.
+          Catalog lane must equal the LiteLLM client model id
+          (inventory/group_vars/model_catalog/LANE-IDENTITY.md).
+      loop: "{{ _lane_contract_names }}"
 
     - name: Validate complexity smart-router is disabled
       ansible.builtin.assert:
@@ -55,6 +68,7 @@
       ansible.builtin.debug:
         msg:
           lane_contract_names: "{{ _lane_contract_names }}"
+          catalog_reference_name_count: "{{ model_catalog_reference_names | length }}"
           static_gateway_routes: "{{ _gateway_route_names }}"
           current_client_ids:
             chat: "{{ k3s_litellm_gateway_client_model_id_chat }}"

@@ -1,0 +1,35 @@
+---
+# Resolve canonical model catalog lane names.
+#
+# End-state (2026-09-22): entries[].lane is the only accepted reference, and
+# for published rows lane == client_model_id. Purpose labels are not accepted.
+# See inventory/group_vars/model_catalog/LANE-IDENTITY.md.
+#
+# Requires: model_catalog_manifest
+# Sets:     model_catalog_reference_names
+
+- name: Resolve model catalog reference names (canonical lane only)
+  ansible.builtin.set_fact:
+    model_catalog_reference_names: >-
+      {{
+        model_catalog_manifest.entries | default([])
+        | map(attribute='lane')
+        | list
+        | unique
+        | list
+      }}
+  changed_when: false
+
+- name: Assert published catalog rows keep lane equal to client_model_id
+  ansible.builtin.assert:
+    that:
+      - (item.client_model_id | default('') | length) == 0
+        or item.lane == item.client_model_id
+    fail_msg: >-
+      Catalog lane '{{ item.lane }}' must equal client_model_id
+      '{{ item.client_model_id }}' (LANE-IDENTITY.md). Purpose labels are not
+      a second primary ID.
+  loop: "{{ model_catalog_manifest.entries | default([]) }}"
+  loop_control:
+    label: "{{ item.lane }}"
+  when: item.client_model_id is defined
