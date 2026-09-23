@@ -7,6 +7,7 @@ logic discussed for Open WebUI / AI lanes / storage / GPU placement.
 
 ```text
 policy/execution_roles.yml     = “what ai-client-ui means + how to match”
+policy/capability_catalog.yml  = “where a capability can run + its status”
 inventory host_vars            = “facts about this host” (classes, planes, state)
 classify_host                  = computes labels/roles at runtime
 open_webui_state: present      = “commission this capability here”
@@ -21,10 +22,39 @@ truth + commission flags. Do not stamp derived roles onto every host_vars file.
 execution roles and Kubernetes intent.
 
 **Product flow skill:** `.cursor/skills/homelab-product-capability-flow/`
+
+## Capability catalog boundary
+
+`capability_catalog.yml` is the cross-platform metadata layer. It connects a
+stable capability ID to labels, platform surfaces, implementation owners, and
+placement status. It is deliberately not a host list and must not be used to
+bypass inventory classification.
+
+Use these meanings for platform status:
+
+- `commissioned` — an existing playbook/role/packet path is approved for the
+  platform.
+- `candidate` — the capability family may fit, but placement still needs
+  research and a classified target before implementation.
+- `documented_only` — the workflow is recorded but not an executable role.
+- `deferred` — intentionally not in the current platform scope.
+
+The work-laptop packet projects the catalog into
+`group_vars/all/work_laptop_capabilities.yml` and exposes its executable
+surfaces through Ansible tags. New Linux, Windows, or Kubernetes consumers
+should add a catalog mapping first, then use existing inventory selectors and
+execution roles rather than inventing hostnames.
+
+Validate catalog references and executable packet-tag claims with:
+
+```bash
+bin/codex-env python scripts/validate_capability_catalog.py
+```
 (library → plan → Ansible intake → apply → NetBox).
 
 | File | Purpose |
 | --- | --- |
+| `capability_catalog.yml` | Cross-platform capability metadata: lifecycle status, candidate versus commissioned placement, and platform-specific implementation references. |
 | `hardware_classes.yml` | Controlled vocabulary for GPUs, VRAM, storage |
 | `execution_roles.yml` | Personas + match rules + k8s + per-role `depends_on` |
 | `runtime_planes.yml` | Named planes hosts may enable |

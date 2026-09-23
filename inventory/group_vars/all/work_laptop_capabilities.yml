@@ -1,0 +1,87 @@
+# Stable capability metadata for the isolated work-laptop packet.
+# The packet playbook remains the execution authority; this catalog provides
+# one durable vocabulary for grouping roles and portable workflow surfaces.
+work_laptop_capabilities:
+  - capability_id: ai_tools
+    catalog_ref: ai_tools
+    display_name: AI tools
+    labels: [ai-tools, work-laptop, model-clients]
+    execution_tags: [ai_tools]
+    roles:
+      - common/node
+      - work_laptop_codex_cli
+      - codex_user_config
+      - codex_homelab_profiles
+      - continue_ide
+      - cline_ide
+      - cline_cli
+      - zed_ide
+      - opencode_cli
+      - kilo_ide
+      - aider
+      - multiagents
+    workflow_surfaces:
+      - exports/work-laptop-ai-tools/host_vars/work-laptop.yaml
+      - exports/work-laptop-ai-tools/playbook.yaml
+    verify_tags: [ai_tools]
+
+  - capability_id: ai_clients
+    catalog_ref: ai_clients
+    display_name: AI model clients
+    labels: [ai-tools, model-clients, editors, coding-agents]
+    execution_tags: [ai_clients]
+    roles:
+      - work_laptop_codex_cli
+      - codex_user_config
+      - codex_homelab_profiles
+      - continue_ide
+      - cline_ide
+      - cline_cli
+      - zed_ide
+      - opencode_cli
+      - kilo_ide
+      - aider
+    workflow_surfaces:
+      - exports/work-laptop-ai-tools/host_vars/work-laptop.yaml
+      - exports/work-laptop-ai-tools/playbook.yaml
+    verify_tags: [ai_clients]
+
+  - capability_id: model_runtime
+    catalog_ref: model_runtime
+    display_name: Local model runtimes and model configuration
+    labels: [ai-tools, model-runtime, local-models]
+    execution_tags: [model_runtime]
+    roles: [jan_ide]
+    documented_runtimes: [jan, docker-model-runner, ollama, lm-studio, llama.cpp]
+    workflow_surfaces:
+      - exports/work-laptop-ai-tools/JAN-AI-WORK-MAC-RAG.md
+      - exports/work-laptop-ai-tools/DOCKER-MODEL-RUNNER.md
+      - exports/work-laptop-ai-tools/WORK-MAC-LOCAL-MODEL-ARRIVAL.md
+    verify_tags: [model_runtime]
+
+  - capability_id: model_download
+    catalog_ref: model_download
+    display_name: Model acquisition and arrival workflow
+    labels: [ai-tools, model-download, model-weights]
+    execution_tags: []
+    roles: []
+    download_tools: [huggingface-cli, docker-model-runner]
+    workflow_surfaces:
+      - exports/work-laptop-ai-tools/helpers/work-mac-local-models
+      - exports/work-laptop-ai-tools/helpers/docker-model-runner
+      - exports/work-laptop-ai-tools/WORK-MAC-LOCAL-MODEL-ARRIVAL.md
+      - exports/work-laptop-ai-tools/DOCKER-MODEL-RUNNER.md
+    notes:
+      - This tag documents operator-run or future download workflows; it does not imply a commissioned downloader role.
+    verify_tags: []
+
+  - capability_id: mcp
+    catalog_ref: mcp
+    display_name: Model-client MCP integrations
+    labels: [ai-tools, mcp, integrations]
+    execution_tags: [mcp]
+    roles: [mcp_servers/context7, mcp_servers/firecrawl, mcp_servers/morph, mcp_servers/firebase, mcp_servers/huggingface, multiagents]
+    workflow_surfaces:
+      - exports/work-laptop-ai-tools/host_vars/work-laptop.yaml
+      - exports/work-laptop-ai-tools/playbook.yaml
+    verify_tags: [mcp]

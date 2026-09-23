@@ -40,11 +40,42 @@ path from `dotfile-vnext/exports/work-laptop-ai-tools/` into the sibling
 checkout so the sibling matches the packet. Do not treat the sibling as design
 authority. Do not commit or push.
 
-### U3b. Deploy all AI CLI apps (model catalogs)
+### U3b. Update AI tools and client configuration by capability tag
+
+The stable capability catalog is `group_vars/all/work_laptop_capabilities.yml`.
+Use these commands on the work laptop after pulling the sibling packet. Start
+with the preview, then apply the smallest capability that covers the change.
+
+```bash
+# First target: all AI tools and their managed configuration.
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
+  --skip-tags hosts_file --tags ai_tools --check --diff
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
+  --skip-tags hosts_file --tags ai_tools
+
+# Narrower AI client/configuration refresh.
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
+  --skip-tags hosts_file --tags ai_clients
+
+# Jan local runtime/RAG configuration only; no model download.
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
+  --skip-tags hosts_file --tags model_runtime
+
+# AI MCP integrations only.
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
+  --skip-tags hosts_file --tags mcp
+```
+
+`model_download` is metadata-only for now. Use the documented model arrival
+or Docker Model Runner helpers for model acquisition; do not assume that
+`--tags model_download` downloads weights.
+
+### U3c. Deploy all AI CLI apps (model catalogs)
 
 After editing commissioned models in parent
 `inventory/group_vars/all/ai_cli_apps.yml` and client role/host_vars lists,
-sync the packet, then on the laptop:
+sync the packet, then on the laptop. `ai_tools` is the broader first target;
+`ai_cli_apps` remains the legacy narrow alias for the client role set:
 
 ```bash
 ansible-playbook playbook.yaml --tags ai_cli_apps

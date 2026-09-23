@@ -1,0 +1,142 @@
+# Cross-platform capability metadata.
+#
+# This is a vocabulary and placement-contract layer, not a host-targeting
+# list. Host selection remains owned by inventory + policy/execution_roles.yml
+# + classify_homelab_hosts.yaml. A platform entry is only executable when it
+# names an existing playbook/packet surface and is marked commissioned.
+schema_version: 1
+updated_at: "2026-09-23"
+
+placement_status_vocabulary:
+  - commissioned
+  - candidate
+  - documented_only
+  - deferred
+
+netbox_boundary:
+  labels_are_not_netbox_tags: true
+  modeled_tag_authority: policy/netbox_service_metadata.yml
+  note: >-
+    Add a NetBox tag only when a modeled service or object needs it. Existing
+    execution-role capability tags remain the NetBox seed vocabulary.
+
+capability_catalog:
+  ai_tools:
+    display_name: AI tools
+    labels: [ai-tools, model-clients]
+    placement_contract:
+      host_selection: inventory_and_execution_role
+      execution_selection: ansible_tags
+    platform_surfaces:
+      macos:
+        status: commissioned
+        implementation: work_laptop_packet
+        execution_tags: [ai_tools]
+      linux:
+        status: candidate
+        implementation: existing_client_roles
+      windows:
+        status: candidate
+        implementation: existing_client_roles
+      kubernetes:
+        status: documented_only
+        implementation: null
+        note: Kubernetes placement is for model-serving workloads, not desktop AI clients.
+
+  ai_clients:
+    display_name: AI model clients
+    labels: [ai-tools, model-clients, coding-agents]
+    placement_contract:
+      host_selection: inventory_and_execution_role
+      execution_selection: ansible_tags
+    platform_surfaces:
+      macos:
+        status: commissioned
+        implementation: work_laptop_packet
+        execution_tags: [ai_clients]
+      linux:
+        status: candidate
+        implementation: existing_client_roles
+      windows:
+        status: candidate
+        implementation: existing_client_roles
+      kubernetes:
+        status: deferred
+        implementation: null
+        note: Client UI/CLI roles are not Kubernetes workloads.
+
+  model_runtime:
+    display_name: Model-serving runtime
+    labels: [ai-tools, model-runtime, inference]
+    placement_contract:
+      host_selection: inventory_and_execution_role
+      execution_selection: playbook_or_role_tags
+      resource_selection: hardware_classes_and_runtime_planes
+    platform_surfaces:
+      macos:
+        status: commissioned
+        implementation: work_laptop_packet
+        execution_tags: [model_runtime]
+        runtimes: [jan]
+      windows:
+        status: commissioned
+        implementation: windows_ollama_runtime
+        execution_roles: [desktop-amd-runtime, low-tier-gpu]
+        runtimes: [ollama]
+      linux:
+        status: candidate
+        implementation: existing_runtime_roles
+        execution_roles: [low-tier-gpu]
+        runtimes: [ollama, llama.cpp]
+      kubernetes:
+        status: commissioned
+        implementation: k3s_ai_plane
+        execution_roles: [k3s-ai-plane, primary-ai-compute]
+        runtimes: [vllm]
+
+  model_download:
+    display_name: Model acquisition and weight arrival
+    labels: [ai-tools, model-download, model-weights]
+    placement_contract:
+      host_selection: explicit_operator_or_download_host
+      execution_selection: workflow_or_role_tags
+    platform_surfaces:
+      macos:
+        status: documented_only
+        implementation: work_laptop_packet
+        tools: [huggingface-cli, docker-model-runner]
+      windows:
+        status: commissioned
+        implementation: huggingface_model_weights
+        execution_roles: [primary-ai-compute, desktop-amd-runtime]
+        tools: [huggingface-cli]
+      linux:
+        status: candidate
+        implementation: huggingface_model_weights
+        tools: [huggingface-cli]
+      kubernetes:
+        status: deferred
+        implementation: null
+        note: Download/cache ownership must be modeled before treating a pod as a downloader.
+
+  mcp:
+    display_name: MCP integrations
+    labels: [ai-tools, mcp, integrations]
+    placement_contract:
+      host_selection: inventory_and_execution_role
+      execution_selection: ansible_tags
+    platform_surfaces:
+      macos:
+        status: commissioned
+        implementation: work_laptop_packet
+        execution_tags: [mcp]
+      linux:
+        status: candidate
+        implementation: existing_mcp_roles
+      windows:
+        status: candidate
+        implementation: existing_mcp_roles
+      kubernetes:
+        status: deferred
+        implementation: null
+        note: MCP server placement requires a separate service/runtime decision.

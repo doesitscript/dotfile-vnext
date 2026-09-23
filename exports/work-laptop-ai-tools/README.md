@@ -236,6 +236,62 @@ older roles may have drifted.
 .venv/bin/ansible-playbook playbook.yaml -i inventory.yaml --skip-tags hosts_file --tags ai_cli_apps
 ```
 
+### Capability-targeted updates
+
+The packet carries the upstream capability catalog at
+`group_vars/all/work_laptop_capabilities.yml`. The catalog documents the
+stable capability vocabulary; `playbook.yaml` exposes the corresponding
+Ansible tags. This lets the work laptop update a related slice without
+replaying unrelated Terraform, hosts-file, or optional MCP work.
+
+The cross-platform placement contract is also shipped at
+`policy/capability_catalog.yml`. It records whether each capability is
+commissioned, a candidate, documented-only, or deferred on macOS, Linux,
+Windows, and Kubernetes. It does not replace inventory targeting: lab host
+selection still goes through `policy/execution_roles.yml` and the host
+classification gate.
+
+Validate that catalog references and packet execution tags still agree before
+using a targeted apply:
+
+```bash
+.venv/bin/python scripts/validate_capability_catalog.py
+```
+
+The first target for normal AI client/configuration refreshes is `ai_tools`:
+
+```bash
+# Preview the AI tools slice and show the planned changes.
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
+  --skip-tags hosts_file --tags ai_tools --check --diff
+
+# Apply AI clients, Codex profiles, editor configuration, and related MCP
+# integrations after reviewing the preview.
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
+  --skip-tags hosts_file --tags ai_tools
+```
+
+Use narrower targets when the change is known:
+
+```bash
+# Continue, Cline, OpenCode, Kilo, Aider, Zed, and Codex model clients/config.
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
+  --skip-tags hosts_file --tags ai_clients
+
+# Jan local model/RAG configuration only. This does not download weights.
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
+  --skip-tags hosts_file --tags model_runtime
+
+# AI-related MCP integrations only.
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
+  --skip-tags hosts_file --tags mcp
+```
+
+`model_download` is currently a documented workflow label, not an executable
+Ansible role. Model acquisition remains operator-run through the documented
+Hugging Face / Docker Model Runner helpers until a downloader role is
+commissioned.
+
 Recent work is the tail of `playbook.yaml` `roles:`. New sequential roles
 are appended above `work_laptop_packet_receipt`. Two quick windows skip the
 older entries and still run the playbook safety checks:

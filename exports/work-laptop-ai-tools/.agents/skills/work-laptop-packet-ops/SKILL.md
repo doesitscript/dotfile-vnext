@@ -9,6 +9,13 @@ Operational loop for this slice: **validate → sync sibling → optional smoke 
 Heavy scripts live in the parent project skill `work-laptop-export-pack`; this
 slice skill scopes when to run them and what “done” means for the packet.
 
+Capability metadata is source-owned in
+`group_vars/all/work_laptop_capabilities.yml`. When packet roles or user-facing
+workflow commands change, preserve the catalog, its stable execution tags, and
+the examples in `README.md` / `USEFUL-COMMANDS.md` during the sync. The first
+normal AI refresh target is `--tags ai_tools`; narrower targets are
+`ai_clients`, `model_runtime`, and `mcp`.
+
 ## When to use / not use
 
 Use when:
@@ -36,6 +43,7 @@ slice skill for discovery when working in the packet/sibling.
 
 ```bash
 cd /Users/joshc/develop/dotfile-vnext
+bin/codex-env python scripts/validate_capability_catalog.py
 bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/validate_export_contract.py
 bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/sync_sibling_repo.py
 # optional smoke (no --apply unless user asks for live apply on the real laptop):
@@ -73,6 +81,11 @@ prove the laptop has pulled or applied the packet.
 2. If parent is available, run the commands above from parent.
 3. If parent is unavailable, you may inspect sibling files but must not invent a
    second authority; note “sync pending from parent.”
+4. After syncing, run `scripts/validate_capability_catalog.py` from the sibling
+   packet. Confirm `group_vars/all/work_laptop_capabilities.yml` and the
+   capability-targeted examples are present. The catalog's `model_download`
+   entry is currently descriptive only; do not claim that its tag downloads
+   weights.
 
 ## Outputs
 
