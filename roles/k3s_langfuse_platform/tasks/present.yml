@@ -71,9 +71,13 @@
       docker ps --filter 'label=com.docker.compose.project=fuzlang-net' >&2 || true
       exit 1
     fi
-    docker exec "$cid" psql -U {{ k3s_langfuse_platform_resolved_postgres_user }} -d postgres -c \
-      "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='{{ k3s_langfuse_platform_resolved_postgres_db }}' AND pid <> pg_backend_pid();" >/dev/null
-    docker exec "$cid" psql -U {{ k3s_langfuse_platform_resolved_postgres_user }} -d postgres -c \
+    docker exec "$cid" psql -U {{ k3s_langfuse_platform_resolved_postgres_user }} \
+      -d postgres -c \
+      "SELECT pg_terminate_backend(pid) FROM pg_stat_activity \
+       WHERE datname='{{ k3s_langfuse_platform_resolved_postgres_db }}' \
+       AND pid <> pg_backend_pid();" >/dev/null
+    docker exec "$cid" psql -U {{ k3s_langfuse_platform_resolved_postgres_user }} \
+      -d postgres -c \
       "DROP DATABASE IF EXISTS {{ k3s_langfuse_platform_resolved_postgres_db }};"
   args:
     executable: /bin/bash
@@ -328,8 +332,11 @@
       Components deployed:
       - Langfuse Web ({{ k3s_langfuse_platform_web_replicas }} replicas)
       - Langfuse Worker ({{ k3s_langfuse_platform_worker_replicas }} replicas)
-      - External PostgreSQL at {{ k3s_langfuse_platform_postgres_host }}:{{ k3s_langfuse_platform_postgres_port }}
-      - ClickHouse at {{ k3s_langfuse_platform_clickhouse_host }}:{{ k3s_langfuse_platform_clickhouse_http_port }} / {{ k3s_langfuse_platform_clickhouse_native_port }}
+      - External PostgreSQL at
+        {{ k3s_langfuse_platform_postgres_host }}:{{ k3s_langfuse_platform_postgres_port }}
+      - ClickHouse at
+        {{ k3s_langfuse_platform_clickhouse_host }}:{{ k3s_langfuse_platform_clickhouse_http_port }}
+        / {{ k3s_langfuse_platform_clickhouse_native_port }}
       - Redis at {{ k3s_langfuse_platform_redis_host }}:{{ k3s_langfuse_platform_redis_port }}
       - S3 endpoint {{ k3s_langfuse_platform_s3_endpoint }}
 
