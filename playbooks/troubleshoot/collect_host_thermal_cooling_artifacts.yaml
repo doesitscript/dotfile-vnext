@@ -1,0 +1,17 @@
+---
+# Collect inventory cooling_contract + optional nvidia-smi interpretation aids.
+# Limit to physical Hyper-V hosts that declare cooling_contract (HVH-01 / HVH-02).
+- name: Collect host thermal / cooling artifacts
+  hosts: windows_hosts
+  gather_facts: false
+  tags:
+    - collect_host_thermal
+  tasks:
+    - name: Skip hosts without cooling_contract
+      ansible.builtin.meta: end_host
+      when: cooling_contract is not defined
+
+    - name: Collect thermal cooling artifacts
+      ansible.builtin.include_role:
+        name: troubleshooting_collectors
+        tasks_from: host_thermal_cooling.yml

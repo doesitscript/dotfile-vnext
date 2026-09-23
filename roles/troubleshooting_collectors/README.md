@@ -58,6 +58,7 @@ Current collector task files:
 - `windows_remote_access.yml`
 - `dev_workstation_win_gpu.yml`
 - `cursor_shell_path.yml`
+- `host_thermal_cooling.yml` (inventory `cooling_contract` + nvidia-smi interpretation aids)
 
 Collector scoping pattern:
 
@@ -99,6 +100,12 @@ Current dedicated playbook entrypoint:
 - [collect_hyperv_ubuntu_gpu_p_artifacts.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/troubleshoot/collect_hyperv_ubuntu_gpu_p_artifacts.yaml)
 - [collect_windows_remote_access_artifacts.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/troubleshoot/collect_windows_remote_access_artifacts.yaml)
 - [collect_cursor_shell_path_artifacts.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/troubleshoot/collect_cursor_shell_path_artifacts.yaml)
+- [collect_host_thermal_cooling_artifacts.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/troubleshoot/collect_host_thermal_cooling_artifacts.yaml)
+
+Cooling / thermal acoustics (liquid vs air):
+
+- [host-thermal-cooling-contracts.md](/Users/joshc/develop/dotfile-vnext/docs/reference/host-thermal-cooling-contracts.md)
+- [hvh-02-liquid-cooling-fan-curve--2026-09-22.md](/Users/joshc/develop/dotfile-vnext/docs/diagnostics/hvh-02-liquid-cooling-fan-curve--2026-09-22.md)
 
 Current Hyper-V Ubuntu troubleshooting note:
 

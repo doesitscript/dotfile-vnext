@@ -1,0 +1,74 @@
+---
+# Emit inventory cooling_contract + interpret nvidia-smi for thermal acoustics.
+# Opt-in: playbooks/troubleshoot/collect_host_thermal_cooling_artifacts.yaml
+- name: Require cooling_contract on target host
+  ansible.builtin.assert:
+    that:
+      - cooling_contract is defined
+      - cooling_contract.method is defined
+    fail_msg: >-
+      Host {{ inventory_hostname }} lacks cooling_contract in host_vars.
+      See docs/reference/host-thermal-cooling-contracts.md
+
+- name: Build thermal cooling evidence payload
+  ansible.builtin.set_fact:
+    host_thermal_cooling_evidence:
+      inventory_hostname: "{{ inventory_hostname }}"
+      collected_at_utc: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+      cooling_contract: "{{ cooling_contract }}"
+      hardware_classes: "{{ hardware_classes | default([]) }}"
+      agent_guidance: >-
+        On method=liquid, radiator/chassis fans (e.g. Corsair curves) are the
+        primary acoustic signal. nvidia-smi fan.speed is often 0% and must not
+        alone prove idle. Prefer temperature, power.draw, utilization.gpu,
+        VRAM, Hyper-V guest CPU, and inference logs.
+
+- name: Ensure thermal evidence directory exists
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/../artifacts/troubleshooting/host_thermal_cooling/{{ inventory_hostname }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+
+- name: Probe Windows GPU sensors when nvidia-smi is available
+  ansible.windows.win_shell: |
+    $ErrorActionPreference = 'Continue'
+    $exe = 'C:\Windows\System32\nvidia-smi.exe'
+    $out = @{ exists = (Test-Path -LiteralPath $exe) }
+    if ($out.exists) {
+      $csv = & $exe --query-gpu=name,temperature.gpu,fan.speed,utilization.gpu,memory.used,memory.total,power.draw --format=csv,noheader
+      $out.nvidia_smi_csv = [string]$csv
+    }
+    $out | ConvertTo-Json -Compress
+  register: host_thermal_nvidia_probe
+  changed_when: false
+  when: ansible_connection is match('ssh|winrm')
+  failed_when: false
+
+- name: Merge nvidia probe into evidence
+  ansible.builtin.set_fact:
+    host_thermal_cooling_evidence: "{{ host_thermal_cooling_evidence | combine({'nvidia_smi_probe': _nvidia_probe}, recursive=True) }}"
+  vars:
+    _nvidia_probe: >-
+      {{
+        (host_thermal_nvidia_probe.stdout | from_json)
+        if (host_thermal_nvidia_probe is defined
+            and (host_thermal_nvidia_probe.stdout | default('') | length) > 0)
+        else {'skipped': true}
+      }}
+  when: host_thermal_nvidia_probe is defined
+
+- name: Save thermal cooling evidence
+  ansible.builtin.copy:
+    content: "{{ host_thermal_cooling_evidence | to_nice_json }}\n"
+    dest: >-
+      {{ playbook_dir }}/../artifacts/troubleshooting/host_thermal_cooling/{{ inventory_hostname }}/{{
+        now(utc=true, fmt='%Y%m%dT%H%M%S%f') }}.json
+    mode: "0600"
+  delegate_to: localhost
+  become: false
+
+- name: Report thermal cooling evidence
+  ansible.builtin.debug:
+    var: host_thermal_cooling_evidence
