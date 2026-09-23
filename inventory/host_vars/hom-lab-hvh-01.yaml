@@ -241,19 +241,13 @@ hyperv_ubuntu_k3s_vm_disk: "60G"
 # Keep sustained K3s/container/PVC I/O on the F: data volume (not C:/D:).
 # Relocate existing VHDXs with playbooks/hyperv_move_vm_storage.yaml.
 hyperv_ubuntu_k3s_vm_host_vhdx_path: 'F:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-k3s-01\hom-lab-ctl-k3s-01.vhdx'
-# Live Docker companion Hyper-V name is still nsrv-dkr-01 (legacy); inventory
-# hostname remains hom-lab-ctl-dkr-01 for guest identity. VHDX move uses live name.
-#
-# TODO (operator / follow-up): align Hyper-V VM name nsrv-dkr-01 → hom-lab-ctl-dkr-01
-# using roles/hyperv_ubuntu_vm/tasks/align_legacy_vm_identity.yml (same pattern as
-# HVH-02 server-225-ubuntu → hom-lab-ctl-dkr-02). Set
-# hyperv_ubuntu_docker_vm_legacy_hyperv_name: "nsrv-dkr-01" before apply; do not
-# delete the running Docker guest.
-hyperv_ubuntu_docker_vm_host_vhdx_path: 'F:\ProgramData\Ansible\hyperv_ubuntu_vm\nsrv-dkr-01\nsrv-dkr-01.vhdx'
-# Wave 0 storage moves (shared F: pattern + legacy Docker VM on this host).
+# Docker VM identity convergence completed on 2026-09-23. Hyper-V, guest
+# hostname, artifact root, and VHDX now use the compact canonical name.
+hyperv_ubuntu_docker_vm_host_vhdx_path: 'F:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-dkr-01\hom-lab-ctl-dkr-01.vhdx'
+# Wave 0 storage moves (shared F: pattern).
 hyperv_vm_storage_move_targets:
-  - vm_name: nsrv-dkr-01
-    vhdx_path: 'F:\ProgramData\Ansible\hyperv_ubuntu_vm\nsrv-dkr-01\nsrv-dkr-01.vhdx'
+  - vm_name: hom-lab-ctl-dkr-01
+    vhdx_path: "{{ hyperv_ubuntu_docker_vm_host_vhdx_path }}"
     start_after: true
   - vm_name: "{{ hyperv_ubuntu_k3s_vm_hostname }}"
     vhdx_path: "{{ hyperv_ubuntu_k3s_vm_host_vhdx_path }}"

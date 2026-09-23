@@ -46,8 +46,12 @@
       $hypervServer = '{{ hyperv_ubuntu_vm_hyperv_server }}'
       $legacy = '{{ hyperv_ubuntu_vm_legacy_hyperv_name }}'
       $target = '{{ hyperv_ubuntu_vm_name }}'
-      $legacyRoot = "C:\ProgramData\Ansible\hyperv_ubuntu_vm\$legacy"
-      $targetRoot = "C:\ProgramData\Ansible\hyperv_ubuntu_vm\$target"
+      $legacyRoot = '{{ hyperv_ubuntu_vm_legacy_hyperv_root_dir | default("", true) }}'
+      if ([string]::IsNullOrWhiteSpace($legacyRoot)) {
+        $legacyRoot = "C:\ProgramData\Ansible\hyperv_ubuntu_vm\$legacy"
+      }
+      $expectedDiskPath = '{{ hyperv_ubuntu_vm_host_vhdx_path }}'
+      $targetRoot = Split-Path -Parent $expectedDiskPath
       $changed = $false
       $artifactAction = 'unchanged'
       $legacyVm = Get-VM -ComputerName $hypervServer -Name $legacy -ErrorAction SilentlyContinue
@@ -99,13 +103,17 @@
               $changed = $true
             }
           } else {
-            $artifactAction = 'both_dirs_present'
+            throw "Both legacy and target artifact directories contain data: '$legacyRoot' and '$targetRoot'."
           }
         }
       }
       $diskRepoint = $null
       $disk = Get-VMHardDiskDrive -ComputerName $hypervServer -VMName $target -ErrorAction SilentlyContinue | Select-Object -First 1
-      if ($disk -and -not (Test-Path -LiteralPath $disk.Path)) {
+      if (-not $disk) {
+        throw "No Hyper-V VHDX is attached to VM '$target'."
+      }
+      $candidateDiskPath = $disk.Path
+      if (-not (Test-Path -LiteralPath $candidateDiskPath)) {
         $found = $null
         foreach ($root in @($legacyRoot, $targetRoot)) {
           if (-not (Test-Path -LiteralPath $root)) { continue }
@@ -117,17 +125,24 @@
         if (-not $found) {
           throw "No VHDX candidate found under $legacyRoot or $targetRoot for VM '$target'."
         }
+        $candidateDiskPath = $found.FullName
+      }
+      if ($candidateDiskPath -ine $expectedDiskPath) {
+        if (Test-Path -LiteralPath $expectedDiskPath) {
+          throw "Expected canonical VHDX path '$expectedDiskPath' already exists and differs from '$candidateDiskPath'."
+        }
+        Move-Item -LiteralPath $candidateDiskPath -Destination $expectedDiskPath -ErrorAction Stop
         Set-VMHardDiskDrive `
           -ComputerName $hypervServer `
           -VMName $target `
           -ControllerType $disk.ControllerType `
           -ControllerNumber $disk.ControllerNumber `
           -ControllerLocation $disk.ControllerLocation `
-          -Path $found.FullName `
+          -Path $expectedDiskPath `
           -ErrorAction Stop
         $diskRepoint = @{
-          from = $disk.Path
-          to = $found.FullName
+          from = $candidateDiskPath
+          to = $expectedDiskPath
         }
         $changed = $true
       }
@@ -149,6 +164,7 @@
         state = (Get-VM -ComputerName $hypervServer -Name $target).State.ToString()
         host_root = $targetRoot
         legacy_root = $legacyRoot
+        expected_disk_path = $expectedDiskPath
         host_root_exists = (Test-Path -LiteralPath $targetRoot)
         legacy_root_exists = (Test-Path -LiteralPath $legacyRoot)
         artifact_action = $artifactAction
@@ -157,12 +173,8 @@
       }
   register: hyperv_ubuntu_vm_identity_rename
   when:
-    - >-
-      (hyperv_ubuntu_vm_identity_probe.result.legacy_exists | default(false) | bool)
-      or (
-        (hyperv_ubuntu_vm_identity_probe.result.target_exists | default(false) | bool)
-        and not (hyperv_ubuntu_vm_identity_probe.result.legacy_exists | default(false) | bool)
-      )
+    - hyperv_ubuntu_vm_identity_alignment_apply | bool
+    - hyperv_ubuntu_vm_identity_probe.result.legacy_exists | default(false) | bool
   tags:
     - hyperv_ubuntu_vm_align_identity
 
