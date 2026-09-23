@@ -1,0 +1,215 @@
+---
+# Discover hot rebuild-base files that match cold-workflow classes.
+# Emits windows_artifact_cache_reclaim_discovered (list of contracts with sizes).
+
+- name: Validate Windows artifact cache reclaim mode
+  ansible.builtin.assert:
+    that:
+      - windows_artifact_cache_reclaim_mode in ['preview', 'apply']
+      - windows_artifact_cache_reclaim_profiles is sequence
+      - windows_artifact_cache_reclaim_profiles | length > 0
+      - windows_artifact_cache_reclaim_search_roots is sequence
+      - windows_artifact_cache_reclaim_search_roots | length > 0
+    fail_msg: >-
+      reclaim_mode must be preview|apply, and reclaim_profiles plus
+      reclaim_search_roots must be non-empty lists.
+
+- name: Discover reclaimable Windows artifact cache candidates
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $profiles = @(
+      {% for p in windows_artifact_cache_reclaim_profiles %}
+        '{{ p | regex_replace("'", "''") }}'{% if not loop.last %},{% endif %}
+      {% endfor %}
+      )
+      $roots = @(
+      {% for r in windows_artifact_cache_reclaim_search_roots %}
+        '{{ r | regex_replace("'", "''") }}'{% if not loop.last %},{% endif %}
+      {% endfor %}
+      )
+      $sharedUnc = '{{ windows_artifact_cache_reclaim_shared_unc | regex_replace("'", "''") }}'
+      $coldRoot = '{{ windows_artifact_cache_reclaim_cold_data_root | default("") | regex_replace("'", "''") }}'
+
+      function New-ColdPaths([string]$subdir, [string]$filename) {
+        $paths = @()
+        if (-not [string]::IsNullOrWhiteSpace($coldRoot)) {
+          $paths += (Join-Path (Join-Path $coldRoot $subdir) $filename)
+        }
+        if (-not [string]::IsNullOrWhiteSpace($sharedUnc)) {
+          $paths += (Join-Path (Join-Path $sharedUnc $subdir) $filename)
+        }
+        return $paths
+      }
+
+      function Add-Candidate(
+        [System.Collections.Generic.List[object]]$list,
+        [string]$id,
+        [string]$hotPath,
+        [string]$artifactClass,
+        [string]$subdir,
+        [string]$profile
+      ) {
+        if (-not (Test-Path -LiteralPath $hotPath)) { return }
+        $item = Get-Item -LiteralPath $hotPath -ErrorAction Stop
+        if ($item.PSIsContainer) { return }
+        $name = $item.Name
+        $cold = @(New-ColdPaths -subdir $subdir -filename $name)
+        if ($cold.Count -lt 1) { return }
+        $list.Add([pscustomobject]@{
+          id = $id
+          hot_path = $hotPath
+          cold_paths = [string[]]@($cold | ForEach-Object { [string]$_ })
+          artifact_class = $artifactClass
+          profile = $profile
+          size_bytes = [Int64]$item.Length
+          size_gb = [double]([math]::Round(([Int64]$item.Length) / 1GB, 2))
+          remove_hot_on_absent = $true
+          create_directories = $true
+        })
+      }
+
+      $found = New-Object System.Collections.Generic.List[object]
+      $wantHyperv = $profiles -contains 'hyperv_ubuntu_rebuild_bases'
+      $wantPinned = $profiles -contains 'windows_pinned_installers'
+      $wantGpuP = $profiles -contains 'hyperv_gpu_p_payload'
+
+      foreach ($root in $roots) {
+        if ([string]::IsNullOrWhiteSpace($root)) { continue }
+        if (-not (Test-Path -LiteralPath $root)) { continue }
+
+        $files = @(Get-ChildItem -LiteralPath $root -Recurse -Force -File -ErrorAction SilentlyContinue)
+        foreach ($f in $files) {
+          $name = $f.Name
+          $full = $f.FullName
+          $relId = ($full -replace '[:\\]', '-').ToLowerInvariant()
+
+          if ($wantHyperv) {
+            if ($name -ieq 'livecd.ubuntu-cpc.azure.vhd') {
+              Add-Candidate $found "cloud-source-vhd-$relId" $full 'cloud_source_vhd' 'ubuntu-cloud-images' 'hyperv_ubuntu_rebuild_bases'
+              continue
+            }
+            if ($name -match '(?i)azure\.vhd\.tar\.gz$' -or $name -match '(?i)cloudimg.*azure.*\.tar\.gz$') {
+              Add-Candidate $found "cloud-archive-$relId" $full 'cloud_image_archive' 'ubuntu-cloud-images' 'hyperv_ubuntu_rebuild_bases'
+              continue
+            }
+            if ($name -match '(?i)-autoinstall\.iso$') {
+              # Product contract is {vm_dir}-autoinstall.iso under hyperv_ubuntu_vm\{vm_dir}\.
+              # Skip legacy/scrap names that present will never hydrate.
+              $parentDir = [System.IO.Path]::GetFileName([System.IO.Path]::GetDirectoryName($full))
+              if ($name -ine ($parentDir + '-autoinstall.iso')) { continue }
+              Add-Candidate $found "remastered-iso-$relId" $full 'remastered_iso' 'remastered-isos' 'hyperv_ubuntu_rebuild_bases'
+              continue
+            }
+            if ($name -match '(?i)-autoinstall\.signature$') {
+              $parentDir = [System.IO.Path]::GetFileName([System.IO.Path]::GetDirectoryName($full))
+              if ($name -ine ($parentDir + '-autoinstall.signature')) { continue }
+              Add-Candidate $found "remastered-sig-$relId" $full 'remastered_signature' 'remastered-isos' 'hyperv_ubuntu_rebuild_bases'
+              continue
+            }
+            if ($name -match '(?i)^ubuntu-.*-live-server-.*\.iso$' -and $name -notmatch '(?i)autoinstall') {
+              Add-Candidate $found "vendor-iso-$relId" $full 'vendor_iso' 'ubuntu-isos' 'hyperv_ubuntu_rebuild_bases'
+              continue
+            }
+            if ($name -match '(?i)ubuntu-.*hyperv.*\.(vhdx\.zip|zip)$' -or $name -ieq 'livecd.ubuntu-desktop-hyperv.vhdx') {
+              Add-Candidate $found "quick-create-$relId" $full 'quick_create_desktop' 'ubuntu-cloud-images' 'hyperv_ubuntu_rebuild_bases'
+              continue
+            }
+          }
+
+          if ($wantPinned -and ($full -match '(?i)\\artifacts\\')) {
+            if ($name -match '(?i)\.(exe|msi|zip)$') {
+              Add-Candidate $found "pinned-$relId" $full 'pinned_installer' 'pinned-installers' 'windows_pinned_installers'
+              continue
+            }
+          }
+
+          if ($wantGpuP -and ($name -ieq 'windows-payload.zip')) {
+            Add-Candidate $found "gpu-p-payload-$relId" $full 'gpu_p_payload' 'gpu-p-payload' 'hyperv_gpu_p_payload'
+            continue
+          }
+        }
+      }
+
+      $totalBytes = [Int64]0
+      $plain = @()
+      foreach ($c in $found) {
+        $totalBytes += [Int64]$c.size_bytes
+        $plain += @{
+          id = [string]$c.id
+          hot_path = [string]$c.hot_path
+          cold_paths = @($c.cold_paths | ForEach-Object { [string]$_ })
+          artifact_class = [string]$c.artifact_class
+          profile = [string]$c.profile
+          size_bytes = [Int64]$c.size_bytes
+          size_gb = [double]$c.size_gb
+          remove_hot_on_absent = $true
+          create_directories = $true
+        }
+      }
+
+      if ($plain.Count -eq 0) {
+        $candidatesJson = '[]'
+      } elseif ($plain.Count -eq 1) {
+        $candidatesJson = '[' + (ConvertTo-Json -InputObject $plain[0] -Depth 8 -Compress) + ']'
+      } else {
+        $candidatesJson = ConvertTo-Json -InputObject $plain -Depth 8 -Compress
+      }
+
+      $Ansible.Result = @{
+        candidates_json = [string]$candidatesJson
+        count = [int]$plain.Count
+        total_size_gb = [double]([math]::Round($totalBytes / 1GB, 2))
+        profiles = @($profiles | ForEach-Object { [string]$_ })
+        roots = @($roots | ForEach-Object { [string]$_ })
+        shared_unc = [string]$sharedUnc
+        cold_data_root = [string]$coldRoot
+      }
+  register: _windows_artifact_cache_reclaim_discover
+
+- name: Set discovered Windows artifact cache reclaim candidates
+  ansible.builtin.set_fact:
+    windows_artifact_cache_reclaim_discovered: >-
+      {{
+        (
+          _windows_artifact_cache_reclaim_discover.result.candidates_json
+          | default('[]')
+          | from_json
+        )
+        if (
+          (_windows_artifact_cache_reclaim_discover.result.candidates_json | default(''))
+          | length
+        ) > 0
+        else []
+      }}
+    windows_artifact_cache_reclaim_summary: >-
+      {{
+        {
+          'count': (_windows_artifact_cache_reclaim_discover.result.count | default(0)),
+          'total_size_gb': (_windows_artifact_cache_reclaim_discover.result.total_size_gb | default(0)),
+          'profiles': (_windows_artifact_cache_reclaim_discover.result.profiles | default([])),
+          'roots': (_windows_artifact_cache_reclaim_discover.result.roots | default([])),
+          'shared_unc': (_windows_artifact_cache_reclaim_discover.result.shared_unc | default('')),
+          'cold_data_root': (_windows_artifact_cache_reclaim_discover.result.cold_data_root | default(''))
+        }
+      }}
+  changed_when: false
+
+- name: Filter Windows artifact cache reclaim candidates by id allow-list
+  when: windows_artifact_cache_reclaim_id_filter | default([]) | length > 0
+  ansible.builtin.set_fact:
+    windows_artifact_cache_reclaim_discovered: >-
+      {{
+        windows_artifact_cache_reclaim_discovered
+        | selectattr('id', 'in', windows_artifact_cache_reclaim_id_filter)
+        | list
+      }}
+  changed_when: false
+
+- name: Require at least one reclaim candidate unless empty discovery is allowed
+  ansible.builtin.assert:
+    that:
+      - windows_artifact_cache_reclaim_discovered is sequence
+    fail_msg: Windows artifact cache reclaim discovery did not produce a list.
+  # Empty list is a valid preview outcome (nothing to reclaim).

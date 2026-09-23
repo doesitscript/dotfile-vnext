@@ -1,0 +1,72 @@
+---
+# Non-lifecycle verify: windows_artifact_cache hydrate / offload only.
+#
+# NEVER imports hyperv_ubuntu_vm present|absent. Does not remaster, download,
+# recreate VHDX, attach installer media, or stop/start VMs.
+#
+# Preview hydrate contracts (no host mutation beyond role dry behavior):
+#   ansible-playbook playbooks/windows_artifact_cache_verify.yaml \
+#     -i inventory/inventory.yaml --limit HOM-LAB-HVH-02 \
+#     -e windows_artifact_cache_verify_mode=hydrate \
+#     --check
+#
+# Live hydrate of explicit items (operator supplies items or uses example):
+#   ansible-playbook playbooks/windows_artifact_cache_verify.yaml \
+#     -i inventory/inventory.yaml --limit HOM-LAB-HVH-02 \
+#     -e windows_artifact_cache_verify_mode=hydrate \
+#     -e @roles/hyperv_ubuntu_vm/files/examples/windows_artifact_cache_offload_items.example.yml
+#
+# Offload verify (same item list, state=absent):
+#   ... -e windows_artifact_cache_verify_mode=offload
+#
+# For discovery-based reclaim, use windows_artifact_cache_reclaim.yaml instead.
+
+- name: Verify Windows artifact cache hydrate or offload (non-lifecycle)
+  hosts: windows_hosts
+  gather_facts: false
+  tags:
+    - windows_artifact_cache
+    - windows_artifact_cache_verify
+  vars:
+    # Override with -e windows_artifact_cache_verify_mode=offload
+    windows_artifact_cache_verify_mode: hydrate
+  tasks:
+    - name: Require verify mode hydrate|offload
+      ansible.builtin.assert:
+        that:
+          - windows_artifact_cache_verify_mode in ['hydrate', 'offload']
+        fail_msg: >-
+          windows_artifact_cache_verify_mode must be hydrate or offload.
+          This playbook never runs VM lifecycle present|absent.
+
+    - name: Require explicit item contracts for verify
+      ansible.builtin.assert:
+        that:
+          - windows_artifact_cache_offload_items is defined
+          - windows_artifact_cache_offload_items is sequence
+          - windows_artifact_cache_offload_items | length > 0
+        fail_msg: >-
+          Set windows_artifact_cache_offload_items to a non-empty list of
+          {id, hot_path, cold_paths} contracts (same shape as the offload
+          playbook / example under roles/hyperv_ubuntu_vm/files/examples/).
+
+    - name: Run Windows artifact cache hydrate verify
+      when: windows_artifact_cache_verify_mode == 'hydrate'
+      ansible.builtin.include_role:
+        name: windows_artifact_cache
+      vars:
+        windows_artifact_cache_state: present
+        windows_artifact_cache_items: "{{ windows_artifact_cache_offload_items }}"
+
+    - name: Run Windows artifact cache offload verify
+      when: windows_artifact_cache_verify_mode == 'offload'
+      ansible.builtin.include_role:
+        name: windows_artifact_cache
+      vars:
+        windows_artifact_cache_state: absent
+        windows_artifact_cache_items: "{{ windows_artifact_cache_offload_items }}"
+
+    - name: Report Windows artifact cache verify results
+      ansible.builtin.debug:
+        var: windows_artifact_cache_results
+      when: windows_artifact_cache_results is defined

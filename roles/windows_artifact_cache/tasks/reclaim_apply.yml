@@ -1,0 +1,32 @@
+---
+- name: Project reclaim candidates to windows_artifact_cache item contract
+  ansible.builtin.set_fact:
+    windows_artifact_cache_reclaim_offload_items: >-
+      {{
+        windows_artifact_cache_reclaim_discovered
+        | map('dict2items')
+        | map(
+          'selectattr',
+          'key',
+          'in',
+          [
+            'id',
+            'hot_path',
+            'cold_paths',
+            'remove_hot_on_absent',
+            'create_directories',
+            'seed_cold',
+            'seed_overwrite'
+          ]
+        )
+        | map('items2dict')
+        | list
+      }}
+  changed_when: false
+
+- name: Offload discovered reclaim candidates
+  ansible.builtin.include_role:
+    name: windows_artifact_cache
+  vars:
+    windows_artifact_cache_state: absent
+    windows_artifact_cache_items: "{{ windows_artifact_cache_reclaim_offload_items }}"

@@ -1,0 +1,67 @@
+---
+# windows_artifact_cache — reusable hot ↔ cold/shared Windows artifact ladder.
+#
+# present  = hydrate hot from ordered cold_paths; optionally seed cold from hot
+# absent   = offload hot → first cold_path, then remove hot (cold is kept)
+#
+# Download stays with windows_artifact_download / win_get_url. This role only
+# moves durable large files between paths the Windows host can see (local, UNC,
+# drive-letter cold volumes).
+
+windows_artifact_cache_state: present
+
+# List of artifact contracts. Each item:
+#   id: stable key for windows_artifact_cache_results
+#   hot_path: absolute Windows path the product role expects
+#   cold_paths: ordered preference list — COLD-DATA-HOST (when set) then shared UNC
+#   seed_cold: when true and hot exists, copy to cold_paths[0] if missing
+#   seed_overwrite: when true, seed even if cold_paths[0] already exists
+#   remove_hot_on_absent: when state=absent, delete hot after successful offload
+#   create_directories: create parent dirs for hot/cold as needed
+windows_artifact_cache_items: []
+
+windows_artifact_cache_defaults:
+  seed_cold: false
+  seed_overwrite: false
+  remove_hot_on_absent: true
+  create_directories: true
+
+# --- Occasional reclaim (preview|apply) ---
+# Discover hot rebuild bases that match the same classes hydrated by product
+# roles (hyperv_ubuntu_vm cloud images/ISOs, pinned installers).
+# GPU-P / pinned-installer profiles are opt-in until those product roles
+# hydrate via this cache (same anti-pattern gate as unreclaimed GPU-P).
+windows_artifact_cache_reclaim_mode: preview
+windows_artifact_cache_reclaim_profiles:
+  - hyperv_ubuntu_rebuild_bases
+
+# Prefer COLD-DATA-HOST first on reclaim so offload frees OS/hot disks.
+# Shared UNC remains a fallback cold_path. Product hydrate builders use the
+# same order (cold root when set, then UNC).
+windows_artifact_cache_reclaim_shared_unc: >-
+  {{
+    hyperv_ubuntu_vm_shared_cache_unc
+    | default('\\\\HOM-LAB-HVH-02\\public\\hyperv-cache')
+  }}
+windows_artifact_cache_reclaim_cold_data_root: >-
+  {{
+    hyperv_ubuntu_vm_cold_data_root
+    | default('')
+  }}
+
+windows_artifact_cache_reclaim_search_roots: >-
+  {{
+    (
+      [
+        windows_hyperv_vm_storage_root | default(''),
+        'C:\ProgramData\Ansible\hyperv_ubuntu_vm',
+        'C:\ProgramData\Ansible\artifacts'
+      ]
+      | reject('equalto', '')
+      | list
+      | unique
+    )
+  }}
+
+# Optional allow-list of discovered ids (empty = all discovered).
+windows_artifact_cache_reclaim_id_filter: []

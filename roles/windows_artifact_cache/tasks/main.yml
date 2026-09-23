@@ -1,0 +1,19 @@
+---
+- name: Validate Windows artifact cache contract
+  ansible.builtin.include_tasks: validate.yml
+
+- name: Hydrate Windows artifacts from cold/shared paths
+  ansible.builtin.include_tasks: hydrate_item.yml
+  loop: "{{ windows_artifact_cache_items }}"
+  loop_control:
+    loop_var: windows_artifact_cache_item
+    label: "{{ windows_artifact_cache_item.id | default('unset') }}"
+  when: windows_artifact_cache_state == 'present'
+
+- name: Offload Windows artifacts from hot to cold/shared paths
+  ansible.builtin.include_tasks: offload_item.yml
+  loop: "{{ windows_artifact_cache_items }}"
+  loop_control:
+    loop_var: windows_artifact_cache_item
+    label: "{{ windows_artifact_cache_item.id | default('unset') }}"
+  when: windows_artifact_cache_state == 'absent'

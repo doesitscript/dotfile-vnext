@@ -1,0 +1,115 @@
+---
+argument_specs:
+  main:
+    short_description: Hot ↔ cold/shared Windows artifact hydrate and offload
+    description: >-
+      Ensures large durable Windows artifacts are present on a hot path by
+      restoring from ordered cold/shared paths, or offloads hot copies to cold
+      storage without tearing down product capabilities. Does not download;
+      pair with windows_artifact_download or win_get_url when cold misses.
+    options:
+      windows_artifact_cache_state:
+        type: str
+        required: false
+        choices:
+          - present
+          - absent
+        description: >-
+          present hydrates (and optionally seeds cold). absent offloads hot to
+          the first cold path and removes the hot copy.
+      windows_artifact_cache_items:
+        type: list
+        elements: dict
+        required: true
+        description: Artifact contracts (hot_path + ordered cold_paths).
+        options:
+          id:
+            type: str
+            required: true
+            description: Stable artifact id for results map.
+          hot_path:
+            type: str
+            required: true
+            description: Absolute Windows path the product role expects.
+          cold_paths:
+            type: list
+            elements: str
+            required: true
+            description: Ordered cold/shared candidates (UNC, H:, USB, …).
+          seed_cold:
+            type: bool
+            required: false
+            description: After hydrate, copy hot → cold_paths[0] when missing.
+          seed_overwrite:
+            type: bool
+            required: false
+            description: Seed even when cold_paths[0] already exists.
+          remove_hot_on_absent:
+            type: bool
+            required: false
+            description: Delete hot after successful offload (state=absent).
+          create_directories:
+            type: bool
+            required: false
+            description: Create parent directories for hot/cold as needed.
+          artifact_class:
+            type: str
+            required: false
+            description: Optional reclaim discovery metadata (ignored by hydrate/offload).
+          profile:
+            type: str
+            required: false
+            description: Optional reclaim discovery metadata (ignored by hydrate/offload).
+          size_bytes:
+            type: int
+            required: false
+            description: Optional reclaim discovery metadata (ignored by hydrate/offload).
+          size_gb:
+            type: float
+            required: false
+            description: Optional reclaim discovery metadata (ignored by hydrate/offload).
+      windows_artifact_cache_defaults:
+        type: dict
+        required: false
+        description: Default flags merged into each item.
+
+  reclaim:
+    short_description: Discover and optionally offload hot rebuild bases to cold storage
+    description: >-
+      Occasional reclaim entrypoint (tasks_from: reclaim.yml). Discovers the same
+      artifact classes product roles hydrate, previews sizes, or offloads via
+      state=absent. Prefer COLD-DATA-HOST as cold_paths[0] when configured.
+    options:
+      windows_artifact_cache_reclaim_mode:
+        type: str
+        required: false
+        choices:
+          - preview
+          - apply
+        description: preview lists candidates; apply offloads and removes hot.
+      windows_artifact_cache_reclaim_profiles:
+        type: list
+        elements: str
+        required: false
+        description: >-
+          Discovery profiles. Default is hyperv_ubuntu_rebuild_bases only.
+          Opt in to windows_pinned_installers or hyperv_gpu_p_payload only after
+          those product roles hydrate via this cache.
+      windows_artifact_cache_reclaim_shared_unc:
+        type: str
+        required: false
+        description: Shared UNC hyperv-cache root (fallback cold_path).
+      windows_artifact_cache_reclaim_cold_data_root:
+        type: str
+        required: false
+        description: COLD-DATA-HOST hyperv-cache root (preferred cold_paths[0]).
+      windows_artifact_cache_reclaim_search_roots:
+        type: list
+        elements: str
+        required: false
+        description: Hot filesystem roots to scan for reclaim candidates.
+      windows_artifact_cache_reclaim_id_filter:
+        type: list
+        elements: str
+        required: false
+        description: Optional allow-list of discovered candidate ids.

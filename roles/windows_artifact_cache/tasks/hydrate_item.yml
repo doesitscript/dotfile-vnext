@@ -1,0 +1,109 @@
+---
+# Hydrate one artifact: hot already | copy from first existing cold | missing.
+# Optionally seed cold_paths[0] from hot when seed_cold is true.
+
+- name: Merge Windows artifact cache item defaults for hydrate
+  ansible.builtin.set_fact:
+    _windows_artifact_cache_current: >-
+      {{
+        windows_artifact_cache_defaults
+        | combine(windows_artifact_cache_item, recursive=True)
+      }}
+  changed_when: false
+
+- name: Hydrate or seed Windows artifact
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $id = '{{ _windows_artifact_cache_current.id | regex_replace("'", "''") }}'
+      $hot = '{{ _windows_artifact_cache_current.hot_path | regex_replace("'", "''") }}'
+      $seedCold = {{ (_windows_artifact_cache_current.seed_cold | default(false) | bool) | ternary('$true', '$false') }}
+      $seedOverwrite = {{ (_windows_artifact_cache_current.seed_overwrite | default(false) | bool) | ternary('$true', '$false') }}
+      $createDirs = {{ (_windows_artifact_cache_current.create_directories | default(true) | bool) | ternary('$true', '$false') }}
+      $coldPaths = @(
+      {% for p in _windows_artifact_cache_current.cold_paths %}
+        '{{ p | regex_replace("'", "''") }}'{% if not loop.last %},{% endif %}
+      {% endfor %}
+      )
+
+      function Ensure-Parent([string]$path) {
+        # Split-Path -LiteralPath cannot combine with -Parent (ambiguous parameter set).
+        $parent = [System.IO.Path]::GetDirectoryName($path)
+        if ([string]::IsNullOrWhiteSpace($parent)) { return }
+        if (-not (Test-Path -LiteralPath $parent)) {
+          New-Item -ItemType Directory -Path $parent -Force -ErrorAction Stop | Out-Null
+        }
+      }
+
+      function Copy-Large([string]$src, [string]$dst) {
+        if ($createDirs) { Ensure-Parent $dst }
+        Copy-Item -LiteralPath $src -Destination $dst -Force -ErrorAction Stop
+      }
+
+      $result = @{
+        id = $id
+        hot_path = $hot
+        hot_exists = $false
+        source = 'missing'
+        seeded = $false
+        seeded_to = $null
+        copied_from = $null
+        size_bytes = $null
+      }
+
+      if (Test-Path -LiteralPath $hot) {
+        $result.hot_exists = $true
+        $result.source = 'hot_already'
+        $result.size_bytes = [Int64](Get-Item -LiteralPath $hot).Length
+      } else {
+        foreach ($cold in $coldPaths) {
+          if ([string]::IsNullOrWhiteSpace($cold)) { continue }
+          if (-not (Test-Path -LiteralPath $cold)) { continue }
+          Copy-Large -src $cold -dst $hot
+          $Ansible.Changed = $true
+          $result.hot_exists = $true
+          $result.source = 'cold'
+          $result.copied_from = $cold
+          $result.size_bytes = [Int64](Get-Item -LiteralPath $hot).Length
+          break
+        }
+      }
+
+      $primaryCold = $null
+      if ($coldPaths.Count -gt 0) { $primaryCold = $coldPaths[0] }
+
+      if (
+        $seedCold -and
+        $result.hot_exists -and
+        -not [string]::IsNullOrWhiteSpace($primaryCold)
+      ) {
+        $coldExists = Test-Path -LiteralPath $primaryCold
+        if ((-not $coldExists) -or $seedOverwrite) {
+          Copy-Large -src $hot -dst $primaryCold
+          $Ansible.Changed = $true
+          $result.seeded = $true
+          $result.seeded_to = $primaryCold
+        }
+      }
+
+      $Ansible.Result = $result
+  register: _windows_artifact_cache_hydrate_ps
+
+- name: Record Windows artifact cache hydrate result
+  ansible.builtin.set_fact:
+    windows_artifact_cache_results: >-
+      {{
+        windows_artifact_cache_results
+        | combine({
+            (_windows_artifact_cache_current.id): (
+              _windows_artifact_cache_hydrate_ps.result
+              | default({})
+              | combine({
+                  'changed': (_windows_artifact_cache_hydrate_ps.changed | default(false)),
+                  'failed': (_windows_artifact_cache_hydrate_ps.failed | default(false))
+                })
+            )
+          })
+      }}
+  changed_when: false

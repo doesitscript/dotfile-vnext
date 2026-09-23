@@ -1,0 +1,117 @@
+---
+# Offload one artifact: copy hot → cold_paths[0], verify size, optionally remove hot.
+
+- name: Merge Windows artifact cache item defaults for offload
+  ansible.builtin.set_fact:
+    _windows_artifact_cache_current: >-
+      {{
+        windows_artifact_cache_defaults
+        | combine(windows_artifact_cache_item, recursive=True)
+      }}
+  changed_when: false
+
+- name: Offload Windows artifact to cold storage
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $Ansible.Changed = $false
+      $id = '{{ _windows_artifact_cache_current.id | regex_replace("'", "''") }}'
+      $hot = '{{ _windows_artifact_cache_current.hot_path | regex_replace("'", "''") }}'
+      $removeHot = {{ (_windows_artifact_cache_current.remove_hot_on_absent | default(true) | bool) | ternary('$true', '$false') }}
+      $createDirs = {{ (_windows_artifact_cache_current.create_directories | default(true) | bool) | ternary('$true', '$false') }}
+      $coldPaths = @(
+      {% for p in _windows_artifact_cache_current.cold_paths %}
+        '{{ p | regex_replace("'", "''") }}'{% if not loop.last %},{% endif %}
+      {% endfor %}
+      )
+      $primaryCold = $null
+      if ($coldPaths.Count -gt 0) { $primaryCold = $coldPaths[0] }
+
+      $result = @{
+        id = $id
+        hot_path = $hot
+        cold_path = $primaryCold
+        offloaded = $false
+        hot_removed = $false
+        reason = $null
+        size_bytes = $null
+      }
+
+      if ([string]::IsNullOrWhiteSpace($primaryCold)) {
+        $Ansible.Failed = $true
+        $result.reason = 'no_cold_path'
+        $Ansible.Result = $result
+        Exit 1
+      }
+
+      if (-not (Test-Path -LiteralPath $hot)) {
+        $result.reason = 'hot_missing'
+        $Ansible.Result = $result
+        Exit 0
+      }
+
+      $hotItem = Get-Item -LiteralPath $hot -ErrorAction Stop
+      $hotSize = [Int64]$hotItem.Length
+
+      # Always ensure destination parent tree exists for offload.
+      # Use .NET GetDirectoryName — Split-Path -LiteralPath cannot combine with -Parent.
+      $parent = [System.IO.Path]::GetDirectoryName($primaryCold)
+      if (-not [string]::IsNullOrWhiteSpace($parent)) {
+        New-Item -ItemType Directory -Path $parent -Force -ErrorAction Stop | Out-Null
+      }
+
+      if (Test-Path -LiteralPath $primaryCold) {
+        $existing = Get-Item -LiteralPath $primaryCold -ErrorAction Stop
+        if ([Int64]$existing.Length -eq $hotSize) {
+          $result.offloaded = $true
+          $result.reason = 'cold_already_present_same_size'
+          $result.size_bytes = $hotSize
+          if ($removeHot) {
+            Remove-Item -LiteralPath $hot -Force -ErrorAction Stop
+            $result.hot_removed = $true
+            $Ansible.Changed = $true
+          }
+          $Ansible.Result = $result
+          Exit 0
+        }
+      }
+
+      Copy-Item -LiteralPath $hot -Destination $primaryCold -Force -ErrorAction Stop
+      $coldItem = Get-Item -LiteralPath $primaryCold -ErrorAction Stop
+      if ([Int64]$coldItem.Length -ne $hotSize) {
+        $Ansible.Failed = $true
+        $result.reason = 'size_mismatch_after_copy'
+        $result.size_bytes = $hotSize
+        $Ansible.Result = $result
+        Exit 1
+      }
+
+      $Ansible.Changed = $true
+      $result.offloaded = $true
+      $result.size_bytes = $hotSize
+
+      if ($removeHot) {
+        Remove-Item -LiteralPath $hot -Force -ErrorAction Stop
+        $result.hot_removed = $true
+      }
+
+      $Ansible.Result = $result
+  register: _windows_artifact_cache_offload_ps
+
+- name: Record Windows artifact cache offload result
+  ansible.builtin.set_fact:
+    windows_artifact_cache_results: >-
+      {{
+        windows_artifact_cache_results
+        | combine({
+            (_windows_artifact_cache_current.id): (
+              _windows_artifact_cache_offload_ps.result
+              | default({})
+              | combine({
+                  'changed': (_windows_artifact_cache_offload_ps.changed | default(false)),
+                  'failed': (_windows_artifact_cache_offload_ps.failed | default(false))
+                })
+            )
+          })
+      }}
+  changed_when: false

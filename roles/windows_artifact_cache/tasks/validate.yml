@@ -1,0 +1,41 @@
+---
+- name: Validate Windows artifact cache inputs
+  ansible.builtin.assert:
+    that:
+      - windows_artifact_cache_state in ['present', 'absent']
+      - windows_artifact_cache_items is sequence
+      - windows_artifact_cache_items | length > 0
+    fail_msg: >-
+      windows_artifact_cache_state must be present|absent and
+      windows_artifact_cache_items must be a non-empty list.
+
+- name: Validate each Windows artifact cache item
+  ansible.builtin.assert:
+    that:
+      - (item.id | default('') | string | length) > 0
+      - (item.hot_path | default('') | string | length) > 0
+      - item.cold_paths is defined
+      - item.cold_paths is sequence
+      - item.cold_paths | length > 0
+      - >-
+          (
+            item.cold_paths
+            | map('default', '', true)
+            | map('string')
+            | map('trim')
+            | reject('equalto', '')
+            | list
+            | length
+          ) == (item.cold_paths | length)
+    fail_msg: >-
+      Each windows_artifact_cache_items entry needs id, hot_path, and a
+      non-empty cold_paths list of non-empty strings
+      (item id={{ item.id | default('unset') }}).
+  loop: "{{ windows_artifact_cache_items }}"
+  loop_control:
+    label: "{{ item.id | default('unset') }}"
+
+- name: Initialize Windows artifact cache results map
+  ansible.builtin.set_fact:
+    windows_artifact_cache_results: "{{ windows_artifact_cache_results | default({}) }}"
+  changed_when: false

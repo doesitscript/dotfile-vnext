@@ -1,0 +1,42 @@
+---
+# Occasional reclaim of hot Windows rebuild bases into cold/shared storage.
+#
+# Discovers rebuild-base classes that product roles hydrate via
+# windows_artifact_cache (Azure VHD/tar.gz, vendor/remastered ISOs by default).
+# Opt-in profiles (pass via -e): windows_pinned_installers, hyperv_gpu_p_payload
+# — only after those product roles hydrate through this contract.
+# Does NOT touch live guest VHDX or Hyper-V .VMRS save-state files.
+#
+# Preview (default — no deletes):
+#   ansible-playbook playbooks/windows_artifact_cache_reclaim.yaml \
+#     -i inventory/inventory.yaml --limit HOM-LAB-HVH-02
+#
+# Apply (copy to cold, remove hot):
+#   ansible-playbook playbooks/windows_artifact_cache_reclaim.yaml \
+#     -i inventory/inventory.yaml --limit HOM-LAB-HVH-02 \
+#     -e windows_artifact_cache_reclaim_mode=apply
+#
+# Narrow profiles:
+#   -e '{"windows_artifact_cache_reclaim_profiles":["hyperv_ubuntu_rebuild_bases"]}'
+#
+# Manual item list still supported via the older offload playbook:
+#   playbooks/windows_artifact_cache_offload.yaml
+
+- name: Reclaim Windows hot artifacts into cold/shared cache
+  hosts: windows_hosts
+  gather_facts: false
+  tags:
+    - windows_artifact_cache
+    - windows_artifact_cache_reclaim
+  tasks:
+    - name: Run Windows artifact cache reclaim workflow
+      ansible.builtin.include_role:
+        name: windows_artifact_cache
+        tasks_from: reclaim.yml
+
+    - name: Report Windows artifact cache offload results after reclaim apply
+      ansible.builtin.debug:
+        var: windows_artifact_cache_results
+      when:
+        - (windows_artifact_cache_reclaim_mode | default('preview')) == 'apply'
+        - windows_artifact_cache_results is defined

@@ -1,0 +1,19 @@
+---
+# Entry for occasional reclaim jobs (preview or apply).
+# Product present playbooks keep using state=present via main.yml.
+
+- name: Discover reclaimable Windows artifact cache candidates
+  ansible.builtin.include_tasks: reclaim_discover.yml
+
+- name: Preview Windows artifact cache reclaim candidates
+  ansible.builtin.debug:
+    msg:
+      mode: "{{ windows_artifact_cache_reclaim_mode }}"
+      summary: "{{ windows_artifact_cache_reclaim_summary }}"
+      candidates: "{{ windows_artifact_cache_reclaim_discovered }}"
+
+- name: Offload discovered Windows artifact cache candidates
+  when:
+    - windows_artifact_cache_reclaim_mode == 'apply'
+    - windows_artifact_cache_reclaim_discovered | length > 0
+  ansible.builtin.include_tasks: reclaim_apply.yml

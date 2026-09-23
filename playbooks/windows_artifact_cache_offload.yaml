@@ -1,0 +1,39 @@
+---
+# Offload large durable Windows rebuild artifacts from hot paths to cold/shared
+# storage via roles/windows_artifact_cache (state=absent).
+#
+# Does NOT tear down VMs. Pair with product present playbooks that hydrate first.
+#
+# Example:
+#   ansible-playbook playbooks/windows_artifact_cache_offload.yaml \
+#     -i inventory/inventory.yaml --limit HOM-LAB-HVH-02 \
+#     -e '{"windows_artifact_cache_offload_items":[...]}'
+#
+# Or set windows_artifact_cache_offload_items in host/group vars.
+
+- name: Offload Windows hot artifacts to cold/shared cache
+  hosts: windows_hosts
+  gather_facts: false
+  tags: [windows_artifact_cache, windows_artifact_cache_offload]
+  tasks:
+    - name: Require offload item contracts
+      ansible.builtin.assert:
+        that:
+          - windows_artifact_cache_offload_items is defined
+          - windows_artifact_cache_offload_items is sequence
+          - windows_artifact_cache_offload_items | length > 0
+        fail_msg: >-
+          Set windows_artifact_cache_offload_items to a non-empty list of
+          {id, hot_path, cold_paths} contracts before running this playbook.
+
+    - name: Offload listed Windows artifacts
+      ansible.builtin.include_role:
+        name: windows_artifact_cache
+      vars:
+        windows_artifact_cache_state: absent
+        windows_artifact_cache_items: "{{ windows_artifact_cache_offload_items }}"
+
+    - name: Report Windows artifact cache offload results
+      ansible.builtin.debug:
+        var: windows_artifact_cache_results
+      when: windows_artifact_cache_results is defined
