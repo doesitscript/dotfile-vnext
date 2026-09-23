@@ -26,6 +26,15 @@ Do not invent custom install scripts before that door.
 Do not design or implement Ansible changes from memory alone. First prove that
 the relevant repo surfaces and Ansible authority were checked.
 
+## Interactive repair boundary
+
+For managed-resource diagnosis, `homelab-ansible-first-entry` routes to global
+`interactive-troubleshooting-to-managed-state`. Bounded reversible experiments
+within repair authority may precede knowing the failing task. The anti-ad-hoc
+rules below govern durable installation, not those recorded experiments. Once
+the fix is known, use the owning role and this gate for uncertain modules; undo
+experimental changes before proving Ansible repair and repeatability.
+
 ## Ansible-first / anti-ad-hoc (AGENTS.md §32)
 
 Before any host mutation (SSH, WinRM, `pip`, `choco`, scp scripts):

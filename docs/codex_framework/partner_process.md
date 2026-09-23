@@ -316,49 +316,20 @@ The Executor must:
 
 ### 5. Troubleshooting Mode
 
-Troubleshooting mode is a first-class framework behavior for repeated failures
-and explicit debugging requests.
+Managed-system repair follows global skill
+`interactive-troubleshooting-to-managed-state`, with the project adapter in
+[framework-troubleshooting-mode.mdc](../../.cursor/rules/framework-troubleshooting-mode.mdc)
+and routing through `homelab-ansible-first-entry`.
 
-Default trigger:
+Investigate in the failing context, read desired state, define acceptance, and
+use bounded reversible experiments within existing authority. The durable fix
+belongs in the project. Restore only experiment-owned mutations before apply;
+use isolation when restoring failure is unsafe. Verify original behavior and a
+second automation run independently. Zero changes alone do not establish repair.
 
-- automatic on repeated failure for the same component or capability
-- immediate when the user explicitly asks to troubleshoot or gather more output
-
-Default automatic path:
-
-1. identify the component and output locations
-2. use or create the diagnostics note under `docs/diagnostics/`
-3. verify the identified evidence surfaces with explicit probes
-4. use the collector/playbook if it exists, or wire a narrow one if missing
-5. rerun with troubleshooting controls enabled
-
-Required report on every troubleshooting run:
-
-- `Evidence:` as the visible conversation label for the troubleshooting summary
-- `Troubleshooting mode: on`
-- `Component(s): ...`
-- `Output locations: ...`
-- `Evidence surfaces identified: ...`
-- `Collected this run: ...`
-- `Missing this run: ...`
-- `Actual output seen this run: ...`
-
-**Client UI / IDE exception path:** when the symptom is a local IDE or CLI
-client message (submit blocked, mode unavailable, permission mode unavailable,
-extension error), check **local client config and logs first** before product
-permission/settings docs. Prefer global skill
-`client-ui-symptom-local-evidence`. For Ansible-managed config files, prefer
-`scripts/managed_config_integrity.py` (parse + managed-block marker balance).
-
-Evidence hierarchy:
-
-1. component-native logs, events, status, or vendor diagnostics
-2. explicit remote command output
-3. module results and registered task output
-4. Ansible verbosity or transport output
-
-Ansible verbosity helps, but it does not replace service logs, event logs,
-vendor diagnostics, or explicitly printed remote stdout/stderr.
+Use a compact saved receipt by default. Existing useful collectors remain
+available; new collectors require a concrete recurrence/complexity/volume need.
+Do not add a mandatory research packet or planning layer to ordinary diagnosis.
 
 ### 6. Visible Role Transitions
 
@@ -821,3 +792,9 @@ A bad turn:
 - moves quickly
 - writes a lot of script
 - and quietly leaves the user holding the cleanup burden
+
+## Explicit one-off requests
+
+Manual execution does not waive project stewardship. Record every explicit
+one-off request using `docs/one_off_tasks/README.md`; that file owns the record
+format, debt/deferral disposition and retention rules. Honor manual-only scope.

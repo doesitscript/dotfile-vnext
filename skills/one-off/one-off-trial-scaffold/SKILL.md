@@ -60,6 +60,10 @@ Do **not** use when:
 
 Load `docs/one_off_tasks/README.md` before creating files.
 
+For a manual-only request with no deployed trial artifacts, create only the
+minimum record from docs/one_off_tasks/README.md and stop scaffolding. Scripts,
+evolution notes and naming discriminators apply only to actual trial artifacts.
+
 ### 2. Scaffold package layout
 
 ```text

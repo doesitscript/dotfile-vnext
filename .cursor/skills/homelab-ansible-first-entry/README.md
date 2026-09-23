@@ -12,3 +12,10 @@ bin/codex-env python .cursor/skills/homelab-ansible-first-entry/scripts/print_en
 Then open the printed skill and continue. Do not invent `_tmp_` playbooks or
 role `files/*.ps1` downloaders when `win_get_url` / `win_package` /
 `win_chocolatey` apply.
+
+## Managed-resource repair
+
+The first repair door routes to global `interactive-troubleshooting-to-managed-state`.
+It permits bounded reversible diagnosis before the failing task is known, then
+requires project-owned repair from the restored experimental baseline, original
+behavior verification and a second apply. See the project's troubleshooting rule.

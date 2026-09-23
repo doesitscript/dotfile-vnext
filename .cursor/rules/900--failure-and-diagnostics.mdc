@@ -2,6 +2,16 @@
 description: Shell/terminal error hard gate (3 informed fixes then alternate path), no-assumptions-on-failure evidence collection, two-attempt research gate, diagnostics discovery. Use when hosts/tasks fail, shell commands error, or debugging.
 alwaysApply: false
 ---
+
+## Managed-resource repair scope
+
+For ordinary managed-resource repair, follow `framework-troubleshooting-mode.mdc`
+and global `interactive-troubleshooting-to-managed-state`. Compact saved command
+output satisfies the evidence floor. New diagnostic documents, collectors and
+web/library research are conditional on an actual evidence gap, recurrence or
+complexity; the escalation procedures below do not make them prerequisites for
+every small repair. Error inspection and informed retry ceilings still apply.
+
 CURSOR RULE — NO ASSUMPTIONS ON FAILURE + REQUIRED EVIDENCE COLLECTION (UNIVERSAL)
 
 ## SHELL / TERMINAL ERROR HARD GATE (NO PASS)
@@ -271,8 +281,9 @@ Step 5 — Verification and wiring: After diagnostic-discovery is complete, veri
 the identified output surfaces with explicit probes before trusting them as the
 real evidence path. If the repo does not yet expose a collector task file or
 dedicated troubleshoot playbook for that component and the component is in
-repeated troubleshooting, treat that as framework debt and wire a narrow one
-before continuing blind fix iteration.
+repeated troubleshooting, assess whether recurrence, complexity or evidence volume warrants a narrow
+collector. Otherwise save compact probes and continue evidence-driven diagnosis.
+Blind fix iteration is prohibited in either case.
 
 Step 6 — Output-quality floor: For Ansible-related troubleshooting, the minimum
 acceptable evidence is actual command output, probe output, log output, or
@@ -280,7 +291,7 @@ event output. "I ran X" with no returned output is not sufficient evidence.
 When the repo exposes a collector/playbook path, save that output into the
 artifact bundle and cite the full artifact path.
 
-Step 7 — Retry verbosity: After discovery, verification, and collector wiring,
+Step 7 — Retry verbosity: After discovery, verification, and collector wiring when warranted,
 rerun the Ansible troubleshooting path with verbosity enabled by default. Use
 `-vvv` unless a different evidence-rich path is more appropriate for the
 component.

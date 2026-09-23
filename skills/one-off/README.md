@@ -1,7 +1,7 @@
 # One-off lifecycle skills (reviewed)
 
 Stable skill family for **try-before-commit** work under `docs/one_off_tasks/` and
-its two end states: **promotion** to Ansible or **discard** with host cleanup.
+its recorded dispositions: manual-only deferral, **promotion** to Ansible or **discard** with host cleanup. Request/decision README records are retained.
 
 | Skill | Role |
 | --- | --- |

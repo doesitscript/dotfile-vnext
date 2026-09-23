@@ -1,0 +1,32 @@
+---
+- name: Inspect Cursor settings before terminal PATH convergence
+  ansible.builtin.stat:
+    path: "{{ cursor_settings_path }}"
+  register: cursor_terminal_settings_stat
+
+- name: Read existing Cursor settings without exposing unrelated settings
+  ansible.builtin.slurp:
+    src: "{{ cursor_settings_path }}"
+  register: cursor_terminal_settings_raw
+  no_log: true
+  when: cursor_terminal_settings_stat.stat.exists
+
+- name: Ensure Cursor settings directory exists
+  ansible.builtin.file:
+    path: "{{ cursor_settings_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Converge Cursor terminal PATH while preserving unrelated settings
+  ansible.builtin.copy:
+    dest: "{{ cursor_settings_path }}"
+    content: |
+      {{ cursor_terminal_settings | combine({
+        'terminal.integrated.env.osx': cursor_terminal_env | combine({'PATH': cursor_macos_terminal_path})
+      }) | to_nice_json(indent=4, sort_keys=false) }}
+    mode: "0644"
+    backup: true
+  vars:
+    cursor_terminal_settings: "{{ cursor_terminal_settings_raw.content | default('e30=') | b64decode | from_json }}"
+    cursor_terminal_env: "{{ cursor_terminal_settings.get('terminal.integrated.env.osx') or {} }}"
+  diff: false

@@ -1,357 +1,98 @@
 ---
-description: Troubleshooting mode: evidence hierarchy, collectors, mirror tags, no play-recap echo chamber. Use for repeated Ansible/host failures or explicit debug.
+description: Managed-system repair through reversible interactive diagnosis, project-owned fixes, original-context behavior and repeatable Ansible apply.
 alwaysApply: false
 ---
 # Framework Troubleshooting Mode
 
-This rule defines the repo-standard troubleshooting mode for repeated failures
-and explicit debugging requests.
-
-## Trigger
-
-Troubleshooting mode turns on when either of these is true:
-
-- the user explicitly asks to troubleshoot, debug, retry with more evidence, or
-  gather more output
-- the same component or capability has failed more than once in the current
-  implementation stretch
-
-The default auto-trigger is repeated failure. Manual request always enables it
-immediately.
-
-## Scope
-
-Troubleshooting mode is for active failure analysis, not normal happy-path
-execution.
-
-The agent must identify:
-
-- the component or capability being troubleshot
-- the evidence surfaces that component exposes
-- which of those surfaces were collected in the current run
-- which of those surfaces are still missing
-
-## Evidence Hierarchy
-
-Evidence should be collected in this order when available:
-
-1. component-native logs, events, status, or vendor diagnostics
-2. explicit remote command output and probe output
-3. module results and registered Ansible task output
-4. Ansible verbosity or transport output
-
-`-vvv` and `-vvvv` improve Ansible-side detail, but they do not replace:
-
-- service logs
-- Windows Event Viewer entries
-- vendor CLI diagnostics
-- explicit stdout/stderr from remote probes
-
-## Evidence Quality Standard
-
-Troubleshooting mode requires a minimum evidence floor.
-
-Minimum acceptable evidence for an Ansible-related troubleshooting run:
-
-1. actual command output, probe output, event output, or log output
-2. saved collector artifacts containing that output when the repo exposes a
-   collector/playbook path
-
-High-quality evidence:
-
-- raw stdout/stderr from the failing component or an explicit diagnostic probe
-- Windows Event Log entries, journald output, service status output, vendor
-  diagnostics, or structured logs
-- saved collector artifacts that preserve the exact output
-- module results that include the real remote output, exception text, or
-  transport error text
-
-Lower-quality evidence:
-
-- "I ran X" without showing or saving what it returned
-- paraphrases of command behavior with no pasted output
-- speculative interpretation without a corresponding log/event/probe excerpt
-- a command choice that merely "makes sense" without collected output
-- summaries of finished tasks such as `changed`, `ok`, or recap counts without
-  the underlying output that explains what actually happened
-
-Execution intent is never evidence. A planned command is not evidence. A
-theory about what output probably says is not evidence.
-
-## Hard Stop — No Narrative Substitution For Output
-
-**Before writing any sentence in a troubleshooting response, check:**
-
-If the sentence you are about to write matches any of these patterns:
-
-- "I ran [command] and it showed..."
-- "I checked [log/service/file] and it indicated..."
-- "The output showed that..."
-- "The logs indicate..."
-- "Based on what was returned..."
-- "The task completed and..."
-- "[Command] returned [paraphrase]"
-
-**STOP. You are narrating instead of showing.**
-
-The only acceptable output is one of:
-1. The actual raw output — pasted inline, verbatim
-2. A quoted excerpt from the actual output (when the full output is very long)
-3. A saved artifact path that contains the actual output
-4. The explicit statement: "I could not collect output for this — [reason]"
-
-A description of what a command does is not a substitute for its output.
-A summary of what you believe the logs say is not a substitute for log lines.
-If you do not have the actual output, say so. Do not fill the gap with narration.
-
-Ansible task state by itself is not proof. Statements like:
-
-- `task -> changed`
-- `task -> ok`
-- `ok=21 changed=5 failed=0`
-
-are outcomes or status summaries unless they are accompanied by one of:
-
-- raw stdout/stderr
-- exception text
-- registered module result fields
-- log or event output
-- a saved artifact path containing that material
-
-### Ansible-Specific: The Play Recap Echo Chamber
-
-The play recap is Ansible's summary layer. Task name + `ok` or `changed` is
-not evidence of what happened on the remote system. It is evidence that the
-task ran and Ansible did not detect a failure. These are different things.
-
-**The specific failure pattern to avoid:**
-
-```
-Task: Deploy Wish Machine   status: ok
-Evidence: Deployed Wish Machine successfully.
-```
-
-This is the echo chamber. The agent read the task name, read the status, and
-paraphrased them back as evidence. No remote output was collected. The user
-is now on their own.
-
-**What breaks the echo chamber:**
-
-1. Run with `-vvv` — Ansible emits module parameters and full return values
-   at verbosity 3. The raw return value IS evidence.
-
-2. Use `register` + `ansible.builtin.debug` with no `verbosity` gate on the
-   task that matters — forces the actual module result into the play output
-   where it cannot be skipped.
-
-3. Run a targeted `sysoperator.run_ad_hoc` probe against the specific state
-   the task was supposed to change — query the actual result, not the task
-   status that recorded the attempt.
-
-4. If the playbook output is all you have and it is play-recap-level only,
-   say: "Play recap only — no remote output was collected. Cannot assess
-   what actually happened on the host."
-
-Do not infer system state from task names and ok/changed counts. Ansible
-reporting `ok` means the module ran without an error it could detect. It does
-not mean the system is in the expected state.
-
-## Required Per-Run Reporting
-
-In troubleshooting mode, every retry, reapply, diagnostic run, or fix attempt
-must explicitly report:
-
-- `Evidence:` as the visible conversation label for the troubleshooting summary
-- `Troubleshooting mode: on`
-- `Component(s): ...`
-- `Output locations: ...`
-- `Evidence surface status: identified|partially identified|unknown`
-- `Collector/Playbook wiring status: wired|partially wired|not wired`
-- `Evidence surfaces identified: ...`
-- `Collected this run: ...`
-- `Missing this run: ...`
-- `Actual output seen this run: ...`
-- `Assessment from the collected artifacts: ...`
-
-`Evidence:` is reserved for collected outputs, saved artifacts, and
-source-backed findings from the current run. It must not be used for:
-
-- execution intent
-- narration of what the agent is about to try
-- speculative interpretation before outputs are collected
-- summaries of completed high-level steps with no underlying proof output
-
-If the response is about the next action rather than collected proof, use a
-different label such as:
-
-- `Planner/Steward view:`
-- `Researcher view:`
-- `Executor view:`
-
-If logs, events, CLI output, or debug output were not collected, they must be
-listed under `Missing this run` every time.
-
-If the agent claims evidence exists, the response must include one of these:
-
-- the relevant raw output inline
-- a concise quoted excerpt from that output
-- a full-path artifact reference where the output was saved
-
-Without one of those, the material is not evidence yet.
-
-Known-but-uncollected surfaces are mandatory deficits, not optional reminders.
-If the agent knows a component exposes additional logs, events, files, service
-output, or CLI diagnostics that were not collected in the current run, those
-must be listed explicitly as missing even if they are not yet wired into the
-repo.
-
-If some evidence categories have not yet been identified or researched, report
-them explicitly as not done or still unknown. Use short-form categories such as:
-
-- `service logs`
-- `event logs`
-- `vendor diagnostic output`
-- `remote command stdout/stderr`
-- `component-native structured logging`
-
-When reporting troubleshooting status, explicitly state both:
-
-- whether the evidence surfaces are already identified
-- whether the repo already has those surfaces wired into a role, collector, or
-  dedicated troubleshoot playbook
-
-When multiple evidence surfaces exist for the same component, inspect all
-identified surfaces for recent entries relevant to the failure window before
-concluding what happened.
-
-## Troubleshooting Design — The Mirror Tree
-
-This repo uses a "mirror tree" model for troubleshooting. Every broken resource
-has a corresponding collector that mirrors its structure:
-
-```
-Original playbook                   Troubleshooting mirror
-─────────────────                   ──────────────────────
-server_225_hyperv_ubuntu_vm.yaml    playbooks/troubleshoot/collect_hyperv_ubuntu_vm_artifacts.yaml
-  └─ role: hyperv_ubuntu_vm           └─ role: troubleshooting_collectors
-                                           tasks_from: hyperv_ubuntu_vm.yml
-```
-
-The collector produces real artifacts — JSON command bundles, event log entries,
-timestamped directories — not summaries.
-
-**Mirror tags are the in-playbook connector.** The same tag is applied to both
-the broken resource task AND its collector task. Running `--tags collect_hyperv`
-triggers both in one pass — the lifecycle run (to observe the failure) and the
-collector (to capture artifacts from that same run). This is what makes them
-mirror tags: the tag names the pairing, not just the collector.
-
----
-
-## Wired Collectors
-
-| Component | Collector playbook | In-playbook tag | Artifacts land at |
-|---|---|---|---|
-| Hyper-V Ubuntu VM | `playbooks/troubleshoot/collect_hyperv_ubuntu_vm_artifacts.yaml` | `--tags collect_hyperv` | `artifacts/troubleshooting/hyperv_ubuntu_vm/<host>/<timestamp>/` |
-| Hyper-V Ubuntu GPU-P | `playbooks/troubleshoot/collect_hyperv_ubuntu_gpu_p_artifacts.yaml` | `--tags collect_hyperv_gpu_p` | `artifacts/troubleshooting/hyperv_ubuntu_gpu_p/<host>/<timestamp>/` |
-| Windows remote access (WinRM, OpenSSH, firewall) | `playbooks/troubleshoot/collect_windows_remote_access_artifacts.yaml` | `--tags collect_windows_remote_access` on `access_windows.yaml` | `artifacts/troubleshooting/windows_remote_access/<host>/<timestamp>/` |
-
-**What collectors produce:**
-- `command_results/` — raw PowerShell probe output as JSON
-- `event_logs/` — Windows Event Log entries from relevant channels as JSON
-- `notes/README.txt` — artifact index, backlink to diagnostics doc
-
-**Windows remote access collector groups** (pass via `-e` if narrowing):
-- `control_surfaces` — WinRM/sshd services, listeners, configs, event logs
-- `network_path` — adapters, IPv4 bindings, network System events
-- `firewall_drop_path` — firewall profiles, advanced-security channel, Security drop/audit events
-
----
-
-## Hard Gate — Artifacts Before Assessment
-
-**You may not assess a failure without collector artifacts.**
-
-This is not a preference. It is the evaluation rule:
-
-> Run the collector. Read the artifact files. Quote from them. Then assess.
-
-"I ran the collector" is not sufficient. The content of the artifact files is
-the evidence. If the collector produced nothing or failed, say so — that is
-itself a finding that must be investigated before any other step.
-
----
-
-## If No Collector Exists — Build the Troubleshooting Resource Pair
-
-When the failing component has no wired collector:
-
-**Stop. Do not iterate on fixes.**
-
-Build the "troubleshooting resource pair" first:
-
-1. **Research the component's output surfaces** — where does it log? What event
-   channels does it use? What CLI diagnostics does it expose? Check
-   `docs/diagnostics/<component>--<os>--diagnostics.md` first. If the file
-   doesn't exist, research and create it.
-
-2. **Build the collector task file** —
-   `roles/troubleshooting_collectors/tasks/<component>.yml`
-   Collect: raw command output, event log entries, service status, config files.
-   Save to timestamped artifact dirs under `artifacts/troubleshooting/`.
-
-3. **Build the dedicated playbook** —
-   `playbooks/troubleshoot/collect_<component>_artifacts.yaml`
-   Thin wrapper that calls `include_role: troubleshooting_collectors tasks_from: <component>.yml`.
-
-4. **Wire the in-playbook tag** — add a tagged include of the collector inside
-   the original playbook so `--tags collect_<component>` triggers collection
-   from within the normal run.
-
-Only after the pair is built: run the collector, read artifacts, then assess.
-
----
-
-## Required Behavior
-
-- **Two failed attempts → stop. Enter troubleshooting mode. Do not attempt a
-  third fix without artifacts.**
-- Check the wired collectors table. If the component has one, run it now.
-- Read the artifact files. Quote from them. Do not paraphrase.
-- If no collector exists, build the troubleshooting resource pair before
-  continuing (see above).
-- Prefer stored diagnostic notes under `docs/diagnostics/` — they explain what
-  collector output means and where to look inside it.
-- After retrieval, verify the identified surfaces with explicit probes before
-  trusting them.
-- The default path:
-  1. Two failures → stop
-  2. Check wired collectors table (above)
-  3. If wired: run collector → read artifacts → quote findings → assess
-  4. If not wired: research → build resource pair → run collector → assess
-  5. After assessment: rerun the broken path with `-vvv`, read full verbosity
-  6. Assess from artifacts and verbosity output — never from task names and ok/changed counts
-- When evidence requires interactive shell or SSH, use it.
-- Name all known-but-uncollected surfaces in the troubleshooting response.
-- Name all still-unknown evidence categories too.
-- Do not hide Planner/Researcher/Executor handoffs in casual prose.
-
-## Operator Options
-
-At the end of every Ansible-related response, include simple evidence knobs the
-user can enable:
-
-- `-vv`
-- `-vvv`
-- `-vvvv`
-- `-e debug_remote_output=true`
-- `-e ansible_troubleshooting_mode=true`
-- `--tags evidence`
-- `--tags debug_resources`
-
-Only mention the tags when the relevant role or playbook exposes them. If a
-surface is not wired yet, say so plainly.
-
-For Ansible troubleshooting retries, prefer `-vvv` by default unless a
-different evidence-rich path is better for the component. `-vvvv` is optional
-extra transport detail, not the default floor.
+Use for explicit troubleshooting and repeated failures of project-managed
+resources. AGENTS.md supplies the ambient trigger; this file owns the project
+adapter. The portable procedure is the global skill
+[interactive-troubleshooting-to-managed-state](../../../global-skills/skills/implementation/interactive-troubleshooting-to-managed-state/SKILL.md),
+discoverable through the personal runtime skill roots. Do not copy its full
+workflow into another project skill.
+
+## Project route
+
+Enter `homelab-ansible-first-entry` once and select its repair door. Read desired
+state and identify the failing application, host, user, shell mode and invocation
+before choosing the fix. Use `bin/codex-env` for project Ansible/Python execution,
+inventory-defined targets and the owning role/playbook. Existing host, secret,
+execution and user-authorization gates remain in effect.
+
+Bounded reversible experiments are allowed within repair authority **before the
+failing Ansible task is known**. Capture baseline, mutation ownership and undo;
+update the owning project; undo only experiment-owned changes and verify the
+baseline; apply through Ansible; verify original-context behavior; apply again
+and repeat behavior verification. Never undo concurrent/unrelated changes.
+If returning production to failure is unsafe, use an isolated reproduction and
+state its limits. No persistent experiment means no artificial rollback.
+
+## Evidence proportionality
+
+The default artifact is one compact receipt with exact command/context, exit
+code, relevant output or saved raw-output links, and temporary mutation ledger.
+The global skill supplies `assets/receipt.md`. A useful existing collector should
+be used. A new collector/playbook pair is warranted by recurrence, complexity,
+evidence volume, or a gap that compact probes cannot resolve; it is not a
+prerequisite for ordinary diagnosis or a small fix.
+
+### Host thermal / cooling (do not skip)
+
+Before interpreting fan noise or “high workload” acoustics on Hyper-V GPU
+hosts, load inventory `cooling_contract` (see
+`docs/reference/host-thermal-cooling-contracts.md`):
+
+| Host | Cooling | Trap |
+| --- | --- | --- |
+| `HOM-LAB-HVH-02` | **Liquid** (Corsair radiator curves) | `nvidia-smi fan.speed == 0` does **not** prove thermal idle |
+| `HOM-LAB-HVH-01` | **Air** | GPU/case fan RPM are valid proxies with temp/power |
+
+Prefer GPU temperature, power draw, utilization, VRAM residency, Hyper-V guest
+CPU, and inference logs over GPU onboard fan percent on liquid-cooled hosts.
+Radiator fan ramp after a finished workload is expected cooldown.
+
+Inspect component-native output first where available, then explicit command
+results and Ansible module output. Save the evidence before assessing it.
+Task names and play recaps alone establish neither behavior nor convergence.
+Read errors fully, explain their meaning, and change the hypothesis or probe
+before retrying. Follow AGENTS.md's three-informed-attempt ceiling. Repeated
+failure calls for narrower evidence or targeted research, not a blind retry or
+an automatic collector-building detour.
+
+## Verification and closeout
+
+Keep these claims separate: reproduced, experimental baseline restored, project
+fix applied, original behavior verified, second apply repeatable. A different
+shell is substitute evidence; an untested original app keeps behavior pending.
+A zero-change run with failing behavior is a failed repair. Never hide drift
+with changed_when. Explain genuinely volatile tasks separately.
+
+Use concise updates with the key raw output or evidence link, assessment and
+next probe. Final receipt includes commands, results, source changes, rollback
+status and material limits. Do not require a fixed multi-heading diagnostic
+report for every command. Ordinary repairs need no new plan or library packet;
+existing user-approved plan obligations still apply.
+
+## Existing collectors
+
+Use their existing task/playbook interfaces when relevant:
+
+| Component | Dedicated playbook | Tag |
+| --- | --- | --- |
+| Hyper-V Ubuntu VM | `playbooks/troubleshoot/collect_hyperv_ubuntu_vm_artifacts.yaml` | `collect_hyperv` |
+| Hyper-V Ubuntu GPU-P | `playbooks/troubleshoot/collect_hyperv_ubuntu_gpu_p_artifacts.yaml` | `collect_hyperv_gpu_p` |
+| Windows remote access | `playbooks/troubleshoot/collect_windows_remote_access_artifacts.yaml` | `collect_windows_remote_access` |
+| Cursor shell PATH | `playbooks/troubleshoot/collect_cursor_shell_path_artifacts.yaml` | `collect_cursor_shell_path` |
+| Host thermal / cooling | `playbooks/troubleshoot/collect_host_thermal_cooling_artifacts.yaml` | `collect_host_thermal` |
+
+Artifacts live under `artifacts/troubleshooting/`. For a warranted new collector,
+use `roles/troubleshooting_collectors/tasks/<component>.yml`, a thin dedicated
+playbook, and an opt-in tag in the owning playbook. Capture only relevant,
+secret-safe output. `-vvv` is available when Ansible execution details are useful;
+mention other diagnostic flags/tags only when the component implements them.
+
+## Explicit one-off requests
+
+Manual execution does not waive project stewardship. Record every explicit
+one-off request using `docs/one_off_tasks/README.md`; that file owns the record
+format, debt/deferral disposition and retention rules. Honor manual-only scope.

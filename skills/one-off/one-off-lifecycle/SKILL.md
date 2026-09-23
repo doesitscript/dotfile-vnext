@@ -24,7 +24,7 @@ tags:
 
 # Skill: One-Off Lifecycle
 
-Router for the four-member **one-off** family under `skills/one-off/`.
+Router for the **one-off** family and lightweight request records under `skills/one-off/`.
 
 ## When to use / not use
 
@@ -38,6 +38,7 @@ use `homelab-ansible-first-entry` or `tool-capability-intake`.
 
 | Phase | Skill |
 | --- | --- |
+| Record manual-only request | Read docs/one_off_tasks/README.md and create/update its minimum record; no trial scaffolding needed |
 | Start / extend trial | `one-off-trial-scaffold` |
 | Promote to Ansible | `one-off-promotion` |
 | Discard trial | `one-off-discard-cleanup` |
@@ -50,7 +51,7 @@ members; prefix resolution from `one-off-promotion` alone returns only a subset.
 
 | Input | Required |
 | --- | --- |
-| `phase` | yes — scaffold \| promote \| discard \| verify |
+| `phase` | inferred from request — record \| scaffold \| promote \| discard \| verify |
 | `one_off_slug` | yes when a trial folder exists |
 
 ## Workflow
@@ -76,7 +77,7 @@ See family table — each member owns its downstream handoffs.
 
 ## Failure boundaries
 
-- Stop if phase is ambiguous — ask operator (promote vs discard)
+- When no promotion/discard is authorized, default to recording the request; do not force a phase decision. Ask only when ambiguity blocks an authorized action.
 - Do not skip verify after promotion execute request
 
 ## Prohibited behavior

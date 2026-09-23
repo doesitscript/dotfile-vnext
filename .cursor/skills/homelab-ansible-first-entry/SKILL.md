@@ -52,7 +52,7 @@ or “just get X working” on a managed host — including recovery after a hun
 package manager.
 
 **Do not use** for pure docs/planning with no host mutation, or when the user
-explicitly marks a `oneoffs` exception.
+explicitly authorizes manual-only work: route to the one-off record policy instead; do not skip recording.
 
 ## Entry script (run immediately)
 
@@ -96,10 +96,21 @@ ssh <inventory_hostname>
 `.chocolateyPending` via Ansible ad-hoc; interactive SSH `-File` on a
 **role-staged** script the role already owns.
 
+## Repair routing
+
+For a failure of a managed resource, choose the repair door before OS/package
+intake. It loads global `interactive-troubleshooting-to-managed-state` once.
+Interactive experiments may precede identification of the failing task, within
+existing repair authority and with captured baseline/undo. Return directly to
+the owning role after diagnosis; do not recurse into entry discovery. Durable
+changes still go through Ansible, from the restored experimental baseline,
+with original-context behavior and a second apply verified separately.
+
 ## Doors (pick one; then stop and open that skill)
 
 | If the request looks like… | Enter this skill next |
 | --- | --- |
+| Broken managed resource / troubleshoot then repair | `interactive-troubleshooting-to-managed-state` (global) |
 | Windows tool/package / Chocolatey / Setup.exe / HVH or AMD desktop | `windows-tool-capability-intake` |
 | macOS CLI / Homebrew vs release binary | `macos-tool-install-decider-and-scaffold` then `tool-capability-intake` |
 | HF **model weights** on the share | `hf-model-weight-lifecycle` |
@@ -134,3 +145,9 @@ the capability itself.
 - `references/doors.md`
 - `scripts/print_entry_doors.py`
 - AGENTS.md §32 Ansible-first
+
+## Explicit one-off requests
+
+Manual execution does not waive project stewardship. Record every explicit
+one-off request using `docs/one_off_tasks/README.md`; that file owns the record
+format, debt/deferral disposition and retention rules. Honor manual-only scope.

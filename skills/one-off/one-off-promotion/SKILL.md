@@ -32,7 +32,7 @@ tags:
 # Skill: One-Off Promotion
 
 Promote a governed one-off trial into **idempotent Ansible** with a durable plan
-packet. The live one-off folder is removed; archival copy lives only under the plan.
+packet. Trial deploy artifacts are removed; a decision README remains and archived code lives under the plan.
 
 ## When to use / not use
 
@@ -122,9 +122,9 @@ Add `scripts/uninstall_<slug>_one_off_legacy.sh` that:
 
 Reference: `scripts/uninstall_codex_multi_terminal_one_off_legacy.sh`
 
-### Phase 6 — Remove live one-off folder
+### Phase 6 — Remove trial artifacts and retain the decision record
 
-Delete `docs/one_off_tasks/<slug>/` from the repo after archive + Ansible land.
+After archive and verified Ansible apply, remove obsolete trial deploy artifacts. Retain `docs/one_off_tasks/<slug>/README.md` with the original request, reconciled outcome and promotion/evidence links. Follow docs/one_off_tasks/README.md.
 
 ### Phase 7 — Execute and verify
 
@@ -150,7 +150,7 @@ See `references/promotion-map-template.md` — not a two-row shortcut map.
 - [ ] Plan packet includes full disposition ledger covering every archived one-off path
 - [ ] Apply command lists all required tags (`shell_config`, `bash_completion`, owning roles)
 - [ ] Undo row names real removal mechanism per artifact class (not generic `absent` only)
-- [ ] `backup/one-off-source/` frozen; live `docs/one_off_tasks/<slug>/` deleted
+- [ ] `backup/one-off-source/` frozen; live trial deploy files removed; decision README retained
 
 ## Failure boundaries
 
@@ -161,7 +161,7 @@ See `references/promotion-map-template.md` — not a two-row shortcut map.
 ## Prohibited behavior
 
 - Implementing from `backup/one-off-source/`
-- Leaving live one-off folder after promotion
+- Leaving live trial deploy artifacts after promotion
 - Repo-only edits labeled execute-complete
 - Checklist-only verification (use plan verification receipt)
 - Keeping snowflake install scripts as the steady-state path

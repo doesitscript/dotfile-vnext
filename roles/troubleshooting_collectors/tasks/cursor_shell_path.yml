@@ -1,0 +1,25 @@
+---
+- name: Collect macOS Cursor terminal PATH and ripgrep behavior
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python }}"
+      - "{{ role_path }}/../../scripts/diagnostics/cursor_shell_path.py"
+  register: cursor_shell_path_probe
+  changed_when: false
+  check_mode: false
+
+- name: Ensure Cursor shell evidence directory exists
+  ansible.builtin.file:
+    path: "{{ role_path }}/../../artifacts/troubleshooting/cursor_shell_path/{{ inventory_hostname }}"
+    state: directory
+    mode: "0700"
+
+- name: Save Cursor shell evidence
+  ansible.builtin.copy:
+    content: "{{ cursor_shell_path_probe.stdout }}\n"
+    dest: "{{ role_path }}/../../artifacts/troubleshooting/cursor_shell_path/{{ inventory_hostname }}/{{ now(utc=true, fmt='%Y%m%dT%H%M%S%f') }}.json"
+    mode: "0600"
+
+- name: Report Cursor shell evidence
+  ansible.builtin.debug:
+    msg: "{{ cursor_shell_path_probe.stdout | from_json }}"

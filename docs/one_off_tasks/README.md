@@ -1,93 +1,55 @@
-# One-off tasks (`docs/one_off_tasks/`)
+# One-off requests and trials
 
-**Authority:** temporary, discardable, low-trust work. Not steady-state automation.
+This directory owns the durable record of explicitly authorized one-off or
+manual requests. The execution method may be temporary; project stewardship
+continues. The user decides accepted debt and deferred automation. Do not infer
+that saying "one-off" authorizes unrecorded drift or automatic promotion.
 
-## Purpose
+## Minimum record — every explicit one-off request
 
-This folder holds **snowflake experiments** — work that is:
+Create `docs/one_off_tasks/<date>--<short-slug>/README.md` when accepting the
+request, then update it with results. Use [record-template.md](record-template.md).
+Record the request/authorization, reason if stated, action/result with evidence,
+remaining state, and disposition. Do not invent a reason or claim debt was
+accepted unless the user said so. No persistent change is a valid outcome.
+An existing trial may use its current folder; do not duplicate its record.
 
-- intentionally temporary
-- try-before-commit on a live machine
-- allowed to bypass normal Ansible / plan gates **only while it stays here**
-- discardable without regret if it fails
+A simple entry needs no script, diagram, promotion plan or extra permission
+round. This applies even when the user explicitly defers automation. Diagnosis
+alone does not authorize mutation. Once authorized, proceed within that scope.
 
-**Default value:** very low. Agents and humans should assume nothing here is production truth.
+## Ownership and dispositions
 
-## What belongs here
+The README is an audit record, not the source of desired infrastructure state.
+Roles/inventory/playbooks remain that source. Track one of: requested, executed,
+restored, removed, reconciled (link project change), or deferred (quote the user's
+decision and link follow-up when it exists). Record unresolved disposition as
+pending; never silently accept debt on the user's behalf.
 
-| In scope | Out of scope |
-| --- | --- |
-| Trial scripts with explicit install/uninstall | Normal roles, playbooks, inventory |
-| Operator notes for semi-manual probes | Framework rules, runbooks, plan packets |
-| Short-lived troubleshooting write-ups | Anything that should survive the next converge |
+## Trials with deployed artifacts
 
-## Governance rules (mandatory)
+Only trials that deploy new artifacts need a deploy/ directory, reversible
+install/uninstall instructions, and `_one_off_tasks` discriminators. Existing
+managed files changed by an authorized manual repair need baseline/undo evidence,
+not renamed files or invented installers. Secrets never belong in these records.
 
-### 1. Package layout
+For new trial files use a header identifying their source record and removal
+method. Trial code is provisional and must not be treated as steady-state truth.
 
-Each trial lives in its own subfolder:
+## Promotion and cleanup
 
-```text
-docs/one_off_tasks/<short-slug>/
-  README.md              # what, why, how to try, how to remove
-  deploy/                # files copied to the laptop (optional)
-  evolution.md           # now → promote or discard (optional)
-```
+- Promotion follows the existing plan/Ansible process when authorized. Stop
+  extending trial code, archive relevant source in the promotion packet, and
+  remove live trial artifacts after verification. Keep the original README with
+  outcome and links; never implement from archived backup/one-off-source/.
+- Discard removes only authorized trial artifacts and host traces, with probes.
+  Retain the README request/decision/result record. Preserve referenced evidence
+  or summarize it before deleting bulky disposable artifacts.
+- Record retention does not require keeping obsolete installers or secrets.
 
-### 2. Naming on the laptop
+## Agent routing
 
-Every deployed path, filename, and shell function introduced by a one-off **must** include a
-discriminator until promoted, e.g. `*_one_off_tasks` or `codex-homelab_one_off_tasks`.
-
-### 3. Header comment on every deployed file
-
-First lines of every file installed on a managed or operator host:
-
-```bash
-# ONE-OFF TRIAL (non-permanent) — source: docs/one_off_tasks/<slug>/deploy/...
-# Discardable. Overwritable. Remove via <slug>/deploy/uninstall_*.sh or promotion plan.
-```
-
-### 4. No silent persistence
-
-- Do **not** fold one-off behavior into `roles/` without a **plan packet** under `docs/plans/`.
-- Do **not** leave one-off installers as the long-term path after the user approves promotion.
-
-### 5. End states (operator decides)
-
-| Outcome | Action |
-| --- | --- |
-| **Promote** | Plan under `docs/plans/`, implement via Ansible roles/playbooks, **remove** live one-off folder, keep **backup only** inside the plan packet |
-| **Discard** | Run uninstall script, delete subfolder, remove host traces |
-
-Promotion means: evaluate piece-by-piece, match existing roles (`shell_config`, `bash_completion`,
-`codex_homelab_profiles`, tool install roles), drop `_one_off_tasks` suffixes, converge with
-`ansible-playbook`, update docs — **no more wild-west install scripts**.
-
-## Agent instructions
-
-1. Read this file before creating or extending anything under `one_off_tasks/`.
-2. Never treat content here as reusable framework guidance.
-3. When the user approves promotion, **stop** extending the one-off tree; open or continue the
-   promotion plan and implement in `roles/` / `playbooks/`.
-4. **Never** implement from `docs/plans/*/backup/one-off-source/` — that tree is archival only.
-
-## Related project surfaces
-
-- Plan promotion rules: `docs/plans/README.md`
-- Partner process (Apply / Verify / Undo): `docs/codex_framework/partner_process.md`
-- Shell drop pattern: `roles/SHELL-CONFIG-PATTERN.md`
-- Promoted example: `docs/plans/2026-09-02--codex-multi-terminal-promotion/`
-- **Draft skills** (agent workflows — `status: draft`):
-  - `one-off-trial-scaffold` — start a compliant trial
-  - `one-off-promotion` — promote to Ansible + plan packet
-  - `one-off-discard-cleanup` — discard and remove traces
-  - `one-off-promotion-verify` — execute-complete verification
-
-Multi-agent implementer family (evaluator loops): `skills/multi-agent/README.md`
-
-See `skills/one-off/README.md` for the one-off skill family index.
-
-## Subfolders (active)
-
-- **[on-offs/](./on-offs/)** — troubleshooting timelines and tool matrices (not Codex trial).
+`skills/one-off/one-off-lifecycle` routes record-only, trial, promotion, cleanup
+and verification. `homelab-ansible-first-entry` routes ordinary managed repairs
+to global `interactive-troubleshooting-to-managed-state`. Neither route waives
+this record requirement for an explicit one-off request.

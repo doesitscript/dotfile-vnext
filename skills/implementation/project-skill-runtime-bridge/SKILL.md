@@ -1,6 +1,6 @@
 ---
 name: project-skill-runtime-bridge
-description: "Use when dotfile-vnext project skills under skills/ should be made runtime-discoverable in .cursor/skills through managed symlinks, or when the managed runtime catalog entries need to be refreshed after a skill update. Use for link project skills, refresh runtime skill catalog, or replace stale copied runtime skill folders with managed symlinks."
+description: "Use when dotfile-vnext project skills under skills/ should be made runtime-discoverable in .cursor/skills and .agents/skills through managed symlinks, or when the managed runtime catalog entries need to be refreshed after a skill update. Use for link project skills, refresh runtime skill catalog, or replace stale copied runtime skill folders with managed symlinks."
 license: MIT
 version: "0.1.0"
 author: "dotfile-vnext"
@@ -33,7 +33,7 @@ tags:
 
 # Skill: Project Skill Runtime Bridge
 
-Bridge source-controlled project skills into `.cursor/skills` with managed
+Bridge source-controlled project skills into `.cursor/skills` and `.agents/skills` with managed
 symlinks instead of copy drift.
 
 ## When to use / not use
@@ -54,7 +54,7 @@ Do not use when a user explicitly wants hand-edited runtime copies preserved.
 
 1. Read `skills/catalog.yaml` and select only entries with `runtime_bridge.enabled: true`.
 2. For those managed skill names only, move aside stale copied runtime directories or replace stale symlinks.
-3. Create per-skill symlinks in `.cursor/skills/<skill-name>` back to the source skill directories under `skills/`.
+3. Create per-skill symlinks in `.cursor/skills/<skill-name>` and `.agents/skills/<skill-name>` back to the source skill directories under `skills/`.
 4. Refresh `.cursor/skills/catalog.yml` so the bridged skills appear in runtime discovery.
 5. Verify each bridged runtime path resolves to the expected source directory.
 
@@ -91,3 +91,22 @@ Do not use when a user explicitly wants hand-edited runtime copies preserved.
 - Operator escalation: `skills/_shared/human-escalation.md`
 - Load `references/sources-and-precedence.md` when deciding whether to replace an existing target.
 - Load `references/related-artifacts.md` for the managed surfaces and command form.
+
+## Apply and verification
+
+Use `bin/codex-env python skills/implementation/project-skill-runtime-bridge/scripts/link_project_skills_to_cursor.py`.
+Preview with `--check`; apply without flags; verify with `--verify-only`.
+Run apply twice and compare link targets and catalog bytes. Source edits flow
+through symlinks immediately; new registrations require sync. The pre-commit
+hook refreshes registrations on skills changes. Existing client sessions may
+need a fresh session; link verification does not prove UI loading.
+
+Codex repo discovery uses .agents/skills; Cursor retains its .cursor/skills
+surface. Do not create competing copies or pretend Cursor MDC rules are native
+Codex configuration. AGENTS.md is their shared project instruction entry.
+
+Hook bootstrap on this workspace uses the maintained shared developer environment:
+`../global-skills/bin/gs-env -m pre_commit install` from dotfile-vnext. Validate
+with `../global-skills/bin/gs-env -m pre_commit run project-skill-runtime-bridge --all-files`.
+This installs the existing .pre-commit-config.yaml hooks; it does not create a
+second hook system. The project's Python runtime itself need not install pre-commit.

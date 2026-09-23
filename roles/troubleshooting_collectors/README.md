@@ -57,6 +57,7 @@ Current collector task files:
 - `hyperv_ubuntu_gpu_p.yml`
 - `windows_remote_access.yml`
 - `dev_workstation_win_gpu.yml`
+- `cursor_shell_path.yml`
 
 Collector scoping pattern:
 
@@ -97,6 +98,8 @@ Current dedicated playbook entrypoint:
 - [collect_hyperv_ubuntu_vm_artifacts.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/troubleshoot/collect_hyperv_ubuntu_vm_artifacts.yaml)
 - [collect_hyperv_ubuntu_gpu_p_artifacts.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/troubleshoot/collect_hyperv_ubuntu_gpu_p_artifacts.yaml)
 - [collect_windows_remote_access_artifacts.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/troubleshoot/collect_windows_remote_access_artifacts.yaml)
+
+- [collect_cursor_shell_path_artifacts.yaml](/Users/joshc/develop/dotfile-vnext/playbooks/troubleshoot/collect_cursor_shell_path_artifacts.yaml)
 
 Current Hyper-V Ubuntu troubleshooting note:
 

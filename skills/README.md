@@ -176,3 +176,12 @@ interpreters or PATH assumptions. This matches `AGENTS.md`.
 `pip*`, `ansible*`): when `.venv` is missing it creates it, installs
 requirements from `requirements.txt` or `scripts/requirements.txt`, then runs
 the requested command.
+
+## Runtime synchronization
+
+The project-skill-runtime-bridge now manages both .cursor/skills and .agents/skills
+(Codex and compatible clients). Preview with `bin/codex-env python
+skills/implementation/project-skill-runtime-bridge/scripts/link_project_skills_to_cursor.py --check`,
+apply without flags and verify with --verify-only. Source edits flow through
+symlinks; the skills pre-commit hook refreshes registrations. Mixed global/project
+changes require both bridges. Global user roots remain owned by global-skills.

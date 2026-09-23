@@ -50,6 +50,15 @@ Include:
 
 ## Working Contract
 
+**Standing objective — project stewardship:** Operational work matures this
+project's ability to manage infrastructure. User authorization for a temporary
+or manual method does not waive ownership, recording, or reconciliation. The
+user controls accepted technical debt and deferred automation; never invent an
+exemption or expand an explicit manual-only request into immediate automation.
+Every explicit one-off request must be recorded under `docs/one_off_tasks/`
+using that directory's README. Keep the decision record after cleanup/promotion.
+
+
 1. Preserve the user's target. Do not silently replace it with a safer-but-different milestone.
 2. Research before novel execution. If the repo and authoritative docs have not been checked, do not improvise.
 3. Prefer idempotent Ansible roles, modules, inventories, and playbooks over shell or PowerShell scripts.
@@ -113,7 +122,7 @@ Include:
 29. **Intent-integrity sweep before final:** Before a final response on plan execution or framework repair, review the changed plan text for decisions that weaken the user's stated target: "first path" wording that hides the full scope, exact resource picks without research, repo-only work presented as live execution, optionalized user decisions, or pending rows marked as success. Fix those before summarizing.
 30. **Research quality for candidate resources:** For brainstorm/intake imports, exact model IDs, provider routes, hardware placement, NetBox object additions, and download plans require a current research matrix and live probe evidence before they are treated as selected. Without that, use `pending_research` or `provisional_example`, keep candidate families visible, and do not download, pin, or mark the row stronger than research-pending.
 31. **Reusable multi-agent workflows live in the framework registry:** When the user asks for a coordinator, validator, permission grantor, multi-agent split, or reusable working pattern, document the reusable workflow under `docs/codex_framework/multi-agent/agent-workflow-registry/patterns/` (registry index: `docs/codex_framework/multi-agent/README.md`) instead of burying it only in a plan packet. Add role docs and after-action reports under `docs/codex_framework/multi-agent/workflow-packages/<workflow-id>/` when the workflow matures. A plan may select a workflow pattern, but the pattern owns the role boundaries, gates, fallback behavior, and completion rule.
-32. **Ansible-first interpretation (default):** Treat user requests to install, download, configure, deploy, remove, or verify homelab resources as requests to do that work **through this repo's Ansible framework** (roles with `present|absent`, playbooks, inventory). Do **not** use ad-hoc SSH/WinRM one-liners, scp'd temp scripts, or manual `pip install` on managed hosts unless the user explicitly says the change is a **one-off** / `oneoffs` exception, **or** you are already debugging Ansible task code interactively to discover a working command that will be placed into the role. Before any novel implementation, research via Context7, Firecrawl, pre-downloaded HRL library entries, Ansible module docs, and existing repo roles/playbooks. For install/mutate work, enter via skill `homelab-ansible-first-entry` (`bin/codex-env python .cursor/skills/homelab-ansible-first-entry/scripts/print_entry_doors.py`) before inventing an approach. **Entry door:** for install/mutate work, run `bin/codex-env python .cursor/skills/homelab-ansible-first-entry/scripts/print_entry_doors.py` and follow skill `homelab-ansible-first-entry` before inventing an approach. For install/mutate starts, enter skill `homelab-ansible-first-entry` first (`bin/codex-env python .cursor/skills/homelab-ansible-first-entry/scripts/print_entry_doors.py`) so routing happens before inventing an approach.
+32. **Ansible-first interpretation (default):** Managed-resource requests use this repo's owning Ansible roles, playbooks and inventory for durable changes. Enter `homelab-ansible-first-entry`; for repair, route to global skill `interactive-troubleshooting-to-managed-state`. Bounded reversible diagnosis is allowed within existing repair authority before the failing task is known. Record baseline and undo, encode the fix in the project, undo only experiment-owned mutations, then apply and verify original-context behavior plus a second run. Use isolation when restoring failure would be unsafe. Saved command evidence is sufficient for ordinary diagnosis; collectors are proportional. Full project contract: `.cursor/rules/framework-troubleshooting-mode.mdc`. Explicit diagnosis-only requests do not authorize mutation.
 33. **Fresh verification before completion (Superpowers mandatory):** Before any pass / complete / working / done / execute-complete claim — including brief handoff or status-only turns — load Superpowers skill `verification-before-completion`, run the proving command(s) **in the current turn**, and attach output. Prior-turn evidence and system "briefly inform" prompts do **not** waive this gate. See `docs/codex_framework/verification-before-completion-gate.md`. Pair with `docs/codex_framework/plan-verification-receipt.md` for plan work. Only explicit per-obligation user deferral may skip re-verification; generic brevity requests may not.
 
 ## Repo Truths
@@ -481,3 +490,14 @@ Reflex tools stay enabled but are passive until explicitly called.
 Authority: `roles/mcp_servers/morph`, `docs/plans/2026-09-02--morph-warpgrep-evaluation/README.md`
 Vendor steering: https://docs.morphllm.com/guides/mcp
 # END ANSIBLE MANAGED BLOCK: routing_morph-mcp
+
+## Runtime synchronization after instruction changes
+
+Canonical project skills live under skills/. After changing project skills or
+registration, use project-skill-runtime-bridge to preview, sync and verify both
+.cursor/skills and .agents/skills. A pre-commit hook also refreshes these links.
+For global skill changes, use global-skill-runtime-bridge in global-skills;
+for mixed changes, run both. Shared project policy lives in AGENTS.md, with
+Cursor MDC adapters; do not create duplicate Codex policy copies. Report file
+synchronization separately from client-loaded state; existing chats may require
+a fresh session to discover new registrations.

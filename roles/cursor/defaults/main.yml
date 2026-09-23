@@ -42,6 +42,11 @@ cursor_settings_path: >-
 # Set to false to skip the settings.json merge for this node.
 cursor_settings_enabled: true
 
+# Cursor agent terminals must find user-owned CLIs even without login startup.
+# Keep VS Code's runtime substitution; never freeze the controller's PATH here.
+cursor_macos_terminal_path: >-
+  {{ dotfiles_user_home | default(ansible_user_dir) }}/.local/bin:{{ dotfiles_user_home | default(ansible_user_dir) }}/bin:${env:PATH}
+
 # Settings merged idempotently — only keys not already present are added.
 # Existing user values are always preserved.
 # This enforces LF line endings and UTF-8-no-BOM across all files edited with Cursor,

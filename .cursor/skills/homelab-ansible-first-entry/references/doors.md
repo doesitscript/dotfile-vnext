@@ -10,6 +10,7 @@ bin/codex-env python .cursor/skills/homelab-ansible-first-entry/scripts/print_en
 
 | Request shape | Next skill |
 | --- | --- |
+| Broken managed resource / interactive diagnosis then managed repair | Global `interactive-troubleshooting-to-managed-state` |
 | Windows tool / Chocolatey / Setup.exe / HVH / AMD desktop | `windows-tool-capability-intake` |
 | macOS CLI | `macos-tool-install-decider-and-scaffold` → `tool-capability-intake` |
 | HF model weights on share | `hf-model-weight-lifecycle` |

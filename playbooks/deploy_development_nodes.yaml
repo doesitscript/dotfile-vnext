@@ -171,6 +171,10 @@
     - role: git
       tags: [git]
     - role: cursor
+    - role: troubleshooting_collectors
+      tasks_from: cursor_shell_path.yml
+      when: inventory_hostname in groups.get('mac_dev', [])
+      tags: [never, collect_cursor_shell_path]
     - role: common/agent_skills
       tags: [agent_skills]
     - role: langfuse_cli

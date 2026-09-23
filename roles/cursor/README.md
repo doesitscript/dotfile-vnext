@@ -6,6 +6,30 @@ into Cursor's settings.json.
 
 ## What This Role Does
 
+### macOS agent terminal PATH
+
+`cursor_macos_terminal_path` converges `terminal.integrated.env.osx.PATH` to
+`~/.local/bin:~/bin:${env:PATH}` (home paths are rendered as absolute paths).
+This makes user-owned CLIs such as `rg` available to fresh Cursor agent
+terminals even when a non-login shell inherits a minimal GUI PATH. The
+`${env:PATH}` substitution preserves Cursor's inherited environment; it does
+not capture the Ansible controller's current PATH. Other settings are preserved.
+
+- Apply/preview: `playbooks/deploy_development_nodes.yaml --limit mac-dev
+  --tags cursor_terminal_path,ripgrep_cli` (add `--check --diff` for preview).
+- Verify: `playbooks/troubleshoot/collect_cursor_shell_path_artifacts.yaml
+  --limit mac-dev`, or `--tags collect_cursor_shell_path` on the development
+  playbook. JSON artifacts contain the effective PATH, command output, and
+  exit codes. These are shell probes, not a Cursor chat-agent UI invocation.
+- Undo: change `cursor_macos_terminal_path` to the previous desired value and
+  reapply; `${env:PATH}` restores inherited-PATH behavior. Ansible also backs up
+  settings before changes. Set `cursor_settings_enabled: false` to stop managing
+  settings (this does not revert existing values).
+- Change class: idempotent user configuration. Existing terminals retain their
+  previous environment; newly created terminals receive the setting.
+
+Diagnosis and evidence: [Cursor rg PATH](../../docs/diagnostics/cursor-rg-path--macos--2026-09-22.md).
+
 ### All Hosts (macOS, Ubuntu, Windows)
 - **Merges LF + UTF-8 settings** into `settings.json` — prevents BOM and CRLF contamination in all files edited with Cursor (see [Settings](#settings) below)
 - **On macOS, converges** `terminal.integrated.env.osx` locale keys to

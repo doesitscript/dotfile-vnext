@@ -50,6 +50,16 @@
     and (ansible_facts['system'] | default('')) == 'Darwin'
   tags: [cursor, cursor_settings, locale]
 
+- name: Configure macOS Cursor terminal executable search path
+  ansible.builtin.include_tasks:
+    file: macos_terminal_path.yml
+    apply:
+      tags: [cursor, cursor_settings, cursor_terminal_path]
+  when:
+    - cursor_settings_enabled | bool
+    - ansible_facts['system'] == 'Darwin'
+  tags: [cursor, cursor_settings, cursor_terminal_path]
+
 - name: Deploy AI agent profile contract for Cursor and Codex
   ansible.builtin.include_tasks:
     file: ai_agent_profiles.yml

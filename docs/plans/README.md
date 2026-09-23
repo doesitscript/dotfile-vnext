@@ -8,7 +8,8 @@ Approved plans belong here.
 
 - Store the full approved plan in this directory.
 - Treat the repo plan as the canonical durable artifact.
-- **One-off trials** (`docs/one_off_tasks/`) are discardable; promotion **must** land here
+- **One-off trial code** (`docs/one_off_tasks/`) is discardable; retain request and
+  decision records after cleanup or promotion. Promotion **must** land here
   with a `backup/one-off-source/` archive and Ansible implementation — see
   `docs/one_off_tasks/README.md`.
 - Mirror the work into a GitHub issue as a higher-level roadmap when GitHub is available.

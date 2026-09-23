@@ -9,6 +9,10 @@ from __future__ import annotations
 
 DOORS = [
     (
+        "Broken managed resource / interactive diagnosis then managed repair",
+        "interactive-troubleshooting-to-managed-state (global; restore experiments before Ansible apply)",
+    ),
+    (
         "Windows tool/package, Chocolatey, Setup.exe, HVH, AMD desktop",
         "windows-tool-capability-intake",
     ),

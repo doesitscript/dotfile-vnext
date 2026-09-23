@@ -1,6 +1,6 @@
 ---
 name: one-off-discard-cleanup
-description: "Use when a docs/one_off_tasks trial is rejected and must be removed without Ansible promotion. Runs uninstall, removes host traces, deletes the one-off folder, and records discard evidence. Do not use when the user approved promotion — use one-off-promotion instead."
+description: "Use when a docs/one_off_tasks trial is rejected and must be removed without Ansible promotion. Runs uninstall, removes host traces, retains the one-off decision record, and records discard evidence. Do not use when the user approved promotion — use one-off-promotion instead."
 license: MIT
 version: "0.1.0"
 author: "dotfile-vnext"
@@ -26,14 +26,14 @@ tags:
 
 # Skill: One-Off Discard Cleanup
 
-Remove a one-off trial completely when the operator chooses **discard** over promotion.
+Remove deployed artifacts of a one-off trial when the operator chooses **discard** over promotion.
 
 ## When to use / not use
 
 Use when:
 
 - the user says discard, abandon, tear down, or remove the trial
-- a trial failed and should leave no host or repo traces
+- a trial failed and should leave no deployed artifacts
 - cleaning up before starting a fresh trial with a new slug
 
 Do **not** use when:
@@ -68,7 +68,7 @@ If uninstall is broken:
 
 - enumerate paths from `deploy/install_*.sh` and README
 - remove manually with evidence
-- fix uninstall script before deleting repo folder (so future agents have truth)
+- fix uninstall script before removing trial deploy files (so future agents have truth)
 
 ### 3. Verify host is clean
 
@@ -82,22 +82,16 @@ type <trial-function> 2>&1 | grep -q 'not found'
 
 Document TTY-only checks as `pending` (operator confirms).
 
-### 4. Delete repo folder
+### 4. Remove trial artifacts; retain the record
 
-Remove `docs/one_off_tasks/<slug>/` entirely.
-
-Do **not** archive to `docs/plans/` on discard unless the user asks for a short
-post-mortem note elsewhere.
+Remove obsolete deploy files only after cleanup verification. Retain
+`docs/one_off_tasks/<slug>/README.md` with request, authorization, remaining state,
+discard outcome and evidence. Follow docs/one_off_tasks/README.md for the exact
+record contract. Preserve linked evidence or summarize before removing it.
 
 ### 5. Record discard evidence
 
-Minimal receipt (in conversation or `evolution.md` commit message):
-
-| Step | Result |
-| --- | --- |
-| Uninstall run | exit code + summary |
-| Host probe | pass / pending |
-| Repo folder deleted | yes |
+Update the retained README with uninstall exit code, host probes and disposition.
 
 ### 6. Check for stray host artifacts
 
@@ -107,12 +101,12 @@ If the trial ran multiple iterations, grep the repo for `_one_off_tasks` and
 ## Outputs
 
 - Clean host (or documented `blocked` with evidence)
-- Deleted `docs/one_off_tasks/<slug>/`
+- Retained `docs/one_off_tasks/<slug>/README.md`
 - Discard receipt
 
 ## Prohibited behavior
 
-- Deleting repo folder before uninstall (unless user explicitly accepts host mess)
+- Deleting trial artifacts before uninstall (unless user explicitly accepts host mess)
 - Claiming clean without fresh probe output this turn
 - Promoting pieces into `roles/` during discard
 - Leaving `*_one_off_tasks` files on the host
@@ -121,13 +115,13 @@ If the trial ran multiple iterations, grep the repo for `_one_off_tasks` and
 
 - [ ] Uninstall script ran with captured exit code
 - [ ] Host probes show `*_one_off_tasks` paths gone (this turn)
-- [ ] `docs/one_off_tasks/<slug>/` deleted from repo
+- [ ] Trial deploy artifacts removed; request/result README retained
 
 ## Failure boundaries
 
 - Stop if user meant promotion — hand off to `one-off-promotion`
 - Stop if uninstall failed without documenting `blocked` evidence
-- Do not delete repo folder while host artifacts remain without user acceptance
+- Do not remove trial deploy files while host artifacts remain without user acceptance
 
 ## Handoffs
 
