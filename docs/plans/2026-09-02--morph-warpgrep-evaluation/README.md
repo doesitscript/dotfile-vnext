@@ -40,14 +40,14 @@ and returns focused snippets (~seconds per query).
 | --- | --- | --- |
 | `codebase_search` | **On** | Primary evaluation target |
 | `github_codebase_search` | **On** | Upstream repo search without clone |
-| `edit_file` | **Off** | Upstream default; avoids Cursor native editor collision |
+| `edit_file` | **Off** (upstream default; enable later via Morph env if desired) | Avoid Cursor native editor collision during eval |
 | Reflex tools | **On** | Passive until called; no per-turn overhead |
 
 ## Client integration matrix
 
 | Surface | Access (MCP wired) | Habit (steering) | Owner |
 | --- | --- | --- | --- |
-| **Cursor Agent** | **`~/.cursor/mcp.json`** via `cursor_user` → `user-morph-mcp` (**lab default**). Project target `cursor` supported but opt-in (allowlist + restart; Customize UI may omit Project) | `.cursor/rules/morph-warpgrep-evaluation.mdc` + `framework-mcp-and-tool-usage.mdc` | `roles/mcp_servers/morph` + `roles/cursor/rules/` |
+| **Cursor Agent** | **`~/.cursor/mcp.json`** via `cursor_user` → `user-morph-mcp` (**lab default**). Project target `cursor` supported but opt-in (allowlist + restart; Customize UI may omit Project) | `.cursor/rules/morph-warpgrep-evaluation.mdc` (`alwaysApply: true`, lean Layer 2) + `AGENTS.md` block + `framework-mcp-and-tool-usage.mdc` | `roles/mcp_servers/morph` + `roles/cursor/rules/` |
 | **Codex CLI** (`codex mcp list`) | `~/.codex/config.toml` → `[mcp_servers.morph-mcp]` | `AGENTS.md` managed block; `.codex/agents/*.toml` | `roles/mcp_servers/morph` |
 | **Codex CLI** (in-repo session) | project `.codex/config.toml` overlay + user file | Same | Same |
 | **Codex extension** | `~/.codex/config.toml` (shared with CLI; not project-only) | Same `AGENTS.md` + agent toml when workspace trusted | Same |
@@ -64,10 +64,13 @@ HRL `implementation-guides/mcp/client-enablement-matrix-cursor-codex-continue.md
 
 Managed by `roles/mcp_servers/morph/tasks/configure_routing.yml`:
 
-1. **AGENTS.md** — `# BEGIN ANSIBLE MANAGED BLOCK: routing_morph-mcp`
+1. **AGENTS.md** — `# BEGIN ANSIBLE MANAGED BLOCK: routing_morph-mcp` (shared prose; Codex primary + Cursor AGENTS.md)
 2. **Codex agents** — `default.toml`, `explorer.toml`, `worker.toml` (inside `developer_instructions`)
 3. **Continue** — `.continue/rules/morph-warpgrep-evaluation.md` + `continue_ide_rules` in host vars
-4. **Cursor** — `framework-mcp-and-tool-usage.mdc` (source: `roles/cursor/rules/framework-mcp-and-tool-usage.mdc.cursor`)
+4. **Cursor** — `.cursor/rules/morph-warpgrep-evaluation.mdc` with **`alwaysApply: true`** (lean Layer 2; listed in `framework-context-budget.mdc` allowlist)
+5. **Cursor framework router** — `framework-mcp-and-tool-usage.mdc` (points at Morph)
+
+**2026-09-23 Layer 2 fix:** Cursor rule was `alwaysApply: false` (vendor habit never loaded). Flipped to lean always-on; Codex already had AGENTS.md + agent tomls. Parity guided by global skill `ai-client-instruction-surface-matrix` (AGENTS.md shared; Cursor `.mdc` adapter).
 
 Registry row: `docs/codex_framework/instruction-scope-registry.md`
 

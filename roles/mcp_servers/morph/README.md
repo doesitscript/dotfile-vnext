@@ -64,7 +64,7 @@ user+project can make the UI look “User only” while both namespaces work.
 | `codebase_search` | enabled (prefer) | WarpGrep — broad semantic exploration |
 | `github_codebase_search` | enabled (prefer) | Public GitHub without clone |
 | Reflex tools | enabled (passive) | No cost until invoked |
-| `edit_file` | **enabled for evaluation** | Morph Fast Apply API — Morph API usage |
+| `edit_file` | package default (often off) | Opt-in via Morph `DISABLED_TOOLS`; steering says prefer when available |
 
 ## Vault
 
@@ -90,7 +90,7 @@ we configure:
 |---|---|
 | Codex / Cursor project agents | `AGENTS.md` (`routing_morph-mcp` block) |
 | Codex subagents | `.codex/agents/{default,explorer,worker}.toml` |
-| Cursor Agent rules | `.cursor/rules/morph-warpgrep-evaluation.mdc` |
+| Cursor Agent rules | `.cursor/rules/morph-warpgrep-evaluation.mdc` (`alwaysApply: true`, lean) |
 | Cursor framework router | `.cursor/rules/framework-mcp-and-tool-usage.mdc` (points at Morph) |
 | Continue | `.continue/rules/morph-warpgrep-evaluation.md` |
 | VS Code / Copilot | `.github/copilot-instructions.md` (`routing_morph-mcp` block) |
