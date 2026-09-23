@@ -89,6 +89,24 @@ node_classes:
 hardware_classes:
   - nvidia_gpu
   - high_vram
+  - liquid_cooled
+# Thermal / acoustic contract — required for AI and human troubleshooting.
+# HVH-02 is fully water-cooled; Corsair radiator fans follow a curve and ramp
+# after GPU/CPU load even when nvidia-smi fan.speed stays 0%.
+cooling_contract:
+  method: liquid
+  loop_class: closed_loop_radiator
+  fan_controller: corsair_icue
+  radiator_fans: curve_controlled
+  primary_acoustic_signal: radiator_chassis_fans
+  gpu_onboard_fan_telemetry: often_zero_or_not_load_proxy
+  agent_rules:
+    - do_not_infer_idle_from_nvidia_smi_fan_speed_zero
+    - treat_radiator_fan_ramp_after_workload_as_expected_cooldown
+    - prefer_gpu_temp_power_util_vram_and_vllm_throughput_over_fan_percent
+    - contrast_with_HOM-LAB-HVH-01_air_cooled
+  recorded_at: "2026-09-22"
+  authority: operator_stated_plus_inventory
 runtime_planes:
   hyperv_host:
     enabled: true

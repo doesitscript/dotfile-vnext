@@ -80,6 +80,22 @@ node_classes:
 hardware_classes:
   - bulk_storage
   - nvidia_gpu
+  - air_cooled
+# Thermal / acoustic contract — air-cooled chassis (no liquid loop).
+# GPU/case fan RPM and nvidia-smi fan.speed are meaningful load proxies here
+# (unlike liquid-cooled HOM-LAB-HVH-02).
+cooling_contract:
+  method: air
+  loop_class: none
+  fan_controller: motherboard_and_gpu
+  radiator_fans: none
+  primary_acoustic_signal: gpu_and_case_fans
+  gpu_onboard_fan_telemetry: meaningful_for_load
+  agent_rules:
+    - gpu_fan_speed_and_temp_are_valid_load_proxies_with_power_util
+    - contrast_with_HOM-LAB-HVH-02_liquid_cooled
+  recorded_at: "2026-09-22"
+  authority: operator_stated_plus_inventory
 gpu: gtx-1060-6gb
 runtime_planes:
   hyperv_host:
@@ -91,11 +107,12 @@ runtime_planes:
   secondary_model_runtime:
     enabled: true
     runtime: ollama
-    lane: code-autocomplete-1.5b
+    lane: qwen2.5-coder-1.5b-base-q8_0
     capability_state: present
     reason: >-
       GTX 1060 6GB host-local Ollama (llama.cpp) sidecar for Continue
-      autocomplete 1.5B. Not vLLM (Pascal CC 6.1). LiteLLM remains the gateway.
+      autocomplete (LiteLLM client id qwen2.5-coder-1.5b-base-q8_0). Not vLLM
+      (Pascal CC 6.1). LiteLLM remains the gateway.
   hyperv_gpu_partitioning:
     enabled: false
     capability_state: blocked
@@ -228,6 +245,11 @@ hyperv_ubuntu_vm_autoinstall_network_dns_servers:
 hyperv_ubuntu_vm_quick_create_image_url: >-
   https://partner-images.canonical.com/hyper-v/desktop/noble/release/current/ubuntu-noble-hyperv-amd64-ubuntu-desktop-hyperv.vhdx.zip
 hyperv_ubuntu_vm_server_iso_url: "https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso"
+# HVH-01 cannot write \\HOM-LAB-HVH-02\public\hyperv-cache (ACL denied).
+# Use the local public share tree (same volume as \\HOM-LAB-HVH-01\public).
+# Do not invent G:\ (TOSHIBA EXT) as cold_data_root without operator approval.
+hyperv_ubuntu_vm_cold_data_root: 'F:\shares\public\hyperv-cache'
+hyperv_ubuntu_vm_shared_cache_unc: '\\HOM-LAB-HVH-01\public\hyperv-cache'
 
 # Hyper-V-native K3s Ubuntu VM companion for the HOM-LAB-HVH-01 physical node.
 # Inventory identity and desired Hyper-V VM / guest hostname are

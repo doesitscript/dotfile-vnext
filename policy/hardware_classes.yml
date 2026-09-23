@@ -1,12 +1,38 @@
 ---
 # Controlled vocabulary for inventory host_vars: hardware_classes: [...]
 # Peer of inventory groups windows_nvidia_gpu_hosts / windows_amd_gpu_hosts.
+# Cooling classes (liquid_cooled | air_cooled) pair with host_vars
+# cooling_contract — see docs/reference/host-thermal-cooling-contracts.md.
 # depends_on: none (leaf vocabulary). Consumed by execution_roles + classify_host.
 # See policy/process_order.yml.
 schema_version: 1
-updated_at: "2026-07-24"
+updated_at: "2026-09-22"
 
 hardware_classes:
+  liquid_cooled:
+    description: >-
+      Chassis heat rejection is liquid (AIO or custom loop). Radiator /
+      chassis fans (often vendor-curve controlled, e.g. Corsair iCUE) are the
+      primary acoustic and airflow signal. GPU onboard fan percent from
+      nvidia-smi is frequently 0% or disconnected and MUST NOT be used alone
+      to infer idle vs load.
+    k8s:
+      labels:
+        homelab.hardware/cooling: liquid
+    mutually_exclusive_with:
+      - air_cooled
+
+  air_cooled:
+    description: >-
+      Chassis heat rejection is air (heatsink + case/GPU fans). GPU fan.speed
+      and case fan RPM are meaningful load/acoustic proxies when paired with
+      temperature and power.
+    k8s:
+      labels:
+        homelab.hardware/cooling: air
+    mutually_exclusive_with:
+      - liquid_cooled
+
   nvidia_gpu:
     description: NVIDIA CUDA / driver / GPU Operator path
     vendor: nvidia

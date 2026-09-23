@@ -2,6 +2,14 @@
 
 Stage and install a Windows PnP driver package with `pnputil`.
 
+Controller-side vendor downloads and expanded payloads use an external cache
+under `XDG_CACHE_HOME` or `HOME/.cache/dotfile-vnext/windows-pnp-driver-install`
+by default. This keeps archives and extracted driver binaries out of the
+repository's `playbooks/` source tree and normal AI/IDE workspace discovery.
+Override `windows_pnp_driver_install_controller_cache_root` for a dedicated
+cache volume, or set `windows_pnp_driver_install_controller_cache_dir` for a
+specific package path.
+
 ## TP-Link Wi-Fi 6 on Windows Server
 
 TP-Link publishes **Win10/Win11 x64 only** for Archer TX3000E. There is **no**

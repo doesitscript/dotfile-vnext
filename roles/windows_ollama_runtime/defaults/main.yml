@@ -22,6 +22,35 @@ windows_ollama_runtime_setup_expected_bytes: 1562770448
 windows_ollama_runtime_download_root: 'C:\ProgramData\Ansible\artifacts\ollama'
 windows_ollama_runtime_setup_exe_path: >-
   {{ windows_ollama_runtime_download_root }}\OllamaSetup-{{ windows_ollama_runtime_package_version }}.exe
+# Cold/shared ladder for Setup.exe (matches windows_artifact_cache reclaim
+# pinned-installers subdir). Empty cold root skips H: and keeps UNC only.
+windows_ollama_runtime_cold_data_root: >-
+  {{
+    hyperv_ubuntu_vm_cold_data_root
+    | default(windows_artifact_cache_reclaim_cold_data_root | default(''))
+  }}
+windows_ollama_runtime_shared_cache_unc: >-
+  {{
+    hyperv_ubuntu_vm_shared_cache_unc
+    | default('\\\\HOM-LAB-HVH-02\\public\\hyperv-cache')
+  }}
+windows_ollama_runtime_setup_cold_paths: >-
+  {{
+    (
+      [
+        windows_ollama_runtime_cold_data_root
+        ~ '\\pinned-installers\\'
+        ~ (windows_ollama_runtime_setup_exe_path | basename)
+      ]
+      if (windows_ollama_runtime_cold_data_root | default('') | length) > 0
+      else []
+    )
+    + [
+      windows_ollama_runtime_shared_cache_unc
+      ~ '\\pinned-installers\\'
+      ~ (windows_ollama_runtime_setup_exe_path | basename)
+    ]
+  }}
 windows_ollama_runtime_setup_silent_args: /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
 windows_ollama_runtime_setup_async_seconds: 28800
 windows_ollama_runtime_setup_async_poll: 30
