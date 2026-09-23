@@ -286,7 +286,8 @@
 
           Set-VMProcessor -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -Count {{ hyperv_ubuntu_vm_cpus }}
           Set-VMMemory -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -DynamicMemoryEnabled $false -StartupBytes $memory
-          Set-VMFirmware -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -EnableSecureBoot On -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}'
+          Set-VMFirmware -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' `
+            -EnableSecureBoot On -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}'
           $Ansible.Changed = $true
           $Ansible.Result = @{ created = $true }
       register: _hyperv_ubuntu_vm_create
@@ -357,7 +358,8 @@
             $Ansible.Changed = $true
           }
 
-          Set-VMFirmware -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -EnableSecureBoot On -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}'
+          Set-VMFirmware -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' `
+            -EnableSecureBoot On -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}'
           $Ansible.Result = @{ reconciled = $true }
       register: _hyperv_ubuntu_vm_reconcile
       when: _hyperv_ubuntu_vm_probe.result.exists | default(false)
@@ -426,7 +428,9 @@
           $hypervServer = '{{ hyperv_ubuntu_vm_hyperv_server }}'
           $Ansible.Changed = $false
           $blocked = @('{{ host_ip | default("") }}') | Where-Object { $_ }
-          $adapter = Get-VMNetworkAdapter -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
+          $adapter = Get-VMNetworkAdapter -ComputerName $hypervServer `
+            -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue |
+            Select-Object -First 1
           $reportedAll = @(
             if ($adapter) { $adapter.IPAddresses }
           ) | Where-Object { $_ }

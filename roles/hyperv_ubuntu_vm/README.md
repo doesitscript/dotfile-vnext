@@ -62,6 +62,40 @@ The role treats the VM as one capability:
 - Undo: rerun with `hyperv_ubuntu_vm_state=absent`
 - Change class: bootstrap plus idempotent lifecycle management
 
+## Shared / cold artifact cache
+
+Large rebuild bases (Azure `.tar.gz`, unpacked `.vhd`, vendor/remastered ISOs)
+use the reusable role `windows_artifact_cache`:
+
+1. Hydrate hot path from ordered cold candidates — **COLD-DATA-HOST first** when
+   `hyperv_ubuntu_vm_cold_data_root` is set, then shared UNC
+2. Download/build only on miss
+3. Seed `cold_paths[0]` (same preference) for later reclaim/hydrate
+
+Remastered ISO restore is hydrate-then-verify (signature on hot), not UNC-only
+probe, so reclaim to H: still feeds the next `present` run. After a Hyper-V
+rename, set `hyperv_ubuntu_vm_legacy_hyperv_name` (Docker:
+`hyperv_ubuntu_docker_vm_legacy_hyperv_name`) so cold paths also probe
+`{legacy}-autoinstall.*`; reclaim still requires `{vm_dir}-autoinstall.*`.
+Prefer renaming cold remaster objects to the current VM basename when the
+rename is complete.
+
+Offload / reclaim (reclaim hot disk without VM teardown):
+
+```bash
+# Preview what matches the cold-workflow classes
+ansible-playbook playbooks/windows_artifact_cache_reclaim.yaml \
+  -i inventory/inventory.yaml --limit HOM-LAB-HVH-02
+
+# Apply offload for discovered candidates
+ansible-playbook playbooks/windows_artifact_cache_reclaim.yaml \
+  -i inventory/inventory.yaml --limit HOM-LAB-HVH-02 \
+  -e windows_artifact_cache_reclaim_mode=apply
+```
+
+Set `hyperv_ubuntu_vm_cold_data_root` (e.g. `H:\COLD-DATA-HOST\hyperv-cache`)
+so reclaim prefers COLD-DATA-HOST. See `roles/windows_artifact_cache/README.md`.
+
 ## Existing K3s VM Storage Relocation
 
 Use the dedicated relocation playbook after declaring

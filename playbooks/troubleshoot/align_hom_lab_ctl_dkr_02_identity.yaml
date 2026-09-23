@@ -1,52 +1,112 @@
 ---
-# One-shot identity alignment for the GPU-lane Docker VM:
-#   Hyper-V VM name: server-225-ubuntu -> hom-lab-ctl-dkr-02
-#   Guest OS hostname: hom-lab-ctl-dkr-02
-#   NetBox: seed canonical VM + purge legacy server-225-ubuntu (run NetBox tags separately)
+# Controlled-outage identity alignment for the GPU-lane Docker VM on HVH-02:
+#   Legacy Hyper-V VM name: server-225-ubuntu -> hom-lab-ctl-dkr-02 (often already done)
+#   Legacy VHDX / sidecars under the canonical directory still named server-225-ubuntu.*
+#     -> hom-lab-ctl-dkr-02.vhdx / -cidata.iso / -state.json
 #
-# Apply:
+# Default invocation is preflight only. Apply requires the explicit variable:
 #   ansible-playbook playbooks/troubleshoot/align_hom_lab_ctl_dkr_02_identity.yaml \
-#     -i inventory/inventory.yaml --vault-password-file vault_pass.sh
+#     -i inventory/inventory.yaml -e hyperv_identity_alignment_apply=true
 #
-# NetBox reconcile (after Hyper-V + guest hostname):
+# NetBox reconcile (if still needed after Hyper-V + guest hostname):
 #   ansible-playbook playbooks/deploy_ipam_netbox.yaml \
 #     -i inventory/inventory.yaml --vault-password-file vault_pass.sh \
 #     --tags ipam_netbox_seed_hom_lab_ctl_hvh_02_model,ipam_netbox_purge_legacy_vms,ipam_netbox_repo_consistency
 
-- name: Align Hyper-V VM identity on HOM-LAB-HVH-02
+- name: Align GPU-lane Docker VM Hyper-V identity on HOM-LAB-HVH-02
   hosts: HOM-LAB-HVH-02
   gather_facts: false
-  tags: [hyperv_align, always]
+  tags: [hyperv_align, hyperv_identity_alignment]
+
+  vars:
+    hyperv_ubuntu_vm_name: hom-lab-ctl-dkr-02
+    hyperv_ubuntu_vm_legacy_hyperv_name: server-225-ubuntu
+    hyperv_ubuntu_vm_legacy_hyperv_root_dir: 'D:\ProgramData\Ansible\hyperv_ubuntu_vm\server-225-ubuntu'
+    # Canonical target — do not Jinja-join inventory paths (easy to double backslashes).
+    hyperv_ubuntu_vm_host_vhdx_path: 'D:\ProgramData\Ansible\hyperv_ubuntu_vm\hom-lab-ctl-dkr-02\hom-lab-ctl-dkr-02.vhdx'
+    hyperv_ubuntu_vm_identity_alignment_apply: "{{ hyperv_identity_alignment_apply | default(false) | bool }}"
 
   tasks:
-    - name: Align legacy Docker VM Hyper-V name to hom-lab-ctl-dkr-02
+    - name: Report identity-alignment mode
+      ansible.builtin.debug:
+        msg:
+          mode: >-
+            {{ 'apply' if (hyperv_ubuntu_vm_identity_alignment_apply | bool) else 'preflight_only' }}
+          legacy_vm: "{{ hyperv_ubuntu_vm_legacy_hyperv_name }}"
+          target_vm: "{{ hyperv_ubuntu_vm_name }}"
+          expected_vhdx: "{{ hyperv_ubuntu_vm_host_vhdx_path }}"
+
+    - name: Align legacy Docker VM Hyper-V identity to compact schema
       ansible.builtin.include_role:
         name: hyperv_ubuntu_vm
         tasks_from: align_legacy_vm_identity.yml
-      vars:
-        hyperv_ubuntu_vm_name: "{{ hyperv_ubuntu_docker_vm_hostname }}"
-        hyperv_ubuntu_vm_legacy_hyperv_name: server-225-ubuntu
-      when: hyperv_ubuntu_docker_vm_hostname == 'hom-lab-ctl-dkr-02'
 
-- name: Align guest OS hostname on hom-lab-ctl-dkr-02
+    - name: Verify canonical Hyper-V VM identity after apply
+      ansible.windows.win_powershell:
+        script: |
+          $legacy = Get-VM -Name '{{ hyperv_ubuntu_vm_legacy_hyperv_name }}' -ErrorAction SilentlyContinue
+          $target = Get-VM -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop
+          $disk = Get-VMHardDiskDrive -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop |
+            Select-Object -First 1
+          $Ansible.Result = @{
+            legacy_exists = [bool]$legacy
+            target_state = $target.State.ToString()
+            disk_path = $disk.Path
+          }
+      register: hyperv_identity_alignment_verify
+      changed_when: false
+      when: hyperv_ubuntu_vm_identity_alignment_apply | bool
+
+    - name: Require canonical Hyper-V VM identity after apply
+      ansible.builtin.assert:
+        that:
+          - not (hyperv_identity_alignment_verify.result.legacy_exists | bool)
+          - hyperv_identity_alignment_verify.result.target_state == 'Running'
+          - hyperv_identity_alignment_verify.result.disk_path | lower == hyperv_ubuntu_vm_host_vhdx_path | lower
+        fail_msg: >-
+          Hyper-V identity alignment did not converge to the canonical VM name,
+          running state, and VHDX path.
+      when: hyperv_ubuntu_vm_identity_alignment_apply | bool
+
+- name: Align GPU-lane Docker guest hostname after Hyper-V identity alignment
   hosts: hom-lab-ctl-dkr-02
+  gather_facts: false
   become: true
-  tags: [guest_hostname, always]
+  tags: [guest_hostname, hyperv_identity_alignment]
+
+  vars:
+    hyperv_ubuntu_vm_identity_alignment_apply: "{{ hyperv_identity_alignment_apply | default(false) | bool }}"
 
   tasks:
-    - name: Set persistent hostname to hom-lab-ctl-dkr-02
-      ansible.builtin.hostname:
-        name: hom-lab-ctl-dkr-02
-      register: hom_lab_ctl_dkr_02_hostname
+    - name: Wait for Docker guest after Hyper-V identity alignment
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+        sleep: 5
+      when: hyperv_ubuntu_vm_identity_alignment_apply | bool
 
-    - name: Report guest hostname alignment
+    - name: Read current Docker guest static hostname
       ansible.builtin.command:
-        argv: [hostname, -f]
-      register: hom_lab_ctl_dkr_02_hostname_probe
+        argv: [hostnamectl, --static]
+      register: hyperv_identity_alignment_guest_hostname_before
       changed_when: false
 
-    - name: Show aligned guest hostname
-      ansible.builtin.debug:
-        msg:
-          hostname_module: "{{ hom_lab_ctl_dkr_02_hostname }}"
-          hostname_f: "{{ hom_lab_ctl_dkr_02_hostname_probe.stdout | trim }}"
+    - name: Set canonical Docker guest static hostname
+      ansible.builtin.hostname:
+        name: hom-lab-ctl-dkr-02
+      when:
+        - hyperv_ubuntu_vm_identity_alignment_apply | bool
+        - hyperv_identity_alignment_guest_hostname_before.stdout | trim != 'hom-lab-ctl-dkr-02'
+
+    - name: Read canonical Docker guest static hostname
+      ansible.builtin.command:
+        argv: [hostnamectl, --static]
+      register: hyperv_identity_alignment_guest_hostname_after
+      changed_when: false
+      when: hyperv_ubuntu_vm_identity_alignment_apply | bool
+
+    - name: Require canonical guest hostname after apply
+      ansible.builtin.assert:
+        that:
+          - hyperv_identity_alignment_guest_hostname_after.stdout | trim == 'hom-lab-ctl-dkr-02'
+        fail_msg: Docker guest hostname did not converge to hom-lab-ctl-dkr-02.
+      when: hyperv_ubuntu_vm_identity_alignment_apply | bool

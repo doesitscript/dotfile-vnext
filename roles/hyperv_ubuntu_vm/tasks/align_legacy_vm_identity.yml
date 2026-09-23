@@ -103,7 +103,10 @@
               $changed = $true
             }
           } else {
-            throw "Both legacy and target artifact directories contain data: '$legacyRoot' and '$targetRoot'."
+            # Target already owns the live artifacts (common after VM rename but
+            # before VHDX basename cleanup). Skip dir merge; continue to disk
+            # / sidecar rename. Leave leftover legacy root for operator cleanup.
+            $artifactAction = 'skip_dir_merge_target_already_populated'
           }
         }
       }
@@ -146,6 +149,17 @@
         }
         $changed = $true
       }
+      # Rename leftover cidata/state sidecars that still use the legacy basename.
+      $sidecarMoves = @()
+      foreach ($suffix in @('-cidata.iso', '-state.json')) {
+        $legacyFile = Join-Path $targetRoot ($legacy + $suffix)
+        $targetFile = Join-Path $targetRoot ($target + $suffix)
+        if ((Test-Path -LiteralPath $legacyFile) -and -not (Test-Path -LiteralPath $targetFile)) {
+          Move-Item -LiteralPath $legacyFile -Destination $targetFile -ErrorAction Stop
+          $sidecarMoves += @{ from = $legacyFile; to = $targetFile }
+          $changed = $true
+        }
+      }
       $targetVm = Get-VM -ComputerName $hypervServer -Name $target -ErrorAction Stop
       $startError = $null
       if ($targetVm.State -eq 'Off') {
@@ -169,12 +183,15 @@
         legacy_root_exists = (Test-Path -LiteralPath $legacyRoot)
         artifact_action = $artifactAction
         disk_repoint = $diskRepoint
+        sidecar_moves = $sidecarMoves
         start_error = $startError
       }
   register: hyperv_ubuntu_vm_identity_rename
   when:
     - hyperv_ubuntu_vm_identity_alignment_apply | bool
-    - hyperv_ubuntu_vm_identity_probe.result.legacy_exists | default(false) | bool
+    - >-
+      (hyperv_ubuntu_vm_identity_probe.result.legacy_exists | default(false) | bool)
+      or (hyperv_ubuntu_vm_identity_probe.result.target_exists | default(false) | bool)
   tags:
     - hyperv_ubuntu_vm_align_identity
 

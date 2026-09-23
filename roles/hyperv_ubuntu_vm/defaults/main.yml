@@ -104,6 +104,30 @@ hyperv_ubuntu_vm_shared_cache_ubuntu_isos: "{{ hyperv_ubuntu_vm_shared_cache_unc
 hyperv_ubuntu_vm_shared_cache_cloud_images: "{{ hyperv_ubuntu_vm_shared_cache_unc }}\\ubuntu-cloud-images"
 hyperv_ubuntu_vm_shared_cache_remastered_isos: "{{ hyperv_ubuntu_vm_shared_cache_unc }}\\remastered-isos"
 hyperv_ubuntu_vm_shared_cache_staging: "{{ hyperv_ubuntu_vm_shared_cache_unc }}\\staging"
+# Optional durable cold volume (storage-layout COLD-DATA-HOST). Empty skips.
+# Cold-path preference (must match windows_artifact_cache reclaim New-ColdPaths):
+#   1) hyperv_ubuntu_vm_cold_data_* when set (seed/offload target)
+#   2) shared UNC (multi-host / legacy share fallback)
+# Hydrate tries each entry until one exists.
+hyperv_ubuntu_vm_cold_data_root: ""
+hyperv_ubuntu_vm_cold_data_cloud_images: >-
+  {{
+    (hyperv_ubuntu_vm_cold_data_root ~ '\\ubuntu-cloud-images')
+    if (hyperv_ubuntu_vm_cold_data_root | default('') | length) > 0
+    else ''
+  }}
+hyperv_ubuntu_vm_cold_data_ubuntu_isos: >-
+  {{
+    (hyperv_ubuntu_vm_cold_data_root ~ '\\ubuntu-isos')
+    if (hyperv_ubuntu_vm_cold_data_root | default('') | length) > 0
+    else ''
+  }}
+hyperv_ubuntu_vm_cold_data_remastered_isos: >-
+  {{
+    (hyperv_ubuntu_vm_cold_data_root ~ '\\remastered-isos')
+    if (hyperv_ubuntu_vm_cold_data_root | default('') | length) > 0
+    else ''
+  }}
 # Remaster delegate host: auto-detect (Ubuntu VM > Windows > Mac)
 # Set to specific inventory_hostname to force delegate, or 'auto' for detection
 hyperv_ubuntu_vm_remaster_delegate_host: auto

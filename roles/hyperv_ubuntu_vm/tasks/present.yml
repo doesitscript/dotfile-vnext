@@ -108,50 +108,56 @@
     path: "{{ hyperv_ubuntu_vm_host_vm_dir }}"
     state: directory
 
-- name: Check shared cache for existing Ubuntu cloud image archive
-  when: hyperv_ubuntu_vm_shared_cache_enabled | default(false)
-  block:
-    - name: Probe shared cache for Ubuntu cloud image archive
-      ansible.windows.win_stat:
-        path: "{{ hyperv_ubuntu_vm_shared_cache_cloud_images }}\\{{ hyperv_ubuntu_vm_cloud_image_filename }}"
-      register: _hyperv_ubuntu_vm_shared_cache_archive_stat
+- name: Build cold/shared path candidates for Ubuntu Azure cloud artifacts
+  when: hyperv_ubuntu_vm_shared_cache_enabled | default(false) | bool
+  ansible.builtin.set_fact:
+    _hyperv_ubuntu_vm_cloud_archive_cold_paths: >-
+      {{
+        (
+          [
+            hyperv_ubuntu_vm_cold_data_cloud_images
+            ~ '\\'
+            ~ hyperv_ubuntu_vm_cloud_image_filename
+          ]
+          if (hyperv_ubuntu_vm_cold_data_cloud_images | default('') | length) > 0
+          else []
+        )
+        + [
+          hyperv_ubuntu_vm_shared_cache_cloud_images
+          ~ '\\'
+          ~ hyperv_ubuntu_vm_cloud_image_filename
+        ]
+      }}
+    _hyperv_ubuntu_vm_cloud_source_vhd_cold_paths: >-
+      {{
+        (
+          [
+            hyperv_ubuntu_vm_cold_data_cloud_images
+            ~ '\\'
+            ~ hyperv_ubuntu_vm_source_vhd_name
+          ]
+          if (hyperv_ubuntu_vm_cold_data_cloud_images | default('') | length) > 0
+          else []
+        )
+        + [
+          hyperv_ubuntu_vm_shared_cache_cloud_images
+          ~ '\\'
+          ~ hyperv_ubuntu_vm_source_vhd_name
+        ]
+      }}
+  changed_when: false
 
-    - name: Copy cloud image archive from shared cache to VM directory when available
-      ansible.windows.win_powershell:
-        error_action: stop
-        script: |
-          $Ansible.Changed = $false
-          $sharedArchive = '{{ hyperv_ubuntu_vm_shared_cache_cloud_images }}\{{ hyperv_ubuntu_vm_cloud_image_filename }}'
-          $destArchive = '{{ hyperv_ubuntu_vm_host_archive_path }}'
-          
-          if (-not (Test-Path $sharedArchive)) {
-            $Ansible.Result = @{
-              shared_cache_used = $false
-              reason = 'Archive not found in shared cache'
-              shared_path = $sharedArchive
-            }
-            Exit 0
-          }
-          
-          if (Test-Path $destArchive) {
-            $Ansible.Result = @{
-              shared_cache_used = $false
-              reason = 'Archive already exists at destination'
-              dest_path = $destArchive
-            }
-            Exit 0
-          }
-          
-          Copy-Item -LiteralPath $sharedArchive -Destination $destArchive -Force -ErrorAction Stop
-          $Ansible.Changed = $true
-          $Ansible.Result = @{
-            shared_cache_used = $true
-            copied_from = $sharedArchive
-            copied_to = $destArchive
-            size_mb = [math]::Round((Get-Item $destArchive).Length / 1MB, 2)
-          }
-      register: _hyperv_ubuntu_vm_shared_cache_archive_copy
-      when: _hyperv_ubuntu_vm_shared_cache_archive_stat.stat.exists | default(false)
+- name: Hydrate Ubuntu Azure cloud image archive from shared/cold cache
+  when: hyperv_ubuntu_vm_shared_cache_enabled | default(false) | bool
+  ansible.builtin.include_role:
+    name: windows_artifact_cache
+  vars:
+    windows_artifact_cache_state: present
+    windows_artifact_cache_items:
+      - id: hyperv-ubuntu-cloud-archive
+        hot_path: "{{ hyperv_ubuntu_vm_host_archive_path }}"
+        cold_paths: "{{ _hyperv_ubuntu_vm_cloud_archive_cold_paths }}"
+        seed_cold: false
 
 - name: Download Ubuntu Azure VHD archive to Windows host
   ansible.windows.win_get_url:
@@ -162,50 +168,44 @@
   register: _hyperv_ubuntu_vm_download_archive
   when: >-
     not (
-      hyperv_ubuntu_vm_shared_cache_enabled | default(false)
-      and (_hyperv_ubuntu_vm_shared_cache_archive_copy.result.shared_cache_used | default(false))
+      hyperv_ubuntu_vm_shared_cache_enabled | default(false) | bool
+      and (
+        windows_artifact_cache_results['hyperv-ubuntu-cloud-archive'].hot_exists
+        | default(false)
+      )
     )
 
-- name: Copy downloaded archive to shared cache for future VMs
-  ansible.windows.win_powershell:
-    error_action: stop
-    script: |
-      $Ansible.Changed = $false
-      $sourceArchive = '{{ hyperv_ubuntu_vm_host_archive_path }}'
-      $sharedCacheDir = '{{ hyperv_ubuntu_vm_shared_cache_cloud_images }}'
-      $destArchive = "$sharedCacheDir\{{ hyperv_ubuntu_vm_cloud_image_filename }}"
-      
-      if (-not (Test-Path $sourceArchive)) {
-        $Ansible.Result = @{
-          copied_to_cache = $false
-          reason = 'Source archive not found'
-        }
-        Exit 0
-      }
-      
-      if (Test-Path $destArchive) {
-        $Ansible.Result = @{
-          copied_to_cache = $false
-          reason = 'Archive already exists in shared cache'
-        }
-        Exit 0
-      }
-      
-      if (-not (Test-Path $sharedCacheDir)) {
-        New-Item -ItemType Directory -Path $sharedCacheDir -Force -ErrorAction Stop | Out-Null
-      }
-      
-      Copy-Item -LiteralPath $sourceArchive -Destination $destArchive -Force -ErrorAction Stop
-      $Ansible.Changed = $true
-      $Ansible.Result = @{
-        copied_to_cache = $true
-        source = $sourceArchive
-        destination = $destArchive
-        size_mb = [math]::Round((Get-Item $destArchive).Length / 1MB, 2)
-      }
+- name: Seed Ubuntu Azure cloud image archive into shared/cold cache
   when: >-
-    hyperv_ubuntu_vm_shared_cache_enabled | default(false)
-    and (_hyperv_ubuntu_vm_download_archive.changed | default(false))
+    hyperv_ubuntu_vm_shared_cache_enabled | default(false) | bool
+    and (
+      (_hyperv_ubuntu_vm_download_archive.changed | default(false))
+      or (
+        windows_artifact_cache_results['hyperv-ubuntu-cloud-archive'].source
+        | default('')
+      ) == 'hot_already'
+    )
+  ansible.builtin.include_role:
+    name: windows_artifact_cache
+  vars:
+    windows_artifact_cache_state: present
+    windows_artifact_cache_items:
+      - id: hyperv-ubuntu-cloud-archive
+        hot_path: "{{ hyperv_ubuntu_vm_host_archive_path }}"
+        cold_paths: "{{ _hyperv_ubuntu_vm_cloud_archive_cold_paths }}"
+        seed_cold: true
+
+- name: Hydrate unpacked Ubuntu Azure source VHD from shared/cold cache
+  when: hyperv_ubuntu_vm_shared_cache_enabled | default(false) | bool
+  ansible.builtin.include_role:
+    name: windows_artifact_cache
+  vars:
+    windows_artifact_cache_state: present
+    windows_artifact_cache_items:
+      - id: hyperv-ubuntu-cloud-source-vhd
+        hot_path: "{{ hyperv_ubuntu_vm_host_source_vhd_path }}"
+        cold_paths: "{{ _hyperv_ubuntu_vm_cloud_source_vhd_cold_paths }}"
+        seed_cold: false
 
 - name: Extract Ubuntu Azure VHD source on Windows host when absent
   ansible.windows.win_powershell:
@@ -238,6 +238,26 @@
         path = '{{ hyperv_ubuntu_vm_host_source_vhd_path }}'
       }
   register: _hyperv_ubuntu_vm_extract
+
+- name: Seed unpacked Ubuntu Azure source VHD into shared/cold cache
+  when: >-
+    hyperv_ubuntu_vm_shared_cache_enabled | default(false) | bool
+    and (
+      (_hyperv_ubuntu_vm_extract.changed | default(false))
+      or (
+        windows_artifact_cache_results['hyperv-ubuntu-cloud-source-vhd'].source
+        | default('')
+      ) == 'hot_already'
+    )
+  ansible.builtin.include_role:
+    name: windows_artifact_cache
+  vars:
+    windows_artifact_cache_state: present
+    windows_artifact_cache_items:
+      - id: hyperv-ubuntu-cloud-source-vhd
+        hot_path: "{{ hyperv_ubuntu_vm_host_source_vhd_path }}"
+        cold_paths: "{{ _hyperv_ubuntu_vm_cloud_source_vhd_cold_paths }}"
+        seed_cold: true
 
 - name: Normalize Ubuntu Azure VHD source before native VHDX conversion
   ansible.windows.win_powershell:
@@ -771,7 +791,8 @@
           Set-VMProcessor -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -Count {{ hyperv_ubuntu_vm_cpus }}
           Set-VMMemory -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -DynamicMemoryEnabled $false -StartupBytes $memory
           {% if hyperv_ubuntu_vm_secure_boot_enabled | bool %}
-          Set-VMFirmware -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -EnableSecureBoot On -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}'
+          Set-VMFirmware -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' `
+            -EnableSecureBoot On -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}'
           {% else %}
           Set-VMFirmware -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -EnableSecureBoot Off
           {% endif %}
@@ -871,7 +892,8 @@
               $vm = Get-VM -ComputerName $hypervServer -Name '{{ hyperv_ubuntu_vm_name }}' -ErrorAction Stop
             }
             {% if hyperv_ubuntu_vm_secure_boot_enabled | bool %}
-            Set-VMFirmware -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -EnableSecureBoot On -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}'
+            Set-VMFirmware -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' `
+            -EnableSecureBoot On -SecureBootTemplate '{{ hyperv_ubuntu_vm_secure_boot_template }}'
             {% else %}
             Set-VMFirmware -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -EnableSecureBoot Off
             {% endif %}
@@ -950,7 +972,9 @@
           $blockedIpv6 = @(
             '{{ host_ipv6 | default("") }}'
           ) | Where-Object { $_ }
-          $adapter = Get-VMNetworkAdapter -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue | Select-Object -First 1
+          $adapter = Get-VMNetworkAdapter -ComputerName $hypervServer `
+            -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue |
+            Select-Object -First 1
           $kvp = Get-VM -ComputerName $hypervServer -VMName '{{ hyperv_ubuntu_vm_name }}' -ErrorAction SilentlyContinue |
             Select-Object -ExpandProperty VMIntegrationService |
             Where-Object { $_.Name -eq 'Key-Value Pair Exchange' } |

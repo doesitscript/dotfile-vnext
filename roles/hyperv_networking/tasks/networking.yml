@@ -169,7 +169,13 @@
             interface_description = $intendedSelection.interface_description
             status = $intendedSelection.status
             mac_address = $intendedSelection.mac_address
-            match_basis = ($attempts | Where-Object { $_.matches.Count -eq 1 -and $_.matches[0].name -eq $intendedSelection.name } | Select-Object -First 1).basis
+            match_basis = (
+              $attempts |
+              Where-Object {
+                $_.matches.Count -eq 1 -and $_.matches[0].name -eq $intendedSelection.name
+              } |
+              Select-Object -First 1
+            ).basis
           }
           matched_candidates = @($intendedMatchedCandidates)
           candidate_pool = @($candidatePool)

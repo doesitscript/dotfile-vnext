@@ -1,0 +1,40 @@
+# Example offload item contracts for Hyper-V Ubuntu rebuild bases
+#
+# Usage:
+#   ansible-playbook playbooks/windows_artifact_cache_offload.yaml \
+#     -i inventory/inventory.yaml --limit HOM-LAB-HVH-02 \
+#     -e @roles/hyperv_ubuntu_vm/files/examples/windows_artifact_cache_offload_items.example.yml
+#
+# Edit hot_path / cold_paths to match the VM name and inventory paths.
+# Prefer COLD-DATA-HOST first when set (matches reclaim + product hydrate).
+
+windows_artifact_cache_offload_items:
+  - id: hyperv-ubuntu-cloud-archive
+    hot_path: >-
+      C:\ProgramData\Ansible\hyperv_ubuntu_vm\EXAMPLE-VM\ubuntu-24.04-server-cloudimg-amd64-azure.vhd.tar.gz
+    cold_paths:
+      - >-
+        H:\COLD-DATA-HOST\hyperv-cache\ubuntu-cloud-images\ubuntu-24.04-server-cloudimg-amd64-azure.vhd.tar.gz
+      - >-
+        \\HOM-LAB-HVH-02\public\hyperv-cache\ubuntu-cloud-images\ubuntu-24.04-server-cloudimg-amd64-azure.vhd.tar.gz
+    remove_hot_on_absent: true
+
+  - id: hyperv-ubuntu-cloud-source-vhd
+    hot_path: >-
+      C:\ProgramData\Ansible\hyperv_ubuntu_vm\EXAMPLE-VM\livecd.ubuntu-cpc.azure.vhd
+    cold_paths:
+      - >-
+        H:\COLD-DATA-HOST\hyperv-cache\ubuntu-cloud-images\livecd.ubuntu-cpc.azure.vhd
+      - >-
+        \\HOM-LAB-HVH-02\public\hyperv-cache\ubuntu-cloud-images\livecd.ubuntu-cpc.azure.vhd
+    remove_hot_on_absent: true
+
+  - id: hyperv-ubuntu-vendor-server-iso
+    hot_path: >-
+      C:\ProgramData\Ansible\hyperv_ubuntu_vm\EXAMPLE-VM\ubuntu-24.04.4-live-server-amd64.iso
+    cold_paths:
+      - >-
+        H:\COLD-DATA-HOST\hyperv-cache\ubuntu-isos\ubuntu-24.04.4-live-server-amd64.iso
+      - >-
+        \\HOM-LAB-HVH-02\public\hyperv-cache\ubuntu-isos\ubuntu-24.04.4-live-server-amd64.iso
+    remove_hot_on_absent: true
