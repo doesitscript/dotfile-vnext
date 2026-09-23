@@ -1,0 +1,47 @@
+=== homelab-ansible-first-entry ===
+Do not invent an approach. Pick a door, then open that skill.
+
+DOORS:
+  - If: Broken managed resource / interactive diagnosis then managed repair
+    → interactive-troubleshooting-to-managed-state (global; restore experiments before Ansible apply)
+  - If: Windows tool/package, Chocolatey, Setup.exe, HVH, AMD desktop
+    → windows-tool-capability-intake
+  - If: macOS CLI / Homebrew vs release binary
+    → macos-tool-install-decider-and-scaffold → tool-capability-intake
+  - If: Hugging Face model weights on the share
+    → hf-model-weight-lifecycle
+  - If: New product capability (Open WebUI-class): library→plan→apply
+    → homelab-product-capability-flow
+  - If: Generic / unclear-OS tool capability
+    → tool-capability-intake
+  - If: Ansible role/playbook design already in scope
+    → ansible-knowledge-gate (module matrix required)
+  - If: Broad project maturity / best practices
+    → project-maturity-router
+
+PROHIBITED as primary install:
+  - playbooks/troubleshoot/_tmp_* install playbooks
+  - New role files/*.ps1 curl/BITS download+install when windows_artifact_download / win_package apply
+  - Ad-hoc choco/pip/scp install as the primary install path
+  - Skipping module discovery (ansible-doc / Context7) before shell
+  - Invented ssh user@ip/-i/-p — use ssh <inventory_hostname> (homelab-ssh-alias-connect)
+  - Invented hosts: HOM-LAB-HVH-02 (or any bare hostname) before research + policy/*.yml + classify_homelab_hosts
+  - Inventing placement/when: without checking execution_roles / coverage.yml for unclassified structure
+
+Interactive SSH (nested skill homelab-ssh-alias-connect):
+  Resolve: bin/codex-env python .cursor/skills/homelab-ssh-alias-connect/scripts/resolve_ssh_alias.py --host <inventory_hostname>
+  Connect: ssh <inventory_hostname>   # Host alias from Ansible-managed ~/.ssh/config
+  Do not rebuild HostName/User/IdentityFile by hand from ansible_host
+
+Windows upstream Setup.exe preferred path:
+  1) chocolatey.chocolatey.win_chocolatey when healthy
+  2) Large/pinned Setup.exe: roles/windows_artifact_download + win_package (skill windows-artifact-download-apply)
+  3) Smaller/simple: ansible.windows.win_get_url (checksum + long timeout) + win_package
+  4) Owning role + inventory install_method — never a temp playbook
+
+Minimal receipt before mutate:
+  Entry door: <skill>
+  Owner role/playbook: <path or needs intake>
+  Install family candidates: <modules>
+  One-off exception?: no | user-explicit oneoffs
+  Next skill: <handoff>

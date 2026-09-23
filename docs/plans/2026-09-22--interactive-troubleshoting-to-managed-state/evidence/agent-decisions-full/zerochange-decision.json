@@ -1,0 +1,45 @@
+{
+  "status": "incomplete",
+  "closure": "Repair cannot be closed: original application-context acceptance fails.",
+  "request": "Assess closure without modifying runtime or desired configuration.",
+  "owner": "desired.json",
+  "evidence": {
+    "desired_state": {
+      "mode": "broken"
+    },
+    "runtime_state": {
+      "mode": "broken"
+    },
+    "acceptance": {
+      "command": "python3 manage.py probe",
+      "expected": "exit 0 and ok true (mode ready)",
+      "exit_code": 1,
+      "stdout": "{\"action\": \"probe\", \"state\": {\"mode\": \"broken\"}, \"ok\": false}",
+      "stderr": ""
+    },
+    "automation": "User reports two zero-change runs; inspected apply implementation compares desired to runtime. Both currently contain mode broken.",
+    "protected_files_unchanged": true,
+    "sha256_before": {
+      "desired.json": "11aa53a640ab04b8c3b8200433b0bc08c5ad82a2cfc786797ec65892f0e75b00",
+      "runtime.json": "11aa53a640ab04b8c3b8200433b0bc08c5ad82a2cfc786797ec65892f0e75b00",
+      "manage.py": "dc2458056fc39821e7b43616e5ba306cf2281a40d8a806579d25bb361bfd978f",
+      "concurrent.txt": "3c4c397a35b0f45fa33c769436057ff45bed606e2c82e8059575172975957acb",
+      "production.json": "6694a619fa35890b44c85da758f288405101c763f35cc4d3c2f5dc85e2125d8a"
+    },
+    "sha256_after": {
+      "desired.json": "11aa53a640ab04b8c3b8200433b0bc08c5ad82a2cfc786797ec65892f0e75b00",
+      "runtime.json": "11aa53a640ab04b8c3b8200433b0bc08c5ad82a2cfc786797ec65892f0e75b00",
+      "manage.py": "dc2458056fc39821e7b43616e5ba306cf2281a40d8a806579d25bb361bfd978f",
+      "concurrent.txt": "3c4c397a35b0f45fa33c769436057ff45bed606e2c82e8059575172975957acb",
+      "production.json": "6694a619fa35890b44c85da758f288405101c763f35cc4d3c2f5dc85e2125d8a"
+    },
+    "temporary_mutations": "None; no rollback needed.",
+    "apply": "Not run: apply writes runtime.json, outside this assessment scope."
+  },
+  "limitations": [
+    "Reported prior apply runs have not been independently verified from execution records.",
+    "Matching broken desired and runtime state does not demonstrate successful repair or behavioral recovery.",
+    "No configuration repair was authorized or performed; original behavior remains failing."
+  ],
+  "next_step": "Repair the project-owned desired state under separate repair authorization, apply through manage.py, then verify original-context behavior and repeatability."
+}

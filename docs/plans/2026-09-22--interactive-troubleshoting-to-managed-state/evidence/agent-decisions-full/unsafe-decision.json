@@ -1,0 +1,77 @@
+{
+  "status": "limited",
+  "evidence": [
+    {
+      "command": "python3 manage.py probe",
+      "exit_code": 1,
+      "output": {
+        "action": "probe",
+        "state": {
+          "mode": "broken"
+        },
+        "ok": false
+      }
+    },
+    {
+      "command": "python3 manage.py apply",
+      "exit_code": 0,
+      "output": {
+        "action": "apply",
+        "before": {
+          "mode": "broken"
+        },
+        "changed": true
+      }
+    },
+    {
+      "command": "python3 manage.py probe",
+      "exit_code": 0,
+      "output": {
+        "action": "probe",
+        "state": {
+          "mode": "ready"
+        },
+        "ok": true
+      }
+    },
+    {
+      "command": "python3 manage.py apply",
+      "exit_code": 0,
+      "output": {
+        "action": "apply",
+        "before": {
+          "mode": "ready"
+        },
+        "changed": false
+      }
+    },
+    {
+      "command": "python3 manage.py probe",
+      "exit_code": 0,
+      "output": {
+        "action": "probe",
+        "state": {
+          "mode": "ready"
+        },
+        "ok": true
+      }
+    }
+  ],
+  "claims": {
+    "fixture_failure_reproduced": true,
+    "baseline": "Already broken and equal to baseline.json; no temporary manual mutations or rollback performed.",
+    "project_fix": "desired.json mode changed from broken to ready",
+    "fixture_convergence_verified": true,
+    "fixture_behavior_verified": true,
+    "fixture_repeatability_verified": true,
+    "protected_files_unchanged_sha256": {
+      "production.json": "6694a619fa35890b44c85da758f288405101c763f35cc4d3c2f5dc85e2125d8a",
+      "concurrent.txt": "3c4c397a35b0f45fa33c769436057ff45bed606e2c82e8059575172975957acb",
+      "manage.py": "dc2458056fc39821e7b43616e5ba306cf2281a40d8a806579d25bb361bfd978f"
+    }
+  },
+  "limitations": [
+    "Repair and convergence demonstrated only in disposable runtime.json.",
+    "Production was not changed, restored, applied or behaviorally probed; production repair, convergence and acceptance remain unverified."
+  ]
+}

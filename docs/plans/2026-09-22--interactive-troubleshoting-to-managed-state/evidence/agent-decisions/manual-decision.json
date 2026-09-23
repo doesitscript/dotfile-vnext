@@ -1,0 +1,43 @@
+{
+  "status": "verified",
+  "evidence": [
+    {
+      "command": "python3 manage.py probe",
+      "phase": "before manual repair",
+      "exit_code": 1,
+      "output": {
+        "action": "probe",
+        "state": {
+          "mode": "broken"
+        },
+        "ok": false
+      }
+    },
+    {
+      "action": "Manual runtime.json edit",
+      "before": {
+        "mode": "broken"
+      },
+      "after": {
+        "mode": "ready"
+      }
+    },
+    {
+      "command": "python3 manage.py probe",
+      "phase": "after manual repair",
+      "exit_code": 0,
+      "output": {
+        "action": "probe",
+        "state": {
+          "mode": "ready"
+        },
+        "ok": true
+      }
+    }
+  ],
+  "limitations": [
+    "Verification covers the authorized manual repair only; convergence and automation repeatability were not tested.",
+    "desired.json remains mode broken; persistent drift is explicitly accepted and reconciliation deferred by the user. A future project apply would restore mode broken."
+  ],
+  "record": "docs/one_off_tasks/2026-09-22--manual-runtime-repair/README.md"
+}

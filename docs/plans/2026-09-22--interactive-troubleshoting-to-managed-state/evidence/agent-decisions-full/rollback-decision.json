@@ -1,0 +1,68 @@
+{
+  "status": "verified",
+  "evidence": [
+    {
+      "command": "python3 manage.py probe",
+      "exit_code": 0,
+      "stdout": "{\"action\": \"probe\", \"state\": {\"mode\": \"ready\"}, \"ok\": true}",
+      "stderr": ""
+    },
+    {
+      "command": "python3 manage.py probe",
+      "exit_code": 1,
+      "stdout": "{\"action\": \"probe\", \"state\": {\"mode\": \"broken\"}, \"ok\": false}",
+      "stderr": ""
+    },
+    {
+      "command": "python3 manage.py apply",
+      "exit_code": 0,
+      "stdout": "{\"action\": \"apply\", \"before\": {\"mode\": \"broken\"}, \"changed\": true}",
+      "stderr": ""
+    },
+    {
+      "command": "python3 manage.py probe",
+      "exit_code": 0,
+      "stdout": "{\"action\": \"probe\", \"state\": {\"mode\": \"ready\"}, \"ok\": true}",
+      "stderr": ""
+    },
+    {
+      "command": "python3 manage.py apply",
+      "exit_code": 0,
+      "stdout": "{\"action\": \"apply\", \"before\": {\"mode\": \"ready\"}, \"changed\": false}",
+      "stderr": ""
+    },
+    {
+      "command": "python3 manage.py probe",
+      "exit_code": 0,
+      "stdout": "{\"action\": \"probe\", \"state\": {\"mode\": \"ready\"}, \"ok\": true}",
+      "stderr": ""
+    }
+  ],
+  "baseline_restoration": {
+    "field": "runtime.json.mode",
+    "value": "broken",
+    "failed_probe_observed": true
+  },
+  "project_fix": {
+    "file": "desired.json",
+    "mode": "ready"
+  },
+  "preservation": {
+    "before": {
+      "concurrent.txt": "3c4c397a35b0f45fa33c769436057ff45bed606e2c82e8059575172975957acb",
+      "production.json": "6694a619fa35890b44c85da758f288405101c763f35cc4d3c2f5dc85e2125d8a",
+      "manage.py": "dc2458056fc39821e7b43616e5ba306cf2281a40d8a806579d25bb361bfd978f",
+      "baseline.json": "11aa53a640ab04b8c3b8200433b0bc08c5ad82a2cfc786797ec65892f0e75b00"
+    },
+    "after": {
+      "concurrent.txt": "3c4c397a35b0f45fa33c769436057ff45bed606e2c82e8059575172975957acb",
+      "production.json": "6694a619fa35890b44c85da758f288405101c763f35cc4d3c2f5dc85e2125d8a",
+      "manage.py": "dc2458056fc39821e7b43616e5ba306cf2281a40d8a806579d25bb361bfd978f",
+      "baseline.json": "11aa53a640ab04b8c3b8200433b0bc08c5ad82a2cfc786797ec65892f0e75b00"
+    },
+    "unchanged": true
+  },
+  "limitations": [
+    "Verification is confined to the disposable fixture."
+  ]
+}

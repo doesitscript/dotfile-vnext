@@ -1,0 +1,44 @@
+name: interactive-troubleshooting-to-managed-state
+kind: framework-integration
+global_owner: global-skills/skills/implementation/interactive-troubleshooting-to-managed-state
+owned_files:
+  - README.md
+  - plan.md
+  - approved-outline.md
+  - capability.yml
+  - implementation-accounting.md
+  - scenario-evaluation.md
+integration_files:
+  - AGENTS.md
+  - .cursor/rules/framework-troubleshooting-mode.mdc
+  - .cursor/rules/framework-agent-role-and-persona.mdc
+  - .cursor/rules/900--failure-and-diagnostics.mdc
+  - .cursor/skills/homelab-ansible-first-entry/
+  - .cursor/skills/catalog.yml
+  - .cursor/skills/ansible-knowledge-gate/SKILL.md
+  - docs/codex_framework/partner_process.md
+update_behavior: Update portable procedure globally; project anchors and entry route remain project-owned.
+removal_behavior: Reverse only integration edits; remove global catalog/eval registration and this skill's runtime symlinks before deleting its pack.
+apply: bin/sync-runtime-skills-hook.sh in global-skills
+verify: Global validators, scenario receipts, project routing and five runtime symlink checks.
+
+global_registration:
+  catalog: skills/catalog.yaml
+  evaluations: skills/evals/catalog.yaml
+  owned_pack: skills/implementation/interactive-troubleshooting-to-managed-state/
+  runtime_names:
+    - interactive-troubleshooting-to-managed-state
+
+extension_integration_files:
+  - docs/one_off_tasks/README.md
+  - docs/one_off_tasks/record-template.md
+  - skills/one-off/
+  - skills/implementation/project-skill-runtime-bridge/
+  - skills/catalog.yaml
+  - skills/README.md
+  - .pre-commit-config.yaml
+extension_owned_files:
+  - extension-receipt.md
+extension_generated_surfaces:
+  - .cursor/skills/ (catalog-selected managed names only)
+  - .agents/skills/ (same catalog-selected names)
