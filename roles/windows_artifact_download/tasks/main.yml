@@ -8,6 +8,9 @@
     state: directory
   when: windows_artifact_create_destination_directory | bool
 
+- name: Hydrate artifact from cold/shared cache when configured
+  ansible.builtin.include_tasks: hydrate_from_cold.yml
+
 - name: Inspect artifact state
   ansible.builtin.include_tasks: inspect.yml
 
@@ -22,3 +25,17 @@
 - name: Publish artifact
   ansible.builtin.include_tasks: publish.yml
   when: windows_artifact_download_required | bool
+
+- name: Seed published artifact into cold/shared cache when configured
+  ansible.builtin.include_tasks: seed_cold.yml
+  when: >-
+    (windows_artifact_cold_paths | default([]) | length) > 0
+    and (
+      (windows_artifact_download_required | default(false) | bool)
+      or (
+        (
+          windows_artifact_cache_results[windows_artifact_id ~ '-hydrate'].source
+          | default('')
+        ) == 'hot_already'
+      )
+    )

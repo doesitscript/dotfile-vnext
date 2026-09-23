@@ -1,0 +1,16 @@
+---
+# Optional seed of published destination into cold_paths[0] after download.
+
+- name: Seed Windows artifact destination into cold/shared cache
+  when:
+    - (windows_artifact_cold_paths | default([]) | length) > 0
+    - windows_artifact_seed_cold | bool
+  ansible.builtin.include_role:
+    name: windows_artifact_cache
+  vars:
+    windows_artifact_cache_state: present
+    windows_artifact_cache_items:
+      - id: "{{ windows_artifact_id }}-seed"
+        hot_path: "{{ windows_artifact_final_path }}"
+        cold_paths: "{{ windows_artifact_cold_paths }}"
+        seed_cold: true

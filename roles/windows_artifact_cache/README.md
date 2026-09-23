@@ -103,12 +103,30 @@ ansible-playbook playbooks/windows_artifact_cache_verify.yaml \
   -e @roles/hyperv_ubuntu_vm/files/examples/windows_artifact_cache_offload_items.example.yml
 ```
 
-Profiles (default): `hyperv_ubuntu_rebuild_bases` only.
-Opt in to `windows_pinned_installers` or `hyperv_gpu_p_payload` only after those
-product roles hydrate via this cache. Live guest `.vhdx` and `.VMRS` are never
-targeted. Remastered ISO reclaim requires `{vm_dir}-autoinstall.iso` naming
-(legacy scrap names are skipped). Product hydrate may still list a legacy
-basename via `hyperv_ubuntu_vm_legacy_hyperv_name` for mid-migration cold objects.
+Default profiles: `hyperv_ubuntu_rebuild_bases`, `windows_pinned_installers`.
+Live guest `.vhdx` and `.VMRS` are never targeted. Remastered ISO reclaim
+requires `{vm_dir}-autoinstall.iso` under that VM dir, or accepts a
+legacy-dirname file still named `{vm}-autoinstall.iso` under
+`hyperv_ubuntu_vm\` (cold object keeps that basename; product hydrate needs
+`legacy_hyperv_name` / rename for the next `present`).
+
+### GPU-P zip reclaim ≠ GPU-P share publish
+
+| Path | Role |
+| --- | --- |
+| `…\hyperv_ubuntu_gpu_p_runtime\windows_payload\windows-payload.zip` | Optional reclaim scrap (`hyperv_gpu_p_payload` **opt-in**). Not hydrated by current GPU-P product roles. |
+| `F:\shares\public\artifacts\hyperv_ubuntu_gpu_p_runtime\…` | Current GPU-P **share publish** tree (`hyperv_ubuntu_gpu_p_windows_artifact_publish`). Not this reclaim ladder. |
+
+Opt in to zip reclaim only after a product role hydrates that zip via
+`windows_artifact_cache`, or when deliberately archiving leftover scrap:
+
+```bash
+ansible-playbook playbooks/windows_artifact_cache_reclaim.yaml \
+  -i inventory/inventory.yaml --limit HOM-LAB-HVH-02 \
+  -e '{"windows_artifact_cache_reclaim_profiles":["hyperv_gpu_p_payload"],"windows_artifact_cache_reclaim_search_roots":["C:\\ProgramData\\Ansible\\hyperv_ubuntu_gpu_p_runtime"]}' \
+  -e windows_artifact_cache_reclaim_mode=apply
+```
+
 
 ## Apply / Verify / Undo / Change class
 
@@ -121,5 +139,6 @@ basename via `hyperv_ubuntu_vm_legacy_hyperv_name` for mid-migration cold object
 ## Related
 
 - Sibling download role: `windows_artifact_download`
-- First consumers: `hyperv_ubuntu_vm` (Azure archive + unpacked VHD + remastered ISO)
+- First consumers: `hyperv_ubuntu_vm` (Azure, Quick Create, vendor/remaster ISO),
+  `windows_artifact_download` (optional `cold_paths` / `seed_cold`)
 - HRL: `q-and-a/ansible/hyperv-cloud-image-hot-cold-cache-ladder.md`

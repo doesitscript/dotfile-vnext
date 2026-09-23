@@ -27,6 +27,57 @@
       checksum_url: "{{ hyperv_ubuntu_vm_quick_create_checksum_url }}"
       content_length: "{{ _hyperv_ubuntu_vm_quick_create_head.content_length | default('unknown') }}"
 
+- name: Build cold/shared path candidates for Quick Create artifacts
+  when: hyperv_ubuntu_vm_shared_cache_enabled | default(false) | bool
+  ansible.builtin.set_fact:
+    _hyperv_ubuntu_vm_quick_create_archive_cold_paths: >-
+      {{
+        (
+          [
+            hyperv_ubuntu_vm_cold_data_cloud_images
+            ~ '\\'
+            ~ hyperv_ubuntu_vm_quick_create_image_filename
+          ]
+          if (hyperv_ubuntu_vm_cold_data_cloud_images | default('') | length) > 0
+          else []
+        )
+        + [
+          hyperv_ubuntu_vm_shared_cache_cloud_images
+          ~ '\\'
+          ~ hyperv_ubuntu_vm_quick_create_image_filename
+        ]
+      }}
+    _hyperv_ubuntu_vm_quick_create_source_vhdx_cold_paths: >-
+      {{
+        (
+          [
+            hyperv_ubuntu_vm_cold_data_cloud_images
+            ~ '\\'
+            ~ hyperv_ubuntu_vm_quick_create_source_vhdx_name
+          ]
+          if (hyperv_ubuntu_vm_cold_data_cloud_images | default('') | length) > 0
+          else []
+        )
+        + [
+          hyperv_ubuntu_vm_shared_cache_cloud_images
+          ~ '\\'
+          ~ hyperv_ubuntu_vm_quick_create_source_vhdx_name
+        ]
+      }}
+  changed_when: false
+
+- name: Hydrate Quick Create archive from shared/cold cache
+  when: hyperv_ubuntu_vm_shared_cache_enabled | default(false) | bool
+  ansible.builtin.include_role:
+    name: windows_artifact_cache
+  vars:
+    windows_artifact_cache_state: present
+    windows_artifact_cache_items:
+      - id: hyperv-ubuntu-quick-create-archive
+        hot_path: "{{ hyperv_ubuntu_vm_host_quick_create_archive_path }}"
+        cold_paths: "{{ _hyperv_ubuntu_vm_quick_create_archive_cold_paths }}"
+        seed_cold: false
+
 - name: Ensure Canonical Hyper-V Quick Create archive is downloaded with BITS
   block:
     - name: Probe current Canonical Hyper-V Quick Create archive state
@@ -154,6 +205,38 @@
       delay: "{{ hyperv_ubuntu_vm_quick_create_download_poll_delay }}"
       when: not (_hyperv_ubuntu_vm_quick_create_archive_probe.result.matches_expected | default(false))
 
+- name: Seed Quick Create archive into shared/cold cache
+  when: >-
+    hyperv_ubuntu_vm_shared_cache_enabled | default(false) | bool
+    and (
+      (_hyperv_ubuntu_vm_quick_create_bits_start.changed | default(false))
+      or (
+        windows_artifact_cache_results['hyperv-ubuntu-quick-create-archive'].source
+        | default('')
+      ) == 'hot_already'
+    )
+  ansible.builtin.include_role:
+    name: windows_artifact_cache
+  vars:
+    windows_artifact_cache_state: present
+    windows_artifact_cache_items:
+      - id: hyperv-ubuntu-quick-create-archive
+        hot_path: "{{ hyperv_ubuntu_vm_host_quick_create_archive_path }}"
+        cold_paths: "{{ _hyperv_ubuntu_vm_quick_create_archive_cold_paths }}"
+        seed_cold: true
+
+- name: Hydrate Quick Create source VHDX from shared/cold cache
+  when: hyperv_ubuntu_vm_shared_cache_enabled | default(false) | bool
+  ansible.builtin.include_role:
+    name: windows_artifact_cache
+  vars:
+    windows_artifact_cache_state: present
+    windows_artifact_cache_items:
+      - id: hyperv-ubuntu-quick-create-source-vhdx
+        hot_path: "{{ hyperv_ubuntu_vm_host_quick_create_source_vhdx_path }}"
+        cold_paths: "{{ _hyperv_ubuntu_vm_quick_create_source_vhdx_cold_paths }}"
+        seed_cold: false
+
 - name: Extract Canonical Hyper-V Quick Create VHDX on Windows host when absent
   ansible.windows.win_powershell:
     error_action: stop
@@ -192,6 +275,27 @@
         extracted = $true
         path = $expected
       }
+  register: _hyperv_ubuntu_vm_quick_create_extract
+
+- name: Seed Quick Create source VHDX into shared/cold cache
+  when: >-
+    hyperv_ubuntu_vm_shared_cache_enabled | default(false) | bool
+    and (
+      (_hyperv_ubuntu_vm_quick_create_extract.changed | default(false))
+      or (
+        windows_artifact_cache_results['hyperv-ubuntu-quick-create-source-vhdx'].source
+        | default('')
+      ) == 'hot_already'
+    )
+  ansible.builtin.include_role:
+    name: windows_artifact_cache
+  vars:
+    windows_artifact_cache_state: present
+    windows_artifact_cache_items:
+      - id: hyperv-ubuntu-quick-create-source-vhdx
+        hot_path: "{{ hyperv_ubuntu_vm_host_quick_create_source_vhdx_path }}"
+        cold_paths: "{{ _hyperv_ubuntu_vm_quick_create_source_vhdx_cold_paths }}"
+        seed_cold: true
 
 - name: Ensure role-owned VHDX exists from the Quick Create source image
   ansible.windows.win_powershell:

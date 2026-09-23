@@ -35,6 +35,8 @@
           },
           'preserve_partial_on_failure': true,
           'create_destination_directory': true,
+          'cold_paths': [],
+          'seed_cold': false,
           'checksum': {
             'algorithm': 'sha256',
             'value': ''
@@ -53,6 +55,8 @@
       {{ windows_artifact['checksum']['algorithm'] | default('sha256') }}
     windows_artifact_checksum_value: >-
       {{ windows_artifact['checksum']['value'] | lower }}
+    windows_artifact_cold_paths: "{{ windows_artifact['cold_paths'] | default([]) }}"
+    windows_artifact_seed_cold: "{{ windows_artifact['seed_cold'] | default(false) | bool }}"
   changed_when: false
 
 # Flat keys for when:/templates — dict dot notation fails on merged mappings.

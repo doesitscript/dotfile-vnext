@@ -95,16 +95,23 @@
               continue
             }
             if ($name -match '(?i)-autoinstall\.iso$') {
-              # Product contract is {vm_dir}-autoinstall.iso under hyperv_ubuntu_vm\{vm_dir}\.
-              # Skip legacy/scrap names that present will never hydrate.
+              # Prefer {vm_dir}-autoinstall.iso under hyperv_ubuntu_vm\{vm_dir}\.
+              # Also accept legacy-dirname layout when the file basename still
+              # matches {vm}-autoinstall.iso (cold keeps that basename).
               $parentDir = [System.IO.Path]::GetFileName([System.IO.Path]::GetDirectoryName($full))
-              if ($name -ine ($parentDir + '-autoinstall.iso')) { continue }
+              $canonical = ($name -ieq ($parentDir + '-autoinstall.iso'))
+              $underHypervTree = ($full -match '(?i)\\hyperv_ubuntu_vm\\')
+              if (-not $canonical -and -not $underHypervTree) { continue }
+              if (-not $canonical -and ($name -notmatch '(?i)^[A-Za-z0-9._-]+-autoinstall\.iso$')) { continue }
               Add-Candidate $found "remastered-iso-$relId" $full 'remastered_iso' 'remastered-isos' 'hyperv_ubuntu_rebuild_bases'
               continue
             }
             if ($name -match '(?i)-autoinstall\.signature$') {
               $parentDir = [System.IO.Path]::GetFileName([System.IO.Path]::GetDirectoryName($full))
-              if ($name -ine ($parentDir + '-autoinstall.signature')) { continue }
+              $canonical = ($name -ieq ($parentDir + '-autoinstall.signature'))
+              $underHypervTree = ($full -match '(?i)\\hyperv_ubuntu_vm\\')
+              if (-not $canonical -and -not $underHypervTree) { continue }
+              if (-not $canonical -and ($name -notmatch '(?i)^[A-Za-z0-9._-]+-autoinstall\.signature$')) { continue }
               Add-Candidate $found "remastered-sig-$relId" $full 'remastered_signature' 'remastered-isos' 'hyperv_ubuntu_rebuild_bases'
               continue
             }
@@ -118,7 +125,7 @@
             }
           }
 
-          if ($wantPinned -and ($full -match '(?i)\\artifacts\\')) {
+          if ($wantPinned -and ($full -match '(?i)\\(artifacts|downloads)\\')) {
             if ($name -match '(?i)\.(exe|msi|zip)$') {
               Add-Candidate $found "pinned-$relId" $full 'pinned_installer' 'pinned-installers' 'windows_pinned_installers'
               continue

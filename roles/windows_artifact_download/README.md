@@ -41,3 +41,23 @@ checksum verification, and atomic publish from `.partial` to the final path.
 
 The product role then installs/configures the published file
 (`win_package`, extract, etc.). Keep download and install responsibilities separate.
+
+## Optional cold/shared hydrate
+
+Pass `cold_paths` (and usually `seed_cold: true`) so the destination is restored
+from `windows_artifact_cache` before HTTP download, and seeded back after a real
+download:
+
+```yaml
+windows_artifact:
+  id: "example-tool-1.2.3"
+  url: "https://example.com/tool-1.2.3.exe"
+  destination: 'C:\ProgramData\Ansible\artifacts\tool-1.2.3.exe'
+  checksum:
+    algorithm: sha256
+    value: "abc123..."
+  cold_paths:
+    - 'H:\COLD-DATA-HOST\hyperv-cache\pinned-installers\tool-1.2.3.exe'
+    - '\\HOM-LAB-HVH-02\public\hyperv-cache\pinned-installers\tool-1.2.3.exe'
+  seed_cold: true
+```

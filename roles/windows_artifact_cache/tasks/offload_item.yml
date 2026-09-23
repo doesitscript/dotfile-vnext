@@ -55,9 +55,13 @@
 
       # Always ensure destination parent tree exists for offload.
       # Use .NET GetDirectoryName — Split-Path -LiteralPath cannot combine with -Parent.
+      # Only create when missing: New-Item -Force on an existing ACL-restricted
+      # share root (e.g. UNC) raises UnauthorizedAccess even when the dir exists.
       $parent = [System.IO.Path]::GetDirectoryName($primaryCold)
       if (-not [string]::IsNullOrWhiteSpace($parent)) {
-        New-Item -ItemType Directory -Path $parent -Force -ErrorAction Stop | Out-Null
+        if (-not (Test-Path -LiteralPath $parent)) {
+          New-Item -ItemType Directory -Path $parent -Force -ErrorAction Stop | Out-Null
+        }
       }
 
       if (Test-Path -LiteralPath $primaryCold) {

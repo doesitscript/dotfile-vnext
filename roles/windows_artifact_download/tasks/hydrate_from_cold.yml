@@ -1,0 +1,15 @@
+---
+# Optional hydrate from windows_artifact.cold_paths before download/inspect.
+# No-op when cold_paths is empty or unset.
+
+- name: Hydrate Windows artifact destination from cold/shared cache
+  when: (windows_artifact_cold_paths | default([]) | length) > 0
+  ansible.builtin.include_role:
+    name: windows_artifact_cache
+  vars:
+    windows_artifact_cache_state: present
+    windows_artifact_cache_items:
+      - id: "{{ windows_artifact_id }}-hydrate"
+        hot_path: "{{ windows_artifact_final_path }}"
+        cold_paths: "{{ windows_artifact_cold_paths }}"
+        seed_cold: false

@@ -64,13 +64,17 @@ The role treats the VM as one capability:
 
 ## Shared / cold artifact cache
 
-Large rebuild bases (Azure `.tar.gz`, unpacked `.vhd`, vendor/remastered ISOs)
-use the reusable role `windows_artifact_cache`:
+Large rebuild bases (Azure `.tar.gz`, unpacked `.vhd`, vendor/remastered ISOs,
+Quick Create `.vhdx.zip` + desktop VHDX) use the reusable role
+`windows_artifact_cache`:
 
 1. Hydrate hot path from ordered cold candidates — **COLD-DATA-HOST first** when
    `hyperv_ubuntu_vm_cold_data_root` is set, then shared UNC
 2. Download/build only on miss
 3. Seed `cold_paths[0]` (same preference) for later reclaim/hydrate
+
+Pinned Setup.exe consumers use `windows_artifact_download` with optional
+`cold_paths` / `seed_cold`.
 
 Remastered ISO restore is hydrate-then-verify (signature on hot), not UNC-only
 probe, so reclaim to H: still feeds the next `present` run. After a Hyper-V

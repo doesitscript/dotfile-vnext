@@ -1,10 +1,14 @@
 ---
 # Occasional reclaim of hot Windows rebuild bases into cold/shared storage.
 #
-# Discovers rebuild-base classes that product roles hydrate via
-# windows_artifact_cache (Azure VHD/tar.gz, vendor/remastered ISOs by default).
-# Opt-in profiles (pass via -e): windows_pinned_installers, hyperv_gpu_p_payload
-# — only after those product roles hydrate through this contract.
+# Default profiles:
+#   - hyperv_ubuntu_rebuild_bases (Azure VHD/tar.gz, vendor/remastered ISOs,
+#     Quick Create .vhdx.zip + unpacked desktop VHDX)
+#   - windows_pinned_installers (artifacts\ + downloads\ *.exe|msi|zip via
+#     windows_artifact_download / Ollama)
+# Opt-in (-e): hyperv_gpu_p_payload — leftover windows-payload.zip ONLY.
+#   That zip path is NOT the GPU-P share publish tree
+#   (F:\shares\public\artifacts\hyperv_ubuntu_gpu_p_runtime\…).
 # Does NOT touch live guest VHDX or Hyper-V .VMRS save-state files.
 #
 # Preview (default — no deletes):

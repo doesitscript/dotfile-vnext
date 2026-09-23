@@ -27,17 +27,21 @@ windows_artifact_cache_defaults:
   create_directories: true
 
 # --- Occasional reclaim (preview|apply) ---
-# Discover hot rebuild bases that match the same classes hydrated by product
-# roles (hyperv_ubuntu_vm cloud images/ISOs, pinned installers).
-# GPU-P / pinned-installer profiles are opt-in until those product roles
-# hydrate via this cache (same anti-pattern gate as unreclaimed GPU-P).
+# Discover hot rebuild bases that match classes product roles hydrate:
+#   - hyperv_ubuntu_rebuild_bases (Azure/ISO/Quick Create via hyperv_ubuntu_vm)
+#   - windows_pinned_installers (windows_artifact_download / Ollama Setup.exe)
+# Opt in to hyperv_gpu_p_payload only after a GPU-P role hydrates
+# windows-payload.zip via this cache (current GPU-P product uses share publish,
+# not the zip ladder — see README).
 windows_artifact_cache_reclaim_mode: preview
 windows_artifact_cache_reclaim_profiles:
   - hyperv_ubuntu_rebuild_bases
+  - windows_pinned_installers
 
 # Prefer COLD-DATA-HOST first on reclaim so offload frees OS/hot disks.
-# Shared UNC remains a fallback cold_path. Product hydrate builders use the
-# same order (cold root when set, then UNC).
+# Shared UNC remains a fallback cold_path (and is cold_paths[0] when
+# cold_data_root is empty — e.g. HOM-LAB-HVH-01). Product hydrate builders
+# use the same order.
 windows_artifact_cache_reclaim_shared_unc: >-
   {{
     hyperv_ubuntu_vm_shared_cache_unc
@@ -55,7 +59,11 @@ windows_artifact_cache_reclaim_search_roots: >-
       [
         windows_hyperv_vm_storage_root | default(''),
         'C:\ProgramData\Ansible\hyperv_ubuntu_vm',
-        'C:\ProgramData\Ansible\artifacts'
+        'D:\ProgramData\Ansible\hyperv_ubuntu_vm',
+        'C:\ProgramData\Ansible\artifacts',
+        'D:\ProgramData\Ansible\artifacts',
+        'C:\ProgramData\Ansible\downloads',
+        'D:\ProgramData\Ansible\downloads'
       ]
       | reject('equalto', '')
       | list
