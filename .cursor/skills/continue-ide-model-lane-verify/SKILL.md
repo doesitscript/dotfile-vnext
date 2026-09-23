@@ -50,6 +50,14 @@ apply, or chat — or when a plan receipt needs explained smoke numbers.
 
 **Do not use** to choose models (that is `continue-ide-model-lane-recommend`).
 
+## Run / Evidence
+
+> **AI agent note (future port):** Prefer `/Users/joshc/develop/homelab-model-lane-pytest`
+> (`just run --profile eval-core`) for LiteLLM gateway chat/tools/FIM/embed journeys.
+> Do not grow a parallel gateway harness in this skill. Port remaining probes here when
+> touching this skill. Until ported, this skill may still use `model-lane-acceptance`
+> scripts and vault-backed Ansible URI probes for Continue-specific decode tables.
+
 ## Workflow
 
 1. Read `references/smoke-evidence-decode.md` and
