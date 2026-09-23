@@ -32,6 +32,7 @@
       tags: [aws_iac, aws_iac_mcp, mcp]
     - role: mcp_servers/redhat-ansible
       tags: [redhat-ansible]
+      when: redhat_ansible_mcp_state | default('present') == 'present'
     - role: mcp_servers/openai_docs
       tags: [openai_docs]
     - role: mcp_servers/context7
@@ -58,5 +59,26 @@
       tags: [huggingface]
     - role: mcp_servers/mcp-sysoperator
       tags: [mcp-sysoperator]
+      when: mcp_sysoperator_state | default('present') == 'present'
     - role: continue_ide
       tags: [continue, continue_ide, mcp]
+
+  post_tasks:
+    - name: Apply MCP enabled toggles to JSON client configurations
+      ansible.builtin.shell: >-
+        test -f '{{ item }}' && jq --argjson toggles '{{ mcp_tool_enabled | default({}) | to_json }}'
+        'if .mcpServers then .mcpServers |= with_entries(
+          if ($toggles[.key] != null) then
+            .value.disabled = ($toggles[.key] | not)
+          else . end
+        ) else . end' '{{ item }}' > '{{ item }}.tmp' && mv '{{ item }}.tmp' '{{ item }}' || true
+      args:
+        executable: /bin/bash
+      loop:
+        - "{{ ansible_env.HOME }}/.cursor/mcp.json"
+        - "{{ dotfiles_home }}/.cursor/mcp.json"
+        - "{{ dotfiles_home }}/.vscode/mcp.json"
+      when:
+        - mcp_tool_enabled is defined
+      changed_when: false
+      tags: [mcp, mcp_enablement]

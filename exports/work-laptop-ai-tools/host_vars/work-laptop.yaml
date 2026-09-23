@@ -204,6 +204,25 @@ firecrawl_mcp_wrapper_path: "{{ playbook_dir }}/bin/mcp-server-env-wrapper"
 firecrawl_mcp_vault_file_path: "{{ work_laptop_mcp_vault_file }}"
 
 morph_mcp_state: present
+mcp_non_morph_enabled: false
+mcp_tool_enabled:
+  morph-mcp: true
+  context7: false
+  firecrawl: false
+  terraform: false
+  aws: false
+  aws-iac: false
+  playwright: false
+  fetch: false
+  firebase: false
+  drawio: false
+  netbox: false
+  openaiDeveloperDocs: false
+  langfuse-docs: false
+  hf-mcp-server: false
+  sysoperator: false
+  ansible: false
+  codex: false
 morph_mcp_targets: [codex]
 morph_mcp_codex_config_path: "{{ work_laptop_mcp_codex_config_path }}"
 morph_mcp_env_file_path: "{{ work_laptop_mcp_env_dir }}/morph.env"
@@ -301,7 +320,7 @@ continue_ide_vault_file_path: "{{ playbook_dir }}/vault/shared.vault.yml"
 # Local DMR/llama.cpp autocomplete is allowed; remote LiteLLM/vLLM autocomplete stays blocked.
 continue_ide_autocomplete_enabled: true
 # Pin firebase-tools for Continue MCP (sibling 2026-09-10); use nvm-exec, not npx@latest.
-continue_ide_provision_firebase_cli: true
+continue_ide_provision_firebase_cli: false
 continue_ide_firebase_tools_version: "15.30.0"
 continue_ide_models:
   # Primary local chat — Qwen3-Coder AWQ on 5090 (sequential with Qwen3.6).
@@ -440,34 +459,6 @@ continue_ide_local_models:
 # Legacy alias for continue_ide template; must stay empty (no provider:ollama).
 continue_ide_ollama_local_models: []
 continue_ide_mcp_servers:
-  - name: "Terraform MCP"
-    type: "stdio"
-    command: "{{ ansible_env.HOME }}/.local/bin/terraform-mcp-server"
-    args:
-      - "stdio"
-  - name: "AWS MCP"
-    type: "streamable-http"
-    # Inbox 2026-09-10: base URL initializes (200 + Mcp-Session-Id); ?oauth=initialize
-    # returned a bearer challenge on direct initialize and is not the working candidate.
-    url: "https://aws-mcp.us-east-1.api.aws/mcp"
-  - name: "AWS IaC MCP"
-    type: "stdio"
-    # Pin package (laptop 2026-09-10); omit AWS_REGION by default (working consumer config).
-    command: "{{ aws_iac_mcp_command | default('/opt/homebrew/opt/uv/bin/uvx') }}"
-    args:
-      - "awslabs.aws-iac-mcp-server@1.0.26"
-    env: "{{ {'FASTMCP_LOG_LEVEL': 'ERROR'} | combine(({'AWS_PROFILE': aws_iac_mcp_aws_profile}) if ((aws_iac_mcp_aws_profile | default('') | length) > 0) else {}) }}"
-  - name: context7
-    type: stdio
-    command: "{{ work_laptop_nvm_exec }}"
-    args:
-      - context7-mcp
-  - name: firebase
-    type: stdio
-    command: "{{ work_laptop_nvm_exec }}"
-    args:
-      - firebase
-      - mcp
   # WarpGrep: do not list continue_ide_rules for morph — morph role drops
   # ~/.continue/rules/morph-warpgrep-evaluation.md (Continue loads it).
   - name: morph-mcp
@@ -481,17 +472,6 @@ continue_ide_mcp_servers:
       WORKSPACE_MODE: "true"
       # Prefer npm global + ~/.local/bin; do not dump full GUI PATH from inbox.
       PATH: "{{ ansible_env.HOME }}/.npm-packages/bin:{{ ansible_env.HOME }}/.local/bin:{{ ansible_env.PATH }}"
-  # zetbrush/multiagents peer MCP (requires multiagents_state=present + Bun).
-  # Agent types are claude|codex|gemini|custom; Continue uses custom (ClaudeAdapter).
-  - name: multiagents-peer
-    type: stdio
-    command: "{{ multiagents_bun_install_dir | default(ansible_env.HOME ~ '/.bun/bin') }}/multiagents"
-    args:
-      - mcp-server
-      - --agent-type
-      - "{{ multiagents_continue_peer_agent_type | default('custom') }}"
-    env:
-      PATH: "{{ multiagents_bun_install_dir | default(ansible_env.HOME ~ '/.bun/bin') }}:{{ ansible_env.PATH }}"
 continue_ide_blocked_lanes:
   - "qwen2.5-coder-14b (undersized for 5090 — prefer qwen3-coder-30b-a3b)"
   - "qwen2.5-coder-32b (replaced 2026-09-10 by qwen3-coder-30b-a3b)"
@@ -708,7 +688,7 @@ morph_mcp_routing_enable_codex_default: false
 morph_mcp_routing_enable_codex_worker: false
 morph_mcp_routing_enable_cursor_rule: false
 morph_mcp_routing_enable_copilot_instructions: false
-morph_mcp_continue_enabled: false
+morph_mcp_continue_enabled: true
 
 # --- context7 MCP ---
 context7_mcp_state: present

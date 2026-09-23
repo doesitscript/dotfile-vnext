@@ -43,8 +43,8 @@
       {% if _mcp_codex_entry.tool_timeout_sec is defined %}
       tool_timeout_sec = {{ _mcp_codex_entry.tool_timeout_sec | int }}
       {% endif %}
-      {% if _mcp_codex_entry.enabled is defined %}
-      enabled = {{ _mcp_codex_entry.enabled | to_json }}
+      {% if _mcp_codex_entry.enabled is defined or _mcp_codex_server_key != 'morph-mcp' %}
+      enabled = {{ (mcp_tool_enabled | default({})).get(_mcp_codex_server_key, _mcp_codex_entry.enabled | default(false)) | bool | to_json }}
       {% endif %}
       {% if _mcp_codex_entry.required is defined %}
       required = {{ _mcp_codex_entry.required | to_json }}

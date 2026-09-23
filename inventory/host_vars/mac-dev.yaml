@@ -160,12 +160,28 @@ dstl8_cli_state: present
 #   - versions: inventory/group_vars/all/multiagents_tooling.yml
 #   - role/docs: roles/multiagents/README.md
 # MCP / broker / Codex·Cursor scenario wiring deferred (later pass).
-multiagents_state: present
+multiagents_state: absent
 
-# MCP stack — Continue + Cursor user (~/.cursor/mcp.json) match work-laptop
-# packet Continue catalog (Terraform, AWS, AWS IaC, context7, firebase, morph,
-# multiagents-peer). Cursor user path override keeps Agent namespaces in
-# ~/.cursor/mcp.json (same surface Morph already uses).
+# MCP stack — all non-Morph MCP servers are deployed but disabled by default.
+mcp_non_morph_enabled: false
+mcp_tool_enabled:
+  morph-mcp: true
+  context7: false
+  firecrawl: false
+  terraform: false
+  aws: false
+  aws-iac: false
+  playwright: false
+  fetch: false
+  firebase: false
+  drawio: false
+  netbox: false
+  langfuse-docs: false
+  hf-mcp-server: false
+  sysoperator: false
+  ansible: false
+  openaiDeveloperDocs: false
+  codex: false
 mac_dev_cursor_user_mcp_path: "{{ ansible_env.HOME }}/.cursor/mcp.json"
 mac_dev_nvm_bin: "{{ ansible_env.HOME }}/.nvm/versions/node/v20.20.0/bin"
 mac_dev_mcp_env_dir: "{{ ansible_env.HOME }}/.config/dotfile-vnext/mcp/env.d"
@@ -185,9 +201,11 @@ firecrawl_mcp_cursor_config_path: "{{ mac_dev_cursor_user_mcp_path }}"
 morph_mcp_state: present
 morph_mcp_targets:
   - cursor_user
+  - vscode
   - codex
 
 terraform_mcp_state: present
+terraform_mcp_force_reinstall: true
 terraform_mcp_targets:
   - cursor
 terraform_mcp_cursor_config_path: "{{ mac_dev_cursor_user_mcp_path }}"
@@ -207,33 +225,10 @@ aws_iac_mcp_package_name: "awslabs.aws-iac-mcp-server@1.0.26"
 # Prefer existing uvx (pipx/local); skip Homebrew uv compile on Monterey.
 aws_iac_mcp_command: "{{ ansible_env.HOME }}/.local/bin/uvx"
 
-# Continue MCP list — same names/roles as work-laptop packet (home-Mac paths).
+# Continue MCP list — Morph only; Cline mirrors this list.
 # Do NOT also list continue_ide_rules for morph-warpgrep-evaluation.md.
 continue_ide_rules: []
 continue_ide_mcp_servers:
-  - name: "Terraform MCP"
-    type: "stdio"
-    command: "{{ ansible_env.HOME }}/.local/bin/terraform-mcp-server"
-    args:
-      - "stdio"
-  - name: "AWS MCP"
-    type: "streamable-http"
-    url: "https://aws-mcp.us-east-1.api.aws/mcp"
-  - name: "AWS IaC MCP"
-    type: "stdio"
-    command: "{{ ansible_env.HOME }}/.local/bin/uvx"
-    args:
-      - "awslabs.aws-iac-mcp-server@1.0.26"
-    env:
-      FASTMCP_LOG_LEVEL: "ERROR"
-  - name: context7
-    type: stdio
-    command: "{{ mac_dev_nvm_bin }}/context7-mcp"
-  - name: firebase
-    type: stdio
-    command: "{{ mac_dev_nvm_bin }}/firebase"
-    args:
-      - mcp
   - name: morph-mcp
     type: stdio
     command: "{{ ansible_env.HOME }}/develop/dotfile-vnext/bin/mcp-server-env-wrapper"
@@ -243,15 +238,6 @@ continue_ide_mcp_servers:
     cwd: "{{ ansible_env.HOME }}/develop/dotfile-vnext"
     env:
       WORKSPACE_MODE: "true"
-  - name: multiagents-peer
-    type: stdio
-    command: "{{ ansible_env.HOME }}/.bun/bin/multiagents"
-    args:
-      - mcp-server
-      - --agent-type
-      - custom
-    env:
-      PATH: "{{ ansible_env.HOME }}/.bun/bin:{{ ansible_env.PATH }}"
 
 playwright_mcp_state: present
 playwright_mcp_targets:
@@ -274,8 +260,17 @@ firebase_mcp_cursor_config_path: "{{ mac_dev_cursor_user_mcp_path }}"
 firebase_mcp_command: "{{ mac_dev_nvm_bin }}/firebase"
 firebase_mcp_args:
   - mcp
-continue_ide_provision_firebase_cli: true
+continue_ide_provision_firebase_cli: false
 continue_ide_firebase_tools_version: "15.30.0"
+# Keep every other MCP role explicitly absent so role defaults cannot
+# repopulate non-Morph servers on this host.
+drawio_mcp_state: present
+netbox_mcp_state: present
+openai_docs_mcp_state: present
+langfuse_docs_mcp_state: present
+huggingface_mcp_state: present
+mcp_sysoperator_state: present
+redhat_ansible_mcp_state: present
 # multiagents Cursor MCP — match Continue/packet (absolute multiagents + custom).
 cursor_multiagents_mcp_agent_type: custom
 cursor_multiagents_mcp_entry:
