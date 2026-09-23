@@ -23,7 +23,9 @@ validated for:
 In scope:
 
 - clock offsets and power/temperature limits
-- fan strategy and thermal guardrails
+- fan strategy and thermal guardrails (**check host
+  `cooling_contract` first** — liquid-cooled HVH-02 uses Corsair radiator
+  curves; GPU `fan.speed` is not the acoustic proxy)
 - startup persistence checks after reboot
 - lightweight benchmark and stress loops
 

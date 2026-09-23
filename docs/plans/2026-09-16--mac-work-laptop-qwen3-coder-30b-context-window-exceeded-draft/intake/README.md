@@ -10,6 +10,9 @@ draft plan
 | --- | --- |
 | [2026-09-16--conversation-and-operator-report.md](2026-09-16--conversation-and-operator-report.md) | Conversation intent + structured report of what was seen |
 | [2026-09-16--followup-folder-search-context.md](2026-09-16--followup-folder-search-context.md) | Unstructured folder search + overflow/drift follow-up |
+| [2026-09-16--host-clarification-work-laptop-not-controller.md](2026-09-16--host-clarification-work-laptop-not-controller.md) | Incident host = work laptop, not Mac controller |
+| [lab-evidence-2026-09-16/](lab-evidence-2026-09-16/) | Live LiteLLM Request Inspector + vLLM gather (read-only) |
+| [2026-09-17--library-research-context-budget.md](2026-09-17--library-research-context-budget.md) | HRL/Context7 fill + client/lab config levers |
 | [raw-error.txt](raw-error.txt) | Verbatim error string from the Mac work laptop |
 
 ## Confirmation gates (before any fix work)

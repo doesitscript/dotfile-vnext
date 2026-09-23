@@ -28,10 +28,12 @@ operator_constraints:
 slice until Mac client drift is ruled in or out and the failure is reproduced
 on a known-current surface.
 
-**Why `-draft`:** Operator reported the error from the Mac work laptop; that
-machine’s Continue/IDE LiteLLM wiring may be deprecated or out of sync with
-repo SSOT. This packet preserves the conversation + raw report without
-assuming the failure is still true of the managed stack.
+**Why `-draft`:** Operator reported the error from the **Mac work laptop** (not
+the Mac controller); that machine’s Continue/IDE LiteLLM wiring may be
+deprecated or out of sync with repo SSOT / the work-laptop export packet.
+This packet preserves the conversation + raw report without assuming the
+failure is still true of the managed stack. Do not use controller-local
+client config as the primary drift evidence.
 
 ## Summary
 
@@ -56,6 +58,7 @@ Token arithmetic from the error (not independently verified this turn):
 | [intake/README.md](intake/README.md) | Intake index and confirmation gates |
 | [intake/2026-09-16--conversation-and-operator-report.md](intake/2026-09-16--conversation-and-operator-report.md) | Conversation framing + operator narrative |
 | [intake/raw-error.txt](intake/raw-error.txt) | Verbatim client/gateway error text |
+| [intake/lab-evidence-2026-09-16/](intake/lab-evidence-2026-09-16/) | Live LiteLLM inspector + vLLM logs matching the overflow |
 
 ## Apply / Verify / Undo / Change class
 
@@ -105,6 +108,7 @@ owns only files under this plan folder.
 
 - [x] Create draft plan folder with `-draft` suffix
 - [x] Store conversation + raw error under `intake/`
+- [x] Gather most-helpful lab surfaces (LiteLLM Request Inspector, LiteLLM error logs, inspector dumps, vLLM 400) into `intake/lab-evidence-2026-09-16/`
 - [ ] Confirm whether Mac work-laptop client config matches current Ansible SSOT
 - [ ] Reproduce (or fail to reproduce) on a known-current managed client
 - [ ] Decide: promote to implementation packet, reject as stale drift, or route to a named sibling plan

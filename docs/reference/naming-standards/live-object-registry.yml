@@ -56,6 +56,7 @@ live_hosts:
     platform_slug: windows-server-2025
     cluster: null
     gpu: gtx-1060-6gb
+    cooling_method: air
     runtime_slug: ollama-secondary-hvh-01
     runtime_lane: code-review
     runtime_capability_state: planned_apply
@@ -70,12 +71,14 @@ live_hosts:
     connection_profile: ssh_primary_winrm_fallback
     netbox_status: active
     host_vars: inventory/host_vars/HOM-LAB-HVH-01.yaml
+    note: Air-cooled only; see host_vars cooling_contract
 
   HOM-LAB-HVH-02:
     object_type: device
     role_code: hvh
     platform_slug: windows-server-2025
     cluster: null
+    cooling_method: liquid
     primary_lan_ip: "192.168.50.158"
     guest_subnet: 192.168.137.0/24
     lane_group: hyperv_lane_gpu
@@ -85,6 +88,9 @@ live_hosts:
     connection_profile: ssh_primary_winrm_fallback
     netbox_status: active
     host_vars: inventory/host_vars/HOM-LAB-HVH-02.yaml
+    note: >-
+      Fully liquid-cooled (Corsair radiator fan curves). Do not use nvidia-smi
+      fan.speed alone as load/idle proof; see host_vars cooling_contract.
 
   hom-lab-ctl-dkr-01:
     object_type: virtual_machine
@@ -440,24 +446,34 @@ model_lanes:
       notes: >-
         gateway alias only; not a separate weight download. Trim mutate archived
         2026-07; diagnostics trim narrative outdated 2026-09-09.
-    - slug: code-fast
-      purpose: autocomplete, small edits, repo questions
-      routing_policy: local-preferred
-      primary_guest: null
-      primary_host: HOM-LAB-HVH-01
-      catalog_lane: code-fast
-      status: selected
-      notes: >-
-        LiteLLM alias to Ollama qwen2.5-coder:1.5b on HVH-01 GTX 1060
-        (same backend as code-autocomplete-1.5b). Not a separate 7B runtime.
-    - slug: code-autocomplete-1.5b
-      purpose: Continue autocomplete Qwen2.5-Coder 1.5B
+    - slug: qwen2.5-coder-1.5b-base-q8_0
+      purpose: Continue autocomplete Qwen2.5-Coder 1.5B FIM
       routing_policy: local-continue-autocomplete
       primary_guest: null
       primary_host: HOM-LAB-HVH-01
-      catalog_lane: code-autocomplete-1.5b
+      catalog_lane: qwen2.5-coder-1.5b-base-q8_0
       status: selected
-      notes: Client alias; backend is Ollama on HVH-01 via LiteLLM openai/ route.
+      notes: >-
+        Canonical LiteLLM client id. Backend Ollama on HVH-01. Retired purpose
+        labels: code-autocomplete-1.5b, code-fast (2026-09-22).
+    - slug: code-fast
+      purpose: RETIRED purpose label — use qwen2.5-coder-1.5b-base-q8_0
+      routing_policy: local-preferred
+      primary_guest: null
+      primary_host: HOM-LAB-HVH-01
+      catalog_lane: qwen2.5-coder-1.5b-base-q8_0
+      status: retired
+      notes: >-
+        Deprecated 2026-09-22. Not a separate runtime. See
+        inventory/group_vars/model_catalog/LANE-IDENTITY.md.
+    - slug: code-autocomplete-1.5b
+      purpose: RETIRED purpose label — use qwen2.5-coder-1.5b-base-q8_0
+      routing_policy: local-continue-autocomplete
+      primary_guest: null
+      primary_host: HOM-LAB-HVH-01
+      catalog_lane: qwen2.5-coder-1.5b-base-q8_0
+      status: retired
+      notes: Deprecated 2026-09-22. Canonical catalog_lane is the client model id.
     - slug: code-review
       purpose: critique, risk finding, test review
       routing_policy: local-secondary-review
@@ -527,14 +543,18 @@ model_catalog_entries:
       candidate_family: small smoke/trial model
       research_sources:
         - https://huggingface.co/Qwen/Qwen3-0.6B
+    - lane: qwen2.5-coder-1.5b-base-q8_0
+      status: selected
+      candidate_family: Qwen2.5-Coder 1.5B via Ollama on HVH-01
+      selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B
     - lane: code-fast
-      status: selected
-      candidate_family: Qwen2.5-Coder 1.5B via Ollama on HVH-01
-      selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B-Instruct
+      status: retired
+      candidate_family: RETIRED purpose label → qwen2.5-coder-1.5b-base-q8_0
+      selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B
     - lane: code-autocomplete-1.5b
-      status: selected
-      candidate_family: Qwen2.5-Coder 1.5B via Ollama on HVH-01
-      selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B-Instruct
+      status: retired
+      candidate_family: RETIRED purpose label → qwen2.5-coder-1.5b-base-q8_0
+      selected_hf_repo_id: Qwen/Qwen2.5-Coder-1.5B
     - lane: code-review
       status: selected_secondary_runtime
       candidate_family: small Ollama-hosted code-review/support model on GTX 1060 6GB

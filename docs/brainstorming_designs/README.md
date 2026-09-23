@@ -32,14 +32,48 @@ family unless the product itself is the subject.
 
 Each packet should start with:
 
-- `README.md` - scope, status, and how to treat the material
-- `.aiignore` - local advisory context boundary
-- `<topic>-plan.md` - shaped brainstorm or conversation archive (plan-like, not
-  an approved `docs/plans/` packet)
+- `README.md` - scope, status, packet file table, and how to treat the material
+- `.aiignore` - local advisory context boundary (copy from a recent packet)
+- at least one plan-shaped markdown file (see naming below)
 - `diagrams/` - optional; diagram files use `cst-hom-lab-ctl-dia-<topic>-<idx>.md`
 
 Additional files should be added only when they help preserve the idea without
 turning it into active project direction.
+
+## Creating a new packet (agent checklist)
+
+Use when the user asks to capture an idea, brainstorm, “put this in brainstorming
+designs,” or split **operator proposal** vs **AI assessment**. Skill:
+`brainstorm-design-packet-scaffold` (authority: this README).
+
+1. **Confirm destination** — `docs/brainstorming_designs/` only. Do **not** create
+   a governed `docs/plans/` packet unless the user asked to promote/execute.
+2. **Name the folder** — `YYYY-MM-DD--<domain>-<capability>-patterns/` (today’s
+   date; product-neutral slug when possible).
+3. **Scaffold minimum files** — `README.md`, `.aiignore`, and the plan file(s)
+   below.
+4. **Preserve operator voice separately** when the user asked for “my idea” vs
+   “your assessment” (or similar). Default dual-file pattern:
+
+   | File | Role |
+   | --- | --- |
+   | `operator-proposal-<short-slug>.md` | Operator-stated idea; light cleanup only; do not silently rewrite intent |
+   | `<topic>-wip-ai-human-plan.md` | AI assessment + WIP plan shape (Apply/Verify/Undo draft OK); not execute-complete |
+
+   Single-file packets remain valid: `<topic>-plan.md` when there is no split.
+5. **Frontmatter** on plan-like files: `status: brainstorm`,
+   `execution_status: not_started`, `created_at: YYYY-MM-DD`. Mark
+   `resource_selection_status: pending_research` when exact resources are unset.
+6. **Packet README** — short intent, file table, “not approved scope,” links to
+   related live surfaces if known.
+7. **Index** — add a row to **Active packet index (recent)** in this README.
+8. **Stop** — do not implement, Ansible-apply, or promote unless the user asks.
+
+Voice-to-text note: `wip-ai-human-plan` is the canonical suffix (not
+`wip-ai-humuan`).
+
+Example dual-file packet:
+`2026-09-23--vllm-idle-desktop-usability-patterns/`.
 
 ## Executed plan marking
 
@@ -83,6 +117,7 @@ Example packet: `2026-09-01--litellm-model-client-id-patterns/`.
 
 | Packet | Status |
 | --- | --- |
+| [2026-09-23--vllm-idle-desktop-usability-patterns/](2026-09-23--vllm-idle-desktop-usability-patterns/) | brainstorm (idle watcher / sleep vs scale-to-0; dual-file proposal + WIP AI–human plan) |
 | [2026-09-09--continue-mac-local-model-patterns/](2026-09-09--continue-mac-local-model-patterns/) | brainstorm (Mac-local autocomplete A/B test, embeddings, optional reranking, edits) |
 | [2026-09-03--paired-agent-runtime-orchestration-patterns/](2026-09-03--paired-agent-runtime-orchestration-patterns/) | brainstorm (OpenAPI/MCP coordinator patterns) |
 | [2026-09-01--homelab-routing-layer-flint-openwrt/](2026-09-01--homelab-routing-layer-flint-openwrt/) | packet-active |

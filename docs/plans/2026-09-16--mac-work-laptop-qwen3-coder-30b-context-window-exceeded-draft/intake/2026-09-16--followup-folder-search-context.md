@@ -30,4 +30,5 @@ when a large folder-search / tool / history payload fills the input side.
    `ContextWindowExceededError` / `Hosted_vllmException`
 2. Optional tools dump under pod `/tmp/litellm-tools-capture/` if tools[] was large
 3. Langfuse: **success** traces only by default — this failure may be absent
-4. Mac client: `~/.continue/config.yaml` vs Ansible `continue_ide` managed block
+4. **Work-laptop** client only: `~/.continue/config.yaml` on that machine vs
+   Ansible / `exports/work-laptop-ai-tools` SSOT — **not** the Mac controller
