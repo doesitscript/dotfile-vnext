@@ -9,8 +9,9 @@
 #   5. Docker Ubuntu VM lifecycle for opted-in Windows hosts
 #   6. K3s Ubuntu VM lifecycle for opted-in Windows hosts
 #   7. Windows applications (inventory-driven capability orchestrator)
-#   8. Docker engine / client verification
-#   9. Interim hom.lab hosts file (mac-dev + Linux guests + optional Windows desktops)
+#   8. Managed update policy (curtail unattended OS/package upgrades)
+#   9. Docker engine / client verification
+#  10. Interim hom.lab hosts file (mac-dev + Linux guests + optional Windows desktops)
 #
 # Narrower playbooks remain available for faster loops and troubleshooting:
 #   - playbooks/provision_windows_host.yml              — Windows baseline only
@@ -18,6 +19,7 @@
 #   - playbooks/hyperv_ubuntu_docker_vm.yaml            — Docker VM orchestration
 #   - playbooks/deploy_applications.yaml               — Windows applications orchestrator
 #   - playbooks/deploy_windows_steam_client.yaml        — Steam filter into orchestrator
+#   - playbooks/deploy_managed_update_policy.yaml       — curtail unattended upgrades
 #   - playbooks/access.yaml                             — identity/access only
 #   - playbooks/docker.yaml                             — Docker only
 #   - playbooks/homelab_hosts_file.yaml                 — interim DNS-3 hosts file only
@@ -58,6 +60,7 @@
             - hyperv_windows_host
             - windows_file_shares
             - windows_applications
+            - managed_update_policy
             - hyperv_ubuntu_docker_vm
             - hyperv_ubuntu_k3s_vm
             - docker_engine_client_verify
@@ -99,6 +102,10 @@
 - name: Site - Windows applications (inventory-driven)
   import_playbook: deploy_applications.yaml
   tags: [site_windows_applications, windows_applications]
+
+- name: Site - managed update policy (curtail unattended upgrades)
+  import_playbook: deploy_managed_update_policy.yaml
+  tags: [site_managed_update_policy, managed_update_policy]
 
 - name: Site - Hyper-V Docker Ubuntu guest lifecycle
   import_playbook: hyperv_ubuntu_docker_vm.yaml
