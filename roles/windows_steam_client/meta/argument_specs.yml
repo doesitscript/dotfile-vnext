@@ -1,0 +1,49 @@
+---
+argument_specs:
+  main:
+    short_description: Steam client install plus library and recording path pointers
+    options:
+      windows_steam_client_state:
+        type: str
+        required: true
+        choices: [present, absent]
+        description: Lifecycle state for the Steam client capability.
+      windows_steam_client_chocolatey_package:
+        type: str
+        required: false
+        default: steam
+      windows_steam_client_winget_id:
+        type: str
+        required: false
+        default: Valve.Steam
+      windows_steam_client_install_path_default:
+        type: str
+        required: false
+      windows_steam_client_library_roots:
+        type: list
+        elements: str
+        required: false
+        description: Extra Steam library folder paths (pointers only; no mkdir).
+      windows_steam_client_recording_root:
+        type: str
+        required: false
+        description: Game Recording BackgroundRecordPath (pointer only).
+      windows_steam_client_ensure_paths:
+        type: bool
+        required: false
+        default: false
+      windows_steam_client_stop_before_config:
+        type: bool
+        required: false
+        default: true
+      windows_steam_client_verify_only:
+        type: bool
+        required: false
+        default: false
+      windows_steam_client_required_gpu:
+        type: str
+        required: false
+        default: rtx-5090
+        description: >-
+          Inventory gpu: label required by the playbook selection gate
+          (Windows Server + windows-steam-gaming + this model).

@@ -1,0 +1,32 @@
+---
+# windows_steam_client — Steam application + config pointers only.
+# Default absent. Commission via inventory; first pass is rebuild-oriented.
+windows_steam_client_state: absent
+
+# Chocolatey primary; winget fallback (same pattern as gpu_diagnostics_windows).
+windows_steam_client_chocolatey_package: steam
+windows_steam_client_winget_id: Valve.Steam
+
+# Install location probe (Steam writes this to registry on install).
+windows_steam_client_install_path_default: 'C:\Program Files (x86)\Steam'
+windows_steam_client_exe_relative: steam.exe
+
+# Additional Steam library folder paths only (do not include the default
+# Program Files Steam root — Steam creates that on install). Pointers only.
+windows_steam_client_library_roots: []
+
+# Game Recording BackgroundRecordPath (localconfig.vdf). Pointer only.
+windows_steam_client_recording_root: ""
+
+# v1: never create library/recording directories.
+windows_steam_client_ensure_paths: false
+
+# Stop Steam client processes before writing VDF (required for safe merge).
+windows_steam_client_stop_before_config: true
+
+# When true, present path only verifies pointers vs inventory (no package/config write).
+# Used by --tags verify / check-oriented runs.
+windows_steam_client_verify_only: false
+
+# Class targeting (playbook selection). Inventory gpu label must match.
+windows_steam_client_required_gpu: rtx-5090

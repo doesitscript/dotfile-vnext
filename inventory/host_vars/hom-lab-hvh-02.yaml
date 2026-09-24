@@ -90,6 +90,9 @@ hardware_classes:
   - nvidia_gpu
   - high_vram
   - liquid_cooled
+# SSOT GPU model label (peer of HOM-LAB-HVH-01 gpu: gtx-1060-6gb).
+# Used with windows_server_2025 + windows-steam-gaming execution role for Steam.
+gpu: rtx-5090
 # Thermal / acoustic contract — required for AI and human troubleshooting.
 # HVH-02 is fully water-cooled; Corsair radiator fans follow a curve and ramp
 # after GPU/CPU load even when nvidia-smi fan.speed stays 0%.
@@ -141,8 +144,21 @@ windows_file_shares_extra_directories:
     purpose: Current Hyper-V Ubuntu GPU-P runtime artifact set
   - path: 'F:\shares\public\artifacts\hyperv_ubuntu_gpu_p_runtime\runs'
     purpose: Timestamped Hyper-V Ubuntu GPU-P runtime artifact history
-  - path: 'F:\Gamerecordings'
-    purpose: USB drive storage for game recordings (migrated from D:)
+  - path: 'I:\Gamerecordings'
+    purpose: Steam Game Recording root (live BackgroundRecordPath; F:\ legacy retained on disk)
+
+# Steam client — config pointers only (rebuild-first; do not mkdir libraries/recordings).
+# Placement: windows_server_2025:&windows_nvidia_gpu_hosts + execution role
+# windows-steam-gaming + gpu: rtx-5090 (not bare hostname).
+# Live evidence 2026-09-23: libraryfolders.vdf "1"=D:\SteamLibrary "2"=I:\SteamLibrary;
+# userdata\1079654653\config\localconfig.vdf BackgroundRecordPath=I:\Gamerecordings.
+# Apply deferred: playbooks/deploy_windows_steam_client.yaml (scaffold pass did not run apply).
+windows_steam_client_state: present
+windows_steam_client_library_roots:
+  - 'D:\SteamLibrary'
+  - 'I:\SteamLibrary'
+windows_steam_client_recording_root: 'I:\Gamerecordings'
+windows_steam_client_ensure_paths: false
 
 # Infrastructure: Hyper-V External Switch (backbone, independent of any guest).
 hyperv_config:

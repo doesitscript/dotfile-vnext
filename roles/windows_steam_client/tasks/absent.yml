@@ -1,0 +1,35 @@
+---
+- name: Uninstall Steam via Chocolatey
+  chocolatey.chocolatey.win_chocolatey:
+    name: "{{ windows_steam_client_chocolatey_package }}"
+    state: absent
+  failed_when: false
+  tags: [windows_steam_client]
+
+- name: Uninstall Steam via winget when present
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $winget = Get-Command winget -ErrorAction SilentlyContinue
+      if (-not $winget) {
+        $Ansible.Changed = $false
+        $Ansible.Result = 'winget not found; skipped'
+        return
+      }
+      $id = '{{ windows_steam_client_winget_id }}'
+      winget uninstall --id $id --disable-interactivity
+      if ($LASTEXITCODE -gt 1) {
+        $Ansible.Changed = $false
+        $Ansible.Result = "winget uninstall exit $LASTEXITCODE (treated as absent/skip)"
+        return
+      }
+      $Ansible.Changed = $true
+      $Ansible.Result = 'winget uninstall completed'
+  tags: [windows_steam_client]
+
+- name: Note that library and recording trees are retained on absent
+  ansible.builtin.debug:
+    msg: >-
+      windows_steam_client absent removes the Steam application package only.
+      Declared library roots and recording root are never deleted by this role.
+  tags: [windows_steam_client]

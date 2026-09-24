@@ -1,0 +1,50 @@
+---
+- name: Validate windows_steam_client_state
+  ansible.builtin.assert:
+    that:
+      - windows_steam_client_state in ['present', 'absent']
+      - not (windows_steam_client_ensure_paths | bool)
+    fail_msg: >-
+      windows_steam_client_ensure_paths must remain false in v1 (pointers only;
+      no mkdir of library/recording roots).
+    quiet: true
+  tags:
+    - windows_steam_client
+    - preview
+    - verify
+
+- name: Preview windows_steam_client desired state
+  ansible.builtin.debug:
+    msg:
+      inventory_hostname: "{{ inventory_hostname }}"
+      state: "{{ windows_steam_client_state }}"
+      library_roots: "{{ windows_steam_client_library_roots }}"
+      recording_root: "{{ windows_steam_client_recording_root }}"
+      ensure_paths: "{{ windows_steam_client_ensure_paths }}"
+  tags:
+    - windows_steam_client
+    - preview
+
+- name: Apply windows_steam_client present path
+  ansible.builtin.import_tasks: present.yml
+  when:
+    - windows_steam_client_state == 'present'
+    - not (windows_steam_client_verify_only | bool)
+  tags:
+    - windows_steam_client
+
+- name: Apply windows_steam_client absent path
+  ansible.builtin.import_tasks: absent.yml
+  when:
+    - windows_steam_client_state == 'absent'
+    - not (windows_steam_client_verify_only | bool)
+  tags:
+    - windows_steam_client
+
+- name: Verify windows_steam_client pointers against inventory
+  ansible.builtin.import_tasks: verify.yml
+  when: windows_steam_client_state == 'present'
+  tags:
+    - windows_steam_client
+    - verify
+    - never

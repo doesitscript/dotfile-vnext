@@ -1,0 +1,135 @@
+---
+- name: Bootstrap Chocolatey without upgrading all packages
+  ansible.builtin.import_role:
+    name: package_manager
+  vars:
+    package_upgrade: false
+  tags: [windows_steam_client]
+
+- name: Install Steam via Chocolatey
+  chocolatey.chocolatey.win_chocolatey:
+    name: "{{ windows_steam_client_chocolatey_package }}"
+    state: present
+  register: windows_steam_client_choco
+  failed_when: false
+  tags: [windows_steam_client]
+
+- name: Install Steam via winget when Chocolatey install did not succeed
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $winget = Get-Command winget -ErrorAction SilentlyContinue
+      if (-not $winget) {
+        $Ansible.Failed = $true
+        $Ansible.Result = 'winget not found on PATH'
+        exit 1
+      }
+      $id = '{{ windows_steam_client_winget_id }}'
+      winget install --id $id --scope machine --accept-package-agreements --accept-source-agreements --disable-interactivity
+      if ($LASTEXITCODE -gt 1) {
+        $Ansible.Failed = $true
+        $Ansible.Result = "winget exit code $LASTEXITCODE"
+        exit 1
+      }
+      $Ansible.Changed = $true
+      $Ansible.Result = 'winget install completed'
+  when: windows_steam_client_choco is failed
+  tags: [windows_steam_client]
+
+- name: Resolve Steam install path from registry or default
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $candidates = @(
+        'HKLM:\SOFTWARE\WOW6432Node\Valve\Steam',
+        'HKLM:\SOFTWARE\Valve\Steam'
+      )
+      $install = $null
+      foreach ($rp in $candidates) {
+        if (Test-Path $rp) {
+          $p = (Get-ItemProperty $rp).InstallPath
+          if ($p -and (Test-Path -LiteralPath $p)) {
+            $install = $p
+            break
+          }
+        }
+      }
+      if (-not $install) {
+        $fallback = '{{ windows_steam_client_install_path_default }}'
+        if (Test-Path -LiteralPath $fallback) {
+          $install = $fallback
+        }
+      }
+      if (-not $install) {
+        $Ansible.Failed = $true
+        $Ansible.Result = 'Steam install path not found after package install'
+        exit 1
+      }
+      $exe = Join-Path $install '{{ windows_steam_client_exe_relative }}'
+      $Ansible.Changed = $false
+      $Ansible.Result = @{
+        install_path = $install
+        exe_exists = (Test-Path -LiteralPath $exe)
+        exe_path = $exe
+      }
+  register: windows_steam_client_resolve
+  tags: [windows_steam_client]
+
+- name: Set resolved Steam install path fact
+  ansible.builtin.set_fact:
+    windows_steam_client_install_path: "{{ windows_steam_client_resolve.result.install_path }}"
+  tags: [windows_steam_client]
+
+- name: Stop Steam client processes before config writes
+  ansible.windows.win_powershell:
+    error_action: stop
+    script: |
+      $names = @('steam', 'steamwebhelper', 'steamservice')
+      $procs = Get-Process -Name $names -ErrorAction SilentlyContinue
+      if (-not $procs) {
+        $Ansible.Changed = $false
+        $Ansible.Result = 'steam not running'
+        return
+      }
+      $procs | Stop-Process -Force -ErrorAction SilentlyContinue
+      Start-Sleep -Seconds 2
+      $left = Get-Process -Name $names -ErrorAction SilentlyContinue
+      if ($left) {
+        $Ansible.Failed = $true
+        $Ansible.Result = 'failed to stop Steam processes'
+        exit 1
+      }
+      $Ansible.Changed = $true
+      $Ansible.Result = 'steam stopped'
+  when: windows_steam_client_stop_before_config | bool
+  tags: [windows_steam_client]
+
+- name: Merge declared Steam library folder pointers
+  ansible.windows.win_powershell:
+    error_action: stop
+    parameters:
+      SteamInstallPath: "{{ windows_steam_client_install_path }}"
+      LibraryRoots: "{{ windows_steam_client_library_roots }}"
+    script: "{{ lookup('file', role_path ~ '/files/Merge-SteamLibraryFolders.ps1') }}"
+  when: windows_steam_client_library_roots | length > 0
+  register: windows_steam_client_library_merge
+  tags: [windows_steam_client]
+
+- name: Set Game Recording BackgroundRecordPath pointer
+  ansible.windows.win_powershell:
+    error_action: stop
+    parameters:
+      SteamInstallPath: "{{ windows_steam_client_install_path }}"
+      RecordingRoot: "{{ windows_steam_client_recording_root }}"
+    script: "{{ lookup('file', role_path ~ '/files/Set-SteamBackgroundRecordPath.ps1') }}"
+  when: windows_steam_client_recording_root | length > 0
+  register: windows_steam_client_recording_set
+  tags: [windows_steam_client]
+
+- name: Report Steam client pointer apply results
+  ansible.builtin.debug:
+    msg:
+      install_path: "{{ windows_steam_client_install_path }}"
+      library_merge: "{{ windows_steam_client_library_merge.result | default({}) }}"
+      recording_set: "{{ windows_steam_client_recording_set.result | default({}) }}"
+  tags: [windows_steam_client]

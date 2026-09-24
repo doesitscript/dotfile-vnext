@@ -140,3 +140,33 @@ capability_catalog:
         status: deferred
         implementation: null
         note: MCP server placement requires a separate service/runtime decision.
+
+  windows_steam_client:
+    display_name: Windows Steam client (libraries + recordings pointers)
+    labels: [desktop-gaming, steam, windows-tools]
+    placement_contract:
+      host_selection: inventory_and_execution_role
+      execution_selection: playbook_or_role_tags
+      resource_selection: hardware_classes_and_gpu_model
+    platform_surfaces:
+      windows:
+        status: commissioned
+        implementation: windows_steam_client
+        execution_roles: [windows-steam-gaming]
+        inventory_intersection: "windows_server_2025:&windows_nvidia_gpu_hosts"
+        gpu_model: rtx-5090
+        execution_tags: [windows_steam_client, steam, preview, verify]
+        note: >-
+          Config pointers only (libraryfolders.vdf + BackgroundRecordPath).
+          Apply deferred for rebuild-first pass; commission via state=present
+          on matching class hosts.
+      macos:
+        status: deferred
+        implementation: null
+      linux:
+        status: deferred
+        implementation: null
+      kubernetes:
+        status: deferred
+        implementation: null
+        note: Steam client is a Windows host surface, not a K8s workload.

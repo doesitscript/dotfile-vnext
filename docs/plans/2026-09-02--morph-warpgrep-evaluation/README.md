@@ -4,6 +4,9 @@ lifecycle: incomplete-wip
 status: under_evaluation
 started_at: 2026-09-02
 netbox_scope: false
+related_plans:
+  - 2026-09-23--morph-mcp-client-default-eval
+  - 2026-09-23--morph-mcp-usage-self-evaluation
 ---
 
 # Morph WarpGrep MCP — Evaluation Plan
@@ -16,6 +19,13 @@ yet promoted to steady-state “selected” tooling.
 
 **Evaluation started:** 2026-09-02
 
+**Related plans:** Blind client default-use testing and Layer 2 habit-gap
+closeout live in
+[`2026-09-23--morph-mcp-client-default-eval`](../2026-09-23--morph-mcp-client-default-eval/README.md)
+(status table:
+[`evaluated-implementation-status.md`](../2026-09-23--morph-mcp-client-default-eval/evaluated-implementation-status.md)).
+This plan owns **install/commission** (role, vault, MCP client wiring);
+that sibling owns **probes + habit fixes those probes require**.
 ## Problem
 
 Broad repo exploration questions cause agents to run many grep/read cycles,
