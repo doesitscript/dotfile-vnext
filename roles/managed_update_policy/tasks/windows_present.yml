@@ -1,0 +1,44 @@
+---
+- name: Ensure Windows Update AU policy key exists
+  ansible.windows.win_regedit:
+    path: "{{ managed_update_policy_windows_au_reg_path }}"
+    state: present
+  when: managed_update_policy_windows_no_auto_update | bool
+  tags:
+    - managed_update_policy
+    - managed_update_policy_windows
+
+- name: Disable Windows Automatic Updates (NoAutoUpdate=1)
+  ansible.windows.win_regedit:
+    path: "{{ managed_update_policy_windows_au_reg_path }}"
+    name: NoAutoUpdate
+    data: 1
+    type: dword
+    state: present
+  when: managed_update_policy_windows_no_auto_update | bool
+  tags:
+    - managed_update_policy
+    - managed_update_policy_windows
+
+- name: Set AUOptions notify-only (2) as secondary curb
+  ansible.windows.win_regedit:
+    path: "{{ managed_update_policy_windows_au_reg_path }}"
+    name: AUOptions
+    data: 2
+    type: dword
+    state: present
+  when: managed_update_policy_windows_no_auto_update | bool
+  tags:
+    - managed_update_policy
+    - managed_update_policy_windows
+
+- name: Pin listed Chocolatey packages against upgrade-all
+  chocolatey.chocolatey.win_chocolatey:
+    name: "{{ item }}"
+    state: present
+    pinned: true
+  loop: "{{ managed_update_policy_chocolatey_pin_packages }}"
+  when: managed_update_policy_chocolatey_pin_packages | length > 0
+  tags:
+    - managed_update_policy
+    - managed_update_policy_windows

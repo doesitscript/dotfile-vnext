@@ -1,0 +1,39 @@
+---
+- name: Apply Ubuntu managed update curtailment
+  ansible.builtin.include_tasks: ubuntu_present.yml
+  when: >-
+    (
+      ansible_facts.get('distribution', '')
+      if (ansible_facts | default({})) is mapping
+      else ''
+    ) == 'Ubuntu'
+    or (ansible_distribution | default('')) == 'Ubuntu'
+  tags:
+    - managed_update_policy
+    - managed_update_policy_ubuntu
+
+- name: Apply Windows managed update curtailment
+  ansible.builtin.include_tasks: windows_present.yml
+  when: >-
+    (
+      ansible_facts.get('system', '')
+      if (ansible_facts | default({})) is mapping
+      else ''
+    ) in ['Windows', 'Win32NT']
+    or (ansible_system | default('')) in ['Windows', 'Win32NT']
+  tags:
+    - managed_update_policy
+    - managed_update_policy_windows
+
+- name: Apply macOS managed update curtailment
+  ansible.builtin.include_tasks: macos_present.yml
+  when: >-
+    (
+      ansible_facts.get('system', '')
+      if (ansible_facts | default({})) is mapping
+      else ''
+    ) == 'Darwin'
+    or (ansible_system | default('')) == 'Darwin'
+  tags:
+    - managed_update_policy
+    - managed_update_policy_macos

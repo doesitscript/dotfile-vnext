@@ -1,0 +1,71 @@
+---
+- name: Verify Ubuntu apt periodic drop-in present
+  ansible.builtin.stat:
+    path: "{{ managed_update_policy_ubuntu_apt_periodic_file }}"
+  register: managed_update_policy_ubuntu_periodic_stat
+  become: true
+  when: >-
+    (
+      ansible_facts.get('distribution', '')
+      if (ansible_facts | default({})) is mapping
+      else ''
+    ) == 'Ubuntu'
+    or (ansible_distribution | default('')) == 'Ubuntu'
+  tags:
+    - managed_update_policy
+    - verify
+    - never
+
+- name: Assert Ubuntu apt periodic drop-in exists when present
+  ansible.builtin.assert:
+    that:
+      - managed_update_policy_ubuntu_periodic_stat.stat.exists | default(false)
+    fail_msg: >-
+      Expected {{ managed_update_policy_ubuntu_apt_periodic_file }} when
+      managed_update_policy_state=present
+  when:
+    - managed_update_policy_state == 'present'
+    - managed_update_policy_ubuntu_periodic_stat is defined
+    - managed_update_policy_ubuntu_periodic_stat.stat is defined
+  tags:
+    - managed_update_policy
+    - verify
+    - never
+
+- name: Verify Windows NoAutoUpdate registry value
+  ansible.windows.win_reg_stat:
+    path: "{{ managed_update_policy_windows_au_reg_path }}"
+    name: NoAutoUpdate
+  register: managed_update_policy_windows_no_auto_stat
+  when: >-
+    (
+      ansible_facts.get('system', '')
+      if (ansible_facts | default({})) is mapping
+      else ''
+    ) in ['Windows', 'Win32NT']
+    or (ansible_system | default('')) in ['Windows', 'Win32NT']
+  tags:
+    - managed_update_policy
+    - verify
+    - never
+
+- name: Assert Windows NoAutoUpdate is 1 when present
+  ansible.builtin.assert:
+    that:
+      - managed_update_policy_windows_no_auto_stat.exists | default(false)
+      - (managed_update_policy_windows_no_auto_stat.value | default(0) | int) == 1
+    fail_msg: Windows NoAutoUpdate policy is not set to 1
+  when:
+    - managed_update_policy_state == 'present'
+    - managed_update_policy_windows_no_auto_update | bool
+    - >-
+      (
+        ansible_facts.get('system', '')
+        if (ansible_facts | default({})) is mapping
+        else ''
+      ) in ['Windows', 'Win32NT']
+      or (ansible_system | default('')) in ['Windows', 'Win32NT']
+  tags:
+    - managed_update_policy
+    - verify
+    - never

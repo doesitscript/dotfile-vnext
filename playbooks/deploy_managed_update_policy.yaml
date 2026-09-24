@@ -1,0 +1,51 @@
+---
+# Curtail unattended OS and package-manager upgrades across managed hosts.
+#
+# Preview (read-only target list + check):
+#   bin/codex-env ansible-playbook playbooks/deploy_managed_update_policy.yaml \
+#     -i inventory/inventory.yaml --tags preview --check
+#
+# Apply:
+#   bin/codex-env ansible-playbook playbooks/deploy_managed_update_policy.yaml \
+#     -i inventory/inventory.yaml
+#
+# Verify:
+#   bin/codex-env ansible-playbook playbooks/deploy_managed_update_policy.yaml \
+#     -i inventory/inventory.yaml --tags verify,never
+#
+# Undo (per host or -e):
+#   -e managed_update_policy_state=absent
+
+- name: Preview managed_update_policy targets
+  hosts: "{{ managed_update_policy_hosts | default('managed_update_policy_hosts') }}"
+  gather_facts: false
+  tags: [managed_update_policy, preview]
+  tasks:
+    - name: Show managed_update_policy target and desired state
+      ansible.builtin.debug:
+        msg:
+          host: "{{ inventory_hostname }}"
+          state: "{{ managed_update_policy_state | default('present') }}"
+          group: managed_update_policy_hosts
+      tags: [managed_update_policy, preview]
+
+- name: Apply managed_update_policy
+  hosts: "{{ managed_update_policy_hosts | default('managed_update_policy_hosts') }}"
+  gather_facts: true
+  tags: [managed_update_policy]
+  tasks:
+    - name: Converge managed update curtailment
+      ansible.builtin.include_role:
+        name: managed_update_policy
+      tags: [managed_update_policy]
+
+- name: Verify managed_update_policy
+  hosts: "{{ managed_update_policy_hosts | default('managed_update_policy_hosts') }}"
+  gather_facts: true
+  tags: [verify, never]
+  tasks:
+    - name: Run managed_update_policy verify tasks
+      ansible.builtin.include_role:
+        name: managed_update_policy
+        tasks_from: verify
+      tags: [verify, never]

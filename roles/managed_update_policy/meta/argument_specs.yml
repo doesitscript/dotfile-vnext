@@ -1,0 +1,68 @@
+---
+argument_specs:
+  main:
+    short_description: >-
+      Curtail unattended OS/package-manager updates for Ansible-pinned state
+    options:
+      managed_update_policy_state:
+        type: str
+        default: present
+        choices:
+          - present
+          - absent
+        description:
+          - present — disable auto-update surfaces; absent — restore vendor-ish defaults
+      managed_update_policy_apt_hold_packages:
+        type: list
+        elements: str
+        default: []
+        description:
+          - Optional apt package names to hold via dpkg_selections
+      managed_update_policy_ubuntu_apt_periodic_file:
+        type: str
+        default: /etc/apt/apt.conf.d/99managed-update-policy
+        description:
+          - apt.conf.d drop-in path for APT::Periodic disablement
+      managed_update_policy_ubuntu_disable_unattended_upgrades:
+        type: bool
+        default: true
+        description:
+          - Stop and disable the unattended-upgrades service
+      managed_update_policy_ubuntu_disable_apt_periodic_timers:
+        type: bool
+        default: true
+        description:
+          - Stop and disable apt-daily / apt-daily-upgrade timers
+      managed_update_policy_ubuntu_apt_periodic_timer_units:
+        type: list
+        elements: str
+        default:
+          - apt-daily.timer
+          - apt-daily-upgrade.timer
+        description:
+          - systemd timer unit names to stop/disable
+      managed_update_policy_windows_no_auto_update:
+        type: bool
+        default: true
+        description:
+          - Set NoAutoUpdate=1 under Windows Update AU policy key
+      managed_update_policy_windows_au_reg_path:
+        type: str
+        description:
+          - Registry path for Windows Update AU policy
+      managed_update_policy_chocolatey_pin_packages:
+        type: list
+        elements: str
+        default: []
+        description:
+          - Chocolatey package names to pin (version stays at currently installed)
+      managed_update_policy_homebrew_no_auto_update:
+        type: bool
+        default: true
+        description:
+          - Write HOMEBREW_NO_AUTO_UPDATE=1 into brew.env
+      managed_update_policy_homebrew_env_file:
+        type: str
+        default: ""
+        description:
+          - Optional absolute path to brew.env; empty resolves via brew --prefix

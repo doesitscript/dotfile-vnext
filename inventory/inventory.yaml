@@ -147,6 +147,14 @@ all:
         hom-lab-ctl-k3s-01:
           # Active K3s Ubuntu guest on HOM-LAB-HVH-01.
 
+    # Fleet update curtailment targets (Ubuntu guests + Windows + mac-dev).
+    # Capability: roles/managed_update_policy + playbooks/deploy_managed_update_policy.yaml
+    managed_update_policy_hosts:
+      children:
+        windows_hosts: {}
+        linux_vm_hosts: {}
+        execution_nodes: {}
+
     # Legacy K3s VM readiness-preflight targets. Membership here does not define
     # the host identity; it only exposes optional readiness validation when a
     # troubleshooting or preflight run explicitly wants it.

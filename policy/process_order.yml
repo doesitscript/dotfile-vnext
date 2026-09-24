@@ -3,7 +3,7 @@
 # SSOT for depends_on chains. Playbooks and roles must honor this order —
 # do not leave dependency order only in prose (AGENTS.md §26).
 schema_version: 1
-updated_at: "2026-09-23"
+updated_at: "2026-09-24"
 
 # Ordered phases (earlier index must complete before later).
 process_order:
@@ -27,12 +27,15 @@ process_order:
     artifact: playbooks/deploy_applications.yaml + roles/windows_applications
     depends_on:
       - classify_host
+  - id: managed_update_policy
+    artifact: playbooks/deploy_managed_update_policy.yaml + roles/managed_update_policy
+    depends_on:
+      - classify_host
   - id: windows_steam_client
     artifact: roles/windows_steam_client
     depends_on:
       - windows_applications
-      - classify_host
-  - id: k8s_node_policy
+      - classify_host  - id: k8s_node_policy
     artifact: roles/k8s_node_policy + playbooks/apply_k8s_node_policy.yaml
     depends_on:
       - classify_host
@@ -101,6 +104,10 @@ playbooks:
       - classify_host
       - windows_applications
       - windows_steam_client  # example capability; only when host intent lists it
+  deploy_managed_update_policy.yaml:
+    depends_on: []
+    steps:
+      - managed_update_policy
   deploy_windows_steam_client.yaml:
     depends_on:
       - deploy_applications.yaml
@@ -131,6 +138,8 @@ roles:
   windows_applications:
     depends_on:
       - classify_host
+  managed_update_policy:
+    depends_on: []
   windows_steam_client:
     depends_on:
       - classify_host

@@ -1,0 +1,58 @@
+---
+- name: Resolve Homebrew prefix for brew.env
+  ansible.builtin.command:
+    argv:
+      - brew
+      - --prefix
+  register: managed_update_policy_brew_prefix
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - managed_update_policy_homebrew_no_auto_update | bool
+    - managed_update_policy_homebrew_env_file | length == 0
+  tags:
+    - managed_update_policy
+    - managed_update_policy_macos
+
+- name: Ensure Homebrew etc directory for brew.env
+  ansible.builtin.file:
+    path: "{{ _managed_update_policy_brew_env | dirname }}"
+    state: directory
+    mode: "0755"
+  vars:
+    _managed_update_policy_brew_env: >-
+      {{
+        managed_update_policy_homebrew_env_file
+        if (managed_update_policy_homebrew_env_file | length > 0)
+        else (
+          (managed_update_policy_brew_prefix.stdout | default('/opt/homebrew') | trim)
+          ~ '/etc/homebrew/brew.env'
+        )
+      }}
+  when: managed_update_policy_homebrew_no_auto_update | bool
+  tags:
+    - managed_update_policy
+    - managed_update_policy_macos
+
+- name: Write HOMEBREW_NO_AUTO_UPDATE into brew.env
+  ansible.builtin.copy:
+    dest: "{{ _managed_update_policy_brew_env }}"
+    mode: "0644"
+    content: |
+      # Ansible managed_update_policy — disable Homebrew auto-update
+      HOMEBREW_NO_AUTO_UPDATE=1
+  vars:
+    _managed_update_policy_brew_env: >-
+      {{
+        managed_update_policy_homebrew_env_file
+        if (managed_update_policy_homebrew_env_file | length > 0)
+        else (
+          (managed_update_policy_brew_prefix.stdout | default('/opt/homebrew') | trim)
+          ~ '/etc/homebrew/brew.env'
+        )
+      }}
+  when: managed_update_policy_homebrew_no_auto_update | bool
+  tags:
+    - managed_update_policy
+    - managed_update_policy_macos

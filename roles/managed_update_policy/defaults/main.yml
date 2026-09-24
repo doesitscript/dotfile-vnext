@@ -1,0 +1,31 @@
+---
+# Fleet-wide update curtailment: stop silent OS/package-manager drift so
+# Ansible inventory pins remain authoritative. Alpha — opt-out per host with
+# managed_update_policy_state: absent.
+
+managed_update_policy_state: present
+
+# Optional apt package holds (kernel/DKMS pins stay in owning roles by default).
+managed_update_policy_apt_hold_packages: []
+
+# Write a high-priority apt.conf.d drop-in (does not overwrite 20auto-upgrades).
+managed_update_policy_ubuntu_apt_periodic_file: /etc/apt/apt.conf.d/99managed-update-policy
+
+managed_update_policy_ubuntu_disable_unattended_upgrades: true
+managed_update_policy_ubuntu_disable_apt_periodic_timers: true
+managed_update_policy_ubuntu_apt_periodic_timer_units:
+  - apt-daily.timer
+  - apt-daily-upgrade.timer
+
+# Windows Update Automatic Updates policy (MS Learn WAAS WU settings).
+managed_update_policy_windows_no_auto_update: true
+managed_update_policy_windows_au_reg_path: >-
+  HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU
+
+# Chocolatey pins (empty by default; owning roles pin critical packages).
+managed_update_policy_chocolatey_pin_packages: []
+
+# Homebrew: disable auto-update metadata refresh for brew operations.
+managed_update_policy_homebrew_no_auto_update: true
+# Resolved at runtime when empty (Apple Silicon vs Intel prefix).
+managed_update_policy_homebrew_env_file: ""

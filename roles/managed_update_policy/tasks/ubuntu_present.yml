@@ -1,0 +1,51 @@
+---
+- name: Write apt periodic disable drop-in
+  ansible.builtin.copy:
+    dest: "{{ managed_update_policy_ubuntu_apt_periodic_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      // Ansible managed_update_policy — disable silent apt auto-updates
+      APT::Periodic::Update-Package-Lists "0";
+      APT::Periodic::Unattended-Upgrade "0";
+  become: true
+  tags:
+    - managed_update_policy
+    - managed_update_policy_ubuntu
+
+- name: Disable unattended-upgrades service
+  ansible.builtin.systemd:
+    name: unattended-upgrades
+    enabled: false
+    state: stopped
+  become: true
+  when: managed_update_policy_ubuntu_disable_unattended_upgrades | bool
+  failed_when: false
+  tags:
+    - managed_update_policy
+    - managed_update_policy_ubuntu
+
+- name: Disable apt periodic upgrade timers
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: false
+    state: stopped
+  become: true
+  loop: "{{ managed_update_policy_ubuntu_apt_periodic_timer_units }}"
+  when: managed_update_policy_ubuntu_disable_apt_periodic_timers | bool
+  failed_when: false
+  tags:
+    - managed_update_policy
+    - managed_update_policy_ubuntu
+
+- name: Hold inventory-listed apt packages
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  become: true
+  loop: "{{ managed_update_policy_apt_hold_packages }}"
+  when: managed_update_policy_apt_hold_packages | length > 0
+  tags:
+    - managed_update_policy
+    - managed_update_policy_ubuntu

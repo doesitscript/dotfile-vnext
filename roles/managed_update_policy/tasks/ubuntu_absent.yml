@@ -1,0 +1,45 @@
+---
+- name: Remove apt periodic disable drop-in
+  ansible.builtin.file:
+    path: "{{ managed_update_policy_ubuntu_apt_periodic_file }}"
+    state: absent
+  become: true
+  tags:
+    - managed_update_policy
+    - managed_update_policy_ubuntu
+
+- name: Re-enable unattended-upgrades service
+  ansible.builtin.systemd:
+    name: unattended-upgrades
+    enabled: true
+    state: started
+  become: true
+  when: managed_update_policy_ubuntu_disable_unattended_upgrades | bool
+  failed_when: false
+  tags:
+    - managed_update_policy
+    - managed_update_policy_ubuntu
+
+- name: Re-enable apt periodic upgrade timers
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  become: true
+  loop: "{{ managed_update_policy_ubuntu_apt_periodic_timer_units }}"
+  when: managed_update_policy_ubuntu_disable_apt_periodic_timers | bool
+  failed_when: false
+  tags:
+    - managed_update_policy
+    - managed_update_policy_ubuntu
+
+- name: Unhold inventory-listed apt packages
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: install
+  become: true
+  loop: "{{ managed_update_policy_apt_hold_packages }}"
+  when: managed_update_policy_apt_hold_packages | length > 0
+  tags:
+    - managed_update_policy
+    - managed_update_policy_ubuntu

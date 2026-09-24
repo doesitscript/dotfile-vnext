@@ -5,7 +5,7 @@
 # + classify_homelab_hosts.yaml. A platform entry is only executable when it
 # names an existing playbook/packet surface and is marked commissioned.
 schema_version: 1
-updated_at: "2026-09-23"
+updated_at: "2026-09-24"
 
 placement_status_vocabulary:
   - commissioned
@@ -201,3 +201,33 @@ capability_catalog:
         status: deferred
         implementation: null
         note: Steam client is a Windows host surface, not a K8s workload.
+
+  managed_update_policy:
+    display_name: Managed update policy (curtail unattended upgrades)
+    labels: [os-hardening, package-pinning, update-control]
+    placement_contract:
+      host_selection: inventory_group
+      execution_selection: playbook_or_role_tags
+    platform_surfaces:
+      macos:
+        status: commissioned
+        implementation: managed_update_policy
+        inventory_intersection: managed_update_policy_hosts
+        execution_tags: [managed_update_policy, managed_update_policy_macos]
+        note: HOMEBREW_NO_AUTO_UPDATE via brew.env; alpha.
+      windows:
+        status: commissioned
+        implementation: managed_update_policy
+        inventory_intersection: managed_update_policy_hosts
+        execution_tags: [managed_update_policy, managed_update_policy_windows]
+        note: NoAutoUpdate/AUOptions policy; optional Chocolatey pins; alpha.
+      linux:
+        status: commissioned
+        implementation: managed_update_policy
+        inventory_intersection: managed_update_policy_hosts
+        execution_tags: [managed_update_policy, managed_update_policy_ubuntu]
+        note: apt periodic drop-in + unattended-upgrades/timers off; alpha.
+      kubernetes:
+        status: deferred
+        implementation: null
+        note: Cluster image tags are owned by runtime roles, not this OS policy.
