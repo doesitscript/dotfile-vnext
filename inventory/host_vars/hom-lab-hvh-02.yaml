@@ -145,20 +145,41 @@ windows_file_shares_extra_directories:
   - path: 'F:\shares\public\artifacts\hyperv_ubuntu_gpu_p_runtime\runs'
     purpose: Timestamped Hyper-V Ubuntu GPU-P runtime artifact history
   - path: 'I:\Gamerecordings'
-    purpose: Steam Game Recording root (live BackgroundRecordPath; F:\ legacy retained on disk)
+    purpose: Steam Game Recording root (USB bulk; live BackgroundRecordPath). F:\Gamerecordings is leftover until F→I move completes — do not treat as canonical.
 
 # Steam client — config pointers only (rebuild-first; do not mkdir libraries/recordings).
-# Placement: windows_server_2025:&windows_nvidia_gpu_hosts + execution role
-# windows-steam-gaming + gpu: rtx-5090 (not bare hostname).
+# Placement: windows_applications intent + windows-steam-gaming + gpu: rtx-5090
+# (orchestrator: playbooks/deploy_applications.yaml; Steam filter wrapper retained).
 # Live evidence 2026-09-23: libraryfolders.vdf "1"=D:\SteamLibrary "2"=I:\SteamLibrary;
 # userdata\1079654653\config\localconfig.vdf BackgroundRecordPath=I:\Gamerecordings.
-# Apply deferred: playbooks/deploy_windows_steam_client.yaml (scaffold pass did not run apply).
+# Apply deferred: scaffold / orchestrator pass did not run live apply.
+windows_applications:
+  - windows_steam_client
 windows_steam_client_state: present
 windows_steam_client_library_roots:
   - 'D:\SteamLibrary'
   - 'I:\SteamLibrary'
 windows_steam_client_recording_root: 'I:\Gamerecordings'
 windows_steam_client_ensure_paths: false
+# Media-class intent (metadata only — role does not relocate trees in v1).
+# cold_host / cold_guest are NOT live Steam targets (k3s/Hyper-V archive lane).
+windows_steam_client_path_media:
+  - path: 'D:\SteamLibrary'
+    media_class: capacity_or_hot
+    role: library
+  - path: 'I:\SteamLibrary'
+    media_class: usb_bulk
+    role: library
+  - path: 'I:\Gamerecordings'
+    media_class: usb_bulk
+    role: recording
+windows_steam_client_future_media_options:
+  - media_class: capacity_ssd
+    note: Prefer over USB if I/O hurts; do not reuse F:\LOGS-HOST without purpose change
+  - media_class: cold_host
+    note: Optional archive-demote for rarely played titles only; never live recording pointer
+  - media_class: cold_guest
+    note: Rejected for Steam — /mnt/k3s-cold is k3s domain
 
 # Infrastructure: Hyper-V External Switch (backbone, independent of any guest).
 hyperv_config:

@@ -1,0 +1,86 @@
+---
+# Inventory-driven Windows application deployment orchestrator.
+#
+# Host intent: windows_applications: [capability_id, ...]
+# Catalog:     policy/capability_catalog.yml (metadata; not a host list)
+# Eligibility: classify_host → host_execution_roles (+ optional gpu_model)
+# Dispatch:    include_role for explicitly selected IDs only (no roles/ scan)
+#
+# Preview:
+#   bin/codex-env ansible-playbook playbooks/deploy_applications.yaml \
+#     -i inventory/inventory.yaml --tags preview
+#
+# Verify (read-only role tasks only):
+#   bin/codex-env ansible-playbook playbooks/deploy_applications.yaml \
+#     -i inventory/inventory.yaml --tags verify
+#
+# Apply:
+#   bin/codex-env ansible-playbook playbooks/deploy_applications.yaml \
+#     -i inventory/inventory.yaml
+#
+# Optional filter (Steam recovery wrapper sets this):
+#   -e '{windows_applications_filter: [windows_steam_client]}'
+
+- name: Classify Windows hosts for application deployment
+  hosts: "{{ windows_applications_hosts | default('windows_hosts') }}"
+  gather_facts: false
+  tags: [classify_host, windows_applications, preview, verify]
+  tasks:
+    - name: Classify host execution roles
+      ansible.builtin.include_role:
+        name: classify_host
+      tags: [classify_host, windows_applications, preview, verify]
+
+- name: Resolve Windows applications and emit receipt (preview)
+  hosts: "{{ windows_applications_hosts | default('windows_hosts') }}"
+  gather_facts: false
+  tags: [windows_applications, preview]
+  vars:
+    windows_applications_preview_only: true
+    windows_applications_catalog_path: "{{ playbook_dir }}/../policy/capability_catalog.yml"
+    windows_applications_process_order_path: "{{ playbook_dir }}/../policy/process_order.yml"
+  tasks:
+    - name: Resolve applications for preview receipt
+      ansible.builtin.include_role:
+        name: windows_applications
+      tags: [windows_applications, preview]
+
+- name: Deploy selected Windows applications (mutate path)
+  hosts: "{{ windows_applications_hosts | default('windows_hosts') }}"
+  gather_facts: false
+  tags: [windows_applications]
+  vars:
+    windows_applications_preview_only: false
+    windows_applications_verify_dispatch: false
+    windows_applications_catalog_path: "{{ playbook_dir }}/../policy/capability_catalog.yml"
+    windows_applications_process_order_path: "{{ playbook_dir }}/../policy/process_order.yml"
+  tasks:
+    - name: Classify host execution roles before mutate dispatch
+      ansible.builtin.include_role:
+        name: classify_host
+      tags: [classify_host, windows_applications]
+
+    - name: Resolve and dispatch Windows applications
+      ansible.builtin.include_role:
+        name: windows_applications
+      tags: [windows_applications]
+
+- name: Verify selected Windows applications (verify-only dispatch)
+  hosts: "{{ windows_applications_hosts | default('windows_hosts') }}"
+  gather_facts: false
+  tags: [verify, never]
+  vars:
+    windows_applications_preview_only: false
+    windows_applications_verify_dispatch: true
+    windows_applications_catalog_path: "{{ playbook_dir }}/../policy/capability_catalog.yml"
+    windows_applications_process_order_path: "{{ playbook_dir }}/../policy/process_order.yml"
+  tasks:
+    - name: Classify host execution roles before verify dispatch
+      ansible.builtin.include_role:
+        name: classify_host
+      tags: [classify_host, verify, never]
+
+    - name: Resolve and verify-dispatch Windows applications
+      ansible.builtin.include_role:
+        name: windows_applications
+      tags: [windows_applications, verify, never]

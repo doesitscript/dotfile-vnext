@@ -1,0 +1,35 @@
+---
+- name: Validate windows_applications intent types
+  ansible.builtin.assert:
+    that:
+      - windows_applications is iterable
+      - windows_applications_filter is iterable
+    quiet: true
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Resolve Windows application capabilities from host intent
+  ansible.builtin.import_tasks: resolve.yml
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Emit Windows application resolution receipt
+  ansible.builtin.import_tasks: receipt.yml
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Dispatch selected Windows application roles
+  ansible.builtin.import_tasks: dispatch.yml
+  when: not (windows_applications_preview_only | bool)
+  tags:
+    - windows_applications
+    - verify

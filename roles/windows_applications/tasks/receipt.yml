@@ -1,0 +1,24 @@
+---
+- name: Show Windows application resolution receipt
+  ansible.builtin.debug:
+    msg: "{{ windows_applications_receipt }}"
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Fail when any requested application capability was rejected
+  ansible.builtin.assert:
+    that:
+      - (windows_applications_receipt.rejected | default([]) | length) == 0
+    fail_msg: >-
+      One or more windows_applications capability IDs were rejected before
+      dispatch: {{ windows_applications_receipt.rejected | default([]) }}
+    success_msg: No rejected Windows application capability IDs.
+  when: (windows_applications_effective | default([]) | length) > 0
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always

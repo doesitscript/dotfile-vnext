@@ -3,7 +3,7 @@
 # SSOT for depends_on chains. Playbooks and roles must honor this order —
 # do not leave dependency order only in prose (AGENTS.md §26).
 schema_version: 1
-updated_at: "2026-07-24"
+updated_at: "2026-09-23"
 
 # Ordered phases (earlier index must complete before later).
 process_order:
@@ -22,6 +22,15 @@ process_order:
   - id: runtime_plane_report
     artifact: roles/runtime_plane
     depends_on:
+      - classify_host
+  - id: windows_applications
+    artifact: playbooks/deploy_applications.yaml + roles/windows_applications
+    depends_on:
+      - classify_host
+  - id: windows_steam_client
+    artifact: roles/windows_steam_client
+    depends_on:
+      - windows_applications
       - classify_host
   - id: k8s_node_policy
     artifact: roles/k8s_node_policy + playbooks/apply_k8s_node_policy.yaml
@@ -85,6 +94,19 @@ playbooks:
     steps:
       - classify_host
       - open_webui
+  deploy_applications.yaml:
+    depends_on:
+      - classify_homelab_hosts.yaml  # or inline classify play
+    steps:
+      - classify_host
+      - windows_applications
+      - windows_steam_client  # example capability; only when host intent lists it
+  deploy_windows_steam_client.yaml:
+    depends_on:
+      - deploy_applications.yaml
+    steps:
+      - classify_host
+      - windows_applications  # filter windows_steam_client
   deploy_ipam_netbox.yaml--tags-ipam_netbox_seed_tags:
     depends_on:
       - netbox_api_reachable
@@ -106,3 +128,10 @@ roles:
       - classify_host
       - litellm_gateway
       - docker_engine
+  windows_applications:
+    depends_on:
+      - classify_host
+  windows_steam_client:
+    depends_on:
+      - classify_host
+      - windows_applications

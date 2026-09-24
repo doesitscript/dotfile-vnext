@@ -1,0 +1,224 @@
+---
+# Resolve a single capability ID into selected / skipped / rejected.
+# Expects: windows_applications_capability_id, windows_applications_catalog_doc,
+# host_execution_roles, host_allow_workloads, gpu (optional).
+
+- name: Look up catalog entry for capability {{ windows_applications_capability_id }}
+  ansible.builtin.set_fact:
+    windows_applications_entry: >-
+      {{
+        windows_applications_catalog_doc.capability_catalog[windows_applications_capability_id]
+        | default(none)
+      }}
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Reject unknown capability ID {{ windows_applications_capability_id }}
+  ansible.builtin.set_fact:
+    windows_applications_rejected: >-
+      {{
+        windows_applications_rejected + [{
+          'capability_id': windows_applications_capability_id,
+          'reason': 'capability_id not present in policy/capability_catalog.yml'
+        }]
+      }}
+  when: windows_applications_entry is none
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Reject non-orchestrated catalog entry {{ windows_applications_capability_id }}
+  ansible.builtin.set_fact:
+    windows_applications_rejected: >-
+      {{
+        windows_applications_rejected + [{
+          'capability_id': windows_applications_capability_id,
+          'reason': 'catalog entry is not marked application_orchestrator.enabled'
+        }]
+      }}
+  when:
+    - windows_applications_entry is not none
+    - not (windows_applications_entry.application_orchestrator.enabled | default(false) | bool)
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Read Windows platform surface for capability {{ windows_applications_capability_id }}
+  ansible.builtin.set_fact:
+    windows_applications_surface: >-
+      {{
+        windows_applications_entry.platform_surfaces.windows
+        | default({})
+      }}
+  when:
+    - windows_applications_entry is not none
+    - windows_applications_entry.application_orchestrator.enabled | default(false) | bool
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Reject non-commissioned Windows surface {{ windows_applications_capability_id }}
+  ansible.builtin.set_fact:
+    windows_applications_rejected: >-
+      {{
+        windows_applications_rejected + [{
+          'capability_id': windows_applications_capability_id,
+          'reason': 'windows platform status is not commissioned (got '
+                    ~ (windows_applications_surface.status | default('missing')) ~ ')'
+        }]
+      }}
+  when:
+    - windows_applications_entry is not none
+    - windows_applications_entry.application_orchestrator.enabled | default(false) | bool
+    - (windows_applications_surface.status | default('')) != 'commissioned'
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Reject missing implementation role {{ windows_applications_capability_id }}
+  ansible.builtin.set_fact:
+    windows_applications_rejected: >-
+      {{
+        windows_applications_rejected + [{
+          'capability_id': windows_applications_capability_id,
+          'reason': 'commissioned windows surface missing implementation role name'
+        }]
+      }}
+  when:
+    - windows_applications_entry is not none
+    - windows_applications_entry.application_orchestrator.enabled | default(false) | bool
+    - (windows_applications_surface.status | default('')) == 'commissioned'
+    - (windows_applications_surface.implementation | default('') | length) == 0
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Evaluate execution-role eligibility for capability {{ windows_applications_capability_id }}
+  ansible.builtin.set_fact:
+    windows_applications_role_ok: >-
+      {{
+        (
+          (windows_applications_surface.execution_roles | default([]))
+          | intersect(host_execution_roles | default([]))
+          | length
+        ) > 0
+        or (
+          windows_applications_capability_id in (host_allow_workloads | default([]))
+        )
+        or (
+          (windows_applications_surface.implementation | default(''))
+          in (host_allow_workloads | default([]))
+        )
+      }}
+    windows_applications_gpu_required: "{{ windows_applications_surface.gpu_model | default('') }}"
+    windows_applications_gpu_ok: >-
+      {{
+        (windows_applications_surface.gpu_model | default('') | length) == 0
+        or ((gpu | default('')) == (windows_applications_surface.gpu_model | default('')))
+      }}
+  when:
+    - windows_applications_entry is not none
+    - windows_applications_entry.application_orchestrator.enabled | default(false) | bool
+    - (windows_applications_surface.status | default('')) == 'commissioned'
+    - (windows_applications_surface.implementation | default('') | length) > 0
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Skip ineligible host for capability {{ windows_applications_capability_id }}
+  ansible.builtin.set_fact:
+    windows_applications_skipped: >-
+      {{
+        windows_applications_skipped + [{
+          'capability_id': windows_applications_capability_id,
+          'reason': (
+            'missing required execution_roles '
+            ~ (windows_applications_surface.execution_roles | default([]))
+            if not (windows_applications_role_ok | default(false) | bool)
+            else (
+              'gpu=' ~ (gpu | default('unset'))
+              ~ ' (need ' ~ windows_applications_gpu_required ~ ')'
+              if not (windows_applications_gpu_ok | default(false) | bool)
+              else 'ineligible'
+            )
+          )
+        }]
+      }}
+  when:
+    - windows_applications_entry is not none
+    - windows_applications_entry.application_orchestrator.enabled | default(false) | bool
+    - (windows_applications_surface.status | default('')) == 'commissioned'
+    - (windows_applications_surface.implementation | default('') | length) > 0
+    - >-
+      not (
+        (windows_applications_role_ok | default(false) | bool)
+        and (windows_applications_gpu_ok | default(false) | bool)
+      )
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Compute process_order index for capability {{ windows_applications_capability_id }}
+  ansible.builtin.set_fact:
+    windows_applications_process_order_index: "{{ windows_applications_intent_index | int }}"
+  when:
+    - windows_applications_entry is not none
+    - windows_applications_entry.application_orchestrator.enabled | default(false) | bool
+    - (windows_applications_surface.status | default('')) == 'commissioned'
+    - (windows_applications_surface.implementation | default('') | length) > 0
+    - windows_applications_role_ok | default(false) | bool
+    - windows_applications_gpu_ok | default(false) | bool
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Select capability for dispatch {{ windows_applications_capability_id }}
+  ansible.builtin.set_fact:
+    windows_applications_selected: >-
+      {{
+        windows_applications_selected + [{
+          'capability_id': windows_applications_capability_id,
+          'implementation': windows_applications_surface.implementation,
+          'execution_tags': (
+            windows_applications_surface.execution_tags
+            | default([windows_applications_capability_id])
+            | reject('equalto', 'verify')
+            | reject('equalto', 'preview')
+            | list
+          ),
+          'verify_tags': ['verify'],
+          'process_order_index': windows_applications_process_order_index | int,
+          'reason': 'eligible: catalog commissioned + execution_roles/workload + gpu gate'
+        }]
+      }}
+  when:
+    - windows_applications_entry is not none
+    - windows_applications_entry.application_orchestrator.enabled | default(false) | bool
+    - (windows_applications_surface.status | default('')) == 'commissioned'
+    - (windows_applications_surface.implementation | default('') | length) > 0
+    - windows_applications_role_ok | default(false) | bool
+    - windows_applications_gpu_ok | default(false) | bool
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always

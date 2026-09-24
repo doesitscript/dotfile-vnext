@@ -11,10 +11,32 @@
     name: "{{ windows_steam_client_chocolatey_package }}"
     state: present
   register: windows_steam_client_choco
-  failed_when: false
+  ignore_errors: true
   tags: [windows_steam_client]
 
-- name: Install Steam via winget when Chocolatey install did not succeed
+- name: Surface Chocolatey Steam install failure before winget fallback
+  ansible.builtin.debug:
+    msg:
+      provider: chocolatey
+      package: "{{ windows_steam_client_chocolatey_package }}"
+      failed: "{{ windows_steam_client_choco is failed }}"
+      msg: "{{ windows_steam_client_choco.msg | default(windows_steam_client_choco.stderr | default('')) }}"
+      rc: "{{ windows_steam_client_choco.rc | default('') }}"
+  when: windows_steam_client_choco is failed
+  changed_when: false
+  tags: [windows_steam_client]
+
+- name: Record Chocolatey failure for package provider receipt
+  ansible.builtin.set_fact:
+    windows_steam_client_package_providers_failed: >-
+      {{
+        (windows_steam_client_package_providers_failed | default([]))
+        + ['chocolatey']
+      }}
+  when: windows_steam_client_choco is failed
+  tags: [windows_steam_client]
+
+- name: Install Steam via winget when Chocolatey install failed
   ansible.windows.win_powershell:
     error_action: stop
     script: |
@@ -33,7 +55,25 @@
       }
       $Ansible.Changed = $true
       $Ansible.Result = 'winget install completed'
+  register: windows_steam_client_winget
   when: windows_steam_client_choco is failed
+  tags: [windows_steam_client]
+
+- name: Fail when both Chocolatey and winget Steam installs failed
+  ansible.builtin.assert:
+    that:
+      - >-
+        (windows_steam_client_choco is succeeded)
+        or (
+          windows_steam_client_choco is failed
+          and (windows_steam_client_winget is defined)
+          and (windows_steam_client_winget is succeeded)
+        )
+    fail_msg: >-
+      Steam package install failed for all providers.
+      chocolatey_failed={{ windows_steam_client_choco is failed }}
+      winget={{ windows_steam_client_winget | default({}) }}
+      providers_failed={{ windows_steam_client_package_providers_failed | default([]) }}
   tags: [windows_steam_client]
 
 - name: Resolve Steam install path from registry or default

@@ -8,13 +8,16 @@
 #   4. Hyper-V Windows host infrastructure
 #   5. Docker Ubuntu VM lifecycle for opted-in Windows hosts
 #   6. K3s Ubuntu VM lifecycle for opted-in Windows hosts
-#   7. Docker engine / client verification
-#   8. Interim hom.lab hosts file (mac-dev + Linux guests + optional Windows desktops)
+#   7. Windows applications (inventory-driven capability orchestrator)
+#   8. Docker engine / client verification
+#   9. Interim hom.lab hosts file (mac-dev + Linux guests + optional Windows desktops)
 #
 # Narrower playbooks remain available for faster loops and troubleshooting:
 #   - playbooks/provision_windows_host.yml              — Windows baseline only
 #   - playbooks/configure_hyperv_windows_hosts.yaml     — Hyper-V host infrastructure
 #   - playbooks/hyperv_ubuntu_docker_vm.yaml            — Docker VM orchestration
+#   - playbooks/deploy_applications.yaml               — Windows applications orchestrator
+#   - playbooks/deploy_windows_steam_client.yaml        — Steam filter into orchestrator
 #   - playbooks/access.yaml                             — identity/access only
 #   - playbooks/docker.yaml                             — Docker only
 #   - playbooks/homelab_hosts_file.yaml                 — interim DNS-3 hosts file only
@@ -54,6 +57,7 @@
             - access
             - hyperv_windows_host
             - windows_file_shares
+            - windows_applications
             - hyperv_ubuntu_docker_vm
             - hyperv_ubuntu_k3s_vm
             - docker_engine_client_verify
@@ -91,6 +95,10 @@
 - name: Site - Windows file shares
   import_playbook: windows_file_shares.yml
   tags: [site_windows_file_shares, windows_file_shares]
+
+- name: Site - Windows applications (inventory-driven)
+  import_playbook: deploy_applications.yaml
+  tags: [site_windows_applications, windows_applications]
 
 - name: Site - Hyper-V Docker Ubuntu guest lifecycle
   import_playbook: hyperv_ubuntu_docker_vm.yaml

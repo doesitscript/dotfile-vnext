@@ -1,6 +1,6 @@
 ---
-# Read-only compare of live Steam pointers to inventory. Does not install or
-# write config. Intended for: --tags verify
+# Read-only compare of live Steam pointers to inventory. Does not install,
+# stop Steam, write VDF, or uninstall. Tags: verify + never only (no mutate tags).
 - name: Resolve Steam install path for verify
   ansible.windows.win_powershell:
     error_action: stop
@@ -33,7 +33,7 @@
       $Ansible.Changed = $false
       $Ansible.Result = @{ install_path = $install }
   register: windows_steam_client_verify_resolve
-  tags: [windows_steam_client, verify, never]
+  tags: [verify, never]
 
 - name: Compare library folder pointers to inventory
   ansible.windows.win_powershell:
@@ -45,7 +45,7 @@
     script: "{{ lookup('file', role_path ~ '/files/Merge-SteamLibraryFolders.ps1') }}"
   when: windows_steam_client_library_roots | length > 0
   register: windows_steam_client_verify_libraries
-  tags: [windows_steam_client, verify, never]
+  tags: [verify, never]
 
 - name: Compare Game Recording pointer to inventory
   ansible.windows.win_powershell:
@@ -57,7 +57,7 @@
     script: "{{ lookup('file', role_path ~ '/files/Set-SteamBackgroundRecordPath.ps1') }}"
   when: windows_steam_client_recording_root | length > 0
   register: windows_steam_client_verify_recording
-  tags: [windows_steam_client, verify, never]
+  tags: [verify, never]
 
 - name: Assert Steam pointers match inventory (verify)
   ansible.builtin.assert:
@@ -73,7 +73,7 @@
       libraries={{ windows_steam_client_verify_libraries.result | default({}) }}
       recording={{ windows_steam_client_verify_recording.result | default({}) }}
     success_msg: Steam library and recording pointers match inventory.
-  tags: [windows_steam_client, verify, never]
+  tags: [verify, never]
 
 - name: Show Steam verify receipt
   ansible.builtin.debug:
@@ -81,4 +81,4 @@
       install_path: "{{ windows_steam_client_verify_resolve.result.install_path }}"
       libraries: "{{ windows_steam_client_verify_libraries.result | default({}) }}"
       recording: "{{ windows_steam_client_verify_recording.result | default({}) }}"
-  tags: [windows_steam_client, verify, never]
+  tags: [verify, never]

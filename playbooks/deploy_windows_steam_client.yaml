@@ -1,120 +1,21 @@
 ---
-# Deploy Steam client + library/recording config pointers on Windows Server
-# flagship NVIDIA hosts (RTX 5090 class).
+# Narrow Steam recovery / debug filter into deploy_applications.yaml.
+# Does not duplicate classification or application discovery.
 #
-# Targeting (mature — no bare hostname):
-#   inventory intersection: windows_server_2025:&windows_nvidia_gpu_hosts
-#   execution role:         windows-steam-gaming (policy/execution_roles.yml)
-#   capability catalog:     windows_steam_client (policy/capability_catalog.yml)
-#   GPU model label:        gpu: rtx-5090 (host_vars + live-object-registry)
-#   commission gate:        windows_steam_client_state: present
-#
-# Classify preview (read-only):
-#   bin/codex-env ansible-playbook playbooks/classify_homelab_hosts.yaml \
-#     -i inventory/inventory.yaml --limit 'windows_server_2025:&windows_nvidia_gpu_hosts'
-#
-# Preview selection (no package/config write):
+# Preview:
 #   bin/codex-env ansible-playbook playbooks/deploy_windows_steam_client.yaml \
 #     -i inventory/inventory.yaml --tags preview
 #
-# Read-only live pointer compare:
+# Verify:
 #   bin/codex-env ansible-playbook playbooks/deploy_windows_steam_client.yaml \
 #     -i inventory/inventory.yaml --tags verify
 #
-# Apply (rebuild / explicit — deferred in 2026-09-23 scaffold pass):
+# Apply (rebuild / explicit):
 #   bin/codex-env ansible-playbook playbooks/deploy_windows_steam_client.yaml \
 #     -i inventory/inventory.yaml
-#
-# PROHIBITED: hosts: HOM-LAB-HVH-02 — use class + role + gpu label + state.
 
-- name: Classify Windows Server NVIDIA hosts for Steam targeting
-  hosts: "{{ windows_steam_client_hosts | default('windows_server_2025:&windows_nvidia_gpu_hosts') }}"
-  gather_facts: false
-  tags: [classify_host, windows_steam_client, preview, verify, steam]
-  tasks:
-    - name: Classify host execution roles
-      ansible.builtin.include_role:
-        name: classify_host
-      tags: [classify_host, windows_steam_client, preview, verify, steam]
-
-    - name: Classify Steam client eligibility
-      ansible.builtin.set_fact:
-        windows_steam_client_role_matched: >-
-          {{
-            ('windows-steam-gaming' in (host_execution_roles | default([])))
-            or ('windows_steam_client' in (host_allow_workloads | default([])))
-          }}
-        windows_steam_client_gpu_matched: >-
-          {{ (gpu | default('')) == (windows_steam_client_required_gpu | default('rtx-5090')) }}
-        windows_steam_client_state_present: >-
-          {{ (windows_steam_client_state | default('absent')) == 'present' }}
-        windows_steam_client_should_apply: >-
-          {{
-            (
-              ('windows-steam-gaming' in (host_execution_roles | default([])))
-              or ('windows_steam_client' in (host_allow_workloads | default([])))
-            )
-            and ((gpu | default('')) == (windows_steam_client_required_gpu | default('rtx-5090')))
-            and ((windows_steam_client_state | default('absent')) == 'present')
-          }}
-        windows_steam_client_selection_reason: >-
-          {% if not (
-            ('windows-steam-gaming' in (host_execution_roles | default([])))
-            or ('windows_steam_client' in (host_allow_workloads | default([])))
-          ) %}
-          not selected: missing windows-steam-gaming execution role
-          {% elif (gpu | default('')) != (windows_steam_client_required_gpu | default('rtx-5090')) %}
-          not selected: gpu={{ gpu | default('unset') }} (need {{ windows_steam_client_required_gpu | default('rtx-5090') }})
-          {% elif (windows_steam_client_state | default('absent')) != 'present' %}
-          not selected: windows_steam_client_state={{ windows_steam_client_state | default('absent') }}
-          {% else %}
-          eligible: windows_server_2025 + windows-steam-gaming + gpu={{ gpu }} + state=present
-          {% endif %}
-      changed_when: false
-      tags: [classify_host, windows_steam_client, preview, verify, steam, always]
-
-    - name: Derive runtime group for Steam client hosts
-      ansible.builtin.group_by:
-        key: >-
-          {{
-            'windows_steam_client_eligible'
-            if (windows_steam_client_should_apply | default(false) | bool)
-            else 'windows_steam_client_excluded'
-          }}
-      changed_when: false
-      tags: [classify_host, windows_steam_client, preview, verify, steam, always]
-
-- name: Preview Windows Steam client target selection
-  hosts: "{{ windows_steam_client_hosts | default('windows_server_2025:&windows_nvidia_gpu_hosts') }}"
-  connection: local
-  gather_facts: false
-  tags: [preview, always]
-  tasks:
-    - name: Preview Steam client host selection
-      ansible.builtin.debug:
-        msg:
-          host: "{{ item }}"
-          selected: "{{ hostvars[item].windows_steam_client_should_apply | default(false) }}"
-          state: "{{ hostvars[item].windows_steam_client_state | default('absent') }}"
-          gpu: "{{ hostvars[item].gpu | default('unset') }}"
-          hardware_classes: "{{ hostvars[item].hardware_classes | default([]) }}"
-          execution_roles: "{{ hostvars[item].host_execution_roles | default([]) }}"
-          k8s_labels: "{{ hostvars[item].host_k8s_labels | default({}) }}"
-          library_roots: "{{ hostvars[item].windows_steam_client_library_roots | default([]) }}"
-          recording_root: "{{ hostvars[item].windows_steam_client_recording_root | default('') }}"
-          reason: "{{ hostvars[item].windows_steam_client_selection_reason | default('not classified') }}"
-      run_once: true
-      loop: "{{ query('inventory_hostnames', windows_steam_client_hosts | default('windows_server_2025:&windows_nvidia_gpu_hosts')) }}"
-      tags: [preview, always]
-
-- name: Deploy Windows Steam client where class + role + gpu + state match
-  hosts: "{{ windows_steam_client_hosts | default('windows_server_2025:&windows_nvidia_gpu_hosts') }}"
-  gather_facts: false
-  tags: [windows_steam_client, steam, verify]
-  roles:
-    - role: windows_steam_client
-      when: windows_steam_client_should_apply | default(false) | bool
-      tags:
-        - windows_steam_client
-        - steam
-        - verify
+- name: Steam client filter into Windows application orchestrator
+  ansible.builtin.import_playbook: deploy_applications.yaml
+  vars:
+    windows_applications_filter:
+      - windows_steam_client

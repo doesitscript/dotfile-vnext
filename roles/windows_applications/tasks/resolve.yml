@@ -1,0 +1,104 @@
+---
+- name: Load capability catalog for application resolution
+  ansible.builtin.include_vars:
+    file: "{{ windows_applications_catalog_path }}"
+    name: windows_applications_catalog_doc
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Load process_order for application dependency ordering
+  ansible.builtin.include_vars:
+    file: "{{ windows_applications_process_order_path }}"
+    name: windows_applications_process_order_doc
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Compute effective application intent (host list ∩ optional filter)
+  ansible.builtin.set_fact:
+    windows_applications_effective: >-
+      {{
+        (windows_applications | default([]))
+        if (windows_applications_filter | default([]) | length) == 0
+        else (
+          (windows_applications | default([]))
+          | select('in', windows_applications_filter)
+          | list
+        )
+      }}
+    windows_applications_selected: []
+    windows_applications_skipped: []
+    windows_applications_rejected: []
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Skip hosts with no application intent after filter
+  ansible.builtin.set_fact:
+    windows_applications_skipped: >-
+      {{
+        windows_applications_skipped + [{
+          'capability_id': '(none)',
+          'reason': 'no windows_applications intent (or filter emptied intent)'
+        }]
+      }}
+  when: (windows_applications_effective | length) == 0
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Resolve each requested application capability ID
+  ansible.builtin.include_tasks: resolve_one.yml
+  loop: "{{ windows_applications_effective }}"
+  loop_control:
+    loop_var: windows_applications_capability_id
+    index_var: windows_applications_intent_index
+  when: (windows_applications_effective | length) > 0
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Order selected applications by process_order role depends_on depth
+  ansible.builtin.set_fact:
+    windows_applications_selected: >-
+      {{
+        windows_applications_selected
+        | sort(
+            attribute='process_order_index'
+          )
+      }}
+  when: (windows_applications_selected | length) > 1
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always
+
+- name: Build final Windows applications receipt fact
+  ansible.builtin.set_fact:
+    windows_applications_receipt:
+      host: "{{ inventory_hostname }}"
+      intent: "{{ windows_applications | default([]) }}"
+      filter: "{{ windows_applications_filter | default([]) }}"
+      effective: "{{ windows_applications_effective }}"
+      selected: "{{ windows_applications_selected }}"
+      skipped: "{{ windows_applications_skipped }}"
+      rejected: "{{ windows_applications_rejected }}"
+      execution_roles: "{{ host_execution_roles | default([]) }}"
+      allow_workloads: "{{ host_allow_workloads | default([]) }}"
+  tags:
+    - windows_applications
+    - preview
+    - verify
+    - always

@@ -1,0 +1,35 @@
+---
+# Dynamic dispatch: include_role for explicitly selected capability IDs only.
+#
+# CRITICAL: never apply the `verify` tag onto the whole role. That would attach
+# `verify` to install/config/uninstall tasks and break --tags verify isolation.
+# Mutate path applies capability tags only. Verify path includes the role with
+# no applied tags so only tasks already tagged `verify` (+ `never`) run.
+
+- name: Dispatch selected application roles (mutate / present|absent path)
+  ansible.builtin.include_role:
+    name: "{{ item.implementation }}"
+    apply:
+      tags: "{{ item.execution_tags }}"
+  loop: "{{ windows_applications_receipt.selected | default([]) }}"
+  loop_control:
+    label: "{{ item.capability_id }} -> {{ item.implementation }}"
+  when:
+    - not (windows_applications_verify_dispatch | bool)
+    - (windows_applications_receipt.selected | default([]) | length) > 0
+  tags:
+    - windows_applications
+
+- name: Dispatch selected application roles (verify-only path)
+  ansible.builtin.include_role:
+    name: "{{ item.implementation }}"
+  loop: "{{ windows_applications_receipt.selected | default([]) }}"
+  loop_control:
+    label: "verify {{ item.capability_id }} -> {{ item.implementation }}"
+  when:
+    - windows_applications_verify_dispatch | bool
+    - (windows_applications_receipt.selected | default([]) | length) > 0
+  tags:
+    - windows_applications
+    - verify
+    - never
