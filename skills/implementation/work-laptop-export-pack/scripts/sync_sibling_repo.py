@@ -9,6 +9,7 @@ import shutil
 import sys
 
 from packet_manifest import collect_manifest_files, resolve_with_repo_root, run_contract_validation
+from refresh_downstream_update_commands import write_card as write_downstream_update_card
 
 
 def parse_args() -> argparse.Namespace:
@@ -54,6 +55,12 @@ def main() -> int:
     repo_root = Path(args.repo_root).expanduser().resolve()
     manifest_path = resolve_with_repo_root(repo_root, args.packet_manifest)
     run_contract_validation(repo_root, manifest_path)
+
+    # Default downstream sync step: refresh the work-Mac update command card
+    # in the packet before copying so full + grouped apply commands stay current.
+    packet_root = resolve_with_repo_root(repo_root, "exports/work-laptop-ai-tools")
+    write_downstream_update_card(packet_root / "scripts" / "recent_and_next.md")
+
     manifest, _, packet_name, files = collect_manifest_files(repo_root, manifest_path)
 
     repo_sync = manifest.get("repo_sync") or {}
@@ -108,6 +115,9 @@ def main() -> int:
         target_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source_path, target_path)
         copied += 1
+
+    # Ensure the sibling card matches even if the path was previously untracked.
+    write_downstream_update_card(target_dir / "scripts" / "recent_and_next.md")
 
     github_repo = repo_sync.get("github_repo", "")
     if github_repo and not isinstance(github_repo, str):

@@ -16,6 +16,10 @@ the examples in `README.md` / `USEFUL-COMMANDS.md` during the sync. The first
 normal AI refresh target is `--tags ai_tools`; narrower targets are
 `ai_clients`, `model_runtime`, and `mcp`.
 
+**Default sync side-effect:** every sibling sync refreshes
+`scripts/recent_and_next.md` with concise full-update and grouped-update
+commands for the work Mac. That file is the default downstream apply card.
+
 ## When to use / not use
 
 Use when:

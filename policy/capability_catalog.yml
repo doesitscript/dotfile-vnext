@@ -144,6 +144,11 @@ capability_catalog:
   windows_steam_client:
     display_name: Windows Steam client (libraries + recordings pointers)
     labels: [desktop-gaming, steam, windows-tools]
+    application_orchestrator:
+      enabled: true
+      notes: >-
+        Dispatched only when listed in host windows_applications intent.
+        Catalog is metadata; eligibility is execution_roles + optional gpu_model.
     placement_contract:
       host_selection: inventory_and_execution_role
       execution_selection: playbook_or_role_tags
@@ -155,11 +160,11 @@ capability_catalog:
         execution_roles: [windows-steam-gaming]
         inventory_intersection: "windows_server_2025:&windows_nvidia_gpu_hosts"
         gpu_model: rtx-5090
-        execution_tags: [windows_steam_client, steam, preview, verify]
+        execution_tags: [windows_steam_client, steam]
         note: >-
           Config pointers only (libraryfolders.vdf + BackgroundRecordPath).
-          Apply deferred for rebuild-first pass; commission via state=present
-          on matching class hosts.
+          Commission via windows_applications intent + state=present.
+          Verify uses role tags verify+never only (not listed in execution_tags).
       macos:
         status: deferred
         implementation: null

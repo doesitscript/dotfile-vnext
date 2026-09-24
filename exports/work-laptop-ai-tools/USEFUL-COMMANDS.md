@@ -39,8 +39,9 @@ asked to implement. For implement mode, use U1 instead.
 Use skill `work-laptop-packet-ops` to sync the work-laptop-ai-tools source
 packet to the sibling. Validate the export contract, then copy every manifest
 path from `dotfile-vnext/exports/work-laptop-ai-tools/` into the sibling
-checkout so the sibling matches the packet. Do not treat the sibling as design
-authority. Do not commit or push.
+checkout so the sibling matches the packet. Sync **always refreshes**
+`scripts/recent_and_next.md` (full + grouped + recent apply commands). Do not
+treat the sibling as design authority. Do not commit or push.
 
 ### U3b. Update AI tools and client configuration by capability tag
 
@@ -141,15 +142,22 @@ Use these **on the work Mac** after pulling the sibling repo. Do not invent
 SSH/scp apply paths from the controller unless the user explicitly asks for a
 one-off.
 
+**Default apply card:** `scripts/recent_and_next.md` (refreshed on every
+upstream → sibling sync). Prefer that file over reconstructing commands here.
+
 ### L1. Apply on the work laptop
 
-Use skill `work-laptop-day2-apply` on the work Mac after `git pull`. Full apply
-is `--skip-tags hosts_file`. If the change is only in the sequential tail of
-`playbook.yaml` roles, use the quick window instead: `--tags recent_10` for the
-last 10 role entries, or `--tags recent_15` for the last 15. Still pass
-`--skip-tags hosts_file`. Then verify Continue, Cline, and `cx-*`. Do not invent
-an ad-hoc SSH or scp apply. Do not use a recent window for a change outside that
-tail.
+Use skill `work-laptop-day2-apply` on the work Mac after `git pull`. Open
+`scripts/recent_and_next.md` and run either:
+
+- **full update** (`--skip-tags hosts_file`), or
+- **grouped update** (`--tags ai_tools` default; or `ai_clients` /
+  `model_runtime` / `mcp`), or
+- **recent-change window** (`recent_10` / `recent_15`) when only the playbook
+  role-list tail changed.
+
+Then verify Continue, Cline, and `cx-*`. Do not invent an ad-hoc SSH or scp
+apply.
 
 ### L2. Work-laptop recorded facts
 

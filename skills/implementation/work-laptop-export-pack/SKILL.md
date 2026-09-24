@@ -77,6 +77,10 @@ bin/codex-env python \
 bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/sync_sibling_repo.py
 ```
 
+   Sync always refreshes `scripts/recent_and_next.md` (full + grouped + recent
+   apply commands for the work Mac). That card is the default downstream
+   update surface after pull.
+
 4. Verify the sibling repo from outside the source repo with:
 
 ```bash

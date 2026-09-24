@@ -1,6 +1,6 @@
 ---
 name: work-laptop-day2-apply
-description: "Use when applying or verifying the work-laptop-ai-tools sibling on the corporate Mac after a git pull: full playbook with --skip-tags hosts_file, or a recent-window apply with --tags recent_10 or recent_15. Do not invent ad-hoc SSH/scp applies. Do not use for parent packet design edits (edit packet then work-laptop-packet-ops)."
+description: "Use when applying or verifying the work-laptop-ai-tools sibling on the corporate Mac after a git pull: open scripts/recent_and_next.md for full or grouped capability updates (default ai_tools), or recent_10/recent_15 windows. Do not invent ad-hoc SSH/scp applies. Do not use for parent packet design edits (edit packet then work-laptop-packet-ops)."
 ---
 
 # Skill: Work-laptop day-2 apply
@@ -8,6 +8,17 @@ description: "Use when applying or verifying the work-laptop-ai-tools sibling on
 Canonical **on-laptop** loop after parent/sibling changes land on GitHub.
 Design authority stays the parent packet; this skill runs against the sibling
 checkout on the work Mac (`a805120` / `MLLXLJJ2XVFJ`).
+
+## Default command card
+
+After `git pull`, open **`scripts/recent_and_next.md`**. That file is refreshed
+on every upstream → sibling sync and is the default place for:
+
+- full day-2 update (`--skip-tags hosts_file`)
+- grouped capability updates (`ai_tools`, `ai_clients`, `model_runtime`, `mcp`)
+- recent-change windows (`recent_10`, `recent_15`)
+
+Do not invent alternate apply command lists when that card is present.
 
 ## When to use / not use
 
@@ -30,23 +41,30 @@ Do not use when:
 | --- | --- |
 | Design | parent `exports/work-laptop-ai-tools/` |
 | Runtime checkout | `~/Documents/develop/work-laptop-ai-tools` (sibling) |
+| Default apply commands | sibling `scripts/recent_and_next.md` |
 | Vault on laptop | sibling `vault/shared.vault.yml` + `vault_pass.sh` → `.vault_pass` |
 
 ## Workflow (on the work laptop)
 
 ```bash
 cd ~/Documents/develop/work-laptop-ai-tools
-git pull
+git pull --ff-only
+# Then run the matching block from scripts/recent_and_next.md
+# (full, grouped capability tag, or recent_10 / recent_15).
+```
 
-# Full day-2: skip hosts_file (needs --ask-become-pass; laptop hosts already set)
-.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml --skip-tags hosts_file
+Default AI refresh when unsure which group changed:
 
-# Quick window when the change is in the sequential role-list tail.
-# recent_10 = last 10 role entries. recent_15 = last 15. Safety pre_tasks still run.
-.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml --skip-tags hosts_file --tags recent_10
-.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml --skip-tags hosts_file --tags recent_15
+```bash
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
+  --skip-tags hosts_file --tags ai_tools --check --diff
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
+  --skip-tags hosts_file --tags ai_tools
+```
 
-# Hosts refresh only when catalog names change:
+Hosts refresh only when catalog names change:
+
+```bash
 # .venv/bin/ansible-playbook playbook.yaml -i inventory.yaml --tags hosts_file --ask-become-pass
 ```
 
@@ -59,11 +77,10 @@ After apply:
 2. Run verify block below
 3. Hand off IDE details to `work-laptop-ide-clients` if Continue/Cline still empty
 
-Before handing off this subproject, replace `scripts/recent_and_next.md` with
-only the next bounded commands for the next operator. The upstream handoff
-owner must then run `git add -A`, review the staged diff, commit, and push the
-sibling; this skill does not claim downstream readiness until that push is
-complete.
+Upstream sync keeps `scripts/recent_and_next.md` current; do not replace it
+with a one-off note unless the user asks for a temporary operator card. After
+upstream sync/push, this skill does not claim the laptop is updated until the
+work Mac pulls and applies.
 
 ## Verify (required before claiming success)
 
