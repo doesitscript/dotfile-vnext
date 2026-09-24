@@ -90,18 +90,22 @@ Parity check from `dotfile-vnext`:
 bin/codex-env python model-lane-acceptance/scripts/check-ai-cli-model-parity.py
 ```
 
-### U3d. Terratest quickstart (Go + Terraform testing)
+### U3d. Terratest progressive toolchain (Go + Terraform testing)
 
-Context7: Terratest is a Go library (Go >= 1.26 cited; packet floor 1.22).
-Packet roles: `golang_cli`, `terraform_cli`, `terratest_quickstart`.
+Context7 / HRL: Terratest is a Go library (no separate CLI). Packet floor Go
+1.22+ (docs cite >= 1.26).
 
-Sync, push sibling, then on the work Mac:
+**Required:** `golang_cli`, `terraform_cli`, `terratest_quickstart` (+ testify).
+**Recommended present:** `tflint_cli`, `checkov_cli`, `gotestsum_cli`,
+`terraform_docs_cli`, `infracost_cli`.
+
+See `TERRATEST.md` work map. Sync, push sibling, then on the work Mac:
 
 ```bash
 .venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
   --skip-tags hosts_file --tags terratest
 cd ~/Documents/develop/terratest-quickstart/test
-go test -v -timeout 30m
+go test -count=1 -v -timeout 30m
 ```
 
 ### U4. Sync source to sibling, then git push the sibling

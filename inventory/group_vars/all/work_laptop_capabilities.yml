@@ -88,14 +88,55 @@ work_laptop_capabilities:
 
   - capability_id: terratest
     catalog_ref: terratest
-    display_name: Terratest quickstart (Go + Terraform testing)
-    labels: [terraform, terratest, golang]
+    display_name: Terratest progressive toolchain (Go + Terraform testing)
+    labels: [terraform, terratest, golang, iac-testing]
     execution_tags: [terratest]
-    roles: [terraform_cli, golang_cli, terratest_quickstart]
+    roles:
+      - terraform_cli
+      - golang_cli
+      - terratest_quickstart
+      - tflint_cli
+      - checkov_cli
+      - gotestsum_cli
+      - terraform_docs_cli
+      - infracost_cli
+    toolchain:
+      required:
+        - tool: terraform
+          role: terraform_cli
+          notes: Pin Terraform as the engine for this packet.
+        - tool: go
+          role: golang_cli
+          notes: Compiles and runs Terratest via go test (no Terratest CLI).
+        - tool: terratest
+          role: terratest_quickstart
+          notes: Go module github.com/gruntwork-io/terratest.
+        - tool: testify
+          role: terratest_quickstart
+          notes: Go module github.com/stretchr/testify (pulled with scaffold).
+      recommended:
+        - tool: tflint
+          role: tflint_cli
+          notes: Terraform language / provider lint; run tflint --init.
+        - tool: checkov
+          role: checkov_cli
+          notes: Baseline IaC security scanner.
+        - tool: gotestsum
+          role: gotestsum_cli
+          notes: JUnit/JSON CI artifacts wrapper around go test.
+        - tool: terraform-docs
+          role: terraform_docs_cli
+          notes: Module input/output docs for reusable modules.
+        - tool: infracost
+          role: infracost_cli
+          notes: Plan cost review / advisory gate.
     workflow_surfaces:
+      - exports/work-laptop-ai-tools/TERRATEST.md
       - exports/work-laptop-ai-tools/host_vars/work-laptop.yaml
       - exports/work-laptop-ai-tools/playbook.yaml
       - roles/terratest_quickstart/README.md
+      - homelab-reference-library/implementation-guides/terraform/terratest-progressive-test-suites.md
     notes:
-      - Deploys ~/Documents/develop/terratest-quickstart; run go test from test/.
+      - Deploys ~/Documents/develop/terratest-quickstart; run go test -count=1 from test/.
+      - Authority: HRL terratest-progressive-test-suites.md complementary toolchain table.
     verify_tags: [terratest]

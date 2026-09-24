@@ -1,0 +1,9 @@
+---
+- name: Require macOS for Git LFS package management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "git_lfs_cli currently supports macOS through Homebrew."
+
+- name: Manage Git LFS on macOS
+  ansible.builtin.import_tasks: mac.yml

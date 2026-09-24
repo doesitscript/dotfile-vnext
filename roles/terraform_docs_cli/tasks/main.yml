@@ -1,0 +1,9 @@
+---
+- name: Require macOS for terraform_docs_cli
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "terraform_docs_cli currently supports macOS through Homebrew."
+
+- name: Manage terraform_docs_cli on macOS
+  ansible.builtin.import_tasks: mac.yml

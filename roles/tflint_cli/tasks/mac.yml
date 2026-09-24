@@ -1,0 +1,68 @@
+---
+- name: Inspect installed Homebrew taps
+  ansible.builtin.command:
+    argv: [brew, tap]
+  register: tflint_cli_installed_taps
+  changed_when: false
+
+- name: Add Homebrew tap for tflint_cli
+  community.general.homebrew_tap:
+    name: "{{ tflint_cli_homebrew_tap }}"
+    state: present
+  when: tflint_cli_state == "present"
+
+- name: Manage tflint_cli Homebrew formula
+  community.general.homebrew:
+    name: "{{ tflint_cli_homebrew_formula }}"
+    state: "{{ tflint_cli_state }}"
+  when:
+    - not ansible_check_mode or tflint_cli_homebrew_tap in tflint_cli_installed_taps.stdout_lines
+
+- name: Report deferred tflint_cli formula preview
+  ansible.builtin.debug:
+    msg: >-
+      tflint_cli formula management will run after the
+      {{ tflint_cli_homebrew_tap }} tap is added during apply.
+  when:
+    - ansible_check_mode
+    - tflint_cli_state == "present"
+    - tflint_cli_homebrew_tap not in tflint_cli_installed_taps.stdout_lines
+
+- name: Verify tflint_cli is present
+  ansible.builtin.command:
+    argv: [tflint, --version]
+  register: tflint_cli_version
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - tflint_cli_verify | bool
+    - tflint_cli_state == "present"
+
+- name: Check removed tflint formula
+  ansible.builtin.command:
+    argv: [brew, list, --formula, tflint]
+  register: tflint_cli_absent_check
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - tflint_cli_verify | bool
+    - tflint_cli_state == "absent"
+
+- name: Verify tflint formula is absent
+  ansible.builtin.assert:
+    that:
+      - tflint_cli_absent_check.rc != 0
+    fail_msg: "tflint_cli remains installed after requesting absent state."
+  when:
+    - not ansible_check_mode
+    - tflint_cli_verify | bool
+    - tflint_cli_state == "absent"
+
+- name: Report tflint_cli version
+  ansible.builtin.debug:
+    msg: "{{ tflint_cli_version.stdout_lines | default([tflint_cli_version.stdout]) | first }}"
+  when:
+    - not ansible_check_mode
+    - tflint_cli_verify | bool
+    - tflint_cli_state == "present"

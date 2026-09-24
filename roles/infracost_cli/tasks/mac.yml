@@ -1,0 +1,44 @@
+---
+- name: Manage infracost_cli Homebrew formula
+  community.general.homebrew:
+    name: "{{ infracost_cli_homebrew_formula }}"
+    state: "{{ infracost_cli_state }}"
+
+- name: Verify infracost_cli is present
+  ansible.builtin.command:
+    argv: [infracost, --version]
+  register: infracost_cli_version
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - infracost_cli_verify | bool
+    - infracost_cli_state == "present"
+
+- name: Check removed infracost_cli formula
+  ansible.builtin.command:
+    argv: [brew, list, --formula, "{{ infracost_cli_homebrew_formula | basename }}"]
+  register: infracost_cli_absent_check
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - infracost_cli_verify | bool
+    - infracost_cli_state == "absent"
+
+- name: Verify infracost_cli formula is absent
+  ansible.builtin.assert:
+    that:
+      - infracost_cli_absent_check.rc != 0
+    fail_msg: "infracost_cli remains installed after requesting absent state."
+  when:
+    - not ansible_check_mode
+    - infracost_cli_verify | bool
+    - infracost_cli_state == "absent"
+
+- name: Report infracost_cli version
+  ansible.builtin.debug:
+    msg: "{{ infracost_cli_version.stdout_lines | default([infracost_cli_version.stdout]) | first }}"
+  when:
+    - not ansible_check_mode
+    - infracost_cli_verify | bool
+    - infracost_cli_state == "present"

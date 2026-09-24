@@ -1,0 +1,9 @@
+---
+- name: Require macOS for tflint_cli
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "tflint_cli currently supports macOS through Homebrew."
+
+- name: Manage tflint_cli on macOS
+  ansible.builtin.import_tasks: mac.yml

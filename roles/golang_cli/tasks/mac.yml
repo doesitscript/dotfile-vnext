@@ -1,8 +1,23 @@
 ---
-- name: Manage Go Homebrew formula
+- name: Check whether Go formula is installed
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --versions
+      - "{{ golang_cli_homebrew_formula }}"
+  register: golang_cli_homebrew_check
+  changed_when: false
+  failed_when: false
+  when: golang_cli_state == "present"
+
+- name: Install Go Homebrew formula
   community.general.homebrew:
     name: "{{ golang_cli_homebrew_formula }}"
     state: "{{ golang_cli_state }}"
+  when: >-
+    golang_cli_state == "absent"
+    or golang_cli_homebrew_check.rc != 0
 
 - name: Verify installed Go version
   ansible.builtin.command:
@@ -18,7 +33,7 @@
 
 - name: Parse Go version for minimum check
   ansible.builtin.set_fact:
-    golang_cli_version_parsed: "{{ golang_cli_version.stdout | regex_search('go([0-9]+\\.[0-9]+(?:\\.[0-9]+)?)', '\\1') }}"
+    golang_cli_version_parsed: "{{ (golang_cli_version.stdout | regex_search('go([0-9]+\\.[0-9]+(?:\\.[0-9]+)?)', '\\1') | first) | string }}"
   when:
     - not ansible_check_mode
     - golang_cli_verify | bool

@@ -1,0 +1,69 @@
+---
+- name: Check whether Git LFS formula is installed
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --versions
+      - "{{ git_lfs_cli_homebrew_formula }}"
+  register: git_lfs_cli_homebrew_check
+  changed_when: false
+  failed_when: false
+  when: git_lfs_cli_state == "present"
+
+- name: Install Git LFS formula
+  community.general.homebrew:
+    name: "{{ git_lfs_cli_homebrew_formula }}"
+    state: "{{ git_lfs_cli_state }}"
+  when: >-
+    git_lfs_cli_state == "absent"
+    or git_lfs_cli_homebrew_check.rc != 0
+
+- name: Check installed Git LFS executable
+  ansible.builtin.stat:
+    path: "{{ git_lfs_cli_binary_path }}"
+  register: git_lfs_cli_binary_stat
+  when:
+    - not ansible_check_mode
+    - git_lfs_cli_verify | bool
+
+- name: Verify Git LFS executable is present
+  ansible.builtin.assert:
+    that:
+      - git_lfs_cli_binary_stat.stat.exists | default(false)
+      - git_lfs_cli_binary_stat.stat.executable | default(false)
+    fail_msg: "Git LFS is not installed at {{ git_lfs_cli_binary_path }}."
+  when:
+    - not ansible_check_mode
+    - git_lfs_cli_verify | bool
+    - git_lfs_cli_state == "present"
+
+- name: Verify Git LFS executable is absent
+  ansible.builtin.assert:
+    that:
+      - not (git_lfs_cli_binary_stat.stat.exists | default(false))
+    fail_msg: "Git LFS remains installed at {{ git_lfs_cli_binary_path }}."
+  when:
+    - not ansible_check_mode
+    - git_lfs_cli_verify | bool
+    - git_lfs_cli_state == "absent"
+
+- name: Probe Git LFS version
+  ansible.builtin.command:
+    argv:
+      - "{{ git_lfs_cli_binary_path }}"
+      - version
+  register: git_lfs_cli_version
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - git_lfs_cli_verify | bool
+    - git_lfs_cli_state == "present"
+
+- name: Report Git LFS version
+  ansible.builtin.debug:
+    msg: "{{ git_lfs_cli_version.stdout }}"
+  when:
+    - not ansible_check_mode
+    - git_lfs_cli_verify | bool
+    - git_lfs_cli_state == "present"

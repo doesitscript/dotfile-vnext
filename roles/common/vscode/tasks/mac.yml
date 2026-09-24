@@ -5,3 +5,43 @@
   community.general.homebrew_cask:
     name: visual-studio-code
     state: present
+
+- name: Ensure user LaunchAgents directory exists for VS Code GUI PATH
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/Library/LaunchAgents"
+    state: directory
+    mode: "0755"
+
+- name: Deploy VS Code GUI PATH launch agent
+  ansible.builtin.template:
+    src: vscode-path.plist.j2
+    dest: "{{ vscode_gui_path_launch_agent_path }}"
+    mode: "0644"
+
+- name: Set VS Code GUI PATH for the current user session
+  ansible.builtin.command:
+    argv:
+      - launchctl
+      - setenv
+      - PATH
+      - "{{ vscode_gui_path }}"
+  changed_when: false
+
+- name: Inspect VS Code GUI PATH launch agent
+  ansible.builtin.command:
+    argv:
+      - launchctl
+      - print
+      - "gui/{{ ansible_user_uid }}/{{ vscode_gui_path_launch_agent_label }}"
+  register: vscode_gui_path_launch_agent_status
+  changed_when: false
+  failed_when: false
+
+- name: Load VS Code GUI PATH launch agent
+  ansible.builtin.command:
+    argv:
+      - launchctl
+      - bootstrap
+      - "gui/{{ ansible_user_uid }}"
+      - "{{ vscode_gui_path_launch_agent_path }}"
+  when: vscode_gui_path_launch_agent_status.rc != 0

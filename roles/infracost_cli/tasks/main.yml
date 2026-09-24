@@ -1,0 +1,9 @@
+---
+- name: Require macOS for infracost_cli
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "infracost_cli currently supports macOS through Homebrew."
+
+- name: Manage infracost_cli on macOS
+  ansible.builtin.import_tasks: mac.yml

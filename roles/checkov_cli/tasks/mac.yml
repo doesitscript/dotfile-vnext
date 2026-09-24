@@ -1,0 +1,44 @@
+---
+- name: Manage checkov_cli Homebrew formula
+  community.general.homebrew:
+    name: "{{ checkov_cli_homebrew_formula }}"
+    state: "{{ checkov_cli_state }}"
+
+- name: Verify checkov_cli is present
+  ansible.builtin.command:
+    argv: [checkov, --version]
+  register: checkov_cli_version
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - checkov_cli_verify | bool
+    - checkov_cli_state == "present"
+
+- name: Check removed checkov_cli formula
+  ansible.builtin.command:
+    argv: [brew, list, --formula, "{{ checkov_cli_homebrew_formula | basename }}"]
+  register: checkov_cli_absent_check
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - checkov_cli_verify | bool
+    - checkov_cli_state == "absent"
+
+- name: Verify checkov_cli formula is absent
+  ansible.builtin.assert:
+    that:
+      - checkov_cli_absent_check.rc != 0
+    fail_msg: "checkov_cli remains installed after requesting absent state."
+  when:
+    - not ansible_check_mode
+    - checkov_cli_verify | bool
+    - checkov_cli_state == "absent"
+
+- name: Report checkov_cli version
+  ansible.builtin.debug:
+    msg: "{{ checkov_cli_version.stdout_lines | default([checkov_cli_version.stdout]) | first }}"
+  when:
+    - not ansible_check_mode
+    - checkov_cli_verify | bool
+    - checkov_cli_state == "present"

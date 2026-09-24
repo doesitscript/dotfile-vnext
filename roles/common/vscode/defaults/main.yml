@@ -8,3 +8,18 @@ vscode_extensions:
   - Continue.continue
   # Cline (marketplace id remains saoudrizwan.claude-dev)
   - saoudrizwan.claude-dev
+
+# GUI applications launched by macOS do not inherit shell profile PATH changes.
+# This is applied to the user launchd environment before VS Code starts.
+vscode_gui_path_entries:
+  - "{{ ansible_env.HOME }}/.local/bin"
+  - "{{ ansible_env.HOME }}/bin"
+  - /opt/homebrew/bin
+  - /usr/local/bin
+  - /usr/bin
+  - /bin
+  - /usr/sbin
+  - /sbin
+vscode_gui_path: "{{ vscode_gui_path_entries | join(':') }}"
+vscode_gui_path_launch_agent_label: com.work-laptop-ai-tools.vscode-path
+vscode_gui_path_launch_agent_path: "{{ ansible_env.HOME }}/Library/LaunchAgents/{{ vscode_gui_path_launch_agent_label }}.plist"

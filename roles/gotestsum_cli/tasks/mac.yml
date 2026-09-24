@@ -1,0 +1,44 @@
+---
+- name: Manage gotestsum_cli Homebrew formula
+  community.general.homebrew:
+    name: "{{ gotestsum_cli_homebrew_formula }}"
+    state: "{{ gotestsum_cli_state }}"
+
+- name: Verify gotestsum_cli is present
+  ansible.builtin.command:
+    argv: [gotestsum, --version]
+  register: gotestsum_cli_version
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - gotestsum_cli_verify | bool
+    - gotestsum_cli_state == "present"
+
+- name: Check removed gotestsum_cli formula
+  ansible.builtin.command:
+    argv: [brew, list, --formula, "{{ gotestsum_cli_homebrew_formula | basename }}"]
+  register: gotestsum_cli_absent_check
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - gotestsum_cli_verify | bool
+    - gotestsum_cli_state == "absent"
+
+- name: Verify gotestsum_cli formula is absent
+  ansible.builtin.assert:
+    that:
+      - gotestsum_cli_absent_check.rc != 0
+    fail_msg: "gotestsum_cli remains installed after requesting absent state."
+  when:
+    - not ansible_check_mode
+    - gotestsum_cli_verify | bool
+    - gotestsum_cli_state == "absent"
+
+- name: Report gotestsum_cli version
+  ansible.builtin.debug:
+    msg: "{{ gotestsum_cli_version.stdout_lines | default([gotestsum_cli_version.stdout]) | first }}"
+  when:
+    - not ansible_check_mode
+    - gotestsum_cli_verify | bool
+    - gotestsum_cli_state == "present"

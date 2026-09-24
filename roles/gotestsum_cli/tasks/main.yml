@@ -1,0 +1,9 @@
+---
+- name: Require macOS for gotestsum_cli
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "gotestsum_cli currently supports macOS through Homebrew."
+
+- name: Manage gotestsum_cli on macOS
+  ansible.builtin.import_tasks: mac.yml

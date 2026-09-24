@@ -1,0 +1,44 @@
+---
+- name: Manage terraform_docs_cli Homebrew formula
+  community.general.homebrew:
+    name: "{{ terraform_docs_cli_homebrew_formula }}"
+    state: "{{ terraform_docs_cli_state }}"
+
+- name: Verify terraform_docs_cli is present
+  ansible.builtin.command:
+    argv: [terraform-docs, version]
+  register: terraform_docs_cli_version
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - terraform_docs_cli_verify | bool
+    - terraform_docs_cli_state == "present"
+
+- name: Check removed terraform_docs_cli formula
+  ansible.builtin.command:
+    argv: [brew, list, --formula, "{{ terraform_docs_cli_homebrew_formula | basename }}"]
+  register: terraform_docs_cli_absent_check
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - terraform_docs_cli_verify | bool
+    - terraform_docs_cli_state == "absent"
+
+- name: Verify terraform_docs_cli formula is absent
+  ansible.builtin.assert:
+    that:
+      - terraform_docs_cli_absent_check.rc != 0
+    fail_msg: "terraform_docs_cli remains installed after requesting absent state."
+  when:
+    - not ansible_check_mode
+    - terraform_docs_cli_verify | bool
+    - terraform_docs_cli_state == "absent"
+
+- name: Report terraform_docs_cli version
+  ansible.builtin.debug:
+    msg: "{{ terraform_docs_cli_version.stdout_lines | default([terraform_docs_cli_version.stdout]) | first }}"
+  when:
+    - not ansible_check_mode
+    - terraform_docs_cli_verify | bool
+    - terraform_docs_cli_state == "present"
