@@ -1,0 +1,131 @@
+---
+- name: Require macOS for Terratest quickstart
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "terratest_quickstart currently targets macOS workstations."
+
+- name: Require Go when Terratest quickstart is present
+  ansible.builtin.command:
+    argv:
+      - go
+      - version
+  register: terratest_quickstart_go_probe
+  changed_when: false
+  failed_when: terratest_quickstart_go_probe.rc != 0
+  when:
+    - not ansible_check_mode
+    - terratest_quickstart_state == "present"
+
+- name: Require Terraform when Terratest quickstart is present
+  ansible.builtin.command:
+    argv:
+      - terraform
+      - version
+  register: terratest_quickstart_tf_probe
+  changed_when: false
+  failed_when: terratest_quickstart_tf_probe.rc != 0
+  when:
+    - not ansible_check_mode
+    - terratest_quickstart_state == "present"
+
+- name: Ensure Terratest quickstart directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ terratest_quickstart_root }}"
+    - "{{ terratest_quickstart_root }}/examples/terraform-hello-world-example"
+    - "{{ terratest_quickstart_root }}/test"
+  when: terratest_quickstart_state == "present"
+
+- name: Deploy Terratest quickstart README
+  ansible.builtin.copy:
+    src: README.md
+    dest: "{{ terratest_quickstart_root }}/README.md"
+    mode: "0644"
+  when: terratest_quickstart_state == "present"
+
+- name: Deploy Hello-World Terraform example
+  ansible.builtin.copy:
+    src: examples/terraform-hello-world-example/main.tf
+    dest: "{{ terratest_quickstart_root }}/examples/terraform-hello-world-example/main.tf"
+    mode: "0644"
+  when: terratest_quickstart_state == "present"
+
+- name: Deploy Hello-World Terratest
+  ansible.builtin.copy:
+    src: test/terraform_hello_world_example_test.go
+    dest: "{{ terratest_quickstart_root }}/test/terraform_hello_world_example_test.go"
+    mode: "0644"
+  when: terratest_quickstart_state == "present"
+
+- name: Initialize Go module for Terratest quickstart
+  ansible.builtin.command:
+    argv:
+      - go
+      - mod
+      - init
+      - "{{ terratest_quickstart_module_path }}"
+    chdir: "{{ terratest_quickstart_root }}/test"
+    creates: "{{ terratest_quickstart_root }}/test/go.mod"
+  when:
+    - not ansible_check_mode
+    - terratest_quickstart_state == "present"
+
+- name: Fetch Terratest module
+  ansible.builtin.command:
+    argv:
+      - go
+      - get
+      - "{{ terratest_quickstart_go_package }}"
+    chdir: "{{ terratest_quickstart_root }}/test"
+  register: terratest_quickstart_go_get
+  changed_when: >-
+    'added' in (terratest_quickstart_go_get.stderr | default(''))
+    or 'upgraded' in (terratest_quickstart_go_get.stderr | default(''))
+  when:
+    - not ansible_check_mode
+    - terratest_quickstart_state == "present"
+
+- name: Tidy Terratest Go module
+  ansible.builtin.command:
+    argv:
+      - go
+      - mod
+      - tidy
+    chdir: "{{ terratest_quickstart_root }}/test"
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - terratest_quickstart_state == "present"
+
+- name: Verify go.mod lists Terratest
+  ansible.builtin.command:
+    argv:
+      - go
+      - list
+      - -m
+      - github.com/gruntwork-io/terratest
+    chdir: "{{ terratest_quickstart_root }}/test"
+  register: terratest_quickstart_mod_list
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - terratest_quickstart_verify | bool
+    - terratest_quickstart_state == "present"
+
+- name: Report Terratest module version
+  ansible.builtin.debug:
+    msg: "{{ terratest_quickstart_mod_list.stdout }}"
+  when:
+    - not ansible_check_mode
+    - terratest_quickstart_verify | bool
+    - terratest_quickstart_state == "present"
+
+- name: Remove Terratest quickstart tree
+  ansible.builtin.file:
+    path: "{{ terratest_quickstart_root }}"
+    state: absent
+  when: terratest_quickstart_state == "absent"

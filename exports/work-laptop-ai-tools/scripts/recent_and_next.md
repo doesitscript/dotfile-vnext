@@ -40,6 +40,19 @@ Prefer the smallest group that covers the change. Catalog:
 # AI MCP integrations only.
 .venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
   --skip-tags hosts_file --tags mcp
+
+# Terratest quickstart (Go + Terraform + Hello-World scaffold).
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
+  --skip-tags hosts_file --tags terratest --check --diff
+.venv/bin/ansible-playbook playbook.yaml -i inventory.yaml \
+  --skip-tags hosts_file --tags terratest
+```
+
+After Terratest apply:
+
+```bash
+cd ~/Documents/develop/terratest-quickstart/test
+go test -v -timeout 30m
 ```
 
 ## Recent-change windows (playbook role-list tail)

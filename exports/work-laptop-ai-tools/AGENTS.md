@@ -19,6 +19,7 @@ when the task is packet MCP, vault, or sync.
 | Human model commands | **Preferred examples:** `helpers/docker-model-runner/examples/`. **Legacy echo:** `helpers/work-mac-local-models/` |
 | Capability-targeted apply | `group_vars/all/work_laptop_capabilities.yml` + `playbook.yaml` tags; start with `scripts/recent_and_next.md` |
 | Downstream update commands (default) | `scripts/recent_and_next.md` — refreshed on every sibling sync (full + grouped + recent) |
+| Terratest quickstart | `TERRATEST.md` + tags `terratest` (`golang_cli`, `terraform_cli`, `terratest_quickstart`) |
 | Paste-ready agent prompts | `USEFUL-COMMANDS.md` — upstream sync/evaluate + work-laptop capability-targeted apply |
 | Feedback loop (fix → return → promote) | `DEPENDENCY-MAP.md` § Feedback loop; skills `work-laptop-remediation-return` + `work-laptop-inbox-evaluate-fix` |
 

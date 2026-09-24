@@ -1,0 +1,9 @@
+---
+- name: Require macOS for Go package management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Darwin"
+    fail_msg: "golang_cli currently supports macOS through Homebrew."
+
+- name: Manage Go on macOS
+  ansible.builtin.import_tasks: mac.yml

@@ -1,0 +1,75 @@
+---
+- name: Manage Go Homebrew formula
+  community.general.homebrew:
+    name: "{{ golang_cli_homebrew_formula }}"
+    state: "{{ golang_cli_state }}"
+
+- name: Verify installed Go version
+  ansible.builtin.command:
+    argv:
+      - go
+      - version
+  register: golang_cli_version
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - golang_cli_verify | bool
+    - golang_cli_state == "present"
+
+- name: Parse Go version for minimum check
+  ansible.builtin.set_fact:
+    golang_cli_version_parsed: "{{ golang_cli_version.stdout | regex_search('go([0-9]+\\.[0-9]+(?:\\.[0-9]+)?)', '\\1') }}"
+  when:
+    - not ansible_check_mode
+    - golang_cli_verify | bool
+    - golang_cli_state == "present"
+    - golang_cli_version is defined
+
+- name: Assert Go version is at least golang_cli_min_version
+  ansible.builtin.assert:
+    that:
+      - golang_cli_version_parsed is version(golang_cli_min_version, '>=')
+    fail_msg: >-
+      Go {{ golang_cli_version_parsed | default('unknown') }} is below
+      Terratest minimum {{ golang_cli_min_version }}. Upgrade Homebrew go.
+    success_msg: >-
+      Go {{ golang_cli_version_parsed }} meets Terratest floor
+      {{ golang_cli_min_version }}
+  when:
+    - not ansible_check_mode
+    - golang_cli_verify | bool
+    - golang_cli_state == "present"
+    - golang_cli_version_parsed | default('') | length > 0
+
+- name: Check removed Go formula
+  ansible.builtin.command:
+    argv:
+      - brew
+      - list
+      - --formula
+      - "{{ golang_cli_homebrew_formula }}"
+  register: golang_cli_absent_check
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - golang_cli_verify | bool
+    - golang_cli_state == "absent"
+
+- name: Verify Go formula is absent
+  ansible.builtin.assert:
+    that:
+      - golang_cli_absent_check.rc != 0
+    fail_msg: "Go remains installed after requesting absent state."
+  when:
+    - not ansible_check_mode
+    - golang_cli_verify | bool
+    - golang_cli_state == "absent"
+
+- name: Report Go version
+  ansible.builtin.debug:
+    msg: "{{ golang_cli_version.stdout }}"
+  when:
+    - not ansible_check_mode
+    - golang_cli_verify | bool
+    - golang_cli_state == "present"

@@ -141,6 +141,32 @@ capability_catalog:
         implementation: null
         note: MCP server placement requires a separate service/runtime decision.
 
+  terratest:
+    display_name: Terratest quickstart
+    labels: [terraform, terratest, golang]
+    placement_contract:
+      host_selection: inventory_and_execution_role
+      execution_selection: ansible_tags
+    platform_surfaces:
+      macos:
+        status: commissioned
+        implementation: work_laptop_packet
+        execution_tags: [terratest]
+        note: >-
+          golang_cli + terraform_cli + terratest_quickstart scaffold under
+          Documents/develop/terratest-quickstart.
+      linux:
+        status: candidate
+        implementation: golang_cli_and_terratest_quickstart
+      windows:
+        status: deferred
+        implementation: null
+        note: Terratest is Go-first; Windows path not commissioned on this slice.
+      kubernetes:
+        status: deferred
+        implementation: null
+        note: Terratest runs as developer workstation tests, not a cluster workload.
+
   windows_steam_client:
     display_name: Windows Steam client (libraries + recordings pointers)
     labels: [desktop-gaming, steam, windows-tools]
