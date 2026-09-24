@@ -228,11 +228,13 @@ aws_iac_mcp_package_name: "awslabs.aws-iac-mcp-server@1.0.26"
 # Prefer existing uvx (pipx/local); skip Homebrew uv compile on Monterey.
 aws_iac_mcp_command: "{{ ansible_env.HOME }}/.local/bin/uvx"
 
-# Continue MCP list — Morph only; Cline mirrors this list.
+# Continue MCP list — Morph on; other installed servers shipped commented
+# (Continue has no enabled flag). Cline mirrors this list and uses disabled:.
 # Do NOT also list continue_ide_rules for morph-warpgrep-evaluation.md.
 continue_ide_rules: []
 continue_ide_mcp_servers:
   - name: morph-mcp
+    enabled: true
     type: stdio
     command: "{{ ansible_env.HOME }}/develop/dotfile-vnext/bin/mcp-server-env-wrapper"
     args:
@@ -241,6 +243,44 @@ continue_ide_mcp_servers:
     cwd: "{{ ansible_env.HOME }}/develop/dotfile-vnext"
     env:
       WORKSPACE_MODE: "true"
+  - name: context7
+    enabled: false
+    type: stdio
+    command: "{{ ansible_env.HOME }}/develop/dotfile-vnext/bin/mcp-server-env-wrapper"
+    args:
+      - "{{ mac_dev_mcp_env_dir }}/context7.env"
+      - "{{ mac_dev_nvm_bin }}/context7-mcp"
+  - name: firecrawl
+    enabled: false
+    type: stdio
+    command: "{{ ansible_env.HOME }}/develop/dotfile-vnext/bin/mcp-server-env-wrapper"
+    args:
+      - "{{ mac_dev_mcp_env_dir }}/firecrawl.env"
+      - "{{ mac_dev_nvm_bin }}/firecrawl-mcp"
+  - name: "Terraform MCP"
+    enabled: false
+    type: stdio
+    command: "{{ ansible_env.HOME }}/.local/bin/terraform-mcp-server"
+    args:
+      - "stdio"
+  - name: "AWS MCP"
+    enabled: false
+    type: streamable-http
+    url: "{{ aws_mcp_url | default('https://aws-mcp.us-east-1.api.aws/mcp') }}"
+  - name: "AWS IaC MCP"
+    enabled: false
+    type: stdio
+    command: "{{ aws_iac_mcp_command | default(ansible_env.HOME ~ '/.local/bin/uvx') }}"
+    args:
+      - "{{ aws_iac_mcp_package_name | default('awslabs.aws-iac-mcp-server@1.0.26') }}"
+    env:
+      FASTMCP_LOG_LEVEL: "ERROR"
+  - name: firebase
+    enabled: false
+    type: stdio
+    command: "{{ mac_dev_nvm_bin }}/firebase"
+    args:
+      - mcp
 
 playwright_mcp_state: present
 playwright_mcp_targets:

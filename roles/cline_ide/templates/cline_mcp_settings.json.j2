@@ -23,7 +23,7 @@
 {% if server.cwd is defined %}
       "cwd": {{ server.cwd | to_json }},
 {% endif %}
-      "disabled": false,
+      "disabled": {{ (not (server.enabled | default(true) | bool)) | bool | to_json }},
       "autoApprove": []
     }{% if not loop.last %},{% endif %}
 

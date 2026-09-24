@@ -465,6 +465,7 @@ continue_ide_mcp_servers:
   # WarpGrep: do not list continue_ide_rules for morph — morph role drops
   # ~/.continue/rules/morph-warpgrep-evaluation.md (Continue loads it).
   - name: morph-mcp
+    enabled: true
     type: stdio
     command: "{{ playbook_dir }}/bin/mcp-server-env-wrapper"
     args:
@@ -475,6 +476,37 @@ continue_ide_mcp_servers:
       WORKSPACE_MODE: "true"
       # Prefer npm global + ~/.local/bin; do not dump full GUI PATH from inbox.
       PATH: "{{ ansible_env.HOME }}/.npm-packages/bin:{{ ansible_env.HOME }}/.local/bin:{{ ansible_env.PATH }}"
+  # Catalog: Continue has no on/off flag — enabled:false → YAML comments in config.
+  - name: context7
+    enabled: false
+    type: stdio
+    command: "{{ work_laptop_nvm_exec }}"
+    args:
+      - context7-mcp
+  - name: firecrawl
+    enabled: false
+    type: stdio
+    command: "{{ playbook_dir }}/bin/mcp-server-env-wrapper"
+    args:
+      - "{{ work_laptop_mcp_env_dir }}/firecrawl.env"
+      - firecrawl-mcp
+  - name: "Terraform MCP"
+    enabled: false
+    type: stdio
+    command: "{{ ansible_env.HOME }}/.local/bin/terraform-mcp-server"
+    args:
+      - "stdio"
+  - name: "AWS MCP"
+    enabled: false
+    type: streamable-http
+    url: "https://aws-mcp.us-east-1.api.aws/mcp"
+  - name: firebase
+    enabled: false
+    type: stdio
+    command: "{{ work_laptop_nvm_exec }}"
+    args:
+      - firebase
+      - mcp
 continue_ide_blocked_lanes:
   - "qwen2.5-coder-14b (undersized for 5090 — prefer qwen3-coder-30b-a3b)"
   - "qwen2.5-coder-32b (replaced 2026-09-10 by qwen3-coder-30b-a3b)"

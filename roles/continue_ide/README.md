@@ -12,9 +12,12 @@ local OpenAI-compatible server on the client Mac (e.g. Jan) after explicit
 validation — never `provider: ollama` against a Jan GGUF model id.
 
 **Morph WarpGrep (evaluation):** When `continue_ide_mcp_servers` includes
-`morph-mcp` (see `inventory/host_vars/mac-dev.yaml`), Continue Agent mode can
-call `codebase_search`. Steering rule:
-`.continue/rules/morph-warpgrep-evaluation.md` (deployed by `roles/mcp_servers/morph`).
+`morph-mcp` with `enabled: true` (see `inventory/host_vars/mac-dev.yaml`),
+Continue Agent mode can call `codebase_search`. Steering rule:
+`.continue/rules/morph-warpgrep-evaluation.md` (deployed by
+`roles/mcp_servers/morph`). Other list entries with `enabled: false` render as
+**YAML comments** (Continue has no native per-server toggle). Cline mirrors the
+same list and uses `mcpServers.*.disabled` instead.
 
 **stdio MCP gotcha:** Continue requires `command` on every `type: stdio`
 entry. If `command`/`cwd` use `{{ dotfiles_home }}` and that var is undefined

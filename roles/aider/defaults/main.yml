@@ -7,6 +7,12 @@ aider_mcp_config_path: "{{ ansible_env.HOME }}/.aider.mcp.json"
 # API key — resolved from vault when empty.
 aider_api_key: ""
 aider_gateway_api_base: "http://litellm.hom.lab/v1"
+# Default model id written into ~/.aider.conf.yml.
+# Resolution order (this is the "fallback" chain — not a runtime retry):
+#   1. host/group aider_default_model override
+#   2. else ai_cli_aider_default_model from ai_cli_apps.yml (openai/<chat-id>)
+#   3. else openai/<ai_cli_default_chat_model>
+#   4. else openai/qwen3-coder-30b-a3b (last-resort string so parity checks stay pinned)
 aider_default_model: "{{ ai_cli_aider_default_model | default('openai/' ~ (ai_cli_default_chat_model | default('qwen3-coder-30b-a3b'))) }}"
 
 # Vault source for API key when aider_api_key is unset.

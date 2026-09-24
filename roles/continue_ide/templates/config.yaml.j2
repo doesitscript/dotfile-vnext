@@ -107,7 +107,8 @@ models:
 {% endif %}
 {% if (continue_ide_mcp_servers | default([]) | length) > 0 %}
 mcpServers:
-{% for server in continue_ide_mcp_servers %}
+{# Continue has no native per-server on/off flag. enabled:false → YAML comments. #}
+{% for server in continue_ide_mcp_servers if server.enabled | default(true) | bool %}
   - name: {{ server.name | to_json }}
 {% if server.type is defined %}
     type: {{ server.type | to_json }}
@@ -146,6 +147,37 @@ mcpServers:
 {% endfor %}
 {% endif %}
 {% endfor %}
+{% set _continue_mcp_off = continue_ide_mcp_servers | selectattr('enabled', 'defined') | rejectattr('enabled') | list %}
+{% if _continue_mcp_off | length > 0 %}
+  # --- MCP catalog (deployed, not active). Set enabled: true to commission. ---
+{% for server in _continue_mcp_off %}
+  # - name: {{ server.name | to_json }}
+{% if server.type is defined %}
+  #   type: {{ server.type | to_json }}
+{% endif %}
+{% if server.command is defined %}
+  #   command: {{ server.command | to_json }}
+{% endif %}
+{% if server.args is defined %}
+  #   args:
+{% for arg in server.args %}
+  #     - {{ arg | to_json }}
+{% endfor %}
+{% endif %}
+{% if server.url is defined %}
+  #   url: {{ server.url | to_json }}
+{% endif %}
+{% if server.cwd is defined %}
+  #   cwd: {{ server.cwd | to_json }}
+{% endif %}
+{% if server.env is defined %}
+  #   env:
+{% for env_key, env_val in server.env.items() %}
+  #     {{ env_key }}: {{ env_val | to_json }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
 {% endif %}
 {% if (continue_ide_rules | default([]) | length) > 0 %}
 rules:
