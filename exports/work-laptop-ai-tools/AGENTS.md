@@ -19,9 +19,30 @@ when the task is packet MCP, vault, or sync.
 | Human model commands | **Preferred examples:** `helpers/docker-model-runner/examples/`. **Legacy echo:** `helpers/work-mac-local-models/` |
 | Capability-targeted apply | `group_vars/all/work_laptop_capabilities.yml` + `playbook.yaml` tags; start with `USEFUL-COMMANDS.md` U3b |
 | Paste-ready agent prompts | `USEFUL-COMMANDS.md` — upstream sync/evaluate + work-laptop capability-targeted apply |
+| Feedback loop (fix → return → promote) | `DEPENDENCY-MAP.md` § Feedback loop; skills `work-laptop-remediation-return` + `work-laptop-inbox-evaluate-fix` |
 
 Do not treat the sibling checkout as design authority. Edit the packet (or
 parent roles), then sync.
+
+## Feedback loop (keep this smarter)
+
+The forward path is not “sync only.” When the work Mac hits a real failure:
+
+1. **Downstream** repairs the smallest controlled surface (`host_vars`, role,
+   packet file) — not a one-off `~/.continue` edit — and records evidence in
+   `inbox/` via `work-laptop-remediation-return` (mark
+   `upstream-backport-needed` if the parent packet was unavailable).
+2. **Upstream** runs `work-laptop-inbox-evaluate-fix`: pull sibling, classify
+   inbox notes **and** sibling working-tree diffs that change packet behavior,
+   promote validated fixes into this packet / parent roles, register
+   `deviations/`, then `work-laptop-packet-ops` sync + push sibling.
+3. **Regression guard:** accepted accommodations live in
+   `deviations/register.yaml` (+ `entries/`), with role/README comments when
+   the fix is structural. Do not leave the only copy of a fix on the laptop.
+
+Inbox notes are the preferred evidence form. Uncommitted sibling changes that
+already encode a fix are the same signal class — still promote into source,
+then sync, so the next laptop pull cannot wipe them.
 
 When laptop behavior conflicts with **source-packet** configuration (this file
 under `dotfile-vnext/exports/work-laptop-ai-tools/` / synced sibling copy of

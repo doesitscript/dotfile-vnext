@@ -8,6 +8,11 @@ description: "Use when a work-laptop packet apply or managed client configuratio
 Repair a demonstrated work-laptop configuration failure while preserving the
 parent packet as design authority.
 
+This skill is the **downstream half** of the feedback loop. The upstream half
+is `work-laptop-inbox-evaluate-fix` (promote into packet + `deviations/`, then
+sync). Together they keep laptop repairs from becoming one-off drift. See
+packet `DEPENDENCY-MAP.md` § Feedback loop and `AGENTS.md` § Feedback loop.
+
 ## Inputs
 
 - Failing command and relevant error output

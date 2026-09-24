@@ -44,3 +44,24 @@ HRL (library checkout; may be absent on a laptop session):
    (controller download to public share → rsync → `~/models` → import). Do not
    extend the share/rsync pipeline for new work. Jan.AI local RAG: role `jan_ide`
    and `JAN-AI-WORK-MAC-RAG.md`.
+
+## Feedback loop
+
+```text
+work Mac failure
+  → remediation-return (fix + inbox receipt; prefer packet edit)
+  → push sibling evidence
+  → controller: inbox-evaluate-fix (promote into packet / deviations)
+  → packet-ops sync + push sibling
+  → work Mac: day2-apply
+```
+
+| Direction | Skill | What lands |
+| --- | --- | --- |
+| Downstream → upstream | `work-laptop-remediation-return` then `work-laptop-inbox-evaluate-fix` | Packet/parent fix + `deviations/` + processed inbox receipt |
+| Upstream → downstream | `work-laptop-packet-ops` (+ sibling commit/push) | Manifest-owned files match source |
+| Downstream apply | `work-laptop-day2-apply` | Live Mac converges to pulled packet |
+
+Treat sibling dirty trees that change packet behavior the same as `inbox/`
+packages: classify, promote or reject, never leave them as the only authority.
+Paste-ready prompts: `USEFUL-COMMANDS.md` U1, U3/U4, L4, L5.

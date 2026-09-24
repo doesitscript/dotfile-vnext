@@ -22,9 +22,11 @@ laptop-only drift (`AGENTS.md`).
 ### U1. Inbox evaluate-and-fix (implement)
 
 Use skill `work-laptop-inbox-evaluate-fix` to git pull the sibling, process
-active `inbox/` notes, fix durable items in the source packet (prefer packet
-over unregistered laptop drift), register deviations, then sync and push the
-sibling. Do not treat the sibling as design authority.
+active `inbox/` notes **and** sibling working-tree diffs that change packet
+behavior, fix durable items in the source packet (prefer packet over
+unregistered laptop drift), register deviations, then sync and push the
+sibling. Do not treat the sibling as design authority. This is the upstream
+half of the feedback loop in `DEPENDENCY-MAP.md` § Feedback loop.
 
 ### U2. Inbound laptop feedback review (audit only)
 
@@ -177,4 +179,6 @@ config fails on the work Mac. Capture the error, make the smallest correction
 (prefer source packet when available; otherwise mark
 `upstream-backport-needed`), write a dated `inbox/` receipt, validate with
 playbook + focused check, then commit/push non-secret files. Prefer source
-packet over unregistered laptop drift.
+packet over unregistered laptop drift. Upstream then runs **U1** so the fix
+becomes packet + `deviations/` permanence — that closed loop is how we stop
+regressing the same laptop failure.

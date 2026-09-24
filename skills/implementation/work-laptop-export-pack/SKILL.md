@@ -119,6 +119,9 @@ bin/codex-env python skills/implementation/work-laptop-export-pack/scripts/round
 ## Handoffs
 
 - `project-skill-runtime-bridge`
+- Packet feedback loop (laptop repair → promote → sync): slice skills
+  `work-laptop-remediation-return` and `work-laptop-inbox-evaluate-fix`;
+  narrative in packet `DEPENDENCY-MAP.md` § Feedback loop
 
 ## Outputs
 

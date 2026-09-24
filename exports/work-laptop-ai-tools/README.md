@@ -11,6 +11,12 @@ Primary delivery model:
 - the zip archive is optional and secondary
 - the sibling repo is replaceable and should never become the design authority
 
+**Feedback loop:** laptop failure → `work-laptop-remediation-return` (evidence
++ smallest fix) → push sibling → controller `work-laptop-inbox-evaluate-fix`
+(promote into packet / `deviations/`) → `work-laptop-packet-ops` sync/push →
+laptop `work-laptop-day2-apply`. Details: `DEPENDENCY-MAP.md` § Feedback loop,
+`AGENTS.md` § Feedback loop.
+
 ## Adopted design (slice locality)
 
 This packet is a **scoped operating surface**, not just an Ansible zip. Agents

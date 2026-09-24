@@ -69,7 +69,9 @@ ls -la inbox/ inbox/processed/ inbox/deferred/ 2>/dev/null
 git log -15 --pretty=format:'%h %ad %an %s' --date=short
 ```
 
-Classify each active `inbox/*.md` (not README):
+Classify each active `inbox/*.md` (not README) **and** any sibling dirty-tree
+diff that changes packet-owned paths (`host_vars/`, roles, playbook tags,
+manifest, AGENTS, deviations):
 
 | Class | Action |
 | --- | --- |
@@ -77,6 +79,9 @@ Classify each active `inbox/*.md` (not README):
 | Validated fix missing from packet | Promote into packet/parent role, then process |
 | Operator-interactive / out of scope | `deferred/` or deviation `accepted` without code |
 | Conflicts with source intent | Keep source; register or reject; do not silently adopt |
+
+Dirty sibling trees without an `inbox/*.md` note are still inbound signal.
+Write a dated processed receipt that names the paths and the deviation id.
 
 ### 3. Fix in source (not laptop-only)
 
