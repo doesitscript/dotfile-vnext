@@ -7,7 +7,10 @@ hyperv_ubuntu_gpu_p_linux_guest_runtime_windows_host: >-
     | default(parent_hypervisor | default(physical_node | default('')))
   }}
 hyperv_ubuntu_gpu_p_linux_guest_runtime_share_host_override: ""
-hyperv_ubuntu_gpu_p_linux_guest_target_kernel: "{{ ansible_kernel }}"
+# Exact running ABI — must be set in inventory. Do not track ansible_kernel.
+hyperv_ubuntu_gpu_p_linux_guest_target_kernel: ""
+# Exact DKMS module version for the pinned kernel (inventory pin).
+hyperv_ubuntu_gpu_p_linux_guest_dxgkrnl_version: ""
 hyperv_ubuntu_gpu_p_dxgkrnl_repo_url: https://github.com/staralt/dxgkrnl-dkms.git
 hyperv_ubuntu_gpu_p_dxgkrnl_repo_version: 02565c968e19af86d84fe074d9fba8f059af65a2
 hyperv_ubuntu_gpu_p_wsl2_kernel_repo_url: https://github.com/microsoft/WSL2-Linux-Kernel.git
@@ -45,6 +48,19 @@ hyperv_ubuntu_gpu_p_guest_kernel_package_probe_names:
   - "linux-headers-{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
   - linux-image-azure
   - linux-headers-azure
+# Hold pinned kernel ABIs + azure meta packages so OS cannot advance without
+# an explicit inventory bump and Ansible re-apply.
+hyperv_ubuntu_gpu_p_guest_pin_kernel_packages: true
+hyperv_ubuntu_gpu_p_guest_kernel_hold_packages:
+  - "linux-image-{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+  - "linux-headers-{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+  - linux-image-azure
+  - linux-headers-azure
+hyperv_ubuntu_gpu_p_guest_disable_unattended_upgrades: true
+hyperv_ubuntu_gpu_p_guest_disable_apt_periodic_timers: true
+hyperv_ubuntu_gpu_p_guest_apt_periodic_timer_units:
+  - apt-daily.timer
+  - apt-daily-upgrade.timer
 hyperv_ubuntu_gpu_p_guest_dkms_failure_log_tail_lines: 80
 hyperv_ubuntu_gpu_p_guest_dxgkrnl_upstream_fallback: true
 hyperv_ubuntu_gpu_p_guest_required_packages:

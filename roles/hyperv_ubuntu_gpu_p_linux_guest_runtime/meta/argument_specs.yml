@@ -20,7 +20,16 @@ argument_specs:
           Override SMB share host IP. When empty, role logic resolves from inventory.
       hyperv_ubuntu_gpu_p_linux_guest_target_kernel:
         type: str
+        required: true
+        description: >-
+          Exact guest kernel ABI (must match ansible_kernel). Inventory pin
+          required; do not track floating azure meta packages.
+      hyperv_ubuntu_gpu_p_linux_guest_dxgkrnl_version:
+        type: str
         required: false
+        default: ""
+        description: >-
+          Exact dxgkrnl DKMS module version for the pinned kernel.
       hyperv_ubuntu_gpu_p_dxgkrnl_repo_url:
         type: str
         default: https://github.com/staralt/dxgkrnl-dkms.git
@@ -120,6 +129,18 @@ argument_specs:
         type: bool
         default: true
         description: >-
-          When true, fall back to the upstream repo install.sh clean/install
-          path if the repo-assembled dxgkrnl DKMS build does not produce a
-          module for the target kernel.
+          When true, fall back to upstream install.sh if managed DKMS build
+          fails. When hyperv_ubuntu_gpu_p_linux_guest_dxgkrnl_version is set,
+          fallback must still land on that pin.
+      hyperv_ubuntu_gpu_p_guest_pin_kernel_packages:
+        type: bool
+        default: true
+        description: Hold pinned linux-image/headers and azure meta packages.
+      hyperv_ubuntu_gpu_p_guest_disable_unattended_upgrades:
+        type: bool
+        default: true
+        description: Stop and disable unattended-upgrades on the GPU-P guest.
+      hyperv_ubuntu_gpu_p_guest_disable_apt_periodic_timers:
+        type: bool
+        default: true
+        description: Stop and disable apt-daily / apt-daily-upgrade timers.

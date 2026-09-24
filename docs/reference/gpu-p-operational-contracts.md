@@ -32,7 +32,14 @@ on this homelab. Maps operational patterns to concrete repo surfaces.
 | Contract | Surface |
 |----------|---------|
 | Guest driver lane | `k3s_nvidia_runtime_install_guest_driver` in `inventory/host_vars/hom-lab-ctl-k3s-02.yaml` |
+| Guest kernel ABI pin | `hyperv_ubuntu_gpu_p_linux_guest_target_kernel` (exact; must match `ansible_kernel`) |
+| Guest dxgkrnl DKMS pin | `hyperv_ubuntu_gpu_p_linux_guest_dxgkrnl_version` |
+| Anti-drift holds | role `dpkg_selections` hold + disabled `unattended-upgrades` / apt timers |
 | GPU-P vs apt guard | Assert in `roles/k3s_nvidia_runtime/tasks/main.yml` |
+
+**Rule:** Kernel/`dxgkrnl` pins change only via inventory bump + Ansible apply.
+Unattended OS upgrades must not redefine GPU-P desired state.
+
 | Host runtime verify | Final play in `playbooks/hyperv_ubuntu_gpu_p_runtime.yaml` |
 | K8s capacity | `roles/k3s_node_gpu_prereqs` — `k3s_node_gpu_prereqs_expected_count` |
 

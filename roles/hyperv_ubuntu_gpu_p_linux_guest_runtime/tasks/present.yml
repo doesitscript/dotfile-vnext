@@ -266,6 +266,18 @@
         path: "{{ hyperv_ubuntu_gpu_p_guest_artifact_credentials_path }}"
         state: absent
 
+- name: Assert inventory pins an exact guest kernel ABI
+  ansible.builtin.assert:
+    that:
+      - hyperv_ubuntu_gpu_p_linux_guest_target_kernel | length > 0
+      - ansible_kernel == hyperv_ubuntu_gpu_p_linux_guest_target_kernel
+    fail_msg: >-
+      GPU-P guest kernel pin missing or boot kernel drifted.
+      inventory pin={{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel | default('(empty)') }}
+      running ansible_kernel={{ ansible_kernel }}.
+      Set hyperv_ubuntu_gpu_p_linux_guest_target_kernel in host_vars and boot that ABI
+      before converging. Do not rely on ansible_kernel as desired state.
+
 - name: Validate supported guest kernel family
   ansible.builtin.assert:
     that:
@@ -370,6 +382,32 @@
     lock_timeout: "{{ hyperv_ubuntu_gpu_p_guest_apt_lock_timeout }}"
   when: hyperv_ubuntu_gpu_p_linux_guest_runtime_missing_packages | length > 0
 
+- name: Hold pinned guest kernel packages against unattended OS upgrades
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop: "{{ hyperv_ubuntu_gpu_p_guest_kernel_hold_packages }}"
+  when:
+    - hyperv_ubuntu_gpu_p_guest_pin_kernel_packages | bool
+    - hyperv_ubuntu_gpu_p_linux_guest_target_kernel | length > 0
+
+- name: Disable unattended-upgrades on GPU-P guest
+  ansible.builtin.systemd:
+    name: unattended-upgrades
+    enabled: false
+    state: stopped
+  when: hyperv_ubuntu_gpu_p_guest_disable_unattended_upgrades | bool
+  failed_when: false
+
+- name: Disable apt periodic upgrade timers on GPU-P guest
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: false
+    state: stopped
+  loop: "{{ hyperv_ubuntu_gpu_p_guest_apt_periodic_timer_units }}"
+  when: hyperv_ubuntu_gpu_p_guest_disable_apt_periodic_timers | bool
+  failed_when: false
+
 - name: Probe dpkg state for active kernel packages before DKMS work
   ansible.builtin.shell: |
     set -o pipefail
@@ -392,7 +430,7 @@
       {%- set anomalies = [] -%}
       {%- for line in hyperv_ubuntu_gpu_p_linux_guest_runtime_kernel_package_probe.stdout_lines | default([]) -%}
       {%- set parts = line.split('\t', 1) -%}
-      {%- if (parts | length) < 2 or (parts[1] | trim) != 'ii' -%}
+      {%- if (parts | length) < 2 or (parts[1] | trim) not in ['ii', 'hi'] -%}
       {%- set _ = anomalies.append(line) -%}
       {%- endif -%}
       {%- endfor -%}
@@ -507,7 +545,7 @@
           {%- set anomalies = [] -%}
           {%- for line in hyperv_ubuntu_gpu_p_linux_guest_runtime_kernel_package_probe.stdout_lines | default([]) -%}
           {%- set parts = line.split('\t', 1) -%}
-          {%- if (parts | length) < 2 or (parts[1] | trim) != 'ii' -%}
+          {%- if (parts | length) < 2 or (parts[1] | trim) not in ['ii', 'hi'] -%}
           {%- set _ = anomalies.append(line) -%}
           {%- endif -%}
           {%- endfor -%}
@@ -598,9 +636,13 @@
   ansible.builtin.set_fact:
     hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version: >-
       {{
-        hyperv_ubuntu_gpu_p_linux_guest_runtime_version_prefix
-        ~ '-'
-        ~ (hyperv_ubuntu_gpu_p_linux_guest_runtime_wsl_commit_short.stdout | trim)
+        hyperv_ubuntu_gpu_p_linux_guest_dxgkrnl_version
+        if (hyperv_ubuntu_gpu_p_linux_guest_dxgkrnl_version | default('') | length > 0)
+        else (
+          hyperv_ubuntu_gpu_p_linux_guest_runtime_version_prefix
+          ~ '-'
+          ~ (hyperv_ubuntu_gpu_p_linux_guest_runtime_wsl_commit_short.stdout | trim)
+        )
       }}
     hyperv_ubuntu_gpu_p_linux_guest_runtime_driverstore_folder: >-
       {{
@@ -704,42 +746,60 @@
       - status
   register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_status
   changed_when: false
-  when: >-
-    {{
+  when:
+    - >-
       (
         hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_dxg is defined
-        and (hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_dxg.results | default([]) | selectattr('rc', 'equalto', 0) | list | length > 0)
+        and not (hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_dxg.skipped | default(false) | bool)
+        and (
+          hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_dxg.results
+          | default([])
+          | selectattr('rc', 'equalto', 0)
+          | list
+          | length
+        ) > 0
       )
       or
       (
         hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_vgem is defined
-        and (hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_vgem.results | default([]) | selectattr('rc', 'equalto', 0) | list | length > 0)
+        and not (hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_vgem.skipped | default(false) | bool)
+        and (
+          hyperv_ubuntu_gpu_p_linux_guest_runtime_remove_stray_vgem.results
+          | default([])
+          | selectattr('rc', 'equalto', 0)
+          | list
+          | length
+        ) > 0
       )
-    }}
+
+- name: Query DKMS for inventory-pinned dxgkrnl on target kernel
+  ansible.builtin.command:
+    argv:
+      - dkms
+      - status
+      - "dxgkrnl/{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version | trim }}"
+      - "-k"
+      - "{{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}"
+  register: hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_pin_status
+  changed_when: false
+  failed_when: false
 
 - name: Determine whether dxgkrnl runtime install is needed
   ansible.builtin.set_fact:
-    hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_installed: >-
-      {{
-        (
-          'dxgkrnl/'
-          ~ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version
-          ~ ', '
-          ~ hyperv_ubuntu_gpu_p_linux_guest_target_kernel
-          ~ ','
-        ) in (hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_status.stdout | default(''))
-      }}
-    hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_installed: >-
-      {{
-        (
-          'vgem/'
-          ~ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version
-          ~ ', '
-          ~ hyperv_ubuntu_gpu_p_linux_guest_target_kernel
-          ~ ','
-        ) in (hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_status.stdout | default(''))
-      }}
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version: "{{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version | trim }}"
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_installed: "{{ (hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_pin_status.rc | int == 0 and ('installed' in (hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_pin_status.stdout | default('')))) | bool }}"
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_installed: "{{ (('vgem/' ~ (hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version | trim) ~ ', ' ~ hyperv_ubuntu_gpu_p_linux_guest_target_kernel ~ ',') in (hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_status.stdout | default(''))) | bool }}"
+    hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_already_present: "{{ (hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_pin_status.rc | int == 0 and ('installed' in (hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_pin_status.stdout | default('')))) | bool }}"
   changed_when: false
+
+- name: Report pinned dxgkrnl install detection
+  ansible.builtin.debug:
+    msg: >-
+      dxgkrnl pin={{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}
+      installed={{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_installed }}
+      pin_status_rc={{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_pin_status.rc }}
+      pin_status={{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_pin_status.stdout | default('') | trim }}
+  when: ansible_verbosity | int >= 1
 
 - name: Remove previously managed DriverStore subtree when folder changed
   ansible.builtin.file:
@@ -1037,12 +1097,20 @@
             fail_msg: |-
               dxgkrnl fallback via upstream install.sh also failed for kernel
               {{ hyperv_ubuntu_gpu_p_linux_guest_target_kernel }}.
+              Expected inventory/runtime pin
+              {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxgkrnl_version }}.
               custom build stderr:
               {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dkms_build.stderr | default('') | trim }}
               upstream install stderr:
               {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_upstream_install.stderr | default('') | trim }}
               upstream install stdout:
               {{ hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_upstream_install.stdout | default('') | trim }}
+
+        - name: Mark pinned dxgkrnl installed after successful fallback
+          when: hyperv_ubuntu_gpu_p_guest_dxgkrnl_upstream_fallback | bool
+          ansible.builtin.set_fact:
+            hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_installed: true
+          changed_when: false
 
 - name: Rebuild vgem source tree when enabled and install is needed
   when:
@@ -1390,11 +1458,20 @@
   ansible.builtin.set_fact:
     hyperv_ubuntu_gpu_p_linux_guest_runtime_reboot_required: >-
       {{
-        (not (hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_installed | bool))
-        or (hyperv_ubuntu_gpu_p_install_vgem | bool and not (hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_installed | bool))
-        or (hyperv_ubuntu_gpu_p_linux_guest_runtime_symlinks is changed)
+        (
+          not (hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_already_present | default(false) | bool)
+          and (hyperv_ubuntu_gpu_p_linux_guest_runtime_dxg_installed | bool)
+        )
+        or (
+          hyperv_ubuntu_gpu_p_install_vgem | bool
+          and not (hyperv_ubuntu_gpu_p_linux_guest_runtime_vgem_installed | bool)
+        )
         or (hyperv_ubuntu_gpu_p_linux_guest_runtime_ldso is changed)
         or (hyperv_ubuntu_gpu_p_linux_guest_runtime_environment_path is changed)
+        or (
+          hyperv_ubuntu_gpu_p_linux_guest_runtime_modules_load is defined
+          and (hyperv_ubuntu_gpu_p_linux_guest_runtime_modules_load is changed)
+        )
       }}
   changed_when: false
 
