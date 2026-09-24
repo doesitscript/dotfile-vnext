@@ -105,6 +105,8 @@ flowchart TD
 |---|---|---|---|
 | OD-01 | Review future HVH-02 paths as cleanup, cold storage, role/playbook, or keep behavior/configuration | Candidate packet files and routing rule | captured |
 | OD-02 | Evaluate live/running placement strategy separately from prune triage | Sibling WIP [2026-09-23--hvh-02-live-storage-placement-wip](../2026-09-23--hvh-02-live-storage-placement-wip/README.md) | routed |
+| OD-03 | Steam live content: not on k3s/HVH cold tier; USB (`I:`) is bulk class now; capacity SSD is future alt to NVMe/USB; cold only for optional archive-demote later | keep-behavior.md + cold-storage.md + Steam plan OD-05 | captured |
+| OD-04 | Finish F→I gamerec then delete empty `F:\Gamerecordings` only (D already gone); do not delete `I:` trees | cleanup.md | in_progress |
 
 ## Naming/Modeling Diagram
 

@@ -35,7 +35,14 @@ changes. Does not authorize moves.
 | High-IOPS regenerable | `G:\HOT-DATA-HOST` | k3s cache VHDX; working data |
 | Logs / scratch | `F:\LOGS-HOST` | Event logs + guest log VHDXs (Samsung 840 EVO) |
 | Cold retainable | `H:\COLD-DATA-HOST` | Cold-artifact VHDX + `hyperv-cache` rebuild bases |
+| USB bulk (interactive) | `I:` | Steam secondary library + Game Recordings — **not** k3s cold |
 | Prune / reclaim | Mixed `*\ProgramData\Ansible\` hot copies | Via `windows_artifact_cache`; not live `.vhdx` / `.VMRS` |
+
+**Steam vs cold (OD-05):** do not place live Steam libraries/recordings on
+`H:` / `/mnt/k3s-cold` (k3s/Hyper-V archive domain). Prefer `usb_bulk` (`I:`)
+now; evaluate `capacity_ssd` later if USB I/O hurts; optional future
+archive-demote to `cold_host` for rarely played titles only. See
+[windows-steam-client-library-recovery](../2026-09-23--windows-steam-client-library-recovery/README.md).
 
 Rule of thumb: **live = attached workload path**; **cold = restore-on-demand**;
 **cleanup = disposable**. Do not cold-migrate or delete a path until classified.
