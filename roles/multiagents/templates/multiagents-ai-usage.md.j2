@@ -4,7 +4,7 @@ This file is Ansible-managed by the `multiagents` role.
 
 ## What this host has now
 
-Scaffold install only:
+Installed capability with client access disabled by default:
 
 - Bun runtime `{{ multiagents_bun_release_version }}` at `{{ multiagents_bun_bin }}`
   (GitHub release binary; method=`{{ multiagents_bun_install_method }}`)
@@ -28,15 +28,17 @@ Do **not** assume these were applied by Ansible:
 
 - `multiagents setup` / `multiagents install-mcp`
 - Broker daemon on port `{{ multiagents_broker_port }}`
-- Codex / Claude / Gemini MCP wiring
+- Codex parent `multiagents-orch` MCP entry (deployed with `enabled = false`)
+- Child-agent `multiagents-peer` MCP entry (injected by the orchestrator only)
 - Scenario packs under `{{ multiagents_scenarios_dir }}`
 
-Cursor user MCP (`multiagents-peer` in `~/.cursor/mcp.json`) is owned by
-`roles/cursor`, not this role. Do not use `command: bun` or `--agent-type codex`
-for that client.
+Do not register `multiagents-peer` as a general Cursor, Codex, or Continue MCP
+server for this workflow. The parent orchestrator supplies the peer entry to
+each spawned agent with its session and slot identity.
 
-When those land, prefer inventory-driven role vars over one-off interactive setup
-so the same capability can scale to multiple clients and scenarios.
+When activating a client, change its inventory-owned flag and re-apply the
+owning role; do not use one-off interactive setup. The same capability can
+therefore scale to multiple clients and scenarios.
 
 ## Sources
 

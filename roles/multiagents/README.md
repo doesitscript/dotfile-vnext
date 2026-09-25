@@ -8,12 +8,20 @@ CLI scaffold on macOS:
 2. Pinned global `multiagents` package via `bun install -g`
 3. Managed layout under `~/.config/dotfile-vnext/multiagents/` for later
    multi-client / multi-scenario config
+4. Supported child-agent CLIs (`codex`, `claude`, and `gemini`) when
+   `multiagents_agent_cli_enabled: true`, including their binary directory in
+   the orchestrator MCP `PATH`
+
+The role also converges the pinned package's Codex child prompt so peer MCP
+communication is mandatory before child work. This prevents a child from
+writing artifacts while remaining invisible in the dashboard.
 
 This role does **not** run `multiagents setup` or start the broker. Those
-remain deferred. The Cursor user MCP entry (`multiagents-peer` in
-`~/.cursor/mcp.json`) is owned by `roles/cursor` (`--tags cursor_mcp`), applied
-again by `playbooks/deploy_development_nodes.yaml` after this package is
-present. Codex/Claude/Gemini MCP writes stay deferred.
+remain separate lifecycle actions. When `multiagents_state: present`, the role
+registers the parent `multiagents-orch` MCP entry in project and user Codex
+config with `enabled = false`. Cursor and Continue receive the same disabled
+orchestrator catalog entry from their owning roles. The `multiagents-peer` MCP
+remains the separate spawned-agent communication surface.
 
 Related plan intake:
 `docs/plans/2026-09-03--multi-agent-orchestration-plan/`.
@@ -23,10 +31,14 @@ Related plan intake:
 | Concern | Authority | Path |
 | --- | --- | --- |
 | Lifecycle on/off | host_vars (commission) | `inventory/host_vars/<host>.yaml` → `multiagents_state` |
+| Codex parent activation | host_vars | `multiagents_orchestrator_enabled` (default `false`) |
+| Spawned-agent peer activation | parent runtime | Injected per child; no persistent client flag |
 | Package + Bun versions | group_vars version contract | `inventory/group_vars/all/multiagents_tooling.yml` |
 | Role defaults / layout knobs | role defaults | `roles/multiagents/defaults/main.yml` |
 | Argument contract | role meta | `roles/multiagents/meta/argument_specs.yml` |
-| Playbook entry / tag | compose playbook | `playbooks/deploy_development_nodes.yaml` `--tags multiagents` |
+| Playbook entry / tag | compose playbook | `playbooks/deploy_development_nodes.yaml` `--tags multiagents_stack` for the complete macOS bundle; `--tags multiagents` for the package role only |
+| Child-agent CLI group | host_vars + role | `multiagents_agent_cli_enabled`, package/command map, and `multiagents_agent_cli_bin_dir` |
+| MCP child-process PATH | role/client MCP entries | `multiagents_agent_cli_path` propagated to Codex/Cursor; Continue host entry includes the same directory |
 | Host usage note (rendered) | role template → host | `~/.config/dotfile-vnext/ai/tool-guides/multiagents.md` |
 | Layout README (rendered) | role template → host | `~/.config/dotfile-vnext/multiagents/README.md` |
 | PATH | role file → bashrc.d | `~/.bashrc.d/multiagents-path.bash` |
@@ -40,8 +52,8 @@ layout via role defaults) — do not invent one-off install scripts.
 
 | | |
 | --- | --- |
-| **Apply** | `ansible-playbook playbooks/deploy_development_nodes.yaml --tags multiagents --limit mac-dev` |
-| **Verify** | Role asserts Bun binary, `multiagents help`, and managed layout paths |
+| **Apply** | `ansible-playbook playbooks/deploy_development_nodes.yaml --tags multiagents_stack --limit mac-dev` |
+| **Verify** | Role asserts Bun binary, `multiagents help`, child CLI executables, managed layout paths, and the disabled parent orchestrator MCP block; verify MCP-process PATH separately |
 | **Undo** | `-e multiagents_state=absent` (Bun kept by default) |
 | **Change class** | Idempotent config (release binary + package + directories) |
 
@@ -55,7 +67,13 @@ Bun and `multiagents` install under `~/.bun/bin`. The role drops
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `multiagents_state` | `absent` | `present` or `absent` (commission in host_vars) |
+| `multiagents_state` | `absent` | `present` or `absent` (commission package in host_vars) |
+| `multiagents_agent_cli_enabled` | `false` | Install and verify the supported child-agent CLI group |
+| `multiagents_agent_cli_packages` | Codex, Claude, Gemini package/command map | Child-agent packages and executable names required by `create_team` |
+| `multiagents_agent_cli_bin_dir` | empty; falls back to `/usr/local/bin` | Global npm binary directory exposed to the MCP process |
+| `multiagents_agent_cli_path` | Bun + child CLI bin + system paths | PATH passed to the parent orchestrator MCP process |
+| `multiagents_orchestrator_enabled` | `false` | Keep the deployed `multiagents-orch` MCP entry disabled by default |
+| `multiagents_stack` | playbook tag | Converges the package, child CLI group, Codex/Cursor/Continue MCP catalog entries, and PATH contract together |
 | `multiagents_version` | from version contract | Pinned multiagents package version |
 | `multiagents_bun_release_version` | from version contract | Pinned Bun release (without `bun-v` prefix) |
 | `multiagents_bun_use_baseline` | true on Intel | Use `bun-darwin-x64-baseline.zip` on x86_64 |
@@ -82,6 +100,21 @@ multiagents_tooling_version_contract:
 The managed tree under `multiagents_root_dir` is a scaffold, not a frozen
 contract. If Codex/Cursor/multi-scenario configuration needs a different
 layout, update role defaults and re-apply.
+
+The broker and dashboard are runtime-owned by the installed orchestrator:
+`create_team` ensures the broker on demand and the package launches dashboard
+surfaces for a created session. They are not separate persistent MCP servers or
+host services that this deployment role should start by default.
+
+## Follow-up: Cursor Agent usage
+
+The multiagents CLI-backed Implementer/Evaluator path is now deployed and
+verified. Cursor Agent usage remains a separate follow-up planning and
+troubleshooting slice: verify Cursor-native agent launch behavior, inherited
+environment/PATH, MCP namespace visibility, authentication, and the boundary
+between Cursor-native subagents and CLI-backed multiagents slots. Do not
+reintroduce `multiagents-peer` as a persistent parent-client MCP entry while
+investigating that path.
 
 ## Example
 

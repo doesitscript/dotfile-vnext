@@ -5,7 +5,7 @@ approval_policy = "never"
 mcp_optional_startup_grace_ms = 0
 # END ANSIBLE MANAGED BLOCK: morph_mcp_codex_optional_startup_grace
 
-profile = "stable_single_agent"
+profile = "experimental_multi_agent"
 project_doc_max_bytes = 65536
 project_doc_fallback_filenames = [".agents.md", ".cursorrules"]
 
@@ -34,7 +34,7 @@ LC_ALL = "en_US.UTF-8"
 LC_CTYPE = "en_US.UTF-8"
 
 [features]
-multi_agent = false
+multi_agent = true
 
 [agents]
 max_threads = 6
@@ -106,7 +106,7 @@ required = false
 command = "/Users/joshc/develop/dotfile-vnext/bin/mcp-server-env-wrapper"
 args = ["/Users/joshc/.config/dotfile-vnext/mcp/env.d/context7.env", "/Users/joshc/.nvm/versions/node/v20.20.0/bin/context7-mcp"]
 startup_timeout_sec = 40
-enabled = true
+enabled = false
 required = false
 
 [mcp_servers.context7.env]
@@ -185,3 +185,14 @@ required = false
 [mcp_servers.sysoperator.env]
 _MCP_ANSIBLE_ROLE_PATH = "roles/mcp_servers/mcp-sysoperator"
 # END ANSIBLE MANAGED BLOCK: mcp_server_sysoperator
+# BEGIN ANSIBLE MANAGED BLOCK: mcp_server_multiagents_orch
+[mcp_servers.multiagents-orch]
+command = "/Users/joshc/.bun/bin/multiagents"
+args = ["orchestrator"]
+enabled = false
+required = false
+
+[mcp_servers.multiagents-orch.env]
+_MCP_ANSIBLE_ROLE_PATH = "roles/multiagents"
+PATH = "/Users/joshc/.bun/bin:/Users/joshc/.nvm/versions/node/v20.20.0/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+# END ANSIBLE MANAGED BLOCK: mcp_server_multiagents_orch

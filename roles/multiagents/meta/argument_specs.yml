@@ -23,6 +23,11 @@ argument_specs:
         default: multiagents
         description:
           - npm/bun package name for the multiagents CLI.
+      multiagents_package_root:
+        type: path
+        required: false
+        description:
+          - Installed package root where the Codex communication guard is converged.
       multiagents_bun_install_method:
         type: str
         required: false
@@ -89,6 +94,62 @@ argument_specs:
         required: false
         description:
           - Filesystem path for the managed multiagents usage note.
+      multiagents_agent_cli_enabled:
+        type: bool
+        required: false
+        default: false
+        description:
+          - Install and verify Codex, Claude, and Gemini CLIs required by create_team.
+      multiagents_agent_cli_packages:
+        type: list
+        elements: dict
+        required: false
+        description:
+          - npm package and command pairs for create_team child-agent CLIs.
+      multiagents_agent_cli_bin_dir:
+        type: str
+        required: false
+        description:
+          - Optional override for the npm global CLI binary directory.
+      multiagents_agent_cli_path:
+        type: str
+        required: false
+        description:
+          - PATH passed to the orchestrator so it can discover child-agent CLIs.
+      multiagents_codex_config_path:
+        type: str
+        required: false
+        description:
+          - Project Codex config path receiving the managed MCP block.
+      multiagents_orchestrator_server_key:
+        type: str
+        required: false
+        default: multiagents-orch
+        description:
+          - Codex MCP server key for the separate multiagents orchestrator entry.
+      multiagents_orchestrator_configure_codex_user:
+        type: bool
+        required: false
+        default: true
+        description:
+          - Whether to deploy the disabled orchestrator entry in user Codex config.
+      multiagents_orchestrator_codex_user_config_path:
+        type: str
+        required: false
+        description:
+          - User Codex config path receiving the disabled orchestrator entry.
+      multiagents_orchestrator_enabled:
+        type: bool
+        required: false
+        default: false
+        description:
+          - Whether the deployed orchestrator MCP entry may start the server.
+      multiagents_orchestrator_required:
+        type: bool
+        required: false
+        default: false
+        description:
+          - Whether Codex should require the optional orchestrator server.
       multiagents_verify:
         type: bool
         required: false

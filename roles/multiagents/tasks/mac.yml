@@ -1,8 +1,9 @@
 ---
 # multiagents/tasks/mac.yml
 # Scaffold: pinned Bun release binary + pinned multiagents global package + managed layout.
-# Deferred: multiagents setup, broker start, Codex/Claude/Gemini MCP writes.
-# Cursor user MCP (multiagents-peer) is owned by roles/cursor.
+# Deferred: multiagents setup, broker start, and Claude/Gemini MCP writes.
+# The peer MCP is runtime-injected into spawned subagents; only the parent
+# orchestrator is persisted in client configuration.
 
 - name: Ensure Bun download cache directory exists
   ansible.builtin.file:
@@ -65,7 +66,9 @@
       - -d
       - "{{ multiagents_bun_extract_dir }}"
   args:
-    creates: "{{ multiagents_bun_extract_dir }}/bun-darwin-{{ multiagents_bun_release_arch }}{{ '-baseline' if multiagents_bun_use_baseline | bool else '' }}/bun"
+    creates: >-
+      {% set multiagents_bun_suffix = '-baseline' if multiagents_bun_use_baseline | bool else '' -%}
+      {{ multiagents_bun_extract_dir }}/bun-darwin-{{ multiagents_bun_release_arch }}{{ multiagents_bun_suffix }}/bun
   when:
     - multiagents_manage_bun | bool
     - multiagents_bun_install_method == "release_binary"
@@ -115,8 +118,10 @@
   ansible.builtin.set_fact:
     multiagents_package_needs_install: >-
       {{
-        (multiagents_package_name not in (multiagents_global_ls.stdout | default('')))
-        or (multiagents_version not in (multiagents_global_ls.stdout | default('')))
+        (multiagents_package_name | default('', true) | string)
+        not in (multiagents_global_ls.stdout | default('', true) | string)
+        or (multiagents_version | default('', true) | string)
+        not in (multiagents_global_ls.stdout | default('', true) | string)
       }}
   when:
     - multiagents_state == "present"
@@ -137,6 +142,107 @@
     - multiagents_state == "present"
     - not ansible_check_mode
     - multiagents_package_needs_install | bool
+
+- name: Require peer MCP communication before Codex child work
+  ansible.builtin.replace:
+    path: "{{ multiagents_package_root }}/orchestrator/launcher.ts"
+    regexp: '^      "Focus on completing the task first\\. Use multiagents-peer MCP tools for team communication only when needed\\.",$'
+    replace: >-
+      '      "Communication is mandatory, not optional. Do not read files, run
+      commands, or finish the task until the four startup MCP calls above have
+      completed.",'
+  when:
+    - multiagents_state == 'present'
+    - not ansible_check_mode
+    - multiagents_package_root is directory
+
+- name: Scope Codex peer MCP approval to bounded communication tools
+  ansible.builtin.replace:
+    path: "{{ multiagents_package_root }}/orchestrator/launcher.ts"
+    regexp: '^      peerThreadConfig\[`mcp_servers\.multiagents-peer\.tools\.\$\{tool\}\.approval_mode`\] = "auto";$'
+    replace: '      peerThreadConfig[`mcp_servers.multiagents-peer.tools.${tool}.approval_mode`] = "approve";'
+  when:
+    - multiagents_state == 'present'
+    - not ansible_check_mode
+    - multiagents_package_root is directory
+
+- name: Inject explicit Codex peer identity into child threads
+  ansible.builtin.replace:
+    path: "{{ multiagents_package_root }}/orchestrator/launcher.ts"
+    regexp: |-
+      (?s)^    const peerThreadConfig: Record<string, unknown> = \{\};
+      \s+for \(const tool of \[
+      \s+"set_summary", "check_team_status", "get_plan", "check_messages",
+      \s+"send_message", "signal_done", "submit_feedback", "approve", "update_plan",
+      \s+\]\) \{
+      \s+peerThreadConfig\[`mcp_servers\.multiagents-peer\.tools\.\$\{tool\}\.approval_mode`\] = "approve";
+      \s+\}
+      \s+const startPromise = \(async \(\) => \{'
+    replace: |-
+        const peerThreadConfig: Record<string, unknown> = {};
+        for (const tool of [
+          "set_summary", "check_team_status", "get_plan", "check_messages",
+          "send_message", "signal_done", "submit_feedback", "approve", "update_plan", "list_peers",
+        ]) {
+          peerThreadConfig[`mcp_servers.multiagents-peer.tools.${tool}.approval_mode`] = "approve";
+        }
+        // Pass identity in the thread-local MCP command as well. The shared
+        // workspace fallback file is inherently racy when two Codex drivers start
+        // together; explicit slot/session arguments keep each adapter attached to
+        // its own broker row.
+        peerThreadConfig["mcp_servers.multiagents-peer.command"] = process.execPath;
+        peerThreadConfig["mcp_servers.multiagents-peer.args"] = [
+          CLI_PATH, "mcp-server", "--agent-type", "codex",
+          "--session", sessionId, "--slot", String(slot.id),
+          "--role", config.role, "--name", config.name,
+        ];
+        peerThreadConfig["mcp_servers.multiagents-peer.env.MULTIAGENTS_DRIVER_MODE"] = "1";
+
+        const startPromise = (async () => {
+  when:
+    - multiagents_state == 'present'
+    - not ansible_check_mode
+    - multiagents_package_root is directory
+
+- name: Add Codex thread-scoped peer configuration option
+  ansible.builtin.replace:
+    path: "{{ multiagents_package_root }}/orchestrator/codex-driver.ts"
+    regexp: '^  model\?: string;\n(?!  /\*\* Per-thread Codex config overrides)'
+    replace: |-
+        model?: string;
+        /** Per-thread Codex config overrides for bounded non-interactive tools. */
+        threadConfig?: Record<string, unknown>;
+  when:
+    - multiagents_state == 'present'
+    - not ansible_check_mode
+    - multiagents_package_root is directory
+
+- name: Apply Codex thread-scoped peer configuration
+  ansible.builtin.replace:
+    path: "{{ multiagents_package_root }}/orchestrator/codex-driver.ts"
+    regexp: '^    const threadResult = await this\.sendRequest\("thread/start", \{\}, 30_000\) as \{ thread: \{ id: string \} \};$'
+    replace: |-
+        const threadResult = await this.sendRequest(
+          "thread/start",
+          opts.threadConfig ? { config: opts.threadConfig } : {},
+          30_000,
+        ) as { thread: { id: string } };
+  when:
+    - multiagents_state == 'present'
+    - not ansible_check_mode
+    - multiagents_package_root is directory
+
+- name: Pass peer configuration into Codex child thread startup
+  ansible.builtin.replace:
+    path: "{{ multiagents_package_root }}/orchestrator/launcher.ts"
+    regexp: '^          developerInstructions,\n(?!          threadConfig: peerThreadConfig,)'
+    replace: |-
+              developerInstructions,
+              threadConfig: peerThreadConfig,
+  when:
+    - multiagents_state == 'present'
+    - not ansible_check_mode
+    - multiagents_package_root is directory
 
 - name: Ensure managed multiagents layout directories exist
   ansible.builtin.file:
@@ -191,6 +297,155 @@
   when:
     - multiagents_state == "present"
     - multiagents_install_path_snippet | bool
+
+- name: Resolve global npm prefix for multiagents agent CLIs
+  ansible.builtin.command:
+    argv:
+      - "{{ multiagents_agent_cli_npm_executable }}"
+      - prefix
+      - -g
+  register: multiagents_agent_cli_npm_prefix
+  changed_when: false
+  when:
+    - multiagents_state == "present"
+    - multiagents_agent_cli_enabled | bool
+  tags: [multiagents_agent_cli]
+
+- name: Set multiagents agent CLI binary directory
+  ansible.builtin.set_fact:
+    multiagents_agent_cli_resolved_bin_dir: >-
+      {{ multiagents_agent_cli_bin_dir | default('', true)
+         or ((multiagents_agent_cli_npm_prefix.stdout | trim) ~ '/bin') }}
+  when:
+    - multiagents_state == "present"
+    - multiagents_agent_cli_enabled | bool
+  tags: [multiagents_agent_cli]
+
+- name: Install agent CLIs required by multiagents create_team
+  community.general.npm:
+    name: "{{ item.package }}"
+    global: true
+    state: present
+    executable: "{{ multiagents_agent_cli_npm_executable }}"
+  loop: "{{ multiagents_agent_cli_packages }}"
+  loop_control:
+    label: "{{ item.package }}"
+  environment:
+    PATH: "{{ multiagents_agent_cli_npm_executable | dirname }}:{{ ansible_facts['env']['PATH'] }}"
+  when:
+    - multiagents_state == "present"
+    - multiagents_agent_cli_enabled | bool
+  tags: [multiagents_agent_cli]
+
+- name: Verify agent CLI binaries required by multiagents create_team
+  ansible.builtin.stat:
+    path: "{{ multiagents_agent_cli_resolved_bin_dir }}/{{ item.command }}"
+  loop: "{{ multiagents_agent_cli_packages }}"
+  loop_control:
+    label: "{{ item.command }}"
+  register: multiagents_agent_cli_stats
+  when:
+    - multiagents_state == "present"
+    - multiagents_agent_cli_enabled | bool
+    - not ansible_check_mode
+  tags: [multiagents_agent_cli]
+
+- name: Require agent CLI binaries for multiagents create_team
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+      - item.stat.executable | default(false)
+    fail_msg: >-
+      multiagents create_team dependency {{ item.item.command }} is missing or
+      not executable at {{ item.item.command }} under
+      {{ multiagents_agent_cli_resolved_bin_dir }}.
+  loop: "{{ multiagents_agent_cli_stats.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.command | default('unknown') }}"
+  when:
+    - multiagents_state == "present"
+    - multiagents_agent_cli_enabled | bool
+    - not ansible_check_mode
+  tags: [multiagents_agent_cli]
+
+- name: Explain agent CLI install preview
+  ansible.builtin.debug:
+    msg:
+      - "Check mode note: live apply will install the multiagents create_team CLI dependencies with {{ multiagents_agent_cli_npm_executable }}."
+      - "Planned global packages: {{ multiagents_agent_cli_packages | map(attribute='package') | list | join(', ') }}"
+      - "Expected binary directory: {{ multiagents_agent_cli_resolved_bin_dir }}"
+  when:
+    - multiagents_state == "present"
+    - multiagents_agent_cli_enabled | bool
+    - ansible_check_mode
+  tags: [multiagents_agent_cli]
+
+- name: Remove legacy persistent Codex peer MCP block
+  ansible.builtin.blockinfile:
+    path: "{{ item }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: mcp_server_multiagents"
+    state: absent
+  loop:
+    - "{{ multiagents_codex_config_path }}"
+    - "{{ multiagents_orchestrator_codex_user_config_path }}"
+  when: multiagents_state == "present"
+
+- name: Ensure Codex MCP block exists for the installed multiagents orchestrator
+  ansible.builtin.blockinfile:
+    path: "{{ _multiagents_orchestrator_codex_path }}"
+    create: true
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: mcp_server_multiagents_orch"
+    insertafter: EOF
+    block: "{{ _multiagents_orchestrator_codex_rendered_block | trim }}"
+  vars:
+    _multiagents_orchestrator_codex_path: "{{ multiagents_codex_config_path }}"
+    _multiagents_orchestrator_codex_rendered_block: |
+      [mcp_servers.{{ multiagents_orchestrator_server_key }}]
+      command = {{ multiagents_orchestrator_entry.command | to_json }}
+      args = {{ multiagents_orchestrator_entry.args | to_json }}
+      enabled = {{ multiagents_orchestrator_enabled | bool | to_json }}
+      required = {{ multiagents_orchestrator_required | bool | to_json }}
+
+      [mcp_servers.{{ multiagents_orchestrator_server_key }}.env]
+      {% for _multiagents_env_item in (multiagents_orchestrator_entry.env | dict2items | sort(attribute='key')) %}
+      {{ _multiagents_env_item.key }} = {{ _multiagents_env_item.value | to_json }}
+      {% endfor %}
+  when: multiagents_state == "present"
+
+- name: Ensure user Codex MCP block exists for the installed multiagents orchestrator
+  ansible.builtin.blockinfile:
+    path: "{{ multiagents_orchestrator_codex_user_config_path }}"
+    create: true
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: mcp_server_multiagents_orch"
+    insertafter: EOF
+    block: "{{ _multiagents_orchestrator_codex_user_rendered_block | trim }}"
+  vars:
+    _multiagents_orchestrator_codex_user_rendered_block: |
+      [mcp_servers.{{ multiagents_orchestrator_server_key }}]
+      command = {{ multiagents_orchestrator_entry.command | to_json }}
+      args = {{ multiagents_orchestrator_entry.args | to_json }}
+      enabled = {{ multiagents_orchestrator_enabled | bool | to_json }}
+      required = {{ multiagents_orchestrator_required | to_json }}
+
+      [mcp_servers.{{ multiagents_orchestrator_server_key }}.env]
+      {% for _multiagents_env_item in (multiagents_orchestrator_entry.env | dict2items | sort(attribute='key')) %}
+      {{ _multiagents_env_item.key }} = {{ _multiagents_env_item.value | to_json }}
+      {% endfor %}
+  when:
+    - multiagents_state == "present"
+    - multiagents_orchestrator_configure_codex_user | bool
+
+- name: Remove user and project orchestrator MCP blocks when multiagents is absent
+  ansible.builtin.blockinfile:
+    path: "{{ item }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: mcp_server_multiagents_orch"
+    state: absent
+  loop:
+    - "{{ multiagents_codex_config_path }}"
+    - "{{ multiagents_orchestrator_codex_user_config_path }}"
+  when: multiagents_state == "absent"
 
 - name: Remove multiagents global package via Bun  # noqa: command-instead-of-module
   ansible.builtin.command:
@@ -364,7 +619,7 @@
       - "managed_root={{ multiagents_root_dir }}"
       - "scenarios_dir={{ multiagents_scenarios_dir }} (placeholder for later Codex/Cursor/scenario packs)"
       - "usage_note={{ multiagents_usage_note_path if multiagents_install_usage_note | bool else 'disabled' }}"
-      - "deferred=setup/broker/MCP client wiring"
+      - "runtime=broker/dashboard start on demand from orchestrator; peer MCP injected into spawned child CLIs"
       - "{{ multiagents_help_probe.stdout_lines | default([]) | first | default('') }}"
   when:
     - not ansible_check_mode

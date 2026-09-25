@@ -98,11 +98,28 @@ cline_cli_node_version: "24"
 # OpenCode CLI → LiteLLM (selection = litellm/<plain id>; catalog keys plain).
 opencode_cli_state: present
 opencode_cli_default_model: "{{ ai_cli_opencode_default_model }}"
+opencode_cli_mcp_context7_enabled: "{{ mcp_tool_enabled.context7 | default(false) | bool }}"
+opencode_cli_mcp_firecrawl_enabled: "{{ mcp_tool_enabled.firecrawl | default(false) | bool }}"
 
 # Kilo IDE → same naming contract as OpenCode.
 kilo_ide_state: present
 kilo_ide_default_model: "{{ ai_cli_kilo_default_model }}"
 kilo_ide_small_model: "{{ ai_cli_kilo_small_model }}"
+kilo_ide_mcp_servers:
+  - name: context7
+    type: local
+    command:
+      - "{{ ansible_env.HOME }}/develop/dotfile-vnext/bin/mcp-server-env-wrapper"
+      - "{{ mac_dev_mcp_env_dir }}/context7.env"
+      - "{{ mac_dev_nvm_bin }}/context7-mcp"
+    enabled: "{{ mcp_tool_enabled.context7 | default(false) | bool }}"
+  - name: firecrawl
+    type: local
+    command:
+      - "{{ ansible_env.HOME }}/develop/dotfile-vnext/bin/mcp-server-env-wrapper"
+      - "{{ mac_dev_mcp_env_dir }}/firecrawl.env"
+      - "{{ mac_dev_nvm_bin }}/firecrawl-mcp"
+    enabled: "{{ mcp_tool_enabled.firecrawl | default(false) | bool }}"
 
 # Aider CLI → openai/<plain id>.
 aider_state: present
@@ -159,11 +176,17 @@ dstl8_cli_state: present
 #   - lifecycle here: multiagents_state
 #   - versions: inventory/group_vars/all/multiagents_tooling.yml
 #   - role/docs: roles/multiagents/README.md
-# MCP / broker / Codex·Cursor scenario wiring deferred (later pass).
-# Keep Cursor user MCP multiagents-peer OFF until explicitly re-enabled for a
-# multi-agent run (roles/cursor merges ~/.cursor/mcp.json from this flag).
-multiagents_state: absent
+# Install the multiagents package and register only the disabled parent
+# orchestrator entry. Spawned-agent peer MCP configuration is runtime-scoped.
+multiagents_state: present
+multiagents_agent_cli_enabled: true
+multiagents_agent_cli_npm_executable: "{{ mac_dev_nvm_bin }}/npm"
+multiagents_agent_cli_bin_dir: "{{ mac_dev_nvm_bin }}"
+multiagents_orchestrator_enabled: false
 cursor_multiagents_mcp_enabled: false
+cursor_multiagents_mcp_active: false
+cursor_multiagents_orchestrator_mcp_enabled: true
+cursor_multiagents_orchestrator_mcp_active: false
 
 # MCP stack — all non-Morph MCP servers are deployed but disabled by default.
 mcp_non_morph_enabled: false
@@ -172,7 +195,7 @@ mcp_tool_enabled:
   context7: false
   firecrawl: false
   terraform: false
-  aws: false
+  aws-mcp: false
   aws-iac: false
   playwright: false
   fetch: false
@@ -185,6 +208,7 @@ mcp_tool_enabled:
   ansible: false
   openaiDeveloperDocs: false
   codex: false
+  multiagents-orch: false
 mac_dev_cursor_user_mcp_path: "{{ ansible_env.HOME }}/.cursor/mcp.json"
 mac_dev_nvm_bin: "{{ ansible_env.HOME }}/.nvm/versions/node/v20.20.0/bin"
 mac_dev_mcp_env_dir: "{{ ansible_env.HOME }}/.config/dotfile-vnext/mcp/env.d"
@@ -243,6 +267,15 @@ continue_ide_mcp_servers:
     cwd: "{{ ansible_env.HOME }}/develop/dotfile-vnext"
     env:
       WORKSPACE_MODE: "true"
+  - name: multiagents-orch
+    enabled: false
+    type: stdio
+    command: "{{ ansible_env.HOME }}/.bun/bin/multiagents"
+    args:
+      - orchestrator
+    cwd: "{{ ansible_env.HOME }}/develop/dotfile-vnext"
+    env:
+      PATH: "{{ ansible_env.HOME }}/.bun/bin:{{ mac_dev_nvm_bin }}:/usr/bin:/bin:/usr/sbin:/sbin"
   - name: context7
     enabled: false
     type: stdio
@@ -314,17 +347,8 @@ langfuse_docs_mcp_state: present
 huggingface_mcp_state: present
 mcp_sysoperator_state: present
 redhat_ansible_mcp_state: present
-# multiagents Cursor MCP — match Continue/packet (absolute multiagents + custom).
-cursor_multiagents_mcp_agent_type: custom
-cursor_multiagents_mcp_entry:
-  command: "{{ ansible_env.HOME }}/.bun/bin/multiagents"
-  args:
-    - mcp-server
-    - --agent-type
-    - "{{ cursor_multiagents_mcp_agent_type }}"
-  env:
-    PATH: "{{ ansible_env.HOME }}/.bun/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-    _MCP_ANSIBLE_ROLE_PATH: roles/cursor
+# The peer is runtime-injected into spawned subagents, never registered as a
+# persistent Cursor MCP server.
 # Microsoft Remote Desktop — LAN bookmarks + RDP cert trust on this Mac.
 # Applied via playbooks/remote_desktop_mac_lan.yaml (also wired in
 # deploy_development_nodes under tag remote_desktop_mac for install-only).

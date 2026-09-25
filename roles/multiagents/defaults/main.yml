@@ -5,6 +5,7 @@ multiagents_state: absent
 # Package version — pin via version contract in inventory/group_vars/all/
 multiagents_version: "{{ multiagents_tooling_version_contract.cli | default('') }}"
 multiagents_package_name: multiagents
+multiagents_package_root: "{{ ansible_env.HOME }}/.bun/install/global/node_modules/multiagents"
 
 # Bun runtime — GitHub release binary (Homebrew source-builds on older macOS).
 multiagents_bun_install_method: release_binary
@@ -30,7 +31,8 @@ multiagents_bun_archive_url: >-
   https://github.com/oven-sh/bun/releases/download/bun-v{{ multiagents_bun_release_version }}/{{ multiagents_bun_archive_filename }}
 multiagents_bun_download_dir: "{{ ansible_env.HOME }}/.cache/multiagents-bun"
 multiagents_bun_extract_dir: >-
-  {{ multiagents_bun_download_dir }}/bun-v{{ multiagents_bun_release_version }}-{{ multiagents_bun_release_arch }}{{ '-baseline' if multiagents_bun_use_baseline | bool else '' }}
+  {% set multiagents_bun_suffix = '-baseline' if multiagents_bun_use_baseline | bool else '' -%}
+  {{ multiagents_bun_download_dir }}/bun-v{{ multiagents_bun_release_version }}-{{ multiagents_bun_release_arch }}{{ multiagents_bun_suffix }}
 multiagents_bun_archive_path: "{{ multiagents_bun_download_dir }}/{{ multiagents_bun_archive_filename }}"
 multiagents_bun_install_dir: "{{ ansible_env.HOME }}/.bun/bin"
 multiagents_bun_bin: "{{ multiagents_bun_install_dir }}/bun"
@@ -47,6 +49,44 @@ multiagents_install_usage_note: true
 multiagents_usage_note_path: "{{ ansible_env.HOME }}/.config/dotfile-vnext/ai/tool-guides/multiagents.md"
 multiagents_install_path_snippet: true
 multiagents_path_snippet_path: "{{ ansible_env.HOME }}/.bashrc.d/multiagents-path.bash"
+
+# Agent CLIs required by create_team. Installation is separate from
+# authentication and is commissioned per host because the orchestrator
+# launches these binaries by name.
+multiagents_agent_cli_enabled: false
+multiagents_agent_cli_packages:
+  - package: "@openai/codex"
+    command: codex
+  - package: "@anthropic-ai/claude-code"
+    command: claude
+  - package: "@google/gemini-cli"
+    command: gemini
+multiagents_agent_cli_bin_dir: ""
+multiagents_agent_cli_npm_executable: "{{ node_npm_executable | default('npm') }}"
+multiagents_agent_cli_path: >-
+  {% set _multiagents_cli_bin_dir = multiagents_agent_cli_bin_dir | default('/usr/local/bin', true) -%}
+  {{ multiagents_bun_install_dir }}:{{ _multiagents_cli_bin_dir }}:/usr/bin:/bin:/usr/sbin:/sbin
+
+# Project Codex config path for the persistent parent orchestrator entry. The
+# peer MCP is injected by the parent into spawned agents and is not registered.
+multiagents_codex_config_path: "{{ dotfiles_home | default(playbook_dir | dirname | dirname) }}/.codex/config.toml"
+
+# Separate orchestration MCP surface.  The upstream CLI exposes this as the
+# `orchestrator` subcommand, not as an agent-type variant of mcp-server.
+multiagents_orchestrator_server_key: multiagents-orch
+multiagents_orchestrator_configure_codex_user: true
+multiagents_orchestrator_codex_user_config_path: "{{ ansible_env.HOME }}/.codex/config.toml"
+multiagents_orchestrator_enabled: false
+multiagents_orchestrator_required: false
+multiagents_orchestrator_entry:
+  command: "{{ multiagents_bun_install_dir }}/multiagents"
+  args:
+    - orchestrator
+  env:
+    PATH: "{{ multiagents_agent_cli_path }}"
+    _MCP_ANSIBLE_ROLE_PATH: roles/multiagents
+  enabled: "{{ multiagents_orchestrator_enabled | bool }}"
+  required: "{{ multiagents_orchestrator_required | bool }}"
 
 multiagents_verify: true
 multiagents_broker_port: 7899

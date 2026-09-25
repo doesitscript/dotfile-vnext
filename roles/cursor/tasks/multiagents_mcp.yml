@@ -9,6 +9,20 @@
     path: "{{ cursor_multiagents_mcp_bun_bin }}"
   register: cursor_multiagents_mcp_bun_stat
 
+- name: Apply Cursor multiagents activation state to the managed entry
+  ansible.builtin.set_fact:
+    cursor_multiagents_mcp_entry: >-
+      {{ cursor_multiagents_mcp_entry | combine({
+        'disabled': not (cursor_multiagents_mcp_active | bool)
+      }) }}
+
+- name: Apply Cursor multiagents orchestrator activation state to the managed entry
+  ansible.builtin.set_fact:
+    cursor_multiagents_orchestrator_mcp_entry: >-
+      {{ cursor_multiagents_orchestrator_mcp_entry | combine({
+        'disabled': not (cursor_multiagents_orchestrator_mcp_active | bool)
+      }) }}
+
 - name: Stat multiagents CLI for Cursor MCP
   ansible.builtin.stat:
     path: "{{ cursor_multiagents_mcp_cli }}"
@@ -26,7 +40,7 @@
       {{ cursor_multiagents_mcp_cli }} is missing.
       Apply the multiagents role first.
   when:
-    - cursor_multiagents_mcp_enabled | bool
+    - (cursor_multiagents_mcp_enabled | bool) or (cursor_multiagents_orchestrator_mcp_enabled | bool)
     - cursor_multiagents_mcp_require_cli | bool
 
 - name: Skip Cursor multiagents MCP merge until the CLI exists
@@ -36,7 +50,7 @@
       {{ cursor_multiagents_mcp_bun_bin }} or
       {{ cursor_multiagents_mcp_cli }} is not installed yet.
   when:
-    - cursor_multiagents_mcp_enabled | bool
+    - (cursor_multiagents_mcp_enabled | bool) or (cursor_multiagents_orchestrator_mcp_enabled | bool)
     - not (cursor_multiagents_mcp_require_cli | bool)
     - not (
         cursor_multiagents_mcp_bun_stat.stat.exists
@@ -58,25 +72,35 @@
     path: "{{ cursor_multiagents_mcp_user_config_path }}"
   register: cursor_multiagents_mcp_json_stat
   when: >-
-    (cursor_multiagents_mcp_enabled | bool
+    (((cursor_multiagents_mcp_enabled | bool) or (cursor_multiagents_orchestrator_mcp_enabled | bool))
     and cursor_multiagents_mcp_bun_stat.stat.exists
     and cursor_multiagents_mcp_cli_stat.stat.exists)
-    or not (cursor_multiagents_mcp_enabled | bool)
+    or not ((cursor_multiagents_mcp_enabled | bool) or (cursor_multiagents_orchestrator_mcp_enabled | bool))
 
-- name: Create Cursor user MCP config with multiagents-peer
+- name: Create Cursor user MCP config with enabled multiagents entries
   ansible.builtin.copy:
     dest: "{{ cursor_multiagents_mcp_user_config_path }}"
     mode: "0644"
-    content: "{{ {'mcpServers': {(cursor_multiagents_mcp_server_key): cursor_multiagents_mcp_entry}} | to_nice_json }}\n"
+    content: "{{ {'mcpServers': cursor_multiagents_mcp_servers_to_write} | to_nice_json }}\n"
   when:
-    - cursor_multiagents_mcp_enabled | bool
+    - (cursor_multiagents_mcp_enabled | bool) or (cursor_multiagents_orchestrator_mcp_enabled | bool)
     - cursor_multiagents_mcp_bun_stat.stat.exists
     - cursor_multiagents_mcp_cli_stat.stat.exists
     - not cursor_multiagents_mcp_json_stat.stat.exists
+  vars:
+    cursor_multiagents_mcp_servers_to_write: >-
+      {{
+        ({(cursor_multiagents_mcp_server_key): cursor_multiagents_mcp_entry}
+         if (cursor_multiagents_mcp_enabled | bool) else {})
+        | combine(
+            {(cursor_multiagents_orchestrator_mcp_server_key): cursor_multiagents_orchestrator_mcp_entry}
+            if (cursor_multiagents_orchestrator_mcp_enabled | bool) else {}
+          )
+      }}
 
-- name: Merge multiagents-peer into existing Cursor user MCP config
+- name: Merge enabled multiagents entries into existing Cursor user MCP config
   when:
-    - cursor_multiagents_mcp_enabled | bool
+    - (cursor_multiagents_mcp_enabled | bool) or (cursor_multiagents_orchestrator_mcp_enabled | bool)
     - cursor_multiagents_mcp_bun_stat.stat.exists
     - cursor_multiagents_mcp_cli_stat.stat.exists
     - cursor_multiagents_mcp_json_stat.stat.exists
@@ -96,7 +120,16 @@
         cursor_multiagents_mcp_servers: >-
           {{
             (cursor_multiagents_mcp_existing.mcpServers | default({}))
-            | combine({(cursor_multiagents_mcp_server_key): cursor_multiagents_mcp_entry})
+            | combine(cursor_multiagents_mcp_servers_to_write)
+          }}
+        cursor_multiagents_mcp_servers_to_write: >-
+          {{
+            ({(cursor_multiagents_mcp_server_key): cursor_multiagents_mcp_entry}
+             if (cursor_multiagents_mcp_enabled | bool) else {})
+            | combine(
+                {(cursor_multiagents_orchestrator_mcp_server_key): cursor_multiagents_orchestrator_mcp_entry}
+                if (cursor_multiagents_orchestrator_mcp_enabled | bool) else {}
+              )
           }}
         cursor_multiagents_mcp_merged: >-
           {{
