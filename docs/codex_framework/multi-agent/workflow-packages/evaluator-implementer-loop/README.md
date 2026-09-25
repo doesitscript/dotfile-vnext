@@ -17,9 +17,10 @@ Durable documentation for the **split-role** workflow where one agent
 **evaluates** and another **implements** on a plan packet until evaluator
 sign-off.
 
-**2026-09-03 update:** Preferred model is **external orchestration** (for
-example `multiagents` + Codex app-server). Role skills are single-pass and do
-not own folder-watch or polling. Pattern contract:
+**2026-09-03 update:** Preferred model is **external orchestration** through
+the parent `multiagents-orch` MCP. The parent injects `multiagents-peer` only
+into spawned agents. Role skills are single-pass and do not own folder-watch
+or polling. Pattern contract:
 [`evaluator-implementer-loop.md`](../../agent-workflow-registry/patterns/evaluator-implementer-loop.md).
 Alignment discussion:
 `docs/plans/2026-09-03--multi-agent-orchestration-plan/discussion/orchestration-agnostic-framing.md`.

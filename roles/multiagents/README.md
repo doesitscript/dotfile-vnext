@@ -108,13 +108,20 @@ host services that this deployment role should start by default.
 
 ## Follow-up: Cursor Agent usage
 
-The multiagents CLI-backed Implementer/Evaluator path is now deployed and
-verified. Cursor Agent usage remains a separate follow-up planning and
-troubleshooting slice: verify Cursor-native agent launch behavior, inherited
-environment/PATH, MCP namespace visibility, authentication, and the boundary
-between Cursor-native subagents and CLI-backed multiagents slots. Do not
-reintroduce `multiagents-peer` as a persistent parent-client MCP entry while
-investigating that path.
+The multiagents CLI-backed Implementer/Evaluator path is deployed. Use the
+client’s **one** parent `multiagents-orch` MCP for many sessions. Skills proceed
+when that live MCP namespace is callable, even if a client config file still
+shows disabled. Ansible reconcile owns the file `disabled` / `*_active` flags
+(`cursor_multiagents_orchestrator_mcp_active` on macOS Cursor) and is a
+separate operator action from interactive chats.
+
+Do not reintroduce `multiagents-peer` as a persistent parent-client MCP entry.
+Peer injection remains child-session scoped. Close out **this** session with
+`release_all` → `end_session` so its agent/peer children stop. Keep the shared
+orch, broker, and dashboard available for other multiagent tenants unless the
+operator stops the dashboard or Ansible reconciles MCP desired state. See
+global skills `multiagents-runtime-operator` and
+`paired-plan-multiagents-orchestrator`.
 
 ## Example
 

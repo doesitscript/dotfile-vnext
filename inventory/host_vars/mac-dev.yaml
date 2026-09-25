@@ -182,11 +182,14 @@ multiagents_state: present
 multiagents_agent_cli_enabled: true
 multiagents_agent_cli_npm_executable: "{{ mac_dev_nvm_bin }}/npm"
 multiagents_agent_cli_bin_dir: "{{ mac_dev_nvm_bin }}"
+# Parent orch stays registered; Cursor interactive path is active on reconcile.
+# Skill runtime still proceeds whenever the live MCP namespace is callable even
+# if a client file flag lags. Peer stays off as a persistent parent entry.
 multiagents_orchestrator_enabled: false
 cursor_multiagents_mcp_enabled: false
 cursor_multiagents_mcp_active: false
 cursor_multiagents_orchestrator_mcp_enabled: true
-cursor_multiagents_orchestrator_mcp_active: false
+cursor_multiagents_orchestrator_mcp_active: true
 
 # MCP stack — all non-Morph MCP servers are deployed but disabled by default.
 mcp_non_morph_enabled: false
@@ -208,7 +211,7 @@ mcp_tool_enabled:
   ansible: false
   openaiDeveloperDocs: false
   codex: false
-  multiagents-orch: false
+  multiagents-orch: true
 mac_dev_cursor_user_mcp_path: "{{ ansible_env.HOME }}/.cursor/mcp.json"
 mac_dev_nvm_bin: "{{ ansible_env.HOME }}/.nvm/versions/node/v20.20.0/bin"
 mac_dev_mcp_env_dir: "{{ ansible_env.HOME }}/.config/dotfile-vnext/mcp/env.d"
@@ -268,7 +271,7 @@ continue_ide_mcp_servers:
     env:
       WORKSPACE_MODE: "true"
   - name: multiagents-orch
-    enabled: false
+    enabled: true
     type: stdio
     command: "{{ ansible_env.HOME }}/.bun/bin/multiagents"
     args:

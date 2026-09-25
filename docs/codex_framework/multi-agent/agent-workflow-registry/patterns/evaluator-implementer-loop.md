@@ -18,10 +18,11 @@ Coordinate **plan packet work** when an independent evaluator must sign off
 before the scoped campaign is complete. Typical use: plan promotion, framework
 repair, skill-family audits tied to a plan folder.
 
-**Framing:** role skills own cooperation and quality; an external orchestrator
-(for example `multiagents` + Codex app-server) owns wakeups and turn
-advancement. Plan-folder artifacts remain the durable audit trail, not the
-scheduler. See
+**Framing:** role skills own cooperation and quality; the parent
+`multiagents-orch` MCP owns wakeups and turn advancement. It injects the
+`multiagents-peer` MCP only into each spawned agent; the peer is not a general
+client integration. Plan-folder artifacts remain the durable audit trail, not
+the scheduler. See
 `docs/plans/2026-09-03--multi-agent-orchestration-plan/discussion/orchestration-agnostic-framing.md`.
 
 ## Triggers
