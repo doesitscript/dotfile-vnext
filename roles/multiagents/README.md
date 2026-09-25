@@ -23,6 +23,32 @@ config with `enabled = false`. Cursor and Continue receive the same disabled
 orchestrator catalog entry from their owning roles. The `multiagents-peer` MCP
 remains the separate spawned-agent communication surface.
 
+## Plan-scoped transcripts
+
+The parent orchestrator accepts the paired plan folder as `create_team`'s
+`transcript_dir`. When the parent ends a session, the broker SQLite database at
+`~/.multiagents/peers.db` remains the runtime source of truth while the session
+message history is exported automatically to:
+
+```text
+<plan-folder>/.multiagents/transcripts/<session-id>/session-transcript.md
+<plan-folder>/.multiagents/transcripts/<session-id>/implementer.md
+<plan-folder>/.multiagents/transcripts/<session-id>/evaluator.md
+<plan-folder>/MULTIAGENT-TRANSCRIPT-INDEX.md
+```
+
+The per-run directory is safe for future agent roles: each slot receives a
+sanitized role-based Markdown filename, and the plan index links every run.
+This export is the broker message/session transcript, not a raw model-token or
+tool-call capture. The evaluator's `MULTIAGENT-FINAL-REPORT.md` should link the
+index and summarize the completed work.
+
+### Follow-up note
+
+Future work can investigate raw child app-server/tool transcripts, restart-safe
+transcript target persistence, and retention/redaction policy. Those are
+separate from the current broker-backed plan export and should not replace it.
+
 Related plan intake:
 `docs/plans/2026-09-03--multi-agent-orchestration-plan/`.
 
