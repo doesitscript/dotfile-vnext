@@ -188,6 +188,10 @@
           '--port', k3s_vllm_runtime_container_port | string
         ]
         + (
+          ['--enable-sleep-mode']
+          if k3s_vllm_runtime_sleep_mode_enabled | bool else []
+        )
+        + (
           ['--enable-auto-tool-choice']
           if k3s_vllm_runtime_enable_auto_tool_choice | bool else []
         )
@@ -351,9 +355,24 @@
                     ports:
                       - name: http
                         containerPort: "{{ k3s_vllm_runtime_container_port }}"
-                    env:
-                      - name: HF_HUB_CACHE
-                        value: "{{ k3s_vllm_runtime_hf_hub_cache_container_path }}"
+                    env: >-
+                      {{
+                        [
+                          {
+                            'name': 'HF_HUB_CACHE',
+                            'value': k3s_vllm_runtime_hf_hub_cache_container_path
+                          }
+                        ]
+                        + (
+                          [
+                            {
+                              'name': 'VLLM_SERVER_DEV_MODE',
+                              'value': '1'
+                            }
+                          ]
+                          if k3s_vllm_runtime_sleep_mode_enabled | bool else []
+                        )
+                      }}
                     envFrom: >-
                       {{
                         [{'secretRef': {'name': k3s_vllm_runtime_name ~ '-env'}}]
