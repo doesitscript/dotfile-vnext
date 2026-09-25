@@ -63,15 +63,28 @@
     - role: continue_ide
       tags: [continue, continue_ide, mcp]
 
-  post_tasks:
+  tasks:
     - name: Apply MCP enabled toggles to JSON client configurations
-      ansible.builtin.shell: >-
-        test -f '{{ item }}' && jq --argjson toggles '{{ mcp_tool_enabled | default({}) | to_json }}'
-        'if .mcpServers then .mcpServers |= with_entries(
-          if ($toggles[.key] != null) then
-            .value.disabled = ($toggles[.key] | not)
-          else . end
-        ) else . end' '{{ item }}' > '{{ item }}.tmp' && mv '{{ item }}.tmp' '{{ item }}' || true
+      ansible.builtin.shell: |
+        set -euo pipefail
+        if ! test -f '{{ item }}'; then
+          exit 0
+        fi
+        tmp_path="$(mktemp '{{ item }}.tmp.XXXXXX')"
+        trap 'rm -f "$tmp_path"' EXIT
+        jq --argjson toggles '{{ mcp_tool_enabled | default({}) | to_json }}' \
+          'if .mcpServers then .mcpServers |= with_entries(
+            if ($toggles[.key] != null) then
+              .value.disabled = ($toggles[.key] | not)
+            else . end
+          ) else . end' '{{ item }}' > "$tmp_path"
+        if cmp -s "$tmp_path" '{{ item }}'; then
+          echo unchanged
+        else
+          mv "$tmp_path" '{{ item }}'
+          trap - EXIT
+          echo changed
+        fi
       args:
         executable: /bin/bash
       loop:
@@ -80,5 +93,6 @@
         - "{{ dotfiles_home }}/.vscode/mcp.json"
       when:
         - mcp_tool_enabled is defined
-      changed_when: false
+      register: mcp_json_enablement_result
+      changed_when: "'changed' in mcp_json_enablement_result.stdout"
       tags: [mcp, mcp_enablement]
