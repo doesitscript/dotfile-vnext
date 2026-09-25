@@ -1,12 +1,15 @@
 ---
 # macOS-specific tasks for node
 
-- name: Install nvm {{ nvm_version }} from upstream script
-  ansible.builtin.shell: >-
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/{{ nvm_version }}/install.sh | PROFILE=/dev/null bash
+# Official nvm installer is a remote shell script; curl|bash is intentional.
+- name: Install nvm from upstream script
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/{{ nvm_version }}/install.sh" | PROFILE=/dev/null bash
   args:
     creates: "{{ dotfiles_user_home }}/.nvm/nvm.sh"
     executable: /bin/bash
+  # noqa: command-instead-of-module
 
 - name: Install default Node.js version via nvm
   ansible.builtin.shell: |
