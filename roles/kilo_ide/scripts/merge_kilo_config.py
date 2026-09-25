@@ -94,6 +94,15 @@ def merge_kilo(existing: dict[str, Any], overlay: dict[str, Any]) -> dict[str, A
         if key in overlay:
             result[key] = overlay[key]
 
+    # Replace only MCP entries owned by this role; preserve manually managed
+    # servers in the same global Kilo config.
+    overlay_mcp = overlay.get("mcp") or {}
+    existing_mcp = dict(result.get("mcp") or {})
+    for server_name, server_cfg in overlay_mcp.items():
+        existing_mcp[server_name] = server_cfg
+    if overlay_mcp or existing_mcp:
+        result["mcp"] = existing_mcp
+
     # Providers: replace only the managed provider id; keep others.
     overlay_providers = overlay.get("provider") or {}
     existing_providers = dict(result.get("provider") or {})

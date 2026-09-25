@@ -134,6 +134,10 @@
     suffix: .kilo-overlay.json
   register: _kilo_overlay_tmp
   when: kilo_ide_state == "present"
+  # Ansible check mode does not populate the tempfile result path.  Create
+  # this ephemeral controller/host-local staging file so the following
+  # template task can still render and preview the managed overlay.
+  check_mode: false
   changed_when: false
 
 - name: Write managed Kilo overlay template

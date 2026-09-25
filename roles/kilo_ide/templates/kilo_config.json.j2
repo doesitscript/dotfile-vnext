@@ -20,6 +20,18 @@
   },
   "compaction": {{ kilo_ide_compaction | to_json }},
   "disabled_providers": {{ kilo_ide_disabled_providers | default([]) | to_json }},
+  "mcp": {
+{% for server in kilo_ide_mcp_servers | default([]) %}
+    {{ server.name | to_json }}: {
+      "type": {{ server.type | default('local') | to_json }},{% if server.command is defined %}
+      "command": {{ server.command | to_json }},{% endif %}{% if server.url is defined %}
+      "url": {{ server.url | to_json }},{% endif %}{% if server.environment is defined %}
+      "environment": {{ server.environment | to_json }},{% endif %}
+      "enabled": {{ server.enabled | default(false) | bool | lower }}
+    }{% if not loop.last %},{% endif %}
+
+{% endfor %}
+  },
   "provider": {
     {{ kilo_ide_provider_id | to_json }}: {
       "npm": {{ kilo_ide_provider_npm | default('@ai-sdk/openai-compatible') | to_json }},
